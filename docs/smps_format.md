@@ -1,0 +1,175 @@
+# SMPS Assembly Format Reference
+
+Reference for the Sonic 1 SMPS assembly format as parsed by `smps_parser.py`.
+
+## Song Structure
+
+An SMPS assembly file contains:
+1. A **song header** with voice pointer, channel counts, tempo, and per-channel headers
+2. **Channel data** sections (labels followed by `dc.b` note data and effect macros)
+3. **Voice definitions** (`smpsVc*` macros defining FM instrument parameters)
+
+## Header Macros
+
+### `smpsHeaderStartSong <version>`
+Declares driver version. Sonic 1 uses version `1`.
+
+### `smpsHeaderVoice <label>`
+Points to the voice (FM instrument) definition block.
+
+### `smpsHeaderChan $<fm_count>, $<psg_count>`
+Number of FM and PSG channels. The total channel count in the header includes the DAC channel separately.
+
+Example: `smpsHeaderChan $06, $03` = 6 FM channels (including DAC as FM6), 3 PSG channels.
+
+### `smpsHeaderTempo $<divider>, $<modifier>`
+- **divider**: Clock divider (typically $01)
+- **modifier**: Tempo modifier (e.g. $05)
+
+### `smpsHeaderDAC <label>`
+Declares DAC channel data location.
+
+### `smpsHeaderFM <label>, $<pitch>, $<volume>`
+Declares FM channel data location with:
+- **pitch**: Signed byte pitch offset (e.g. $F4 = -12 semitones)
+- **volume**: Initial volume attenuation
+
+### `smpsHeaderPSG <label>, $<pitch>, $<volume>, $<mod>, <voice>`
+Declares PSG channel with additional:
+- **mod**: Frequency envelope byte (typically $00 in Sonic 1)
+- **voice**: PSG tone envelope (e.g. `fTone_05`)
+
+## Note Data (`dc.b` Lines)
+
+Channel data is encoded in `dc.b` (define constant byte) lines with comma-separated tokens.
+
+### Token Types
+
+| Token | Range | Meaning |
+|-------|-------|---------|
+| `nRst` | $80 | Rest (silence) |
+| `nC0`–`nAs7` | $81–$DF | Chromatic notes, 12 per octave |
+| `nMaxPSG` | $C6 | Maximum PSG frequency (= nA5 in Sonic 1) |
+| `dKick`, `dSnare`, etc. | $81–$8B | DAC drum samples |
+| `$xx` (< $80) | $01–$7F | Duration in ticks |
+| `smpsNoAttack` / `$E7` | $E7 | Tie — next note plays without re-attack |
+
+### Enharmonic Note Aliases
+
+Each octave provides aliases:
+- `nDb` = `nCs`, `nEb` = `nDs`, `nFb` = `nE`
+- `nF` = `nEs`, `nGb` = `nFs`, `nAb` = `nGs`
+- `nBb` = `nAs`, `nCb` = previous `nB`, `nBs` = next `nC`
+
+### Duration Persistence
+
+The last explicitly stated duration carries forward to subsequent notes that don't specify one.
+
+```asm
+dc.b  nC3, $0C, nD3, nE3    ; C3 for $0C ticks, then D3 for $0C, then E3 for $0C
+```
+
+### Standalone Duration Bytes
+
+A duration byte not preceded by a note on the same `dc.b` line acts as a **wait/sustain** command. It advances the tick counter by that many ticks while sustaining or silencing.
+
+```asm
+; In a PSG noise channel loop body:
+smpsNoteFill  $03
+dc.b  nMaxPSG, $0C    ; play nMaxPSG for 12 ticks
+smpsNoteFill  $0C
+dc.b  $0C              ; wait/sustain 12 more ticks (standalone duration)
+```
+
+## Effect Macros
+
+### Channel Control
+
+| Macro | Bytes | Description |
+|-------|-------|-------------|
+| `smpsSetvoice $xx` | $EF, xx | Set FM voice/instrument |
+| `smpsAlterVol $xx` | $E6, xx | Add signed value to volume attenuation |
+| `smpsAlterNote $xx` | $E1, xx | Set channel detune (signed semitones) |
+| `smpsChangeTransposition $xx` | $E9, xx | Add to channel pitch (signed semitones) |
+| `smpsPan direction, amsfms` | $E0, xx | Set panning and AMS/FMS |
+
+### Modulation
+
+| Macro | Bytes | Description |
+|-------|-------|-------------|
+| `smpsModSet $wait, $speed, $change, $steps` | $F0, w, s, c, n | Set modulation parameters |
+| `smpsModOn` | $F1 | Enable modulation |
+| `smpsModOff` | $F4 | Disable modulation |
+
+### Timing
+
+| Macro | Bytes | Description |
+|-------|-------|-------------|
+| `smpsNoteFill $xx` | $E8, xx | Set note fill — note cuts after xx ticks |
+
+### Flow Control
+
+| Macro | Bytes | Description |
+|-------|-------|-------------|
+| `smpsStop` | $F2 | End of channel data |
+| `smpsJump <label>` | $F6, addr | Jump to label (song loop point) |
+| `smpsLoop $idx, $count, <label>` | $F7, idx, cnt, addr | Loop back to label, count times |
+| `smpsCall <label>` | $F8, addr | Call subroutine at label |
+| `smpsReturn` | $E3 | Return from smpsCall |
+
+### PSG-Specific
+
+| Macro | Bytes | Description |
+|-------|-------|-------------|
+| `smpsPSGform $xx` | $F3, xx | Set PSG waveform |
+| `smpsPSGvoice <voice>` | $F5, xx | Set PSG tone envelope |
+
+### Ignored
+
+| Macro | Description |
+|-------|-------------|
+| `smpsNop $xx` | Game synchronization byte (no audio effect) |
+
+## Voice Definitions
+
+FM voices are defined using `smpsVc*` macros that set YM2612 register parameters:
+
+```asm
+smpsVcAlgorithm     $02        ; FM synthesis algorithm (0–7)
+smpsVcFeedback      $07        ; Operator 1 feedback (0–7)
+smpsVcDetune        $00, $05, $00, $05   ; Per-operator detune
+smpsVcCoarseFreq    $02, $01, $08, $01   ; Per-operator frequency multiplier
+smpsVcRateScale     $00, $00, $00, $00
+smpsVcAttackRate    $10, $1E, $1E, $1E
+smpsVcAmpMod        $00, $00, $00, $00
+smpsVcDecayRate1    $0F, $1F, $1F, $1F
+smpsVcDecayRate2    $02, $00, $00, $00
+smpsVcDecayLevel    $01, $00, $00, $00
+smpsVcReleaseRate   $0F, $0F, $0F, $0F
+smpsVcTotalLevel    $01, $22, $24, $18   ; Per-operator volume
+```
+
+Four parameters per macro correspond to the four FM operators. These are parsed for reference but not directly mapped to MOD instruments (MOD uses PCM samples, not FM synthesis).
+
+## DAC Samples (Sonic 1)
+
+| Name | Byte | Description |
+|------|------|-------------|
+| `dKick` | $81 | Kick drum |
+| `dSnare` | $82 | Snare drum |
+| `dTimpani` | $83 | Timpani |
+| `dHiTimpani` | $88 | High timpani |
+| `dMidTimpani` | $89 | Mid timpani |
+| `dLowTimpani` | $8A | Low timpani |
+| `dVLowTimpani` | $8B | Very low timpani |
+
+## Edge Cases
+
+### FM5 Fall-Through
+FM5 may contain only an `smpsAlterNote` effect, then fall through into FM1's data. The parser handles this by not stopping at label boundaries — only `smpsStop`/`smpsJump` terminate channel parsing.
+
+### Empty Channels
+PSG1 and PSG2 in some songs (e.g. Title Screen) contain only `smpsStop`. The parser produces channels with zero events.
+
+### Loop with Nested Effects
+Loop bodies may contain `smpsNoteFill` and other effects interleaved with `dc.b` duration bytes. The parser processes effects and data in order, maintaining state across loop iterations.

@@ -1,0 +1,93 @@
+name: "Title Screen"
+input_file: "sonic_1/music/Mus8A - Title Screen.asm"
+output_file: "output/title_screen.mod"
+auto_bpm: true              # Derive BPM from SMPS tempo header
+region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
+target_speed: 6
+ticks_per_row: 6
+num_mod_channels: 10
+
+channels:
+  - source: DAC
+    mod_channel: 0
+    instrument: 1
+  - source: FM1
+    mod_channel: 1
+    transpose: -36
+    instrument: 4
+  - source: FM2
+    mod_channel: 2
+    transpose: -24
+    instrument: 5
+  - source: FM3
+    mod_channel: 3
+    transpose: -36
+    instrument: 6
+  - source: FM4
+    mod_channel: 4
+    transpose: -36
+    instrument: 7
+  - source: FM5
+    mod_channel: 5
+    transpose: -36
+    instrument: 8
+  - source: PSG1
+    mod_channel: 6
+    transpose: -36
+    instrument: 9
+    enabled: false
+  - source: PSG2
+    mod_channel: 7
+    transpose: -36
+    instrument: 10
+    enabled: false
+  - source: PSG3
+    mod_channel: 8
+    transpose: -36
+    instrument: 11
+
+# DAC sample mappings — notes chosen to match native sample rates
+# on the Amiga Paula chip (PAL clock 7,093,789 Hz).
+#
+# Kick:    8,250 Hz native → C2  plays at 8,287 Hz (+0.4%)
+# Snare:  24,000 Hz native → F#3 plays at 23,490 Hz (-2.1%)
+# Timpani: 7,375 Hz native → A#1 plays at 7,389 Hz (+0.2%)
+#   Timpani variants use the same sample at scaled rates:
+#   Hi (×1.30):  9,588 Hz → D#2 plays at 9,853 Hz (+2.8%)
+#   Mid (×1.20): 8,850 Hz → C#2 plays at 8,779 Hz (-0.8%)
+#   Low (×0.97): 7,154 Hz → A1  plays at 6,982 Hz (-2.4%)
+#   VLow (×0.95):7,006 Hz → A1  plays at 6,982 Hz (-0.3%)
+dac_samples:
+  - name: dKick
+    mod_instrument: 1
+    mod_note: C2
+  - name: dSnare
+    mod_instrument: 2
+    mod_note: Fs3
+  - name: dTimpani
+    mod_instrument: 3
+    mod_note: As1
+  - name: dHiTimpani
+    mod_instrument: 3
+    mod_note: Ds2
+  - name: dMidTimpani
+    mod_instrument: 3
+    mod_note: Cs2
+  - name: dLowTimpani
+    mod_instrument: 3
+    mod_note: A1
+  - name: dVLowTimpani
+    mod_instrument: 3
+    mod_note: A1
+
+# Load real DAC samples from the Sonic 1 disassembly.
+# Source WAV files are 8-bit mono; convert to raw signed PCM for MOD:
+#   sox kick.wav -t raw -r 8250 -e signed -b 8 -c 1 kick.raw
+#   sox snare.wav -t raw -r 24000 -e signed -b 8 -c 1 snare.raw
+#   sox timpani.wav -t raw -r 7375 -e signed -b 8 -c 1 timpani.raw
+sample_list:
+  - [1, "kick.raw", 64, 0]
+  - [2, "snare.raw", 64, 0]
+  - [3, "timpani.raw", 64, 0]
+
+samples_dir: "./samples/"

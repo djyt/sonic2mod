@@ -68,6 +68,7 @@ class ConversionConfig:
     sample_list: Optional[list] = None                  # [inst_num, filename, volume, finetune]
     samples_dir: str = "./samples/"
     max_patterns: int = 127
+    voice_map: dict = field(default_factory=dict)  # {voice_index: mod_instrument}
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -163,6 +164,10 @@ class ConversionConfig:
                 mod_instrument=dac_data['mod_instrument'],
                 mod_note=dac_data.get('mod_note', 'C3'),
             ))
+
+        # Parse voice_map — keys may be int or 0x-prefixed hex strings in YAML
+        raw_vm = data.get('voice_map', {})
+        config.voice_map = {int(str(k), 0): v for k, v in raw_vm.items()}
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

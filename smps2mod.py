@@ -134,8 +134,9 @@ class SmpsToModConverter:
                 eff = event.effect
 
                 if eff.effect_type == 'smpsSetvoice':
-                    # Map voice index to instrument (informational; keep current instrument)
-                    pass
+                    voice_idx = eff.params[0]
+                    if voice_idx in self.config.voice_map:
+                        instrument = self.config.voice_map[voice_idx]
 
                 elif eff.effect_type == 'smpsAlterVol':
                     delta = eff.params[0]

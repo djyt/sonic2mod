@@ -91,3 +91,10 @@ sample_list:
   - [3, "timpani.raw", 64, 0]
 
 samples_dir: "./samples/"
+
+# FM voice index → MOD instrument number.
+# Covers all FM channels; voice indices match the SMPS voice table.
+# Per-channel `instrument` in channels: remains the fallback before first smpsSetvoice.
+voice_map:
+  0: 4    # voice $00 → MOD instrument 4  (e.g. lead synth)
+  # 1: 9  # voice $01 → MOD instrument 9  (add as needed)

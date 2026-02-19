@@ -3,16 +3,17 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from tables import ModNote
+from tables import ModNote, parse_smps_note
 
 
 @dataclass
 class InstrumentRange:
-    low: ModNote        # inclusive lower bound (post-transpose MOD note)
-    high: ModNote       # inclusive upper bound
+    low: int            # inclusive lower bound — SMPS semitone from C0 (e.g. nA2 = 33)
+    high: int           # inclusive upper bound — SMPS semitone from C0
     instrument: int     # MOD instrument number (1-31)
-    root: Optional[ModNote] = None  # if set: re-anchor output note
-                                    # out_note = root + (in_note - low)
+    root: Optional[ModNote] = None  # MOD note where `low` plays;
+                                    # out_note = root + (source_semitone - low)
+                                    # if None: fall back to channel transpose for note
 
 
 @dataclass
@@ -182,12 +183,14 @@ class ConversionConfig:
         config.voice_map = {int(str(k), 0): v for k, v in raw_vm.items()}
 
         # Parse voice_instrument_map
+        # low/high are SMPS note names (e.g. 'G5', 'Cs6') → semitone from C0
+        # root is a ModNote name (e.g. 'F2s', 'A1') → output MOD note anchor
         raw_vim = data.get('voice_instrument_map', {})
         for voice_key, range_list in raw_vim.items():
             parsed_ranges = []
             for entry in range_list:
-                low = ModNote[entry['low']]
-                high = ModNote[entry['high']]
+                low = parse_smps_note(entry['low'])
+                high = parse_smps_note(entry['high'])
                 inst = entry['instrument']
                 root = ModNote[entry['root']] if 'root' in entry else None
                 parsed_ranges.append(InstrumentRange(low=low, high=high, instrument=inst, root=root))

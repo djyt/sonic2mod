@@ -117,6 +117,25 @@ def _build_smps_note_names():
 
 SMPS_NOTE_NAMES = _build_smps_note_names()
 
+
+def parse_smps_note(name: str) -> int:
+    """Convert an SMPS note name to semitone offset from C0 (0 = C0, 12 = C1, …).
+
+    Accepts the same identifiers used in _smps2asm_inc.asm without the leading
+    'n' prefix — e.g. 'G5', 'Cs6', 'Ab6', 'C7'.
+
+    Returns:
+        Integer semitone (0–95 for the standard 8-octave SMPS range).
+
+    Raises:
+        ValueError: if the name is not recognised.
+    """
+    key = 'n' + name
+    if key not in SMPS_NOTE_NAMES:
+        raise ValueError(f"Unknown SMPS note name: '{name}' (tried '{key}')")
+    return SMPS_NOTE_NAMES[key] - 0x81
+
+
 # ---------------------------------------------------------------------------
 # SMPS DAC sample names → byte values (Sonic 1)
 # ---------------------------------------------------------------------------

@@ -203,21 +203,36 @@ class SmpsToModConverter:
                         # Fallback: use default instrument and C3
                         self.mod.set_note(ModNote.C3, instrument)
                 else:
-                    # Melodic: convert SMPS note to MOD note with transpose
+                    # Melodic: place note with optional voice_instrument_map override.
+                    #
+                    # The map is checked against the *source semitone* — the raw
+                    # SMPS note + smpsAlterNote, before the channel base transpose.
+                    # This matches the mml2mod reference design: ranges are defined
+                    # in source-note space, root anchors the output to a MOD note.
                     total_transpose = transpose + alter_note
-                    mod_note = smps_note_to_mod_note(note.note_value, total_transpose, chan_cfg.source)
-                    if mod_note is not None:
-                        final_instrument = instrument
-                        final_note = mod_note
-                        ranges = self.config.voice_instrument_map.get(current_voice_idx)
-                        if ranges:
-                            for entry in ranges:
-                                if entry.low.value <= mod_note.value <= entry.high.value:
-                                    final_instrument = entry.instrument
-                                    if entry.root is not None:
-                                        final_note = ModNote(entry.root.value + (mod_note.value - entry.low.value))
-                                    break
-                        self.mod.set_note(final_note, final_instrument)
+                    source_semitone = (note.note_value - 0x81) + alter_note
+
+                    final_instrument = instrument
+                    final_note = None
+
+                    ranges = self.config.voice_instrument_map.get(current_voice_idx)
+                    if ranges:
+                        for entry in ranges:
+                            if entry.low <= source_semitone <= entry.high:
+                                final_instrument = entry.instrument
+                                if entry.root is not None:
+                                    out = entry.root.value + (source_semitone - entry.low)
+                                    out = max(0, min(35, out))
+                                    final_note = ModNote(out)
+                                # root=None: fall through to channel-transpose path
+                                break
+
+                    if final_note is None:
+                        # No map match (or matched with no root): use channel transpose
+                        final_note = smps_note_to_mod_note(
+                            note.note_value, total_transpose, chan_cfg.source)
+
+                    self.mod.set_note(final_note, final_instrument)
 
                     # Set volume if changed
                     if current_volume != volume:

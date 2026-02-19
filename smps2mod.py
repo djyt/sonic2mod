@@ -203,7 +203,7 @@ class SmpsToModConverter:
                 else:
                     # Melodic: convert SMPS note to MOD note with transpose
                     total_transpose = transpose + alter_note
-                    mod_note = smps_note_to_mod_note(note.note_value, total_transpose)
+                    mod_note = smps_note_to_mod_note(note.note_value, total_transpose, chan_cfg.source)
                     if mod_note is not None:
                         self.mod.set_note(mod_note, instrument)
 

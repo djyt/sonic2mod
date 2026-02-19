@@ -132,21 +132,23 @@ SMPS_DAC_NAMES = {
 }
 
 
-def smps_note_to_mod_note(note_value, transpose=0):
+def smps_note_to_mod_note(note_value, transpose=0, channel_name=None):
     """Convert SMPS note byte to ModNote.
 
     Args:
         note_value: SMPS note byte (0x81 = C0, 0x82 = C#0, etc.)
         transpose: Semitone offset to add
+        channel_name: Optional channel label for warning messages (e.g. "FM1")
 
     Returns:
         ModNote enum value, or None if out of range
     """
+    chan_info = f" [{channel_name}]" if channel_name else ""
     semitone = (note_value - 0x81) + transpose
     if semitone < 0:
-        print(f"Warning: Note {note_value:#x} + transpose {transpose} = semitone {semitone}, clamping to 0 (C1)")
+        print(f"Warning{chan_info}: Note {note_value:#x} + transpose {transpose} = semitone {semitone}, clamping to 0 (C1)")
         semitone = 0
     elif semitone > 35:
-        print(f"Warning: Note {note_value:#x} + transpose {transpose} = semitone {semitone}, clamping to 35 (B3)")
+        print(f"Warning{chan_info}: Note {note_value:#x} + transpose {transpose} = semitone {semitone}, clamping to 35 (B3)")
         semitone = 35
     return ModNote(semitone)

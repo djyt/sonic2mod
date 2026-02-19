@@ -8,9 +8,6 @@ ticks_per_row: 6
 num_mod_channels: 10
 
 
-# Transposing: 12 semitones in an octave.
-# MOD range is C1–B3 (36 semitones).  SMPS notes are written in actual pitch;
-# transpose shifts them into that window.
 channels:
   - source: DAC
     mod_channel: 0
@@ -18,32 +15,29 @@ channels:
 
   - source: FM1
     mod_channel: 1
-    transpose: -49           # G5–A6 (SMPS 67–81) → F#2–G#3 (MOD 18–32)
+    transpose: 0             # note placement handled entirely by voice_instrument_map
     instrument: 4            # fallback before first smpsSetvoice; see voice_map
 
   - source: FM2
     mod_channel: 2
-    transpose: -24           # A2–D4 (SMPS 33–50) → A1–D3  (MOD  9–26)
+    transpose: 0             # note placement handled entirely by voice_instrument_map
     instrument: 5
 
   - source: FM3
     mod_channel: 3
-    transpose: -48           # Cs6–G6 main melody → C#3–G3 (MOD 25–31)
-    instrument: 6            # voice_instrument_map handles ending bass (nA2+3)
-                             # separately; no transpose warnings at runtime
+    transpose: 0             # note placement handled entirely by voice_instrument_map
+    instrument: 6
 
   - source: FM4
     mod_channel: 4
-    transpose: -48           # A5–D6  main melody → A2–D3  (MOD 21–26)
-    instrument: 7            # voice_instrument_map handles ending bass (nA2)
-                             # separately; no transpose warnings at runtime
+    transpose: 0             # note placement handled entirely by voice_instrument_map
+    instrument: 7
 
-  # FM5 falls through to the same data as FM1 in the original SMPS source.
-  # smpsAlterNote +3 is set first, so FM5 plays 3 semitones above FM1.
-  # Matching FM1's transpose (-49) keeps that interval exact across all notes.
+  # FM5 shares FM1's data; smpsAlterNote +3 is applied first so it plays
+  # 3 semitones above FM1 throughout.
   - source: FM5
     mod_channel: 5
-    transpose: -49           # effective -46 after AlterNote +3 → A2–B3 (MOD 21–35)
+    transpose: 0             # note placement handled entirely by voice_instrument_map
     instrument: 8            # fallback before first smpsSetvoice; see voice_map
 
   - source: PSG1
@@ -60,7 +54,7 @@ channels:
 
   - source: PSG3
     mod_channel: 8
-    transpose: -36
+    transpose: -36           # SMPS octaves 3–5 → MOD C1–B3
     instrument: 11
 
 
@@ -107,8 +101,8 @@ dac_samples:
 #   sox snare.wav   -t raw -r 24000 -e signed -b 8 -c 1 snare.raw
 #   sox timpani.wav -t raw -r  7375 -e signed -b 8 -c 1 timpani.raw
 #
-# FM voices: capture the YM2612 playing each voice patch at the root note
-# listed, 8-bit mono signed raw PCM.  Required sample rate per root note
+# FM voices: capture the YM2612 playing each voice patch at the root note,
+# 8-bit mono signed raw PCM.  Required sample rate per root note
 # (PAL Amiga clock 7,093,789 Hz, rate = clock / (2 × MOD period)):
 #
 #   Root A1  →  6,982 Hz  (period 508)    Root F#2 → 11,746 Hz  (period 302)
@@ -126,96 +120,76 @@ sample_list:
   - [1, "kick.raw",          64, 0]
   - [2, "snare.raw",         64, 0]
   - [3, "timpani.raw",       64, 0]
-  # --- voice $00: bright lead synth (FM1 + FM5) — two source-note bands ---
-  - [4,  "fm_voice0_lo.raw", 64, 0]   # source G5–G6;  MOD output F#2–F#3  (record at F#2, 11,746 Hz)
-  - [12, "fm_voice0_hi.raw", 64, 0]   # source Gs6–C7; MOD output G3–B3    (record at G3,  24,804 Hz)
-  # --- voice $01: bass / sustain pad (FM2 melody + FM3/FM4 ending bass) ---
-  - [5,  "fm_voice1_lo.raw",  64, 0]  # source A2–B2;  MOD output A1–B1    (record at A1,   6,982 Hz)
-  - [13, "fm_voice1_mid.raw", 64, 0]  # source C3–D4;  MOD output C2–D3    (record at C2,   8,289 Hz)
+  # --- voice $00: bright lead synth (FM1 + FM5) ---
+  - [4,  "fm_voice0_lo.raw", 64, 0]   # source G5–G6;  output F#2–F#3  (root F#2, 11,746 Hz)
+  - [12, "fm_voice0_hi.raw", 64, 0]   # source Gs6–C7; output G3–B3    (root G3,  24,804 Hz)
+  # --- voice $01: bass / sustain pad (FM2 + FM3/FM4 ending) ---
+  - [5,  "fm_voice1_lo.raw",  64, 0]  # source A2–B2;  output A1–B1    (root A1,   6,982 Hz)
+  - [13, "fm_voice1_mid.raw", 64, 0]  # source C3–D4;  output C2–D3    (root C2,   8,289 Hz)
   # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
-  - [6,  "fm_voice2.raw",    64, 0]   # source A5–G6;  MOD output A2–G3    (record at A2,  13,964 Hz)
+  - [6,  "fm_voice2.raw",    64, 0]   # source A5–G6;  output A2–G3    (root A2,  13,964 Hz)
 
 samples_dir: "./samples/"
 
 
 # FM voice index → default MOD instrument.
-# Used as fallback before the first smpsSetvoice, and for voices not listed in
-# voice_instrument_map.
+# Used as fallback before the first smpsSetvoice, and for any note that falls
+# outside all voice_instrument_map ranges.
 voice_map:
   0: 4    # voice $00 → inst  4  bright lead synth (FM1 + FM5)
   1: 5    # voice $01 → inst  5  bass / sustain pad (FM2, FM3/FM4 ending)
   2: 6    # voice $02 → inst  6  harmony chord stabs (FM3/FM4 main melody)
 
 
-# Per-voice octave-range instrument split.
+# Per-voice instrument splits by source-note range.
 #
-# Ranges are defined in SMPS source-note space — the raw SMPS semitone
-# (note_value − $81) plus smpsAlterNote, BEFORE the channel base transpose.
-# This means the same entry covers every channel that shares a voice patch
-# regardless of its individual transpose setting.
+# Ranges are in SMPS source-note space: (note_value − $81) + smpsAlterNote,
+# before any channel transpose.  low/high use SMPS note names without the
+# leading 'n' (e.g. 'G5', 'Gs6', 'C7').
 #
-# For each band:
-#   low / high  — SMPS note names (without leading 'n'; e.g. 'G5', 'Gs6', 'C7')
-#                 defining the source-semitone range handled by this entry.
-#   instrument  — MOD sample slot to use when the note falls in the range.
-#   root        — the MOD note that source `low` plays at.
-#                 Output note = root + (source_semitone − low), clamped C1–B3.
-#                 Choosing root to replicate the channel's transpose value keeps
-#                 pitch identical to the non-split case — only the sample changes.
-#                 Omit root to fall back to the channel's normal transpose.
+# root — the MOD note that source `low` plays at.
+#        output = root + (source_semitone − low), clamped C1–B3.
 #
-# Entries are checked in order; the first match wins.  A note outside all
-# listed ranges falls back to the voice_map default instrument with the
-# channel's normal transpose.
+# Entries are checked in order; first match wins.  Unmatched notes fall back
+# to the voice_map default instrument with the channel's transpose.
 #
 voice_instrument_map:
 
   # Voice $00 — bright lead synth (FM1 + FM5)
-  #
-  # FM1  plays G5–A6  (source 67–81, channel transpose -49) → F#2–G#3 (MOD 18–32)
-  # FM5  plays same notes +3 via smpsAlterNote, so source semitones are 70–84
-  #      (channel transpose -49) → A2–B3 (MOD 21–35)
-  #
-  # Split at source Ab6/Gs6 (semitone 80): below uses the lo sample, above the hi.
-  # root values chosen to exactly replicate the -49 channel transpose (no pitch shift).
+  # FM1: source G5–A6  (67–81) → output F#2–G#3
+  # FM5: source Gs5–C7 (70–84, after smpsAlterNote +3) → output A2–B3
+  # Split at Gs6 (source 80) to keep the two octave bands on separate samples.
   0:
-    - low:  G5            # source semitone 67 — bottom of FM1's range
-      high: G6            # source semitone 79 — one below the split point
-      instrument: 4       # fm_voice0_lo.raw — record patch at F#2 (11,746 Hz)
+    - low:  G5            # source 67 — bottom of FM1's range
+      high: G6            # source 79 — one below the split
+      instrument: 4       # fm_voice0_lo.raw (root F#2)
       root: F2s           # G5→F#2 (MOD 18);  G6→F#3 (MOD 30)
-    - low:  Gs6           # source semitone 80 — Ab6 and above
-      high: C7            # source semitone 84 — A6+3 (top of FM5's range)
-      instrument: 12      # fm_voice0_hi.raw — record patch at G3  (24,804 Hz)
-      root: G3            # Gs6→G3 (MOD 31);  C7→B3  (MOD 35)
+    - low:  Gs6           # source 80 — top notes of FM1, all of FM5's upper range
+      high: C7            # source 84 — A6+3 (FM5's ceiling)
+      instrument: 12      # fm_voice0_hi.raw (root G3)
+      root: G3            # Gs6→G3 (MOD 31);  C7→B3 (MOD 35)
 
-  # Voice $01 — bass / sustain pad (FM2 melody + FM3/FM4 ending bass)
-  #
-  # FM2  plays A2–D4  (source 33–50, channel transpose -24) → A1–D3  (MOD 9–26)
-  # FM3 ending: nA2 + smpsAlterNote +3 = source semitone 36, transpose -48 → C2 (MOD 12)
-  # FM4 ending: nA2                    = source semitone 33, transpose -48 → A1 (MOD  9)
-  #
-  # Splitting the range keeps FM3/FM4's deep ending bass on a low sample while
-  # FM2's higher melody notes use a mid sample.  root values replicate FM2's -24
-  # transpose exactly (A2→A1, C3→C2) — pitch is unchanged, only the timbre differs.
+  # Voice $01 — bass / sustain pad
+  # FM2:         source A2–D4 (33–50) → output A1–D3
+  # FM4 ending:  source A2    (33)    → output A1
+  # FM3 ending:  source C3    (36, nA2 + smpsAlterNote +3) → output C2
+  # Split at C3 (source 36) to place FM3/FM4's ending bass on the lo sample.
   1:
-    - low:  A2            # source semitone 33 — FM2 + FM4 ending bass (nA2)
-      high: B2            # source semitone 35
-      instrument: 5       # fm_voice1_lo.raw  — record patch at A1  (6,982 Hz)
+    - low:  A2            # source 33 — FM2 low notes + FM4 ending bass
+      high: B2            # source 35
+      instrument: 5       # fm_voice1_lo.raw (root A1)
       root: A1            # A2→A1 (MOD 9);  B2→B1 (MOD 11)
-    - low:  C3            # source semitone 36 — FM3 ending (nA2+3) + bulk of FM2 melody
-      high: D4            # source semitone 50 — top of FM2's range
-      instrument: 13      # fm_voice1_mid.raw — record patch at C2  (8,289 Hz)
+    - low:  C3            # source 36 — FM3 ending bass + bulk of FM2 melody
+      high: D4            # source 50 — top of FM2's range
+      instrument: 13      # fm_voice1_mid.raw (root C2)
       root: C2            # C3→C2 (MOD 12);  D4→D3 (MOD 26)
 
-  # Voice $02 — harmony chord stabs (FM3/FM4 main melody)
-  #
-  # FM3 main: Cs6–G6  (source 73–79, channel transpose -48) → C#3–G3 (MOD 25–31)
-  # FM4 main: A5–D6   (source 69–74, channel transpose -48) → A2–D3  (MOD 21–26)
-  #
-  # Tight 10-semitone span; a single recording covers the whole range cleanly.
-  # root A2 replicates the -48 transpose (A5→A2, G6→G3) with no extra shifting.
+  # Voice $02 — harmony chord stabs (FM3/FM4 main melody only)
+  # FM3: source Cs6–G6 (73–79) → output C#3–G3
+  # FM4: source A5–D6  (69–74) → output A2–D3
+  # Tight 10-semitone span; a single sample covers the range cleanly.
   2:
-    - low:  A5            # source semitone 69 — bottom of FM4's range
-      high: G6            # source semitone 79 — top of FM3's range
-      instrument: 6       # fm_voice2.raw — record patch at A2  (13,964 Hz)
+    - low:  A5            # source 69 — bottom of FM4's range
+      high: G6            # source 79 — top of FM3's range
+      instrument: 6       # fm_voice2.raw (root A2)
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)

@@ -22,10 +22,10 @@ sonic2mod/
 
 ```bash
 # Default settings (10 channels, 150 BPM, ticks_per_row=6)
-python convert.py "path/to/song.asm" --output output/song.mod
+python convert.py "C:/coding/sonic_1/source_s1disasm-AS/sound/music/Mus8A - Title Screen.asm" --output output/title_screen.mod
 
 # With YAML config for per-channel control
-python convert.py "path/to/song.asm" --config configs/title_screen.yaml
+python convert.py "C:/coding/sonic_1/source_s1disasm-AS/sound/music/Mus8A - Title Screen.asm" --config configs/title_screen.yaml
 
 # CLI overrides
 python convert.py "path/to/song.asm" --bpm 140 --channels 10 --transpose -36
@@ -61,9 +61,30 @@ python convert.py "path/to/song.asm" --bpm 140 --channels 10 --transpose -36
 
 - Notes clamped to C1–B3 with warnings when out of range after transpose
 - Samples are 2-byte silent placeholders — replace in a tracker (OpenMPT/MilkyTracker)
-- `smpsSetvoice` parsed but not mapped to MOD instruments (use config `instrument` field)
 - `smpsPan` informational only (MOD panning is channel-based, not per-note)
 - Song loop (`smpsJump`) only sets Bxx from the first channel that has a jump
+
+## voice_instrument_map (per-voice octave-range instrument routing)
+
+Routes SMPS voice index + **source-note range** → MOD instrument + optional pitch anchor.
+Ranges are checked against `(note_value − $81) + smpsAlterNote` — before channel transpose.
+
+- `low`/`high` — SMPS note names without `n` prefix, parsed by `parse_smps_note()` in `tables.py` (e.g. `G5`, `Gs6`, `C7`)
+- `root` — ModNote enum name where source `low` plays (`F2s`, `G3`, `A2`, etc.); output = `root + (source − low)`, clamped C1–B3
+- When `voice_instrument_map` covers all notes for a channel, set `transpose: 0` — `root` handles pitch placement entirely
+
+```yaml
+voice_instrument_map:
+  0:                        # voice index (from smpsSetvoice)
+    - low:  G5              # SMPS source note — bottom of range
+      high: G6
+      instrument: 4
+      root: F2s             # G5 plays at F#2; each semitone above shifts output up by 1
+    - low:  Gs6
+      high: C7
+      instrument: 12
+      root: G3
+```
 
 ## Testing
 

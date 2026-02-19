@@ -13,7 +13,7 @@ channels:
     instrument: 1
   - source: FM1
     mod_channel: 1
-    transpose: -36
+    transpose: -48          # 12 semitones in an octave
     instrument: 4
   - source: FM2
     mod_channel: 2
@@ -21,15 +21,17 @@ channels:
     instrument: 5
   - source: FM3
     mod_channel: 3
-    transpose: -36
+    transpose: -48
     instrument: 6
   - source: FM4
     mod_channel: 4
-    transpose: -36
+    transpose: -48
     instrument: 7
+    
+    # Note FM5 falls through to the same data as FM1 in the original source
   - source: FM5
     mod_channel: 5
-    transpose: -36
+    transpose: -48
     instrument: 8
   - source: PSG1
     mod_channel: 6
@@ -97,4 +99,5 @@ samples_dir: "./samples/"
 # Per-channel `instrument` in channels: remains the fallback before first smpsSetvoice.
 voice_map:
   0: 4    # voice $00 → MOD instrument 4  (e.g. lead synth)
-  # 1: 9  # voice $01 → MOD instrument 9  (add as needed)
+  1: 5    # voice $01 → MOD instrument 5  (add as needed)
+  2: 6    # voice $01 → MOD instrument 5  (add as needed)

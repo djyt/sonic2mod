@@ -3,6 +3,17 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from tables import ModNote
+
+
+@dataclass
+class InstrumentRange:
+    low: ModNote        # inclusive lower bound (post-transpose MOD note)
+    high: ModNote       # inclusive upper bound
+    instrument: int     # MOD instrument number (1-31)
+    root: Optional[ModNote] = None  # if set: re-anchor output note
+                                    # out_note = root + (in_note - low)
+
 
 @dataclass
 class ChannelConfig:
@@ -69,6 +80,7 @@ class ConversionConfig:
     samples_dir: str = "./samples/"
     max_patterns: int = 127
     voice_map: dict = field(default_factory=dict)  # {voice_index: mod_instrument}
+    voice_instrument_map: dict = field(default_factory=dict)  # {voice_index: list[InstrumentRange]}
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -168,6 +180,18 @@ class ConversionConfig:
         # Parse voice_map — keys may be int or 0x-prefixed hex strings in YAML
         raw_vm = data.get('voice_map', {})
         config.voice_map = {int(str(k), 0): v for k, v in raw_vm.items()}
+
+        # Parse voice_instrument_map
+        raw_vim = data.get('voice_instrument_map', {})
+        for voice_key, range_list in raw_vim.items():
+            parsed_ranges = []
+            for entry in range_list:
+                low = ModNote[entry['low']]
+                high = ModNote[entry['high']]
+                inst = entry['instrument']
+                root = ModNote[entry['root']] if 'root' in entry else None
+                parsed_ranges.append(InstrumentRange(low=low, high=high, instrument=inst, root=root))
+            config.voice_instrument_map[int(str(voice_key), 0)] = parsed_ranges
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

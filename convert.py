@@ -87,6 +87,9 @@ def main():
     print(f"  Tempo: divider={song.header.tempo_divider}, modifier={song.header.tempo_modifier}")
     print(f"  Parsed {len(song.channels)} channels, {len(song.voices)} voices")
 
+    cfg_by_source = {ch_cfg.source: ch_cfg for ch_cfg in config.channels}
+    dac_idx = fm_idx = psg_idx = 0
+
     for i, ch in enumerate(song.channels):
         note_count = sum(1 for e in ch.events if e.is_note)
         effect_count = sum(1 for e in ch.events if e.is_effect)
@@ -96,9 +99,24 @@ def main():
             total_ticks = last.tick_position
             if last.is_note and last.note:
                 total_ticks += last.note.duration
+
+        ch_type = ch.header.channel_type
+        if ch_type == "DAC":
+            source_name = "DAC"
+            dac_idx += 1
+        elif ch_type == "FM":
+            fm_idx += 1
+            source_name = f"FM{fm_idx}"
+        else:
+            psg_idx += 1
+            source_name = f"PSG{psg_idx}"
+
+        ch_cfg = cfg_by_source.get(source_name)
+        transpose_info = f", transpose={ch_cfg.transpose:+d}" if ch_cfg else ""
+
         jump_info = f" → jump to {ch.jump_target_label}" if ch.has_jump else ""
-        print(f"  [{ch.header.channel_type}] {ch.header.label}: "
-              f"{note_count} notes, {effect_count} effects, {total_ticks} ticks{jump_info}")
+        print(f"  [{ch_type}] {ch.header.label}: "
+              f"{note_count} notes, {effect_count} effects, {total_ticks} ticks{transpose_info}{jump_info}")
 
     # Derive BPM from SMPS tempo if requested
     if config.auto_bpm:

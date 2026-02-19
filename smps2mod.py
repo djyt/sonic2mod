@@ -7,7 +7,7 @@ timing, and effects.
 from tables import ModNote, smps_note_to_mod_note, SMPS_DAC_NAMES
 from mod import ModFile
 from smps_parser import SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, SmpsEffect
-from config import ConversionConfig, ChannelConfig, DacSampleConfig
+from config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange
 
 
 # Map MOD note name strings to ModNote enum values
@@ -118,6 +118,7 @@ class SmpsToModConverter:
 
         # Per-channel state
         current_volume = volume
+        current_voice_idx = None
         alter_note = 0
         note_fill = 0
         vibrato_active = False
@@ -135,6 +136,7 @@ class SmpsToModConverter:
 
                 if eff.effect_type == 'smpsSetvoice':
                     voice_idx = eff.params[0]
+                    current_voice_idx = voice_idx
                     if voice_idx in self.config.voice_map:
                         instrument = self.config.voice_map[voice_idx]
 
@@ -205,7 +207,17 @@ class SmpsToModConverter:
                     total_transpose = transpose + alter_note
                     mod_note = smps_note_to_mod_note(note.note_value, total_transpose, chan_cfg.source)
                     if mod_note is not None:
-                        self.mod.set_note(mod_note, instrument)
+                        final_instrument = instrument
+                        final_note = mod_note
+                        ranges = self.config.voice_instrument_map.get(current_voice_idx)
+                        if ranges:
+                            for entry in ranges:
+                                if entry.low.value <= mod_note.value <= entry.high.value:
+                                    final_instrument = entry.instrument
+                                    if entry.root is not None:
+                                        final_note = ModNote(entry.root.value + (mod_note.value - entry.low.value))
+                                    break
+                        self.mod.set_note(final_note, final_instrument)
 
                     # Set volume if changed
                     if current_volume != volume:

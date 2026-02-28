@@ -211,28 +211,34 @@ def render_note(
 # ---------------------------------------------------------------------------
 
 def _smoke_test() -> None:
-    """Render Title Screen voice 0 at C2, write output/renderer_test.raw (16-bit)."""
+    """Render Title Screen voice 1 (FM2 bass) at A3, write output/renderer_test.raw."""
 
-    # Title Screen voice 0 (same as voice.py smoke test)
+    # Title Screen voice 1 — FM2 bass channel (algorithm 0, feedback 4)
+    # Mus8A - Title Screen.asm lines 126-142.
+    # Plays bass notes like nA3, nG3, nD4 in-game; algorithm 0 (series FM) gives
+    # an organ/synth-bass character — much cleaner than voice 0's feedback=7 buzz.
     voice = SmpsVoice(
-        index=0,
-        algorithm=0x02,
-        feedback=0x07,
+        index=1,
+        algorithm=0x00,
+        feedback=0x04,
         params={
-            'smpsVcDetune':      '$00, $05, $00, $05',
-            'smpsVcCoarseFreq':  '$02, $01, $08, $01',
-            'smpsVcRateScale':   '$00, $00, $00, $00',
-            'smpsVcAttackRate':  '$10, $1E, $1E, $1E',
+            'smpsVcDetune':      '$03, $03, $03, $03',
+            'smpsVcCoarseFreq':  '$01, $00, $05, $06',
+            'smpsVcRateScale':   '$02, $02, $03, $03',
+            'smpsVcAttackRate':  '$1F, $1F, $1F, $1F',
             'smpsVcAmpMod':      '$00, $00, $00, $00',
-            'smpsVcDecayRate1':  '$0F, $1F, $1F, $1F',
-            'smpsVcDecayRate2':  '$02, $00, $00, $00',
-            'smpsVcDecayLevel':  '$01, $00, $00, $00',
+            'smpsVcDecayRate1':  '$06, $09, $06, $07',
+            'smpsVcDecayRate2':  '$08, $06, $06, $07',
+            'smpsVcDecayLevel':  '$0F, $01, $01, $02',
             'smpsVcReleaseRate': '$0F, $0F, $0F, $0F',
-            'smpsVcTotalLevel':  '$01, $22, $24, $18',
+            'smpsVcTotalLevel':  '$00, $13, $37, $19',
         },
     )
 
-    mod_note    = 12      # C2
+    # A3 (mod_note_index 33 = 220 Hz).
+    # In-game FM2 plays nA3 (SMPS) → A1 with default −36 transpose; we render at
+    # A3 here for cleaner mid-range audibility in the smoke test.
+    mod_note    = 33      # A3 = 220 Hz
     sustain     = 1.5
     release     = 0.5
     native_rate = _NATIVE_RATE
@@ -242,7 +248,7 @@ def _smoke_test() -> None:
     freq        = note_to_freq(mod_note)
     fnum, block = freq_to_fnum_block(freq)
 
-    print(f"Smoke test — render_note(voice=0, note=C2, sustain={sustain}s, release={release}s)...")
+    print(f"Smoke test — render_note(voice=1/FM2-bass, note=A3, sustain={sustain}s, release={release}s)...")
     print(f"  freq    = {freq:.2f} Hz   fnum={fnum}  block={block}")
     print(f"  sustain = {sustain_n} native samples")
     print(f"  release = {release_n} native samples")
@@ -287,9 +293,8 @@ def _smoke_test() -> None:
         print("  Channels  : 1 (Mono)")
         print(f"  Sample rate: {rate}")
         print()
-        print("  Note: Title Screen voice 0 uses feedback=7 (max), algorithm=2.")
-        print("  At C2 (65 Hz) this produces a harmonically rich / buzzy FM timbre.")
-        print("  That character is correct — not a pipeline bug.")
+        print("  Voice 1 = FM2 bass (algorithm 0 series FM, feedback 4).")
+        print("  Expect a synth-organ / bass character with clear attack and decay.")
     else:
         print("  WARNING: peak is 0 — silence produced")
         sys.exit(1)

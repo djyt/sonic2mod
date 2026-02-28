@@ -12,7 +12,7 @@ import sys
 
 from smps_parser import SmpsParser
 from smps2mod import SmpsToModConverter
-from config import ConversionConfig, derive_bpm
+from config import ConversionConfig, derive_bpm, SynthesisSettings
 
 
 def main():
@@ -133,12 +133,17 @@ def main():
               f"region={config.region} ({fps} Hz) -> {derived} BPM")
         config.target_bpm = derived
 
+    # Load synthesis settings
+    SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "configs", "settings.yaml")
+    synth = SynthesisSettings.from_yaml(SETTINGS_FILE) if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
+
     # Convert to MOD
     print(f"\nConverting to MOD format...")
     print(f"  BPM: {config.target_bpm}, Speed: {config.target_speed}, "
           f"Ticks/row: {config.ticks_per_row}, Channels: {config.num_mod_channels}")
+    print(f"  Synthesis: {'enabled (' + synth.mode + ')' if synth.enabled else 'disabled'}")
 
-    converter = SmpsToModConverter(song, config)
+    converter = SmpsToModConverter(song, config, synth=synth)
     mod = converter.convert()
 
     # Write output

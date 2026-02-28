@@ -21,6 +21,8 @@ sonic2mod/
   ym2612/            # YM2612 sample synthesis package (Segment 1 complete)
     build.py         #   Auto-compiles ym3438.c → ym2612/ym3438.dll (gcc or cl)
     wrapper.py       #   ctypes OPN2 class — write_reg, key_on/off, render_samples
+    voice.py         #   SmpsVoice → YM2612 register writes (program_voice)
+    renderer.py      #   SmpsVoice + mod_note_index → 8-bit PCM (render_note)
     validate.py      #   Standalone test: python ym2612/validate.py → output/validate_test.raw
   docs/              # Technical documentation
 ```
@@ -93,13 +95,22 @@ voice_instrument_map:
       root: G3
 ```
 
-## YM2612 Synthesis (Segments 1–5)
+## YM2612 Synthesis (Segments 1–5 — Segs 1–3 complete)
 
-Segment 1 (OPN2 wrapper) is complete. Remaining: voice.py (Seg 2), renderer.py (Seg 3),
-sample_generator.py (Seg 4), convert.py integration (Seg 5).
+Segments 1–3 complete. Remaining: sample_generator.py (Seg 4), convert.py integration (Seg 5).
 
 **Validate:** `python ym2612/validate.py` — renders A4 tone, prints SUCCESS/WARNING.
 Raw output at `output/validate_test.raw` (16-bit mono, 53267 Hz) — load in Audacity.
+
+**Renderer validate:** `python ym2612/renderer.py` — renders voice 1 (FM2 bass) at A3 (220 Hz).
+Raw output at `output/renderer_test.raw` (16-bit mono, 53267 Hz).
+Smoke test raw files use **true 16-bit PCM scaled from pre-normalized mono** — do NOT
+upscale from 8-bit output (×256), which produces audible staircase quantization in Audacity.
+`render_note()` itself still returns 8-bit signed PCM for MOD file use.
+
+**render_note API:** `render_note(voice, mod_note_index, sustain_secs=1.5, release_secs=0.5,
+target_rate=None, opn2=None, channel=0) → (bytes, int)` — always resets OPN2 internally.
+Helpers: `note_to_freq(idx)` (440×2^((idx-45)/12)), `freq_to_fnum_block(freq)`.
 
 **Critical OPN2_Clock timing:** In YM2612 mode, `OPN2_Clock()` time-multiplexes 6 channels
 across 24 internal clocks. `mol`/`mor` is `audio×3` at the 6 output-enable clocks

@@ -7,7 +7,8 @@ timing, and effects.
 from tables import ModNote, smps_note_to_mod_note, SMPS_DAC_NAMES
 from mod import ModFile
 from smps_parser import SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, SmpsEffect
-from config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange
+from config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange, SynthesisSettings
+from mod import ModSample
 
 
 # Map MOD note name strings to ModNote enum values
@@ -34,17 +35,36 @@ del _oct, _notes, _key, _enum_name
 
 
 class SmpsToModConverter:
-    def __init__(self, song: SmpsSong, config: ConversionConfig):
+    def __init__(self, song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings = None):
         self.song = song
         self.config = config
+        self.synth = synth
         self.mod = ModFile(channels=config.num_mod_channels)
 
     def convert(self):
         """Main entry point. Returns a ModFile."""
         self.mod.set_name(self.config.name)
 
-        # Load samples if provided
-        if self.config.sample_list:
+        # Load or synthesize samples
+        synth = self.synth
+        if synth and synth.enabled and synth.mode == "ym2612":
+            from ym2612.sample_generator import generate_fm_samples
+            print("  Synthesizing FM samples...")
+            fm_samples = generate_fm_samples(self.song, self.config, synth)
+            # Install synthesized FM samples
+            for inst_num, (pcm, rate) in fm_samples.items():
+                sample = ModSample(f"fm_inst{inst_num}")
+                sample.data = pcm
+                sample.length = len(pcm) // 2
+                sample.set_volume(64)
+                self.mod.samples[inst_num - 1] = sample
+            # Load remaining (DAC) samples from disk if sample_list exists
+            if self.config.sample_list:
+                for entry in self.config.sample_list:
+                    inst_num = entry[0]
+                    if inst_num not in fm_samples:
+                        self.mod.add_samples(self.config.samples_dir, [entry])
+        elif self.config.sample_list:
             self.mod.add_samples(self.config.samples_dir, self.config.sample_list)
         else:
             # Create placeholder samples

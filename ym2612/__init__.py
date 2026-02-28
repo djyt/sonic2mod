@@ -17,9 +17,10 @@ Public API::
     pcm, rate = render_note(voice, mod_note_index)   # 8-bit signed mono PCM
 """
 
-from .wrapper  import OPN2
-from .voice    import program_voice
-from .renderer import render_note, note_to_freq, freq_to_fnum_block
+from .wrapper          import OPN2
+from .voice            import program_voice
+from .renderer         import render_note, note_to_freq, freq_to_fnum_block
+from .sample_generator import generate_fm_samples
 
 __all__ = [
     "OPN2",
@@ -27,4 +28,5 @@ __all__ = [
     "render_note",
     "note_to_freq",
     "freq_to_fnum_block",
+    "generate_fm_samples",
 ]

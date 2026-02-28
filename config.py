@@ -33,6 +33,31 @@ class DacSampleConfig:
     mod_note: str = "C3" # Note to trigger in MOD
 
 
+@dataclass
+class SynthesisSettings:
+    enabled: bool = False
+    mode: str = "ym2612"
+    clock_rate: int = 7_670_454       # YM2612 master clock
+    amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
+    sustain: float = 1.5
+    release: float = 0.5
+
+    @classmethod
+    def from_yaml(cls, filepath: str) -> "SynthesisSettings":
+        import yaml
+        with open(filepath) as f:
+            data = yaml.safe_load(f)
+        s = data.get("synthesis", {})
+        return cls(
+            enabled=s.get("enabled", False),
+            mode=s.get("mode", "ym2612"),
+            clock_rate=s.get("clock_rate", 7_670_454),
+            amiga_clock=s.get("amiga_clock", 3_546_895),
+            sustain=s.get("sustain_duration", 1.5),
+            release=s.get("release_padding", 0.5),
+        )
+
+
 def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps=60):
     """Derive MOD BPM from SMPS tempo parameters.
 

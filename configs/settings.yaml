@@ -2,8 +2,9 @@
 # These apply across all songs unless overridden.
 
 synthesis:
-  enabled: false            # Set true to auto-generate FM samples via YM2612 emulation
+  enabled: true             # Set true to auto-generate FM samples via YM2612 emulation
   mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
+  amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: 1.5     # Seconds the note is held on before key-off
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)

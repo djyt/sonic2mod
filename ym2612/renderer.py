@@ -260,20 +260,22 @@ def _smoke_test() -> None:
     pcm = _normalize_int8(mono)
     rate = native_rate
 
-    print(f"  Output  : {len(pcm)} bytes at {rate} Hz")
+    print(f"  Output  : {len(pcm)} bytes at {rate} Hz (8-bit, for MOD use)")
 
-    # Write as signed 16-bit mono so Audacity can load it alongside validate_test.raw
+    # Write renderer_test.raw as true 16-bit mono (same method as validate_test.raw).
+    # Scale the pre-normalized mono values directly to int16 — NOT upscaled 8-bit,
+    # which would introduce staircase quantization distortion in Audacity.
     out_path = Path(__file__).parent.parent / "output" / "renderer_test.raw"
     out_path.parent.mkdir(exist_ok=True)
 
-    raw16 = bytearray()
-    for b in pcm:
-        val_s8  = b if b < 128 else b - 256   # reinterpret as signed int8
-        val_s16 = max(-32768, min(32767, val_s8 * 256))
-        raw16  += struct.pack('<h', val_s16)
+    scale16 = 32767.0 / pre_peak if pre_peak else 1.0
+    raw16 = bytearray(len(mono) * 2)
+    for i, v in enumerate(mono):
+        val = max(-32768, min(32767, round(v * scale16)))
+        struct.pack_into('<h', raw16, i * 2, val)
     out_path.write_bytes(bytes(raw16))
 
-    print(f"  Written : {out_path}")
+    print(f"  Written : {out_path}  ({len(raw16)} bytes, 16-bit for Audacity)")
     print()
 
     if pre_peak > 0:
@@ -284,6 +286,10 @@ def _smoke_test() -> None:
         print("  Byte order: Little-endian")
         print("  Channels  : 1 (Mono)")
         print(f"  Sample rate: {rate}")
+        print()
+        print("  Note: Title Screen voice 0 uses feedback=7 (max), algorithm=2.")
+        print("  At C2 (65 Hz) this produces a harmonically rich / buzzy FM timbre.")
+        print("  That character is correct — not a pipeline bug.")
     else:
         print("  WARNING: peak is 0 — silence produced")
         sys.exit(1)

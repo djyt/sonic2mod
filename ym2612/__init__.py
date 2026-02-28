@@ -14,5 +14,6 @@ Public API::
 """
 
 from .wrapper import OPN2
+from .voice import program_voice
 
-__all__ = ["OPN2"]
+__all__ = ["OPN2", "program_voice"]

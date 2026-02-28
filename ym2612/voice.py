@@ -34,12 +34,17 @@ from ym2612.wrapper import OPN2     # noqa: E402
 # ---------------------------------------------------------------------------
 # SMPS operator index → YM2612 register offset within a channel
 #
-#   SMPS order:  [OP1,   OP2,   OP3,   OP4  ]
-#   YM offsets:  [0x00,  0x08,  0x04,  0x0C ]
+# The SMPS voice binary stores operator bytes in the order [OP4, OP3, OP2, OP1]
+# (reversed from the assembly macro argument order).  The S1 driver's
+# FMInstrumentOperatorTable writes them to hardware in the order:
+#   0x30 (offset 0x00), 0x38 (offset 0x08), 0x34 (offset 0x04), 0x3C (offset 0x0C)
 #
-# Verified against Sonic 1 binary annotations.
+# Combining: SMPS OP4 → offset 0x00, OP3 → 0x08, OP2 → 0x04, OP1 → 0x0C
+#
+# Derived from s1.sounddriver.asm FMInstrumentOperatorTable + _smps2asm_inc.asm
+# smpsDcb line for SonicDriverVer != 2 (Sonic 1 uses the non-v2 layout).
 # ---------------------------------------------------------------------------
-_SMPS_OP_TO_REG_OFFSET = (0x00, 0x08, 0x04, 0x0C)
+_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
 
 
 def _parse_op_vals(raw: str | None, count: int = 4) -> list[int]:

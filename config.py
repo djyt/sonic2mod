@@ -107,6 +107,7 @@ class ConversionConfig:
     max_patterns: int = 127
     voice_map: dict = field(default_factory=dict)  # {voice_index: mod_instrument}
     voice_instrument_map: dict = field(default_factory=dict)  # {voice_index: list[InstrumentRange]}
+    channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -220,6 +221,21 @@ class ConversionConfig:
                 root = ModNote[entry['root']] if 'root' in entry else None
                 parsed_ranges.append(InstrumentRange(low=low, high=high, instrument=inst, root=root))
             config.voice_instrument_map[int(str(voice_key), 0)] = parsed_ranges
+
+        # Parse channel_instrument_map — per-channel overrides for voice_instrument_map
+        # {source_channel_name: {voice_idx: [InstrumentRange, ...]}}
+        raw_cim = data.get('channel_instrument_map', {})
+        for ch_name, vim_data in raw_cim.items():
+            config.channel_instrument_map[ch_name] = {}
+            for voice_key, range_list in vim_data.items():
+                parsed_ranges = []
+                for entry in range_list:
+                    low  = parse_smps_note(entry['low'])
+                    high = parse_smps_note(entry['high'])
+                    inst = entry['instrument']
+                    root = ModNote[entry['root']] if 'root' in entry else None
+                    parsed_ranges.append(InstrumentRange(low=low, high=high, instrument=inst, root=root))
+                config.channel_instrument_map[ch_name][int(str(voice_key), 0)] = parsed_ranges
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

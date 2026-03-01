@@ -1,6 +1,6 @@
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screen.mod"
+output_file: "output/title_screen3.mod"
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
 target_speed: 6
@@ -33,12 +33,14 @@ channels:
     transpose: 0             # note placement handled entirely by voice_instrument_map
     instrument: 7
 
-  # FM5 shares FM1's data; smpsAlterNote +3 is applied first so it plays
-  # 3 semitones above FM1 throughout.
+  # FM5 shares FM1's data with smpsAlterNote $03 — a raw FNUM offset (~10 cents),
+  # not a semitone shift.  FM5 plays the same notes as FM1, just slightly sharp,
+  # creating a chorus "thickening" effect.  channel_instrument_map routes FM5 to
+  # detuned instrument variants (inst 14/15, finetune=+1).
   - source: FM5
     mod_channel: 5
     transpose: 0             # note placement handled entirely by voice_instrument_map
-    instrument: 8            # fallback before first smpsSetvoice; see voice_map
+    instrument: 4            # fallback before first smpsSetvoice (same as FM1)
 
   - source: PSG1
     mod_channel: 6
@@ -128,6 +130,9 @@ sample_list:
   - [13, "fm_voice1_mid.raw", 64, 0]  # source C3–D4;  output C2–D3    (root C2,   8,289 Hz)
   # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
   - [6,  "fm_voice2.raw",    64, 0]   # source A5–G6;  output A2–G3    (root A2,  13,964 Hz)
+  # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
+  - [14, "fm_voice0_lo.raw", 64, 1]   # FM5 lo: same audio as inst 4, finetune +1
+  - [15, "fm_voice0_hi.raw", 64, 1]   # FM5 hi: same audio as inst 12, finetune +1
 
 samples_dir: "./samples/"
 
@@ -136,7 +141,7 @@ samples_dir: "./samples/"
 # Used as fallback before the first smpsSetvoice, and for any note that falls
 # outside all voice_instrument_map ranges.
 voice_map:
-  0: 4    # voice $00 → inst  4  bright lead synth (FM1 + FM5)
+  0: 4    # voice $00 → inst  4  bright lead synth (FM1; FM5 overridden to inst 14 via channel_instrument_map)
   1: 5    # voice $01 → inst  5  bass / sustain pad (FM2, FM3/FM4 ending)
   2: 6    # voice $02 → inst  6  harmony chord stabs (FM3/FM4 main melody)
 
@@ -157,8 +162,9 @@ voice_instrument_map:
 
   # Voice $00 — bright lead synth (FM1 + FM5)
   # FM1: source G5–A6  (67–81) → output F#2–G#3
-  # FM5: source Gs5–C7 (70–84, after smpsAlterNote +3) → output A2–B3
+  # FM5: same source semitones as FM1 (smpsAlterNote $03 is FNUM offset, not semitones)
   # Split at Gs6 (source 80) to keep the two octave bands on separate samples.
+  # FM5 is routed via channel_instrument_map to inst 14/15 (finetune +1) instead.
   0:
     - low:  G5            # source 67 — bottom of FM1's range
       high: G6            # source 79 — one below the split
@@ -193,3 +199,24 @@ voice_instrument_map:
       high: G6            # source 79 — top of FM3's range
       instrument: 6       # fm_voice2.raw (root A2)
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)
+
+
+# Per-channel instrument-map overrides.
+#
+# FM5 shares FM1's data.  smpsAlterNote $03 is a raw FNUM offset (~10 cents),
+# not a semitone shift — FM5 plays the exact same source semitones as FM1.
+# The channel override routes those notes to inst 14/15, which are the same
+# audio content as FM1's inst 4/12 but carry finetune=+1 (+12.5 cents) to
+# approximate the hardware detune effect.
+#
+channel_instrument_map:
+  FM5:
+    0:
+      - low:  G5            # source 67 — same bottom as FM1's range 0
+        high: G6            # source 79 — same split point as FM1
+        instrument: 14      # fm_voice0_lo.raw + finetune +1 (root F#2)
+        root: F2s           # G5→F#2 (MOD 18);  G6→F#3 (MOD 30) — identical pitch to FM1
+      - low:  Gs6           # source 80 — same upper range as FM1
+        high: C7            # source 84
+        instrument: 15      # fm_voice0_hi.raw + finetune +1 (root G3)
+        root: G3            # Gs6→G3 (MOD 31);  C7→B3 (MOD 35) — identical pitch to FM1

@@ -58,6 +58,14 @@ class SmpsToModConverter:
                 sample.length = len(pcm) // 2
                 sample.set_volume(64)
                 self.mod.samples[inst_num - 1] = sample
+            # Apply finetune from sample_list to synthesized samples
+            if self.config.sample_list:
+                for entry in self.config.sample_list:
+                    inst_num = entry[0]
+                    if inst_num in fm_samples:
+                        finetune = entry[3] if len(entry) > 3 else 0
+                        if finetune != 0:
+                            self.mod.samples[inst_num - 1].set_finetune(finetune)
             # Load remaining (DAC) samples from disk if sample_list exists
             if self.config.sample_list:
                 for entry in self.config.sample_list:
@@ -229,13 +237,16 @@ class SmpsToModConverter:
                     # SMPS note + smpsAlterNote, before the channel base transpose.
                     # This matches the mml2mod reference design: ranges are defined
                     # in source-note space, root anchors the output to a MOD note.
-                    total_transpose = transpose + alter_note
-                    source_semitone = (note.note_value - 0x81) + alter_note
+                    total_transpose = transpose
+                    source_semitone = (note.note_value - 0x81)
 
                     final_instrument = instrument
                     final_note = None
 
-                    ranges = self.config.voice_instrument_map.get(current_voice_idx)
+                    # Channel-specific override takes priority over global voice_instrument_map
+                    _cim = self.config.channel_instrument_map.get(chan_cfg.source, {})
+                    ranges = _cim.get(current_voice_idx) \
+                          or self.config.voice_instrument_map.get(current_voice_idx)
                     if ranges:
                         for entry in ranges:
                             if entry.low <= source_semitone <= entry.high:

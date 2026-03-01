@@ -107,6 +107,53 @@ def generate_fm_samples(
 
             result[entry.instrument] = (pcm_bytes, target_rate)
 
+    # Also synthesize channel-specific overrides (instruments not already rendered)
+    already_synthesized = set(result.keys())
+    for ch_name, vim in config.channel_instrument_map.items():
+        for voice_idx, range_list in vim.items():
+            if voice_idx not in voice_lookup:
+                print(f"  Warning: voice {voice_idx} not found in song "
+                      f"(channel_instrument_map.{ch_name}), skipping")
+                continue
+            voice = voice_lookup[voice_idx]
+
+            for entry in range_list:
+                if entry.root is None or entry.instrument in already_synthesized:
+                    continue
+
+                mod_root_idx = entry.root.value
+                target_rate  = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
+                synth_note_idx = entry.low - 12
+
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter("always")
+                    pcm_bytes, _ = render_note(
+                        voice,
+                        synth_note_idx,
+                        sustain_secs=synth.sustain,
+                        release_secs=synth.release,
+                        target_rate=target_rate,
+                        opn2=opn2,
+                        clock_rate=synth.clock_rate,
+                    )
+
+                if not pcm_bytes:
+                    print(f"  Warning: instrument {entry.instrument} (channel {ch_name}, "
+                          f"voice {voice_idx}, root={entry.root.name}) rendered empty — skipping")
+                    continue
+
+                for w in caught:
+                    if issubclass(w.category, UserWarning) and "silence" in str(w.message):
+                        print(f"  Warning: instrument {entry.instrument} rendered silence")
+
+                print(f"  Instrument {entry.instrument:2d}: voice={voice_idx} [{ch_name}], "
+                      f"root={entry.root.name} (idx={mod_root_idx}), "
+                      f"synth_idx={synth_note_idx}, "
+                      f"rate={target_rate} Hz, {len(pcm_bytes)} bytes")
+
+                result[entry.instrument] = (pcm_bytes, target_rate)
+                already_synthesized.add(entry.instrument)
+
     return result
 
 

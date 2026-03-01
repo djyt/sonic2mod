@@ -419,8 +419,8 @@ class SmpsParser:
         if m:
             return SmpsEffect('smpsSetvoice', [int(m.group(1), 16)])
 
-        # smpsAlterVol
-        m = re.match(r'smpsAlterVol\s+\$([0-9A-Fa-f]+)', line)
+        # smpsAlterVol / smpsPSGAlterVol
+        m = re.match(r'(?:smpsAlterVol|smpsPSGAlterVol)\s+\$([0-9A-Fa-f]+)', line)
         if m:
             val = int(m.group(1), 16)
             if val > 0x7F:

@@ -19,13 +19,14 @@ Public API::
 
 from .wrapper          import OPN2
 from .voice            import program_voice
-from .renderer         import render_note, note_to_freq, freq_to_fnum_block
+from .renderer         import render_note, render_note_raw, note_to_freq, freq_to_fnum_block
 from .sample_generator import generate_fm_samples
 
 __all__ = [
     "OPN2",
     "program_voice",
     "render_note",
+    "render_note_raw",
     "note_to_freq",
     "freq_to_fnum_block",
     "generate_fm_samples",

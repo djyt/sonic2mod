@@ -32,7 +32,7 @@ from mod import ModSample                          # noqa: E402
 from smps_parser import SmpsVoice, SmpsSong        # noqa: E402
 from config import ConversionConfig, SynthesisSettings, InstrumentRange  # noqa: E402
 from ym2612.wrapper import OPN2                    # noqa: E402
-from ym2612.renderer import render_note            # noqa: E402
+from ym2612.renderer import render_note_raw        # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -58,57 +58,59 @@ def generate_fm_samples(
     voice_lookup = {v.index: v for v in song.voices}
     result: dict[int, tuple[bytes, int]] = {}
 
-    # Create one OPN2 instance — render_note resets it on each call
+    # Create one OPN2 instance — render_note_raw resets it on each call
     opn2 = OPN2(mode=synth.mode)
+
+    # --- Pass 1: render all instruments to raw mono lists ---
+    raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
+    already_synthesized: set[int] = set()
+
+    def _collect(voice_idx, voice, entry, source_label=""):
+        if entry.root is None or entry.instrument in already_synthesized:
+            return
+        mod_root_idx   = entry.root.value
+        target_rate    = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
+        synth_note_idx = entry.low - 12
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            mono, rate = render_note_raw(
+                voice,
+                synth_note_idx,
+                sustain_secs=synth.sustain,
+                release_secs=synth.release,
+                target_rate=target_rate,
+                opn2=opn2,
+                clock_rate=synth.clock_rate,
+            )
+
+        label = f" [{source_label}]" if source_label else ""
+        if not mono:
+            print(f"  Warning: instrument {entry.instrument} (voice {voice_idx}"
+                  f"{label}, root={entry.root.name}) rendered empty — skipping")
+            return
+
+        for w in caught:
+            if issubclass(w.category, UserWarning) and "silence" in str(w.message):
+                print(f"  Warning: instrument {entry.instrument} rendered silence")
+
+        pre_peak = max(abs(v) for v in mono)
+        print(f"  Instrument {entry.instrument:2d}: voice={voice_idx}{label}, "
+              f"root={entry.root.name} (idx={mod_root_idx}), "
+              f"synth_idx={synth_note_idx}, "
+              f"rate={target_rate} Hz, {len(mono)} samples, peak={pre_peak}")
+
+        raw_data[entry.instrument] = (mono, rate)
+        already_synthesized.add(entry.instrument)
 
     for voice_idx, range_list in config.voice_instrument_map.items():
         if voice_idx not in voice_lookup:
             print(f"  Warning: voice {voice_idx} not found in song, skipping")
             continue
         voice = voice_lookup[voice_idx]
-
         for entry in range_list:
-            if entry.root is None:
-                continue  # no anchor → can't determine target_rate
+            _collect(voice_idx, voice, entry)
 
-            # target_rate is determined by the MOD root note's period
-            mod_root_idx = entry.root.value  # 0–35, used only for target_rate
-            target_rate  = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
-
-            # Synthesis pitch = SMPS source note (entry.low).
-            # SMPS semitone 0 = C0; render_note idx 0 = C1; offset = 12.
-            synth_note_idx = entry.low - 12
-
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                pcm_bytes, _ = render_note(
-                    voice,
-                    synth_note_idx,   # synthesize at SMPS source pitch
-                    sustain_secs=synth.sustain,
-                    release_secs=synth.release,
-                    target_rate=target_rate,
-                    opn2=opn2,
-                    clock_rate=synth.clock_rate,
-                )
-
-            if not pcm_bytes:
-                print(f"  Warning: instrument {entry.instrument} (voice {voice_idx}, "
-                      f"root={entry.root.name}) rendered empty — skipping")
-                continue
-
-            for w in caught:
-                if issubclass(w.category, UserWarning) and "silence" in str(w.message):
-                    print(f"  Warning: instrument {entry.instrument} rendered silence")
-
-            print(f"  Instrument {entry.instrument:2d}: voice={voice_idx}, "
-                  f"root={entry.root.name} (idx={mod_root_idx}), "
-                  f"synth_idx={synth_note_idx}, "
-                  f"rate={target_rate} Hz, {len(pcm_bytes)} bytes")
-
-            result[entry.instrument] = (pcm_bytes, target_rate)
-
-    # Also synthesize channel-specific overrides (instruments not already rendered)
-    already_synthesized = set(result.keys())
     for ch_name, vim in config.channel_instrument_map.items():
         for voice_idx, range_list in vim.items():
             if voice_idx not in voice_lookup:
@@ -116,43 +118,38 @@ def generate_fm_samples(
                       f"(channel_instrument_map.{ch_name}), skipping")
                 continue
             voice = voice_lookup[voice_idx]
-
             for entry in range_list:
-                if entry.root is None or entry.instrument in already_synthesized:
-                    continue
+                _collect(voice_idx, voice, entry, source_label=ch_name)
 
-                mod_root_idx = entry.root.value
-                target_rate  = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
-                synth_note_idx = entry.low - 12
-
-                with warnings.catch_warnings(record=True) as caught:
-                    warnings.simplefilter("always")
-                    pcm_bytes, _ = render_note(
-                        voice,
-                        synth_note_idx,
-                        sustain_secs=synth.sustain,
-                        release_secs=synth.release,
-                        target_rate=target_rate,
-                        opn2=opn2,
-                        clock_rate=synth.clock_rate,
-                    )
-
-                if not pcm_bytes:
-                    print(f"  Warning: instrument {entry.instrument} (channel {ch_name}, "
-                          f"voice {voice_idx}, root={entry.root.name}) rendered empty — skipping")
-                    continue
-
-                for w in caught:
-                    if issubclass(w.category, UserWarning) and "silence" in str(w.message):
-                        print(f"  Warning: instrument {entry.instrument} rendered silence")
-
-                print(f"  Instrument {entry.instrument:2d}: voice={voice_idx} [{ch_name}], "
-                      f"root={entry.root.name} (idx={mod_root_idx}), "
-                      f"synth_idx={synth_note_idx}, "
-                      f"rate={target_rate} Hz, {len(pcm_bytes)} bytes")
-
-                result[entry.instrument] = (pcm_bytes, target_rate)
-                already_synthesized.add(entry.instrument)
+    # --- Pass 2: convert mono lists to int8 bytes ---
+    if synth.normalize_samples:
+        # Per-sample normalization — each instrument scaled to its own peak ±127
+        for inst_num, (mono, rate) in raw_data.items():
+            peak = max(abs(v) for v in mono) if mono else 0
+            if peak == 0:
+                result[inst_num] = (bytes(len(mono)), rate)
+                continue
+            scale = 127.0 / peak
+            pcm = bytearray(len(mono))
+            for i, v in enumerate(mono):
+                pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
+            result[inst_num] = (bytes(pcm), rate)
+    else:
+        # Global normalization — all instruments scaled by the same factor so
+        # relative levels reflect actual chip output balance (quiet patches stay quiet)
+        all_peaks = [abs(v) for mono, _ in raw_data.values() for v in mono]
+        global_peak = max(all_peaks) if all_peaks else 0
+        if global_peak == 0:
+            for inst_num, (mono, rate) in raw_data.items():
+                result[inst_num] = (bytes(len(mono)), rate)
+        else:
+            scale = 127.0 / global_peak
+            print(f"  Global peak: {global_peak}  (scale={scale:.4f})")
+            for inst_num, (mono, rate) in raw_data.items():
+                pcm = bytearray(len(mono))
+                for i, v in enumerate(mono):
+                    pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
+                result[inst_num] = (bytes(pcm), rate)
 
     return result
 

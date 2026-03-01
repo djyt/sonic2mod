@@ -58,14 +58,16 @@ class SmpsToModConverter:
                 sample.length = len(pcm) // 2
                 sample.set_volume(64)
                 self.mod.samples[inst_num - 1] = sample
-            # Apply finetune from sample_list to synthesized samples
+            # Apply volume and finetune from sample_list to synthesized samples
             if self.config.sample_list:
                 for entry in self.config.sample_list:
-                    inst_num = entry[0]
-                    if inst_num in fm_samples:
-                        finetune = entry[3] if len(entry) > 3 else 0
-                        if finetune != 0:
-                            self.mod.samples[inst_num - 1].set_finetune(finetune)
+                    inst_num_sl = entry[0]
+                    if inst_num_sl in fm_samples:
+                        vol_sl = entry[2] if len(entry) > 2 else 64
+                        ft_sl  = entry[3] if len(entry) > 3 else 0
+                        self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
+                        if ft_sl != 0:
+                            self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
             # Load remaining (DAC) samples from disk if sample_list exists
             if self.config.sample_list:
                 for entry in self.config.sample_list:
@@ -152,11 +154,18 @@ class SmpsToModConverter:
         vibrato_active = False
         vibrato_speed = 0
         vibrato_depth = 0
+        prev_was_rest = False
 
         # Build DAC name -> config map
         dac_map = {}
         for dac_cfg in self.config.dac_samples:
             dac_map[dac_cfg.name] = dac_cfg
+
+        # Build {inst_num: sample_vol} from sample_list for Cxx scaling
+        _sample_vol_map = {}
+        if self.config.sample_list:
+            for sl_entry in self.config.sample_list:
+                _sample_vol_map[sl_entry[0]] = sl_entry[2] if len(sl_entry) > 2 else 64
 
         for event in channel.events:
             if event.is_effect:
@@ -201,8 +210,17 @@ class SmpsToModConverter:
                 tick = event.tick_position
 
                 if note.is_rest:
-                    # Rests: we could place a note cut, or just leave the row empty
-                    # For now, skip rests (silence happens naturally in MOD)
+                    pattern, row = self._tick_to_pattern_row(tick)
+                    # Skip C00 at pattern 0 row 0 — nothing is playing yet and
+                    # that cell holds the speed/BPM command.
+                    if pattern < self.config.max_patterns and (pattern > 0 or row > 0):
+                        while pattern >= len(self.mod.patterns):
+                            self.mod.add_patterns(1)
+                        self.mod.set_active_pattern(pattern)
+                        self.mod.set_channel(mod_chan)
+                        self.mod.set_row(row)
+                        self.mod.set_effect(0xC, 0)  # C00: mute channel
+                    prev_was_rest = True
                     continue
 
                 # Calculate pattern/row from tick
@@ -265,9 +283,12 @@ class SmpsToModConverter:
 
                     self.mod.set_note(final_note, final_instrument)
 
-                    # Set volume if changed
-                    if current_volume != volume:
-                        self.mod.set_effect(0xC, current_volume)
+                    # Set volume if changed or recovering from a rest
+                    if current_volume != volume or prev_was_rest:
+                        sv = _sample_vol_map.get(final_instrument, 64)
+                        emit_vol = round(current_volume * sv / 64)
+                        self.mod.set_effect(0xC, emit_vol)
+                        prev_was_rest = False
 
                     # Vibrato effect (4xy)
                     elif vibrato_active and vibrato_speed > 0:

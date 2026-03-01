@@ -288,7 +288,7 @@ class SmpsToModConverter:
             (pattern, row) tuple
         """
         tpr = self.config.ticks_per_row
-        row_total = int(tick / tpr)
+        row_total = int(round(tick / tpr))
         pattern = row_total // 64
         row = row_total % 64
         return pattern, row

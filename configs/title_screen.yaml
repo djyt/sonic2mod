@@ -1,12 +1,11 @@
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screen3.mod"
+output_file: "output/title_screen4.mod"
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
-target_speed: 6
-ticks_per_row: 6
+target_speed: 3
+ticks_per_row: 3
 num_mod_channels: 10
-
 
 channels:
   - source: DAC
@@ -123,16 +122,16 @@ sample_list:
   - [2, "snare.raw",         64, 0]
   - [3, "timpani.raw",       64, 0]
   # --- voice $00: bright lead synth (FM1 + FM5) ---
-  - [4,  "fm_voice0_lo.raw", 64, 0]   # source G5–G6;  output F#2–F#3  (root F#2, 11,746 Hz)
-  - [12, "fm_voice0_hi.raw", 64, 0]   # source Gs6–C7; output G3–B3    (root G3,  24,804 Hz)
+  - [4,  "fm_voice0_lo.raw", 32, 0]   # source G5–G6;  output F#2–F#3  (root F#2, 11,746 Hz)
+  - [12, "fm_voice0_hi.raw", 32, 0]   # source Gs6–C7; output G3–B3    (root G3,  24,804 Hz)
   # --- voice $01: bass / sustain pad (FM2 + FM3/FM4 ending) ---
-  - [5,  "fm_voice1_lo.raw",  64, 0]  # source A2–B2;  output A1–B1    (root A1,   6,982 Hz)
-  - [13, "fm_voice1_mid.raw", 64, 0]  # source C3–D4;  output C2–D3    (root C2,   8,289 Hz)
+  - [5,  "fm_voice1_lo.raw",  32, 0]  # source A2–B2;  output A1–B1    (root A1,   6,982 Hz)
+  - [13, "fm_voice1_mid.raw", 32, 0]  # source C3–D4;  output C2–D3    (root C2,   8,289 Hz)
   # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
-  - [6,  "fm_voice2.raw",    64, 0]   # source A5–G6;  output A2–G3    (root A2,  13,964 Hz)
+  - [6,  "fm_voice2.raw",    32, 0]   # source A5–G6;  output A2–G3    (root A2,  13,964 Hz)
   # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
-  - [14, "fm_voice0_lo.raw", 64, 1]   # FM5 lo: same audio as inst 4, finetune +1
-  - [15, "fm_voice0_hi.raw", 64, 1]   # FM5 hi: same audio as inst 12, finetune +1
+  - [14, "fm_voice0_lo.raw", 32, 1]   # FM5 lo: same audio as inst 4, finetune +1
+  - [15, "fm_voice0_hi.raw", 32, 1]   # FM5 hi: same audio as inst 12, finetune +1
 
 samples_dir: "./samples/"
 

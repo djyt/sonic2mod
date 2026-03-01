@@ -1,0 +1,178 @@
+name: "Green Hill Zone"
+input_file: "sonic_1/music/Mus81 - GHZ.asm"
+output_file: "output/ghz.mod"
+auto_bpm: true              # Derive BPM from SMPS tempo header
+region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
+target_speed: 3             # speed byte = $03 (smpsHeaderTempo $01, $03)
+ticks_per_row: 4            # GCD of main note durations ($04,$08,$0C,$10,$18...) = 4
+num_mod_channels: 10
+
+# Channel layout
+# FM1–FM5 all use smpsAlterPitch for functional octave shifts, so their
+# voice_instrument_map entries must NOT include 'root' — letting the
+# cumulative transpose (YAML -48 + smpsAlterPitch delta) determine pitch.
+# FM2 does not use smpsAlterPitch, so root-based placement is safe there
+# (transpose: 0; root anchors output pitch directly).
+channels:
+  - source: DAC
+    mod_channel: 0
+    instrument: 1
+
+  # FM1: intro call + main loop.  smpsAlterPitch $F4/-$0C/$18 shifts register.
+  # Header pitch_offset $F4 = -12 (baked into cumulative transpose at start).
+  - source: FM1
+    mod_channel: 1
+    transpose: -48
+    instrument: 5            # fallback = voice $02 bright lead
+
+  # FM2: bass channel only — no smpsAlterPitch used.
+  # Root-based voice_instrument_map handles pitch placement; transpose = 0.
+  - source: FM2
+    mod_channel: 2
+    transpose: 0
+    instrument: 4            # fallback = voice $01 bass/rhythm pad
+
+  # FM3: countermelody + harmony.  smpsAlterPitch $E8 (-24) and $18 (+24).
+  - source: FM3
+    mod_channel: 3
+    transpose: -48
+    instrument: 5            # fallback = voice $02 bright lead
+
+  # FM4: tremolo pad + melody.  smpsAlterPitch $E8 (-24) and $18 (+24).
+  - source: FM4
+    mod_channel: 4
+    transpose: -48
+    instrument: 11           # fallback = voice $08 bright synth
+
+  # FM5: detuned double of FM4 (smpsAlterNote $02 ≈ +10 cents FNUM offset).
+  # Routed via channel_instrument_map to finetune+1 variants.
+  - source: FM5
+    mod_channel: 5
+    transpose: -48
+    instrument: 11           # fallback = voice $08 bright synth
+
+  # PSG channels — melodic in GHZ; enabled for audio output.
+  - source: PSG1
+    mod_channel: 6
+    transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
+    instrument: 1            # placeholder; replace with tone sample
+    enabled: true
+
+  - source: PSG2
+    mod_channel: 7
+    transpose: -48           # C5–C7 (60–84) → C2–B3+1 clamp ✓
+    instrument: 1            # placeholder
+    enabled: true
+
+  # PSG3: noise channel — smpsPSGform $E7, plays nMaxPSG rhythm.
+  - source: PSG3
+    mod_channel: 8
+    transpose: -48
+    instrument: 2            # snare placeholder for noise rhythm
+
+
+# DAC sample trigger notes.
+# GHZ uses only dKick and dSnare (no Timpani).
+dac_samples:
+  - name: dKick
+    mod_instrument: 1
+    mod_note: C2
+  - name: dSnare
+    mod_instrument: 2
+    mod_note: Fs3
+
+
+# Sample file list — loaded from samples_dir at conversion time.
+# Synthesis path: set synthesis.enabled: true in configs/settings.yaml
+# to auto-generate ghz_v0*.raw files from voice patches.
+sample_list:
+  # --- percussion ---
+  - [1,  "kick.raw",     64, 0]
+  - [2,  "snare.raw",    64, 0]
+  # --- voice $00: deep bass (FM2 opening) ---
+  - [3,  "ghz_v00.raw",  32, 0]
+  # --- voice $01: bass/rhythm pad (FM2 main loop) ---
+  - [4,  "ghz_v01.raw",  32, 0]
+  # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
+  - [5,  "ghz_v02.raw",  32, 0]
+  # --- voice $03: chord stab (FM5 opening) ---
+  - [6,  "ghz_v03.raw",  32, 0]
+  # --- voice $04: bell arp (FM4/FM5 ending section) ---
+  - [7,  "ghz_v04.raw",  32, 0]
+  # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
+  - [8,  "ghz_v05.raw",  32, 0]
+  # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
+  - [9,  "ghz_v06.raw",  32, 0]
+  # --- voice $07: bridge voice (FM1/FM3/FM4) ---
+  - [10, "ghz_v07.raw",  32, 0]
+  # --- voice $08: bright synth (FM3/FM4/FM5 main) ---
+  - [11, "ghz_v08.raw",  32, 0]
+  # --- voice $04 FM5 detuned: same audio as inst 7, finetune +1 (~+12.5 cents) ---
+  - [12, "ghz_v04.raw",  32, 1]
+
+samples_dir: "./samples/"
+
+
+# FM voice index → default MOD instrument (fallback when no voice_instrument_map match).
+voice_map:
+  0: 3    # $00 → deep bass
+  1: 4    # $01 → bass/rhythm pad
+  2: 5    # $02 → bright lead
+  3: 6    # $03 → chord stab
+  4: 7    # $04 → bell arp
+  5: 8    # $05 → main melody
+  6: 9    # $06 → FM1 fills
+  7: 10   # $07 → bridge
+  8: 11   # $08 → bright synth
+
+
+# Per-voice instrument splits by source-note range.
+#
+# FM2 only — no smpsAlterPitch on FM2, so root-based placement is safe.
+# All other FM channels use smpsAlterPitch for register shifts; their
+# voice_instrument_map entries (if any) must omit 'root' so that the
+# cumulative transpose path computes the correct output pitch.
+#
+# low/high: SMPS note names without 'n' prefix (e.g. 'A2', 'C3').
+# root: MOD note name where source 'low' plays.
+#       output = root + (source − low), clamped C1–B3.
+voice_instrument_map:
+
+  # Voice $00 — deep bass (FM2 opening section only)
+  # Source notes: nA2–nB3 (semitones 33–47)
+  # With root A1: A2→A1, B3→B2
+  0:
+    - low:  A2
+      high: B3
+      instrument: 3
+      root: A1              # A2 → A1 (MOD 9);  B3 → B2 (MOD 23)
+
+  # Voice $01 — bass/rhythm pad (FM2 main loop)
+  # Source notes: nC3–nE5 (semitones 36–64), split at C4.
+  # Lower range (C3–B3) → root C2 keeps bass in C2–B2 area.
+  # Upper range (C4–E5) → root C3 maps C4→C3; notes above D4 clamp to B3.
+  1:
+    - low:  C3              # semitone 36
+      high: B3              # semitone 47
+      instrument: 4
+      root: C2              # C3 → C2 (MOD 12);  B3 → B2 (MOD 23)
+    - low:  C4              # semitone 48
+      high: E5              # semitone 64
+      instrument: 4
+      root: C3              # C4 → C3 (MOD 24);  D4+ clamps toward B3
+
+
+# Per-channel instrument-map overrides.
+#
+# FM5 applies smpsAlterNote $02 (FNUM offset ≈ +10 cents) during voice $04
+# bell-arp sections to create the chorus detune effect vs FM4.  The same
+# source notes route to inst 12 (identical audio to inst 7, finetune +1).
+#
+# No 'root' here — smpsAlterPitch on FM5 means cumulative transpose handles
+# pitch; only instrument routing is overridden.
+channel_instrument_map:
+  FM5:
+    4:                        # voice $04 on FM5 (bell arp, detuned)
+      - low:  E4              # semitone 52 — bottom of FM5 arp range
+        high: E7              # semitone 88 — top
+        instrument: 12        # same audio as inst 7, finetune +1

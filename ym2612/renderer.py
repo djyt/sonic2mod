@@ -122,6 +122,7 @@ def _normalize_int8(mono: list) -> bytes:
     return bytes(out)
 
 
+
 def _resample(mono: list, from_rate: int, to_rate: int) -> list:
     """Box-filter (averaging) downsampler — no external libraries.
 
@@ -140,8 +141,46 @@ def _resample(mono: list, from_rate: int, to_rate: int) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Public render function
+# Public render functions
 # ---------------------------------------------------------------------------
+
+def _render_pipeline(
+    voice: SmpsVoice,
+    mod_note_index: int,
+    sustain_secs: float = 1.5,
+    release_secs: float = 0.5,
+    target_rate: int | None = None,
+    opn2: OPN2 | None = None,
+    channel: int = 0,
+    clock_rate: int = _CLOCK_RATE,
+) -> tuple[list, int]:
+    """Common synthesis pipeline → (mono_list, out_rate) before int8 packing."""
+    native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
+
+    if opn2 is None:
+        opn2 = OPN2(mode="ym2612")
+    else:
+        opn2.reset()
+
+    program_voice(opn2, voice, channel)
+
+    freq        = note_to_freq(mod_note_index)
+    fnum, block = freq_to_fnum_block(freq, clock_rate)
+    _set_freq(opn2, fnum, block, channel)
+
+    sustain_n = int(native_rate * sustain_secs)
+    release_n = int(native_rate * release_secs)
+    raw       = _render_raw(opn2, sustain_n, release_n, channel)
+    mono      = _to_mono(raw)
+
+    if target_rate is not None and target_rate != native_rate:
+        mono     = _resample(mono, native_rate, target_rate)
+        out_rate = target_rate
+    else:
+        out_rate = native_rate
+
+    return mono, out_rate
+
 
 def render_note(
     voice: SmpsVoice,
@@ -153,7 +192,7 @@ def render_note(
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
 ) -> tuple[bytes, int]:
-    """Render one FM note to 8-bit signed mono PCM.
+    """Render one FM note to 8-bit signed mono PCM, peak-normalized to ±127.
 
     Args:
         voice:          Parsed SMPS voice (SmpsVoice dataclass).
@@ -169,41 +208,32 @@ def render_note(
     Returns:
         (pcm_bytes, sample_rate_hz) — 8-bit signed mono PCM and its sample rate.
     """
-    native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
+    mono, out_rate = _render_pipeline(
+        voice, mod_note_index, sustain_secs, release_secs,
+        target_rate, opn2, channel, clock_rate,
+    )
+    return _normalize_int8(mono), out_rate
 
-    # Obtain a reset OPN2 instance
-    if opn2 is None:
-        opn2 = OPN2(mode="ym2612")
-    else:
-        opn2.reset()
 
-    # Program voice registers
-    program_voice(opn2, voice, channel)
+def render_note_raw(
+    voice: SmpsVoice,
+    mod_note_index: int,
+    sustain_secs: float = 1.5,
+    release_secs: float = 0.5,
+    target_rate: int | None = None,
+    opn2: OPN2 | None = None,
+    channel: int = 0,
+    clock_rate: int = _CLOCK_RATE,
+) -> tuple[list, int]:
+    """Like render_note but returns (mono_list, out_rate) before int8 packing.
 
-    # Set note frequency
-    freq       = note_to_freq(mod_note_index)
-    fnum, block = freq_to_fnum_block(freq, clock_rate)
-    _set_freq(opn2, fnum, block, channel)
-
-    # Render raw stereo samples
-    sustain_n = int(native_rate * sustain_secs)
-    release_n = int(native_rate * release_secs)
-    raw       = _render_raw(opn2, sustain_n, release_n, channel)
-
-    # Mix stereo → mono
-    mono = _to_mono(raw)
-
-    # Optional downsampling
-    if target_rate is not None and target_rate != native_rate:
-        mono     = _resample(mono, native_rate, target_rate)
-        out_rate = target_rate
-    else:
-        out_rate = native_rate
-
-    # Normalize and pack as int8
-    pcm = _normalize_int8(mono)
-
-    return pcm, out_rate
+    Used by generate_fm_samples for global normalization across all instruments,
+    so relative levels between patches match the original chip output balance.
+    """
+    return _render_pipeline(
+        voice, mod_note_index, sustain_secs, release_secs,
+        target_rate, opn2, channel, clock_rate,
+    )
 
 
 # ---------------------------------------------------------------------------

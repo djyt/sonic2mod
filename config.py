@@ -41,6 +41,7 @@ class SynthesisSettings:
     amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
     sustain: float = 1.5
     release: float = 0.5
+    normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
 
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
@@ -55,6 +56,7 @@ class SynthesisSettings:
             amiga_clock=s.get("amiga_clock", 3_546_895),
             sustain=s.get("sustain_duration", 1.5),
             release=s.get("release_padding", 0.5),
+            normalize_samples=s.get("normalize_samples", True),
         )
 
 

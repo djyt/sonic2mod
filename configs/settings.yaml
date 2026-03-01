@@ -8,3 +8,4 @@ synthesis:
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: 1.5     # Seconds the note is held on before key-off
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
+  normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)

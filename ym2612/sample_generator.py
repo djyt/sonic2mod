@@ -71,14 +71,19 @@ def generate_fm_samples(
             if entry.root is None:
                 continue  # no anchor → can't determine target_rate
 
-            mod_note_idx = entry.root.value  # 0–35
-            target_rate = round(synth.amiga_clock / PERIOD_TABLE[mod_note_idx])
+            # target_rate is determined by the MOD root note's period
+            mod_root_idx = entry.root.value  # 0–35, used only for target_rate
+            target_rate  = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
+
+            # Synthesis pitch = SMPS source note (entry.low).
+            # SMPS semitone 0 = C0; render_note idx 0 = C1; offset = 12.
+            synth_note_idx = entry.low - 12
 
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 pcm_bytes, _ = render_note(
                     voice,
-                    mod_note_idx,
+                    synth_note_idx,   # synthesize at SMPS source pitch
                     sustain_secs=synth.sustain,
                     release_secs=synth.release,
                     target_rate=target_rate,
@@ -96,7 +101,8 @@ def generate_fm_samples(
                     print(f"  Warning: instrument {entry.instrument} rendered silence")
 
             print(f"  Instrument {entry.instrument:2d}: voice={voice_idx}, "
-                  f"root={entry.root.name} (idx={mod_note_idx}), "
+                  f"root={entry.root.name} (idx={mod_root_idx}), "
+                  f"synth_idx={synth_note_idx}, "
                   f"rate={target_rate} Hz, {len(pcm_bytes)} bytes")
 
             result[entry.instrument] = (pcm_bytes, target_rate)

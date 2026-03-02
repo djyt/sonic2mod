@@ -153,6 +153,8 @@ def _render_pipeline(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    headroom_tl: int = 0,
+    carrier_balance: bool = False,
 ) -> tuple[list, int]:
     """Common synthesis pipeline → (mono_list, out_rate) before int8 packing."""
     native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
@@ -162,7 +164,8 @@ def _render_pipeline(
     else:
         opn2.reset()
 
-    program_voice(opn2, voice, channel)
+    program_voice(opn2, voice, channel,
+                  headroom_tl=headroom_tl, carrier_balance=carrier_balance)
 
     freq        = note_to_freq(mod_note_index)
     fnum, block = freq_to_fnum_block(freq, clock_rate)
@@ -191,19 +194,23 @@ def render_note(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    headroom_tl: int = 0,
+    carrier_balance: bool = False,
 ) -> tuple[bytes, int]:
     """Render one FM note to 8-bit signed mono PCM, peak-normalized to ±127.
 
     Args:
-        voice:          Parsed SMPS voice (SmpsVoice dataclass).
-        mod_note_index: ModNote enum value 0–35 (0=C1, 35=B3).
-        sustain_secs:   Seconds the note is held after attack.
-        release_secs:   Seconds captured after key-off.
-        target_rate:    Output sample rate.  None → keep native rate (~53,267 Hz).
-        opn2:           Existing OPN2 instance to reuse (will be reset).
-                        None → create and reset a fresh instance internally.
-        channel:        YM2612 channel 0–5 to use for rendering.
-        clock_rate:     Master clock frequency (Hz); default = MD NTSC 7,670,454.
+        voice:           Parsed SMPS voice (SmpsVoice dataclass).
+        mod_note_index:  ModNote enum value 0–35 (0=C1, 35=B3).
+        sustain_secs:    Seconds the note is held after attack.
+        release_secs:    Seconds captured after key-off.
+        target_rate:     Output sample rate.  None → keep native rate (~53,267 Hz).
+        opn2:            Existing OPN2 instance to reuse (will be reset).
+                         None → create and reset a fresh instance internally.
+        channel:         YM2612 channel 0–5 to use for rendering.
+        clock_rate:      Master clock frequency (Hz); default = MD NTSC 7,670,454.
+        headroom_tl:     TL steps added to carrier operators to prevent DAC clipping.
+        carrier_balance: Add extra TL for multi-carrier algorithms (alg 4/5/6/7).
 
     Returns:
         (pcm_bytes, sample_rate_hz) — 8-bit signed mono PCM and its sample rate.
@@ -211,6 +218,7 @@ def render_note(
     mono, out_rate = _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
         target_rate, opn2, channel, clock_rate,
+        headroom_tl=headroom_tl, carrier_balance=carrier_balance,
     )
     return _normalize_int8(mono), out_rate
 
@@ -224,6 +232,8 @@ def render_note_raw(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    headroom_tl: int = 0,
+    carrier_balance: bool = False,
 ) -> tuple[list, int]:
     """Like render_note but returns (mono_list, out_rate) before int8 packing.
 
@@ -233,6 +243,7 @@ def render_note_raw(
     return _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
         target_rate, opn2, channel, clock_rate,
+        headroom_tl=headroom_tl, carrier_balance=carrier_balance,
     )
 
 

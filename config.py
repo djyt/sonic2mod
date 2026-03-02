@@ -42,6 +42,8 @@ class SynthesisSettings:
     sustain: float = 1.5
     release: float = 0.5
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
+    headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
+    carrier_balance: bool = True      # Add extra TL per carrier count (normalises multi-carrier algos)
 
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
@@ -57,6 +59,8 @@ class SynthesisSettings:
             sustain=s.get("sustain_duration", 1.5),
             release=s.get("release_padding", 0.5),
             normalize_samples=s.get("normalize_samples", True),
+            headroom_db=s.get("headroom_db", 6.0),
+            carrier_balance=s.get("carrier_balance", True),
         )
 
 

@@ -94,13 +94,10 @@ Ranges are checked against `(note_value − $81)` — `smpsAlterNote`/`smpsDetun
 
 - `low`/`high` — SMPS note names without `n` prefix, parsed by `parse_smps_note()` in `tables.py` (e.g. `G5`, `Gs6`, `C7`)
 - `mod_instrument` — MOD instrument slot (1-based)
-- `root` — ModNote enum name where source `low` plays **at song start (header pitch_offset + zero smpsAlterPitch)** (`F2s`, `G3`, `A2`, etc.)
-- `synth_root` — optional SMPS note name for synthesis pitch (same syntax as `low`); improves HF for wide ranges; `target_rate` is adjusted automatically so MOD pitch is unchanged
-- Output formula: `root + (source − low) + alter_pitch_delta`, clamped C1–B3
-  - `alter_pitch_delta = total_transpose − chan_cfg.transpose` — includes **both** the header `pitch_offset` and any accumulated `smpsAlterPitch` events; `chan_cfg.transpose` (YAML base) is subtracted out
-  - For channels with `pitch_offset = 0` and no smpsAlterPitch, `alter_pitch_delta` is always 0 (unchanged behaviour)
-  - **Header pitch_offset is applied**: `_convert_channel()` initialises `transpose = chan_cfg.transpose + channel.header.pitch_offset`, so pitch_offset is folded into every subsequent `alter_pitch_delta` calculation
-- `root` is now safe on **all** FM channels, including those that use smpsAlterPitch
+- `root` — **absolute** MOD note anchor; source `low` always plays here regardless of smpsAlterPitch or pitch_offset (`F2s`, `G3`, `A2`, etc.)
+- `synth_root` — optional SMPS note name for synthesis pitch (same syntax as `low`); `target_rate` is **not** adjusted — output pitch = synth_root's frequency; use on transposed channels where the chip pitch differs from the SMPS byte pitch
+- Output formula: `root + (source − low)`, clamped C1–B3 — root is an unconditional anchor
+- Rootless entries (no `root`) use the channel-transpose path: `smps_note + total_transpose`
 - When `voice_map` covers all notes for a channel, set `transpose: 0` — `root` handles pitch placement entirely
 
 ```yaml
@@ -110,7 +107,7 @@ voice_map:
       high: G6
       mod_instrument: 4
       root: F2s             # G5 plays at F#2; each semitone above shifts output up by 1
-      synth_root: C6        # (optional) synthesize at C6 for better HF at upper notes
+      synth_root: C6        # (optional) synthesize at C6; output pitch = C6 frequency
     - low:  Gs6
       high: C7
       mod_instrument: 12
@@ -130,16 +127,15 @@ voice_map:
 All segments complete. Enable synthesis: set `synthesis.enabled: true` in `configs/settings.yaml`.
 **Sample generator:** `python ym2612/sample_generator.py` → `output/sample_gen_test.raw`.
 `generate_fm_samples(song, config, synth)` → `{inst_num: (pcm_bytes, target_rate_hz)}`.
-**FM synthesis pitch vs rate label are independent:**
-- `synth_note_idx = entry.low - 12` (or `entry.synth_root - 12` if set) — YM2612 synthesizes at the SMPS source note frequency (e.g. G5 = 784 Hz)
-- `target_rate = round(amiga_clock / PERIOD_TABLE[entry.root.value])` — links MOD root period to playback rate; adjusted by `2^((synth_root−low)/12)` when `synth_root` is set
-FM timbre is pitch-dependent; synthesizing at the MOD output note (often 3+ octaves lower) produces unrecognisable sound.
-SMPS semitone offset: semitone 0 = C0; `render_note` idx 0 = C1 → `synth_note_idx = entry.low - 12`.
-`synth_root` shifts synthesis to a higher pitch for better HF; `target_rate` is adjusted so the tracker plays the correct pitch — MOD output is unchanged.
+**FM synthesis pitch:**
+- `synth_note_idx = entry.low - 12` (or `entry.synth_root - 12` if set) — YM2612 synthesizes at this SMPS note's frequency
+- `target_rate = round(amiga_clock / PERIOD_TABLE[entry.root.value])` — always; no compensation applied for `synth_root`
+- Output pitch = synthesis pitch (= `low` when no synth_root, = `synth_root` otherwise)
+- FM timbre is pitch-dependent; synthesizing at the MOD output note (often 3+ octaves lower) produces unrecognisable sound.
+- SMPS semitone offset: semitone 0 = C0; `render_note` idx 0 = C1 → `synth_note_idx = entry.low - 12`.
+- For channels with smpsAlterPitch, set `synth_root` to the chip's actual pitch (`low + total_transpose − chan_cfg.transpose`) so synthesis and output pitch are both authentic.
 
 **Fallback synthesis (voice_map / rootless channel_instrument_map):** `synth_idx=48` (C5, 523 Hz), `target_rate = round(amiga_clock / PERIOD_TABLE[ModNote.C1.value])`. Acceptable when source notes are near C5. For voices with source notes ≥ G6 and algorithm 4 (FM sidebands audible), add an explicit `voice_instrument_map` entry with correct `low` to avoid brightness loss.
-
-**root placement formula for transpose: -48 songs:** `root.value = SMPS_low − 60` makes root-based pitch placement identical to the channel-transpose path — use this when adding voice_instrument_map entries to enable high-note synthesis without changing MOD output pitch.
 
 **Validate:** `python ym2612/validate.py` — renders A4 tone, prints SUCCESS/WARNING.
 Raw output at `output/validate_test.raw` (16-bit mono, 53267 Hz) — load in Audacity.

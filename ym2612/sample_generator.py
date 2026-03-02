@@ -78,11 +78,10 @@ def generate_fm_samples(
             base_rate    = synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
 
             if entry.synth_root is not None:
-                # Synthesize at the chosen pitch; adjust target_rate so the
-                # tracker playing at `root` period outputs the correct frequency.
-                # Derivation: target_rate_new = base_rate × 2^((synth_root − low)/12)
+                # Synthesize at synth_root; target_rate is not compensated.
+                # Output pitch = synth_root's frequency when played at root's period.
                 synth_idx   = entry.synth_root - 12
-                target_rate = round(base_rate * 2 ** ((entry.synth_root - entry.low) / 12))
+                target_rate = round(base_rate)
             else:
                 synth_idx   = entry.low - 12
                 target_rate = round(base_rate)

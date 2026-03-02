@@ -16,8 +16,8 @@ class InstrumentRange:
                                     # out_note = root + (source_semitone - low)
                                     # if None: fall back to channel transpose for note
     synth_root: Optional[int] = None  # SMPS semitone to synthesize at (None = use low)
-                                      # target_rate is adjusted so the tracker plays at the
-                                      # correct pitch when this differs from low
+                                      # target_rate is NOT adjusted — output pitch equals
+                                      # synth_root's frequency when played at root's period
 
 
 def _parse_instrument_range(entry: dict) -> "InstrumentRange":

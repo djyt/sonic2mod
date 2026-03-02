@@ -4,7 +4,7 @@ Converts parsed SMPS song data into a MOD file with correct note placement,
 timing, and effects.
 """
 
-from tables import ModNote, smps_note_to_mod_note, SMPS_DAC_NAMES
+from tables import ModNote, smps_note_to_mod_note, SMPS_DAC_NAMES, _semitone_to_name
 from mod import ModFile
 from smps_parser import SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, SmpsEffect
 from config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange, SynthesisSettings
@@ -276,6 +276,17 @@ class SmpsToModConverter:
                                 break
 
                     if final_note is None:
+                        # Warn if a voice_instrument_map entry exists for this voice but
+                        # the note fell outside every defined range — almost always a
+                        # config gap rather than intentional fallback.
+                        if ranges and current_voice_idx is not None:
+                            note_name = _semitone_to_name(source_semitone)
+                            range_lo  = _semitone_to_name(ranges[0].low)
+                            range_hi  = _semitone_to_name(ranges[-1].high)
+                            print(f"Warning [{chan_cfg.source} voice={current_voice_idx}]: "
+                                  f"n{note_name} (semitone {source_semitone}) not covered by "
+                                  f"voice_instrument_map (spans {range_lo}–{range_hi}); "
+                                  f"falling back to transpose path")
                         # No map match (or matched with no root): use channel transpose
                         final_note = smps_note_to_mod_note(
                             note.note_value, total_transpose, chan_cfg.source,

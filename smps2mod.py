@@ -154,7 +154,6 @@ class SmpsToModConverter:
         vibrato_active = False
         vibrato_speed = 0
         vibrato_depth = 0
-        prev_was_rest = False
 
         # Build DAC name -> config map
         dac_map = {}
@@ -220,7 +219,6 @@ class SmpsToModConverter:
                         self.mod.set_channel(mod_chan)
                         self.mod.set_row(row)
                         self.mod.set_effect(0xC, 0)  # C00: mute channel
-                    prev_was_rest = True
                     continue
 
                 # Calculate pattern/row from tick
@@ -283,12 +281,14 @@ class SmpsToModConverter:
 
                     self.mod.set_note(final_note, final_instrument)
 
-                    # Set volume if changed or recovering from a rest
-                    if current_volume != volume or prev_was_rest:
-                        sv = _sample_vol_map.get(final_instrument, 64)
-                        emit_vol = round(current_volume * sv / 64)
+                    # Emit Cxx only when the scaled output differs from the
+                    # instrument's own sample volume — MOD auto-resets to sample
+                    # volume on each note trigger, so no command is needed when
+                    # the volume is at its default.
+                    sv = _sample_vol_map.get(final_instrument, 64)
+                    emit_vol = round(current_volume * sv / 64)
+                    if emit_vol != sv:
                         self.mod.set_effect(0xC, emit_vol)
-                        prev_was_rest = False
 
                     # Vibrato effect (4xy)
                     elif vibrato_active and vibrato_speed > 0:

@@ -1,6 +1,6 @@
 """YM2612 sample generator — Segment 4 of the YM2612 synthesis pipeline.
 
-Reads the song's FM voices and per-song voice_instrument_map, calls render_note()
+Reads the song's FM voices and per-song voice_map, calls render_note()
 for each InstrumentRange entry that has a root anchor, and returns populated
 {instrument_number: (pcm_bytes, sample_rate_hz)} pairs ready for MOD file assembly.
 
@@ -48,7 +48,7 @@ def generate_fm_samples(
 
     Args:
         song:   Parsed SmpsSong — provides song.voices (list[SmpsVoice]).
-        config: ConversionConfig — provides voice_instrument_map.
+        config: ConversionConfig — provides voice_map.
         synth:  SynthesisSettings — clock/amiga_clock/sustain/release.
 
     Returns:
@@ -70,13 +70,22 @@ def generate_fm_samples(
         has_root = entry.root is not None
         if not has_root and synth_idx is None:
             return
-        if entry.instrument in already_synthesized:
+        if entry.mod_instrument in already_synthesized:
             return
 
         if has_root:
             mod_root_idx = entry.root.value
-            target_rate  = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
-            synth_idx    = entry.low - 12
+            base_rate    = synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
+
+            if entry.synth_root is not None:
+                # Synthesize at the chosen pitch; adjust target_rate so the
+                # tracker playing at `root` period outputs the correct frequency.
+                # Derivation: target_rate_new = base_rate × 2^((synth_root − low)/12)
+                synth_idx   = entry.synth_root - 12
+                target_rate = round(base_rate * 2 ** ((entry.synth_root - entry.low) / 12))
+            else:
+                synth_idx   = entry.low - 12
+                target_rate = round(base_rate)
 
         headroom_tl = round(synth.headroom_db / 0.75)
         with warnings.catch_warnings(record=True) as caught:
@@ -96,27 +105,29 @@ def generate_fm_samples(
         label = f" [{source_label}]" if source_label else ""
         if not mono:
             root_str = entry.root.name if has_root else f"synth_idx={synth_idx}"
-            print(f"  Warning: instrument {entry.instrument} (voice {voice_idx}"
+            print(f"  Warning: instrument {entry.mod_instrument} (voice {voice_idx}"
                   f"{label}, {root_str}) rendered empty — skipping")
             return
 
         for w in caught:
             if issubclass(w.category, UserWarning) and "silence" in str(w.message):
-                print(f"  Warning: instrument {entry.instrument} rendered silence")
+                print(f"  Warning: instrument {entry.mod_instrument} rendered silence")
 
         pre_peak = max(abs(v) for v in mono)
         if has_root:
             root_str = f"root={entry.root.name} (idx={mod_root_idx}), synth_idx={synth_idx}"
+            if entry.synth_root is not None:
+                root_str += f" [synth_root override]"
         else:
             root_str = f"synth_idx={synth_idx}"
-        print(f"  Instrument {entry.instrument:2d}: voice={voice_idx}{label}, "
+        print(f"  Instrument {entry.mod_instrument:2d}: voice={voice_idx}{label}, "
               f"{root_str}, "
               f"rate={target_rate} Hz, {len(mono)} samples, peak={pre_peak}")
 
-        raw_data[entry.instrument] = (mono, rate)
-        already_synthesized.add(entry.instrument)
+        raw_data[entry.mod_instrument] = (mono, rate)
+        already_synthesized.add(entry.mod_instrument)
 
-    for voice_idx, range_list in config.voice_instrument_map.items():
+    for voice_idx, range_list in config.voice_map.items():
         if voice_idx not in voice_lookup:
             print(f"  Warning: voice {voice_idx} not found in song, skipping")
             continue
@@ -139,16 +150,23 @@ def generate_fm_samples(
     _STD_SYNTH_IDX = 48   # SMPS semitone 60 = C5 → renderer idx 48
     _std_rate = round(synth.amiga_clock / PERIOD_TABLE[ModNote.C1.value])
 
-    # --- Fallback 1: voice_map entries not yet synthesized ---
-    for voice_idx, inst_num in config.voice_map.items():
+    # --- Fallback 1: legacy_voice_map entries not yet synthesized ---
+    # These come from old-style YAML voice_map: {0: 4} (int values).
+    for voice_idx, inst_num in config.legacy_voice_map.items():
         if inst_num in already_synthesized:
             continue
         if voice_idx not in voice_lookup:
-            print(f"  Warning: voice {voice_idx} not found in song (voice_map fallback)")
+            print(f"  Warning: voice {voice_idx} not found in song (legacy_voice_map fallback)")
             continue
-        entry = InstrumentRange(low=60, high=60, instrument=inst_num)
+        warnings.warn(
+            f"Synthesizing voice {voice_idx} via deprecated legacy_voice_map at C5/C1. "
+            "Add a voice_map range entry with an explicit root for correct pitch.",
+            DeprecationWarning,
+            stacklevel=1,
+        )
+        entry = InstrumentRange(low=60, high=60, mod_instrument=inst_num)
         _collect(voice_idx, voice_lookup[voice_idx], entry,
-                 source_label="voice_map",
+                 source_label="legacy_voice_map",
                  synth_idx=_STD_SYNTH_IDX, target_rate=_std_rate)
 
     # --- Fallback 2: rootless channel_instrument_map entries ---
@@ -252,12 +270,12 @@ def _smoke_test() -> None:
         voices=[voice1],
     )
 
-    # Minimal ConversionConfig with voice_instrument_map for voice 1
+    # Minimal ConversionConfig with voice_map for voice 1
     from tables import ModNote
     fake_config = ConversionConfig()
-    fake_config.voice_instrument_map = {
+    fake_config.voice_map = {
         1: [
-            InstrumentRange(low=0, high=95, instrument=5, root=ModNote.A3),
+            InstrumentRange(low=0, high=95, mod_instrument=5, root=ModNote.A3),
         ]
     }
 

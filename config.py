@@ -1,5 +1,6 @@
 """Per-song conversion configuration."""
 
+import warnings
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -10,10 +11,42 @@ from tables import ModNote, parse_smps_note
 class InstrumentRange:
     low: int            # inclusive lower bound — SMPS semitone from C0 (e.g. nA2 = 33)
     high: int           # inclusive upper bound — SMPS semitone from C0
-    instrument: int     # MOD instrument number (1-31)
+    mod_instrument: int # MOD instrument number (1-31)
     root: Optional[ModNote] = None  # MOD note where `low` plays;
                                     # out_note = root + (source_semitone - low)
                                     # if None: fall back to channel transpose for note
+    synth_root: Optional[int] = None  # SMPS semitone to synthesize at (None = use low)
+                                      # target_rate is adjusted so the tracker plays at the
+                                      # correct pitch when this differs from low
+
+
+def _parse_instrument_range(entry: dict) -> "InstrumentRange":
+    """Parse a single InstrumentRange dict from YAML.
+
+    Accepts both new key ``mod_instrument`` and deprecated ``instrument``
+    (emits DeprecationWarning for the latter).
+    """
+    low  = parse_smps_note(entry['low'])
+    high = parse_smps_note(entry['high'])
+
+    if 'mod_instrument' in entry:
+        inst = entry['mod_instrument']
+    elif 'instrument' in entry:
+        warnings.warn(
+            "YAML key 'instrument' in a range entry is deprecated; use 'mod_instrument'.",
+            DeprecationWarning,
+            stacklevel=4,
+        )
+        inst = entry['instrument']
+    else:
+        raise KeyError(f"InstrumentRange entry missing 'mod_instrument': {entry}")
+
+    root       = ModNote[entry['root']]              if 'root'       in entry else None
+    synth_root = parse_smps_note(entry['synth_root']) if 'synth_root' in entry else None
+
+    return InstrumentRange(
+        low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root
+    )
 
 
 @dataclass
@@ -107,12 +140,12 @@ class ConversionConfig:
     auto_bpm: bool = False        # Derive BPM from SMPS tempo header
     region: str = "ntsc"          # "ntsc" (60 Hz) or "pal" (50 Hz)
     channels: list = field(default_factory=list)       # list of ChannelConfig
-    dac_samples: list = field(default_factory=list)     # list of DacSampleConfig
-    sample_list: Optional[list] = None                  # [inst_num, filename, volume, finetune]
+    dac_samples: list = field(default_factory=list)    # list of DacSampleConfig
+    sample_list: Optional[list] = None                 # [inst_num, filename, volume, finetune]
     samples_dir: str = "./samples/"
     max_patterns: int = 127
-    voice_map: dict = field(default_factory=dict)  # {voice_index: mod_instrument}
-    voice_instrument_map: dict = field(default_factory=dict)  # {voice_index: list[InstrumentRange]}
+    voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}
+    legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
 
     @classmethod
@@ -210,38 +243,61 @@ class ConversionConfig:
                 mod_note=dac_data.get('mod_note', 'C3'),
             ))
 
-        # Parse voice_map — keys may be int or 0x-prefixed hex strings in YAML
+        # ---------------------------------------------------------------------------
+        # Parse voice_map
+        #
+        # New format:   voice_map: {0: [{low: G5, high: G6, mod_instrument: 4, root: F2s}]}
+        # Legacy format: voice_map: {0: 4, 1: 5}  (simple int values — deprecated)
+        # Old key name:  voice_instrument_map (deprecated — emit warning, parse as new voice_map)
+        # ---------------------------------------------------------------------------
+
+        # Step 1 — accept deprecated key voice_instrument_map (old name for new-format data)
+        raw_vim_deprecated = data.get('voice_instrument_map')
+        if raw_vim_deprecated is not None:
+            warnings.warn(
+                f"YAML key 'voice_instrument_map' in '{filepath}' is deprecated; "
+                "rename it to 'voice_map'.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            for voice_key, range_list in raw_vim_deprecated.items():
+                config.voice_map[int(str(voice_key), 0)] = [
+                    _parse_instrument_range(e) for e in range_list
+                ]
+
+        # Step 2 — read voice_map key: detect format by inspecting first value
         raw_vm = data.get('voice_map', {})
-        config.voice_map = {int(str(k), 0): v for k, v in raw_vm.items()}
+        if raw_vm:
+            first_val = next(iter(raw_vm.values()))
+            if isinstance(first_val, int):
+                # Legacy simple format: {0: 4, 1: 5}
+                warnings.warn(
+                    f"YAML 'voice_map' with integer values in '{filepath}' is deprecated. "
+                    "Use the list-of-ranges format (or remove it if voice_map covers all notes).",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                for k, v in raw_vm.items():
+                    config.legacy_voice_map[int(str(k), 0)] = v
+            else:
+                # New list-of-ranges format — don't overwrite entries already set from
+                # voice_instrument_map (step 1), in case both keys are present.
+                for voice_key, range_list in raw_vm.items():
+                    vk = int(str(voice_key), 0)
+                    if vk not in config.voice_map:
+                        config.voice_map[vk] = [
+                            _parse_instrument_range(e) for e in range_list
+                        ]
 
-        # Parse voice_instrument_map
-        # low/high are SMPS note names (e.g. 'G5', 'Cs6') → semitone from C0
-        # root is a ModNote name (e.g. 'F2s', 'A1') → output MOD note anchor
-        raw_vim = data.get('voice_instrument_map', {})
-        for voice_key, range_list in raw_vim.items():
-            parsed_ranges = []
-            for entry in range_list:
-                low = parse_smps_note(entry['low'])
-                high = parse_smps_note(entry['high'])
-                inst = entry['instrument']
-                root = ModNote[entry['root']] if 'root' in entry else None
-                parsed_ranges.append(InstrumentRange(low=low, high=high, instrument=inst, root=root))
-            config.voice_instrument_map[int(str(voice_key), 0)] = parsed_ranges
-
-        # Parse channel_instrument_map — per-channel overrides for voice_instrument_map
+        # Parse channel_instrument_map — per-channel overrides for voice_map
         # {source_channel_name: {voice_idx: [InstrumentRange, ...]}}
         raw_cim = data.get('channel_instrument_map', {})
         for ch_name, vim_data in raw_cim.items():
             config.channel_instrument_map[ch_name] = {}
             for voice_key, range_list in vim_data.items():
-                parsed_ranges = []
-                for entry in range_list:
-                    low  = parse_smps_note(entry['low'])
-                    high = parse_smps_note(entry['high'])
-                    inst = entry['instrument']
-                    root = ModNote[entry['root']] if 'root' in entry else None
-                    parsed_ranges.append(InstrumentRange(low=low, high=high, instrument=inst, root=root))
-                config.channel_instrument_map[ch_name][int(str(voice_key), 0)] = parsed_ranges
+                config.channel_instrument_map[ch_name][int(str(voice_key), 0)] = [
+                    _parse_instrument_range(e) for e in range_list
+                ]
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

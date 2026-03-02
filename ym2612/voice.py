@@ -20,6 +20,7 @@ Usage::
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -46,6 +47,20 @@ from ym2612.wrapper import OPN2     # noqa: E402
 # ---------------------------------------------------------------------------
 _SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
 
+# YM2612 carrier operator register offsets by algorithm (0–7).
+# Register layout within a channel: OP1=0x00, OP3=0x04, OP2=0x08, OP4=0x0C.
+# Carriers are the operators whose output goes directly to the DAC.
+_CARRIER_OFFSETS_BY_ALG = (
+    (0x0C,),                    # Alg 0: OP4
+    (0x0C,),                    # Alg 1: OP4
+    (0x0C,),                    # Alg 2: OP4
+    (0x0C,),                    # Alg 3: OP4
+    (0x08, 0x0C),               # Alg 4: OP2, OP4
+    (0x04, 0x08, 0x0C),         # Alg 5: OP3, OP2, OP4  (OP1 = shared modulator)
+    (0x04, 0x08, 0x0C),         # Alg 6: OP3, OP2, OP4  (OP1 → OP2 only)
+    (0x00, 0x04, 0x08, 0x0C),   # Alg 7: all four operators
+)
+
 
 def _parse_op_vals(raw: str | None, count: int = 4) -> list[int]:
     """Parse '$00, $05, $00, $05' → [0, 5, 0, 5]. Missing values default to 0."""
@@ -55,20 +70,36 @@ def _parse_op_vals(raw: str | None, count: int = 4) -> list[int]:
     return (vals + [0] * count)[:count]
 
 
-def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int) -> None:
+def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int,
+                  headroom_tl: int = 0, carrier_balance: bool = False) -> None:
     """Program a SMPS voice onto a YM2612 channel.
 
     Writes all operator and channel-level registers for the voice.  Does NOT
     set frequency or trigger key-on — call those separately.
 
     Args:
-        opn2:    Initialised OPN2 emulator instance.
-        voice:   Parsed SMPS voice (SmpsVoice dataclass from smps_parser).
-        channel: YM2612 channel 0–5.
+        opn2:            Initialised OPN2 emulator instance.
+        voice:           Parsed SMPS voice (SmpsVoice dataclass from smps_parser).
+        channel:         YM2612 channel 0–5.
+        headroom_tl:     Base TL attenuation added to every carrier operator (0 = off).
+                         Prevents OPN2 DAC saturation on voices with TL=0 carriers.
+                         Derived from SynthesisSettings.headroom_db / 0.75 dB/step.
+        carrier_balance: When True, adds extra TL proportional to carrier count so
+                         multi-carrier algorithms (4/5/6/7) don't clip harder than
+                         single-carrier algorithms.  Extra = round(20*log10(N) / 0.75).
     """
     bank       = channel // 3
     ch_in_bank = channel % 3
     p          = voice.params
+
+    # Pre-compute carrier TL boost for this algorithm
+    alg             = voice.algorithm & 0x7
+    carrier_offsets = set(_CARRIER_OFFSETS_BY_ALG[alg])
+    if carrier_balance and len(carrier_offsets) > 1:
+        balance_tl = round(20 * math.log10(len(carrier_offsets)) / 0.75)
+    else:
+        balance_tl = 0
+    total_carrier_boost = headroom_tl + balance_tl
 
     # Channel-level registers
     opn2.write_reg(0xB0 + ch_in_bank,
@@ -95,7 +126,10 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int) -> None:
         opn2.write_reg(0x30 + base,
                        ((detune[smps_op] & 0x7) << 4) | (mul[smps_op] & 0xF),
                        bank=bank)
-        opn2.write_reg(0x40 + base, tl[smps_op] & 0x7F, bank=bank)
+        eff_tl = tl[smps_op] & 0x7F
+        if total_carrier_boost > 0 and off in carrier_offsets:
+            eff_tl = min(127, eff_tl + total_carrier_boost)
+        opn2.write_reg(0x40 + base, eff_tl, bank=bank)
         opn2.write_reg(0x50 + base,
                        ((ks[smps_op] & 0x3) << 6) | (ar[smps_op] & 0x1F),
                        bank=bank)

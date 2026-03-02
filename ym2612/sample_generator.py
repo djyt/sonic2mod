@@ -78,6 +78,7 @@ def generate_fm_samples(
             target_rate  = round(synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
             synth_idx    = entry.low - 12
 
+        headroom_tl = round(synth.headroom_db / 0.75)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_note_raw(
@@ -88,6 +89,8 @@ def generate_fm_samples(
                 target_rate=target_rate,
                 opn2=opn2,
                 clock_rate=synth.clock_rate,
+                headroom_tl=headroom_tl,
+                carrier_balance=synth.carrier_balance,
             )
 
         label = f" [{source_label}]" if source_label else ""

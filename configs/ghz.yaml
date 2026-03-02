@@ -113,30 +113,17 @@ sample_list:
 samples_dir: "./samples/"
 
 
-# FM voice index → default MOD instrument (fallback when no voice_instrument_map match).
-voice_map:
-  0: 3    # $00 → deep bass
-  1: 4    # $01 → bass/rhythm pad
-  2: 5    # $02 → bright lead
-  3: 6    # $03 → chord stab
-  4: 7    # $04 → bell arp
-  5: 8    # $05 → main melody
-  6: 9    # $06 → FM1 fills
-  7: 10   # $07 → bridge
-  8: 11   # $08 → bright synth
-
-
 # Per-voice instrument splits by source-note range.
 #
 # FM2 only — no smpsAlterPitch on FM2, so root-based placement is safe.
 # All other FM channels use smpsAlterPitch for register shifts; their
-# voice_instrument_map entries (if any) must omit 'root' so that the
+# voice_map entries (if any) must omit 'root' so that the
 # cumulative transpose path computes the correct output pitch.
 #
 # low/high: SMPS note names without 'n' prefix (e.g. 'A2', 'C3').
 # root: MOD note name where source 'low' plays.
 #       output = root + (source − low), clamped C1–B3.
-voice_instrument_map:
+voice_map:
 
   # Voice $00 — deep bass (FM2 opening section only)
   # Source notes: nA2–nB3 (semitones 33–47)
@@ -144,7 +131,7 @@ voice_instrument_map:
   0:
     - low:  A2
       high: B3
-      instrument: 3
+      mod_instrument: 3
       root: A1              # A2 → A1 (MOD 9);  B3 → B2 (MOD 23)
 
   # Voice $01 — bass/rhythm pad (FM2 main loop)
@@ -154,11 +141,11 @@ voice_instrument_map:
   1:
     - low:  C3              # semitone 36
       high: B3              # semitone 47
-      instrument: 4
+      mod_instrument: 4
       root: C2              # C3 → C2 (MOD 12);  B3 → B2 (MOD 23)
     - low:  C4              # semitone 48
       high: E5              # semitone 64
-      instrument: 4
+      mod_instrument: 4
       root: C3              # C4 → C3 (MOD 24);  D4+ clamps toward B3
 
   # Voice $04 — bell arp (FM4/FM5 ending section). SMPS source notes G6–D7 (79–86).
@@ -167,7 +154,7 @@ voice_instrument_map:
   4:
     - low:  G6              # semitone 79
       high: D7              # semitone 86
-      instrument: 7
+      mod_instrument: 7
       root: G2              # G6 → G2 (MOD 19); each semitone above shifts output +1
 
   # Voice $06 — FM1 melodic fills (smpsAlterPitch sections). SMPS source notes G6–E7 (79–88).
@@ -176,7 +163,7 @@ voice_instrument_map:
   6:
     - low:  G6              # semitone 79
       high: E7              # semitone 88
-      instrument: 9
+      mod_instrument: 9
       root: G2              # G6 → G2 (MOD 19)
 
 
@@ -193,10 +180,10 @@ channel_instrument_map:
     2:                          # voice $02 (bright lead) — intro section only
       - low:  C7               # SMPS semitone 84 (0xD5 = nC7)
         high: B7               # SMPS semitone 95 (highest encodeable note)
-        instrument: 5          # same as voice $02 fallback (bright lead)
+        mod_instrument: 5      # same as voice $02 fallback (bright lead)
         root: C3               # C7→C3, D7→D3, E7→E3
   FM5:
     4:                        # voice $04 on FM5 (bell arp, detuned)
       - low:  E4              # semitone 52 — bottom of FM5 arp range
         high: E7              # semitone 88 — top
-        instrument: 12        # same audio as inst 7, finetune +1
+        mod_instrument: 12    # same audio as inst 7, finetune +1

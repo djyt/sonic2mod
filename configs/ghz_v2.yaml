@@ -1,12 +1,12 @@
 name: "Green Hill Zone"
 input_file: "sonic_1/music/Mus81 - GHZ.asm"
-output_file: "output/ghz.mod"
+output_file: "output/ghz3.mod"
 samples_dir: "./samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
 target_speed: 3             # speed byte = $03 (smpsHeaderTempo $01, $03)
-ticks_per_row: 4            # GCD of main note durations ($04,$08,$0C,$10,$18...) = 4
+ticks_per_row: 2            # GCD of main note durations ($04,$08,$0C,$10,$18...) = 4
 num_mod_channels: 10
 
 # Channel layout
@@ -126,58 +126,60 @@ sample_list:
 # low/high: SMPS note names without 'n' prefix (e.g. 'A2', 'C3').
 # root: MOD note name where source 'low' plays.
 #       output = root + (source − low), clamped C1–B3.
-voice_instrument_map:
+voice_map:
   # $00 → deep bass
   0:
-    - low:  C3
+    - low:  C2
       high: B4
-      instrument: 13
+      mod_instrument: 13
       root: C2
 
   # $01 → bass/rhythm pad
   1:
-    - low:  C3
+    - low:  C2
       high: B4
-      instrument: 16
+      mod_instrument: 16
       root: C2
 
   # $02 → bright lead
   2:
     - low:  C6
       high: B7
-      instrument: 3
+      mod_instrument: 3
       root: C2
-  
+
   # $05 → main melody
   5:
-    - low:  C5
+    - low:  C4
       high: B5
-      instrument: 7
-      root: C2 
+      mod_instrument: 7
+      root: C2
     - low:  C6
       high: B7
-      instrument: 6
-      root: C2      
-      
+      mod_instrument: 6
+      root: C2
+
   # $06 → FM1 fills
   6:
     - low:  C6
       high: B7
-      instrument: 10
+      mod_instrument: 10
       root: C2
-  
+
   # $07 → bridge
   7:
     - low:  C5
       high: B5
-      instrument: 19
+      mod_instrument: 19
       root: C2
-  # $08 → bright synth; root C3 so alter_pitch_delta -24 places C5 at C1
+  # $08 → bright synth; root=C3 (16574 Hz quality); synth_root=C2 (authentic pitch:
+  #   SMPS C5 + total_transpose −36 = semitone 24 = C2 on chip → 65 Hz output)
   8:
     - low:  C5
       high: B6
-      instrument: 22
-      root: C3
+      mod_instrument: 22
+      root: C2
+      synth_root: C2
 
 # Per-channel instrument-map overrides.
 #
@@ -201,16 +203,3 @@ voice_instrument_map:
 #        instrument: 12        # same audio as inst 7, finetune +1
 
 
-# FM voice index → default MOD instrument (fallback when no voice_instrument_map match).
-voice_map:
-  2: 3    # $02 → bright lead
-  6: 10    # $06 → FM1 fills
-  0: 13    # $00 → deep bass
-  1: 16    # $01 → bass/rhythm pad
-  #2: 5    # $02 → bright lead
-  #3: 6    # $03 → chord stab
-  #4: 7    # $04 → bell arp
-  #5: 8    # $05 → main melody
-  #6: 9    # $06 → FM1 fills
-  7: 19   # $07 → bridge
-  8: 22   # $08 → bright synth

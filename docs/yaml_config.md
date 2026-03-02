@@ -134,7 +134,7 @@ voice_map:
       high: G6                # Top of source-note range (inclusive)
       mod_instrument: 4       # MOD instrument slot (1-based)
       root: F2s               # G5 plays at F#2; each semitone above shifts output by 1
-      synth_root: C6          # (optional) synthesize at C6 for better HF at upper notes
+      synth_root: C6          # (optional) synthesize at C6; output pitch = C6 frequency
     - low:  Gs6
       high: C7
       mod_instrument: 12
@@ -145,47 +145,48 @@ voice_map:
 
 ### root — pitch anchor
 
-`root` sets the MOD note where source `low` plays **when the smpsAlterPitch delta is 0**. The placement formula is:
+`root` is an **absolute** MOD note anchor. Source `low` always plays at `root`, unconditionally — smpsAlterPitch events and header pitch_offset do not affect this. The placement formula is:
 
 ```
-output = root + (source − low) + alter_pitch_delta
+output = root + (source − low)
 ```
 
-Where `alter_pitch_delta = total_transpose − chan_cfg.transpose` — this is the accumulated smpsAlterPitch (`$E9`) offset only, not the base YAML channel transpose.
+Each semitone above `low` shifts the output up by 1, clamped to C1–B3.
 
-- For channels with **no smpsAlterPitch**, `alter_pitch_delta` is always 0 → existing behaviour unchanged.
-- For channels that **do use smpsAlterPitch**, the output note shifts by the same amount — identical to the fallback transpose path.
-- `root` is safe on **all** FM channels regardless of whether they use smpsAlterPitch.
-
-Without `root`, the entry still selects the correct `mod_instrument` but pitch falls through to the channel-transpose path.
+Without `root`, the entry still selects the correct `mod_instrument` but pitch falls through to the channel-transpose path (`smps_note + total_transpose`).
 
 ### synth_root — synthesis pitch override
 
-When synthesis is enabled, each `voice_map` entry is synthesized at `low` by default. For wide ranges the tracker pitch-shifts up to the top, which halves the effective sample rate and loses high-frequency content.
+When synthesis is enabled, each `voice_map` entry is synthesized at `low` by default. For channels that use smpsAlterPitch, `low` is the SMPS byte value but the chip actually plays at a lower pitch (after transposition). `synth_root` lets you specify the pitch the chip actually synthesizes at.
 
-`synth_root` sets a different SMPS semitone to synthesize at (same note-name syntax as `low`/`high`). The `target_rate` is adjusted automatically so the tracker still outputs `low` Hz at the `root` period — pitch placement is unchanged.
+`synth_root` sets a different SMPS semitone to synthesize at (same note-name syntax as `low`/`high`). `target_rate` is **not** adjusted — the output pitch equals `synth_root`'s frequency.
 
 ```
-target_rate = amiga_clock / PERIOD_TABLE[root] × 2^((synth_root − low)/12)
+target_rate = amiga_clock / PERIOD_TABLE[root]   # unchanged by synth_root
+synth_idx   = synth_root − 12                    # synthesis at synth_root's frequency
 ```
 
-**Example** — range C3–B4, root C2. Default synthesizes at C3 (Nyquist 4.2 kHz at top). With `synth_root: G3` (+7 semitones above C3): Nyquist improves to ~5.9 kHz at the top while the low end is unchanged.
+**Example** — GHZ voice $08, FM3, source C5–B6, total_transpose −36 (pitch_offset −12 + smpsAlterPitch −24). The chip plays at C5 − 36 = SMPS C2 (65 Hz). Set `synth_root: C2` so synthesis and output pitch are both authentic:
+
+```yaml
+- low:  C5
+  high: B6
+  mod_instrument: 22
+  root: C2
+  synth_root: C2    # chip pitch = C2; heard = 65 Hz at C2 period
+```
 
 ### Choosing root
 
-To pick `root` for a channel that uses smpsAlterPitch:
+`root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).
 
-1. Determine the range of smpsAlterPitch values seen on the channel (e.g. 0, −12, −24).
-2. At zero delta, `root` places source `low` at `root` in the MOD.
-3. At the most negative delta D: `root.value + D ≥ 0` (stays ≥ C1).
-4. At the most positive delta D: `root.value + D + (high − low) ≤ 35` (stays ≤ B3).
-
-**Example** — voice $08 on FM3, source C5–B6, smpsAlterPitch values 0 and −24:
-- `root: C3` (value 24): C5 at C3 baseline; C5 at C1 with −24 (24 − 24 = 0 ✓); B6 at B1 with −24 (24 + 11 − 24 = 11 ✓).
+**Example** — source C5–B6 (`low`=C5, `high`=B6, span=11 semitones):
+- `root: C2` (value 12): C5 → C2, B6 → B2. Span 12–23, all in range ✓.
+- `root: C3` (value 24): C5 → C3, B6 → B3. Span 24–35, all in range ✓ (higher `target_rate` = better quality).
 
 ### When to set `transpose: 0`
 
-If `voice_map` entries cover the full note range of a channel, the base YAML `transpose` is redundant. Set `transpose: 0` and let `root` control pitch placement entirely. The smpsAlterPitch delta still accumulates on top of `root` as expected.
+If `voice_map` entries cover the full note range of a channel, the base YAML `transpose` is redundant. Set `transpose: 0` and let `root` control pitch placement entirely.
 
 ## Timing
 

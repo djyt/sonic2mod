@@ -1,6 +1,6 @@
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screen6_no_normalize.mod"
+output_file: "output/title_screen7_refactor.mod"
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
 target_speed: 3             # speed=3, ticks_per_row=3 → BPM unchanged; GCD(FM durations)=3 → exact row mapping
@@ -136,15 +136,6 @@ sample_list:
 samples_dir: "./samples/"
 
 
-# FM voice index → default MOD instrument.
-# Used as fallback before the first smpsSetvoice, and for any note that falls
-# outside all voice_instrument_map ranges.
-voice_map:
-  0: 4    # voice $00 → inst  4  bright lead synth (FM1; FM5 overridden to inst 14 via channel_instrument_map)
-  1: 5    # voice $01 → inst  5  bass / sustain pad (FM2, FM3/FM4 ending)
-  2: 6    # voice $02 → inst  6  harmony chord stabs (FM3/FM4 main melody)
-
-
 # Per-voice instrument splits by source-note range.
 #
 # Ranges are in SMPS source-note space: (note_value − $81) + smpsAlterNote,
@@ -155,9 +146,9 @@ voice_map:
 #        output = root + (source_semitone − low), clamped C1–B3.
 #
 # Entries are checked in order; first match wins.  Unmatched notes fall back
-# to the voice_map default instrument with the channel's transpose.
+# to chan_cfg.instrument with the channel's transpose.
 #
-voice_instrument_map:
+voice_map:
 
   # Voice $00 — bright lead synth (FM1 + FM5)
   # FM1: source G5–A6  (67–81) → output F#2–G#3
@@ -167,11 +158,11 @@ voice_instrument_map:
   0:
     - low:  G5            # source 67 — bottom of FM1's range
       high: G6            # source 79 — one below the split
-      instrument: 4       # fm_voice0_lo.raw (root F#2)
+      mod_instrument: 4   # fm_voice0_lo.raw (root F#2)
       root: F2s           # G5→F#2 (MOD 18);  G6→F#3 (MOD 30)
     - low:  Gs6           # source 80 — top notes of FM1, all of FM5's upper range
       high: C7            # source 84 — A6+3 (FM5's ceiling)
-      instrument: 12      # fm_voice0_hi.raw (root G3)
+      mod_instrument: 12  # fm_voice0_hi.raw (root G3)
       root: G3            # Gs6→G3 (MOD 31);  C7→B3 (MOD 35)
 
   # Voice $01 — bass / sustain pad
@@ -182,12 +173,12 @@ voice_instrument_map:
   1:
     - low:  A2            # source 33 — FM2 low notes + FM4 ending bass
       high: B2            # source 35
-      instrument: 5       # fm_voice1_lo.raw (root A1)
-      root: A1            # A2→A1 (MOD 9);  B2→B1 (MOD 11)
+      mod_instrument: 5   # fm_voice1_lo.raw (root A1)
+      root: A2            # A2→A1 (MOD 9);  B2→B1 (MOD 11) — root +12 vs sample; pitch_offset -12 cancels
     - low:  C3            # source 36 — FM3 ending bass + bulk of FM2 melody
       high: D4            # source 50 — top of FM2's range
-      instrument: 13      # fm_voice1_mid.raw (root C2)
-      root: C2            # C3→C2 (MOD 12);  D4→D3 (MOD 26)
+      mod_instrument: 13  # fm_voice1_mid.raw (root C2)
+      root: C2            # C3→C1 (MOD 0);  D4→D2 (MOD 14) [with pitch_offset -12]
 
   # Voice $02 — harmony chord stabs (FM3/FM4 main melody only)
   # FM3: source Cs6–G6 (73–79) → output C#3–G3
@@ -196,7 +187,7 @@ voice_instrument_map:
   2:
     - low:  A5            # source 69 — bottom of FM4's range
       high: G6            # source 79 — top of FM3's range
-      instrument: 6       # fm_voice2.raw (root A2)
+      mod_instrument: 6   # fm_voice2.raw (root A2)
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)
 
 
@@ -213,9 +204,9 @@ channel_instrument_map:
     0:
       - low:  G5            # source 67 — same bottom as FM1's range 0
         high: G6            # source 79 — same split point as FM1
-        instrument: 14      # fm_voice0_lo.raw + finetune +1 (root F#2)
+        mod_instrument: 14  # fm_voice0_lo.raw + finetune +1 (root F#2)
         root: F2s           # G5→F#2 (MOD 18);  G6→F#3 (MOD 30) — identical pitch to FM1
       - low:  Gs6           # source 80 — same upper range as FM1
         high: C7            # source 84
-        instrument: 15      # fm_voice0_hi.raw + finetune +1 (root G3)
+        mod_instrument: 15  # fm_voice0_hi.raw + finetune +1 (root G3)
         root: G3            # Gs6→G3 (MOD 31);  C7→B3 (MOD 35) — identical pitch to FM1

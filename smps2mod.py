@@ -277,7 +277,8 @@ class SmpsToModConverter:
                     if final_note is None:
                         # No map match (or matched with no root): use channel transpose
                         final_note = smps_note_to_mod_note(
-                            note.note_value, total_transpose, chan_cfg.source)
+                            note.note_value, total_transpose, chan_cfg.source,
+                            voice_idx=current_voice_idx)
 
                     self.mod.set_note(final_note, final_instrument)
 

@@ -117,6 +117,14 @@ def _build_smps_note_names():
 
 SMPS_NOTE_NAMES = _build_smps_note_names()
 
+_CHROMATIC_NAMES = ['C', 'Cs', 'D', 'Ds', 'E', 'Es', 'Fs', 'G', 'Gs', 'A', 'As', 'B']
+
+def _semitone_to_name(semitone: int) -> str:
+    """Return SMPS primary note name for a semitone offset from C0 (e.g. 84 → 'C7')."""
+    octave = semitone // 12
+    note   = semitone % 12
+    return f"{_CHROMATIC_NAMES[note]}{octave}"
+
 
 def parse_smps_note(name: str) -> int:
     """Convert an SMPS note name to semitone offset from C0 (0 = C0, 12 = C1, …).
@@ -151,23 +159,36 @@ SMPS_DAC_NAMES = {
 }
 
 
-def smps_note_to_mod_note(note_value, transpose=0, channel_name=None):
+def smps_note_to_mod_note(note_value, transpose=0, channel_name=None, voice_idx=None):
     """Convert SMPS note byte to ModNote.
 
     Args:
         note_value: SMPS note byte (0x81 = C0, 0x82 = C#0, etc.)
         transpose: Semitone offset to add
         channel_name: Optional channel label for warning messages (e.g. "FM1")
+        voice_idx: Optional current voice index for warning messages
 
     Returns:
         ModNote enum value, or None if out of range
     """
     chan_info = f" [{channel_name}]" if channel_name else ""
+    if voice_idx is not None:
+        chan_info = f" [{channel_name} voice={voice_idx}]" if channel_name else f" [voice={voice_idx}]"
     semitone = (note_value - 0x81) + transpose
     if semitone < 0:
-        print(f"Warning{chan_info}: Note {note_value:#x} + transpose {transpose} = semitone {semitone}, clamping to 0 (C1)")
+        src_name      = _semitone_to_name(note_value - 0x81)
+        boundary_sem  = -transpose
+        boundary_name = _semitone_to_name(boundary_sem)
+        voice_hint    = f" for voice {voice_idx}" if voice_idx is not None else ""
+        print(f"Warning{chan_info}: n{src_name} ({note_value:#x}) + transpose {transpose} = semitone {semitone}, clamped to C1")
+        print(f"  → source notes below {boundary_name} clamp with transpose {transpose}; add map entry{voice_hint}: high: {src_name}")
         semitone = 0
     elif semitone > 35:
-        print(f"Warning{chan_info}: Note {note_value:#x} + transpose {transpose} = semitone {semitone}, clamping to 35 (B3)")
+        src_name      = _semitone_to_name(note_value - 0x81)
+        boundary_sem  = 35 - transpose
+        boundary_name = _semitone_to_name(boundary_sem)
+        voice_hint    = f" for voice {voice_idx}" if voice_idx is not None else ""
+        print(f"Warning{chan_info}: n{src_name} ({note_value:#x}) + transpose {transpose} = semitone {semitone}, clamped to B3")
+        print(f"  → source notes above {boundary_name} clamp with transpose {transpose}; add map entry{voice_hint}: low: {src_name}")
         semitone = 35
     return ModNote(semitone)

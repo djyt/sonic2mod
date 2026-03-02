@@ -123,6 +123,57 @@ SMPS uses 8 octaves (C0–B7, bytes $81–$DF). MOD has 3 octaves (C1–B3, 36 s
 
 Notes outside C1–B3 after transpose are clamped with a warning. Use per-channel transpose in YAML for best results.
 
+## voice_instrument_map
+
+Routes a SMPS voice index + source-note range to a specific MOD instrument slot, with an optional pitch anchor (`root`).
+
+```yaml
+voice_instrument_map:
+  0:                        # SMPS voice index (from smpsSetvoice)
+    - low:  G5              # Bottom of source-note range (inclusive)
+      high: G6              # Top of source-note range (inclusive)
+      instrument: 4         # MOD instrument slot (1-based)
+      root: F2s             # G5 plays at F#2; each semitone above shifts output by 1
+    - low:  Gs6
+      high: C7
+      instrument: 12
+      root: G3
+```
+
+`low`/`high` are SMPS note names (no `n` prefix): `C5`, `Gs6`, `B7`, etc. Range lookup uses `(note_value − $81)`. `smpsAlterNote` is a raw FNUM offset (~10 cents) and does NOT affect range selection or pitch placement.
+
+### root — pitch anchor
+
+`root` sets the MOD note where source `low` plays **when the smpsAlterPitch delta is 0**. The placement formula is:
+
+```
+output = root + (source − low) + alter_pitch_delta
+```
+
+Where `alter_pitch_delta = total_transpose − chan_cfg.transpose` — this is the accumulated smpsAlterPitch (`$E9`) offset only, not the base YAML channel transpose.
+
+- For channels with **no smpsAlterPitch**, `alter_pitch_delta` is always 0 → existing behaviour unchanged.
+- For channels that **do use smpsAlterPitch**, the output note shifts by the same amount — identical to the fallback transpose path.
+- `root` is safe on **all** FM channels regardless of whether they use smpsAlterPitch.
+
+Without `root`, the entry still selects the correct `instrument` but pitch falls through to the channel-transpose path.
+
+### Choosing root
+
+To pick `root` for a channel that uses smpsAlterPitch:
+
+1. Determine the range of smpsAlterPitch values seen on the channel (e.g. 0, −12, −24).
+2. At zero delta, `root` places source `low` at `root` in the MOD.
+3. At the most negative delta D: `root.value + D ≥ 0` (stays ≥ C1).
+4. At the most positive delta D: `root.value + D + (high − low) ≤ 35` (stays ≤ B3).
+
+**Example** — voice $08 on FM3, source C5–B6, smpsAlterPitch values 0 and −24:
+- `root: C3` (value 24): C5 at C3 baseline; C5 at C1 with −24 (24 − 24 = 0 ✓); B6 at B1 with −24 (24 + 11 − 24 = 11 ✓).
+
+### When to set `transpose: 0`
+
+If `voice_instrument_map` entries cover the full note range of a channel, the base YAML `transpose` is redundant. Set `transpose: 0` and let `root` control pitch placement entirely. The smpsAlterPitch delta still accumulates on top of `root` as expected.
+
 ## Timing
 
 The relationship between SMPS ticks and MOD rows:

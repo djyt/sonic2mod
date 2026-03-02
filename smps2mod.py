@@ -173,8 +173,8 @@ class SmpsToModConverter:
                 if eff.effect_type == 'smpsSetvoice':
                     voice_idx = eff.params[0]
                     current_voice_idx = voice_idx
-                    if voice_idx in self.config.voice_map:
-                        instrument = self.config.voice_map[voice_idx]
+                    if voice_idx in self.config.legacy_voice_map:
+                        instrument = self.config.legacy_voice_map[voice_idx]
 
                 elif eff.effect_type == 'smpsAlterVol':
                     delta = eff.params[0]
@@ -247,7 +247,7 @@ class SmpsToModConverter:
                         # Fallback: use default instrument and C3
                         self.mod.set_note(ModNote.C3, instrument)
                 else:
-                    # Melodic: place note with optional voice_instrument_map override.
+                    # Melodic: place note with optional voice_map override.
                     #
                     # The map is checked against the *source semitone* — the raw
                     # SMPS note + smpsAlterNote, before the channel base transpose.
@@ -259,14 +259,14 @@ class SmpsToModConverter:
                     final_instrument = instrument
                     final_note = None
 
-                    # Channel-specific override takes priority over global voice_instrument_map
+                    # Channel-specific override takes priority over global voice_map
                     _cim = self.config.channel_instrument_map.get(chan_cfg.source, {})
                     ranges = _cim.get(current_voice_idx) \
-                          or self.config.voice_instrument_map.get(current_voice_idx)
+                          or self.config.voice_map.get(current_voice_idx)
                     if ranges:
                         for entry in ranges:
                             if entry.low <= source_semitone <= entry.high:
-                                final_instrument = entry.instrument
+                                final_instrument = entry.mod_instrument
                                 if entry.root is not None:
                                     alter_pitch_delta = total_transpose - chan_cfg.transpose
                                     out = entry.root.value + (source_semitone - entry.low) + alter_pitch_delta
@@ -285,7 +285,7 @@ class SmpsToModConverter:
                             range_hi  = _semitone_to_name(ranges[-1].high)
                             print(f"Warning [{chan_cfg.source} voice={current_voice_idx}]: "
                                   f"n{note_name} (semitone {source_semitone}) not covered by "
-                                  f"voice_instrument_map (spans {range_lo}–{range_hi}); "
+                                  f"voice_map (spans {range_lo}–{range_hi}); "
                                   f"falling back to transpose path")
                         # No map match (or matched with no root): use channel transpose
                         final_note = smps_note_to_mod_note(

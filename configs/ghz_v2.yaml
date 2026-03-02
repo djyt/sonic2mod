@@ -172,12 +172,12 @@ voice_instrument_map:
       high: B5
       instrument: 19
       root: C2
-  # $08 → bright synth (can't use root due to smpsAlterPitch)
+  # $08 → bright synth; root C3 so alter_pitch_delta -24 places C5 at C1
   8:
     - low:  C5
       high: B6
       instrument: 22
-      #root: C2
+      root: C3
 
 # Per-channel instrument-map overrides.
 #

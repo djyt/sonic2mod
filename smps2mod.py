@@ -268,7 +268,8 @@ class SmpsToModConverter:
                             if entry.low <= source_semitone <= entry.high:
                                 final_instrument = entry.instrument
                                 if entry.root is not None:
-                                    out = entry.root.value + (source_semitone - entry.low)
+                                    alter_pitch_delta = total_transpose - chan_cfg.transpose
+                                    out = entry.root.value + (source_semitone - entry.low) + alter_pitch_delta
                                     out = max(0, min(35, out))
                                     final_note = ModNote(out)
                                 # root=None: fall through to channel-transpose path

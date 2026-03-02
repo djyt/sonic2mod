@@ -93,7 +93,11 @@ Routes SMPS voice index + **source-note range** → MOD instrument + optional pi
 Ranges are checked against `(note_value − $81)` — `smpsAlterNote`/`smpsDetune` is a raw FNUM offset, not semitones, so it does NOT affect range lookup or note placement.
 
 - `low`/`high` — SMPS note names without `n` prefix, parsed by `parse_smps_note()` in `tables.py` (e.g. `G5`, `Gs6`, `C7`)
-- `root` — ModNote enum name where source `low` plays (`F2s`, `G3`, `A2`, etc.); output = `root + (source − low)`, clamped C1–B3
+- `root` — ModNote enum name where source `low` plays **when smpsAlterPitch delta is 0** (`F2s`, `G3`, `A2`, etc.)
+- Output formula: `root + (source − low) + alter_pitch_delta`, clamped C1–B3
+  - `alter_pitch_delta = total_transpose − chan_cfg.transpose` (accumulated smpsAlterPitch only, not the base YAML transpose)
+  - For channels with no smpsAlterPitch, `alter_pitch_delta` is always 0 (no change from previous behaviour)
+- `root` is now safe on **all** FM channels, including those that use smpsAlterPitch
 - When `voice_instrument_map` covers all notes for a channel, set `transpose: 0` — `root` handles pitch placement entirely
 
 ```yaml

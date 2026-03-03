@@ -181,7 +181,7 @@ def smps_note_to_mod_note(note_value, transpose=0, channel_name=None, voice_idx=
         boundary_name = _semitone_to_name(boundary_sem)
         voice_hint    = f" for voice {voice_idx}" if voice_idx is not None else ""
         print(f"Warning{chan_info}: n{src_name} ({note_value:#x}) + transpose {transpose} = semitone {semitone}, clamped to C1")
-        print(f"  → source notes below {boundary_name} clamp with transpose {transpose}; add map entry{voice_hint}: high: {src_name}")
+        print(f"  -> source notes below {boundary_name} clamp with transpose {transpose}; add map entry{voice_hint}: high: {src_name}")
         semitone = 0
     elif semitone > 35:
         src_name      = _semitone_to_name(note_value - 0x81)
@@ -189,6 +189,6 @@ def smps_note_to_mod_note(note_value, transpose=0, channel_name=None, voice_idx=
         boundary_name = _semitone_to_name(boundary_sem)
         voice_hint    = f" for voice {voice_idx}" if voice_idx is not None else ""
         print(f"Warning{chan_info}: n{src_name} ({note_value:#x}) + transpose {transpose} = semitone {semitone}, clamped to B3")
-        print(f"  → source notes above {boundary_name} clamp with transpose {transpose}; add map entry{voice_hint}: low: {src_name}")
+        print(f"  -> source notes above {boundary_name} clamp with transpose {transpose}; add map entry{voice_hint}: low: {src_name}")
         semitone = 35
     return ModNote(semitone)

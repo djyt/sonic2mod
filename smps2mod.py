@@ -326,51 +326,42 @@ class SmpsToModConverter:
         row = row_total % 64
         return pattern, row
 
-    def _set_loop_point(self):
-        """Set Bxx position jump for song looping based on smpsJump targets."""
-        # Find the first channel with a jump
-        for i, ch in enumerate(self.song.channels):
-            if ch.has_jump and ch.jump_target_label:
-                # Look up the tick position of the jump target
-                from smps_parser import SmpsParser
-                # The parser stores label tick positions
-                # We need to find the pattern that the jump target corresponds to
-                # For now, use a simple heuristic: find the target label's tick in the channel
+    def _last_data_pattern_row(self):
+        """Return (pattern, row) of the last event written across all channels.
 
-                # Find the last event's tick position to know where to place Bxx
-                if ch.events:
-                    last_tick = ch.events[-1].tick_position
-                    if ch.events[-1].is_note and ch.events[-1].note:
-                        last_tick += ch.events[-1].note.duration
-                    last_pattern, last_row = self._tick_to_pattern_row(last_tick)
-
-                    # Find the target tick position
-                    target_tick = self._find_label_tick(ch, ch.jump_target_label)
-                    if target_tick is not None:
-                        target_pattern, _ = self._tick_to_pattern_row(target_tick)
-
-                        # Place Bxx at the end of the last pattern
-                        while last_pattern >= len(self.mod.patterns):
-                            self.mod.add_patterns(1)
-
-                        self.mod.set_active_pattern(last_pattern)
-                        self.mod.set_channel(0)  # Place on channel 0
-                        self.mod.set_row(63)     # Last row of pattern
-                        self.mod.set_position_jump(target_pattern)
-                        print(f"Set loop: pattern {last_pattern} row 63 -> position {target_pattern}")
-                break
-
-    def _find_label_tick(self, channel, label):
-        """Find the tick position of a label in the channel's events.
-
-        Falls back to checking the parser's label_tick_pos.
+        Scans every channel's event list and takes the maximum tick_position,
+        which corresponds to the last MOD row that has actual data written to it.
         """
-        # Check events for the label's tick position
-        for event in channel.events:
-            if event.tick_position >= 0:
-                # We don't store label info in events directly,
-                # so use the parser's label_tick_pos
-                pass
+        last_tick = 0
+        for ch in self.song.channels:
+            if ch.events:
+                last_tick = max(last_tick, ch.events[-1].tick_position)
+        return self._tick_to_pattern_row(last_tick)
 
-        # Return 0 as a fallback (loop to beginning)
-        return 0
+    def _set_loop_point(self):
+        """Set Bxx position jump for song looping based on smpsJump targets.
+
+        Uses the maximum loop-start tick across all channels so the jump
+        target lands after every channel's intro has completed.
+        """
+        label_tick_pos = self.song.label_tick_pos
+        loop_target_tick = None
+
+        for ch in self.song.channels:
+            if ch.has_jump and ch.jump_target_label:
+                tick = label_tick_pos.get(ch.jump_target_label)
+                if tick is not None:
+                    if loop_target_tick is None or tick > loop_target_tick:
+                        loop_target_tick = tick
+
+        if loop_target_tick is None:
+            return  # No smpsJump found; nothing to do
+
+        last_pattern, last_row = self._last_data_pattern_row()
+        target_pattern, _ = self._tick_to_pattern_row(loop_target_tick)
+
+        self.mod.set_active_pattern(last_pattern)
+        self.mod.set_channel(0)
+        self.mod.set_row(last_row)
+        self.mod.set_position_jump(target_pattern)
+        print(f"Set loop: pattern {last_pattern} row {last_row} -> position {target_pattern}")

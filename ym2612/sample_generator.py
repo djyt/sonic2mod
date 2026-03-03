@@ -27,10 +27,10 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from tables import PERIOD_TABLE, ModNote            # noqa: E402
-from mod import ModSample                          # noqa: E402
-from smps_parser import SmpsVoice, SmpsSong        # noqa: E402
-from config import ConversionConfig, SynthesisSettings, InstrumentRange  # noqa: E402
+from core.tables import PERIOD_TABLE, ModNote            # noqa: E402
+from core.mod import ModSample                          # noqa: E402
+from core.smps_parser import SmpsVoice, SmpsSong        # noqa: E402
+from core.config import ConversionConfig, SynthesisSettings, InstrumentRange  # noqa: E402
 from ym2612.wrapper import OPN2                    # noqa: E402
 from ym2612.renderer import render_note_raw, note_to_freq, freq_to_fnum_block  # noqa: E402
 

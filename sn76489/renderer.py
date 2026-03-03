@@ -36,7 +36,7 @@ from sn76489.wrapper import SN76489  # noqa: E402
 # Constants
 # ---------------------------------------------------------------------------
 
-_PAL_CLOCK   = 3_546_895   # SN76489 PAL Mega Drive clock (Hz)
+_NTSC_CLOCK  = 3_579_545   # SN76489 NTSC Mega Drive clock (Hz)
 _AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 
 # Import PERIOD_TABLE for target_rate calculation
@@ -47,7 +47,7 @@ from core.tables import PERIOD_TABLE  # noqa: E402
 # Public helper
 # ---------------------------------------------------------------------------
 
-def note_to_psg_n(mod_note_index: int, clock_rate: int = _PAL_CLOCK) -> int:
+def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
     """MOD note index → SN76489 10-bit frequency divider N.
 
     Formula: N = clock / (2 × freq × 16), clamped 1–1023.
@@ -90,7 +90,7 @@ def render_psg_tone_raw(
     mod_note_index: int,
     sustain_secs: float = 1.0,
     release_secs: float = 0.2,
-    clock_rate: int = _PAL_CLOCK,
+    clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
 ) -> tuple[list, int]:
     """Render a PSG square-wave tone.  Returns (mono_list, rate) before int8 packing.
@@ -99,7 +99,7 @@ def render_psg_tone_raw(
         mod_note_index: ModNote index 0–35 (0=C1, 35=B3).
         sustain_secs:   Seconds the note is held at max volume.
         release_secs:   Seconds of silence (volume=15) captured after key-off.
-        clock_rate:     SN76489 clock (Hz).  Default = PAL MD 3,546,895.
+        clock_rate:     SN76489 clock (Hz).  Default = NTSC MD 3,579,545.
         target_rate:    Output sample rate (Hz).  None → 44,100 Hz fallback.
                         Pass ``round(amiga_clock / PERIOD_TABLE[root.value])`` here
                         so the sample plays at the correct pitch in MOD.
@@ -130,7 +130,7 @@ def render_psg_tone(
     mod_note_index: int,
     sustain_secs: float = 1.0,
     release_secs: float = 0.2,
-    clock_rate: int = _PAL_CLOCK,
+    clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
 ) -> tuple[bytes, int]:
     """Render a PSG square-wave tone to 8-bit signed mono PCM, peak-normalized.
@@ -153,7 +153,7 @@ def render_psg_noise_raw(
     noise_rate: int,
     sustain_secs: float = 0.4,
     release_secs: float = 0.1,
-    clock_rate: int = _PAL_CLOCK,
+    clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
 ) -> tuple[list, int]:
     """Render a PSG noise burst.  Returns (mono_list, rate) before int8 packing.
@@ -186,7 +186,7 @@ def render_psg_noise(
     noise_rate: int,
     sustain_secs: float = 0.4,
     release_secs: float = 0.1,
-    clock_rate: int = _PAL_CLOCK,
+    clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
 ) -> tuple[bytes, int]:
     """Render a PSG noise burst to 8-bit signed mono PCM, peak-normalized.

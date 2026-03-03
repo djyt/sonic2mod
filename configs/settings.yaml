@@ -14,7 +14,7 @@ synthesis:
 
 psg_synthesis:
   enabled: false           # Set true to auto-generate PSG samples via SN76489 emulation
-  clock_rate: 3546895      # SN76489 PAL Mega Drive clock (Hz)
+  clock_rate: 3579545      # SN76489 NTSC Mega Drive clock (Hz)
   amiga_clock: 3546895     # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: 1.0    # Seconds of tone held before key-off
   release_padding: 0.2     # Seconds of silence/release after key-off

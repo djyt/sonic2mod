@@ -7,7 +7,7 @@ timing, and effects.
 from .tables import ModNote, smps_note_to_mod_note, SMPS_DAC_NAMES, _semitone_to_name
 from .mod import ModFile, ModSample
 from .smps_parser import SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, SmpsEffect
-from .config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange, SynthesisSettings
+from .config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange, SynthesisSettings, PsgSynthesisSettings
 
 
 # Map MOD note name strings to ModNote enum values
@@ -34,10 +34,13 @@ del _oct, _notes, _key, _enum_name
 
 
 class SmpsToModConverter:
-    def __init__(self, song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings = None):
+    def __init__(self, song: SmpsSong, config: ConversionConfig,
+                 synth: SynthesisSettings = None,
+                 psg_synth: PsgSynthesisSettings = None):
         self.song = song
         self.config = config
         self.synth = synth
+        self.psg_synth = psg_synth
         self.mod = ModFile(channels=config.num_mod_channels)
 
     def convert(self):
@@ -85,6 +88,31 @@ class SmpsToModConverter:
             for dac in self.config.dac_samples:
                 max_inst = max(max_inst, dac.mod_instrument)
             self.mod.create_placeholder_samples(max_inst)
+
+        # PSG synthesis block
+        psg_synth = self.psg_synth
+        if psg_synth and psg_synth.enabled and self.config.psg_map:
+            from sn76489.sample_generator import generate_psg_samples
+            print("  Synthesizing PSG samples...")
+            psg_samples = generate_psg_samples(self.config, psg_synth)
+            for inst_num, (pcm, rate) in psg_samples.items():
+                sample = ModSample(f"psg_inst{inst_num}")
+                sample.data = pcm
+                sample.length = len(pcm) // 2
+                sample.set_volume(64)
+                sample.set_finetune(0)
+                self.mod.samples[inst_num - 1] = sample
+            # Apply volume and finetune overrides from sample_list
+            if self.config.sample_list:
+                for entry in self.config.sample_list:
+                    inst_num_sl = entry[0]
+                    if inst_num_sl in psg_samples:
+                        vol_sl = entry[2] if len(entry) > 2 else 64
+                        ft_sl  = entry[3] if len(entry) > 3 else 0
+                        self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
+                        if ft_sl != 0:
+                            self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
+            print(f"  PSG: synthesized {len(psg_samples)} instrument(s)")
 
         # Set timing
         self.mod.set_bpm(self.config.target_bpm)

@@ -1,0 +1,349 @@
+"""SMPS song analysis data model.
+
+Walks parsed SmpsSong data and produces structured analysis objects
+used by analyze.py for Rich-formatted display.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+from .smps_parser import SmpsSong, SmpsChannel, SmpsEvent
+from .config import ConversionConfig
+from .tables import _CHROMATIC_NAMES, _semitone_to_name
+
+
+# ---------------------------------------------------------------------------
+# Effect classification
+# ---------------------------------------------------------------------------
+
+UNSUPPORTED_EFFECTS = {'smpsPan', 'smpsNop', 'smpsPSGform', 'smpsPSGvoice'}
+
+PARTIAL_EFFECTS = {
+    'smpsAlterNote': 'FNUM offset (~10 cents) — not applied to pitch',
+    'smpsModSet':    'approximate (sine vs triangle wave)',
+}
+
+# Known Sonic 1 DAC sample native playback rates and suggested MOD notes
+# (approximate — actual sample rates vary by ROM version)
+DAC_NATIVE_INFO = {
+    'dKick':        ('C2',  8_000),
+    'dSnare':       ('F2s', 8_000),
+    'dTimpani':     ('C3',  8_000),
+    'dHiTimpani':   ('C3',  8_000),
+    'dMidTimpani':  ('C3',  8_000),
+    'dLowTimpani':  ('C3',  8_000),
+    'dVLowTimpani': ('C3',  8_000),
+}
+
+# YM2612 carrier operator register offsets by algorithm (0–7).
+# Used to describe which operators carry audio output.
+_CARRIER_LABELS_BY_ALG = {
+    0: ['OP4'],
+    1: ['OP4'],
+    2: ['OP4'],
+    3: ['OP4'],
+    4: ['OP2', 'OP4'],
+    5: ['OP2', 'OP3', 'OP4'],
+    6: ['OP2', 'OP3', 'OP4'],
+    7: ['OP1', 'OP2', 'OP3', 'OP4'],
+}
+
+
+# ---------------------------------------------------------------------------
+# Data classes
+# ---------------------------------------------------------------------------
+
+@dataclass
+class VoiceRangeStats:
+    voice_idx: int
+    min_semitone: int      # raw SMPS (note_value - 0x81)
+    max_semitone: int
+    note_count: int
+    switch_count: int      # how many smpsSetvoice events switched to this voice
+
+
+@dataclass
+class TransposeEvent:
+    tick: int
+    delta: int             # this event's semitone delta
+    cumulative: int        # total after this event
+
+
+@dataclass
+class ChannelAnalysis:
+    name: str              # "DAC", "FM1", "PSG2", etc.
+    channel_type: str      # "DAC", "FM", "PSG"
+    note_count: int
+    rest_count: int
+    effect_count: int
+    total_ticks: int
+    has_loop: bool
+    loop_target: str
+    # FM/PSG note ranges (None for DAC)
+    min_semitone: Optional[int]
+    max_semitone: Optional[int]
+    # Per-voice stats (FM channels only)
+    voice_stats: dict = field(default_factory=dict)   # voice_idx -> VoiceRangeStats
+    # DAC sample occurrence counts
+    dac_counts: dict = field(default_factory=dict)    # dac_name -> int
+    # All effects seen: effect_type → count
+    effect_counts: dict = field(default_factory=dict)
+    # smpsChangeTransposition history
+    transpose_events: list = field(default_factory=list)
+    has_transpose_change: bool = False
+    # Config coverage gaps (populated only if config provided)
+    uncovered_notes: list = field(default_factory=list)   # semitones not in voice_map ranges
+    # Config enabled status (populated if config provided)
+    config_enabled: Optional[bool] = None
+
+
+@dataclass
+class SongAnalysis:
+    file_path: str
+    song: SmpsSong
+    channels: list         # list[ChannelAnalysis]
+    config: Optional[ConversionConfig]
+    derived_bpm_ntsc: float
+    derived_bpm_pal: float
+
+
+# ---------------------------------------------------------------------------
+# Analysis function
+# ---------------------------------------------------------------------------
+
+def _source_name(ch_type: str, idx: int) -> str:
+    if ch_type == "DAC":
+        return "DAC"
+    elif ch_type == "FM":
+        return f"FM{idx}"
+    else:
+        return f"PSG{idx}"
+
+
+def analyze_song(song: SmpsSong, file_path: str,
+                 config: Optional[ConversionConfig] = None) -> SongAnalysis:
+    """Walk each channel's events and produce a SongAnalysis.
+
+    Args:
+        song:       Parsed SmpsSong from SmpsParser.
+        file_path:  Path to the source .asm file (for display).
+        config:     Optional ConversionConfig — if provided, coverage gaps are reported.
+
+    Returns:
+        SongAnalysis with per-channel ChannelAnalysis objects.
+    """
+    from .config import derive_bpm
+
+    # Derive BPM for both regions
+    # Use default ticks_per_row=6, speed=6 (common Sonic 1 defaults)
+    tpr = config.ticks_per_row if config else 6.0
+    spd = config.target_speed if config else 6
+    bpm_ntsc = derive_bpm(
+        song.header.tempo_divider, song.header.tempo_modifier, tpr, spd, fps=60
+    )
+    bpm_pal = derive_bpm(
+        song.header.tempo_divider, song.header.tempo_modifier, tpr, spd, fps=50
+    )
+
+    # Build config channel lookup if config provided
+    cfg_channels = {}
+    if config:
+        for ch_cfg in config.channels:
+            cfg_channels[ch_cfg.source] = ch_cfg
+
+    channel_analyses = []
+    dac_idx = fm_idx = psg_idx = 0
+
+    for ch in song.channels:
+        ch_type = ch.header.channel_type
+        if ch_type == "DAC":
+            dac_idx += 1
+            source_name = "DAC"
+        elif ch_type == "FM":
+            fm_idx += 1
+            source_name = f"FM{fm_idx}"
+        else:
+            psg_idx += 1
+            source_name = f"PSG{psg_idx}"
+
+        analysis = _analyze_channel(ch, source_name, ch_type, config, cfg_channels)
+        channel_analyses.append(analysis)
+
+    return SongAnalysis(
+        file_path=file_path,
+        song=song,
+        channels=channel_analyses,
+        config=config,
+        derived_bpm_ntsc=bpm_ntsc,
+        derived_bpm_pal=bpm_pal,
+    )
+
+
+def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
+                     config: Optional[ConversionConfig],
+                     cfg_channels: dict) -> ChannelAnalysis:
+    """Analyze a single SmpsChannel."""
+    note_count = 0
+    rest_count = 0
+    effect_count = 0
+    dac_counts: dict[str, int] = {}
+    effect_counts: dict[str, int] = {}
+    voice_stats: dict[int, VoiceRangeStats] = {}
+    transpose_events: list[TransposeEvent] = []
+    min_semitone: Optional[int] = None
+    max_semitone: Optional[int] = None
+
+    current_voice_idx: Optional[int] = None
+    cumulative_transpose = 0
+    total_ticks = 0
+
+    for event in ch.events:
+        if event.is_note:
+            note = event.note
+            total_ticks = event.tick_position + note.duration
+
+            if note.is_rest:
+                rest_count += 1
+            elif note.is_dac:
+                note_count += 1
+                name = note.dac_name or f"${note.note_value:02X}"
+                dac_counts[name] = dac_counts.get(name, 0) + 1
+            else:
+                note_count += 1
+                sem = note.note_value - 0x81
+
+                # Update global range
+                if min_semitone is None or sem < min_semitone:
+                    min_semitone = sem
+                if max_semitone is None or sem > max_semitone:
+                    max_semitone = sem
+
+                # Update per-voice stats (FM channels only)
+                if ch_type == "FM" and current_voice_idx is not None:
+                    vs = voice_stats.get(current_voice_idx)
+                    if vs is None:
+                        vs = VoiceRangeStats(
+                            voice_idx=current_voice_idx,
+                            min_semitone=sem,
+                            max_semitone=sem,
+                            note_count=0,
+                            switch_count=0,
+                        )
+                        voice_stats[current_voice_idx] = vs
+                    vs.note_count += 1
+                    if sem < vs.min_semitone:
+                        vs.min_semitone = sem
+                    if sem > vs.max_semitone:
+                        vs.max_semitone = sem
+
+        elif event.is_effect:
+            eff = event.effect
+            effect_count += 1
+            effect_counts[eff.effect_type] = effect_counts.get(eff.effect_type, 0) + 1
+
+            if eff.effect_type == 'smpsSetvoice':
+                new_voice = eff.params[0]
+                if new_voice != current_voice_idx:
+                    current_voice_idx = new_voice
+                    # Increment switch count for this voice
+                    vs = voice_stats.get(current_voice_idx)
+                    if vs is None:
+                        vs = VoiceRangeStats(
+                            voice_idx=current_voice_idx,
+                            min_semitone=999,
+                            max_semitone=-1,
+                            note_count=0,
+                            switch_count=0,
+                        )
+                        voice_stats[current_voice_idx] = vs
+                    vs.switch_count += 1
+
+            elif eff.effect_type == 'smpsChangeTransposition':
+                delta = eff.params[0]
+                cumulative_transpose += delta
+                transpose_events.append(TransposeEvent(
+                    tick=event.tick_position,
+                    delta=delta,
+                    cumulative=cumulative_transpose,
+                ))
+
+    has_transpose_change = len(transpose_events) > 0
+
+    # Config coverage
+    config_enabled: Optional[bool] = None
+    uncovered_notes: list[int] = []
+
+    if config is not None:
+        ch_cfg = cfg_channels.get(source_name)
+        config_enabled = ch_cfg.enabled if ch_cfg else False
+
+        # For FM channels with a voice_map, check which semitones are uncovered
+        if ch_type == "FM" and config.voice_map:
+            seen_semitones: set[int] = set()
+            for event in ch.events:
+                if event.is_note and not event.note.is_rest and not event.note.is_dac:
+                    seen_semitones.add(event.note.note_value - 0x81)
+
+            for sem in sorted(seen_semitones):
+                covered = False
+                # Check global voice_map for any range that covers this semitone
+                for ranges in config.voice_map.values():
+                    for entry in ranges:
+                        if entry.low <= sem <= entry.high:
+                            covered = True
+                            break
+                    if covered:
+                        break
+                # Also check channel_instrument_map
+                if not covered:
+                    cim = config.channel_instrument_map.get(source_name, {})
+                    for ranges in cim.values():
+                        for entry in ranges:
+                            if entry.low <= sem <= entry.high:
+                                covered = True
+                                break
+                        if covered:
+                            break
+                if not covered:
+                    uncovered_notes.append(sem)
+
+    return ChannelAnalysis(
+        name=source_name,
+        channel_type=ch_type,
+        note_count=note_count,
+        rest_count=rest_count,
+        effect_count=effect_count,
+        total_ticks=total_ticks,
+        has_loop=ch.has_jump,
+        loop_target=ch.jump_target_label,
+        min_semitone=min_semitone,
+        max_semitone=max_semitone,
+        voice_stats=voice_stats,
+        dac_counts=dac_counts,
+        effect_counts=effect_counts,
+        transpose_events=transpose_events,
+        has_transpose_change=has_transpose_change,
+        uncovered_notes=uncovered_notes,
+        config_enabled=config_enabled,
+    )
+
+
+def semitone_to_note_name(semitone: int) -> str:
+    """Convert SMPS semitone (0=C0) to readable note name like 'C3', 'F#4'."""
+    chromatic = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    octave = semitone // 12
+    note = semitone % 12
+    return f"{chromatic[note]}{octave}"
+
+
+def suggest_transpose(min_semitone: int, max_semitone: int) -> int:
+    """Suggest a transpose value to map the note range into MOD C1-B3 (0-35).
+
+    Tries to centre the range within the MOD octaves.
+    """
+    mid = (min_semitone + max_semitone) // 2
+    # Target midpoint is ~17 (A2 in MOD range)
+    target_mid = 17
+    return target_mid - mid

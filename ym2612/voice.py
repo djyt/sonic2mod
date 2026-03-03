@@ -29,7 +29,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from smps_parser import SmpsVoice  # noqa: E402
+from core.smps_parser import SmpsVoice  # noqa: E402
 from ym2612.wrapper import OPN2     # noqa: E402
 
 # ---------------------------------------------------------------------------

@@ -20,12 +20,15 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 
 ```
 sonic2mod/
-  tables.py          # Note lookup tables, SMPS↔MOD note mapping
-  mod.py             # MOD file writer (adapted from mml2mod-master)
-  smps_parser.py     # SMPS assembly parser → intermediate representation
-  config.py          # Per-song conversion config, YAML loading
-  smps2mod.py        # Conversion engine (IR → MOD)
-  convert.py         # CLI entry point
+  convert.py         # CLI entry point — conversion
+  analyze.py         # CLI entry point — Rich-formatted song analysis
+  core/              # Library package
+    tables.py        #   Note lookup tables, SMPS↔MOD note mapping
+    mod.py           #   MOD file writer (adapted from mml2mod-master)
+    smps_parser.py   #   SMPS assembly parser → intermediate representation
+    config.py        #   Per-song conversion config, YAML loading
+    smps2mod.py      #   Conversion engine (IR → MOD)
+    analysis.py      #   Analysis data model + analyze_song()
   configs/           # YAML config files per song
   configs/settings.yaml  # Global synthesis settings
   output/            # Generated .mod files
@@ -43,20 +46,26 @@ sonic2mod/
 ## Setup
 
 ```bash
-pip install pyyaml   # only external dependency
+pip install pyyaml rich   # external dependencies
 ```
 
 ## Quick Usage
 
 ```bash
-# Default settings (10 channels, 150 BPM, ticks_per_row=6)
-python convert.py "C:/coding/sonic_1/source_s1disasm-AS/sound/music/Mus8A - Title Screen.asm" --output output/title_screen.mod
+# With YAML config (recommended)
+python convert.py --config configs/title_screen.yaml
 
-# With YAML config for per-channel control
-python convert.py "C:/coding/sonic_1/source_s1disasm-AS/sound/music/Mus8A - Title Screen.asm" --config configs/title_screen.yaml
+# Quick no-config run (default Sonic 1 settings)
+python convert.py "C:/coding/sonic_1/source_s1disasm-AS/sound/music/Mus8A - Title Screen.asm"
 
-# CLI overrides
-python convert.py "path/to/song.asm" --bpm 140 --channels 10 --transpose -36
+# Override output path
+python convert.py --config configs/title_screen.yaml --output output/title_screen.mod
+
+# Analyse a song (no config needed)
+python analyze.py "sonic_1/music/Mus8A - Title Screen.asm"
+
+# Analyse with config coverage diff
+python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/title_screen.yaml
 
 # Verify: open output .mod in OpenMPT or MilkyTracker
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):

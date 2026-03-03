@@ -357,7 +357,7 @@ class SmpsToModConverter:
                         self.mod.set_channel(0)  # Place on channel 0
                         self.mod.set_row(63)     # Last row of pattern
                         self.mod.set_position_jump(target_pattern)
-                        print(f"Set loop: pattern {last_pattern} row 63 → position {target_pattern}")
+                        print(f"Set loop: pattern {last_pattern} row 63 -> position {target_pattern}")
                 break
 
     def _find_label_tick(self, channel, label):

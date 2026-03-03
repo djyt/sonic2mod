@@ -4,6 +4,8 @@
 
 sonic2mod converts Sonic 1 SMPS (Sample Music Playback System) assembly music into Amiga ProTracker MOD format. The tool parses macro-based assembly text, builds an intermediate representation, then maps notes, timing, and effects into a binary MOD file.
 
+Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema).
+
 ## Data Flow
 
 ```

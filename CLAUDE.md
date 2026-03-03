@@ -2,6 +2,19 @@
 
 Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 
+## Documentation Index
+
+| Document | Contents |
+|----------|----------|
+| `docs/smps_driver.md` | **Sonic 1 driver reference** — all coord flag bytes ($E0–$F9), smpsDetune vs smpsChangeTransposition, timing system, smpsModSet, smpsNoteFill, FM operator order, DAC, PSG |
+| `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas |
+| `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
+| `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
+| `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
+| `docs/effects.txt` | ProTracker MOD effect reference |
+| `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
+| `reference/mml2mod-master/` | Reference MML-to-MOD converter |
+
 ## Project Structure
 
 ```
@@ -13,19 +26,17 @@ sonic2mod/
   smps2mod.py        # Conversion engine (IR → MOD)
   convert.py         # CLI entry point
   configs/           # YAML config files per song
-  configs/settings.yaml  # Global synthesis settings (synthesis.enabled, mode, clock_rate, etc.)
+  configs/settings.yaml  # Global synthesis settings
   output/            # Generated .mod files
-  reference/mml2mod-master/    # Reference project (MML-to-MOD converter)
-  reference/Nuked-OPN2/        # YM2612/YM3438 cycle-accurate emulator (C source)
-  reference/Nuked-MD-main/     # Full Mega Drive emulator reference (OPN2 usage patterns)
   ym2612/            # YM2612 sample synthesis package (all segments complete)
     build.py         #   Auto-compiles ym3438.c → ym2612/ym3438.dll (gcc or cl)
     wrapper.py       #   ctypes OPN2 class — write_reg, key_on/off, render_samples
     voice.py         #   SmpsVoice → YM2612 register writes (program_voice)
     renderer.py      #   SmpsVoice + mod_note_index → 8-bit PCM (render_note)
-    sample_generator.py #  voice_instrument_map → {inst: (pcm, rate)} dict (generate_fm_samples)
-    validate.py      #   Standalone test: python ym2612/validate.py → output/validate_test.raw
+    sample_generator.py #  voice_map → {inst: (pcm, rate)} dict (generate_fm_samples)
+    validate.py      #   Standalone test: python ym2612/validate.py
   docs/              # Technical documentation
+  sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
 ```
 
 ## Setup
@@ -55,6 +66,8 @@ python ym2612/validate.py
 
 `SmpsParser.parse_file()` → `SmpsSong` → `SmpsToModConverter.convert()` → `ModFile` → `.mod`
 
+See `docs/pipeline.md` for the full data flow and conversion decisions.
+
 ## Key Conventions
 
 - SMPS note range: 8 octaves (C0–B7), byte values $81–$DF
@@ -68,37 +81,59 @@ python ym2612/validate.py
 
 ## SMPS Effect → MOD Effect Mapping
 
-| SMPS                | MOD       | Notes                           |
-|---------------------|-----------|---------------------------------|
-| `smpsNoteFill N`    | `ECx`     | Note cut after x ticks          |
-| `smpsModSet`        | `4xy`     | Vibrato (speed→x, depth→y)     |
-| `smpsAlterVol`      | `Cxx`     | Cumulative volume → set volume  |
-| `smpsAlterNote`     | stored    | Raw FNUM offset (~10 cents); parsed into `alter_note` but NOT applied to semitones or instrument routing |
-| `smpsJump`          | `Bxx`     | Position jump (song loop)       |
-| `smpsNop/PSGform`   | ignored   | No MOD equivalent               |
+Full table with gotchas in `docs/pipeline.md`. Quick reference:
 
-## Known Limitations
+| SMPS | Byte | MOD | Notes |
+|------|------|-----|-------|
+| `smpsAlterVol` | $E6 | `Cxx` | Cumulative volume → set volume |
+| `smpsModSet` | $F0 | `4xy` | Vibrato; steps halved in hardware |
+| `smpsModOn` | $F1 | `4xy` | Re-activates stored mod params |
+| `smpsModOff` | $F4 | (clear) | No MOD output |
+| `smpsNoteFill` | $E8 | `ECx` | Note cut; only values 1–15 representable |
+| `smpsJump` | $F6 | `Bxx` | Position jump; first occurrence only |
+| `smpsSetvoice` | $EF | (routing) | Updates voice_map instrument lookup |
+| `smpsChangeTransposition` | $E9 | (pitch) | Adds to total_transpose |
+| `smpsDetune`/`smpsAlterNote` | $E1 | **none** | FNUM offset (~10 cents); NOT semitones, NOT applied to pitch |
+| `smpsPan` | $E0 | ignored | MOD panning is channel-based |
+| `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
+| `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
+| `smpsNop`, `smpsPSGform`, `smpsPSGvoice` | $E2,$F3,$F5 | ignored | No MOD equivalent |
 
-- **`smpsAlterNote` ($E1) is a FNUM offset, not semitones** — `+$03` ≈ +7–10 cents (chorus detune). Source: `s1.sounddriver.asm` `cfDetune` adds directly to FNUM (`add.w d0, d6`). For detuned-unison channels (same notes, slightly sharp): use `channel_instrument_map` to route to finetune+1 instrument variants.
-- Synthesis path does not auto-inherit `sample_list` finetune — `smps2mod.py` applies a post-synthesis pass over `sample_list` entries that are also in `fm_samples`.
-- Notes clamped to C1–B3 with warnings when out of range after transpose
-- When `synthesis.enabled: false` (default): FM samples are silent placeholders — replace in a tracker
-- When `synthesis.enabled: true`: FM samples auto-generated by `generate_fm_samples()` from voice_map (root-based), legacy_voice_map (C5/C1 fallback), and rootless channel_instrument_map entries
-- `smpsPan` informational only (MOD panning is channel-based, not per-note)
-- Song loop (`smpsJump`) only sets Bxx from the first channel that has a jump
+**Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).
+
+## Critical Gotchas
+
+**Full gotchas with causes and fixes in `docs/pipeline.md`.**
+
+1. **`smpsDetune`/`smpsAlterNote` ($E1) is NOT semitones** — it's a raw FNUM offset (~10 cents per unit). Does NOT affect `voice_map` range lookup or pitch placement. For chorus detune (FM5 vs FM4), use `channel_instrument_map` with a `finetune: 1` instrument variant.
+
+2. **`root` is unconditional** — `smpsChangeTransposition` events do NOT affect the root path. Do NOT use `root` on channels that use `$E9` mid-song; use the `total_transpose` path instead (omit `root`, rely on YAML `transpose`).
+
+3. **`smpsChangeTransposition` ($E9) is cumulative semitones** — each call adds to `SMPS_Track.Transpose`. Affects all subsequent notes and is included in `total_transpose`. This IS what shifts channels between register ranges in GHZ.
+
+4. **Operator order** — SMPS binary stores OP4,OP3,OP2,OP1 (reversed). Correct mapping: `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`. Wrong mapping → "overdriven guitar" distortion (OP1 carrier placed in self-feedback slot).
+
+5. **Synthesis disabled by default** — `synthesis.enabled: false` in `configs/settings.yaml`. Set `true` to auto-generate FM samples (requires gcc/MSVC for ym3438.c).
+
+6. **FM5 falls through into FM1 data** — parser does not stop at label boundaries; FM5 typically lacks `smpsStop` and shares FM1's note data (intentional chorus/detune design).
+
+7. **`smpsNoteFill` > 15 ignored** — ECx has a 4-bit parameter; fill values 16+ cannot be represented and produce no MOD effect (note sustains naturally to full duration).
+
+8. **smpsModSet step count halved in hardware** — driver does `lsr.b #1` before storing. Value 16 → 8 actual oscillation steps.
 
 ## voice_map (per-voice octave-range instrument routing)
 
 Routes SMPS voice index + **source-note range** → MOD instrument + optional pitch anchor.
-Ranges are checked against `(note_value − $81)` — `smpsAlterNote`/`smpsDetune` is a raw FNUM offset, not semitones, so it does NOT affect range lookup or note placement.
+Ranges checked against `(note_value − $81)`. `smpsDetune`/`smpsAlterNote` is a raw FNUM offset
+and does NOT affect range lookup.
 
-- `low`/`high` — SMPS note names without `n` prefix, parsed by `parse_smps_note()` in `tables.py` (e.g. `G5`, `Gs6`, `C7`)
+- `low`/`high` — SMPS note names without `n` prefix (e.g. `G5`, `Gs6`, `C7`)
 - `mod_instrument` — MOD instrument slot (1-based)
-- `root` — **absolute** MOD note anchor; source `low` always plays here regardless of smpsAlterPitch or pitch_offset (`F2s`, `G3`, `A2`, etc.)
-- `synth_root` — optional SMPS note name for synthesis pitch (same syntax as `low`); `target_rate` is **not** adjusted — output pitch = synth_root's frequency; use on transposed channels where the chip pitch differs from the SMPS byte pitch
-- Output formula: `root + (source − low)`, clamped C1–B3 — root is an unconditional anchor
-- Rootless entries (no `root`) use the channel-transpose path: `smps_note + total_transpose`
-- When `voice_map` covers all notes for a channel, set `transpose: 0` — `root` handles pitch placement entirely
+- `root` — **absolute** MOD note anchor; source `low` always plays here regardless of smpsAlterPitch or pitch_offset
+- `synth_root` — synthesis pitch override; `target_rate` is NOT adjusted — output pitch = synth_root's frequency
+- Output formula: `root + (source − low)`, clamped C1–B3
+- Rootless entries use channel-transpose path: `smps_note + total_transpose`
+- When `voice_map` covers all notes for a channel, set `transpose: 0`
 
 ```yaml
 voice_map:
@@ -107,12 +142,14 @@ voice_map:
       high: G6
       mod_instrument: 4
       root: F2s             # G5 plays at F#2; each semitone above shifts output up by 1
-      synth_root: C6        # (optional) synthesize at C6; output pitch = C6 frequency
+      synth_root: C6        # (optional) synthesize at C6 frequency instead of G5
     - low:  Gs6
       high: C7
       mod_instrument: 12
       root: G3
 ```
+
+**When NOT to use `root`:** channels with mid-song `smpsChangeTransposition` ($E9) — root ignores total_transpose and will place notes incorrectly. Use `transpose` only and let `total_transpose` handle pitch.
 
 ## sample_list Entry Format
 
@@ -127,28 +164,23 @@ voice_map:
 All segments complete. Enable synthesis: set `synthesis.enabled: true` in `configs/settings.yaml`.
 **Sample generator:** `python ym2612/sample_generator.py` → `output/sample_gen_test.raw`.
 `generate_fm_samples(song, config, synth)` → `{inst_num: (pcm_bytes, target_rate_hz)}`.
+
 **FM synthesis pitch:**
 - `synth_note_idx = entry.low - 12` (or `entry.synth_root - 12` if set) — YM2612 synthesizes at this SMPS note's frequency
 - `target_rate = round(amiga_clock / PERIOD_TABLE[entry.root.value])` — always; no compensation applied for `synth_root`
 - Output pitch = synthesis pitch (= `low` when no synth_root, = `synth_root` otherwise)
-- FM timbre is pitch-dependent; synthesizing at the MOD output note (often 3+ octaves lower) produces unrecognisable sound.
-- SMPS semitone offset: semitone 0 = C0; `render_note` idx 0 = C1 → `synth_note_idx = entry.low - 12`.
-- For channels with smpsAlterPitch, set `synth_root` to the chip's actual pitch (`low + total_transpose − chan_cfg.transpose`) so synthesis and output pitch are both authentic.
+- FM timbre is pitch-dependent — synthesizing 3+ octaves lower produces unrecognisable sound
+- SMPS semitone offset: semitone 0 = C0; `render_note` idx 0 = C1 → `synth_note_idx = entry.low - 12`
+- For channels with smpsAlterPitch, set `synth_root` to the chip's actual pitch
 
-**Fallback synthesis (voice_map / rootless channel_instrument_map):** `synth_idx=48` (C5, 523 Hz), `target_rate = round(amiga_clock / PERIOD_TABLE[ModNote.C1.value])`. Acceptable when source notes are near C5. For voices with source notes ≥ G6 and algorithm 4 (FM sidebands audible), add an explicit `voice_instrument_map` entry with correct `low` to avoid brightness loss.
+**Fallback synthesis:** `synth_idx=48` (C5, 523 Hz). For voices with source notes ≥ G6 and algorithm 4, add an explicit `voice_map` entry with correct `low` to avoid brightness loss.
 
 **Validate:** `python ym2612/validate.py` — renders A4 tone, prints SUCCESS/WARNING.
-Raw output at `output/validate_test.raw` (16-bit mono, 53267 Hz) — load in Audacity.
-
-**Renderer validate:** `python ym2612/renderer.py` — renders voice 1 (FM2 bass) at A3 (220 Hz).
-Raw output at `output/renderer_test.raw` (16-bit mono, 53267 Hz).
-Smoke test raw files use **true 16-bit PCM scaled from pre-normalized mono** — do NOT
-upscale from 8-bit output (×256), which produces audible staircase quantization in Audacity.
-`render_note()` itself still returns 8-bit signed PCM for MOD file use.
+**Renderer validate:** `python ym2612/renderer.py` — renders voice 1 at A3 (220 Hz).
+Smoke test raw files use **true 16-bit PCM** — do NOT upscale from 8-bit (×256).
 
 **render_note API:** `render_note(voice, mod_note_index, sustain_secs=1.5, release_secs=0.5,
 target_rate=None, opn2=None, channel=0) → (bytes, int)` — always resets OPN2 internally.
-Helpers: `note_to_freq(idx)` (440×2^((idx-45)/12)), `freq_to_fnum_block(freq)`.
 
 **Critical OPN2_Clock timing:** In YM2612 mode, `OPN2_Clock()` time-multiplexes 6 channels
 across 24 internal clocks. `mol`/`mor` is `audio×3` at the 6 output-enable clocks
@@ -162,10 +194,10 @@ Bank 0 = ch 0-2 (ports 0/1), Bank 1 = ch 3-5 (ports 2/3).
 
 **Critical SMPS operator → YM register offset mapping:** `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`
 — SMPS OP1→YM offset 0x0C, OP2→0x04, OP3→0x08, OP4→0x00. Do NOT use (0x00, 0x08, 0x04, 0x0C).
-The SMPS binary stores operator bytes reversed (OP4,OP3,OP2,OP1); the S1 driver writes them to
-hardware in offset order 0x00,0x08,0x04,0x0C. Source: `s1.sounddriver.asm` FMInstrumentOperatorTable
-+ `_smps2asm_inc.asm` smpsDcb (else/non-v2 branch). Wrong mapping puts a near-zero TL carrier into
-the self-feedback slot → severe distortion ("overdriven guitar" sound).
+Source: `s1.sounddriver.asm` FMInstrumentOperatorTable + `_smps2asm_inc.asm` smpsDcb (else/non-v2 branch).
+
+**Headroom / carrier balance:** `configs/settings.yaml` `headroom_db: 6.0`, `carrier_balance: true`.
+Boosts carrier TL at register-write time to prevent YM2612 DAC saturation before Python normalization.
 
 ## Testing
 

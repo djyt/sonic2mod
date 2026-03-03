@@ -2,6 +2,9 @@
 
 Reference for the Sonic 1 SMPS assembly format as parsed by `smps_parser.py`.
 
+For runtime driver behavior (what each byte does in hardware, timing system, FM operator order),
+see `docs/smps_driver.md`. For the SMPS→MOD conversion pipeline, see `docs/pipeline.md`.
+
 ## Song Structure
 
 An SMPS assembly file contains:
@@ -89,8 +92,8 @@ dc.b  $0C              ; wait/sustain 12 more ticks (standalone duration)
 |-------|-------|-------------|
 | `smpsSetvoice $xx` | $EF, xx | Set FM voice/instrument |
 | `smpsAlterVol $xx` | $E6, xx | Add signed value to volume attenuation |
-| `smpsAlterNote $xx` | $E1, xx | Set channel detune (signed semitones) |
-| `smpsChangeTransposition $xx` | $E9, xx | Add to channel pitch (signed semitones) |
+| `smpsAlterNote $xx` | $E1, xx | **FNUM offset** (~10 cents/unit, NOT semitones) — sub-semitone detune only; does NOT affect voice_map range lookup or MOD pitch placement |
+| `smpsChangeTransposition $xx` | $E9, xx | **Semitone shift** — add signed value to channel pitch; cumulative; affects all subsequent notes and voice_map routing |
 | `smpsPan direction, amsfms` | $E0, xx | Set panning and AMS/FMS |
 
 ### Modulation
@@ -166,7 +169,7 @@ Four parameters per macro correspond to the four FM operators. These are parsed 
 ## Edge Cases
 
 ### FM5 Fall-Through
-FM5 may contain only an `smpsAlterNote` effect, then fall through into FM1's data. The parser handles this by not stopping at label boundaries — only `smpsStop`/`smpsJump` terminate channel parsing.
+FM5 may contain only an `smpsAlterNote` (FNUM detune) or `smpsChangeTransposition` effect, then fall through into FM1's data. The parser handles this by not stopping at label boundaries — only `smpsStop`/`smpsJump` terminate channel parsing.
 
 ### Empty Channels
 PSG1 and PSG2 in some songs (e.g. Title Screen) contain only `smpsStop`. The parser produces channels with zero events.

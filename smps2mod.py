@@ -178,7 +178,7 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsAlterVol':
                     delta = eff.params[0]
-                    current_volume = max(0, min(64, current_volume + delta))
+                    current_volume = max(0, min(64, current_volume - delta))
 
                 elif eff.effect_type == 'smpsAlterNote':
                     alter_note = eff.params[0]

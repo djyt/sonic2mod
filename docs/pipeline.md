@@ -4,6 +4,7 @@ How SMPS assembly music maps to Amiga ProTracker MOD format.
 
 Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (assembly syntax),
 `docs/architecture.md` (module overview), `docs/effects.txt` (ProTracker effect reference),
+`docs/synthesis.md` (FM synthesis — synth_root, pitch matching, OPN2 internals),
 `docs/yaml_config.md` (full YAML schema).
 
 ---

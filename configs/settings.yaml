@@ -13,7 +13,7 @@ synthesis:
   carrier_balance: true     # add extra TL per carrier count so alg 4/5/6/7 don't clip harder than alg 0-3
 
 psg_synthesis:
-  enabled: false           # Set true to auto-generate PSG samples via SN76489 emulation
+  enabled: true            # Set true to auto-generate PSG samples via SN76489 emulation
   clock_rate: 3579545      # SN76489 NTSC Mega Drive clock (Hz)
   amiga_clock: 3546895     # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: 1.0    # Seconds of tone held before key-off

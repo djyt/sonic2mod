@@ -182,6 +182,8 @@ class ConversionConfig:
     legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
     psg_map: list = field(default_factory=list)           # list[PsgInstrumentEntry]
+    psg_form_map: dict = field(default_factory=dict)      # {form_byte: mod_instrument}
+    psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": mod_instrument, ...}
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -347,6 +349,16 @@ class ConversionConfig:
                 synth_root=synth_root,
                 noise_rate=psg_entry.get('noise_rate', 0),
             ))
+
+        # Parse psg_form_map: {0xE7: 8}  (hex or int keys from YAML)
+        raw_pfm = data.get('psg_form_map', {})
+        for k, v in raw_pfm.items():
+            config.psg_form_map[int(str(k), 0)] = v
+
+        # Parse psg_voice_map: {"fTone_01": 7, "fTone_03": 9}
+        raw_pvm = data.get('psg_voice_map', {})
+        for k, v in raw_pvm.items():
+            config.psg_voice_map[str(k)] = v
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

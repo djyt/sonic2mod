@@ -88,7 +88,7 @@ class SN76489:
         """Initialise the chip.
 
         Args:
-            clock_rate:  SN76489 clock frequency (Hz). PAL MD = 3,546,895.
+            clock_rate:  SN76489 clock frequency (Hz). NTSC MD = 3,579,545.
             sample_rate: Output sample rate (Hz). Set to target_rate per instrument
                          to avoid the need for resampling.
         """

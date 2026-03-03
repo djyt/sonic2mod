@@ -78,7 +78,7 @@ class PsgInstrumentEntry:
 @dataclass
 class PsgSynthesisSettings:
     enabled: bool = False
-    clock_rate: int = 3_546_895      # SN76489 PAL MD clock (Hz)
+    clock_rate: int = 3_579_545      # SN76489 NTSC MD clock (Hz)
     amiga_clock: int = 3_546_895     # PAL Amiga clock for target_rate calculation
     sustain_duration: float = 1.0
     release_padding: float = 0.2
@@ -92,7 +92,7 @@ class PsgSynthesisSettings:
         s = data.get("psg_synthesis", {})
         return cls(
             enabled=s.get("enabled", False),
-            clock_rate=s.get("clock_rate", 3_546_895),
+            clock_rate=s.get("clock_rate", 3_579_545),
             amiga_clock=s.get("amiga_clock", 3_546_895),
             sustain_duration=s.get("sustain_duration", 1.0),
             release_padding=s.get("release_padding", 0.2),

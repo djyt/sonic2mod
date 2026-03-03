@@ -24,7 +24,7 @@ def main() -> None:
     print("SN76489 PSG validation")
     print("======================")
 
-    clock_rate  = 3_546_895   # PAL MD
+    clock_rate  = 3_579_545   # NTSC MD
     sample_rate = 44100
     sustain_n   = int(sample_rate * 0.5)
     release_n   = int(sample_rate * 0.1)

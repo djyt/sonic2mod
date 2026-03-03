@@ -2,78 +2,58 @@
 """CLI entry point for SMPS-to-MOD conversion.
 
 Usage:
-    python convert.py <input.asm> [--config config.yaml] [--output output.mod]
-    python convert.py <input.asm> --bpm 150 --speed 6 --ticks-per-row 6 --channels 10
+    python convert.py --config configs/song.yaml [--output output/song.mod]
+    python convert.py path/to/song.asm              # quick no-config run
 """
 
 import argparse
 import os
 import sys
 
-from smps_parser import SmpsParser
-from smps2mod import SmpsToModConverter
-from config import ConversionConfig, derive_bpm, SynthesisSettings
+from core.smps_parser import SmpsParser
+from core.smps2mod import SmpsToModConverter
+from core.config import ConversionConfig, derive_bpm, SynthesisSettings
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Sonic 1 SMPS assembly music to Amiga MOD format"
     )
-    parser.add_argument('input', help="Input SMPS assembly file (.asm)")
+    parser.add_argument('input', nargs='?',
+                        help="Input SMPS assembly file (.asm) — overrides config input_file")
     parser.add_argument('--config', '-c', help="YAML configuration file")
-    parser.add_argument('--output', '-o', help="Output MOD file path")
-    parser.add_argument('--bpm', type=int, default=150, help="Target BPM (32-255)")
-    parser.add_argument('--speed', type=int, default=6, help="Target speed / ticks per row (1-31)")
-    parser.add_argument('--ticks-per-row', type=float, default=6.0,
-                        help="SMPS ticks per MOD row")
-    parser.add_argument('--channels', type=int, default=10,
-                        help="Number of MOD channels (4/8/10/12/14/16)")
-    parser.add_argument('--transpose', type=int, default=None,
-                        help="Global transpose override for FM channels")
-    parser.add_argument('--name', help="Song name for MOD file")
-    parser.add_argument('--auto-bpm', action='store_true',
-                        help="Derive BPM from SMPS tempo header (overrides --bpm)")
-    parser.add_argument('--region', choices=['ntsc', 'pal'], default='ntsc',
-                        help="Console region for BPM derivation (default: ntsc)")
+    parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.input):
-        print(f"Error: Input file not found: {args.input}")
-        sys.exit(1)
-
-    # Load or create config
+    # Determine config / input_file
     if args.config:
         config = ConversionConfig.from_yaml(args.config)
-        # Override input/output from CLI if specified
         if args.input:
             config.input_file = args.input
         if args.output:
             config.output_file = args.output
-    else:
-        # Create default config from CLI args
-        song_name = args.name or os.path.splitext(os.path.basename(args.input))[0]
+    elif args.input:
+        song_name = os.path.splitext(os.path.basename(args.input))[0]
         config = ConversionConfig.default_sonic1(song_name)
         config.input_file = args.input
-        config.target_bpm = args.bpm
-        config.target_speed = args.speed
-        config.ticks_per_row = args.ticks_per_row
-        config.num_mod_channels = args.channels
+        if args.output:
+            config.output_file = args.output
+    else:
+        parser.print_help()
+        sys.exit(1)
 
-        if args.transpose is not None:
-            for ch in config.channels:
-                if ch.source.startswith("FM"):
-                    ch.transpose = args.transpose
+    if not config.input_file:
+        print("Error: No input file specified (use positional arg or set input_file in YAML)")
+        sys.exit(1)
 
-        if args.auto_bpm:
-            config.auto_bpm = True
-            config.region = args.region
+    if not os.path.exists(config.input_file):
+        print(f"Error: Input file not found: {config.input_file}")
+        sys.exit(1)
 
-    # Determine output path
-    if args.output:
-        config.output_file = args.output
-    elif not config.output_file or config.output_file == "output.mod":
-        base = os.path.splitext(os.path.basename(args.input))[0]
+    # Default output path if still generic
+    if not args.output and (not config.output_file or config.output_file == "output.mod"):
+        base = os.path.splitext(os.path.basename(config.input_file))[0]
         config.output_file = base.replace(" ", "_") + ".mod"
 
     # Parse SMPS assembly

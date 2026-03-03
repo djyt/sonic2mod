@@ -114,7 +114,7 @@ def main():
         ch_cfg = cfg_by_source.get(source_name)
         transpose_info = f", transpose={ch_cfg.transpose:+d}" if ch_cfg else ""
 
-        jump_info = f" → jump to {ch.jump_target_label}" if ch.has_jump else ""
+        jump_info = f" -> jump to {ch.jump_target_label}" if ch.has_jump else ""
         print(f"  [{ch_type}] {ch.header.label}: "
               f"{note_count} notes, {effect_count} effects, {total_ticks} ticks{transpose_info}{jump_info}")
 

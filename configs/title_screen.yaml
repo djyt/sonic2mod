@@ -1,45 +1,41 @@
+# -------------------------------------------------------------------------------------------------
+# TITLE SCREEN MUSIC Conversion Script
+# -------------------------------------------------------------------------------------------------
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screen7_refactor.mod"
+output_file: "output/title_screenv2_8.mod"
+samples_dir: "./samples/"
+
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
 target_speed: 3             # speed=3, ticks_per_row=3 → BPM unchanged; GCD(FM durations)=3 → exact row mapping
 ticks_per_row: 3
 num_mod_channels: 10
 
+
+# -------------------------------------------------------------------------------------------------
+# Channel layout
+# -------------------------------------------------------------------------------------------------
 channels:
+  # Drums
   - source: DAC
     mod_channel: 0
-    instrument: 1
 
   - source: FM1
     mod_channel: 1
-    transpose: 0             # note placement handled entirely by voice_instrument_map
-    instrument: 4            # fallback before first smpsSetvoice; see voice_map
 
   - source: FM2
     mod_channel: 2
-    transpose: 0             # note placement handled entirely by voice_instrument_map
-    instrument: 5
 
   - source: FM3
     mod_channel: 3
-    transpose: 0             # note placement handled entirely by voice_instrument_map
-    instrument: 6
 
   - source: FM4
     mod_channel: 4
-    transpose: 0             # note placement handled entirely by voice_instrument_map
-    instrument: 7
 
-  # FM5 shares FM1's data with smpsAlterNote $03 — a raw FNUM offset (~10 cents),
-  # not a semitone shift.  FM5 plays the same notes as FM1, just slightly sharp,
-  # creating a chorus "thickening" effect.  channel_instrument_map routes FM5 to
-  # detuned instrument variants (inst 14/15, finetune=+1).
+  # Detuned version of FM1
   - source: FM5
     mod_channel: 5
-    transpose: 0             # note placement handled entirely by voice_instrument_map
-    instrument: 4            # fallback before first smpsSetvoice (same as FM1)
 
   - source: PSG1
     mod_channel: 6
@@ -59,17 +55,27 @@ channels:
     instrument: 11
 
 
-# DAC sample mappings — trigger notes chosen to match native sample rates
-# on the Amiga Paula chip (PAL clock 7,093,789 Hz).
-#
-# Kick:    8,250 Hz native → C2  plays at 8,287 Hz (+0.4%)
-# Snare:  24,000 Hz native → F#3 plays at 23,490 Hz (-2.1%)
-# Timpani: 7,375 Hz native → A#1 plays at 7,389 Hz (+0.2%)
-#   Timpani variants use the same sample at scaled rates:
-#   Hi (×1.30):  9,588 Hz → D#2 plays at 9,853 Hz (+2.8%)
-#   Mid (×1.20): 8,850 Hz → C#2 plays at 8,779 Hz (-0.8%)
-#   Low (×0.97): 7,154 Hz → A1  plays at 6,982 Hz (-2.4%)
-#   VLow (×0.95):7,006 Hz → A1  plays at 6,982 Hz (-0.3%)
+# -------------------------------------------------------------------------------------------------
+# Samples. FM samples auto-generated if synthesis: true in settings.yaml
+#          Format: mod_instrument, filename, default volume, finetuning
+# -------------------------------------------------------------------------------------------------
+sample_list:
+  # --- percussion ---
+  - [1, "kick.raw",          64, 0]
+  - [2, "snare.raw",         64, 0]
+  # --- voice $00: bright lead synth (FM1 + FM5) ---
+  - [3, "fm_voice0.raw",     32, 0]
+  # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
+  - [4, "fm_voice0.raw",     32, 1]
+  # --- voice $01: bass / sustain pad (FM2 + FM3/FM4 ending) ---
+  - [5, "fm_voice1.raw",     32, 0]
+  # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
+  - [6, "fm_voice2.raw",     32, 0]
+
+
+# -------------------------------------------------------------------------------------------------
+# DAC Mappings: Kick & Snare only
+# -------------------------------------------------------------------------------------------------
 dac_samples:
   - name: dKick
     mod_instrument: 1
@@ -77,113 +83,28 @@ dac_samples:
   - name: dSnare
     mod_instrument: 2
     mod_note: Fs3
-  - name: dTimpani
-    mod_instrument: 3
-    mod_note: As1
-  - name: dHiTimpani
-    mod_instrument: 3
-    mod_note: Ds2
-  - name: dMidTimpani
-    mod_instrument: 3
-    mod_note: Cs2
-  - name: dLowTimpani
-    mod_instrument: 3
-    mod_note: A1
-  - name: dVLowTimpani
-    mod_instrument: 3
-    mod_note: A1
 
 
-# Sample list — loaded from samples_dir at conversion time.
-#
-# DAC percussion: export from the Sonic 1 disassembly WAV files, convert to
-# 8-bit mono signed raw PCM with sox:
-#   sox kick.wav    -t raw -r  8250 -e signed -b 8 -c 1 kick.raw
-#   sox snare.wav   -t raw -r 24000 -e signed -b 8 -c 1 snare.raw
-#   sox timpani.wav -t raw -r  7375 -e signed -b 8 -c 1 timpani.raw
-#
-# FM voices: capture the YM2612 playing each voice patch at the root note,
-# 8-bit mono signed raw PCM.  Required sample rate per root note
-# (PAL Amiga clock 7,093,789 Hz, rate = clock / (2 × MOD period)):
-#
-#   Root A1  →  6,982 Hz  (period 508)    Root F#2 → 11,746 Hz  (period 302)
-#   Root C2  →  8,289 Hz  (period 428)    Root G3  → 24,804 Hz  (period 143)
-#   Root A2  → 13,964 Hz  (period 254)
-#
-# After recording, convert with sox (substitute the correct <rate>):
-#   sox fm_voice0_lo.wav  -t raw -r 11746 -e signed -b 8 -c 1 fm_voice0_lo.raw
-#   sox fm_voice0_hi.wav  -t raw -r 24804 -e signed -b 8 -c 1 fm_voice0_hi.raw
-#   sox fm_voice1_lo.wav  -t raw -r  6982 -e signed -b 8 -c 1 fm_voice1_lo.raw
-#   sox fm_voice1_mid.wav -t raw -r  8289 -e signed -b 8 -c 1 fm_voice1_mid.raw
-#   sox fm_voice2.wav     -t raw -r 13964 -e signed -b 8 -c 1 fm_voice2.raw
-sample_list:
-  # --- percussion ---
-  - [1, "kick.raw",          64, 0]
-  - [2, "snare.raw",         64, 0]
-  - [3, "timpani.raw",       64, 0]
-  # --- voice $00: bright lead synth (FM1 + FM5) ---
-  - [4,  "fm_voice0_lo.raw", 32, 0]   # source G5–G6;  output F#2–F#3  (root F#2, 11,746 Hz)
-  - [12, "fm_voice0_hi.raw", 32, 0]   # source Gs6–C7; output G3–B3    (root G3,  24,804 Hz)
-  # --- voice $01: bass / sustain pad (FM2 + FM3/FM4 ending) ---
-  - [5,  "fm_voice1_lo.raw",  32, 0]  # source A2–B2;  output A1–B1    (root A1,   6,982 Hz)
-  - [13, "fm_voice1_mid.raw", 32, 0]  # source C3–D4;  output C2–D3    (root C2,   8,289 Hz)
-  # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
-  - [6,  "fm_voice2.raw",    32, 0]   # source A5–G6;  output A2–G3    (root A2,  13,964 Hz)
-  # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
-  - [14, "fm_voice0_lo.raw", 32, 1]   # FM5 lo: same audio as inst 4, finetune +1
-  - [15, "fm_voice0_hi.raw", 32, 1]   # FM5 hi: same audio as inst 12, finetune +1
-
-samples_dir: "./samples/"
-
-
+# -------------------------------------------------------------------------------------------------
 # Per-voice instrument splits by source-note range.
-#
-# Ranges are in SMPS source-note space: (note_value − $81) + smpsAlterNote,
-# before any channel transpose.  low/high use SMPS note names without the
-# leading 'n' (e.g. 'G5', 'Gs6', 'C7').
-#
-# root — the MOD note that source `low` plays at.
-#        output = root + (source_semitone − low), clamped C1–B3.
-#
-# Entries are checked in order; first match wins.  Unmatched notes fall back
-# to chan_cfg.instrument with the channel's transpose.
-#
+# -------------------------------------------------------------------------------------------------
 voice_map:
-
   # Voice $00 — bright lead synth (FM1 + FM5)
-  # FM1: source G5–A6  (67–81) → output F#2–G#3
-  # FM5: same source semitones as FM1 (smpsAlterNote $03 is FNUM offset, not semitones)
-  # Split at Gs6 (source 80) to keep the two octave bands on separate samples.
-  # FM5 is routed via channel_instrument_map to inst 14/15 (finetune +1) instead.
   0:
-    - low:  G5            # source 67 — bottom of FM1's range
-      high: G6            # source 79 — one below the split
-      mod_instrument: 4   # fm_voice0_lo.raw (root F#2)
-      root: F2s           # G5→F#2 (MOD 18);  G6→F#3 (MOD 30)
-    - low:  Gs6           # source 80 — top notes of FM1, all of FM5's upper range
-      high: C7            # source 84 — A6+3 (FM5's ceiling)
-      mod_instrument: 12  # fm_voice0_hi.raw (root G3)
-      root: G3            # Gs6→G3 (MOD 31);  C7→B3 (MOD 35)
+    - low:  G5
+      high: A6
+      mod_instrument: 3
+      root: G2
+      synth_root: G5
 
   # Voice $01 — bass / sustain pad
-  # FM2:         source A2–D4 (33–50) → output A1–D3
-  # FM4 ending:  source A2    (33)    → output A1
-  # FM3 ending:  source C3    (36, nA2 + smpsAlterNote +3) → output C2
-  # Split at C3 (source 36) to place FM3/FM4's ending bass on the lo sample.
   1:
     - low:  A2            # source 33 — FM2 low notes + FM4 ending bass
-      high: B2            # source 35
+      high: D4            # source 35
       mod_instrument: 5   # fm_voice1_lo.raw (root A1)
-      root: A2            # A2→A1 (MOD 9);  B2→B1 (MOD 11) — root +12 vs sample; pitch_offset -12 cancels
-    - low:  C3            # source 36 — FM3 ending bass + bulk of FM2 melody
-      high: D4            # source 50 — top of FM2's range
-      mod_instrument: 13  # fm_voice1_mid.raw (root C2)
-      root: C2            # C3→C1 (MOD 0);  D4→D2 (MOD 14) [with pitch_offset -12]
+      root: A1
 
   # Voice $02 — harmony chord stabs (FM3/FM4 main melody only)
-  # FM3: source Cs6–G6 (73–79) → output C#3–G3
-  # FM4: source A5–D6  (69–74) → output A2–D3
-  # Tight 10-semitone span; a single sample covers the range cleanly.
   2:
     - low:  A5            # source 69 — bottom of FM4's range
       high: G6            # source 79 — top of FM3's range
@@ -191,22 +112,17 @@ voice_map:
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)
 
 
+# -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.
 #
-# FM5 shares FM1's data.  smpsAlterNote $03 is a raw FNUM offset (~10 cents),
-# not a semitone shift — FM5 plays the exact same source semitones as FM1.
-# The channel override routes those notes to inst 14/15, which are the same
-# audio content as FM1's inst 4/12 but carry finetune=+1 (+12.5 cents) to
-# approximate the hardware detune effect.
-#
+# FM5 shares FM1's data. smpsAlterNote $03 is a raw FNUM offset (~12.5 cents).
+# Approximate hardware effect by fine-tuning a version of the sample.
+# -------------------------------------------------------------------------------------------------
 channel_instrument_map:
   FM5:
     0:
-      - low:  G5            # source 67 — same bottom as FM1's range 0
-        high: G6            # source 79 — same split point as FM1
-        mod_instrument: 14  # fm_voice0_lo.raw + finetune +1 (root F#2)
-        root: F2s           # G5→F#2 (MOD 18);  G6→F#3 (MOD 30) — identical pitch to FM1
-      - low:  Gs6           # source 80 — same upper range as FM1
-        high: C7            # source 84
-        mod_instrument: 15  # fm_voice0_hi.raw + finetune +1 (root G3)
-        root: G3            # Gs6→G3 (MOD 31);  C7→B3 (MOD 35) — identical pitch to FM1
+      - low:  G5
+        high: A6
+        mod_instrument: 4
+        root: G2
+        synth_root: G5

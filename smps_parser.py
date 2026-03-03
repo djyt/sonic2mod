@@ -89,6 +89,7 @@ class SmpsSong:
     header: SmpsSongHeader
     channels: list = field(default_factory=list)  # list of SmpsChannel
     voices: list = field(default_factory=list)     # list of SmpsVoice
+    label_tick_pos: dict = field(default_factory=dict)  # label_name -> cumulative tick position
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +129,9 @@ class SmpsParser:
 
         voices = self._parse_voices(header.voice_label)
 
-        return SmpsSong(header=header, channels=channels, voices=voices)
+        song = SmpsSong(header=header, channels=channels, voices=voices)
+        song.label_tick_pos = dict(self.label_tick_pos)
+        return song
 
     def _preprocess(self, text):
         """Strip comments, blank lines, normalize whitespace."""

@@ -127,6 +127,8 @@ Notes outside C1–B3 after transpose are clamped with a warning. Use per-channe
 
 Routes a SMPS voice index + source-note range to a specific MOD instrument slot, with an optional pitch anchor (`root`) and optional synthesis-pitch override (`synth_root`).
 
+For synthesis pitch matching (how `root`, `synth_root`, and `low` interact with `target_rate`), see `docs/synthesis.md` §Pitch.
+
 ```yaml
 voice_map:
   0:                          # SMPS voice index (from smpsSetvoice)

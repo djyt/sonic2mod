@@ -8,6 +8,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 |----------|----------|
 | `docs/smps_driver.md` | **Sonic 1 driver reference** — all coord flag bytes ($E0–$F9), smpsDetune vs smpsChangeTransposition, timing system, smpsModSet, smpsNoteFill, FM operator order, DAC, PSG |
 | `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas |
+| `docs/synthesis.md` | **YM2612 synthesis pipeline** — root/synth_root/target_rate explained, all settings, normalization, headroom/carrier balance, OPN2 internals, API reference, common mistakes |
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
@@ -161,43 +162,27 @@ voice_map:
 
 ## YM2612 Synthesis (Segments 1–5 — all complete)
 
-All segments complete. Enable synthesis: set `synthesis.enabled: true` in `configs/settings.yaml`.
-**Sample generator:** `python ym2612/sample_generator.py` → `output/sample_gen_test.raw`.
-`generate_fm_samples(song, config, synth)` → `{inst_num: (pcm_bytes, target_rate_hz)}`.
+Full reference: `docs/synthesis.md`.
 
-**FM synthesis pitch:**
-- `synth_note_idx = entry.low - 12` (or `entry.synth_root - 12` if set) — YM2612 synthesizes at this SMPS note's frequency
-- `target_rate = round(amiga_clock / PERIOD_TABLE[entry.root.value])` — always; no compensation applied for `synth_root`
-- Output pitch = synthesis pitch (= `low` when no synth_root, = `synth_root` otherwise)
-- FM timbre is pitch-dependent — synthesizing 3+ octaves lower produces unrecognisable sound
-- SMPS semitone offset: semitone 0 = C0; `render_note` idx 0 = C1 → `synth_note_idx = entry.low - 12`
-- For channels with smpsAlterPitch, set `synth_root` to the chip's actual pitch
+Enable: `synthesis.enabled: true` in `configs/settings.yaml`.
 
-**Fallback synthesis:** `synth_idx=48` (C5, 523 Hz). For voices with source notes ≥ G6 and algorithm 4, add an explicit `voice_map` entry with correct `low` to avoid brightness loss.
+**Smoke tests:**
+```bash
+python ym2612/validate.py           # A4 tone → output/validate_test.raw
+python ym2612/renderer.py           # voice 1 at A3 → output/renderer_test.raw
+python ym2612/sample_generator.py   # voice 1, root=A3 → output/sample_gen_test.raw
+```
 
-**Validate:** `python ym2612/validate.py` — renders A4 tone, prints SUCCESS/WARNING.
-**Renderer validate:** `python ym2612/renderer.py` — renders voice 1 at A3 (220 Hz).
-Smoke test raw files use **true 16-bit PCM** — do NOT upscale from 8-bit (×256).
+**Pitch summary:**
+- `synth_note_idx = entry.low - 12` (or `entry.synth_root - 12`) — SMPS semitone → renderer index (−12 offset: idx 0 = C1, not C0)
+- `target_rate = round(amiga_clock / PERIOD_TABLE[root.value])` — always from `root`; `synth_root` does NOT affect it
+- For channels with smpsChangeTransposition: set `synth_root = low + total_transpose − chan_transpose` so chip pitch matches synthesis pitch
+- FM timbre is pitch-dependent — missing synth_root on a bass voice synthesizes 3 octaves too high → thin/silent output
 
-**render_note API:** `render_note(voice, mod_note_index, sustain_secs=1.5, release_secs=0.5,
-target_rate=None, opn2=None, channel=0) → (bytes, int)` — always resets OPN2 internally.
-
-**Critical OPN2_Clock timing:** In YM2612 mode, `OPN2_Clock()` time-multiplexes 6 channels
-across 24 internal clocks. `mol`/`mor` is `audio×3` at the 6 output-enable clocks
-(`cycles & 3 == 3`), and `sign×3` (≈ ±3 DC bias) at all other clocks. `render_samples()`
-**accumulates all 24 values per sample** and subtracts `DC = 72` (24×3) to zero-centre.
-Do NOT take only the last clock's value — it captures DC bias, not audio.
-
-**OPN2 register write:** Each `write_reg()` call clocks 24× after address and 24× after data.
-Key-on (reg 0x28): bits[6:4]=operator mask, bits[2:0]=channel (ch 3-5 map to 4-6).
-Bank 0 = ch 0-2 (ports 0/1), Bank 1 = ch 3-5 (ports 2/3).
-
-**Critical SMPS operator → YM register offset mapping:** `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`
-— SMPS OP1→YM offset 0x0C, OP2→0x04, OP3→0x08, OP4→0x00. Do NOT use (0x00, 0x08, 0x04, 0x0C).
-Source: `s1.sounddriver.asm` FMInstrumentOperatorTable + `_smps2asm_inc.asm` smpsDcb (else/non-v2 branch).
-
-**Headroom / carrier balance:** `configs/settings.yaml` `headroom_db: 6.0`, `carrier_balance: true`.
-Boosts carrier TL at register-write time to prevent YM2612 DAC saturation before Python normalization.
+**Critical constants (do not change):**
+- `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` — wrong mapping → distorted output
+- `render_samples()` accumulates all 24 OPN2_Clock values per sample, subtracts DC=72 — do NOT use only last clock value
+- `headroom_db: 6.0`, `carrier_balance: true` in settings.yaml — prevents DAC clipping on multi-carrier algorithms
 
 ## Testing
 

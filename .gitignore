@@ -3,3 +3,4 @@
 /reference
 /output
 *__pycache__*
+*.workspace

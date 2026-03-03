@@ -11,3 +11,11 @@ synthesis:
   normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)
   headroom_db: 6.0          # base headroom below clip applied to every carrier (dB); 6 dB ≈ 8 TL steps
   carrier_balance: true     # add extra TL per carrier count so alg 4/5/6/7 don't clip harder than alg 0-3
+
+psg_synthesis:
+  enabled: false           # Set true to auto-generate PSG samples via SN76489 emulation
+  clock_rate: 3546895      # SN76489 PAL Mega Drive clock (Hz)
+  amiga_clock: 3546895     # PAL Amiga clock for MOD target-rate calculation
+  sustain_duration: 1.0    # Seconds of tone held before key-off
+  release_padding: 0.2     # Seconds of silence/release after key-off
+  normalize_samples: false # true = per-sample peak normalize; false = global (preserves relative balance)

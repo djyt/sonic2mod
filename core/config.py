@@ -67,6 +67,40 @@ class DacSampleConfig:
 
 
 @dataclass
+class PsgInstrumentEntry:
+    mod_instrument: int                      # MOD slot (1-based)
+    type: str                                # "tone" | "white_noise" | "periodic_noise"
+    root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
+    synth_root: Optional['ModNote'] = None  # Synthesis pitch override (None = use root)
+    noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
+
+
+@dataclass
+class PsgSynthesisSettings:
+    enabled: bool = False
+    clock_rate: int = 3_546_895      # SN76489 PAL MD clock (Hz)
+    amiga_clock: int = 3_546_895     # PAL Amiga clock for target_rate calculation
+    sustain_duration: float = 1.0
+    release_padding: float = 0.2
+    normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
+
+    @classmethod
+    def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
+        import yaml
+        with open(filepath) as f:
+            data = yaml.safe_load(f)
+        s = data.get("psg_synthesis", {})
+        return cls(
+            enabled=s.get("enabled", False),
+            clock_rate=s.get("clock_rate", 3_546_895),
+            amiga_clock=s.get("amiga_clock", 3_546_895),
+            sustain_duration=s.get("sustain_duration", 1.0),
+            release_padding=s.get("release_padding", 0.2),
+            normalize_samples=s.get("normalize_samples", False),
+        )
+
+
+@dataclass
 class SynthesisSettings:
     enabled: bool = False
     mode: str = "ym2612"
@@ -147,6 +181,7 @@ class ConversionConfig:
     voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}
     legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
+    psg_map: list = field(default_factory=list)           # list[PsgInstrumentEntry]
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -298,6 +333,20 @@ class ConversionConfig:
                 config.channel_instrument_map[ch_name][int(str(voice_key), 0)] = [
                     _parse_instrument_range(e) for e in range_list
                 ]
+
+        # Parse psg_map
+        for psg_entry in data.get('psg_map', []):
+            root_note = ModNote[psg_entry['root']]
+            synth_root = None
+            if 'synth_root' in psg_entry:
+                synth_root = ModNote[psg_entry['synth_root']]
+            config.psg_map.append(PsgInstrumentEntry(
+                mod_instrument=psg_entry['mod_instrument'],
+                type=psg_entry['type'],
+                root=root_note,
+                synth_root=synth_root,
+                noise_rate=psg_entry.get('noise_rate', 0),
+            ))
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

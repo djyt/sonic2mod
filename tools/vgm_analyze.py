@@ -46,9 +46,13 @@ _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 def _fnum_to_hz(fnum: int, block: int, clock: int) -> float:
     """Convert YM2612 fnum/block pair to frequency in Hz.
 
-    Formula: freq = clock × fnum / (144 × 2^(21 − block))
+    Formula: freq = clock x fnum / (144 x 2^(20 - block))
+
+    From OPN2 datasheet: Fnum = f0 x 2^(20-B) / (fM/144)
+    => f0 = Fnum x fM / (144 x 2^(20-B))
+    Verified: A4=440 Hz -> fnum=541, block=4 with clock=7670454.
     """
-    return clock * fnum / (144 * (1 << (21 - block)))
+    return clock * fnum / (144 * (1 << (20 - block)))
 
 
 def _nearest_note(freq: float) -> str:

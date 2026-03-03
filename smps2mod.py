@@ -144,7 +144,7 @@ class SmpsToModConverter:
         mod_chan = chan_cfg.mod_channel
         instrument = chan_cfg.instrument
         volume = chan_cfg.volume
-        transpose = chan_cfg.transpose
+        transpose = chan_cfg.transpose + channel.header.pitch_offset
 
         # Per-channel state
         current_volume = volume

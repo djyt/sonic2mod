@@ -35,7 +35,8 @@ Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (a
       │  3. Optionally run generate_fm_samples() → synthesized PCM
       │  4. Load sample files from sample_list (or placeholders)
       │  5. For each configured channel: walk SmpsEvent list → write MOD rows
-      │  6. Set song loop (Bxx) from first smpsJump event found
+      │  6. Set song loop (Bxx) from smpsJump targets; target pattern = max
+      │     loop-start tick across all channels
       │
       ▼
   ModFile → mod.get_bytes()        mod.py
@@ -57,7 +58,7 @@ One effect per note-row in MOD format. See `docs/effects.txt` for full ProTracke
 | `smpsModOn` | $F1 | — | Vibrato (continues) | `4xy` | Re-activates stored params |
 | `smpsModOff` | $F4 | — | (clears vibrato state) | none | No MOD effect; future notes have no vibrato |
 | `smpsNoteFill` | $E8 | byte 1–15 | Note Cut | `ECx` (Cmd EC) | x = fill ticks (4-bit); values > 15 not representable |
-| `smpsJump` | $F6 | address | Position Jump | `Bxx` (Cmd B) | xx = target pattern position; first occurrence per song only |
+| `smpsJump` | $F6 | address | Position Jump | `Bxx` (Cmd B) | Target = pattern containing the latest channel loop-start tick; Bxx placed at row 63 of the final pattern |
 | `smpsLoop` | $F7 | idx,count,addr | (none — unrolled) | — | Loop body replayed at parse time |
 | `smpsCall` | $F8 | address | (none — inlined) | — | Subroutine events spliced into caller |
 | `smpsSetvoice` | $EF | voice index | (instrument routing) | — | Updates voice_map lookup; no direct MOD effect |

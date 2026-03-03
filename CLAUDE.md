@@ -107,7 +107,10 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsPan` | $E0 | ignored | MOD panning is channel-based |
 | `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
 | `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
-| `smpsNop`, `smpsPSGform`, `smpsPSGvoice` | $E2,$F3,$F5 | ignored | No MOD equivalent |
+| `smpsPSGAlterVol` | $EC | `Cxx` | Same path as smpsAlterVol; delta adds to current_volume |
+| `smpsPSGform` | $F3 | (instrument switch) | Looks up `psg_form_map[byte]` → new instrument |
+| `smpsPSGvoice` | $F5 | (instrument switch) | Looks up `psg_voice_map[label]` → new instrument |
+| `smpsNop` | $E2 | ignored | No MOD equivalent |
 
 **Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).
 

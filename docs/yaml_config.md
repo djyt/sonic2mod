@@ -190,6 +190,57 @@ synth_idx   = synth_root − 12                    # synthesis at synth_root's f
 
 If `voice_map` entries cover the full note range of a channel, the base YAML `transpose` is redundant. Set `transpose: 0` and let `root` control pitch placement entirely.
 
+## PSG Instrument Mapping
+
+### psg_map
+
+Defines synthesized PSG instruments for `sn76489` synthesis.
+
+```yaml
+psg_map:
+  - mod_instrument: 7      # MOD instrument slot (1-based)
+    type: tone             # "tone" | "white_noise" | "periodic_noise"
+    root: A3               # MOD note that determines target_rate (playback pitch)
+    synth_root: A3         # (optional) synthesis pitch override
+    noise_rate: 0          # Noise only: preset divider 0/1/2 (ignored for tone)
+```
+
+`type` values:
+- `tone` — square-wave tone at the frequency of `root`
+- `white_noise` — random noise; corresponds to `smpsPSGform $E4`–`$E7`
+- `periodic_noise` — periodic noise; corresponds to `smpsPSGform $E0`–`$E3`
+
+### psg_form_map
+
+Maps `smpsPSGform` byte values → MOD instrument numbers. When `smpsPSGform $E7` appears
+in channel data, the PSG channel switches to the specified instrument for subsequent notes.
+Bytes not in the map are silently ignored.
+
+```yaml
+psg_form_map:
+  0xE7: 8    # white noise → instrument 8
+  0xE4: 9    # white noise (slower rate) → instrument 9
+```
+
+SN76489 noise register byte encoding:
+- Bits [1:0]: rate — 0=N/512, 1=N/1024, 2=N/2048, 3=PSG3 tone freq
+- Bit [2]: type — 0=periodic, 1=white noise
+- `$E0`–`$E3` = periodic noise; `$E4`–`$E7` = white noise; `$E7` is most common in Sonic 1
+
+### psg_voice_map
+
+Maps `smpsPSGvoice` envelope labels → MOD instrument numbers. Labels are the symbolic
+names from the SMPS assembly (`fTone_01`–`fTone_09` in Sonic 1).
+
+```yaml
+psg_voice_map:
+  fTone_01: 7     # default square-wave envelope → instrument 7
+  fTone_03: 10    # softer attack envelope → instrument 10
+```
+
+When `smpsPSGvoice fTone_03` appears in channel data, the PSG channel switches to
+instrument 10. Labels not in the map are silently ignored.
+
 ## Timing
 
 The relationship between SMPS ticks and MOD rows:

@@ -228,7 +228,19 @@ class SmpsToModConverter:
                 elif eff.effect_type == 'smpsChangeTransposition':
                     transpose += eff.params[0]
 
-                # smpsPan, smpsNop, smpsPSGform, smpsPSGvoice: ignored
+                elif eff.effect_type == 'smpsPSGform':
+                    form_byte = eff.params[0]
+                    new_inst = self.config.psg_form_map.get(form_byte)
+                    if new_inst is not None:
+                        instrument = new_inst
+
+                elif eff.effect_type == 'smpsPSGvoice':
+                    label = eff.params[0]
+                    new_inst = self.config.psg_voice_map.get(label)
+                    if new_inst is not None:
+                        instrument = new_inst
+
+                # smpsPan, smpsNop: no MOD equivalent
                 continue
 
             if event.is_note:

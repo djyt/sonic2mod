@@ -25,16 +25,16 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E9 | `smpsChangeTransposition` | `smpsAlterPitch` | signed byte | **Semitone shift** — add to SMPS_Track.Transpose; all subsequent notes pitched accordingly | → updates `total_transpose`; affects note placement |
 | $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier | ignored |
 | $EB | `smpsSetTempoDiv` | — | byte | Set global tempo divider | ignored |
-| $EC | `smpsPSGAlterVol` | — | signed byte | PSG volume attenuation delta | ignored |
+| $EC | `smpsPSGAlterVol` | — | signed byte | PSG volume attenuation delta | → `Cxx` Set Volume (same as smpsAlterVol) |
 | $ED | (S1 specific) | — | — | Clear "push block" sound flag | ignored |
 | $EE | `smpsStopSpecial` | — | — | Stop special SFX, resume interrupted music track | ignored |
 | $EF | `smpsFMvoice` | `smpsSetvoice` | voice index | Load FM voice at index into YM2612 registers | → instrument routing via `voice_map` |
 | $F0 | `smpsModSet` | — | wait, speed, change, step | Set modulation (vibrato) parameters; enables modulation flag | → `4xy` Vibrato |
 | $F1 | `smpsModOn` | — | — | Re-enable modulation (uses stored params) | → activates `4xy` |
 | $F2 | `smpsStop` | — | — | End of channel data | terminates parsing |
-| $F3 | `smpsPSGform` | — | byte | Set PSG noise/waveform register | ignored |
+| $F3 | `smpsPSGform` | — | byte | Set PSG noise/waveform register | → instrument switch via `psg_form_map` config |
 | $F4 | `smpsModOff` | — | — | Disable modulation | → clears vibrato state |
-| $F5 | `smpsPSGvoice` | — | byte | Set PSG tone envelope index | ignored |
+| $F5 | `smpsPSGvoice` | — | label | Set PSG tone envelope index | → instrument switch via `psg_voice_map` config |
 | $F6 | `smpsJump` | — | address | Unconditional jump (song loop point) | → `Bxx` Position Jump (first occurrence only) |
 | $F7 | `smpsLoop` | — | index, count, address | Loop back to address count times | unrolled at parse time |
 | $F8 | `smpsCall` | — | address | Call subroutine at address | inlined at parse time |

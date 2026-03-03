@@ -89,7 +89,7 @@ def generate_fm_samples(
         _freq = note_to_freq(synth_idx)
         _fnum, _block = freq_to_fnum_block(_freq, synth.clock_rate)
         print(f"  [synth] inst={entry.mod_instrument} voice=${voice_idx:02X} "
-              f"synth_idx={synth_idx} → {_freq:.1f} Hz → fnum={_fnum} block={_block}")
+              f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
 
         headroom_tl = round(synth.headroom_db / 0.75)
         with warnings.catch_warnings(record=True) as caught:

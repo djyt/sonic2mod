@@ -74,15 +74,41 @@ dc.b  nC3, $0C, nD3, nE3    ; C3 for $0C ticks, then D3 for $0C, then E3 for $0C
 
 ### Standalone Duration Bytes
 
-A duration byte not preceded by a note on the same `dc.b` line acts as a **wait/sustain** command. It advances the tick counter by that many ticks while sustaining or silencing.
+A duration byte not preceded by a note **implicitly re-triggers the last note** for that duration.
+It is not a wait or sustain — it is identical to writing the previous note byte again.
+
+> *"Once either a note or a duration value is defined, you can omit repetition of those values;
+> however, you must always define a note before you can define a duration for the first time."*
+> — Sonic Retro SCHG: Music Hacking / Voice and Note Editing
+
+The driver calls `PSGDoNoteOn + PSGDoVolFX` (and the FM equivalent) on **every** `DurationTimeout`
+expiry regardless of whether the next data byte is a note or a duration. For PSG noise, this
+restores the channel volume from `$FF` (silenced by the previous note-cut) back to audible,
+producing a new hit.
 
 ```asm
-; In a PSG noise channel loop body:
 smpsNoteFill  $03
-dc.b  nMaxPSG, $0C    ; play nMaxPSG for 12 ticks
+dc.b  nMaxPSG, $0C    ; trigger nMaxPSG for 12 ticks (fill fires at tick 3)
 smpsNoteFill  $0C
-dc.b  $0C              ; wait/sustain 12 more ticks (standalone duration)
+dc.b  $0C              ; re-trigger nMaxPSG for 12 ticks (fill=duration → never fires)
+smpsNoteFill  $03
+dc.b  $0C              ; re-trigger nMaxPSG for 12 ticks (fill fires at tick 3)
 ```
+
+This is equivalent to:
+
+```asm
+smpsNoteFill  $03
+dc.b  nMaxPSG, $0C
+smpsNoteFill  $0C
+dc.b  nMaxPSG, $0C    ; same note repeated explicitly
+smpsNoteFill  $03
+dc.b  nMaxPSG, $0C
+```
+
+**`smpsNoteFill` fill = duration edge case:** when fill value equals the duration (e.g. both `$0C`),
+`DurationTimeout` expiry takes the `PSGDoNext` path rather than `.notegoing`, so `NoteTimeoutUpdate`
+is never reached on that frame and the fill never fires. The note sustains the full duration.
 
 ## Effect Macros
 

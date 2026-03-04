@@ -293,6 +293,30 @@ The third PSG channel can drive the SN76489 noise register via `smpsPSGform`:
 
 In Sonic 1 songs, PSG3 typically plays a noise-based rhythm pattern using `nMaxPSG` as the trigger note and `smpsNoteFill` for note-cut timing.
 
+### PSGUpdateTrack retrigger on every DurationTimeout
+
+`PSGUpdateTrack` structure on every driver frame:
+
+```
+subq.b #1, DurationTimeout
+bne   .notegoing          ; still counting → go to .notegoing
+; ─── DurationTimeout expired ───
+bclr  #4                  ; clear some flag
+jsr   PSGDoNext           ; consume next data byte (note OR standalone duration)
+jsr   PSGDoNoteOn         ; write frequency to SN76489 (uses stored Freq)
+bra   PSGDoVolFX          ; restore volume (key-on if previously silenced)
+.notegoing:
+  ; NoteTimeoutUpdate, PSGUpdateVolFX, DoModulation, PSGUpdateFreq
+```
+
+**Key implication:** `PSGDoNoteOn` and `PSGDoVolFX` are called unconditionally after *every*
+`DurationTimeout` expiry, regardless of whether `PSGDoNext` read a note byte or a duration byte.
+For PSG noise, `PSGDoVolFX → SetPSGVolume` restores the channel volume from `$FF` (set by the
+preceding `PSGNoteOff`) back to the audible level — this is a full key-on / retrigger.
+
+This means **standalone `dc.b $XX` duration bytes produce real note retriggers**, not waits.
+See `docs/smps_format.md` § Standalone Duration Bytes for the format-level description.
+
 ### smpsAlterNote on PSG
 
 `smpsAlterNote` on PSG channels adds to the SN76489 period counter, similar to YM2612 FNUM offset. Effect is sub-semitone detune — less commonly used than on FM.

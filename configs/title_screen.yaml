@@ -3,14 +3,14 @@
 # -------------------------------------------------------------------------------------------------
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screenv2_8.mod"
+output_file: "output/title_screenv2_9.mod"
 samples_dir: "./samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
 target_speed: 3             # speed=3, ticks_per_row=3 → BPM unchanged; GCD(FM durations)=3 → exact row mapping
 ticks_per_row: 3
-num_mod_channels: 10
+num_mod_channels: 8
 
 
 # -------------------------------------------------------------------------------------------------
@@ -37,22 +37,10 @@ channels:
   - source: FM5
     mod_channel: 5
 
-  - source: PSG1
-    mod_channel: 6
-    transpose: -36
-    instrument: 9
-    enabled: false
-
-  - source: PSG2
-    mod_channel: 7
-    transpose: -36
-    instrument: 10
-    enabled: false
-
+  # White Noise Channel
   - source: PSG3
-    mod_channel: 8
-    transpose: -36           # SMPS octaves 3–5 → MOD C1–B3
-    instrument: 11
+    mod_channel: 6
+    transpose: -36          # A5 -> A3 [psg_map is used only by the synthesis pipeline so transpose here]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -63,6 +51,9 @@ sample_list:
   # --- percussion ---
   - [1, "kick.raw",          64, 0]
   - [2, "snare.raw",         64, 0]
+  
+  # Note the below don't really need to be specified here, other than using the volume/pitch
+  
   # --- voice $00: bright lead synth (FM1 + FM5) ---
   - [3, "fm_voice0.raw",     32, 0]
   # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
@@ -71,6 +62,8 @@ sample_list:
   - [5, "fm_voice1.raw",     32, 0]
   # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
   - [6, "fm_voice2.raw",     32, 0]
+  # --- PSG White Noise ---
+  - [7, "psg_noise.raw",     16, 0]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -112,6 +105,23 @@ voice_map:
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)
 
 
+# -------------------------------------------------------------------------------------------------
+# PSG Sounds
+# -------------------------------------------------------------------------------------------------
+psg_form_map:
+  0xE7: 7                  # white noise → mod_instrument 7
+
+psg_map:
+  - mod_instrument: 7      # MOD instrument slot (1-based)
+    root: A3               # MOD note that determines target_rate (playback pitch)
+    type: white_noise      # "tone" | "white_noise" | "periodic_noise"
+    synth_root: A3         # (optional) synthesis pitch override
+    noise_rate: 0          # Noise only: preset divider 0/1/2 (ignored for tone)
+                           # $E7 is rate=3 (PSG3-locked) — use 0 as closest preset
+    envelope: PSG4         # fTone_04 — quick stepped fade (10 frames)
+    base_volume: 0         # SN76489 base attenuation (0=max)
+    
+    
 # -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.
 #

@@ -39,6 +39,19 @@ from sn76489.renderer import (                                    # noqa: E402
 # Public API
 # ---------------------------------------------------------------------------
 
+def _resolve_envelope(entry: 'PsgInstrumentEntry', psg_synth: 'PsgSynthesisSettings'):
+    """Return envelope list or None. Resolves string names via psg_synth.psg_envelope_tables."""
+    e = entry.envelope
+    if e is None:
+        return None
+    if isinstance(e, str):
+        table = psg_synth.psg_envelope_tables.get(e)
+        if table is None:
+            print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
+        return table
+    return e  # already a list
+
+
 def generate_psg_samples(
     config: ConversionConfig,
     psg_synth: PsgSynthesisSettings,
@@ -46,14 +59,16 @@ def generate_psg_samples(
     """Render PSG samples for every PsgInstrumentEntry in config.psg_map.
 
     Args:
-        config:    ConversionConfig — provides psg_map.
-        psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release.
+        config:    ConversionConfig — provides psg_map and region.
+        psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release/psg_envelope_tables.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
     """
     if not config.psg_map:
         return {}
+
+    fps = 50.0 if config.region.lower() == 'pal' else 60.0
 
     raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
     seen: set[int] = set()
@@ -74,6 +89,9 @@ def generate_psg_samples(
         else:
             synth_note_idx = mod_root_idx
 
+        resolved_env = _resolve_envelope(entry, psg_synth)
+        env_info = f" envelope={entry.envelope}({len(resolved_env)}fr)" if resolved_env else ""
+
         entry_type = entry.type.lower()
 
         if entry_type == "tone":
@@ -81,7 +99,7 @@ def generate_psg_samples(
             n_val   = note_to_psg_n(synth_note_idx, psg_synth.clock_rate)
             print(f"  [psg synth] inst={inst_num} tone  "
                   f"synth_note={synth_note_idx} freq={freq_hz:.1f}Hz N={n_val}  "
-                  f"root={entry.root.name} rate={target_rate}Hz")
+                  f"root={entry.root.name} rate={target_rate}Hz{env_info}")
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 mono, rate = render_psg_tone_raw(
@@ -90,6 +108,9 @@ def generate_psg_samples(
                     release_secs=psg_synth.release_padding,
                     clock_rate=psg_synth.clock_rate,
                     target_rate=target_rate,
+                    envelope=resolved_env,
+                    base_volume=entry.base_volume,
+                    fps=fps,
                 )
             _check_warnings(caught, inst_num)
 
@@ -98,7 +119,7 @@ def generate_psg_samples(
             noise_label = "white" if white else "periodic"
             print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
                   f"rate={entry.noise_rate}  root={entry.root.name}  "
-                  f"target_rate={target_rate}Hz")
+                  f"target_rate={target_rate}Hz{env_info}")
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 mono, rate = render_psg_noise_raw(
@@ -108,6 +129,9 @@ def generate_psg_samples(
                     release_secs=psg_synth.release_padding,
                     clock_rate=psg_synth.clock_rate,
                     target_rate=target_rate,
+                    envelope=resolved_env,
+                    base_volume=entry.base_volume,
+                    fps=fps,
                 )
             _check_warnings(caught, inst_num)
 
@@ -124,38 +148,23 @@ def generate_psg_samples(
         raw_data[inst_num] = (mono, rate)
 
     # --- Normalization pass ---
+    # Scale using hardware output maximum to preserve natural amplitude relationships.
+    # White noise is halved by the C emulator (sn76489.c line 242-243: chip->Channels[3] >>= 1),
+    # so it peaks at psg_output_max/2 = 2048, mapping to ±64 in int8 at default settings.
+    # Tones peak at psg_output_max = 4096, mapping to ±127 in int8.
     result: dict[int, tuple[bytes, int]] = {}
 
     if not raw_data:
         return result
 
-    if psg_synth.normalize_samples:
-        # Per-sample normalization
-        for inst_num, (mono, rate) in raw_data.items():
-            peak = max(abs(v) for v in mono) if mono else 0
-            if peak == 0:
-                result[inst_num] = (bytes(len(mono)), rate)
-                continue
-            scale = 127.0 / peak
-            pcm = bytearray(len(mono))
-            for i, v in enumerate(mono):
-                pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
-            result[inst_num] = (bytes(pcm), rate)
-    else:
-        # Global normalization — preserves relative levels
-        all_peaks = [abs(v) for mono, _ in raw_data.values() for v in mono]
-        global_peak = max(all_peaks) if all_peaks else 0
-        if global_peak == 0:
-            for inst_num, (mono, rate) in raw_data.items():
-                result[inst_num] = (bytes(len(mono)), rate)
-        else:
-            scale = 127.0 / global_peak
-            print(f"  PSG global peak: {global_peak}  (scale={scale:.4f})")
-            for inst_num, (mono, rate) in raw_data.items():
-                pcm = bytearray(len(mono))
-                for i, v in enumerate(mono):
-                    pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
-                result[inst_num] = (bytes(pcm), rate)
+    scale = 127.0 / psg_synth.psg_output_max
+    print(f"  PSG hardware-max scale: psg_output_max={psg_synth.psg_output_max}  scale={scale:.5f}"
+          f"  (white noise -> +-{round(psg_synth.psg_output_max / 2 * scale)}, tone -> +-{round(psg_synth.psg_output_max * scale)})")
+    for inst_num, (mono, rate) in raw_data.items():
+        pcm = bytearray(len(mono))
+        for i, v in enumerate(mono):
+            pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
+        result[inst_num] = (bytes(pcm), rate)
 
     return result
 
@@ -180,6 +189,7 @@ def _smoke_test() -> None:
         enabled=True,
         sustain_duration=0.5,
         release_padding=0.1,
+        psg_envelope_tables={"PSG4": [0, 0, 2, 3, 4, 4, 5, 5, 5, 6]},
     )
 
     fake_config = ConversionConfig()
@@ -194,10 +204,12 @@ def _smoke_test() -> None:
             type="white_noise",
             noise_rate=0,
             root=ModNote.C2,
+            envelope="PSG4",
+            base_volume=0,
         ),
     ]
 
-    print("Smoke test — generate_psg_samples(tone@C3, white_noise@C2)...")
+    print("Smoke test — generate_psg_samples(tone@C3, white_noise@C2 w/ PSG4 envelope)...")
     print(f"  clock_rate    = {psg_synth.clock_rate}")
     print(f"  amiga_clock   = {psg_synth.amiga_clock}")
     print(f"  sustain       = {psg_synth.sustain_duration}s")

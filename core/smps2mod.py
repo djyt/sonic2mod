@@ -332,23 +332,53 @@ class SmpsToModConverter:
 
                     self.mod.set_note(final_note, final_instrument)
 
-                    # Emit Cxx only when the scaled output differs from the
-                    # instrument's own sample volume — MOD auto-resets to sample
-                    # volume on each note trigger, so no command is needed when
-                    # the volume is at its default.
-                    sv = _sample_vol_map.get(final_instrument, 64)
-                    emit_vol = round(current_volume * sv / 64)
-                    if emit_vol != sv:
-                        self.mod.set_effect(0xC, emit_vol)
+                    # Note fill: silence the channel at the exact tick the driver
+                    # fires PSGNoteOff/FMNoteOff.  Skip when fill >= note.duration —
+                    # the hardware edge case where DurationTimeout fires before
+                    # NoteTimeout so the fill timer never completes (note sustains).
+                    fill_placed = False
+                    if note_fill > 0 and note_fill < note.duration:
+                        fill_pat, fill_row = self._tick_to_pattern_row(tick + note_fill)
+                        if fill_pat == pattern and fill_row == row:
+                            # Fill fires within the current row: ECx.
+                            # Scale fill from SMPS ticks to MOD VBL ticks,
+                            # cap at speed-1 so the effect always fires.
+                            ec_val = round(
+                                note_fill * self.config.target_speed
+                                / self.config.ticks_per_row
+                            )
+                            ec_val = min(ec_val, self.config.target_speed - 1)
+                            if ec_val > 0:
+                                self.mod.set_effect(0xE, 0xC0 | ec_val)
+                                fill_placed = True
+                        elif fill_pat < self.config.max_patterns:
+                            # Fill fires on a later row: write C00 there directly.
+                            while fill_pat >= len(self.mod.patterns):
+                                self.mod.add_patterns(1)
+                            self.mod.set_active_pattern(fill_pat)
+                            self.mod.set_channel(mod_chan)
+                            self.mod.set_row(fill_row)
+                            self.mod.set_effect(0xC, 0)
+                            # Restore cursor to the current note's cell.
+                            self.mod.set_active_pattern(pattern)
+                            self.mod.set_channel(mod_chan)
+                            self.mod.set_row(row)
+                            fill_placed = True
 
-                    # Vibrato effect (4xy)
-                    elif vibrato_active and vibrato_speed > 0:
-                        param = (vibrato_speed << 4) | vibrato_depth
-                        self.mod.set_effect(0x4, param)
+                    if not fill_placed:
+                        # Emit Cxx only when the scaled output differs from the
+                        # instrument's own sample volume — MOD auto-resets to
+                        # sample volume on each note trigger, so no command is
+                        # needed when the volume is at its default.
+                        sv = _sample_vol_map.get(final_instrument, 64)
+                        emit_vol = round(current_volume * sv / 64)
+                        if emit_vol != sv:
+                            self.mod.set_effect(0xC, emit_vol)
 
-                    # Note fill → ECx (note cut)
-                    elif note_fill > 0 and note_fill < 0x10:
-                        self.mod.set_effect(0xE, 0xC0 | (note_fill & 0xF))
+                        # Vibrato effect (4xy)
+                        elif vibrato_active and vibrato_speed > 0:
+                            param = (vibrato_speed << 4) | vibrato_depth
+                            self.mod.set_effect(0x4, param)
 
     def _tick_to_pattern_row(self, tick):
         """Convert a tick position to (pattern_index, row_within_pattern).

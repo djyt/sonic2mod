@@ -187,8 +187,7 @@ class ConversionConfig:
     voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}
     legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
-    psg_map: list = field(default_factory=list)           # list[PsgInstrumentEntry]
-    psg_form_map: dict = field(default_factory=dict)      # {form_byte: mod_instrument}
+    psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
     psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": mod_instrument, ...}
 
     @classmethod
@@ -342,26 +341,35 @@ class ConversionConfig:
                     _parse_instrument_range(e) for e in range_list
                 ]
 
-        # Parse psg_map
-        for psg_entry in data.get('psg_map', []):
+        # Parse psg_map: dict keyed by smpsPSGform byte (hex or int YAML keys).
+        # type is auto-inferred from bit 2 of the key byte:
+        #   bit 2 = 1 → white noise ($E4–$E7); bit 2 = 0 → periodic noise ($E0–$E3)
+        raw_psg_map = data.get('psg_map', {})
+        for k, psg_entry in raw_psg_map.items():
+            form_byte = int(str(k), 0)
+            inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"
             root_note = ModNote[psg_entry['root']]
             synth_root = None
             if 'synth_root' in psg_entry:
                 synth_root = ModNote[psg_entry['synth_root']]
-            config.psg_map.append(PsgInstrumentEntry(
+            config.psg_map[form_byte] = PsgInstrumentEntry(
                 mod_instrument=psg_entry['mod_instrument'],
-                type=psg_entry['type'],
+                type=inferred_type,
                 root=root_note,
                 synth_root=synth_root,
                 noise_rate=psg_entry.get('noise_rate', 0),
                 envelope=psg_entry.get('envelope', None),
                 base_volume=psg_entry.get('base_volume', 0),
-            ))
+            )
 
-        # Parse psg_form_map: {0xE7: 8}  (hex or int keys from YAML)
-        raw_pfm = data.get('psg_form_map', {})
-        for k, v in raw_pfm.items():
-            config.psg_form_map[int(str(k), 0)] = v
+        # psg_form_map is deprecated — psg_map now serves this role
+        if 'psg_form_map' in data:
+            warnings.warn(
+                f"YAML key 'psg_form_map' in '{filepath}' is deprecated; "
+                "merge entries into 'psg_map' (dict keyed by form byte).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Parse psg_voice_map: {"fTone_01": 7, "fTone_03": 9}
         raw_pvm = data.get('psg_voice_map', {})

@@ -108,17 +108,13 @@ voice_map:
 # -------------------------------------------------------------------------------------------------
 # PSG Sounds
 # -------------------------------------------------------------------------------------------------
-psg_form_map:
-  0xE7: 7                  # white noise → mod_instrument 7
-
 psg_map:
-  - mod_instrument: 7      # MOD instrument slot (1-based)
+  0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
+    mod_instrument: 7      # MOD instrument slot (1-based)
     root: A3               # MOD note that determines target_rate (playback pitch)
-    type: white_noise      # "tone" | "white_noise" | "periodic_noise"
     synth_root: A3         # (optional) synthesis pitch override
-    noise_rate: 0          # Noise only: preset divider 0/1/2 (ignored for tone)
-                           # $E7 is rate=3 (PSG3-locked) — use 0 as closest preset
-    envelope: PSG4         # fTone_04 — quick stepped fade (10 frames)
+    noise_rate: 0          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
+    envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
     
     

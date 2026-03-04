@@ -47,6 +47,12 @@ class SmpsToModConverter:
         """Main entry point. Returns a ModFile."""
         self.mod.set_name(self.config.name)
 
+        # Collect PSG instrument numbers that will be synthesized so disk loading
+        # can skip them (avoids spurious "file not found" warnings).
+        psg_synth_insts: set = set()
+        if self.psg_synth and self.psg_synth.enabled and self.config.psg_map:
+            psg_synth_insts = {e.mod_instrument for e in self.config.psg_map.values()}
+
         # Load or synthesize samples
         synth = self.synth
         if synth and synth.enabled and synth.mode == "ym2612":
@@ -70,14 +76,17 @@ class SmpsToModConverter:
                         self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
                         if ft_sl != 0:
                             self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
-            # Load remaining (DAC) samples from disk if sample_list exists
+            # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             if self.config.sample_list:
                 for entry in self.config.sample_list:
                     inst_num = entry[0]
-                    if inst_num not in fm_samples:
+                    if inst_num not in fm_samples and inst_num not in psg_synth_insts:
                         self.mod.add_samples(self.config.samples_dir, [entry])
         elif self.config.sample_list:
-            self.mod.add_samples(self.config.samples_dir, self.config.sample_list)
+            # Load all disk samples, skipping any that will be PSG-synthesized
+            for entry in self.config.sample_list:
+                if entry[0] not in psg_synth_insts:
+                    self.mod.add_samples(self.config.samples_dir, [entry])
         else:
             # Create placeholder samples
             max_inst = max(
@@ -230,9 +239,9 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsPSGform':
                     form_byte = eff.params[0]
-                    new_inst = self.config.psg_form_map.get(form_byte)
-                    if new_inst is not None:
-                        instrument = new_inst
+                    psg_entry = self.config.psg_map.get(form_byte)
+                    if psg_entry is not None:
+                        instrument = psg_entry.mod_instrument
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]

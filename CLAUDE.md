@@ -107,7 +107,8 @@ python tools/regression_test.py
     "config": "configs/my_song.yaml",
     "output": "output/my_song.mod",          # must match output_file in yaml
     "baseline": "tests/baselines/my_song_baseline.mod",
-    "ignore_channels": [],                   # 0-based MOD channel indices to skip
+    "ignore_channels": [],                   # normally empty; only set when deliberately
+                                             # changing that channel (0-based MOD indices)
     "description": "My Song — all channels",
 },
 ```

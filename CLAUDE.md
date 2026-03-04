@@ -41,7 +41,9 @@ sonic2mod/
     validate.py      #   Standalone test: python ym2612/validate.py
   docs/              # Technical documentation
   tools/             # Debug / analysis utilities
-    vgm_analyze.py   #   FM + PSG pitch analyzer for VGM/VGZ files
+    vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files
+    mod_compare.py      #   MOD binary parser + channel-by-channel comparator
+    regression_test.py  #   Before/after regression test runner
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
 ```
 
@@ -79,6 +81,41 @@ python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip fm --cha
 python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels
 python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip all --max-rows 0
+```
+
+## Regression Testing
+
+Baselines live in `tests/baselines/`. Test cases: GHZ (ignores PSG3/ch8) and Title Screen (ignores PSG3/ch6).
+
+```bash
+# BEFORE implementing a fix — save current output as baseline:
+python tools/regression_test.py --generate-baselines
+
+# AFTER implementing a fix — diff all non-PSG3 channels against baseline:
+python tools/regression_test.py
+```
+
+**Workflow for any converter change:**
+1. Run `--generate-baselines` while code is known-good.
+2. Make the change.
+3. Run without flags — PASS means no regressions on non-PSG3 channels.
+
+**Adding a new test case:** append an entry to `TEST_CASES` in `tools/regression_test.py`:
+```python
+{
+    "name": "my_song",
+    "config": "configs/my_song.yaml",
+    "output": "output/my_song.mod",          # must match output_file in yaml
+    "baseline": "tests/baselines/my_song_baseline.mod",
+    "ignore_channels": [],                   # 0-based MOD channel indices to skip
+    "description": "My Song — all channels",
+},
+```
+
+**`tools/mod_compare.py`** can be used standalone to diff any two MOD files:
+```python
+from tools.mod_compare import compare_mods, parse_mod
+diffs = compare_mods("output/a.mod", "output/b.mod", ignore_channels=[8])
 ```
 
 ## Pipeline

@@ -30,16 +30,16 @@ TEST_CASES = [
         "config": "configs/ghz.yaml",
         "output": "output/ghz6_psg.mod",
         "baseline": "tests/baselines/ghz_baseline.mod",
-        "ignore_channels": [8],  # PSG3 = mod_channel 8 (0-based) in GHZ
-        "description": "GHZ — all channels except PSG3 (ch8)",
+        "ignore_channels": [],
+        "description": "GHZ — all channels",
     },
     {
         "name": "title_screen",
         "config": "configs/title_screen.yaml",
         "output": "output/title_screenv2_10.mod",
         "baseline": "tests/baselines/title_screen_baseline.mod",
-        "ignore_channels": [6],  # PSG3 = mod_channel 6 (0-based) in title_screen
-        "description": "Title Screen — all channels except PSG3 (ch6)",
+        "ignore_channels": [],
+        "description": "Title Screen — all channels",
     },
 ]
 

@@ -128,6 +128,9 @@ class SmpsToModConverter:
         if self.config.target_speed != 6:
             self.mod.set_speed(self.config.target_speed)
 
+        # Extend channels whose loop body is too short to cover the full song
+        self._extend_looping_channels()
+
         # Convert channels
         self._convert_all_channels()
 
@@ -135,6 +138,80 @@ class SmpsToModConverter:
         self._set_loop_point()
 
         return self.mod
+
+    def _extend_looping_channels(self):
+        """Extend channels whose event data ends early due to a compact smpsJump inner loop.
+
+        If a channel has has_jump=True and its last event tick is less than the global
+        last tick across all channels, repeat the loop body (events from
+        jump_target_tick onward) until channel coverage reaches global_last_tick.
+
+        Example: PSG3 in GHZ — loop body = {NOTE nMaxPSG dur=8 at tick=48}, loop_span=8.
+        Without extension: 4 events / 56 ticks. After: ~1200 events / full song.
+        """
+        import copy
+
+        label_tick_pos = self.song.label_tick_pos
+
+        # Global last tick = max(tick_position + duration) across all channels
+        global_last_tick = 0
+        for ch in self.song.channels:
+            for ev in ch.events:
+                end = ev.tick_position + (ev.note.duration if ev.note else 0)
+                if end > global_last_tick:
+                    global_last_tick = end
+
+        for ch in self.song.channels:
+            if not ch.has_jump or not ch.jump_target_label:
+                continue
+            if not ch.events:
+                continue
+            # Only extend PSG channels — DAC and FM channels with a short-loop pattern
+            # are not affected by the compact-inner-loop design that hits PSG3.
+            if ch.header.channel_type != "PSG":
+                continue
+
+            ch_last = max(
+                ev.tick_position + (ev.note.duration if ev.note else 0)
+                for ev in ch.events
+            )
+            if ch_last >= global_last_tick:
+                continue  # Already covers full song; skip
+
+            loop_start_tick = label_tick_pos.get(ch.jump_target_label)
+            if loop_start_tick is None:
+                continue
+
+            # Loop body = events whose tick_position is at or after loop_start_tick
+            loop_body = [ev for ev in ch.events if ev.tick_position >= loop_start_tick]
+            if not loop_body:
+                continue
+
+            # Loop span = (last body event end tick) − loop_start_tick
+            last_ev = loop_body[-1]
+            loop_end = last_ev.tick_position + (last_ev.note.duration if last_ev.note else 0)
+            loop_span = loop_end - loop_start_tick
+            if loop_span <= 0:
+                continue
+
+            # Synthesize additional iterations until we reach global_last_tick
+            original_count = len(ch.events)
+            offset = ch_last - loop_start_tick
+            while (loop_start_tick + offset) < global_last_tick:
+                for ev in loop_body:
+                    new_tick = ev.tick_position + offset
+                    if new_tick >= global_last_tick:
+                        break
+                    new_ev = copy.copy(ev)
+                    new_ev.note = copy.copy(ev.note) if ev.note else None
+                    new_ev.tick_position = new_tick
+                    ch.events.append(new_ev)
+                offset += loop_span
+
+            print(
+                f"Extended {ch.header.label}: {original_count} -> {len(ch.events)} events "
+                f"(loop_span={loop_span} ticks, loop_start={loop_start_tick})"
+            )
 
     def _convert_all_channels(self):
         """Convert all SMPS channels to MOD channels."""

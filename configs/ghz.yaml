@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
 input_file: "sonic_1/music/Mus81 - GHZ.asm"
-output_file: "output/ghz5.mod"
+output_file: "output/ghz6_psg.mod"
 samples_dir: "./samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -45,21 +45,18 @@ channels:
   # PSG channels — melodic in GHZ; enabled for audio output.
   - source: PSG1
     mod_channel: 6
-    transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
-    instrument: 1            # placeholder; replace with tone sample
+    #transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
     enabled: false
 
   - source: PSG2
     mod_channel: 7
-    transpose: -48           # C5–C7 (60–84) → C2–B3+1 clamp ✓
-    instrument: 1            # placeholder
+    #transpose: -48           # C5–C7 (60–84) → C2–B3+1 clamp ✓
     enabled: false
 
   # PSG3: noise channel — smpsPSGform $E7, plays nMaxPSG rhythm.
   - source: PSG3
     mod_channel: 8
-    transpose: -48
-    instrument: 2            # snare placeholder for noise rhythm
+    #transpose: -48
     enabled: true
 
 
@@ -75,9 +72,16 @@ sample_list:
   - [3,  "ghz_v02.raw",     32, 0]
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
   - [4,  "ghz_v05.raw",     16, 0]
-  - [5,  "ghz_v05_lo.raw",  16, 0]
+  - [5,  "ghz_v05_lo.raw",  16, 0]  
   # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
-  - [10,  "ghz_v06.raw",    64, 0]
+  - [6,  "ghz_v06.raw",     64, 0]
+  # --- PSG White Noise ---
+  - [7,  "psg_noise.raw",   16, 0]
+  # --- PSG Voices ---
+  - [8,  "psg_tone01.raw",  16, 0]
+  - [9,  "psg_tone03.raw",  16, 0]
+  - [10, "psg_tone05.raw",  16, 0]
+  - [11, "psg_tone06.raw",  16, 0]
   # --- voice $00: deep bass (FM2 opening) ---
   - [13,  "ghz_v00.raw",    32, 0]
   # --- voice $01: bass/rhythm pad (FM2 main loop) ---
@@ -92,8 +96,6 @@ sample_list:
   - [26, "ghz_v04_lo.raw",  32, 0]
   - [27, "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
   - [28, "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
-  # --- PSG White Noise ---
-  - [29, "psg_noise.raw",   16, 0]
 
 # -------------------------------------------------------------------------------------------------
 # DAC Mappings: Kick & Snare for GHZ only
@@ -165,7 +167,7 @@ voice_map:
   6:
     - low:  C6
       high: B7
-      mod_instrument: 10
+      mod_instrument: 6
       root: C2
       synth_root: C5
 
@@ -189,17 +191,24 @@ voice_map:
       root: C2
       synth_root: C4
 
+
 # -------------------------------------------------------------------------------------------------
 # PSG Sounds
 # -------------------------------------------------------------------------------------------------
 psg_map:
   0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
-    mod_instrument: 29     # MOD instrument slot (1-based)
+    mod_instrument: 7      # MOD instrument slot (1-based)
     root: A3               # MOD note that determines target_rate (playback pitch)
     synth_root: A4         # (optional) synthesis pitch override
     noise_rate: 0          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
+
+psg_voice_map:
+  fTone_01: 8              # default square-wave envelope
+  fTone_03: 9              # softer attack envelope
+  fTone_05: 10
+  fTone_06: 11
 
 
 # -------------------------------------------------------------------------------------------------

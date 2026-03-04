@@ -79,13 +79,15 @@ def generate_psg_samples(
             continue  # first entry wins
         seen.add(inst_num)
 
-        # target_rate always from root
+        # target_rate always from root (determines sample quality / Amiga playback period).
         mod_root_idx = entry.root.value
         target_rate  = round(psg_synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
 
-        # synthesis pitch: synth_root overrides root
+        # synthesis pitch: synth_root overrides root for TONE entries.
+        # For noise, synth_root is unused (noise has no pitch); ignored here.
+        # synth_root is an SMPS semitone (C0=0, C1=12); renderer idx = semitone - 12.
         if entry.synth_root is not None:
-            synth_note_idx = entry.synth_root.value
+            synth_note_idx = entry.synth_root - 12
         else:
             synth_note_idx = mod_root_idx
 

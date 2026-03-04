@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screenv2_9.mod"
+output_file: "output/title_screenv2_10.mod"
 samples_dir: "./samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -40,7 +40,7 @@ channels:
   # White Noise Channel
   - source: PSG3
     mod_channel: 6
-    transpose: -36          # A5 -> A3 [psg_map is used only by the synthesis pipeline so transpose here]
+    # transpose not needed: psg_map root: A3 anchors every noise trigger to A3
 
 
 # -------------------------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ psg_map:
   0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A3               # MOD note that determines target_rate (playback pitch)
-    synth_root: A3         # (optional) synthesis pitch override
+    synth_root: A4         # (optional) synthesis pitch override
     noise_rate: 0          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)

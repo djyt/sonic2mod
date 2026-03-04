@@ -190,6 +190,7 @@ class SmpsToModConverter:
         vibrato_active = False
         vibrato_speed = 0
         vibrato_depth = 0
+        current_psg_entry = None  # last smpsPSGform entry; used for root anchoring
 
         # Build DAC name -> config map
         dac_map = {}
@@ -242,6 +243,7 @@ class SmpsToModConverter:
                     psg_entry = self.config.psg_map.get(form_byte)
                     if psg_entry is not None:
                         instrument = psg_entry.mod_instrument
+                        current_psg_entry = psg_entry
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]
@@ -323,21 +325,31 @@ class SmpsToModConverter:
                                 break
 
                     if final_note is None:
-                        # Warn if a voice_instrument_map entry exists for this voice but
-                        # the note fell outside every defined range — almost always a
-                        # config gap rather than intentional fallback.
-                        if ranges and current_voice_idx is not None:
-                            note_name = _semitone_to_name(source_semitone)
-                            range_lo  = _semitone_to_name(ranges[0].low)
-                            range_hi  = _semitone_to_name(ranges[-1].high)
-                            print(f"Warning [{chan_cfg.source} voice={current_voice_idx}]: "
-                                  f"n{note_name} (semitone {source_semitone}) not covered by "
-                                  f"voice_map (spans {range_lo}–{range_hi}); "
-                                  f"falling back to transpose path")
-                        # No map match (or matched with no root): use channel transpose
-                        final_note = smps_note_to_mod_note(
-                            note.note_value, total_transpose, chan_cfg.source,
-                            voice_idx=current_voice_idx)
+                        # PSG root anchoring: bypass the transpose path entirely when a
+                        # psg_map entry is active — avoids spurious out-of-range warnings
+                        # for noise channels whose SMPS note bytes carry no pitch meaning.
+                        # synth_root is synthesis-only; the MOD trigger note is always root.
+                        psg_anchor = None
+                        if current_psg_entry is not None:
+                            psg_anchor = current_psg_entry.root
+                        if psg_anchor is not None:
+                            final_note = psg_anchor
+                        else:
+                            # Warn if a voice_instrument_map entry exists for this voice but
+                            # the note fell outside every defined range — almost always a
+                            # config gap rather than intentional fallback.
+                            if ranges and current_voice_idx is not None:
+                                note_name = _semitone_to_name(source_semitone)
+                                range_lo  = _semitone_to_name(ranges[0].low)
+                                range_hi  = _semitone_to_name(ranges[-1].high)
+                                print(f"Warning [{chan_cfg.source} voice={current_voice_idx}]: "
+                                      f"n{note_name} (semitone {source_semitone}) not covered by "
+                                      f"voice_map (spans {range_lo}–{range_hi}); "
+                                      f"falling back to transpose path")
+                            # No map match (or matched with no root): use channel transpose
+                            final_note = smps_note_to_mod_note(
+                                note.note_value, total_transpose, chan_cfg.source,
+                                voice_idx=current_voice_idx)
 
                     self.mod.set_note(final_note, final_instrument)
 

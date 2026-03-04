@@ -47,13 +47,13 @@ channels:
     mod_channel: 6
     transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
     instrument: 1            # placeholder; replace with tone sample
-    enabled: true
+    enabled: false
 
   - source: PSG2
     mod_channel: 7
     transpose: -48           # C5–C7 (60–84) → C2–B3+1 clamp ✓
     instrument: 1            # placeholder
-    enabled: true
+    enabled: false
 
   # PSG3: noise channel — smpsPSGform $E7, plays nMaxPSG rhythm.
   - source: PSG3
@@ -74,8 +74,8 @@ sample_list:
   # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
   - [3,  "ghz_v02.raw",     32, 0]
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
-  - [6,  "ghz_v05.raw",     16, 0]
-  - [7,  "ghz_v05_lo.raw",  16, 0]
+  - [4,  "ghz_v05.raw",     16, 0]
+  - [5,  "ghz_v05_lo.raw",  16, 0]
   # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
   - [10,  "ghz_v06.raw",    64, 0]
   # --- voice $00: deep bass (FM2 opening) ---
@@ -92,6 +92,8 @@ sample_list:
   - [26, "ghz_v04_lo.raw",  32, 0]
   - [27, "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
   - [28, "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
+  # --- PSG White Noise ---
+  - [29, "psg_noise.raw",   16, 0]
 
 # -------------------------------------------------------------------------------------------------
 # DAC Mappings: Kick & Snare for GHZ only
@@ -150,12 +152,12 @@ voice_map:
   5:
     - low:  C4
       high: B5
-      mod_instrument: 7
+      mod_instrument: 5
       root: C2
       synth_root: C2
     - low:  C6
       high: B7
-      mod_instrument: 6
+      mod_instrument: 4
       root: C2
       synth_root: C4
 
@@ -186,6 +188,18 @@ voice_map:
       mod_instrument: 23
       root: C2
       synth_root: C4
+
+# -------------------------------------------------------------------------------------------------
+# PSG Sounds
+# -------------------------------------------------------------------------------------------------
+psg_map:
+  0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
+    mod_instrument: 29     # MOD instrument slot (1-based)
+    root: A3               # MOD note that determines target_rate (playback pitch)
+    synth_root: A4         # (optional) synthesis pitch override
+    noise_rate: 0          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
+    envelope: fTone_04     # Quick stepped fade (10 frames)
+    base_volume: 0         # SN76489 base attenuation (0=max)
 
 
 # -------------------------------------------------------------------------------------------------

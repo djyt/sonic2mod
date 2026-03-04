@@ -51,9 +51,6 @@ sample_list:
   # --- percussion ---
   - [1, "kick.raw",          64, 0]
   - [2, "snare.raw",         64, 0]
-  
-  # Note the below don't really need to be specified here, other than using the volume/pitch
-  
   # --- voice $00: bright lead synth (FM1 + FM5) ---
   - [3, "fm_voice0.raw",     32, 0]
   # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---

@@ -73,7 +73,7 @@ def generate_psg_samples(
     raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
     seen: set[int] = set()
 
-    for entry in config.psg_map:
+    for entry in config.psg_map.values():
         inst_num = entry.mod_instrument
         if inst_num in seen:
             continue  # first entry wins
@@ -189,25 +189,27 @@ def _smoke_test() -> None:
         enabled=True,
         sustain_duration=0.5,
         release_padding=0.1,
-        psg_envelope_tables={"PSG4": [0, 0, 2, 3, 4, 4, 5, 5, 5, 6]},
+        psg_envelope_tables={"fTone_04": [0, 0, 2, 3, 4, 4, 5, 5, 5, 6]},
     )
 
     fake_config = ConversionConfig()
-    fake_config.psg_map = [
-        PsgInstrumentEntry(
+    # psg_map is a dict keyed by form byte; type is auto-inferred in production,
+    # but can be set explicitly when constructing entries directly.
+    fake_config.psg_map = {
+        0xE0: PsgInstrumentEntry(
             mod_instrument=14,
-            type="tone",
+            type="periodic_noise",
             root=ModNote.C3,
         ),
-        PsgInstrumentEntry(
+        0xE7: PsgInstrumentEntry(
             mod_instrument=15,
             type="white_noise",
             noise_rate=0,
             root=ModNote.C2,
-            envelope="PSG4",
+            envelope="fTone_04",
             base_volume=0,
         ),
-    ]
+    }
 
     print("Smoke test — generate_psg_samples(tone@C3, white_noise@C2 w/ PSG4 envelope)...")
     print(f"  clock_rate    = {psg_synth.clock_rate}")

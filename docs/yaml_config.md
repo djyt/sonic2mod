@@ -194,38 +194,30 @@ If `voice_map` entries cover the full note range of a channel, the base YAML `tr
 
 ### psg_map
 
-Defines synthesized PSG instruments for `sn76489` synthesis.
+Maps `smpsPSGform` byte values to synthesized PSG instruments. The key is the raw
+`smpsPSGform` byte; `type` (white/periodic noise) is **auto-inferred** from bit 2 of the key.
+When `smpsPSGform $E7` appears in channel data, the PSG channel switches to the specified instrument.
 
 ```yaml
 psg_map:
-  - mod_instrument: 7      # MOD instrument slot (1-based)
-    type: tone             # "tone" | "white_noise" | "periodic_noise"
+  0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
+    mod_instrument: 7      # MOD instrument slot (1-based)
     root: A3               # MOD note that determines target_rate (playback pitch)
     synth_root: A3         # (optional) synthesis pitch override
-    noise_rate: 0          # Noise only: preset divider 0/1/2 (ignored for tone)
-```
-
-`type` values:
-- `tone` — square-wave tone at the frequency of `root`
-- `white_noise` — random noise; corresponds to `smpsPSGform $E4`–`$E7`
-- `periodic_noise` — periodic noise; corresponds to `smpsPSGform $E0`–`$E3`
-
-### psg_form_map
-
-Maps `smpsPSGform` byte values → MOD instrument numbers. When `smpsPSGform $E7` appears
-in channel data, the PSG channel switches to the specified instrument for subsequent notes.
-Bytes not in the map are silently ignored.
-
-```yaml
-psg_form_map:
-  0xE7: 8    # white noise → instrument 8
-  0xE4: 9    # white noise (slower rate) → instrument 9
+    noise_rate: 0          # Preset divider 0/1/2 ($E7 is rate=3/PSG3-locked; use 0 as approximation)
+    envelope: fTone_04     # Named envelope from settings.yaml psg_envelope_tables, or inline list
+    base_volume: 0         # SN76489 base attenuation (0=max, 15=silent)
 ```
 
 SN76489 noise register byte encoding:
 - Bits [1:0]: rate — 0=N/512, 1=N/1024, 2=N/2048, 3=PSG3 tone freq
-- Bit [2]: type — 0=periodic, 1=white noise
+- Bit [2]: type — 0=periodic noise, 1=white noise (auto-inferred; do not specify manually)
 - `$E0`–`$E3` = periodic noise; `$E4`–`$E7` = white noise; `$E7` is most common in Sonic 1
+
+`noise_rate` values (synthesis approximation for rate field):
+- `0` = N/512 (fastest preset; use for rate=3/PSG3-locked noise as closest approximation)
+- `1` = N/1024
+- `2` = N/2048
 
 ### psg_voice_map
 

@@ -47,20 +47,20 @@ channels:
     mod_channel: 6
     transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
     instrument: 1            # placeholder; replace with tone sample
-    enabled: false
+    enabled: true
 
   - source: PSG2
     mod_channel: 7
     transpose: -48           # C5–C7 (60–84) → C2–B3+1 clamp ✓
     instrument: 1            # placeholder
-    enabled: false
+    enabled: true
 
   # PSG3: noise channel — smpsPSGform $E7, plays nMaxPSG rhythm.
   - source: PSG3
     mod_channel: 8
     transpose: -48
     instrument: 2            # snare placeholder for noise rhythm
-    enabled: false
+    enabled: true
 
 
 # -------------------------------------------------------------------------------------------------

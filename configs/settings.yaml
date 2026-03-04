@@ -18,4 +18,20 @@ psg_synthesis:
   amiga_clock: 3546895     # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: 1.0    # Seconds of tone held before key-off
   release_padding: 0.2     # Seconds of silence/release after key-off
-  normalize_samples: false # true = per-sample peak normalize; false = global (preserves relative balance)
+  psg_output_max: 4096     # PSG hardware max amplitude; white noise peaks at 2048 (half), tones at 4096
+
+  # Sonic 1 driver PSG amplitude envelope tables (PSG1–PSG9).
+  # Copied verbatim from the S1 sound driver ROM (s1.sounddriver.asm PSGEnvData_*).
+  # Each value is added to base_volume each VBlank frame (60 Hz NTSC / 50 Hz PAL).
+  # 0 = no attenuation above base; higher = quieter. Last entry is held indefinitely.
+  # Omit the $80 terminator — it is implicit (the last listed value is held).
+  psg_envelope_tables:
+    PSG1: [0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7]         # 22fr slow staircase fade (~0.37s to hold)
+    PSG2: [0,2,4,6,8,16]                                        #  6fr fast hard cutoff (near-silence in 5 frames)
+    PSG3: [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]                     # 16fr medium paired-step fade
+    PSG4: [0,0,2,3,4,4,5,5,5,6]                                 # 10fr quick uneven stepped fade (title screen noise)
+    PSG5: [0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,4]  # 41fr very slow fade
+    PSG6: [3,3,3,2,2,2,2,1,1,1,0,0,0,0]                         # 14fr reverse swell — starts attenuated, opens up
+    PSG7: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,4,5,5,5,6,7] # 26fr medium-slow fade with accelerating tail
+    PSG8: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7]  # 38fr slow gradual fade
+    PSG9: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]               # 16fr instant linear fade to silence

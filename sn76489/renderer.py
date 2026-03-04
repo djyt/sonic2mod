@@ -83,6 +83,57 @@ def _normalize_int8(mono: list) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# Private: frame-by-frame envelope renderer
+# ---------------------------------------------------------------------------
+
+def _render_with_envelope(
+    sn: 'SN76489',
+    ch: int,
+    sustain_n: int,
+    target_rate: int,
+    envelope: list | None,
+    base_volume: int,
+    fps: float,
+) -> list:
+    """Render sustain phase with per-frame SN76489 volume steps.
+
+    If *envelope* is None, renders at constant *base_volume* (existing behaviour).
+    Each frame advances the envelope index once, then holds the last value.
+
+    Args:
+        sn:          Initialised SN76489 instance.
+        ch:          SN76489 channel number (0–2 for tone, 3 for noise).
+        sustain_n:   Total samples to render.
+        target_rate: Sample rate (Hz) — used to compute samples-per-frame.
+        envelope:    List of absolute attenuation offsets; None = constant.
+        base_volume: SN76489 base attenuation (0=max, 15=silent).
+        fps:         Frame rate (60.0 NTSC / 50.0 PAL).
+
+    Returns:
+        mono (L,R) sample list of length *sustain_n*.
+    """
+    if not envelope:
+        sn.write_volume(ch, base_volume)
+        return sn.render_samples(sustain_n)
+
+    samples_per_frame = target_rate / fps
+    env_last = len(envelope) - 1
+    env_idx = 0
+    out: list = []
+    rendered = 0
+    while rendered < sustain_n:
+        delta = envelope[min(env_idx, env_last)]
+        vol = max(0, min(15, base_volume + delta))
+        sn.write_volume(ch, vol)
+        if env_idx < env_last:
+            env_idx += 1
+        frame_n = min(round(samples_per_frame), sustain_n - rendered)
+        out.extend(sn.render_samples(frame_n))
+        rendered += frame_n
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Tone rendering
 # ---------------------------------------------------------------------------
 
@@ -92,17 +143,21 @@ def render_psg_tone_raw(
     release_secs: float = 0.2,
     clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
+    envelope: list | None = None,
+    base_volume: int = 0,
+    fps: float = 60.0,
 ) -> tuple[list, int]:
     """Render a PSG square-wave tone.  Returns (mono_list, rate) before int8 packing.
 
     Args:
         mod_note_index: ModNote index 0–35 (0=C1, 35=B3).
-        sustain_secs:   Seconds the note is held at max volume.
+        sustain_secs:   Seconds the note is held.
         release_secs:   Seconds of silence (volume=15) captured after key-off.
         clock_rate:     SN76489 clock (Hz).  Default = NTSC MD 3,579,545.
         target_rate:    Output sample rate (Hz).  None → 44,100 Hz fallback.
-                        Pass ``round(amiga_clock / PERIOD_TABLE[root.value])`` here
-                        so the sample plays at the correct pitch in MOD.
+        envelope:       Per-frame volume offsets (None = constant base_volume).
+        base_volume:    SN76489 base attenuation (0=max, 15=silent).
+        fps:            Frame rate for envelope stepping (60 NTSC / 50 PAL).
 
     Returns:
         (mono_list, sample_rate_hz)
@@ -112,12 +167,11 @@ def render_psg_tone_raw(
 
     n = note_to_psg_n(mod_note_index, clock_rate)
     sn.write_tone_freq(0, n)
-    sn.write_volume(0, 0)   # max volume
 
     sustain_n = int(rate * sustain_secs)
     release_n = int(rate * release_secs)
 
-    raw_on  = sn.render_samples(sustain_n)
+    raw_on  = _render_with_envelope(sn, 0, sustain_n, rate, envelope, base_volume, fps)
     sn.write_volume(0, 15)  # silence
     raw_off = sn.render_samples(release_n)
     sn.shutdown()
@@ -155,24 +209,29 @@ def render_psg_noise_raw(
     release_secs: float = 0.1,
     clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
+    envelope: list | None = None,
+    base_volume: int = 0,
+    fps: float = 60.0,
 ) -> tuple[list, int]:
     """Render a PSG noise burst.  Returns (mono_list, rate) before int8 packing.
 
     Args:
-        white:      True = white noise, False = periodic (tonal) noise.
-        noise_rate: 0/1/2 = N/512, N/1024, N/2048 preset dividers.
+        white:        True = white noise, False = periodic (tonal) noise.
+        noise_rate:   0/1/2 = N/512, N/1024, N/2048 preset dividers.
         sustain_secs, release_secs, clock_rate, target_rate: same as tone variant.
+        envelope:     Per-frame volume offsets (None = constant base_volume).
+        base_volume:  SN76489 base attenuation (0=max, 15=silent).
+        fps:          Frame rate for envelope stepping (60 NTSC / 50 PAL).
     """
     rate = target_rate if target_rate is not None else 44100
     sn = SN76489(clock_rate=clock_rate, sample_rate=rate)
 
     sn.write_noise(white, noise_rate)
-    sn.write_volume(3, 0)   # ch 3 = noise; max volume
 
     sustain_n = int(rate * sustain_secs)
     release_n = int(rate * release_secs)
 
-    raw_on  = sn.render_samples(sustain_n)
+    raw_on  = _render_with_envelope(sn, 3, sustain_n, rate, envelope, base_volume, fps)
     sn.write_volume(3, 15)  # silence
     raw_off = sn.render_samples(release_n)
     sn.shutdown()

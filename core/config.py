@@ -73,6 +73,8 @@ class PsgInstrumentEntry:
     root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
     synth_root: Optional['ModNote'] = None  # Synthesis pitch override (None = use root)
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
+    envelope: object = None                  # Named table str ("PSG4") or inline list[int]; None = constant volume
+    base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
 
 
 @dataclass
@@ -83,6 +85,8 @@ class PsgSynthesisSettings:
     sustain_duration: float = 1.0
     release_padding: float = 0.2
     normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
+    psg_output_max: int = 4096       # Hardware PSG max amplitude; noise peaks at 4096/2=2048 (C source halves it)
+    psg_envelope_tables: dict = field(default_factory=dict)  # {"PSG1": [0,0,...], ...}
 
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
@@ -97,6 +101,8 @@ class PsgSynthesisSettings:
             sustain_duration=s.get("sustain_duration", 1.0),
             release_padding=s.get("release_padding", 0.2),
             normalize_samples=s.get("normalize_samples", False),
+            psg_output_max=s.get("psg_output_max", 4096),
+            psg_envelope_tables=s.get("psg_envelope_tables", {}),
         )
 
 
@@ -348,6 +354,8 @@ class ConversionConfig:
                 root=root_note,
                 synth_root=synth_root,
                 noise_rate=psg_entry.get('noise_rate', 0),
+                envelope=psg_entry.get('envelope', None),
+                base_volume=psg_entry.get('base_volume', 0),
             ))
 
         # Parse psg_form_map: {0xE7: 8}  (hex or int keys from YAML)

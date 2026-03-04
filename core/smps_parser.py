@@ -255,7 +255,7 @@ class SmpsParser:
         # Track label tick positions
         self.label_tick_pos[start_label] = 0
 
-        is_psg = ch_header.channel_type in ("PSG1", "PSG2", "PSG3")
+        is_psg = ch_header.channel_type == "PSG"
         tick, _, _, _ = self._parse_channel_lines(
             channel, start_line, tick, last_duration, no_attack_pending,
             ch_header.channel_type == "DAC", is_psg=is_psg

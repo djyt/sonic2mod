@@ -40,6 +40,8 @@ sonic2mod/
     sample_generator.py #  voice_map → {inst: (pcm, rate)} dict (generate_fm_samples)
     validate.py      #   Standalone test: python ym2612/validate.py
   docs/              # Technical documentation
+  tools/             # Debug / analysis utilities
+    vgm_analyze.py   #   FM + PSG pitch analyzer for VGM/VGZ files
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
 ```
 
@@ -70,6 +72,13 @@ python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/titl
 # Verify: open output .mod in OpenMPT or MilkyTracker
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):
 python ym2612/validate.py
+
+# Analyse FM channels from a VGM/VGZ game recording (verify synth_root values)
+python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
+# Analyse SN76489 PSG noise channel (compare against title_screen.yaml output)
+python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip psg --channel NOISE
+# Show all chips / all channels
+python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip all --max-rows 0
 ```
 
 ## Pipeline

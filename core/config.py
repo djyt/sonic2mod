@@ -71,7 +71,7 @@ class PsgInstrumentEntry:
     mod_instrument: int                      # MOD slot (1-based)
     type: str                                # "tone" | "white_noise" | "periodic_noise"
     root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
-    synth_root: Optional['ModNote'] = None  # Synthesis pitch override (None = use root)
+    synth_root: Optional[int] = None        # Synthesis pitch override — SMPS semitone (None = use root)
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
     envelope: object = None                  # Named table str ("PSG4") or inline list[int]; None = constant volume
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
@@ -351,7 +351,7 @@ class ConversionConfig:
             root_note = ModNote[psg_entry['root']]
             synth_root = None
             if 'synth_root' in psg_entry:
-                synth_root = ModNote[psg_entry['synth_root']]
+                synth_root = parse_smps_note(psg_entry['synth_root'])
             config.psg_map[form_byte] = PsgInstrumentEntry(
                 mod_instrument=psg_entry['mod_instrument'],
                 type=inferred_type,

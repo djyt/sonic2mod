@@ -284,8 +284,19 @@ def _render_warning(w: dict):
             f"     Notes {direction} [bold]{boundary}[/bold] will clamp "
             f"at this transpose."
         )
+        ctx = w.get('extra_ctx', '')
+        if ctx and not ctx.startswith('form '):
+            # PSG voice label (e.g. "fTone_01") — entry lives in psg_voice_map
+            map_ref = f"psg_voice_map entry [bold]{ctx}[/bold]"
+        elif ctx and ctx.startswith('form '):
+            # PSG form byte (e.g. "form 0xe7") — entry lives in psg_map
+            map_ref = f"psg_map entry [bold]{ctx}[/bold]"
+        elif channel.startswith('PSG'):
+            map_ref = "psg_voice_map or psg_map entry"
+        else:
+            map_ref = "voice_map entry"
         console.print(
-            f"     [green]Fix:[/green] add a voice_map entry with  "
+            f"     [green]Fix:[/green] add a {map_ref} with  "
             f"[bold cyan]{map_key}: {src}[/bold cyan]"
         )
 

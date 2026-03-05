@@ -39,7 +39,8 @@ from sn76489.renderer import (                                    # noqa: E402
 # Public API
 # ---------------------------------------------------------------------------
 
-def _resolve_envelope(entry: 'PsgInstrumentEntry', psg_synth: 'PsgSynthesisSettings'):
+def _resolve_envelope(entry: 'PsgInstrumentEntry', psg_synth: 'PsgSynthesisSettings',
+                      verbose: bool = False):
     """Return envelope list or None. Resolves string names via psg_synth.psg_envelope_tables."""
     e = entry.envelope
     if e is None:
@@ -47,12 +48,13 @@ def _resolve_envelope(entry: 'PsgInstrumentEntry', psg_synth: 'PsgSynthesisSetti
     if isinstance(e, str):
         table = psg_synth.psg_envelope_tables.get(e)
         if table is None:
-            print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
+            if verbose:
+                print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
         return table
     return e  # already a list
 
 
-def _synthesize_entry(entry, psg_synth, fps, seen, raw_data):
+def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = False):
     """Render one PsgInstrumentEntry into raw_data. No-op if inst already seen."""
     inst_num = entry.mod_instrument
     if inst_num in seen:
@@ -71,7 +73,7 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data):
     else:
         synth_note_idx = mod_root_idx
 
-    resolved_env = _resolve_envelope(entry, psg_synth)
+    resolved_env = _resolve_envelope(entry, psg_synth, verbose=verbose)
     env_info = f" envelope={entry.envelope}({len(resolved_env)}fr)" if resolved_env else ""
 
     entry_type = entry.type.lower()
@@ -79,9 +81,10 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data):
     if entry_type == "tone":
         freq_hz = 440.0 * (2.0 ** ((synth_note_idx - 45) / 12.0))
         n_val   = note_to_psg_n(synth_note_idx, psg_synth.clock_rate)
-        print(f"  [psg synth] inst={inst_num} tone  "
-              f"synth_note={synth_note_idx} freq={freq_hz:.1f}Hz N={n_val}  "
-              f"root={entry.root.name} rate={target_rate}Hz{env_info}")
+        if verbose:
+            print(f"  [psg synth] inst={inst_num} tone  "
+                  f"synth_note={synth_note_idx} freq={freq_hz:.1f}Hz N={n_val}  "
+                  f"root={entry.root.name} rate={target_rate}Hz{env_info}")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_psg_tone_raw(
@@ -94,14 +97,15 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data):
                 base_volume=entry.base_volume,
                 fps=fps,
             )
-        _check_warnings(caught, inst_num)
+        _check_warnings(caught, inst_num, verbose=verbose)
 
     elif entry_type in ("white_noise", "periodic_noise"):
         white = (entry_type == "white_noise")
         noise_label = "white" if white else "periodic"
-        print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
-              f"rate={entry.noise_rate}  root={entry.root.name}  "
-              f"target_rate={target_rate}Hz{env_info}")
+        if verbose:
+            print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
+                  f"rate={entry.noise_rate}  root={entry.root.name}  "
+                  f"target_rate={target_rate}Hz{env_info}")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_psg_noise_raw(
@@ -115,24 +119,28 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data):
                 base_volume=entry.base_volume,
                 fps=fps,
             )
-        _check_warnings(caught, inst_num)
+        _check_warnings(caught, inst_num, verbose=verbose)
 
     else:
-        print(f"  Warning: unknown psg entry type '{entry.type}' for inst {inst_num} — skipping")
+        if verbose:
+            print(f"  Warning: unknown psg entry type '{entry.type}' for inst {inst_num} — skipping")
         return
 
     if not mono:
-        print(f"  Warning: instrument {inst_num} (PSG) rendered empty — skipping")
+        if verbose:
+            print(f"  Warning: instrument {inst_num} (PSG) rendered empty — skipping")
         return
 
     pre_peak = max(abs(v) for v in mono)
-    print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={pre_peak}")
+    if verbose:
+        print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={pre_peak}")
     raw_data[inst_num] = (mono, rate)
 
 
 def generate_psg_samples(
     config: ConversionConfig,
     psg_synth: PsgSynthesisSettings,
+    verbose: bool = False,
 ) -> dict:
     """Render PSG samples for every PsgInstrumentEntry in config.psg_map.
 
@@ -152,11 +160,11 @@ def generate_psg_samples(
     seen: set[int] = set()
 
     for entry in config.psg_map.values():
-        _synthesize_entry(entry, psg_synth, fps, seen, raw_data)
+        _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
 
     # Also synthesize tone entries from psg_voice_map (smpsPSGvoice routing).
     for entry in config.psg_voice_map.values():
-        _synthesize_entry(entry, psg_synth, fps, seen, raw_data)
+        _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
 
     # --- Normalization pass ---
     # Scale using hardware output maximum to preserve natural amplitude relationships.
@@ -169,8 +177,9 @@ def generate_psg_samples(
         return result
 
     scale = 127.0 / psg_synth.psg_output_max
-    print(f"  PSG hardware-max scale: psg_output_max={psg_synth.psg_output_max}  scale={scale:.5f}"
-          f"  (white noise -> +-{round(psg_synth.psg_output_max / 2 * scale)}, tone -> +-{round(psg_synth.psg_output_max * scale)})")
+    if verbose:
+        print(f"  PSG hardware-max scale: psg_output_max={psg_synth.psg_output_max}  scale={scale:.5f}"
+              f"  (white noise -> +-{round(psg_synth.psg_output_max / 2 * scale)}, tone -> +-{round(psg_synth.psg_output_max * scale)})")
     for inst_num, (mono, rate) in raw_data.items():
         pcm = bytearray(len(mono))
         for i, v in enumerate(mono):
@@ -180,9 +189,9 @@ def generate_psg_samples(
     return result
 
 
-def _check_warnings(caught, inst_num):
+def _check_warnings(caught, inst_num, verbose: bool = False):
     for w in caught:
-        if issubclass(w.category, UserWarning) and "silence" in str(w.message):
+        if verbose and issubclass(w.category, UserWarning) and "silence" in str(w.message):
             print(f"  Warning: instrument {inst_num} rendered silence")
 
 
@@ -228,7 +237,7 @@ def _smoke_test() -> None:
     print(f"  sustain       = {psg_synth.sustain_duration}s")
     print()
 
-    samples = generate_psg_samples(fake_config, psg_synth)
+    samples = generate_psg_samples(fake_config, psg_synth, verbose=True)
 
     if not samples:
         print("  ERROR: no samples generated")

@@ -42,6 +42,23 @@ class SmpsToModConverter:
         self.synth = synth
         self.psg_synth = psg_synth
         self.mod = ModFile(channels=config.num_mod_channels)
+        # Structured warnings and informational messages collected during conversion.
+        # Rendered by convert.py after convert() returns.
+        self._warnings: list = []
+        self._infos: list = []
+        self._seen_warnings: set = set()
+
+    def _add_warning(self, w: dict):
+        """Append a warning, deduplicating by (type, channel, extra_ctx, key)."""
+        key = (
+            w['type'],
+            w.get('channel'),
+            w.get('extra_ctx'),
+            w.get('src_name') or w.get('note_name') or w.get('source'),
+        )
+        if key not in self._seen_warnings:
+            self._seen_warnings.add(key)
+            self._warnings.append(w)
 
     def convert(self):
         """Main entry point. Returns a ModFile."""
@@ -60,8 +77,8 @@ class SmpsToModConverter:
         synth = self.synth
         if synth and synth.enabled and synth.mode == "ym2612":
             from ym2612.sample_generator import generate_fm_samples
-            print("  Synthesizing FM samples...")
             fm_samples = generate_fm_samples(self.song, self.config, synth)
+            self._infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
             # Install synthesized FM samples
             for inst_num, (pcm, rate) in fm_samples.items():
                 sample = ModSample(f"fm_inst{inst_num}")
@@ -105,7 +122,6 @@ class SmpsToModConverter:
         psg_synth = self.psg_synth
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
-            print("  Synthesizing PSG samples...")
             psg_samples = generate_psg_samples(self.config, psg_synth)
             for inst_num, (pcm, rate) in psg_samples.items():
                 sample = ModSample(f"psg_inst{inst_num}")
@@ -124,7 +140,7 @@ class SmpsToModConverter:
                         self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
                         if ft_sl != 0:
                             self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
-            print(f"  PSG: synthesized {len(psg_samples)} instrument(s)")
+            self._infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
 
         # Set timing
         self.mod.set_bpm(self.config.target_bpm)
@@ -211,10 +227,13 @@ class SmpsToModConverter:
                     ch.events.append(new_ev)
                 offset += loop_span
 
-            print(
-                f"Extended {ch.header.label}: {original_count} -> {len(ch.events)} events "
-                f"(loop_span={loop_span} ticks, loop_start={loop_start_tick})"
-            )
+            self._infos.append({
+                'type': 'loop_extended',
+                'label': ch.header.label,
+                'from': original_count,
+                'to': len(ch.events),
+                'span': loop_span,
+            })
 
     def _convert_all_channels(self):
         """Convert all SMPS channels to MOD channels."""
@@ -247,7 +266,7 @@ class SmpsToModConverter:
 
             source = chan_cfg.source
             if source not in source_map:
-                print(f"Warning: Source '{source}' not found in parsed song")
+                self._add_warning({'type': 'missing_source', 'source': source})
                 continue
 
             smps_channel = source_map[source]
@@ -270,7 +289,8 @@ class SmpsToModConverter:
         vibrato_active = False
         vibrato_speed = 0
         vibrato_depth = 0
-        current_psg_entry = None  # last smpsPSGform entry; used for root anchoring
+        current_psg_entry = None   # last smpsPSGform/smpsPSGvoice entry; used for root anchoring
+        current_psg_label = None   # label string for warnings (e.g. "fTone_01", "form 0xe7")
 
         # Build DAC name -> config map
         dac_map = {}
@@ -324,6 +344,7 @@ class SmpsToModConverter:
                     if psg_entry is not None:
                         instrument = psg_entry.mod_instrument
                         current_psg_entry = psg_entry
+                        current_psg_label = f"form {form_byte:#04x}"
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]
@@ -331,6 +352,7 @@ class SmpsToModConverter:
                     if entry is not None:
                         instrument = entry.mod_instrument
                         current_psg_entry = entry
+                        current_psg_label = label
 
                 # smpsPan, smpsNop: no MOD equivalent
                 continue
@@ -356,7 +378,12 @@ class SmpsToModConverter:
                 pattern, row = self._tick_to_pattern_row(tick)
 
                 if pattern >= self.config.max_patterns:
-                    print(f"Warning: Pattern {pattern} exceeds max_patterns ({self.config.max_patterns}), truncating")
+                    self._add_warning({
+                        'type': 'pattern_overflow',
+                        'channel': chan_cfg.source,
+                        'pattern': pattern,
+                        'max': self.config.max_patterns,
+                    })
                     break
 
                 # Ensure enough patterns exist
@@ -432,14 +459,22 @@ class SmpsToModConverter:
                                 note_name = _semitone_to_name(source_semitone)
                                 range_lo  = _semitone_to_name(ranges[0].low)
                                 range_hi  = _semitone_to_name(ranges[-1].high)
-                                print(f"Warning [{chan_cfg.source} voice={current_voice_idx}]: "
-                                      f"n{note_name} (semitone {source_semitone}) not covered by "
-                                      f"voice_map (spans {range_lo}–{range_hi}); "
-                                      f"falling back to transpose path")
+                                self._add_warning({
+                                    'type': 'map_gap',
+                                    'channel': chan_cfg.source,
+                                    'voice_idx': current_voice_idx,
+                                    'extra_ctx': current_psg_label,
+                                    'note_name': note_name,
+                                    'semitone': source_semitone,
+                                    'range_lo': range_lo,
+                                    'range_hi': range_hi,
+                                })
                             # No map match (or matched with no root): use channel transpose
                             final_note = smps_note_to_mod_note(
                                 note.note_value, total_transpose, chan_cfg.source,
-                                voice_idx=current_voice_idx)
+                                voice_idx=current_voice_idx,
+                                warn_fn=self._add_warning,
+                                extra_ctx=current_psg_label)
 
                     self.mod.set_note(final_note, final_instrument)
 
@@ -544,4 +579,9 @@ class SmpsToModConverter:
         self.mod.set_channel(0)
         self.mod.set_row(last_row)
         self.mod.set_position_jump(target_pattern)
-        print(f"Set loop: pattern {last_pattern} row {last_row} -> position {target_pattern}")
+        self._infos.append({
+            'type': 'loop_set',
+            'pattern': last_pattern,
+            'row': last_row,
+            'target': target_pattern,
+        })

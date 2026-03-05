@@ -43,6 +43,7 @@ def generate_fm_samples(
     song: SmpsSong,
     config: ConversionConfig,
     synth: SynthesisSettings,
+    verbose: bool = False,
 ) -> dict:
     """Render FM samples for every InstrumentRange entry that has a root anchor.
 
@@ -88,8 +89,9 @@ def generate_fm_samples(
 
         _freq = note_to_freq(synth_idx)
         _fnum, _block = freq_to_fnum_block(_freq, synth.clock_rate)
-        print(f"  [synth] inst={entry.mod_instrument} voice=${voice_idx:02X} "
-              f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
+        if verbose:
+            print(f"  [synth] inst={entry.mod_instrument} voice=${voice_idx:02X} "
+                  f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
 
         headroom_tl = round(synth.headroom_db / 0.75)
         with warnings.catch_warnings(record=True) as caught:
@@ -108,32 +110,35 @@ def generate_fm_samples(
 
         label = f" [{source_label}]" if source_label else ""
         if not mono:
-            root_str = entry.root.name if has_root else f"synth_idx={synth_idx}"
-            print(f"  Warning: instrument {entry.mod_instrument} (voice {voice_idx}"
-                  f"{label}, {root_str}) rendered empty — skipping")
+            if verbose:
+                root_str = entry.root.name if has_root else f"synth_idx={synth_idx}"
+                print(f"  Warning: instrument {entry.mod_instrument} (voice {voice_idx}"
+                      f"{label}, {root_str}) rendered empty — skipping")
             return
 
         for w in caught:
-            if issubclass(w.category, UserWarning) and "silence" in str(w.message):
+            if verbose and issubclass(w.category, UserWarning) and "silence" in str(w.message):
                 print(f"  Warning: instrument {entry.mod_instrument} rendered silence")
 
-        pre_peak = max(abs(v) for v in mono)
-        if has_root:
-            root_str = f"root={entry.root.name} (idx={mod_root_idx}), synth_idx={synth_idx}"
-            if entry.synth_root is not None:
-                root_str += f" [synth_root override]"
-        else:
-            root_str = f"synth_idx={synth_idx}"
-        print(f"  Instrument {entry.mod_instrument:2d}: voice={voice_idx}{label}, "
-              f"{root_str}, "
-              f"rate={target_rate} Hz, {len(mono)} samples, peak={pre_peak}")
+        if verbose:
+            pre_peak = max(abs(v) for v in mono)
+            if has_root:
+                root_str = f"root={entry.root.name} (idx={mod_root_idx}), synth_idx={synth_idx}"
+                if entry.synth_root is not None:
+                    root_str += f" [synth_root override]"
+            else:
+                root_str = f"synth_idx={synth_idx}"
+            print(f"  Instrument {entry.mod_instrument:2d}: voice={voice_idx}{label}, "
+                  f"{root_str}, "
+                  f"rate={target_rate} Hz, {len(mono)} samples, peak={pre_peak}")
 
         raw_data[entry.mod_instrument] = (mono, rate)
         already_synthesized.add(entry.mod_instrument)
 
     for voice_idx, range_list in config.voice_map.items():
         if voice_idx not in voice_lookup:
-            print(f"  Warning: voice {voice_idx} not found in song, skipping")
+            if verbose:
+                print(f"  Warning: voice {voice_idx} not found in song, skipping")
             continue
         voice = voice_lookup[voice_idx]
         for entry in range_list:
@@ -142,8 +147,9 @@ def generate_fm_samples(
     for ch_name, vim in config.channel_instrument_map.items():
         for voice_idx, range_list in vim.items():
             if voice_idx not in voice_lookup:
-                print(f"  Warning: voice {voice_idx} not found in song "
-                      f"(channel_instrument_map.{ch_name}), skipping")
+                if verbose:
+                    print(f"  Warning: voice {voice_idx} not found in song "
+                          f"(channel_instrument_map.{ch_name}), skipping")
                 continue
             voice = voice_lookup[voice_idx]
             for entry in range_list:
@@ -160,7 +166,8 @@ def generate_fm_samples(
         if inst_num in already_synthesized:
             continue
         if voice_idx not in voice_lookup:
-            print(f"  Warning: voice {voice_idx} not found in song (legacy_voice_map fallback)")
+            if verbose:
+                print(f"  Warning: voice {voice_idx} not found in song (legacy_voice_map fallback)")
             continue
         warnings.warn(
             f"Synthesizing voice {voice_idx} via deprecated legacy_voice_map at C5/C1. "
@@ -209,7 +216,8 @@ def generate_fm_samples(
                 result[inst_num] = (bytes(len(mono)), rate)
         else:
             scale = 127.0 / global_peak
-            print(f"  Global peak: {global_peak}  (scale={scale:.4f})")
+            if verbose:
+                print(f"  Global peak: {global_peak}  (scale={scale:.4f})")
             for inst_num, (mono, rate) in raw_data.items():
                 pcm = bytearray(len(mono))
                 for i, v in enumerate(mono):
@@ -290,7 +298,7 @@ def _smoke_test() -> None:
     print(f"  sustain     = {synth.sustain}s, release = {synth.release}s")
     print()
 
-    samples = generate_fm_samples(fake_song, fake_config, synth)
+    samples = generate_fm_samples(fake_song, fake_config, synth, verbose=True)
 
     if not samples:
         print("  ERROR: no samples generated")

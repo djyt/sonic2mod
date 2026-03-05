@@ -55,6 +55,7 @@ class SmpsChannelHeader:
     # PSG-specific
     mod_byte: int = 0
     voice: int = 0
+    psg_voice_label: str = ""  # initial smpsPSGvoice label from smpsHeaderPSG (e.g. "fTone_06")
 
 
 @dataclass
@@ -219,7 +220,8 @@ class SmpsParser:
                     pitch_offset=pitch_raw,
                     volume=int(m.group(3), 16),
                     mod_byte=int(m.group(4), 16),
-                    voice=0  # voice is symbolic (fTone_xx)
+                    voice=0,
+                    psg_voice_label=m.group(5).rstrip(','),
                 )
                 header.channels.append(ch)
                 continue

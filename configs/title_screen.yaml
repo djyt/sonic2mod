@@ -4,7 +4,7 @@
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
 output_file: "output/title_screenv2_10.mod"
-samples_dir: "./samples/"
+samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
@@ -40,7 +40,6 @@ channels:
   # White Noise Channel
   - source: PSG3
     mod_channel: 6
-    # transpose not needed: psg_map root: A3 anchors every noise trigger to A3
 
 
 # -------------------------------------------------------------------------------------------------

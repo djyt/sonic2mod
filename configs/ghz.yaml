@@ -4,7 +4,7 @@
 name: "Green Hill Zone"
 input_file: "sonic_1/music/Mus81 - GHZ.asm"
 output_file: "output/ghz6_psg2.mod"
-samples_dir: "./samples/"
+samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
@@ -45,19 +45,13 @@ channels:
   # PSG channels — melodic in GHZ; enabled for audio output.
   - source: PSG1
     mod_channel: 6
-    #transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
-    #enabled: false
 
   - source: PSG2
     mod_channel: 7
-    #transpose: -48           # C5–C7 (60–84) → C2–B3+1 clamp ✓
-    enabled: false
 
   # PSG3: noise channel — smpsPSGform $E7, plays nMaxPSG rhythm.
   - source: PSG3
     mod_channel: 8
-    #transpose: -48
-    #enabled: true
 
 
 # -------------------------------------------------------------------------------------------------
@@ -96,6 +90,7 @@ sample_list:
   - [26, "ghz_v04_lo.raw",  32, 0]
   - [27, "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
   - [28, "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
+
 
 # -------------------------------------------------------------------------------------------------
 # DAC Mappings: Kick & Snare for GHZ only
@@ -222,8 +217,9 @@ psg_voice_map:
     envelope: fTone_05
   fTone_06:
     mod_instrument: 11
+    low: A6
     root: A2
-    synth_root: A4
+    synth_root: A5
     envelope: fTone_06
 
 

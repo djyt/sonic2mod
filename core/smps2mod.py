@@ -292,6 +292,14 @@ class SmpsToModConverter:
         current_psg_entry = None   # last smpsPSGform/smpsPSGvoice entry; used for root anchoring
         current_psg_label = None   # label string for warnings (e.g. "fTone_01", "form 0xe7")
 
+        # Apply initial PSG voice from smpsHeaderPSG if present and mapped
+        _init_psg_label = channel.header.psg_voice_label
+        if _init_psg_label and _init_psg_label in self.config.psg_voice_map:
+            _init_entry = self.config.psg_voice_map[_init_psg_label]
+            instrument = _init_entry.mod_instrument
+            current_psg_entry = _init_entry
+            current_psg_label = _init_psg_label
+
         # Build DAC name -> config map
         dac_map = {}
         for dac_cfg in self.config.dac_samples:

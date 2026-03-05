@@ -470,11 +470,25 @@ class SmpsToModConverter:
                                     'range_hi': range_hi,
                                 })
                             # No map match (or matched with no root): use channel transpose
+                            # Wrap warn_fn to inject psg_voice_map label list when the
+                            # active PSG label is unknown (note fired before smpsPSGvoice).
+                            _psg_label = current_psg_label
+                            _psg_labels = (
+                                list(self.config.psg_voice_map.keys())
+                                if chan_cfg.source.startswith('PSG')
+                                   and not _psg_label
+                                   and self.config.psg_voice_map
+                                else None
+                            )
+                            def _warn_psg(w, _lbl=_psg_label, _lbls=_psg_labels):
+                                if _lbls:
+                                    w['psg_available_labels'] = _lbls
+                                self._add_warning(w)
                             final_note = smps_note_to_mod_note(
                                 note.note_value, total_transpose, chan_cfg.source,
                                 voice_idx=current_voice_idx,
-                                warn_fn=self._add_warning,
-                                extra_ctx=current_psg_label)
+                                warn_fn=_warn_psg,
+                                extra_ctx=_psg_label)
 
                     self.mod.set_note(final_note, final_instrument)
 

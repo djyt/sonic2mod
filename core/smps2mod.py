@@ -50,8 +50,11 @@ class SmpsToModConverter:
         # Collect PSG instrument numbers that will be synthesized so disk loading
         # can skip them (avoids spurious "file not found" warnings).
         psg_synth_insts: set = set()
-        if self.psg_synth and self.psg_synth.enabled and self.config.psg_map:
-            psg_synth_insts = {e.mod_instrument for e in self.config.psg_map.values()}
+        if self.psg_synth and self.psg_synth.enabled:
+            if self.config.psg_map:
+                psg_synth_insts.update(e.mod_instrument for e in self.config.psg_map.values())
+            if self.config.psg_voice_map:
+                psg_synth_insts.update(e.mod_instrument for e in self.config.psg_voice_map.values())
 
         # Load or synthesize samples
         synth = self.synth
@@ -100,7 +103,7 @@ class SmpsToModConverter:
 
         # PSG synthesis block
         psg_synth = self.psg_synth
-        if psg_synth and psg_synth.enabled and self.config.psg_map:
+        if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
             print("  Synthesizing PSG samples...")
             psg_samples = generate_psg_samples(self.config, psg_synth)
@@ -324,9 +327,10 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]
-                    new_inst = self.config.psg_voice_map.get(label)
-                    if new_inst is not None:
-                        instrument = new_inst
+                    entry = self.config.psg_voice_map.get(label)
+                    if entry is not None:
+                        instrument = entry.mod_instrument
+                        current_psg_entry = entry
 
                 # smpsPan, smpsNop: no MOD equivalent
                 continue
@@ -403,12 +407,21 @@ class SmpsToModConverter:
 
                     if final_note is None:
                         # PSG root anchoring: bypass the transpose path entirely when a
-                        # psg_map entry is active — avoids spurious out-of-range warnings
-                        # for noise channels whose SMPS note bytes carry no pitch meaning.
-                        # synth_root is synthesis-only; the MOD trigger note is always root.
+                        # psg_map/psg_voice_map entry is active — avoids spurious out-of-range
+                        # warnings for noise channels whose SMPS note bytes carry no pitch meaning.
+                        # For melodic tones with low set, apply the same root-offset formula as
+                        # InstrumentRange. synth_root is synthesis-only; the MOD trigger note
+                        # is determined by root (+/- offset from low).
                         psg_anchor = None
-                        if current_psg_entry is not None:
-                            psg_anchor = current_psg_entry.root
+                        if current_psg_entry is not None and current_psg_entry.root is not None:
+                            if current_psg_entry.low is not None:
+                                # Melodic anchor: root + (source − low), clamped to MOD range
+                                out = current_psg_entry.root.value + (source_semitone - current_psg_entry.low)
+                                psg_anchor = ModNote(max(0, min(35, out)))
+                            elif current_psg_entry.type != "tone":
+                                # Fixed anchor: noise channels (no pitch content)
+                                psg_anchor = current_psg_entry.root
+                            # tone with root but no low → psg_anchor stays None → transpose path
                         if psg_anchor is not None:
                             final_note = psg_anchor
                         else:

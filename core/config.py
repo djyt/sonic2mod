@@ -72,6 +72,7 @@ class PsgInstrumentEntry:
     type: str                                # "tone" | "white_noise" | "periodic_noise"
     root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
     synth_root: Optional[int] = None        # Synthesis pitch override — SMPS semitone (None = use root)
+    low: Optional[int] = None               # SMPS semitone anchor for melodic root offset (tone entries)
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
     envelope: object = None                  # Named table str ("PSG4") or inline list[int]; None = constant volume
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
@@ -188,7 +189,7 @@ class ConversionConfig:
     legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
     psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
-    psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": mod_instrument, ...}
+    psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": PsgInstrumentEntry, ...}
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -371,10 +372,24 @@ class ConversionConfig:
                 stacklevel=2,
             )
 
-        # Parse psg_voice_map: {"fTone_01": 7, "fTone_03": 9}
+        # Parse psg_voice_map: {"fTone_01": {mod_instrument, root, envelope, ...}}
         raw_pvm = data.get('psg_voice_map', {})
         for k, v in raw_pvm.items():
-            config.psg_voice_map[str(k)] = v
+            root_note = ModNote[v['root']]
+            synth_root = None
+            if 'synth_root' in v:
+                synth_root = parse_smps_note(v['synth_root'])
+            low = parse_smps_note(v['low']) if 'low' in v else None
+            config.psg_voice_map[str(k)] = PsgInstrumentEntry(
+                mod_instrument=v['mod_instrument'],
+                type=v.get('type', 'tone'),
+                root=root_note,
+                synth_root=synth_root,
+                low=low,
+                noise_rate=v.get('noise_rate', 0),
+                envelope=v.get('envelope', None),
+                base_volume=v.get('base_volume', 0),
+            )
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
 input_file: "sonic_1/music/Mus81 - GHZ.asm"
-output_file: "output/ghz6_psg.mod"
+output_file: "output/ghz6_psg2.mod"
 samples_dir: "./samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -46,7 +46,7 @@ channels:
   - source: PSG1
     mod_channel: 6
     #transpose: -48           # D5–Bb6 (62–82) → D2–Bb3 (14–34) ✓
-    enabled: false
+    #enabled: false
 
   - source: PSG2
     mod_channel: 7
@@ -57,7 +57,7 @@ channels:
   - source: PSG3
     mod_channel: 8
     #transpose: -48
-    enabled: true
+    #enabled: true
 
 
 # -------------------------------------------------------------------------------------------------
@@ -205,10 +205,26 @@ psg_map:
     base_volume: 0         # SN76489 base attenuation (0=max)
 
 psg_voice_map:
-  fTone_01: 8              # default square-wave envelope
-  fTone_03: 9              # softer attack envelope
-  fTone_05: 10
-  fTone_06: 11
+  fTone_01:
+    mod_instrument: 8
+    root: A2
+    synth_root: A4
+    envelope: fTone_01
+  fTone_03:
+    mod_instrument: 9
+    root: A2
+    synth_root: A4
+    envelope: fTone_03
+  fTone_05:
+    mod_instrument: 10
+    root: A2
+    synth_root: A4
+    envelope: fTone_05
+  fTone_06:
+    mod_instrument: 11
+    root: A2
+    synth_root: A4
+    envelope: fTone_06
 
 
 # -------------------------------------------------------------------------------------------------

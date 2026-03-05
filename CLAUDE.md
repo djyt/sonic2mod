@@ -60,7 +60,7 @@ pip install pyyaml rich   # external dependencies
 python convert.py --config configs/title_screen.yaml
 
 # Quick no-config run (default Sonic 1 settings)
-python convert.py "C:/coding/sonic_1/source_s1disasm-AS/sound/music/Mus8A - Title Screen.asm"
+python convert.py "sonic_1/music/Mus8A - Title Screen.asm"
 
 # Override output path
 python convert.py --config configs/title_screen.yaml --output output/title_screen.mod
@@ -85,20 +85,20 @@ python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip all --ma
 
 ## Regression Testing
 
-Baselines live in `tests/baselines/`. Test cases: GHZ (ignores PSG3/ch8) and Title Screen (ignores PSG3/ch6).
+Baselines live in `tests/baselines/`. Test cases: GHZ and Title Screen
 
 ```bash
 # BEFORE implementing a fix — save current output as baseline:
 python tools/regression_test.py --generate-baselines
 
-# AFTER implementing a fix — diff all non-PSG3 channels against baseline:
+# AFTER implementing a fix — diff all channels that should remain same against baseline
 python tools/regression_test.py
 ```
 
 **Workflow for any converter change:**
 1. Run `--generate-baselines` while code is known-good.
 2. Make the change.
-3. Run without flags — PASS means no regressions on non-PSG3 channels.
+3. Run without flags — PASS means no regressions on channels.
 
 **Adding a new test case:** append an entry to `TEST_CASES` in `tools/regression_test.py`:
 ```python
@@ -219,7 +219,7 @@ voice_map:
 - `finetune`: -8..+7 (MOD finetune nibble; +1 ≈ +12.5 cents)
 - Synthesis path: entries with `inst_num` in `fm_samples` apply finetune only (file not loaded)
 
-## YM2612 Synthesis (Segments 1–5 — all complete)
+## YM2612 Synthesis
 
 Full reference: `docs/synthesis.md`.
 

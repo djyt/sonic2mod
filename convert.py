@@ -285,11 +285,10 @@ def _render_warning(w: dict):
             f"at this transpose."
         )
         ctx = w.get('extra_ctx', '')
+        avail = w.get('psg_available_labels')
         if ctx and not ctx.startswith('form '):
-            # PSG voice label (e.g. "fTone_01") — entry lives in psg_voice_map
             map_ref = f"psg_voice_map entry [bold]{ctx}[/bold]"
         elif ctx and ctx.startswith('form '):
-            # PSG form byte (e.g. "form 0xe7") — entry lives in psg_map
             map_ref = f"psg_map entry [bold]{ctx}[/bold]"
         elif channel.startswith('PSG'):
             map_ref = "psg_voice_map or psg_map entry"
@@ -299,6 +298,10 @@ def _render_warning(w: dict):
             f"     [green]Fix:[/green] add a {map_ref} with  "
             f"[bold cyan]{map_key}: {src}[/bold cyan]"
         )
+        if avail:
+            labels = "  ".join(f"[bold]{lb}[/bold]" for lb in avail)
+            console.print(f"     [dim]No psg_voice_map entry was active when this note fired.[/dim]")
+            console.print(f"     [dim]Check these entries: {labels}[/dim]")
 
     elif wtype == 'map_gap':
         note  = w['note_name']

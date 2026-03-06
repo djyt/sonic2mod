@@ -108,7 +108,7 @@ psg_map:
   0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A3               # Synthesis rate = MOD playback rate = amiga_clock / PERIOD_TABLE[A3]
-    noise_rate: 0          # N/512 LFSR preset (hardware uses rate 3 = follow PSG ch2)
+    noise_rate: 3          # Follow tone ch2 (PSG3 frequency) — correct hardware mode for 0xE7
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
     

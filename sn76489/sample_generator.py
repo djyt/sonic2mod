@@ -61,17 +61,10 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
         return
     seen.add(inst_num)
 
-    # target_rate always from root (determines sample quality / Amiga playback period).
+    # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
+    # Noise and tone both use this. For noise, this is the only pitch-relevant parameter.
     mod_root_idx = entry.root.value
     target_rate  = round(psg_synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
-
-    # synthesis pitch: synth_root overrides root for TONE entries.
-    # For noise, synth_root is unused (noise has no pitch); ignored here.
-    # synth_root is an SMPS semitone (C0=0, C1=12); renderer idx = semitone - 12.
-    if entry.synth_root is not None:
-        synth_note_idx = entry.synth_root - 12
-    else:
-        synth_note_idx = mod_root_idx
 
     resolved_env = _resolve_envelope(entry, psg_synth, verbose=verbose)
     env_info = f" envelope={entry.envelope}({len(resolved_env)}fr)" if resolved_env else ""
@@ -79,6 +72,12 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
     entry_type = entry.type.lower()
 
     if entry_type == "tone":
+        # synth_root overrides the synthesis pitch for tone entries only.
+        # synth_root is an SMPS semitone (C0=0, C1=12); renderer idx = semitone - 12.
+        if entry.synth_root is not None:
+            synth_note_idx = entry.synth_root - 12
+        else:
+            synth_note_idx = mod_root_idx
         freq_hz = 440.0 * (2.0 ** ((synth_note_idx - 45) / 12.0))
         n_val   = note_to_psg_n(synth_note_idx, psg_synth.clock_rate)
         if verbose:
@@ -100,6 +99,9 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
         _check_warnings(caught, inst_num, verbose=verbose)
 
     elif entry_type in ("white_noise", "periodic_noise"):
+        # Noise has no pitch. target_rate = amiga_clock / PERIOD_TABLE[root] is the
+        # synthesis rate AND the MOD playback rate — they are identical by construction.
+        # Choosing root: A3 vs A2 only affects sample quality (higher rate = more resolution).
         white = (entry_type == "white_noise")
         noise_label = "white" if white else "periodic"
         if verbose:

@@ -107,9 +107,8 @@ voice_map:
 psg_map:
   0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
     mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A3               # MOD note that determines target_rate (playback pitch)
-    synth_root: A4         # (optional) synthesis pitch override
-    noise_rate: 0          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
+    root: A3               # Synthesis rate = MOD playback rate = amiga_clock / PERIOD_TABLE[A3]
+    noise_rate: 0          # N/512 LFSR preset (hardware uses rate 3 = follow PSG ch2)
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
     

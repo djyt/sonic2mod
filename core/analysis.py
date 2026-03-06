@@ -93,6 +93,9 @@ class ChannelAnalysis:
     # smpsChangeTransposition history
     transpose_events: list = field(default_factory=list)
     has_transpose_change: bool = False
+    # Initial cumulative_transpose (= smpsHeaderFM pitch_offset, e.g. -12 for $F4).
+    # Raw SMPS semitones + initial_transpose ≈ effective semitones at song start.
+    initial_transpose: int = 0
     # Config coverage gaps (populated only if config provided)
     uncovered_notes: list = field(default_factory=list)   # semitones not in voice_map ranges
     # Config enabled status (populated if config provided)
@@ -327,6 +330,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
         effect_counts=effect_counts,
         transpose_events=transpose_events,
         has_transpose_change=has_transpose_change,
+        initial_transpose=ch.header.pitch_offset,
         uncovered_notes=uncovered_notes,
         config_enabled=config_enabled,
     )

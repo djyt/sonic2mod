@@ -163,7 +163,17 @@ def render_channel_fm(ch: ChannelAnalysis, config: ConversionConfig | None):
         f"Ticks: {ch.total_ticks}{loop_str}"
     )
 
-    lines.append(f"Note range: {_note_range_str(ch)}")
+    range_str = _note_range_str(ch)
+    lines.append(f"Note range: {range_str}  [dim](raw SMPS bytes)[/dim]")
+    if ch.initial_transpose != 0 and ch.min_semitone is not None:
+        eff_lo = semitone_to_note_name(ch.min_semitone + ch.initial_transpose)
+        eff_hi = semitone_to_note_name(ch.max_semitone + ch.initial_transpose)
+        lines.append(
+            f"  [dim]Effective chip pitch (initial transpose {ch.initial_transpose:+d}): "
+            f"≈ {eff_lo}–{eff_hi}"
+            + (" (varies with smpsChangeTransposition)" if ch.has_transpose_change else "")
+            + "[/dim]"
+        )
 
     # Transpose change
     if ch.has_transpose_change:

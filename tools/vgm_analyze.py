@@ -178,9 +178,10 @@ def _parse_vgm(
     fnum_hi: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
 
     # Per-channel PSG state
-    psg_vol   = [0xF, 0xF, 0xF, 0xF]   # 4-bit attenuation; 0xF = silent
-    psg_freq  = [0, 0, 0]               # 10-bit tone period (channels 0-2)
-    psg_noise = 0                        # 3-bit noise register
+    psg_vol       = [0xF, 0xF, 0xF, 0xF]  # 4-bit attenuation; 0xF = silent
+    psg_freq      = [0, 0, 0]              # 10-bit tone period (channels 0-2)
+    psg_prev_freq = [0, 0, 0]              # period at last key-on (period-change detection)
+    psg_noise     = 0                      # 3-bit noise register
     psg_latch_ch   = None                # last latched channel (0-3)
     psg_latch_type = None                # 0 = freq, 1 = vol
 
@@ -204,7 +205,12 @@ def _parse_vgm(
         rows.append((time_ms, ch_name, fnum, block, freq, note, smps))
 
     def _emit_psg_keyon(ch: int) -> None:
-        """Emit a PSG key-on event when volume transitions from silent to audible."""
+        """Emit a PSG key-on event.
+
+        Triggered either by a volume transition (0xF → audible) or by a tone
+        period change while the channel is already audible (portamento / arpeggio
+        without intervening silence).
+        """
         time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
         if ch < 3:
             ch_name = f"PSG{ch + 1}"
@@ -214,6 +220,7 @@ def _parse_vgm(
             freq    = _psg_period_to_hz(period, psg_clock)
             note    = _nearest_note(freq)
             smps    = _smps_note(freq, "psg")
+            psg_prev_freq[ch] = period   # remember period so we don't double-emit
             rows.append((time_ms, ch_name, period, 0, freq, note, smps))
         else:
             if channel_filter and "NOISE" not in channel_filter:
@@ -290,9 +297,16 @@ def _parse_vgm(
                 else:
                     # Tone frequency low nibble
                     psg_freq[ch] = (psg_freq[ch] & 0x3F0) | nib
+                    # Secondary key-on: period changed while channel is audible
+                    if psg_vol[ch] < 0xF and psg_freq[ch] != psg_prev_freq[ch]:
+                        _emit_psg_keyon(ch)
             elif psg_latch_ch is not None and psg_latch_type == 0 and psg_latch_ch < 3:
                 # Data byte: high 6 bits of tone period
                 psg_freq[psg_latch_ch] = (b & 0x3F) << 4 | (psg_freq[psg_latch_ch] & 0xF)
+                # Secondary key-on: period changed while channel is audible
+                ch = psg_latch_ch
+                if psg_vol[ch] < 0xF and psg_freq[ch] != psg_prev_freq[ch]:
+                    _emit_psg_keyon(ch)
 
         elif cmd == 0x50 and chip not in ('psg', 'all'):
             # Skip PSG write when not analyzing PSG

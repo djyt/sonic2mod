@@ -1,5 +1,8 @@
 # sonic2mod — SMPS-to-MOD Converter
 
+## Git Commits
+Never include "Co-Authored-By" trailers in commit messages.
+
 Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 
 ## Documentation Index

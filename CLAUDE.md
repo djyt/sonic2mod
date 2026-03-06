@@ -105,7 +105,6 @@ python tools/regression_test.py
 {
     "name": "my_song",
     "config": "configs/my_song.yaml",
-    "output": "output/my_song.mod",          # must match output_file in yaml
     "baseline": "tests/baselines/my_song_baseline.mod",
     "ignore_channels": [],                   # normally empty; only set when deliberately
                                              # changing that channel (0-based MOD indices)

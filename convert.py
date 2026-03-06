@@ -190,7 +190,12 @@ def main():
     )
 
     converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)
-    mod = converter.convert()
+    needs_synthesis = (synth.enabled or psg_synth.enabled)
+    if needs_synthesis:
+        with console.status("[dim]Synthesizing samples…[/dim]", spinner="dots"):
+            mod = converter.convert()
+    else:
+        mod = converter.convert()
 
     # ── Write output ──────────────────────────────────────────────────────────
     output_dir = os.path.dirname(config.output_file)

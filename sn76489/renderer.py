@@ -212,20 +212,27 @@ def render_psg_noise_raw(
     envelope: list | None = None,
     base_volume: int = 0,
     fps: float = 60.0,
+    tone2_n: int | None = None,
 ) -> tuple[list, int]:
     """Render a PSG noise burst.  Returns (mono_list, rate) before int8 packing.
 
     Args:
         white:        True = white noise, False = periodic (tonal) noise.
-        noise_rate:   0/1/2 = N/512, N/1024, N/2048 preset dividers.
+        noise_rate:   0/1/2 = N/512, N/1024, N/2048 preset dividers;
+                      3 = follow tone ch2 (set tone2_n for correct LFSR clock).
         sustain_secs, release_secs, clock_rate, target_rate: same as tone variant.
         envelope:     Per-frame volume offsets (None = constant base_volume).
         base_volume:  SN76489 base attenuation (0=max, 15=silent).
         fps:          Frame rate for envelope stepping (60 NTSC / 50 PAL).
+        tone2_n:      10-bit N divider to write to tone ch2 before triggering noise.
+                      Only used when noise_rate == 3 (follow tone ch2).
     """
     rate = target_rate if target_rate is not None else 44100
     sn = SN76489(clock_rate=clock_rate, sample_rate=rate)
 
+    # Rate 3 = follow tone ch2. Set ch2 frequency first so LFSR clocks correctly.
+    if noise_rate == 3 and tone2_n is not None:
+        sn.write_tone_freq(2, tone2_n)
     sn.write_noise(white, noise_rate)
 
     sustain_n = int(rate * sustain_secs)
@@ -247,6 +254,7 @@ def render_psg_noise(
     release_secs: float = 0.1,
     clock_rate: int = _NTSC_CLOCK,
     target_rate: int | None = None,
+    tone2_n: int | None = None,
 ) -> tuple[bytes, int]:
     """Render a PSG noise burst to 8-bit signed mono PCM, peak-normalized.
 
@@ -254,7 +262,8 @@ def render_psg_noise(
         (pcm_bytes, sample_rate_hz)
     """
     mono, rate = render_psg_noise_raw(
-        white, noise_rate, sustain_secs, release_secs, clock_rate, target_rate
+        white, noise_rate, sustain_secs, release_secs, clock_rate, target_rate,
+        tone2_n=tone2_n,
     )
     return _normalize_int8(mono), rate
 

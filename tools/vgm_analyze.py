@@ -20,7 +20,9 @@ Output columns (FM):
     fnum      — raw frequency number written to YM2612
     blk       — block (octave shift), 0–7
     freq_hz   — computed frequency using chip formula
-    note      — nearest semitone name (e.g. G3, C#2)
+    note      — nearest semitone name in standard pitch (e.g. G3, C#2)
+    smps      — same note in SMPS-assembly convention (FM label is one octave
+                lower than chip output, so A6 chip → A5 SMPS label)
 
 Output columns (PSG tone):
     time_ms   — milliseconds from track start
@@ -28,7 +30,9 @@ Output columns (PSG tone):
     period    — 10-bit SN76489 period register value
     —         — (blk column unused, shown as —)
     freq_hz   — computed frequency: clock / (32 * period)
-    note      — nearest semitone name
+    note      — nearest semitone name in standard pitch
+    smps      — same note in SMPS-assembly convention (PSG label is one octave
+                higher than chip output, so E4 chip → E5 SMPS label)
 
 Output columns (PSG noise):
     time_ms   — milliseconds from track start
@@ -37,6 +41,7 @@ Output columns (PSG noise):
     —         — (blk column unused)
     —         — (freq_hz column unused)
     note      — decoded noise type string (e.g. white/N/512)
+    smps      — "—" (no pitch meaning for noise)
 """
 
 from __future__ import annotations
@@ -92,6 +97,38 @@ def _nearest_note(freq: float) -> str:
     if freq <= 0:
         return "---"
     midi = round(69 + 12 * math.log2(freq / 440.0))
+    name = _NOTE_NAMES[midi % 12]
+    octave = midi // 12 - 1
+    return f"{name}{octave}"
+
+
+def _smps_note(freq: float, chan_type: str) -> str:
+    """Return the SMPS-convention note name for a chip output frequency.
+
+    In Sonic 1 SMPS the note byte labels are offset from standard pitch:
+      FM  — label is one octave *lower* than what the chip outputs
+            e.g. nA5 in the assembly → chip plays A6 (standard)
+            Conversion: subtract 12 from MIDI number
+      PSG — label is one octave *higher* than what the chip outputs
+            e.g. nE5 in the assembly → chip plays E4 (standard)
+            Conversion: add 12 to MIDI number
+      NOISE — no pitch; returns "—"
+
+    Args:
+        freq:      chip output frequency in Hz (> 0)
+        chan_type: "fm", "psg", or "noise"
+    """
+    if freq <= 0 or chan_type == "noise":
+        return "—"
+    midi = round(69 + 12 * math.log2(freq / 440.0))
+    if chan_type == "fm":
+        midi -= 12
+    elif chan_type == "psg":
+        midi += 12
+    else:
+        return "—"
+    if midi < 0 or midi > 127:
+        return "—"
     name = _NOTE_NAMES[midi % 12]
     octave = midi // 12 - 1
     return f"{name}{octave}"
@@ -162,8 +199,9 @@ def _parse_vgm(
             return
         freq    = _fnum_to_hz(fnum, block, fm_clock)
         note    = _nearest_note(freq)
+        smps    = _smps_note(freq, "fm")
         time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
-        rows.append((time_ms, ch_name, fnum, block, freq, note))
+        rows.append((time_ms, ch_name, fnum, block, freq, note, smps))
 
     def _emit_psg_keyon(ch: int) -> None:
         """Emit a PSG key-on event when volume transitions from silent to audible."""
@@ -175,7 +213,8 @@ def _parse_vgm(
             period  = psg_freq[ch]
             freq    = _psg_period_to_hz(period, psg_clock)
             note    = _nearest_note(freq)
-            rows.append((time_ms, ch_name, period, 0, freq, note))
+            smps    = _smps_note(freq, "psg")
+            rows.append((time_ms, ch_name, period, 0, freq, note, smps))
         else:
             if channel_filter and "NOISE" not in channel_filter:
                 return
@@ -183,7 +222,7 @@ def _parse_vgm(
             rate_idx   = psg_noise & 0x3
             rate_str   = ("N/512", "N/1024", "N/2048", "psgtone")[rate_idx]
             noise_desc = f"{noise_type}/{rate_str}"
-            rows.append((time_ms, "NOISE", psg_noise, 0, 0.0, noise_desc))
+            rows.append((time_ms, "NOISE", psg_noise, 0, 0.0, noise_desc, "—"))
 
     end = len(data)
     while pos < end:
@@ -374,17 +413,39 @@ def main() -> None:
         print(f"Filter : {', '.join(sorted(channel_filter))}")
     print(f"Events : {len(rows)} key-on events found")
     print()
-    print(f"{'time_ms':>10}  {'chan':<5}  {'data':>6}  {'blk':>3}  {'freq_hz':>10}  note/desc")
-    print("-" * 58)
+    print(f"{'time_ms':>10}  {'chan':<5}  {'data':>6}  {'blk':>3}  {'freq_hz':>10}  {'note':<8}  smps")
+    print("-" * 68)
 
     for row in rows[:limit]:
-        time_ms, ch, data_val, block, freq, note = row
+        time_ms, ch, data_val, block, freq, note, smps = row
         blk_str  = str(block) if ch.startswith("FM") else "--"
         freq_str = f"{freq:>10.2f}" if freq > 0 else f"{'--':>10}"
-        print(f"{time_ms:>10.1f}  {ch:<5}  {data_val:>6}  {blk_str:>3}  {freq_str}  {note}")
+        print(f"{time_ms:>10.1f}  {ch:<5}  {data_val:>6}  {blk_str:>3}  {freq_str}  {note:<8}  {smps}")
 
     if len(rows) > limit:
         print(f"  ... {len(rows) - limit} more rows (use --max-rows to show more)")
+
+    # Per-channel unique note summary (smps convention), sorted by frequency
+    seen_keys: dict[str, dict[tuple, float]] = {}   # chan -> {(note,smps): freq}
+    for row in rows:
+        _, ch, _, _, freq, note, smps = row
+        seen_keys.setdefault(ch, {})
+        key = (note, smps)
+        if key not in seen_keys[ch]:
+            seen_keys[ch][key] = freq
+
+    if seen_keys:
+        print()
+        print("Unique notes per channel  (standard -> SMPS label):")
+        print("-" * 68)
+        for ch_name in sorted(seen_keys.keys()):
+            pairs = sorted(seen_keys[ch_name].items(), key=lambda kv: kv[1] if kv[1] > 0 else float('inf'))
+            if all(smps == "—" for (_, smps), _ in pairs):
+                # Noise channel — just list descriptors
+                parts = [note for (note, _), _ in pairs]
+            else:
+                parts = [f"{note}->{smps}" for (note, smps), _ in pairs]
+            print(f"  {ch_name:<6}: {',  '.join(parts)}")
 
 
 if __name__ == "__main__":

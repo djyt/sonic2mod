@@ -183,10 +183,14 @@ def render_channel_fm(ch: ChannelAnalysis, config: ConversionConfig | None):
     if ch.voice_stats:
         lines.append("Voices used:")
         for vi, vs in sorted(ch.voice_stats.items()):
-            lo = semitone_to_note_name(vs.min_semitone)
-            hi = semitone_to_note_name(vs.max_semitone)
+            if vs.note_count == 0:
+                range_str = "—"
+            else:
+                lo = semitone_to_note_name(vs.min_semitone)
+                hi = semitone_to_note_name(vs.max_semitone)
+                range_str = f"{lo}–{hi}"
             lines.append(
-                f"  [yellow]${vi:02X}[/yellow]  {lo}–{hi}  "
+                f"  [yellow]${vi:02X}[/yellow]  {range_str}  "
                 f"({vs.note_count} notes, {vs.switch_count} switches)"
             )
 
@@ -287,9 +291,12 @@ def render_voices_table(analysis: SongAnalysis):
     for ch_an in analysis.channels:
         if ch_an.channel_type == "FM":
             for vi, vs in ch_an.voice_stats.items():
-                lo = semitone_to_note_name(vs.min_semitone)
-                hi = semitone_to_note_name(vs.max_semitone)
-                entry = f"{ch_an.name} ({lo}–{hi})"
+                if vs.note_count == 0:
+                    entry = f"{ch_an.name}"
+                else:
+                    lo = semitone_to_note_name(vs.min_semitone)
+                    hi = semitone_to_note_name(vs.max_semitone)
+                    entry = f"{ch_an.name} ({lo}–{hi})"
                 voice_usage.setdefault(vi, []).append(entry)
 
     if not song.voices:
@@ -348,9 +355,12 @@ def render_config_coverage(analysis: SongAnalysis):
                               "[dim]no notes[/dim]" if ch_an.config_enabled else "[dim]disabled[/dim]")
             else:
                 for vi, vs in sorted(ch_an.voice_stats.items()):
-                    lo = semitone_to_note_name(vs.min_semitone)
-                    hi = semitone_to_note_name(vs.max_semitone)
-                    rng = f"{lo}–{hi}"
+                    if vs.note_count == 0:
+                        rng = "—"
+                    else:
+                        lo = semitone_to_note_name(vs.min_semitone)
+                        hi = semitone_to_note_name(vs.max_semitone)
+                        rng = f"{lo}–{hi}"
                     ranges = (
                         config.channel_instrument_map.get(ch_an.name, {}).get(vi) or
                         config.voice_map.get(vi)
@@ -464,16 +474,17 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
             lines.append(f"  # ${vi:02X} — {alg_str} — used by {used_by}")
 
             # Find range stats across all FM channels for this voice
-            min_sem = min(
-                ch_an.voice_stats[vi].min_semitone
+            # Skip 0-note entries (sentinel values 999/-1)
+            note_bearing = [
+                ch_an.voice_stats[vi]
                 for ch_an in fm_channels
-                if vi in ch_an.voice_stats
-            )
-            max_sem = max(
-                ch_an.voice_stats[vi].max_semitone
-                for ch_an in fm_channels
-                if vi in ch_an.voice_stats
-            )
+                if vi in ch_an.voice_stats and ch_an.voice_stats[vi].note_count > 0
+            ]
+            if not note_bearing:
+                min_sem = max_sem = None
+            else:
+                min_sem = min(vs.min_semitone for vs in note_bearing)
+                max_sem = max(vs.max_semitone for vs in note_bearing)
             has_trans = any(
                 ch_an.has_transpose_change
                 for ch_an in fm_channels
@@ -481,11 +492,14 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
             )
             root_comment = "# root: safe (no smpsChangeTransposition)" if not has_trans else "# root: unsafe — channel uses smpsChangeTransposition"
             lines.append(f"  {vi}:")
-            lines.append(f"    - low:  {semitone_to_note_name(min_sem)}")
-            lines.append(f"      high: {semitone_to_note_name(max_sem)}")
-            lines.append(f"      mod_instrument: ???")
-            lines.append(f"      {root_comment}")
-            lines.append(f"      # root: ???")
+            if min_sem is None:
+                lines.append(f"    # (no notes played — voice switched to but never triggered)")
+            else:
+                lines.append(f"    - low:  {semitone_to_note_name(min_sem)}")
+                lines.append(f"      high: {semitone_to_note_name(max_sem)}")
+                lines.append(f"      mod_instrument: ???")
+                lines.append(f"      {root_comment}")
+                lines.append(f"      # root: ???")
 
     yaml_text = "\n".join(lines)
     syntax = Syntax(yaml_text, "yaml", theme="monokai", line_numbers=False)

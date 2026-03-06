@@ -196,7 +196,9 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
     max_semitone: Optional[int] = None
 
     current_voice_idx: Optional[int] = None
-    cumulative_transpose = 0
+    # Initialise to header pitch_offset so cumulative reflects the true
+    # running total (smpsHeaderFM $F4 = -12 for FM1/FM3/FM4/FM5).
+    cumulative_transpose = ch.header.pitch_offset
     total_ticks = 0
 
     for event in ch.events:

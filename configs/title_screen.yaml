@@ -43,7 +43,7 @@ channels:
 
 
 # -------------------------------------------------------------------------------------------------
-# Samples. FM samples auto-generated if synthesis: true in settings.yaml
+# Samples. FM samples auto-generated if fm_synthesis: true in settings.yaml
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 sample_list:

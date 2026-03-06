@@ -387,7 +387,7 @@ class ConversionConfig:
                 synth_root=synth_root,
                 low=low,
                 noise_rate=v.get('noise_rate', 0),
-                envelope=v.get('envelope', None),
+                envelope=v.get('envelope', k),
                 base_volume=v.get('base_volume', 0),
             )
 

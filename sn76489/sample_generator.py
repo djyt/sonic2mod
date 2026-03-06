@@ -104,6 +104,10 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
         # Choosing root: A3 vs A2 only affects sample quality (higher rate = more resolution).
         white = (entry_type == "white_noise")
         noise_label = "white" if white else "periodic"
+        # Rate 3 = follow tone ch2. Leave tone2_n=None so the emulator uses its reset
+        # default (N=1), which clocks the LFSR near sample_rate/2 — matching hardware
+        # behaviour for the title screen where PSG3/ch2 is never explicitly tuned.
+        tone2_n = None
         if verbose:
             print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
                   f"rate={entry.noise_rate}  root={entry.root.name}  "
@@ -120,6 +124,7 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
                 envelope=resolved_env,
                 base_volume=entry.base_volume,
                 fps=fps,
+                tone2_n=tone2_n,
             )
         _check_warnings(caught, inst_num, verbose=verbose)
 

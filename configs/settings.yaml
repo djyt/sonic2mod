@@ -1,7 +1,7 @@
 # Global sonic2mod settings
 # These apply across all songs unless overridden.
 
-synthesis:
+fm_synthesis:
   enabled: true             # Set true to auto-generate FM samples via YM2612 emulation
   mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)

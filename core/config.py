@@ -124,7 +124,7 @@ class SynthesisSettings:
         import yaml
         with open(filepath) as f:
             data = yaml.safe_load(f)
-        s = data.get("synthesis", {})
+        s = data.get("fm_synthesis", {})
         return cls(
             enabled=s.get("enabled", False),
             mode=s.get("mode", "ym2612"),

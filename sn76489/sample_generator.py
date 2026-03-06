@@ -35,6 +35,14 @@ from sn76489.renderer import (                                    # noqa: E402
 )
 
 
+def _trim_trailing_silence(mono: list) -> list:
+    """Remove trailing zero samples (chip-silent) from raw mono list."""
+    i = len(mono)
+    while i > 0 and mono[i - 1] == 0:
+        i -= 1
+    return mono[:i]
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -136,6 +144,12 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
     if not mono:
         if verbose:
             print(f"  Warning: instrument {inst_num} (PSG) rendered empty — skipping")
+        return
+
+    mono = _trim_trailing_silence(mono)
+    if not mono:
+        if verbose:
+            print(f"  Warning: instrument {inst_num} (PSG) rendered all silence — skipping")
         return
 
     pre_peak = max(abs(v) for v in mono)

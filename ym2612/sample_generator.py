@@ -35,6 +35,14 @@ from ym2612.wrapper import OPN2                    # noqa: E402
 from ym2612.renderer import render_note_raw, note_to_freq, freq_to_fnum_block  # noqa: E402
 
 
+def _trim_trailing_silence(mono: list) -> list:
+    """Remove trailing zero samples (chip-silent) from raw mono list."""
+    i = len(mono)
+    while i > 0 and mono[i - 1] == 0:
+        i -= 1
+    return mono[:i]
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -114,6 +122,12 @@ def generate_fm_samples(
                 root_str = entry.root.name if has_root else f"synth_idx={synth_idx}"
                 print(f"  Warning: instrument {entry.mod_instrument} (voice {voice_idx}"
                       f"{label}, {root_str}) rendered empty — skipping")
+            return
+
+        mono = _trim_trailing_silence(mono)
+        if not mono:
+            if verbose:
+                print(f"  Warning: instrument {entry.mod_instrument} rendered all silence — skipping")
             return
 
         for w in caught:

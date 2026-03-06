@@ -28,7 +28,6 @@ TEST_CASES = [
     {
         "name": "ghz",
         "config": "configs/ghz.yaml",
-        "output": "output/ghz6_psg.mod",
         "baseline": "tests/baselines/ghz_baseline.mod",
         "ignore_channels": [],
         "description": "GHZ — all channels",
@@ -36,7 +35,6 @@ TEST_CASES = [
     {
         "name": "title_screen",
         "config": "configs/title_screen.yaml",
-        "output": "output/title_screenv2_10.mod",
         "baseline": "tests/baselines/title_screen_baseline.mod",
         "ignore_channels": [],
         "description": "Title Screen — all channels",
@@ -44,10 +42,18 @@ TEST_CASES = [
 ]
 
 
-def run_conversion(config: str, root: Path) -> bool:
+def _regression_output_path(root: Path, name: str) -> Path:
+    """Return a temporary output path used exclusively by the regression tests."""
+    return root / "output" / f"_regression_{name}.mod"
+
+
+def run_conversion(config: str, root: Path, output_override: Path | None = None) -> bool:
     """Run convert.py with the given config. Returns True on success."""
+    cmd = [sys.executable, "convert.py", "--config", config]
+    if output_override is not None:
+        cmd += ["--output", str(output_override)]
     result = subprocess.run(
-        [sys.executable, "convert.py", "--config", config],
+        cmd,
         cwd=str(root),
         capture_output=True,
         text=True,
@@ -65,16 +71,19 @@ def generate_baselines(root: Path):
     print("Generating baselines...")
     for tc in TEST_CASES:
         print(f"\n  [{tc['name']}] Running convert.py --config {tc['config']} ...")
-        ok = run_conversion(tc["config"], root)
+        tmp_path = _regression_output_path(root, tc["name"])
+        tmp_path.parent.mkdir(parents=True, exist_ok=True)
+        ok = run_conversion(tc["config"], root, output_override=tmp_path)
         if not ok:
             print(f"  SKIPPED (conversion failed)")
+            tmp_path.unlink(missing_ok=True)
             continue
-        output_path = root / tc["output"]
         baseline_path = root / tc["baseline"]
-        if not output_path.exists():
-            print(f"  SKIPPED (output not found: {output_path})")
+        if not tmp_path.exists():
+            print(f"  SKIPPED (output not found: {tmp_path})")
             continue
-        shutil.copy2(output_path, baseline_path)
+        shutil.copy2(tmp_path, baseline_path)
+        tmp_path.unlink(missing_ok=True)
         print(f"  Saved baseline: {baseline_path}")
     print("\nBaselines generated.")
 
@@ -91,32 +100,37 @@ def run_tests(root: Path):
             all_passed = False
             continue
 
+        tmp_path = _regression_output_path(root, tc["name"])
+        tmp_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"  Running convert.py --config {tc['config']} ...")
-        ok = run_conversion(tc["config"], root)
+        ok = run_conversion(tc["config"], root, output_override=tmp_path)
         if not ok:
             print(f"  FAIL (conversion error)")
+            tmp_path.unlink(missing_ok=True)
             all_passed = False
             continue
 
-        output_path = root / tc["output"]
-        if not output_path.exists():
-            print(f"  FAIL (output not found: {output_path})")
-            all_passed = False
-            continue
+        try:
+            if not tmp_path.exists():
+                print(f"  FAIL (output not found: {tmp_path})")
+                all_passed = False
+                continue
 
-        diffs = compare_mods(
-            baseline_path, output_path,
-            ignore_channels=tc.get("ignore_channels", []),
-        )
-        if diffs:
-            print(f"  FAIL — {len(diffs)} difference(s):")
-            for d in diffs[:20]:
-                print(f"    {d}")
-            if len(diffs) > 20:
-                print(f"    ... and {len(diffs) - 20} more")
-            all_passed = False
-        else:
-            print(f"  PASS")
+            diffs = compare_mods(
+                baseline_path, tmp_path,
+                ignore_channels=tc.get("ignore_channels", []),
+            )
+            if diffs:
+                print(f"  FAIL — {len(diffs)} difference(s):")
+                for d in diffs[:20]:
+                    print(f"    {d}")
+                if len(diffs) > 20:
+                    print(f"    ... and {len(diffs) - 20} more")
+                all_passed = False
+            else:
+                print(f"  PASS")
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
     print()
     if all_passed:

@@ -24,6 +24,7 @@ from rich import box
 from core.smps_parser import SmpsParser
 from core.smps2mod import SmpsToModConverter
 from core.config import ConversionConfig, derive_bpm, SynthesisSettings, PsgSynthesisSettings
+from core.mod import apply_pattern_breaks
 
 console = Console(highlight=False, legacy_windows=False)
 
@@ -196,6 +197,10 @@ def main():
             mod = converter.convert()
     else:
         mod = converter.convert()
+
+    # ── Pattern breaks ────────────────────────────────────────────────────────
+    if config.mod_pattern_breaks:
+        apply_pattern_breaks(mod, config.mod_pattern_breaks)
 
     # ── Write output ──────────────────────────────────────────────────────────
     output_dir = os.path.dirname(config.output_file)

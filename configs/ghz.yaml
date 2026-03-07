@@ -143,7 +143,8 @@ voice_map:
       high: B4
       mod_instrument: 26
       root: B1
-      synth_root: B3
+      #synth_root: B3
+      synth_root: B2
 
   # $05 → main melody
   5:
@@ -194,7 +195,7 @@ psg_map:
   0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A3               # MOD note that determines target_rate (playback pitch)
-    noise_rate: 0          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
+    noise_rate: 3          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
 
@@ -238,3 +239,12 @@ channel_instrument_map:
         mod_instrument: 28
         root: B1
         synth_root: B3
+        
+        
+# -------------------------------------------------------------------------------------------------
+# Structural pattern break: GHZ intro fills rows 0-31 of pattern 0; the loop begins at row 32.
+# A Bxx at row 31 jumps cleanly to pattern 1 instead of playing 32 rows of silence.
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 31

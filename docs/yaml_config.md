@@ -192,6 +192,9 @@ If `voice_map` entries cover the full note range of a channel, the base YAML `tr
 
 ## PSG Instrument Mapping
 
+For full PSG synthesis details (SN76489 internals, normalization, envelope tables, API),
+see `docs/psg_synthesis.md`. Note: the older `psg_form_map` key is deprecated; use `psg_map`.
+
 ### psg_map
 
 Maps `smpsPSGform` byte values to synthesized PSG instruments. The key is the raw

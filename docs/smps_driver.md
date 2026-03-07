@@ -275,6 +275,8 @@ The DAC channel does not support voice switching (`smpsSetvoice`) or modulation.
 
 ## PSG Channels
 
+See also: `docs/psg_synthesis.md` (SN76489 synthesis pipeline, envelope tables, psg_map schema).
+
 Three SN76489 square-wave generators (PSG1–PSG3) plus a noise channel.
 
 ### Note range

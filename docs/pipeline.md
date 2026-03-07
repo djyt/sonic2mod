@@ -5,6 +5,7 @@ How SMPS assembly music maps to Amiga ProTracker MOD format.
 Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (assembly syntax),
 `docs/architecture.md` (module overview), `docs/effects.txt` (ProTracker effect reference),
 `docs/synthesis.md` (FM synthesis — synth_root, pitch matching, OPN2 internals),
+`docs/psg_synthesis.md` (PSG synthesis — psg_map/psg_voice_map, envelope tables, SN76489 internals),
 `docs/yaml_config.md` (full YAML schema).
 
 ---
@@ -67,8 +68,8 @@ One effect per note-row in MOD format. See `docs/effects.txt` for full ProTracke
 | `smpsPan` | $E0 | direction | (none) | — | MOD panning is channel-based; ignored |
 | `smpsNoAttack` | $E7 | — | (flagged on note) | — | No MOD equivalent; note plays without re-attack in SMPS |
 | `smpsNop` | $E2 | byte | (none) | — | Game sync byte; ignored |
-| `smpsPSGform` | $F3 | byte | (none) | — | PSG waveform; ignored |
-| `smpsPSGvoice` | $F5 | byte | (none) | — | PSG envelope; ignored |
+| `smpsPSGform` | $F3 | byte | (routing) | — | Looks up `psg_map[byte]` → new PSG instrument |
+| `smpsPSGvoice` | $F5 | label | (routing) | — | Looks up `psg_voice_map[label]` → new PSG instrument |
 | `smpsMaxRelRate` | $F9 | — | (none) | — | FM1 release; ignored |
 
 ### Effect priority (one per note-row)

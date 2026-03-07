@@ -4,7 +4,7 @@
 
 sonic2mod converts Sonic 1 SMPS (Sample Music Playback System) assembly music into Amiga ProTracker MOD format. The tool parses macro-based assembly text, builds an intermediate representation, then maps notes, timing, and effects into a binary MOD file.
 
-Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema).
+Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema), `docs/synthesis.md` (YM2612 synthesis), `docs/psg_synthesis.md` (SN76489 PSG synthesis).
 
 ## Data Flow
 
@@ -188,10 +188,11 @@ Conversion engine that walks the IR and writes MOD data.
 #### `SmpsToModConverter.convert()` Flow
 
 1. Set song name
-2. Load samples (from file list) or create placeholders
-3. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
-4. Convert all channels via `_convert_all_channels()`
-5. Set song loop point from `smpsJump` via `_set_loop_point()`
+2. Optionally run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) to synthesize PCM
+3. Load samples (from file list) or create placeholders
+4. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
+5. Convert all channels via `_convert_all_channels()`
+6. Set song loop point from `smpsJump` via `_set_loop_point()`
 
 #### Channel Conversion
 
@@ -250,3 +251,50 @@ CLI entry point using `argparse`.
 If `--config` is provided, the YAML file is loaded and CLI args override `input`/`output`. Otherwise, `default_sonic1()` creates a config from CLI args.
 
 Output path defaults to `<input_basename>.mod` if not specified.
+
+---
+
+## sn76489/ — SN76489 PSG Synthesis Package
+
+Synthesizes SN76489 PSG samples (tone and noise) from `psg_map`/`psg_voice_map` config entries.
+Full reference: `docs/psg_synthesis.md`.
+
+### build.py
+
+Auto-compiles `reference/SN76489/sn76489.c` + `panning.c` → `sn76489/sn76489.dll` (Windows) or `sn76489.so` (Unix). Rebuilds only when C sources are newer than the compiled library.
+
+### wrapper.py — `SN76489` class
+
+ctypes wrapper around the VGMPlay SN76489 emulator. Methods:
+
+- `write_tone_freq(ch, n)` — set tone channel ch (0–2) frequency divider N
+- `write_volume(ch, vol)` — set channel volume (0=max, 15=silent)
+- `write_noise(white, rate)` — configure noise LFSR (white/periodic, rate 0–3)
+- `render_samples(n) → list[(L,R)]` — render n stereo INT32 sample pairs
+- `shutdown()` — free chip context
+
+**Critical:** `SN76489_Reset` must be called explicitly after `SN76489_Init`; the C source has it commented out. `wrapper.py` calls it in `__init__`.
+
+### renderer.py
+
+Converts MOD note indices and noise configs to 8-bit signed mono PCM:
+
+- `render_psg_tone(mod_note_index, ...) → (bytes, int)` — tone → PCM + sample rate
+- `render_psg_noise(white, noise_rate, ...) → (bytes, int)` — noise → PCM + sample rate
+- `note_to_psg_n(mod_note_index, clock_rate) → int` — note → 10-bit SN76489 divider N
+- `*_raw` variants return `(list[int], int)` before normalization (used by `sample_generator.py`)
+
+### sample_generator.py
+
+```python
+generate_psg_samples(config, psg_synth, verbose=False) → dict[int, tuple[bytes, int]]
+```
+
+Iterates all `PsgInstrumentEntry` objects from `config.psg_map` and `config.psg_voice_map`,
+synthesizes each, applies global normalization (`127.0 / psg_output_max`), and returns a
+`{inst_num: (pcm_bytes, sample_rate_hz)}` dict ready for `ModFile` insertion.
+
+### validate.py
+
+Standalone smoke test: `python sn76489/validate.py` renders a C3 tone and white noise,
+writing `output/psg_tone_test.raw` and `output/psg_noise_test.raw` (16-bit for Audacity).

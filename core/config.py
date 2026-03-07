@@ -190,6 +190,7 @@ class ConversionConfig:
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
     psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
     psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": PsgInstrumentEntry, ...}
+    mod_pattern_breaks: list = field(default_factory=list)  # [(pattern_slot, row), ...] — insert Bxx + split pattern
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -393,5 +394,9 @@ class ConversionConfig:
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)
+
+        # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
+        breaks_raw = data.get('mod_pattern_breaks', [])
+        config.mod_pattern_breaks = [(int(b['pattern']), int(b['row'])) for b in breaks_raw]
 
         return config

@@ -288,3 +288,132 @@ class ModFile:
             sample.length = 1  # 1 word = 2 bytes
             sample.set_volume(64)
             self.samples[i - 1] = sample
+
+
+def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
+    """Insert a Bxx position-jump and repack the pattern stream at the break row.
+
+    The pattern data is treated as a continuous stream of rows.  For each
+    (pattern_slot, row) in breaks (processed ascending):
+
+      1. All rows after the break (pattern_slot rows row+1..63, then all rows
+         of every subsequent pattern) are collected into a flat body stream.
+      2. That body stream is repacked into patterns starting at pattern_slot+1,
+         row 0 — so each new pattern is fully packed with 64 rows of body data.
+         One extra pattern is appended at the end if the body doesn't divide
+         evenly into 64-row chunks.
+      3. Rows row+1..63 of pattern_slot are cleared.
+      4. Bxx → pattern_slot+1 is written at (pattern_slot, row) on the first
+         free effect channel so the player skips the blank rows and enters the
+         repacked stream at row 0.
+      5. All Bxx effects that targeted patterns after the break are updated to
+         reflect the body data's new position.  If the target data now starts
+         at row > 0 within its new pattern, a Dxx (pattern-break, BCD-encoded)
+         is written alongside the Bxx on a free adjacent channel so playback
+         begins at the correct row.
+
+    Raises ValueError if the required extra pattern would exceed MAX_POSITIONS.
+    """
+    stride = mod.CHANNELS * 4  # bytes per row
+
+    def _to_bcd(n: int) -> int:
+        """BCD-encode a row number: 32 → 0x32, 10 → 0x10."""
+        return (n // 10) * 16 + (n % 10)
+
+    for orig_slot, row in sorted(breaks):
+        P = orig_slot  # pattern indices don't shift (we append, not insert)
+
+        # body_start_flat: the old flat-row index of the first body row
+        body_start_flat = P * 64 + row + 1
+
+        # --- collect body as an immutable snapshot --------------------------
+        body = bytearray()
+        p_data = mod.patterns[P].get_bytes()
+        for r in range(row + 1, 64):
+            body += p_data[r * stride: r * stride + stride]
+        N = len(mod.patterns) - 1
+        for pi in range(P + 1, N + 1):
+            body += bytes(mod.patterns[pi].get_bytes())
+
+        body_rows      = len(body) // stride           # e.g. 1056 for GHZ
+        n_pats_needed  = (body_rows + 63) // 64        # ceil division
+        n_pats_avail   = N - P                         # patterns P+1..N
+        n_new          = max(0, n_pats_needed - n_pats_avail)
+
+        if mod.positions + n_new > mod.MAX_POSITIONS:
+            raise ValueError(
+                f"apply_pattern_breaks: {n_new} extra pattern(s) needed but "
+                f"would exceed MAX_POSITIONS ({mod.MAX_POSITIONS})"
+            )
+
+        # append extra patterns and rebuild identity position list
+        for _ in range(n_new):
+            mod.patterns.append(ModPattern(mod.CHANNELS))
+        mod.positions += n_new
+        for i in range(mod.positions):
+            mod.position_list[i] = i
+
+        # --- clear rows row+1..63 from pattern P ----------------------------
+        for r in range(row + 1, 64):
+            for b in range(stride):
+                mod.patterns[P].set_entry(r * stride + b, 0)
+
+        # --- rewrite patterns P+1 .. P+n_pats_needed from body --------------
+        pat_size = 64 * stride
+        for pi_new in range(n_pats_needed):
+            pat = mod.patterns[P + 1 + pi_new]
+            for i in range(pat_size):
+                pat.set_entry(i, 0)
+            for r in range(64):
+                br = pi_new * 64 + r
+                if br < body_rows:
+                    for b in range(stride):
+                        pat.set_entry(r * stride + b, body[br * stride + b])
+
+        # --- update Bxx effects that targeted patterns after the break -------
+        # Old target T (pattern T, row 0) is now at:
+        #   body_row   = T*64 - body_start_flat
+        #   new_pat    = P+1 + body_row // 64
+        #   new_row    = body_row % 64
+        # If new_row != 0 a Dxx (BCD row) must accompany the Bxx so the
+        # player starts at the right row within the new pattern.
+        for pat in mod.patterns:
+            pat_data = pat.get_bytes()
+            for row_i in range(64):
+                for chan_i in range(mod.CHANNELS):
+                    idx = chan_i * 4 + row_i * stride
+                    if (pat_data[idx + 2] & 0xF) != 0xB:
+                        continue
+                    target = pat_data[idx + 3]
+                    if target <= P:
+                        continue
+                    old_flat = target * 64
+                    if old_flat < body_start_flat:
+                        continue
+                    br          = old_flat - body_start_flat
+                    new_pat_num = P + 1 + br // 64
+                    new_row_num = br % 64
+                    pat.set_entry(idx + 3, new_pat_num & 0x7F)
+                    if new_row_num != 0:
+                        bcd = _to_bcd(new_row_num)
+                        for dxx_ch in range(mod.CHANNELS):
+                            if dxx_ch == chan_i:
+                                continue
+                            didx = dxx_ch * 4 + row_i * stride
+                            if (pat_data[didx + 2] & 0xF) == 0 and pat_data[didx + 3] == 0:
+                                pat.set_entry(didx + 2, (pat_data[didx + 2] & 0xF0) | 0xD)
+                                pat.set_entry(didx + 3, bcd)
+                                break
+
+        # --- write Bxx at (P, row) → P+1 on the first free channel ----------
+        pat_data = mod.patterns[P].get_bytes()
+        bxx_chan = 0
+        for ch in range(mod.CHANNELS):
+            idx = ch * 4 + row * stride
+            if (pat_data[idx + 2] & 0xF) == 0 and pat_data[idx + 3] == 0:
+                bxx_chan = ch
+                break
+        mod.set_active_pattern(P)
+        mod.set_channel(bxx_chan)
+        mod.set_row(row)
+        mod.set_position_jump(P + 1)

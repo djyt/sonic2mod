@@ -12,6 +12,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/smps_driver.md` | **Sonic 1 driver reference** — all coord flag bytes ($E0–$F9), smpsDetune vs smpsChangeTransposition, timing system, smpsModSet, smpsNoteFill, FM operator order, DAC, PSG |
 | `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas |
 | `docs/synthesis.md` | **YM2612 synthesis pipeline** — root/synth_root/target_rate explained, all settings, normalization, headroom/carrier balance, OPN2 internals, API reference, common mistakes |
+| `docs/psg_synthesis.md` | **SN76489 PSG synthesis pipeline** — psg_map/psg_voice_map schema, envelope tables, root/synth_root, normalization, API |
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
@@ -42,6 +43,12 @@ sonic2mod/
     renderer.py      #   SmpsVoice + mod_note_index → 8-bit PCM (render_note)
     sample_generator.py #  voice_map → {inst: (pcm, rate)} dict (generate_fm_samples)
     validate.py      #   Standalone test: python ym2612/validate.py
+  sn76489/            # SN76489 PSG sample synthesis package (all segments complete)
+    build.py          #   Auto-compiles sn76489.c → sn76489/sn76489.dll (gcc or cl)
+    wrapper.py        #   ctypes SN76489 class — write_tone_freq/volume/noise, render_samples
+    renderer.py       #   mod_note_index + noise config → 8-bit PCM (render_psg_tone/noise)
+    sample_generator.py #  psg_map → {inst: (pcm, rate)} dict (generate_psg_samples)
+    validate.py       #   Standalone test: python sn76489/validate.py
   docs/              # Technical documentation
   tools/             # Debug / analysis utilities
     vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files
@@ -77,6 +84,7 @@ python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/titl
 # Verify: open output .mod in OpenMPT or MilkyTracker
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):
 python ym2612/validate.py
+python sn76489/validate.py      # C3 tone + white noise → output/psg_{tone,noise}_test.raw
 
 # Analyse FM channels from a VGM/VGZ game recording (verify synth_root values)
 python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
@@ -157,8 +165,8 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
 | `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
 | `smpsPSGAlterVol` | $EC | `Cxx` | Same path as smpsAlterVol; delta adds to current_volume |
-| `smpsPSGform` | $F3 | (instrument switch) | Looks up `psg_form_map[byte]` → new instrument |
-| `smpsPSGvoice` | $F5 | (instrument switch) | Looks up `psg_voice_map[label]` → new instrument |
+| `smpsPSGform` | $F3 | (routing) | Looks up `psg_map[byte]` → new PSG instrument |
+| `smpsPSGvoice` | $F5 | (routing) | Looks up `psg_voice_map[label]` → new PSG instrument |
 | `smpsNop` | $E2 | ignored | No MOD equivalent |
 
 **Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).
@@ -224,26 +232,14 @@ voice_map:
 ## YM2612 Synthesis
 
 Full reference: `docs/synthesis.md`.
+Enable: `fm_synthesis.enabled: true` in `configs/settings.yaml`.
+Smoke tests: `python ym2612/validate.py` / `renderer.py` / `sample_generator.py`
 
-Enable: `synthesis.enabled: true` in `configs/settings.yaml`.
+## SN76489 PSG Synthesis
 
-**Smoke tests:**
-```bash
-python ym2612/validate.py           # A4 tone → output/validate_test.raw
-python ym2612/renderer.py           # voice 1 at A3 → output/renderer_test.raw
-python ym2612/sample_generator.py   # voice 1, root=A3 → output/sample_gen_test.raw
-```
-
-**Pitch summary:**
-- `synth_note_idx = entry.low - 12` (or `entry.synth_root - 12`) — SMPS semitone → renderer index (−12 offset: idx 0 = C1, not C0)
-- `target_rate = round(amiga_clock / PERIOD_TABLE[root.value])` — always from `root`; `synth_root` does NOT affect it
-- For channels with smpsChangeTransposition: set `synth_root = low + total_transpose − chan_transpose` so chip pitch matches synthesis pitch
-- FM timbre is pitch-dependent — missing synth_root on a bass voice synthesizes 3 octaves too high → thin/silent output
-
-**Critical constants (do not change):**
-- `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` — wrong mapping → distorted output
-- `render_samples()` accumulates all 24 OPN2_Clock values per sample, subtracts DC=72 — do NOT use only last clock value
-- `headroom_db: 6.0`, `carrier_balance: true` in settings.yaml — prevents DAC clipping on multi-carrier algorithms
+Full reference: `docs/psg_synthesis.md`.
+Enable: `psg_synthesis.enabled: true` in `configs/settings.yaml`.
+Smoke tests: `python sn76489/validate.py` / `renderer.py` / `sample_generator.py`
 
 ## Testing
 

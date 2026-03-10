@@ -143,7 +143,6 @@ voice_map:
       high: B4
       mod_instrument: 26
       root: B1
-      #synth_root: B3
       synth_root: B2
 
   # $05 → main melody

@@ -77,6 +77,16 @@ class SmpsToModConverter:
         synth = self.synth
         if synth and synth.enabled and synth.mode == "ym2612":
             from ym2612.sample_generator import generate_fm_samples
+            # Warn about voice_map entries whose voice index doesn't exist in the song,
+            # and collect their instruments to suppress spurious "file not found" warnings.
+            _voice_indices = {v.index for v in self.song.voices}
+            fm_skipped_insts: set = set()
+            for _vi, _ranges in self.config.voice_map.items():
+                if _vi not in _voice_indices:
+                    _insts = [e.mod_instrument for e in _ranges]
+                    fm_skipped_insts.update(_insts)
+                    print(f"Warning: voice_map[{_vi}] voice ${_vi:02X} not defined in song "
+                          f"(inst {_insts}) — remove this entry from voice_map")
             fm_samples = generate_fm_samples(self.song, self.config, synth)
             self._infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
             # Install synthesized FM samples
@@ -100,7 +110,7 @@ class SmpsToModConverter:
             if self.config.sample_list:
                 for entry in self.config.sample_list:
                     inst_num = entry[0]
-                    if inst_num not in fm_samples and inst_num not in psg_synth_insts:
+                    if inst_num not in fm_samples and inst_num not in psg_synth_insts and inst_num not in fm_skipped_insts:
                         self.mod.add_samples(self.config.samples_dir, [entry])
         elif self.config.sample_list:
             # Load all disk samples, skipping any that will be PSG-synthesized

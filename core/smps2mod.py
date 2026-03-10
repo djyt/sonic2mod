@@ -622,24 +622,6 @@ class SmpsToModConverter:
         row = row_total % 64
         return pattern, row
 
-    def _last_data_pattern_row(self):
-        """Return (pattern, row) of the last row with note data in the MOD.
-
-        Scans self.mod.patterns backward for the last row where any channel
-        has a non-zero period (bytes 0–1 of the 4-byte cell).  Called after
-        apply_pattern_breaks so the result reflects the post-break layout.
-        """
-        stride = self.mod.CHANNELS * 4
-        for pat_i in range(len(self.mod.patterns) - 1, -1, -1):
-            pat_data = self.mod.patterns[pat_i].get_bytes()
-            for row_i in range(63, -1, -1):
-                for chan_i in range(self.mod.CHANNELS):
-                    idx = row_i * stride + chan_i * 4
-                    period = ((pat_data[idx] & 0x0F) << 8) | pat_data[idx + 1]
-                    if period != 0:
-                        return pat_i, row_i
-        return 0, 0
-
     def _set_loop_point(self, breaks=None):
         """Set Bxx position jump for song looping based on smpsJump targets.
 
@@ -663,11 +645,33 @@ class SmpsToModConverter:
         if loop_target_tick is None:
             return  # No smpsJump found; nothing to do
 
-        # Location: last row with a note in the post-break MOD
-        last_pattern, last_row = self._last_data_pattern_row()
+        tpr = self.config.ticks_per_row
+
+        # Derive last row from song tick data (handles rest/sustain tails that
+        # a period-scan could not see because they have no note trigger).
+        song_end_tick = 0
+        for ch in self.song.channels:
+            for ev in ch.events:
+                end = ev.tick_position + (ev.note.duration if ev.note else 0)
+                if end > song_end_tick:
+                    song_end_tick = end
+        song_end_flat = max(int(round(song_end_tick / tpr)), 1) - 1
+
+        if breaks:
+            P, break_row = breaks[0]
+            body_start = P * 64 + break_row + 1
+            if song_end_flat < body_start:
+                last_pattern = song_end_flat // 64
+                last_row     = song_end_flat % 64
+            else:
+                br           = song_end_flat - body_start
+                last_pattern = P + 1 + br // 64
+                last_row     = br % 64
+        else:
+            last_pattern = song_end_flat // 64
+            last_row     = song_end_flat % 64
 
         # Target: map loop_target_tick to post-break (pattern, row)
-        tpr = self.config.ticks_per_row
         flat_row = int(round(loop_target_tick / tpr))
 
         if breaks:

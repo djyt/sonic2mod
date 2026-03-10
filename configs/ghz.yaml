@@ -165,6 +165,7 @@ voice_map:
       mod_instrument: 6
       root: C2
       synth_root: C5
+      vibrato: 12
 
   # $07 → bridge
   7:

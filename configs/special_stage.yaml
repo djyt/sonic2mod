@@ -1,0 +1,96 @@
+# -------------------------------------------------------------------------------------------------
+# SPECIAL STAGE Conversion Script
+# -------------------------------------------------------------------------------------------------
+name: "Special Stage"
+input_file: sonic_1/music/Mus89 - Special Stage.asm
+output_file: output/special_stage.mod
+samples_dir: "samples/"
+
+auto_bpm: true              # Derive BPM from SMPS tempo header
+region: ntsc
+target_speed: 6
+ticks_per_row: 3
+num_mod_channels: 8
+
+# -------------------------------------------------------------------------------------------------
+# Channel layout
+# -------------------------------------------------------------------------------------------------
+channels:
+  - source: FM1
+    mod_channel: 0
+    enabled: true
+
+  - source: FM2
+    mod_channel: 1
+    enabled: true
+
+  - source: FM3
+    mod_channel: 2
+    enabled: true
+
+  - source: FM4
+    mod_channel: 3
+    #transpose: -75  # note range F6–C7
+    enabled: false
+
+  - source: FM5
+    mod_channel: 4
+    #transpose: -72  # note range D6–A6
+    enabled: false
+
+  - source: FM6
+    mod_channel: 5
+    #transpose: -83  # note range C7–A7
+    enabled: false
+
+  - source: PSG1
+    mod_channel: 6
+    #transpose: -69
+    enabled: false
+
+  - source: PSG2
+    mod_channel: 7
+    #transpose: -55
+    enabled: false
+
+
+# -------------------------------------------------------------------------------------------------
+# Samples. FM samples auto-generated if fm_synthesis: true in settings.yaml
+#          Format: mod_instrument, filename, default volume, finetuning
+# -------------------------------------------------------------------------------------------------
+sample_list:
+  - [1,  "ss_v0.raw",     32, 0]
+  #- [2,  "ss_v1.raw",     32, 0]
+  - [3,  "ss_v2.raw",     32, 0]
+  - [4,  "ss_v3.raw",     32, 0]
+
+
+# -------------------------------------------------------------------------------------------------
+# Per-voice instrument splits by source-note range.
+# -------------------------------------------------------------------------------------------------
+voice_map:
+  0:
+    - low:  C5
+      high: A5
+      mod_instrument: 1
+      root: C2
+      synth_root: C3
+  #1:
+  #  - low: A6
+  #    high: E7
+  #    mod_instrument: 2
+  #    root: A2
+  #    synth_root: A4
+  2:
+    - low: A4
+      high: B5
+      mod_instrument: 3
+      root: A1
+      synth_root: A2
+  3:
+    - low: A6
+      high: E7
+      mod_instrument: 4
+      root: A2
+      synth_root: A5
+      vibrato: 12               # Override Vibrato with more subtle setting

@@ -178,6 +178,30 @@ synth_idx   = synth_root − 12                    # synthesis at synth_root's f
   synth_root: C2    # chip pitch = C2; heard = 65 Hz at C2 period
 ```
 
+### vibrato — per-entry override
+
+Overrides the channel-level `smpsModSet` vibrato for any note matched by this range entry.
+Value is two hex digits mirroring ProTracker effect `4xy` (x = speed nibble, y = depth nibble).
+
+```yaml
+voice_map:
+  3:
+    - low: A6
+      high: E7
+      mod_instrument: 4
+      root: A2
+      synth_root: A5
+      vibrato: 12      # speed=1, depth=2 (overrides smpsModSet params for this range)
+```
+
+| Value | Meaning |
+|-------|---------|
+| absent | Use channel smpsModSet speed/depth (default) |
+| `00` | Suppress vibrato entirely for this entry |
+| `XY` | Speed nibble X, depth nibble Y (same encoding as `4xy`) |
+
+YAML accepts integer (`vibrato: 12` → speed=1, depth=2), hex integer (`vibrato: 0x12`), or string (`vibrato: "1A"` → speed=1, depth=10). Also supported on `psg_map` and `psg_voice_map` entries with the same semantics.
+
 ### Choosing root
 
 `root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).

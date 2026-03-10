@@ -286,6 +286,7 @@ class SmpsToModConverter:
         vibrato_active = False
         vibrato_speed = 0
         vibrato_depth = 0
+        vibrato_wait = 0   # ticks to delay before vibrato starts
         current_psg_entry = None   # last smpsPSGform/smpsPSGvoice entry; used for root anchoring
         current_psg_label = None   # label string for warnings (e.g. "fTone_01", "form 0xe7")
 
@@ -330,6 +331,7 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsModSet':
                     # wait, speed, depth, steps
+                    vibrato_wait  = eff.params[0]
                     vibrato_speed = min(eff.params[1], 0xF)
                     vibrato_depth = min(eff.params[2], 0xF)
                     vibrato_active = True
@@ -540,10 +542,39 @@ class SmpsToModConverter:
                         if emit_vol != sv:
                             self.mod.set_effect(0xC, emit_vol)
 
-                        # Vibrato effect (4xy)
+                        # Vibrato effect (4xy) on attack row
                         elif vibrato_active and vibrato_speed > 0:
                             param = (vibrato_speed << 4) | vibrato_depth
                             self.mod.set_effect(0x4, param)
+
+                    # Emit 4xy on every continuation row within the note's vibrato span.
+                    # In ProTracker, 4xy only applies on rows where the effect is present,
+                    # so we repeat it each row to get continuous vibrato matching SMPS
+                    # modulation.  The SMPS wait delay is respected: vibrato starts at the
+                    # row corresponding to tick + vibrato_wait.
+                    if vibrato_active and vibrato_speed > 0:
+                        vib_start_tick = tick + vibrato_wait
+                        note_end_tick  = tick + note.duration
+                        tpr = self.config.ticks_per_row
+                        fill_coord = (fill_pat, fill_row) if fill_placed else None
+                        cont_tick = tick + tpr   # start one row past the attack
+                        while cont_tick < note_end_tick:
+                            if cont_tick >= vib_start_tick:
+                                cont_pat, cont_row = self._tick_to_pattern_row(cont_tick)
+                                if cont_pat >= self.config.max_patterns:
+                                    break
+                                if fill_coord != (cont_pat, cont_row):
+                                    if cont_pat >= len(self.mod.patterns):
+                                        break
+                                    self.mod.set_active_pattern(cont_pat)
+                                    self.mod.set_channel(mod_chan)
+                                    self.mod.set_row(cont_row)
+                                    self.mod.set_effect(0x4, 0x00)  # 400: continue vibrato
+                            cont_tick += tpr
+                        # Restore cursor to the attack row
+                        self.mod.set_active_pattern(pattern)
+                        self.mod.set_channel(mod_chan)
+                        self.mod.set_row(row)
 
     def _tick_to_pattern_row(self, tick):
         """Convert a tick position to (pattern_index, row_within_pattern).

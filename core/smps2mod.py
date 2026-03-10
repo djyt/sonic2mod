@@ -289,6 +289,7 @@ class SmpsToModConverter:
         vibrato_wait = 0   # ticks to delay before vibrato starts
         current_psg_entry = None   # last smpsPSGform/smpsPSGvoice entry; used for root anchoring
         current_psg_label = None   # label string for warnings (e.g. "fTone_01", "form 0xe7")
+        active_range_entry = None  # voice_map InstrumentRange matched on most recent note
 
         # Apply initial PSG voice from smpsHeaderPSG if present and mapped
         _init_psg_label = channel.header.psg_voice_label
@@ -423,6 +424,7 @@ class SmpsToModConverter:
 
                     final_instrument = instrument
                     final_note = None
+                    active_range_entry = None  # reset on each note
 
                     # Channel-specific override takes priority over global voice_map
                     _cim = self.config.channel_instrument_map.get(chan_cfg.source, {})
@@ -431,6 +433,7 @@ class SmpsToModConverter:
                     if ranges:
                         for entry in ranges:
                             if entry.low <= source_semitone <= entry.high:
+                                active_range_entry = entry
                                 final_instrument = entry.mod_instrument
                                 if entry.root is not None:
                                     out = entry.root.value + (source_semitone - entry.low)
@@ -532,6 +535,20 @@ class SmpsToModConverter:
                             self.mod.set_row(row)
                             fill_placed = True
 
+                    # Determine effective vibrato: per-entry override takes priority.
+                    _vib_override = None
+                    if active_range_entry is not None and active_range_entry.vibrato is not None:
+                        _vib_override = active_range_entry.vibrato
+                    elif current_psg_entry is not None and current_psg_entry.vibrato is not None:
+                        _vib_override = current_psg_entry.vibrato
+
+                    if _vib_override is not None:
+                        eff_vib_speed = (_vib_override >> 4) & 0xF
+                        eff_vib_depth = _vib_override & 0xF
+                    else:
+                        eff_vib_speed = vibrato_speed
+                        eff_vib_depth = vibrato_depth
+
                     if not fill_placed:
                         # Emit Cxx only when the scaled output differs from the
                         # instrument's own sample volume — MOD auto-resets to
@@ -543,8 +560,8 @@ class SmpsToModConverter:
                             self.mod.set_effect(0xC, emit_vol)
 
                         # Vibrato effect (4xy) on attack row
-                        elif vibrato_active and vibrato_speed > 0:
-                            param = (vibrato_speed << 4) | vibrato_depth
+                        elif vibrato_active and eff_vib_speed > 0:
+                            param = (eff_vib_speed << 4) | eff_vib_depth
                             self.mod.set_effect(0x4, param)
 
                     # Emit 4xy on every continuation row within the note's vibrato span.
@@ -552,7 +569,7 @@ class SmpsToModConverter:
                     # so we repeat it each row to get continuous vibrato matching SMPS
                     # modulation.  The SMPS wait delay is respected: vibrato starts at the
                     # row corresponding to tick + vibrato_wait.
-                    if vibrato_active and vibrato_speed > 0:
+                    if vibrato_active and eff_vib_speed > 0:
                         vib_start_tick = tick + vibrato_wait
                         note_end_tick  = tick + note.duration
                         tpr = self.config.ticks_per_row

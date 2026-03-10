@@ -18,6 +18,23 @@ class InstrumentRange:
     synth_root: Optional[int] = None  # SMPS semitone to synthesize at (None = use low)
                                       # target_rate is NOT adjusted — output pitch equals
                                       # synth_root's frequency when played at root's period
+    vibrato: Optional[int] = None     # per-entry 4xy override; None = use channel smpsModSet
+                                      # stored as raw byte: high nibble=speed, low nibble=depth
+                                      # 0x00 = suppress; e.g. 0x12 = speed=1, depth=2
+
+
+def _parse_vibrato(v) -> int:
+    """Parse a vibrato value from YAML (int or str) → raw byte (high=speed, low=depth).
+
+    The value is treated as two ASCII hex digits (each nibble is a hex digit 0–F):
+      vibrato: 12   (YAML int 12)  → str(12)="12" → speed=1, depth=2 → 0x12
+      vibrato: "1A" (YAML string)  → upper="1A"   → speed=1, depth=10 → 0x1A
+      vibrato: 0    (suppress)     → "00" → speed=0, depth=0
+    """
+    s = str(v).upper().zfill(2)
+    if len(s) > 2:
+        raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
+    return (int(s[0], 16) << 4) | int(s[1], 16)
 
 
 def _parse_instrument_range(entry: dict) -> "InstrumentRange":
@@ -43,9 +60,11 @@ def _parse_instrument_range(entry: dict) -> "InstrumentRange":
 
     root       = ModNote[entry['root']]              if 'root'       in entry else None
     synth_root = parse_smps_note(entry['synth_root']) if 'synth_root' in entry else None
+    vibrato    = _parse_vibrato(entry['vibrato'])     if 'vibrato'    in entry else None
 
     return InstrumentRange(
-        low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root
+        low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
+        vibrato=vibrato,
     )
 
 
@@ -76,6 +95,7 @@ class PsgInstrumentEntry:
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
     envelope: object = None                  # Named table str ("PSG4") or inline list[int]; None = constant volume
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
+    vibrato: Optional[int] = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
 
 
 @dataclass
@@ -354,6 +374,7 @@ class ConversionConfig:
             synth_root = None
             if 'synth_root' in psg_entry:
                 synth_root = parse_smps_note(psg_entry['synth_root'])
+            psg_vibrato = _parse_vibrato(psg_entry['vibrato']) if 'vibrato' in psg_entry else None
             config.psg_map[form_byte] = PsgInstrumentEntry(
                 mod_instrument=psg_entry['mod_instrument'],
                 type=inferred_type,
@@ -362,6 +383,7 @@ class ConversionConfig:
                 noise_rate=psg_entry.get('noise_rate', 0),
                 envelope=psg_entry.get('envelope', None),
                 base_volume=psg_entry.get('base_volume', 0),
+                vibrato=psg_vibrato,
             )
 
         # psg_form_map is deprecated — psg_map now serves this role
@@ -381,6 +403,7 @@ class ConversionConfig:
             if 'synth_root' in v:
                 synth_root = parse_smps_note(v['synth_root'])
             low = parse_smps_note(v['low']) if 'low' in v else None
+            pvm_vibrato = _parse_vibrato(v['vibrato']) if 'vibrato' in v else None
             config.psg_voice_map[str(k)] = PsgInstrumentEntry(
                 mod_instrument=v['mod_instrument'],
                 type=v.get('type', 'tone'),
@@ -390,6 +413,7 @@ class ConversionConfig:
                 noise_rate=v.get('noise_rate', 0),
                 envelope=v.get('envelope', k),
                 base_volume=v.get('base_volume', 0),
+                vibrato=pvm_vibrato,
             )
 
         # Parse sample list

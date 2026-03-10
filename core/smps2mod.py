@@ -153,9 +153,6 @@ class SmpsToModConverter:
         # Convert channels
         self._convert_all_channels()
 
-        # Set loop point from smpsJump
-        self._set_loop_point()
-
         return self.mod
 
     def _extend_looping_channels(self):
@@ -564,22 +561,32 @@ class SmpsToModConverter:
         return pattern, row
 
     def _last_data_pattern_row(self):
-        """Return (pattern, row) of the last event written across all channels.
+        """Return (pattern, row) of the last row with note data in the MOD.
 
-        Scans every channel's event list and takes the maximum tick_position,
-        which corresponds to the last MOD row that has actual data written to it.
+        Scans self.mod.patterns backward for the last row where any channel
+        has a non-zero period (bytes 0–1 of the 4-byte cell).  Called after
+        apply_pattern_breaks so the result reflects the post-break layout.
         """
-        last_tick = 0
-        for ch in self.song.channels:
-            if ch.events:
-                last_tick = max(last_tick, ch.events[-1].tick_position)
-        return self._tick_to_pattern_row(last_tick)
+        stride = self.mod.CHANNELS * 4
+        for pat_i in range(len(self.mod.patterns) - 1, -1, -1):
+            pat_data = self.mod.patterns[pat_i].get_bytes()
+            for row_i in range(63, -1, -1):
+                for chan_i in range(self.mod.CHANNELS):
+                    idx = row_i * stride + chan_i * 4
+                    period = ((pat_data[idx] & 0x0F) << 8) | pat_data[idx + 1]
+                    if period != 0:
+                        return pat_i, row_i
+        return 0, 0
 
-    def _set_loop_point(self):
+    def _set_loop_point(self, breaks=None):
         """Set Bxx position jump for song looping based on smpsJump targets.
 
-        Uses the maximum loop-start tick across all channels so the jump
-        target lands after every channel's intro has completed.
+        Must be called after apply_pattern_breaks so that the Bxx is placed
+        at the correct post-break location and the target maps correctly.
+
+        breaks: list of (pattern_slot, break_row) tuples from mod_pattern_breaks.
+                When provided, the loop target tick is mapped to its post-break
+                position using the break formula.  Only the first break is used.
         """
         label_tick_pos = self.song.label_tick_pos
         loop_target_tick = None
@@ -594,13 +601,44 @@ class SmpsToModConverter:
         if loop_target_tick is None:
             return  # No smpsJump found; nothing to do
 
+        # Location: last row with a note in the post-break MOD
         last_pattern, last_row = self._last_data_pattern_row()
-        target_pattern, _ = self._tick_to_pattern_row(loop_target_tick)
+
+        # Target: map loop_target_tick to post-break (pattern, row)
+        tpr = self.config.ticks_per_row
+        flat_row = int(round(loop_target_tick / tpr))
+
+        if breaks:
+            P, break_row = breaks[0]
+            body_start = P * 64 + break_row + 1
+            if flat_row < body_start:
+                target_pattern = flat_row // 64
+                target_row = flat_row % 64
+            else:
+                br = flat_row - body_start
+                target_pattern = P + 1 + br // 64
+                target_row = br % 64
+        else:
+            target_pattern = flat_row // 64
+            target_row = flat_row % 64
 
         self.mod.set_active_pattern(last_pattern)
         self.mod.set_channel(0)
         self.mod.set_row(last_row)
         self.mod.set_position_jump(target_pattern)
+
+        # If the target lands mid-pattern, write a Dxx companion on a free channel
+        if target_row != 0:
+            bcd = ((target_row // 10) << 4) | (target_row % 10)
+            stride = self.mod.CHANNELS * 4
+            pat_data = self.mod.patterns[last_pattern].get_bytes()
+            for ch in range(1, self.mod.CHANNELS):
+                didx = ch * 4 + last_row * stride
+                if (pat_data[didx + 2] & 0xF) == 0 and pat_data[didx + 3] == 0:
+                    self.mod.set_channel(ch)
+                    self.mod.set_effect(0xD, bcd)
+                    break
+
         self._infos.append({
             'type': 'loop_set',
             'pattern': last_pattern,

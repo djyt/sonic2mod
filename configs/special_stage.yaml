@@ -8,8 +8,8 @@ samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc
-target_speed: 6
-ticks_per_row: 3
+target_speed: 3
+ticks_per_row: 2
 num_mod_channels: 8
 
 # -------------------------------------------------------------------------------------------------
@@ -18,30 +18,21 @@ num_mod_channels: 8
 channels:
   - source: FM1
     mod_channel: 0
-    enabled: true
 
   - source: FM2
     mod_channel: 1
-    enabled: true
 
   - source: FM3
     mod_channel: 2
-    enabled: true
 
   - source: FM4
     mod_channel: 3
-    #transpose: -75  # note range F6–C7
-    enabled: false
 
   - source: FM5
     mod_channel: 4
-    #transpose: -72  # note range D6–A6
-    enabled: false
 
   - source: FM6
     mod_channel: 5
-    #transpose: -83  # note range C7–A7
-    enabled: false
 
   - source: PSG1
     mod_channel: 6
@@ -60,7 +51,7 @@ channels:
 # -------------------------------------------------------------------------------------------------
 sample_list:
   - [1,  "ss_v0.raw",     32, 0]
-  #- [2,  "ss_v1.raw",     32, 0]
+  - [2,  "ss_v1.raw",     32, 0]
   - [3,  "ss_v2.raw",     32, 0]
   - [4,  "ss_v3.raw",     32, 0]
 
@@ -75,12 +66,12 @@ voice_map:
       mod_instrument: 1
       root: C2
       synth_root: C3
-  #1:
-  #  - low: A6
-  #    high: E7
-  #    mod_instrument: 2
-  #    root: A2
-  #    synth_root: A4
+  1:
+    - low: C7
+      high: B7
+      mod_instrument: 2
+      root: C3
+      synth_root: C6
   2:
     - low: A4
       high: B5
@@ -88,9 +79,9 @@ voice_map:
       root: A1
       synth_root: A2
   3:
-    - low: A6
+    - low: D6
       high: E7
       mod_instrument: 4
-      root: A2
-      synth_root: A5
+      root: D2
+      synth_root: D5
       vibrato: 12               # Override Vibrato with more subtle setting

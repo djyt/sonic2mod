@@ -380,6 +380,10 @@ class SmpsToModConverter:
                 tick = event.tick_position
 
                 if note.is_rest:
+                    # is_no_attack=True marks an FM/DAC standalone-duration continuation —
+                    # the YM2612 envelope sustains naturally; do not emit C00.
+                    if note.is_no_attack:
+                        continue
                     pattern, row = self._tick_to_pattern_row(tick)
                     # Skip C00 at pattern 0 row 0 — nothing is playing yet and
                     # that cell holds the speed/BPM command.

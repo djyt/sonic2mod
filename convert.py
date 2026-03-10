@@ -202,6 +202,9 @@ def main():
     if config.mod_pattern_breaks:
         apply_pattern_breaks(mod, config.mod_pattern_breaks)
 
+    # ── Loop point (post-break so positions reflect final layout) ─────────────
+    converter._set_loop_point(config.mod_pattern_breaks or [])
+
     # ── Write output ──────────────────────────────────────────────────────────
     output_dir = os.path.dirname(config.output_file)
     if output_dir and not os.path.exists(output_dir):

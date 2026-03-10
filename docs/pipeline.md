@@ -35,9 +35,21 @@ Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (a
       │  2. Set BPM + Speed on pattern 0 (Fxx effects)
       │  3. Optionally run generate_fm_samples() → synthesized PCM
       │  4. Load sample files from sample_list (or placeholders)
-      │  5. For each configured channel: walk SmpsEvent list → write MOD rows
-      │  6. Set song loop (Bxx) from smpsJump targets; target pattern = max
-      │     loop-start tick across all channels
+      │  5. _extend_looping_channels() — extend short PSG loops to match song length
+      │  6. For each configured channel: walk SmpsEvent list → write MOD rows
+      │  NOTE: _set_loop_point() is NOT called here — see post-processing below
+      │
+      ▼
+  apply_pattern_breaks(mod, breaks)   mod.py   [optional — only if mod_pattern_breaks set]
+      │  • Splits pattern stream at (P, break_row); repacks body into patterns P+1..N
+      │  • Writes Bxx at (P, break_row) → P+1 (skip blank tail rows of pattern P)
+      │  • Remaps any existing Bxx effects (loop jumps must NOT be written before this)
+      │
+      ▼
+  converter._set_loop_point(breaks)   smps2mod.py
+      │  • Scans post-break MOD backward for last row with non-zero period
+      │  • Maps loop_target_tick → post-break (pattern, row) using break formula
+      │  • Writes Bxx (+ optional Dxx companion) at the last data row
       │
       ▼
   ModFile → mod.get_bytes()        mod.py
@@ -59,7 +71,7 @@ One effect per note-row in MOD format. See `docs/effects.txt` for full ProTracke
 | `smpsModOn` | $F1 | — | Vibrato (continues) | `4xy` | Re-activates stored params |
 | `smpsModOff` | $F4 | — | (clears vibrato state) | none | No MOD effect; future notes have no vibrato |
 | `smpsNoteFill` | $E8 | byte 1–15 | Note Cut | `ECx` (Cmd EC) | x = fill ticks (4-bit); values > 15 not representable |
-| `smpsJump` | $F6 | address | Position Jump | `Bxx` (Cmd B) | Target = pattern containing the latest channel loop-start tick; Bxx placed at row 63 of the final pattern |
+| `smpsJump` | $F6 | address | Position Jump | `Bxx` (Cmd B) | Target = post-break pattern for the max loop-start tick; Bxx placed at last row with a note period in the post-break MOD; see §Pattern Breaks |
 | `smpsLoop` | $F7 | idx,count,addr | (none — unrolled) | — | Loop body replayed at parse time |
 | `smpsCall` | $F8 | address | (none — inlined) | — | Subroutine events spliced into caller |
 | `smpsSetvoice` | $EF | voice index | (instrument routing) | — | Updates voice_map lookup; no direct MOD effect |
@@ -287,13 +299,19 @@ Example — source C5–B6 (span = 12 semitones):
 
 ---
 
-### 7. Song loop uses only the first smpsJump
+### 7. Loop Bxx must be written after apply_pattern_breaks
 
-**Problem:** Loop point seems to come from the wrong channel.
+**Problem:** Loop point lands in the wrong pattern, or a D-row companion effect is needed unnecessarily.
 
-**Cause:** `_set_loop_point()` in `smps2mod.py` uses the position from the first channel that contains an `smpsJump` event. All well-formed Sonic 1 songs loop all channels simultaneously at the same position.
+**Cause:** `_set_loop_point()` uses post-break MOD coordinates. If called inside `convert()` (before `apply_pattern_breaks`), the Bxx is placed at a pre-break row number that gets displaced during repacking. The target tick-to-pattern conversion also ignores the row offset that the break introduces.
 
-**Fix:** Verify in the `.asm` source that `smpsJump` labels are consistent across channels. This is not configurable.
+**Fix:** Call order must be:
+```
+converter.convert()                                  # writes all note data; does NOT call _set_loop_point
+apply_pattern_breaks(mod, config.mod_pattern_breaks) # repacks stream
+converter._set_loop_point(config.mod_pattern_breaks) # writes Bxx in final layout
+```
+`_set_loop_point(breaks)` accepts the breaks list so it can apply the coordinate-remapping formula (see §Pattern Breaks).
 
 ---
 
@@ -324,6 +342,73 @@ Example — source C5–B6 (span = 12 semitones):
 **Cause:** A duration byte with no preceding note on the same `dc.b` line is a **sustain/wait** command — it advances the tick counter while the previous note continues. The parser emits an implicit continuation event (`is_rest=True, is_no_attack=True`). This is correct per the SMPS spec.
 
 **Fix:** No fix needed — this is working as designed. The implicit wait correctly represents the held note duration.
+
+---
+
+## Pattern Breaks (`mod_pattern_breaks`)
+
+### Purpose
+
+A SMPS song often has a short intro (e.g. 32 rows) followed by a long loop body. Without breaks,
+the intro and body share Pattern 0, leaving 32 blank rows of silence at the end of the pattern on
+every loop iteration.
+
+`mod_pattern_breaks` inserts a `Bxx` jump after the intro rows and repacks the body data into
+fully-packed patterns, eliminating the wasted rows.
+
+### YAML config
+
+```yaml
+mod_pattern_breaks:
+  - pattern: 0    # which pattern to split
+    row: 31       # last intro row; Bxx written here, body starts at row+1
+```
+
+Parsed as `[(0, 31)]` — a list of `(pattern_slot, row)` tuples.
+
+### What apply_pattern_breaks does
+
+1. Extracts the **body**: all rows after `(P, break_row)` across all patterns P..N.
+2. Repacks body into patterns P+1, P+2, … (fully 64 rows each; extra pattern appended if needed).
+3. Clears rows `break_row+1..63` of pattern P.
+4. Writes `Bxx → P+1` at `(P, break_row)` on the first free channel.
+5. Updates any pre-existing `Bxx` effects that targeted old post-break patterns (remaps coordinates).
+
+**Critical:** Do NOT write any `Bxx` loop-jump before calling `apply_pattern_breaks`. The remapping
+in step 5 only works correctly if the loop Bxx does not exist yet — write it afterward via
+`_set_loop_point(breaks)`.
+
+### Coordinate remapping formula (single break at (P, break_row))
+
+```
+body_start = P * 64 + break_row + 1   # first flat row of the body stream
+
+# pre-break flat row T → post-break position:
+if T < body_start:
+    pat, row = T // 64, T % 64        # still in intro portion (unchanged)
+else:
+    br = T - body_start
+    pat, row = P + 1 + br // 64, br % 64
+```
+
+Example — GHZ, break at (0, 31) → body_start = 32:
+- Loop target at pre-break flat row 288: br = 256 → pat=5, row=0 → **B05** ✓
+- Loop target at pre-break flat row 287: br = 255 → pat=4, row=63 → **B04 + D63** (Dxx companion needed)
+
+### _set_loop_point(breaks) algorithm
+
+1. **Bxx location** — scan `self.mod.patterns` backward for the last row where any channel cell
+   has a non-zero period (`((byte0 & 0x0F) << 8) | byte1 != 0`). This is the last row with actual
+   note data in the post-break layout. Bxx is placed there on channel 0.
+
+2. **Bxx target** — apply the coordinate formula above to `loop_target_tick`:
+   ```
+   flat_row = int(round(loop_target_tick / ticks_per_row))
+   # then apply formula → (target_pattern, target_row)
+   ```
+
+3. **Dxx companion** — if `target_row != 0`, write `Dxx` (BCD-encoded row) on the next free
+   channel at the same row so playback resumes at the correct row within the target pattern.
 
 ---
 

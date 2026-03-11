@@ -4,11 +4,10 @@ Converts parsed SMPS song data into a MOD file with correct note placement,
 timing, and effects.
 """
 
-from .tables import ModNote, smps_note_to_mod_note, SMPS_DAC_NAMES, _semitone_to_name
+from .config import ChannelConfig, ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from .mod import ModFile, ModSample
-from .smps_parser import SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, SmpsEffect
-from .config import ConversionConfig, ChannelConfig, DacSampleConfig, InstrumentRange, SynthesisSettings, PsgSynthesisSettings
-
+from .smps_parser import SmpsChannel, SmpsSong
+from .tables import ModNote, _semitone_to_name, smps_note_to_mod_note
 
 # Map MOD note name strings to ModNote enum values
 # Supports both "#" (F#3) and "s" (Fs3) sharp notation, plus "b" for flats
@@ -35,8 +34,8 @@ del _oct, _notes, _key, _enum_name
 
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
-                 synth: SynthesisSettings = None,
-                 psg_synth: PsgSynthesisSettings = None):
+                 synth: SynthesisSettings | None = None,
+                 psg_synth: PsgSynthesisSettings | None = None):
         self.song = song
         self.config = config
         self.synth = synth
@@ -90,7 +89,7 @@ class SmpsToModConverter:
             fm_samples = generate_fm_samples(self.song, self.config, synth)
             self._infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
             # Install synthesized FM samples
-            for inst_num, (pcm, rate) in fm_samples.items():
+            for inst_num, (pcm, _) in fm_samples.items():
                 sample = ModSample(f"fm_inst{inst_num}")
                 sample.data = pcm
                 sample.length = len(pcm) // 2
@@ -133,7 +132,7 @@ class SmpsToModConverter:
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
             psg_samples = generate_psg_samples(self.config, psg_synth)
-            for inst_num, (pcm, rate) in psg_samples.items():
+            for inst_num, (pcm, _) in psg_samples.items():
                 sample = ModSample(f"psg_inst{inst_num}")
                 sample.data = pcm
                 sample.length = len(pcm) // 2
@@ -246,7 +245,6 @@ class SmpsToModConverter:
         """Convert all SMPS channels to MOD channels."""
         # Build a map from source name to parsed channel
         source_map = {}
-        header_channels = self.song.header.channels
 
         # Assign source names based on header order:
         # First is DAC (if present), then FM1..FMn, then PSG1..PSGn
@@ -291,7 +289,6 @@ class SmpsToModConverter:
         # Per-channel state
         current_volume = volume
         current_voice_idx = None
-        alter_note = 0
         note_fill = 0
         vibrato_active = False
         vibrato_speed = 0
@@ -335,7 +332,7 @@ class SmpsToModConverter:
                     current_volume = max(0, min(64, current_volume - delta))
 
                 elif eff.effect_type == 'smpsAlterNote':
-                    alter_note = eff.params[0]
+                    pass  # raw FNUM offset (~10 cents); does not affect note pitch or voice_map lookup
 
                 elif eff.effect_type == 'smpsNoteFill':
                     note_fill = eff.params[0]
@@ -617,7 +614,7 @@ class SmpsToModConverter:
             (pattern, row) tuple
         """
         tpr = self.config.ticks_per_row
-        row_total = int(round(tick / tpr))
+        row_total = round(tick / tpr)
         pattern = row_total // 64
         row = row_total % 64
         return pattern, row
@@ -638,9 +635,8 @@ class SmpsToModConverter:
         for ch in self.song.channels:
             if ch.has_jump and ch.jump_target_label:
                 tick = label_tick_pos.get(ch.jump_target_label)
-                if tick is not None:
-                    if loop_target_tick is None or tick > loop_target_tick:
-                        loop_target_tick = tick
+                if tick is not None and (loop_target_tick is None or tick > loop_target_tick):
+                    loop_target_tick = tick
 
         if loop_target_tick is None:
             return  # No smpsJump found; nothing to do
@@ -655,7 +651,7 @@ class SmpsToModConverter:
                 end = ev.tick_position + (ev.note.duration if ev.note else 0)
                 if end > song_end_tick:
                     song_end_tick = end
-        song_end_flat = max(int(round(song_end_tick / tpr)), 1) - 1
+        song_end_flat = max(round(song_end_tick / tpr), 1) - 1
 
         if breaks:
             P, break_row = breaks[0]
@@ -672,7 +668,7 @@ class SmpsToModConverter:
             last_row     = song_end_flat % 64
 
         # Target: map loop_target_tick to post-break (pattern, row)
-        flat_row = int(round(loop_target_tick / tpr))
+        flat_row = round(loop_target_tick / tpr)
 
         if breaks:
             P, break_row = breaks[0]

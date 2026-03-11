@@ -27,12 +27,12 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.tables import PERIOD_TABLE, ModNote            # noqa: E402
-from core.mod import ModSample                          # noqa: E402
-from core.smps_parser import SmpsVoice, SmpsSong        # noqa: E402
-from core.config import ConversionConfig, SynthesisSettings, InstrumentRange  # noqa: E402
-from ym2612.wrapper import OPN2                    # noqa: E402
-from ym2612.renderer import render_note_raw, note_to_freq, freq_to_fnum_block  # noqa: E402
+from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
+from core.mod import ModSample
+from core.smps_parser import SmpsSong, SmpsVoice
+from core.tables import PERIOD_TABLE, ModNote
+from ym2612.renderer import freq_to_fnum_block, note_to_freq, render_note_raw
+from ym2612.wrapper import OPN2
 
 
 def _trim_trailing_silence(mono: list) -> list:
@@ -95,6 +95,7 @@ def generate_fm_samples(
                 synth_idx   = entry.low - 12
                 target_rate = round(base_rate)
 
+        assert synth_idx is not None
         _freq = note_to_freq(synth_idx)
         _fnum, _block = freq_to_fnum_block(_freq, synth.clock_rate)
         if verbose:
@@ -139,7 +140,7 @@ def generate_fm_samples(
             if has_root:
                 root_str = f"root={entry.root.name} (idx={mod_root_idx}), synth_idx={synth_idx}"
                 if entry.synth_root is not None:
-                    root_str += f" [synth_root override]"
+                    root_str += " [synth_root override]"
             else:
                 root_str = f"synth_idx={synth_idx}"
             print(f"  Instrument {entry.mod_instrument:2d}: voice={voice_idx}{label}, "
@@ -290,14 +291,14 @@ def _smoke_test() -> None:
     )
 
     # Minimal fake SmpsSong
-    from smps_parser import SmpsSong, SmpsSongHeader
+    from smps_parser import SmpsSong, SmpsSongHeader  # pyright: ignore[reportMissingImports]
     fake_song = SmpsSong(
         header=SmpsSongHeader(voice_label="test"),
         voices=[voice1],
     )
 
     # Minimal ConversionConfig with voice_map for voice 1
-    from tables import ModNote
+    from tables import ModNote  # pyright: ignore[reportMissingImports]
     fake_config = ConversionConfig()
     fake_config.voice_map = {
         1: [

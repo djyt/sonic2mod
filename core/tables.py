@@ -97,7 +97,6 @@ def _build_smps_note_names():
 
         # nBs{octave} = nC{octave+1}
         bs_name = f'nBs{octave}'
-        next_c = f'nC{octave + 1}'
         b_val = base + 11  # B of this octave
         if b_val < 0xFF:
             names[bs_name] = b_val + 1  # = next octave's C

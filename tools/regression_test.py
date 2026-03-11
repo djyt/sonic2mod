@@ -57,6 +57,7 @@ def run_conversion(config: str, root: Path, output_override: Path | None = None)
         cwd=str(root),
         capture_output=True,
         text=True,
+        check=False,
     )
     if result.returncode != 0:
         print(f"  convert.py failed (exit {result.returncode}):")
@@ -75,7 +76,7 @@ def generate_baselines(root: Path):
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
         ok = run_conversion(tc["config"], root, output_override=tmp_path)
         if not ok:
-            print(f"  SKIPPED (conversion failed)")
+            print("  SKIPPED (conversion failed)")
             tmp_path.unlink(missing_ok=True)
             continue
         baseline_path = root / tc["baseline"]
@@ -96,7 +97,7 @@ def run_tests(root: Path):
         baseline_path = root / tc["baseline"]
         if not baseline_path.exists():
             print(f"  SKIP — no baseline at {baseline_path}")
-            print(f"         Run with --generate-baselines first.")
+            print("         Run with --generate-baselines first.")
             all_passed = False
             continue
 
@@ -105,7 +106,7 @@ def run_tests(root: Path):
         print(f"  Running convert.py --config {tc['config']} ...")
         ok = run_conversion(tc["config"], root, output_override=tmp_path)
         if not ok:
-            print(f"  FAIL (conversion error)")
+            print("  FAIL (conversion error)")
             tmp_path.unlink(missing_ok=True)
             all_passed = False
             continue
@@ -128,7 +129,7 @@ def run_tests(root: Path):
                     print(f"    ... and {len(diffs) - 20} more")
                 all_passed = False
             else:
-                print(f"  PASS")
+                print("  PASS")
         finally:
             tmp_path.unlink(missing_ok=True)
 

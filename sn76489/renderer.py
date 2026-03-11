@@ -30,7 +30,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from sn76489.wrapper import SN76489  # noqa: E402
+from sn76489.wrapper import SN76489
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -40,7 +40,6 @@ _NTSC_CLOCK  = 3_579_545   # SN76489 NTSC Mega Drive clock (Hz)
 _AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 
 # Import PERIOD_TABLE for target_rate calculation
-from core.tables import PERIOD_TABLE  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +86,7 @@ def _normalize_int8(mono: list) -> bytes:
 # ---------------------------------------------------------------------------
 
 def _render_with_envelope(
-    sn: 'SN76489',
+    sn: SN76489,
     ch: int,
     sustain_n: int,
     target_rate: int,
@@ -279,10 +278,7 @@ def _smoke_test() -> None:
     print("=======================")
 
     # --- Tone: C4 ---
-    mod_note_c4 = 24  # C3 in ModNote enum (index 24 = C3); but let's use index 12 = C2
-    # Actually: ModNote index 0=C1, 12=C2, 24=C3, 36=B3 (out of range)
-    # Let's use C4 which maps to index 24 in a hypothetical 4-octave table.
-    # Stick to the 0-35 range: use index 24 = C3 (261.6 Hz)
+    # ModNote index 0=C1, 12=C2, 24=C3, 36=B3 (out of range); use 24 = C3 (261.6 Hz)
     tone_idx = 24   # C3
 
     freq_hz = 440.0 * (2.0 ** ((tone_idx - 45) / 12.0))
@@ -307,7 +303,7 @@ def _smoke_test() -> None:
     print(f"  Written: {path_tone}  ({len(raw16)} bytes, 16-bit signed mono)")
 
     # --- Noise: white, rate 0 ---
-    print(f"\nNoise: white=True  rate=0")
+    print("\nNoise: white=True  rate=0")
     mono_noise, rate_noise = render_psg_noise_raw(white=True, noise_rate=0,
                                                    sustain_secs=0.3, release_secs=0.05)
     peak_noise = max(abs(v) for v in mono_noise) if mono_noise else 0

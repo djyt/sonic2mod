@@ -26,8 +26,7 @@ Mega Drive config: FB_SEGAVDP=0x0009, SRW_SEGAVDP=16, boost_noise=1.
 """
 
 import ctypes
-from ctypes import POINTER, cast, c_int32
-from pathlib import Path
+from ctypes import POINTER, c_int32, cast
 
 from .build import get_lib_path
 

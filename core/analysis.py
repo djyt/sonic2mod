@@ -7,12 +7,10 @@ used by analyze.py for Rich-formatted display.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import cast
 
-from .smps_parser import SmpsSong, SmpsChannel, SmpsEvent
 from .config import ConversionConfig
-from .tables import _CHROMATIC_NAMES, _semitone_to_name
-
+from .smps_parser import SmpsChannel, SmpsSong
 
 # ---------------------------------------------------------------------------
 # Effect classification
@@ -82,8 +80,8 @@ class ChannelAnalysis:
     has_loop: bool
     loop_target: str
     # FM/PSG note ranges (None for DAC)
-    min_semitone: Optional[int]
-    max_semitone: Optional[int]
+    min_semitone: int | None
+    max_semitone: int | None
     # Per-voice stats (FM channels only)
     voice_stats: dict = field(default_factory=dict)   # voice_idx -> VoiceRangeStats
     # DAC sample occurrence counts
@@ -99,7 +97,7 @@ class ChannelAnalysis:
     # Config coverage gaps (populated only if config provided)
     uncovered_notes: list = field(default_factory=list)   # semitones not in voice_map ranges
     # Config enabled status (populated if config provided)
-    config_enabled: Optional[bool] = None
+    config_enabled: bool | None = None
 
 
 @dataclass
@@ -107,7 +105,7 @@ class SongAnalysis:
     file_path: str
     song: SmpsSong
     channels: list         # list[ChannelAnalysis]
-    config: Optional[ConversionConfig]
+    config: ConversionConfig | None
     derived_bpm_ntsc: float
     derived_bpm_pal: float
 
@@ -126,7 +124,7 @@ def _source_name(ch_type: str, idx: int) -> str:
 
 
 def analyze_song(song: SmpsSong, file_path: str,
-                 config: Optional[ConversionConfig] = None) -> SongAnalysis:
+                 config: ConversionConfig | None = None) -> SongAnalysis:
     """Walk each channel's events and produce a SongAnalysis.
 
     Args:
@@ -185,7 +183,7 @@ def analyze_song(song: SmpsSong, file_path: str,
 
 
 def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
-                     config: Optional[ConversionConfig],
+                     config: ConversionConfig | None,
                      cfg_channels: dict) -> ChannelAnalysis:
     """Analyze a single SmpsChannel."""
     note_count = 0
@@ -195,10 +193,10 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
     effect_counts: dict[str, int] = {}
     voice_stats: dict[int, VoiceRangeStats] = {}
     transpose_events: list[TransposeEvent] = []
-    min_semitone: Optional[int] = None
-    max_semitone: Optional[int] = None
+    min_semitone: int | None = None
+    max_semitone: int | None = None
 
-    current_voice_idx: Optional[int] = None
+    current_voice_idx: int | None = None
     # Initialise to header pitch_offset so cumulative reflects the true
     # running total (smpsHeaderFM $F4 = -12 for FM1/FM3/FM4/FM5).
     cumulative_transpose = ch.header.pitch_offset
@@ -249,7 +247,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
             effect_counts[eff.effect_type] = effect_counts.get(eff.effect_type, 0) + 1
 
             if eff.effect_type == 'smpsSetvoice':
-                new_voice = eff.params[0]
+                new_voice = cast(int, eff.params[0])
                 if new_voice != current_voice_idx:
                     current_voice_idx = new_voice
                     # Increment switch count for this voice
@@ -277,7 +275,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
     has_transpose_change = len(transpose_events) > 0
 
     # Config coverage
-    config_enabled: Optional[bool] = None
+    config_enabled: bool | None = None
     uncovered_notes: list[int] = []
 
     if config is not None:

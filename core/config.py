@@ -2,7 +2,6 @@
 
 import warnings
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .tables import ModNote, parse_smps_note
 
@@ -12,13 +11,13 @@ class InstrumentRange:
     low: int            # inclusive lower bound — SMPS semitone from C0 (e.g. nA2 = 33)
     high: int           # inclusive upper bound — SMPS semitone from C0
     mod_instrument: int # MOD instrument number (1-31)
-    root: Optional[ModNote] = None  # MOD note where `low` plays;
+    root: ModNote | None = None  # MOD note where `low` plays;
                                     # out_note = root + (source_semitone - low)
                                     # if None: fall back to channel transpose for note
-    synth_root: Optional[int] = None  # SMPS semitone to synthesize at (None = use low)
+    synth_root: int | None = None  # SMPS semitone to synthesize at (None = use low)
                                       # target_rate is NOT adjusted — output pitch equals
                                       # synth_root's frequency when played at root's period
-    vibrato: Optional[int] = None     # per-entry 4xy override; None = use channel smpsModSet
+    vibrato: int | None = None     # per-entry 4xy override; None = use channel smpsModSet
                                       # stored as raw byte: high nibble=speed, low nibble=depth
                                       # 0x00 = suppress; e.g. 0x12 = speed=1, depth=2
 
@@ -90,12 +89,12 @@ class PsgInstrumentEntry:
     mod_instrument: int                      # MOD slot (1-based)
     type: str                                # "tone" | "white_noise" | "periodic_noise"
     root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
-    synth_root: Optional[int] = None        # Synthesis pitch override — SMPS semitone (None = use root)
-    low: Optional[int] = None               # SMPS semitone anchor for melodic root offset (tone entries)
+    synth_root: int | None = None        # Synthesis pitch override — SMPS semitone (None = use root)
+    low: int | None = None               # SMPS semitone anchor for melodic root offset (tone entries)
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
-    envelope: object = None                  # Named table str ("PSG4") or inline list[int]; None = constant volume
+    envelope: str | list[int] | None = None  # Named table str ("PSG4") or inline list[int]; None = constant volume
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
-    vibrato: Optional[int] = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
+    vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
 
 
 @dataclass
@@ -107,7 +106,7 @@ class PsgSynthesisSettings:
     release_padding: float = 0.2
     normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
     psg_output_max: int = 4096       # Hardware PSG max amplitude; noise peaks at 4096/2=2048 (C source halves it)
-    psg_envelope_tables: dict = field(default_factory=dict)  # {"PSG1": [0,0,...], ...}
+    psg_envelope_tables: dict[str, list[int]] = field(default_factory=dict)  # {"PSG1": [0,0,...], ...}
 
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
@@ -202,7 +201,7 @@ class ConversionConfig:
     region: str = "ntsc"          # "ntsc" (60 Hz) or "pal" (50 Hz)
     channels: list = field(default_factory=list)       # list of ChannelConfig
     dac_samples: list = field(default_factory=list)    # list of DacSampleConfig
-    sample_list: Optional[list] = None                 # [inst_num, filename, volume, finetune]
+    sample_list: list | None = None                 # [inst_num, filename, volume, finetune]
     samples_dir: str = "./samples/"
     max_patterns: int = 127
     voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}
@@ -271,7 +270,7 @@ class ConversionConfig:
         """Load configuration from a YAML file."""
         import yaml
 
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = yaml.safe_load(f)
 
         config = cls(

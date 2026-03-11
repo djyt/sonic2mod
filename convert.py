@@ -15,16 +15,15 @@ import sys
 if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from rich.console import Console
-from rich.table import Table
-from rich.rule import Rule
-from rich.padding import Padding
 from rich import box
+from rich.console import Console
+from rich.padding import Padding
+from rich.table import Table
 
-from core.smps_parser import SmpsParser
-from core.smps2mod import SmpsToModConverter
-from core.config import ConversionConfig, derive_bpm, SynthesisSettings, PsgSynthesisSettings
+from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, derive_bpm
 from core.mod import apply_pattern_breaks
+from core.smps2mod import SmpsToModConverter
+from core.smps_parser import SmpsParser
 
 console = Console(highlight=False, legacy_windows=False)
 
@@ -313,7 +312,7 @@ def _render_warning(w: dict):
         )
         if avail:
             labels = "  ".join(f"[bold]{lb}[/bold]" for lb in avail)
-            console.print(f"     [dim]No psg_voice_map entry was active when this note fired.[/dim]")
+            console.print("     [dim]No psg_voice_map entry was active when this note fired.[/dim]")
             console.print(f"     [dim]Check these entries: {labels}[/dim]")
 
     elif wtype == 'map_gap':
@@ -344,7 +343,7 @@ def _render_warning(w: dict):
             f"[yellow]Source [bold]{src}[/bold] not found in parsed song[/yellow]"
         )
         console.print(
-            f"     [green]Fix:[/green] check the [cyan]source:[/cyan] field in your channel config."
+            "     [green]Fix:[/green] check the [cyan]source:[/cyan] field in your channel config."
         )
 
     elif wtype == 'pattern_overflow':
@@ -356,7 +355,7 @@ def _render_warning(w: dict):
             f"[yellow]pattern {pat} exceeds max_patterns ({mx}) — channel truncated[/yellow]"
         )
         console.print(
-            f"     [green]Fix:[/green] increase [cyan]max_patterns:[/cyan] in your YAML config."
+            "     [green]Fix:[/green] increase [cyan]max_patterns:[/cyan] in your YAML config."
         )
 
 

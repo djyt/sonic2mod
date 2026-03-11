@@ -4,12 +4,10 @@ The DLL is cached next to this file and only rebuilt when the C sources are newe
 Call ``get_lib_path()`` to obtain the compiled library path (building if needed).
 """
 
-import os
 import platform
 import shutil
 import subprocess
 from pathlib import Path
-
 
 # Paths relative to this file
 _HERE = Path(__file__).parent

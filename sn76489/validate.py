@@ -16,8 +16,8 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from sn76489.wrapper import SN76489       # noqa: E402
-from sn76489.renderer import note_to_psg_n  # noqa: E402
+from sn76489.renderer import note_to_psg_n
+from sn76489.wrapper import SN76489
 
 
 def main() -> None:
@@ -66,7 +66,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Test 2: White noise, rate 0
     # ------------------------------------------------------------------
-    print(f"\nTest 2: PSG white noise  rate=0")
+    print("\nTest 2: PSG white noise  rate=0")
 
     sn2 = SN76489(clock_rate=clock_rate, sample_rate=sample_rate)
     sn2.write_noise(white=True, rate=0)

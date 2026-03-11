@@ -33,7 +33,6 @@ collects one (L, R) pair per batch, yielding exactly ``n`` samples.
 """
 
 import ctypes
-from pathlib import Path
 
 from .build import get_lib_path
 

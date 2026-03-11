@@ -1,6 +1,7 @@
 import os
-from typing import Literal
-from .tables import ModNote, PERIOD_TABLE
+from typing import ClassVar, Literal
+
+from .tables import PERIOD_TABLE, ModNote
 
 # File format information: https://www.exotica.org.uk/wiki/Protracker
 BYTE_ORDER: Literal["little", "big"] = "big"
@@ -74,7 +75,7 @@ class ModPattern:
 
 
 class ModFile:
-    FORMAT_TABLE = {
+    FORMAT_TABLE: ClassVar[dict[int, str]] = {
         4: "M.K.",
         8: "8CHN",
         10: "10CH",
@@ -135,7 +136,7 @@ class ModFile:
 
     def inc_row(self, rows: int):
         pattern_len = len(self.patterns)
-        for i in range(rows):
+        for _ in range(rows):
             self.__row += 1
             if self.__row > 63:
                 self.__row = 0
@@ -149,7 +150,7 @@ class ModFile:
             return
         self.__inst = i
 
-    def set_note(self, n: ModNote, inst: int = None):
+    def set_note(self, n: ModNote, inst: int | None = None):
         if inst is None:
             inst = self.__inst
 

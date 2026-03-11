@@ -26,12 +26,12 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.tables import PERIOD_TABLE, ModNote                     # noqa: E402
-from core.config import ConversionConfig, PsgSynthesisSettings, PsgInstrumentEntry  # noqa: E402
-from sn76489.renderer import (                                    # noqa: E402
-    render_psg_tone_raw,
-    render_psg_noise_raw,
+from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
+from core.tables import PERIOD_TABLE, ModNote
+from sn76489.renderer import (
     note_to_psg_n,
+    render_psg_noise_raw,
+    render_psg_tone_raw,
 )
 
 
@@ -47,7 +47,7 @@ def _trim_trailing_silence(mono: list) -> list:
 # Public API
 # ---------------------------------------------------------------------------
 
-def _resolve_envelope(entry: 'PsgInstrumentEntry', psg_synth: 'PsgSynthesisSettings',
+def _resolve_envelope(entry: PsgInstrumentEntry, psg_synth: PsgSynthesisSettings,
                       verbose: bool = False):
     """Return envelope list or None. Resolves string names via psg_synth.psg_envelope_tables."""
     e = entry.envelope
@@ -55,9 +55,8 @@ def _resolve_envelope(entry: 'PsgInstrumentEntry', psg_synth: 'PsgSynthesisSetti
         return None
     if isinstance(e, str):
         table = psg_synth.psg_envelope_tables.get(e)
-        if table is None:
-            if verbose:
-                print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
+        if table is None and verbose:
+            print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
         return table
     return e  # already a list
 
@@ -82,10 +81,7 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
     if entry_type == "tone":
         # synth_root overrides the synthesis pitch for tone entries only.
         # synth_root is an SMPS semitone (C0=0, C1=12); renderer idx = semitone - 12.
-        if entry.synth_root is not None:
-            synth_note_idx = entry.synth_root - 12
-        else:
-            synth_note_idx = mod_root_idx
+        synth_note_idx = entry.synth_root - 12 if entry.synth_root is not None else mod_root_idx
         freq_hz = 440.0 * (2.0 ** ((synth_note_idx - 45) / 12.0))
         n_val   = note_to_psg_n(synth_note_idx, psg_synth.clock_rate)
         if verbose:
@@ -224,7 +220,6 @@ def _smoke_test() -> None:
     """Render one tone and one noise entry from a minimal fake config."""
 
     from core.config import PsgInstrumentEntry, PsgSynthesisSettings
-    from core.tables import ModNote
 
     psg_synth = PsgSynthesisSettings(
         enabled=True,
@@ -271,7 +266,7 @@ def _smoke_test() -> None:
     out_dir = Path(__file__).parent.parent / "output"
     out_dir.mkdir(exist_ok=True)
 
-    for inst_num, (pcm, rate) in samples.items():
+    for inst_num, (pcm, _) in samples.items():
         raw16 = bytearray(len(pcm) * 2)
         for i, b in enumerate(pcm):
             val8  = b if b < 128 else b - 256

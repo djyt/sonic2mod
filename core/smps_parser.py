@@ -6,9 +6,8 @@ intermediate representation suitable for conversion to MOD format.
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-from .tables import SMPS_NOTE_NAMES, SMPS_DAC_NAMES
 
+from .tables import SMPS_DAC_NAMES, SMPS_NOTE_NAMES
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -33,8 +32,8 @@ class SmpsEffect:
 @dataclass
 class SmpsEvent:
     """Union of note or effect event."""
-    note: Optional[SmpsNote] = None
-    effect: Optional[SmpsEffect] = None
+    note: SmpsNote | None = None
+    effect: SmpsEffect | None = None
     tick_position: int = 0  # Cumulative tick position in the channel
 
     @property
@@ -112,7 +111,7 @@ class SmpsParser:
         Returns:
             SmpsSong with header, channels, and voices
         """
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             text = f.read()
         return self.parse_text(text)
 
@@ -137,10 +136,9 @@ class SmpsParser:
     def _preprocess(self, text):
         """Strip comments, blank lines, normalize whitespace."""
         result = []
-        for line in text.split('\n'):
+        for raw in text.split('\n'):
             # Strip ; comments
-            if ';' in line:
-                line = line[:line.index(';')]
+            line = raw[:raw.index(';')] if ';' in raw else raw
             line = line.strip()
             if line:
                 result.append(line)
@@ -315,7 +313,6 @@ class SmpsParser:
             # smpsLoop — unroll
             m = re.match(r'smpsLoop\s+\$([0-9A-Fa-f]+)\s*,\s*\$([0-9A-Fa-f]+)\s*,\s*(\S+)', line)
             if m:
-                loop_index = int(m.group(1), 16)
                 loop_count = int(m.group(2), 16)
                 loop_target = m.group(3)
 
@@ -331,7 +328,7 @@ class SmpsParser:
                     target_line = self.labels[loop_target] + 1
                     # The first play-through already happened (lines from target to here).
                     # Replay loop_count - 1 more times, stopping at this smpsLoop line.
-                    for rep in range(loop_count - 1):
+                    for _ in range(loop_count - 1):
                         tick, last_duration, loop_pend, last_note_value = self._parse_channel_lines(
                             channel, target_line, tick, last_duration,
                             no_attack_pending, is_dac, stop_line=i,

@@ -4,9 +4,8 @@ Parses ProTracker MOD binary into structured data and compares two MODs
 channel-by-channel, with the ability to skip specified channel indices.
 """
 
-from pathlib import Path
 import struct
-
+from pathlib import Path
 
 _FORMAT_CHANNELS = {
     "M.K.": 4, "M!K!": 4, "FLT4": 4, "FLT8": 8,
@@ -24,7 +23,6 @@ def parse_mod(path) -> dict:
     """
     data = Path(path).read_bytes()
 
-    song_name = data[0:20].rstrip(b"\x00").decode("ascii", errors="replace")
     format_id = data[1080:1084].decode("ascii", errors="replace")
     num_channels = _FORMAT_CHANNELS.get(format_id, 4)
 

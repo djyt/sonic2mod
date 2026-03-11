@@ -1,0 +1,74 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes (unused imports, undefined names, etc.)
+    "I",      # isort
+    "UP",     # pyupgrade (modernise syntax)
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "PERF",   # perflint
+    "PLW",    # pylint warnings
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    # Line length — many lines are intentionally wide (Rich markup, byte tables)
+    "E501",
+    # Multiple statements on one line — used intentionally for compact channel init
+    "E701", "E702",
+    # Module-level import not at top — sys.path manipulation before imports is intentional
+    "E402",
+    # Ambiguous variable names (l, O, I) — e.g. loop indices in SMPS parsing
+    "E741",
+    # Magic value comparisons — byte values ($81, $E0, etc.) are self-documenting constants
+    "PLR2004",
+    # Complexity thresholds — conversion engine is inherently complex
+    "C901", "PLR0912", "PLR0915", "PLR0913",
+    # Boolean positional args — existing API; not worth breaking callers
+    "FBT001", "FBT002",
+    # Import-outside-toplevel — conditional sys.path inserts in subpackages
+    "PLC0415",
+    # Non-lowercase variable in function — SETTINGS_FILE, SMPS_ constants are fine
+    "N806",
+    # os.path → pathlib migration — not a priority; keep os.path for consistency
+    "PTH100", "PTH102", "PTH103", "PTH107", "PTH110", "PTH111",
+    "PTH112", "PTH113", "PTH116", "PTH117", "PTH118", "PTH119",
+    "PTH120", "PTH122", "PTH123",
+    # Private member access — convert.py intentionally accesses converter._warnings etc.
+    "SLF001",
+    # Typing-only imports — not restructuring imports right now
+    "TC001", "TC002", "TC003",
+    # Implicit namespace package — tools/ scripts don't need __init__.py
+    "INP001",
+    # Ambiguous Unicode in strings/docstrings/comments — musical symbols are intentional
+    "RUF001", "RUF002", "RUF003",
+    # Missing trailing comma — style preference; not enforced here
+    "COM812",
+    # No-explicit-stacklevel for warnings.warn — minor
+    "B028",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "ym2612", "sn76489"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+# The tools/ and subpackage scripts manipulate sys.path at runtime
+executionEnvironments = [
+    { root = ".", pythonVersion = "3.11" },
+]
+include = ["core", "convert.py", "analyze.py", "ym2612", "sn76489", "tools"]
+exclude = ["reference", "sonic_1", "output", "**/__pycache__"]
+# Relax rules that fire on intentionally dynamic code
+reportMissingModuleSource = false
+reportAttributeAccessIssue = false

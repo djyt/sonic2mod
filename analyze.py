@@ -17,23 +17,28 @@ if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 try:
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
-    from rich.table import Table
     from rich.syntax import Syntax
-    from rich import box
+    from rich.table import Table
 except ImportError:
     print("Error: 'rich' is required. Install with: pip install rich")
     sys.exit(1)
 
-from core.smps_parser import SmpsParser
-from core.config import ConversionConfig
 from core.analysis import (
-    analyze_song, SongAnalysis, ChannelAnalysis,
-    semitone_to_note_name, suggest_transpose,
-    UNSUPPORTED_EFFECTS, PARTIAL_EFFECTS, DAC_NATIVE_INFO,
     _CARRIER_LABELS_BY_ALG,
+    DAC_NATIVE_INFO,
+    PARTIAL_EFFECTS,
+    UNSUPPORTED_EFFECTS,
+    ChannelAnalysis,
+    SongAnalysis,
+    analyze_song,
+    semitone_to_note_name,
+    suggest_transpose,
 )
+from core.config import ConversionConfig
+from core.smps_parser import SmpsParser
 
 console = Console(legacy_windows=False)
 
@@ -45,6 +50,7 @@ console = Console(legacy_windows=False)
 def _note_range_str(ch: ChannelAnalysis) -> str:
     if ch.min_semitone is None:
         return "—"
+    assert ch.max_semitone is not None
     lo = semitone_to_note_name(ch.min_semitone)
     hi = semitone_to_note_name(ch.max_semitone)
     return f"{lo}–{hi} (semitones {ch.min_semitone}–{ch.max_semitone})"
@@ -60,7 +66,7 @@ def _unsupported_summary(effect_counts: dict) -> str:
     for et, n in sorted(effect_counts.items()):
         if et in UNSUPPORTED_EFFECTS:
             parts.append(f"{et} ×{n}")
-    return "  ".join(parts) if parts else None
+    return "  ".join(parts)
 
 
 def _partial_summary(effect_counts: dict) -> list[str]:
@@ -89,7 +95,6 @@ def render_header(analysis: SongAnalysis, region: str):
     fname = os.path.basename(analysis.file_path)
     h = song.header
 
-    bpm = analysis.derived_bpm_ntsc if region == "ntsc" else analysis.derived_bpm_pal
     bpm_ntsc = analysis.derived_bpm_ntsc
     bpm_pal = analysis.derived_bpm_pal
 
@@ -149,7 +154,7 @@ def render_channel_dac(ch: ChannelAnalysis, config: ConversionConfig | None):
 
     console.print(Panel(
         "\n".join(lines),
-        title=f"[cyan bold]DAC[/cyan bold]",
+        title="[cyan bold]DAC[/cyan bold]",
         border_style="cyan",
     ))
 
@@ -165,7 +170,7 @@ def render_channel_fm(ch: ChannelAnalysis, config: ConversionConfig | None):
 
     range_str = _note_range_str(ch)
     lines.append(f"Note range: {range_str}  [dim](raw SMPS bytes)[/dim]")
-    if ch.initial_transpose != 0 and ch.min_semitone is not None:
+    if ch.initial_transpose != 0 and ch.min_semitone is not None and ch.max_semitone is not None:
         eff_lo = semitone_to_note_name(ch.min_semitone + ch.initial_transpose)
         eff_hi = semitone_to_note_name(ch.max_semitone + ch.initial_transpose)
         lines.append(
@@ -182,8 +187,8 @@ def render_channel_fm(ch: ChannelAnalysis, config: ConversionConfig | None):
             for e in ch.transpose_events
         )
         lines.append(
-            f"[yellow]smpsChangeTransposition: YES[/yellow]  "
-            f"[dim]← do NOT use root on this channel[/dim]"
+            "[yellow]smpsChangeTransposition: YES[/yellow]  "
+            "[dim]← do NOT use root on this channel[/dim]"
         )
         lines.append(f"  Events: {events_str}")
     else:
@@ -213,8 +218,7 @@ def render_channel_fm(ch: ChannelAnalysis, config: ConversionConfig | None):
     if unsup:
         lines.append(f"[dim]Unsupported:[/dim] {unsup}")
 
-    for part in _partial_summary(ch.effect_counts):
-        lines.append(f"[yellow]Partial:[/yellow] {part}")
+    lines.extend(f"[yellow]Partial:[/yellow] {part}" for part in _partial_summary(ch.effect_counts))
 
     # Config coverage
     if config is not None:
@@ -265,7 +269,7 @@ def render_channel_psg(ch: ChannelAnalysis, config: ConversionConfig | None):
         f"Ticks: {ch.total_ticks}{loop_str}"
     )
 
-    if ch.min_semitone is not None:
+    if ch.min_semitone is not None and ch.max_semitone is not None:
         lines.append(f"Note range: {_note_range_str(ch)}")
         sug = suggest_transpose(ch.min_semitone, ch.max_semitone)
         lines.append(f"  → suggested transpose: [bold]{sug:+d}[/bold]")
@@ -278,12 +282,10 @@ def render_channel_psg(ch: ChannelAnalysis, config: ConversionConfig | None):
     if unsup:
         lines.append(f"[dim]Unsupported:[/dim] {unsup}")
 
-    for part in _partial_summary(ch.effect_counts):
-        lines.append(f"[yellow]Partial:[/yellow] {part}")
+    lines.extend(f"[yellow]Partial:[/yellow] {part}" for part in _partial_summary(ch.effect_counts))
 
-    if config is not None:
-        if ch.config_enabled is False:
-            lines.append("[dim]config: disabled[/dim]")
+    if config is not None and ch.config_enabled is False:
+        lines.append("[dim]config: disabled[/dim]")
 
     console.print(Panel(
         "\n".join(lines),
@@ -350,10 +352,9 @@ def render_config_coverage(analysis: SongAnalysis):
 
         if ch_an.channel_type == "DAC":
             dac_cfgs = {d.name: d for d in config.dac_samples}
-            for name, count in sorted(ch_an.dac_counts.items(), key=lambda x: -x[1]):
+            for name, _ in sorted(ch_an.dac_counts.items(), key=lambda x: -x[1]):
                 if name in dac_cfgs:
                     d = dac_cfgs[name]
-                    native_note, _ = DAC_NATIVE_INFO.get(name, ("?", 0))
                     cov = f"[green]✓[/green] inst {d.mod_instrument}, note {d.mod_note}"
                 else:
                     cov = "[red]✗[/red] not configured"
@@ -400,30 +401,29 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
     bpm = analysis.derived_bpm_ntsc if region == "ntsc" else analysis.derived_bpm_pal
 
     lines = [
-        f"# Generated by analyze.py — fill in mod_instrument and root values",
+        "# Generated by analyze.py — fill in mod_instrument and root values",
         f"# Song: {fname}",
-        f"",
+        "",
         f"name: {os.path.splitext(fname)[0]}",
         f"input_file: {analysis.file_path}",
         f"output_file: output/{os.path.splitext(fname)[0].replace(' ', '_')}.mod",
-        f"",
+        "",
         f"target_bpm: {int(bpm)}",
-        f"target_speed: 6",
-        f"ticks_per_row: 6",
+        "target_speed: 6",
+        "ticks_per_row: 6",
         f"num_mod_channels: {len(analysis.channels)}",
         f"region: {region}",
-        f"",
-        f"channels:",
+        "",
+        "channels:",
     ]
 
-    mod_ch = 0
-    for ch_an in analysis.channels:
+    for mod_ch, ch_an in enumerate(analysis.channels):
         ch_type = ch_an.channel_type
         if ch_type == "DAC":
-            lines.append(f"  - source: DAC")
+            lines.append("  - source: DAC")
             lines.append(f"    mod_channel: {mod_ch}")
-            lines.append(f"    instrument: 1")
-            lines.append(f"    enabled: true")
+            lines.append("    instrument: 1")
+            lines.append("    enabled: true")
         elif ch_type == "FM":
             sug_trans = -36
             if ch_an.min_semitone is not None:
@@ -436,7 +436,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
             lines.append(f"  - source: {ch_an.name}")
             lines.append(f"    mod_channel: {mod_ch}")
             lines.append(f"    transpose: {sug_trans}{range_str}")
-            lines.append(f"    enabled: true")
+            lines.append("    enabled: true")
         else:  # PSG
             sug_trans = -36
             if ch_an.min_semitone is not None:
@@ -444,14 +444,13 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
             lines.append(f"  - source: {ch_an.name}")
             lines.append(f"    mod_channel: {mod_ch}")
             lines.append(f"    transpose: {sug_trans}")
-            lines.append(f"    enabled: true")
-        mod_ch += 1
+            lines.append("    enabled: true")
 
     # DAC samples
     dac_channels = [ch for ch in analysis.channels if ch.channel_type == "DAC"]
     if dac_channels:
-        lines.append(f"")
-        lines.append(f"dac_samples:")
+        lines.append("")
+        lines.append("dac_samples:")
         inst_num = 1
         seen: set[str] = set()
         for ch_an in dac_channels:
@@ -470,12 +469,12 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
     fm_channels = [ch for ch in analysis.channels if ch.channel_type == "FM"]
     all_voices: dict[int, list[str]] = {}
     for ch_an in fm_channels:
-        for vi, vs in ch_an.voice_stats.items():
+        for vi in ch_an.voice_stats:
             all_voices.setdefault(vi, []).append(ch_an.name)
 
     if all_voices:
-        lines.append(f"")
-        lines.append(f"voice_map:")
+        lines.append("")
+        lines.append("voice_map:")
         for vi in sorted(all_voices.keys()):
             # Find voice definition
             voice_def = next((v for v in song.voices if v.index == vi), None)
@@ -502,14 +501,14 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str):
             )
             root_comment = "# root: safe (no smpsChangeTransposition)" if not has_trans else "# root: unsafe — channel uses smpsChangeTransposition"
             lines.append(f"  {vi}:")
-            if min_sem is None:
-                lines.append(f"    # (no notes played — voice switched to but never triggered)")
+            if min_sem is None or max_sem is None:
+                lines.append("    # (no notes played — voice switched to but never triggered)")
             else:
                 lines.append(f"    - low:  {semitone_to_note_name(min_sem)}")
                 lines.append(f"      high: {semitone_to_note_name(max_sem)}")
-                lines.append(f"      mod_instrument: ???")
+                lines.append("      mod_instrument: ???")
                 lines.append(f"      {root_comment}")
-                lines.append(f"      # root: ???")
+                lines.append("      # root: ???")
 
     yaml_text = "\n".join(lines)
     syntax = Syntax(yaml_text, "yaml", theme="monokai", line_numbers=False)

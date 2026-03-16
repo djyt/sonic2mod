@@ -476,8 +476,8 @@ class SmpsToModConverter:
                         # contains the source semitone, update instrument accordingly.
                         if current_psg_entries is not None and len(current_psg_entries) > 1:
                             for _psg_e in current_psg_entries:
-                                _lo = _psg_e.low  if _psg_e.low  is not None else 0
-                                _hi = _psg_e.high if _psg_e.high is not None else 255
+                                _lo = _psg_e.low  if _psg_e.low  is not None else 0    # 0 = C0 (semitone floor)
+                                _hi = _psg_e.high if _psg_e.high is not None else 255  # 255 > B7 (~95), matches all
                                 if _lo <= source_semitone <= _hi:
                                     current_psg_entry = _psg_e
                                     final_instrument = _psg_e.mod_instrument

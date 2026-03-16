@@ -180,8 +180,9 @@ def generate_psg_samples(
         _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
 
     # Also synthesize tone entries from psg_voice_map (smpsPSGvoice routing).
-    for entry in config.psg_voice_map.values():
-        _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
+    for entries in config.psg_voice_map.values():
+        for entry in entries:
+            _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
 
     # --- Normalization pass ---
     # Scale using hardware output maximum to preserve natural amplitude relationships.

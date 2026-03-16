@@ -70,7 +70,11 @@ class SmpsToModConverter:
             if self.config.psg_map:
                 psg_synth_insts.update(e.mod_instrument for e in self.config.psg_map.values())
             if self.config.psg_voice_map:
-                psg_synth_insts.update(e.mod_instrument for e in self.config.psg_voice_map.values())
+                psg_synth_insts.update(
+                    e.mod_instrument
+                    for entries in self.config.psg_voice_map.values()
+                    for e in entries
+                )
 
         # Load or synthesize samples
         synth = self.synth
@@ -294,16 +298,18 @@ class SmpsToModConverter:
         vibrato_speed = 0
         vibrato_depth = 0
         vibrato_wait = 0   # ticks to delay before vibrato starts
-        current_psg_entry = None   # last smpsPSGform/smpsPSGvoice entry; used for root anchoring
-        current_psg_label = None   # label string for warnings (e.g. "fTone_01", "form 0xe7")
+        current_psg_entry = None    # active PsgInstrumentEntry for the current note (range-dispatched)
+        current_psg_entries = None  # full list[PsgInstrumentEntry] for the active psg_voice_map label
+        current_psg_label = None    # label string for warnings (e.g. "fTone_01", "form 0xe7")
         active_range_entry = None  # voice_map InstrumentRange matched on most recent note
 
         # Apply initial PSG voice from smpsHeaderPSG if present and mapped
         _init_psg_label = channel.header.psg_voice_label
         if _init_psg_label and _init_psg_label in self.config.psg_voice_map:
-            _init_entry = self.config.psg_voice_map[_init_psg_label]
-            instrument = _init_entry.mod_instrument
-            current_psg_entry = _init_entry
+            _init_entries = self.config.psg_voice_map[_init_psg_label]
+            instrument = _init_entries[0].mod_instrument
+            current_psg_entry = _init_entries[0]
+            current_psg_entries = _init_entries
             current_psg_label = _init_psg_label
 
         # Build DAC name -> config map
@@ -363,10 +369,11 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]
-                    entry = self.config.psg_voice_map.get(label)
-                    if entry is not None:
-                        instrument = entry.mod_instrument
-                        current_psg_entry = entry
+                    entries = self.config.psg_voice_map.get(label)
+                    if entries is not None:
+                        instrument = entries[0].mod_instrument
+                        current_psg_entry = entries[0]
+                        current_psg_entries = entries
                         current_psg_label = label
 
                 # smpsPan, smpsNop: no MOD equivalent
@@ -464,6 +471,18 @@ class SmpsToModConverter:
                                 break
 
                     if final_note is None:
+                        # Per-note range dispatch for multi-entry psg_voice_map lists.
+                        # Mirrors voice_map FM dispatch: pick the entry whose low/high bracket
+                        # contains the source semitone, update instrument accordingly.
+                        if current_psg_entries is not None and len(current_psg_entries) > 1:
+                            for _psg_e in current_psg_entries:
+                                _lo = _psg_e.low  if _psg_e.low  is not None else 0
+                                _hi = _psg_e.high if _psg_e.high is not None else 255
+                                if _lo <= source_semitone <= _hi:
+                                    current_psg_entry = _psg_e
+                                    final_instrument = _psg_e.mod_instrument
+                                    break
+
                         # PSG root anchoring: bypass the transpose path entirely when a
                         # psg_map/psg_voice_map entry is active — avoids spurious out-of-range
                         # warnings for noise channels whose SMPS note bytes carry no pitch meaning.

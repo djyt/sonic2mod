@@ -308,7 +308,8 @@ def render_channel_psg(ch: ChannelAnalysis, config: ConversionConfig | None):
                 form_byte = int(label[6:], 16)
                 entry = config.psg_map.get(form_byte)
             else:
-                entry = config.psg_voice_map.get(label)
+                _pvm_entries = config.psg_voice_map.get(label)
+                entry = _pvm_entries[0] if _pvm_entries else None
             if entry is not None:
                 cov_parts.append(f"[green]✓[/green] {label} → inst {entry.mod_instrument}")
             else:
@@ -432,7 +433,8 @@ def render_config_coverage(analysis: SongAnalysis):
                         form_byte = int(label[6:], 16)
                         entry = config.psg_map.get(form_byte)
                     else:
-                        entry = config.psg_voice_map.get(label)
+                        _pvm_entries = config.psg_voice_map.get(label)
+                        entry = _pvm_entries[0] if _pvm_entries else None
                     if entry is not None:
                         cov = f"[green]✓[/green] inst {entry.mod_instrument}"
                     else:
@@ -559,7 +561,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     psg_channels = [ch for ch in analysis.channels if ch.channel_type == "PSG"]
     seen_psg: set[str] = set()
     psg_noise_items: list[tuple] = []   # (form_byte, label, inst, ts)
-    psg_tone_items: list[tuple] = []    # (label, inst, ts)
+    psg_tone_items: list[tuple] = []    # (label, inst, ts, split_point, inst2)
     for ch_an in psg_channels:
         for label, ts in ch_an.psg_tone_stats.items():
             if label not in seen_psg:
@@ -567,9 +569,22 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 if label.startswith("form $"):
                     form_byte = int(label[6:], 16)
                     psg_noise_items.append((form_byte, label, inst_counter, ts))
+                    inst_counter += 1
                 else:
-                    psg_tone_items.append((label, inst_counter, ts))
-                inst_counter += 1
+                    if ts.note_count > 0:
+                        psg_root_val = (ts.min_semitone % 12) + 12
+                        psg_max_repr = ts.min_semitone + (35 - psg_root_val)
+                        if ts.max_semitone > psg_max_repr:
+                            psg_split: int | None = psg_max_repr
+                            psg_inst2: int | None = inst_counter + 1
+                        else:
+                            psg_split = None
+                            psg_inst2 = None
+                    else:
+                        psg_split = None
+                        psg_inst2 = None
+                    psg_tone_items.append((label, inst_counter, ts, psg_split, psg_inst2))
+                    inst_counter += 2 if psg_split is not None else 1
 
     # --- sample_list ---
     lines.append("")
@@ -587,9 +602,12 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     for _form_byte, label, inst, _ts in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
         lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
-    for label, inst, _ts in psg_tone_items:
+    for label, inst, _ts, psg_split, psg_inst2 in psg_tone_items:
         lines.append(f"  # --- PSG tone {label} ---")
-        lines.append(f"  - [{inst}, \"psg_{label}.raw\", 32, 0]")
+        lines.append(f"  - [{inst}, \"psg_{label}_lo.raw\", 32, 0]" if psg_split is not None
+                     else f"  - [{inst}, \"psg_{label}.raw\", 32, 0]")
+        if psg_split is not None:
+            lines.append(f"  - [{psg_inst2}, \"psg_{label}_hi.raw\", 32, 0]")
 
     # --- dac_samples ---
     if dac_items:
@@ -662,27 +680,30 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     if psg_tone_items:
         lines.append("")
         lines.append("psg_voice_map:")
-        for label, inst, ts in psg_tone_items:
+        for label, inst, ts, psg_split, psg_inst2 in psg_tone_items:
             lines.append(f"  {label}:")
             if ts.note_count == 0:
                 lines.append(f"    mod_instrument: {inst}")
                 lines.append("    # (no notes — placeholder only)")
+            elif psg_split is not None:
+                # Entry 1: low..split_point
+                lines.append(f"    - low:  {_sem_to_yaml(ts.min_semitone)}")
+                lines.append(f"      high: {_sem_to_yaml(psg_split)}")
+                lines.append(f"      mod_instrument: {inst}")
+                lines.append(f"      root: {_note_in_octave2(ts.min_semitone)}")
+                lines.append(f"      synth_root: {_sem_to_yaml(ts.min_semitone)}")
+                # Entry 2: split_point+1..max_sem
+                lines.append(f"    - low:  {_sem_to_yaml(psg_split + 1)}")
+                lines.append(f"      high: {_sem_to_yaml(ts.max_semitone)}")
+                lines.append(f"      mod_instrument: {psg_inst2}")
+                lines.append(f"      root: {_note_in_octave2(psg_split + 1)}")
+                lines.append(f"      synth_root: {_sem_to_yaml(psg_split + 1)}")
             else:
-                lo = _sem_to_yaml(ts.min_semitone)
-                hi = _sem_to_yaml(ts.max_semitone)
-                lines.append(f"    low:  {lo}")
-                lines.append(f"    high: {hi}")
+                lines.append(f"    low:  {_sem_to_yaml(ts.min_semitone)}")
+                lines.append(f"    high: {_sem_to_yaml(ts.max_semitone)}")
                 lines.append(f"    mod_instrument: {inst}")
                 lines.append(f"    root: {_note_in_octave2(ts.min_semitone)}")
                 lines.append(f"    synth_root: {_sem_to_yaml(ts.min_semitone)}")
-                root_val = (ts.min_semitone % 12) + 12
-                max_repr = ts.min_semitone + (35 - root_val)
-                if ts.max_semitone > max_repr:
-                    lines.append(
-                        f"    # WARNING: range {lo}–{hi} exceeds MOD capacity at this root"
-                        f" (max representable: {_sem_to_yaml(max_repr)})."
-                        " Split into two psg_voice_map entries with separate mod_instrument slots."
-                    )
 
     yaml_text = "\n".join(lines)
 

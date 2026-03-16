@@ -90,11 +90,33 @@ class PsgInstrumentEntry:
     type: str                                # "tone" | "white_noise" | "periodic_noise"
     root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
     synth_root: int | None = None        # Synthesis pitch override — SMPS semitone (None = use root)
-    low: int | None = None               # SMPS semitone anchor for melodic root offset (tone entries)
+    low: int | None = None               # SMPS semitone lower bound for melodic root offset
+    high: int | None = None              # SMPS semitone upper bound (inclusive); used for list-entry range dispatch
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
     envelope: str | list[int] | None = None  # Named table str ("PSG4") or inline list[int]; None = constant volume
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
     vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
+
+
+def _parse_psg_voice_entry(v: dict, default_envelope: str) -> 'PsgInstrumentEntry':
+    """Parse a single psg_voice_map entry dict into a PsgInstrumentEntry."""
+    root_note = ModNote[v['root']]
+    synth_root = parse_synth_note(v['synth_root']) if 'synth_root' in v else None
+    low  = parse_smps_note(v['low'])  if 'low'  in v else None
+    high = parse_smps_note(v['high']) if 'high' in v else None
+    pvm_vibrato = _parse_vibrato(v['vibrato']) if 'vibrato' in v else None
+    return PsgInstrumentEntry(
+        mod_instrument=v['mod_instrument'],
+        type=v.get('type', 'tone'),
+        root=root_note,
+        synth_root=synth_root,
+        low=low,
+        high=high,
+        noise_rate=v.get('noise_rate', 0),
+        envelope=v.get('envelope', default_envelope),
+        base_volume=v.get('base_volume', 0),
+        vibrato=pvm_vibrato,
+    )
 
 
 @dataclass
@@ -208,7 +230,7 @@ class ConversionConfig:
     legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
     psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
-    psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": PsgInstrumentEntry, ...}
+    psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": list[PsgInstrumentEntry], ...}
     mod_pattern_breaks: list = field(default_factory=list)  # [(pattern_slot, row), ...] — insert Bxx + split pattern
 
     @classmethod
@@ -394,26 +416,15 @@ class ConversionConfig:
                 stacklevel=2,
             )
 
-        # Parse psg_voice_map: {"fTone_01": {mod_instrument, root, envelope, ...}}
+        # Parse psg_voice_map: {"fTone_01": {mod_instrument, root, ...}} or list of such dicts.
+        # Always stored internally as list[PsgInstrumentEntry] to support range-split entries.
         raw_pvm = data.get('psg_voice_map', {})
         for k, v in raw_pvm.items():
-            root_note = ModNote[v['root']]
-            synth_root = None
-            if 'synth_root' in v:
-                synth_root = parse_synth_note(v['synth_root'])
-            low = parse_smps_note(v['low']) if 'low' in v else None
-            pvm_vibrato = _parse_vibrato(v['vibrato']) if 'vibrato' in v else None
-            config.psg_voice_map[str(k)] = PsgInstrumentEntry(
-                mod_instrument=v['mod_instrument'],
-                type=v.get('type', 'tone'),
-                root=root_note,
-                synth_root=synth_root,
-                low=low,
-                noise_rate=v.get('noise_rate', 0),
-                envelope=v.get('envelope', k),
-                base_volume=v.get('base_volume', 0),
-                vibrato=pvm_vibrato,
-            )
+            label = str(k)
+            if isinstance(v, list):
+                config.psg_voice_map[label] = [_parse_psg_voice_entry(e, label) for e in v]
+            else:
+                config.psg_voice_map[label] = [_parse_psg_voice_entry(v, label)]
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)

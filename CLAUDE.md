@@ -61,6 +61,14 @@ sonic2mod/
 
 ```bash
 pip install pyyaml rich   # external dependencies
+pip install ruff pyright  # lint/type checking (optional)
+```
+
+## Linting
+
+```bash
+ruff check .   # style + lint
+pyright        # type checking
 ```
 
 ## Quick Usage
@@ -141,7 +149,7 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - MOD note range: 3 octaves (C1–B3), 36 semitones
 - Default FM transpose: -36 semitones (maps SMPS octaves 3–5 → MOD C1–B3)
 - Duration persistence: last explicit `dc.b` duration carries to subsequent notes
-- Standalone duration bytes in `dc.b` advance the tick counter (implicit wait/sustain)
+- Standalone duration bytes in `dc.b` **retrigger the last note** (not a silent wait) — parser creates `SmpsNote(note_value=last_note_value, is_rest=False)`
 - Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
 - Loop unrolling uses `stop_line` parameter to prevent re-entry into `smpsLoop`
 - YAML config requires `pyyaml` (`pip install pyyaml`)
@@ -183,13 +191,15 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 
 4. **Operator order** — SMPS binary stores OP4,OP3,OP2,OP1 (reversed). Correct mapping: `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`. Wrong mapping → "overdriven guitar" distortion (OP1 carrier placed in self-feedback slot).
 
-5. **Synthesis disabled by default** — `synthesis.enabled: false` in `configs/settings.yaml`. Set `true` to auto-generate FM samples (requires gcc/MSVC for ym3438.c).
+5. **Synthesis disabled by default** — `fm_synthesis.enabled: false` / `psg_synthesis.enabled: false` in `configs/settings.yaml`. Set `true` to auto-generate samples (requires gcc/MSVC for ym3438.c / sn76489.c).
 
 6. **FM5 falls through into FM1 data** — parser does not stop at label boundaries; FM5 typically lacks `smpsStop` and shares FM1's note data (intentional chorus/detune design).
 
 7. **`smpsNoteFill` > 15 ignored** — ECx has a 4-bit parameter; fill values 16+ cannot be represented and produce no MOD effect (note sustains naturally to full duration).
 
 8. **smpsModSet step count halved in hardware** — driver does `lsr.b #1` before storing. Value 16 → 8 actual oscillation steps.
+
+9. **`mod_pattern_breaks` call order is mandatory** — must be called AFTER `converter.convert()` (writes note data) and BEFORE `converter._set_loop_point()` (writes `Bxx`). Wrong order → loop target lands in wrong pattern. Break coordinate formula: `body_start = P*64 + break_row + 1`; flat rows before `body_start` use `flat//64 : flat%64`, rows after use pattern `P+1 + br//64 : br%64` where `br = flat_row - body_start`. If `target_row != 0`, also write `Dxx` (BCD row) on a free channel at the same row.
 
 ## voice_map (per-voice octave-range instrument routing)
 
@@ -201,6 +211,7 @@ and does NOT affect range lookup.
 - `mod_instrument` — MOD instrument slot (1-based)
 - `root` — **absolute** MOD note anchor; source `low` always plays here regardless of smpsAlterPitch or pitch_offset
 - `synth_root` — synthesis pitch override; `target_rate` is NOT adjusted — output pitch = synth_root's frequency
+- `vibrato: XY` — per-entry vibrato override (speed X, depth Y); also works in `psg_map` / `psg_voice_map`
 - Output formula: `root + (source − low)`, clamped C1–B3
 - Rootless entries use channel-transpose path: `smps_note + total_transpose`
 - When `voice_map` covers all notes for a channel, set `transpose: 0`
@@ -213,6 +224,7 @@ voice_map:
       mod_instrument: 4
       root: F2s             # G5 plays at F#2; each semitone above shifts output up by 1
       synth_root: C6        # (optional) synthesize at C6 frequency instead of G5
+      vibrato: 31           # (optional) override vibrato for this range (speed=3, depth=1)
     - low:  Gs6
       high: C7
       mod_instrument: 12
@@ -232,18 +244,21 @@ voice_map:
 ## YM2612 Synthesis
 
 Full reference: `docs/synthesis.md`.
-Enable: `fm_synthesis.enabled: true` in `configs/settings.yaml`.
+Enable: set `fm_synthesis: {enabled: true}` in `configs/settings.yaml`.
 Smoke tests: `python ym2612/validate.py` / `renderer.py` / `sample_generator.py`
 
 ## SN76489 PSG Synthesis
 
 Full reference: `docs/psg_synthesis.md`.
-Enable: `psg_synthesis.enabled: true` in `configs/settings.yaml`.
+Enable: set `psg_synthesis: {enabled: true}` in `configs/settings.yaml`.
 Smoke tests: `python sn76489/validate.py` / `renderer.py` / `sample_generator.py`
 
 ## Testing
 
-Verified against `Mus8A - Title Screen.asm`:
+Regression baselines: `tests/baselines/title_screen_baseline.mod` and `tests/baselines/ghz_baseline.mod`.
+Both are active test cases in `tools/regression_test.py` (Title Screen + GHZ Act 1).
+
+Verified channel coverage:
 - All 9 channels parsed (1 DAC, 5 FM, 3 PSG)
 - FM5 fall-through into FM1 data works
 - PSG3 loop unrolled correctly (5 iterations)

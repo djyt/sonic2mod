@@ -523,7 +523,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for vi in ch_an.voice_stats:
             all_voices.setdefault(vi, []).append(ch_an.name)
 
-    fm_items: list[tuple] = []  # (vi, inst, min_sem, max_sem, has_trans, alg_str, used_by)
+    fm_items: list[tuple] = []  # (vi, inst, min_sem, max_sem, has_trans, alg_str, used_by, split_point, inst2)
     for vi in sorted(all_voices.keys()):
         voice_def = next((v for v in song.voices if v.index == vi), None)
         alg_str = f"Alg {voice_def.algorithm}, FB {voice_def.feedback}" if voice_def else "unknown"
@@ -540,8 +540,20 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             for ch_an in fm_channels
             if vi in ch_an.voice_stats
         )
-        fm_items.append((vi, inst_counter, min_sem, max_sem, has_trans, alg_str, used_by))
-        inst_counter += 1
+        if min_sem is not None and max_sem is not None:
+            root_value = (min_sem % 12) + 12
+            max_repr = min_sem + (35 - root_value)
+            if max_sem > max_repr:
+                split_point: int | None = max_repr
+                inst2: int | None = inst_counter + 1
+            else:
+                split_point = None
+                inst2 = None
+        else:
+            split_point = None
+            inst2 = None
+        fm_items.append((vi, inst_counter, min_sem, max_sem, has_trans, alg_str, used_by, split_point, inst2))
+        inst_counter += 2 if split_point is not None else 1
 
     # PSG
     psg_channels = [ch for ch in analysis.channels if ch.channel_type == "PSG"]
@@ -566,9 +578,12 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         lines.append("  # --- percussion ---")
         for base_name, inst in dac_base_insts:
             lines.append(f"  - [{inst}, \"dac_{base_name}.raw\", 64, 0]")
-    for vi, inst, _min_sem, _max_sem, _has_trans, alg_str, used_by in fm_items:
+    for vi, inst, _min_sem, _max_sem, _has_trans, alg_str, used_by, split_point, inst2 in fm_items:
         lines.append(f"  # --- voice ${vi:02X}: {alg_str} — {used_by} ---")
-        lines.append(f"  - [{inst}, \"fm_v{vi:02x}.raw\", 32, 0]")
+        lines.append(f"  - [{inst}, \"fm_v{vi:02x}_lo.raw\", 32, 0]" if split_point is not None
+                     else f"  - [{inst}, \"fm_v{vi:02x}.raw\", 32, 0]")
+        if split_point is not None:
+            lines.append(f"  - [{inst2}, \"fm_v{vi:02x}_hi.raw\", 32, 0]")
     for _form_byte, label, inst, _ts in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
         lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
@@ -591,11 +606,34 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     if fm_items:
         lines.append("")
         lines.append("voice_map:")
-        for vi, inst, min_sem, max_sem, has_trans, alg_str, used_by in fm_items:
+        for vi, inst, min_sem, max_sem, has_trans, alg_str, used_by, split_point, inst2 in fm_items:
             lines.append(f"  # ${vi:02X} — {alg_str} — used by {used_by}")
             lines.append(f"  {vi}:")
             if min_sem is None or max_sem is None:
                 lines.append("    # (no notes played — voice switched to but never triggered)")
+            elif split_point is not None:
+                # Entry 1: low..split_point
+                lines.append(f"    - low:  {_sem_to_yaml(min_sem)}")
+                lines.append(f"      high: {_sem_to_yaml(split_point)}")
+                lines.append(f"      mod_instrument: {inst}")
+                lines.append(f"      root: {_note_in_octave2(min_sem)}")
+                lines.append(f"      synth_root: {_sem_to_yaml(min_sem)}")
+                if has_trans:
+                    lines.append(
+                        "      # WARNING: channel uses smpsChangeTransposition"
+                        " — remove root, use channel transpose instead"
+                    )
+                # Entry 2: split_point+1..max_sem
+                lines.append(f"    - low:  {_sem_to_yaml(split_point + 1)}")
+                lines.append(f"      high: {_sem_to_yaml(max_sem)}")
+                lines.append(f"      mod_instrument: {inst2}")
+                lines.append(f"      root: {_note_in_octave2(split_point + 1)}")
+                lines.append(f"      synth_root: {_sem_to_yaml(split_point + 1)}")
+                if has_trans:
+                    lines.append(
+                        "      # WARNING: channel uses smpsChangeTransposition"
+                        " — remove root, use channel transpose instead"
+                    )
             else:
                 lines.append(f"    - low:  {_sem_to_yaml(min_sem)}")
                 lines.append(f"      high: {_sem_to_yaml(max_sem)}")

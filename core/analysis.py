@@ -63,6 +63,15 @@ class VoiceRangeStats:
 
 
 @dataclass
+class PsgToneStats:
+    tone_label: str        # e.g. "fTone_06", "form $E7"
+    min_semitone: int      # raw SMPS (note_value - 0x81); 999 if no notes
+    max_semitone: int      # -1 if no notes
+    note_count: int
+    switch_count: int
+
+
+@dataclass
 class TransposeEvent:
     tick: int
     delta: int             # this event's semitone delta
@@ -84,6 +93,8 @@ class ChannelAnalysis:
     max_semitone: int | None
     # Per-voice stats (FM channels only)
     voice_stats: dict = field(default_factory=dict)   # voice_idx -> VoiceRangeStats
+    # Per-tone stats (PSG channels only)
+    psg_tone_stats: dict = field(default_factory=dict)  # tone_label -> PsgToneStats
     # DAC sample occurrence counts
     dac_counts: dict = field(default_factory=dict)    # dac_name -> int
     # All effects seen: effect_type → count
@@ -197,6 +208,17 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
     max_semitone: int | None = None
 
     current_voice_idx: int | None = None
+    psg_tone_stats: dict[str, PsgToneStats] = {}
+    current_psg_label: str | None = None
+    if ch_type == "PSG":
+        initial_label = ch.header.psg_voice_label
+        if initial_label:
+            current_psg_label = initial_label
+            psg_tone_stats[initial_label] = PsgToneStats(
+                tone_label=initial_label,
+                min_semitone=999, max_semitone=-1,
+                note_count=0, switch_count=0,
+            )
     # Initialise to header pitch_offset so cumulative reflects the true
     # running total (smpsHeaderFM $F4 = -12 for FM1/FM3/FM4/FM5).
     cumulative_transpose = ch.header.pitch_offset
@@ -222,6 +244,18 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                     min_semitone = sem
                 if max_semitone is None or sem > max_semitone:
                     max_semitone = sem
+
+                # Update per-tone stats (PSG channels only)
+                if ch_type == "PSG" and current_psg_label is not None:
+                    ts = psg_tone_stats.get(current_psg_label)
+                    if ts is None:
+                        ts = PsgToneStats(current_psg_label, 999, -1, 0, 0)
+                        psg_tone_stats[current_psg_label] = ts
+                    ts.note_count += 1
+                    if sem < ts.min_semitone:
+                        ts.min_semitone = sem
+                    if sem > ts.max_semitone:
+                        ts.max_semitone = sem
 
                 # Update per-voice stats (FM channels only)
                 if ch_type == "FM" and current_voice_idx is not None:
@@ -262,6 +296,26 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                         )
                         voice_stats[current_voice_idx] = vs
                     vs.switch_count += 1
+
+            elif eff.effect_type == 'smpsPSGvoice':
+                label = str(eff.params[0])
+                if label != current_psg_label:
+                    current_psg_label = label
+                    ts = psg_tone_stats.get(label)
+                    if ts is None:
+                        ts = PsgToneStats(label, 999, -1, 0, 0)
+                        psg_tone_stats[label] = ts
+                    ts.switch_count += 1
+
+            elif eff.effect_type == 'smpsPSGform':
+                label = f"form ${eff.params[0]:02X}"
+                if label != current_psg_label:
+                    current_psg_label = label
+                    ts = psg_tone_stats.get(label)
+                    if ts is None:
+                        ts = PsgToneStats(label, 999, -1, 0, 0)
+                        psg_tone_stats[label] = ts
+                    ts.switch_count += 1
 
             elif eff.effect_type == 'smpsChangeTransposition':
                 delta = eff.params[0]
@@ -324,6 +378,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
         min_semitone=min_semitone,
         max_semitone=max_semitone,
         voice_stats=voice_stats,
+        psg_tone_stats=psg_tone_stats,
         dac_counts=dac_counts,
         effect_counts=effect_counts,
         transpose_events=transpose_events,

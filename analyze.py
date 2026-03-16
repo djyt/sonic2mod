@@ -32,6 +32,7 @@ from core.analysis import (
     PARTIAL_EFFECTS,
     UNSUPPORTED_EFFECTS,
     ChannelAnalysis,
+    PsgToneStats,
     SongAnalysis,
     analyze_song,
     semitone_to_note_name,
@@ -274,6 +275,20 @@ def render_channel_psg(ch: ChannelAnalysis, config: ConversionConfig | None):
         sug = suggest_transpose(ch.min_semitone, ch.max_semitone)
         lines.append(f"  → suggested transpose: [bold]{sug:+d}[/bold]")
 
+    if ch.psg_tone_stats:
+        lines.append("PSG tones used:")
+        for label, ts in ch.psg_tone_stats.items():
+            if ts.note_count == 0:
+                range_str = "—"
+            else:
+                lo = semitone_to_note_name(ts.min_semitone)
+                hi = semitone_to_note_name(ts.max_semitone)
+                range_str = f"{lo}–{hi}"
+            lines.append(
+                f"  [yellow]{label}[/yellow]  {range_str}  "
+                f"({ts.note_count} notes, {ts.switch_count} switches)"
+            )
+
     normal_eff = _normal_effect_summary(ch.effect_counts)
     if normal_eff != "—":
         lines.append(f"Effects: {normal_eff}")
@@ -286,6 +301,20 @@ def render_channel_psg(ch: ChannelAnalysis, config: ConversionConfig | None):
 
     if config is not None and ch.config_enabled is False:
         lines.append("[dim]config: disabled[/dim]")
+    elif config is not None and ch.psg_tone_stats:
+        cov_parts = []
+        for label, ts in ch.psg_tone_stats.items():
+            if label.startswith("form $"):
+                form_byte = int(label[6:], 16)
+                entry = config.psg_map.get(form_byte)
+            else:
+                entry = config.psg_voice_map.get(label)
+            if entry is not None:
+                cov_parts.append(f"[green]✓[/green] {label} → inst {entry.mod_instrument}")
+            else:
+                cov_parts.append(f"[red]✗[/red] {label} not configured")
+        if cov_parts:
+            lines.append("Config:  " + "  ".join(cov_parts))
 
     console.print(Panel(
         "\n".join(lines),
@@ -388,8 +417,27 @@ def render_config_coverage(analysis: SongAnalysis):
                     table.add_row(ch_an.name, f"${vi:02X}", rng, cov)
 
         else:  # PSG
-            enabled_str = "" if ch_an.config_enabled else "[dim]disabled[/dim]"
-            table.add_row(ch_an.name, "—", "—", enabled_str or "[dim]PSG (no voice_map)[/dim]")
+            if not ch_an.psg_tone_stats:
+                enabled_str = "" if ch_an.config_enabled else "[dim]disabled[/dim]"
+                table.add_row(ch_an.name, "—", "—", enabled_str or "[dim]PSG (no tones)[/dim]")
+            else:
+                for label, ts in ch_an.psg_tone_stats.items():
+                    if ts.note_count == 0:
+                        rng = "—"
+                    else:
+                        lo = semitone_to_note_name(ts.min_semitone)
+                        hi = semitone_to_note_name(ts.max_semitone)
+                        rng = f"{lo}–{hi}"
+                    if label.startswith("form $"):
+                        form_byte = int(label[6:], 16)
+                        entry = config.psg_map.get(form_byte)
+                    else:
+                        entry = config.psg_voice_map.get(label)
+                    if entry is not None:
+                        cov = f"[green]✓[/green] inst {entry.mod_instrument}"
+                    else:
+                        cov = "[red]✗[/red] not configured"
+                    table.add_row(ch_an.name, label, rng, cov)
 
     console.print(table)
 

@@ -474,8 +474,22 @@ class SmpsToModConverter:
                         if current_psg_entry is not None and current_psg_entry.root is not None:
                             if current_psg_entry.low is not None:
                                 # Melodic anchor: root + (source − low), clamped to MOD range
-                                out = current_psg_entry.root.value + (source_semitone - current_psg_entry.low)
-                                psg_anchor = ModNote(max(0, min(35, out)))
+                                psg_out_raw = current_psg_entry.root.value + (source_semitone - current_psg_entry.low)
+                                psg_out = max(0, min(35, psg_out_raw))
+                                if psg_out != psg_out_raw:
+                                    self._add_warning({
+                                        'type': 'clamp_high' if psg_out_raw > 35 else 'clamp_low',
+                                        'channel': chan_cfg.source,
+                                        'voice_idx': None,
+                                        'extra_ctx': current_psg_label,
+                                        'src_name': _semitone_to_name(source_semitone),
+                                        'boundary': _semitone_to_name(
+                                            current_psg_entry.low + (35 - current_psg_entry.root.value)
+                                        ),
+                                        'note_value': note.note_value,
+                                        'transpose': 0,
+                                    })
+                                psg_anchor = ModNote(psg_out)
                             elif current_psg_entry.type != "tone":
                                 # Fixed anchor: noise channels (no pitch content)
                                 psg_anchor = current_psg_entry.root

@@ -675,6 +675,14 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 lines.append(f"    mod_instrument: {inst}")
                 lines.append(f"    root: {_note_in_octave2(ts.min_semitone)}")
                 lines.append(f"    synth_root: {_sem_to_yaml(ts.min_semitone)}")
+                root_val = (ts.min_semitone % 12) + 12
+                max_repr = ts.min_semitone + (35 - root_val)
+                if ts.max_semitone > max_repr:
+                    lines.append(
+                        f"    # WARNING: range {lo}–{hi} exceeds MOD capacity at this root"
+                        f" (max representable: {_sem_to_yaml(max_repr)})."
+                        " Split into two psg_voice_map entries with separate mod_instrument slots."
+                    )
 
     yaml_text = "\n".join(lines)
 

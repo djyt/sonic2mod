@@ -447,8 +447,18 @@ class SmpsToModConverter:
                                 active_range_entry = entry
                                 final_instrument = entry.mod_instrument
                                 if entry.root is not None:
-                                    out = entry.root.value + (source_semitone - entry.low)
-                                    out = max(0, min(35, out))
+                                    out_raw = entry.root.value + (source_semitone - entry.low)
+                                    out = max(0, min(35, out_raw))
+                                    if out != out_raw:
+                                        self._add_warning({
+                                            'type': 'clamp_high' if out_raw > 35 else 'clamp_low',
+                                            'channel': chan_cfg.source,
+                                            'voice_idx': current_voice_idx,
+                                            'src_name': _semitone_to_name(source_semitone),
+                                            'boundary': _semitone_to_name(entry.high if out_raw > 35 else entry.low),
+                                            'note_value': note.note_value,
+                                            'transpose': 0,
+                                        })
                                     final_note = ModNote(out)
                                 # root=None: fall through to channel-transpose path
                                 break

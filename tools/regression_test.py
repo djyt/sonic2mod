@@ -39,6 +39,20 @@ TEST_CASES = [
         "ignore_channels": [],
         "description": "Title Screen — all channels",
     },
+    {
+        "name": "special_stage",
+        "config": "configs/special_stage.yaml",
+        "baseline": "tests/baselines/special_stage_baseline.mod",
+        "ignore_channels": [],
+        "description": "Special Stage — all channels",
+    },
+    {
+        "name": "stage_clear",
+        "config": "configs/stage_clear.yaml",
+        "baseline": "tests/baselines/stage_clear_baseline.mod",
+        "ignore_channels": [],
+        "description": "Stage Clear — all channels",
+    },
 ]
 
 

@@ -7,7 +7,7 @@ intermediate representation suitable for conversion to MOD format.
 import re
 from dataclasses import dataclass, field
 
-from .tables import SMPS_DAC_NAMES, SMPS_NOTE_NAMES
+from .tables import SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -463,11 +463,11 @@ class SmpsParser:
             ])
 
         # smpsModOn
-        if re.match(r'smpsModOn', line):
+        if line.startswith('smpsModOn'):
             return SmpsEffect('smpsModOn', [])
 
         # smpsModOff
-        if re.match(r'smpsModOff', line):
+        if line.startswith('smpsModOff'):
             return SmpsEffect('smpsModOff', [])
 
         # smpsNoteFill
@@ -622,7 +622,7 @@ class SmpsParser:
                         tick += val
                     continue
 
-                if val >= 0x80:
+                else:  # val >= 0x80
                     # Could be a note value (nRst=$80, nC0=$81, etc.)
                     # Finalize pending note first
                     if pending_note is not None:
@@ -640,7 +640,7 @@ class SmpsParser:
                     elif 0x81 <= val <= 0xDF:
                         # Check if it's a DAC value when in DAC channel
                         if is_dac and val in SMPS_DAC_NAMES.values():
-                            dac_name = next(k for k, v in SMPS_DAC_NAMES.items() if v == val)
+                            dac_name = SMPS_DAC_NAMES_REVERSE.get(val, '')
                             pending_note = SmpsNote(
                                 note_value=val, duration=0, is_dac=True,
                                 dac_name=dac_name, is_no_attack=no_attack_pending

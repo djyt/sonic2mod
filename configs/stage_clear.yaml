@@ -1,0 +1,116 @@
+# -------------------------------------------------------------------------------------------------
+# STAGE CLEAR Conversion Script
+# -------------------------------------------------------------------------------------------------
+
+name: Stage Clear
+input_file: sonic_1\music\Mus8E - Sonic Got Through.asm
+output_file: output/stage_clear.mod
+samples_dir: "samples/"
+
+auto_bpm: true
+target_speed: 3
+ticks_per_row: 1
+num_mod_channels: 8
+region: ntsc
+
+channels:
+  - source: DAC
+    mod_channel: 0
+  - source: FM1
+    mod_channel: 1
+  - source: FM2
+    mod_channel: 2
+  - source: FM3
+    mod_channel: 3
+  - source: FM4
+    mod_channel: 4
+  - source: FM5
+    mod_channel: 5
+  - source: PSG1
+    mod_channel: 6
+  - source: PSG2
+    mod_channel: 7
+
+sample_list:
+  # --- percussion ---
+  - [1, "snare.raw", 64, 0]
+  - [2, "kick.raw", 64, 0]
+  - [3, "timpani.raw", 64, 0]
+  # --- voice $00: Alg 5, FB 7 — FM1 ---
+  - [4, "fm_v00_lo.raw", 64, 0]
+  - [5, "fm_v00_hi.raw", 64, 0]
+  # --- voice $01: Alg 2, FB 7 — FM2 ---
+  - [6, "fm_v01.raw", 32, 0]
+  # --- voice $02: Alg 5, FB 7 — FM3, FM4 ---
+  - [7, "fm_v02.raw", 32, 0]
+  # --- voice $03: Alg 5, FB 7 — FM5 ---
+  - [8, "fm_v03.raw", 16, 0]
+  # --- PSG tone fTone_05 ---
+  - [9, "psg_fTone_05_lo.raw", 16, 0]
+  - [10, "psg_fTone_05_hi.raw", 16, 0]
+
+dac_samples:
+  # dSnare: ×7 — native ~24000 Hz → note Fs3
+  - name: dSnare
+    mod_instrument: 1
+    mod_note: Fs3
+  # dKick: ×4 — native ~8250 Hz → note C2
+  - name: dKick
+    mod_instrument: 2
+    mod_note: C2
+  # dVLowTimpani: ×4 — native ~7006 Hz → note A1
+  - name: dVLowTimpani
+    mod_instrument: 3
+    mod_note: A1
+  # dHiTimpani: ×2 — native ~9588 Hz → note Ds2
+  - name: dHiTimpani
+    mod_instrument: 3
+    mod_note: Ds2
+
+voice_map:
+  # $00 — Alg 5, FB 7 — used by FM1
+  0:
+    - low:  G4
+      high: B5
+      mod_instrument: 4
+      root: G2
+      synth_root: G4
+    - low:  C6
+      high: C7
+      mod_instrument: 5
+      root: C2
+      synth_root: C6
+  # $01 — Alg 2, FB 7 — used by FM2
+  1:
+    - low:  G4
+      high: G5
+      mod_instrument: 6
+      root: G2
+      synth_root: G2
+  # $02 — Alg 5, FB 7 — used by FM3, FM4
+  2:
+    - low:  A5
+      high: D6
+      mod_instrument: 7
+      root: A2
+      synth_root: A5
+  # $03 — Alg 5, FB 7 — used by FM5
+  3:
+    - low:  G5
+      high: C6
+      mod_instrument: 8
+      root: G2
+      synth_root: G5
+
+psg_voice_map:
+  fTone_05:
+    - low:  G4
+      high: B5
+      mod_instrument: 9
+      root: G2
+      synth_root: G4
+    - low:  C6
+      high: C7
+      mod_instrument: 10
+      root: C2
+      synth_root: C6

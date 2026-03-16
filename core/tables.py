@@ -186,6 +186,9 @@ SMPS_DAC_NAMES = {
     'dVLowTimpani': 0x8B,
 }
 
+# Reverse lookup: DAC byte value → name (built once at import time)
+SMPS_DAC_NAMES_REVERSE: dict[int, str] = {v: k for k, v in SMPS_DAC_NAMES.items()}
+
 
 def smps_note_to_mod_note(note_value, transpose=0, channel_name=None, voice_idx=None,
                           warn_fn=None, extra_ctx=None):

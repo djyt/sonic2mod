@@ -3,7 +3,7 @@
 import warnings
 from dataclasses import dataclass, field
 
-from .tables import ModNote, parse_smps_note
+from .tables import ModNote, parse_smps_note, parse_synth_note
 
 
 @dataclass
@@ -58,7 +58,7 @@ def _parse_instrument_range(entry: dict) -> "InstrumentRange":
         raise KeyError(f"InstrumentRange entry missing 'mod_instrument': {entry}")
 
     root       = ModNote[entry['root']]              if 'root'       in entry else None
-    synth_root = parse_smps_note(entry['synth_root']) if 'synth_root' in entry else None
+    synth_root = parse_synth_note(entry['synth_root']) if 'synth_root' in entry else None
     vibrato    = _parse_vibrato(entry['vibrato'])     if 'vibrato'    in entry else None
 
     return InstrumentRange(
@@ -372,7 +372,7 @@ class ConversionConfig:
             root_note = ModNote[psg_entry['root']]
             synth_root = None
             if 'synth_root' in psg_entry:
-                synth_root = parse_smps_note(psg_entry['synth_root'])
+                synth_root = parse_synth_note(psg_entry['synth_root'])
             psg_vibrato = _parse_vibrato(psg_entry['vibrato']) if 'vibrato' in psg_entry else None
             config.psg_map[form_byte] = PsgInstrumentEntry(
                 mod_instrument=psg_entry['mod_instrument'],
@@ -400,7 +400,7 @@ class ConversionConfig:
             root_note = ModNote[v['root']]
             synth_root = None
             if 'synth_root' in v:
-                synth_root = parse_smps_note(v['synth_root'])
+                synth_root = parse_synth_note(v['synth_root'])
             low = parse_smps_note(v['low']) if 'low' in v else None
             pvm_vibrato = _parse_vibrato(v['vibrato']) if 'vibrato' in v else None
             config.psg_voice_map[str(k)] = PsgInstrumentEntry(

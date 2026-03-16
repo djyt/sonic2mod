@@ -143,6 +143,35 @@ def parse_smps_note(name: str) -> int:
     return SMPS_NOTE_NAMES[key] - 0x81
 
 
+_ENHARMONIC_MAP = {
+    'Db': 'Cs', 'Eb': 'Ds', 'Fb': 'E', 'F': 'Es',
+    'Gb': 'Fs', 'Ab': 'Gs', 'Bb': 'As',
+}
+
+
+def parse_synth_note(name: str) -> int:
+    """Like parse_smps_note but not limited to the SMPS byte range (octaves 0–7).
+
+    Used for synth_root only, where the note is a synthesis frequency target,
+    not an SMPS playback event. Supports C8, Fs9, etc.
+
+    Returns:
+        Integer semitone offset from C0 (e.g. C8 → 96, C9 → 108).
+
+    Raises:
+        ValueError: if the note name is not recognised.
+    """
+    import re
+    m = re.fullmatch(r'([A-G][sb]?)(\d+)', name)
+    if not m:
+        raise ValueError(f"Invalid synth note name: '{name}'")
+    note_str, octave_str = m.group(1), m.group(2)
+    canonical = _ENHARMONIC_MAP.get(note_str, note_str)
+    if canonical not in _CHROMATIC_NAMES:
+        raise ValueError(f"Invalid synth note name: '{name}'")
+    return _CHROMATIC_NAMES.index(canonical) + int(octave_str) * 12
+
+
 # ---------------------------------------------------------------------------
 # SMPS DAC sample names → byte values (Sonic 1)
 # ---------------------------------------------------------------------------

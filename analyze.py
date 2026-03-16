@@ -456,6 +456,17 @@ def _note_in_octave2(semitone: int) -> str:
     return f"{_YAML_CHROMATIC[semitone % 12]}2"
 
 
+_VALID_MOD_CHANNELS = (4, 8, 10, 12, 14, 16)
+
+
+def _round_up_mod_channels(n: int) -> int:
+    """Round up to the nearest valid MOD channel count (4, 8, 10, 12, 14, 16)."""
+    for c in _VALID_MOD_CHANNELS:
+        if c >= n:
+            return c
+    return _VALID_MOD_CHANNELS[-1]
+
+
 def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | None = None):
     """Print (or write) a suggested YAML skeleton."""
     song = analysis.song
@@ -473,7 +484,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         "auto_bpm: true",
         f"target_speed: {song.header.tempo_modifier}",
         "ticks_per_row: 2",
-        f"num_mod_channels: {len(analysis.channels)}",
+        f"num_mod_channels: {_round_up_mod_channels(len(analysis.channels))}",
         f"region: {region}",
         "",
         "channels:",

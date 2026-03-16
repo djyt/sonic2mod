@@ -23,16 +23,25 @@ PARTIAL_EFFECTS = {
     'smpsModSet':    'approximate (sine vs triangle wave)',
 }
 
-# Known Sonic 1 DAC sample native playback rates and suggested MOD notes
-# (approximate — actual sample rates vary by ROM version)
-DAC_NATIVE_INFO = {
-    'dKick':        ('C2',  8_000),
-    'dSnare':       ('F2s', 8_000),
-    'dTimpani':     ('C3',  8_000),
-    'dHiTimpani':   ('C3',  8_000),
-    'dMidTimpani':  ('C3',  8_000),
-    'dLowTimpani':  ('C3',  8_000),
-    'dVLowTimpani': ('C3',  8_000),
+# Known Sonic 1 DAC sample native playback rates and suggested MOD notes.
+# Notes and rates from docs/yaml_config.md § DAC Sample Rates.
+DAC_NATIVE_INFO: dict[str, tuple[str, int]] = {
+    'dKick':        ('C2',  8_250),
+    'dSnare':       ('Fs3', 24_000),
+    'dTimpani':     ('As1', 7_375),
+    'dHiTimpani':   ('Ds2', 9_588),
+    'dMidTimpani':  ('Cs2', 8_850),
+    'dLowTimpani':  ('A1',  7_154),
+    'dVLowTimpani': ('A1',  7_006),
+}
+
+# Timpani variants share a single MOD instrument (same WAV, different trigger note).
+# Maps variant name → base/canonical name used for instrument slot assignment.
+DAC_SAMPLE_GROUPS: dict[str, str] = {
+    'dHiTimpani':   'dTimpani',
+    'dMidTimpani':  'dTimpani',
+    'dLowTimpani':  'dTimpani',
+    'dVLowTimpani': 'dTimpani',
 }
 
 # YM2612 carrier operator register offsets by algorithm (0–7).

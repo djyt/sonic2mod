@@ -29,6 +29,7 @@ except ImportError:
 from core.analysis import (
     _CARRIER_LABELS_BY_ALG,
     DAC_NATIVE_INFO,
+    DAC_SAMPLE_GROUPS,
     PARTIAL_EFFECTS,
     UNSUPPORTED_EFFECTS,
     ChannelAnalysis,
@@ -489,13 +490,20 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     # DAC
     dac_channels = [ch for ch in analysis.channels if ch.channel_type == "DAC"]
     dac_items: list[tuple[str, int, int]] = []   # (name, inst, count)
+    dac_base_insts: list[tuple[str, int]] = []   # (base_name, inst) — one per instrument slot
     seen_dac: set[str] = set()
+    dac_inst_by_name: dict[str, int] = {}
     for ch_an in dac_channels:
         for name, count in sorted(ch_an.dac_counts.items(), key=lambda x: -x[1]):
             if name not in seen_dac:
                 seen_dac.add(name)
-                dac_items.append((name, inst_counter, count))
-                inst_counter += 1
+                base = DAC_SAMPLE_GROUPS.get(name, name)
+                if base not in dac_inst_by_name:
+                    dac_inst_by_name[base] = inst_counter
+                    dac_base_insts.append((base, inst_counter))
+                    inst_counter += 1
+                dac_inst_by_name[name] = dac_inst_by_name[base]
+                dac_items.append((name, dac_inst_by_name[name], count))
 
     # FM voices
     fm_channels = [ch for ch in analysis.channels if ch.channel_type == "FM"]
@@ -545,8 +553,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     lines.append("sample_list:")
     if dac_items:
         lines.append("  # --- percussion ---")
-        for name, inst, _count in dac_items:
-            lines.append(f"  - [{inst}, \"dac_{name}.raw\", 64, 0]")
+        for base_name, inst in dac_base_insts:
+            lines.append(f"  - [{inst}, \"dac_{base_name}.raw\", 64, 0]")
     for vi, inst, _min_sem, _max_sem, _has_trans, alg_str, used_by in fm_items:
         lines.append(f"  # --- voice ${vi:02X}: {alg_str} — {used_by} ---")
         lines.append(f"  - [{inst}, \"fm_v{vi:02x}.raw\", 32, 0]")

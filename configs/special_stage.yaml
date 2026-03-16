@@ -36,13 +36,9 @@ channels:
 
   - source: PSG1
     mod_channel: 6
-    #transpose: -69
-    enabled: false
 
   - source: PSG2
     mod_channel: 7
-    #transpose: -55
-    enabled: false
 
 
 # -------------------------------------------------------------------------------------------------
@@ -50,10 +46,12 @@ channels:
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 sample_list:
-  - [1,  "ss_v0.raw",     32, 0]
-  - [2,  "ss_v1.raw",     32, 0]
-  - [3,  "ss_v2.raw",     32, 0]
-  - [4,  "ss_v3.raw",     32, 0]
+  - [1,  "ss_v0.raw",      64, 0]
+  - [2,  "ss_v1.raw",      64, 0]
+  - [3,  "ss_v2.raw",      64, 0]
+  - [4,  "ss_v3.raw",      64, 0]
+  - [5,  "psg_tone04.raw", 32, 0]
+  - [6,  "psg_tone08.raw", 40, 0]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -85,3 +83,21 @@ voice_map:
       root: D2
       synth_root: D5
       vibrato: 12               # Override Vibrato with more subtle setting
+      
+# -------------------------------------------------------------------------------------------------
+# PSG Sounds
+# -------------------------------------------------------------------------------------------------
+psg_voice_map:
+  fTone_04:
+    low:  F5
+    high: C7
+    mod_instrument: 5
+    root: F1
+    synth_root: F5
+    
+  fTone_08:
+    low:  C5
+    high: C5
+    mod_instrument: 6
+    root: C3
+    synth_root: C8

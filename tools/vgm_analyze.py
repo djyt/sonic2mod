@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import math
+import statistics
 import struct
 import sys
 from pathlib import Path
@@ -67,6 +68,19 @@ _DEFAULT_FM_CLOCK = 7_670_454
 _DEFAULT_PSG_CLOCK = 3_579_545
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+# OPN2 carrier operator register offsets by algorithm.
+# YM2612 TL register layout: slot offset = reg & 0x0C (0x00=OP1, 0x04=OP3, 0x08=OP2, 0x0C=OP4).
+_CARRIER_SLOTS_BY_ALG = [
+    [0x0C],                          # Alg 0: OP4 only
+    [0x0C],                          # Alg 1: OP4 only
+    [0x0C],                          # Alg 2: OP4 only
+    [0x0C],                          # Alg 3: OP4 only
+    [0x08, 0x0C],                    # Alg 4: OP2, OP4
+    [0x04, 0x08, 0x0C],              # Alg 5: OP3, OP2, OP4
+    [0x04, 0x08, 0x0C],              # Alg 6: OP3, OP2, OP4  (OP2 is output of OP1→OP2)
+    [0x00, 0x04, 0x08, 0x0C],        # Alg 7: all operators
+]
 
 
 def _fnum_to_hz(fnum: int, block: int, clock: int) -> float:
@@ -143,12 +157,14 @@ def _parse_vgm(
     psg_clock: int,
     channel_filter: set[str] | None,
     chip: str,
-) -> list[tuple]:
+) -> tuple[list[tuple], dict[str, list[float]], dict[str, list[float]]]:
     """Parse VGM binary data and return a list of key-on event rows.
 
     FM rows:       (time_ms, chan_name, fnum, block, freq_hz, note_name)
     PSG tone rows: (time_ms, chan_name, period, 0, freq_hz, note_name)
     PSG noise rows:(time_ms, "NOISE",  noise_reg, 0, 0.0, noise_desc)
+
+    Returns (rows, fm_amp_samples, psg_amp_samples).
     """
     # Version at 0x08
     version = struct.unpack_from('<I', data, 0x08)[0]
@@ -184,13 +200,17 @@ def _parse_vgm(
     psg_latch_ch   = None                # last latched channel (0-3)
     psg_latch_type = None                # 0 = freq, 1 = vol
 
+    # FM amplitude tracking: TL per (bank, ch, slot) and algorithm per (bank, ch)
+    fm_tl:   list[list[dict[int, int]]] = [[{0x00: 0, 0x04: 0, 0x08: 0, 0x0C: 0} for _ in range(3)] for _ in range(2)]
+    fm_algo: list[list[int]]            = [[0] * 3 for _ in range(2)]
+    fm_amp_samples:  dict[str, list[float]] = {}   # chan_name → list of linear amplitudes at key-on
+    psg_amp_samples: dict[str, list[float]] = {}   # "PSG1".."PSG3","NOISE" → list
+
     sample_count = 0
     rows: list[tuple] = []
 
     def _emit_fm_keyon(bank: int, ch_idx: int) -> None:
         ch_name = f"FM{bank * 3 + ch_idx + 1}"
-        if channel_filter and ch_name not in channel_filter:
-            return
         lo    = fnum_lo[bank][ch_idx]
         hi    = fnum_hi[bank][ch_idx]
         block = (hi >> 3) & 0x7
@@ -201,7 +221,13 @@ def _parse_vgm(
         note    = _nearest_note(freq)
         smps    = _smps_note(freq, "fm")
         time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
-        rows.append((time_ms, ch_name, fnum, block, freq, note, smps))
+        if not channel_filter or ch_name in channel_filter:
+            rows.append((time_ms, ch_name, fnum, block, freq, note, smps))
+        # Amplitude: sum linear levels of carrier operators regardless of channel filter
+        alg = fm_algo[bank][ch_idx]
+        tl_dict = fm_tl[bank][ch_idx]
+        linear_sum = sum(10 ** (-(tl_dict[s] * 0.75) / 20.0) for s in _CARRIER_SLOTS_BY_ALG[alg])
+        fm_amp_samples.setdefault(ch_name, []).append(linear_sum)
 
     def _emit_psg_keyon(ch: int) -> None:
         """Emit a PSG key-on event.
@@ -213,22 +239,25 @@ def _parse_vgm(
         time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
         if ch < 3:
             ch_name = f"PSG{ch + 1}"
-            if channel_filter and ch_name not in channel_filter:
-                return
             period  = psg_freq[ch]
             freq    = _psg_period_to_hz(period, psg_clock)
             note    = _nearest_note(freq)
             smps    = _smps_note(freq, "psg")
             psg_prev_freq[ch] = period   # remember period so we don't double-emit
-            rows.append((time_ms, ch_name, period, 0, freq, note, smps))
+            if not channel_filter or ch_name in channel_filter:
+                rows.append((time_ms, ch_name, period, 0, freq, note, smps))
+            # Amplitude: capture regardless of channel filter
+            linear = 10 ** (-(psg_vol[ch] * 2.0) / 20.0)
+            psg_amp_samples.setdefault(ch_name, []).append(linear)
         else:
-            if channel_filter and "NOISE" not in channel_filter:
-                return
             noise_type = "white" if (psg_noise >> 2) & 1 else "periodic"
             rate_idx   = psg_noise & 0x3
             rate_str   = ("N/512", "N/1024", "N/2048", "psgtone")[rate_idx]
             noise_desc = f"{noise_type}/{rate_str}"
-            rows.append((time_ms, "NOISE", psg_noise, 0, 0.0, noise_desc, "—"))
+            if not channel_filter or "NOISE" in channel_filter:
+                rows.append((time_ms, "NOISE", psg_noise, 0, 0.0, noise_desc, "—"))
+            linear = 10 ** (-(psg_vol[3] * 2.0) / 20.0)
+            psg_amp_samples.setdefault("NOISE", []).append(linear)
 
     end = len(data)
     while pos < end:
@@ -244,7 +273,15 @@ def _parse_vgm(
             val  = data[pos + 1]
             pos += 2
 
-            if 0xA0 <= reg <= 0xA2:
+            if 0x40 <= reg <= 0x4E and (reg & 0x03) != 0x03:
+                # TL register: bits[3:2]=slot offset, bits[1:0]=channel
+                slot = reg & 0x0C   # 0x00/0x04/0x08/0x0C
+                ch   = reg & 0x03   # 0..2
+                fm_tl[bank][ch][slot] = val & 0x7F
+            elif 0xB0 <= reg <= 0xB2:
+                # Algorithm + feedback: bits[2:0] = algorithm
+                fm_algo[bank][reg - 0xB0] = val & 0x07
+            elif 0xA0 <= reg <= 0xA2:
                 # F-number low byte, ch 0-2
                 fnum_lo[bank][reg - 0xA0] = val
             elif 0xA4 <= reg <= 0xA6:
@@ -354,7 +391,49 @@ def _parse_vgm(
 
         # Unknown commands: skip 1 byte and continue (best-effort)
 
-    return rows
+    return rows, fm_amp_samples, psg_amp_samples
+
+
+# ---------------------------------------------------------------------------
+# Volume suggestion
+# ---------------------------------------------------------------------------
+
+_CHANNEL_ORDER = ["FM1", "FM2", "FM3", "FM4", "FM5", "FM6", "PSG1", "PSG2", "PSG3", "NOISE"]
+
+
+def print_volume_suggestions(
+    fm_amp: dict[str, list[float]],
+    psg_amp: dict[str, list[float]],
+) -> None:
+    """Print per-channel amplitude stats and suggested sample_list volumes (0–64)."""
+    all_channels: dict[str, float] = {}
+    for name, samples in {**fm_amp, **psg_amp}.items():
+        if samples:
+            all_channels[name] = statistics.median(samples)
+
+    if not all_channels:
+        print("No key-on events found.")
+        return
+
+    peak = max(all_channels.values())
+
+    print(f"\n{'Channel':<8}  {'Median amp':>12}  {'Rel %':>7}  {'MOD vol (0-64)':>14}")
+    print("-" * 50)
+    for ch in _CHANNEL_ORDER:
+        if ch not in all_channels:
+            continue
+        amp = all_channels[ch]
+        rel = amp / peak
+        vol = round(rel * 56)   # max → 56, leaving headroom for Cxx boosts
+        print(f"{ch:<8}  {amp:>12.4f}  {rel * 100:>6.1f}%  {vol:>14}")
+
+    print()
+    print("# Suggested volumes for sample_list entries:")
+    for ch in _CHANNEL_ORDER:
+        if ch not in all_channels:
+            continue
+        vol = round(all_channels[ch] / peak * 56)
+        print(f"# {ch}: volume ~{vol}")
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +467,10 @@ def main() -> None:
         "--max-rows", type=int, default=200,
         help="Maximum rows to print (default 200; use 0 for unlimited)",
     )
+    ap.add_argument(
+        "--volumes", action="store_true",
+        help="Print per-channel amplitude stats and suggested sample_list volumes instead of event table",
+    )
     args = ap.parse_args()
 
     path = Path(args.file)
@@ -406,15 +489,13 @@ def main() -> None:
         sys.exit(1)
 
     channel_filter = set(args.channel) if args.channel else None
-    rows = _parse_vgm(
+    rows, fm_amp, psg_amp = _parse_vgm(
         raw,
         fm_clock=args.clock,
         psg_clock=args.psg_clock,
         channel_filter=channel_filter,
         chip=args.chip,
     )
-
-    limit = args.max_rows if args.max_rows > 0 else len(rows)
 
     print(f"File   : {path}")
     print(f"Chip   : {args.chip}")
@@ -425,10 +506,16 @@ def main() -> None:
     if channel_filter:
         print(f"Filter : {', '.join(sorted(channel_filter))}")
     print(f"Events : {len(rows)} key-on events found")
+
+    if args.volumes:
+        print_volume_suggestions(fm_amp, psg_amp)
+        return
+
     print()
     print(f"{'time_ms':>10}  {'chan':<5}  {'data':>6}  {'blk':>3}  {'freq_hz':>10}  {'note':<8}  smps")
     print("-" * 68)
 
+    limit = args.max_rows if args.max_rows > 0 else len(rows)
     for row in rows[:limit]:
         time_ms, ch, data_val, block, freq, note, smps = row
         blk_str  = str(block) if ch.startswith("FM") else "--"

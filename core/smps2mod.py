@@ -92,9 +92,10 @@ class SmpsToModConverter:
                           f"(inst {_insts}) — remove this entry from voice_map")
             fm_samples = generate_fm_samples(self.song, self.config, synth)
             self._infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
+            _sl_name_map = {e[0]: e[1] for e in self.config.sample_list} if self.config.sample_list else {}
             # Install synthesized FM samples
             for inst_num, (pcm, _) in fm_samples.items():
-                sample = ModSample(f"fm_inst{inst_num}")
+                sample = ModSample(_sl_name_map.get(inst_num, f"fm_inst{inst_num}"))
                 sample.data = pcm
                 sample.length = len(pcm) // 2
                 sample.set_volume(64)
@@ -136,8 +137,9 @@ class SmpsToModConverter:
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
             psg_samples = generate_psg_samples(self.config, psg_synth)
+            _sl_name_map = {e[0]: e[1] for e in self.config.sample_list} if self.config.sample_list else {}
             for inst_num, (pcm, _) in psg_samples.items():
-                sample = ModSample(f"psg_inst{inst_num}")
+                sample = ModSample(_sl_name_map.get(inst_num, f"psg_inst{inst_num}"))
                 sample.data = pcm
                 sample.length = len(pcm) // 2
                 sample.set_volume(64)

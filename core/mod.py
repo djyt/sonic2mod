@@ -91,7 +91,7 @@ class ModFile:
         self.MOD_FORMAT = self.FORMAT_TABLE.get(channels, "M.K.").encode("utf-8")
         self.SONG_LENGTH = self.MAX_POSITIONS
         self.__name = "untitled"
-        self.samples = [ModSample("unused " + str(i)) for i in range(31)]
+        self.samples = [ModSample("") for _ in range(31)]
         self.positions = 1
         self.position_list = bytearray(self.MAX_POSITIONS + 1)
         self.patterns = [ModPattern(self.CHANNELS)]

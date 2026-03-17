@@ -389,41 +389,11 @@ class SmpsParser:
                      no_attack_pending, is_dac, pending_note=None, last_note_value=0,
                      is_psg=False):
         """Inline a smpsCall subroutine until smpsReturn."""
-        i = target_line
-        while i < len(self.lines):
-            line = self.lines[i]
-
-            if line.endswith(':'):
-                label_name = line[:-1].strip()
-                self.label_tick_pos[label_name] = tick
-                i += 1
-                continue
-
-            if line.startswith('smpsReturn'):
-                return tick, last_duration, pending_note, last_note_value
-
-            if line.startswith('smpsStop'):
-                tick = self._finalize_pending(channel, pending_note, tick, last_duration)
-                return tick, last_duration, None, last_note_value
-
-            effect = self._try_parse_effect(line)
-            if effect is not None:
-                channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
-                i += 1
-                continue
-
-            if line.startswith('dc.b'):
-                tick, last_duration, no_attack_pending, pending_note, last_note_value = \
-                    self._parse_dcb_line(
-                        channel, line, tick, last_duration, no_attack_pending, is_dac,
-                        pending_note, last_note_value=last_note_value, is_psg=is_psg
-                    )
-                i += 1
-                continue
-
-            i += 1
-
-        return tick, last_duration, pending_note, last_note_value
+        return self._parse_channel_lines(
+            channel, target_line, tick, last_duration,
+            no_attack_pending, is_dac, stop_line=None,
+            pending_note=pending_note, last_note_value=last_note_value, is_psg=is_psg
+        )
 
     def _try_parse_effect(self, line):
         """Try to parse a line as an SMPS effect macro. Returns SmpsEffect or None."""

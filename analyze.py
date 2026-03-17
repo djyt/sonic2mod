@@ -559,9 +559,20 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
 
     # PSG
     psg_channels = [ch for ch in analysis.channels if ch.channel_type == "PSG"]
+
+    # Determine which psg_voice_map labels are exclusively used on noise channels.
+    # A channel "has noise" if it has at least one "form $xx" entry (smpsPSGform noise).
+    # If every channel that uses a given label is a noise channel, the label is a noise voice.
+    _label_to_channels: dict[str, set[str]] = {}
+    _channel_has_noise: dict[str, bool] = {}
+    for _ch in psg_channels:
+        _channel_has_noise[_ch.name] = any(lbl.startswith("form $") for lbl in _ch.psg_tone_stats)
+        for _lbl in _ch.psg_tone_stats:
+            _label_to_channels.setdefault(_lbl, set()).add(_ch.name)
+
     seen_psg: set[str] = set()
     psg_noise_items: list[tuple] = []   # (form_byte, label, inst, ts)
-    psg_tone_items: list[tuple] = []    # (label, inst, ts, split_point, inst2)
+    psg_tone_items: list[tuple] = []    # (label, inst, ts, split_point, inst2, is_noise_voice)
     for ch_an in psg_channels:
         for label, ts in ch_an.psg_tone_stats.items():
             if label not in seen_psg:
@@ -571,19 +582,23 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                     psg_noise_items.append((form_byte, label, inst_counter, ts))
                     inst_counter += 1
                 else:
-                    if ts.note_count > 0:
+                    _using = _label_to_channels.get(label, set())
+                    is_noise_voice = bool(_using) and all(
+                        _channel_has_noise.get(c, False) for c in _using
+                    )
+                    if is_noise_voice or ts.note_count == 0:
+                        psg_split: int | None = None
+                        psg_inst2: int | None = None
+                    else:
                         psg_root_val = (ts.min_semitone % 12) + 12
                         psg_max_repr = ts.min_semitone + (35 - psg_root_val)
                         if ts.max_semitone > psg_max_repr:
-                            psg_split: int | None = psg_max_repr
-                            psg_inst2: int | None = inst_counter + 1
+                            psg_split = psg_max_repr
+                            psg_inst2 = inst_counter + 1
                         else:
                             psg_split = None
                             psg_inst2 = None
-                    else:
-                        psg_split = None
-                        psg_inst2 = None
-                    psg_tone_items.append((label, inst_counter, ts, psg_split, psg_inst2))
+                    psg_tone_items.append((label, inst_counter, ts, psg_split, psg_inst2, is_noise_voice))
                     inst_counter += 2 if psg_split is not None else 1
 
     # --- sample_list ---
@@ -602,12 +617,16 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     for _form_byte, label, inst, _ts in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
         lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
-    for label, inst, _ts, psg_split, psg_inst2 in psg_tone_items:
-        lines.append(f"  # --- PSG tone {label} ---")
-        lines.append(f"  - [{inst}, \"psg_{label}_lo.raw\", 32, 0]" if psg_split is not None
-                     else f"  - [{inst}, \"psg_{label}.raw\", 32, 0]")
-        if psg_split is not None:
-            lines.append(f"  - [{psg_inst2}, \"psg_{label}_hi.raw\", 32, 0]")
+    for label, inst, _ts, psg_split, psg_inst2, is_noise_voice in psg_tone_items:
+        if is_noise_voice:
+            lines.append(f"  # --- PSG noise ({label} envelope) ---")
+            lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
+        else:
+            lines.append(f"  # --- PSG tone {label} ---")
+            lines.append(f"  - [{inst}, \"psg_{label}_lo.raw\", 32, 0]" if psg_split is not None
+                         else f"  - [{inst}, \"psg_{label}.raw\", 32, 0]")
+            if psg_split is not None:
+                lines.append(f"  - [{psg_inst2}, \"psg_{label}_hi.raw\", 32, 0]")
 
     # --- dac_samples ---
     if dac_items:
@@ -680,9 +699,14 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     if psg_tone_items:
         lines.append("")
         lines.append("psg_voice_map:")
-        for label, inst, ts, psg_split, psg_inst2 in psg_tone_items:
+        for label, inst, ts, psg_split, psg_inst2, is_noise_voice in psg_tone_items:
             lines.append(f"  {label}:")
-            if ts.note_count == 0:
+            if is_noise_voice:
+                lines.append("    type: white_noise")
+                lines.append("    noise_rate: 0")
+                lines.append(f"    mod_instrument: {inst}")
+                lines.append("    root: A3")
+            elif ts.note_count == 0:
                 lines.append(f"    mod_instrument: {inst}")
                 lines.append("    # (no notes — placeholder only)")
             elif psg_split is not None:

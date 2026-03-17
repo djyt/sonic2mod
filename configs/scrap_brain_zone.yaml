@@ -106,7 +106,7 @@ voice_map:
       mod_instrument: 6
       root: B2
       synth_root: B5
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
+
   # $03 — Alg 1, FB 5 — used by FM1, FM3
   3:
     - low:  C6
@@ -114,7 +114,8 @@ voice_map:
       mod_instrument: 7
       root: C2
       synth_root: C6
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
+      vibrato: 14
+
   # $04 — Alg 5, FB 7 — used by FM4, FM5
   4:
     - low:  B4
@@ -122,13 +123,13 @@ voice_map:
       mod_instrument: 8
       root: B2
       synth_root: B4
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
+
     - low:  C6
       high: Cs6
       mod_instrument: 9
       root: C2
       synth_root: C6
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
+
   # $05 — Alg 0, FB 6 — used by FM1, FM4
   5:
     - low:  G4
@@ -136,13 +137,13 @@ voice_map:
       mod_instrument: 10
       root: G2
       synth_root: G4
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
+
     - low:  C6
       high: Gs6
       mod_instrument: 11
       root: C2
       synth_root: C6
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
+
   # $06 — Alg 5, FB 7 — used by FM5
   6:
     - low:  G5
@@ -150,7 +151,6 @@ voice_map:
       mod_instrument: 12
       root: G2
       synth_root: G5
-      # WARNING: channel uses smpsChangeTransposition — remove root, use channel transpose instead
 
 psg_map:
   0xE7:                    # form $E7

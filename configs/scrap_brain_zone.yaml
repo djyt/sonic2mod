@@ -52,7 +52,7 @@ sample_list:
   - [10, "fm_v05_lo.raw", 32, 0]
   - [11, "fm_v05_hi.raw", 32, 0]
   # --- voice $06: Alg 5, FB 7 — FM5 ---
-  - [12, "fm_v06.raw", 32, 0]
+  - [12, "fm_v06.raw", 64, 0]
   # --- PSG noise (form $E7) ---
   - [17, "psg_noise.raw", 16, 0]
   # --- PSG tone $00 ---
@@ -60,7 +60,7 @@ sample_list:
   # --- PSG tone fTone_06 ---
   - [14, "psg_fTone_06.raw", 10, 0]
   # --- PSG tone fTone_05 ---
-  - [15, "psg_fTone_05.raw", 10, 0]
+  - [15, "psg_fTone_05.raw", 16, 0]
   # --- PSG noise (fTone_04 envelope) ---
   - [16, "psg_noise.raw", 16, 0]
   # --- PSG noise (fTone_08 envelope) ---
@@ -166,7 +166,7 @@ psg_voice_map:
     high: As5
     mod_instrument: 13
     root: D2
-    synth_root: D5
+    synth_root: D4
   fTone_06:
     low:  E6
     high: Gs6
@@ -179,6 +179,7 @@ psg_voice_map:
     mod_instrument: 15
     root: G2
     synth_root: G6
+    envelope: fTone_02
   fTone_04:
     type: white_noise
     noise_rate: 0
@@ -191,8 +192,10 @@ psg_voice_map:
     root: A3
 
 # -------------------------------------------------------------------------------------------------
-# Structural pattern break after intro
+# Structural pattern breaks to align to grid
 # -------------------------------------------------------------------------------------------------
 mod_pattern_breaks:
   - pattern: 1
+    row: 31
+  - pattern: 15
     row: 31

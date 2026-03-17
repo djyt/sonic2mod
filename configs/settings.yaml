@@ -6,19 +6,19 @@ fm_synthesis:
   mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
-  sustain_duration: 1.5     # Seconds the note is held on before key-off
+  sustain_duration: auto    # Seconds the note is held on before key-off; or 'auto' to use longest note in song (capped at 10 s)
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)
   headroom_db: 6.0          # base headroom below clip applied to every carrier (dB); 6 dB ≈ 8 TL steps
   carrier_balance: true     # add extra TL per carrier count so alg 4/5/6/7 don't clip harder than alg 0-3
 
 psg_synthesis:
-  enabled: true            # Set true to auto-generate PSG samples via SN76489 emulation
-  clock_rate: 3579545      # SN76489 NTSC Mega Drive clock (Hz)
-  amiga_clock: 3546895     # PAL Amiga clock for MOD target-rate calculation
-  sustain_duration: 1.0    # Seconds of tone held before key-off
-  release_padding: 0.2     # Seconds of silence/release after key-off
-  psg_output_max: 4096     # PSG hardware max amplitude; white noise peaks at 2048 (half), tones at 4096
+  enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation
+  clock_rate: 3579545       # SN76489 NTSC Mega Drive clock (Hz)
+  amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
+  sustain_duration: auto    # Seconds of tone held before key-off; or 'auto' to use longest note in song (capped at 10 s)
+  release_padding: 0.2      # Seconds of silence/release after key-off
+  psg_output_max: 4096      # PSG hardware max amplitude; white noise peaks at 2048 (half), tones at 4096
 
   # Sonic 1 driver PSG amplitude envelope tables (PSG1–PSG9).
   # Copied verbatim from the S1 sound driver ROM (s1.sounddriver.asm PSGEnvData_*).

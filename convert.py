@@ -234,6 +234,10 @@ def main():
                 f"PSG synthesized [bold]{info['count']}[/bold] instrument"
                 f"{'s' if info['count'] != 1 else ''}"
             )
+        elif info['type'] == 'auto_sustain_fm':
+            detail_lines.append(f"auto sustain FM [bold]{info['secs']}[/bold] s")
+        elif info['type'] == 'auto_sustain_psg':
+            detail_lines.append(f"auto sustain PSG [bold]{info['secs']}[/bold] s")
 
     loop_str = (f"  ·  loop [dim]→[/dim] pattern [bold]{loop_target}[/bold]"
                 if loop_target is not None else "")

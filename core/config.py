@@ -124,7 +124,7 @@ class PsgSynthesisSettings:
     enabled: bool = False
     clock_rate: int = 3_579_545      # SN76489 NTSC MD clock (Hz)
     amiga_clock: int = 3_546_895     # PAL Amiga clock for target_rate calculation
-    sustain_duration: float = 1.0
+    sustain_duration: float | str = 1.0
     release_padding: float = 0.2
     normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
     psg_output_max: int = 4096       # Hardware PSG max amplitude; noise peaks at 4096/2=2048 (C source halves it)
@@ -136,11 +136,12 @@ class PsgSynthesisSettings:
         with open(filepath) as f:
             data = yaml.safe_load(f)
         s = data.get("psg_synthesis", {})
+        _psg_sd = s.get("sustain_duration", 1.0)
         return cls(
             enabled=s.get("enabled", False),
             clock_rate=s.get("clock_rate", 3_579_545),
             amiga_clock=s.get("amiga_clock", 3_546_895),
-            sustain_duration=s.get("sustain_duration", 1.0),
+            sustain_duration=_psg_sd if _psg_sd == "auto" else float(_psg_sd),
             release_padding=s.get("release_padding", 0.2),
             normalize_samples=s.get("normalize_samples", False),
             psg_output_max=s.get("psg_output_max", 4096),
@@ -154,7 +155,7 @@ class SynthesisSettings:
     mode: str = "ym2612"
     clock_rate: int = 7_670_454       # YM2612 master clock
     amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
-    sustain: float = 1.5
+    sustain: float | str = 1.5
     release: float = 0.5
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
     headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
@@ -166,12 +167,13 @@ class SynthesisSettings:
         with open(filepath) as f:
             data = yaml.safe_load(f)
         s = data.get("fm_synthesis", {})
+        _fm_sd = s.get("sustain_duration", 1.5)
         return cls(
             enabled=s.get("enabled", False),
             mode=s.get("mode", "ym2612"),
             clock_rate=s.get("clock_rate", 7_670_454),
             amiga_clock=s.get("amiga_clock", 3_546_895),
-            sustain=s.get("sustain_duration", 1.5),
+            sustain=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
             release=s.get("release_padding", 0.5),
             normalize_samples=s.get("normalize_samples", True),
             headroom_db=s.get("headroom_db", 6.0),

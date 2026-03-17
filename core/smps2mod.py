@@ -9,7 +9,13 @@ import dataclasses
 from .config import ChannelConfig, ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from .mod import ModFile, ModSample
 from .smps_parser import SmpsChannel, SmpsSong
-from .tables import ModNote, _semitone_to_name, smps_note_to_mod_note
+from .tables import PERIOD_TABLE, ModNote, _semitone_to_name, smps_note_to_mod_note
+
+# Sonic 1 base FNUM for note C (block 0), from MakeFMFrequency table.
+# The 11-bit FNUM is the same across all octave blocks — block just shifts
+# the register. Used to convert SMPS change (FNUM units) → ProTracker depth
+# (Amiga period units): depth = round(change * period / _S1_FNUM_BASE).
+_S1_FNUM_BASE = 644
 
 # Map MOD note name strings to ModNote enum values
 # Supports both "#" (F#3) and "s" (Fs3) sharp notation, plus "b" for flats
@@ -330,7 +336,7 @@ class SmpsToModConverter:
         note_fill = 0
         vibrato_active = False
         vibrato_speed = 0
-        vibrato_depth = 0
+        vibrato_change = 0   # raw SMPS change byte (FNUM units); scaled to period units per note
         vibrato_wait = 0   # ticks to delay before vibrato starts
         current_psg_entry = None    # active PsgInstrumentEntry for the current note (range-dispatched)
         current_psg_entries = None  # full list[PsgInstrumentEntry] for the active psg_voice_map label
@@ -378,10 +384,16 @@ class SmpsToModConverter:
                     note_fill = eff.params[0]
 
                 elif eff.effect_type == 'smpsModSet':
-                    # wait, speed, depth, steps
-                    vibrato_wait  = eff.params[0]
-                    vibrato_speed = min(eff.params[1], 0xF)
-                    vibrato_depth = min(eff.params[2], 0xF)
+                    # wait, speed, change, steps
+                    vibrato_wait   = eff.params[0]
+                    _smps_speed_raw = eff.params[1]
+                    vibrato_change = eff.params[2]   # raw FNUM delta; scaled to period units at placement
+                    # Compute ProTracker LFO speed to match SMPS oscillation rate.
+                    # SMPS cycle (ticks) = 2 * speed * (floor(steps/2) + 1)
+                    # ProTracker cycle (rows) = 16 / x  →  x = round(16 * tpr / smps_cycle)
+                    _smps_steps_halved = eff.params[3] // 2
+                    _smps_cycle = 2 * _smps_speed_raw * (_smps_steps_halved + 1)
+                    vibrato_speed = max(1, min(0xF, round(16 * self.config.ticks_per_row / _smps_cycle)))
                     vibrato_active = True
 
                 elif eff.effect_type == 'smpsModOn':
@@ -635,7 +647,11 @@ class SmpsToModConverter:
                         eff_vib_depth = _vib_override & 0xF
                     else:
                         eff_vib_speed = vibrato_speed
-                        eff_vib_depth = vibrato_depth
+                        # Scale SMPS change (FNUM units) → ProTracker depth (period units).
+                        # SMPS vibrato half-width = change FNUM; ProTracker half-width = depth periods.
+                        # Equal cents: depth = change × period / FNUM_base  (FNUM_base=644 for Sonic 1).
+                        _period = PERIOD_TABLE[final_note.value]
+                        eff_vib_depth = max(1, min(0xF, round(vibrato_change * _period / _S1_FNUM_BASE)))
 
                     if not fill_placed:
                         # Emit Cxx only when the scaled output differs from the
@@ -674,7 +690,8 @@ class SmpsToModConverter:
                                     self.mod.set_active_pattern(cont_pat)
                                     self.mod.set_channel(mod_chan)
                                     self.mod.set_row(cont_row)
-                                    self.mod.set_effect(0x4, 0x00)  # 400: continue vibrato
+                                    vib_param = (eff_vib_speed << 4) | eff_vib_depth
+                                    self.mod.set_effect(0x4, vib_param)
                             cont_tick += tpr
                         # Restore cursor to the attack row
                         self.mod.set_active_pattern(pattern)

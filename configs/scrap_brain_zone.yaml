@@ -61,10 +61,10 @@ sample_list:
   - [14, "psg_fTone_06.raw", 10, 0]
   # --- PSG tone fTone_05 ---
   - [15, "psg_fTone_05.raw", 10, 0]
-  # --- PSG tone fTone_04 ---
-  - [16, "psg_fTone_04.raw", 32, 0]
-  # --- PSG tone fTone_08 ---
-  - [18, "psg_fTone_08.raw", 32, 0]
+  # --- PSG noise (fTone_04 envelope) ---
+  - [16, "psg_noise.raw", 16, 0]
+  # --- PSG noise (fTone_08 envelope) ---
+  - [18, "psg_noise.raw", 16, 0]
 
 dac_samples:
   # dSnare: ×82 — native ~24000 Hz → note Fs3
@@ -180,17 +180,15 @@ psg_voice_map:
     root: G2
     synth_root: G6
   fTone_04:
-    low:  A5
-    high: A5
+    type: white_noise
+    noise_rate: 0
     mod_instrument: 16
-    root: A2
-    synth_root: A5
+    root: A3
   fTone_08:
-    low:  A5
-    high: A5
+    type: white_noise
+    noise_rate: 0
     mod_instrument: 18
-    root: A2
-    synth_root: A5
+    root: A3
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro

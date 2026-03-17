@@ -4,6 +4,8 @@ Converts parsed SMPS song data into a MOD file with correct note placement,
 timing, and effects.
 """
 
+import dataclasses
+
 from .config import ChannelConfig, ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from .mod import ModFile, ModSample
 from .smps_parser import SmpsChannel, SmpsSong
@@ -59,6 +61,23 @@ class SmpsToModConverter:
             self._seen_warnings.add(key)
             self._warnings.append(w)
 
+    def _ticks_to_secs(self, ticks: int) -> float:
+        """Convert raw SMPS parser ticks to wall-clock seconds."""
+        ticks_per_sec = (self.config.target_bpm * self.config.ticks_per_row
+                         / (self.config.target_speed * 2.5))
+        return ticks / ticks_per_sec if ticks_per_sec > 0 else 0.0
+
+    def _max_note_duration_secs(self, channel_types: set) -> float:
+        """Return max non-rest note duration (seconds) across channels of given types."""
+        max_ticks = 0
+        for ch in self.song.channels:
+            if ch.header.channel_type not in channel_types:
+                continue
+            for ev in ch.events:
+                if ev.is_note and not ev.note.is_rest and ev.note.duration > max_ticks:
+                    max_ticks = ev.note.duration
+        return self._ticks_to_secs(max_ticks)
+
     def convert(self):
         """Main entry point. Returns a ModFile."""
         self.mod.set_name(self.config.name)
@@ -76,8 +95,22 @@ class SmpsToModConverter:
                     for e in entries
                 )
 
-        # Load or synthesize samples
+        # Resolve 'auto' sustain durations by scanning parsed note events
         synth = self.synth
+        if synth and synth.sustain == "auto":
+            secs = min(self._max_note_duration_secs({'FM'}), 10.0)
+            if secs > 0:
+                synth = dataclasses.replace(synth, sustain=secs)
+                self._infos.append({'type': 'auto_sustain_fm', 'secs': round(secs, 3)})
+
+        psg_synth = self.psg_synth
+        if psg_synth and psg_synth.sustain_duration == "auto":
+            secs = min(self._max_note_duration_secs({'PSG'}), 10.0)
+            if secs > 0:
+                psg_synth = dataclasses.replace(psg_synth, sustain_duration=secs)
+                self._infos.append({'type': 'auto_sustain_psg', 'secs': round(secs, 3)})
+
+        # Load or synthesize samples
         if synth and synth.enabled and synth.mode == "ym2612":
             from ym2612.sample_generator import generate_fm_samples
             # Warn about voice_map entries whose voice index doesn't exist in the song,
@@ -133,7 +166,6 @@ class SmpsToModConverter:
             self.mod.create_placeholder_samples(max_inst)
 
         # PSG synthesis block
-        psg_synth = self.psg_synth
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
             psg_samples = generate_psg_samples(self.config, psg_synth)

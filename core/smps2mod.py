@@ -672,7 +672,7 @@ class SmpsToModConverter:
 
         breaks: list of (pattern_slot, break_row) tuples from mod_pattern_breaks.
                 When provided, the loop target tick is mapped to its post-break
-                position using the break formula.  Only the first break is used.
+                position by applying each break's shift in sorted order.
         """
         label_tick_pos = self.song.label_tick_pos
         loop_target_tick = None
@@ -699,35 +699,23 @@ class SmpsToModConverter:
         song_end_flat = max(round(song_end_tick / tpr), 1) - 1
 
         if breaks:
-            P, break_row = breaks[0]
-            body_start = P * 64 + break_row + 1
-            if song_end_flat < body_start:
-                last_pattern = song_end_flat // 64
-                last_row     = song_end_flat % 64
-            else:
-                br           = song_end_flat - body_start
-                last_pattern = P + 1 + br // 64
-                last_row     = br % 64
-        else:
-            last_pattern = song_end_flat // 64
-            last_row     = song_end_flat % 64
+            for P, break_row in sorted(breaks):
+                body_start = P * 64 + break_row + 1
+                if song_end_flat >= body_start:
+                    song_end_flat += 63 - break_row
+        last_pattern = song_end_flat // 64
+        last_row     = song_end_flat % 64
 
         # Target: map loop_target_tick to post-break (pattern, row)
         flat_row = round(loop_target_tick / tpr)
 
         if breaks:
-            P, break_row = breaks[0]
-            body_start = P * 64 + break_row + 1
-            if flat_row < body_start:
-                target_pattern = flat_row // 64
-                target_row = flat_row % 64
-            else:
-                br = flat_row - body_start
-                target_pattern = P + 1 + br // 64
-                target_row = br % 64
-        else:
-            target_pattern = flat_row // 64
-            target_row = flat_row % 64
+            for P, break_row in sorted(breaks):
+                body_start = P * 64 + break_row + 1
+                if flat_row >= body_start:
+                    flat_row += 63 - break_row
+        target_pattern = flat_row // 64
+        target_row = flat_row % 64
 
         self.mod.set_active_pattern(last_pattern)
         self.mod.set_channel(0)

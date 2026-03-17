@@ -204,6 +204,14 @@ def main():
     # ── Loop point (post-break so positions reflect final layout) ─────────────
     converter._set_loop_point(config.mod_pattern_breaks or [])
 
+    # ── Trim unreachable trailing patterns ────────────────────────────────────
+    # apply_pattern_breaks may append an extra pattern when the body doesn't
+    # divide evenly into 64-row chunks; those trailing rows are blank and
+    # unreachable once the loop-point Bxx is in place.
+    _loop_info = next((i for i in converter._infos if i['type'] == 'loop_set'), None)
+    if _loop_info:
+        mod.trim_to_pattern(_loop_info['pattern'])
+
     # ── Write output ──────────────────────────────────────────────────────────
     output_dir = os.path.dirname(config.output_file)
     if output_dir and not os.path.exists(output_dir):

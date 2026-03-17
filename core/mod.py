@@ -241,6 +241,23 @@ class ModFile:
         """
         self.set_effect(0xB, position & 0x7f)
 
+    def trim_to_pattern(self, last_pattern: int) -> None:
+        """Remove patterns after last_pattern (unreachable once the loop-point Bxx is set).
+
+        Called after _set_loop_point to discard any trailing blank patterns that
+        apply_pattern_breaks may create when the body doesn't divide evenly into
+        64-row chunks.
+        """
+        keep = last_pattern + 1
+        if len(self.patterns) <= keep:
+            return
+        del self.patterns[keep:]
+        self.positions = keep
+        for i in range(keep):
+            self.position_list[i] = i
+        for i in range(keep, self.MAX_POSITIONS + 1):
+            self.position_list[i] = 0
+
     def add_samples(self, working_dir: str, sample_list: list):
         if sample_list is None: return
         for entry in sample_list:

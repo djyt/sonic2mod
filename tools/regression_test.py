@@ -53,6 +53,13 @@ TEST_CASES = [
         "ignore_channels": [],
         "description": "Stage Clear — all channels",
     },
+    {
+        "name": "scrap_brain_zone",
+        "config": "configs/scrap_brain_zone.yaml",
+        "baseline": "tests/baselines/scrap_brain_zone_baseline.mod",
+        "ignore_channels": [],
+        "description": "Scrap Brain Zone — all channels",
+    },
 ]
 
 

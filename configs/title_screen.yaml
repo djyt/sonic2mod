@@ -127,3 +127,10 @@ channel_instrument_map:
         mod_instrument: 4
         root: G2
         synth_root: G5
+        
+# -------------------------------------------------------------------------------------------------
+# Structural pattern break after intro
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 15

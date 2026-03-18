@@ -28,7 +28,7 @@ Three entry types correspond to SN76489 output modes:
 1. Set `psg_synthesis.enabled: true` in `configs/settings.yaml`.
 2. Ensure gcc or MSVC is on PATH (needed to compile `sn76489.c`).
 3. Run smoke tests to verify the pipeline produces audible output.
-4. Convert: `python convert.py --config configs/my_song.yaml`.
+4. Convert: `python convert.py configs/my_song.yaml`.
 
 ### Smoke tests
 

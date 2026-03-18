@@ -74,14 +74,11 @@ pyright        # type checking
 ## Quick Usage
 
 ```bash
-# With YAML config (recommended)
-python convert.py --config configs/title_screen.yaml
-
-# Quick no-config run (default Sonic 1 settings)
-python convert.py "sonic_1/music/Mus8A - Title Screen.asm"
+# Convert using YAML config (primary usage)
+python convert.py configs/title_screen.yaml
 
 # Override output path
-python convert.py --config configs/title_screen.yaml --output output/title_screen.mod
+python convert.py configs/title_screen.yaml --output output/title_screen.mod
 
 # Analyse a song (no config needed)
 python analyze.py "sonic_1/music/Mus8A - Title Screen.asm"

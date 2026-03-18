@@ -38,7 +38,7 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
-from core.config import ConversionConfig
+from core.config import ConversionConfig, derive_bpm
 from core.smps_parser import SmpsParser
 
 console = Console(legacy_windows=False)
@@ -490,6 +490,22 @@ def _channel_has_notes(ch_an: ChannelAnalysis) -> bool:
     return any(ts.note_count > 0 for ts in ch_an.psg_tone_stats.values())
 
 
+def _suggest_target_speed(tempo_divider: int, tempo_modifier: int, ticks_per_row: int, fps: int = 60) -> int:
+    """Return the largest speed ≤ tempo_modifier that keeps the raw (unclamped) BPM within [32, 255].
+
+    The natural starting point is speed=tempo_modifier (matches the SMPS timing clock).
+    When that produces a BPM > 255 (ProTracker ceiling), we reduce speed one step at a time
+    until the BPM fits.  Speed 1 is always returned as a final fallback.
+    """
+    if tempo_modifier <= 1 or tempo_divider < 1:
+        return tempo_modifier
+    for speed in range(tempo_modifier, 0, -1):
+        raw_bpm = fps * (tempo_modifier - 1) * speed * 2.5 / (tempo_modifier * tempo_divider * ticks_per_row)
+        if 32 <= raw_bpm <= 255:
+            return speed
+    return 1
+
+
 def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | None = None):
     """Print (or write) a suggested YAML skeleton."""
     song = analysis.song
@@ -507,7 +523,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         "samples_dir: \"samples/\"",
         "",
         "auto_bpm: true",
-        f"target_speed: {song.header.tempo_modifier}",
+        f"target_speed: {_suggest_target_speed(song.header.tempo_divider, song.header.tempo_modifier, ticks_per_row=2)}",
         "ticks_per_row: 2",
         f"num_mod_channels: {_round_up_mod_channels(len(active_channels))}",
         f"region: {region}",
@@ -634,7 +650,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     if dac_items:
         lines.append("  # --- percussion ---")
         for base_name, inst in dac_base_insts:
-            lines.append(f"  - [{inst}, \"dac_{base_name}.raw\", 64, 0]")
+            lines.append(f"  - [{inst}, \"{base_name[1:].lower()}.raw\", 64, 0]")
     for vi, inst, _min_sem, _max_sem, _has_trans, alg_str, used_by, split_point, inst2 in fm_items:
         lines.append(f"  # --- voice ${vi:02X}: {alg_str} — {used_by} ---")
         lines.append(f"  - [{inst}, \"fm_v{vi:02x}_lo.raw\", 32, 0]" if split_point is not None

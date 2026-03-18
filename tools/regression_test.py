@@ -70,7 +70,7 @@ def _regression_output_path(root: Path, name: str) -> Path:
 
 def run_conversion(config: str, root: Path, output_override: Path | None = None) -> bool:
     """Run convert.py with the given config. Returns True on success."""
-    cmd = [sys.executable, "convert.py", "--config", config]
+    cmd = [sys.executable, "convert.py", config]
     if output_override is not None:
         cmd += ["--output", str(output_override)]
     result = subprocess.run(

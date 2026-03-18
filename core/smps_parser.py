@@ -133,10 +133,37 @@ class SmpsParser:
         song.label_tick_pos = dict(self.label_tick_pos)
         return song
 
+    _CONDITIONAL_DEFAULTS: dict[str, bool] = {
+        "FixMusicAndSFXDataBugs": True,
+    }
+
     def _preprocess(self, text):
         """Strip comments, blank lines, normalize whitespace."""
         result = []
+        stack: list[bool] = []   # each entry = "include lines in this block"
+
         for raw in text.split('\n'):
+            line = raw.strip()
+
+            m_if = re.match(r'\s*if\s+(\w+)\s*$', line)
+            m_else = re.match(r'\s*else\s*$', line)
+            m_endif = re.match(r'\s*endif\s*$', line)
+
+            if m_if:
+                stack.append(self._CONDITIONAL_DEFAULTS.get(m_if.group(1), False))
+                continue
+            if m_else:
+                if stack:
+                    stack[-1] = not stack[-1]
+                continue
+            if m_endif:
+                if stack:
+                    stack.pop()
+                continue
+
+            if stack and not stack[-1]:
+                continue
+
             # Strip ; comments
             line = raw[:raw.index(';')] if ';' in raw else raw
             line = line.strip()

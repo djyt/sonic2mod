@@ -105,7 +105,7 @@ class ChannelAnalysis:
     # Per-tone stats (PSG channels only)
     psg_tone_stats: dict = field(default_factory=dict)  # tone_label -> PsgToneStats
     # DAC sample occurrence counts
-    dac_counts: dict = field(default_factory=dict)    # dac_name -> int
+    dac_counts: dict[str, int] = field(default_factory=dict)
     # All effects seen: effect_type → count
     effect_counts: dict = field(default_factory=dict)
     # smpsChangeTransposition history
@@ -124,7 +124,7 @@ class ChannelAnalysis:
 class SongAnalysis:
     file_path: str
     song: SmpsSong
-    channels: list         # list[ChannelAnalysis]
+    channels: list[ChannelAnalysis]
     config: ConversionConfig | None
     derived_bpm_ntsc: float
     derived_bpm_pal: float

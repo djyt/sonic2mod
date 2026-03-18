@@ -103,6 +103,7 @@ def generate_fm_samples(
                   f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
 
         headroom_tl = round(synth.headroom_db / 0.75)
+        assert isinstance(synth.sustain, float), "sustain must be resolved before synthesis"
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_note_raw(

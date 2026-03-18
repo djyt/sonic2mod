@@ -6,6 +6,7 @@ intermediate representation suitable for conversion to MOD format.
 
 import re
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 from .tables import SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
 
@@ -133,7 +134,7 @@ class SmpsParser:
         song.label_tick_pos = dict(self.label_tick_pos)
         return song
 
-    _CONDITIONAL_DEFAULTS: dict[str, bool] = {
+    _CONDITIONAL_DEFAULTS: ClassVar[dict[str, bool]] = {
         "FixMusicAndSFXDataBugs": True,
     }
 

@@ -235,11 +235,6 @@ class SmpsToModConverter:
                 continue
             if not ch.events:
                 continue
-            # Only extend PSG channels — DAC and FM channels with a short-loop pattern
-            # are not affected by the compact-inner-loop design that hits PSG3.
-            if ch.header.channel_type != "PSG":
-                continue
-
             ch_last = max(
                 ev.tick_position + (ev.note.duration if ev.note else 0)
                 for ev in ch.events

@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
 input_file: "sonic_1/music/Mus81 - GHZ.asm"
-output_file: "output/ghz6_psg2.mod"
+output_file: "output/ghz_final.mod"
 samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header

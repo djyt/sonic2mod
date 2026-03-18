@@ -5,7 +5,7 @@ Per-song YAML configs allow fine-grained control over the SMPS-to-MOD conversion
 ## Usage
 
 ```bash
-python convert.py "path/to/song.asm" --config configs/my_song.yaml
+python convert.py configs/my_song.yaml
 ```
 
 CLI `--output` overrides the YAML `output_file` if both are given.

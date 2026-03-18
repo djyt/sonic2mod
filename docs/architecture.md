@@ -238,19 +238,12 @@ CLI entry point using `argparse`.
 
 | Argument | Short | Default | Description |
 |----------|-------|---------|-------------|
-| `input` | — | — | Input .asm file (positional, required) |
-| `--config` | `-c` | — | YAML config file |
+| `config` | — | — | YAML config file (positional, required) |
 | `--output` | `-o` | auto | Output .mod path |
-| `--bpm` | — | 150 | Target BPM |
-| `--speed` | — | 6 | Target speed |
-| `--ticks-per-row` | — | 6.0 | SMPS ticks per MOD row |
-| `--channels` | — | 10 | MOD channel count |
-| `--transpose` | — | — | Global FM transpose override |
-| `--name` | — | auto | Song name |
 
-If `--config` is provided, the YAML file is loaded and CLI args override `input`/`output`. Otherwise, `default_sonic1()` creates a config from CLI args.
+YAML config is the required positional argument. `--output` overrides `output_file` from YAML.
 
-Output path defaults to `<input_basename>.mod` if not specified.
+Output path defaults to `<input_basename>.mod` if not set in YAML.
 
 ---
 

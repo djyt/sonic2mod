@@ -2,8 +2,7 @@
 """CLI entry point for SMPS-to-MOD conversion.
 
 Usage:
-    python convert.py --config configs/song.yaml [--output output/song.mod]
-    python convert.py path/to/song.asm              # quick no-config run
+    python convert.py configs/song.yaml [--output output/song.mod]
 """
 
 import argparse
@@ -51,32 +50,21 @@ def main():
     parser = argparse.ArgumentParser(
         description="Convert Sonic 1 SMPS assembly music to Amiga MOD format"
     )
-    parser.add_argument('input', nargs='?',
-                        help="Input SMPS assembly file (.asm) — overrides config input_file")
-    parser.add_argument('--config', '-c', help="YAML configuration file")
+    parser.add_argument('config', nargs='?', help="YAML configuration file")
     parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
 
     args = parser.parse_args()
 
-    # Determine config / input_file
-    if args.config:
-        config = ConversionConfig.from_yaml(args.config)
-        if args.input:
-            config.input_file = args.input
-        if args.output:
-            config.output_file = args.output
-    elif args.input:
-        song_name = os.path.splitext(os.path.basename(args.input))[0]
-        config = ConversionConfig.default_sonic1(song_name)
-        config.input_file = args.input
-        if args.output:
-            config.output_file = args.output
-    else:
+    if not args.config:
         parser.print_help()
         sys.exit(1)
 
+    config = ConversionConfig.from_yaml(args.config)
+    if args.output:
+        config.output_file = args.output
+
     if not config.input_file:
-        _error("No input file specified (use positional arg or set input_file in YAML)")
+        _error("No input_file specified in YAML config")
 
     if not os.path.exists(config.input_file):
         _error(f"Input file not found: {config.input_file}")

@@ -602,13 +602,34 @@ class SmpsParser:
                     else:
                         # Standalone duration.
                         # PSG: driver re-triggers (PSGDoNoteOn on each DurationTimeout expiry).
-                        # FM/DAC: note sustains naturally — treat as rest/continuation.
+                        # DAC: driver re-triggers SavedDAC on each DurationTimeout expiry.
+                        # FM: note sustains naturally — treat as rest/continuation.
                         last_duration = val
                         if is_psg and last_note_value != 0:
                             cont_note = SmpsNote(
                                 note_value=last_note_value,
                                 duration=val,
                             )
+                        elif is_dac:
+                            # Find the most recent note event. If it's a DAC sample, retrigger it.
+                            # If it's a rest (SavedDAC=$80), stay silent — driver skips trigger for rests.
+                            last_note_evt = next(
+                                (e.note for e in reversed(channel.events) if e.note is not None), None
+                            )
+                            if last_note_evt is not None and last_note_evt.is_dac:
+                                cont_note = SmpsNote(
+                                    note_value=last_note_evt.note_value,
+                                    duration=val,
+                                    is_dac=True,
+                                    dac_name=last_note_evt.dac_name,
+                                )
+                            else:
+                                cont_note = SmpsNote(
+                                    note_value=0x80,
+                                    duration=val,
+                                    is_rest=True,
+                                    is_no_attack=True,
+                                )
                         else:
                             cont_note = SmpsNote(
                                 note_value=0x80,

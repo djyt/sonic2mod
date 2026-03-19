@@ -589,7 +589,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         if note_bearing_channels:
             dominant = max(note_bearing_channels,
                            key=lambda c: c.voice_stats[vi].note_count)
-            initial_trans = dominant.initial_transpose
+            initial_trans = dominant.voice_stats[vi].modal_transpose
         else:
             initial_trans = 0
         if min_sem is not None and max_sem is not None:

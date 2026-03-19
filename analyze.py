@@ -38,7 +38,7 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
-from core.config import ConversionConfig, derive_bpm
+from core.config import ConversionConfig
 from core.smps_parser import SmpsParser
 
 console = Console(legacy_windows=False)

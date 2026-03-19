@@ -692,26 +692,25 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             if min_sem is None or max_sem is None:
                 lines.append("    # (no notes played — voice switched to but never triggered)")
             elif split_point is not None:
+                root_comment = "  # smpsChangeTransposition active — verify root is correct" if has_trans else ""
                 # Entry 1: low..split_point
                 lines.append(f"    - low:  {_sem_to_yaml(min_sem)}")
                 lines.append(f"      high: {_sem_to_yaml(split_point)}")
                 lines.append(f"      mod_instrument: {inst}")
-                if not has_trans:
-                    lines.append(f"      root: {_note_in_octave2(min_sem)}")
+                lines.append(f"      root: {_note_in_octave2(min_sem)}{root_comment}")
                 lines.append(f"      synth_root: {_sem_to_yaml(min_sem)}")
                 # Entry 2: split_point+1..max_sem
                 lines.append(f"    - low:  {_sem_to_yaml(split_point + 1)}")
                 lines.append(f"      high: {_sem_to_yaml(max_sem)}")
                 lines.append(f"      mod_instrument: {inst2}")
-                if not has_trans:
-                    lines.append(f"      root: {_note_in_octave2(split_point + 1)}")
+                lines.append(f"      root: {_note_in_octave2(split_point + 1)}{root_comment}")
                 lines.append(f"      synth_root: {_sem_to_yaml(split_point + 1)}")
             else:
+                root_comment = "  # smpsChangeTransposition active — verify root is correct" if has_trans else ""
                 lines.append(f"    - low:  {_sem_to_yaml(min_sem)}")
                 lines.append(f"      high: {_sem_to_yaml(max_sem)}")
                 lines.append(f"      mod_instrument: {inst}")
-                if not has_trans:
-                    lines.append(f"      root: {_note_in_octave2(min_sem)}")
+                lines.append(f"      root: {_note_in_octave2(min_sem)}{root_comment}")
                 lines.append(f"      synth_root: {_sem_to_yaml(min_sem)}")
 
     # --- psg_map ---

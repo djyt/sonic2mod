@@ -2,7 +2,8 @@
 # MARBLE ZONE Conversion Script
 #
 # Todo: PSG3 noises sound very different. Might be impossible to solve
-# First few notes on mod_channel 3 don't play?
+# First few notes on FM5/ mod_channel 5 don't play?
+# DAC channel should trigger the kick three times
 # -------------------------------------------------------------------------------------------------
 name: Marble Zone
 input_file: sonic_1\music\Mus83 - MZ.asm
@@ -100,7 +101,7 @@ voice_map:
       high: E4
       mod_instrument: 7
       root: E2
-      synth_root: E3
+      synth_root: E5
 
 psg_map:
   0xE7:                    # form $E7

@@ -69,6 +69,7 @@ class VoiceRangeStats:
     max_semitone: int
     note_count: int
     switch_count: int      # how many smpsSetvoice events switched to this voice
+    modal_transpose: int = 0  # cumulative_transpose at time of first note for this voice
 
 
 @dataclass
@@ -276,8 +277,12 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                             max_semitone=sem,
                             note_count=0,
                             switch_count=0,
+                            modal_transpose=cumulative_transpose,
                         )
                         voice_stats[current_voice_idx] = vs
+                    elif vs.note_count == 0:
+                        # Pre-created by smpsSetvoice — record transpose on first note
+                        vs.modal_transpose = cumulative_transpose
                     vs.note_count += 1
                     if sem < vs.min_semitone:
                         vs.min_semitone = sem

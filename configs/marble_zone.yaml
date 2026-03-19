@@ -1,9 +1,8 @@
 # -------------------------------------------------------------------------------------------------
 # MARBLE ZONE Conversion Script
 #
-# Todo: Claude.MD seems to be preventing analyzer.py from setting root values on some voice_map entries
-# Todo: Is it possible to calculate the synth_root?
 # Todo: PSG3 noises sound very different. Might be impossible to solve
+# First few notes on mod_channel 3 don't play?
 # -------------------------------------------------------------------------------------------------
 name: Marble Zone
 input_file: sonic_1\music\Mus83 - MZ.asm

@@ -125,7 +125,7 @@ class SmpsParser:
         channels = []
 
         for ch_header in header.channels:
-            channel = self._parse_channel_data(ch_header)
+            channel = self._parse_channel_data(ch_header, tempo_divider=header.tempo_divider)
             channels.append(channel)
 
         voices = self._parse_voices(header.voice_label)
@@ -268,7 +268,7 @@ class SmpsParser:
             tick += pending_note.duration
         return tick, last_note_value
 
-    def _parse_channel_data(self, ch_header):
+    def _parse_channel_data(self, ch_header, tempo_divider=1):
         """Parse channel data starting from the channel's label.
 
         Continues past label boundaries until smpsStop or smpsJump is hit.
@@ -291,10 +291,10 @@ class SmpsParser:
 
         is_psg = ch_header.channel_type == "PSG"
         _seen_labels: set[str] = {start_label}
-        tick, _, _, _ = self._parse_channel_lines(
+        tick, _, _, _, _ = self._parse_channel_lines(
             channel, start_line, tick, last_duration, no_attack_pending,
             ch_header.channel_type == "DAC", is_psg=is_psg,
-            _seen_labels=_seen_labels,
+            _seen_labels=_seen_labels, chan_tempo_div=tempo_divider,
         )
 
         return channel
@@ -302,7 +302,7 @@ class SmpsParser:
     def _parse_channel_lines(self, channel, start_line, tick, last_duration,
                               no_attack_pending, is_dac, stop_line=None,
                               pending_note=None, last_note_value=0, is_psg=False,
-                              _seen_labels=None):
+                              _seen_labels=None, chan_tempo_div=1):
         """Parse lines from start_line, appending events to channel.
 
         Args:
@@ -312,9 +312,12 @@ class SmpsParser:
                           value, regardless of dc.b line boundaries in the assembly source.
             last_note_value: note_value of the last non-rest, non-DAC note emitted; used
                              so standalone duration bytes retrigger the correct note.
+            chan_tempo_div: Per-channel tempo divider (from smpsChanTempoDiv); raw durations
+                            are multiplied by this at parse time so tick positions are
+                            comparable across channels with different dividers.
 
         Returns:
-            (tick, last_duration, pending_note, last_note_value) after parsing
+            (tick, last_duration, pending_note, last_note_value, chan_tempo_div) after parsing
         """
         if _seen_labels is None:
             _seen_labels = set()
@@ -322,7 +325,7 @@ class SmpsParser:
         while i < len(self.lines):
             # Stop before stop_line if set (used by loop unrolling)
             if stop_line is not None and i >= stop_line:
-                return tick, last_duration, pending_note, last_note_value
+                return tick, last_duration, pending_note, last_note_value, chan_tempo_div
 
             line = self.lines[i]
 
@@ -339,7 +342,7 @@ class SmpsParser:
             # Finalize any pending note before stopping.
             if line.startswith('smpsStop'):
                 tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                return tick, last_duration, None, last_note_value
+                return tick, last_duration, None, last_note_value, chan_tempo_div
 
             # smpsJump — loop-back or forward dispatch.
             # Finalize any pending note before the jump.
@@ -351,7 +354,7 @@ class SmpsParser:
                 channel.jump_target_label = target
                 if target in _seen_labels or target not in self.labels:
                     # Loop-back to an already-visited label, or unknown target — stop.
-                    return tick, last_duration, None, last_note_value
+                    return tick, last_duration, None, last_note_value, chan_tempo_div
                 # Unseen target — follow the forward/dispatch jump.
                 _seen_labels.add(target)
                 jump_line = self.labels[target] + 1
@@ -360,6 +363,7 @@ class SmpsParser:
                     no_attack_pending, is_dac, stop_line=None,
                     pending_note=None, last_note_value=last_note_value,
                     is_psg=is_psg, _seen_labels=_seen_labels,
+                    chan_tempo_div=chan_tempo_div,
                 )
 
             # smpsLoop — unroll
@@ -379,11 +383,12 @@ class SmpsParser:
                     # The first play-through already happened (lines from target to here).
                     # Replay loop_count - 1 more times, stopping at this smpsLoop line.
                     for _ in range(loop_count - 1):
-                        tick, last_duration, loop_pend, last_note_value = self._parse_channel_lines(
+                        tick, last_duration, loop_pend, last_note_value, chan_tempo_div = self._parse_channel_lines(
                             channel, target_line, tick, last_duration,
                             no_attack_pending, is_dac, stop_line=i,
                             pending_note=None, last_note_value=last_note_value,
                             is_psg=is_psg, _seen_labels=_seen_labels,
+                            chan_tempo_div=chan_tempo_div,
                         )
                         # Finalize any note pending at the loop-body end before the next replay
                         tick, last_note_value = self._finalize_pending(channel, loop_pend, tick, last_duration, last_note_value)
@@ -396,22 +401,30 @@ class SmpsParser:
                 call_target = m.group(1)
                 if call_target in self.labels:
                     target_line = self.labels[call_target] + 1
-                    tick, last_duration, pending_note, last_note_value = self._parse_call(
+                    tick, last_duration, pending_note, last_note_value, chan_tempo_div = self._parse_call(
                         channel, target_line, tick, last_duration,
                         no_attack_pending, is_dac, pending_note,
-                        last_note_value=last_note_value, is_psg=is_psg
+                        last_note_value=last_note_value, is_psg=is_psg,
+                        chan_tempo_div=chan_tempo_div,
                     )
                 i += 1
                 continue
 
             # smpsReturn — only hit during call inlining
             if line.startswith('smpsReturn'):
-                return tick, last_duration, pending_note, last_note_value
+                return tick, last_duration, pending_note, last_note_value, chan_tempo_div
 
             # Effect macros — do not advance tick; pending_note is unchanged.
             effect = self._try_parse_effect(line)
             if effect is not None:
-                channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
+                if effect.effect_type == 'smpsChanTempoDiv':
+                    # Parser-time state: update divider, do NOT emit to events.
+                    chan_tempo_div = effect.params[0]
+                else:
+                    # Scale time-valued params so they are in DurationTimeout units,
+                    # consistent with the scaled tick positions stored in events.
+                    effect = self._scale_effect_params(effect, chan_tempo_div)
+                    channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
                 i += 1
                 continue
 
@@ -422,7 +435,8 @@ class SmpsParser:
                 tick, last_duration, no_attack_pending, pending_note, last_note_value = \
                     self._parse_dcb_line(
                         channel, line, tick, last_duration, no_attack_pending, is_dac,
-                        pending_note, last_note_value=last_note_value, is_psg=is_psg
+                        pending_note, last_note_value=last_note_value, is_psg=is_psg,
+                        chan_tempo_div=chan_tempo_div,
                     )
                 i += 1
                 continue
@@ -431,16 +445,42 @@ class SmpsParser:
 
         # End of file — finalize any remaining pending note
         tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-        return tick, last_duration, None, last_note_value
+        return tick, last_duration, None, last_note_value, chan_tempo_div
+
+    def _scale_effect_params(self, effect: 'SmpsEffect', chan_tempo_div: int) -> 'SmpsEffect':
+        """Return a copy of effect with time-valued params scaled by chan_tempo_div.
+
+        Duration-valued params must be in the same tick units as stored tick_position
+        values (i.e., DurationTimeout = raw_byte * chan_tempo_div) so that the converter
+        can use _effective_tpr consistently for all time conversions.
+
+        Scaled params:
+          smpsNoteFill params[0] — fill duration (raw ticks → DT units)
+          smpsModSet   params[0] — wait before vibrato (raw ticks → DT units)
+          smpsModSet   params[1] — speed_raw; scales _smps_cycle to DT units so that
+                                   vibrato_speed = round(16 * effective_tpr / smps_cycle)
+                                   gives the same result as the old formula.
+        """
+        if chan_tempo_div == 1:
+            return effect  # no scaling needed
+        if effect.effect_type == 'smpsNoteFill':
+            return SmpsEffect('smpsNoteFill', [effect.params[0] * chan_tempo_div])
+        if effect.effect_type == 'smpsModSet':
+            p = list(effect.params)
+            p[0] = p[0] * chan_tempo_div   # wait
+            p[1] = p[1] * chan_tempo_div   # speed_raw (scales _smps_cycle to DT units)
+            return SmpsEffect('smpsModSet', p)
+        return effect
 
     def _parse_call(self, channel, target_line, tick, last_duration,
                      no_attack_pending, is_dac, pending_note=None, last_note_value=0,
-                     is_psg=False):
+                     is_psg=False, chan_tempo_div=1):
         """Inline a smpsCall subroutine until smpsReturn."""
         return self._parse_channel_lines(
             channel, target_line, tick, last_duration,
             no_attack_pending, is_dac, stop_line=None,
-            pending_note=pending_note, last_note_value=last_note_value, is_psg=is_psg
+            pending_note=pending_note, last_note_value=last_note_value, is_psg=is_psg,
+            chan_tempo_div=chan_tempo_div,
         )
 
     def _try_parse_effect(self, line):
@@ -521,10 +561,15 @@ class SmpsParser:
                 val -= 0x100
             return SmpsEffect('smpsChangeTransposition', [val])
 
+        # smpsChanTempoDiv
+        m = re.match(r'smpsChanTempoDiv\s+\$([0-9A-Fa-f]+)', line)
+        if m:
+            return SmpsEffect('smpsChanTempoDiv', [int(m.group(1), 16)])
+
         return None
 
     def _parse_dcb_line(self, channel, line, tick, last_duration, no_attack_pending, is_dac,
-                         pending_note=None, last_note_value=0, is_psg=False):
+                         pending_note=None, last_note_value=0, is_psg=False, chan_tempo_div=1):
         """Parse a dc.b line containing note/duration/effect data.
 
         Tokens are comma-separated. Each token is a note name, DAC name, hex value,
@@ -599,13 +644,14 @@ class SmpsParser:
                     continue
 
                 if val < 0x80:
-                    # It's a duration value
+                    # It's a duration value; scale by per-channel tempo divider.
+                    scaled = val * chan_tempo_div
                     if pending_note is not None:
                         # Assign to pending note
                         if not pending_note.is_rest and not pending_note.is_dac:
                             last_note_value = pending_note.note_value
-                        pending_note.duration = val
-                        last_duration = val
+                        pending_note.duration = scaled
+                        last_duration = scaled
                         channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
                         tick += pending_note.duration
                         pending_note = None
@@ -614,11 +660,11 @@ class SmpsParser:
                         # PSG: driver re-triggers (PSGDoNoteOn on each DurationTimeout expiry).
                         # DAC: driver re-triggers SavedDAC on each DurationTimeout expiry.
                         # FM: note sustains naturally — treat as rest/continuation.
-                        last_duration = val
+                        last_duration = scaled
                         if is_psg and last_note_value != 0:
                             cont_note = SmpsNote(
                                 note_value=last_note_value,
-                                duration=val,
+                                duration=scaled,
                             )
                         elif is_dac:
                             # Find the most recent note event. If it's a DAC sample, retrigger it.
@@ -629,26 +675,26 @@ class SmpsParser:
                             if last_note_evt is not None and last_note_evt.is_dac:
                                 cont_note = SmpsNote(
                                     note_value=last_note_evt.note_value,
-                                    duration=val,
+                                    duration=scaled,
                                     is_dac=True,
                                     dac_name=last_note_evt.dac_name,
                                 )
                             else:
                                 cont_note = SmpsNote(
                                     note_value=0x80,
-                                    duration=val,
+                                    duration=scaled,
                                     is_rest=True,
                                     is_no_attack=True,
                                 )
                         else:
                             cont_note = SmpsNote(
                                 note_value=0x80,
-                                duration=val,
+                                duration=scaled,
                                 is_rest=True,
                                 is_no_attack=True,
                             )
                         channel.events.append(SmpsEvent(note=cont_note, tick_position=tick))
-                        tick += val
+                        tick += scaled
                     continue
 
                 else:  # val >= 0x80

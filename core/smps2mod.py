@@ -74,9 +74,19 @@ class SmpsToModConverter:
             self._seen_warnings.add(key)
             self._warnings.append(w)
 
+    @property
+    def _effective_tpr(self) -> int:
+        """Ticks per row accounting for the global tempo divider.
+
+        Parser stores note durations as raw_duration * chan_tempo_div (initialized
+        to header.tempo_divider).  To convert stored ticks → rows we divide by
+        yaml_tpr * global_divider, keeping BPM and YAML config unchanged.
+        """
+        return self.config.ticks_per_row * self.song.header.tempo_divider
+
     def _ticks_to_secs(self, ticks: int) -> float:
         """Convert raw SMPS parser ticks to wall-clock seconds."""
-        ticks_per_sec = (self.config.target_bpm * self.config.ticks_per_row
+        ticks_per_sec = (self.config.target_bpm * self._effective_tpr
                          / (self.config.target_speed * 2.5))
         return ticks / ticks_per_sec if ticks_per_sec > 0 else 0.0
 
@@ -397,7 +407,7 @@ class SmpsToModConverter:
                     # ProTracker cycle (rows) = 16 / x  →  x = round(16 * tpr / smps_cycle)
                     _smps_steps_halved = eff.params[3] // 2
                     _smps_cycle = 2 * _smps_speed_raw * (_smps_steps_halved + 1)
-                    vibrato_speed = max(1, min(0xF, round(16 * self.config.ticks_per_row / _smps_cycle)))
+                    vibrato_speed = max(1, min(0xF, round(16 * self._effective_tpr / _smps_cycle)))
                     vibrato_active = True
 
                 elif eff.effect_type == 'smpsModOn':
@@ -616,7 +626,7 @@ class SmpsToModConverter:
                             # cap at speed-1 so the effect always fires.
                             ec_val = round(
                                 note_fill * self.config.target_speed
-                                / self.config.ticks_per_row
+                                / self._effective_tpr
                             )
                             ec_val = min(ec_val, self.config.target_speed - 1)
                             if ec_val > 0:
@@ -642,7 +652,7 @@ class SmpsToModConverter:
                             # Sub-row cut: note ends within the same MOD row → ECx
                             ec_val = round(
                                 note.duration * self.config.target_speed
-                                / self.config.ticks_per_row
+                                / self._effective_tpr
                             )
                             ec_val = min(ec_val, self.config.target_speed - 1)
                             if ec_val > 0:
@@ -698,7 +708,7 @@ class SmpsToModConverter:
                     if vibrato_active and eff_vib_speed > 0:
                         vib_start_tick = tick + vibrato_wait
                         note_end_tick  = tick + note.duration
-                        tpr = self.config.ticks_per_row
+                        tpr = self._effective_tpr
                         fill_coord = (fill_pat, fill_row) if fill_placed else None
                         cont_tick = tick + tpr   # start one row past the attack
                         while cont_tick < note_end_tick:
@@ -725,7 +735,7 @@ class SmpsToModConverter:
         Returns:
             (pattern, row) tuple
         """
-        tpr = self.config.ticks_per_row
+        tpr = self._effective_tpr
         row_total = round(tick / tpr)
         pattern = row_total // 64
         row = row_total % 64
@@ -753,7 +763,7 @@ class SmpsToModConverter:
         if loop_target_tick is None:
             return  # No smpsJump found; nothing to do
 
-        tpr = self.config.ticks_per_row
+        tpr = self._effective_tpr
 
         # Derive last row from song tick data (handles rest/sustain tails that
         # a period-scan could not see because they have no note trigger).

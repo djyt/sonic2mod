@@ -1,8 +1,7 @@
 # -------------------------------------------------------------------------------------------------
 # MARBLE ZONE Conversion Script
 #
-# Todo: PSG3 noises sound very different. Might be impossible to solve
-# First few notes on FM5/ mod_channel 5 don't play?
+# Todo: First few notes on FM5/ mod_channel 5 don't play?
 # DAC channel should trigger the kick three times
 # -------------------------------------------------------------------------------------------------
 name: Marble Zone

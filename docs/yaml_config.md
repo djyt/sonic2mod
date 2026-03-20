@@ -227,24 +227,26 @@ When `smpsPSGform $E7` appears in channel data, the PSG channel switches to the 
 
 ```yaml
 psg_map:
-  0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
+  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise, bits [1:0]=3 → follow tone ch2
     mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A3               # MOD note that determines target_rate (playback pitch)
-    synth_root: A3         # (optional) synthesis pitch override
-    noise_rate: 0          # Preset divider 0/1/2 ($E7 is rate=3/PSG3-locked; use 0 as approximation)
+    root: A2               # MOD anchor — determines target_rate AND where low plays
+    low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
+    synth_root: A3         # LFSR synthesis freq — sets tone2_n for rate-3; independent of root
+    noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (LFSR freq from synth_root)
     envelope: fTone_04     # Named envelope from settings.yaml psg_envelope_tables, or inline list
     base_volume: 0         # SN76489 base attenuation (0=max, 15=silent)
 ```
 
 SN76489 noise register byte encoding:
-- Bits [1:0]: rate — 0=N/512, 1=N/1024, 2=N/2048, 3=PSG3 tone freq
+- Bits [1:0]: rate — 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (LFSR freq set by synth_root)
 - Bit [2]: type — 0=periodic noise, 1=white noise (auto-inferred; do not specify manually)
 - `$E0`–`$E3` = periodic noise; `$E4`–`$E7` = white noise; `$E7` is most common in Sonic 1
 
-`noise_rate` values (synthesis approximation for rate field):
-- `0` = N/512 (fastest preset; use for rate=3/PSG3-locked noise as closest approximation)
+`noise_rate` values:
+- `0` = N/512 (fixed LFSR clock, fastest preset)
 - `1` = N/1024
 - `2` = N/2048
+- `3` = follow tone ch2 — synthesizer derives `tone2_n` from `synth_root` (or `root`)
 
 ### psg_voice_map
 

@@ -404,6 +404,7 @@ class SmpsToModConverter:
                     if psg_entry is not None:
                         instrument = psg_entry.mod_instrument
                         current_psg_entry = psg_entry
+                        current_psg_entries = None          # smpsPSGform is not a voice-map event
                         current_psg_label = f"form {form_byte:#04x}"
 
                 elif eff.effect_type == 'smpsPSGvoice':

@@ -165,7 +165,7 @@ voice_map:
       mod_instrument: 6
       root: C2
       synth_root: C5
-      vibrato: 12
+      vibrato: 0            # Sounds awful, disable it!
 
   # $07 → bridge
   7:
@@ -192,10 +192,11 @@ voice_map:
 # PSG Sounds
 # -------------------------------------------------------------------------------------------------
 psg_map:
-  0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
-    mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A3               # MOD note that determines target_rate (playback pitch)
-    noise_rate: 3          # Preset divider 0/1/2; $E7 is rate=3 (PSG3-locked) — 0 as closest preset
+  0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
+    mod_instrument: 7
+    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    noise_rate: 3
+    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
 

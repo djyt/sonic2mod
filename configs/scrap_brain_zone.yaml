@@ -155,10 +155,11 @@ voice_map:
       synth_root: G5
 
 psg_map:
-  0xE7:                    # form $E7
+  0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
     mod_instrument: 17
-    root: A3
+    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
     noise_rate: 3
+    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
     envelope: fTone_04
     base_volume: 0
 
@@ -184,14 +185,16 @@ psg_voice_map:
     envelope: fTone_02
   fTone_04:
     type: white_noise
-    noise_rate: 0
+    noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope
+    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16 ✓
     mod_instrument: 16
-    root: A3
+    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
   fTone_08:
     type: white_noise
-    noise_rate: 0
+    noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope
+    synth_root: A8
     mod_instrument: 18
-    root: A3
+    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

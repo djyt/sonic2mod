@@ -9,6 +9,7 @@ Requires: pip install rich
 
 import argparse
 import io
+import math
 import os
 import sys
 
@@ -26,6 +27,7 @@ except ImportError:
     print("Error: 'rich' is required. Install with: pip install rich")
     sys.exit(1)
 
+from core.tables import PERIOD_TABLE
 from core.analysis import (
     _CARRIER_LABELS_BY_ALG,
     DAC_NATIVE_INFO,
@@ -470,6 +472,24 @@ def _note_in_octave2(semitone: int) -> str:
     return f"{_YAML_CHROMATIC[semitone % 12]}2"
 
 
+def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int = 3546895) -> str:
+    """Return the lowest MOD octave (≥ 2) where target_rate > 2*synth_freq.
+
+    Ensures the synthesized LFSR frequency stays below Nyquist so there is no
+    aliasing.  For low-frequency noise (e.g. Marble Zone C7 ≈ 2093 Hz) octave 2
+    satisfies the constraint; for high-frequency noise (e.g. GHZ C9 ≈ 8383 Hz)
+    the function steps up to octave 3.
+    """
+    for octave in range(2, 4):
+        root_idx = (octave - 1) * 12 + note_letter
+        period = PERIOD_TABLE[root_idx] if root_idx < len(PERIOD_TABLE) else 0
+        if period == 0:
+            break
+        if amiga_clock / period > 2.0 * synth_freq:
+            return f"{_YAML_CHROMATIC[note_letter]}{octave}"
+    return f"{_YAML_CHROMATIC[note_letter]}3"
+
+
 _VALID_MOD_CHANNELS = (4, 8, 10, 12, 14, 16)
 
 
@@ -734,25 +754,28 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
 
     # --- psg_map ---
     if psg_noise_items:
-        import math
         lines.append("")
         lines.append("psg_map:")
         for form_byte, label, inst, ts, ch_name, ch_init_trans in psg_noise_items:
             noise_rate = form_byte & 0x03
             min_sem = ts.min_semitone if ts.note_count > 0 else 45
-            root_name = _note_in_octave2(min_sem)
             initial_voice = _noise_ch_initial_voice.get(ch_name, "")
 
-            lines.append(f"  0x{form_byte:02X}:                    # {label}")
-            lines.append(f"    mod_instrument: {inst}")
-            lines.append(f"    root: {root_name}")
-            if noise_rate == 3 and ts.note_count > 0:
-                lines.append(f"    low:  {_sem_to_yaml(min_sem)}")
-            lines.append(f"    noise_rate: {noise_rate}")
             if noise_rate == 3 and ts.note_count > 0:
                 idx = min_sem + ch_init_trans
                 chip_freq = 130.98 * (2.0 ** (idx / 12.0))
                 synth_idx = round(45 + 12.0 * math.log2(chip_freq / 440.0))
+                # root must satisfy Nyquist: target_rate > 2 × chip_freq
+                root_name = _noise_root_for_synth(min_sem % 12, chip_freq)
+            else:
+                synth_idx = None
+                root_name = _note_in_octave2(min_sem)
+
+            lines.append(f"  0x{form_byte:02X}:                    # {label}")
+            lines.append(f"    mod_instrument: {inst}")
+            lines.append(f"    root: {root_name}")
+            lines.append(f"    noise_rate: {noise_rate}")
+            if synth_idx is not None:
                 lines.append(f"    synth_root: {_sem_to_yaml(synth_idx + 12)}")
             envelope = initial_voice if initial_voice else "fTone_04  # TODO: verify envelope"
             lines.append(f"    envelope: {envelope}")

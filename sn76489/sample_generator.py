@@ -103,25 +103,37 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
         _check_warnings(caught, inst_num, verbose=verbose)
 
     elif entry_type in ("white_noise", "periodic_noise"):
-        # Noise has no pitch. target_rate = amiga_clock / PERIOD_TABLE[root] is the
-        # synthesis rate AND the MOD playback rate — they are identical by construction.
-        # Choosing root: A3 vs A2 only affects sample quality (higher rate = more resolution).
+        # target_rate = amiga_clock / PERIOD_TABLE[root] is both the synthesis rate and the
+        # MOD playback rate when triggered at root. When triggered at other notes (via low/high
+        # range anchoring), the MOD plays back faster/slower, approximating the LFSR frequency
+        # change per note. root choice affects synthesis quality and the pitch anchor.
         white = (entry_type == "white_noise")
         noise_label = "white" if white else "periodic"
-        # Rate 3 = follow tone ch2. Leave tone2_n=None so the emulator uses its reset
-        # default (N=1), which clocks the LFSR near sample_rate/2 — matching hardware
-        # behaviour for the title screen where PSG3/ch2 is never explicitly tuned.
+        # Rate 3 = follow tone ch2. Derive tone2_n from synth_root (or root) so the LFSR
+        # clocks at the correct hardware frequency (e.g. ~220 Hz for A3) rather than the
+        # emulator reset default (N=1 → LFSR near sample_rate/2, wrong timbre).
         tone2_n = None
+        if entry.noise_rate == 3:
+            synth_idx = (entry.synth_root - 12
+                         if entry.synth_root is not None
+                         else mod_root_idx)
+            tone2_n = note_to_psg_n(synth_idx, psg_synth.clock_rate)
+        # Cap sustain to envelope length so the sample ends at the natural decay tail
+        # rather than holding noise output for the full song-longest-note duration.
+        if resolved_env:
+            noise_sustain = (len(resolved_env) + 1) / fps
+        else:
+            noise_sustain = min(psg_synth.sustain_duration, 0.5)
         if verbose:
             print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
-                  f"rate={entry.noise_rate}  root={entry.root.name}  "
-                  f"target_rate={target_rate}Hz{env_info}")
+                  f"rate={entry.noise_rate}  tone2_n={tone2_n}  root={entry.root.name}  "
+                  f"target_rate={target_rate}Hz  sustain={noise_sustain:.3f}s{env_info}")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_psg_noise_raw(
                 white=white,
                 noise_rate=entry.noise_rate,
-                sustain_secs=psg_synth.sustain_duration,
+                sustain_secs=noise_sustain,
                 release_secs=psg_synth.release_padding,
                 clock_rate=psg_synth.clock_rate,
                 target_rate=target_rate,

@@ -234,6 +234,20 @@ def render_psg_noise_raw(
         sn.write_tone_freq(2, tone2_n)
     sn.write_noise(white, noise_rate)
 
+    # Advance the LFSR past its initial all-zero-bit state into the pseudo-random region.
+    # write_noise() resets the shift register to 0x8000; with feedback=0x9 the first
+    # ~15 shifts output bit-0=0 (DC bias). For rate-3 at A3 (N≈509), each LFSR shift
+    # takes ~127 samples, so a naive 4096-sample warmup produces only ~32 shifts —
+    # not enough to escape subsequent long zero-bit runs in the LFSR sequence.
+    # Fix: temporarily set tone ch2 to N=1 (LFSR clocks every 2 samples → ~2048 shifts
+    # in 4096 samples), then restore the real N before the audible render begins.
+    sn.write_volume(3, 15)   # silence during warmup
+    if noise_rate == 3 and tone2_n is not None:
+        sn.write_tone_freq(2, 1)      # N=1: maximum LFSR clock rate
+    sn.render_samples(4096)           # discard — LFSR advances regardless of volume
+    if noise_rate == 3 and tone2_n is not None:
+        sn.write_tone_freq(2, tone2_n)  # restore correct N for actual render
+
     sustain_n = int(rate * sustain_secs)
     release_n = int(rate * release_secs)
 

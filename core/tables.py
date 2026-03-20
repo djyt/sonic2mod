@@ -118,11 +118,14 @@ SMPS_NOTE_NAMES = _build_smps_note_names()
 
 _CHROMATIC_NAMES = ['C', 'Cs', 'D', 'Ds', 'E', 'Es', 'Fs', 'G', 'Gs', 'A', 'As', 'B']
 
-def _semitone_to_name(semitone: int) -> str:
+def semitone_to_note_name(semitone: int) -> str:
     """Return SMPS primary note name for a semitone offset from C0 (e.g. 84 → 'C7')."""
     octave = semitone // 12
     note   = semitone % 12
     return f"{_CHROMATIC_NAMES[note]}{octave}"
+
+# Private alias retained for backwards-compatible internal usage in this module.
+_semitone_to_name = semitone_to_note_name
 
 
 def parse_smps_note(name: str) -> int:

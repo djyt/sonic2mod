@@ -8,70 +8,75 @@ BYTE_ORDER: Literal["little", "big"] = "big"
 
 
 class ModSample:
-    __name: str
+    _name: str
     length: int
-    __finetune: int
-    __volume: int
+    _finetune: int
+    _volume: int
     repeat: int
     repeat_length: int
     data: bytes
 
     def __init__(self, name):
-        self.__name = name[0:21]
+        self._name = name[0:21]
         self.length = 0
-        self.__finetune = 0
-        self.__volume = 0
+        self._finetune = 0
+        self._volume = 0
         self.repeat = 0
         self.repeat_length = 1
         self.data = bytes(0)
 
     def set_finetune(self, v: int):
         if v < -8 or v > 7:
-            print("Warning: Fine Tune " + str(v) + " is invalid.")
+            print(f"Warning: Fine Tune {v} is invalid.")
             return
-        self.__finetune = v & 0xf
+        self._finetune = v & 0xf
 
     def set_volume(self, v):
         if v < 0 or v > 64:
-            print("Warning: Volume " + str(v) + " is invalid.")
+            print(f"Warning: Volume {v} is invalid.")
             return
-        self.__volume = int(v)
+        self._volume = int(v)
 
-    def get_name(self): return self.__name.ljust(21, ' ')
+    def get_name(self): return self._name.ljust(21, ' ')
     def get_name_bytes(self): return bytearray(self.get_name(), 'utf-8') + b'\x00'
     def get_bytes(self):
         output = bytearray()
         output += self.get_name_bytes()
         output += self.length.to_bytes(2, byteorder=BYTE_ORDER, signed=False)
-        output += self.__finetune.to_bytes(1, byteorder=BYTE_ORDER, signed=True)
-        output += self.__volume.to_bytes(1, byteorder=BYTE_ORDER, signed=False)
+        output += self._finetune.to_bytes(1, byteorder=BYTE_ORDER, signed=True)
+        output += self._volume.to_bytes(1, byteorder=BYTE_ORDER, signed=False)
         output += self.repeat.to_bytes(2, byteorder=BYTE_ORDER, signed=False)
         output += self.repeat_length.to_bytes(2, byteorder=BYTE_ORDER, signed=False)
         return output
 
 
+# Bytes per pattern cell (4) × rows per pattern (64)
+_BYTES_PER_CELL = 4
+_ROWS_PER_PATTERN = 64
+
+
 class ModPattern:
-    __data: bytearray
-    __plen: int
+    _data: bytearray
+    _plen: int
 
     def __init__(self, chan: int = 4):
-        size = chan * 256  # chan * 4 bytes * 64 rows
-        self.__data = bytearray(size)
-        self.__plen = size
+        size = chan * _BYTES_PER_CELL * _ROWS_PER_PATTERN
+        self._data = bytearray(size)
+        self._plen = size
 
-    def get_bytes(self): return self.__data
+    def get_bytes(self): return self._data
 
     def set_entry(self, index: int, value: int):
-        if index < 0 or index > self.__plen - 1:
-            print("Invalid index " + str(index))
+        if index < 0 or index > self._plen - 1:
+            print(f"Invalid index {index}")
             return
-        self.__data[index] = value
+        self._data[index] = value
 
     def get_entry(self, index: int):
-        if index < 0 or index > self.__plen - 1:
-            print("Invalid index " + str(index))
+        if index < 0 or index > self._plen - 1:
+            print(f"Invalid index {index}")
             return 0
-        return self.__data[index]
+        return self._data[index]
 
 
 class ModFile:
@@ -90,18 +95,18 @@ class ModFile:
         self.CHANNELS = channels
         self.MOD_FORMAT = self.FORMAT_TABLE.get(channels, "M.K.").encode("utf-8")
         self.SONG_LENGTH = self.MAX_POSITIONS
-        self.__name = "untitled"
+        self._name = "untitled"
         self.samples = [ModSample("") for _ in range(31)]
         self.positions = 1
         self.position_list = bytearray(self.MAX_POSITIONS + 1)
         self.patterns = [ModPattern(self.CHANNELS)]
-        self.__active_pattern = 0
-        self.__chan = 0
-        self.__row = 0
-        self.__inst = 0
+        self._active_pattern = 0
+        self._chan = 0
+        self._row = 0
+        self._inst = 0
 
-    def set_name(self, name: str): self.__name = name[0:19]
-    def get_name(self): return self.__name.ljust(19, ' ')
+    def set_name(self, name: str): self._name = name[0:19]
+    def get_name(self): return self._name.ljust(19, ' ')
     def get_name_bytes(self): return bytearray(self.get_name(), 'utf-8') + b'\x00'
 
     def get_bytes(self):
@@ -120,48 +125,48 @@ class ModFile:
         return output
 
     def get_index(self):
-        return (self.__chan * 4) + (self.__row * (self.CHANNELS * 4))
+        return (self._chan * 4) + (self._row * (self.CHANNELS * 4))
 
     def set_channel(self, chan: int):
         if chan < 0 or chan > self.CHANNELS - 1:
-            print("Error: Channel " + str(chan) + " is invalid.")
+            print(f"Error: Channel {chan} is invalid.")
         else:
-            self.__chan = chan
+            self._chan = chan
 
     def set_row(self, row: int):
         if row < 0 or row > 63:
-            print("Error: Row " + str(row) + " is invalid.")
+            print(f"Error: Row {row} is invalid.")
         else:
-            self.__row = row
+            self._row = row
 
     def inc_row(self, rows: int):
         pattern_len = len(self.patterns)
         for _ in range(rows):
-            self.__row += 1
-            if self.__row > 63:
-                self.__row = 0
-                if self.__active_pattern + 1 >= pattern_len:
+            self._row += 1
+            if self._row > 63:
+                self._row = 0
+                if self._active_pattern + 1 >= pattern_len:
                     self.add_patterns(1)
-                self.set_active_pattern(self.__active_pattern + 1)
+                self.set_active_pattern(self._active_pattern + 1)
 
     def set_inst(self, i: int):
         if i < 0 or i > 0x1f:
-            print("Error: Instrument " + str(i) + " is invalid.")
+            print(f"Error: Instrument {i} is invalid.")
             return
-        self.__inst = i
+        self._inst = i
 
     def set_note(self, n: ModNote, inst: int | None = None):
         if inst is None:
-            inst = self.__inst
+            inst = self._inst
 
         if inst < 0 or inst > 0x1f:
-            print("Error: Instrument " + str(inst) + " is invalid.")
+            print(f"Error: Instrument {inst} is invalid.")
             return
         note_period = PERIOD_TABLE[n.value]
         index = self.get_index()
         value = (note_period << 16) + ((inst & 0xf) << 12) + ((inst >> 4) << 28)
 
-        pattern = self.patterns[self.__active_pattern]
+        pattern = self.patterns[self._active_pattern]
         pattern.set_entry(index + 0, (value >> 24) & 0xff)
         pattern.set_entry(index + 1, (value >> 16) & 0xff)
 
@@ -170,16 +175,15 @@ class ModFile:
         pattern.set_entry(index + 2, index_2 + ((value >> 8) & 0xff))
 
     def get_active_pattern(self):
-        return self.__active_pattern
+        return self._active_pattern
 
     def set_active_pattern(self, pattern: int):
         if pattern < 0 or pattern > self.MAX_POSITIONS:
-            print("Error: Pattern " + str(pattern) + " does not exist.")
-        elif pattern >= len(self.patterns):
+            print(f"Error: Pattern {pattern} does not exist.")
+            return
+        if pattern >= len(self.patterns):
             self.add_patterns(pattern - len(self.patterns) + 1)
-            self.__active_pattern = pattern
-        else:
-            self.__active_pattern = pattern
+        self._active_pattern = pattern
 
     def add_patterns(self, number_to_add: int):
         if number_to_add <= 0: return
@@ -196,7 +200,7 @@ class ModFile:
 
     def set_bpm(self, bpm: int):
         if bpm < 32 or bpm > 255:
-            print("Warning: BPM out of range (32-255) " + str(bpm))
+            print(f"Warning: BPM out of range (32-255) {bpm}")
             return
         pattern = self.patterns[0]
         pattern.set_entry(2, 0xf + (pattern.get_entry(2) & 0xf0))
@@ -204,7 +208,7 @@ class ModFile:
 
     def set_speed(self, speed: int):
         if speed < 0 or speed > 31:
-            print("Warning: Speed out of range (0-31) " + str(speed))
+            print(f"Warning: Speed out of range (0-31) {speed}")
             return
         # Set speed on channel 1, row 0
         index = 1 * 4
@@ -214,10 +218,10 @@ class ModFile:
 
     def set_volume(self, vol: int):
         if vol < 0 or vol > 0x40:
-            print("Warning: Volume out of range (0-64) " + str(vol))
+            print(f"Warning: Volume out of range (0-64) {vol}")
             return
         index = self.get_index()
-        pattern = self.patterns[self.__active_pattern]
+        pattern = self.patterns[self._active_pattern]
         pattern.set_entry(index + 2, 0xc + (pattern.get_entry(index + 2) & 0xf0))
         pattern.set_entry(index + 3, vol)
 
@@ -229,7 +233,7 @@ class ModFile:
             param: Effect parameter (0x00-0xFF)
         """
         index = self.get_index()
-        pattern = self.patterns[self.__active_pattern]
+        pattern = self.patterns[self._active_pattern]
         pattern.set_entry(index + 2, (pattern.get_entry(index + 2) & 0xf0) + (effect & 0xf))
         pattern.set_entry(index + 3, param & 0xff)
 
@@ -271,11 +275,11 @@ class ModFile:
             full_path = os.path.join(working_dir, filename)
 
             if sample_index < 1 or sample_index > 0x1f:
-                print("Error: Instrument " + str(sample_index) + " is invalid.")
+                print(f"Error: Instrument {sample_index} is invalid.")
                 continue
 
             if vol < 0 or vol > 0x40:
-                print("Warning: Volume out of range (0-64). Setting to 64 " + str(vol))
+                print(f"Warning: Volume out of range (0-64). Setting to 64 {vol}")
                 vol = 64
 
             if not os.path.exists(full_path):

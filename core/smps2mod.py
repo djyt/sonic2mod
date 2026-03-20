@@ -9,7 +9,14 @@ import dataclasses
 from .config import ChannelConfig, ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from .mod import ModFile, ModSample
 from .smps_parser import SmpsChannel, SmpsSong
-from .tables import PERIOD_TABLE, ModNote, _semitone_to_name, smps_note_to_mod_note
+from .tables import (
+    PERIOD_TABLE,
+    ModNote,
+    smps_note_to_mod_note,
+)
+from .tables import (
+    semitone_to_note_name as _semitone_to_name,
+)
 
 # Sonic 1 base FNUM for note C (block 0), from MakeFMFrequency table.
 # The 11-bit FNUM is the same across all octave blocks — block just shifts
@@ -73,6 +80,31 @@ class SmpsToModConverter:
                          / (self.config.target_speed * 2.5))
         return ticks / ticks_per_sec if ticks_per_sec > 0 else 0.0
 
+    def _set_cursor(self, pattern: int, channel: int, row: int) -> None:
+        """Position the MOD file cursor at (pattern, channel, row)."""
+        self.mod.set_active_pattern(pattern)
+        self.mod.set_channel(channel)
+        self.mod.set_row(row)
+
+    def _install_synthesized_samples(self, samples_dict: dict, sample_list, prefix: str) -> None:
+        """Install synthesized PCM samples into mod.samples and apply sample_list overrides."""
+        sl_name_map = {e[0]: e[1] for e in sample_list} if sample_list else {}
+        for inst_num, (pcm, _) in samples_dict.items():
+            sample = ModSample(sl_name_map.get(inst_num, f"{prefix}_inst{inst_num}"))
+            sample.data = pcm
+            sample.length = len(pcm) // 2
+            sample.set_volume(64)
+            self.mod.samples[inst_num - 1] = sample
+        if sample_list:
+            for entry in sample_list:
+                inst_num_sl = entry[0]
+                if inst_num_sl in samples_dict:
+                    vol_sl = entry[2] if len(entry) > 2 else 64
+                    ft_sl  = entry[3] if len(entry) > 3 else 0
+                    self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
+                    if ft_sl != 0:
+                        self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
+
     def _max_note_duration_secs(self, channel_types: set) -> float:
         """Return max non-rest note duration (seconds) across channels of given types."""
         max_ticks = 0
@@ -103,10 +135,10 @@ class SmpsToModConverter:
 
         # Resolve 'auto' sustain durations by scanning parsed note events
         synth = self.synth
-        if synth and synth.sustain == "auto":
+        if synth and synth.sustain_duration == "auto":
             secs = min(self._max_note_duration_secs({'FM'}), 10.0)
             if secs > 0:
-                synth = dataclasses.replace(synth, sustain=secs)
+                synth = dataclasses.replace(synth, sustain_duration=secs)
                 self._infos.append({'type': 'auto_sustain_fm', 'secs': round(secs, 3)})
 
         psg_synth = self.psg_synth
@@ -131,24 +163,7 @@ class SmpsToModConverter:
                           f"(inst {_insts}) — remove this entry from voice_map")
             fm_samples = generate_fm_samples(self.song, self.config, synth)
             self._infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
-            _sl_name_map = {e[0]: e[1] for e in self.config.sample_list} if self.config.sample_list else {}
-            # Install synthesized FM samples
-            for inst_num, (pcm, _) in fm_samples.items():
-                sample = ModSample(_sl_name_map.get(inst_num, f"fm_inst{inst_num}"))
-                sample.data = pcm
-                sample.length = len(pcm) // 2
-                sample.set_volume(64)
-                self.mod.samples[inst_num - 1] = sample
-            # Apply volume and finetune from sample_list to synthesized samples
-            if self.config.sample_list:
-                for entry in self.config.sample_list:
-                    inst_num_sl = entry[0]
-                    if inst_num_sl in fm_samples:
-                        vol_sl = entry[2] if len(entry) > 2 else 64
-                        ft_sl  = entry[3] if len(entry) > 3 else 0
-                        self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
-                        if ft_sl != 0:
-                            self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
+            self._install_synthesized_samples(fm_samples, self.config.sample_list, "fm")
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             if self.config.sample_list:
                 for entry in self.config.sample_list:
@@ -175,24 +190,7 @@ class SmpsToModConverter:
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
             psg_samples = generate_psg_samples(self.config, psg_synth)
-            _sl_name_map = {e[0]: e[1] for e in self.config.sample_list} if self.config.sample_list else {}
-            for inst_num, (pcm, _) in psg_samples.items():
-                sample = ModSample(_sl_name_map.get(inst_num, f"psg_inst{inst_num}"))
-                sample.data = pcm
-                sample.length = len(pcm) // 2
-                sample.set_volume(64)
-                sample.set_finetune(0)
-                self.mod.samples[inst_num - 1] = sample
-            # Apply volume and finetune overrides from sample_list
-            if self.config.sample_list:
-                for entry in self.config.sample_list:
-                    inst_num_sl = entry[0]
-                    if inst_num_sl in psg_samples:
-                        vol_sl = entry[2] if len(entry) > 2 else 64
-                        ft_sl  = entry[3] if len(entry) > 3 else 0
-                        self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
-                        if ft_sl != 0:
-                            self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
+            self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg")
             self._infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
 
         # Set timing
@@ -435,9 +433,7 @@ class SmpsToModConverter:
                     if pattern < self.config.max_patterns and (pattern > 0 or row > 0):
                         while pattern >= len(self.mod.patterns):
                             self.mod.add_patterns(1)
-                        self.mod.set_active_pattern(pattern)
-                        self.mod.set_channel(mod_chan)
-                        self.mod.set_row(row)
+                        self._set_cursor(pattern, mod_chan, row)
                         self.mod.set_effect(0xC, 0)  # C00: mute channel
                     continue
 
@@ -457,9 +453,7 @@ class SmpsToModConverter:
                 while pattern >= len(self.mod.patterns):
                     self.mod.add_patterns(1)
 
-                self.mod.set_active_pattern(pattern)
-                self.mod.set_channel(mod_chan)
-                self.mod.set_row(row)
+                self._set_cursor(pattern, mod_chan, row)
 
                 if is_dac:
                     # DAC: look up instrument and note from dac_samples config
@@ -620,14 +614,10 @@ class SmpsToModConverter:
                             # Fill fires on a later row: write C00 there directly.
                             while fill_pat >= len(self.mod.patterns):
                                 self.mod.add_patterns(1)
-                            self.mod.set_active_pattern(fill_pat)
-                            self.mod.set_channel(mod_chan)
-                            self.mod.set_row(fill_row)
+                            self._set_cursor(fill_pat, mod_chan, fill_row)
                             self.mod.set_effect(0xC, 0)
                             # Restore cursor to the current note's cell.
-                            self.mod.set_active_pattern(pattern)
-                            self.mod.set_channel(mod_chan)
-                            self.mod.set_row(row)
+                            self._set_cursor(pattern, mod_chan, row)
                             fill_placed = True
 
                     # Determine effective vibrato: per-entry override takes priority.
@@ -682,16 +672,12 @@ class SmpsToModConverter:
                                 if fill_coord != (cont_pat, cont_row):
                                     if cont_pat >= len(self.mod.patterns):
                                         break
-                                    self.mod.set_active_pattern(cont_pat)
-                                    self.mod.set_channel(mod_chan)
-                                    self.mod.set_row(cont_row)
+                                    self._set_cursor(cont_pat, mod_chan, cont_row)
                                     vib_param = (eff_vib_speed << 4) | eff_vib_depth
                                     self.mod.set_effect(0x4, vib_param)
                             cont_tick += tpr
                         # Restore cursor to the attack row
-                        self.mod.set_active_pattern(pattern)
-                        self.mod.set_channel(mod_chan)
-                        self.mod.set_row(row)
+                        self._set_cursor(pattern, mod_chan, row)
 
     def _tick_to_pattern_row(self, tick):
         """Convert a tick position to (pattern_index, row_within_pattern).
@@ -761,9 +747,7 @@ class SmpsToModConverter:
         target_pattern = flat_row // 64
         target_row = flat_row % 64
 
-        self.mod.set_active_pattern(last_pattern)
-        self.mod.set_channel(0)
-        self.mod.set_row(last_row)
+        self._set_cursor(last_pattern, 0, last_row)
         self.mod.set_position_jump(target_pattern)
 
         # If the target lands mid-pattern, write a Dxx companion on a free channel

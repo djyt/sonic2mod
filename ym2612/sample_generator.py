@@ -103,14 +103,14 @@ def generate_fm_samples(
                   f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
 
         headroom_tl = round(synth.headroom_db / 0.75)
-        assert isinstance(synth.sustain, float), "sustain must be resolved before synthesis"
+        assert isinstance(synth.sustain_duration, float), "sustain_duration must be resolved before synthesis"
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_note_raw(
                 voice,
                 synth_idx,
-                sustain_secs=synth.sustain,
-                release_secs=synth.release,
+                sustain_secs=synth.sustain_duration,
+                release_secs=synth.release_padding,
                 target_rate=target_rate,
                 opn2=opn2,
                 clock_rate=synth.clock_rate,
@@ -311,7 +311,7 @@ def _smoke_test() -> None:
 
     print("Smoke test — generate_fm_samples(voice=1/FM2-bass, root=A3)...")
     print(f"  amiga_clock = {synth.amiga_clock}")
-    print(f"  sustain     = {synth.sustain}s, release = {synth.release}s")
+    print(f"  sustain     = {synth.sustain_duration}s, release = {synth.release_padding}s")
     print()
 
     samples = generate_fm_samples(fake_song, fake_config, synth, verbose=True)

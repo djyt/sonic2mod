@@ -11,6 +11,7 @@ from typing import cast
 
 from .config import ConversionConfig
 from .smps_parser import SmpsChannel, SmpsSong
+from .tables import semitone_to_note_name  # noqa: F401 — re-exported for analyze.py
 
 # ---------------------------------------------------------------------------
 # Effect classification
@@ -57,6 +58,10 @@ _CARRIER_LABELS_BY_ALG = {
     7: ['OP1', 'OP2', 'OP3', 'OP4'],
 }
 
+# Sentinel values for "no notes seen yet" in min/max semitone tracking.
+_NO_NOTES_MIN = 999
+_NO_NOTES_MAX = -1
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -65,20 +70,26 @@ _CARRIER_LABELS_BY_ALG = {
 @dataclass
 class VoiceRangeStats:
     voice_idx: int
-    min_semitone: int      # raw SMPS (note_value - 0x81)
-    max_semitone: int
+    min_semitone: int      # raw SMPS (note_value - 0x81); _NO_NOTES_MIN if no notes
+    max_semitone: int      # _NO_NOTES_MAX if no notes
     note_count: int
     switch_count: int      # how many smpsSetvoice events switched to this voice
     modal_transpose: int = 0  # cumulative_transpose at time of first note for this voice
+
+    def has_notes(self) -> bool:
+        return self.note_count > 0
 
 
 @dataclass
 class PsgToneStats:
     tone_label: str        # e.g. "fTone_06", "form $E7"
-    min_semitone: int      # raw SMPS (note_value - 0x81); 999 if no notes
-    max_semitone: int      # -1 if no notes
+    min_semitone: int      # raw SMPS (note_value - 0x81); _NO_NOTES_MIN if no notes
+    max_semitone: int      # _NO_NOTES_MAX if no notes
     note_count: int
     switch_count: int
+
+    def has_notes(self) -> bool:
+        return self.note_count > 0
 
 
 @dataclass
@@ -129,6 +140,43 @@ class SongAnalysis:
     config: ConversionConfig | None
     derived_bpm_ntsc: float
     derived_bpm_pal: float
+
+
+# ---------------------------------------------------------------------------
+# Analysis helpers
+# ---------------------------------------------------------------------------
+
+def _get_or_create_voice(voice_stats: dict, voice_idx: int) -> VoiceRangeStats:
+    """Get or insert a VoiceRangeStats entry initialised with sentinel min/max."""
+    vs = voice_stats.get(voice_idx)
+    if vs is None:
+        vs = VoiceRangeStats(
+            voice_idx=voice_idx,
+            min_semitone=_NO_NOTES_MIN,
+            max_semitone=_NO_NOTES_MAX,
+            note_count=0,
+            switch_count=0,
+        )
+        voice_stats[voice_idx] = vs
+    return vs
+
+
+def _get_or_create_psg_tone(psg_tone_stats: dict, label: str) -> PsgToneStats:
+    """Get or insert a PsgToneStats entry initialised with sentinel min/max."""
+    ts = psg_tone_stats.get(label)
+    if ts is None:
+        ts = PsgToneStats(label, _NO_NOTES_MIN, _NO_NOTES_MAX, 0, 0)
+        psg_tone_stats[label] = ts
+    return ts
+
+
+def _is_semitone_covered(sem: int, voice_map_dict: dict) -> bool:
+    """Return True if sem falls within any InstrumentRange in the given voice_map dict."""
+    for ranges in voice_map_dict.values():
+        for entry in ranges:
+            if entry.low <= sem <= entry.high:
+                return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -226,7 +274,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
             current_psg_label = initial_label
             psg_tone_stats[initial_label] = PsgToneStats(
                 tone_label=initial_label,
-                min_semitone=999, max_semitone=-1,
+                min_semitone=_NO_NOTES_MIN, max_semitone=_NO_NOTES_MAX,
                 note_count=0, switch_count=0,
             )
     # Initialise to header pitch_offset so cumulative reflects the true
@@ -257,10 +305,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
 
                 # Update per-tone stats (PSG channels only)
                 if ch_type == "PSG" and current_psg_label is not None:
-                    ts = psg_tone_stats.get(current_psg_label)
-                    if ts is None:
-                        ts = PsgToneStats(current_psg_label, 999, -1, 0, 0)
-                        psg_tone_stats[current_psg_label] = ts
+                    ts = _get_or_create_psg_tone(psg_tone_stats, current_psg_label)
                     ts.note_count += 1
                     if sem < ts.min_semitone:
                         ts.min_semitone = sem
@@ -269,19 +314,9 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
 
                 # Update per-voice stats (FM channels only)
                 if ch_type == "FM" and current_voice_idx is not None:
-                    vs = voice_stats.get(current_voice_idx)
-                    if vs is None:
-                        vs = VoiceRangeStats(
-                            voice_idx=current_voice_idx,
-                            min_semitone=sem,
-                            max_semitone=sem,
-                            note_count=0,
-                            switch_count=0,
-                            modal_transpose=cumulative_transpose,
-                        )
-                        voice_stats[current_voice_idx] = vs
-                    elif vs.note_count == 0:
-                        # Pre-created by smpsSetvoice — record transpose on first note
+                    vs = _get_or_create_voice(voice_stats, current_voice_idx)
+                    if vs.note_count == 0:
+                        # First note for this voice — record transpose and initial range
                         vs.modal_transpose = cumulative_transpose
                     vs.note_count += 1
                     if sem < vs.min_semitone:
@@ -298,37 +333,21 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                 new_voice = cast(int, eff.params[0])
                 if new_voice != current_voice_idx:
                     current_voice_idx = new_voice
-                    # Increment switch count for this voice
-                    vs = voice_stats.get(current_voice_idx)
-                    if vs is None:
-                        vs = VoiceRangeStats(
-                            voice_idx=current_voice_idx,
-                            min_semitone=999,
-                            max_semitone=-1,
-                            note_count=0,
-                            switch_count=0,
-                        )
-                        voice_stats[current_voice_idx] = vs
+                    vs = _get_or_create_voice(voice_stats, current_voice_idx)
                     vs.switch_count += 1
 
             elif eff.effect_type == 'smpsPSGvoice':
                 label = str(eff.params[0])
                 if label != current_psg_label:
                     current_psg_label = label
-                    ts = psg_tone_stats.get(label)
-                    if ts is None:
-                        ts = PsgToneStats(label, 999, -1, 0, 0)
-                        psg_tone_stats[label] = ts
+                    ts = _get_or_create_psg_tone(psg_tone_stats, label)
                     ts.switch_count += 1
 
             elif eff.effect_type == 'smpsPSGform':
                 label = f"form ${eff.params[0]:02X}"
                 if label != current_psg_label:
                     current_psg_label = label
-                    ts = psg_tone_stats.get(label)
-                    if ts is None:
-                        ts = PsgToneStats(label, 999, -1, 0, 0)
-                        psg_tone_stats[label] = ts
+                    ts = _get_or_create_psg_tone(psg_tone_stats, label)
                     ts.switch_count += 1
 
             elif eff.effect_type == 'smpsChangeTransposition':
@@ -357,28 +376,12 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                 if event.is_note and not event.note.is_rest and not event.note.is_dac:
                     seen_semitones.add(event.note.note_value - 0x81)
 
-            for sem in sorted(seen_semitones):
-                covered = False
-                # Check global voice_map for any range that covers this semitone
-                for ranges in config.voice_map.values():
-                    for entry in ranges:
-                        if entry.low <= sem <= entry.high:
-                            covered = True
-                            break
-                    if covered:
-                        break
-                # Also check channel_instrument_map
-                if not covered:
-                    cim = config.channel_instrument_map.get(source_name, {})
-                    for ranges in cim.values():
-                        for entry in ranges:
-                            if entry.low <= sem <= entry.high:
-                                covered = True
-                                break
-                        if covered:
-                            break
-                if not covered:
-                    uncovered_notes.append(sem)
+            cim = config.channel_instrument_map.get(source_name, {})
+            uncovered_notes.extend(
+                sem for sem in sorted(seen_semitones)
+                if not _is_semitone_covered(sem, config.voice_map)
+                and not _is_semitone_covered(sem, cim)
+            )
 
     return ChannelAnalysis(
         name=source_name,
@@ -401,14 +404,6 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
         uncovered_notes=uncovered_notes,
         config_enabled=config_enabled,
     )
-
-
-def semitone_to_note_name(semitone: int) -> str:
-    """Convert SMPS semitone (0=C0) to readable note name like 'C3', 'F#4'."""
-    chromatic = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    octave = semitone // 12
-    note = semitone % 12
-    return f"{chromatic[note]}{octave}"
 
 
 def suggest_transpose(min_semitone: int, max_semitone: int) -> int:

@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screenv2_10.mod"
+output_file: "output/title_screenv3.mod"
 samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -92,6 +92,7 @@ voice_map:
       high: D4            # source 35
       mod_instrument: 5   # fm_voice1_lo.raw (root A1)
       root: A1
+      synth_root: A2
 
   # Voice $02 — harmony chord stabs (FM3/FM4 main melody only)
   2:
@@ -99,16 +100,18 @@ voice_map:
       high: G6            # source 79 — top of FM3's range
       mod_instrument: 6   # fm_voice2.raw (root A2)
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)
+      synth_root: A5
 
 
 # -------------------------------------------------------------------------------------------------
 # PSG Sounds
 # -------------------------------------------------------------------------------------------------
 psg_map:
-  0xE7:                    # smpsPSGform byte; type auto-inferred: bit 2=1 → white noise
-    mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A3               # Synthesis rate = MOD playback rate = amiga_clock / PERIOD_TABLE[A3]
-    noise_rate: 3          # Follow tone ch2 (PSG3 frequency) — correct hardware mode for 0xE7
+  0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
+    mod_instrument: 7
+    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    noise_rate: 3
+    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
     

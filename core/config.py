@@ -403,6 +403,8 @@ class ConversionConfig:
                 type=inferred_type,
                 root=ModNote[psg_entry['root']],
                 synth_root=_opt(psg_entry, 'synth_root', parse_synth_note),
+                low=_opt(psg_entry, 'low', parse_smps_note),
+                high=_opt(psg_entry, 'high', parse_smps_note),
                 noise_rate=psg_entry.get('noise_rate', 0),
                 envelope=psg_entry.get('envelope', None),
                 base_volume=psg_entry.get('base_volume', 0),

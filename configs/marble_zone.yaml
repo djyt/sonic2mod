@@ -104,7 +104,7 @@ voice_map:
 
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
-    mod_instrument: 11
+    mod_instrument: 10
     root: A2               # MOD anchor — A2 keeps all PSG3 notes (up to E4) within MOD range with no clamping
     low: A3                # SMPS pitch anchor — nA3 (sem 45) → MOD A2; each semitone above/below shifts output ±1
     synth_root: C7         # LFSR synthesis freq — PSGFrequencies[A3+3=48] ≈ 2071 Hz → N=54; C7→N≈53 ✓

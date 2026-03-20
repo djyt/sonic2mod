@@ -107,7 +107,7 @@ voice_map:
       mod_instrument: 6
       root: B2
       synth_root: B5
-      vibrato: 30
+      vibrato: 0
 
   # $03 — Alg 1, FB 5 — used by FM1, FM3
   3:

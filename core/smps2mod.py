@@ -356,6 +356,17 @@ class SmpsToModConverter:
             for sl_entry in self.config.sample_list:
                 _sample_vol_map[sl_entry[0]] = sl_entry[2] if len(sl_entry) > 2 else 64
 
+        # PSG auto note-cut: hardware PSGDoNext sets vol=15 when note duration expires.
+        # Pre-collect note-on (pattern, row) positions so we don't place a C00 where
+        # a subsequent set_note call would write a note (set_note retains effect bytes,
+        # so a pre-placed C00 would silence the next note trigger).
+        is_psg = chan_cfg.source.startswith('PSG')
+        _note_on_positions: set[tuple[int, int]] = set()
+        if is_psg:
+            for _ev in channel.events:
+                if _ev.is_note and not _ev.note.is_rest:
+                    _note_on_positions.add(self._tick_to_pattern_row(_ev.tick_position))
+
         for event in channel.events:
             if event.is_effect:
                 eff = event.effect
@@ -620,6 +631,31 @@ class SmpsToModConverter:
                             # Restore cursor to the current note's cell.
                             self._set_cursor(pattern, mod_chan, row)
                             fill_placed = True
+
+                    # PSG auto note-cut: emit silence at the note's natural end if no
+                    # explicit smpsNoteFill was placed.  Mirrors hardware PSGDoNext
+                    # setting vol=15 when the duration timer expires.
+                    if is_psg and not fill_placed:
+                        cut_tick = tick + note.duration
+                        cut_pat, cut_row = self._tick_to_pattern_row(cut_tick)
+                        if cut_pat == pattern and cut_row == row:
+                            # Sub-row cut: note ends within the same MOD row → ECx
+                            ec_val = round(
+                                note.duration * self.config.target_speed
+                                / self.config.ticks_per_row
+                            )
+                            ec_val = min(ec_val, self.config.target_speed - 1)
+                            if ec_val > 0:
+                                self.mod.set_effect(0xE, 0xC0 | ec_val)
+                        elif (cut_pat, cut_row) not in _note_on_positions \
+                                and cut_pat < self.config.max_patterns:
+                            # Different row: write C00 only where no note-on fires
+                            # (rest events also emit C00 there, which is idempotent)
+                            while cut_pat >= len(self.mod.patterns):
+                                self.mod.add_patterns(1)
+                            self._set_cursor(cut_pat, mod_chan, cut_row)
+                            self.mod.set_effect(0xC, 0)
+                            self._set_cursor(pattern, mod_chan, row)
 
                     # Determine effective vibrato: per-entry override takes priority.
                     _vib_override = None

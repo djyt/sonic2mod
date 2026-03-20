@@ -135,7 +135,7 @@ voice_map:
     - low:  G5                # Bottom of source-note range (inclusive)
       high: G6                # Top of source-note range (inclusive)
       mod_instrument: 4       # MOD instrument slot (1-based)
-      root: F2s               # G5 plays at F#2; each semitone above shifts output by 1
+      root: Fs2               # G5 plays at F#2; each semitone above shifts output by 1
       synth_root: C6          # (optional) synthesize at C6; output pitch = C6 frequency
     - low:  Gs6
       high: C7

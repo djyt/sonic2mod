@@ -338,7 +338,7 @@ class ConversionConfig:
         # ---------------------------------------------------------------------------
         # Parse voice_map
         #
-        # New format:   voice_map: {0: [{low: G5, high: G6, mod_instrument: 4, root: F2s}]}
+        # New format:   voice_map: {0: [{low: G5, high: G6, mod_instrument: 4, root: Fs2}]}
         # Legacy format: voice_map: {0: 4, 1: 5}  (simple int values — deprecated)
         # Old key name:  voice_instrument_map (deprecated — emit warning, parse as new voice_map)
         # ---------------------------------------------------------------------------

@@ -470,7 +470,7 @@ def _sem_to_yaml(semitone: int) -> str:
 def _note_in_octave2(semitone: int) -> str:
     """Place the note letter of semitone in octave 2, as a valid ModNote name.
 
-    e.g. C6 → 'C2', C#5 → 'C2s', F#5 → 'F2s'
+    e.g. C6 → 'C2', C#5 → 'Cs2', F#5 → 'Fs2'
     """
     return ModNote(12 + semitone % 12).name
 

@@ -1,0 +1,141 @@
+# -------------------------------------------------------------------------------------------------
+# STAR LIGHT ZONE Conversion Script
+# todo: mod_instrument 9 sounds like it's synthesized wrongly
+# -------------------------------------------------------------------------------------------------
+
+name: Star Light Zone
+input_file: sonic_1/music/Mus84 - SLZ.asm
+output_file: output/star_light_zone.mod
+samples_dir: "samples/"
+
+auto_bpm: true
+target_speed: 3
+ticks_per_row: 1
+num_mod_channels: 10
+region: ntsc
+
+channels:
+  - source: DAC
+    mod_channel: 0
+  - source: FM1
+    mod_channel: 1
+  - source: FM2
+    mod_channel: 2
+  - source: FM3
+    mod_channel: 3
+  - source: FM4
+    mod_channel: 4
+  - source: FM5
+    mod_channel: 5
+  - source: PSG1
+    mod_channel: 6
+  - source: PSG2
+    mod_channel: 7
+  - source: PSG3
+    mod_channel: 8
+
+sample_list:
+  # --- percussion ---
+  - [1, "kick.raw", 64, 0]
+  # --- voice $00: alg 4: (1→2)+(3→4), fb 6 — FM1 ---
+  - [2, "fm_v00_lo.raw", 64, 0]
+  - [3, "fm_v00_hi.raw", 64, 0]
+  # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
+  - [4, "fm_v01.raw", 32, 0]
+  # --- voice $02: alg 4: (1→2)+(3→4), fb 0 — FM3, FM4 ---
+  - [5, "fm_v02.raw", 32, 0]
+  # --- voice $03: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
+  - [6, "fm_v03_lo.raw", 32, 0]
+  - [7, "fm_v03_hi.raw", 32, 0]
+  # --- voice $04: alg 4: (1→2)+(3→4), fb 7 — FM5 ---
+  - [8, "fm_v04.raw", 32, 0]
+  # --- voice $05: alg 4: (1→2)+(3→4), fb 6 — FM5 ---
+  - [9, "fm_v05.raw", 32, 0]
+  # --- PSG noise (form $E7) ---
+  - [11, "psg_noise.raw", 16, 0]
+  # --- PSG tone fTone_05 ---
+  - [10, "psg_fTone_05.raw", 16, 0]
+
+dac_samples:
+  # dKick: ×1 — native ~8250 Hz → note C2
+  - name: dKick
+    mod_instrument: 1
+    mod_note: C2
+
+voice_map:
+  # $00 — alg 4: (1→2)+(3→4), fb 6 — used by FM1
+  0:
+    - low:  G5
+      high: B6
+      mod_instrument: 2
+      root: G2
+      synth_root: G4
+    - low:  C7
+      high: E7
+      mod_instrument: 3
+      root: C2
+      synth_root: C6
+  # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
+  1:
+    - low:  G3
+      high: G4
+      mod_instrument: 4
+      root: G2  # smpsChangeTransposition active — verify root is correct
+      synth_root: G2
+  # $02 — alg 4: (1→2)+(3→4), fb 0 — used by FM3, FM4
+  2:
+    - low:  Cs6
+      high: E7
+      mod_instrument: 5
+      root: Cs2
+      synth_root: Cs4
+  # $03 — alg 2: (1+(2→3))→4, fb 7 — used by FM5
+  3:
+    - low:  Ds4
+      high: B5
+      mod_instrument: 6
+      root: Ds2  # smpsChangeTransposition active — verify root is correct
+      synth_root: Ds4  # smpsChangeTransposition active — verify root is correct
+    - low:  C6
+      high: C7
+      mod_instrument: 7
+      root: C2  # smpsChangeTransposition active — verify root is correct
+      synth_root: C6  # smpsChangeTransposition active — verify root is correct
+  # $04 — alg 4: (1→2)+(3→4), fb 7 — used by FM5
+  4:
+    - low:  G5
+      high: As6
+      mod_instrument: 8
+      root: G2  # smpsChangeTransposition active — verify root is correct
+      synth_root: G5
+  # $05 — alg 4: (1→2)+(3→4), fb 6 — used by FM5
+  5:
+    - low:  Ds4
+      high: Ds4
+      mod_instrument: 9
+      root: Ds2  # smpsChangeTransposition active — verify root is correct
+      synth_root: Ds4
+
+psg_map:
+  0xE7:                    # form $E7
+    mod_instrument: 11
+    root: A3
+    noise_rate: 3
+    synth_root: A8
+    envelope: fTone_04
+    base_volume: 0
+
+psg_voice_map:
+  fTone_05:
+    low:  E6
+    high: E7
+    mod_instrument: 10
+    root: E2
+    synth_root: E6
+
+# -------------------------------------------------------------------------------------------------
+# Structural pattern break after intro
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 47

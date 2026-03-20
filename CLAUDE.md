@@ -219,7 +219,7 @@ voice_map:
     - low:  G5              # SMPS source note — bottom of range
       high: G6
       mod_instrument: 4
-      root: F2s             # G5 plays at F#2; each semitone above shifts output up by 1
+      root: Fs2             # G5 plays at F#2; each semitone above shifts output up by 1
       synth_root: C6        # (optional) synthesize at C6 frequency instead of G5
       vibrato: 31           # (optional) override vibrato for this range (speed=3, depth=1)
     - low:  Gs6

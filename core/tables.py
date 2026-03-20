@@ -14,42 +14,42 @@ PERIOD_TABLE = [
 
 class ModNote(Enum):
     C1 = 0
-    C1s = 1
+    Cs1 = 1
     D1 = 2
-    D1s = 3
+    Ds1 = 3
     E1 = 4
     F1 = 5
-    F1s = 6
+    Fs1 = 6
     G1 = 7
-    G1s = 8
+    Gs1 = 8
     A1 = 9
-    A1s = 10
+    As1 = 10
     B1 = 11
 
     C2 = 12
-    C2s = 13
+    Cs2 = 13
     D2 = 14
-    D2s = 15
+    Ds2 = 15
     E2 = 16
     F2 = 17
-    F2s = 18
+    Fs2 = 18
     G2 = 19
-    G2s = 20
+    Gs2 = 20
     A2 = 21
-    A2s = 22
+    As2 = 22
     B2 = 23
 
     C3 = 24
-    C3s = 25
+    Cs3 = 25
     D3 = 26
-    D3s = 27
+    Ds3 = 27
     E3 = 28
     F3 = 29
-    F3s = 30
+    Fs3 = 30
     G3 = 31
-    G3s = 32
+    Gs3 = 32
     A3 = 33
-    A3s = 34
+    As3 = 34
     B3 = 35
 
 

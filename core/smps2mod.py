@@ -30,16 +30,16 @@ _MOD_NOTE_MAP = {}
 for _oct in range(1, 4):
     _notes = [
         (f"C{_oct}", f"C{_oct}"),
-        (f"C#{_oct}", f"C{_oct}s"), (f"Cs{_oct}", f"C{_oct}s"), (f"Db{_oct}", f"C{_oct}s"),
+        (f"C#{_oct}", f"Cs{_oct}"), (f"Cs{_oct}", f"Cs{_oct}"), (f"Db{_oct}", f"Cs{_oct}"),
         (f"D{_oct}", f"D{_oct}"),
-        (f"D#{_oct}", f"D{_oct}s"), (f"Ds{_oct}", f"D{_oct}s"), (f"Eb{_oct}", f"D{_oct}s"),
+        (f"D#{_oct}", f"Ds{_oct}"), (f"Ds{_oct}", f"Ds{_oct}"), (f"Eb{_oct}", f"Ds{_oct}"),
         (f"E{_oct}", f"E{_oct}"),
         (f"F{_oct}", f"F{_oct}"),
-        (f"F#{_oct}", f"F{_oct}s"), (f"Fs{_oct}", f"F{_oct}s"), (f"Gb{_oct}", f"F{_oct}s"),
+        (f"F#{_oct}", f"Fs{_oct}"), (f"Fs{_oct}", f"Fs{_oct}"), (f"Gb{_oct}", f"Fs{_oct}"),
         (f"G{_oct}", f"G{_oct}"),
-        (f"G#{_oct}", f"G{_oct}s"), (f"Gs{_oct}", f"G{_oct}s"), (f"Ab{_oct}", f"G{_oct}s"),
+        (f"G#{_oct}", f"Gs{_oct}"), (f"Gs{_oct}", f"Gs{_oct}"), (f"Ab{_oct}", f"Gs{_oct}"),
         (f"A{_oct}", f"A{_oct}"),
-        (f"A#{_oct}", f"A{_oct}s"), (f"As{_oct}", f"A{_oct}s"), (f"Bb{_oct}", f"A{_oct}s"),
+        (f"A#{_oct}", f"As{_oct}"), (f"As{_oct}", f"As{_oct}"), (f"Bb{_oct}", f"As{_oct}"),
         (f"B{_oct}", f"B{_oct}"),
     ]
     for _key, _enum_name in _notes:

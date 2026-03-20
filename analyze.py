@@ -27,7 +27,7 @@ except ImportError:
     print("Error: 'rich' is required. Install with: pip install rich")
     sys.exit(1)
 
-from core.tables import PERIOD_TABLE
+from core.tables import PERIOD_TABLE, ModNote
 from core.analysis import (
     _CARRIER_LABELS_BY_ALG,
     DAC_NATIVE_INFO,
@@ -468,12 +468,15 @@ def _sem_to_yaml(semitone: int) -> str:
 
 
 def _note_in_octave2(semitone: int) -> str:
-    """Place the note letter of semitone in octave 2 (e.g. C6 → C2, Fs5 → Fs2)."""
-    return f"{_YAML_CHROMATIC[semitone % 12]}2"
+    """Place the note letter of semitone in octave 2, as a valid ModNote name.
+
+    e.g. C6 → 'C2', C#5 → 'C2s', F#5 → 'F2s'
+    """
+    return ModNote(12 + semitone % 12).name
 
 
 def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int = 3546895) -> str:
-    """Return the lowest MOD octave (≥ 2) where target_rate > 2*synth_freq.
+    """Return the lowest MOD octave (≥ 2) where target_rate > 2*synth_freq, as a valid ModNote name.
 
     Ensures the synthesized LFSR frequency stays below Nyquist so there is no
     aliasing.  For low-frequency noise (e.g. Marble Zone C7 ≈ 2093 Hz) octave 2
@@ -486,8 +489,8 @@ def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int 
         if period == 0:
             break
         if amiga_clock / period > 2.0 * synth_freq:
-            return f"{_YAML_CHROMATIC[note_letter]}{octave}"
-    return f"{_YAML_CHROMATIC[note_letter]}3"
+            return ModNote(root_idx).name
+    return ModNote(24 + note_letter).name
 
 
 _VALID_MOD_CHANNELS = (4, 8, 10, 12, 14, 16)

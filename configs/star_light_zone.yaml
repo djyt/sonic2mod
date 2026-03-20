@@ -1,6 +1,5 @@
 # -------------------------------------------------------------------------------------------------
 # STAR LIGHT ZONE Conversion Script
-# todo: mod_instrument 9 sounds like it's synthesized wrongly
 # -------------------------------------------------------------------------------------------------
 
 name: Star Light Zone
@@ -80,7 +79,7 @@ voice_map:
     - low:  G3
       high: G4
       mod_instrument: 4
-      root: G2  # smpsChangeTransposition active — verify root is correct
+      root: G2
       synth_root: G2
   # $02 — alg 4: (1→2)+(3→4), fb 0 — used by FM3, FM4
   2:
@@ -94,27 +93,27 @@ voice_map:
     - low:  Ds4
       high: B5
       mod_instrument: 6
-      root: Ds2  # smpsChangeTransposition active — verify root is correct
-      synth_root: Ds4  # smpsChangeTransposition active — verify root is correct
+      root: Ds2
+      synth_root: Ds4
     - low:  C6
       high: C7
       mod_instrument: 7
-      root: C2  # smpsChangeTransposition active — verify root is correct
-      synth_root: C6  # smpsChangeTransposition active — verify root is correct
+      root: C2
+      synth_root: C6
   # $04 — alg 4: (1→2)+(3→4), fb 7 — used by FM5
   4:
     - low:  G5
       high: As6
       mod_instrument: 8
-      root: G2  # smpsChangeTransposition active — verify root is correct
+      root: G2
       synth_root: G5
   # $05 — alg 4: (1→2)+(3→4), fb 6 — used by FM5
   5:
     - low:  Ds4
       high: Ds4
       mod_instrument: 9
-      root: Ds2  # smpsChangeTransposition active — verify root is correct
-      synth_root: Ds4
+      root: Ds3
+      synth_root: Fs8
 
 psg_map:
   0xE7:                    # form $E7

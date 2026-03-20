@@ -80,10 +80,12 @@ The `type` field is **auto-inferred** from bit 2 of the byte: 0 = `periodic_nois
 
 ```yaml
 psg_map:
-  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise
+  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise, rate 3 = follow tone ch2
     mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A3               # MOD note anchor; determines target_rate
-    noise_rate: 0          # Preset divider: 0=N/512, 1=N/1024, 2=N/2048 (rate 3 approximated as 0)
+    root: A2               # MOD note anchor — determines target_rate AND where low plays
+    low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
+    synth_root: A3         # LFSR synthesis freq — A3 → tone2_n≈509 (220 Hz); independent of root
+    noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (real LFSR freq from synth_root)
     envelope: fTone_04     # Named envelope from psg_envelope_tables, or inline list
     base_volume: 0         # SN76489 attenuation 0=max, 15=silent
 ```
@@ -114,9 +116,11 @@ psg_voice_map:
 |-------|------|----------|-------|
 | `mod_instrument` | int | yes | MOD slot (1-based, 1–31) |
 | `type` | str | yes | `tone` / `white_noise` / `periodic_noise` |
-| `root` | note | yes | MOD note anchor; controls `target_rate` AND where sample triggers |
-| `synth_root` | note | no | Synthesis pitch override for tone entries (does NOT affect `target_rate`) |
-| `noise_rate` | int | no | Noise divider: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 |
+| `root` | note | yes | MOD note anchor; controls `target_rate` AND where `low` plays |
+| `low` | note | no | SMPS pitch anchor for melodic formula: `output = root + (source − low)` |
+| `high` | note | no | Upper bound of melodic range (paired with `low`) |
+| `synth_root` | note | no | Synthesis pitch override; for noise entries, sets the LFSR frequency (tone2_n); does NOT affect `target_rate` |
+| `noise_rate` | int | no | Noise divider: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (tone2_n derived from synth_root) |
 | `envelope` | str/list | no | Named table key (e.g. `fTone_04`) or inline list of per-frame attenuation deltas |
 | `base_volume` | int | no | SN76489 base attenuation (0=max, 15=silent) |
 
@@ -136,7 +140,10 @@ The relationship between these three values is identical to YM2612 (see `docs/sy
   The chip synthesizes at `synth_root`'s frequency, but the MOD sampler plays it at the `root` rate.
   Use this when the actual chip pitch differs from `root` due to transposition.
 
-- For **noise entries**, `root` only sets the sample playback rate; SN76489 noise has no musical pitch.
+- For **noise entries**, `root` controls `target_rate` and the MOD anchor where `low` plays.
+  When `low` is set, notes trigger at `root + (source − low)` — the same melodic formula as tones.
+  When `low` is absent, all notes trigger at `root` (fixed pitch for unpitched noise).
+  `synth_root` controls the LFSR frequency (tone2_n) for `noise_rate: 3`, independently of `root`.
 
 ### PSG frequency divider
 
@@ -328,14 +335,20 @@ producing a different timbre or silence.
 synth_root = low + total_transpose
 ```
 
-### noise_rate: 3 (follow ch2) not modeled
+### noise_rate: 3 (follow ch2) — pitch and timbre
 
-`noise_rate: 3` makes the LFSR clock from PSG tone ch2's frequency divider. In the synthesizer,
-`tone2_n=None` means the LFSR clocks at the emulator's reset default (N=1), not the hardware
-rate-3 behaviour. Use `noise_rate: 0` as the closest fixed-rate approximation.
+`noise_rate: 3` makes the SN76489 LFSR clock from PSG tone ch2's frequency divider N.
+The synthesizer derives `tone2_n` from `synth_root` (or `root` if absent) and writes it to
+tone ch2 before rendering.  A fast warmup (N=1, 4096 discarded samples) spins the LFSR into
+its pseudo-random region to avoid the initial DC-bias artifact.
 
-This is acceptable for Sonic 1 Title Screen where PSG tone ch2 is never explicitly tuned.
-See `docs/limitations.txt` for details.
+Set `synth_root` to the SMPS note the chip actually plays at for the noise burst (e.g. `A3`
+for Marble Zone PSG3).  Set `root`/`low` separately to control MOD pitch anchoring — they
+are independent of `synth_root`.
+
+The synthesized sample captures one fixed LFSR frequency.  Per-note timbre shifts (hardware
+tracks tone ch2 in real time) are approximated by the MOD playing the sample at different
+speeds.  See `docs/limitations.txt` for details.
 
 ### Using deprecated psg_form_map key
 

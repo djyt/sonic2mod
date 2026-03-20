@@ -546,8 +546,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         "samples_dir: \"samples/\"",
         "",
         "auto_bpm: true",
-        f"target_speed: {_suggest_target_speed(song.header.tempo_divider, song.header.tempo_modifier, ticks_per_row=2)}",
-        "ticks_per_row: 2",
+        f"target_speed: {_suggest_target_speed(song.header.tempo_divider, song.header.tempo_modifier, ticks_per_row=1)}",
+        "ticks_per_row: 1",
         f"num_mod_channels: {_round_up_mod_channels(len(active_channels))}",
         f"region: {region}",
         "",
@@ -745,7 +745,11 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 lines.append(f"    - low:  {_sem_to_yaml(split_point + 1)}")
                 lines.append(f"      high: {_sem_to_yaml(max_sem)}")
                 lines.append(f"      mod_instrument: {inst2}")
-                lines.append(f"      root: {_note_in_octave2(split_point + 1)}{root_comment}")
+                _note_class2 = (split_point + 1) % 12
+                _span2       = max_sem - (split_point + 1)
+                _oct2_val    = 12 + _note_class2
+                _root2_name  = ModNote(_note_class2 if _oct2_val + _span2 > 35 else _oct2_val).name
+                lines.append(f"      root: {_root2_name}{root_comment}")
                 lines.append(f"      synth_root: {_sem_to_yaml(split_point + 1 + initial_trans + 12)}{root_comment}")
             else:
                 root_comment = "  # smpsChangeTransposition active — verify root is correct" if has_trans else ""
@@ -809,7 +813,11 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 lines.append(f"    - low:  {_sem_to_yaml(psg_split + 1)}")
                 lines.append(f"      high: {_sem_to_yaml(ts.max_semitone)}")
                 lines.append(f"      mod_instrument: {psg_inst2}")
-                lines.append(f"      root: {_note_in_octave2(psg_split + 1)}")
+                _note_class2 = (psg_split + 1) % 12
+                _span2       = ts.max_semitone - (psg_split + 1)
+                _oct2_val    = 12 + _note_class2
+                _root2_name  = ModNote(_note_class2 if _oct2_val + _span2 > 35 else _oct2_val).name
+                lines.append(f"      root: {_root2_name}")
                 lines.append(f"      synth_root: {_sem_to_yaml(psg_split + 1)}")
             else:
                 lines.append(f"    low:  {_sem_to_yaml(ts.min_semitone)}")

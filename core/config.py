@@ -36,6 +36,11 @@ def _parse_vibrato(v) -> int:
     return (int(s[0], 16) << 4) | int(s[1], 16)
 
 
+def _opt(d: dict, key: str, parse_fn):
+    """Return parse_fn(d[key]) if key is present, otherwise None."""
+    return parse_fn(d[key]) if key in d else None
+
+
 def _parse_instrument_range(entry: dict) -> "InstrumentRange":
     """Parse a single InstrumentRange dict from YAML.
 
@@ -57,9 +62,9 @@ def _parse_instrument_range(entry: dict) -> "InstrumentRange":
     else:
         raise KeyError(f"InstrumentRange entry missing 'mod_instrument': {entry}")
 
-    root       = ModNote[entry['root']]              if 'root'       in entry else None
-    synth_root = parse_synth_note(entry['synth_root']) if 'synth_root' in entry else None
-    vibrato    = _parse_vibrato(entry['vibrato'])     if 'vibrato'    in entry else None
+    root       = _opt(entry, 'root',       lambda v: ModNote[v])
+    synth_root = _opt(entry, 'synth_root', parse_synth_note)
+    vibrato    = _opt(entry, 'vibrato',    _parse_vibrato)
 
     return InstrumentRange(
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
@@ -100,11 +105,11 @@ class PsgInstrumentEntry:
 
 def _parse_psg_voice_entry(v: dict, default_envelope: str) -> 'PsgInstrumentEntry':
     """Parse a single psg_voice_map entry dict into a PsgInstrumentEntry."""
-    root_note = ModNote[v['root']]
-    synth_root = parse_synth_note(v['synth_root']) if 'synth_root' in v else None
-    low  = parse_smps_note(v['low'])  if 'low'  in v else None
-    high = parse_smps_note(v['high']) if 'high' in v else None
-    pvm_vibrato = _parse_vibrato(v['vibrato']) if 'vibrato' in v else None
+    root_note   = ModNote[v['root']]
+    synth_root  = _opt(v, 'synth_root', parse_synth_note)
+    low         = _opt(v, 'low',        parse_smps_note)
+    high        = _opt(v, 'high',       parse_smps_note)
+    pvm_vibrato = _opt(v, 'vibrato',    _parse_vibrato)
     return PsgInstrumentEntry(
         mod_instrument=v['mod_instrument'],
         type=v.get('type', 'tone'),
@@ -155,8 +160,8 @@ class SynthesisSettings:
     mode: str = "ym2612"
     clock_rate: int = 7_670_454       # YM2612 master clock
     amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
-    sustain: float | str = 1.5
-    release: float = 0.5
+    sustain_duration: float | str = 1.5
+    release_padding: float = 0.5
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
     headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
     carrier_balance: bool = True      # Add extra TL per carrier count (normalises multi-carrier algos)
@@ -173,8 +178,8 @@ class SynthesisSettings:
             mode=s.get("mode", "ym2612"),
             clock_rate=s.get("clock_rate", 7_670_454),
             amiga_clock=s.get("amiga_clock", 3_546_895),
-            sustain=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
-            release=s.get("release_padding", 0.5),
+            sustain_duration=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
+            release_padding=s.get("release_padding", 0.5),
             normalize_samples=s.get("normalize_samples", True),
             headroom_db=s.get("headroom_db", 6.0),
             carrier_balance=s.get("carrier_balance", True),
@@ -393,20 +398,15 @@ class ConversionConfig:
         for k, psg_entry in raw_psg_map.items():
             form_byte = int(str(k), 0)
             inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"
-            root_note = ModNote[psg_entry['root']]
-            synth_root = None
-            if 'synth_root' in psg_entry:
-                synth_root = parse_synth_note(psg_entry['synth_root'])
-            psg_vibrato = _parse_vibrato(psg_entry['vibrato']) if 'vibrato' in psg_entry else None
             config.psg_map[form_byte] = PsgInstrumentEntry(
                 mod_instrument=psg_entry['mod_instrument'],
                 type=inferred_type,
-                root=root_note,
-                synth_root=synth_root,
+                root=ModNote[psg_entry['root']],
+                synth_root=_opt(psg_entry, 'synth_root', parse_synth_note),
                 noise_rate=psg_entry.get('noise_rate', 0),
                 envelope=psg_entry.get('envelope', None),
                 base_volume=psg_entry.get('base_volume', 0),
-                vibrato=psg_vibrato,
+                vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),
             )
 
         # psg_form_map is deprecated — psg_map now serves this role

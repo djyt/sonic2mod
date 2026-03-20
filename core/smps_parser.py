@@ -254,13 +254,19 @@ class SmpsParser:
 
         return header
 
-    def _finalize_pending(self, channel, pending_note, tick, last_duration):
-        """Emit a pending note with last_duration and advance tick."""
+    def _finalize_pending(self, channel, pending_note, tick, last_duration, last_note_value=0):
+        """Emit a pending note with last_duration, advance tick, and return updated state.
+
+        Returns:
+            (tick, last_note_value) — last_note_value updated if note was non-rest/non-DAC.
+        """
         if pending_note is not None:
             pending_note.duration = last_duration
+            if not pending_note.is_rest and not pending_note.is_dac:
+                last_note_value = pending_note.note_value
             channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
             tick += pending_note.duration
-        return tick
+        return tick, last_note_value
 
     def _parse_channel_data(self, ch_header):
         """Parse channel data starting from the channel's label.
@@ -326,14 +332,14 @@ class SmpsParser:
             # smpsStop — end of channel.
             # Finalize any pending note before stopping.
             if line.startswith('smpsStop'):
-                tick = self._finalize_pending(channel, pending_note, tick, last_duration)
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 return tick, last_duration, None, last_note_value
 
             # smpsJump — song loop point.
             # Finalize any pending note before the jump.
             m = re.match(r'smpsJump\s+(\S+)', line)
             if m:
-                tick = self._finalize_pending(channel, pending_note, tick, last_duration)
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 channel.has_jump = True
                 channel.jump_target_label = m.group(1)
                 return tick, last_duration, None, last_note_value
@@ -347,9 +353,7 @@ class SmpsParser:
                 # A note pending at the smpsLoop boundary uses SavedDuration in the driver
                 # (the loop coord flag is treated as a non-duration byte, so the driver
                 # reuses the last saved duration).  Finalize it before replaying.
-                if pending_note is not None and not pending_note.is_rest and not pending_note.is_dac:
-                    last_note_value = pending_note.note_value
-                tick = self._finalize_pending(channel, pending_note, tick, last_duration)
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 pending_note = None
 
                 if loop_target in self.labels:
@@ -364,9 +368,7 @@ class SmpsParser:
                             is_psg=is_psg
                         )
                         # Finalize any note pending at the loop-body end before the next replay
-                        if loop_pend is not None and not loop_pend.is_rest and not loop_pend.is_dac:
-                            last_note_value = loop_pend.note_value
-                        tick = self._finalize_pending(channel, loop_pend, tick, last_duration)
+                        tick, last_note_value = self._finalize_pending(channel, loop_pend, tick, last_duration, last_note_value)
                 i += 1
                 continue
 
@@ -410,7 +412,7 @@ class SmpsParser:
             i += 1
 
         # End of file — finalize any remaining pending note
-        tick = self._finalize_pending(channel, pending_note, tick, last_duration)
+        tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
         return tick, last_duration, None, last_note_value
 
     def _parse_call(self, channel, target_line, tick, last_duration,
@@ -540,12 +542,7 @@ class SmpsParser:
             # Check for note names
             if token in SMPS_NOTE_NAMES:
                 # Finalize any pending note with last_duration
-                if pending_note is not None:
-                    pending_note.duration = last_duration
-                    if not pending_note.is_rest and not pending_note.is_dac:
-                        last_note_value = pending_note.note_value
-                    channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
-                    tick += pending_note.duration
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
 
                 note_val = SMPS_NOTE_NAMES[token]
                 pending_note = SmpsNote(
@@ -560,12 +557,7 @@ class SmpsParser:
             # Check for DAC names
             if token in SMPS_DAC_NAMES:
                 # Finalize pending note
-                if pending_note is not None:
-                    pending_note.duration = last_duration
-                    if not pending_note.is_rest and not pending_note.is_dac:
-                        last_note_value = pending_note.note_value
-                    channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
-                    tick += pending_note.duration
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
 
                 dac_val = SMPS_DAC_NAMES[token]
                 pending_note = SmpsNote(
@@ -644,12 +636,7 @@ class SmpsParser:
                 else:  # val >= 0x80
                     # Could be a note value (nRst=$80, nC0=$81, etc.)
                     # Finalize pending note first
-                    if pending_note is not None:
-                        pending_note.duration = last_duration
-                        if not pending_note.is_rest and not pending_note.is_dac:
-                            last_note_value = pending_note.note_value
-                        channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
-                        tick += pending_note.duration
+                    tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
 
                     if val == 0x80:
                         pending_note = SmpsNote(

@@ -18,7 +18,7 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E2 | `smpsNop` | — | byte | Write game-sync flag to shared RAM; no audio effect | parsed, ignored |
 | $E3 | `smpsReturn` | — | — | Return from `smpsCall` subroutine (S1/S2 drivers) | terminates inline |
 | $E4 | `smpsFade` | — | — | Fade in previous song (1-Up jingle mechanism) | ignored |
-| $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | ignored |
+| $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | parsed; per-channel divider applied to note durations at parse time |
 | $E6 | `smpsAlterVol` | — | signed byte | Add delta to SMPS_Track.Volume attenuation (cumulative) | → `Cxx` Set Volume |
 | $E7 | `smpsNoAttack` | — | — | Suppress attack envelope on next note | flagged on note |
 | $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in ticks | → `ECx` Note Cut |

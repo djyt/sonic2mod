@@ -54,8 +54,6 @@ sample_list:
   # --- PSG tone fTone_08 ---
   - [8, "psg_fTone_08_lo.raw", 32, 0]
   - [9, "psg_fTone_08_hi.raw", 32, 0]
-  # --- PSG noise (fTone_09 envelope) ---
-  - [10, "psg_noise.raw", 16, 0]
 
 dac_samples:
   # dKick: ×2 — native ~8250 Hz → note C2
@@ -105,13 +103,13 @@ voice_map:
       synth_root: E5
 
 psg_map:
-  0xE7:                    # form $E7 — white noise, LFSR follows PSG tone ch2 (rate 3)
+  0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
     mod_instrument: 11
-    root: A2               # MOD anchor — A2 keeps all PSG3 notes (up to B4) within MOD range with no clamping
+    root: A2               # MOD anchor — A2 keeps all PSG3 notes (up to E4) within MOD range with no clamping
     low: A3                # SMPS pitch anchor — nA3 (sem 45) → MOD A2; each semitone above/below shifts output ±1
-    synth_root: A3         # LFSR synthesis freq — A3 → tone2_n=509 (220 Hz); independent of root/target_rate
+    synth_root: C7         # LFSR synthesis freq — PSGFrequencies[A3+3=48] ≈ 2071 Hz → N=54; C7→N≈53 ✓
     noise_rate: 3
-    envelope: fTone_04
+    envelope: fTone_09     # PSG3 header voice (smpsPSGform changes noise type only, not envelope)
     base_volume: 0
 
 psg_voice_map:
@@ -126,8 +124,3 @@ psg_voice_map:
       mod_instrument: 9
       root: C2
       synth_root: C7
-  fTone_09:
-    type: white_noise
-    noise_rate: 0
-    mod_instrument: 10
-    root: C2

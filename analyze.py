@@ -620,8 +620,18 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for _lbl in _ch.psg_tone_stats:
             _label_to_channels.setdefault(_lbl, set()).add(_ch.name)
 
+    # For rate-3 noise channels: find the initial voice label (first non-"form $" entry in
+    # psg_tone_stats), which provides the volume envelope used throughout the channel.
+    _noise_ch_initial_voice: dict[str, str] = {}
+    for _ch_an in psg_channels:
+        if _channel_has_noise.get(_ch_an.name, False):
+            for _lbl in _ch_an.psg_tone_stats:
+                if not _lbl.startswith("form $"):
+                    _noise_ch_initial_voice[_ch_an.name] = _lbl
+                    break
+
     seen_psg: set[str] = set()
-    psg_noise_items: list[tuple] = []   # (form_byte, label, inst, ts)
+    psg_noise_items: list[tuple] = []   # (form_byte, label, inst, ts, ch_name, ch_init_trans)
     psg_tone_items: list[tuple] = []    # (label, inst, ts, split_point, inst2, is_noise_voice)
     for ch_an in psg_channels:
         for label, ts in ch_an.psg_tone_stats.items():
@@ -629,14 +639,16 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 seen_psg.add(label)
                 if label.startswith("form $"):
                     form_byte = int(label[6:], 16)
-                    psg_noise_items.append((form_byte, label, inst_counter, ts))
+                    psg_noise_items.append((form_byte, label, inst_counter, ts, ch_an.name, ch_an.initial_transpose))
                     inst_counter += 1
                 else:
                     _using = _label_to_channels.get(label, set())
                     is_noise_voice = bool(_using) and all(
                         _channel_has_noise.get(c, False) for c in _using
                     )
-                    if is_noise_voice or ts.note_count == 0:
+                    if is_noise_voice:
+                        continue  # envelope-only label on noise channel — not synthesized as an instrument
+                    if ts.note_count == 0:
                         psg_split: int | None = None
                         psg_inst2: int | None = None
                     else:
@@ -664,7 +676,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                      else f"  - [{inst}, \"fm_v{vi:02x}.raw\", 32, 0]")
         if split_point is not None:
             lines.append(f"  - [{inst2}, \"fm_v{vi:02x}_hi.raw\", 32, 0]")
-    for _form_byte, label, inst, _ts in psg_noise_items:
+    for _form_byte, label, inst, _ts, _ch_name, _ch_init_trans in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
         lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
     for label, inst, _ts, psg_split, psg_inst2, is_noise_voice in psg_tone_items:
@@ -722,14 +734,28 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
 
     # --- psg_map ---
     if psg_noise_items:
+        import math
         lines.append("")
         lines.append("psg_map:")
-        for form_byte, label, inst, _ts in psg_noise_items:
+        for form_byte, label, inst, ts, ch_name, ch_init_trans in psg_noise_items:
+            noise_rate = form_byte & 0x03
+            min_sem = ts.min_semitone if ts.note_count > 0 else 45
+            root_name = _note_in_octave2(min_sem)
+            initial_voice = _noise_ch_initial_voice.get(ch_name, "")
+
             lines.append(f"  0x{form_byte:02X}:                    # {label}")
             lines.append(f"    mod_instrument: {inst}")
-            lines.append("    root: A3")
-            lines.append(f"    noise_rate: {form_byte & 0x03}")
-            lines.append("    envelope: fTone_04")
+            lines.append(f"    root: {root_name}")
+            if noise_rate == 3 and ts.note_count > 0:
+                lines.append(f"    low:  {_sem_to_yaml(min_sem)}")
+            lines.append(f"    noise_rate: {noise_rate}")
+            if noise_rate == 3 and ts.note_count > 0:
+                idx = min_sem + ch_init_trans
+                chip_freq = 130.98 * (2.0 ** (idx / 12.0))
+                synth_idx = round(45 + 12.0 * math.log2(chip_freq / 440.0))
+                lines.append(f"    synth_root: {_sem_to_yaml(synth_idx + 12)}")
+            envelope = initial_voice if initial_voice else "fTone_04  # TODO: verify envelope"
+            lines.append(f"    envelope: {envelope}")
             lines.append("    base_volume: 0")
 
     # --- psg_voice_map ---

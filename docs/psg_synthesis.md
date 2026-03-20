@@ -80,13 +80,13 @@ The `type` field is **auto-inferred** from bit 2 of the byte: 0 = `periodic_nois
 
 ```yaml
 psg_map:
-  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise, rate 3 = follow tone ch2
+  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise, rate 3 = follow PSG3's own tone register $C0
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A2               # MOD note anchor — determines target_rate AND where low plays
     low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
-    synth_root: A3         # LFSR synthesis freq — A3 → tone2_n≈509 (220 Hz); independent of root
+    synth_root: C7         # LFSR synthesis freq — PSGFrequencies[A3+3=48] ≈ 2071 Hz → N=54; C7→N≈53 ✓
     noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (real LFSR freq from synth_root)
-    envelope: fTone_04     # Named envelope from psg_envelope_tables, or inline list
+    envelope: fTone_09     # PSG3 header voice (smpsPSGform changes noise type only, not envelope)
     base_volume: 0         # SN76489 attenuation 0=max, 15=silent
 ```
 
@@ -338,13 +338,28 @@ synth_root = low + total_transpose
 ### noise_rate: 3 (follow ch2) — pitch and timbre
 
 `noise_rate: 3` makes the SN76489 LFSR clock from PSG tone ch2's frequency divider N.
+In Sonic 1, PSG3's driver writes its own note frequency to SN76489 tone channel 2 (`$C0`)
+even in noise mode, so the LFSR tracks PSG3's own notes — not SMPS PSG channel 2.
+
 The synthesizer derives `tone2_n` from `synth_root` (or `root` if absent) and writes it to
 tone ch2 before rendering.  A fast warmup (N=1, 4096 discarded samples) spins the LFSR into
 its pseudo-random region to avoid the initial DC-bias artifact.
 
-Set `synth_root` to the SMPS note the chip actually plays at for the noise burst (e.g. `A3`
-for Marble Zone PSG3).  Set `root`/`low` separately to control MOD pitch anchoring — they
-are independent of `synth_root`.
+**Calculating synth_root for Sonic 1 rate-3 entries:**
+
+PSG3 note frequencies come from the `PSGFrequencies` table (index 0 = 130.98 Hz), not standard
+musical tuning.  Given anchor SMPS semitone `s` and channel `pitch_offset` `t`:
+
+```
+chip_freq       = 130.98 × 2^((s + t) / 12)
+synth_note_idx  = round(45 + 12 × log₂(chip_freq / 440))
+synth_root      = synth_note_idx + 12   (SMPS semitone: C1=12)
+```
+
+Example (Marble Zone PSG3, `low: A3` = sem 45, `pitch_offset: 3`):
+`s+t = 48` → `chip_freq ≈ 2071 Hz` → `synth_note_idx ≈ 72` → **`synth_root: C7`** → N ≈ 53 ✓
+
+Set `root`/`low` separately to control MOD pitch anchoring — they are independent of `synth_root`.
 
 The synthesized sample captures one fixed LFSR frequency.  Per-note timbre shifts (hardware
 tracks tone ch2 in real time) are approximated by the MOD playing the sample at different

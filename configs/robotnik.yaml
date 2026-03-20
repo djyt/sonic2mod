@@ -1,0 +1,105 @@
+# -------------------------------------------------------------------------------------------------
+# ROBOTNIK Conversion Script
+# -------------------------------------------------------------------------------------------------
+
+name: Robotnik
+input_file: sonic_1\music\Mus8C - Boss.asm
+output_file: output/robotnik.mod
+samples_dir: "samples/"
+
+auto_bpm: true
+target_speed: 4
+ticks_per_row: 1
+num_mod_channels: 8
+region: ntsc
+
+channels:
+  - source: DAC
+    mod_channel: 0
+  - source: FM1
+    mod_channel: 1
+  - source: FM2
+    mod_channel: 2
+  - source: FM3
+    mod_channel: 3
+  - source: FM4
+    mod_channel: 4
+  - source: FM5
+    mod_channel: 5
+  - source: PSG1
+    mod_channel: 6
+  - source: PSG2
+    mod_channel: 7
+
+sample_list:
+  # --- percussion ---
+  - [1, "snare.raw", 64, 0]
+  - [2, "timpani.raw", 64, 0]
+  # --- voice $00: alg 0: 1→2→3→4, fb 1 — FM2 ---
+  - [3, "fm_v00_lo.raw", 32, 0]
+  - [4, "fm_v00_hi.raw", 32, 0]
+  # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM3 ---
+  - [5, "fm_v01.raw", 32, 0]
+  # --- voice $02: alg 5: 1→(2+3+4), fb 7 — FM1, FM4 ---
+  - [6, "fm_v02.raw", 32, 0]
+  # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
+  - [7, "fm_v05.raw", 32, 0]
+  # --- PSG tone fTone_05 ---
+  - [8, "psg_fTone_05.raw", 32, 0]
+
+dac_samples:
+  # dSnare: ×47 — native ~24000 Hz → note Fs3
+  - name: dSnare
+    mod_instrument: 1
+    mod_note: Fs3
+  # dHiTimpani: ×8 — native ~9588 Hz → note Ds2
+  - name: dHiTimpani
+    mod_instrument: 2
+    mod_note: Ds2
+  # dLowTimpani: ×8 — native ~7154 Hz → note A1
+  - name: dLowTimpani
+    mod_instrument: 2
+    mod_note: A1
+
+voice_map:
+  # $00 — alg 0: 1→2→3→4, fb 1 — used by FM2
+  0:
+    - low:  B3
+      high: B4
+      mod_instrument: 3
+      root: B2
+      synth_root: B2
+    - low:  C5
+      high: Fs5
+      mod_instrument: 4
+      root: C2
+      synth_root: C4
+  # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM3
+  1:
+    - low:  E5
+      high: Fs6
+      mod_instrument: 5
+      root: E2
+      synth_root: E5
+  # $02 — alg 5: 1→(2+3+4), fb 7 — used by FM1, FM4
+  2:
+    - low:  Fs6
+      high: Fs7
+      mod_instrument: 6
+      root: Fs2
+      synth_root: Fs6
+  # $05 — alg 2: (1+(2→3))→4, fb 7 — used by FM5
+  5:
+    - low:  E6
+      high: Fs7
+      mod_instrument: 7
+      root: E2
+      synth_root: E5
+
+psg_voice_map:
+  fTone_05:
+    low:  Fs6
+    high: Fs7
+    mod_instrument: 8
+    root: Fs2
+    synth_root: Fs6

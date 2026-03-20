@@ -290,16 +290,19 @@ class SmpsParser:
         self.label_tick_pos[start_label] = 0
 
         is_psg = ch_header.channel_type == "PSG"
+        _seen_labels: set[str] = {start_label}
         tick, _, _, _ = self._parse_channel_lines(
             channel, start_line, tick, last_duration, no_attack_pending,
-            ch_header.channel_type == "DAC", is_psg=is_psg
+            ch_header.channel_type == "DAC", is_psg=is_psg,
+            _seen_labels=_seen_labels,
         )
 
         return channel
 
     def _parse_channel_lines(self, channel, start_line, tick, last_duration,
                               no_attack_pending, is_dac, stop_line=None,
-                              pending_note=None, last_note_value=0, is_psg=False):
+                              pending_note=None, last_note_value=0, is_psg=False,
+                              _seen_labels=None):
         """Parse lines from start_line, appending events to channel.
 
         Args:
@@ -313,6 +316,8 @@ class SmpsParser:
         Returns:
             (tick, last_duration, pending_note, last_note_value) after parsing
         """
+        if _seen_labels is None:
+            _seen_labels = set()
         i = start_line
         while i < len(self.lines):
             # Stop before stop_line if set (used by loop unrolling)
@@ -326,6 +331,7 @@ class SmpsParser:
             if line.endswith(':'):
                 label_name = line[:-1].strip()
                 self.label_tick_pos[label_name] = tick
+                _seen_labels.add(label_name)
                 i += 1
                 continue
 
@@ -335,14 +341,26 @@ class SmpsParser:
                 tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 return tick, last_duration, None, last_note_value
 
-            # smpsJump — song loop point.
+            # smpsJump — loop-back or forward dispatch.
             # Finalize any pending note before the jump.
             m = re.match(r'smpsJump\s+(\S+)', line)
             if m:
+                target = m.group(1)
                 tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 channel.has_jump = True
-                channel.jump_target_label = m.group(1)
-                return tick, last_duration, None, last_note_value
+                channel.jump_target_label = target
+                if target in _seen_labels or target not in self.labels:
+                    # Loop-back to an already-visited label, or unknown target — stop.
+                    return tick, last_duration, None, last_note_value
+                # Unseen target — follow the forward/dispatch jump.
+                _seen_labels.add(target)
+                jump_line = self.labels[target] + 1
+                return self._parse_channel_lines(
+                    channel, jump_line, tick, last_duration,
+                    no_attack_pending, is_dac, stop_line=None,
+                    pending_note=None, last_note_value=last_note_value,
+                    is_psg=is_psg, _seen_labels=_seen_labels,
+                )
 
             # smpsLoop — unroll
             m = re.match(r'smpsLoop\s+\$([0-9A-Fa-f]+)\s*,\s*\$([0-9A-Fa-f]+)\s*,\s*(\S+)', line)
@@ -365,7 +383,7 @@ class SmpsParser:
                             channel, target_line, tick, last_duration,
                             no_attack_pending, is_dac, stop_line=i,
                             pending_note=None, last_note_value=last_note_value,
-                            is_psg=is_psg
+                            is_psg=is_psg, _seen_labels=_seen_labels,
                         )
                         # Finalize any note pending at the loop-body end before the next replay
                         tick, last_note_value = self._finalize_pending(channel, loop_pend, tick, last_duration, last_note_value)

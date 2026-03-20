@@ -120,8 +120,11 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
             tone2_n = note_to_psg_n(synth_idx, psg_synth.clock_rate)
         # Cap sustain to envelope length so the sample ends at the natural decay tail
         # rather than holding noise output for the full song-longest-note duration.
+        # Include ramp-to-silence frames so _render_with_envelope can fade to attenuation 15.
         if resolved_env:
-            noise_sustain = (len(resolved_env) + 1) / fps
+            held_att = min(15, entry.base_volume + resolved_env[-1])
+            ramp_frames = max(0, 15 - held_att)
+            noise_sustain = (len(resolved_env) + ramp_frames + 1) / fps
         else:
             noise_sustain = min(psg_synth.sustain_duration, 0.5)
         if verbose:

@@ -118,14 +118,27 @@ def _render_with_envelope(
     samples_per_frame = target_rate / fps
     env_last = len(envelope) - 1
     env_idx = 0
+    ramp_vol: int | None = None   # None = envelope phase; int = ramping to silence
     out: list = []
     rendered = 0
     while rendered < sustain_n:
-        delta = envelope[min(env_idx, env_last)]
-        vol = max(0, min(15, base_volume + delta))
+        if ramp_vol is not None:
+            if ramp_vol >= 15:
+                # Fully silent — render remaining frames and exit
+                sn.write_volume(ch, 15)
+                out.extend(sn.render_samples(sustain_n - rendered))
+                break
+            vol = ramp_vol
+            ramp_vol += 1
+        else:
+            delta = envelope[env_idx]
+            vol = max(0, min(15, base_volume + delta))
+            if env_idx < env_last:
+                env_idx += 1
+            else:
+                # Last envelope frame played — begin ramp from next attenuation step
+                ramp_vol = vol + 1
         sn.write_volume(ch, vol)
-        if env_idx < env_last:
-            env_idx += 1
         frame_n = min(round(samples_per_frame), sustain_n - rendered)
         out.extend(sn.render_samples(frame_n))
         rendered += frame_n

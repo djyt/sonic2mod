@@ -47,6 +47,16 @@ for _oct in range(1, 4):
 del _oct, _notes, _key, _enum_name
 
 
+def _psg_att_to_mod(att: int) -> int:
+    """Convert SN76489 4-bit attenuation to MOD volume (0-64).
+
+    SN76489 attenuation: 0=max, 15=silent, 2 dB per step.
+    """
+    if att >= 15:
+        return 0
+    return round(64 * 10 ** (-(att * 2) / 20.0))
+
+
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
@@ -374,6 +384,14 @@ class SmpsToModConverter:
         # a subsequent set_note call would write a note (set_note retains effect bytes,
         # so a pre-placed C00 would silence the next note trigger).
         is_psg = chan_cfg.source.startswith('PSG')
+
+        # PSG attenuation state (0-15, 2 dB/step).  Initialized from the
+        # smpsHeaderPSG volume byte; updated on smpsPSGAlterVol events.
+        psg_attenuation: int = 0
+        if is_psg:
+            psg_attenuation = channel.header.volume
+            current_volume = round(_psg_att_to_mod(psg_attenuation) * chan_cfg.volume / 64)
+
         _note_on_positions: set[tuple[int, int]] = set()
         if is_psg:
             for _ev in channel.events:
@@ -392,7 +410,11 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsAlterVol':
                     delta = eff.params[0]
-                    current_volume = max(0, min(64, current_volume - delta))
+                    if is_psg:
+                        psg_attenuation = max(0, min(15, psg_attenuation + delta))
+                        current_volume = round(_psg_att_to_mod(psg_attenuation) * chan_cfg.volume / 64)
+                    else:
+                        current_volume = max(0, min(64, current_volume - delta))
 
                 elif eff.effect_type == 'smpsAlterNote':
                     pass  # raw FNUM offset (~10 cents); does not affect note pitch or voice_map lookup

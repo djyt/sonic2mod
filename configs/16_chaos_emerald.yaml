@@ -1,0 +1,75 @@
+# -------------------------------------------------------------------------------------------------
+# Chaos Emerald Conversion Script
+#
+# todo: Needed to increase synth_root for the PSG voices by two octaves over the recommendation
+# todo: some tuning on the dupe channels
+# -------------------------------------------------------------------------------------------------
+
+name: Chaos Emerald
+input_file: sonic_1\music\Mus93 - Get Emerald.asm
+output_file: output/16_chaos_emerald.mod
+samples_dir: "samples/"
+
+auto_bpm: true
+target_speed: 3
+ticks_per_row: 2
+num_mod_channels: 8
+region: ntsc
+
+channels:
+  - source: FM1
+    mod_channel: 0
+  - source: FM2
+    mod_channel: 1
+  - source: FM3
+    mod_channel: 2
+  - source: FM4
+    mod_channel: 3
+  - source: FM5
+    mod_channel: 4
+  - source: FM6
+    mod_channel: 5
+  - source: PSG1
+    mod_channel: 6
+  - source: PSG2
+    mod_channel: 7
+
+sample_list:
+  # --- voice $00: alg 4: (1→2)+(3→4), fb 0 — FM1, FM2, FM3 ---
+  - [1, "fm_v00.raw", 32, 0]
+  # --- voice $01: alg 4: (1→2)+(3→4), fb 7 — FM4, FM5, FM6 ---
+  - [2, "fm_v01.raw", 32, 0]
+  # --- PSG tone fTone_04 ---
+  - [3, "psg_fTone_04.raw", 64, 0]
+  # --- PSG tone fTone_05 ---
+  - [4, "psg_fTone_05.raw", 64, 0]
+
+voice_map:
+  # $00 — alg 4: (1→2)+(3→4), fb 0 — used by FM1, FM2, FM3
+  0:
+    - low:  C5
+      high: G6
+      mod_instrument: 1
+      root: C2
+      synth_root: C5
+  # $01 — alg 4: (1→2)+(3→4), fb 7 — used by FM4, FM5, FM6
+  1:
+    - low:  E5
+      high: G6
+      mod_instrument: 2
+      root: E2
+      synth_root: E5
+
+psg_voice_map:
+  fTone_04:
+    low:  D5
+    high: G5
+    mod_instrument: 3
+    root: D2
+    synth_root: D7
+  fTone_05:
+    low:  D5
+    high: G5
+    mod_instrument: 4
+    root: D2
+    synth_root: D7

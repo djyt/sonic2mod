@@ -330,9 +330,16 @@ class SmpsParser:
             line = self.lines[i]
 
             # Check if this line is a label — record its tick position.
-            # Labels do not advance the tick, so pending_note is unchanged.
+            # If a dc.b line ended with a bare note name (no explicit duration), that note
+            # is still pending and hasn't advanced the tick yet.  Finalize it now so the
+            # label records the tick *after* the note completes, matching the binary layout
+            # where labels always appear at a fresh command boundary.
             if line.endswith(':'):
                 label_name = line[:-1].strip()
+                tick, last_note_value = self._finalize_pending(
+                    channel, pending_note, tick, last_duration, last_note_value
+                )
+                pending_note = None
                 self.label_tick_pos[label_name] = tick
                 _seen_labels.add(label_name)
                 i += 1

@@ -26,36 +26,36 @@ BASELINES_DIR = _HERE.parent / "tests" / "baselines"
 
 TEST_CASES = [
     {
-        "name": "ghz",
-        "config": "configs/ghz.yaml",
+        "name": "green_hill_zone",
+        "config": "configs/02_green_hill_zone.yaml",
         "baseline": "tests/baselines/ghz_baseline.mod",
         "ignore_channels": [],
         "description": "GHZ — all channels",
     },
     {
         "name": "title_screen",
-        "config": "configs/title_screen.yaml",
+        "config": "configs/01_title_screen.yaml",
         "baseline": "tests/baselines/title_screen_baseline.mod",
         "ignore_channels": [],
         "description": "Title Screen — all channels",
     },
     {
         "name": "special_stage",
-        "config": "configs/special_stage.yaml",
+        "config": "configs/08_special_stage.yaml",
         "baseline": "tests/baselines/special_stage_baseline.mod",
         "ignore_channels": [],
         "description": "Special Stage — all channels",
     },
     {
         "name": "stage_clear",
-        "config": "configs/stage_clear.yaml",
+        "config": "configs/11_stage_clear.yaml",
         "baseline": "tests/baselines/stage_clear_baseline.mod",
         "ignore_channels": [],
         "description": "Stage Clear — all channels",
     },
     {
         "name": "scrap_brain_zone",
-        "config": "configs/scrap_brain_zone.yaml",
+        "config": "configs/07_scrap_brain_zone.yaml",
         "baseline": "tests/baselines/scrap_brain_zone_baseline.mod",
         "ignore_channels": [],
         "description": "Scrap Brain Zone — all channels",

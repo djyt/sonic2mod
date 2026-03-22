@@ -462,7 +462,10 @@ class SmpsParser:
         can use _effective_tpr consistently for all time conversions.
 
         Scaled params:
-          smpsNoteFill params[0] — fill duration (raw ticks → DT units)
+          smpsNoteFill params[0] — fill duration: NoteTimeout is decremented every raw
+                                   VBlank. The parser stores all durations as raw_ticks ×
+                                   chan_tempo_div (VBlank units), so fill_raw is already in
+                                   the same units — no conversion needed.
           smpsModSet   params[0] — wait before vibrato (raw ticks → DT units)
           smpsModSet   params[1] — speed_raw; scales _smps_cycle to DT units so that
                                    vibrato_speed = round(16 * effective_tpr / smps_cycle)
@@ -471,7 +474,10 @@ class SmpsParser:
         if chan_tempo_div == 1:
             return effect  # no scaling needed
         if effect.effect_type == 'smpsNoteFill':
-            return SmpsEffect('smpsNoteFill', [effect.params[0] * chan_tempo_div])
+            # NoteTimeout is decremented every raw VBlank (not per driver tick).
+            # The parser stores all durations in VBlank units (raw × chan_tempo_div),
+            # so fill_raw is already in the same units — pass it through unchanged.
+            return effect
         if effect.effect_type == 'smpsModSet':
             p = list(effect.params)
             p[0] = p[0] * chan_tempo_div   # wait

@@ -1,0 +1,87 @@
+# -------------------------------------------------------------------------------------------------
+# 1-Up / Extra Life Conversion Script
+# Todo: analyze.py suggests the wrong synth_root for psg_voice_map. Manually corrected.
+# -------------------------------------------------------------------------------------------------
+name: 1-Up (Extra Life)
+input_file: sonic_1\music\Mus88 - Extra Life.asm
+output_file: output/15_1up.mod
+samples_dir: "samples/"
+
+auto_bpm: true
+target_speed: 3
+ticks_per_row: 1
+num_mod_channels: 8
+region: ntsc
+
+channels:
+  - source: DAC
+    mod_channel: 0
+  - source: FM1
+    mod_channel: 1
+  - source: FM2
+    mod_channel: 2
+  - source: FM3
+    mod_channel: 3
+  - source: FM4
+    mod_channel: 4
+  - source: FM5
+    mod_channel: 5
+  - source: PSG1
+    mod_channel: 6
+
+sample_list:
+  # --- percussion ---
+  - [1, "timpani.raw", 64, 0]
+  # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM4 ---
+  - [2, "fm_v00.raw", 32, 0]
+  # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
+  - [3, "fm_v01.raw", 32, 0]
+  # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM3, FM5 ---
+  - [4, "fm_v02.raw", 32, 0]
+  # --- PSG tone fTone_05 ---
+  - [5, "psg_fTone_05.raw", 32, 0]
+
+dac_samples:
+  # dHiTimpani: ×5 — native ~9588 Hz → note Ds2
+  - name: dHiTimpani
+    mod_instrument: 1
+    mod_note: Ds2
+  # dVLowTimpani: ×3 — native ~7006 Hz → note A1
+  - name: dVLowTimpani
+    mod_instrument: 1
+    mod_note: A1
+  # dLowTimpani: ×2 — native ~7154 Hz → note A1
+  - name: dLowTimpani
+    mod_instrument: 1
+    mod_note: A1
+
+voice_map:
+  # $00 — alg 2: (1+(2→3))→4, fb 7 — used by FM1, FM4
+  0:
+    - low:  Cs7
+      high: Fs7
+      mod_instrument: 2
+      root: Cs2
+      synth_root: Cs6
+  # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
+  1:
+    - low:  A6
+      high: D7
+      mod_instrument: 3
+      root: A2
+      synth_root: A5
+  # $02 — alg 2: (1+(2→3))→4, fb 7 — used by FM3, FM5
+  2:
+    - low:  G4
+      high: A4
+      mod_instrument: 4
+      root: G2
+      synth_root: G3
+
+psg_voice_map:
+  fTone_05:
+    low:  A6
+    high: D7
+    mod_instrument: 5
+    root: A2
+    synth_root: A5

@@ -1,0 +1,97 @@
+# -------------------------------------------------------------------------------------------------
+# INVINCIBILITY Conversion Script
+#
+# Todo: FM1 and FM5 are same except for smpsAlterNote       $03
+# -------------------------------------------------------------------------------------------------
+
+name: Invincibility
+input_file: sonic_1\music\Mus87 - Invincibility.asm
+output_file: output/14_invincibility.mod
+samples_dir: "samples/"
+
+auto_bpm: true
+target_speed: 3
+ticks_per_row: 2
+num_mod_channels: 8
+region: ntsc
+
+channels:
+  - source: DAC
+    mod_channel: 0
+  - source: FM1
+    mod_channel: 1
+  - source: FM2
+    mod_channel: 2
+  - source: FM3
+    mod_channel: 3
+  - source: FM4
+    mod_channel: 4
+  - source: FM5
+    mod_channel: 5
+  - source: PSG3
+    mod_channel: 6
+
+sample_list:
+  # --- percussion ---
+  - [1, "snare.raw", 64, 0]
+  - [2, "kick.raw", 64, 0]
+  # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM3, FM4, FM5 ---
+  - [3, "fm_v00_lo.raw", 32, 0]
+  - [4, "fm_v00_hi.raw", 32, 0]
+  # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
+  - [5, "fm_v01_lo.raw", 32, 0]
+  - [6, "fm_v01_hi.raw", 32, 0]
+  # --- PSG noise (form $E7) ---
+  - [7, "psg_noise.raw", 16, 0]
+
+dac_samples:
+  # dSnare: ×42 — native ~24000 Hz → note Fs3
+  - name: dSnare
+    mod_instrument: 1
+    mod_note: Fs3
+  # dKick: ×23 — native ~8250 Hz → note C2
+  - name: dKick
+    mod_instrument: 2
+    mod_note: C2
+
+voice_map:
+  # $00 — alg 2: (1+(2→3))→4, fb 7 — used by FM1, FM3, FM4, FM5
+  0:
+    - low:  G5
+      high: B6
+      mod_instrument: 3
+      root: G2
+      synth_root: G5
+    - low:  C7
+      high: Cs7
+      mod_instrument: 4
+      root: C2
+      synth_root: C7
+  # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
+  1:
+    - low:  G2
+      high: B3
+      mod_instrument: 5
+      root: G2
+      synth_root: G2
+    - low:  C4
+      high: D4
+      mod_instrument: 6
+      root: C2
+      synth_root: C4
+
+psg_map:
+  0xE7:                    # form $E7
+    mod_instrument: 7
+    root: A3
+    noise_rate: 3
+    synth_root: A8
+    envelope: fTone_04
+    base_volume: 0
+
+# -------------------------------------------------------------------------------------------------
+# Structural pattern breaks to align to grid
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 23

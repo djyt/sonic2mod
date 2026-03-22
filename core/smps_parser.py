@@ -671,14 +671,23 @@ class SmpsParser:
                         pending_note = None
                     else:
                         # Standalone duration.
-                        # PSG: driver re-triggers (PSGDoNoteOn on each DurationTimeout expiry).
+                        # PSG: driver re-triggers (PSGDoNoteOn on each DurationTimeout expiry),
+                        #      UNLESS smpsNoAttack precedes it — SetPSGVolume then skips volume
+                        #      write (bit 4 set), so the envelope continues without restart.
                         # DAC: driver re-triggers SavedDAC on each DurationTimeout expiry.
-                        # FM: note sustains naturally — treat as rest/continuation.
+                        # FM:  behavior depends on smpsNoAttack (see else branch below).
                         last_duration = scaled
-                        if is_psg and last_note_value != 0:
+                        if is_psg and not no_attack_pending and last_note_value != 0:
                             cont_note = SmpsNote(
                                 note_value=last_note_value,
                                 duration=scaled,
+                            )
+                        elif is_psg:
+                            cont_note = SmpsNote(
+                                note_value=0x80,
+                                duration=scaled,
+                                is_rest=True,
+                                is_no_attack=True,
                             )
                         elif is_dac:
                             # Find the most recent note event. If it's a DAC sample, retrigger it.

@@ -701,11 +701,14 @@ class SmpsParser:
                                     is_no_attack=True,
                                 )
                         else:
-                            # FM: standalone duration retrigggers the last note.
-                            # FMUpdateTrack always calls FMNoteOn unconditionally after
-                            # DurationTimeout expires; FMPrepareNote uses the last Freq
-                            # (unchanged since no FMSetFreq was called for a bare duration).
-                            if last_note_value != 0:
+                            # FM: behavior depends on whether smpsNoAttack preceded the
+                            # standalone duration.
+                            # Without smpsNoAttack: FMNoteOn fires → key-on → retrigger
+                            #   (e.g. 1-Up: $03,$03,$06,$06 after nE7 → staccato arpeggio).
+                            # With smpsNoAttack: FMNoteOn suppressed by no-attack flag →
+                            #   envelope sustains, no key-on
+                            #   (e.g. GHZ: smpsNoAttack,$3C after nF5 → held note).
+                            if not no_attack_pending and last_note_value != 0:
                                 cont_note = SmpsNote(
                                     note_value=last_note_value,
                                     duration=scaled,

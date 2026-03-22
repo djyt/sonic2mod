@@ -357,12 +357,13 @@ class SmpsParser:
             if m:
                 target = m.group(1)
                 tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                channel.has_jump = True
-                channel.jump_target_label = target
                 if target in _seen_labels or target not in self.labels:
-                    # Loop-back to an already-visited label, or unknown target — stop.
+                    # Loop-back to an already-visited label (backward loop), or unknown
+                    # target — record the loop and stop parsing.
+                    channel.has_jump = True
+                    channel.jump_target_label = target
                     return tick, last_duration, None, last_note_value, chan_tempo_div
-                # Unseen target — follow the forward/dispatch jump.
+                # Unseen target — forward/dispatch jump; follow it without marking as a loop.
                 _seen_labels.add(target)
                 jump_line = self.labels[target] + 1
                 return self._parse_channel_lines(
@@ -700,12 +701,22 @@ class SmpsParser:
                                     is_no_attack=True,
                                 )
                         else:
-                            cont_note = SmpsNote(
-                                note_value=0x80,
-                                duration=scaled,
-                                is_rest=True,
-                                is_no_attack=True,
-                            )
+                            # FM: standalone duration retrigggers the last note.
+                            # FMUpdateTrack always calls FMNoteOn unconditionally after
+                            # DurationTimeout expires; FMPrepareNote uses the last Freq
+                            # (unchanged since no FMSetFreq was called for a bare duration).
+                            if last_note_value != 0:
+                                cont_note = SmpsNote(
+                                    note_value=last_note_value,
+                                    duration=scaled,
+                                )
+                            else:
+                                cont_note = SmpsNote(
+                                    note_value=0x80,
+                                    duration=scaled,
+                                    is_rest=True,
+                                    is_no_attack=True,
+                                )
                         channel.events.append(SmpsEvent(note=cont_note, tick_position=tick))
                         tick += scaled
                     continue

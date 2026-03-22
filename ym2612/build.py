@@ -12,18 +12,20 @@ from pathlib import Path
 # Paths relative to this file
 _HERE = Path(__file__).parent
 _ROOT = _HERE.parent
-_SRC  = _ROOT / "reference" / "Nuked-OPN2" / "ym3438.c"
-_INC  = _ROOT / "reference" / "Nuked-OPN2"
+_SRC       = _ROOT / "reference" / "Nuked-OPN2" / "ym3438.c"
+_BATCH_SRC = _HERE / "ym3438_batch.c"
+_INC       = _ROOT / "reference" / "Nuked-OPN2"
 
 _LIB_NAME = "ym3438.dll" if platform.system() == "Windows" else "ym3438.so"
 _LIB_PATH = _HERE / _LIB_NAME
 
 
 def _needs_rebuild() -> bool:
-    """Return True if DLL is missing or older than the C source."""
+    """Return True if DLL is missing or older than any C source."""
     if not _LIB_PATH.exists():
         return True
-    return _SRC.stat().st_mtime > _LIB_PATH.stat().st_mtime
+    lib_mtime = _LIB_PATH.stat().st_mtime
+    return _SRC.stat().st_mtime > lib_mtime or _BATCH_SRC.stat().st_mtime > lib_mtime
 
 
 def _build_with_gcc(src: Path, out: Path, inc: Path) -> None:
@@ -34,6 +36,7 @@ def _build_with_gcc(src: Path, out: Path, inc: Path) -> None:
         f"-I{inc}",
         "-o", str(out),
         str(src),
+        str(_BATCH_SRC),
     ]
     if platform.system() != "Windows":
         cmd.insert(1, "-fPIC")
@@ -49,6 +52,7 @@ def _build_with_msvc(src: Path, out: Path, inc: Path) -> None:
         "/O2",
         f"/I{inc}",
         str(src),
+        str(_BATCH_SRC),
         f"/Fe:{out}",
         f"/Fo:{obj}",
         "/link",

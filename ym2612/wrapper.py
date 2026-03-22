@@ -81,6 +81,11 @@ def _load_lib() -> ctypes.CDLL:
     lib.OPN2_Write.restype  = None
     lib.OPN2_Write.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint8]
 
+    # void OPN2_RenderBatch(void *chip, int n_samples, int32_t *buf_l, int32_t *buf_r)
+    lib.OPN2_RenderBatch.restype  = None
+    lib.OPN2_RenderBatch.argtypes = [ctypes.c_void_p, ctypes.c_int,
+                                      ctypes.c_void_p, ctypes.c_void_p]
+
     return lib
 
 
@@ -169,8 +174,9 @@ class OPN2:
     def render_samples(self, n_samples: int) -> list:
         """Clock the chip and collect n_samples stereo pairs.
 
-        Clocks the chip ``n_samples × 24`` times internally, accumulating
-        all 24 mol/mor values per batch.  In YM2612 mode the chip time-
+        Delegates to the C helper OPN2_RenderBatch which runs the
+        ``n_samples × 24`` clock loop entirely in C, writing results into
+        pre-allocated int32 buffers.  In YM2612 mode the chip time-
         multiplexes six channels across the 24-clock period: each channel's
         audio appears at the four output-enable clocks where
         ``(cycles & 3) == 3``; all other clocks carry a sign-only DC bias
@@ -183,7 +189,17 @@ class OPN2:
         Returns:
             List of (left, right) tuples centred on 0.
         """
-        dc = _CLOCKS_PER_SAMPLE * 3   # ≈ 72 — YM2612-mode silence level
+        buf_l = (ctypes.c_int32 * n_samples)()
+        buf_r = (ctypes.c_int32 * n_samples)()
+        self._lib.OPN2_RenderBatch(self._chip, n_samples, buf_l, buf_r)
+        return list(zip(buf_l, buf_r))
+
+    def _render_samples_legacy(self, n_samples: int) -> list:
+        """Original Python-loop implementation — kept for reference only.
+
+        Replaced by render_samples() which calls OPN2_RenderBatch in C.
+        """
+        dc = _CLOCKS_PER_SAMPLE * 3
 
         out = []
         lib     = self._lib

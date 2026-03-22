@@ -277,6 +277,9 @@ class SmpsToModConverter:
                     new_ev = copy.copy(ev)
                     new_ev.note = copy.copy(ev.note) if ev.note else None
                     new_ev.tick_position = new_tick
+                    if new_ev.note:
+                        cap_dur = global_last_tick - new_tick
+                        new_ev.note.duration = min(new_ev.note.duration, cap_dur)
                     ch.events.append(new_ev)
                 offset += loop_span
 

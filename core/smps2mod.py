@@ -57,6 +57,17 @@ def _psg_att_to_mod(att: int) -> int:
     return round(64 * 10 ** (-(att * 2) / 20.0))
 
 
+def _fm_tl_to_mod(tl: int) -> int:
+    """Convert YM2612 TL offset to MOD volume (0-64).
+
+    TL offset: 0=max, 127=silent, 0.75 dB per step.
+    Used for smpsHeaderFM initial_vol and smpsAlterVol deltas.
+    """
+    if tl >= 127:
+        return 0
+    return round(64 * 10 ** (-(tl * 0.75) / 20.0))
+
+
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
@@ -392,6 +403,13 @@ class SmpsToModConverter:
             psg_attenuation = channel.header.volume
             current_volume = round(_psg_att_to_mod(psg_attenuation) * chan_cfg.volume / 64)
 
+        # FM TL-offset state (0-127, 0.75 dB/step).  Initialized from the
+        # smpsHeaderFM initial_vol byte; updated on smpsAlterVol events.
+        fm_tl_offset: int = 0
+        if not is_psg and not is_dac:
+            fm_tl_offset = channel.header.volume
+            current_volume = round(_fm_tl_to_mod(fm_tl_offset) * chan_cfg.volume / 64)
+
         _note_on_positions: set[tuple[int, int]] = set()
         if is_psg:
             for _ev in channel.events:
@@ -414,7 +432,8 @@ class SmpsToModConverter:
                         psg_attenuation = max(0, min(15, psg_attenuation + delta))
                         current_volume = round(_psg_att_to_mod(psg_attenuation) * chan_cfg.volume / 64)
                     else:
-                        current_volume = max(0, min(64, current_volume - delta))
+                        fm_tl_offset = max(0, min(127, fm_tl_offset + delta))
+                        current_volume = round(_fm_tl_to_mod(fm_tl_offset) * chan_cfg.volume / 64)
 
                 elif eff.effect_type == 'smpsAlterNote':
                     pass  # raw FNUM offset (~10 cents); does not affect note pitch or voice_map lookup

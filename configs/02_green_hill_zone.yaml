@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
 input_file: "sonic_1/music/Mus81 - GHZ.asm"
-output_file: "output/ghz_final.mod"
+output_file: "output/02_green_hill_zone.mod"
 samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -63,33 +63,33 @@ sample_list:
   - [1,  "kick.raw",        64, 0]
   - [2,  "snare.raw",       64, 0]
   # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
-  - [3,  "ghz_v02.raw",     32, 0]
+  - [3,  "ghz_v02.raw",     64, 0]
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
-  - [4,  "ghz_v05.raw",     16, 0]
-  - [5,  "ghz_v05_lo.raw",  16, 0]  
+  - [4,  "ghz_v05.raw",     64, 0]
+  - [5,  "ghz_v05_lo.raw",  64, 0]
   # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
   - [6,  "ghz_v06.raw",     64, 0]
   # --- PSG White Noise ---
-  - [7,  "psg_noise.raw",   16, 0]
+  - [7,  "psg_noise.raw",   32, 0]
   # --- PSG Voices ---
-  - [8,  "psg_tone01.raw",  16, 0]
-  - [9,  "psg_tone03.raw",  16, 0]
-  - [10, "psg_tone05.raw",  16, 0]
-  - [11, "psg_tone06.raw",  16, 0]
+  - [8,  "psg_tone01.raw",  32, 0]
+  - [9,  "psg_tone03.raw",  32, 0]
+  - [10, "psg_tone05.raw",  32, 0]
+  - [11, "psg_tone06.raw",  32, 0]
   # --- voice $00: deep bass (FM2 opening) ---
-  - [13,  "ghz_v00.raw",    32, 0]
+  - [13,  "ghz_v00.raw",    64, 0]
   # --- voice $01: bass/rhythm pad (FM2 main loop) ---
-  - [16,  "ghz_v01.raw",    32, 0]
+  - [16,  "ghz_v01.raw",    64, 0]
   # --- voice $07: bridge voice (FM1/FM3/FM4) ---
-  - [19, "ghz_v07.raw",     32, 0]
+  - [19, "ghz_v07.raw",     64, 0]
   # --- voice $08: bright synth (FM3/FM4/FM5 main) ---
-  - [22, "ghz_v08.raw",     32, 0]
-  - [23, "ghz_v08_hi.raw",  32, 0]
+  - [22, "ghz_v08.raw",     64, 0]
+  - [23, "ghz_v08_hi.raw",  64, 0]
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
-  - [25, "ghz_v04.raw",     32, 0]
-  - [26, "ghz_v04_lo.raw",  32, 0]
-  - [27, "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
-  - [28, "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
+  - [25, "ghz_v04.raw",     64, 0]
+  - [26, "ghz_v04_lo.raw",  64, 0]
+  - [27, "ghz_v04.raw",     64, 1] # Same Sample finetune +1 (~+12.5 cents)
+  - [28, "ghz_v04_lo.raw",  64, 1] # Same Sample finetune +1 (~+12.5 cents)
 
 
 # -------------------------------------------------------------------------------------------------

@@ -39,11 +39,11 @@ sample_list:
   - [4, "fm_v00_lo.raw", 64, 0]
   - [5, "fm_v00_hi.raw", 64, 0]
   # --- voice $01: Alg 2, FB 7 — FM2 ---
-  - [6, "fm_v01.raw", 64, 0]
+  - [6, "fm_v01.raw", 32, 0]
   # --- voice $02: Alg 5, FB 7 — FM3, FM4 ---
-  - [7, "fm_v02.raw", 64, 0]
+  - [7, "fm_v02.raw", 32, 0]
   # --- voice $03: Alg 5, FB 7 — FM5 ---
-  - [8, "fm_v03.raw", 64, 0]
+  - [8, "fm_v03.raw", 16, 0]
   # --- PSG tone fTone_05 ---
   - [9, "psg_fTone_05_lo.raw", 16, 0]
   - [10, "psg_fTone_05_hi.raw", 16, 0]

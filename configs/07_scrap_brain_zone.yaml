@@ -1,7 +1,6 @@
 # -------------------------------------------------------------------------------------------------
 # SCRAP BRAIN ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
-
 name: Scrap Brain Zone
 input_file: sonic_1\music\Mus86 - SBZ.asm
 output_file: output/07_scrap_brain_zone.mod
@@ -39,19 +38,19 @@ sample_list:
   - [2, "kick.raw", 64, 0]
   - [3, "timpani.raw", 64, 0]
   # --- voice $00: Alg 0, FB 1 — FM2, FM3 ---
-  - [4, "fm_v00.raw", 64, 0]
+  - [4, "fm_v00.raw", 32, 0]
   # --- voice $01: Alg 4, FB 5 — FM3 ---
-  - [5, "fm_v01.raw", 64, 0]
+  - [5, "fm_v01.raw", 32, 0]
   # --- voice $02: Alg 5, FB 7 — FM1, FM4, FM5 ---
-  - [6, "fm_v02.raw", 64, 0]
+  - [6, "fm_v02.raw", 32, 0]
   # --- voice $03: Alg 1, FB 5 — FM1, FM3 ---
-  - [7, "fm_v03.raw", 64, 0]
+  - [7, "fm_v03.raw", 16, 0]
   # --- voice $04: Alg 5, FB 7 — FM4, FM5 ---
-  - [8, "fm_v04_lo.raw", 64, 0]
-  - [9, "fm_v04_hi.raw", 64, 0]
+  - [8, "fm_v04_lo.raw", 32, 0]
+  - [9, "fm_v04_hi.raw", 32, 0]
   # --- voice $05: Alg 0, FB 6 — FM1, FM4 ---
-  - [10, "fm_v05_lo.raw", 64, 0]
-  - [11, "fm_v05_hi.raw", 64, 0]
+  - [10, "fm_v05_lo.raw", 32, 0]
+  - [11, "fm_v05_hi.raw", 32, 0]
   # --- voice $06: Alg 5, FB 7 — FM5 ---
   - [12, "fm_v06.raw", 64, 0]
   # --- PSG noise (form $E7) ---
@@ -66,6 +65,11 @@ sample_list:
   - [16, "psg_noise.raw", 32, 0]
   # --- PSG noise (fTone_08 envelope) ---
   - [18, "psg_noise.raw", 32, 0]
+  
+  # Detuned Voice 2
+  - [19, "fm_v02.raw", 32, 1]
+  # Detuned Voice 1
+  - [20, "fm_v00.raw", 24, 1]
 
 dac_samples:
   # dSnare: ×82 — native ~24000 Hz → note Fs3
@@ -194,6 +198,25 @@ psg_voice_map:
     synth_root: A8
     mod_instrument: 18
     root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+
+channel_instrument_map:
+  FM3:
+    0:
+    - low:  G3
+      high: A4
+      mod_instrument: 20
+      root: G2
+      synth_root: G3
+
+  FM5:
+    2:
+    - low:  B5
+      high: B6
+      mod_instrument: 19
+      root: B2
+      synth_root: B5
+      vibrato: 0
+
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

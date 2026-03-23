@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------------------------
 # ENDING SCREEN Conversion Script
 # -------------------------------------------------------------------------------------------------
-name: Engine Theme
+name: Ending Theme
 input_file: sonic_1\music\Mus8B - Ending.asm
 output_file: output/12_ending_theme.mod
 samples_dir: "samples/"

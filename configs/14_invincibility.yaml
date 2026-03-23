@@ -1,9 +1,6 @@
 # -------------------------------------------------------------------------------------------------
 # INVINCIBILITY Conversion Script
-#
-# Todo: FM1 and FM5 are same except for smpsAlterNote       $03
 # -------------------------------------------------------------------------------------------------
-
 name: Invincibility
 input_file: sonic_1\music\Mus87 - Invincibility.asm
 output_file: output/14_invincibility.mod
@@ -26,6 +23,7 @@ channels:
     mod_channel: 3
   - source: FM4
     mod_channel: 4
+  # Detuned version of FM1
   - source: FM5
     mod_channel: 5
   - source: PSG3
@@ -36,13 +34,12 @@ sample_list:
   - [1, "snare.raw", 64, 0]
   - [2, "kick.raw", 64, 0]
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM3, FM4, FM5 ---
-  - [3, "fm_v00_lo.raw", 32, 0]
-  - [4, "fm_v00_hi.raw", 32, 0]
+  - [3, "fm_v00.raw", 32, 0]
+  - [4, "fm_v00_fm5.raw", 32, 1]
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
-  - [5, "fm_v01_lo.raw", 32, 0]
-  - [6, "fm_v01_hi.raw", 32, 0]
+  - [5, "fm_v01.raw", 32, 0]
   # --- PSG noise (form $E7) ---
-  - [7, "psg_noise.raw", 16, 0]
+  - [6, "psg_noise.raw", 16, 0]
 
 dac_samples:
   # dSnare: ×42 — native ~24000 Hz → note Fs3
@@ -58,36 +55,41 @@ voice_map:
   # $00 — alg 2: (1+(2→3))→4, fb 7 — used by FM1, FM3, FM4, FM5
   0:
     - low:  G5
-      high: B6
-      mod_instrument: 3
-      root: G2
-      synth_root: G5
-    - low:  C7
       high: Cs7
-      mod_instrument: 4
-      root: C2
-      synth_root: C7
+      mod_instrument: 3
+      root: G1
+      synth_root: G5
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  G2
-      high: B3
-      mod_instrument: 5
-      root: G2
-      synth_root: G2
-    - low:  C4
       high: D4
-      mod_instrument: 6
-      root: C2
-      synth_root: C4
+      mod_instrument: 5
+      root: G1
+      synth_root: G2
 
 psg_map:
   0xE7:                    # form $E7
-    mod_instrument: 7
+    mod_instrument: 6
     root: A3
     noise_rate: 3
     synth_root: A8
     envelope: fTone_04
     base_volume: 0
+    
+# -------------------------------------------------------------------------------------------------
+# Per-channel instrument-map overrides.
+#
+# FM5 shares FM1's data. smpsAlterNote $03 is a raw FNUM offset (~12.5 cents).
+# Approximate hardware effect by fine-tuning a version of the sample.
+# -------------------------------------------------------------------------------------------------
+channel_instrument_map:
+  FM5:
+    0:
+      - low:  G5
+        high: Cs7
+        mod_instrument: 4
+        root: G1
+        synth_root: G5
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

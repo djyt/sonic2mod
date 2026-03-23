@@ -1,10 +1,9 @@
 # -------------------------------------------------------------------------------------------------
 # STAR LIGHT ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
-
 name: Star Light Zone
 input_file: sonic_1/music/Mus84 - SLZ.asm
-output_file: output/star_light_zone.mod
+output_file: output/06_star_light_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -51,9 +50,9 @@ sample_list:
   # --- voice $05: alg 4: (1→2)+(3→4), fb 6 — FM5 ---
   - [9, "fm_v05.raw", 32, 0]
   # --- PSG noise (form $E7) ---
-  - [11, "psg_noise.raw", 16, 0]
+  - [11, "psg_noise.raw", 64, 0]
   # --- PSG tone fTone_05 ---
-  - [10, "psg_fTone_05.raw", 16, 0]
+  - [10, "psg_fTone_05.raw", 64, 0]
 
 dac_samples:
   # dKick: ×1 — native ~8250 Hz → note C2

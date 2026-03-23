@@ -405,8 +405,10 @@ class SmpsToModConverter:
 
         # FM TL-offset state (0-127, 0.75 dB/step).  Initialized from the
         # smpsHeaderFM initial_vol byte; updated on smpsAlterVol events.
+        # Gated on fm_volume_scaling setting (default: true).
+        _fm_vol_scaling = self.synth.fm_volume_scaling if self.synth else True
         fm_tl_offset: int = 0
-        if not is_psg and not is_dac:
+        if not is_psg and not is_dac and _fm_vol_scaling:
             fm_tl_offset = channel.header.volume
             current_volume = round(_fm_tl_to_mod(fm_tl_offset) * chan_cfg.volume / 64)
 
@@ -431,9 +433,11 @@ class SmpsToModConverter:
                     if is_psg:
                         psg_attenuation = max(0, min(15, psg_attenuation + delta))
                         current_volume = round(_psg_att_to_mod(psg_attenuation) * chan_cfg.volume / 64)
-                    else:
+                    elif _fm_vol_scaling:
                         fm_tl_offset = max(0, min(127, fm_tl_offset + delta))
                         current_volume = round(_fm_tl_to_mod(fm_tl_offset) * chan_cfg.volume / 64)
+                    else:
+                        current_volume = max(0, min(64, current_volume - delta))
 
                 elif eff.effect_type == 'smpsAlterNote':
                     pass  # raw FNUM offset (~10 cents); does not affect note pitch or voice_map lookup

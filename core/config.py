@@ -165,6 +165,7 @@ class SynthesisSettings:
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
     headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
     carrier_balance: bool = True      # Add extra TL per carrier count (normalises multi-carrier algos)
+    fm_volume_scaling: bool = True    # Apply smpsHeaderFM TL offset + logarithmic smpsAlterVol scale
 
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
@@ -183,6 +184,7 @@ class SynthesisSettings:
             normalize_samples=s.get("normalize_samples", True),
             headroom_db=s.get("headroom_db", 6.0),
             carrier_balance=s.get("carrier_balance", True),
+            fm_volume_scaling=data.get("fm_volume_scaling", True),
         )
 
 

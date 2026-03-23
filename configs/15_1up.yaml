@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------------------------------------
 # 1-Up / Extra Life Conversion Script
 # Todo: analyze.py suggests the wrong synth_root for psg_voice_map. Manually corrected.
+# Todo: Sort out pitch shifted channels
 # -------------------------------------------------------------------------------------------------
 name: 1-Up (Extra Life)
 input_file: sonic_1\music\Mus88 - Extra Life.asm
@@ -39,7 +40,7 @@ sample_list:
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM3, FM5 ---
   - [4, "fm_v02.raw", 32, 0]
   # --- PSG tone fTone_05 ---
-  - [5, "psg_fTone_05.raw", 32, 0]
+  - [5, "psg_fTone_05.raw", 16, 0]
 
 dac_samples:
   # dHiTimpani: ×5 — native ~9588 Hz → note Ds2

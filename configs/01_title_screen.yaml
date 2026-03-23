@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------
 name: "Title Screen"
 input_file: "sonic_1/music/Mus8A - Title Screen.asm"
-output_file: "output/title_screenv3.mod"
+output_file: "output/01_title_screen.mod"
 samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -51,15 +51,15 @@ sample_list:
   - [1, "kick.raw",          64, 0]
   - [2, "snare.raw",         64, 0]
   # --- voice $00: bright lead synth (FM1 + FM5) ---
-  - [3, "fm_voice0.raw",     64, 0]
+  - [3, "fm_voice0.raw",     32, 0]
   # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
-  - [4, "fm_voice0.raw",     64, 1]
+  - [4, "fm_voice0.raw",     32, 1]
   # --- voice $01: bass / sustain pad (FM2 + FM3/FM4 ending) ---
-  - [5, "fm_voice1.raw",     64, 0]
+  - [5, "fm_voice1.raw",     32, 0]
   # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
-  - [6, "fm_voice2.raw",     64, 0]
+  - [6, "fm_voice2.raw",     32, 0]
   # --- PSG White Noise ---
-  - [7, "psg_noise.raw",     16, 0]
+  - [7, "psg_noise.raw",     48, 0]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -130,7 +130,8 @@ channel_instrument_map:
         mod_instrument: 4
         root: G2
         synth_root: G5
-        
+    
+    
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro
 # -------------------------------------------------------------------------------------------------

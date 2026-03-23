@@ -1,12 +1,9 @@
 # -------------------------------------------------------------------------------------------------
 # MARBLE ZONE Conversion Script
-#
-# Todo: First few notes on FM5/ mod_channel 5 don't play?
-# DAC channel should trigger the kick three times
 # -------------------------------------------------------------------------------------------------
 name: Marble Zone
 input_file: sonic_1\music\Mus83 - MZ.asm
-output_file: output/marble_zone.mod
+output_file: output/03_marble_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -49,11 +46,13 @@ sample_list:
   - [6, "fm_v03.raw", 32, 0]
   # --- voice $04: alg 2: (1+(2→3))→4, fb 0 — FM5 ---
   - [7, "fm_v04.raw", 32, 0]
+  # --- PSG tone fTone_08 ---
+  - [8, "psg_fTone_08_lo.raw", 64, 0]
+  - [9, "psg_fTone_08_hi.raw", 64, 0]
   # --- PSG noise (form $E7) ---
   - [11, "psg_noise.raw", 16, 0]
-  # --- PSG tone fTone_08 ---
-  - [8, "psg_fTone_08_lo.raw", 32, 0]
-  - [9, "psg_fTone_08_hi.raw", 32, 0]
+  # --- voice $00: tuned!
+  - [12, "fm_v00.raw", 32, 1]
 
 dac_samples:
   # dKick: ×2 — native ~8250 Hz → note C2
@@ -124,3 +123,26 @@ psg_voice_map:
       mod_instrument: 9
       root: C2
       synth_root: C7
+
+
+# -------------------------------------------------------------------------------------------------
+# Per-channel instrument-map overrides.
+#
+# FM3 shares FM1's data, but tuned with smpsAlterNote $02
+# -------------------------------------------------------------------------------------------------
+channel_instrument_map:
+  FM3:
+    0:
+    - low:  A5
+      high: B6
+      mod_instrument: 12
+      root: A2
+      synth_root: A4
+
+
+# -------------------------------------------------------------------------------------------------
+# Structural pattern break after intro
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 59

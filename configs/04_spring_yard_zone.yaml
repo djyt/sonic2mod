@@ -1,12 +1,9 @@
 # -------------------------------------------------------------------------------------------------
 # SPRING YARD ZONE Conversion Script
-#
-# Todo: Setup a separate instrument to make FM5 sound correct
 # -------------------------------------------------------------------------------------------------
-
 name: Spring Yard Zone
 input_file: sonic_1\music\Mus85 - SYZ.asm
-output_file: output/spring_yard_zone.mod
+output_file: output/04_spring_yard_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -42,8 +39,8 @@ sample_list:
   # --- voice $01: alg 0: 1→2→3→4, fb 3 — FM2 ---
   - [4, "fm_v01.raw", 32, 0]
   # --- voice $02: alg 5: 1→(2+3+4), fb 7 — FM4, FM5 ---
-  - [5, "fm_v02_lo.raw", 24, 0]
-  - [6, "fm_v02_hi.raw", 24, 0]
+  - [5, "fm_v02.raw", 32, 0]
+  - [6, "fm_v02.raw", 32, 1]
   # --- voice $03: alg 4: (1→2)+(3→4), fb 5 — FM4, FM5 ---
   - [7, "fm_v03.raw", 32, 0]
   # --- voice $04: alg 4: (1→2)+(3→4), fb 0 — FM1 ---
@@ -84,16 +81,10 @@ voice_map:
   # $02 — alg 5: 1→(2+3+4), fb 7 — used by FM4, FM5
   2:
     - low:  A5
-      high: B6
-      mod_instrument: 5
-      root: A2
-      synth_root: A5
-      vibrato: 0
-    - low:  C7
       high: D7
-      mod_instrument: 6
-      root: C2
-      synth_root: C7
+      mod_instrument: 5
+      root: A1
+      synth_root: A5
       vibrato: 0
   # $03 — alg 4: (1→2)+(3→4), fb 5 — used by FM4, FM5
   3:
@@ -138,3 +129,27 @@ psg_voice_map:
       mod_instrument: 11
       root: C1
       synth_root: C5
+
+
+# -------------------------------------------------------------------------------------------------
+# Per-channel instrument-map overrides.
+#
+# FM5 shares FM4's data, but tuned with smpsAlterNote $02
+# -------------------------------------------------------------------------------------------------
+channel_instrument_map:
+  FM5:
+    2:
+    - low:  A5
+      high: D7
+      mod_instrument: 6
+      root: A1
+      synth_root: A5
+      vibrato: 0
+
+
+# -------------------------------------------------------------------------------------------------
+# Structural pattern break after intro
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 45

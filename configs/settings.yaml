@@ -1,5 +1,7 @@
+# -------------------------------------------------------------------------------------------------
 # Global sonic2mod settings
 # These apply across all songs unless overridden.
+# -------------------------------------------------------------------------------------------------
 
 fm_synthesis:
   enabled: true             # Set true to auto-generate FM samples via YM2612 emulation
@@ -35,3 +37,12 @@ psg_synthesis:
     fTone_07: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,4,5,5,5,6,7]         # 26fr medium-slow fade with accelerating tail
     fTone_08: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7]  # 38fr slow gradual fade
     fTone_09: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]                       # 16fr instant linear fade to silence
+
+# -------------------------------------------------------------------------------------------------
+# Conversion flags (applied regardless of synthesis settings)
+# -------------------------------------------------------------------------------------------------
+
+# Apply smpsHeaderFM TL offset (initial_vol) and logarithmic smpsAlterVol scale
+# Applies CXX volume commands to most FM instruments in an attempt to scale their volume as accurately as possible to the original.
+# Interesting to experiment with, but the additional clutter of noise commands means it's off by default. 
+fm_volume_scaling: false   

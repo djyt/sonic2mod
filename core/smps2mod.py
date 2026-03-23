@@ -643,6 +643,7 @@ class SmpsToModConverter:
                     # the hardware edge case where DurationTimeout fires before
                     # NoteTimeout so the fill timer never completes (note sustains).
                     fill_placed = False
+                    effect_slot_used = False   # True only when ECx occupies the current row's slot
                     if note_fill > 0 and note_fill < note.duration:
                         fill_pat, fill_row = self._tick_to_pattern_row(tick + note_fill)
                         if fill_pat == pattern and fill_row == row:
@@ -657,6 +658,7 @@ class SmpsToModConverter:
                             if ec_val > 0:
                                 self.mod.set_effect(0xE, 0xC0 | ec_val)
                                 fill_placed = True
+                                effect_slot_used = True  # ECx on this row; no room for Cxx
                         elif fill_pat < self.config.max_patterns:
                             # Fill fires on a later row: write C00 there directly.
                             while fill_pat >= len(self.mod.patterns):
@@ -666,6 +668,7 @@ class SmpsToModConverter:
                             # Restore cursor to the current note's cell.
                             self._set_cursor(pattern, mod_chan, row)
                             fill_placed = True
+                            # effect_slot_used stays False: current row is free for Cxx
 
                     # PSG auto note-cut: emit silence at the note's natural end if no
                     # explicit smpsNoteFill was placed.  Mirrors hardware PSGDoNext
@@ -710,7 +713,7 @@ class SmpsToModConverter:
                         _period = PERIOD_TABLE[final_note.value]
                         eff_vib_depth = max(1, min(0xF, round(vibrato_change * _period / _S1_FNUM_BASE)))
 
-                    if not fill_placed:
+                    if not effect_slot_used:
                         # Emit Cxx only when the scaled output differs from the
                         # instrument's own sample volume — MOD auto-resets to
                         # sample volume on each note trigger, so no command is

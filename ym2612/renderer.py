@@ -20,6 +20,7 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import math
 import struct
 import sys
 import warnings
@@ -171,8 +172,8 @@ def _render_pipeline(
     fnum, block = freq_to_fnum_block(freq, clock_rate)
     _set_freq(opn2, fnum, block, channel)
 
-    sustain_n = int(native_rate * sustain_secs)
-    release_n = int(native_rate * release_secs)
+    sustain_n = math.ceil(native_rate * sustain_secs)
+    release_n = math.ceil(native_rate * release_secs)
     raw       = _render_raw(opn2, sustain_n, release_n, channel)
     mono      = _to_mono(raw)
 

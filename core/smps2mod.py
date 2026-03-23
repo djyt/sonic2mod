@@ -120,7 +120,10 @@ class SmpsToModConverter:
     def _install_synthesized_samples(self, samples_dict: dict, sample_list, prefix: str) -> None:
         """Install synthesized PCM samples into mod.samples and apply sample_list overrides."""
         sl_name_map = {e[0]: e[1] for e in sample_list} if sample_list else {}
+        _MAX_SAMPLE_BYTES = 65535 * 2  # MOD 16-bit word length field limit
         for inst_num, (pcm, _) in samples_dict.items():
+            if len(pcm) > _MAX_SAMPLE_BYTES:
+                pcm = pcm[:_MAX_SAMPLE_BYTES]
             sample = ModSample(sl_name_map.get(inst_num, f"{prefix}_inst{inst_num}"))
             sample.data = pcm
             sample.length = len(pcm) // 2
@@ -137,15 +140,97 @@ class SmpsToModConverter:
                         self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
 
     def _max_note_duration_secs(self, channel_types: set) -> float:
-        """Return max non-rest note duration (seconds) across channels of given types."""
-        max_ticks = 0
+        """Return max effective synthesis duration (seconds) across channels of given types.
+
+        For rooted FM voice_map entries the Amiga plays the sample at a pitch-shifted
+        rate whenever the note is above the root.  Lower MOD period = higher playback
+        rate = sample consumed faster.  Each note's raw tick duration is therefore
+        scaled by root_period / note_period so that the synthesised sample is long
+        enough to cover the full note at its actual playback rate.
+
+        Regular rests (is_no_attack=False) emit C00 (mute) in the MOD and the next
+        note always restarts the sample from byte 0, so they do not add to the
+        required length.  smpsNoAttack continuations (is_no_attack=True) emit no C00
+        and the sample keeps advancing — these are included in the ring duration.
+        """
+        # Build ordered source-name lists to match SmpsChannels → ChannelConfigs.
+        fm_sources  = [c.source for c in self.config.channels if c.source.startswith('FM')]
+        psg_sources = [c.source for c in self.config.channels if c.source.startswith('PSG')]
+        fm_idx = psg_idx = 0
+
+        max_needed_secs = 0.0
+
         for ch in self.song.channels:
-            if ch.header.channel_type not in channel_types:
+            ch_type = ch.header.channel_type
+            # Track the source name (e.g. "FM3") for CIM lookup, regardless of filter.
+            ch_source: str | None = None
+            if ch_type == 'FM' and fm_idx < len(fm_sources):
+                ch_source = fm_sources[fm_idx]
+                fm_idx += 1
+            elif ch_type == 'PSG' and psg_idx < len(psg_sources):
+                ch_source = psg_sources[psg_idx]
+                psg_idx += 1
+
+            if ch_type not in channel_types:
                 continue
+
+            is_fm = (ch_type == 'FM')
+
+            # Walk all events in order, tracking voice changes.
+            current_voice = ch.header.voice
+            note_events_with_voice: list[tuple] = []
             for ev in ch.events:
-                if ev.is_note and not ev.note.is_rest and ev.note.duration > max_ticks:
-                    max_ticks = ev.note.duration
-        return self._ticks_to_secs(max_ticks)
+                if ev.is_effect and ev.effect.effect_type == 'smpsSetvoice':
+                    current_voice = ev.effect.params[0]
+                elif ev.is_note:
+                    note_events_with_voice.append((ev, current_voice))
+
+            for i, (ev, voice) in enumerate(note_events_with_voice):
+                if ev.note.is_rest:
+                    continue
+
+                # Sum note duration + any immediately following smpsNoAttack
+                # continuations (sample keeps advancing, no C00 fired).
+                ring_ticks = ev.note.duration
+                for j in range(i + 1, len(note_events_with_voice)):
+                    nxt_ev, _ = note_events_with_voice[j]
+                    if nxt_ev.note.is_rest and nxt_ev.note.is_no_attack:
+                        ring_ticks += nxt_ev.note.duration
+                    else:
+                        break
+
+                ring_secs = self._ticks_to_secs(ring_ticks)
+
+                # For rooted FM entries: scale by root_period / note_period.
+                # The sample is synthesised at target_rate = amiga_clock/(2×root_period).
+                # When played at a higher note (lower period) it runs faster, so the
+                # synthesis must be proportionally longer.
+                if is_fm:
+                    source_semitone = ev.note.note_value - 0x81
+                    vm = self.config.voice_map.get(voice, [])
+                    if ch_source and ch_source in self.config.channel_instrument_map:
+                        cim_ranges = self.config.channel_instrument_map[ch_source].get(voice)
+                        if cim_ranges is not None:
+                            vm = cim_ranges
+                    entry = next(
+                        (e for e in vm if e.root is not None
+                         and e.low <= source_semitone <= e.high),
+                        None,
+                    )
+                    if entry is not None:
+                        root_period = PERIOD_TABLE[entry.root.value]
+                        out_note = max(0, min(
+                            entry.root.value + (source_semitone - entry.low),
+                            len(PERIOD_TABLE) - 2,
+                        ))
+                        note_period = PERIOD_TABLE[out_note]
+                        if root_period > 0 and note_period > 0:
+                            ring_secs *= root_period / note_period
+
+                if ring_secs > max_needed_secs:
+                    max_needed_secs = ring_secs
+
+        return max_needed_secs
 
     def convert(self):
         """Main entry point. Returns a ModFile."""
@@ -169,6 +254,26 @@ class SmpsToModConverter:
         if synth and synth.sustain_duration == "auto":
             secs = min(self._max_note_duration_secs({'FM'}), 10.0)
             if secs > 0:
+                # Scale for the highest positive finetune on any FM-synthesized instrument.
+                # Positive finetune → lower ProTracker period → faster sample playback →
+                # the sample runs out before the note ends without this compensation.
+                _fm_insts: set[int] = {
+                    e.mod_instrument
+                    for ranges in self.config.voice_map.values()
+                    for e in ranges
+                }
+                for _cim in self.config.channel_instrument_map.values():
+                    for _ranges in _cim.values():
+                        _fm_insts.update(e.mod_instrument for e in _ranges)
+                _ft_max = 0
+                if self.config.sample_list:
+                    for _sl in self.config.sample_list:
+                        if _sl[0] in _fm_insts and len(_sl) > 3 and _sl[3] > 0:
+                            _ft_max = max(_ft_max, _sl[3])
+                if _ft_max > 0:
+                    # Each finetune step = 1/8 semitone = 1/96 octave.
+                    # Speed factor = 2^(ft/96); compensate by extending sustain.
+                    secs = min(secs * (2.0 ** (_ft_max / 96.0)), 10.0)
                 synth = dataclasses.replace(synth, sustain_duration=secs)
                 self._infos.append({'type': 'auto_sustain_fm', 'secs': round(secs, 3)})
 

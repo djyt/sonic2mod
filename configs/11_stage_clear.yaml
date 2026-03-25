@@ -45,8 +45,8 @@ sample_list:
   # --- voice $03: Alg 5, FB 7 — FM5 ---
   - [8, "fm_v03.raw", 16, 0]
   # --- PSG tone fTone_05 ---
-  - [9, "psg_fTone_05_lo.raw", 16, 0]
-  - [10, "psg_fTone_05_hi.raw", 16, 0]
+  - [9, "psg_fTone_05_lo.raw", 32, 0]
+  - [10, "psg_fTone_05_hi.raw", 32, 0]
 
 dac_samples:
   # dSnare: ×7 — native ~24000 Hz → note Fs3
@@ -79,6 +79,7 @@ voice_map:
       mod_instrument: 5
       root: C2
       synth_root: C6
+      vibrato: 0
   # $01 — Alg 2, FB 7 — used by FM2
   1:
     - low:  G4

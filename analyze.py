@@ -27,7 +27,6 @@ except ImportError:
     print("Error: 'rich' is required. Install with: pip install rich")
     sys.exit(1)
 
-from core.tables import PERIOD_TABLE, ModNote
 from core.analysis import (
     _CARRIER_LABELS_BY_ALG,
     DAC_NATIVE_INFO,
@@ -42,6 +41,7 @@ from core.analysis import (
 )
 from core.config import ConversionConfig
 from core.smps_parser import SmpsParser
+from core.tables import PERIOD_TABLE, ModNote
 
 console = Console(legacy_windows=False)
 

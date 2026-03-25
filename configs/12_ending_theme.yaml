@@ -50,6 +50,8 @@ sample_list:
   - [10, "psg_noise.raw", 16, 0]
   # --- PSG tone fTone_05 ---
   - [9, "psg_fTone_05.raw", 32, 0]
+  # Pitch Adjusted version
+  - [11, "fm_v03_hi.raw", 32, 1]
 
 dac_samples:
   # dSnare: ×44 — native ~24000 Hz → note Fs3
@@ -117,6 +119,18 @@ psg_voice_map:
     mod_instrument: 9
     root: E2
     synth_root: E5
+    
+# -------------------------------------------------------------------------------------------------
+# Per-channel instrument-map overrides.
+# -------------------------------------------------------------------------------------------------
+channel_instrument_map:
+  FM5:
+    3:
+    - low:  C4
+      high: B6
+      mod_instrument: 11
+      root: C1
+      synth_root: C4
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro

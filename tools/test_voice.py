@@ -29,7 +29,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.smps_parser import SmpsParser
-from ym2612.renderer import freq_to_fnum_block, note_to_freq, _render_raw, _set_freq, _to_mono
+from ym2612.renderer import _render_raw, _set_freq, _to_mono, freq_to_fnum_block, note_to_freq
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2
 
@@ -63,7 +63,7 @@ def main() -> None:
     # --- load voice ---
     print(f"Parsing {_ASM_FILE.name} ...")
     song = SmpsParser().parse_file(str(_ASM_FILE))
-    if _VOICE_INDEX >= len(song.voices):
+    if len(song.voices) <= _VOICE_INDEX:
         print(f"ERROR: voice index {_VOICE_INDEX} out of range "
               f"(song has {len(song.voices)} voices)")
         sys.exit(1)

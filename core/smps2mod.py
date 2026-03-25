@@ -96,7 +96,7 @@ class SmpsToModConverter:
             self._warnings.append(w)
 
     @property
-    def _effective_tpr(self) -> int:
+    def _effective_tpr(self) -> float:
         """Ticks per row accounting for the global tempo divider.
 
         Parser stores note durations as raw_duration * chan_tempo_div (initialized
@@ -121,12 +121,11 @@ class SmpsToModConverter:
         """Install synthesized PCM samples into mod.samples and apply sample_list overrides."""
         sl_name_map = {e[0]: e[1] for e in sample_list} if sample_list else {}
         _MAX_SAMPLE_BYTES = 65535 * 2  # MOD 16-bit word length field limit
-        for inst_num, (pcm, _) in samples_dict.items():
-            if len(pcm) > _MAX_SAMPLE_BYTES:
-                pcm = pcm[:_MAX_SAMPLE_BYTES]
+        for inst_num, (pcm_orig, _) in samples_dict.items():
+            pcm_data = pcm_orig[:_MAX_SAMPLE_BYTES] if len(pcm_orig) > _MAX_SAMPLE_BYTES else pcm_orig
             sample = ModSample(sl_name_map.get(inst_num, f"{prefix}_inst{inst_num}"))
-            sample.data = pcm
-            sample.length = len(pcm) // 2
+            sample.data = pcm_data
+            sample.length = len(pcm_data) // 2
             sample.set_volume(64)
             self.mod.samples[inst_num - 1] = sample
         if sample_list:

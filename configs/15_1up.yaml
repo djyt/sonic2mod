@@ -1,7 +1,6 @@
 # -------------------------------------------------------------------------------------------------
 # 1-Up / Extra Life Conversion Script
 # Todo: analyze.py suggests the wrong synth_root for psg_voice_map. Manually corrected.
-# Todo: Sort out pitch shifted channels
 # -------------------------------------------------------------------------------------------------
 name: 1-Up (Extra Life)
 input_file: sonic_1\music\Mus88 - Extra Life.asm
@@ -34,13 +33,16 @@ sample_list:
   # --- percussion ---
   - [1, "timpani.raw", 64, 0]
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM4 ---
-  - [2, "fm_v00.raw", 32, 0]
+  - [2, "fm_v00.raw", 24, 0]
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
-  - [3, "fm_v01.raw", 32, 0]
+  - [3, "fm_v01.raw", 24, 0]
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM3, FM5 ---
-  - [4, "fm_v02.raw", 32, 0]
+  - [4, "fm_v02.raw", 24, 0]
   # --- PSG tone fTone_05 ---
   - [5, "psg_fTone_05.raw", 16, 0]
+  # Pitch Shifted Versions
+  - [6, "fm_v00.raw", 24, 1]
+  - [7, "fm_v02.raw", 24, 1]
 
 dac_samples:
   # dHiTimpani: ×5 — native ~9588 Hz → note Ds2
@@ -86,3 +88,23 @@ psg_voice_map:
     mod_instrument: 5
     root: A2
     synth_root: A5
+
+# -------------------------------------------------------------------------------------------------
+# Per-channel instrument-map overrides.
+# -------------------------------------------------------------------------------------------------
+channel_instrument_map:
+  FM4:
+    0:
+      - low:  Cs7
+        high: Fs7
+        mod_instrument: 6
+        root: Cs2
+        synth_root: Cs6
+        
+  FM5:
+    2:
+      - low:  G4
+        high: A4
+        mod_instrument: 7
+        root: G2
+        synth_root: G3

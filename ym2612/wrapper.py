@@ -192,7 +192,7 @@ class OPN2:
         buf_l = (ctypes.c_int32 * n_samples)()
         buf_r = (ctypes.c_int32 * n_samples)()
         self._lib.OPN2_RenderBatch(self._chip, n_samples, buf_l, buf_r)
-        return list(zip(buf_l, buf_r))
+        return list(zip(buf_l, buf_r, strict=True))
 
     def _render_samples_legacy(self, n_samples: int) -> list:
         """Original Python-loop implementation — kept for reference only.

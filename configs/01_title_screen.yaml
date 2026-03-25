@@ -8,7 +8,7 @@ samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
-target_speed: 3             # speed=3, ticks_per_row=3 → BPM unchanged; GCD(FM durations)=3 → exact row mapping
+target_speed: 3
 ticks_per_row: 3
 num_mod_channels: 8
 

@@ -41,14 +41,30 @@ def _opt(d: dict, key: str, parse_fn):
     return parse_fn(d[key]) if key in d else None
 
 
-def _parse_instrument_range(entry: dict) -> "InstrumentRange":
+def _require(d: dict, key: str, context: str):
+    """Return d[key], raising ValueError with location context if key is missing."""
+    if key not in d:
+        raise ValueError(f"Config error: '{key}' is required in {context}")
+    return d[key]
+
+
+def _mod_note(v: str, context: str) -> 'ModNote':
+    """Parse a ModNote by name, raising ValueError with context on failure."""
+    try:
+        return ModNote[v]
+    except KeyError:
+        valid = ', '.join(list(ModNote.__members__)[:8]) + ', ...'
+        raise ValueError(f"Unknown note name '{v}' in {context}; valid names: {valid}") from None
+
+
+def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "InstrumentRange":
     """Parse a single InstrumentRange dict from YAML.
 
     Accepts both new key ``mod_instrument`` and deprecated ``instrument``
     (emits DeprecationWarning for the latter).
     """
-    low  = parse_smps_note(entry['low'])
-    high = parse_smps_note(entry['high'])
+    low  = parse_smps_note(_require(entry, 'low',  context))
+    high = parse_smps_note(_require(entry, 'high', context))
 
     if 'mod_instrument' in entry:
         inst = entry['mod_instrument']
@@ -60,9 +76,9 @@ def _parse_instrument_range(entry: dict) -> "InstrumentRange":
         )
         inst = entry['instrument']
     else:
-        raise KeyError(f"InstrumentRange entry missing 'mod_instrument': {entry}")
+        raise ValueError(f"Config error: 'mod_instrument' is required in {context}")
 
-    root       = _opt(entry, 'root',       lambda v: ModNote[v])
+    root       = _opt(entry, 'root',       lambda v: _mod_note(v, f"{context}.root"))
     synth_root = _opt(entry, 'synth_root', parse_synth_note)
     vibrato    = _opt(entry, 'vibrato',    _parse_vibrato)
 
@@ -103,15 +119,15 @@ class PsgInstrumentEntry:
     vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
 
 
-def _parse_psg_voice_entry(v: dict, default_envelope: str) -> 'PsgInstrumentEntry':
+def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_voice_map entry") -> 'PsgInstrumentEntry':
     """Parse a single psg_voice_map entry dict into a PsgInstrumentEntry."""
-    root_note   = ModNote[v['root']]
+    root_note   = _mod_note(_require(v, 'root', context), f"{context}.root")
     synth_root  = _opt(v, 'synth_root', parse_synth_note)
     low         = _opt(v, 'low',        parse_smps_note)
     high        = _opt(v, 'high',       parse_smps_note)
     pvm_vibrato = _opt(v, 'vibrato',    _parse_vibrato)
     return PsgInstrumentEntry(
-        mod_instrument=v['mod_instrument'],
+        mod_instrument=_require(v, 'mod_instrument', context),
         type=v.get('type', 'tone'),
         root=root_note,
         synth_root=synth_root,
@@ -138,8 +154,11 @@ class PsgSynthesisSettings:
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
         import yaml
-        with open(filepath) as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(filepath) as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
         s = data.get("psg_synthesis", {})
         _psg_sd = s.get("sustain_duration", 1.0)
         return cls(
@@ -170,8 +189,11 @@ class SynthesisSettings:
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
         import yaml
-        with open(filepath) as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(filepath) as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
         s = data.get("fm_synthesis", {})
         _fm_sd = s.get("sustain_duration", 1.5)
         return cls(
@@ -301,8 +323,11 @@ class ConversionConfig:
         """Load configuration from a YAML file."""
         import yaml
 
-        with open(filepath) as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(filepath) as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
 
         config = cls(
             name=data.get('name', 'Untitled'),
@@ -319,10 +344,11 @@ class ConversionConfig:
         )
 
         # Parse channel configs
-        for ch_data in data.get('channels', []):
+        for i, ch_data in enumerate(data.get('channels', [])):
+            _ctx = f"channels[{i}]"
             config.channels.append(ChannelConfig(
-                source=ch_data['source'],
-                mod_channel=ch_data['mod_channel'],
+                source=_require(ch_data, 'source', _ctx),
+                mod_channel=_require(ch_data, 'mod_channel', _ctx),
                 transpose=ch_data.get('transpose', 0),
                 instrument=ch_data.get('instrument', 1),
                 volume=ch_data.get('volume', 64),
@@ -330,10 +356,11 @@ class ConversionConfig:
             ))
 
         # Parse DAC sample configs
-        for dac_data in data.get('dac_samples', []):
+        for i, dac_data in enumerate(data.get('dac_samples', [])):
+            _ctx = f"dac_samples[{i}]"
             config.dac_samples.append(DacSampleConfig(
-                name=dac_data['name'],
-                mod_instrument=dac_data['mod_instrument'],
+                name=_require(dac_data, 'name', _ctx),
+                mod_instrument=_require(dac_data, 'mod_instrument', _ctx),
                 mod_note=dac_data.get('mod_note', 'C3'),
             ))
 
@@ -356,7 +383,8 @@ class ConversionConfig:
             )
             for voice_key, range_list in raw_vim_deprecated.items():
                 config.voice_map[int(str(voice_key), 0)] = [
-                    _parse_instrument_range(e) for e in range_list
+                    _parse_instrument_range(e, f"voice_instrument_map[{voice_key}][{j}]")
+                    for j, e in enumerate(range_list)
                 ]
 
         # Step 2 — read voice_map key: detect format by inspecting first value
@@ -380,7 +408,8 @@ class ConversionConfig:
                     vk = int(str(voice_key), 0)
                     if vk not in config.voice_map:
                         config.voice_map[vk] = [
-                            _parse_instrument_range(e) for e in range_list
+                            _parse_instrument_range(e, f"voice_map[{voice_key}][{j}]")
+                            for j, e in enumerate(range_list)
                         ]
 
         # Parse channel_instrument_map — per-channel overrides for voice_map
@@ -390,7 +419,8 @@ class ConversionConfig:
             config.channel_instrument_map[ch_name] = {}
             for voice_key, range_list in vim_data.items():
                 config.channel_instrument_map[ch_name][int(str(voice_key), 0)] = [
-                    _parse_instrument_range(e) for e in range_list
+                    _parse_instrument_range(e, f"channel_instrument_map[{ch_name}][{voice_key}][{j}]")
+                    for j, e in enumerate(range_list)
                 ]
 
         # Parse psg_map: dict keyed by smpsPSGform byte (hex or int YAML keys).
@@ -399,11 +429,12 @@ class ConversionConfig:
         raw_psg_map = data.get('psg_map', {})
         for k, psg_entry in raw_psg_map.items():
             form_byte = int(str(k), 0)
+            _ctx = f"psg_map[{k}]"
             inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"
             config.psg_map[form_byte] = PsgInstrumentEntry(
-                mod_instrument=psg_entry['mod_instrument'],
+                mod_instrument=_require(psg_entry, 'mod_instrument', _ctx),
                 type=inferred_type,
-                root=ModNote[psg_entry['root']],
+                root=_mod_note(_require(psg_entry, 'root', _ctx), f"{_ctx}.root"),
                 synth_root=_opt(psg_entry, 'synth_root', parse_synth_note),
                 low=_opt(psg_entry, 'low', parse_smps_note),
                 high=_opt(psg_entry, 'high', parse_smps_note),
@@ -428,15 +459,22 @@ class ConversionConfig:
         for k, v in raw_pvm.items():
             label = str(k)
             if isinstance(v, list):
-                config.psg_voice_map[label] = [_parse_psg_voice_entry(e, label) for e in v]
+                config.psg_voice_map[label] = [
+                    _parse_psg_voice_entry(e, label, f"psg_voice_map[{label}][{j}]")
+                    for j, e in enumerate(v)
+                ]
             else:
-                config.psg_voice_map[label] = [_parse_psg_voice_entry(v, label)]
+                config.psg_voice_map[label] = [_parse_psg_voice_entry(v, label, f"psg_voice_map[{label}]")]
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])
-        config.mod_pattern_breaks = [(int(b['pattern']), int(b['row'])) for b in breaks_raw]
+        config.mod_pattern_breaks = [
+            (int(_require(b, 'pattern', f"mod_pattern_breaks[{i}]")),
+             int(_require(b, 'row',     f"mod_pattern_breaks[{i}]")))
+            for i, b in enumerate(breaks_raw)
+        ]
 
         return config

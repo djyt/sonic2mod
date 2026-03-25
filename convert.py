@@ -59,7 +59,10 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    config = ConversionConfig.from_yaml(args.config)
+    try:
+        config = ConversionConfig.from_yaml(args.config)
+    except (ValueError, TypeError) as e:
+        _error(str(e))
     if args.output:
         config.output_file = args.output
 

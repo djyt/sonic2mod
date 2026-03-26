@@ -9,6 +9,7 @@ Convert Sonic The Hedgehog 1 SMPS assembly music files from the Sega Megadrive t
 - Python 3.11+
 - GCC or MSVC on PATH *(only needed if recompiling the synthesis DLLs — pre-compiled Windows binaries are included)*
 
+
 ## Installation
 
 ```bash
@@ -24,6 +25,7 @@ pip install -e .
 ```
 
 This registers two CLI commands: `sonic2mod` and `sonic2mod-analyze`.
+
 
 ## Quick Start
 
@@ -50,6 +52,7 @@ python convert.py configs/02_green_hill_zone.yaml
 Output `.mod` files are written to `output/` and can be opened in [Fast Tracker 2 Clone](https://16-bits.org/ft2.php).
 
 That's it - nice and easy. The complexity comes if you want to extend the tool further really. 
+
 
 ## Sonic Music
 
@@ -115,6 +118,7 @@ python ym2612/validate.py
 python sn76489/validate.py
 ```
 
+
 ## Documentation
 
 | Document | Contents |
@@ -129,11 +133,13 @@ There is also a CLAUDE.md file, so you can experiment with adding functionality 
 
 I'm not particularly looking for a load of chaotic AI driven push requests at this moment in time, but I'm happy to get robust and meaningful changes merged in. Or feel free to fork the codebase and do it your own way. Don't let me slow down your dreams!
 
+
 ## Limitations
 
 - Mid-track tempo changes are currently ignored. This impacts *Drowning*, which should speed up as it progresses.
 - The Credits music is not configured for translation. It's effectively a Megamix of all the existing Sonic music, and I suspect I'll handle that in a different way in the final port of Sonic to the Amiga.
-- Synthesis is performed at the lowest note of the specified range in the current config files. It would be sensible to do this mid-range to minimise Timbre changes to the final output. 
+- Synthesis is performed at the lowest note of the specified range in the current config files. It would be sensible to do this mid-range to minimise timbre changes to the final output. 
+
 
 ## Future Improvements
 
@@ -141,13 +147,16 @@ I'm not particularly looking for a load of chaotic AI driven push requests at th
 - Binary input option
 - Tools and helpers to combine samples and channels to target 4 channel MODs
 
+
 ## History
 
 I originally coded a similar tool to facilitate the translation of OutRun's music to the Amiga. However, it was hacky, esoteric and probably unusable by anyone other than myself. As such, this is an evolution of that process. I was able to get results I was happy sharing within weeks, partially thanks to this pre-existing codebase and also using AI to handle some of the boring bits involved with releasing software!
 
+
 ## Licensing
 
 This is licensed under the GNU LESSER GENERAL PUBLIC LICENSE. This is the same license as the Nuked-OPN2 core, which is included in the codebase.
+
 
 ## Thanks & Acknowledgements
 

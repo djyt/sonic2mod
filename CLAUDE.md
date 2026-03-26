@@ -86,7 +86,7 @@ python analyze.py "sonic_1/music/Mus8A - Title Screen.asm"
 # Analyse with config coverage diff
 python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/01_title_screen.yaml
 
-# Verify: open output .mod in OpenMPT or MilkyTracker
+# Verify: open output .mod in Fast Tracker 2 Clone (https://16-bits.org/ft2.php)
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):
 python ym2612/validate.py
 python sn76489/validate.py      # C3 tone + white noise → output/psg_{tone,noise}_test.raw
@@ -259,4 +259,4 @@ Verified channel coverage:
 - All 9 channels parsed (1 DAC, 5 FM, 3 PSG)
 - FM5 fall-through into FM1 data works
 - PSG3 loop unrolled correctly (5 iterations)
-- Output is valid 10CH MOD, opens in OpenMPT/MilkyTracker
+- Output is valid 10CH MOD, opens in Fast Tracker 2 Clone

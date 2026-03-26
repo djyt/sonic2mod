@@ -17,7 +17,7 @@ from .tables import semitone_to_note_name  # noqa: F401 — re-exported for anal
 # Effect classification
 # ---------------------------------------------------------------------------
 
-UNSUPPORTED_EFFECTS = {'smpsPan', 'smpsNop', 'smpsPSGform', 'smpsPSGvoice'}
+UNSUPPORTED_EFFECTS = {'smpsPan', 'smpsNop'}
 
 PARTIAL_EFFECTS = {
     'smpsAlterNote': 'FNUM offset (~10 cents) — not applied to pitch',

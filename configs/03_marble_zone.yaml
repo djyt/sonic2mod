@@ -2,7 +2,7 @@
 # MARBLE ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Marble Zone
-input_file: sonic_1\music\Mus83 - MZ.asm
+input_file: "input/Mus83 - MZ.asm"
 output_file: output/03_marble_zone.mod
 samples_dir: "samples/"
 

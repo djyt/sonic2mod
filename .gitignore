@@ -1,6 +1,7 @@
 /.claude
-/reference
 /output
+/sonic_1
+*.egg-info/
 *__pycache__*
 *.code-workspace
 docs/todo.txt

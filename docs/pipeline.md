@@ -3,7 +3,7 @@
 How SMPS assembly music maps to Amiga ProTracker MOD format.
 
 Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (assembly syntax),
-`docs/architecture.md` (module overview), `docs/effects.txt` (ProTracker effect reference),
+`docs/architecture.md` (module overview), `docs/mod_effects.txt` (ProTracker effect reference),
 `docs/synthesis.md` (FM synthesis — synth_root, pitch matching, OPN2 internals),
 `docs/psg_synthesis.md` (PSG synthesis — psg_map/psg_voice_map, envelope tables, SN76489 internals),
 `docs/yaml_config.md` (full YAML schema).
@@ -62,7 +62,7 @@ Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (a
 
 ## SMPS → MOD Effect Mapping
 
-One effect per note-row in MOD format. See `docs/effects.txt` for full ProTracker effect documentation.
+One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTracker effect documentation.
 
 | SMPS Command | Byte | Parameters | MOD Effect | MOD Code | Notes |
 |-------------|------|------------|------------|----------|-------|

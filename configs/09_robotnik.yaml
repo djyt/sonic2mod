@@ -2,7 +2,7 @@
 # ROBOTNIK Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Robotnik
-input_file: sonic_1\music\Mus8C - Boss.asm
+input_file: "input/Mus8C - Boss.asm"
 output_file: output/09_robotnik.mod
 samples_dir: "samples/"
 

@@ -2,7 +2,7 @@
 # STAR LIGHT ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Star Light Zone
-input_file: sonic_1/music/Mus84 - SLZ.asm
+input_file: "input/Mus84 - SLZ.asm"
 output_file: output/06_star_light_zone.mod
 samples_dir: "samples/"
 

@@ -2,7 +2,7 @@
 # SPECIAL STAGE Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: "Special Stage"
-input_file: sonic_1/music/Mus89 - Special Stage.asm
+input_file: "input/Mus89 - Special Stage.asm"
 output_file: output/08_special_stage.mod
 samples_dir: "samples/"
 

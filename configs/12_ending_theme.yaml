@@ -2,7 +2,7 @@
 # ENDING SCREEN Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Ending Theme
-input_file: sonic_1\music\Mus8B - Ending.asm
+input_file: "input/Mus8B - Ending.asm"
 output_file: output/12_ending_theme.mod
 samples_dir: "samples/"
 

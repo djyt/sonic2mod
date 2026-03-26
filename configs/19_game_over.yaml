@@ -2,7 +2,7 @@
 # Song: Mus8F - Game Over.asm
 
 name: Game Over
-input_file: sonic_1\music\Mus8F - Game Over.asm
+input_file: "input/Mus8F - Game Over.asm"
 output_file: output/19_game_over.mod
 samples_dir: "samples/"
 

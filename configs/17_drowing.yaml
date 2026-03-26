@@ -7,7 +7,7 @@
 # -------------------------------------------------------------------------------------------------
 
 name: Drowning
-input_file: sonic_1\music\Mus92 - Drowning.asm
+input_file: "input/Mus92 - Drowning.asm"
 output_file: output/17_drowning.mod
 samples_dir: "samples/"
 

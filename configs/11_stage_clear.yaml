@@ -2,7 +2,7 @@
 # STAGE CLEAR Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Stage Clear
-input_file: sonic_1\music\Mus8E - Sonic Got Through.asm
+input_file: "input/Mus8E - Sonic Got Through.asm"
 output_file: output/11_stage_clear.mod
 samples_dir: "samples/"
 

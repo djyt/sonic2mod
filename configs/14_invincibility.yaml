@@ -2,7 +2,7 @@
 # INVINCIBILITY Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Invincibility
-input_file: sonic_1\music\Mus87 - Invincibility.asm
+input_file: "input/Mus87 - Invincibility.asm"
 output_file: output/14_invincibility.mod
 samples_dir: "samples/"
 

@@ -32,7 +32,7 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $F0 | `smpsModSet` | — | wait, speed, change, step | Set modulation (vibrato) parameters; enables modulation flag | → `4xy` Vibrato |
 | $F1 | `smpsModOn` | — | — | Re-enable modulation (uses stored params) | → activates `4xy` |
 | $F2 | `smpsStop` | — | — | End of channel data | terminates parsing |
-| $F3 | `smpsPSGform` | — | byte | Set PSG noise/waveform register | → instrument switch via `psg_form_map` config |
+| $F3 | `smpsPSGform` | — | byte | Set PSG noise/waveform register | → instrument switch via `psg_map` config |
 | $F4 | `smpsModOff` | — | — | Disable modulation | → clears vibrato state |
 | $F5 | `smpsPSGvoice` | — | label | Set PSG tone envelope index | → instrument switch via `psg_voice_map` config |
 | $F6 | `smpsJump` | — | address | Unconditional jump (song loop point) | → `Bxx` Position Jump (first occurrence only) |
@@ -170,7 +170,7 @@ smpsModSet wait, speed, change, step
 
 > **Hardware quirk:** The driver stores `step / 2` (arithmetic right-shift: `lsr.b #1`). If the song specifies `$10` (16 steps), the driver performs 8 up-steps + 8 down-steps. sonic2mod passes the raw value as-is.
 
-**MOD mapping:** `4xy` Vibrato, where x = speed (lower nibble) and y = change (depth). MOD vibrato is sinusoidal; SMPS modulation is triangle-wave. The translation is an approximation.
+**MOD mapping:** `4xy` Vibrato, where x = speed (upper nibble) and y = depth (lower nibble). MOD vibrato is sinusoidal; SMPS modulation is triangle-wave. The translation is an approximation.
 
 **smpsModOn ($F1):** Re-enables modulation using the most recently stored ModSet parameters.
 **smpsModOff ($F4):** Disables modulation. Next note will not vibrate.

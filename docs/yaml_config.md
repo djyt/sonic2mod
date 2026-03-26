@@ -94,6 +94,16 @@ sample_list:
   - [3, "timpani.raw", 64, 0]
 
 samples_dir: "./samples/"       # Base path for sample files
+
+# Additional top-level keys (see dedicated sections below for full syntax):
+#
+# voice_map:             Routes SMPS voice index + note range → MOD instrument + pitch anchor
+# channel_instrument_map: Per-channel override for voice_map (e.g. FM5 detune variants)
+# psg_map:               Maps smpsPSGform bytes → PSG instrument (noise type auto-inferred from key bit 2)
+# psg_voice_map:         Maps smpsPSGvoice label → PSG instrument
+# mod_pattern_breaks:    Insert Bxx jumps + repack patterns to eliminate blank loop rows
+#   - pattern: 0         # Pattern to split
+#     row: 31            # Last intro row; body starts at row+1
 ```
 
 ## Channel Source Names
@@ -127,7 +137,7 @@ Notes outside C1–B3 after transpose are clamped with a warning. Use per-channe
 
 Routes a SMPS voice index + source-note range to a specific MOD instrument slot, with an optional pitch anchor (`root`) and optional synthesis-pitch override (`synth_root`).
 
-For synthesis pitch matching (how `root`, `synth_root`, and `low` interact with `target_rate`), see `docs/synthesis.md` §Pitch.
+For synthesis pitch matching (how `root`, `synth_root`, and `low` interact with `target_rate`), see `docs/fm_synthesis.md` §Pitch.
 
 ```yaml
 voice_map:
@@ -147,7 +157,7 @@ voice_map:
 
 ### root — pitch anchor
 
-`root` is an **absolute** MOD note anchor. Source `low` always plays at `root`, unconditionally — smpsAlterPitch events and header pitch_offset do not affect this. The placement formula is:
+`root` is an **absolute** MOD note anchor. Source `low` always plays at `root`, unconditionally — `smpsChangeTransposition` events and header pitch_offset do not affect this. The placement formula is:
 
 ```
 output = root + (source − low)
@@ -159,7 +169,7 @@ Without `root`, the entry still selects the correct `mod_instrument` but pitch f
 
 ### synth_root — synthesis pitch override
 
-When synthesis is enabled, each `voice_map` entry is synthesized at `low` by default. For channels that use smpsAlterPitch, `low` is the SMPS byte value but the chip actually plays at a lower pitch (after transposition). `synth_root` lets you specify the pitch the chip actually synthesizes at.
+When synthesis is enabled, each `voice_map` entry is synthesized at `low` by default. For channels that use `smpsChangeTransposition`, `low` is the SMPS byte value but the chip actually plays at a different pitch (after transposition). `synth_root` lets you specify the pitch the chip actually synthesizes at.
 
 `synth_root` sets a different SMPS semitone to synthesize at (same note-name syntax as `low`/`high`). `target_rate` is **not** adjusted — the output pitch equals `synth_root`'s frequency.
 
@@ -214,6 +224,35 @@ YAML accepts integer (`vibrato: 12` → speed=1, depth=2), hex integer (`vibrato
 
 If `voice_map` entries cover the full note range of a channel, the base YAML `transpose` is redundant. Set `transpose: 0` and let `root` control pitch placement entirely.
 
+### channel_instrument_map — per-channel voice_map override
+
+Overrides `voice_map` for a specific SMPS source channel. Useful when one channel needs
+different instrument routing than the global `voice_map` — e.g. FM5 shares FM1's note data
+but needs detuned instrument variants.
+
+Format: `{source_channel: {voice_index: [InstrumentRange, ...]}}`
+
+```yaml
+channel_instrument_map:
+  FM5:
+    4:                        # voice $04 on FM5 only (global voice_map[4] used for all other channels)
+      - low:  C6
+        high: B7
+        mod_instrument: 27    # finetune +1 variant for FM5 detune chorus
+        root: C2
+        synth_root: C5
+      - low:  B4
+        high: B4
+        mod_instrument: 28
+        root: B1
+        synth_root: B3
+```
+
+When a note is played on FM5 with voice $04, `channel_instrument_map["FM5"][4]` is checked
+first; `voice_map[4]` is only consulted if no per-channel override exists for that voice.
+
+---
+
 ## PSG Instrument Mapping
 
 For full PSG synthesis details (SN76489 internals, normalization, envelope tables, API),
@@ -255,12 +294,20 @@ names from the SMPS assembly (`fTone_01`–`fTone_09` in Sonic 1).
 
 ```yaml
 psg_voice_map:
-  fTone_01: 7     # default square-wave envelope → instrument 7
-  fTone_03: 10    # softer attack envelope → instrument 10
+  fTone_01:
+    mod_instrument: 8    # required
+    root: A2             # required — MOD anchor; determines target_rate
+    synth_root: A4       # optional synthesis pitch override
+  fTone_03:
+    mod_instrument: 9
+    root: A2
+    synth_root: A4
 ```
 
-When `smpsPSGvoice fTone_03` appears in channel data, the PSG channel switches to
-instrument 10. Labels not in the map are silently ignored.
+`root` and `mod_instrument` are required fields. `synth_root`, `low`, `high`, `envelope`,
+`base_volume`, and `vibrato` are optional. A list of entries (range-split) is also accepted,
+using the same format as `psg_map`. When `smpsPSGvoice fTone_03` appears in channel data,
+the PSG channel switches to the specified instrument. Labels not in the map are silently ignored.
 
 ## Timing
 
@@ -379,15 +426,11 @@ Since timpani variants only differ in pitch, they can share a single MOD instrum
 
 ### Preparing Samples for MOD
 
-The source WAV files in `sonic_1/dac/dpcm/` need to be converted to raw 8-bit signed PCM for inclusion in a MOD file. Using SoX:
+Pre-converted `.raw` files (`kick.raw`, `snare.raw`, `timpani.raw`) are already in `samples/`.
+Reference them directly in `sample_list` — no conversion step needed.
 
-```bash
-sox kick.wav -t raw -e signed -b 8 -c 1 kick.raw
-sox snare.wav -t raw -e signed -b 8 -c 1 snare.raw
-sox timpani.wav -t raw -e signed -b 8 -c 1 timpani.raw
-```
-
-Place the `.raw` files in your `samples_dir` and reference them in `sample_list`. The sample rate argument to SoX is not needed here since MOD playback rate is controlled by the note period, not a header value.
+MOD playback rate is controlled by the trigger note's period value, not a sample-rate header,
+so the `.raw` files contain raw 8-bit signed mono PCM with no header.
 
 ## Example Configs
 

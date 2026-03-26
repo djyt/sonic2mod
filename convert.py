@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import importlib.metadata
 import io
 import os
 import sys
@@ -52,6 +53,8 @@ def main():
     )
     parser.add_argument('config', nargs='?', help="YAML configuration file")
     parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
+    parser.add_argument('--version', action='version',
+                        version=f"sonic2mod {importlib.metadata.version('sonic2mod')}")
 
     args = parser.parse_args()
 

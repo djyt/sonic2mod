@@ -8,6 +8,7 @@ Requires: pip install rich
 """
 
 import argparse
+import importlib.metadata
 import io
 import math
 import os
@@ -847,6 +848,8 @@ def main():
     )
     parser.add_argument('song', help="Path to the .asm file")
     parser.add_argument('--config', '-c', help="Optional YAML config to diff against")
+    parser.add_argument('--version', action='version',
+                        version=f"sonic2mod {importlib.metadata.version('sonic2mod')}")
     parser.add_argument('--region', choices=['ntsc', 'pal'], default='ntsc',
                         help="Console region for BPM derivation (default: ntsc)")
     parser.add_argument('--write', '-w', metavar='FILE',

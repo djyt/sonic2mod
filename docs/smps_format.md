@@ -117,7 +117,8 @@ is never reached on that frame and the fill never fires. The note sustains the f
 | Macro | Bytes | Description |
 |-------|-------|-------------|
 | `smpsSetvoice $xx` | $EF, xx | Set FM voice/instrument |
-| `smpsAlterVol $xx` | $E6, xx | Add signed value to volume attenuation |
+| `smpsAlterVol $xx` | $E6, xx | Add signed value to volume attenuation (FM channels) |
+| `smpsPSGAlterVol $xx` | $EC, xx | Add signed value to volume attenuation (PSG channels) — parsed identically to `smpsAlterVol` |
 | `smpsAlterNote $xx` | $E1, xx | **FNUM offset** (~10 cents/unit, NOT semitones) — sub-semitone detune only; does NOT affect voice_map range lookup or MOD pitch placement |
 | `smpsChangeTransposition $xx` | $E9, xx | **Semitone shift** — add signed value to channel pitch; cumulative; affects all subsequent notes and voice_map routing |
 | `smpsPan direction, amsfms` | $E0, xx | Set panning and AMS/FMS |
@@ -182,15 +183,7 @@ Four parameters per macro correspond to the four FM operators. These are parsed 
 
 ## DAC Samples (Sonic 1)
 
-| Name | Byte | Description |
-|------|------|-------------|
-| `dKick` | $81 | Kick drum |
-| `dSnare` | $82 | Snare drum |
-| `dTimpani` | $83 | Timpani |
-| `dHiTimpani` | $88 | High timpani |
-| `dMidTimpani` | $89 | Mid timpani |
-| `dLowTimpani` | $8A | Low timpani |
-| `dVLowTimpani` | $8B | Very low timpani |
+See `docs/smps_driver.md` §DAC Channel for the full table including native sample rates.
 
 ## Edge Cases
 

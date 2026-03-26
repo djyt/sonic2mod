@@ -339,7 +339,7 @@ converter._set_loop_point(config.mod_pattern_breaks) # writes Bxx in final layou
 
 **Problem:** A bare `dc.b $0C` line after an `smpsNoteFill` advances time but no note appears.
 
-**Cause:** A duration byte with no preceding note on the same `dc.b` line is a **sustain/wait** command — it advances the tick counter while the previous note continues. The parser emits an implicit continuation event (`is_rest=True, is_no_attack=True`). This is correct per the SMPS spec.
+**Cause:** A duration byte with no preceding note on the same `dc.b` line emits a continuation event. Without a preceding `smpsNoAttack`, the parser **retriggles the last note** (`is_rest=False, note_value=last_note_value`) — e.g. staccato arpeggio in 1-Up. With a preceding `smpsNoAttack`, it emits a rest/sustain (`is_rest=True, is_no_attack=True`) — e.g. held note in GHZ. This is correct per the SMPS driver behavior (`FMNoteOn` is gated by the no-attack flag).
 
 **Fix:** No fix needed — this is working as designed. The implicit wait correctly represents the held note duration.
 

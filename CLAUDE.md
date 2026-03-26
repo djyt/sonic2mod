@@ -11,7 +11,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 |----------|----------|
 | `docs/smps_driver.md` | **Sonic 1 driver reference** — all coord flag bytes ($E0–$F9), smpsDetune vs smpsChangeTransposition, timing system, smpsModSet, smpsNoteFill, FM operator order, DAC, PSG |
 | `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas |
-| `docs/synthesis.md` | **YM2612 synthesis pipeline** — root/synth_root/target_rate explained, all settings, normalization, headroom/carrier balance, OPN2 internals, API reference, common mistakes |
+| `docs/fm_synthesis.md` | **YM2612 synthesis pipeline** — root/synth_root/target_rate explained, all settings, normalization, headroom/carrier balance, OPN2 internals, API reference, common mistakes |
 | `docs/psg_synthesis.md` | **SN76489 PSG synthesis pipeline** — psg_map/psg_voice_map schema, envelope tables, root/synth_root, normalization, API |
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
@@ -75,16 +75,16 @@ pyright        # type checking
 
 ```bash
 # Convert using YAML config (primary usage)
-python convert.py configs/title_screen.yaml
+python convert.py configs/01_title_screen.yaml
 
 # Override output path
-python convert.py configs/title_screen.yaml --output output/title_screen.mod
+python convert.py configs/01_title_screen.yaml --output output/title_screen.mod
 
 # Analyse a song (no config needed)
 python analyze.py "sonic_1/music/Mus8A - Title Screen.asm"
 
 # Analyse with config coverage diff
-python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/title_screen.yaml
+python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/01_title_screen.yaml
 
 # Verify: open output .mod in OpenMPT or MilkyTracker
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):
@@ -146,7 +146,7 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - MOD note range: 3 octaves (C1–B3), 36 semitones
 - Default FM transpose: -36 semitones (maps SMPS octaves 3–5 → MOD C1–B3)
 - Duration persistence: last explicit `dc.b` duration carries to subsequent notes
-- Standalone duration bytes in `dc.b` **retrigger the last note** (not a silent wait) — parser creates `SmpsNote(note_value=last_note_value, is_rest=False)`
+- Standalone duration bytes in `dc.b` **retrigger the last note** by default — without preceding `smpsNoAttack`: `SmpsNote(note_value=last_note_value, is_rest=False)`; with `smpsNoAttack` pending: rest/sustain `(is_rest=True, is_no_attack=True)`
 - Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
 - Loop unrolling uses `stop_line` parameter to prevent re-entry into `smpsLoop`
 - YAML config requires `pyyaml` (`pip install pyyaml`)
@@ -206,7 +206,7 @@ and does NOT affect range lookup.
 
 - `low`/`high` — SMPS note names without `n` prefix (e.g. `G5`, `Gs6`, `C7`)
 - `mod_instrument` — MOD instrument slot (1-based)
-- `root` — **absolute** MOD note anchor; source `low` always plays here regardless of smpsAlterPitch or pitch_offset
+- `root` — **absolute** MOD note anchor; source `low` always plays here regardless of `smpsChangeTransposition` or pitch_offset
 - `synth_root` — synthesis pitch override; `target_rate` is NOT adjusted — output pitch = synth_root's frequency
 - `vibrato: XY` — per-entry vibrato override (speed X, depth Y); also works in `psg_map` / `psg_voice_map`
 - Output formula: `root + (source − low)`, clamped C1–B3
@@ -236,11 +236,11 @@ voice_map:
 - `inst_num`: 1-based MOD instrument slot
 - `volume`: 0–64
 - `finetune`: -8..+7 (MOD finetune nibble; +1 ≈ +12.5 cents)
-- Synthesis path: entries with `inst_num` in `fm_samples` apply finetune only (file not loaded)
+- Synthesis path: when synthesis is enabled, `sample_list` entries whose `inst_num` was synthesized apply `volume` and `finetune` overrides to the synthesized sample — the file is not loaded from disk
 
 ## YM2612 Synthesis
 
-Full reference: `docs/synthesis.md`.
+Full reference: `docs/fm_synthesis.md`.
 Enable: set `fm_synthesis: {enabled: true}` in `configs/settings.yaml`.
 Smoke tests: `python ym2612/validate.py` / `renderer.py` / `sample_generator.py`
 

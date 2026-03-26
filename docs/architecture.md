@@ -4,7 +4,7 @@
 
 sonic2mod converts Sonic 1 SMPS (Sample Music Playback System) assembly music into Amiga ProTracker MOD format. The tool parses macro-based assembly text, builds an intermediate representation, then maps notes, timing, and effects into a binary MOD file.
 
-Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema), `docs/synthesis.md` (YM2612 synthesis), `docs/psg_synthesis.md` (SN76489 PSG synthesis).
+Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema), `docs/fm_synthesis.md` (YM2612 synthesis), `docs/psg_synthesis.md` (SN76489 PSG synthesis).
 
 ## Data Flow
 
@@ -105,7 +105,7 @@ The core parser. Converts SMPS assembly text into an intermediate representation
    | Note name (`nC3`, `nRst`) | Create pending note, await duration |
    | DAC name (`dKick`) | Create pending DAC note, await duration |
    | Hex < $80 after note | Assign as duration to pending note, emit event |
-   | Hex < $80 standalone | **Update persistent duration AND create implicit rest/wait event** advancing the tick counter |
+   | Hex < $80 standalone | **Update persistent duration AND emit a continuation event**: without preceding `smpsNoAttack`, retriggers last note (`is_rest=False, note_value=last_note_value`); with `smpsNoAttack` pending, emits a rest/sustain (`is_rest=True, is_no_attack=True`) |
    | `smpsNoAttack` / `$E7` | Flag next note as no-attack |
    | Hex >= $80 | Interpret as raw note byte (rest=$80, note=$81+) |
 

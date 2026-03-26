@@ -62,34 +62,34 @@ sample_list:
   # --- percussion ---
   - [1,  "kick.raw",        64, 0]
   - [2,  "snare.raw",       64, 0]
-  # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
-  - [3,  "ghz_v02.raw",     32, 0]
-  # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
-  - [4,  "ghz_v05.raw",     26, 0]
-  - [5,  "ghz_v05_lo.raw",  16, 0]  
-  # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
-  - [6,  "ghz_v06.raw",     64, 0]
-  # --- PSG White Noise ---
-  - [7,  "psg_noise.raw",   32, 0]
-  # --- PSG Voices ---
-  - [8,  "psg_tone01.raw",  16, 0]
-  - [9,  "psg_tone03.raw",  16, 0]
-  - [10, "psg_tone05.raw",  16, 0]
-  - [11, "psg_tone06.raw",  16, 0]
   # --- voice $00: deep bass (FM2 opening) ---
-  - [13,  "ghz_v00.raw",    32, 0]
+  - [3,  "ghz_v00.raw",     32, 0]
   # --- voice $01: bass/rhythm pad (FM2 main loop) ---
-  - [16,  "ghz_v01.raw",    32, 0]
-  # --- voice $07: bridge voice (FM1/FM3/FM4) ---
-  - [19, "ghz_v07.raw",     32, 0]
-  # --- voice $08: bright synth (FM3/FM4/FM5 main) ---
-  - [22, "ghz_v08.raw",     32, 0]
-  - [23, "ghz_v08_hi.raw",  32, 0]
+  - [4,  "ghz_v01.raw",     32, 0]
+  # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
+  - [5,  "ghz_v02.raw",     32, 0]
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
-  - [25, "ghz_v04.raw",     32, 0]
-  - [26, "ghz_v04_lo.raw",  32, 0]
-  - [27, "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
-  - [28, "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
+  - [6,  "ghz_v04.raw",     32, 0]
+  - [7,  "ghz_v04_lo.raw",  32, 0]
+  - [8,  "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
+  - [9,  "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
+  # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
+  - [10, "ghz_v05.raw",     26, 0]
+  - [11, "ghz_v05_lo.raw",  16, 0]
+  # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
+  - [12, "ghz_v06.raw",     64, 0]
+  # --- voice $07: bridge voice (FM1/FM3/FM4) ---
+  - [13, "ghz_v07.raw",     32, 0]
+  # --- voice $08: bright synth (FM3/FM4/FM5 main) ---
+  - [14, "ghz_v08.raw",     32, 0]
+  - [15, "ghz_v08_hi.raw",  32, 0]
+  # --- PSG White Noise ---
+  - [16, "psg_noise.raw",   32, 0]
+  # --- PSG Voices ---
+  - [17, "psg_tone01.raw",  16, 0]
+  - [18, "psg_tone03.raw",  16, 0]
+  - [19, "psg_tone05.raw",  16, 0]
+  - [20, "psg_tone06.raw",  16, 0]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ voice_map:
   0:
     - low:  C2
       high: B4
-      mod_instrument: 13
+      mod_instrument: 3
       root: C2
       synth_root: C3
 
@@ -120,7 +120,7 @@ voice_map:
   1:
     - low:  C2
       high: B4
-      mod_instrument: 16
+      mod_instrument: 4
       root: C2
       synth_root: C3
 
@@ -128,7 +128,7 @@ voice_map:
   2:
     - low:  C6
       high: B7
-      mod_instrument: 3
+      mod_instrument: 5
       root: C2
       synth_root: C6
 
@@ -136,12 +136,12 @@ voice_map:
   4:
     - low:  C6
       high: E7
-      mod_instrument: 25
+      mod_instrument: 6
       root: C2
       synth_root: C5
     - low:  B4
       high: B4
-      mod_instrument: 26
+      mod_instrument: 7
       root: B1
       synth_root: B2
 
@@ -149,12 +149,12 @@ voice_map:
   5:
     - low:  C4
       high: B5
-      mod_instrument: 5
+      mod_instrument: 11
       root: C2
       synth_root: C2
     - low:  C6
       high: B7
-      mod_instrument: 4
+      mod_instrument: 10
       root: C2
       synth_root: C4
 
@@ -162,7 +162,7 @@ voice_map:
   6:
     - low:  C6
       high: B7
-      mod_instrument: 6
+      mod_instrument: 12
       root: C2
       synth_root: C5
       vibrato: 0            # Sounds awful, disable it!
@@ -171,19 +171,19 @@ voice_map:
   7:
     - low:  C5
       high: B5
-      mod_instrument: 19
+      mod_instrument: 13
       root: C2
       synth_root: C5
   # $08 → bright synth
   8:
     - low:  C5
       high: B5
-      mod_instrument: 22
+      mod_instrument: 14
       root: C2
       synth_root: C3
     - low:  C6
       high: B6
-      mod_instrument: 23
+      mod_instrument: 15
       root: C2
       synth_root: C4
 
@@ -193,7 +193,7 @@ voice_map:
 # -------------------------------------------------------------------------------------------------
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
-    mod_instrument: 7
+    mod_instrument: 16
     root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
     noise_rate: 3
     synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
@@ -202,19 +202,19 @@ psg_map:
 
 psg_voice_map:
   fTone_01:
-    mod_instrument: 8
+    mod_instrument: 17
     root: A2
     synth_root: A4
   fTone_03:
-    mod_instrument: 9
+    mod_instrument: 18
     root: A2
     synth_root: A4
   fTone_05:
-    mod_instrument: 10
+    mod_instrument: 19
     root: A2
     synth_root: A4
   fTone_06:
-    mod_instrument: 11
+    mod_instrument: 20
     low: A6
     root: A2
     synth_root: A5
@@ -225,7 +225,7 @@ psg_voice_map:
 #
 # FM5 applies smpsAlterNote $02 (FNUM offset ≈ +10 cents) during voice $04
 # bell-arp sections to create the chorus detune effect vs FM4.  The same
-# source notes route to inst 12 (identical audio to inst 7, finetune +1).
+# source notes route to inst 8/9 (identical audio to inst 6/7, finetune +1).
 # -------------------------------------------------------------------------------------------------
 channel_instrument_map:
   FM5:
@@ -234,14 +234,14 @@ channel_instrument_map:
         high: B7              # top
         root: C2
         synth_root: C5
-        mod_instrument: 27    # same audio as inst 7, finetune +1
+        mod_instrument: 8    # same audio as inst 6, finetune +1
       - low:  B4
         high: B4
-        mod_instrument: 28
+        mod_instrument: 9
         root: B1
         synth_root: B3
-        
-        
+
+
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break: GHZ intro fills rows 0-31 of pattern 0; the loop begins at row 32.
 # A Bxx at row 31 jumps cleanly to pattern 1 instead of playing 32 rows of silence.

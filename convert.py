@@ -16,9 +16,12 @@ if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 from rich import box
+from rich.align import Align
 from rich.console import Console
 from rich.padding import Padding
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, derive_bpm
 from core.mod import apply_pattern_breaks
@@ -26,6 +29,34 @@ from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
 
 console = Console(highlight=False, legacy_windows=False)
+
+
+def _get_version() -> str:
+    try:
+        return importlib.metadata.version("sonic2mod")
+    except importlib.metadata.PackageNotFoundError:
+        return "dev"
+
+
+def _print_branding(version: str) -> None:
+    t = Text(justify="center")
+    t.append("SONIC2MOD", style="bold bright_yellow")
+    t.append(f"  v{version}", style="bold cyan")
+    t.append("  ·  reassembler", style="dim white")
+    console.print(Panel(Align.center(t), border_style="yellow", padding=(0, 2)))
+    console.print()
+
+
+def _tag_mod_branding(mod, version: str) -> None:
+    labels = [f"SONIC2MOD {version}", "reassembler"]
+    label_idx = 0
+    for sample in mod.samples:
+        if sample.length == 0 and label_idx < len(labels):
+            sample.set_name(labels[label_idx])
+            label_idx += 1
+        if label_idx == len(labels):
+            break
+
 
 _LABEL_W = 9   # right-aligned label column width
 _INDENT  = " " * (_LABEL_W + 4)  # indentation for continuation lines
@@ -48,6 +79,9 @@ def _error(msg: str):
 
 
 def main():
+    version = _get_version()
+    _print_branding(version)
+
     parser = argparse.ArgumentParser(
         description="Convert Sonic 1 SMPS assembly music to Amiga MOD format"
     )
@@ -80,8 +114,7 @@ def main():
         config.output_file = base.replace(" ", "_") + ".mod"
 
     # ── Header ──────────────────────────────────────────────────────────────
-    console.print()
-    console.rule(f"[bold cyan]sonic2mod[/bold cyan]   [dim]{config.name}[/dim]")
+    console.rule(f"[dim]{config.name}[/dim]")
     console.print()
 
     # ── Parse ────────────────────────────────────────────────────────────────
@@ -205,6 +238,9 @@ def main():
     _loop_info = next((i for i in converter._infos if i['type'] == 'loop_set'), None)
     if _loop_info:
         mod.trim_to_pattern(_loop_info['pattern'])
+
+    # ── Branding in sample slots ──────────────────────────────────────────────
+    _tag_mod_branding(mod, version)
 
     # ── Write output ──────────────────────────────────────────────────────────
     output_dir = os.path.dirname(config.output_file)

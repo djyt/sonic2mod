@@ -37,7 +37,7 @@ from ym2612.wrapper import OPN2
 # Config
 # ---------------------------------------------------------------------------
 
-_ASM_FILE    = _ROOT / "sonic_1/music/Mus84 - SLZ.asm"
+_ASM_FILE    = _ROOT / "input/Mus84 - SLZ.asm"
 _VOICE_INDEX = 5          # voice $05 — the one used by mod_instrument 9
 
 # synth_root = Fs8 → SMPS semitone 102 → mod_note_index = 102 - 12 = 90

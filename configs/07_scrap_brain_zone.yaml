@@ -2,7 +2,7 @@
 # SCRAP BRAIN ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Scrap Brain Zone
-input_file: sonic_1\music\Mus86 - SBZ.asm
+input_file: "input/Mus86 - SBZ.asm"
 output_file: output/07_scrap_brain_zone.mod
 samples_dir: "samples/"
 

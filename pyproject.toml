@@ -1,3 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sonic2mod"
+version = "0.1.0"
+description = "Sonic 1 SMPS music to Amiga MOD converter"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml",
+    "rich",
+]
+
+[project.scripts]
+sonic2mod = "convert:main"
+sonic2mod-analyze = "analyze:main"
+
+[tool.setuptools]
+py-modules = ["convert", "analyze"]
+packages = ["core", "ym2612", "sn76489"]
+
+[tool.setuptools.package-data]
+ym2612 = ["*.dll", "*.so", "*.c"]
+sn76489 = ["*.dll", "*.so", "*.c"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"

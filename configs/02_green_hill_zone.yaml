@@ -2,7 +2,7 @@
 # GREEN HILL ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
-input_file: "sonic_1/music/Mus81 - GHZ.asm"
+input_file: "input/Mus81 - GHZ.asm"
 output_file: "output/02_green_hill_zone.mod"
 samples_dir: "samples/"
 

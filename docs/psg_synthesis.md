@@ -363,7 +363,17 @@ Set `root`/`low` separately to control MOD pitch anchoring — they are independ
 
 The synthesized sample captures one fixed LFSR frequency.  Per-note timbre shifts (hardware
 tracks tone ch2 in real time) are approximated by the MOD playing the sample at different
-speeds.  See `docs/limitations.txt` for details.
+speeds.
+
+| | Hardware (rate 3) | MOD synthesis |
+|---|---|---|
+| LFSR clock source | PSG3 tone register `$C0` N (dynamic, changes per note) | Fixed at synth_root's N |
+| Per-note timbre | New LFSR sequence per note frequency | Same sample sped up/slowed down |
+| Rhythm and timing | Correct | Correct |
+| Amplitude envelope | Correct (fTone_09 decay) | Correct (fTone_09 decay) |
+
+The timbre approximation is acceptable for Marble Zone: the noise bursts are short (fTone_09
+= 16 frames) and the pitch range is modest (G3–E4 ≈ 9 semitones = up to ~1.7× playback speed).
 
 ### Using deprecated psg_form_map key
 

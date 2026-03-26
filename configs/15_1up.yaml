@@ -3,7 +3,7 @@
 # Todo: analyze.py suggests the wrong synth_root for psg_voice_map. Manually corrected.
 # -------------------------------------------------------------------------------------------------
 name: 1-Up (Extra Life)
-input_file: sonic_1\music\Mus88 - Extra Life.asm
+input_file: "input/Mus88 - Extra Life.asm"
 output_file: output/15_1up.mod
 samples_dir: "samples/"
 

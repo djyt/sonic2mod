@@ -4,7 +4,7 @@
 # todo: alter pitch
 
 name: Continue Screen
-input_file: sonic_1\music\Mus90 - Continue Screen.asm
+input_file: "input/Mus90 - Continue Screen.asm"
 output_file: output/18_continue_screen.mod
 samples_dir: "samples/"
 

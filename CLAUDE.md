@@ -16,7 +16,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
-| `docs/effects.txt` | ProTracker MOD effect reference |
+| `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
 | `reference/mml2mod-master/` | Reference MML-to-MOD converter |
 
@@ -188,7 +188,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 
 4. **Operator order** — SMPS binary stores OP4,OP3,OP2,OP1 (reversed). Correct mapping: `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`. Wrong mapping → "overdriven guitar" distortion (OP1 carrier placed in self-feedback slot).
 
-5. **Synthesis disabled by default** — `fm_synthesis.enabled: false` / `psg_synthesis.enabled: false` in `configs/settings.yaml`. Set `true` to auto-generate samples (requires gcc/MSVC for ym3438.c / sn76489.c).
+5. **Synthesis enabled by default** — `fm_synthesis.enabled: true` / `psg_synthesis.enabled: true` in `configs/settings.yaml`. Requires gcc/MSVC for ym3438.c / sn76489.c. Set `false` to use pre-rendered samples from `samples/` instead.
 
 6. **FM5 falls through into FM1 data** — parser does not stop at label boundaries; FM5 typically lacks `smpsStop` and shares FM1's note data (intentional chorus/detune design).
 

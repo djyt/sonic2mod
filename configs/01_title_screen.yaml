@@ -2,7 +2,7 @@
 # TITLE SCREEN MUSIC Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: "Title Screen"
-input_file: "sonic_1/music/Mus8A - Title Screen.asm"
+input_file: "input/Mus8A - Title Screen.asm"
 output_file: "output/01_title_screen.mod"
 samples_dir: "samples/"
 

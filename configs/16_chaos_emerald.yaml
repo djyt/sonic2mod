@@ -6,7 +6,7 @@
 # -------------------------------------------------------------------------------------------------
 
 name: Chaos Emerald
-input_file: sonic_1\music\Mus93 - Get Emerald.asm
+input_file: "input/Mus93 - Get Emerald.asm"
 output_file: output/16_chaos_emerald.mod
 samples_dir: "samples/"
 

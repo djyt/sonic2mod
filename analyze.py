@@ -20,10 +20,12 @@ if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
 
 try:
     from rich import box
+    from rich.align import Align
     from rich.console import Console
     from rich.panel import Panel
     from rich.syntax import Syntax
     from rich.table import Table
+    from rich.text import Text
 except ImportError:
     print("Error: 'rich' is required. Install with: pip install rich")
     sys.exit(1)
@@ -45,6 +47,22 @@ from core.smps_parser import SmpsParser
 from core.tables import PERIOD_TABLE, ModNote
 
 console = Console(legacy_windows=False)
+
+
+def _get_version() -> str:
+    try:
+        return importlib.metadata.version("sonic2mod")
+    except importlib.metadata.PackageNotFoundError:
+        return "dev"
+
+
+def _print_branding(version: str) -> None:
+    t = Text(justify="center")
+    t.append("SONIC2MOD", style="bold bright_yellow")
+    t.append(f"  v{version}", style="bold cyan")
+    t.append("  ·  reassembler", style="dim white")
+    console.print(Panel(Align.center(t), border_style="yellow", padding=(0, 2)))
+    console.print()
 
 
 _ALG_TOPOLOGY = {
@@ -843,6 +861,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
 # ---------------------------------------------------------------------------
 
 def main():
+    _print_branding(_get_version())
+
     parser = argparse.ArgumentParser(
         description="Analyse a Sonic 1 SMPS assembly file and display structured info"
     )

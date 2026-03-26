@@ -37,6 +37,7 @@ class ModSample:
             return
         self._volume = int(v)
 
+    def set_name(self, name: str) -> None: self._name = name[:21]
     def get_name(self): return self._name.ljust(21, ' ')
     def get_name_bytes(self): return bytearray(self.get_name(), 'utf-8') + b'\x00'
     def get_bytes(self):

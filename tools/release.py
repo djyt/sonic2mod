@@ -46,7 +46,7 @@ def bump(version: str, part: str) -> str:
 def run(cmd: list[str], dry_run: bool) -> None:
     print(f"  $ {' '.join(cmd)}")
     if not dry_run:
-        result = subprocess.run(cmd, cwd=ROOT)
+        result = subprocess.run(cmd, cwd=ROOT, check=False)
         if result.returncode != 0:
             sys.exit(f"Command failed: {' '.join(cmd)}")
 

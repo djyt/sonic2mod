@@ -24,6 +24,8 @@ def _needs_rebuild() -> bool:
     """Return True if DLL is missing or older than any C source."""
     if not _LIB_PATH.exists():
         return True
+    if not _SRC.exists() or not _BATCH_SRC.exists():
+        return False  # source not available (e.g. non-editable install); use existing DLL
     lib_mtime = _LIB_PATH.stat().st_mtime
     return _SRC.stat().st_mtime > lib_mtime or _BATCH_SRC.stat().st_mtime > lib_mtime
 

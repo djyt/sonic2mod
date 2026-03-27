@@ -198,7 +198,12 @@ def main():
     console.print(Padding(tbl, (0, 0, 0, _LABEL_W + 4)))
 
     # ── Convert ───────────────────────────────────────────────────────────────
-    SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "configs", "settings.yaml")
+    # Resolve settings.yaml relative to the config file (both live in configs/).
+    # Falls back to __file__-relative for editable installs / direct invocation.
+    _config_dir   = os.path.dirname(os.path.abspath(args.config))
+    SETTINGS_FILE = os.path.join(_config_dir, "settings.yaml")
+    if not os.path.exists(SETTINGS_FILE):
+        SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
     synth     = SynthesisSettings.from_yaml(SETTINGS_FILE)     if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
     psg_synth = PsgSynthesisSettings.from_yaml(SETTINGS_FILE)  if os.path.exists(SETTINGS_FILE) else PsgSynthesisSettings()
 

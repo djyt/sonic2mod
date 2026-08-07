@@ -96,6 +96,48 @@ sonic2mod-analyze "input/Mus81 - GHZ.asm" --config configs/02_green_hill_zone.ya
 The analyzer isn't perfect, makes mistakes and bad decisions. Like us all. Expect to hand-tweak its output in certain cases to get the best possible results. 
 
 
+## Render sound effects to WAV
+
+Sonic 1's 49 sound effects are a different problem to its music: they're 60 Hz tick-driven, mostly under a second, and built almost entirely from per-tick pitch sweeps and volume ramps that a tracker row grid would flatten. So they don't go through the MOD pipeline at all.
+
+`sonic2wav` instead runs a tick-accurate reimplementation of the Sonic 1 sound driver against the same YM2612 and SN76489 emulators, producing a continuous timeline:
+
+```bash
+sonic2wav --all
+```
+
+Or using Python directly:
+
+```bash
+python sonic2wav.py --all
+```
+
+Output `.wav` files are written to `output/sfx/` as 16-bit stereo 44.1 kHz — stereo because hard panning is real design intent in Sonic 1 (`B5_Ring.wav` is right-only, and `CE_Ring_Left_Speaker.wav` is its left-channel twin).
+
+Render a single effect, or check what would be produced without writing anything:
+
+```bash
+python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+python sonic2wav.py --all --dry-run
+```
+
+Useful options: `--rate native` writes at the chip's own 53267 Hz and skips resampling, `--psg-gain` sets the PSG level against the FM, `--no-normalize` writes raw chip levels. By default a single global gain is applied across all 49 files, which keeps the relative loudness the composers intended rather than making everything equally loud.
+
+### 8-bit samples for the Amiga
+
+```bash
+python sonic2wav.py --all --8bit
+```
+
+Writes signed 8-bit mono `.raw` files to `output/sfx8/` alongside a `manifest.yaml` giving each sample's rate, the note to trigger it at, the suggested MOD volume and its repeat points.
+
+Eight bits needs roughly the opposite treatment to the 16-bit set. Each sample is DC-corrected, resampled once straight from the chip rate, peak-normalised, and dithered with noise shaping — then the volume column restores the composed balance. Normalising per sample rather than globally is worth a median 1.5 bits, and 3.1 bits on the quietest effect.
+
+Rates are chosen per effect from ProTracker's own period table, so each sample plays at true pitch with finetune 0. `--max-rate 16574` targets an A500 (whose fixed ~4.4 kHz filter makes more largely academic) and roughly halves the total; `--flat-rate N` forces a single rate for everything.
+
+See `docs/sfx_rendering.md` for the driver details, the 8-bit chain, and the handful of documented deviations from stock hardware.
+
+
 ## FM/PSG Synthesis
 
 Cycle-accurate YM2612 (FM) and SN76489 (PSG) synthesis is enabled by default. These have been pre-compiled for Windows and included as a DLL file. However, if you're using Linux or a Mac you'll need GCC or MSVC installed and in your path. 

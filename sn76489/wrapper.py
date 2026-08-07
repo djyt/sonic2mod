@@ -97,9 +97,20 @@ class SN76489:
         self._chip = self._lib.SN76489_Init(clock_rate, sample_rate)
         if not self._chip:
             raise RuntimeError("SN76489_Init returned NULL")
-        # SN76489_Init has SN76489_Reset commented out — call it explicitly so
-        # Registers[], ToneFreqVals[], IntermediatePos[] etc. are properly initialised
-        # (without this, garbage malloc memory causes out-of-bounds PSGVolumeValues reads)
+        self.reset()
+
+    def reset(self) -> None:
+        """Reset chip state and re-apply the Sega VDP configuration.
+
+        SN76489_Init has its SN76489_Reset call commented out in the C source, so this
+        must run at least once after construction — otherwise Registers[], ToneFreqVals[]
+        and IntermediatePos[] hold garbage malloc memory, which causes out-of-bounds
+        PSGVolumeValues reads.
+
+        Also lets a single instance be reused across many renders without the malloc/free
+        churn of constructing a new chip each time.  Note the output sample rate is baked
+        in at SN76489_Init and cannot be changed here.
+        """
         self._lib.SN76489_Reset(self._chip)
         self._lib.SN76489_Config(self._chip, _FB_SEGAVDP, _SRW_SEGAVDP, _BOOST_NOISE)
         # Enable all channels

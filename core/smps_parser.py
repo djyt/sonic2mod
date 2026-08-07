@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from .tables import SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
+from .tables import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -22,6 +22,11 @@ class SmpsNote:
     is_dac: bool = False
     dac_name: str = ""    # Original DAC name (e.g. "dKick")
     is_no_attack: bool = False  # smpsNoAttack flag
+    # True when synthesised from a standalone duration byte rather than an explicit note
+    # byte.  The driver's .gotduration path skips FMSetFreq/PSGSetFreq entirely, so the
+    # channel re-keys at its EXISTING frequency — which differs from re-deriving it if a
+    # smpsChangeTransposition landed in between (SndA8 - SS Goal does exactly that).
+    is_retrigger: bool = False
 
 
 @dataclass
@@ -56,6 +61,10 @@ class SmpsChannelHeader:
     mod_byte: int = 0
     voice: int = 0
     psg_voice_label: str = ""  # initial smpsPSGvoice label from smpsHeaderPSG (e.g. "fTone_06")
+    # SFX-specific: raw chanid byte from smpsHeaderSFXChannel (cFM5 = $05, cPSG3 = $C0, ...).
+    # Music headers imply the hardware channel by declaration order; SFX headers do not, so
+    # cFM3/cFM4/cFM5 are indistinguishable without this.  0 = not an SFX channel.
+    hw_channel: int = 0
 
 
 @dataclass
@@ -66,6 +75,10 @@ class SmpsSongHeader:
     tempo_divider: int = 1
     tempo_modifier: int = 5
     channels: list = field(default_factory=list)  # list of SmpsChannelHeader
+    # True when parsed from smpsHeader*SFX* macros.  SFX have no tempo modifier byte and run
+    # one tick per V-int unconditionally — the music (modifier-1)/modifier rate correction
+    # must not be applied to them.
+    is_sfx: bool = False
 
 
 @dataclass
@@ -181,7 +194,13 @@ class SmpsParser:
                 self.labels[label] = i
 
     def _parse_header(self):
-        """Extract song header macros."""
+        """Extract song header macros.
+
+        Handles both music headers (smpsHeaderChan/Tempo/DAC/FM/PSG) and SFX headers
+        (smpsHeaderChanSFX/TempoSFX/SFXChannel).  The two sets cannot collide: the music
+        regexes all require whitespace directly after the macro name, which fails against
+        the 'S' of 'SFX'.
+        """
         header = SmpsSongHeader()
 
         for line in self.lines:
@@ -189,6 +208,46 @@ class SmpsParser:
             m = re.match(r'smpsHeaderVoice\s+(\S+)', line)
             if m:
                 header.voice_label = m.group(1)
+                continue
+
+            # smpsHeaderTempoSFX <div> — SFX have no tempo modifier byte at all.
+            m = re.match(r'smpsHeaderTempoSFX\s+\$([0-9A-Fa-f]+)', line)
+            if m:
+                header.tempo_divider = int(m.group(1), 16)
+                header.tempo_modifier = 0
+                header.is_sfx = True
+                continue
+
+            # smpsHeaderChanSFX <count> — single total, not separate FM/PSG counts.
+            m = re.match(r'smpsHeaderChanSFX\s+\$([0-9A-Fa-f]+)', line)
+            if m:
+                header.is_sfx = True
+                continue
+
+            # smpsHeaderSFXChannel <chanid>, <label>, <pitch>, <vol>
+            # chanid is a symbolic EQU (cFM5, cPSG3, ...), not a hex literal.
+            m = re.match(
+                r'smpsHeaderSFXChannel\s+(\w+)\s*,\s*(\S+?)\s*,\s*\$([0-9A-Fa-f]+)\s*,\s*\$([0-9A-Fa-f]+)',
+                line
+            )
+            if m:
+                chan_name = m.group(1)
+                if chan_name not in SFX_CHANNEL_IDS:
+                    print(f"Warning: unknown SFX channel id '{chan_name}' — skipping")
+                    continue
+                chanid = SFX_CHANNEL_IDS[chan_name]
+                pitch_raw = int(m.group(3), 16)
+                if pitch_raw > 0x7F:
+                    pitch_raw -= 0x100
+                ch = SmpsChannelHeader(
+                    channel_type="PSG" if chanid & 0x80 else "FM",
+                    label=m.group(2).rstrip(','),
+                    pitch_offset=pitch_raw,
+                    volume=int(m.group(4), 16),
+                    hw_channel=chanid,
+                )
+                header.channels.append(ch)
+                header.is_sfx = True
                 continue
 
             # smpsHeaderChan
@@ -253,6 +312,29 @@ class SmpsParser:
                 continue
 
         return header
+
+    def _label_precedes_duration(self, idx):
+        """True if the next data-bearing line is a dc.b whose first token is a duration byte.
+
+        Used to decide whether a label sits between a note byte and its duration byte.
+        Skips over consecutive label lines, since those emit no bytes either.
+        """
+        i = idx
+        while i < len(self.lines):
+            line = self.lines[i]
+            if line.endswith(':'):
+                i += 1
+                continue
+            if not line.startswith('dc.b'):
+                return False
+            first = line[4:].split(',')[0].strip()
+            if not first.startswith('$'):
+                return False
+            try:
+                return int(first[1:], 16) < 0x80
+            except ValueError:
+                return False
+        return False
 
     def _finalize_pending(self, channel, pending_note, tick, last_duration, last_note_value=0):
         """Emit a pending note with last_duration, advance tick, and return updated state.
@@ -336,6 +418,17 @@ class SmpsParser:
             # where labels always appear at a fresh command boundary.
             if line.endswith(':'):
                 label_name = line[:-1].strip()
+                # Exception: a label emits no bytes, so if the very next data byte is a
+                # duration it still belongs to the pending note.  Finalizing here would
+                # wrongly give that note `last_duration` instead.  Carry it across.
+                #   SndA3 - Death:   dc.b nB3, $07, smpsNoAttack, nAb3 / label / dc.b $01
+                # Corpus scan: this triggers for 2 SFX files and 0 music files, so the
+                # music conversion path is bit-identical.
+                if pending_note is not None and self._label_precedes_duration(i + 1):
+                    self.label_tick_pos[label_name] = tick
+                    _seen_labels.add(label_name)
+                    i += 1
+                    continue
                 tick, last_note_value = self._finalize_pending(
                     channel, pending_note, tick, last_duration, last_note_value
                 )
@@ -681,6 +774,7 @@ class SmpsParser:
                             cont_note = SmpsNote(
                                 note_value=last_note_value,
                                 duration=scaled,
+                                is_retrigger=True,
                             )
                         elif is_psg:
                             cont_note = SmpsNote(
@@ -721,6 +815,7 @@ class SmpsParser:
                                 cont_note = SmpsNote(
                                     note_value=last_note_value,
                                     duration=scaled,
+                                    is_retrigger=True,
                                 )
                             else:
                                 cont_note = SmpsNote(

@@ -193,6 +193,28 @@ SMPS_DAC_NAMES = {
 SMPS_DAC_NAMES_REVERSE: dict[int, str] = {v: k for k, v in SMPS_DAC_NAMES.items()}
 
 
+# ---------------------------------------------------------------------------
+# SFX channel ids (smpsHeaderSFXChannel chanid) — _smps2asm_inc.asm:171-178
+# ---------------------------------------------------------------------------
+#
+# These are the raw VoiceControl bytes the driver stores per track.  For FM they
+# double as the YM2612 $28 key-on/off channel bits; for PSG as the latch channel
+# bits.  Music headers imply the hardware channel by declaration order, so this
+# mapping only matters for SFX.
+#
+# cFM6 ($06) is S3/S&K only and is rejected by the macro for Sonic 1.
+
+SFX_CHANNEL_IDS = {
+    'cFM3':   0x02,
+    'cFM4':   0x04,
+    'cFM5':   0x05,
+    'cPSG1':  0x80,
+    'cPSG2':  0xA0,
+    'cPSG3':  0xC0,
+    'cNoise': 0xE0,
+}
+
+
 def smps_note_to_mod_note(note_value, transpose=0, channel_name=None, voice_idx=None,
                           warn_fn=None, extra_ctx=None):
     """Convert SMPS note byte to ModNote.

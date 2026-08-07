@@ -23,10 +23,15 @@ psg_synthesis:
   psg_output_max: 4096      # PSG hardware max amplitude; white noise peaks at 2048 (half), tones at 4096
 
   # Sonic 1 driver PSG amplitude envelope tables (PSG1–PSG9).
-  # Copied verbatim from the S1 sound driver ROM (s1.sounddriver.asm PSGEnvData_*).
+  # Copied from the S1 sound driver ROM (s1.sounddriver.asm PSG1–PSG9, lines 43–60).
   # Each value is added to base_volume each VBlank frame (60 Hz NTSC / 50 Hz PAL).
   # 0 = no attenuation above base; higher = quieter. Last entry is held indefinitely.
   # Omit the $80 terminator — it is implicit (the last listed value is held).
+  #
+  # KNOWN DISCREPANCY — fTone_07 does not match the driver (see the entry below).
+  # The other eight tables were verified against s1.sounddriver.asm and are correct.
+  # sfx/tables.py (the SFX→WAV path) transcribes all nine from the driver instead of
+  # reading them from here, so it is unaffected.
   psg_envelope_tables:
     fTone_01: [0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7]                 # 22fr slow staircase fade (~0.37s to hold)
     fTone_02: [0,2,4,6,8,16]                                                #  6fr fast hard cutoff (near-silence in 5 frames)
@@ -34,6 +39,12 @@ psg_synthesis:
     fTone_04: [0,0,2,3,4,4,5,5,5,6]                                         # 10fr quick uneven stepped fade (title screen noise)
     fTone_05: [0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,4]  # 41fr very slow fade
     fTone_06: [3,3,3,2,2,2,2,1,1,1,0,0,0,0]                                 # 14fr reverse swell — starts attenuated, opens up
+    # WRONG: one leading zero short. The driver's PSG7 (s1.sounddriver.asm:55) is
+    #   0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,4,5,5,5,6,7,$80   — 27 values, six zeros.
+    # The value below has 26 values and five zeros, so the whole fade runs one frame early.
+    # NOT corrected here on purpose: changing it alters MOD output for every song that uses
+    # PSG7, which would invalidate the regression baselines in tests/baselines/. Fix it and
+    # regenerate the baselines as a deliberate, separate change.
     fTone_07: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,4,5,5,5,6,7]         # 26fr medium-slow fade with accelerating tail
     fTone_08: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7]  # 38fr slow gradual fade
     fTone_09: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]                       # 16fr instant linear fade to silence

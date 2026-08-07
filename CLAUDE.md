@@ -13,6 +13,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas |
 | `docs/fm_synthesis.md` | **YM2612 synthesis pipeline** — root/synth_root/target_rate explained, all settings, normalization, headroom/carrier balance, OPN2 internals, API reference, common mistakes |
 | `docs/psg_synthesis.md` | **SN76489 PSG synthesis pipeline** — psg_map/psg_voice_map schema, envelope tables, root/synth_root, normalization, API |
+| `docs/sfx_rendering.md` | **SFX→WAV offline driver** — tick loop, driver frequency tables, modulation halving, retrigger semantics, mix levels, hardware deviations |
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
@@ -26,6 +27,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 sonic2mod/
   convert.py         # CLI entry point — conversion
   analyze.py         # CLI entry point — Rich-formatted song analysis
+  sonic2wav.py       # CLI entry point — SFX → WAV rendering
   core/              # Library package
     tables.py        #   Note lookup tables, SMPS↔MOD note mapping
     mod.py           #   MOD file writer (adapted from mml2mod-master)
@@ -49,6 +51,17 @@ sonic2mod/
     renderer.py       #   mod_note_index + noise config → 8-bit PCM (render_psg_tone/noise)
     sample_generator.py #  psg_map → {inst: (pcm, rate)} dict (generate_psg_samples)
     validate.py       #   Standalone test: python sn76489/validate.py
+  sfx/                # Offline SMPS SFX driver → WAV (all segments complete)
+    tables.py         #   Driver frequency tables, PSG envelopes, register/channel maps
+    track.py          #   SfxTrack — mirrors the SMPS_Track RAM struct
+    chips.py          #   Register writes mirroring SetVoice/SendVoiceTL/FMUpdateFreq/PSGUpdateFreq
+    driver.py         #   SfxDriver — per-tick state machine (60 Hz, one tick per V-int)
+    render.py         #   Frame loop, FM+PSG mix at 53267 Hz, tail detection
+    resample.py       #   Polyphase windowed-sinc 53267 → 44100
+    wav.py            #   16-bit stereo WAV writer (stdlib wave)
+    amiga.py          #   8-bit Paula export — period grid, DC blocker, FFT rate pick, dither
+    batch.py          #   Discovery, naming, global normalisation, 8-bit export
+    validate.py       #   Standalone test: python sfx/validate.py
   docs/              # Technical documentation
   tools/             # Debug / analysis utilities
     vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files
@@ -79,6 +92,17 @@ python convert.py configs/01_title_screen.yaml
 
 # Override output path
 python convert.py configs/01_title_screen.yaml --output output/title_screen.mod
+
+# Render all 49 sound effects to 16-bit stereo WAV (no config needed)
+python sonic2wav.py --all
+python sonic2wav.py --all --dry-run          # parse + render + report, write nothing
+python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+python sfx/validate.py                       # tables, resampler, 8-bit chain, ticks, panning
+
+# Export signed 8-bit mono .raw + manifest.yaml for Amiga/Paula → output/sfx8/
+python sonic2wav.py --all --8bit
+python sonic2wav.py --all --8bit --max-rate 16574   # A500 target, ~half the size
+python sonic2wav.py --all --8bit --flat-rate 8287   # one rate for every sample
 
 # Analyse a song (no config needed)
 python analyze.py "sonic_1/music/Mus8A - Title Screen.asm"
@@ -146,6 +170,12 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - MOD note range: 3 octaves (C1–B3), 36 semitones
 - Default FM transpose: -36 semitones (maps SMPS octaves 3–5 → MOD C1–B3)
 - Duration persistence: last explicit `dc.b` duration carries to subsequent notes
+- Labels emit no bytes: if one sits between a note byte and its duration byte, the duration still
+  binds to that note (`SmpsParser._label_precedes_duration`). Affects 2 SFX, 0 music files
+- `SmpsNote.is_retrigger` marks notes synthesised from a standalone duration byte — the driver's
+  `.gotduration` path skips `FMSetFreq`, so those re-key at the **existing** frequency
+- SFX headers (`smpsHeaderTempoSFX`/`ChanSFX`/`SFXChannel`) set `SmpsSongHeader.is_sfx` and
+  `SmpsChannelHeader.hw_channel`; SFX run 1 tick per V-int with no tempo modifier
 - Standalone duration bytes in `dc.b` **retrigger the last note** by default — without preceding `smpsNoAttack`: `SmpsNote(note_value=last_note_value, is_rest=False)`; with `smpsNoAttack` pending: rest/sustain `(is_rest=True, is_no_attack=True)`
 - Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
 - Loop unrolling uses `stop_line` parameter to prevent re-entry into `smpsLoop`

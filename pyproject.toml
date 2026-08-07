@@ -15,10 +15,11 @@ dependencies = [
 [project.scripts]
 sonic2mod = "convert:main"
 sonic2mod-analyze = "analyze:main"
+sonic2wav = "sonic2wav:main"
 
 [tool.setuptools]
-py-modules = ["convert", "analyze"]
-packages = ["core", "ym2612", "sn76489"]
+py-modules = ["convert", "analyze", "sonic2wav"]
+packages = ["core", "ym2612", "sn76489", "sfx"]
 
 [tool.setuptools.package-data]
 ym2612 = ["*.dll", "*.so", "*.c"]
@@ -79,7 +80,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "ym2612", "sn76489"]
+known-first-party = ["core", "ym2612", "sn76489", "sfx"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -93,7 +94,7 @@ typeCheckingMode = "basic"
 executionEnvironments = [
     { root = ".", pythonVersion = "3.11" },
 ]
-include = ["core", "convert.py", "analyze.py", "ym2612", "sn76489", "tools"]
+include = ["core", "convert.py", "analyze.py", "sonic2wav.py", "ym2612", "sn76489", "sfx", "tools"]
 exclude = ["reference", "sonic_1", "output", "**/__pycache__"]
 # Relax rules that fire on intentionally dynamic code
 reportMissingModuleSource = false

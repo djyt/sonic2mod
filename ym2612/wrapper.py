@@ -114,6 +114,9 @@ class OPN2:
         self._out = (ctypes.c_int16 * 2)()
         self._out_ptr = ctypes.cast(self._out, ctypes.c_void_p)
 
+        # Pipeline-flush capture buffer; None = discard (default, see _flush)
+        self._capture: list | None = None
+
         self.reset(mode)
 
     # ------------------------------------------------------------------
@@ -131,6 +134,45 @@ class OPN2:
         for _ in range(n):
             self._lib.OPN2_Clock(self._chip, self._out_ptr)
 
+    # ------------------------------------------------------------------
+    # Pipeline-flush capture
+    # ------------------------------------------------------------------
+    #
+    # Each write_reg() advances the chip by two pipeline-flush periods of
+    # _FLUSH_CLOCKS clocks each.  Since _FLUSH_CLOCKS == _CLOCKS_PER_SAMPLE,
+    # that is exactly two audio samples' worth of chip time per register write.
+    #
+    # For one-shot sample rendering the audio produced during those flushes is
+    # irrelevant and is discarded.  A continuous-timeline renderer cannot afford
+    # that: 30 writes for a voice program would silently drop ~60 samples and
+    # desynchronise the YM2612 against the SN76489.  Capture mode retains those
+    # samples so the caller can prepend them to the frame it renders next.
+
+    def begin_capture(self) -> None:
+        """Retain pipeline-flush audio from subsequent write_reg() calls."""
+        self._capture = []
+
+    def end_capture(self) -> None:
+        """Stop retaining pipeline-flush audio (back to discarding)."""
+        self._capture = None
+
+    def take_capture(self) -> list:
+        """Return and clear the captured (left, right) pairs since the last call."""
+        captured = self._capture or []
+        if self._capture is not None:
+            self._capture = []
+        return captured
+
+    def _flush(self) -> None:
+        """Advance the chip by one pipeline-flush period, capturing if enabled."""
+        if self._capture is None:
+            self._clock_n(_FLUSH_CLOCKS)
+        else:
+            # render_samples(1) clocks _CLOCKS_PER_SAMPLE times — identical chip
+            # time to _clock_n(_FLUSH_CLOCKS) — but keeps the audio, with the
+            # same DC correction the batch renderer applies.
+            self._capture.extend(self.render_samples(1))
+
     def write_reg(self, addr: int, data: int, bank: int = 0) -> None:
         """Write a YM2612 register with pipeline-flush clocking.
 
@@ -142,9 +184,9 @@ class OPN2:
         port_addr = bank * 2
         port_data = bank * 2 + 1
         self._lib.OPN2_Write(self._chip, port_addr, ctypes.c_uint8(addr))
-        self._clock_n(_FLUSH_CLOCKS)
+        self._flush()
         self._lib.OPN2_Write(self._chip, port_data, ctypes.c_uint8(data))
-        self._clock_n(_FLUSH_CLOCKS)
+        self._flush()
 
     # ------------------------------------------------------------------
     # Key on / off

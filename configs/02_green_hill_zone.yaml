@@ -87,12 +87,12 @@ sample_list:
   - [14, "ghz_v08.raw",     23, 0] # VGZ: +2.9 dB at 32 (FM3/FM4/FM5 agree to 0.1 dB)
   - [15, "ghz_v08_hi.raw",  32, 0]
   # --- PSG White Noise ---
-  - [16, "psg_noise.raw",   14, 0] # VGZ: +6.9 dB at 32
+  - [16, "psg_noise.raw",    7, 0] # VGZ: +6.9 dB at 32; baked: 14 at PSG attenuation 3 (−6 dB)
   # --- PSG Voices ---
-  - [17, "psg_tone01.raw",  16, 0]
+  - [17, "psg_tone01.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
   - [18, "psg_tone03.raw",  16, 0]
-  - [19, "psg_tone05.raw",  16, 0]
-  - [20, "psg_tone06.raw",  16, 0]
+  - [19, "psg_tone05.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
+  - [20, "psg_tone06.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
 
 
 # -------------------------------------------------------------------------------------------------

@@ -50,8 +50,8 @@ sample_list:
   - [2,  "ss_v1.raw",      64, 0]
   - [3,  "ss_v2.raw",      64, 0]
   - [4,  "ss_v3.raw",      64, 0]
-  - [5,  "psg_tone04.raw", 32, 0]
-  - [6,  "psg_tone08.raw", 40, 0]
+  - [5,  "psg_tone04.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
+  - [6,  "psg_tone08.raw", 32, 0] # baked: 40 at PSG attenuation 1 (−2 dB)
 
 
 # -------------------------------------------------------------------------------------------------

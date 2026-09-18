@@ -39,7 +39,7 @@ sample_list:
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM3, FM5 ---
   - [4, "fm_v02.raw", 24, 0]
   # --- PSG tone fTone_05 ---
-  - [5, "psg_fTone_05.raw", 16, 0]
+  - [5, "psg_fTone_05.raw",  4, 0] # baked: 16 at PSG attenuation 6 (−12 dB)
   # Pitch Shifted Versions
   - [6, "fm_v00.raw", 24, 1]
   - [7, "fm_v02.raw", 24, 1]

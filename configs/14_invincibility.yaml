@@ -39,7 +39,7 @@ sample_list:
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
   - [5, "fm_v01.raw", 32, 0]
   # --- PSG noise (form $E7) ---
-  - [6, "psg_noise.raw", 16, 0]
+  - [6, "psg_noise.raw",  8, 0] # baked: 16 at PSG attenuation 3 (−6 dB)
 
 dac_samples:
   # dSnare: ×42 — native ~24000 Hz → note Fs3

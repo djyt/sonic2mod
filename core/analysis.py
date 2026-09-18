@@ -75,7 +75,12 @@ class VoiceRangeStats:
     note_count: int
     switch_count: int      # how many smpsSetvoice events switched to this voice
     modal_transpose: int = 0  # cumulative_transpose at time of first note for this voice
-    modal_volume: int = 0     # channel TL offset (header volume + smpsAlterVol so far) at that note
+    # Most common (TL offset, hard-panned) level of this voice's notes on this channel — the level
+    # fm_volume_scaling: baked treats as the instrument's own.  TL offset = smpsHeaderFM volume +
+    # smpsAlterVol so far; hard-panned = smpsPan panLeft / panRight.
+    modal_volume: int = 0
+    modal_hard_pan: bool = False
+    level_counts: dict = field(default_factory=dict)   # (tl, hard_pan) -> notes
 
     def has_notes(self) -> bool:
         return self.note_count > 0
@@ -88,6 +93,8 @@ class PsgToneStats:
     max_semitone: int      # _NO_NOTES_MAX if no notes
     note_count: int
     switch_count: int
+    modal_volume: int = 0     # most common SN76489 attenuation (header volume + smpsPSGAlterVol) of its notes
+    level_counts: dict = field(default_factory=dict)   # attenuation -> notes
 
     def has_notes(self) -> bool:
         return self.note_count > 0
@@ -283,6 +290,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
     cumulative_transpose = ch.header.pitch_offset
     # Same for the TL offset: smpsHeaderFM volume, then every smpsAlterVol adds to it.
     cumulative_volume = ch.header.volume
+    hard_pan = False
     total_ticks = 0
 
     for event in ch.events:
@@ -309,6 +317,8 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                 # Update per-tone stats (PSG channels only)
                 if ch_type == "PSG" and current_psg_label is not None:
                     ts = _get_or_create_psg_tone(psg_tone_stats, current_psg_label)
+                    _att = max(0, min(15, cumulative_volume))
+                    ts.level_counts[_att] = ts.level_counts.get(_att, 0) + 1
                     ts.note_count += 1
                     if sem < ts.min_semitone:
                         ts.min_semitone = sem
@@ -321,7 +331,8 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                     if vs.note_count == 0:
                         # First note for this voice — record transpose and initial range
                         vs.modal_transpose = cumulative_transpose
-                        vs.modal_volume = cumulative_volume
+                    _lv = (max(0, min(127, cumulative_volume)), hard_pan)
+                    vs.level_counts[_lv] = vs.level_counts.get(_lv, 0) + 1
                     vs.note_count += 1
                     if sem < vs.min_semitone:
                         vs.min_semitone = sem
@@ -357,6 +368,9 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
             elif eff.effect_type == 'smpsAlterVol':
                 cumulative_volume += cast(int, eff.params[0])
 
+            elif eff.effect_type == 'smpsPan':
+                hard_pan = str(eff.params[0]).split(',')[0].strip().lower() in ('panleft', 'panright')
+
             elif eff.effect_type == 'smpsChangeTransposition':
                 delta = eff.params[0]
                 cumulative_transpose += delta
@@ -365,6 +379,15 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                     delta=delta,
                     cumulative=cumulative_transpose,
                 ))
+
+    # Most common level per voice / PSG tone; ties go to the louder one, as in the converter.
+    for vs in voice_stats.values():
+        if vs.level_counts:
+            vs.modal_volume, vs.modal_hard_pan = max(
+                vs.level_counts, key=lambda lv: (vs.level_counts[lv], -lv[0], not lv[1]))
+    for ts in psg_tone_stats.values():
+        if ts.level_counts:
+            ts.modal_volume = max(ts.level_counts, key=lambda a: (ts.level_counts[a], -a))
 
     has_transpose_change = len(transpose_events) > 0
 

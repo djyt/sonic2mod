@@ -41,7 +41,7 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
-from core.config import ConversionConfig, rate3_synth_root_issues
+from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
 from core.smps_parser import SmpsParser
 from core.tables import PERIOD_TABLE, ModNote
 from sfx.tables import PSG_FREQUENCIES_EXTENDED, psg_note_index
@@ -520,13 +520,33 @@ def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int 
     return ModNote(24 + note_letter).name
 
 
-_FM_BASE_VOLUME = 32      # sample_list volume of the loudest FM channel
+# sample_list volume of a single-carrier FM voice at TL offset 0, centred.  Fitted to the volumes
+# measured against the VGZs in docs/audits/ (13 instruments, Title Screen + GHZ): each implies a
+# value between 68 and 92, median 76 — so expect the skeleton's numbers to be within ~2 dB.
+_FM_K = 76.0
 _TL_STEP_DB = 0.75        # YM2612 total level: 0.75 dB per step
+_PAN_LAW_DB = 3.0         # a hard-panned note vs a centred one (settings.yaml fm_pan_law_db)
+_PSG_TONE_VOLUME = 16     # sample_list volume of a PSG tone at attenuation 0 (GHZ measures within 1 dB)
+_PSG_NOISE_VOLUME = 16    # ... of PSG noise at attenuation 0
+_PSG_STEP_DB = 2.0        # SN76489 attenuation: 2 dB per step
 
 
-def _tl_volume(tl_steps: int) -> int:
-    """MOD sample volume for an FM channel tl_steps quieter than the loudest one."""
-    return max(1, min(64, round(_FM_BASE_VOLUME * 10 ** (-tl_steps * _TL_STEP_DB / 20))))
+def _fm_level_db(tl: int, hard_pan: bool) -> float:
+    """Hardware level of an FM note, as the converter's baked volume mode models it."""
+    return -_TL_STEP_DB * tl - (_PAN_LAW_DB if hard_pan else 0.0)
+
+
+def _carrier_balance_enabled() -> bool:
+    """fm_synthesis.carrier_balance from configs/settings.yaml (default on)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
+    try:
+        return SynthesisSettings.from_yaml(path).carrier_balance if os.path.exists(path) else True
+    except ValueError:
+        return True
+
+
+def _db_volume(base: int, db: float) -> int:
+    return max(1, min(64, round(base * 10 ** (db / 20))))
 
 
 def _rate3_tone2_n(min_semitone: int, transpose: int) -> int:
@@ -631,14 +651,22 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for vi in ch_an.voice_stats:
             all_voices.setdefault(vi, []).append(ch_an.name)
 
-    # TL offset of each (voice, channel) pair when the voice first sounds there, relative to the
-    # loudest pair in the song.  The dominant channel's level becomes the sample_list volume.
-    voice_tl: dict[int, dict[str, int]] = {}
+    # Level of each (voice, channel) pair when the voice first sounds there — TL offset and pan —
+    # relative to the loudest pair in the song.  The dominant channel's level becomes the
+    # sample_list volume (what fm_volume_scaling: baked expects; it puts Cxx on the rest).
+    voice_tl: dict[int, dict[str, tuple[int, bool]]] = {}
     for ch_an in fm_channels:
         for vi, vs in ch_an.voice_stats.items():
             if vs.note_count > 0:
-                voice_tl.setdefault(vi, {})[ch_an.name] = vs.modal_volume
-    tl_ref = min((tl for per_ch in voice_tl.values() for tl in per_ch.values()), default=0)
+                voice_tl.setdefault(vi, {})[ch_an.name] = (vs.modal_volume, vs.modal_hard_pan)
+    # carrier_balance renders an N-carrier voice 20·log10(N) dB quieter than the chip plays it, so
+    # its sample needs N times the volume to sit where the hardware has it.
+    carrier_gain: dict[int, int] = {}
+    if _carrier_balance_enabled():
+        carrier_gain = {v.index: len(_CARRIER_LABELS_BY_ALG.get(v.algorithm, ['?'])) for v in song.voices}
+
+    def _fm_volume(vi: int, lv: tuple[int, bool]) -> int:
+        return max(1, min(64, round(_FM_K * carrier_gain.get(vi, 1) * 10 ** (_fm_level_db(*lv) / 20))))
     fm_volume: dict[int, int] = {}
     fm_volume_note: dict[int, str] = {}
 
@@ -668,11 +696,13 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             dominant = max(note_bearing_channels,
                            key=lambda c: c.voice_stats[vi].note_count)
             initial_trans = dominant.voice_stats[vi].modal_transpose
-            fm_volume[vi] = _tl_volume(voice_tl[vi][dominant.name] - tl_ref)
-            per_ch = [f"{name} ${tl & 0xFF:02X} → {_tl_volume(tl - tl_ref)}"
-                      for name, tl in voice_tl[vi].items()]
+            fm_volume[vi] = _fm_volume(vi, voice_tl[vi][dominant.name])
+            per_ch = [f"{name} ${lv[0] & 0xFF:02X}{' panned' if lv[1] else ''} → {_fm_volume(vi, lv)}"
+                      for name, lv in voice_tl[vi].items()]
             fm_volume_note[vi] = "TL " + ", ".join(per_ch)
-            if len({_tl_volume(tl - tl_ref) for tl in voice_tl[vi].values()}) > 1:
+            if carrier_gain.get(vi, 1) > 1:
+                fm_volume_note[vi] += f"  [×{carrier_gain[vi]} carriers]"
+            if len({_fm_volume(vi, lv) for lv in voice_tl[vi].values()}) > 1:
                 fm_volume_note[vi] += (f"  (volume is {dominant.name}'s; fm_volume_scaling: baked "
                                        "puts Cxx on the others)")
         else:
@@ -756,31 +786,50 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for base_name, inst in dac_base_insts:
             lines.append(f"  - [{inst}, \"{base_name[1:].lower()}.raw\", 64, 0]")
     if fm_items:
-        lines.append(f"  # FM volumes bake in each channel's TL offset (smpsHeaderFM volume + smpsAlterVol, "
+        lines.append(f"  # FM volumes bake in each channel's level: TL offset (smpsHeaderFM volume + smpsAlterVol, "
                      f"{_TL_STEP_DB} dB/step)")
-        lines.append(f"  # relative to the loudest channel:  {_FM_BASE_VOLUME} × 10^(−steps×{_TL_STEP_DB}/20)")
+        lines.append(f"  # and −{_PAN_LAW_DB:g} dB when hard-panned:  {_FM_K:g} × carriers × 10^(dB/20), max 64.  "
+                     "Starting points (~2 dB) —")
+        lines.append("  # measure with tools/vgm_compare.py; every channel sharing an instrument should read the same error.")
     for vi, inst, _min_sem, _max_sem, _has_trans, _initial_trans, alg_str, used_by, split_point, inst2 in fm_items:
         lines.append(f"  # --- voice ${vi:02X}: {alg_str} — {used_by} ---")
-        vol = fm_volume.get(vi, _FM_BASE_VOLUME)
+        vol = fm_volume.get(vi, 32)
         if vi in fm_volume_note:
             lines.append(f"  #     {fm_volume_note[vi]}")
         lines.append(f"  - [{inst}, \"fm_v{vi:02x}_lo.raw\", {vol}, 0]" if split_point is not None
                      else f"  - [{inst}, \"fm_v{vi:02x}.raw\", {vol}, 0]")
         if split_point is not None:
             lines.append(f"  - [{inst2}, \"fm_v{vi:02x}_hi.raw\", {vol}, 0]")
+    # PSG volumes bake in the attenuation (smpsHeaderPSG volume + smpsPSGAlterVol, 2 dB/step) the
+    # label first sounds at on the channel that plays it most (psg_volume_scaling: baked).
+    psg_att: dict[str, int] = {}
+    for _lbl in {lb for ch in psg_channels for lb in ch.psg_tone_stats}:
+        _users = [ch.psg_tone_stats[_lbl] for ch in psg_channels
+                  if _lbl in ch.psg_tone_stats and ch.psg_tone_stats[_lbl].note_count > 0]
+        if _users:
+            psg_att[_lbl] = max(_users, key=lambda t: t.note_count).modal_volume
+    if psg_noise_items or psg_tone_items:
+        lines.append(f"  # PSG volumes bake in the track attenuation ({_PSG_STEP_DB:g} dB/step): "
+                     f"tone {_PSG_TONE_VOLUME} / noise {_PSG_NOISE_VOLUME} at attenuation 0.")
+
+    def _psg_line(inst: int, fname: str, base: int, lbl: str) -> str:
+        att = psg_att.get(lbl, 0)
+        return (f"  - [{inst}, \"{fname}\", {_db_volume(base, -_PSG_STEP_DB * att)}, 0]"
+                + (f"   # attenuation {att} (−{att * _PSG_STEP_DB:g} dB)" if att else ""))
+
     for _form_byte, label, inst, _ts, _ch_name, _ch_init_trans in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
-        lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
+        lines.append(_psg_line(inst, "psg_noise.raw", _PSG_NOISE_VOLUME, label))
     for label, inst, _ts, psg_split, psg_inst2, is_noise_voice in psg_tone_items:
         if is_noise_voice:
             lines.append(f"  # --- PSG noise ({label} envelope) ---")
-            lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
+            lines.append(_psg_line(inst, "psg_noise.raw", _PSG_NOISE_VOLUME, label))
         else:
             lines.append(f"  # --- PSG tone {label} ---")
-            lines.append(f"  - [{inst}, \"psg_{label}_lo.raw\", 32, 0]" if psg_split is not None
-                         else f"  - [{inst}, \"psg_{label}.raw\", 32, 0]")
+            lines.append(_psg_line(inst, f"psg_{label}_lo.raw" if psg_split is not None else f"psg_{label}.raw",
+                                   _PSG_TONE_VOLUME, label))
             if psg_split is not None:
-                lines.append(f"  - [{psg_inst2}, \"psg_{label}_hi.raw\", 32, 0]")
+                lines.append(_psg_line(psg_inst2, f"psg_{label}_hi.raw", _PSG_TONE_VOLUME, label))
 
     # --- dac_samples ---
     if dac_items:

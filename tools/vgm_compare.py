@@ -8,6 +8,8 @@ channel-isolated copies), then lines the two up and reports, per channel:
   * every key-on event: reference pitch, MOD pitch error in cents, level in
     both renders and the level difference
   * level balance of each channel relative to a reference channel
+  * level error per MOD instrument (grouped by channel and Cxx), with the sample_list volume that
+    would zero it; --write-volumes applies those to the config
   * onset timing deviations (MOD grid vs. driver tempo jitter, lost notes)
   * vibrato on long notes: rate (Hz) and depth (+/- cents) in both renders
   * noise: onset list, decay envelope, spectral band profile (LFSR rate check)
@@ -60,6 +62,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
+from tools import vgm_pitch_audit
 from tools.vgm_analyze import _parse_vgm
 
 SR = 44100
@@ -317,6 +320,180 @@ def auto_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float = 3.0
 
 
 # ---------------------------------------------------------------------------
+# Per-instrument levels
+# ---------------------------------------------------------------------------
+
+def mod_note_events(mod: bytes, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]], float]:
+    """({channel: [(time s, instrument, Cxx value or None)]}, {instrument: (name, volume)}, length s).
+
+    Follows Bxx / Dxx and stops at the song loop, like the player does on one pass.
+    """
+    nch = _MOD_FORMAT_CHANNELS.get(mod[1080:1084].decode("ascii", "replace"), 4)
+    order = list(mod[952:952 + mod[950]])
+    samples = {}
+    for i in range(31):
+        h = mod[20 + 30 * i:50 + 30 * i]
+        if int.from_bytes(h[22:24], "big"):
+            samples[i + 1] = (h[:22].split(b"\0")[0].decode("ascii", "replace"), h[25])
+    events: dict[int, list[tuple]] = {c: [] for c in range(nch)}
+    bpm, now, posi, row = 125, 0.0, 0, 0
+    seen: set[tuple[int, int]] = set()
+    while posi < len(order) and (posi, row) not in seen:
+        seen.add((posi, row))
+        base = 1084 + (order[posi] * 64 + row) * nch * 4
+        jump = brk = None
+        for c in range(nch):
+            b = mod[base + c * 4:base + c * 4 + 4]
+            period, ins, eff, par = ((b[0] & 15) << 8) | b[1], (b[0] & 0xF0) | (b[2] >> 4), b[2] & 15, b[3]
+            if eff == 0xF and par:
+                bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
+            elif eff == 0xB:
+                jump = par
+            elif eff == 0xD:
+                brk = (par >> 4) * 10 + (par & 15)
+            if period and ins:
+                events[c].append((now, ins, par if eff == 0xC else None))
+        now += speed * 2.5 / bpm
+        if jump is not None:
+            if jump <= posi:
+                break
+            posi, row = jump, brk or 0
+        elif brk is not None:
+            posi, row = posi + 1, brk
+        else:
+            row += 1
+            if row == 64:
+                posi, row = posi + 1, 0
+    return events, samples, now
+
+
+_LEVEL_SPAN = 0.6            # seconds of a note that count towards its level
+_LEVEL_MIN_NOTES = 4         # fewer plain notes than this and no volume is suggested
+_LEVEL_MAX_SPREAD = 3.0      # dB between channels sharing an instrument before it is "not a volume problem"
+_LEVEL_DAC_SLACK = 2.0       # dB the DAC must be BELOW the song's median before everything is balanced to it
+_LEVEL_MAX_ERR = 18.0        # dB; beyond this something other than the volume is wrong (silent / wrong instrument)
+
+
+def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, int], events: dict[int, list[tuple]],
+                      samples: dict[int, tuple[str, int]], mod_end: float, vgm_st: dict, mod_st: dict,
+                      offset: float) -> dict:
+    """Level error MOD - VGM per (chip channel, MOD instrument, Cxx), and per instrument.
+
+    Errors are relative to an anchor so the unknown gain between the two renders drops out.
+    The anchor is the median over every plain (no Cxx) synthesised note, so that only RELATIVE
+    imbalance is reported — unless the DAC is QUIETER than that median by _LEVEL_DAC_SLACK dB or
+    more.  DAC samples sit at volume 64 and cannot be turned up, so then everything else has to
+    come down to meet them.  A DAC that is too LOUD is simply turned down (it gets a suggestion
+    like any instrument), and a gap under the slack is within what short DAC hits can be measured
+    to — chasing it would rewrite every volume for nothing.
+    Only notes without a Cxx say what the instrument's own volume should be.
+    """
+    groups: dict[tuple, list[float]] = {}
+    for ch, times in note_times.items():
+        evs = events.get(mod_chan[ch], [])
+        short = ch in ("DAC", "NOISE")
+        for i, t in enumerate(times):
+            if t > mod_end - 0.3:
+                break
+            dur = min((times[i + 1] - t) if i + 1 < len(times) else _LEVEL_SPAN, 0.15 if ch == "DAC" else _LEVEL_SPAN)
+            if dur < (0.04 if short else 0.09):
+                continue
+            lv = db(rms(seg_at(vgm_st[ch], t, dur)))
+            lm = db(rms(seg_at(mod_st[ch], t + offset, dur)))
+            if lv < -55 or lm < -75:
+                continue
+            hit = None
+            for e in evs:
+                if e[0] > t + offset + 0.03:
+                    break
+                hit = e
+            if hit is not None:
+                groups.setdefault((ch, hit[1], hit[2]), []).append(lm - lv)
+
+    def med(keys) -> float | None:
+        xs = [x for k in keys for x in groups[k]]
+        return statistics.median(xs) if xs else None
+
+    dac = med(k for k in groups if k[0] == "DAC")
+    n_dac = sum(len(groups[k]) for k in groups if k[0] == "DAC")
+    song = med(k for k in groups if k[0] != "DAC" and k[2] is None)
+    if song is None:
+        song = med(k for k in groups if k[0] != "DAC")
+    if song is None:
+        return {"anchor": None, "groups": [], "instruments": []}
+    dac_vs_song = (dac - song) if dac is not None and n_dac >= 8 else None
+    anchor: float
+    if dac is not None and dac_vs_song is not None and dac_vs_song <= -_LEVEL_DAC_SLACK:
+        anchor_name, anchor = f"the DAC (which is {dac_vs_song:+.1f} dB against the rest of the song)", dac
+    else:
+        anchor = song
+        anchor_name = "the song's median note" + (
+            f" (DAC {dac_vs_song:+.1f} dB against it)" if dac_vs_song is not None else "")
+
+    out_groups = [{"channel": ch, "instrument": ins, "cxx": cxx, "notes": len(xs),
+                   "err_db": statistics.median(xs) - anchor}
+                  for (ch, ins, cxx), xs in sorted(groups.items(), key=lambda kv: (kv[0][1], kv[0][0], kv[0][2] or -1))]
+    instruments = []
+    for ins in sorted({g["instrument"] for g in out_groups}):
+        plain = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is None]
+        if not plain:
+            continue
+        notes = sum(g["notes"] for g in plain)
+        err = statistics.median(x for g in plain for x in groups[(g["channel"], ins, None)]) - anchor
+        spread = max(g["err_db"] for g in plain) - min(g["err_db"] for g in plain)
+        name, vol = samples.get(ins, ("?", 64))
+        ok = notes >= _LEVEL_MIN_NOTES and spread <= _LEVEL_MAX_SPREAD and abs(err) <= _LEVEL_MAX_ERR
+        instruments.append({
+            "instrument": ins, "name": name, "volume": vol, "notes": notes, "err_db": err, "spread_db": spread,
+            "channels": sorted({g["channel"] for g in plain}),
+            "wanted": vol * 10 ** (-err / 20) if ok else None,
+        })
+    scale = suggest_volumes(instruments)
+    return {"anchor": anchor_name, "anchor_db": anchor, "groups": out_groups, "instruments": instruments,
+            "scaled_db": 20 * math.log10(scale)}
+
+
+def suggest_volumes(instruments: list[dict]) -> float:
+    """Fill in `suggested` from `wanted`; returns the common scale applied (1.0 = none).
+
+    64 is the ceiling.  An instrument that wants a little more than that (within the slack that a
+    level can be measured to — typically a DAC sample already at 64 reading a hair quiet) is
+    simply clamped.  Only when one wants substantially more are ALL suggestions brought down
+    together, so that the balance between them survives.
+    """
+    wanted = [it["wanted"] for it in instruments if it.get("wanted") is not None]
+    ceiling = 64.0 * 10 ** (_LEVEL_DAC_SLACK / 20)
+    scale = min(1.0, ceiling / max(wanted)) if wanted else 1.0
+    for it in instruments:
+        it["suggested"] = None if it.get("wanted") is None else max(1, min(64, round(it["wanted"] * scale)))
+    return scale
+
+
+def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0) -> list[str]:
+    """Set sample_list volumes to the suggested values; returns a line per change."""
+    text = config_path.read_text(encoding="utf-8")
+    changes = []
+    for it in instruments:
+        new = it["suggested"]
+        if new is None or new == it["volume"] or abs(20 * math.log10(new / it["volume"])) < min_db:
+            continue
+        pat = re.compile(r'^(\s*-\s*\[\s*' + str(it["instrument"])
+                         + r'\s*,\s*"[^"]*"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
+        m = pat.search(text)
+        if not m or int(m.group(2)) != it["volume"]:
+            changes.append(f"  !! instrument {it['instrument']}: no sample_list line with volume {it['volume']} — not changed")
+            continue
+        note = f"VGZ: {it['err_db']:+.1f} dB at {it['volume']}"
+        tail = re.sub(r"\s*;?\s*VGZ: [^;]*", "", m.group(4)).rstrip()
+        tail = f"{tail}; {note}" if tail.strip().startswith("#") and tail.strip() != "#" else f" # {note}"
+        text = text[:m.start()] + f"{m.group(1)}{new:>{len(m.group(2))}}{m.group(3)}{tail}" + text[m.end():]
+        changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
+    if any(not c.startswith("  !!") for c in changes):
+        config_path.write_text(text, encoding="utf-8", newline="")
+    return changes
+
+
+# ---------------------------------------------------------------------------
 # Vibrato
 # ---------------------------------------------------------------------------
 
@@ -529,8 +706,19 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     offset_auto = offset is None
     if offset is None:
-        offset = auto_offset(vgm["FULL"], mod["FULL"])
-        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
+        # Note starts from the register log against the MOD's note rows: exact, and immune to the
+        # envelope method's failure on sparse or tempo-drifting songs (Chaos Emerald +920 ms,
+        # Drowning +1205 ms).  The envelope correlation is kept for songs with no pitched notes.
+        chip_tl, _ = vgm_pitch_audit.chip_timeline(raw)
+        mod_tl, _ = vgm_pitch_audit.mod_timeline(mod_path.read_bytes(), cfg)
+        if any(mod_tl.values()):
+            offset = vgm_pitch_audit.auto_offset(chip_tl, mod_tl, {c.source: c.mod_channel for c in cfg.channels})
+            env = auto_offset(vgm["FULL"], mod["FULL"])
+            print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, note starts"
+                  + (f"; envelope correlation says {env * 1000:+.0f} ms — ignored)" if abs(env - offset) > 0.03 else ")"))
+        else:
+            offset = auto_offset(vgm["FULL"], mod["FULL"])
+            print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
     else:
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
     print()
@@ -659,6 +847,39 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     print(f"  (absolute: VGM mix {db(rms(vgm_st['FULL'])):.1f} dBFS peak {np.abs(vgm_st['FULL']).max():.2f};"
           f" MOD mix {db(rms(mod_st['FULL'])):.1f} dBFS peak {np.abs(mod_st['FULL']).max():.2f})")
     print()
+
+    # ---- per-instrument levels ----
+    note_times = {ch: [r[0] / 1000.0 for r in evs] for ch, evs in per_ch.items()}
+    if "NOISE" in names:
+        note_times["NOISE"] = [r[0] / 1000.0 for r in rows if r[1] == "NOISE"]
+    if "DAC" in names:
+        note_times["DAC"] = onsets(vgm["DAC"], thresh_db=-40, hold=0.08)
+    src_of = dict(zip(names, chan_map, strict=True))
+    events_by_chan, samples, mod_end = mod_note_events(mod_path.read_bytes(), cfg.target_speed)
+    lev = instrument_levels(note_times, {n: chan_map[src_of[n]] for n in note_times}, events_by_chan, samples,
+                            mod_end, vgm_st, mod_st, offset)
+    res["instrument_levels"] = lev
+    if lev["instruments"]:
+        print(f"Per-instrument level error, MOD - VGM, relative to {lev['anchor']} (dB).  Notes without a Cxx set the volume;")
+        print("channels sharing an instrument should agree (spread) — if they do not, it is not a volume problem.")
+        print(f"{'inst':>4} {'sample':<22} {'vol':>3} {'notes':>5} {'err':>6} {'spread':>6} {'suggest':>7}   per channel (Cxx: err xnotes)")
+        for it in lev["instruments"]:
+            parts = []
+            for g in lev["groups"]:
+                if g["instrument"] == it["instrument"]:
+                    cxx = "" if g["cxx"] is None else f" C{g['cxx']:02X}"
+                    parts.append(f"{g['channel']}{cxx}: {g['err_db']:+.1f} x{g['notes']}")
+            detail = "  ".join(parts)
+            sug = "" if it["suggested"] is None else ("=" if it["suggested"] == it["volume"] else str(it["suggested"]))
+            flag = "  <-- channels disagree" if it["spread_db"] > _LEVEL_MAX_SPREAD else ""
+            if abs(it["err_db"]) > _LEVEL_MAX_ERR:
+                flag = "  <-- too far off to be a volume problem"
+            print(f"{it['instrument']:>4} {it['name']:<22} {it['volume']:>3} {it['notes']:>5} {it['err_db']:>+6.1f} "
+                  f"{it['spread_db']:>6.1f} {sug:>7}   {detail}{flag}")
+        if lev["scaled_db"] < -0.05:
+            print(f"  (suggestions are all {-lev['scaled_db']:.1f} dB lower than the errors alone imply, so that the "
+                  "loudest one fits in 64)")
+        print()
 
     # ---- onset timing ----
     # Both sides use the same audio onset detector so slow instrument attacks cancel out.
@@ -805,10 +1026,15 @@ def main() -> None:
     ap.add_argument("--workdir", help="where rendered WAVs go (default: output/compare/<config name>/)")
     ap.add_argument("--offset", type=float, help="MOD-minus-VGM time offset in seconds (default: auto)")
     ap.add_argument("--skip-render", action="store_true", help="reuse WAVs already in the workdir")
+    ap.add_argument("--reuse-vgm", action="store_true",
+                    help="re-render only the MOD; keep the reference WAVs in the workdir if they are all there")
     ap.add_argument("--ref", default="FM2", help="reference channel for balance table (default FM2)")
     ap.add_argument("--core", default="NUKE", help="VGMPlay YM2612 core: NUKE (default), GPGX, GENS")
     ap.add_argument("--max-rows", type=int, default=400, help="per-note rows to print (flagged rows always print)")
     ap.add_argument("--json", metavar="FILE", help="also write the results (and threshold checks) as JSON")
+    ap.add_argument("--write-volumes", action="store_true",
+                    help="set the config's sample_list volumes to the suggested ones (errors of 1 dB or more); "
+                         "re-convert and re-run to verify")
     ap.add_argument("--fail-balance-db", type=float, metavar="DB",
                     help="exit 1 if any channel's balance vs --ref differs from the VGM by more than DB")
     ap.add_argument("--fail-pitch-cents", type=float, metavar="CENTS",
@@ -836,9 +1062,12 @@ def main() -> None:
     vgm_names = [n for n in vgm_names if n in _VGM_CHANNELS]
 
     if not args.skip_render:
-        vgmplay = _find_vgmplay(args.vgmplay)
-        print(f"Rendering reference channels with {vgmplay} ...")
-        render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core)
+        if args.reuse_vgm and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
+            print("Reusing reference renders in the workdir")
+        else:
+            vgmplay = _find_vgmplay(args.vgmplay)
+            print(f"Rendering reference channels with {vgmplay} ...")
+            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core)
         print("Rendering MOD channels with ffmpeg/libopenmpt ...")
         render_mod_channels(mod_path, chan_map, workdir)
         print()
@@ -849,6 +1078,13 @@ def main() -> None:
     print(f"Renders: {workdir}")
     print()
     res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows)
+
+    if args.write_volumes:
+        changes = write_volumes(Path(args.config), res["instrument_levels"]["instruments"])
+        print(f"sample_list volumes written to {args.config}:" if changes else "sample_list volumes: nothing to change")
+        for line in changes:
+            print(line)
+        print()
 
     checks = evaluate_checks(res, args.fail_balance_db, args.fail_pitch_cents, args.fail_unmatched)
     passed = all(c["passed"] for c in checks)

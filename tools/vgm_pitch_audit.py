@@ -74,8 +74,16 @@ def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
     def fm_mark(ch: int) -> None:
         out[f"FM{ch + 1}"].append((t / _VGM_RATE, freq[ch] if keyon[ch] and freq[ch] > 0 else None))
 
+    psg_last: list[float | None] = [None, None, None]
+
     def psg_mark(ch: int) -> None:
+        # A segment ends when the pitch or the audibility changes - not on every volume write,
+        # or an envelope that steps every frame (Labyrinth Zone's fTone_09) would chop 120 ms notes
+        # into 17 ms slivers that fall under --min-ms and never get judged.
         f = psg_clock / (32.0 * psg_n[ch]) if psg_n[ch] > 0 and psg_vol[ch] < 15 else None
+        if f == psg_last[ch]:
+            return
+        psg_last[ch] = f
         out[f"PSG{ch + 1}"].append((t / _VGM_RATE, f))
 
     while pos < len(data):

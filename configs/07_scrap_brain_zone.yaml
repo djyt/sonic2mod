@@ -182,7 +182,7 @@ psg_voice_map:
     high: G7
     mod_instrument: 15
     root: G2
-    synth_root: G6
+    synth_root: G5   # pitch audit at --min-ms 25: was G6, 12 semitones too high (all 512 PSG2 notes are shorter than 60 ms)
   fTone_04:
     type: white_noise
     noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope

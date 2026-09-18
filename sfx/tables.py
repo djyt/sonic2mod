@@ -113,6 +113,13 @@ PSG_FREQUENCIES_EXTENDED: tuple[int, ...] = PSG_FREQUENCIES + tuple(
     for i in range(len(PSG_FREQUENCIES), 128)
 )
 
+# The last three entries ARE known: a note transposed one to three semitones below the table
+# (index -1..-3, masked to 127..125) is played by Spring Yard PSG1's opening riff and by Credits
+# PSG1, and both recordings show the same dividers in the PSG register - the CoordFlag opcodes
+# the driver reads there.  Index 125 is 0 (inaudible), 126 sounds B2, 127 G#3.
+_PSG_MEASURED_TAIL = {125: 0, 126: 922, 127: 540}
+PSG_FREQUENCIES_EXTENDED = tuple(_PSG_MEASURED_TAIL.get(i, n) for i, n in enumerate(PSG_FREQUENCIES_EXTENDED))
+
 
 # ---------------------------------------------------------------------------
 # Note index derivation

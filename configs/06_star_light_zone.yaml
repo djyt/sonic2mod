@@ -11,6 +11,8 @@ target_speed: 4             # 250 BPM exactly; speed 3 gave 187.5 → 188 (+0.27
 ticks_per_row: 1
 num_mod_channels: 10
 region: ntsc
+range_space: chip          # ranges are the pitches the chip plays: FM2 walks its bass down with smpsAlterPitch
+                           # (-1, -2, -3), which a source-byte root anchor cannot follow (24 notes were 100-300 c high)
 
 channels:
   - source: DAC
@@ -34,7 +36,7 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "kick.raw", 45, 0] # VGZ: +0.0 dB at 64
+  - [1, "kick.raw", 56, 0] # VGZ: -1.9 dB at 45
   # --- voice $00: alg 4: (1→2)+(3→4), fb 6 — FM1 ---
   - [2, "fm_v00_lo.raw", 64, 0]
   - [3, "fm_v00_hi.raw", 64, 0]
@@ -46,7 +48,7 @@ sample_list:
   - [6, "fm_v03_lo.raw", 18, 0] # VGZ: +1.9 dB at 32
   - [7, "fm_v03_hi.raw", 19, 0] # VGZ: +1.5 dB at 32
   # --- voice $04: alg 4: (1→2)+(3→4), fb 7 — FM5 ---
-  - [8, "fm_v04.raw",  8, 0] # VGZ: +8.6 dB at 32
+  - [8, "fm_v04.raw",  9, 0] # VGZ: -0.7 dB at 8
   # --- voice $05: alg 4: (1→2)+(3→4), fb 6 — FM5 ---
   - [9, "fm_v05.raw", 64, 0] # VGZ: -10.7 dB at 32
   # --- PSG noise (form $E7) ---
@@ -63,53 +65,53 @@ dac_samples:
 voice_map:
   # $00 — alg 4: (1→2)+(3→4), fb 6 — used by FM1
   0:
-    - low:  G5
-      high: B6
+    - low:  G3   # was G5 (source byte)
+      high: B4   # was B6 (source byte)
       mod_instrument: 2
       root: G2
       synth_root: G3
-    - low:  C7
-      high: E7
+    - low:  C5   # was C7 (source byte)
+      high: E5   # was E7 (source byte)
       mod_instrument: 3
       root: C2
       synth_root: C5
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
-    - low:  G3
-      high: G4
+    - low:  G1   # was G3 (source byte)
+      high: G2   # was G4 (source byte)
       mod_instrument: 4
       root: G2
       synth_root: G1
   # $02 — alg 4: (1→2)+(3→4), fb 0 — used by FM3, FM4
   2:
-    - low:  Cs6
-      high: E7
+    - low:  Cs3   # was Cs6 (source byte)
+      high: E4   # was E7 (source byte)
       mod_instrument: 5
       root: Cs2
       synth_root: Cs3
   # $03 — alg 2: (1+(2→3))→4, fb 7 — used by FM5
   3:
-    - low:  Ds4
-      high: B5
+    - low:  Ds3   # was Ds4 (source byte)
+      high: B4   # was B5 (source byte)
       mod_instrument: 6
       root: Ds2
       synth_root: Ds3
-    - low:  C6
-      high: C7
+    - low:  C5   # was C6 (source byte)
+      high: C6   # was C7 (source byte)
       mod_instrument: 7
       root: C2
       synth_root: C5
   # $04 — alg 4: (1→2)+(3→4), fb 7 — used by FM5
   4:
-    - low:  G5
-      high: As6
+    - low:  G4   # was G5 (source byte)
+      high: As5   # was As6 (source byte)
       mod_instrument: 8
       root: G2
       synth_root: G4
   # $05 — alg 4: (1→2)+(3→4), fb 6 — used by FM5
   5:
-    - low:  Ds4
-      high: Ds4
+    - low:  Fs7   # was Ds4 (source byte): FM5 plays it under smpsAlterPitch $33 (+51) on top of pitch_offset -12
+      high: Fs7
       mod_instrument: 9
       root: Ds3
       synth_root: Fs7
@@ -124,8 +126,8 @@ psg_map:
 
 psg_voice_map:
   fTone_05:
-    low:  E6
-    high: E7
+    low:  E4   # was E6 (source byte)
+    high: E5   # was E7 (source byte)
     mod_instrument: 10
     root: E2
     synth_root: E4   # pitch audit: was E6, 24 semitones too high

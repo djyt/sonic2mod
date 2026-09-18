@@ -27,8 +27,10 @@ channels:
     mod_channel: 5
   - source: PSG1
     mod_channel: 6
+    transpose: -12         # with the rootless fTone_09 entry: D6 written -> D5 chip -> MOD D2
   - source: PSG2
     mod_channel: 7
+    transpose: -12         # with the rootless fTone_09 entry: D6 written -> D5 chip -> MOD D2
   - source: PSG3
     mod_channel: 8
 
@@ -110,12 +112,14 @@ psg_map:
     base_volume: 0
 
 psg_voice_map:
+  # No low/high: PSG1/PSG2 change key with smpsAlterPitch (+5, +5, -10 in Loop06), which a root
+  # anchor ignores (48 notes were 300-800 c out).  Rootless, the notes follow total_transpose:
+  # pitch_offset -48 + smpsAlterPitch + the channels' transpose -12 below.  The sample plays D5 at D2.
   fTone_09:
-    low:  D6
-    high: B6
     mod_instrument: 8
     root: D2
-    synth_root: D6
+    synth_root: D5   # pitch audit: was D6, 12 semitones too high (the audit used to skip these
+                     # 120 ms notes because the envelope's per-frame volume writes split them)
     
 
 # -------------------------------------------------------------------------------------------------

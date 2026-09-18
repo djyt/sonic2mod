@@ -111,7 +111,6 @@ voice_map:
       mod_instrument: 6
       root: B2
       synth_root: B4
-      vibrato: 0
 
   # $03 — Alg 1, FB 5 — used by FM1, FM3
   3:
@@ -120,7 +119,6 @@ voice_map:
       mod_instrument: 7
       root: C2
       synth_root: C5
-      vibrato: 31
 
   # $04 — Alg 5, FB 7 — used by FM4, FM5
   4:
@@ -212,7 +210,6 @@ channel_instrument_map:
       mod_instrument: 19
       root: B2
       synth_root: B4
-      vibrato: 0
 
 
 # -------------------------------------------------------------------------------------------------

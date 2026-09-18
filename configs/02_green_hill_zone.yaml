@@ -163,7 +163,6 @@ voice_map:
       mod_instrument: 12
       root: C2
       synth_root: C4
-      vibrato: 0            # Sounds awful, disable it!
 
   # $07 → bridge
   7:

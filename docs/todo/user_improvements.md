@@ -26,12 +26,12 @@ record) but not its old plan — anything still open under it is called out as *
 - **Why:** `TempoWait` only bumps `DurationTimeout`; `NoteTimeoutUpdate` and `DoModulation` still run every V-int.
 - **Affects:** every song with a tempo modifier ≠ 0.
 
-### [ ] 2. Vibrato (`smpsModSet` → `4xy`) formula
-- **Measured:** FM4 closing A2 with `smpsModSet $00,$01,$06,$04`: hardware 5.75 Hz / ±19 cents; MOD `485` = 3.85 Hz / ±33 cents. Correct effect is `4C3`.
-- **Driver truth:** steady cycle = `2·speed·(steps+1)` frames (steps = ORIGINAL byte; first half-cycle uses steps/2), amplitude = `delta·steps/2` FNUM units, relative to the note's own FNUM (644–1216), not a fixed 644.
-- **ProTracker truth:** cycle = `64/x` processing ticks with `speed−1` processing ticks per row; amplitude ≈ `2·y` period units.
-- **Fix:** `x = round(64 × (speed/(speed−1)) × (2.5/BPM) / cycle_s)`, `y = round(period × (2^(cents/1200) − 1) / 2)`.
-- **Where:** `core/smps2mod.py` around the `_smps_cycle` / `eff_vib_depth` code; update `docs/pipeline.md` gotcha 4.
+### [x] 2. Vibrato (`smpsModSet` → `4xy`) formula
+- **Done (2026-09-18):** `SmpsToModConverter._vibrato_speed` / `_vibrato_depth`. `x = 64·_effective_tpr / ((target_speed−1)·cycle_frames·_ticks_per_frame)` with `cycle_frames = 2·speed·(steps+1)`; `y = period·(delta·steps/2)/frequency_word/2` per note, the word being the FNUM of the note's pitch class (644 C … 1216 B) or, on PSG channels, its `PSGFrequencies` divider. `y` < 0.35 writes no vibrato (Spring Yard FM4/FM5: ±3 c on hardware); `convert.py` reports an `x` above 15. The parser no longer multiplies the ModSet speed by the tempo divider (the driver does not). Formulas and driver reading: `docs/pipeline.md` gotcha 4, `docs/smps_driver.md`.
+- **All eight `vibrato:` overrides removed** (GHZ, Spring Yard ×2, Scrap Brain ×3, Special Stage, Stage Clear) — they were workarounds for the old formula, and without them the MOD matches the hardware.
+- **Measured before → after (hardware):** Title Screen FM4 `485` 3.98 Hz ±36 c → `4C3` 5.99 Hz ±18 c (5.99 Hz ±19 c); GHZ PSG1 4.98 Hz → 7.44 Hz ±7 c (7.35 Hz ±7 c); Scrap Brain FM1 none (override) → 5.23 Hz ±53 c (4.96 Hz ±54 c); Spring Yard FM1 → 6.24 Hz ±19 c (5.99 Hz ±25 c); Stage Clear FM5 → 4.99 Hz ±14 c (4.99 Hz ±15 c); Special Stage FM3–FM5 → 4.06 Hz ±20…30 c (4.25 Hz ±20…32 c). GHZ FM1 (was `vibrato: 0`): hardware 6.00 Hz ±25 c at G4 / ±38 c at C4 from the register log, MOD `4A1`–`4A5` by period.
+- **Inherent limits, not todos:** the 4-bit grid (one step of `x` is 0.4–0.6 Hz, one step of `y` 10–30 c: Scrap Brain FM4 reads ±16 c for ±25 c); sine for a triangle; Stage Clear's last PSG1 note really does swing ±200 c on hardware (`delta 8 × steps 4` on divider 127) and the MOD's `4AF` follows it.
+- **Still open:** Scrap Brain FM5 reads 4.46 Hz ±6 c on hardware against 5.99 Hz ±13 c in the MOD — not examined (4.46 Hz is the detuned-carrier beat rate seen on GHZ; it may not be `smpsModSet` at all). `vgm_compare.py`'s vibrato table cannot see a swing wider than the 70-cent PSG note rule (the Stage Clear note above).
 
 ### [ ] 3. Sub-row onsets via `EDx` note delay
 - **GHZ:** FM3/FM4/FM5 play `nC6, $01, smpsNoAttack, nB5, $0F` (1-tick grace + legato slide) 17× each; at `ticks_per_row: 2` the grace is silenced by a rest's `C00` (FM3) or overwritten (FM4/FM5). `EDx` alone cannot put two notes in one row — see the three options in `docs/audits/02_ghz_audit.md` § Grace notes (`ticks_per_row: 1` / speed 2, `3xx` legato for `smpsNoAttack`, or drop the grace deliberately).

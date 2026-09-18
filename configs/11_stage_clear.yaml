@@ -79,7 +79,6 @@ voice_map:
       mod_instrument: 5
       root: C2
       synth_root: C5
-      vibrato: 0
   # $01 — Alg 2, FB 7 — used by FM2
   1:
     - low:  G4

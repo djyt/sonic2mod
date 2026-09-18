@@ -283,6 +283,12 @@ def main():
                 f"[bold]{info['n']}[/bold]  [dim]from n{info['note']} {info['transpose']:+d} "
                 f"in the driver's PSG table[/dim]"
             )
+        elif info['type'] == 'vibrato_rate_limit':
+            detail_lines.append(
+                f"vibrato [bold]{info['channel']}[/bold]  hardware cycle "
+                f"[bold]{info['wanted_cycle_frames']}[/bold] frames is faster than 4Fy can play "
+                f"[dim]({info['played_cycle_frames']:.1f} frames at this speed/BPM)[/dim]"
+            )
         elif info['type'] == 'auto_sustain_fm':
             detail_lines.append(f"auto sustain FM [bold]{info['secs']}[/bold] s")
         elif info['type'] == 'auto_sustain_psg':

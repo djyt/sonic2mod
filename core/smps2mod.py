@@ -24,10 +24,9 @@ from .tables import (
     semitone_to_note_name as _semitone_to_name,
 )
 
-# Sonic 1 base FNUM for note C (block 0), from MakeFMFrequency table.
-# The 11-bit FNUM is the same across all octave blocks — block just shifts
-# the register. Used to convert SMPS change (FNUM units) → ProTracker depth
-# (Amiga period units): depth = round(change * period / _S1_FNUM_BASE).
+# Sonic 1 base FNUM for note C, from the MakeFMFrequency table (644 for C ... 1216 for B).
+# The 11-bit FNUM is the same across all octave blocks — block just shifts the register.
+# smpsModSet adds its swing to the note's own FNUM: see SmpsToModConverter._vibrato_depth.
 _S1_FNUM_BASE = 644
 
 # Map MOD note name strings to ModNote enum values
@@ -110,6 +109,7 @@ class SmpsToModConverter:
         self._warnings: list = []
         self._infos: list = []
         self._seen_warnings: set = set()
+        self._vib_rate_limited: set = set()
 
     def _add_warning(self, w: dict):
         """Append a warning, deduplicating by (type, channel, extra_ctx, key)."""
@@ -160,6 +160,65 @@ class SmpsToModConverter:
         if self.song.header.is_sfx or mod <= 1:
             return 1.0
         return (mod - 1) / mod
+
+    def _vibrato_speed(self, mod_speed: int, steps: int, channel: str) -> int:
+        """ProTracker 4xy speed nibble for an smpsModSet (speed, steps) pair; 0 = cannot be played.
+
+        Driver (DoModulation, once per V-int frame): every `speed` frames the delta is added; when
+        the step counter runs out it is reloaded from the ORIGINAL steps byte, the delta is negated
+        and one more step is spent.  Only the first half-swing uses the halved count, so the steady
+        cycle is 2 * speed * (steps + 1) frames.  Not multiplied by the tempo divider.
+
+        ProTracker: the vibrato position advances by x on each of a row's (speed - 1) processing
+        ticks and wraps at 64.  One row is _effective_tpr driver ticks = _effective_tpr /
+        _ticks_per_frame frames, so matching the two cycle lengths gives
+
+            x = 64 * _effective_tpr / ((target_speed - 1) * cycle_frames * _ticks_per_frame)
+
+        Region-independent: both clocks scale with the frame rate.
+        """
+        rows_ticks = self.config.target_speed - 1
+        if rows_ticks < 1:
+            return 0
+        cycle_frames = 2 * (mod_speed or 256) * (steps + 1)
+        exact = 64 * self._effective_tpr / (rows_ticks * cycle_frames * self._ticks_per_frame)
+        x = max(1, min(0xF, round(exact)))
+        if exact > 15.5:
+            # 4Fy is the fastest there is; say so once per channel and setting.
+            key = (channel, mod_speed, steps)
+            if key not in self._vib_rate_limited:
+                self._vib_rate_limited.add(key)
+                played = 64 * self._effective_tpr / (rows_ticks * 15 * self._ticks_per_frame)
+                self._infos.append({'type': 'vibrato_rate_limit', 'channel': channel,
+                                    'wanted_cycle_frames': cycle_frames, 'played_cycle_frames': played})
+        return x
+
+    @staticmethod
+    def _vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: bool) -> int:
+        """ProTracker 4xy depth nibble for one note; 0 = too shallow to play.
+
+        Driver: the accumulator swings delta * steps / 2 either side of its centre (first
+        half-swing steps/2 steps, every later one the full `steps`), and is added to the note's
+        own frequency word: the YM2612 FNUM of its pitch class (644 for C ... 1216 for B, the
+        block is untouched) or the SN76489 divider of its PSGFrequencies entry.  ProTracker's
+        sine peaks at 2 * y period units.  An Amiga period and a PSG divider are both 1/f and a
+        small FNUM change is proportional to f, so in every case
+
+            y = period * (delta * steps / 2) / frequency_word / 2
+
+        Below 0.35 the smallest depth would overshoot the hardware by 3x or more: no vibrato.
+        """
+        if is_psg:
+            from sfx.tables import PSG_FREQUENCIES_EXTENDED
+            word = PSG_FREQUENCIES_EXTENDED[chip_index & 0x7F]
+        else:
+            word = _S1_FNUM_BASE * 2 ** ((chip_index % 12) / 12)
+        if word <= 0:
+            return 0
+        if delta >= 0x80:
+            delta -= 0x100
+        exact = period * (abs(delta) * steps / 2) / word / 2
+        return 0 if exact < 0.35 else max(1, min(0xF, round(exact)))
 
     def _ticks_to_secs(self, ticks: int) -> float:
         """Convert raw SMPS parser ticks to wall-clock seconds."""
@@ -684,7 +743,8 @@ class SmpsToModConverter:
         note_fill = 0
         vibrato_active = False
         vibrato_speed = 0
-        vibrato_change = 0   # raw SMPS change byte (FNUM units); scaled to period units per note
+        vibrato_change = 0   # raw SMPS delta byte (FNUM / PSG divider units); scaled per note
+        vibrato_steps = 0    # raw SMPS steps byte
         vibrato_wait = 0   # ticks to delay before vibrato starts
         current_psg_entry = None    # active PsgInstrumentEntry for the current note (range-dispatched)
         current_psg_entries = None  # full list[PsgInstrumentEntry] for the active psg_voice_map label
@@ -796,13 +856,9 @@ class SmpsToModConverter:
                     # wait, speed, change, steps
                     vibrato_wait   = eff.params[0]
                     _smps_speed_raw = eff.params[1]
-                    vibrato_change = eff.params[2]   # raw FNUM delta; scaled to period units at placement
-                    # Compute ProTracker LFO speed to match SMPS oscillation rate.
-                    # SMPS cycle (ticks) = 2 * speed * (floor(steps/2) + 1)
-                    # ProTracker cycle (rows) = 16 / x  →  x = round(16 * tpr / smps_cycle)
-                    _smps_steps_halved = eff.params[3] // 2
-                    _smps_cycle = 2 * _smps_speed_raw * (_smps_steps_halved + 1)
-                    vibrato_speed = max(1, min(0xF, round(16 * self._effective_tpr / _smps_cycle)))
+                    vibrato_change = eff.params[2]   # raw delta; scaled to period units at placement
+                    vibrato_steps  = eff.params[3]
+                    vibrato_speed = self._vibrato_speed(_smps_speed_raw, vibrato_steps, chan_cfg.source)
                     vibrato_active = True
 
                 elif eff.effect_type == 'smpsModOn':
@@ -1079,11 +1135,13 @@ class SmpsToModConverter:
                         eff_vib_depth = _vib_override & 0xF
                     else:
                         eff_vib_speed = vibrato_speed
-                        # Scale SMPS change (FNUM units) → ProTracker depth (period units).
-                        # SMPS vibrato half-width = change FNUM; ProTracker half-width = depth periods.
-                        # Equal cents: depth = change × period / FNUM_base  (FNUM_base=644 for Sonic 1).
-                        _period = PERIOD_TABLE[final_note.value]
-                        eff_vib_depth = max(1, min(0xF, round(vibrato_change * _period / _S1_FNUM_BASE)))
+                        # Depth is per note: the driver's swing is a fixed number of FNUM / divider
+                        # units, so its size in cents depends on the chip note it is added to.
+                        eff_vib_depth = self._vibrato_depth(
+                            vibrato_change, vibrato_steps, PERIOD_TABLE[final_note.value],
+                            source_semitone + transpose - chan_cfg.transpose, is_psg)
+                        if eff_vib_depth == 0:
+                            eff_vib_speed = 0
 
                     if not effect_slot_used:
                         # Emit Cxx only when the scaled output differs from the

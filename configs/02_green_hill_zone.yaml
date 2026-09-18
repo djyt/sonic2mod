@@ -59,10 +59,11 @@ channels:
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 #
-# Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements against
-# reference/vgz/02 - Green Hill Zone.vgz (relative to FM2 = inst 3/4 at 32); see docs/audits/02_ghz_audit.md.
-# FM4/FM5 levels on the shared instruments 11/13/14 are still 3-5 dB hot: that needs the converter
-# to honour the smpsHeaderFM TL and the 0.75 dB/step smpsAlterVol law (todo item 4), not a volume here.
+# Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements (L/R power) against
+# reference/vgz/02 - Green Hill Zone.vgz, relative to FM2 = inst 3/4 at 32; see docs/audits/02_ghz_audit.md.
+# FM4 (panned left) and FM5 (panned right) read ~3 dB hot on the instruments they share with the
+# centred FM3 (11/13/14): a centred YM2612 channel drives both speakers, every Amiga channel one.
+# That, and the 0.75 dB/step smpsAlterVol law, is converter work (todo item 4), not a volume here.
 sample_list:
   # --- percussion ---
   - [1,  "kick.raw",        64, 0]
@@ -72,10 +73,10 @@ sample_list:
   # --- voice $01: bass/rhythm pad (FM2 main loop) ---
   - [4,  "ghz_v01.raw",     32, 0]
   # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
-  - [5,  "ghz_v02.raw",     24, 0] # VGZ: FM1 +2.1 dB / FM3 +3.5 dB at 32
+  - [5,  "ghz_v02.raw",     32, 0]
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
   - [6,  "ghz_v04.raw",     32, 0]
-  - [8,  "ghz_v04.raw",     19, 1] # Same sample, finetune +1 (~+12.5 cents). VGZ: FM5 (TL $20) +4.5 dB at 32
+  - [8,  "ghz_v04.raw",     25, 1] # Same sample, finetune +1 (~+12.5 cents). VGZ: FM5 (panned right) +2 dB at 32
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
   - [10, "ghz_v05.raw",     26, 0]
   - [11, "ghz_v05_lo.raw",  16, 0]

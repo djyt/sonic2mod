@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sonic2mod"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sonic 1 SMPS music to Amiga MOD converter"
 requires-python = ">=3.11"
 dependencies = [

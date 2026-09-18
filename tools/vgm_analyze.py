@@ -98,13 +98,16 @@ _CARRIER_SLOTS_BY_ALG = [
 def _fnum_to_hz(fnum: int, block: int, clock: int) -> float:
     """Convert YM2612 fnum/block pair to frequency in Hz.
 
-    Formula: freq = clock x fnum / (144 x 2^(20 - block))
+    Formula: freq = clock x fnum / (144 x 2^(21 - block))
 
-    From OPN2 datasheet: Fnum = f0 x 2^(20-B) / (fM/144)
-    => f0 = Fnum x fM / (144 x 2^(20-B))
-    Verified: A4=440 Hz -> fnum=541, block=4 with clock=7670454.
+    YM2612: f0 = Fnum x (fM/144) x 2^B / 2^21.  Cross-check with the Sonic 1 driver, whose table
+    macro is MakeFMFrequency(f) = f x 2^21 / FM_Sample_Rate at block 0 (16.35 Hz = C0 -> $0284).
+    A4 = 440 Hz -> fnum=1083, block=4 with clock=7670454.
+
+    (Until 2026-09 this used 2^(20 - block) and reported every FM pitch one octave high; the
+    synthesiser had the mirror-image error, so configs tuned from this tool sounded right.)
     """
-    return clock * fnum / (144 * (1 << (20 - block)))
+    return clock * fnum / (144 * (1 << (21 - block)))
 
 
 def _psg_period_to_hz(period: int, clock: int) -> float:
@@ -130,10 +133,10 @@ def _nearest_note(freq: float) -> str:
 def _smps_note(freq: float, chan_type: str) -> str:
     """Return the SMPS-convention note name for a chip output frequency.
 
-    In Sonic 1 SMPS the note byte labels are offset from standard pitch:
-      FM  — label is one octave *lower* than what the chip outputs
-            e.g. nA5 in the assembly → chip plays A6 (standard)
-            Conversion: subtract 12 from MIDI number
+    In Sonic 1 SMPS the note byte labels relate to standard pitch like this:
+      FM  — label IS the standard pitch name (driver table: nC0 -> 16.35 Hz = C0), so the
+            effective note (byte + pitch_offset) is simply the chip's note
+            e.g. nA4 with pitch_offset 0 → chip plays A4 = 440 Hz
       PSG — label is one octave *higher* than what the chip outputs
             e.g. nE5 in the assembly → chip plays E4 (standard)
             Conversion: add 12 to MIDI number
@@ -146,11 +149,9 @@ def _smps_note(freq: float, chan_type: str) -> str:
     if freq <= 0 or chan_type == "noise":
         return "—"
     midi = round(69 + 12 * math.log2(freq / 440.0))
-    if chan_type == "fm":
-        midi -= 12
-    elif chan_type == "psg":
+    if chan_type == "psg":
         midi += 12
-    else:
+    elif chan_type != "fm":
         return "—"
     if midi < 0 or midi > 127:
         return "—"

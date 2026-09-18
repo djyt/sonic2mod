@@ -171,9 +171,9 @@ def generate_fm_samples(
             for entry in range_list:
                 _collect(voice_idx, voice, entry, source_label=ch_name)
 
-    # Standard fallback: C5 synthesis (synth_idx=48, 523 Hz) played at C1 rate.
-    # Correct for voices whose SMPS source notes centre near C5 with YAML −48.
-    _STD_SYNTH_IDX = 48   # SMPS semitone 60 = C5 → renderer idx 48
+    # Standard fallback: C4 synthesis (synth_idx=36, 261.6 Hz) played at C1 rate — what an SMPS
+    # nC5 sounds like on a channel with the usual $F4 (−12) pitch offset.
+    _STD_SYNTH_IDX = 36   # semitone 48 = C4 → renderer idx 36
     _std_rate = round(synth.amiga_clock / PERIOD_TABLE[ModNote.C1.value])
 
     # --- Fallback 1: legacy_voice_map entries not yet synthesized ---

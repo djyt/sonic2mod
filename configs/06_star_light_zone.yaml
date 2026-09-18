@@ -67,52 +67,52 @@ voice_map:
       high: B6
       mod_instrument: 2
       root: G2
-      synth_root: G4
+      synth_root: G3
     - low:  C7
       high: E7
       mod_instrument: 3
       root: C2
-      synth_root: C6
+      synth_root: C5
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  G3
       high: G4
       mod_instrument: 4
       root: G2
-      synth_root: G2
+      synth_root: G1
   # $02 — alg 4: (1→2)+(3→4), fb 0 — used by FM3, FM4
   2:
     - low:  Cs6
       high: E7
       mod_instrument: 5
       root: Cs2
-      synth_root: Cs4
+      synth_root: Cs3
   # $03 — alg 2: (1+(2→3))→4, fb 7 — used by FM5
   3:
     - low:  Ds4
       high: B5
       mod_instrument: 6
       root: Ds2
-      synth_root: Ds4
+      synth_root: Ds3
     - low:  C6
       high: C7
       mod_instrument: 7
       root: C2
-      synth_root: C6
+      synth_root: C5
   # $04 — alg 4: (1→2)+(3→4), fb 7 — used by FM5
   4:
     - low:  G5
       high: As6
       mod_instrument: 8
       root: G2
-      synth_root: G5
+      synth_root: G4
   # $05 — alg 4: (1→2)+(3→4), fb 6 — used by FM5
   5:
     - low:  Ds4
       high: Ds4
       mod_instrument: 9
       root: Ds3
-      synth_root: Fs8
+      synth_root: Fs7
 
 psg_map:
   0xE7:                    # form $E7

@@ -131,6 +131,16 @@ else:
 ```
 The `-12` offset exists because SMPS semitone 0 = C0, but the renderer's index 0 = C1 (one octave higher).
 
+**A `synth_root` name is a real pitch.**  `synth_root: A4` renders 440 Hz: `note_to_freq` gives the
+standard frequency and `freq_to_fnum_block` uses the chip's formula
+`fnum = f × 144 × 2^(21−block) / clock` (A4 → fnum 1083, block 4).  An SMPS FM note label is a
+real pitch too — the driver's table puts `nC0` at 16.35 Hz — so the chip pitch of a source note is
+simply `note + pitch_offset + smpsChangeTransposition`, and `tools/vgm_analyze.py` shows the same
+names.  (Before 2026-09-18 both `freq_to_fnum_block` and the analyzer used `2^(20−block)`: the
+synthesiser rendered an octave below the name and the analyzer read an octave high, so every
+config carried `synth_root` values one octave above the rule below.  All 103 were lowered when
+the formulas were fixed; the generated MODs are byte-identical.)
+
 **What the Amiga hears:**
 When the Amiga plays the sample at its period (derived from `root`), the output pitch is the
 frequency of `synth_root` (or `low` if no `synth_root`). This works correctly when:

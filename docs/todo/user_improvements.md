@@ -63,7 +63,8 @@ Status key: `[ ]` open, `[x]` done.
 - **Done for Title Screen:** FM5 and FM3's ending note use finetune +1 variants via `channel_instrument_map`.
 - **Open:** synthesise the variant with the FNUM offset applied instead of using finetune, and auto-create it when a channel carries `smpsAlterNote` ≠ 0.
 
-### [ ] 9. FM frequency convention is an octave off in two places that cancel
+### [x] 9. FM frequency convention is an octave off in two places that cancel
+- **Done (2026-09-18):** both functions now use `2^(21−block)`; all 103 FM `synth_root` values in the 18 configs lowered one octave (`voice_map` / `channel_instrument_map` only — PSG untouched); `analyze.py` skeleton no longer adds 12; legacy fallback C5 → C4; `_smps_note` FM offset removed (its SMPS column is unchanged). Every config's MOD is byte-identical before/after. `vgm_analyze` now reads GHZ FM2 as `A2 A3 A2 A#2` = the source's `nA2, nA3, nA2, nBb2`. The documented rule `synth_root = low + total_transpose` now holds literally (GHZ voice $08: C5 − 36 = `C2`).
 - `tools/vgm_analyze._fnum_to_hz` and `ym2612/renderer.freq_to_fnum_block` use `2^(20−block)`; the chip and the driver's `MakeFMFrequency` (`f·2^21/fs`) are `2^(21−block)`. The analyzer reads FM an octave high, the synth renders an octave below the `synth_root` name, and configs tuned one against the other sound right (GHZ 867/867). Fix = both functions plus every FM `synth_root` down an octave, in one commit. `sfx/` already uses the driver table and is correct. Project memory's "FM chip plays one octave above the SMPS label" is this artefact.
 
 ### [x] 10. Coordination flags were applied one note early (parser)

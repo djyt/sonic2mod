@@ -70,38 +70,38 @@ voice_map:
       high: A7
       mod_instrument: 3
       root: G2
-      synth_root: G6
+      synth_root: G5
   # $01 — alg 0: 1→2→3→4, fb 4 — used by FM2, FM3, FM4
   1:
     - low:  A2
       high: B3
       mod_instrument: 4
       root: A2
-      synth_root: A2
+      synth_root: A1
     - low:  C4
       high: D4
       mod_instrument: 5
       root: C2
-      synth_root: C4
+      synth_root: C3
   # $02 — alg 2: (1+(2→3))→4, fb 7 — used by FM3, FM4
   2:
     - low:  Gs5
       high: Gs6
       mod_instrument: 6
       root: Gs2
-      synth_root: Gs5
+      synth_root: Gs4
   # $03 — alg 2: (1+(2→3))→4, fb 7 — used by FM1, FM5
   3:
     - low:  A2
       high: B3
       mod_instrument: 7
       root: A2
-      synth_root: A2
+      synth_root: A1
     - low:  C4
       high: B6
       mod_instrument: 8
       root: C1
-      synth_root: C4
+      synth_root: C3
 
 psg_map:
   0xE7:                    # form $E7
@@ -130,7 +130,7 @@ channel_instrument_map:
       high: B6
       mod_instrument: 11
       root: C1
-      synth_root: C4
+      synth_root: C3
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro

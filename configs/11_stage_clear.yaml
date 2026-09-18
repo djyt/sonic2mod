@@ -73,12 +73,12 @@ voice_map:
       high: B5
       mod_instrument: 4
       root: G2
-      synth_root: G4
+      synth_root: G3
     - low:  C6
       high: C7
       mod_instrument: 5
       root: C2
-      synth_root: C6
+      synth_root: C5
       vibrato: 0
   # $01 — Alg 2, FB 7 — used by FM2
   1:
@@ -86,21 +86,21 @@ voice_map:
       high: G5
       mod_instrument: 6
       root: G2
-      synth_root: G2
+      synth_root: G1
   # $02 — Alg 5, FB 7 — used by FM3, FM4
   2:
     - low:  A5
       high: D6
       mod_instrument: 7
       root: A2
-      synth_root: A5
+      synth_root: A4
   # $03 — Alg 5, FB 7 — used by FM5
   3:
     - low:  G5
       high: C6
       mod_instrument: 8
       root: G2
-      synth_root: G5
+      synth_root: G4
 
 psg_voice_map:
   fTone_05:

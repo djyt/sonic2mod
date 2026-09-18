@@ -117,7 +117,7 @@ voice_map:
       high: B4
       mod_instrument: 3
       root: C2
-      synth_root: C3
+      synth_root: C2
 
   # $01 → bass/rhythm pad
   1:
@@ -125,7 +125,7 @@ voice_map:
       high: B4
       mod_instrument: 4
       root: C2
-      synth_root: C3
+      synth_root: C2
 
   # $02 → bright lead
   2:
@@ -133,7 +133,7 @@ voice_map:
       high: B7
       mod_instrument: 5
       root: C2
-      synth_root: C6
+      synth_root: C5
 
   # $04 → bell arp
   4:
@@ -141,7 +141,7 @@ voice_map:
       high: E7
       mod_instrument: 6
       root: C2
-      synth_root: C5
+      synth_root: C4
 
   # $05 → main melody
   5:
@@ -149,12 +149,12 @@ voice_map:
       high: B5
       mod_instrument: 11
       root: C2
-      synth_root: C2
+      synth_root: C1
     - low:  C6
       high: B7
       mod_instrument: 10
       root: C2
-      synth_root: C4
+      synth_root: C3
 
   # $06 → FM1 fills
   6:
@@ -162,7 +162,7 @@ voice_map:
       high: B7
       mod_instrument: 12
       root: C2
-      synth_root: C5
+      synth_root: C4
       vibrato: 0            # Sounds awful, disable it!
 
   # $07 → bridge
@@ -171,19 +171,19 @@ voice_map:
       high: B5
       mod_instrument: 13
       root: C2
-      synth_root: C5
+      synth_root: C4
   # $08 → bright synth
   8:
     - low:  C5
       high: B5
       mod_instrument: 14
       root: C2
-      synth_root: C3
+      synth_root: C2
     - low:  C6
       high: B6
       mod_instrument: 15
       root: C2
-      synth_root: C4
+      synth_root: C3
 
 
 # -------------------------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ channel_instrument_map:
       - low:  C6              # bottom of FM5 arp range
         high: B7              # top
         root: C2
-        synth_root: C5
+        synth_root: C4
         mod_instrument: 8    # same audio as inst 6, finetune +1
 
 

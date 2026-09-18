@@ -56,25 +56,25 @@ voice_map:
       high: Cs5
       mod_instrument: 2
       root: C2
-      synth_root: C6
+      synth_root: C5
   # $01 — alg 0: 1→2→3→4, fb 3 — used by FM2
   1:
     - low:  C4
       high: Cs5
       mod_instrument: 3
       root: C2
-      synth_root: C3
+      synth_root: C2
   # $02 — alg 4: (1→2)+(3→4), fb 5 — used by FM3
   2:
     - low:  C6
       high: Cs6
       mod_instrument: 4
       root: C2
-      synth_root: C6
+      synth_root: C5
   # $03 — alg 7: 1+2+3+4, fb 0 — used by FM4
   3:
     - low:  C4
       high: Cs5
       mod_instrument: 5
       root: C2
-      synth_root: Fs5
+      synth_root: Fs4

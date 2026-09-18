@@ -14,8 +14,8 @@ and the two pitches are compared.  Use this for "is every note right"; use vgm_c
 levels, timing, timbre and vibrato.  Its per-note pitch column measures audio windows and is
 unreliable on legato runs and 1-tick grace notes (GHZ FM3-FM5), which this tool is immune to.
 
-FM frequencies use tools/vgm_analyze._fnum_to_hz, i.e. the same convention as the synthesiser's
-freq_to_fnum_block, so chip and MOD pitches are directly comparable.
+Both sides are in real Hz: FM frequencies come from tools/vgm_analyze._fnum_to_hz and a
+``synth_root`` name is the pitch the synthesiser actually renders (freq_to_fnum_block).
 
 Usage::
 

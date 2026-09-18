@@ -809,7 +809,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 lines.append(f"      high: {_sem_to_yaml(split_point)}")
                 lines.append(f"      mod_instrument: {inst}")
                 lines.append(f"      root: {_note_in_octave2(min_sem)}{root_comment}")
-                lines.append(f"      synth_root: {_sem_to_yaml(min_sem + initial_trans + 12)}{root_comment}")
+                lines.append(f"      synth_root: {_sem_to_yaml(min_sem + initial_trans)}{root_comment}")
                 # Entry 2: split_point+1..max_sem
                 lines.append(f"    - low:  {_sem_to_yaml(split_point + 1)}")
                 lines.append(f"      high: {_sem_to_yaml(max_sem)}")
@@ -819,14 +819,14 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 _oct2_val    = 12 + _note_class2
                 _root2_name  = ModNote(_note_class2 if _oct2_val + _span2 > 35 else _oct2_val).name
                 lines.append(f"      root: {_root2_name}{root_comment}")
-                lines.append(f"      synth_root: {_sem_to_yaml(split_point + 1 + initial_trans + 12)}{root_comment}")
+                lines.append(f"      synth_root: {_sem_to_yaml(split_point + 1 + initial_trans)}{root_comment}")
             else:
                 root_comment = "  # smpsChangeTransposition active — verify root is correct" if has_trans else ""
                 lines.append(f"    - low:  {_sem_to_yaml(min_sem)}")
                 lines.append(f"      high: {_sem_to_yaml(max_sem)}")
                 lines.append(f"      mod_instrument: {inst}")
                 lines.append(f"      root: {_note_in_octave2(min_sem)}{root_comment}")
-                lines.append(f"      synth_root: {_sem_to_yaml(min_sem + initial_trans + 12)}")
+                lines.append(f"      synth_root: {_sem_to_yaml(min_sem + initial_trans)}")
 
     # --- psg_map ---
     if psg_noise_items:

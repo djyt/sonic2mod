@@ -39,10 +39,10 @@ CHANNEL       = 0       # YM2612 channel 0
 # YM2612 native sample rate ≈ 53,267 Hz
 RATE = OPN2.NATIVE_RATE
 
-# A4 frequency values for YM2612 (fnum=541, block=4 → ~439.7 Hz)
-# fnum = freq × 2^(20−block) / (clock/144) = 440 × 65536 / 53267 ≈ 541
+# A4 frequency values for YM2612 (fnum=541, block=5 → ~439.7 Hz)
+# fnum = freq × 2^(21−block) / (clock/144) = 440 × 65536 / 53267 ≈ 541
 FNUM  = 541          # 0x21D
-BLOCK = 4
+BLOCK = 5
 
 # Derived register bytes:
 #   0xA4 ch0 = (block << 3) | (fnum >> 8) = (4<<3)|(2) = 0x22

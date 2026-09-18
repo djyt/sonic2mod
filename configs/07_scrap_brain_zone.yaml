@@ -96,21 +96,21 @@ voice_map:
       high: A4
       mod_instrument: 4
       root: G2
-      synth_root: G3
+      synth_root: G2
   # $01 — Alg 4, FB 5 — used by FM3
   1:
     - low:  A4
       high: G5
       mod_instrument: 5
       root: A2
-      synth_root: A4
+      synth_root: A3
   # $02 — Alg 5, FB 7 — used by FM1, FM4, FM5
   2:
     - low:  B5
       high: B6
       mod_instrument: 6
       root: B2
-      synth_root: B5
+      synth_root: B4
       vibrato: 0
 
   # $03 — Alg 1, FB 5 — used by FM1, FM3
@@ -119,7 +119,7 @@ voice_map:
       high: C7
       mod_instrument: 7
       root: C2
-      synth_root: C6
+      synth_root: C5
       vibrato: 31
 
   # $04 — Alg 5, FB 7 — used by FM4, FM5
@@ -128,13 +128,13 @@ voice_map:
       high: B5
       mod_instrument: 8
       root: B2
-      synth_root: B4
+      synth_root: B3
 
     - low:  C6
       high: Cs6
       mod_instrument: 9
       root: C2
-      synth_root: C6
+      synth_root: C5
 
   # $05 — Alg 0, FB 6 — used by FM1, FM4
   5:
@@ -142,13 +142,13 @@ voice_map:
       high: B5
       mod_instrument: 10
       root: G2
-      synth_root: G4
+      synth_root: G3
 
     - low:  C6
       high: Gs6
       mod_instrument: 11
       root: C2
-      synth_root: C6
+      synth_root: C5
 
   # $06 — Alg 5, FB 7 — used by FM5
   6:
@@ -156,7 +156,7 @@ voice_map:
       high: G6
       mod_instrument: 12
       root: G2
-      synth_root: G5
+      synth_root: G4
 
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
@@ -206,7 +206,7 @@ channel_instrument_map:
       high: A4
       mod_instrument: 20
       root: G2
-      synth_root: G3
+      synth_root: G2
 
   FM5:
     2:
@@ -214,7 +214,7 @@ channel_instrument_map:
       high: B6
       mod_instrument: 19
       root: B2
-      synth_root: B5
+      synth_root: B4
       vibrato: 0
 
 

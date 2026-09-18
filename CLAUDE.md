@@ -189,6 +189,9 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 
 - SMPS note range: 8 octaves (C0–B7), byte values $81–$DF
 - MOD note range: 3 octaves (C1–B3), 36 semitones
+- FM pitch names are real pitches everywhere: an SMPS FM label (+ pitch_offset + transposition) is the
+  chip's note (`nA4` at offset 0 = 440 Hz), `synth_root: A4` renders 440 Hz, and `vgm_analyze.py`
+  prints the same names. YM2612: `f = fnum × (clock/144) × 2^block / 2^21` (A4 = fnum 1083, block 4)
 - Default FM transpose: -36 semitones (maps SMPS octaves 3–5 → MOD C1–B3)
 - Duration persistence: last explicit `dc.b` duration carries to subsequent notes
 - Labels emit no bytes: if one sits between a note byte and its duration byte, the duration still

@@ -8,7 +8,7 @@ from a game recording, or to count PSG noise events.
 
 Usage::
 
-    python tools/vgm_analyze.py "reference/vgm/02 - Green Hill Zone.vgz"
+    python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz"
     python tools/vgm_analyze.py file.vgz --chip fm --channel FM3 FM4 FM5
     python tools/vgm_analyze.py file.vgz --chip psg --channel NOISE
     python tools/vgm_analyze.py file.vgz --chip all --max-rows 0

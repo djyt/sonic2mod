@@ -10,7 +10,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | Document | Contents |
 |----------|----------|
 | `docs/smps_driver.md` | **Sonic 1 driver reference** — all coord flag bytes ($E0–$F9), smpsDetune vs smpsChangeTransposition, timing system, smpsModSet, smpsNoteFill, FM operator order, DAC, PSG |
-| `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas |
+| `docs/pipeline.md` | **Conversion pipeline** — SMPS→MOD effect mapping (full table), tick/row math, effect priority, voice_map routing decision tree, BPM derivation, common gotchas, **VGZ verification setup** (VGMPlay location, `vgm_compare.py` report sections, `--json` / `--fail-*`) |
 | `docs/fm_synthesis.md` | **YM2612 synthesis pipeline** — root/synth_root/target_rate explained, all settings, normalization, headroom/carrier balance, OPN2 internals, API reference, common mistakes |
 | `docs/psg_synthesis.md` | **SN76489 PSG synthesis pipeline** — psg_map/psg_voice_map schema, envelope tables, root/synth_root, normalization, API |
 | `docs/sfx_rendering.md` | **SFX→WAV offline driver** — tick loop, driver frequency tables, modulation halving, retrigger semantics, mix levels, hardware deviations |
@@ -118,21 +118,26 @@ python ym2612/validate.py
 python sn76489/validate.py      # C3 tone + white noise → output/psg_{tone,noise}_test.raw
 
 # Analyse FM channels from a VGM/VGZ game recording (verify synth_root values)
-python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
+python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
 # Analyse SN76489 PSG noise channel (compare against title_screen.yaml output)
-python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip psg --channel NOISE
+python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
-python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip all --max-rows 0
+python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
 
-# Audit a conversion against its VGZ: per-note pitch/level, channel balance, onset timing, noise
-# spectrum, DAC rate.  Needs VGMPlay (C:\coding\amiga\music\vgmplay or VGMPLAY_DIR) and an ffmpeg
-# build with libopenmpt.  Renders go to output/compare/<config>/; --skip-render reuses them.
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --vgmplay C:\coding\amiga\music\vgmplay
+# Audit a conversion against its VGZ: per-note pitch/level, channel balance, onset timing, vibrato
+# rate/depth on long notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
+# reference/vgz/vgmplay/ (untracked, like the VGZ rips; or --vgmplay DIR / VGMPLAY_DIR) and an
+# ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
+# Renders go to output/compare/<config>/; --skip-render reuses them.
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
+# CI-style: JSON results + exit 1 when a threshold is exceeded (also --fail-unmatched N)
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
 ```
 
 ## Regression Testing
 
-Baselines live in `tests/baselines/`. Test cases: GHZ and Title Screen
+Baselines live in `tests/baselines/`. Test cases: GHZ, Title Screen, Special Stage, Stage Clear,
+Scrap Brain Zone
 
 ```bash
 # BEFORE implementing a fix — save current output as baseline:
@@ -140,6 +145,9 @@ python tools/regression_test.py --generate-baselines
 
 # AFTER implementing a fix — diff all channels that should remain same against baseline
 python tools/regression_test.py
+
+# Accept an intended change in ONE song without rewriting the other baselines
+python tools/regression_test.py --generate-baselines --only title_screen
 ```
 
 **Workflow for any converter change:**
@@ -287,6 +295,8 @@ Full reference: `docs/psg_synthesis.md`.
 Enable: set `psg_synthesis: {enabled: true}` in `configs/settings.yaml`.
 Rate-3 noise (`noise_rate: 3`): set `tone2_n` explicitly. `nMaxPSG` writes divider 0, which the
 VDP PSG clocks as N=1 → `tone2_n: 1` (not `synth_root: A8`, which gives a 7 kHz dull rattle).
+`convert.py` warns when a rate-3 `synth_root` is outside the driver table (C3–Gs8); the
+`analyze.py` skeleton emits the correct `tone2_n` and TL-derived FM `sample_list` volumes.
 Smoke tests: `python sn76489/validate.py` / `renderer.py` / `sample_generator.py`
 
 ## Testing

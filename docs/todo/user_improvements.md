@@ -4,7 +4,7 @@ Source: `docs/title_screen_audit.md` (2026-09-17). Each item names the problem t
 measured, what to change, and where. Verify any of them with:
 
 ```bash
-python tools/vgm_compare.py configs/<song>.yaml "reference/vgz/<song>.vgz" --vgmplay C:\coding\amiga\music\vgmplay
+python tools/vgm_compare.py configs/<song>.yaml "reference/vgz/<song>.vgz"
 ```
 
 Status key: `[ ]` open, `[x]` done.
@@ -60,15 +60,17 @@ Status key: `[ ]` open, `[x]` done.
 ## Tooling / workflow
 
 ### [x] `tools/vgm_compare.py` — rendered per-channel MOD-vs-VGZ audit
-Per-note pitch and level, channel balance, onset timing, noise spectrum, DAC rate. Needs VGMPlay and an ffmpeg build with libopenmpt.
-- [ ] Optional `--json` output for CI-style thresholds (e.g. fail if any channel balance is off by > 2 dB).
-- [ ] Add a vibrato rate/depth estimate on long notes (partial-tracking; the audit did this by hand).
-- [ ] Bundle or document a VGMPlay download so the tool works on a fresh checkout; `reference/vgz/` is untracked.
+Per-note pitch and level, channel balance, onset timing, vibrato, noise spectrum, DAC rate. Needs VGMPlay and an ffmpeg build with libopenmpt.
+- [x] `--json FILE` output plus opt-in CI thresholds `--fail-balance-db`, `--fail-pitch-cents`, `--fail-unmatched` (exit 1 when exceeded; results in the JSON `checks` list).
+- [x] Vibrato rate/depth estimate on notes ≥ 0.5 s (heterodyne partial tracking, modulated stretch only). Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c vs MOD 3.98 Hz ±36 c; GHZ FM4/FM5 C6: 4.46 Hz ±6 c vs 6.5 Hz ±7 c — both feed item 2.
+- [x] VGMPlay location: defaults to `reference/vgz/vgmplay/` (untracked) after `--vgmplay` / `VGMPLAY_DIR`; fresh-checkout setup in `docs/pipeline.md` § Verifying against a VGZ. Needs the 0.51.x (libvgm) line for the `Core = NUKE` ini key. No direct binary download URL is recorded — only the source repo could be confirmed.
+- [ ] `--fail-unmatched` is noisy on sustained FM channels (MOD re-triggers where hardware ties notes → extra onsets; Title Screen FM2 reports 4). Match on key-on events instead of detected onsets for channels that have them.
+- [ ] GHZ shows MOD-only 2.5–3 Hz ±13 c wobble on some long FM3/FM4 notes (`not in VGM` rows) — check whether it is a stray `4xy` or a sample loop that is not a whole number of periods.
 
 ### [x] `tools/vgm_analyze.py` — tone-2 divider on rate-3 noise rows, DAC seek events, per-channel counts
-- [ ] Fix the `reference/vgm/` paths in the CLAUDE.md examples (the directory is `reference/vgz/`).
+- [x] `reference/vgm/` paths in the CLAUDE.md examples and the tool docstring corrected to `reference/vgz/`.
 
-### [ ] Config authoring
-- [ ] `analyze.py --config` skeleton: emit `sample_list` volumes pre-computed from header TL (item 4 interim) and `tone2_n` for rate-3 noise channels.
-- [ ] Warn when a rate-3 noise entry uses `synth_root` above octave 8 or below the driver's table range.
-- [ ] Regenerate `tests/baselines/title_screen_baseline.mod` (25 intended differences: channel 6 `C13`→`C06`, channel 3 instrument 5→8 on the closing note).
+### [x] Config authoring
+- [x] `analyze.py` skeleton: FM `sample_list` volumes pre-computed from each channel's TL offset at the voice's first note (`smpsHeaderFM` volume + `smpsAlterVol`), relative to the loudest channel, with a per-channel breakdown comment and a `channel_instrument_map` hint when channels sharing a voice differ. Reproduces the hand-computed Title Screen values (25 / 21 / 32). `tone2_n` for rate-3 noise comes from the driver's `PSGFrequencies` table (divider 0 → 1); pitched-noise channels also get `low:`.
+- [x] `convert.py` and `analyze.py --config` warn when a rate-3 noise entry without `tone2_n` has a `synth_root` outside the driver table (C3–Gs8). Currently fires on GHZ, SYZ, LZ, SLZ, SBZ (×3), Ending and Invincibility — all `synth_root: A8` on an `nMaxPSG` channel; switching them to `tone2_n: 1` is item 6 (it changes the noise sample, so re-check levels per item 5).
+- [x] `tests/baselines/title_screen_baseline.mod` regenerated (25 intended differences: 24× channel 6 `C13`→`C06`, channel 3 instrument 5→8 on the closing note). `regression_test.py --only NAME` added so one baseline can be refreshed alone.

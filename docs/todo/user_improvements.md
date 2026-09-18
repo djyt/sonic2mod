@@ -13,7 +13,9 @@ Status key: `[ ]` open, `[x]` done.
 
 ## Converter accuracy
 
-### [ ] 1. Note fill and modulation timers count frames, not ticks
+### [x] 1. Note fill and modulation timers count frames, not ticks
+- **Done:** `_ticks_per_frame` = `(mod−1)/mod` in `core/smps2mod.py`, applied to the fill and the `smpsModSet` wait; cuts placed to the MOD tick (`ECx` in-row / `C00` on a boundary); fill-vs-duration test done in frames, so fills equal to the duration byte now fire; parser no longer multiplies the modulation wait by the tempo divider. Verified on GHZ key-off timing (4/11/20/30 frames exact) and Title Screen noise cuts (worst +75 ms → +15 ms). Details: `docs/pipeline.md` gotcha 4b.
+- **Still open:** mid-song `smpsSetTempoMod` (Credits, Drowning) uses the header modifier; vibrato *rate* is item 2; off-grid note-ons (cut is at the right absolute time but the note-on is half a row off — GHZ FM4 reads 533 ms instead of 500) are item 3.
 - **Measured:** PSG3 fill `$0C` cuts at 250 ms in the MOD, 200 ms on hardware (tempo mod 5 → 48 ticks/s, fill runs at 60 Hz).
 - **Why:** `TempoWait` only bumps `DurationTimeout`; `NoteTimeoutUpdate` and `DoModulation` still run every V-int.
 - **Fix:** in `core/smps2mod.py`, scale before placement: `fill_ticks = fill_frames × ticks_per_sec / fps`; same for `vibrato_wait`. For tempo modifier 5 that is ×0.8.
@@ -62,10 +64,11 @@ Status key: `[ ]` open, `[x]` done.
 ### [x] `tools/vgm_compare.py` — rendered per-channel MOD-vs-VGZ audit
 Per-note pitch and level, channel balance, onset timing, vibrato, noise spectrum, DAC rate. Needs VGMPlay and an ffmpeg build with libopenmpt.
 - [x] `--json FILE` output plus opt-in CI thresholds `--fail-balance-db`, `--fail-pitch-cents`, `--fail-unmatched` (exit 1 when exceeded; results in the JSON `checks` list).
-- [x] Vibrato rate/depth estimate on notes ≥ 0.5 s (heterodyne partial tracking, modulated stretch only). Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c vs MOD 3.98 Hz ±36 c; GHZ FM4/FM5 C6: 4.46 Hz ±6 c vs 6.5 Hz ±7 c — both feed item 2.
+- [x] Vibrato rate/depth estimate on notes ≥ 0.5 s (heterodyne partial tracking, modulated stretch only). Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c vs MOD 3.98 Hz ±36 c — feeds item 2.
+- [x] Beating vs vibrato: rows are tagged `b` when the partial's level swings at the same rate (≥ 15 %) — that is two detuned FM carriers beating, not `smpsModSet`. **Correction:** the GHZ FM4/FM5 C6 rows (4.46 Hz vs 6.5 Hz) first recorded here as item 2 evidence are beating — those channels have no modulation at all. The rate differs because the MOD sample is resampled, so they belong to item 7 (multi-sampling / `synth_root`), as do the MOD-only 2.5–3 Hz rows on FM3/FM4.
+- [ ] PSG vibrato is invisible to the table: `vgm_analyze._parse_vgm` reports every PSG period change as a key-on, so a modulated PSG note is chopped into frame-long "notes". Needs key-on detection from volume only (GHZ PSG1 `smpsModSet $0E,$01,$01,$03` is the test case).
 - [x] VGMPlay location: defaults to `reference/vgz/vgmplay/` (untracked) after `--vgmplay` / `VGMPLAY_DIR`; fresh-checkout setup in `docs/pipeline.md` § Verifying against a VGZ. Needs the 0.51.x (libvgm) line for the `Core = NUKE` ini key. No direct binary download URL is recorded — only the source repo could be confirmed.
 - [ ] `--fail-unmatched` is noisy on sustained FM channels (MOD re-triggers where hardware ties notes → extra onsets; Title Screen FM2 reports 4). Match on key-on events instead of detected onsets for channels that have them.
-- [ ] GHZ shows MOD-only 2.5–3 Hz ±13 c wobble on some long FM3/FM4 notes (`not in VGM` rows) — check whether it is a stray `4xy` or a sample loop that is not a whole number of periods.
 
 ### [x] `tools/vgm_analyze.py` — tone-2 divider on rate-3 noise rows, DAC seek events, per-channel counts
 - [x] `reference/vgm/` paths in the CLAUDE.md examples and the tool docstring corrected to `reference/vgz/`.

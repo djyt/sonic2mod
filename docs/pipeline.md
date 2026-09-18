@@ -70,7 +70,7 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 | `smpsModSet` | $F0 | wait,speed,change,step | Vibrato | `4xy` (Cmd 4) | x=speed nibble, y=change nibble; approximate (triangle→sine) |
 | `smpsModOn` | $F1 | — | Vibrato (continues) | `4xy` | Re-activates stored params |
 | `smpsModOff` | $F4 | — | (clears vibrato state) | none | No MOD effect; future notes have no vibrato |
-| `smpsNoteFill` | $E8 | byte 1–15 | Note Cut | `ECx` (Cmd EC) | x = fill ticks (4-bit); values > 15 not representable |
+| `smpsNoteFill` | $E8 | frames | Note Cut | `ECx` / `C00` | Fill is in V-int **frames**; scaled by `(mod−1)/mod` onto the tick timeline, then placed to the MOD tick: `ECx` inside a row, `C00` on a row boundary. Any fill length works; skipped when it outlasts the note |
 | `smpsJump` | $F6 | address | Position Jump | `Bxx` (Cmd B) | Target = post-break pattern for the max loop-start tick; Bxx placed at last row with a note period in the post-break MOD; see §Pattern Breaks |
 | `smpsLoop` | $F7 | idx,count,addr | (none — unrolled) | — | Loop body replayed at parse time |
 | `smpsCall` | $F8 | address | (none — inlined) | — | Subroutine events spliced into caller |
@@ -90,9 +90,14 @@ When multiple effects are active on the same note, **first match wins**:
 
 1. **Cxx — Set Volume** (`smpsAlterVol` result differs from current): volume changes take priority because they affect all subsequent notes until changed again.
 2. **4xy — Vibrato** (`smpsModSet/On` active, speed > 0): vibrato is a continuous effect; priority over note-cut.
-3. **ECx — Note Cut** (`smpsNoteFill` set, fill ≤ 15): lowest priority.
+3. **ECx — Note Cut** (`smpsNoteFill` cut falling inside the attack row): lowest priority.
 
 Implication: if volume changes on the same row as vibrato, vibrato is dropped for that row. Design songs (and YAML configs) to avoid stacking these on the same row.
+
+A cut that lands inside the attack row while that row needs `Cxx` is moved to the start of the next
+row (`C00`), or dropped if the next event is already there.  Cuts on later rows of the note have
+the effect column to themselves (the `4xy` continuation skips that row).  Exception to the order
+above: an attack-row `ECx` does displace `4xy` — a note that short has no audible vibrato.
 
 ---
 
@@ -259,13 +264,17 @@ Example — source C5–B6 (span = 12 semitones):
 
 ---
 
-### 3. smpsNoteFill > 15 is silently ignored
+### 3. smpsNoteFill longer than a row is a `C00` / `ECx` on a later row
 
-**Problem:** Note fills specified as `$10` or higher produce no MOD note-cut effect.
+**Problem:** Expecting every `smpsNoteFill` to show up as `ECx` next to its note.
 
-**Cause:** MOD command `ECx` has a 4-bit parameter (0–15 ticks). `smps2mod.py` checks `0 < note_fill < 0x10` before emitting ECx.
+**Cause:** `ECx` can only cut within its own row (x < speed).  The converter works out the cut
+position in absolute MOD ticks and writes it on whichever row it falls in: `ECx` when it is inside
+a row, `C00` when it is exactly on a row boundary.  There is no upper limit on the fill value
+(GHZ FM3/FM4 use `$1E` = 500 ms).
 
-**Fix:** This is not a bug — fill values > 15 mean "note holds for more than 15 ticks" which is naturally represented by the note's duration. No workaround needed.
+**When no cut is written:** the fill outlasts the note (`fill × (mod−1)/mod ≥ duration`, the
+driver's DurationTimeout expires first), or the cut would land on the next event's row.
 
 ---
 
@@ -294,8 +303,29 @@ Modulation timers count V-int **frames** (60 Hz), not tempo ticks; the steady cy
 **Cause:** `TempoWait` only delays `DurationTimeout`; `NoteTimeoutUpdate` still runs every V-int,
 so the fill value is in frames (60 Hz) while durations are in ticks (`fps × (mod−1)/mod`).
 
-**Fix (pending):** scale the fill by `ticks_per_sec / fps` before placing `ECx`/`C00`
-(`×0.8` for tempo modifier 5). Same scaling applies to `ModulationWait`.
+**Fix (done):** `SmpsToModConverter._ticks_per_frame` = `(mod−1)/mod` (1.0 for SFX / mod ≤ 1)
+converts frame counts to ticks; the fill and the `smpsModSet` wait both go through it
+(`×0.8` for tempo modifier 5, `×0.667` for GHZ's 3).  The same ratio decides whether the fill fires
+at all: a fill equal to the duration byte **does** fire when the song has a tempo modifier, because
+the note lasts `duration × mod/(mod−1)` frames.
+
+Verified against hardware key-off timing in the GHZ VGZ (YM2612 reg `$28` writes): FM2
+`smpsNoteFill $04` → 158 key-offs at exactly 4 frames (67 ms; the old output cut at 100 ms), FM1
+`$0B`/`$14` → 11/20 frames, FM3/FM4 `$1E` → 30 frames (previously no cut at all, since 30 ≥ the
+24-tick duration), PSG `$06`/`$10` → 100/267 ms (were 150/400).  Title Screen noise cuts: worst
+error vs the recording +75 ms → +15 ms.
+
+**Related parser fix:** `_scale_effect_params` used to multiply the `smpsModSet` wait by the tempo
+divider.  The driver never does (`ModulationWait` is a raw frame count), so divider-2 songs had
+the vibrato onset twice as late before the tick error was even added — Special Stage `$1A` started
+at ~990 ms instead of 433 ms.
+
+**Vibrato rows:** a row carries `4xy` when modulation is running for at least half of it, the
+attack row included — so notes shorter than the wait no longer get vibrato at all (they used to
+get it on the attack row unconditionally).
+
+**Not covered:** mid-song `smpsSetTempoMod` (Credits, Drowning) — the header modifier is used
+throughout.  The `smpsModSet` *speed* → `4xy` rate formula is a separate issue (gotcha 4).
 
 ---
 
@@ -469,6 +499,12 @@ derivative).  A row is printed when either side modulates: rate in Hz and depth 
 only over the modulated stretch so `smpsModSet` wait times do not dilute it.  Flags: `VIBRATO`
 (rate off by > 15 % or depth by > 5 c / 30 %), `MISSING in MOD`, `not in VGM` (MOD-only wobble —
 a `4xy` the hardware does not have, or a sample loop that is not a whole number of periods).
+Rows marked `b` are **beating**, not vibrato: two detuned FM carriers wobble a partial's phase
+periodically too, but they also swing its level at the same rate (≥ 15 % → `b`; real vibrato
+measures ~3 %).  A beat's rate follows sample playback speed, so a `BEAT RATE` flag points at
+`synth_root` / multi-sampling, never at `4xy` — GHZ FM4/FM5 C6 (4.46 Hz on hardware, 6.5 Hz in the
+MOD) have no `smpsModSet` at all.  PSG vibrato is not detected yet (every PSG period change is
+reported as a key-on, so modulated notes never count as long).
 Reference points: the driver's steady cycle is `2·speed·(steps+1)` frames, ProTracker's is
 `x·(speed−1)·BPM / (160·speed)` Hz.  Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c
 (theory 6.0 Hz), MOD `485` 3.98 Hz ±36 c.

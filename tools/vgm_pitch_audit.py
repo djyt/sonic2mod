@@ -252,6 +252,89 @@ def instrument_verdicts(by_inst: dict[int, Counter]) -> list[dict]:
     return out
 
 
+def audit(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tuple]], mod_end: float,
+          chan_map: dict[str, int], offset: float, min_ms: float = 60.0, tolerance: float = 35.0) -> dict:
+    """Compare every chip segment of at least `min_ms` with the MOD note sounding at its midpoint.
+
+    Returns {"channels": {source: {ok, wrong, missing, short, wrong_notes, missing_notes}},
+             "instruments": instrument_verdicts(...), "bad": wrong + missing over all channels}.
+    """
+    channels: dict[str, dict] = {}
+    by_inst: dict[int, Counter] = defaultdict(Counter)      # instrument -> {cents error rounded to 100: notes}
+    for src in sorted(chip):
+        if src not in chan_map or not mod.get(chan_map[src]):
+            continue
+        notes = mod[chan_map[src]]
+        evs = [*chip[src], (vgm_end, None)]
+        st: dict = {"ok": 0, "wrong": 0, "missing": 0, "short": 0, "wrong_notes": [], "missing_notes": []}
+        for (t0, f), (t1, _) in itertools.pairwise(evs):
+            # A segment starting as the MOD's single pass ends is the recording going round its
+            # loop; the last MOD note must not be judged against it.
+            if f is None or t0 + offset > mod_end - 0.03 or t1 - t0 < 1e-4:
+                continue
+            if (t1 - t0) * 1000 < min_ms:
+                st["short"] += 1
+                continue
+            mid = (t0 + t1) / 2 + offset
+            hit = None
+            for n in notes:
+                if n[0] > mid + 1e-6:
+                    break
+                hit = n
+            if hit is None:
+                st["missing"] += 1
+                st["missing_notes"].append({"t_s": t0, "chip": note_name(f)})
+                continue
+            cents = 1200 * math.log2(hit[1] / f)
+            by_inst[hit[2]][0 if abs(cents) <= tolerance else round(cents / 100) * 100] += 1
+            if abs(cents) <= tolerance:
+                st["ok"] += 1
+            else:
+                st["wrong"] += 1
+                st["wrong_notes"].append({"t_s": t0, "chip": note_name(f), "mod": note_name(hit[1]), "cents": cents,
+                                          "instrument": hit[2], "placed_s": hit[0]})
+        channels[src] = st
+    return {"channels": channels, "instruments": instrument_verdicts(by_inst),
+            "bad": sum(c["wrong"] + c["missing"] for c in channels.values())}
+
+
+def verdict_text(v: dict) -> str:
+    """One instrument_verdicts() entry as words; '' when the instrument has nothing wrong."""
+    if v["semitones"]:
+        n = abs(v["semitones"])
+        size = f"{n // 12} octave{'s' if n // 12 > 1 else ''}" if n % 12 == 0 else f"{n} semitone{'s' if n > 1 else ''}"
+        return (f"synth_root is {size} too {'high' if v['semitones'] > 0 else 'low'} "
+                f"({v['uniform_notes']} of {v['notes']} notes)")
+    if v["other"]:
+        return "mixed: " + ", ".join(f"{c:+d} c x{k}" for c, k in v["other"][:4])
+    return ""
+
+
+def print_audit(res: dict, min_ms: float, listing: bool = False, indent: str = "") -> None:
+    """The per-channel counts, the commonest wrong intervals, and the per-instrument verdicts."""
+    for src, st in res["channels"].items():
+        print(f"{indent}{src:<5} ok {st['ok']:>4}   wrong {st['wrong']:>3}   missing {st['missing']:>3}"
+              f"   (+{st['short']} shorter than {min_ms:g} ms)")
+        kinds = Counter((w["chip"], w["mod"], round(w["cents"] / 100) * 100, w["instrument"]) for w in st["wrong_notes"])
+        for (a, b, c100, ins), k in kinds.most_common(8):
+            print(f"{indent}        chip {a:<4} MOD {b:<4} ({c100:+5d} c)  inst {ins:<3} x{k}")
+        if listing:
+            rows = [(w["t_s"], f"chip {w['chip']:<4}  MOD {w['mod']:<4} {w['cents']:+6.0f} c  inst {w['instrument']} "
+                               f"(placed {w['placed_s']:.2f} s)") for w in st["wrong_notes"]]
+            rows += [(m["t_s"], f"chip {m['chip']:<4}  no MOD note yet") for m in st["missing_notes"]]
+            for t, text in sorted(rows):
+                print(f"{indent}      {t:7.2f} s  {text}")
+
+    # An instrument whose notes are all out by the same interval is synthesised at the wrong pitch:
+    # its synth_root is off by that interval.  Anything else is a note problem.
+    if any(verdict_text(v) for v in res["instruments"]):
+        print()
+        print(f"{indent}Per instrument (the same error on nearly every note = synth_root off by that interval)")
+        for v in res["instruments"]:
+            if verdict_text(v):
+                print(f"{indent}  inst {v['instrument']:>2}: ok {v['ok']:>4}  wrong {v['notes'] - v['ok']:>4}   {verdict_text(v)}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("config", help="song YAML config")
@@ -283,70 +366,12 @@ def main() -> None:
     print(f"chip segments >= {args.min_ms:g} ms; wrong = more than {args.tolerance:g} cents from the chip")
     print()
 
-    total_bad = 0
-    by_inst: dict[int, Counter] = defaultdict(Counter)      # instrument -> {cents error rounded to 100: notes}
-    for src in sorted(chip):
-        if src not in chan_map or not mod.get(chan_map[src]):
-            continue
-        notes = mod[chan_map[src]]
-        evs = [*chip[src], (vgm_end, None)]
-        stats: Counter = Counter()
-        wrong: Counter = Counter()
-        listing: list[str] = []
-        for (t0, f), (t1, _) in itertools.pairwise(evs):
-            if f is None or t0 > mod_end - args.offset or t1 - t0 < 1e-4:
-                continue
-            if (t1 - t0) * 1000 < args.min_ms:
-                stats["short"] += 1
-                continue
-            mid = (t0 + t1) / 2 + args.offset
-            hit = None
-            for n in notes:
-                if n[0] > mid + 1e-6:
-                    break
-                hit = n
-            if hit is None:
-                stats["missing"] += 1
-                listing.append(f"      {t0:7.2f} s  chip {note_name(f):<4}  no MOD note yet")
-                continue
-            cents = 1200 * math.log2(hit[1] / f)
-            by_inst[hit[2]][0 if abs(cents) <= args.tolerance else round(cents / 100) * 100] += 1
-            if abs(cents) <= args.tolerance:
-                stats["ok"] += 1
-            else:
-                stats["wrong"] += 1
-                wrong[(note_name(f), note_name(hit[1]), round(cents / 100) * 100, hit[2])] += 1
-                listing.append(f"      {t0:7.2f} s  chip {note_name(f):<4}  MOD {note_name(hit[1]):<4} "
-                               f"{cents:+6.0f} c  inst {hit[2]} (placed {hit[0]:.2f} s)")
-        total_bad += stats["wrong"] + stats["missing"]
-        print(f"{src:<5} ok {stats['ok']:>4}   wrong {stats['wrong']:>3}   missing {stats['missing']:>3}"
-              f"   (+{stats['short']} shorter than {args.min_ms:g} ms)")
-        for (a, b, c100, ins), k in wrong.most_common(8):
-            print(f"        chip {a:<4} MOD {b:<4} ({c100:+5d} c)  inst {ins:<3} x{k}")
-        if args.list:
-            print("\n".join(listing))
-
-    # An instrument whose notes are all out by the same interval is synthesised at the wrong pitch:
-    # its synth_root is off by that interval.  Anything else is a note problem.
-    verdicts = instrument_verdicts(by_inst)
-    if any(v["semitones"] or v["other"] for v in verdicts):
-        print()
-        print("Per instrument (the same error on nearly every note = synth_root off by that interval)")
-        for v in verdicts:
-            if v["semitones"]:
-                n = abs(v["semitones"])
-                size = f"{n // 12} octave{'s' if n // 12 > 1 else ''}" if n % 12 == 0 else f"{n} semitone{'s' if n > 1 else ''}"
-                verdict = (f"synth_root is {size} too {'high' if v['semitones'] > 0 else 'low'} "
-                           f"({v['uniform_notes']} of {v['notes']} notes)")
-            elif v["other"]:
-                verdict = "mixed: " + ", ".join(f"{c:+d} c x{k}" for c, k in v["other"][:4])
-            else:
-                continue
-            print(f"  inst {v['instrument']:>2}: ok {v['ok']:>4}  wrong {v['notes'] - v['ok']:>4}   {verdict}")
+    res = audit(chip, vgm_end, mod, mod_end, chan_map, args.offset, args.min_ms, args.tolerance)
+    print_audit(res, args.min_ms, listing=args.list)
     if args.json:
-        Path(args.json).write_text(json.dumps({"offset_s": args.offset, "instruments": verdicts}, indent=2) + "\n",
+        Path(args.json).write_text(json.dumps({"offset_s": args.offset, "instruments": res["instruments"]}, indent=2) + "\n",
                                    encoding="utf-8")
-    sys.exit(1 if total_bad else 0)
+    sys.exit(1 if res["bad"] else 0)
 
 
 if __name__ == "__main__":

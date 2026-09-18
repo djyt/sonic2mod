@@ -551,8 +551,20 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 python tools/vgm_compare.py <cfg> <vgz> --skip-render        # reuse output/compare/<cfg>/*.wav
 ```
 
-Sections of the report: per-note pitch/level, per-channel summary, **vibrato**, channel balance,
-**per-instrument levels**, onset timing, noise (decay + band profile), DAC (rate check).
+Sections of the report: per-note pitch/level, per-channel summary, **pitch verdict**, **vibrato**,
+channel balance, **per-instrument levels**, onset timing, noise (decay + band profile), DAC (rate check).
+
+**Pitch verdict** is `tools/vgm_pitch_audit.py` run inside the report: the chip's frequency-register
+timeline against the pitch each MOD note sounds at, with the per-instrument verdict ("synth_root is
+1 octave too high" vs "mixed").  It is the authority on "is every note right", and what
+`--fail-pitch-cents` tests.  The per-note `vgm_c` / `mod_c` columns are audio measurements and only
+a cross-check: both are taken on the strongest of the note's first four partials (an FM voice whose
+carriers use a frequency multiple of 2 or more has nothing at the register frequency — measuring
+there read −50…−110 c of pure leakage on GHZ FM1), and `<-- PITCH` flags the two *renders*
+disagreeing by more than 25 c.  What is left after that is grace notes: the window holds the next
+pitch on hardware and a row-quantised one in the MOD (todo item 3).  GHZ: 453 flags → 25.
+Notes the recording plays once the MOD's single pass has ended (its second time round the loop) are
+left out of every table.
 
 **Per-instrument levels** is the table to set `sample_list` volumes from.  Every note is matched
 to the MOD instrument (and `Cxx`) that plays it, and the level error MOD − VGM is reported per
@@ -587,8 +599,11 @@ Rows marked `b` are **beating**, not vibrato: two detuned FM carriers wobble a p
 periodically too, but they also swing its level at the same rate (≥ 15 % → `b`; real vibrato
 measures ~3 %).  A beat's rate follows sample playback speed, so a `BEAT RATE` flag points at
 `synth_root` / multi-sampling, never at `4xy` — GHZ FM4/FM5 C6 (4.46 Hz on hardware, 6.5 Hz in the
-MOD) have no `smpsModSet` at all.  PSG vibrato is not detected yet (every PSG period change is
-reported as a key-on, so modulated notes never count as long).
+MOD) have no `smpsModSet` at all.  PSG notes are covered: the SN76489 has no key-on, so
+`vgm_analyze._parse_vgm` starts a PSG note when the channel becomes audible or its period moves more
+than 70 cents from where the note started — smaller moves are the driver's modulation and stay
+inside the note (GHZ PSG1 `smpsModSet $0E,$01,$01,$03`: 7.35 Hz ±7 c on hardware, theory 7.5 Hz;
+MOD 4.98 Hz).
 Reference points: the driver's steady cycle is `2·speed·(steps+1)` frames, ProTracker's is
 `x·(speed−1)·BPM / (160·speed)` Hz.  Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c
 (theory 6.0 Hz), MOD `485` 3.98 Hz ±36 c.
@@ -600,7 +615,7 @@ opt-in, and any failed one makes the exit code 1:
 | Flag | Fails when |
 |------|-----------|
 | `--fail-balance-db DB` | a channel's level relative to `--ref` differs from the recording by more than DB |
-| `--fail-pitch-cents C` | any note is more than C cents off, silent, or unmeasurable in the MOD |
+| `--fail-pitch-cents C` | the pitch verdict has a wrong note (more than C cents from the chip register) or a missing one, or a note is silent in the MOD render |
 | `--fail-unmatched N` | a channel has more than N reference onsets with no MOD onset within 40 ms |
 
 ```bash

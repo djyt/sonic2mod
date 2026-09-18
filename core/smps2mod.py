@@ -741,9 +741,10 @@ class SmpsToModConverter:
                         found = self.config.psg_map.get(eff.params[0])
                         if found is not None:
                             entry, entries = found, None
-                    elif eff.effect_type == 'smpsPSGvoice' and (entry is None or entry.type == "tone"):
+                    elif eff.effect_type == 'smpsPSGvoice':
                         found = self.config.psg_voice_map.get(eff.params[0])
-                        if found is not None:
+                        # in noise mode only a noise entry (an envelope variant) may take over
+                        if found is not None and (entry is None or entry.type == "tone" or found[0].type != "tone"):
                             entry, entries = found[0], found
                 elif event.is_note and not event.note.is_rest and entry is not None:
                     e = _psg_range_entry(entries, self._range_key(event.note.note_value - 0x81, transpose, True)) or entry
@@ -821,9 +822,10 @@ class SmpsToModConverter:
                         entry = self.config.psg_map.get(eff.params[0])
                         if entry is not None:
                             instrument, entries, noise = entry.mod_instrument, None, entry.type != "tone"
-                    elif eff.effect_type == 'smpsPSGvoice' and not noise:
+                    elif eff.effect_type == 'smpsPSGvoice':
                         found = self.config.psg_voice_map.get(eff.params[0])
-                        if found is not None:
+                        # in noise mode only a noise entry (an envelope variant) may take over
+                        if found is not None and (not noise or found[0].type != "tone"):
                             instrument, entries = found[0].mod_instrument, found
                 elif event.is_note and not event.note.is_rest and att < 15:
                     ranged = _psg_range_entry(entries, self._range_key(event.note.note_value - 0x81, tr, True))
@@ -1091,10 +1093,14 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]
-                    # In noise mode (after smpsPSGform) this only changes the envelope: the
-                    # channel stays on its psg_map noise instrument.
-                    entries = (None if current_psg_entry is not None and current_psg_entry.type != "tone"
-                               else self.config.psg_voice_map.get(label))
+                    # In noise mode (after smpsPSGform) this only changes the envelope: a noise
+                    # entry under the label is that envelope's variant (Scrap Brain's fTone_04 /
+                    # fTone_08 instruments); a tone entry is ignored and the channel stays on its
+                    # psg_map noise instrument (Credits, where the labels belong to PSG1/PSG2).
+                    entries = self.config.psg_voice_map.get(label)
+                    if (entries is not None and current_psg_entry is not None
+                            and current_psg_entry.type != "tone" and entries[0].type == "tone"):
+                        entries = None
                     if entries is not None:
                         instrument = entries[0].mod_instrument
                         current_psg_entry = entries[0]

@@ -20,6 +20,11 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/audits/00_soundtrack_survey.md` | **All 18 configs vs their VGZs** (2026-09) — 10 samples found synthesised in the wrong octave (fixed), every `sample_list` volume set from measurement, what each song still needs |
 | `docs/audits/02_ghz_audit.md` | **GHZ accuracy audit vs VGZ** (2026-09) — 867/867 notes, parser flag-ordering bug, `smpsAlterVol` law / TL level errors per instrument, grace notes, FM octave-convention trap |
+| `docs/audits/07_sbz_audit.md` | **Scrap Brain audit vs VGZ** (2026-09) — PSG2 instrument an octave high (all its notes under 60 ms), PSG3 envelope variants as noise entries (the rule the converter now follows), FM4 detune scoops; 1213/1213 at 60 ms after |
+| `docs/audits/06_slz_audit.md` | **Star Light Zone audit vs VGZ** (2026-09) — FM2's bass walked down by `smpsAlterPitch` against a source-byte `root` → `range_space: chip` (how to convert a config), voice $05's +51 transposition; 819/819 after |
+| `docs/audits/05_lz_audit.md` | **Labyrinth Zone audit vs VGZ** (2026-09) — PSG instrument an octave high (hidden from the audit by per-frame envelope writes), PSG `root`+`low` anchor vs `smpsAlterPitch` → rootless entry with channel `transpose`; 405/405 after |
+| `docs/audits/04_syz_audit.md` | **Spring Yard audit vs VGZ** (2026-09) — 374/380, the six left are notes written below the PSG table (the driver reads code bytes: indices 125–127 measured), song-start key-on artefacts, channel-RMS vs per-note disagreement on PSG1 |
+| `docs/audits/03_mz_audit.md` | **Marble Zone audit vs VGZ** (2026-09) — 731/731 notes, every FM/PSG channel within 0.7 dB, pitched rate-3 noise follows the melody by playback speed, snare volume, DAC-rate check by PCM write rate |
 | `docs/audits/01_title_screen_audit.md` | **Accuracy audit vs VGZ** (2026-09) — method, per-channel numbers, config fixes, pending converter work (note fill frames, vibrato formula, EDx delay, volume baking) |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
 | `reference/mml2mod-master/` | Reference MML-to-MOD converter |
@@ -241,7 +246,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsSetTempoMod` | $EA | `Fxx` | Mid-song tempo change (Drowning, Credits): BPM scaled by the new tick rate, written on the change's row; fills / vibrato / `EDx` follow the new modifier |
 | `smpsSetTempoDiv` | $EB | (re-timing) | Every track's duration divider from that tick (Credits' half-tempo passage): `_apply_global_tempo_div` re-times all channels; last write wins against a track's own `smpsChanTempoDiv` |
 | `smpsChanTempoDiv` | $E5 | (durations) | This track's divider; applied at parse time and kept as an event so the re-timing above knows it |
-| `smpsPSGform` | $F3 | (routing) | Noise mode is **permanent** (`cfSetPSGNoise` sets VoiceControl $E0); a later `smpsPSGvoice` only changes the hi-hat's envelope |
+| `smpsPSGform` | $F3 | (routing) | Noise mode is **permanent** (`cfSetPSGNoise` sets VoiceControl $E0); a later `smpsPSGvoice` only changes the envelope — honoured when its `psg_voice_map` entry is a noise type (Scrap Brain's `fTone_04`/`fTone_08` variants), ignored when it is a tone |
 | `smpsNop` | $E2 | ignored | No MOD equivalent |
 
 **Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).  A note that starts
@@ -270,7 +275,7 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 
-7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. The converter used to switch to a tone instrument there (Scrap Brain PSG3: 406 cells; the recording has no PSG3 tone at all). A note transposed past the PSG table's ends (Credits PSG1 indices 125–127) plays whatever ROM follows the table — `sfx.tables.psg_index_semitone` gives the written pitch there, the audit shows what the hardware did.
+7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. The converter used to switch to a tone instrument there (Credits PSG3); a noise-type `psg_voice_map` entry under the label is the envelope's variant and is honoured (Scrap Brain's `fTone_04`/`fTone_08`). A note transposed past the PSG table's ends plays whatever ROM follows the table; indices 125–127 are measured from the Spring Yard and Credits recordings (0 = inaudible, 922 = B2, 540 = G#3) and sit at the end of `PSG_FREQUENCIES_EXTENDED`, so `sfx.tables.psg_index_semitone` gives the hardware's pitch there (`range_space: chip` reproduces it).
 
 7c. **A MOD BPM is a whole number** — `auto_bpm` rounds; choose `target_speed` so the exact BPM is (nearly) integer (speed changes MOD ticks per row, not the row grid). `convert.py` prints the rounding error and the better speed; Special Stage at speed 3 ran 0.44 % slow. Details: `docs/pipeline.md` §BPM and speed setup.
 
@@ -309,7 +314,7 @@ voice_map:
       root: G3
 ```
 
-**When NOT to use `root`:** channels with mid-song `smpsChangeTransposition` ($E9) — root ignores total_transpose and will place notes incorrectly. Use `transpose` only and let `total_transpose` handle pitch.
+**When NOT to use `root`:** channels with mid-song `smpsChangeTransposition` ($E9) — root ignores total_transpose and will place notes incorrectly. Use `transpose` only and let `total_transpose` handle pitch. The same holds for a `psg_voice_map` entry with `low`: Labyrinth Zone's PSG1/PSG2 run `smpsAlterPitch` in a loop, so their entry is rootless (no `low`/`high`) with `transpose: -12` on the channels.
 
 ## sample_list Entry Format
 

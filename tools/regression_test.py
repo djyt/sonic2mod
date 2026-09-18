@@ -28,49 +28,45 @@ from tools.mod_compare import compare_mods
 
 BASELINES_DIR = _HERE.parent / "tests" / "baselines"
 
+# (config stem, test name, baseline stem, description).  Every song config has an entry:
+# a refactor is only safe once all of them still produce byte-identical MODs.
+# `ignore_channels` (0-based MOD indices) is added per case only while deliberately
+# changing that channel — see _CASE_OVERRIDES below.
+_SONGS = [
+    ("01_title_screen",      "title_screen",      "title_screen",      "Title Screen"),
+    ("02_green_hill_zone",   "green_hill_zone",   "ghz",               "Green Hill Zone"),
+    ("03_marble_zone",       "marble_zone",       "marble_zone",       "Marble Zone — pitched rate-3 noise"),
+    ("04_spring_yard_zone",  "spring_yard_zone",  "spring_yard_zone",  "Spring Yard Zone — notes below the PSG table"),
+    ("05_lab_zone",          "lab_zone",          "lab_zone",          "Labyrinth Zone — rootless PSG entry + channel transpose"),
+    ("06_star_light_zone",   "star_light_zone",   "star_light_zone",   "Star Light Zone — range_space: chip"),
+    ("07_scrap_brain_zone",  "scrap_brain_zone",  "scrap_brain_zone",  "Scrap Brain Zone — PSG3 noise envelope variants"),
+    ("08_special_stage",     "special_stage",     "special_stage",     "Special Stage"),
+    ("09_robotnik",          "robotnik",          "robotnik",          "Robotnik"),
+    ("10_final_zone",        "final_zone",        "final_zone",        "Final Zone"),
+    ("11_stage_clear",       "stage_clear",       "stage_clear",       "Stage Clear — range_space: chip"),
+    ("12_ending_theme",      "ending_theme",      "ending_theme",      "Ending — range_space: chip, PSG2 own instrument"),
+    ("13_credits",           "credits",           "credits",           "Credits — tempo steps, global divider, chip space, 31 instruments"),
+    ("14_invincibility",     "invincibility",     "invincibility",     "Invincibility — range_space: chip"),
+    ("15_1up",               "extra_life",        "extra_life",        "Extra Life"),
+    ("16_chaos_emerald",     "chaos_emerald",     "chaos_emerald",     "Chaos Emerald"),
+    ("17_drowning",          "drowning",          "drowning",          "Drowning — mid-song smpsSetTempoMod"),
+    ("18_continue_screen",   "continue_screen",   "continue_screen",   "Continue — range_space: chip, key changes"),
+    ("19_game_over",         "game_over",         "game_over",         "Game Over"),
+]
+
+# name -> channels to ignore (0-based MOD indices).  Normally empty; set an entry only
+# while deliberately changing that channel.
+_CASE_OVERRIDES: dict[str, list[int]] = {}
+
 TEST_CASES = [
     {
-        "name": "green_hill_zone",
-        "config": "configs/02_green_hill_zone.yaml",
-        "baseline": "tests/baselines/ghz_baseline.mod",
-        "ignore_channels": [],
-        "description": "GHZ — all channels",
-    },
-    {
-        "name": "title_screen",
-        "config": "configs/01_title_screen.yaml",
-        "baseline": "tests/baselines/title_screen_baseline.mod",
-        "ignore_channels": [],
-        "description": "Title Screen — all channels",
-    },
-    {
-        "name": "special_stage",
-        "config": "configs/08_special_stage.yaml",
-        "baseline": "tests/baselines/special_stage_baseline.mod",
-        "ignore_channels": [],
-        "description": "Special Stage — all channels",
-    },
-    {
-        "name": "stage_clear",
-        "config": "configs/11_stage_clear.yaml",
-        "baseline": "tests/baselines/stage_clear_baseline.mod",
-        "ignore_channels": [],
-        "description": "Stage Clear — all channels",
-    },
-    {
-        "name": "scrap_brain_zone",
-        "config": "configs/07_scrap_brain_zone.yaml",
-        "baseline": "tests/baselines/scrap_brain_zone_baseline.mod",
-        "ignore_channels": [],
-        "description": "Scrap Brain Zone — all channels",
-    },
-    {
-        "name": "credits",
-        "config": "configs/13_credits.yaml",
-        "baseline": "tests/baselines/credits_baseline.mod",
-        "ignore_channels": [],
-        "description": "Credits — tempo steps, global divider, range_space: chip, 31 instruments",
-    },
+        "name": name,
+        "config": f"configs/{stem}.yaml",
+        "baseline": f"tests/baselines/{baseline}_baseline.mod",
+        "ignore_channels": _CASE_OVERRIDES.get(name, []),
+        "description": f"{desc} — all channels",
+    }
+    for stem, name, baseline, desc in _SONGS
 ]
 
 

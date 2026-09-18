@@ -113,10 +113,9 @@ How the suggestions are made (so they can be trusted or overridden):
 - **Drowning** — needs mid-song `smpsSetTempoMod` in the converter before it can be measured at all.
 - **Invincibility, Stage Clear** — one instrument shared across transpositions (above).
 - **Continue Screen, Star Light Zone** — the scattered pitch errors above.
-- **Seven configs still warn about `synth_root: A8` on rate-3 noise** (Spring Yard, Labyrinth,
-  Star Light, Scrap Brain ×3, Ending, Invincibility): the noise *level* is now right, its *timbre*
-  is still the dull 7 kHz LFSR.  Switching to `tone2_n: 1` changes the sample's level, so the
-  volume needs one more `--write-volumes` pass afterwards (todo item 6).
+- ~~Six configs (eight entries) warn about `synth_root: A8` on rate-3 noise~~ — done the same day (todo item 6): the
+  divider is now derived from the song, the hi-hats' 4–8 kHz band went from about −11 dB to −5.2…−5.3 dB
+  (hardware −4.6…−5.7 dB), and the volumes were re-measured afterwards (two 1-step changes).
 - **Marble Zone noise** (todo item 12): resolved by measurement — instrument 10 is now 13; the
   orphaned line for instrument 11 can go.
 - Not looked at in this survey: note fills, vibrato, grace notes, DAC rates, per-song timing.

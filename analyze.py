@@ -480,8 +480,8 @@ def render_config_coverage(analysis: SongAnalysis):
         side = "above" if issue['above'] else "below"
         console.print(
             f"[yellow]![/yellow] [bold]{issue['context']}[/bold]: rate-3 noise synth_root "
-            f"{issue['synth_root']} is {side} the driver's PSG table (C3–Gs8) — use the "
-            "[cyan]tone2_n[/cyan] from the skeleton below instead"
+            f"{issue['synth_root']} is {side} the driver's PSG table (C3–Gs8) — delete it; the "
+            "converter derives the divider from the song"
         )
 
 
@@ -904,9 +904,11 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             lines.append(f"    root: {root_name}")
             lines.append(f"    noise_rate: {noise_rate}")
             if tone2_n is not None:
+                # Not emitted as a key: the converter derives the divider from the song itself
+                # (_derive_rate3_dividers); an explicit tone2_n here would only shadow that.
                 note_desc = semitone_to_note_name(min_sem)
-                lines.append(f"    tone2_n: {tone2_n:<4d}           # driver divider for n{note_desc} "
-                             f"{ch_init_trans:+d} → LFSR {shift_hz:,.0f} Hz")
+                lines.append(f"    # LFSR divider is derived from the song: {tone2_n} for n{note_desc} "
+                             f"{ch_init_trans:+d} → {shift_hz:,.0f} Hz")
                 if ts.max_semitone != ts.min_semitone:
                     # Pitched noise: anchor the sample at the lowest note so MOD playback speed
                     # follows the melody (one static LFSR rate per sample is the approximation).

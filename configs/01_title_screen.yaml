@@ -119,9 +119,8 @@ psg_map:
   0xE7:                    # form $E7 — white noise, LFSR clocked by PSG3's own tone register $C0 (rate 3)
     mod_instrument: 7
     root: A3               # target_rate ≈ 27928 Hz → 14 kHz bandwidth keeps most of the hiss
-    noise_rate: 3
-    tone2_n: 1             # nMaxPSG → PSGFrequencies[69] = 223721 Hz → N=0; the VDP PSG clocks N=0 as
-                           # N=1 (112 kHz shift rate = near-white hiss).  The VGM confirms tone2 = 0.
+    noise_rate: 3          # LFSR divider derived from the song: nMaxPSG → PSGFrequencies[69] → N=0, which the
+                           # VDP PSG clocks as N=1 (112 kHz shift rate = near-white hiss).  The VGM confirms 0.
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # header volume $04 is applied by the converter as Cxx; keep 0 here
     

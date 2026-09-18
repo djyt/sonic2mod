@@ -119,7 +119,6 @@ psg_map:
     mod_instrument: 11
     root: A3
     noise_rate: 3
-    synth_root: A8
     envelope: fTone_04
     base_volume: 0
 

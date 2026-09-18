@@ -84,8 +84,8 @@ psg_map:
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A2               # MOD note anchor — determines target_rate AND where low plays
     low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
-    synth_root: C7         # LFSR synthesis freq — PSGFrequencies[A3+3=48] ≈ 2071 Hz → N=54; C7→N≈53 ✓
-    noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (real LFSR freq from synth_root)
+    noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 — the LFSR divider is then derived
+                           #   from the song (here: nA3 + transpose $0B → PSGFrequencies[56] → N=34); state nothing else
     envelope: fTone_09     # PSG3 header voice (smpsPSGform changes noise type only, not envelope)
     base_volume: 0         # SN76489 attenuation 0=max, 15=silent
 ```
@@ -119,9 +119,9 @@ psg_voice_map:
 | `root` | note | yes | MOD note anchor; controls `target_rate` AND where `low` plays |
 | `low` | note | no | SMPS pitch anchor for melodic formula: `output = root + (source − low)` |
 | `high` | note | no | Upper bound of melodic range (paired with `low`) |
-| `synth_root` | note | no | Synthesis pitch override; for noise entries, sets the LFSR frequency (tone2_n); does NOT affect `target_rate` |
-| `noise_rate` | int | no | Noise divider: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (tone2_n derived from synth_root) |
-| `tone2_n` | int | no | Rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR clock; overrides the `synth_root`/`root` derivation. `nMaxPSG` needs `tone2_n: 1` |
+| `synth_root` | note | no | Synthesis pitch override; does NOT affect `target_rate`. On a rate-3 noise entry it overrides the derived LFSR divider (chromatically — the driver's table is not chromatic, so leave it out) |
+| `noise_rate` | int | no | Noise divider: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (divider derived from the song's own notes — see §noise_rate: 3) |
+| `tone2_n` | int | no | Rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR clock. An override — normally omitted, because the converter derives the divider from the song (`nMaxPSG` → 1) |
 | `envelope` | str/list | no | Named table key (e.g. `fTone_04`) or inline list of per-frame attenuation deltas |
 | `base_volume` | int | no | SN76489 base attenuation (0=max, 15=silent) |
 
@@ -144,7 +144,7 @@ The relationship between these three values is identical to YM2612 (see `docs/sy
 - For **noise entries**, `root` controls `target_rate` and the MOD anchor where `low` plays.
   When `low` is set, notes trigger at `root + (source − low)` — the same melodic formula as tones.
   When `low` is absent, all notes trigger at `root` (fixed pitch for unpitched noise).
-  `synth_root` controls the LFSR frequency (tone2_n) for `noise_rate: 3`, independently of `root`.
+  For `noise_rate: 3` the LFSR frequency comes from the song itself (see §noise_rate: 3), independently of `root`.
 
 ### PSG frequency divider
 
@@ -342,16 +342,17 @@ synth_root = low + total_transpose
 In Sonic 1, PSG3's driver writes its own note frequency to SN76489 tone channel 2 (`$C0`)
 even in noise mode, so the LFSR tracks PSG3's own notes — not SMPS PSG channel 2.
 
-The synthesizer uses `tone2_n` from the entry when given, otherwise derives it from `synth_root`
-(or `root` if absent), and writes it to tone ch2 before rendering.  A fast warmup (N=1, 4096
+The synthesizer uses `tone2_n` from the entry when given, then `synth_root`, and otherwise the
+divider the converter derives from the song (below), and writes it to tone ch2 before rendering.
+A fast warmup (N=1, 4096
 discarded samples) spins the LFSR into its pseudo-random region to avoid the initial DC-bias
 artifact.
 
 **`nMaxPSG` is N=0, not a musical note.**  The common Sonic 1 noise trigger `nMaxPSG` (= nA5)
 indexes the last `PSGFrequencies` entry, 223721.56 Hz, so the driver writes divider **0** to tone
 ch2.  The Sega VDP PSG clocks a zero divider as N=1: LFSR shift rate = clock/32 ≈ 112 kHz, which is
-near-white hiss out to the sampling Nyquist.  Set `tone2_n: 1` for those channels (the Title Screen
-was previously configured as `synth_root: A8` → N≈16 → 7 kHz, which sounds like a dull rattle).
+near-white hiss out to the sampling Nyquist.  The converter derives that `1` itself (below); eight
+configs used to say `synth_root: A8` instead → N≈16 → 7 kHz, which sounds like a dull rattle.
 `tools/vgm_analyze.py --chip psg --channel NOISE` prints the divider actually written in a VGZ
 recording (`white/tone2 N=0`), and `tools/vgm_compare.py` shows the resulting band profile
 against the MOD's.
@@ -359,23 +360,32 @@ against the MOD's.
 `convert.py` (and `analyze.py --config`) **warn** when a rate-3 entry without `tone2_n` has a
 `synth_root` outside the driver's table, C3–Gs8 (`core.config.rate3_synth_root_issues`) — no note
 can make the driver write that frequency, and `A8` in particular is the nMaxPSG mistake above.
-The `analyze.py` YAML skeleton emits the right `tone2_n` directly: it looks the channel's lowest
-noise note (+ header transpose) up in the driver's `PSGFrequencies` table (`sfx/tables.py`),
-treating divider 0 as 1, and adds `low:` when the channel plays pitched noise.
+The `analyze.py` YAML skeleton states no divider either; it adds a comment with the value the
+converter will derive, and `low:` when the channel plays pitched noise.
 
-**Calculating synth_root for Sonic 1 rate-3 entries:**
+**The divider is derived from the song — leave `tone2_n` and `synth_root` out.**
 
-PSG3 note frequencies come from the `PSGFrequencies` table (index 0 = 130.98 Hz), not standard
-musical tuning.  Given anchor SMPS semitone `s` and channel `pitch_offset` `t`:
+PSG3 keeps writing its own note's divider to tone channel 2, looked up in the driver's
+`PSGFrequencies` table (`sfx/tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
+table's degenerate last entry (index 69, `nMaxPSG`) counting as 1.  The table is *not* chromatic, so
+this cannot be reproduced by a note-name formula.  `SmpsToModConverter._derive_rate3_dividers`
+does the lookup for every rate-3 noise instrument:
 
-```
-chip_freq       = 130.98 × 2^((s + t) / 12)
-synth_note_idx  = round(45 + 12 × log₂(chip_freq / 440))
-synth_root      = synth_note_idx + 12   (SMPS semitone: C1=12)
-```
+- at the entry's `low` note when it has one (the sample plays at `root` for that note, and MOD
+  playback speed moves it from there) — Marble Zone: `low: A3`, header transpose `$0B` →
+  index 56 → **N = 34** (3290 Hz);
+- otherwise at the note the instrument plays most — every hi-hat in the soundtrack is `nMaxPSG`
+  → **N = 1**.
 
-Example (Marble Zone PSG3, `low: A3` = sem 45, `pitch_offset: 3`):
-`s+t = 48` → `chip_freq ≈ 2071 Hz` → `synth_note_idx ≈ 72` → **`synth_root: C7`** → N ≈ 53 ✓
+`convert.py` prints what it used (`rate-3 noise inst 10  tone-2 divider 34  from nA3 +11`).
+An explicit `tone2_n` wins, then an explicit `synth_root` (converted chromatically), then the
+derivation; the `root` fallback only remains for a rate-3 entry that plays no note at all.
+
+Checked against every recording: all songs but Marble Zone write divider 0 on every noise hit
+(→ 1); Marble Zone's derived dividers match the recording note for note — 17 ×20, 18 ×2, 19 ×12,
+22 ×18, 23, 26 ×28, 29 ×4, 31 ×10, 34, 38 ×4 — except the five notes the disassembly flags as a
+data bug (they index past the table and read ROM garbage).  Before this, eight configs had used
+`synth_root: A8` (N ≈ 16, a dull 7 kHz rattle) and Marble Zone `C7` (N = 53; its anchor is 34).
 
 Set `root`/`low` separately to control MOD pitch anchoring — they are independent of `synth_root`.
 

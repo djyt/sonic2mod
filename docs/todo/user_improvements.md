@@ -12,7 +12,8 @@ python tools/vgm_compare.py     configs/<song>.yaml "reference/vgz/<song>.vgz"  
 Fully audited: Title Screen, Green Hill Zone. Every other config has been surveyed for pitch and levels
 (all 18 have a VGZ); what each still needs is listed in `docs/audits/00_soundtrack_survey.md` §3.
 
-Status key: `[ ]` open, `[x]` done.
+Status key: `[ ]` open, `[x]` done.  A done item keeps what was measured (so the reason stays on
+record) but not its old plan — anything still open under it is called out as **Still open**.
 
 ---
 
@@ -23,7 +24,6 @@ Status key: `[ ]` open, `[x]` done.
 - **Still open:** mid-song `smpsSetTempoMod` (Credits, Drowning) uses the header modifier; vibrato *rate* is item 2; off-grid note-ons (cut is at the right absolute time but the note-on is half a row off — GHZ FM4 reads 533 ms instead of 500) are item 3.
 - **Measured:** PSG3 fill `$0C` cuts at 250 ms in the MOD, 200 ms on hardware (tempo mod 5 → 48 ticks/s, fill runs at 60 Hz).
 - **Why:** `TempoWait` only bumps `DurationTimeout`; `NoteTimeoutUpdate` and `DoModulation` still run every V-int.
-- **Fix:** in `core/smps2mod.py`, scale before placement: `fill_ticks = fill_frames × ticks_per_sec / fps`; same for `vibrato_wait`. For tempo modifier 5 that is ×0.8.
 - **Affects:** every song with a tempo modifier ≠ 0.
 
 ### [ ] 2. Vibrato (`smpsModSet` → `4xy`) formula
@@ -43,24 +43,19 @@ Status key: `[ ]` open, `[x]` done.
 - **Done (2026-09-18), "Cxx on the minority channel" design:** `fm_volume_scaling: baked` (new default in `configs/settings.yaml`) + `fm_pan_law_db: 3`. Per MOD instrument the most common (TL offset, pan) level is baked = the `sample_list` volume, no command; other notes get `Cxx = volume × 10^(ΔdB/20)` with 0.75 dB/TL step and −3 dB for hard-panned notes. No variant instruments, no extra samples. `Cxx` on FM notes across the 18 configs: 1662 → 887. GHZ: FM1's fade error flat (was +5.8→+0.4 dB drift), shared instruments read the same on every channel (inst 11: +4.8/+4.6/+4.6), and after setting four volumes from those readings every FM channel is within ±0.3 dB. Title Screen FM3 +0.5 → −0.1 dB. Legacy `true` / `false` kept and verified byte-identical to the old output. Details: `docs/pipeline.md` §FM levels.
 - **PSG done too (2026-09-18):** `psg_volume_scaling: baked` (default), level = −2 dB × attenuation, no pan. `Cxx` on PSG notes 3241 → 498 across the 18 configs; all PSG `sample_list` volumes migrated to the value their dominant attenuation used to emit (trailing comment on each line), per-note effective volume identical except 268 SBZ notes 12 → 13 (rounding, new value is the closer one). Attack-row note cuts no longer displaced by the volume command (Title Screen 12, Spring Yard 264).
 - **`analyze.py` skeleton done too:** FM volume = `76 × carriers × 10^(−(0.75·TL + pan)/20)`, max 64, from the most common (TL, pan) level of the voice on its busiest channel. `carriers` undoes `carrier_balance` (an N-carrier sample is rendered 20·log10(N) dB quieter than the chip). The constant 76 was fitted to the 13 instruments measured in the two audits (each implies 68–92): GHZ skeleton 29/34/21/9/64/24/32 vs measured 32/32/25/9/64/25/23–32. PSG = base × 10^(−2·att/20), tone base 16, noise 16.
-- **Still open:** un-audited configs were tuned against the old linear FM law, so their `Cxx`-carrying FM notes moved by up to a few dB — re-measure when each is audited.
-- **GHZ (biggest remaining level error in that song):** with `fm_volume_scaling: false` the header TL is ignored *and* one `smpsAlterVol` step becomes one linear MOD volume unit (≈ 0.3 dB) instead of 0.75 dB. Notes carrying a `Cxx` are +3.4…+6.7 dB on FM4/FM5 (FM5 `$13`→`$19`: predicted +3.6, measured +3.4); FM1's fade drifts from +5.8 to +0.4 dB across `C1A`→`C1F`. Per-instrument table in `docs/audits/02_ghz_audit.md`.
-- **Pan law:** a centred YM2612 channel drives both speakers, an Amiga channel one. FM3 (centre), FM4 (left) and FM5 (right) share GHZ instrument 14 at the same TL and FM4/FM5 still read ~+2.9 dB. Bake −3 dB for channels the song hard-pans (needs the dominant `smpsPan` per channel/voice).
-- **Sample cost — prefer `Cxx` on the minority channel over variant slots:** MOD instruments cannot share sample data (~61 KB each in GHZ). Variants by TL alone: +2 instruments / +122 KB on a 760 KB MOD; with the pan law: +4 / +248 KB. Baking the busiest channel's level and emitting `Cxx` on the other channels' notes costs no samples (GHZ: FM3's 16 notes on instrument 5 and 63 on 11/13/14). Make that the default, variants optional.
-- **Measured:** with `fm_volume_scaling: false` FM1/FM3/FM4/FM5 were 1.8–3.2 dB too hot vs FM2 (header TL `$0C/$09/$0D/$0C/$0E` ignored). With it `true`, every note gets a `Cxx` (MOD resets volume on trigger) — the "clutter" that keeps it off.
-- **Fix:** at first use of an `(instrument, channel)` pair bake `sample_volume × 10^(−TL×0.75/20)` into the instrument's default volume (create a variant slot when two channels share an instrument at different TLs), and emit `Cxx` only when `smpsAlterVol` moves the channel off that baked level.
-- **Interim:** hand-compute volumes as done in `configs/01_title_screen.yaml` (comment block above `sample_list`).
+- **Measured before:** with `fm_volume_scaling: false` the header TL was ignored and one `smpsAlterVol` step became one linear MOD volume unit (≈ 0.3 dB, the chip does 0.75): Title Screen FM1/FM3/FM4/FM5 1.8–3.2 dB hot, GHZ `Cxx` notes +3.4…+6.7 dB, FM1's fade drifting +5.8 → +0.4 dB. Pan law: FM3 (centre), FM4 (left) and FM5 (right) share GHZ instrument 14 at the same TL and FM4/FM5 read ~+2.9 dB. Variant slots would have cost +122…+248 KB on GHZ, which is why `Cxx` on the minority channel was chosen.
+- Nothing open: every config's volumes were re-measured under the new law in item 5.
 
 ### [x] 5. Global PSG-to-FM level calibration
 - **Done (2026-09-18) — by measurement, not by a global gain.** A gain on the synthesised PSG samples would cost sample resolution; the level belongs in the `sample_list` volume. With a VGZ for every song, `vgm_compare.py --write-volumes` set every instrument's volume from its measured level error and a second render verified it: instruments ≥ 2 dB off 74 → 2, every song except Drowning at ≤ 1.2 dB weighted RMS error (Marble Zone 9.7 → 0.3, Star Light 9.2 → 0.6, Scrap Brain 6.3 → 0.5). The fitted formula (`76 × carriers × 10^(−(0.75·TL + pan)/20)`, PSG base 16, in the `analyze.py` skeleton) predicted the same errors beforehand and stays as the starting point for new configs. Table in `docs/audits/00_soundtrack_survey.md`.
 - **Measured:** noise was +11.6 dB vs FM2 compared with the recording; configs use `psg_noise.raw` volumes of 16, 16, 16, 24, 32, 32, 48, 64 for the same synthesised sample.
-- **Fix:** one `psg_to_fm_db` (or equivalent gain) in `configs/settings.yaml` applied to synthesised PSG samples, verified once with `vgm_compare.py`; drop the per-song guesses.
 - **Caveat:** VGMPlay's PSG/FM ratio approximates hardware to roughly ±3 dB.
 
-### [ ] 6. Derive rate-3 noise divider from the note data
-- **Measured:** `synth_root: A8` gave a 7 kHz LFSR (dull rattle); the driver writes tone-2 divider 0 for `nMaxPSG` (`PSGFrequencies[69]` = 223721 Hz), which the VDP PSG clocks as N=1 → near-white hiss.
-- **Done:** explicit `tone2_n:` key (`core/config.py`, `sn76489/sample_generator.py`); Title Screen uses `tone2_n: 1`.
-- **Open:** when neither `tone2_n` nor `synth_root` is given, derive N from the channel's first noise note through the driver table (`sfx/tables.py` `PSG_FREQUENCIES`), treating 0 as 1. Check other configs that set `synth_root` on rate-3 noise entries.
+### [x] 6. Derive rate-3 noise divider from the note data
+- **Done (2026-09-18):** `SmpsToModConverter._derive_rate3_dividers` looks each rate-3 noise instrument's note (+ transpose) up in the driver's `PSGFrequencies` table — at the entry's `low` note when it has one, else the note it plays most, index 69 (`nMaxPSG`, divider 0) counting as 1 — and hands the divider to the PSG synthesiser; `convert.py` prints it. `tone2_n`, then `synth_root`, remain as overrides, but **no config states either any more**: `synth_root` removed from the nine rate-3 entries that had one (eight `A8` in six configs → derived 1; Marble Zone `C7` = N 53 → derived 34) and the hand-set `tone2_n: 1` from Title Screen and GHZ (byte-identical output). The `analyze.py` skeleton emits a comment with the derived value instead of a key.
+- **Validated against every recording:** divider 0 on every hi-hat in the soundtrack; Marble Zone's derived per-note dividers match its VGZ note for note (17 ×20, 19 ×12, 22 ×18, 26 ×28, 31 ×10 …) apart from the five notes the disassembly flags as a data bug (they index past the table and read ROM garbage). Hi-hat 4–8 kHz band: about −11 dB → −5.2…−5.3 dB (hardware −4.6…−5.7). Volumes re-measured afterwards because the noise samples changed (two one-step changes).
+- **Measured before:** `synth_root: A8` gave a 7 kHz LFSR (dull rattle) where the hardware plays near-white hiss.
+- Nothing open.  (Inherent limit, not a todo: one static LFSR rate per sample — Marble Zone's pitched noise follows its melody by MOD playback speed.)
 
 ### [ ] 7. Multi-sample wide FM ranges
 - **GHZ:** detuned-carrier beating scales with playback rate — voice $04 (synthesised at C5) beats at 6.5 Hz on C6 where hardware beats at 4.46 Hz; FM3/FM4 low notes beat at 2.5–3 Hz in the MOD only.
@@ -74,20 +69,19 @@ Status key: `[ ]` open, `[x]` done.
 
 ### [x] 9. FM frequency convention is an octave off in two places that cancel
 - **Done (2026-09-18):** both functions now use `2^(21−block)`; all 103 FM `synth_root` values in the 18 configs lowered one octave (`voice_map` / `channel_instrument_map` only — PSG untouched); `analyze.py` skeleton no longer adds 12; legacy fallback C5 → C4; `_smps_note` FM offset removed (its SMPS column is unchanged). Every config's MOD is byte-identical before/after. `vgm_analyze` now reads GHZ FM2 as `A2 A3 A2 A#2` = the source's `nA2, nA3, nA2, nBb2`. The documented rule `synth_root = low + total_transpose` now holds literally (GHZ voice $08: C5 − 36 = `C2`).
-- `tools/vgm_analyze._fnum_to_hz` and `ym2612/renderer.freq_to_fnum_block` use `2^(20−block)`; the chip and the driver's `MakeFMFrequency` (`f·2^21/fs`) are `2^(21−block)`. The analyzer reads FM an octave high, the synth renders an octave below the `synth_root` name, and configs tuned one against the other sound right (GHZ 867/867). Fix = both functions plus every FM `synth_root` down an octave, in one commit. `sfx/` already uses the driver table and is correct. Project memory's "FM chip plays one octave above the SMPS label" is this artefact.
+- **Was:** both functions used `2^(20−block)` where the chip and the driver's `MakeFMFrequency` (`f·2^21/fs`) are `2^(21−block)`: the analyzer read FM an octave high and the synth rendered an octave below the `synth_root` name, so configs tuned one against the other sounded right. FM pitches quoted before this date (including in `docs/audits/`) are one octave high.
+
+### [x] 10. Coordination flags were applied one note early (parser)
+- A note byte with no duration byte stayed "pending" while the flags after it were emitted, so `smpsSetvoice` / `smpsAlterPitch` / `smpsAlterVol` / `smpsNoteFill` hit the *previous* note. Fixed in `core/smps_parser.py` (flags, `smpsCall` and `smpsReturn` complete the pending note — matches `FMDoNext`'s put-back). Found by the GHZ audit: last intro note of FM3 played on voice $08 two octaves low. GHZ 52 cells / SBZ 7 cells changed; the GHZ config's one-note `B4` workaround instruments (7, 9 — 115 KB) were removed.
 
 ### [x] 11. Loop extension replayed flags written just before the jump label
 - `_extend_looping_channels` chose the loop body by tick, so `smpsPSGAlterVol $FF` before `Mus85_SYZ_Jump03:` ran on every repetition: Spring Yard's hi-hat crept from attenuation 5 (−10 dB) to 0 within five loops and stayed there. The SYZ VGZ shows attenuation 5 throughout. Fixed with a per-channel label → event index from the parser. Changed SYZ (500 cells) and Marble Zone (2).
 
+### [x] 12. Marble Zone noise instrument has no volume entry
+- **Resolved by measurement (2026-09-18):** `psg_map[0xE7]` uses instrument 10, which had no `sample_list` line (so it played at the default 64) while a line for the unused instrument 11 carried the intended volume. Instrument 10 measured +7.7 dB and is now 13; the orphaned line is deleted.
+
 ### [ ] 13. Samples synthesised at the wrong pitch — 10 fixed, 4 songs left
 - The survey's pitch audit found ten instruments whose every note was out by the same interval (nine by whole octaves, Star Light's PSG by two) — `synth_root` errors in seven configs, all corrected; wrong notes 1623 → 395. Left: **Drowning** (200; needs mid-song `smpsSetTempoMod` in the converter), **Invincibility** (64) and **Stage Clear** (22; one instrument shared across transpositions — needs a `channel_instrument_map` variant or range split), **Star Light** (48) and **Continue Screen** (31; scattered ±100–300 c). Details in `docs/audits/00_soundtrack_survey.md`.
-
-### [x] 12. Marble Zone noise instrument has no volume entry
-- **Resolved by measurement (2026-09-18):** instrument 10 measured +7.7 dB and is now 13. The orphaned `[11, "psg_noise.raw", …]` line is unused and can be deleted.
-- `psg_map[0xE7]` uses instrument 10, which had no `sample_list` line (so it played at the default 64); the `psg_noise.raw, 16` line is for instrument 11, which nothing uses. An entry for 10 was added at today's level (now 32 = 64 at attenuation 3) so the sound did not change — check against the MZ VGZ when that song is audited; the author probably meant 16.
-
-### [x] 10. Coordination flags were applied one note early (parser)
-- A note byte with no duration byte stayed "pending" while the flags after it were emitted, so `smpsSetvoice` / `smpsAlterPitch` / `smpsAlterVol` / `smpsNoteFill` hit the *previous* note. Fixed in `core/smps_parser.py` (flags, `smpsCall` and `smpsReturn` complete the pending note — matches `FMDoNext`'s put-back). Found by the GHZ audit: last intro note of FM3 played on voice $08 two octaves low. GHZ 52 cells / SBZ 7 cells changed; the GHZ config's one-note `B4` workaround instruments (7, 9 — 115 KB) were removed.
 
 ---
 
@@ -117,6 +111,6 @@ Per-note pitch and level, channel balance, onset timing, vibrato, noise spectrum
 - [x] `reference/vgm/` paths in the CLAUDE.md examples and the tool docstring corrected to `reference/vgz/`.
 
 ### [x] Config authoring
-- [x] `analyze.py` skeleton: FM `sample_list` volumes pre-computed from each channel's TL offset at the voice's first note (`smpsHeaderFM` volume + `smpsAlterVol`), relative to the loudest channel, with a per-channel breakdown comment and a `channel_instrument_map` hint when channels sharing a voice differ. Reproduces the hand-computed Title Screen values (25 / 21 / 32). `tone2_n` for rate-3 noise comes from the driver's `PSGFrequencies` table (divider 0 → 1); pitched-noise channels also get `low:`.
-- [x] `convert.py` and `analyze.py --config` warn when a rate-3 noise entry without `tone2_n` has a `synth_root` outside the driver table (C3–Gs8). Currently fires on GHZ, SYZ, LZ, SLZ, SBZ (×3), Ending and Invincibility — all `synth_root: A8` on an `nMaxPSG` channel; switching them to `tone2_n: 1` is item 6 (it changes the noise sample, so re-check levels per item 5).
+- [x] `analyze.py` skeleton: FM and PSG `sample_list` volumes pre-computed (formula and fit in item 4), with a per-channel breakdown comment; rate-3 noise gets a comment with the divider the converter will derive, and pitched-noise channels get `low:`.
+- [x] `convert.py` and `analyze.py --config` warn when a rate-3 noise entry without `tone2_n` has a `synth_root` outside the driver table (C3–Gs8). It fired on `synth_root: A8` in GHZ (fixed in its audit) and six more configs; since item 6 it fires on none.
 - [x] `tests/baselines/title_screen_baseline.mod` regenerated (25 intended differences: 24× channel 6 `C13`→`C06`, channel 3 instrument 5→8 on the closing note). `regression_test.py --only NAME` added so one baseline can be refreshed alone.

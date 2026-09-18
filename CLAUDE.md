@@ -314,10 +314,10 @@ Smoke tests: `python ym2612/validate.py` / `renderer.py` / `sample_generator.py`
 
 Full reference: `docs/psg_synthesis.md`.
 Enable: set `psg_synthesis: {enabled: true}` in `configs/settings.yaml`.
-Rate-3 noise (`noise_rate: 3`): set `tone2_n` explicitly. `nMaxPSG` writes divider 0, which the
-VDP PSG clocks as N=1 → `tone2_n: 1` (not `synth_root: A8`, which gives a 7 kHz dull rattle).
-`convert.py` warns when a rate-3 `synth_root` is outside the driver table (C3–Gs8); the
-`analyze.py` skeleton emits the correct `tone2_n` and TL-derived FM `sample_list` volumes.
+Rate-3 noise (`noise_rate: 3`): set nothing else — the converter derives the tone-2 divider from the
+song's own notes through the driver's `PSGFrequencies` table (`_derive_rate3_dividers`; `nMaxPSG` is
+divider 0, clocked as N=1) and prints it. `tone2_n` / `synth_root` remain as overrides; `convert.py`
+warns when a rate-3 `synth_root` is outside the driver table (`A8` gives a 7 kHz dull rattle).
 Smoke tests: `python sn76489/validate.py` / `renderer.py` / `sample_generator.py`
 
 ## Testing

@@ -936,10 +936,14 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             print(f"  hit {k:2d} VGM  " + ' '.join(f"{x:>5.0f}" for x in ev))
             print("         MOD  " + ' '.join(f"{x:>5.0f}" for x in em))
         bands = [(0, 500), (500, 1000), (1000, 2000), (2000, 4000), (4000, 8000), (8000, 13000)]
-        if vo:
-            sv = seg_at(vgm["NOISE"], vo[0] + 0.005, 0.04)
-            sm = seg_at(mod["NOISE"], vo[0] + offset + 0.005, 0.04)
-            print("  band energy dB rel total <13 kHz: " + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
+        # Spectrum of the first hit that sounds in BOTH renders: the MOD can lack the very first one
+        # (Star Light), and an all-silent window says nothing about the LFSR rate.
+        both = [t for t in vo if db(rms(seg_at(mod["NOISE"], t + offset + 0.005, 0.04))) > -70]
+        if both:
+            sv = seg_at(vgm["NOISE"], both[0] + 0.005, 0.04)
+            sm = seg_at(mod["NOISE"], both[0] + offset + 0.005, 0.04)
+            print(f"  band energy dB rel total <13 kHz (hit at {both[0]:.3f} s): "
+                  + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
             bv, bm = band_profile(sv, bands, 13000), band_profile(sm, bands, 13000)
             print("     VGM " + ' '.join(f"{x:>7.1f}" for x in bv))
             print("     MOD " + ' '.join(f"{x:>7.1f}" for x in bm))

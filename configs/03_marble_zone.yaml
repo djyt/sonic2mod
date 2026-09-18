@@ -54,7 +54,7 @@ sample_list:
   # while a line for the unused instrument 11 carried the intended volume; measured against the VGZ.
   - [10, "psg_noise.raw", 13, 0] # baked: 64 at PSG attenuation 3 (−6 dB); VGZ: +7.7 dB at 32
   # --- voice $00: tuned!
-  - [12, "fm_v00.raw",  8, 1] # VGZ: +11.5 dB at 32
+  - [12, "fm_v00.raw",  9, 1] # VGZ: -0.7 dB at 8
 
 dac_samples:
   # dKick: ×2 — native ~8250 Hz → note C2
@@ -108,7 +108,6 @@ psg_map:
     mod_instrument: 10
     root: A2               # MOD anchor — A2 keeps all PSG3 notes (up to E4) within MOD range with no clamping
     low: A3                # SMPS pitch anchor — nA3 (sem 45) → MOD A2; each semitone above/below shifts output ±1
-    synth_root: C7         # LFSR synthesis freq — PSGFrequencies[A3+3=48] ≈ 2071 Hz → N=54; C7→N≈53 ✓
     noise_rate: 3
     envelope: fTone_09     # PSG3 header voice (smpsPSGform changes noise type only, not envelope)
     base_volume: 0

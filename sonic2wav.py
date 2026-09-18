@@ -11,22 +11,15 @@ Usage:
 """
 
 import argparse
-import io
 import os
 import sys
 
-# Force UTF-8 output on Windows so Rich can render Unicode symbols
-if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-
 from rich import box
-from rich.align import Align
-from rich.console import Console
 from rich.padding import Padding
-from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
+from core.cli import LABEL_W as _LABEL_W
+from core.cli import branding, cli_console, error_printer, row_printer
 from sfx.amiga import DEFAULT_MAX_RATE
 from sfx.batch import (
     assign_volumes,
@@ -41,7 +34,7 @@ from sfx.batch import (
 from sfx.render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS, NATIVE_RATE
 from sfx.resample import DEFAULT_TAPS
 
-console = Console(highlight=False, legacy_windows=False)
+console = cli_console()
 
 DEFAULT_SFX_DIR = os.path.join("sonic_1", "sfx")
 DEFAULT_OUT_DIR = os.path.join("output", "sfx")
@@ -50,33 +43,8 @@ DEFAULT_OUT_DIR_8BIT = os.path.join("output", "sfx8")
 
 from core.version import get_version as _get_version
 
-
-def _print_branding(version: str) -> None:
-    t = Text(justify="center")
-    t.append("SONIC2WAV", style="bold bright_yellow")
-    t.append(f"  v{version}", style="bold cyan")
-    t.append("  ·  reassembler", style="dim white")
-    console.print(Panel(Align.center(t), border_style="yellow", padding=(0, 2)))
-    console.print()
-
-
-_LABEL_W = 9
-_INDENT = " " * (_LABEL_W + 4)
-
-
-def _row(label: str, *lines: str):
-    for i, line in enumerate(lines):
-        if not line:
-            continue
-        if i == 0:
-            console.print(f"  [bold]{label:>{_LABEL_W}}[/bold]   {line}")
-        else:
-            console.print(f"  {' ' * _LABEL_W}   {line}")
-
-
-def _error(msg: str):
-    console.print(f"\n  [bold red]{'Error':>{_LABEL_W}}[/bold red]   {msg}\n")
-    sys.exit(1)
+_row   = row_printer(console)
+_error = error_printer(console)
 
 
 def _channel_summary(channels) -> str:
@@ -183,7 +151,7 @@ def main():
 
     args = parser.parse_args()
 
-    _print_branding(_get_version())
+    branding(console, "SONIC2WAV", _get_version())
 
     if not args.files and not args.all:
         parser.print_help()

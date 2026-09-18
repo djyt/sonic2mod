@@ -23,13 +23,14 @@ from __future__ import annotations
 import math
 import struct
 import sys
-import warnings
 from pathlib import Path
 
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.pcm import normalize_int8
+from core.pcm import to_mono as _to_mono
 from core.smps_parser import SmpsVoice
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2
@@ -102,28 +103,9 @@ def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> lis
     return sustain_samples + release_samples
 
 
-def _to_mono(samples: list) -> list:
-    """Stereo (L, R) pairs → mono int list via (L+R)//2."""
-    return [(l + r) // 2 for l, r in samples]
-
-
 def _normalize_int8(mono: list) -> bytes:
-    """Scale peak → 127, convert to int8 byte string (2's complement via & 0xFF).
-
-    Returns a zero-filled byte string and emits a warning when peak is 0.
-    """
-    if not mono:
-        return b''
-    peak = max(abs(v) for v in mono)
-    if peak == 0:
-        warnings.warn("render_note: peak is 0 — rendered silence")
-        return bytes(len(mono))
-    scale = 127.0 / peak
-    out = bytearray(len(mono))
-    for i, v in enumerate(mono):
-        clamped = max(-128, min(127, round(v * scale)))
-        out[i] = clamped & 0xFF
-    return bytes(out)
+    """Peak-normalise to +-127 and quantise to int8 (see core.pcm.normalize_int8)."""
+    return normalize_int8(mono, "render_note")
 
 
 

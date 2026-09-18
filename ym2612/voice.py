@@ -29,37 +29,14 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.driver_tables import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
 from core.smps_parser import SmpsVoice
 from ym2612.wrapper import OPN2
 
-# ---------------------------------------------------------------------------
-# SMPS operator index → YM2612 register offset within a channel
-#
-# The SMPS voice binary stores operator bytes in the order [OP4, OP3, OP2, OP1]
-# (reversed from the assembly macro argument order).  The S1 driver's
-# FMInstrumentOperatorTable writes them to hardware in the order:
-#   0x30 (offset 0x00), 0x38 (offset 0x08), 0x34 (offset 0x04), 0x3C (offset 0x0C)
-#
-# Combining: SMPS OP4 → offset 0x00, OP3 → 0x08, OP2 → 0x04, OP1 → 0x0C
-#
-# Derived from s1.sounddriver.asm FMInstrumentOperatorTable + _smps2asm_inc.asm
-# smpsDcb line for SonicDriverVer != 2 (Sonic 1 uses the non-v2 layout).
-# ---------------------------------------------------------------------------
-_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
-
-# YM2612 carrier operator register offsets by algorithm (0–7).
-# Register layout within a channel: OP1=0x00, OP3=0x04, OP2=0x08, OP4=0x0C.
-# Carriers are the operators whose output goes directly to the DAC.
-_CARRIER_OFFSETS_BY_ALG = (
-    (0x0C,),                    # Alg 0: OP4
-    (0x0C,),                    # Alg 1: OP4
-    (0x0C,),                    # Alg 2: OP4
-    (0x0C,),                    # Alg 3: OP4
-    (0x08, 0x0C),               # Alg 4: OP2, OP4
-    (0x04, 0x08, 0x0C),         # Alg 5: OP3, OP2, OP4  (OP1 = shared modulator)
-    (0x04, 0x08, 0x0C),         # Alg 6: OP3, OP2, OP4  (OP1 → OP2 only)
-    (0x00, 0x04, 0x08, 0x0C),   # Alg 7: all four operators
-)
+# The SMPS operator order and the per-algorithm carrier list both come from
+# core.driver_tables, transcribed from s1.sounddriver.asm — one source of truth
+# shared with the SFX driver emulation in sfx/chips.py.  Getting the operator
+# order backwards puts the OP1 carrier in the self-feedback slot (severe distortion).
 
 
 def _parse_op_vals(raw: str | None, count: int = 4) -> list[int]:
@@ -94,7 +71,7 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int,
 
     # Pre-compute carrier TL boost for this algorithm
     alg             = voice.algorithm & 0x7
-    carrier_offsets = set(_CARRIER_OFFSETS_BY_ALG[alg])
+    carrier_offsets = set(CARRIER_OFFSETS_BY_ALG[alg])
     if carrier_balance and len(carrier_offsets) > 1:
         balance_tl = round(20 * math.log10(len(carrier_offsets)) / 0.75)
     else:
@@ -120,7 +97,7 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int,
     rr     = _parse_op_vals(p.get('smpsVcReleaseRate'))
 
     for smps_op in range(4):
-        off  = _SMPS_OP_TO_REG_OFFSET[smps_op]
+        off  = SMPS_OP_TO_REG_OFFSET[smps_op]
         base = ch_in_bank + off
 
         opn2.write_reg(0x30 + base,

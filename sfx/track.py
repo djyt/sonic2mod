@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .tables import HW_FM_CHANNEL, PSG_CHANNEL
+from core.driver_tables import HW_FM_CHANNEL, PSG_CHANNEL
 
 # SMPS_Track.Freq is a signed word; -1 marks "no valid note" (PSGSetFreq .restpsg).
 FREQ_INVALID = -1

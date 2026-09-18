@@ -23,9 +23,9 @@ from collections import Counter, defaultdict
 import yaml
 
 sys.path.insert(0, ".")
+from core.driver_tables import psg_index_semitone
 from core.smps_parser import SmpsParser
 from core.tables import semitone_to_note_name
-from sfx.tables import psg_index_semitone
 
 SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/credits_skeleton.yaml"
 OUT = "configs/13_credits.yaml"

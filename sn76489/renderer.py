@@ -21,15 +21,15 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
-import struct
 import sys
-import warnings
 from pathlib import Path
 
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.pcm import normalize_int8, write_raw16
+from core.pcm import to_mono as _to_mono
 from sn76489.wrapper import SN76489
 
 # ---------------------------------------------------------------------------
@@ -61,24 +61,9 @@ def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
 # Private pipeline helpers
 # ---------------------------------------------------------------------------
 
-def _to_mono(samples: list) -> list:
-    """Stereo (L, R) int32 pairs → mono int list via (L+R)//2."""
-    return [(l + r) // 2 for l, r in samples]
-
-
 def _normalize_int8(mono: list) -> bytes:
-    """Scale peak → 127, convert to int8 byte string (2's complement via & 0xFF)."""
-    if not mono:
-        return b''
-    peak = max(abs(v) for v in mono)
-    if peak == 0:
-        warnings.warn("render_psg: peak is 0 — rendered silence")
-        return bytes(len(mono))
-    scale = 127.0 / peak
-    out = bytearray(len(mono))
-    for i, v in enumerate(mono):
-        out[i] = max(-128, min(127, round(v * scale))) & 0xFF
-    return bytes(out)
+    """Peak-normalise to +-127 and quantise to int8 (see core.pcm.normalize_int8)."""
+    return normalize_int8(mono, "render_psg")
 
 
 # ---------------------------------------------------------------------------
@@ -321,13 +306,8 @@ def _smoke_test() -> None:
 
     # Write as 16-bit
     path_tone = out_dir / "psg_tone_test.raw"
-    scale = 32767.0 / peak_tone if peak_tone else 1.0
-    raw16 = bytearray(len(mono_tone) * 2)
-    for i, v in enumerate(mono_tone):
-        val = max(-32768, min(32767, round(v * scale)))
-        struct.pack_into('<h', raw16, i * 2, val)
-    path_tone.write_bytes(bytes(raw16))
-    print(f"  Written: {path_tone}  ({len(raw16)} bytes, 16-bit signed mono)")
+    n_tone = write_raw16(path_tone, mono_tone)
+    print(f"  Written: {path_tone}  ({n_tone} bytes, 16-bit signed mono)")
 
     # --- Noise: white, rate 0 ---
     print("\nNoise: white=True  rate=0")
@@ -337,13 +317,8 @@ def _smoke_test() -> None:
     print(f"  Samples: {len(mono_noise)}  Rate: {rate_noise} Hz  Peak: {peak_noise}")
 
     path_noise = out_dir / "psg_noise_test.raw"
-    scale2 = 32767.0 / peak_noise if peak_noise else 1.0
-    raw16n = bytearray(len(mono_noise) * 2)
-    for i, v in enumerate(mono_noise):
-        val = max(-32768, min(32767, round(v * scale2)))
-        struct.pack_into('<h', raw16n, i * 2, val)
-    path_noise.write_bytes(bytes(raw16n))
-    print(f"  Written: {path_noise}  ({len(raw16n)} bytes, 16-bit signed mono)")
+    n_noise = write_raw16(path_noise, mono_noise)
+    print(f"  Written: {path_noise}  ({n_noise} bytes, 16-bit signed mono)")
 
     print()
     if peak_tone > 0 and peak_noise > 0:

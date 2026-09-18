@@ -66,7 +66,7 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 
 | SMPS Command | Byte | Parameters | MOD Effect | MOD Code | Notes |
 |-------------|------|------------|------------|----------|-------|
-| `smpsAlterVol` | $E6 | signed delta | Set Volume | `Cxx` (Cmd C) | Cumulative; emitted only when volume changes from last |
+| `smpsAlterVol` | $E6 | signed TL delta | Set Volume | `Cxx` (Cmd C) | FM: cumulative TL offset, 0.75 dB/step. `Cxx` only on notes whose level differs from the instrument's baked level — see §FM levels |
 | `smpsModSet` | $F0 | wait,speed,change,step | Vibrato | `4xy` (Cmd 4) | x=speed nibble, y=change nibble; approximate (triangle→sine) |
 | `smpsModOn` | $F1 | — | Vibrato (continues) | `4xy` | Re-activates stored params |
 | `smpsModOff` | $F4 | — | (clears vibrato state) | none | No MOD effect; future notes have no vibrato |
@@ -77,7 +77,7 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 | `smpsSetvoice` | $EF | voice index | (instrument routing) | — | Updates voice_map lookup; no direct MOD effect |
 | `smpsChangeTransposition` | $E9 | signed byte | (pitch shift) | — | Updates total_transpose; affects next note placement |
 | `smpsDetune` / `smpsAlterNote` | $E1 | signed byte | (none) | — | FNUM offset (~10 cents); not applied to MOD pitch |
-| `smpsPan` | $E0 | direction | (none) | — | MOD panning is channel-based; ignored |
+| `smpsPan` | $E0 | direction | (level only) | — | MOD panning is channel-based, but a hard-panned note counts `fm_pan_law_db` (3 dB) quieter than a centred one — see §FM levels |
 | `smpsNoAttack` | $E7 | — | (flagged on note) | — | No MOD equivalent; note plays without re-attack in SMPS |
 | `smpsNop` | $E2 | byte | (none) | — | Game sync byte; ignored |
 | `smpsPSGform` | $F3 | byte | (routing) | — | Looks up `psg_map[byte]` → new PSG instrument |
@@ -98,6 +98,36 @@ A cut that lands inside the attack row while that row needs `Cxx` is moved to th
 row (`C00`), or dropped if the next event is already there.  Cuts on later rows of the note have
 the effect column to themselves (the `4xy` continuation skips that row).  Exception to the order
 above: an attack-row `ECx` does displace `4xy` — a note that short has no audible vibrato.
+
+### FM levels (`fm_volume_scaling: baked`)
+
+On the chip an FM note's level is set by the track's TL offset — `smpsHeaderFM` volume plus every
+`smpsAlterVol` so far, 0.75 dB per step — and by its pan: a centred channel drives both speakers,
+a hard-panned one drives one (−3 dB power).  A MOD note's level is its instrument's default
+volume unless a `Cxx` overrides it, and instruments cannot share sample data, so a second copy of
+a sample at another volume costs its full size.
+
+`SmpsToModConverter._plan_fm_levels` therefore walks the FM channels first and, for every MOD
+instrument, counts notes per level `−0.75 × TL − pan`.  The level with the most notes is that
+instrument's **baked level**: it is what the `sample_list` volume stands for, and those notes get
+no command.  A note at any other level gets `Cxx = volume × 10^(ΔdB / 20)` (clamped to 64).  So:
+
+- `Cxx` appears on the *minority* channel of a shared instrument and where `smpsAlterVol` has
+  moved a channel — not on every note, and with the chip's law (a fade stays a fade);
+- no variant instruments, no extra sample memory;
+- `sample_list` volumes stay hand-set (measure with `tools/vgm_compare.py`); with the law right,
+  every channel using an instrument shows the *same* error, which one volume then fixes.
+  GHZ: instrument 11 read +4.8 / +4.6 / +4.6 dB on FM3 (centre) / FM4 (left) / FM5 (right);
+  16 → 9 brought all three within 0.4 dB.  Whole song: every FM channel within ±0.3 dB.
+
+Across the 18 configs this took `Cxx` on FM notes from 1662 to 887.  Songs that gained commands
+had been wrong silently: Drowning's crescendo (`smpsAlterVol` with negative deltas) used to clip
+at volume 64 and vanish.
+
+Legacy modes: `fm_volume_scaling: true` (header TL + log law as an absolute volume, `Cxx` on
+every FM note) and `false` (header TL ignored, one `smpsAlterVol` step = one *linear* volume unit
+≈ 0.3 dB — FM1's GHZ fade drifted 5 dB).  PSG is unaffected: its path already uses the chip's
+2 dB/step law as an absolute volume.
 
 ---
 

@@ -673,8 +673,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                       for name, tl in voice_tl[vi].items()]
             fm_volume_note[vi] = "TL " + ", ".join(per_ch)
             if len({_tl_volume(tl - tl_ref) for tl in voice_tl[vi].values()}) > 1:
-                fm_volume_note[vi] += (f"  (using {dominant.name}; add a channel_instrument_map "
-                                       "variant for the others)")
+                fm_volume_note[vi] += (f"  (volume is {dominant.name}'s; fm_volume_scaling: baked "
+                                       "puts Cxx on the others)")
         else:
             initial_trans = 0
         if min_sem is not None and max_sem is not None:

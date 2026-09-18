@@ -20,8 +20,9 @@ python tools/vgm_compare.py    configs/02_green_hill_zone.yaml "reference/vgz/02
 | Timing | MOD and VGZ align at 0 ms; one pass is 52.8 s vs 53.2 s.  Note fills match hardware to the frame after todo item 1 (FM2 `$04` = 4 frames ×158 on hardware, 67 ms ×156 in the MOD). |
 | Grace notes | **Lost.**  FM3/FM4/FM5 use `nC6, $01, smpsNoAttack, nB5, $0F` (1-tick grace + legato slide) 17 times each.  At `ticks_per_row: 2` the grace and the main note land on the same or adjacent row: on FM3 the grace collides with a rest's `C00` and is silent, on FM4/FM5 it is overwritten.  → todo item 3, and see "Grace notes" below. |
 | Levels (before) | NOISE +6.9 dB relative to FM2, FM5 roughly +3 dB (+5.5 dB on the old mono-mix measure; not re-rendered on the corrected one), everything else within 1 dB (FM4 +0.9).  L/R power — see "Measurement correction" below. |
-| Levels (after) | NOISE −0.3 dB, FM5 +2.2 dB, FM4 +0.9, FM1 −0.3, FM3 +0.1, PSG1 −0.7, PSG2 −0.6, DAC −1.0. |
-| Why FM5 (and FM4) stay hot | Two separate causes.  **Pan law:** on hardware FM4 is panned hard left and FM5 hard right; a centred YM2612 channel drives both speakers (+3 dB power), every Amiga channel drives one.  FM3 (centre), FM4 and FM5 share instrument 14 at the *same* TL `$12`, and FM4/FM5 still read +1.4 (with a `C1B`) / +2.9 dB against FM3's +0.2.  **Volume law:** with `fm_volume_scaling: false` one `smpsAlterVol` step becomes one *linear* MOD volume unit (≈ 0.3 dB) instead of 0.75 dB and the header TL is ignored.  FM5's `$13`→`$19` step is −4.5 dB on the chip and −0.85 dB in the MOD: predicted error +3.6 dB, measured +3.4.  FM1's fade `C1A`→`C1F` drifts from +5.8 to +0.4 dB.  → todo item 4. |
+| Levels (after config fixes, legacy volume mode) | NOISE −0.3 dB, FM5 +2.2 dB, FM4 +0.9, FM1 −0.3, FM3 +0.1, PSG1 −0.7, PSG2 −0.6, DAC −1.0. |
+| Levels (after todo item 4, `fm_volume_scaling: baked`) | **FM1 −0.3, FM3 −0.2, FM4 +0.0, FM5 +0.1**, PSG1 −0.7, PSG2 −0.6, NOISE −0.3, DAC −1.0.  Per instrument, every channel within ±0.4 dB. |
+| Why FM5 (and FM4) were hot | Two separate causes, both fixed by item 4.  **Pan law:** on hardware FM4 is panned hard left and FM5 hard right; a centred YM2612 channel drives both speakers (+3 dB power), every Amiga channel drives one.  FM3 (centre), FM4 and FM5 share instrument 14 at the *same* TL `$12`, and FM4/FM5 read +1.4 (with a `C1B`) / +2.9 dB against FM3's +0.2.  **Volume law:** with `fm_volume_scaling: false` one `smpsAlterVol` step becomes one *linear* MOD volume unit (≈ 0.3 dB) instead of 0.75 dB and the header TL is ignored.  FM5's `$13`→`$19` step is −4.5 dB on the chip and −0.85 dB in the MOD: predicted error +3.6 dB, measured +3.4.  FM1's fade `C1A`→`C1F` drifted from +5.8 to +0.4 dB. |
 | Noise timbre (before) | `synth_root: A8` → LFSR at 7 kHz: energy bunched below 4 kHz (0–500 Hz −6.8 dB vs −14.4 dB on hardware). |
 | Noise timbre (after) | `tone2_n: 1` (the VGZ shows tone-2 divider N=0 on every hit): 4–8 kHz band −4.7 dB vs −4.9 dB on hardware.  8–13 kHz still ~7 dB down (27.9 kHz sample rate), as on the Title Screen. |
 | Detuned-carrier beating | FM4/FM5 C6 notes beat at 4.46 Hz on hardware and 6.5 Hz in the MOD; FM3/FM4 low notes show 2.5–3 Hz beating in the MOD only.  Not vibrato — those channels have no `smpsModSet`.  The rate follows sample playback speed (voice $04 is synthesised at C5 and played at C6 and above) → todo item 7. |
@@ -68,7 +69,10 @@ is the second wrong note the audit found.  Both entries are gone.
 3. Instrument 5 (`ghz_v02.raw`) stays at 32 (FM1 −0.6 dB, FM3 +0.9 dB).  *An earlier revision of
    this audit set it to 24 and instrument 8 to 19 from mono-averaged levels; both were
    over-corrections and were reverted — see "Measurement correction".*
-4. Removed instruments 7 and 9 and their `voice_map` / `channel_instrument_map` entries (above).
+4. After todo item 4 (`fm_volume_scaling: baked`) each shared instrument read the same on every
+   channel, so four volumes were set from those readings: instrument 6 32 → 15 (+6.7 dB),
+   11 16 → 9 (+4.6), 13 32 → 25 (+2.1), 14 32 → 23 (+2.9).
+5. Removed instruments 7 and 9 and their `voice_map` / `channel_instrument_map` entries (above).
 
 Not changed: instrument 18 (`psg_tone03.raw`, `fTone_03`) plays no note — it is only the PSG1
 header voice and is replaced before the first note.  It is 5 KB; left in so the label stays mapped.
@@ -104,20 +108,17 @@ command the converter put on those notes):
 | FM5 (right) | 11 / 14 | `C0D` / — | 58 / 19 | +2.8 / +2.9 |
 | PSG1, PSG2 | 17, 19, 20 | `C0D` | 192 | −1.0…+0.7 |
 
-PSG is right because its path already uses the chip's 2 dB/step law.  The FM path needs:
+(Table measured in the legacy mode, before item 4.)  PSG is right because its path already uses
+the chip's 2 dB/step law.  The FM path needed the same law plus −3 dB for hard-panned notes; both
+are in `fm_volume_scaling: baked` now (`docs/pipeline.md` §FM levels).  With it the table collapses
+to one number per instrument — 5: −0.6…−2.5, 6: +6.7, 8: −0.1, 10: ±0.5, 11: +4.6…+4.8,
+13: +1.9…+2.3, 14: +2.9…+3.0 — which the volumes in "Config changes" item 4 then zero out.
 
-- header TL baked into the instrument and `Cxx` from `10^(−ΔTL×0.75/20)` only when
-  `smpsAlterVol` moves the channel (fixes the `Cxx` rows);
-- −3 dB for channels the song hard-pans, relative to centred ones (fixes FM4/FM5 on 11/14).
-
-**Cost in samples.**  MOD instruments cannot share sample data, so "a variant slot whenever two
-channels share an instrument at different levels" duplicates ~61 KB each time.  By TL alone GHZ
-needs 2 variants (instrument 5: FM1 `$12` vs FM3 `$14`; instrument 11: FM3 `$1A` vs FM4/FM5
-`$1D`) = +122 KB on a 760 KB MOD, 18 → 20 of 31 slots; adding the pan law splits 13 and 14 as well
-(FM3 centred vs FM4/FM5 panned) = 4 variants, +248 KB.  The alternative costs nothing: bake the
-level of the channel with the most notes and put `Cxx` on the *other* channels' notes — FM3's 16
-notes on instrument 5 and its 63 on 11/13/14.  Item 4 should do that by default and offer variants
-as an option.
+**Cost in samples.**  MOD instruments cannot share sample data, so a variant slot per
+(instrument, level) would have duplicated ~61 KB each time: +2 instruments / +122 KB by TL alone,
++4 / +248 KB with the pan law, on a 760 KB MOD.  Item 4 was built the other way — bake the level
+most notes play at, `Cxx` on the rest (GHZ: 100 FM notes carry one, down from 308) — and costs
+no samples.
 
 ### Grace notes (todo item 3, plus two alternatives)
 

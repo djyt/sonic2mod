@@ -53,7 +53,15 @@ psg_synthesis:
 # Conversion flags (applied regardless of synthesis settings)
 # -------------------------------------------------------------------------------------------------
 
-# Apply smpsHeaderFM TL offset (initial_vol) and logarithmic smpsAlterVol scale
-# Applies CXX volume commands to most FM instruments in an attempt to scale their volume as accurately as possible to the original.
-# Interesting to experiment with, but the additional clutter of noise commands means it's off by default. 
-fm_volume_scaling: false   
+# How FM channel levels (smpsHeaderFM volume, smpsAlterVol, smpsPan) reach the MOD:
+#   baked  For each instrument, the level most of its notes play at needs no command: that is what
+#          its sample_list volume stands for.  Notes at any other level get Cxx = volume x 10^(dB/20)
+#          using the chip's 0.75 dB per TL step, so Cxx appears only on the minority channel of a
+#          shared instrument and where smpsAlterVol moves a channel.  No extra samples.  (default)
+#   true   Legacy: header TL + log law as an absolute volume, Cxx on every FM note.
+#   false  Legacy: header TL ignored, one smpsAlterVol step = one linear volume unit (not accurate).
+fm_volume_scaling: baked
+
+# baked mode only: a hard-panned (smpsPan left/right) note is this many dB quieter than a centred one.
+# A centred YM2612 channel drives both speakers, every Amiga channel drives one.  0 disables.
+fm_pan_law_db: 3

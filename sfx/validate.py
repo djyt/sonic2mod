@@ -64,7 +64,11 @@ def check_tables() -> None:
           tables.PSG_FREQUENCIES_EXTENDED[:70] == tables.PSG_FREQUENCIES)
     check("PSG7 envelope has 6 leading zeros",
           tables.PSG_ENVELOPES[6][:7] == (0, 0, 0, 0, 0, 0, 1),
-          "configs/settings.yaml has only 5 — the driver is authoritative")
+          "the driver's table; a copy in settings.yaml once had 5")
+    from core.driver_tables import PSG_ENVELOPES_BY_NAME
+    check("named envelopes are the driver tables minus the terminator",
+          all(PSG_ENVELOPES_BY_NAME[f"fTone_{i + 1:02d}"] == t[:-1] and t[-1] == 0x80
+              for i, t in enumerate(tables.PSG_ENVELOPES)))
 
 
 def check_resampler() -> None:

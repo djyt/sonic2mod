@@ -179,9 +179,9 @@ def psg_tone2_divider(note_value: int, transpose: int) -> int:
 # $80 is the terminator: VolEnvHold rewinds the index so the previous value is
 # held forever, and no volume write happens on that tick.
 #
-# NOTE: these are transcribed from the driver, not from configs/settings.yaml.
-# That file's `fTone_07` is missing a leading zero (26 entries vs the driver's
-# 27), which would shift PSG7's fade by one frame.
+# This is the one transcription: the SFX driver indexes PSG_ENVELOPES directly and
+# the SN76489 synthesiser looks envelopes up by name in PSG_ENVELOPES_BY_NAME.
+# (configs/settings.yaml used to carry its own copy, whose PSG7 was one zero short.)
 
 PSG_ENVELOPES: tuple[tuple[int, ...], ...] = (
     # PSG1
@@ -208,6 +208,14 @@ PSG_ENVELOPES: tuple[tuple[int, ...], ...] = (
 )
 
 ENVELOPE_TERMINATOR = 0x80
+
+# The same tables under the names the music files give smpsPSGvoice (fTone_01 … fTone_09,
+# also the `envelope:` keys in a config's psg_map / psg_voice_map), without the terminator:
+# the synthesiser steps one value per frame and holds the last one, which is what $80 means.
+PSG_ENVELOPES_BY_NAME: dict[str, tuple[int, ...]] = {
+    f"fTone_{i + 1:02d}": table[:table.index(ENVELOPE_TERMINATOR)]
+    for i, table in enumerate(PSG_ENVELOPES)
+}
 
 
 # ---------------------------------------------------------------------------

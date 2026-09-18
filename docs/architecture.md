@@ -71,7 +71,9 @@ Self-checks against known-good assembled values run at import.
 - **`psg_index_semitone(index)`**: the real pitch a PSG table index sounds at, including past the table's end.
 - **`psg_tone2_divider(note_value, transpose)`**: the tone-2 divider a note writes — what clocks a rate-3 noise LFSR.
 - **`SMPS_OP_TO_REG_OFFSET`**, **`FM_SLOT_MASK`**, **`CARRIER_OFFSETS_BY_ALG`**: the FM register layout. Read by both `ym2612/voice.py` (sample synthesis) and `sfx/chips.py` (driver emulation).
-- **`PSG_ENVELOPES`**, **`PAN_VALUES`**, **`HW_FM_CHANNEL`**, **`PSG_CHANNEL`**.
+- **`PSG_ENVELOPES`** (with `$80` terminators, for the SFX driver) and **`PSG_ENVELOPES_BY_NAME`**
+  (`fTone_01` … `fTone_09` without them, what a config's `envelope:` resolves to), **`PAN_VALUES`**,
+  **`HW_FM_CHANNEL`**, **`PSG_CHANNEL`**.
 
 ### core/driver_state.py
 

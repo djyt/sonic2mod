@@ -277,7 +277,7 @@ psg_map:
                            #   derived from the song's own notes; nothing else to set
     tone2_n: 1             # optional override, rate 3 only: explicit tone-ch2 divider (1–1023)
     synth_root: A3         # optional override, weaker than tone2_n: LFSR rate as a note name
-    envelope: fTone_04     # Named envelope from settings.yaml psg_envelope_tables, or inline list
+    envelope: fTone_04     # Driver envelope by name (fTone_01–fTone_09, core/driver_tables.py), or inline list
     base_volume: 0         # SN76489 base attenuation (0=max, 15=silent)
 ```
 

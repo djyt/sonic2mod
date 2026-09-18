@@ -110,7 +110,12 @@ baked into the instrument (or a per-channel variant), `Cxx` from `10^(−ΔTL×0
 - Drop the grace note and start the main note on its row (what effectively happens today on
   FM4/FM5, by accident).
 
-### FM frequency convention is an octave off in two places that cancel
+### FM frequency convention is an octave off in two places that cancel — fixed 2026-09-18
+
+*(Fixed after this audit: both functions use `2^(21−block)`, every FM `synth_root` was lowered an
+octave, output is byte-identical.  The FM pitches quoted above — `synth_root: B2` / `B3`, voice $04
+"synthesised at C5" — are in the old convention, one octave above what the config says now.  The
+PSG `synth_root: A8` is unaffected.)*
 
 `tools/vgm_analyze._fnum_to_hz` and `ym2612/renderer.freq_to_fnum_block` both use
 `2^(20−block)`.  The chip — and the driver's own `MakeFMFrequency(f) = f·2^21/fs` — is

@@ -56,28 +56,28 @@ voice_map:
       high: F6
       mod_instrument: 3
       root: As2  # smpsChangeTransposition active — verify root is correct
-      synth_root: Gs4
+      synth_root: Gs3
   # $01 — alg 3: ((1→2)+3)→4, fb 7 — used by FM2
   1:
     - low:  G5
       high: A5
       mod_instrument: 4
       root: G2  # smpsChangeTransposition active — verify root is correct
-      synth_root: G3
+      synth_root: G2
   # $02 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   2:
     - low:  E4
       high: Fs5
       mod_instrument: 5
       root: E2  # smpsChangeTransposition active — verify root is correct
-      synth_root: E3
+      synth_root: E2
   # $03 — alg 4: (1→2)+(3→4), fb 3 — used by FM3, FM4
   3:
     - low:  A5
       high: G6
       mod_instrument: 6
       root: A2
-      synth_root: A5
+      synth_root: A4
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

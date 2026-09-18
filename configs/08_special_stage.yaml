@@ -63,25 +63,25 @@ voice_map:
       high: A5
       mod_instrument: 1
       root: C2
-      synth_root: C3
+      synth_root: C2
   1:
     - low: C7
       high: B7
       mod_instrument: 2
       root: C3
-      synth_root: C6
+      synth_root: C5
   2:
     - low: A4
       high: B5
       mod_instrument: 3
       root: A1
-      synth_root: A2
+      synth_root: A1
   3:
     - low: D6
       high: E7
       mod_instrument: 4
       root: D2
-      synth_root: D5
+      synth_root: D4
       vibrato: 12               # Override Vibrato with more subtle setting
       
 # -------------------------------------------------------------------------------------------------

@@ -58,14 +58,14 @@ voice_map:
       high: Cs7
       mod_instrument: 3
       root: G1
-      synth_root: G5
+      synth_root: G4
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  G2
       high: D4
       mod_instrument: 5
       root: G1
-      synth_root: G2
+      synth_root: G1
 
 psg_map:
   0xE7:                    # form $E7
@@ -89,7 +89,7 @@ channel_instrument_map:
         high: Cs7
         mod_instrument: 4
         root: G1
-        synth_root: G5
+        synth_root: G4
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

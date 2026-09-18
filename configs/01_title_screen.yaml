@@ -93,7 +93,7 @@ voice_map:
       high: A6
       mod_instrument: 3
       root: G2
-      synth_root: G5
+      synth_root: G4
 
   # Voice $01 — bass / sustain pad
   1:
@@ -101,7 +101,7 @@ voice_map:
       high: D4            # source 35
       mod_instrument: 5   # fm_voice1_lo.raw (root A1)
       root: A1
-      synth_root: A2
+      synth_root: A1
 
   # Voice $02 — harmony chord stabs (FM3/FM4 main melody only)
   2:
@@ -109,7 +109,7 @@ voice_map:
       high: G6            # source 79 — top of FM3's range
       mod_instrument: 6   # fm_voice2.raw (root A2)
       root: A2            # A5→A2 (MOD 21);  G6→G3 (MOD 31)
-      synth_root: A5
+      synth_root: A4
 
 
 # -------------------------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ channel_instrument_map:
         high: A6
         mod_instrument: 4
         root: G2
-        synth_root: G5
+        synth_root: G4
   # FM3's closing nA2 carries smpsAlterNote $03 too — same trick, voice $01
   FM3:
     1:
@@ -147,7 +147,7 @@ channel_instrument_map:
         high: D4
         mod_instrument: 8
         root: A1
-        synth_root: A2
+        synth_root: A1
 
     
 # -------------------------------------------------------------------------------------------------

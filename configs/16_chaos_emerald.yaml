@@ -51,14 +51,14 @@ voice_map:
       high: G6
       mod_instrument: 1
       root: C2
-      synth_root: C5
+      synth_root: C4
   # $01 — alg 4: (1→2)+(3→4), fb 7 — used by FM4, FM5, FM6
   1:
     - low:  E5
       high: G6
       mod_instrument: 2
       root: E2
-      synth_root: E5
+      synth_root: E4
 
 psg_voice_map:
   fTone_04:

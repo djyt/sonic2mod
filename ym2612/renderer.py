@@ -60,16 +60,19 @@ def freq_to_fnum_block(freq: float, clock_rate: int = _CLOCK_RATE) -> tuple[int,
     Targets the upper half of the fnum range [512, 1023] for best precision.
     Falls back to any valid fnum [1, 1023] if the preferred range cannot be hit.
 
-    Formula: fnum = freq × 144 × 2^(20−block) / clock_rate
+    Formula: fnum = freq × 144 × 2^(21−block) / clock_rate
+    (YM2612: f = fnum × (clock/144) × 2^block / 2^21.  The Sonic 1 driver's table macro is the
+    same thing: MakeFMFrequency(f) = f × 2^21 / FM_Sample_Rate at block 0, 16.35 Hz = C0.
+    A4 = 440 Hz → fnum 1083, block 4.)
     """
     # Prefer fnum in [512, 1023]
     for block in range(8):
-        fnum = round(freq * 144 * (1 << (20 - block)) / clock_rate)
+        fnum = round(freq * 144 * (1 << (21 - block)) / clock_rate)
         if 512 <= fnum <= 1023:
             return fnum, block
     # Fallback: any valid fnum
     for block in range(8):
-        fnum = round(freq * 144 * (1 << (20 - block)) / clock_rate)
+        fnum = round(freq * 144 * (1 << (21 - block)) / clock_rate)
         if 1 <= fnum <= 1023:
             return fnum, block
     return 1, 0

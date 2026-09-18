@@ -537,8 +537,11 @@ class SmpsParser:
                 tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 pending_note = None
                 if effect.effect_type == 'smpsChanTempoDiv':
-                    # Parser-time state: update divider, do NOT emit to events.
+                    # Parser-time state: the divider scales the durations that follow.  The event
+                    # is kept too, so the converter's smpsSetTempoDiv re-timing knows which divider
+                    # each note was parsed with and which write (own or global) is the latest.
                     chan_tempo_div = effect.params[0]
+                    channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
                 else:
                     # Scale time-valued params so they are in DurationTimeout units,
                     # consistent with the scaled tick positions stored in events.

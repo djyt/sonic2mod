@@ -386,6 +386,7 @@ def mod_note_events(mod: bytes, speed: int) -> tuple[dict[int, list[tuple]], dic
 
 _LEVEL_SPAN = 0.6            # seconds of a note that count towards its level
 _LEVEL_MIN_NOTES = 4         # fewer plain notes than this and no volume is suggested
+_LEVEL_SCALE_MIN_NOTES = 12  # fewer notes than this and the instrument cannot drive the common scale-down
 _LEVEL_MAX_SPREAD = 3.0      # dB between channels sharing an instrument before it is "not a volume problem"
 _LEVEL_DAC_SLACK = 2.0       # dB the DAC must be BELOW the song's median before everything is balanced to it
 _LEVEL_MAX_ERR = 18.0        # dB; beyond this something other than the volume is wrong (silent / wrong instrument)
@@ -478,7 +479,11 @@ def suggest_volumes(instruments: list[dict]) -> float:
     simply clamped.  Only when one wants substantially more are ALL suggestions brought down
     together, so that the balance between them survives.
     """
-    wanted = [it["wanted"] for it in instruments if it.get("wanted") is not None]
+    # Only instruments with a fair number of notes may pull everything down: Credits' fm_v0e
+    # (4 notes, read -9.9 dB) would otherwise have cost every sample 7.9 dB and left the PSG
+    # tones at volume 1-4.  A few-note instrument that wants more than 64 is clamped instead.
+    wanted = [it["wanted"] for it in instruments
+              if it.get("wanted") is not None and it.get("notes", 0) >= _LEVEL_SCALE_MIN_NOTES]
     ceiling = 64.0 * 10 ** (_LEVEL_DAC_SLACK / 20)
     scale = min(1.0, ceiling / max(wanted)) if wanted else 1.0
     for it in instruments:

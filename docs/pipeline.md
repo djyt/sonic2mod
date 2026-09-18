@@ -256,8 +256,17 @@ else a cell holding only a `4xy` continuation (`_write_tempo_changes`; a song th
 another segment gets an `Fxx` at the loop target too).  Note fills, vibrato rates and `EDx`
 delays use the modifier in force at their tick (`_tpf_at`).  Every segment's BPM must fit
 32–255: Drowning goes 75 → 100 → 112 → 125 → 135 at 2 ticks per row (1 tick per row would need
-270 at the end); `convert.py` warns when a segment is clamped.  `smpsSetTempoDiv` ($EB, the
-global duration divider, Credits only) is parsed and warned about, not applied.
+270 at the end); `convert.py` warns when a segment is clamped.
+
+**Global duration divider** (`smpsSetTempoDiv`, $EB — Credits' half-tempo passage, written from
+the DAC track).  `cfSetTempoDividerAll` writes every track's `TempoDivider`; the driver multiplies
+a duration by it when the note is *read*, so a note begun before the change keeps its length and
+the last write wins against the track's own `smpsChanTempoDiv`.  `_apply_global_tempo_div`
+re-times every channel accordingly before anything reads ticks (the carrying channel first, since
+the change's real tick depends on any earlier change; the parser keeps `smpsChanTempoDiv` as an
+event so the divider each note was parsed with is known).  Rows stay ticks: the passage simply
+has twice as many rows, at the same BPM.  Labels (loop targets) are not re-timed — no song that
+uses the flag loops.
 
 *Inherent:* the driver's holds come at the end of each counter cycle, so the first frames after a
 change run a little fast and the MOD ends up one to two frames (17–48 ms) behind at each change,
@@ -304,6 +313,21 @@ Instrument is 1-based (1–31); 0 = no instrument (continue previous).
 | Note range | C1–B3 (36 semitones) |
 
 ---
+
+### `range_space: chip` — ranges on the pitch the chip plays
+
+`voice_map` / `psg_voice_map` ranges are matched against the source byte (`note − $81`) by default,
+and `root` anchors that byte.  A song that changes key with `smpsChangeTransposition` while
+keeping a voice breaks that model: the same byte must reach different MOD notes.  Credits' FM2
+does it twenty times, and the whole medley moves voices between octaves; matched on source bytes
+it audited at 8 % of notes right.  With `range_space: chip` (song-level) the key is the real pitch
+— byte + pitch_offset + accumulated `$E9`, PSG through the driver's frequency table
+(`sfx.tables.psg_index_semitone`) — so `low`/`high` are chip pitches, `synth_root` is simply `low`,
+and a voice spanning more than three octaves gets one entry per window.  Two voices sharing one
+sample keep separate entries: `root_e = root_head + (low_e − low_head)`.  `configs/13_credits.yaml`
+is generated this way (1623 of 1635 notes right; the 12 left are detune scoops the converter does
+not do, and PSG notes transposed below the table).  Source space is still what every other config
+uses.
 
 ## voice_map Routing
 

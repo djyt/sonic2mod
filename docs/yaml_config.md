@@ -25,6 +25,9 @@ target_bpm: 150        # BPM (32–255), written as Fxx effect on row 0
 target_speed: 6        # Ticks per row (1–31), ProTracker default is 6
 ticks_per_row: 6       # SMPS ticks per MOD row (controls time scaling)
 auto_bpm: true         # Derive BPM from SMPS tempo header (overrides target_bpm)
+range_space: source    # what voice_map/psg_voice_map low/high match: "source" (the note byte, default)
+                       # or "chip" (the real pitch after pitch_offset + smpsChangeTransposition —
+                       # for songs that change key with $E9; see docs/pipeline.md § range_space)
 region: ntsc           # Console region: "ntsc" (60 Hz) or "pal" (50 Hz)
 
 # MOD format

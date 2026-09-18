@@ -373,6 +373,12 @@ class ConversionConfig:
     num_mod_channels: int = 10
     auto_bpm: bool = False        # Derive BPM from SMPS tempo header
     region: str = "ntsc"          # "ntsc" (60 Hz) or "pal" (50 Hz)
+    # What voice_map / psg_voice_map low/high (and root's anchor) are compared with:
+    #   "source" - the SMPS note byte (default; what every config before Credits uses)
+    #   "chip"   - the real pitch the chip plays: byte + pitch_offset + smpsChangeTransposition
+    #              (PSG: + 3 octaves, the table's nC0 being C3).  Needed when a song changes key
+    #              with $E9 while keeping a voice: the same byte must then reach different notes.
+    range_space: str = "source"
     channels: list = field(default_factory=list)       # list of ChannelConfig
     dac_samples: list = field(default_factory=list)    # list of DacSampleConfig
     sample_list: list | None = None                 # [inst_num, filename, volume, finetune]
@@ -460,6 +466,7 @@ class ConversionConfig:
             num_mod_channels=data.get('num_mod_channels', 10),
             auto_bpm=data.get('auto_bpm', False),
             region=data.get('region', 'ntsc'),
+            range_space=str(data.get('range_space', 'source')),
             samples_dir=data.get('samples_dir', './samples/'),
             max_patterns=data.get('max_patterns', 127),
         )

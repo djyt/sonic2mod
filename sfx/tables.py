@@ -135,6 +135,26 @@ def psg_note_index(note_value: int, transpose: int) -> int:
     return ((note_value - 0x81) + transpose) & 0x7F
 
 
+def psg_index_semitone(index: int) -> int:
+    """Real pitch (SMPS semitone, C0 = 0) the PSG plays for a table index.
+
+    Entries 0-68 are chromatic from C3 (index 0 = 851 = 131 Hz), so the pitch is index + 36.
+    The driver masks the index to 7 bits and reads on past the table, so a note transposed
+    below C3 (Credits PSG1: indices 125-127) or above nMaxPSG plays whatever word sits there -
+    Marble Zone's five "data bug" notes, and Credits' G#3 where A2 was written.  Those come out
+    of PSG_FREQUENCIES_EXTENDED like any other divider (0 clocked as 1).
+    """
+    import math
+    if 0 <= index < 69:
+        return 36 + index
+    n = PSG_FREQUENCIES_EXTENDED[index & 0x7F]
+    if n > 1:
+        return round(57 + 12 * math.log2((3_579_545 / (32.0 * n)) / 440.0))
+    # The table is followed by code, not data; where the extrapolated table has nothing usable
+    # the written pitch is the best guess (the audit will show what the hardware really did).
+    return 36 + index
+
+
 # ---------------------------------------------------------------------------
 # PSG volume envelopes — :43-60
 # ---------------------------------------------------------------------------

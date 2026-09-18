@@ -313,6 +313,11 @@ def main():
                 f"modifier [bold]{info['modifier']}[/bold] → BPM [bold]{info['bpm']}[/bold] "
                 f"[dim](Fxx; exact {info['exact_bpm']:.2f})[/dim]"
             )
+        elif info['type'] == 'tempo_div_change':
+            detail_lines.append(
+                f"duration divider [bold]{info['divider']}[/bold] for every track from row "
+                f"[bold]{info['row']}[/bold] [dim](smpsSetTempoDiv; notes re-timed)[/dim]"
+            )
         elif info['type'] == 'vibrato_rate_limit':
             detail_lines.append(
                 f"vibrato [bold]{info['channel']}[/bold]  hardware cycle "
@@ -481,14 +486,6 @@ def _render_warning(w: dict):
         console.print(
             "     [green]Fix:[/green] a larger [cyan]ticks_per_row:[/cyan] (or smaller [cyan]target_speed:[/cyan]) "
             "lowers every segment's BPM in proportion."
-        )
-
-    elif wtype == 'tempo_div_unsupported':
-        console.print(
-            f"\n  [bold yellow]![/bold yellow]  "
-            f"[bold]{channel}[/bold]  "
-            "[yellow]smpsSetTempoDiv (global duration divider) is parsed but not applied — "
-            "note lengths after it are wrong[/yellow]"
         )
 
     elif wtype == 'pattern_overflow':

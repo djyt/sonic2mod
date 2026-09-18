@@ -1,32 +1,36 @@
 #!/usr/bin/env python3
 """Release helper — bumps version in pyproject.toml, commits, and tags.
 
+The version lives in pyproject.toml only; convert.py / analyze.py / sonic2wav.py read it from
+there through core.version (so a checkout never shows a stale installed-metadata number).
+
 Usage:
-    python tools/release.py patch          # 0.1.0 → 0.1.1
-    python tools/release.py minor          # 0.1.0 → 0.2.0
-    python tools/release.py major          # 0.1.0 → 1.0.0
+    python tools/release.py patch          # X.Y.Z → X.Y.Z+1
+    python tools/release.py minor          # X.Y.Z → X.Y+1.0
+    python tools/release.py major          # X.Y.Z → X+1.0.0
     python tools/release.py 1.2.3          # set explicit version
     python tools/release.py patch --dry-run
 """
 
 import argparse
+import contextlib
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PYPROJECT = ROOT / "pyproject.toml"
+sys.path.insert(0, str(ROOT))
+
+from core.version import PYPROJECT, get_version  # the same reader the CLIs use
 
 VERSION_RE = re.compile(r'^(version\s*=\s*")(\d+\.\d+\.\d+)(")', re.MULTILINE)
 
 
 def current_version() -> str:
-    text = PYPROJECT.read_text(encoding="utf-8")
-    m = VERSION_RE.search(text)
-    if not m:
+    if not PYPROJECT.exists() or not VERSION_RE.search(PYPROJECT.read_text(encoding="utf-8")):
         sys.exit("Could not find version in pyproject.toml")
-    return m.group(2)
+    return get_version()
 
 
 def bump(version: str, part: str) -> str:
@@ -56,6 +60,9 @@ def main() -> None:
     parser.add_argument("part", help="major | minor | patch | X.Y.Z")
     parser.add_argument("--dry-run", action="store_true", help="Show what would happen without making changes")
     args = parser.parse_args()
+    # Windows consoles default to cp1252 and choke on the arrow below.
+    with contextlib.suppress(Exception):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     old = current_version()
     new = bump(old, args.part)

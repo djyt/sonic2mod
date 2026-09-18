@@ -6,7 +6,6 @@ Usage:
 """
 
 import argparse
-import importlib.metadata
 import io
 import os
 import sys
@@ -38,11 +37,7 @@ from core.smps_parser import SmpsParser
 console = Console(highlight=False, legacy_windows=False)
 
 
-def _get_version() -> str:
-    try:
-        return importlib.metadata.version("sonic2mod")
-    except importlib.metadata.PackageNotFoundError:
-        return "dev"
+from core.version import get_version as _get_version
 
 
 def _print_branding(version: str) -> None:
@@ -95,7 +90,7 @@ def main():
     parser.add_argument('config', nargs='?', help="YAML configuration file")
     parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
     parser.add_argument('--version', action='version',
-                        version=f"sonic2mod {importlib.metadata.version('sonic2mod')}")
+                        version=f"sonic2mod {_get_version()}")
 
     args = parser.parse_args()
 

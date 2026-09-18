@@ -11,7 +11,6 @@ Usage:
 """
 
 import argparse
-import importlib.metadata
 import io
 import os
 import sys
@@ -49,11 +48,7 @@ DEFAULT_OUT_DIR = os.path.join("output", "sfx")
 DEFAULT_OUT_DIR_8BIT = os.path.join("output", "sfx8")
 
 
-def _get_version() -> str:
-    try:
-        return importlib.metadata.version("sonic2mod")
-    except importlib.metadata.PackageNotFoundError:
-        return "dev"
+from core.version import get_version as _get_version
 
 
 def _print_branding(version: str) -> None:

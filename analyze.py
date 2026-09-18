@@ -8,7 +8,6 @@ Requires: pip install rich
 """
 
 import argparse
-import importlib.metadata
 import io
 import os
 import sys
@@ -49,11 +48,7 @@ from sfx.tables import PSG_FREQUENCIES_EXTENDED, psg_note_index
 console = Console(legacy_windows=False)
 
 
-def _get_version() -> str:
-    try:
-        return importlib.metadata.version("sonic2mod")
-    except importlib.metadata.PackageNotFoundError:
-        return "dev"
+from core.version import get_version as _get_version
 
 
 def _print_branding(version: str) -> None:
@@ -976,7 +971,7 @@ def main():
     parser.add_argument('song', help="Path to the .asm file")
     parser.add_argument('--config', '-c', help="Optional YAML config to diff against")
     parser.add_argument('--version', action='version',
-                        version=f"sonic2mod {importlib.metadata.version('sonic2mod')}")
+                        version=f"sonic2mod {_get_version()}")
     parser.add_argument('--region', choices=['ntsc', 'pal'], default='ntsc',
                         help="Console region for BPM derivation (default: ntsc)")
     parser.add_argument('--write', '-w', metavar='FILE',

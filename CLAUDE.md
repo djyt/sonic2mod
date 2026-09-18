@@ -45,6 +45,7 @@ sonic2mod/
     config.py        #   Per-song conversion config, YAML loading
     smps2mod.py      #   Conversion engine (IR → MOD)
     analysis.py      #   Analysis data model + analyze_song()
+    version.py       #   get_version(): pyproject.toml is the one place the version is written (installed metadata is only a fallback)
   configs/           # YAML config files per song
   configs/settings.yaml  # Global synthesis settings
   output/            # Generated .mod files

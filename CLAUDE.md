@@ -214,7 +214,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 
 | SMPS | Byte | MOD | Notes |
 |------|------|-----|-------|
-| `smpsAlterVol` | $E6 | `Cxx` | Cumulative volume → set volume |
+| `smpsAlterVol` | $E6 | `Cxx` | FM TL offset (0.75 dB/step); `Cxx` only where a note's level differs from its instrument's baked level |
 | `smpsModSet` | $F0 | `4xy` | Vibrato; steps halved in hardware |
 | `smpsModOn` | $F1 | `4xy` | Re-activates stored mod params |
 | `smpsModOff` | $F4 | (clear) | No MOD output |
@@ -223,7 +223,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsSetvoice` | $EF | (routing) | Updates voice_map instrument lookup |
 | `smpsChangeTransposition` | $E9 | (pitch) | Adds to total_transpose |
 | `smpsDetune`/`smpsAlterNote` | $E1 | **none** | FNUM offset (~10 cents); NOT semitones, NOT applied to pitch |
-| `smpsPan` | $E0 | ignored | MOD panning is channel-based |
+| `smpsPan` | $E0 | (level) | No MOD panning, but hard-panned FM notes count `fm_pan_law_db` (3 dB) quieter |
 | `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
 | `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
 | `smpsPSGAlterVol` | $EC | `Cxx` | Same path as smpsAlterVol; delta adds to current_volume |
@@ -250,6 +250,8 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 6. **FM5 falls through into FM1 data** — parser does not stop at label boundaries; FM5 typically lacks `smpsStop` and shares FM1's note data (intentional chorus/detune design).
 
 7. **`smpsNoteFill` and `smpsModSet` wait/speed count V-int frames, not ticks** — `TempoWait` only delays `DurationTimeout`. `SmpsToModConverter._ticks_per_frame` = `(mod−1)/mod` converts them (done for fill + wait; the vibrato *rate* formula is still open). Neither is multiplied by the tempo divider. Cuts are placed to the MOD tick on whichever row they fall (`ECx` in-row, `C00` on a boundary); a fill that outlasts the note emits nothing. A fill equal to the duration byte DOES fire when the tempo modifier is > 1.
+
+7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 
 8. **smpsModSet step count halved in hardware** — driver does `lsr.b #1` before storing. Value 16 → 8 actual oscillation steps.
 

@@ -61,9 +61,8 @@ channels:
 #
 # Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements (L/R power) against
 # reference/vgz/02 - Green Hill Zone.vgz, relative to FM2 = inst 3/4 at 32; see docs/audits/02_ghz_audit.md.
-# FM4 (panned left) and FM5 (panned right) read ~3 dB hot on the instruments they share with the
-# centred FM3 (11/13/14): a centred YM2612 channel drives both speakers, every Amiga channel one.
-# That, and the 0.75 dB/step smpsAlterVol law, is converter work (todo item 4), not a volume here.
+# With fm_volume_scaling: baked a volume here is the level of the instrument's MOST COMMON
+# (channel TL, pan) combination; the converter adds Cxx only for notes at any other level.
 sample_list:
   # --- percussion ---
   - [1,  "kick.raw",        64, 0]
@@ -75,17 +74,17 @@ sample_list:
   # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
   - [5,  "ghz_v02.raw",     32, 0]
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
-  - [6,  "ghz_v04.raw",     32, 0]
+  - [6,  "ghz_v04.raw",     15, 0] # VGZ: +6.7 dB at 32
   - [8,  "ghz_v04.raw",     25, 1] # Same sample, finetune +1 (~+12.5 cents). VGZ: FM5 (panned right) +2 dB at 32
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
   - [10, "ghz_v05.raw",     26, 0]
-  - [11, "ghz_v05_lo.raw",  16, 0]
+  - [11, "ghz_v05_lo.raw",   9, 0] # VGZ: +4.6 dB at 16 (FM3/FM4/FM5 agree to 0.2 dB)
   # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
   - [12, "ghz_v06.raw",     64, 0]
   # --- voice $07: bridge voice (FM1/FM3/FM4) ---
-  - [13, "ghz_v07.raw",     32, 0]
+  - [13, "ghz_v07.raw",     25, 0] # VGZ: +2.1 dB at 32
   # --- voice $08: bright synth (FM3/FM4/FM5 main) ---
-  - [14, "ghz_v08.raw",     32, 0]
+  - [14, "ghz_v08.raw",     23, 0] # VGZ: +2.9 dB at 32 (FM3/FM4/FM5 agree to 0.1 dB)
   - [15, "ghz_v08_hi.raw",  32, 0]
   # --- PSG White Noise ---
   - [16, "psg_noise.raw",   14, 0] # VGZ: +6.9 dB at 32

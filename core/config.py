@@ -240,7 +240,29 @@ class SynthesisSettings:
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
     headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
     carrier_balance: bool = True      # Add extra TL per carrier count (normalises multi-carrier algos)
-    fm_volume_scaling: bool = True    # Apply smpsHeaderFM TL offset + logarithmic smpsAlterVol scale
+    # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
+    fm_volume_scaling: bool | str = "baked"
+    fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
+
+    @property
+    def fm_volume_mode(self) -> str:
+        """How FM channel levels (smpsHeaderFM volume, smpsAlterVol, smpsPan) reach the MOD.
+
+        "baked"    — per instrument, the level most of its notes play at needs no command (it is
+                     what the sample_list volume stands for); any other level gets
+                     Cxx = volume × 10^(ΔdB/20), ΔdB from the chip's 0.75 dB/TL step and the pan
+                     law.  Cxx only on the minority channel / after smpsAlterVol.  Default.
+        "absolute" — (legacy `true`) header TL + log law as an absolute volume: Cxx on every note.
+        "off"      — (legacy `false`) header TL ignored, one smpsAlterVol step = one linear MOD
+                     volume unit.  Wrong by up to several dB on faded notes; kept for comparison.
+        """
+        v = self.fm_volume_scaling
+        if isinstance(v, str):
+            v = v.strip().lower()
+            if v in ("baked", "absolute", "off"):
+                return v
+            raise ValueError(f"fm_volume_scaling must be baked, true or false (got '{self.fm_volume_scaling}')")
+        return "absolute" if v else "off"
 
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
@@ -262,7 +284,8 @@ class SynthesisSettings:
             normalize_samples=s.get("normalize_samples", True),
             headroom_db=s.get("headroom_db", 6.0),
             carrier_balance=s.get("carrier_balance", True),
-            fm_volume_scaling=data.get("fm_volume_scaling", True),
+            fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
+            fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
         )
 
 

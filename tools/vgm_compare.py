@@ -920,39 +920,59 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
         print()
 
     # ---- onset timing ----
-    # Both sides use the same audio onset detector so slow instrument attacks cancel out.
-    # For channels with key-on events the VGM detector hit is anchored to each event.
-    print("Onset timing (VGM onset -> nearest MOD onset, MOD shifted by the alignment offset)")
+    # Channels with key-on events: the chip's key-ons against the MOD's note rows, one to one.  An
+    # audio onset detector cannot do this on sustained channels - a re-keyed note over a ringing
+    # one raises no envelope edge, and a MOD re-trigger where the hardware ties adds one (GHZ read
+    # 28-143 unmatched per channel with every note in place).  The DAC has no key-on (its rows are
+    # PCM seeks), so it keeps the detector, the same one on both sides so slow attacks cancel.
+    # The window follows the deviation of the notes matched so far: a MOD BPM is a whole number, so
+    # a song can run a fraction of a percent off the driver's tempo (Special Stage +150 ms in 33 s)
+    # and every late note would otherwise count as lost.  That drift is reported on its own.
+    print("Onset timing (chip key-on -> MOD note row, one to one within 40 ms of the running deviation;"
+          " DAC: detected audio onsets)")
     for n in names:
-        thr = -50 if n == "NOISE" else -40
-        vdet = onsets(vgm[n], thresh_db=thr)
-        if n in per_ch:
-            vo = []
-            for r in per_ch[n]:
-                t = r[0] / 1000.0
-                hits = [x for x in vdet if t - 0.005 <= x <= t + 0.06]
-                vo.append(hits[0] if hits else t)
+        symbolic = n in note_times and n != "DAC"
+        extra = drift_ms = None
+        if symbolic:
+            vo = [t for t in note_times[n] if t + offset < mod_end - 0.15]
+            mo = [e[0] - offset for e in events_by_chan.get(chan_map[src_of[n]], [])]
+            devs, missing, extra, i, j = [], 0, 0, 0, 0
+            # Start the running deviation where the song starts: on a drifting song the global
+            # alignment is a mid-song compromise, so the first notes sit well off zero.
+            run = statistics.median([min(((m - t) * 1000 for m in mo), key=abs) for t in vo[:5]]) if vo and mo else 0.0
+            while i < len(vo):
+                d = (mo[j] - vo[i]) * 1000 if j < len(mo) else float("inf")
+                if abs(d - run) <= 40:
+                    devs.append(d)
+                    run = 0.5 * run + 0.5 * d
+                    i, j = i + 1, j + 1
+                elif d < run:                     # a MOD note the chip has no key-on for
+                    extra, j = extra + 1, j + 1
+                else:
+                    missing, i = missing + 1, i + 1
+            extra += len(mo) - j
+            if len(devs) >= 10:
+                drift_ms = statistics.mean(devs[-5:]) - statistics.mean(devs[:5])
         else:
-            vo = vdet
-        mo = [t - offset for t in onsets(mod[n], thresh_db=thr)]
-        devs, missing = [], 0
-        for t in vo:
-            if not mo:
-                missing += 1
-                continue
-            j = min(range(len(mo)), key=lambda k: abs(mo[k] - t))
-            d = (mo[j] - t) * 1000
-            if abs(d) > 40:
-                missing += 1
-            else:
-                devs.append(d)
+            thr = -50 if n == "NOISE" else -40
+            vo = onsets(vgm[n], thresh_db=thr)
+            mo = [t - offset for t in onsets(mod[n], thresh_db=thr)]
+            devs, missing = [], 0
+            for t in vo:
+                d = min(((m - t) * 1000 for m in mo), key=abs, default=float("inf"))
+                if abs(d) > 40:
+                    missing += 1
+                else:
+                    devs.append(d)
         if devs:
             print(f"  {n:<6} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; matched {len(devs)}: "
                   f"median {statistics.median(devs):+.0f} ms, worst {max(devs, key=abs):+.0f} ms; "
-                  f"unmatched {missing}")
+                  f"unmatched {missing}" + (f", MOD-only {extra}" if extra else "")
+                  + (f", drift {drift_ms:+.0f} ms" if drift_ms is not None and abs(drift_ms) >= 20 else ""))
         else:
             print(f"  {n:<6} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; none matched")
         res["channels"][n]["onsets"] = {
+            "method": "key-on" if symbolic else "audio", "mod_only": extra, "drift_ms": drift_ms,
             "ref": len(vo), "mod": len(mo), "matched": len(devs), "unmatched": missing,
             "median_ms": statistics.median(devs) if devs else None,
             "worst_ms": max(devs, key=abs) if devs else None,

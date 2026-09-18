@@ -239,7 +239,9 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsPSGvoice` | $F5 | (routing) | Looks up `psg_voice_map[label]` → new PSG instrument |
 | `smpsNop` | $E2 | ignored | No MOD equivalent |
 
-**Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).
+**Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).  A note that starts
+between rows takes `EDx` on the row it starts in when the slot is free (no `Cxx`, no cut inside the
+attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § Notes that start between rows.
 
 ## Critical Gotchas
 
@@ -258,6 +260,8 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 6. **FM5 falls through into FM1 data** — parser does not stop at label boundaries; FM5 typically lacks `smpsStop` and shares FM1's note data (intentional chorus/detune design).
 
 7. **`smpsNoteFill` and `smpsModSet` wait/speed count V-int frames, not ticks** — `TempoWait` only delays `DurationTimeout`. `SmpsToModConverter._ticks_per_frame` = `(mod−1)/mod` converts them (fill, wait, and the vibrato cycle). None is multiplied by the tempo divider. Cuts are placed to the MOD tick on whichever row they fall (`ECx` in-row, `C00` on a boundary); a fill that outlasts the note emits nothing. A fill equal to the duration byte DOES fire when the tempo modifier is > 1.
+
+7a. **Driver ticks are unevenly spaced** — with tempo modifier *m*, `TempoWait` holds every *m*-th frame, so tick *k* falls on frame `k + k // (m−1)`. GHZ's odd ticks are 16.7 ms after the even ones, not 25 ms. `_note_cell` measures `EDx` delays in frames for that reason. Two note-ons never share a cell: a 1-tick grace note keeps its row and the note it slides into takes the next one.
 
 7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 

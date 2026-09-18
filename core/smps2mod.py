@@ -819,6 +819,44 @@ class SmpsToModConverter:
             for _ev in channel.events:
                 if _ev.is_note and not _ev.note.is_rest:
                     _note_on_positions.add(self._tick_to_pattern_row(_ev.tick_position))
+                    _note_on_positions.add(divmod(int(_ev.tick_position // self._effective_tpr), 64))
+
+        last_note_cell: tuple[int, int] | None = None   # where this channel's previous note-on went
+
+        def _note_cell(tick: int, slot_free: bool, cut_tick: float | None) -> tuple[int, int, int]:
+            """(pattern, row, EDx delay in MOD ticks) for a note-on at `tick`.
+
+            A note that starts between two rows goes on the row it starts in, delayed by `EDx`,
+            instead of being rounded to the nearer row (up to half a row early or late, and —
+            Python rounds halves to even — early and late on alternate notes).  The delay needs
+            the cell's one effect slot, so it is only used when the slot is free: no `Cxx` due
+            on the attack row, and no cut (`cut_tick`) falling inside it.  Otherwise the note is
+            rounded as before.
+
+            Two note-ons cannot share a cell.  When the row already holds this channel's
+            previous note-on (a 1-tick grace note and the note it slides into), the later one
+            takes the next row undelayed: late by less than a row instead of erasing the grace.
+            """
+            tpr, speed = self._effective_tpr, self.config.target_speed
+            row_total = int(tick // tpr)
+            # The delay is measured in FRAMES, because driver ticks are not evenly spaced: with
+            # tempo modifier m, TempoWait holds every m-th frame, so tick k falls on frame
+            # k + k // (m - 1).  GHZ (m = 3, 2 ticks per row): an odd tick is 1 frame = 16.7 ms
+            # after its row starts, not the 25 ms an average tick lasts - exactly ED1 at speed 3.
+            # A row is tpr / _ticks_per_frame frames and `speed` MOD ticks long.
+            m = self.song.header.tempo_modifier
+            held = (lambda k: int(k) // (m - 1)) if m > 1 and not self.song.header.is_sfx else (lambda k: 0)
+            frames = (tick + held(tick)) - (row_total * tpr + held(row_total * tpr))
+            delay = int(frames * speed * self._ticks_per_frame / tpr + 0.5)
+            if delay >= speed:
+                row_total, delay = row_total + 1, 0
+            if delay and cut_tick is not None and round(cut_tick * speed / tpr) < (row_total + 1) * speed:
+                slot_free = False
+            if delay and not slot_free:
+                row_total, delay = round(tick / tpr), 0
+            if divmod(row_total, 64) == last_note_cell:
+                row_total, delay = row_total + 1, 0
+            return row_total // 64, row_total % 64, delay
 
         for event in channel.events:
             if event.is_effect:
@@ -927,8 +965,17 @@ class SmpsToModConverter:
                     self.mod.add_patterns(1)
 
                 self._set_cursor(pattern, mod_chan, row)
+                note_delay = 0
 
                 if is_dac:
+                    # DAC notes carry no other effect, so the slot is always free for EDx.
+                    pattern, row, note_delay = _note_cell(tick, True, None)
+                    if pattern >= self.config.max_patterns:
+                        break
+                    while pattern >= len(self.mod.patterns):
+                        self.mod.add_patterns(1)
+                    self._set_cursor(pattern, mod_chan, row)
+                    last_note_cell = (pattern, row)
                     # DAC: look up instrument and note from dac_samples config
                     dac_cfg = dac_map.get(note.dac_name)
                     if dac_cfg:
@@ -938,6 +985,8 @@ class SmpsToModConverter:
                     else:
                         # Fallback: use default instrument and C3
                         self.mod.set_note(ModNote.C3, instrument)
+                    if note_delay:
+                        self.mod.set_effect(0xE, 0xD0 | note_delay)
                 else:
                     # Melodic: place note with optional voice_map override.
                     #
@@ -1056,6 +1105,26 @@ class SmpsToModConverter:
                                 warn_fn=_warn_psg,
                                 extra_ctx=_psg_label)
 
+                    # Where the note goes (see _note_cell): on its own row with an EDx delay when
+                    # it starts between rows and the effect slot is free.  The slot is needed
+                    # for Cxx when this note's level differs from the instrument's, and for ECx
+                    # when the note is cut inside the attack row (note fill; PSG notes also end
+                    # at their duration).
+                    _fill_t = note_fill * self._ticks_per_frame
+                    _cut_tick = None
+                    if note_fill > 0 and _fill_t < note.duration:
+                        _cut_tick = tick + _fill_t
+                    elif is_psg:
+                        _cut_tick = tick + note.duration
+                    pattern, row, note_delay = _note_cell(
+                        tick, _emit_volume(final_instrument) == _sample_vol_map.get(final_instrument, 64), _cut_tick)
+                    if pattern >= self.config.max_patterns:
+                        break
+                    while pattern >= len(self.mod.patterns):
+                        self.mod.add_patterns(1)
+                    self._set_cursor(pattern, mod_chan, row)
+                    last_note_cell = (pattern, row)
+
                     self.mod.set_note(final_note, final_instrument)
 
                     # Note fill: silence the channel when the driver fires
@@ -1071,7 +1140,8 @@ class SmpsToModConverter:
                         # Work in absolute MOD ticks (rows × speed) so the cut keeps its
                         # sub-row position: a whole row → C00 on that row, otherwise ECx.
                         speed = self.config.target_speed
-                        note_abs = (pattern * 64 + row) * speed
+                        row_abs = (pattern * 64 + row) * speed
+                        note_abs = row_abs + note_delay
                         next_pat, next_row = self._tick_to_pattern_row(tick + note.duration)
                         next_abs = (next_pat * 64 + next_row) * speed
                         fill_abs = max(note_abs + 1,
@@ -1079,8 +1149,8 @@ class SmpsToModConverter:
                         # Effect priority: volume beats note cut.  If the attack row needs its
                         # slot for Cxx, the cut moves to the start of the next row instead.
                         _sv = _sample_vol_map.get(final_instrument, 64)
-                        if fill_abs < note_abs + speed and _emit_volume(final_instrument) != _sv:
-                            fill_abs = note_abs + speed
+                        if fill_abs < row_abs + speed and _emit_volume(final_instrument) != _sv:
+                            fill_abs = row_abs + speed
                         fill_row_total, fill_sub = divmod(fill_abs, speed)
                         # At or past the row of the next event, the next note / rest takes over.
                         if fill_abs < next_abs and fill_row_total // 64 < self.config.max_patterns:
@@ -1122,6 +1192,15 @@ class SmpsToModConverter:
                             self._set_cursor(cut_pat, mod_chan, cut_row)
                             self.mod.set_effect(0xC, 0)
                             self._set_cursor(pattern, mod_chan, row)
+
+                    # A delayed note spends its slot on EDx (Cxx / in-row ECx were ruled out
+                    # by _note_cell; an attack-row 4xy is given up — the later rows carry it).
+                    if note_delay:
+                        if effect_slot_used:          # cannot happen; keep the cut if it does
+                            note_delay = 0
+                        else:
+                            self.mod.set_effect(0xE, 0xD0 | note_delay)
+                            effect_slot_used = True
 
                     # Determine effective vibrato: per-entry override takes priority.
                     _vib_override = None

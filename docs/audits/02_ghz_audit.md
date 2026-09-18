@@ -120,7 +120,11 @@ to one number per instrument — 5: −0.6…−2.5, 6: +6.7, 8: −0.1, 10: ±0
 most notes play at, `Cxx` on the rest (GHZ: 100 FM notes carry one, down from 308) — and costs
 no samples.
 
-### Grace notes (todo item 3, plus two alternatives)
+### Grace notes — fixed 2026-09-18 (todo item 3)
+
+Done with `EDx` measured in frames plus a rule that two note-ons never share a cell (the grace
+keeps its row, the slide target takes the next): 0 key-ons without a MOD note row on every
+channel.  See `docs/pipeline.md` § Notes that start between rows.  The options weighed at the time:
 
 `EDx` alone does not solve GHZ: the grace and the main note are one tick apart, and with
 `ticks_per_row: 2` they share a row half of the time.  Options, in order of fidelity:

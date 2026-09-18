@@ -189,7 +189,9 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
                 root, synth = inst[ins]
                 f = (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
                      * 2 ** (finetune.get(ins, 0) / 96))
-                out[c].append((now, f, ins))
+                # EDx: the note starts x MOD ticks into the row
+                late = (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
+                out[c].append((now + late, f, ins))
         now += speed * 2.5 / bpm
         if jump is not None:
             if jump <= posi:                          # the song loop
@@ -226,8 +228,11 @@ def auto_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]], cha
         for c, t in starts:
             g = grid.get(c)
             if g:
+                # Closer counts for more: notes delayed by EDx sit a few ms off the rest (a MOD
+                # tick is not a driver tick), and a plain count ties over a 20 ms range of lags,
+                # leaving the on-grid majority up to 10 ms out.
                 q = round(t / step) + k
-                hits += (q in g) or (q - 1 in g) or (q + 1 in g) or (q - 2 in g) or (q + 2 in g)
+                hits += 3 if q in g else 2 if (q - 1 in g or q + 1 in g) else 1 if (q - 2 in g or q + 2 in g) else 0
         if hits > best or (hits == best and abs(k) < abs(best_lag / step)):
             best, best_lag = hits, k * step
     return best_lag

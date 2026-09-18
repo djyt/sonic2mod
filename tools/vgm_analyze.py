@@ -176,6 +176,10 @@ def _parse_vgm(
 ) -> tuple[list[tuple], dict[str, list[float]], dict[str, list[float]]]:
     """Parse VGM binary data and return a list of key-on event rows.
 
+    An FM row is a key-on that starts a note: the driver also writes key-on for a tie (it only
+    skips the key-OFF under smpsNoAttack), and that is not a row unless the pitch moved by more
+    than ``psg_mod_cents``.
+
     The SN76489 has no key-on, so a PSG tone row starts when the channel becomes audible or when
     its period moves more than ``psg_mod_cents`` away from the period the current note started on.
     Smaller moves are the driver's modulation (smpsModSet rewrites the divider every few frames)
@@ -212,6 +216,11 @@ def _parse_vgm(
     # Per-channel FM state: bank 0 = FM1-3, bank 1 = FM4-6
     fnum_lo: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
     fnum_hi: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
+    # Key state, and the frequency word the sounding note was keyed on with.  The Sonic 1 driver's
+    # FMNoteOn writes key-on unconditionally; under smpsNoAttack only the key-OFF is skipped, so a
+    # tie (`nA5, $10, smpsNoAttack, $3B`) logs a second key-on that the chip ignores.
+    fm_keyed: list[list[bool]] = [[False] * 3, [False] * 3]
+    fm_keyed_hz: list[list[float]] = [[0.0] * 3, [0.0] * 3]
 
     # Per-channel PSG state
     psg_vol       = [0xF, 0xF, 0xF, 0xF]  # 4-bit attenuation; 0xF = silent
@@ -333,13 +342,22 @@ def _parse_vgm(
                 op_mask = (val >> 4) & 0x0F
                 if ch_raw == 3:
                     continue   # unused slot
-                if op_mask == 0:
-                    continue   # key-off, not key-on
                 # Map raw ch field → (bank, ch_idx)
-                if ch_raw >= 4:
-                    _emit_fm_keyon(1, ch_raw - 4)
-                else:
-                    _emit_fm_keyon(0, ch_raw)
+                kb, kc = (1, ch_raw - 4) if ch_raw >= 4 else (0, ch_raw)
+                if op_mask == 0:
+                    fm_keyed[kb][kc] = False
+                    continue   # key-off, not key-on
+                # A key-on while already keyed on re-attacks nothing.  It is still a note when
+                # the pitch moved to another note (a legato slide); within psg_mod_cents of where
+                # the note was keyed on it is a tie, or a tie with a new smpsDetune (Scrap Brain
+                # FM4 scoops every phrase start up by 36 cents that way).
+                hz = _fnum_to_hz(((fnum_hi[kb][kc] & 7) << 8) | fnum_lo[kb][kc], (fnum_hi[kb][kc] >> 3) & 7, fm_clock)
+                was = fm_keyed_hz[kb][kc]
+                if (fm_keyed[kb][kc] and hz > 0 and was > 0
+                        and abs(1200.0 * math.log2(hz / was)) <= max(psg_mod_cents, 1e-9)):
+                    continue
+                fm_keyed[kb][kc], fm_keyed_hz[kb][kc] = True, hz
+                _emit_fm_keyon(kb, kc)
 
         elif cmd == 0x52 and chip not in ('fm', 'all'):
             # Skip FM write (2 bytes) when not analyzing FM

@@ -6,7 +6,13 @@ timing, and effects.
 
 import dataclasses
 
-from .config import ChannelConfig, ConversionConfig, PsgSynthesisSettings, SynthesisSettings
+from .config import (
+    ChannelConfig,
+    ConversionConfig,
+    PsgSynthesisSettings,
+    SynthesisSettings,
+    rate3_synth_root_issues,
+)
 from .mod import ModFile, ModSample
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import (
@@ -234,6 +240,9 @@ class SmpsToModConverter:
     def convert(self):
         """Main entry point. Returns a ModFile."""
         self.mod.set_name(self.config.name)
+
+        for issue in rate3_synth_root_issues(self.config):
+            self._add_warning({'type': 'rate3_synth_root', 'extra_ctx': issue['context'], **issue})
 
         # Collect PSG instrument numbers that will be synthesized so disk loading
         # can skip them (avoids spurious "file not found" warnings).

@@ -113,7 +113,8 @@ over it.
 
 Helpers shared by the two synthesis pipelines: `to_mono`, `trim_trailing_silence`, `peak`,
 `to_int8(mono, scale)`, `normalize_int8(mono, context)`, and `write_raw16` / `int8_to_raw16`
-for the smoke tests' Audacity dumps.
+for the smoke tests' Audacity dumps.  They take any int sequence — the PSG path hands them
+lists, the FM path the `array('i')` its C batch helper returns.
 
 ### core/mod.py
 

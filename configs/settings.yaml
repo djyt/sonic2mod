@@ -13,6 +13,9 @@ fm_synthesis:
   normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)
   headroom_db: 6.0          # base headroom below clip applied to every carrier (dB); 6 dB ≈ 8 TL steps
   carrier_balance: true     # add extra TL per carrier count so alg 4/5/6/7 don't clip harder than alg 0-3
+  threads: normal           # FM instruments render in parallel, one per thread: "normal" = CPU cores - 1
+                            # (leaves one for the rest of the machine), "max" = every core, 1 = one at a
+                            # time, or a number.  The MOD is byte-identical whatever the value.
 
 psg_synthesis:
   enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation

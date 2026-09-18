@@ -26,7 +26,7 @@ from pathlib import Path
 _HERE = Path(__file__).parent
 sys.path.insert(0, str(_HERE.parent))
 
-from ym2612.wrapper import OPN2
+from ym2612.wrapper import OPN2, box_downsample
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -129,7 +129,78 @@ def _debug_samples(label: str, samples: list, n: int = 20) -> None:
     print(f"    first {n}: {samples[:n]}")
 
 
+def check_c_helpers() -> None:
+    """The C mono render and box downsample must equal their Python definitions exactly.
+
+    The conversion pipeline renders through OPN2_RenderBatchMono and PCM_BoxDownsample
+    (ym3438_batch.c); core.pcm.to_mono and renderer._resample_py are what they reproduce.
+    A mismatch here means every FM sample in every MOD would change.
+    """
+    import array
+
+    from core.pcm import to_mono
+    from ym2612.renderer import _resample_py
+
+    n = 20_000
+    stereo = OPN2(mode="ym2612")
+    _program_voice(stereo)
+    _set_note(stereo)
+    stereo.key_on(CHANNEL)
+    ref = to_mono(stereo.render_samples(n))
+    stereo.key_off(CHANNEL)
+    ref += to_mono(stereo.render_samples(n // 4))
+
+    mono = OPN2(mode="ym2612")
+    _program_voice(mono)
+    _set_note(mono)
+    mono.key_on(CHANNEL)
+    got = mono.render_mono(n)
+    mono.key_off(CHANNEL)
+    got += mono.render_mono(n // 4)
+
+    if list(got) != ref:
+        print("FAIL: OPN2_RenderBatchMono differs from to_mono(render_samples)")
+        sys.exit(1)
+    if max(abs(v) for v in got) == 0:
+        print("FAIL: check_c_helpers rendered silence — nothing was compared")
+        sys.exit(1)
+
+    for to_rate in (8287, 16574, 7093, 53000):
+        if list(box_downsample(got, RATE, to_rate)) != _resample_py(ref, RATE, to_rate):
+            print(f"FAIL: PCM_BoxDownsample differs from _resample_py at {to_rate} Hz")
+            sys.exit(1)
+    # Negative sums exercise the floor division; an empty input must give an empty output.
+    neg = array.array('i', [-3, -4, -5, 7, -1, 0, 2, -9, 11, -13] * 500)
+    if list(box_downsample(neg, RATE, 8287)) != _resample_py(list(neg), RATE, 8287):
+        print("FAIL: PCM_BoxDownsample floor division differs on negative sums")
+        sys.exit(1)
+    if list(box_downsample(array.array('i'), RATE, 8287)) != []:
+        print("FAIL: PCM_BoxDownsample of an empty array is not empty")
+        sys.exit(1)
+    print("C helpers (mono render, box downsample) match the Python definitions.")
+
+    # Both chip modes must render silence as exactly 0 (the DC the helpers subtract is
+    # per mode), and reset() must keep the instance's mode: the renderer relies on both.
+    for mode in ("ym2612", "ym3438"):
+        chip = OPN2(mode=mode)
+        chip.reset()
+        if chip.mode != mode:
+            print(f"FAIL: reset() changed the mode from {mode} to {chip.mode}")
+            sys.exit(1)
+        if set(chip.render_mono(200)) != {0} or set(chip.render_samples(200)) != {(0, 0)}:
+            print(f"FAIL: {mode} mode does not render silence as 0")
+            sys.exit(1)
+        _program_voice(chip)
+        _set_note(chip)
+        chip.key_on(CHANNEL)
+        if max(abs(v) for v in chip.render_mono(2000)) == 0:
+            print(f"FAIL: {mode} mode rendered a keyed-on note as silence")
+            sys.exit(1)
+    print("Both chip modes render silence as 0 and reset() keeps the mode.")
+
+
 def main() -> None:
+    check_c_helpers()
     out_path = Path(__file__).parent.parent / "output" / "validate_test.raw"
     out_path.parent.mkdir(exist_ok=True)
 

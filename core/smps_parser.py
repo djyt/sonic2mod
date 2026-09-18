@@ -683,6 +683,18 @@ class SmpsParser:
         if m:
             return SmpsEffect('smpsChanTempoDiv', [int(m.group(1), 16)])
 
+        # smpsSetTempoMod ($EA, cfSetTempo): new tempo modifier for EVERY track, and the
+        # TempoWait counter restarts.  The converter turns it into an Fxx BPM change.
+        m = re.match(r'smpsSetTempoMod\s+\$([0-9A-Fa-f]+)', line)
+        if m:
+            return SmpsEffect('smpsSetTempoMod', [int(m.group(1), 16)])
+
+        # smpsSetTempoDiv ($EB, cfSetTempoDividerAll): every track's duration divider.  Parsed
+        # so it is visible; not applied (Credits only).
+        m = re.match(r'smpsSetTempoDiv\s+\$([0-9A-Fa-f]+)', line)
+        if m:
+            return SmpsEffect('smpsSetTempoDiv', [int(m.group(1), 16)])
+
         return None
 
     def _parse_dcb_line(self, channel, line, tick, last_duration, no_attack_pending, is_dac,

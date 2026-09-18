@@ -385,6 +385,19 @@ With `speed = ticks_per_row` (both 6), the formula simplifies to:
 BPM = fps × (modifier - 1) × 2.5 / (modifier × divider)
 ```
 
+### Rounding, and choosing `target_speed`
+
+The MOD's BPM is a whole number.  When the formula does not land on one the song runs a fraction
+of a percent off the hardware: Special Stage at speed 3 is 98.4375 → 98 (−0.44 %, 139 ms behind
+over a 33 s pass).  `target_speed` changes how many MOD ticks a row has, not the row grid, so pick
+the speed that makes the BPM (nearly) whole — `convert.py` prints the error and the better speed,
+and the `analyze.py` skeleton chooses it (`core.config.bpm_rounding_options`).  Special Stage:
+speed 6 → 196.875 → 197 (+0.06 %); Star Light / Chaos Emerald: speed 4 → 250 exactly.
+
+Songs with `smpsSetTempoMod` (Drowning, Credits) get an `Fxx` at every change, each segment's BPM
+scaled from the header's; every segment must fit 32–255, which is why Drowning uses
+`ticks_per_row: 2` (75 → 135 BPM; one tick per row would need 270 at the end).
+
 ### Usage
 
 In YAML config:

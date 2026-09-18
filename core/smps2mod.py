@@ -4,6 +4,7 @@ Converts parsed SMPS song data into a MOD file with correct note placement,
 timing, and effects.
 """
 
+import bisect
 import dataclasses
 
 from .config import (
@@ -154,14 +155,15 @@ class SmpsToModConverter:
         frame count by this to place it on the converter's tick timeline.
 
         Region-independent (both clocks scale with fps).  SFX have no tempo modifier.
-        Mid-song smpsSetTempoMod (Credits, Drowning) is not tracked; the header value is used.
+        This is the HEADER value; mid-song smpsSetTempoMod is tracked in _tempo_segments -
+        use _tpf_at(tick) wherever the tick is known.
         """
         mod = self.song.header.tempo_modifier
         if self.song.header.is_sfx or mod <= 1:
             return 1.0
         return (mod - 1) / mod
 
-    def _vibrato_speed(self, mod_speed: int, steps: int, channel: str) -> int:
+    def _vibrato_speed(self, mod_speed: int, steps: int, channel: str, tick=0) -> int:
         """ProTracker 4xy speed nibble for an smpsModSet (speed, steps) pair; 0 = cannot be played.
 
         Driver (DoModulation, once per V-int frame): every `speed` frames the delta is added; when
@@ -181,14 +183,15 @@ class SmpsToModConverter:
         if rows_ticks < 1:
             return 0
         cycle_frames = 2 * (mod_speed or 256) * (steps + 1)
-        exact = 64 * self._effective_tpr / (rows_ticks * cycle_frames * self._ticks_per_frame)
+        tpf = self._tpf_at(tick)
+        exact = 64 * self._effective_tpr / (rows_ticks * cycle_frames * tpf)
         x = max(1, min(0xF, round(exact)))
         if exact > 15.5:
             # 4Fy is the fastest there is; say so once per channel and setting.
             key = (channel, mod_speed, steps)
             if key not in self._vib_rate_limited:
                 self._vib_rate_limited.add(key)
-                played = 64 * self._effective_tpr / (rows_ticks * 15 * self._ticks_per_frame)
+                played = 64 * self._effective_tpr / (rows_ticks * 15 * tpf)
                 self._infos.append({'type': 'vibrato_rate_limit', 'channel': channel,
                                     'wanted_cycle_frames': cycle_frames, 'played_cycle_frames': played})
         return x
@@ -219,6 +222,89 @@ class SmpsToModConverter:
             delta -= 0x100
         exact = period * (abs(delta) * steps / 2) / word / 2
         return 0 if exact < 0.35 else max(1, min(0xF, round(exact)))
+
+    # --- mid-song tempo changes (smpsSetTempoMod, $EA) --------------------------------------
+    def _collect_tempo_segments(self) -> list[tuple[int, int]]:
+        """[(start tick, tempo modifier)] in tick order, the header's value first.
+
+        cfSetTempo writes v_main_tempo for every track and restarts the TempoWait counter, so
+        from that tick on ticks run at fps*(m-1)/m with the hold pattern starting afresh.
+        Only the modifier changes here; the divider (smpsSetTempoDiv, $EB) is not applied.
+        """
+        segs = [(0, self.song.header.tempo_modifier)]
+        for ch in self.song.channels:
+            segs.extend((ev.tick_position, ev.effect.params[0]) for ev in ch.events
+                        if ev.is_effect and ev.effect.effect_type == 'smpsSetTempoMod')
+        segs.sort()
+        out: list[tuple[int, int]] = []
+        for t, m in segs:
+            if out and out[-1][0] == t:
+                out[-1] = (t, m)
+            elif not out or out[-1][1] != m:
+                out.append((t, m))
+        return out
+
+    def _segment_at(self, tick) -> tuple[int, int]:
+        """(start tick, tempo modifier) of the tempo segment `tick` falls in."""
+        segs = getattr(self, '_tempo_segments', None) or [(0, self.song.header.tempo_modifier)]
+        i = bisect.bisect_right([s[0] for s in segs], tick) - 1
+        return segs[max(i, 0)]
+
+    def _tpf(self, modifier: int) -> float:
+        """Duration ticks per V-int frame for a tempo modifier: (m - 1) / m (see _ticks_per_frame)."""
+        if self.song.header.is_sfx or modifier <= 1:
+            return 1.0
+        return (modifier - 1) / modifier
+
+    def _tpf_at(self, tick) -> float:
+        return self._tpf(self._segment_at(tick)[1])
+
+    def _bpm_for(self, modifier: int) -> int:
+        """MOD BPM for a tempo modifier: the song's BPM scaled by the change in tick rate."""
+        base = self._tpf(self.song.header.tempo_modifier)
+        return max(32, min(255, round(self.config.target_bpm * self._tpf(modifier) / base)))
+
+    def _write_tempo_changes(self) -> None:
+        """Fxx (set BPM) on the row of every smpsSetTempoMod, in a cell whose effect slot is free.
+
+        Spare MOD channels are tried first, then any channel's cell without an effect, then a
+        cell holding only a 4xy continuation (vibrato is the least of the three).  Drowning
+        speeds up in four steps this way; the header tempo is still the song's own BPM.
+        """
+        used = {c.mod_channel for c in self.config.channels if c.enabled}
+        order = [c for c in range(self.mod.CHANNELS) if c not in used] + sorted(used)
+        stride = self.mod.CHANNELS * 4
+        for start, modifier in self._tempo_segments[1:]:
+            bpm = self._bpm_for(modifier)
+            exact = self.config.target_bpm * self._tpf(modifier) / self._tpf(self.song.header.tempo_modifier)
+            pattern, row = self._tick_to_pattern_row(start)
+            if pattern >= self.config.max_patterns:
+                break
+            while pattern >= len(self.mod.patterns):
+                self.mod.add_patterns(1)
+            data = self.mod.patterns[pattern].get_bytes()
+            slot = None
+            for want_free in (True, False):
+                for ch in order:
+                    i = ch * 4 + row * stride
+                    eff, par = data[i + 2] & 0x0F, data[i + 3]
+                    free = eff == 0 and par == 0
+                    vib_only = eff == 0x4 and not (data[i] & 0x0F or data[i + 1])
+                    if free if want_free else vib_only:
+                        slot = ch
+                        break
+                if slot is not None:
+                    break
+            info = {'type': 'tempo_change', 'tick': start, 'pattern': pattern, 'row': row,
+                    'modifier': modifier, 'bpm': bpm, 'exact_bpm': exact}
+            if slot is None:
+                self._add_warning({'type': 'tempo_no_slot', 'channel': 'all', **info})
+                continue
+            self._set_cursor(pattern, slot, row)
+            self.mod.set_effect(0xF, bpm)
+            self._infos.append(info)
+            if not 32 <= exact <= 255:
+                self._add_warning({'type': 'tempo_bpm_range', 'channel': 'all', **info})
 
     def _ticks_to_secs(self, ticks: int) -> float:
         """Convert raw SMPS parser ticks to wall-clock seconds."""
@@ -458,9 +544,16 @@ class SmpsToModConverter:
 
         # Extend channels whose loop body is too short to cover the full song
         self._extend_looping_channels()
+        self._tempo_segments = self._collect_tempo_segments()
+        for ch in self.song.channels:
+            if any(ev.is_effect and ev.effect.effect_type == 'smpsSetTempoDiv' for ev in ch.events):
+                self._add_warning({'type': 'tempo_div_unsupported', 'channel': ch.header.label})
+                break
 
         # Convert channels
         self._convert_all_channels()
+        if len(self._tempo_segments) > 1:
+            self._write_tempo_changes()
 
         return self.mod
 
@@ -829,9 +922,10 @@ class SmpsToModConverter:
             A note that starts between two rows goes on the row it starts in, delayed by `EDx`,
             instead of being rounded to the nearer row (up to half a row early or late, and —
             Python rounds halves to even — early and late on alternate notes).  The delay needs
-            the cell's one effect slot, so it is only used when the slot is free: no `Cxx` due
-            on the attack row, and no cut (`cut_tick`) falling inside it.  Otherwise the note is
-            rounded as before.
+            the cell's one effect slot, so it is only used when the slot is free (`slot_free`:
+            no `Cxx` due on the attack row that cannot move to a later row of the note) and no
+            cut (`cut_tick`) falls inside the attack row.  Otherwise the note is rounded as
+            before.
 
             Two note-ons cannot share a cell.  When the row already holds this channel's
             previous note-on (a 1-tick grace note and the note it slides into), the later one
@@ -844,10 +938,15 @@ class SmpsToModConverter:
             # k + k // (m - 1).  GHZ (m = 3, 2 ticks per row): an odd tick is 1 frame = 16.7 ms
             # after its row starts, not the 25 ms an average tick lasts - exactly ED1 at speed 3.
             # A row is tpr / _ticks_per_frame frames and `speed` MOD ticks long.
-            m = self.song.header.tempo_modifier
-            held = (lambda k: int(k) // (m - 1)) if m > 1 and not self.song.header.is_sfx else (lambda k: 0)
+            # (Counted from the start of the current tempo segment: smpsSetTempoMod restarts
+            # the counter.)
+            seg_start, m = self._segment_at(tick)
+            holds = m > 1 and not self.song.header.is_sfx
+
+            def held(k):
+                return max(int(k) - seg_start, 0) // (m - 1) if holds else 0
             frames = (tick + held(tick)) - (row_total * tpr + held(row_total * tpr))
-            delay = int(frames * speed * self._ticks_per_frame / tpr + 0.5)
+            delay = int(frames * speed * self._tpf(m) / tpr + 0.5)
             if delay >= speed:
                 row_total, delay = row_total + 1, 0
             if delay and cut_tick is not None and round(cut_tick * speed / tpr) < (row_total + 1) * speed:
@@ -896,7 +995,8 @@ class SmpsToModConverter:
                     _smps_speed_raw = eff.params[1]
                     vibrato_change = eff.params[2]   # raw delta; scaled to period units at placement
                     vibrato_steps  = eff.params[3]
-                    vibrato_speed = self._vibrato_speed(_smps_speed_raw, vibrato_steps, chan_cfg.source)
+                    vibrato_speed = self._vibrato_speed(_smps_speed_raw, vibrato_steps, chan_cfg.source,
+                                                        event.tick_position)
                     vibrato_active = True
 
                 elif eff.effect_type == 'smpsModOn':
@@ -1110,14 +1210,19 @@ class SmpsToModConverter:
                     # for Cxx when this note's level differs from the instrument's, and for ECx
                     # when the note is cut inside the attack row (note fill; PSG notes also end
                     # at their duration).
-                    _fill_t = note_fill * self._ticks_per_frame
+                    _fill_t = note_fill * self._tpf_at(tick)
                     _cut_tick = None
                     if note_fill > 0 and _fill_t < note.duration:
                         _cut_tick = tick + _fill_t
                     elif is_psg:
                         _cut_tick = tick + note.duration
+                    # A Cxx due on the attack row gives way to EDx when the note lasts into the
+                    # next row: the volume is then set there (see cxx_coord below).  Drowning FM4
+                    # pans every other note hard, so half its notes carry a -3 dB Cxx, and all of
+                    # them start a tick off the grid.
+                    _needs_cxx = _emit_volume(final_instrument) != _sample_vol_map.get(final_instrument, 64)
                     pattern, row, note_delay = _note_cell(
-                        tick, _emit_volume(final_instrument) == _sample_vol_map.get(final_instrument, 64), _cut_tick)
+                        tick, not _needs_cxx or note.duration >= 2 * self._effective_tpr, _cut_tick)
                     if pattern >= self.config.max_patterns:
                         break
                     while pattern >= len(self.mod.patterns):
@@ -1135,7 +1240,7 @@ class SmpsToModConverter:
                     fill_placed = False
                     effect_slot_used = False   # True only when ECx occupies the current row's slot
                     fill_pat = fill_row = -1
-                    fill_ticks = note_fill * self._ticks_per_frame
+                    fill_ticks = note_fill * self._tpf_at(tick)
                     if note_fill > 0 and fill_ticks < note.duration:
                         # Work in absolute MOD ticks (rows × speed) so the cut keeps its
                         # sub-row position: a whole row → C00 on that row, otherwise ECx.
@@ -1193,14 +1298,35 @@ class SmpsToModConverter:
                             self.mod.set_effect(0xC, 0)
                             self._set_cursor(pattern, mod_chan, row)
 
-                    # A delayed note spends its slot on EDx (Cxx / in-row ECx were ruled out
-                    # by _note_cell; an attack-row 4xy is given up — the later rows carry it).
+                    # A delayed note spends its slot on EDx (an in-row ECx was ruled out by
+                    # _note_cell; an attack-row 4xy is given up — the later rows carry it).
+                    cxx_coord = None
                     if note_delay:
                         if effect_slot_used:          # cannot happen; keep the cut if it does
                             note_delay = 0
                         else:
                             self.mod.set_effect(0xE, 0xD0 | note_delay)
                             effect_slot_used = True
+                    if note_delay and _needs_cxx:
+                        # The Cxx moves to the first later row of the note whose slot is free
+                        # (a cut placed above keeps its row).  One row at the instrument's own
+                        # level, then the right one; a lost row of level beats 33 ms of timing.
+                        stride = self.mod.CHANNELS * 4
+                        end_pat, end_row = self._tick_to_pattern_row(tick + note.duration)
+                        r_total = pattern * 64 + row + 1
+                        while r_total < end_pat * 64 + end_row and r_total // 64 < self.config.max_patterns:
+                            p_, r_ = divmod(r_total, 64)
+                            while p_ >= len(self.mod.patterns):
+                                self.mod.add_patterns(1)
+                            cell = self.mod.patterns[p_].get_bytes()
+                            i = mod_chan * 4 + r_ * stride
+                            if (cell[i + 2] & 0x0F) == 0 and cell[i + 3] == 0:
+                                self._set_cursor(p_, mod_chan, r_)
+                                self.mod.set_effect(0xC, _emit_volume(final_instrument))
+                                self._set_cursor(pattern, mod_chan, row)
+                                cxx_coord = (p_, r_)
+                                break
+                            r_total += 1
 
                     # Determine effective vibrato: per-entry override takes priority.
                     _vib_override = None
@@ -1235,7 +1361,7 @@ class SmpsToModConverter:
                         # Vibrato effect (4xy) on attack row — only when the modulation
                         # wait is over for most of it (see vib_start_tick below).
                         elif (vibrato_active and eff_vib_speed > 0
-                              and vibrato_wait * self._ticks_per_frame <= self._effective_tpr / 2):
+                              and vibrato_wait * self._tpf_at(tick) <= self._effective_tpr / 2):
                             param = (eff_vib_speed << 4) | eff_vib_depth
                             self.mod.set_effect(0x4, param)
 
@@ -1245,7 +1371,7 @@ class SmpsToModConverter:
                     # modulation.  The SMPS wait is in FRAMES (DoModulation runs on TempoWait
                     # frames too); a row carries 4xy when modulation runs for at least half of it.
                     if vibrato_active and eff_vib_speed > 0:
-                        vib_start_tick = tick + vibrato_wait * self._ticks_per_frame
+                        vib_start_tick = tick + vibrato_wait * self._tpf_at(tick)
                         note_end_tick  = tick + note.duration
                         tpr = self._effective_tpr
                         fill_coord = (fill_pat, fill_row) if fill_placed else None
@@ -1255,7 +1381,7 @@ class SmpsToModConverter:
                                 cont_pat, cont_row = self._tick_to_pattern_row(cont_tick)
                                 if cont_pat >= self.config.max_patterns:
                                     break
-                                if fill_coord != (cont_pat, cont_row):
+                                if (cont_pat, cont_row) not in (fill_coord, cxx_coord):
                                     if cont_pat >= len(self.mod.patterns):
                                         break
                                     self._set_cursor(cont_pat, mod_chan, cont_row)
@@ -1335,6 +1461,24 @@ class SmpsToModConverter:
 
         self._set_cursor(last_pattern, 0, last_row)
         self.mod.set_position_jump(target_pattern)
+
+        # A song that loops back into a different tempo segment needs its BPM set again there
+        # (the Fxx cells written by _write_tempo_changes sit at the changes, not at the target).
+        segs = getattr(self, '_tempo_segments', None) or []
+        if len(segs) > 1 and self._segment_at(loop_target_tick)[1] != segs[-1][1]:
+            target_mod = self._segment_at(loop_target_tick)[1]
+            stride = self.mod.CHANNELS * 4
+            pat_data = self.mod.patterns[target_pattern].get_bytes()
+            for ch in range(self.mod.CHANNELS):
+                i = ch * 4 + target_row * stride
+                if (pat_data[i + 2] & 0x0F) == 0 and pat_data[i + 3] == 0:
+                    self._set_cursor(target_pattern, ch, target_row)
+                    self.mod.set_effect(0xF, self._bpm_for(target_mod))
+                    break
+            else:
+                self._add_warning({'type': 'tempo_no_slot', 'channel': 'all', 'tick': loop_target_tick,
+                                   'pattern': target_pattern, 'row': target_row, 'modifier': target_mod,
+                                   'bpm': self._bpm_for(target_mod), 'exact_bpm': float('nan')})
 
         # If the target lands mid-pattern, write a Dxx companion on a free channel
         if target_row != 0:

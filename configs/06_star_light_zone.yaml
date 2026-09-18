@@ -7,7 +7,7 @@ output_file: output/06_star_light_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true
-target_speed: 3
+target_speed: 4             # 250 BPM exactly; speed 3 gave 187.5 → 188 (+0.27 %, −114 ms per pass)
 ticks_per_row: 1
 num_mod_channels: 10
 region: ntsc

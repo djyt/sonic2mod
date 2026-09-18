@@ -26,6 +26,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import bisect
 import contextlib
 import gzip
 import itertools
@@ -207,35 +208,66 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
 
 
 def auto_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]], chan_map: dict[str, int],
-                max_lag: float = 3.0, step: float = 0.005) -> float:
+                max_lag: float = 3.0, step: float = 0.005, drift: float = 0.006) -> float:
     """Seconds the MOD lags the recording: the lag at which most chip note starts meet a MOD note.
 
     Recordings rarely start on the song's first tick (the Title Screen rip starts at its first DAC
     hit, 250 ms in), and without the lag every comparison reads the neighbouring note.
+
+    The lag is where the song STARTS; a MOD drifts against the recording as it plays (an integer
+    BPM, or tempo steps each rounded - Drowning is 31 ms apart by its end), so a note at time t is
+    allowed to sit `drift` x t away from the lag and still count.  Without that allowance a
+    drifting song pulls the lag towards a neighbouring note that fits the later notes better
+    (Drowning: +170 ms, every 200 ms note judged against the next).  Closer still counts for
+    more: notes delayed by EDx sit a few ms off the rest, and a plain count would tie over a
+    20 ms range of lags.
     """
-    starts: list[tuple[int, float]] = []
+    starts: list[tuple[int, float, float]] = []
     for src, evs in chip.items():
         if src in chan_map:
             prev = None
             for t, f in evs:
                 if f is not None and (prev is None or abs(1200 * math.log2(f / prev)) > 50):
-                    starts.append((chan_map[src], t))
+                    starts.append((chan_map[src], t, f))
                 prev = f
-    grid = {c: {round(n[0] / step) for n in notes} for c, notes in mod.items()}
-    best, best_lag = -1, 0.0
-    for k in range(int(-0.5 / step), int(max_lag / step) + 1):
+    by_chan = {c: sorted(notes) for c, notes in mod.items()}
+    times = {c: [n[0] for n in notes] for c, notes in by_chan.items()}
+
+    def same_pitch(f: float, hz: float) -> bool:
+        # Within 50 cents, any octave: a sample synthesised in the wrong octave must not hide
+        # the alignment (the audit reports that separately).
+        c = 1200 * math.log2(hz / f) % 1200
+        return c <= 50 or c >= 1150
+
+    def score(lag: float, use_pitch: bool) -> int:
         hits = 0
-        for c, t in starts:
-            g = grid.get(c)
-            if g:
-                # Closer counts for more: notes delayed by EDx sit a few ms off the rest (a MOD
-                # tick is not a driver tick), and a plain count ties over a 20 ms range of lags,
-                # leaving the on-grid majority up to 10 ms out.
-                q = round(t / step) + k
-                hits += 3 if q in g else 2 if (q - 1 in g or q + 1 in g) else 1 if (q - 2 in g or q + 2 in g) else 0
-        if hits > best or (hits == best and abs(k) < abs(best_lag / step)):
-            best, best_lag = hits, k * step
-    return best_lag
+        for c, t, f in starts:
+            ts = times.get(c)
+            if not ts:
+                continue
+            want = t + lag
+            i = bisect.bisect_left(ts, want)
+            cands = [j for j in (i - 1, i) if 0 <= j < len(ts)]
+            if use_pitch:
+                cands = [j for j in cands if same_pitch(f, by_chan[c][j][1])]
+            if not cands:
+                continue
+            dev = min(abs(ts[j] - want) for j in cands)
+            hits += 3 if dev <= step else 2 if dev <= 2 * step else 1 if dev <= 2 * step + drift * t else 0
+        return hits
+
+    # A repeating figure makes note starts alone ambiguous by its period (Drowning alternates
+    # two notes every 200 ms), so a start only counts when the MOD note there has its pitch.
+    # If that finds nothing at all (every instrument wrong), starts alone decide.
+    for use_pitch in (True, False):
+        best, best_lag = -1, 0.0
+        for k in range(int(-0.5 / step), int(max_lag / step) + 1):
+            hits = score(k * step, use_pitch)
+            if hits > best or (hits == best and abs(k) < abs(best_lag / step)):
+                best, best_lag = hits, k * step
+        if best > 0:
+            return best_lag
+    return 0.0
 
 
 def instrument_verdicts(by_inst: dict[int, Counter]) -> list[dict]:
@@ -263,6 +295,12 @@ def audit(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tu
 
     Returns {"channels": {source: {ok, wrong, missing, short, wrong_notes, missing_notes}},
              "instruments": instrument_verdicts(...), "bad": wrong + missing over all channels}.
+
+    `offset` is where the song starts; from there each channel follows its own drift: every chip
+    segment start that has a MOD note within 40 ms of the running deviation is paired with it
+    (one to one, in order), the deviation is updated, and a segment with no start of its own in
+    the MOD (a legato pitch change) is looked up at its midpoint with the deviation as it stood.
+    With a fixed offset a 30 ms drift misreads every 50 ms note near the end of Drowning.
     """
     channels: dict[str, dict] = {}
     by_inst: dict[int, Counter] = defaultdict(Counter)      # instrument -> {cents error rounded to 100: notes}
@@ -272,20 +310,52 @@ def audit(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tu
         notes = mod[chan_map[src]]
         evs = [*chip[src], (vgm_end, None)]
         st: dict = {"ok": 0, "wrong": 0, "missing": 0, "short": 0, "wrong_notes": [], "missing_notes": []}
+        run, j = offset, 0          # running MOD-minus-chip deviation (s); next unpaired MOD note
+        starts_t, pf = [], None     # chip note-start times, for looking ahead past a tempo step
+        for t, f in chip[src]:
+            if f is not None and (pf is None or abs(1200 * math.log2(f / pf)) > 50):
+                starts_t.append(t)
+            pf = f
+        si = -1
+        prev_f = None
         for (t0, f), (t1, _) in itertools.pairwise(evs):
+            # A note start = the channel was silent or the pitch moved by more than 50 cents;
+            # anything else (a vibrato step, a detune scoop) is a continuation.
+            is_start = f is not None and (prev_f is None or abs(1200 * math.log2(f / prev_f)) > 50)
+            prev_f = f
             # A segment starting as the MOD's single pass ends is the recording going round its
             # loop; the last MOD note must not be judged against it.
-            if f is None or t0 + offset > mod_end - 0.03 or t1 - t0 < 1e-4:
+            if f is None or t0 + run > mod_end - 0.03 or t1 - t0 < 1e-4:
                 continue
+            # Pair a note start with the next MOD note near it (MOD-only notes in between are
+            # skipped), and let the deviation follow.
+            paired = None
+            if is_start:
+                si += 1
+                while j < len(notes) and notes[j][0] - t0 < run - 0.04:
+                    j += 1
+                if j < len(notes) and abs(notes[j][0] - t0 - run) > 0.04:
+                    # A step in the deviation that the next two starts confirm is a tempo
+                    # change (the MOD falls up to two frames behind at each smpsSetTempoMod).
+                    d = notes[j][0] - t0
+                    if abs(d - run) <= 0.12 and all(
+                            si + n < len(starts_t) and j + n < len(notes)
+                            and abs(notes[j + n][0] - starts_t[si + n] - d) <= 0.04 for n in (1, 2)):
+                        run = d
+            if is_start and j < len(notes) and abs(notes[j][0] - t0 - run) <= 0.04:
+                paired = notes[j]
+                run = 0.5 * run + 0.5 * (notes[j][0] - t0)
+                j += 1
             if (t1 - t0) * 1000 < min_ms:
                 st["short"] += 1
                 continue
-            mid = (t0 + t1) / 2 + offset
-            hit = None
-            for n in notes:
-                if n[0] > mid + 1e-6:
-                    break
-                hit = n
+            hit = paired
+            if hit is None:
+                mid = (t0 + t1) / 2 + run
+                for n in notes:
+                    if n[0] > mid + 1e-6:
+                        break
+                    hit = n
             if hit is None:
                 st["missing"] += 1
                 st["missing_notes"].append({"t_s": t0, "chip": note_name(f)})

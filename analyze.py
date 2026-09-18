@@ -578,19 +578,15 @@ def _channel_has_notes(ch_an: ChannelAnalysis) -> bool:
 
 
 def _suggest_target_speed(tempo_divider: int, tempo_modifier: int, ticks_per_row: int, fps: int = 60) -> int:
-    """Return the largest speed ≤ tempo_modifier that keeps the raw (unclamped) BPM within [32, 255].
+    """The speed (2–8) whose whole-number BPM is closest to the driver's tempo, BPM within 32–255.
 
-    The natural starting point is speed=tempo_modifier (matches the SMPS timing clock).
-    When that produces a BPM > 255 (ProTracker ceiling), we reduce speed one step at a time
-    until the BPM fits.  Speed 1 is always returned as a final fallback.
+    A MOD BPM is an integer; speed changes how many MOD ticks a row has, not the row grid, so it
+    is free to choose (core.config.bpm_rounding_options).  Ties go to the smaller speed.  Speed 1
+    is the fallback when nothing fits.
     """
-    if tempo_modifier <= 1 or tempo_divider < 1:
-        return tempo_modifier
-    for speed in range(tempo_modifier, 0, -1):
-        raw_bpm = fps * (tempo_modifier - 1) * speed * 2.5 / (tempo_modifier * tempo_divider * ticks_per_row)
-        if 32 <= raw_bpm <= 255:
-            return speed
-    return 1
+    from core.config import bpm_rounding_options
+    options = bpm_rounding_options(tempo_divider, tempo_modifier, ticks_per_row, fps)
+    return options[0]["speed"] if options else 1
 
 
 def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | None = None):

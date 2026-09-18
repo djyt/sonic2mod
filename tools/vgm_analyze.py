@@ -39,14 +39,26 @@ Output columns (PSG noise):
     chan      — NOISE
     noise_reg — 3-bit noise register (bit2=type, bits[1:0]=rate)
     —         — (blk column unused)
-    —         — (freq_hz column unused)
-    note      — decoded noise type string (e.g. white/N/512)
+    freq_hz   — LFSR shift rate: clock/512, /1024, /2048 for rates 0–2, or
+                clock/(32·N) when rate 3 follows tone ch2 (N=0 treated as 1,
+                as the Sega VDP PSG does)
+    note      — decoded noise type string (e.g. white/N/512, white/tone2 N=0)
     smps      — "—" (no pitch meaning for noise)
+
+Output columns (DAC, --chip dac / all):
+    time_ms   — milliseconds from track start
+    chan      — DAC
+    data      — PCM bank offset the stream seeks to (0xE0 command); a seek
+                marks a sample start, so the offset identifies the sample
+                (kick/snare/…).  Some loggers merge back-to-back restarts of
+                the same sample, so counts can be lower than the SMPS data.
+    note      — "seek <offset>"
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import math
 import statistics
@@ -252,10 +264,20 @@ def _parse_vgm(
         else:
             noise_type = "white" if (psg_noise >> 2) & 1 else "periodic"
             rate_idx   = psg_noise & 0x3
-            rate_str   = ("N/512", "N/1024", "N/2048", "psgtone")[rate_idx]
-            noise_desc = f"{noise_type}/{rate_str}"
+            if rate_idx == 3:
+                # LFSR clocked by tone ch2.  The Sonic 1 driver writes PSG3's own
+                # note divider to tone ch2 ($C0); nMaxPSG maps to N=0, which the
+                # Sega VDP PSG treats as N=1 (maximum shift rate, near-white hiss).
+                n2       = psg_freq[2]
+                n_eff    = n2 if n2 > 0 else 1
+                shift_hz = psg_clock / (32.0 * n_eff)
+                noise_desc = f"{noise_type}/tone2 N={n2}"
+            else:
+                rate_str   = ("N/512", "N/1024", "N/2048")[rate_idx]
+                shift_hz   = psg_clock / float(512 << rate_idx)
+                noise_desc = f"{noise_type}/{rate_str}"
             if not channel_filter or "NOISE" in channel_filter:
-                rows.append((time_ms, "NOISE", psg_noise, 0, 0.0, noise_desc, "—"))
+                rows.append((time_ms, "NOISE", psg_noise, 0, shift_hz, noise_desc, "—"))
             linear = 10 ** (-(psg_vol[3] * 2.0) / 20.0)
             psg_amp_samples.setdefault("NOISE", []).append(linear)
 
@@ -381,8 +403,14 @@ def _parse_vgm(
             sample_count += cmd & 0x0F
 
         elif cmd == 0xE0:
-            # PCM seek
+            # PCM seek — marks the start of a DAC sample (kick/snare/…)
+            if pos + 4 > end:
+                break
+            seek_off = struct.unpack_from('<I', data, pos)[0]
             pos += 4
+            if chip in ('dac', 'all') and (not channel_filter or "DAC" in channel_filter):
+                time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
+                rows.append((time_ms, "DAC", seek_off, 0, 0.0, f"seek {seek_off}", "—"))
 
         elif 0x90 <= cmd <= 0x95:
             # DAC stream control commands (various fixed lengths)
@@ -447,12 +475,12 @@ def main() -> None:
     )
     ap.add_argument("file", help="VGM or VGZ file to analyze")
     ap.add_argument(
-        "--chip", choices=("fm", "psg", "all"), default="fm",
-        help="Which chip to analyze: fm (default), psg, or all",
+        "--chip", choices=("fm", "psg", "dac", "all"), default="fm",
+        help="Which chip to analyze: fm (default), psg, dac (PCM seeks), or all",
     )
     ap.add_argument(
         "--channel", nargs="+", metavar="CH",
-        help="Show only these channels (e.g. --channel FM3 FM4 / --channel PSG1 NOISE)",
+        help="Show only these channels (e.g. --channel FM3 FM4 / --channel PSG1 NOISE DAC)",
     )
     ap.add_argument(
         "--clock", type=int, default=_DEFAULT_FM_CLOCK,
@@ -472,6 +500,9 @@ def main() -> None:
         help="Print per-channel amplitude stats and suggested sample_list volumes instead of event table",
     )
     args = ap.parse_args()
+
+    with contextlib.suppress(Exception):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     path = Path(args.file)
     if not path.exists():
@@ -535,17 +566,20 @@ def main() -> None:
             seen_keys[ch][key] = freq
 
     if seen_keys:
+        counts: dict[str, int] = {}
+        for row in rows:
+            counts[row[1]] = counts.get(row[1], 0) + 1
         print()
         print("Unique notes per channel  (standard -> SMPS label):")
         print("-" * 68)
         for ch_name in sorted(seen_keys.keys()):
             pairs = sorted(seen_keys[ch_name].items(), key=lambda kv: kv[1] if kv[1] > 0 else float('inf'))
             if all(smps == "—" for (_, smps), _ in pairs):
-                # Noise channel — just list descriptors
+                # Noise / DAC channel — just list descriptors
                 parts = [note for (note, _), _ in pairs]
             else:
                 parts = [f"{note}->{smps}" for (note, smps), _ in pairs]
-            print(f"  {ch_name:<6}: {',  '.join(parts)}")
+            print(f"  {ch_name:<6} ({counts[ch_name]:3d} key-ons): {',  '.join(parts)}")
 
 
 if __name__ == "__main__":

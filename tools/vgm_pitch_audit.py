@@ -29,6 +29,7 @@ import argparse
 import contextlib
 import gzip
 import itertools
+import json
 import math
 import struct
 import sys
@@ -203,16 +204,66 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
     return out, now
 
 
+def auto_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]], chan_map: dict[str, int],
+                max_lag: float = 3.0, step: float = 0.005) -> float:
+    """Seconds the MOD lags the recording: the lag at which most chip note starts meet a MOD note.
+
+    Recordings rarely start on the song's first tick (the Title Screen rip starts at its first DAC
+    hit, 250 ms in), and without the lag every comparison reads the neighbouring note.
+    """
+    starts: list[tuple[int, float]] = []
+    for src, evs in chip.items():
+        if src in chan_map:
+            prev = None
+            for t, f in evs:
+                if f is not None and (prev is None or abs(1200 * math.log2(f / prev)) > 50):
+                    starts.append((chan_map[src], t))
+                prev = f
+    grid = {c: {round(n[0] / step) for n in notes} for c, notes in mod.items()}
+    best, best_lag = -1, 0.0
+    for k in range(int(-0.5 / step), int(max_lag / step) + 1):
+        hits = 0
+        for c, t in starts:
+            g = grid.get(c)
+            if g:
+                q = round(t / step) + k
+                hits += (q in g) or (q - 1 in g) or (q + 1 in g) or (q - 2 in g) or (q + 2 in g)
+        if hits > best or (hits == best and abs(k) < abs(best_lag / step)):
+            best, best_lag = hits, k * step
+    return best_lag
+
+
+def instrument_verdicts(by_inst: dict[int, Counter]) -> list[dict]:
+    """Per instrument: notes, ok, and `semitones` != 0 when at least 80 % of its notes are out by that
+    same interval (and fewer than 20 % are right) — i.e. the sample is synthesised at the wrong pitch
+    and its synth_root is off by exactly that much.  A note-level problem never looks like this."""
+    out = []
+    for ins in sorted(by_inst):
+        errs = by_inst[ins]
+        notes, ok = sum(errs.values()), errs[0]
+        semitones, uniform_notes = 0, 0
+        wrong = [(c, k) for c, k in errs.most_common() if c != 0]
+        if wrong:
+            c, k = wrong[0]
+            if k >= 0.8 * notes and ok < 0.2 * notes:
+                semitones, uniform_notes = c // 100, k
+        out.append({"instrument": ins, "notes": notes, "ok": ok, "semitones": semitones,
+                    "uniform_notes": uniform_notes, "other": [] if semitones else wrong})
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("config", help="song YAML config")
     ap.add_argument("vgz", help="reference VGM/VGZ recording of the same song")
     ap.add_argument("--mod", help="MOD to audit (default: config output_file)")
-    ap.add_argument("--offset", type=float, default=0.0, help="seconds the MOD lags the VGM (default 0)")
+    ap.add_argument("--offset", type=float, default=None,
+                    help="seconds the MOD lags the VGM (default: found by matching note starts)")
     ap.add_argument("--min-ms", type=float, default=60.0,
                     help="ignore chip segments shorter than this (grace notes, vibrato steps; default 60)")
     ap.add_argument("--tolerance", type=float, default=35.0, help="cents before a note counts as wrong (default 35)")
     ap.add_argument("--list", action="store_true", help="print every wrong / missing segment with its time")
+    ap.add_argument("--json", metavar="FILE", help="write the alignment and the per-instrument verdicts as JSON")
     args = ap.parse_args()
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
@@ -222,12 +273,18 @@ def main() -> None:
     raw = Path(args.vgz).read_bytes()
     chip, vgm_end = chip_timeline(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
     mod, mod_end = mod_timeline(mod_path.read_bytes(), cfg)
-    print(f"VGM {vgm_end:.1f} s   MOD one pass {mod_end:.1f} s   ({mod_path})")
+    chan_map = {c.source: c.mod_channel for c in cfg.channels}
+    if args.offset is None:
+        args.offset = auto_offset(chip, mod, chan_map)
+        how = "auto"
+    else:
+        how = "given"
+    print(f"VGM {vgm_end:.1f} s   MOD one pass {mod_end:.1f} s   MOD lags by {args.offset * 1000:+.0f} ms ({how})   ({mod_path})")
     print(f"chip segments >= {args.min_ms:g} ms; wrong = more than {args.tolerance:g} cents from the chip")
     print()
 
-    chan_map = {c.source: c.mod_channel for c in cfg.channels}
     total_bad = 0
+    by_inst: dict[int, Counter] = defaultdict(Counter)      # instrument -> {cents error rounded to 100: notes}
     for src in sorted(chip):
         if src not in chan_map or not mod.get(chan_map[src]):
             continue
@@ -253,6 +310,7 @@ def main() -> None:
                 listing.append(f"      {t0:7.2f} s  chip {note_name(f):<4}  no MOD note yet")
                 continue
             cents = 1200 * math.log2(hit[1] / f)
+            by_inst[hit[2]][0 if abs(cents) <= args.tolerance else round(cents / 100) * 100] += 1
             if abs(cents) <= args.tolerance:
                 stats["ok"] += 1
             else:
@@ -267,6 +325,27 @@ def main() -> None:
             print(f"        chip {a:<4} MOD {b:<4} ({c100:+5d} c)  inst {ins:<3} x{k}")
         if args.list:
             print("\n".join(listing))
+
+    # An instrument whose notes are all out by the same interval is synthesised at the wrong pitch:
+    # its synth_root is off by that interval.  Anything else is a note problem.
+    verdicts = instrument_verdicts(by_inst)
+    if any(v["semitones"] or v["other"] for v in verdicts):
+        print()
+        print("Per instrument (the same error on nearly every note = synth_root off by that interval)")
+        for v in verdicts:
+            if v["semitones"]:
+                n = abs(v["semitones"])
+                size = f"{n // 12} octave{'s' if n // 12 > 1 else ''}" if n % 12 == 0 else f"{n} semitone{'s' if n > 1 else ''}"
+                verdict = (f"synth_root is {size} too {'high' if v['semitones'] > 0 else 'low'} "
+                           f"({v['uniform_notes']} of {v['notes']} notes)")
+            elif v["other"]:
+                verdict = "mixed: " + ", ".join(f"{c:+d} c x{k}" for c, k in v["other"][:4])
+            else:
+                continue
+            print(f"  inst {v['instrument']:>2}: ok {v['ok']:>4}  wrong {v['notes'] - v['ok']:>4}   {verdict}")
+    if args.json:
+        Path(args.json).write_text(json.dumps({"offset_s": args.offset, "instruments": verdicts}, indent=2) + "\n",
+                                   encoding="utf-8")
     sys.exit(1 if total_bad else 0)
 
 

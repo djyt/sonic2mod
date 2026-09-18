@@ -552,7 +552,30 @@ python tools/vgm_compare.py <cfg> <vgz> --skip-render        # reuse output/comp
 ```
 
 Sections of the report: per-note pitch/level, per-channel summary, **vibrato**, channel balance,
-onset timing, noise (decay + band profile), DAC (rate check).
+**per-instrument levels**, onset timing, noise (decay + band profile), DAC (rate check).
+
+**Per-instrument levels** is the table to set `sample_list` volumes from.  Every note is matched
+to the MOD instrument (and `Cxx`) that plays it, and the level error MOD − VGM is reported per
+instrument with a per-channel breakdown:
+
+```
+inst sample            vol notes    err spread suggest   per channel (Cxx: err xnotes)
+  11 ghz_v05_lo.raw     16   116   +4.6    0.2       9   FM3 C1D: +4.8 x20  FM4: +4.6 x58  FM5: +4.6 x58
+```
+
+- Only notes **without** a `Cxx` say what the instrument's own volume should be;
+  `suggest = volume × 10^(−err/20)`.
+- In the baked volume modes every channel sharing an instrument must show the same error.
+  `spread` is the disagreement; above 3 dB no volume is suggested — it is not a volume problem
+  (look at pan, note fills, a wrong instrument, the alignment).
+- Errors are relative to the song's median note, so only *relative* imbalance shows.  The DAC
+  (fixed samples at volume 64, cannot be turned up) becomes the anchor only when it is 2 dB or
+  more off that median; a smaller gap is within what short DAC hits can be measured to.
+- Levels are L/R power, never a mono mix: a hard-panned YM2612 channel reads ~5 dB low in a
+  mono mix while every MOD channel loses the same 1 dB.
+
+`--write-volumes` rewrites the config's `sample_list` volumes to the suggestions (errors of 1 dB
+or more) and records `# VGZ: +4.6 dB at 16` on the line.  Re-convert and re-run to verify.
 
 **Vibrato table.**  Every FM / PSG-tone note of 0.5 s or longer is pitch-tracked in both renders
 (one partial isolated by heterodyne + brick-wall filter, instantaneous frequency from the phase

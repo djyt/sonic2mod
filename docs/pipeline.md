@@ -286,7 +286,7 @@ driver's DurationTimeout expires first), or the cut would land on the next event
 
 **Fix:** MOD vibrato (`4xy`) has different semantics (sinusoidal, not triangle). Treat the translation as approximate. Tune `4xy` values manually in the tracker if needed.
 
-**Known inaccuracy (measured 2026-09, see `docs/title_screen_audit.md` §2):** the current
+**Known inaccuracy (measured 2026-09, see `docs/audits/01_title_screen_audit.md` §2):** the current
 speed/depth formula runs the LFO too slow and too deep — Title Screen FM4 `smpsModSet $00,$01,$06,$04`
 is 5.75 Hz / ±19 cents on hardware but `485` = 3.85 Hz / ±33 cents in the MOD; `4C3` would be right.
 Modulation timers count V-int **frames** (60 Hz), not tempo ticks; the steady cycle is

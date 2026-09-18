@@ -39,14 +39,14 @@ sample_list:
   - [4, "fm_v00_lo.raw", 64, 0]
   - [5, "fm_v00_hi.raw", 64, 0]
   # --- voice $01: Alg 2, FB 7 — FM2 ---
-  - [6, "fm_v01.raw", 32, 0]
+  - [6, "fm_v01.raw", 25, 0] # VGZ: -0.0 dB at 32
   # --- voice $02: Alg 5, FB 7 — FM3, FM4 ---
-  - [7, "fm_v02.raw", 32, 0]
+  - [7, "fm_v02.raw", 22, 0] # VGZ: +1.2 dB at 32
   # --- voice $03: Alg 5, FB 7 — FM5 ---
-  - [8, "fm_v03.raw", 16, 0]
+  - [8, "fm_v03.raw", 33, 0] # VGZ: -8.3 dB at 16
   # --- PSG tone fTone_05 ---
-  - [9, "psg_fTone_05_lo.raw", 10, 0] # baked: 32 at PSG attenuation 5 (−10 dB)
-  - [10, "psg_fTone_05_hi.raw", 10, 0] # baked: 32 at PSG attenuation 5 (−10 dB)
+  - [9, "psg_fTone_05_lo.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +4.4 dB at 10
+  - [10, "psg_fTone_05_hi.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +3.6 dB at 10
 
 dac_samples:
   # dSnare: ×7 — native ~24000 Hz → note Fs3

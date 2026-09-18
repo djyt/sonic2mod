@@ -18,6 +18,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
+| `docs/audits/00_soundtrack_survey.md` | **All 18 configs vs their VGZs** (2026-09) — 10 samples found synthesised in the wrong octave (fixed), every `sample_list` volume set from measurement, what each song still needs |
 | `docs/audits/02_ghz_audit.md` | **GHZ accuracy audit vs VGZ** (2026-09) — 867/867 notes, parser flag-ordering bug, `smpsAlterVol` law / TL level errors per instrument, grace notes, FM octave-convention trap |
 | `docs/audits/01_title_screen_audit.md` | **Accuracy audit vs VGZ** (2026-09) — method, per-channel numbers, config fixes, pending converter work (note fill frames, vibrato formula, EDx delay, volume baking) |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
@@ -126,7 +127,8 @@ python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip psg --ch
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
 
-# Is every note right?  Symbolic, no rendering, exit 1 on a wrong/missing note.  Run this FIRST:
+# Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
+# "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.
 # vgm_compare's per-note pitch column is unreliable on grace notes and legato runs.
 python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
 
@@ -136,6 +138,9 @@ python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/0
 # ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
 # Renders go to output/compare/<config>/; --skip-render reuses them.
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
+# Its "Per-instrument level error" table is what sample_list volumes are set from; --write-volumes applies
+# the suggestions to the config (then re-convert and re-run to verify)
+python tools/vgm_compare.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --write-volumes
 # CI-style: JSON results + exit 1 when a threshold is exceeded (also --fail-unmatched N)
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
 ```

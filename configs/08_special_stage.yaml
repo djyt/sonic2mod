@@ -46,11 +46,11 @@ channels:
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 sample_list:
-  - [1,  "ss_v0.raw",      64, 0]
+  - [1,  "ss_v0.raw",      40, 0] # VGZ: +4.2 dB at 64
   - [2,  "ss_v1.raw",      64, 0]
   - [3,  "ss_v2.raw",      64, 0]
-  - [4,  "ss_v3.raw",      64, 0]
-  - [5,  "psg_tone04.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
+  - [4,  "ss_v3.raw",      47, 0] # VGZ: +2.6 dB at 64
+  - [5,  "psg_tone04.raw", 24, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: -3.6 dB at 16
   - [6,  "psg_tone08.raw", 32, 0] # baked: 40 at PSG attenuation 1 (−2 dB)
 
 
@@ -100,4 +100,4 @@ psg_voice_map:
     high: C5
     mod_instrument: 6
     root: C3
-    synth_root: C8
+    synth_root: A7   # pitch audit: was C8, 3 semitones too high

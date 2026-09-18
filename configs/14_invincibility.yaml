@@ -34,12 +34,12 @@ sample_list:
   - [1, "snare.raw", 64, 0]
   - [2, "kick.raw", 64, 0]
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM3, FM4, FM5 ---
-  - [3, "fm_v00.raw", 32, 0]
+  - [3, "fm_v00.raw", 19, 0] # VGZ: +4.5 dB at 32
   - [4, "fm_v00_fm5.raw", 32, 1]
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
   - [5, "fm_v01.raw", 32, 0]
   # --- PSG noise (form $E7) ---
-  - [6, "psg_noise.raw",  8, 0] # baked: 16 at PSG attenuation 3 (−6 dB)
+  - [6, "psg_noise.raw",  6, 0] # baked: 16 at PSG attenuation 3 (−6 dB); VGZ: +2.5 dB at 8
 
 dac_samples:
   # dSnare: ×42 — native ~24000 Hz → note Fs3

@@ -18,7 +18,7 @@ python sfx/validate.py                          # self-check
 
 | Module | Role |
 |---|---|
-| `sfx/tables.py` | Driver frequency tables, PSG envelopes, register/channel maps. Self-checking at import |
+| `sfx/tables.py` | Re-exports `core/driver_tables.py` — the driver frequency tables, PSG envelopes and register/channel maps, self-checking at import. They live in `core/` so the converter can reach them without importing the SFX driver |
 | `sfx/track.py` | `SfxTrack` — mirrors the `SMPS_Track` RAM struct field-for-field |
 | `sfx/chips.py` | Register writes mirroring `SetVoice`, `SendVoiceTL`, `FMUpdateFreq`, `PSGUpdateFreq` … |
 | `sfx/driver.py` | `SfxDriver` — the per-tick state machine |
@@ -189,6 +189,6 @@ already taken everything there is.
 4. **PSG3 noise is silenced at `smpsStop`** (the `FixBugs` behaviour). Vanilla leaves it ringing,
    which would poison the rest of the render.
 5. **`configs/settings.yaml`'s `fTone_07` is wrong** — the driver's `PSG7` has six leading zeros
-   (27 values), that file has five (26). `sfx/tables.py` transcribes from the driver. The music MOD
+   (27 values), that file has five (26). `core/driver_tables.py` transcribes from the driver. The music MOD
    path still uses the settings.yaml copy; fixing it there would change MOD output for any song
    using PSG7, so it has been left alone deliberately.

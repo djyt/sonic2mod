@@ -54,7 +54,7 @@ python ym2612/sample_generator.py  # segment 4: voice 1 at A3 → output/sample_
 ### 3. Build and convert
 
 ```bash
-python convert.py configs/title_screen.yaml
+python convert.py configs/01_title_screen.yaml
 ```
 
 Synthesis runs automatically when `synthesis.enabled: true` and the DLL is compiled.
@@ -479,9 +479,9 @@ the actual chip pitch. FM sideband frequencies fall outside the audible range.
 
 ### Distorted "overdriven guitar" sound
 
-**Cause:** Wrong `_SMPS_OP_TO_REG_OFFSET` in `voice.py` — OP1 (TL≈$01, near max volume)
+**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` in `core/driver_tables.py` — OP1 (TL≈$01, near max volume)
 placed in the self-feedback slot.
-→ Verify `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`. Do NOT change it.
+→ Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/driver_tables.py`. Do NOT change it.
 
 ### Thin/bright sound on bass voices
 

@@ -2,7 +2,7 @@
 
 How PSG channels are synthesized into Amiga MOD samples using the SN76489 emulator.
 
-Related docs: `docs/yaml_config.md` §PSG Instrument Mapping (YAML schema), `docs/smps_driver.md` §PSG Channels (driver internals), `docs/synthesis.md` (FM/YM2612 equivalent).
+Related docs: `docs/yaml_config.md` §PSG Instrument Mapping (YAML schema), `docs/smps_driver.md` §PSG Channels (driver internals), `docs/fm_synthesis.md` (FM/YM2612 equivalent).
 
 ---
 
@@ -129,7 +129,7 @@ psg_voice_map:
 
 ## Pitch: root, synth_root, and target_rate for PSG Tones
 
-The relationship between these three values is identical to YM2612 (see `docs/synthesis.md` §Pitch):
+The relationship between these three values is identical to YM2612 (see `docs/fm_synthesis.md` §Pitch):
 
 - **`root`** always determines `target_rate`:
   ```
@@ -366,7 +366,7 @@ converter will derive, and `low:` when the channel plays pitched noise.
 **The divider is derived from the song — leave `tone2_n` and `synth_root` out.**
 
 PSG3 keeps writing its own note's divider to tone channel 2, looked up in the driver's
-`PSGFrequencies` table (`sfx/tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
+`PSGFrequencies` table (`core/driver_tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
 table's degenerate last entry (index 69, `nMaxPSG`) counting as 1.  The table is *not* chromatic, so
 this cannot be reproduced by a note-name formula.  `SmpsToModConverter._derive_rate3_dividers`
 does the lookup for every rate-3 noise instrument:

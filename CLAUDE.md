@@ -20,6 +20,8 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/audits/00_soundtrack_survey.md` | **All 18 configs vs their VGZs** (2026-09) — 10 samples found synthesised in the wrong octave (fixed), every `sample_list` volume set from measurement, what each song still needs |
 | `docs/audits/02_ghz_audit.md` | **GHZ accuracy audit vs VGZ** (2026-09) — 867/867 notes, parser flag-ordering bug, `smpsAlterVol` law / TL level errors per instrument, grace notes, FM octave-convention trap |
+| `docs/audits/09_remaining_audits.md` | **Robotnik … Game Over audits vs VGZ** (2026-09) — Stage Clear, Ending, Invincibility, Continue converted to `range_space: chip` (shared entries across pitch_offsets, key changes); Ending's PSG2 needs its own instrument; channel-RMS vs per-note disagreement explained as envelope decay |
+| `docs/audits/08_special_stage_audit.md` | **Special Stage audit vs VGZ** (2026-09) — clean (507/507, ±0.5 dB); FM6 beat 4.45 Hz at the sample's own pitch and 5.6–6.7 Hz resampled — the item 7 example |
 | `docs/audits/07_sbz_audit.md` | **Scrap Brain audit vs VGZ** (2026-09) — PSG2 instrument an octave high (all its notes under 60 ms), PSG3 envelope variants as noise entries (the rule the converter now follows), FM4 detune scoops; 1213/1213 at 60 ms after |
 | `docs/audits/06_slz_audit.md` | **Star Light Zone audit vs VGZ** (2026-09) — FM2's bass walked down by `smpsAlterPitch` against a source-byte `root` → `range_space: chip` (how to convert a config), voice $05's +51 transposition; 819/819 after |
 | `docs/audits/05_lz_audit.md` | **Labyrinth Zone audit vs VGZ** (2026-09) — PSG instrument an octave high (hidden from the audit by per-frame envelope writes), PSG `root`+`low` anchor vs `smpsAlterPitch` → rootless entry with channel `transpose`; 405/405 after |
@@ -78,6 +80,7 @@ sonic2mod/
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
     regression_test.py  #   Before/after regression test runner
     make_credits_config.py  # Regenerates configs/13_credits.yaml from the song (chip-pitch ranges, 31-instrument fold)
+    config_to_chip_space.py # Converts a config's source-byte ranges to chip pitches (range_space: chip); warns where a range needs its own instrument
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
 ```
 
@@ -314,7 +317,7 @@ voice_map:
       root: G3
 ```
 
-**When NOT to use `root`:** channels with mid-song `smpsChangeTransposition` ($E9) — root ignores total_transpose and will place notes incorrectly. Use `transpose` only and let `total_transpose` handle pitch. The same holds for a `psg_voice_map` entry with `low`: Labyrinth Zone's PSG1/PSG2 run `smpsAlterPitch` in a loop, so their entry is rootless (no `low`/`high`) with `transpose: -12` on the channels.
+**When NOT to use `root`:** channels with mid-song `smpsChangeTransposition` ($E9) — root ignores total_transpose and will place notes incorrectly. Use `transpose` only and let `total_transpose` handle pitch. The same holds for a `psg_voice_map` entry with `low`: Labyrinth Zone's PSG1/PSG2 run `smpsAlterPitch` in a loop, so their entry is rootless (no `low`/`high`) with `transpose: -12` on the channels. Or convert the whole config with `python tools/config_to_chip_space.py configs/<song>.yaml` (Star Light, Stage Clear, Ending, Invincibility, Continue were) and audit.
 
 ## sample_list Entry Format
 

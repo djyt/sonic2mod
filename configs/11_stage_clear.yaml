@@ -11,6 +11,7 @@ target_speed: 3
 ticks_per_row: 1
 num_mod_channels: 8
 region: ntsc
+range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
 channels:
   - source: DAC
@@ -46,7 +47,7 @@ sample_list:
   - [8, "fm_v03.raw", 33, 0] # VGZ: -8.3 dB at 16
   # --- PSG tone fTone_05 ---
   - [9, "psg_fTone_05_lo.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +4.4 dB at 10
-  - [10, "psg_fTone_05_hi.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +3.6 dB at 10
+  - [10, "psg_fTone_05_hi.raw",  3, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +4.0 dB at 5
 
 dac_samples:
   # dSnare: ×7 — native ~24000 Hz → note Fs3
@@ -67,49 +68,49 @@ dac_samples:
     mod_note: Ds2
 
 voice_map:
-  # $00 — Alg 5, FB 7 — used by FM1
   0:
-    - low:  G4
-      high: B5
+    - low:  G3   # was G4-B5 (source bytes) for FM1
+      high: G4
       mod_instrument: 4
       root: G2
       synth_root: G3
-    - low:  C6
-      high: C7
+    - low:  G5   # was C6-C7 (source bytes) for FM1
+      high: C6
       mod_instrument: 5
-      root: C2
-      synth_root: C5
-  # $01 — Alg 2, FB 7 — used by FM2
+      root: G2
+      synth_root: G5
   1:
-    - low:  G4
-      high: G5
+    - low:  G1   # was G4-G5 (source bytes) for FM2
+      high: G2
       mod_instrument: 6
       root: G2
       synth_root: G1
-  # $02 — Alg 5, FB 7 — used by FM3, FM4
   2:
-    - low:  A5
-      high: D6
+    - low:  A4   # was A5-D6 (source bytes) for FM4, FM3
+      high: D5
       mod_instrument: 7
       root: A2
       synth_root: A4
-  # $03 — Alg 5, FB 7 — used by FM5
   3:
-    - low:  G5
-      high: C6
+    - low:  G4   # was G5-C6 (source bytes) for FM5
+      high: C5
       mod_instrument: 8
       root: G2
       synth_root: G4
-
 psg_voice_map:
   fTone_05:
-    - low:  G4
+    - low:  G3   # was G4-B5 (source bytes) for PSG1
+      high: G4
+      mod_instrument: 9
+      root: G1
+      synth_root: G3
+    - low:  G5   # was G4-B5 (source bytes) for PSG2
       high: B5
       mod_instrument: 9
-      root: G2
-      synth_root: G4
-    - low:  C6
-      high: C7
+      root: G3
+      synth_root: G5
+    - low:  G5   # was C6-C7 (source bytes) for PSG1, PSG2
+      high: C6
       mod_instrument: 10
-      root: C2
-      synth_root: C6
+      root: G1
+      synth_root: G5

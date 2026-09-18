@@ -326,8 +326,16 @@ it audited at 8 % of notes right.  With `range_space: chip` (song-level) the key
 and a voice spanning more than three octaves gets one entry per window.  Two voices sharing one
 sample keep separate entries: `root_e = root_head + (low_e − low_head)`.  `configs/13_credits.yaml`
 is generated this way (1623 of 1635 notes right; the 12 left are detune scoops the converter does
-not do, and PSG notes transposed below the table).  Source space is still what every other config
-uses.
+not do, and PSG notes transposed below the table).
+
+`tools/config_to_chip_space.py <config>` converts an existing source-space config: for every
+entry it collects the chip pitches each channel plays through it (loops extended, every
+transposition), makes one entry per touching range with `synth_root` = the range's low note and
+`root` shifted so the tuning `synth_root − root` is unchanged, and warns where a range cannot
+fit MOD C1–B3 at that tuning — those notes need an instrument of their own (Ending's PSG2 plays
+E6–B6 on a sample that reaches B3+24 at most).  Stage Clear, Ending, Invincibility and Continue
+were converted this way (62 → 74, 190 → 194, 140 → 204, 70 → 101 notes right); Star Light by hand.
+Source space is still what the other configs use.
 
 ## voice_map Routing
 

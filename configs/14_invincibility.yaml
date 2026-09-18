@@ -11,6 +11,7 @@ target_speed: 3
 ticks_per_row: 2
 num_mod_channels: 8
 region: ntsc
+range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
 channels:
   - source: DAC
@@ -52,21 +53,18 @@ dac_samples:
     mod_note: C2
 
 voice_map:
-  # $00 — alg 2: (1+(2→3))→4, fb 7 — used by FM1, FM3, FM4, FM5
   0:
-    - low:  G5
-      high: Cs7
+    - low:  G3   # was G5-Cs7 (source bytes) for FM3, FM4, FM1, FM5
+      high: Cs6
       mod_instrument: 3
-      root: G1
-      synth_root: G4
-  # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
+      root: C1
+      synth_root: G3
   1:
-    - low:  G2
-      high: D4
+    - low:  G1   # was G2-D4 (source bytes) for FM2
+      high: D3
       mod_instrument: 5
       root: G1
       synth_root: G1
-
 psg_map:
   0xE7:                    # form $E7
     mod_instrument: 6
@@ -84,11 +82,11 @@ psg_map:
 channel_instrument_map:
   FM5:
     0:
-      - low:  G5
-        high: Cs7
-        mod_instrument: 4
-        root: G1
-        synth_root: G4
+    - low:  G4   # was G5-Cs7 (source bytes) for FM5
+      high: Cs6
+      mod_instrument: 4
+      root: G1
+      synth_root: G4
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

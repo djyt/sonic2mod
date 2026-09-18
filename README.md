@@ -24,7 +24,8 @@ For a development install (edits to source take effect immediately):
 pip install -e .
 ```
 
-This registers two CLI commands: `sonic2mod` and `sonic2mod-analyze`.
+This registers three CLI commands: `sonic2mod` (convert), `sonic2mod-analyze` (analyse) and
+`sonic2wav` (render the sound effects). All three take `--version`.
 
 
 ## Quick Start
@@ -72,12 +73,45 @@ Pre-configured conversions are in `configs/`
 | `10_final_zone.yaml` | Final Zone |
 | `11_stage_clear.yaml` | Stage Clear |
 | `12_ending_theme.yaml` | Ending Theme |
+| `13_credits.yaml` | Credits |
 | `14_invincibility.yaml` | Invincibility |
 | `15_1up.yaml` | 1-Up / Extra Life |
 | `16_chaos_emerald.yaml` | Chaos Emerald |
 | `17_drowning.yaml` | Drowning |
 | `18_continue_screen.yaml` | Continue Screen |
 | `19_game_over.yaml` | Game Over |
+
+
+## How close is it?
+
+Every note of every song is checked against a VGM/VGZ recording of the real Mega Drive: the chip's
+own frequency register writes on one side, the pitch each MOD note actually sounds at on the other.
+
+As of the current configs that's **7775 of 7800 notes correct** (>= 60 ms, within 35 cents), none
+missing. The 25 that differ are in Spring Yard, Scrap Brain, the Ending and Credits, and are
+explained per song in `docs/audits/`.
+
+```bash
+# Symbolic, no rendering, exits 1 on a wrong or missing note. Run this first.
+python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz"
+
+# Rendered audit: per-note pitch and level, channel balance, onset timing, vibrato rate and
+# depth, noise spectrum, DAC rate.  --write-volumes applies its volume suggestions to the config.
+python tools/vgm_compare.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz"
+```
+
+The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPlay and an ffmpeg
+build with libopenmpt — setup is in `docs/pipeline.md`. The per-song findings, and what each song
+still needs, are written up in `docs/audits/`.
+
+There is also a regression suite. It converts all 19 songs and diffs every channel of every
+pattern against a saved baseline, so any change to the converter has to prove it altered only
+what it meant to:
+
+```bash
+python tools/regression_test.py --generate-baselines   # before a change, while output is known-good
+python tools/regression_test.py                        # after — PASS means nothing else moved
+```
 
 
 ## Analyze an SMPS file (create a new config that doesn't already exist)
@@ -166,10 +200,14 @@ python sn76489/validate.py
 | Document | Contents |
 |----------|----------|
 | `docs/yaml_config.md` | Full YAML config schema |
-| `docs/pipeline.md` | Conversion pipeline — SMPS→MOD effect mapping, BPM derivation |
+| `docs/pipeline.md` | Conversion pipeline — SMPS→MOD effect mapping, BPM derivation, verifying against a VGZ |
 | `docs/smps_driver.md` | Megadrive Sonic 1 driver reference — all coord flag bytes, timing |
+| `docs/smps_format.md` | SMPS assembly syntax — header macros, `dc.b` tokens, effect macros |
 | `docs/fm_synthesis.md` | YM2612 synthesis pipeline |
 | `docs/psg_synthesis.md` | SN76489 PSG synthesis pipeline |
+| `docs/sfx_rendering.md` | The offline SFX driver, the 8-bit chain, deviations from stock hardware |
+| `docs/architecture.md` | Module layout and layering — start here to change the code |
+| `docs/audits/` | Per-song accuracy audits against the VGZ recordings |
 
 There is also a CLAUDE.md file, so you can experiment with adding functionality (or simply breaking everything) with an AI coding agent. I've found Claude Code to struggle with low-level assembly, but AI is evolving so fast that may have all changed by the time you read this! It's very good at some of the boring Python maintenance, and I used it for the above documentation. It's me writing right now though! :-)
 
@@ -178,9 +216,20 @@ I'm not particularly looking for a load of chaotic AI driven push requests at th
 
 ## Limitations
 
-- Mid-track tempo changes are currently ignored. This impacts *Drowning*, which should speed up as it progresses.
-- The Credits music is not configured for translation. It's effectively a Megamix of all the existing Sonic music, and I suspect I'll handle that in a different way in the final port of Sonic to the Amiga.
-- Synthesis is performed at the lowest note of the specified range in the current config files. It would be sensible to do this mid-range to minimise timbre changes to the final output. 
+- **One sample per range.** A range is synthesised at a single pitch (`synth_root`) and the Amiga
+  resamples it for the rest, so anything time-based in the patch scales with playback rate: the
+  envelope runs faster on high notes, and detuned-carrier beating changes speed with pitch. Voice
+  $04 in Green Hill beats at 6.5 Hz on C6 where the hardware beats at 4.46 Hz. The fix is to split
+  ranges wider than about nine semitones into two entries with their own `root` / `synth_root`,
+  which is a config change today and could be automated.
+- **`smpsDetune` is approximated by finetune**, where it is handled at all. `$03` is +5 to +8 cents
+  on hardware and MOD's finest step is +12.5. Title Screen uses finetune variants for its FM5
+  chorus; elsewhere the detune is dropped.
+- **Noise samples have one LFSR rate.** Pitched noise (Marble Zone) follows the melody by MOD
+  playback speed rather than by re-clocking the LFSR.
+- **A MOD BPM is a whole number**, so a song's tempo can land slightly off. `convert.py` prints the
+  rounding error and the `target_speed` that would reduce it.
+- 25 notes across four songs still sound at the wrong pitch — see the section above.
 
 
 ## Future Improvements

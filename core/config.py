@@ -145,6 +145,47 @@ def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_v
     )
 
 
+# The driver's PSGFrequencies table spans 130.98 Hz … 6580.02 Hz = synth_root C3 … Gs8 (indices
+# 0–68).  Its one remaining entry, index 69 (nMaxPSG), is not a pitch: the divider is 0, which
+# the Sega VDP PSG clocks as N=1.
+_RATE3_SYNTH_ROOT_MIN = 36     # C3
+_RATE3_SYNTH_ROOT_MAX = 104    # Gs8
+
+
+def rate3_synth_root_issues(config: 'ConversionConfig') -> list[dict]:
+    """Rate-3 noise entries whose ``synth_root`` is a frequency the driver can never write.
+
+    With ``noise_rate: 3`` the LFSR is clocked by tone channel 2, and ``synth_root`` is turned
+    into that channel's divider.  A value outside the driver's table (``A8`` is the usual one —
+    where index 69 would fall if the table were chromatic) gives a plausible-looking but wrong
+    LFSR clock: ~7 kHz instead of the ~112 kHz of nMaxPSG, a dull rattle instead of hiss.
+    Entries with an explicit ``tone2_n`` are exempt (it overrides ``synth_root``).
+
+    Returns one dict per offending entry: ``{'context', 'synth_root', 'above'}``.
+    """
+    entries: list[tuple[str, PsgInstrumentEntry]] = [
+        (f"psg_map[0x{form:02X}]", e) for form, e in config.psg_map.items()
+    ]
+    for label, lst in config.psg_voice_map.items():
+        entries.extend((f"psg_voice_map[{label}]", e) for e in lst)
+
+    issues = []
+    for context, e in entries:
+        if e.noise_rate != 3 or e.tone2_n is not None or e.synth_root is None:
+            continue
+        if _RATE3_SYNTH_ROOT_MIN <= e.synth_root <= _RATE3_SYNTH_ROOT_MAX:
+            continue
+        issues.append({
+            'context': context,
+            'synth_root': f"{_SYNTH_NOTE_NAMES[e.synth_root % 12]}{e.synth_root // 12}",
+            'above': e.synth_root > _RATE3_SYNTH_ROOT_MAX,
+        })
+    return issues
+
+
+_SYNTH_NOTE_NAMES = ('C', 'Cs', 'D', 'Ds', 'E', 'F', 'Fs', 'G', 'Gs', 'A', 'As', 'B')
+
+
 def _parse_tone2_n(entry: dict, context: str) -> int | None:
     """Validate the optional ``tone2_n`` key (SN76489 tone-ch2 divider, 1–1023)."""
     if 'tone2_n' not in entry or entry['tone2_n'] is None:

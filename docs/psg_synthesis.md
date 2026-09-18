@@ -356,6 +356,13 @@ was previously configured as `synth_root: A8` → N≈16 → 7 kHz, which sounds
 recording (`white/tone2 N=0`), and `tools/vgm_compare.py` shows the resulting band profile
 against the MOD's.
 
+`convert.py` (and `analyze.py --config`) **warn** when a rate-3 entry without `tone2_n` has a
+`synth_root` outside the driver's table, C3–Gs8 (`core.config.rate3_synth_root_issues`) — no note
+can make the driver write that frequency, and `A8` in particular is the nMaxPSG mistake above.
+The `analyze.py` YAML skeleton emits the right `tone2_n` directly: it looks the channel's lowest
+noise note (+ header transpose) up in the driver's `PSGFrequencies` table (`sfx/tables.py`),
+treating divider 0 as 1, and adds `low:` when the channel plays pitched noise.
+
 **Calculating synth_root for Sonic 1 rate-3 entries:**
 
 PSG3 note frequencies come from the `PSGFrequencies` table (index 0 = 130.98 Hz), not standard

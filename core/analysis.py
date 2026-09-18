@@ -75,6 +75,7 @@ class VoiceRangeStats:
     note_count: int
     switch_count: int      # how many smpsSetvoice events switched to this voice
     modal_transpose: int = 0  # cumulative_transpose at time of first note for this voice
+    modal_volume: int = 0     # channel TL offset (header volume + smpsAlterVol so far) at that note
 
     def has_notes(self) -> bool:
         return self.note_count > 0
@@ -280,6 +281,8 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
     # Initialise to header pitch_offset so cumulative reflects the true
     # running total (smpsHeaderFM $F4 = -12 for FM1/FM3/FM4/FM5).
     cumulative_transpose = ch.header.pitch_offset
+    # Same for the TL offset: smpsHeaderFM volume, then every smpsAlterVol adds to it.
+    cumulative_volume = ch.header.volume
     total_ticks = 0
 
     for event in ch.events:
@@ -318,6 +321,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                     if vs.note_count == 0:
                         # First note for this voice — record transpose and initial range
                         vs.modal_transpose = cumulative_transpose
+                        vs.modal_volume = cumulative_volume
                     vs.note_count += 1
                     if sem < vs.min_semitone:
                         vs.min_semitone = sem
@@ -349,6 +353,9 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                     current_psg_label = label
                     ts = _get_or_create_psg_tone(psg_tone_stats, label)
                     ts.switch_count += 1
+
+            elif eff.effect_type == 'smpsAlterVol':
+                cumulative_volume += cast(int, eff.params[0])
 
             elif eff.effect_type == 'smpsChangeTransposition':
                 delta = eff.params[0]

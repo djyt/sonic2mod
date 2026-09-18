@@ -10,7 +10,6 @@ Requires: pip install rich
 import argparse
 import importlib.metadata
 import io
-import math
 import os
 import sys
 
@@ -42,9 +41,10 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
-from core.config import ConversionConfig
+from core.config import ConversionConfig, rate3_synth_root_issues
 from core.smps_parser import SmpsParser
 from core.tables import PERIOD_TABLE, ModNote
+from sfx.tables import PSG_FREQUENCIES_EXTENDED, psg_note_index
 
 console = Console(legacy_windows=False)
 
@@ -476,6 +476,14 @@ def render_config_coverage(analysis: SongAnalysis):
 
     console.print(table)
 
+    for issue in rate3_synth_root_issues(analysis.config):
+        side = "above" if issue['above'] else "below"
+        console.print(
+            f"[yellow]![/yellow] [bold]{issue['context']}[/bold]: rate-3 noise synth_root "
+            f"{issue['synth_root']} is {side} the driver's PSG table (C3–Gs8) — use the "
+            "[cyan]tone2_n[/cyan] from the skeleton below instead"
+        )
+
 
 # YAML-compatible note name table (uses 's' suffix for sharps, e.g. Fs not F#)
 _YAML_CHROMATIC = ['C', 'Cs', 'D', 'Ds', 'E', 'F', 'Fs', 'G', 'Gs', 'A', 'As', 'B']
@@ -510,6 +518,23 @@ def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int 
         if amiga_clock / period > 2.0 * synth_freq:
             return ModNote(root_idx).name
     return ModNote(24 + note_letter).name
+
+
+_FM_BASE_VOLUME = 32      # sample_list volume of the loudest FM channel
+_TL_STEP_DB = 0.75        # YM2612 total level: 0.75 dB per step
+
+
+def _tl_volume(tl_steps: int) -> int:
+    """MOD sample volume for an FM channel tl_steps quieter than the loudest one."""
+    return max(1, min(64, round(_FM_BASE_VOLUME * 10 ** (-tl_steps * _TL_STEP_DB / 20))))
+
+
+def _rate3_tone2_n(min_semitone: int, transpose: int) -> int:
+    """Tone-2 divider the driver writes for a rate-3 noise note (PSGSetFreq table lookup).
+
+    nMaxPSG's table entry is divider 0, which the Sega VDP PSG clocks as N=1.
+    """
+    return max(1, PSG_FREQUENCIES_EXTENDED[psg_note_index(0x81 + min_semitone, transpose)])
 
 
 _VALID_MOD_CHANNELS = (4, 8, 10, 12, 14, 16)
@@ -606,6 +631,17 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for vi in ch_an.voice_stats:
             all_voices.setdefault(vi, []).append(ch_an.name)
 
+    # TL offset of each (voice, channel) pair when the voice first sounds there, relative to the
+    # loudest pair in the song.  The dominant channel's level becomes the sample_list volume.
+    voice_tl: dict[int, dict[str, int]] = {}
+    for ch_an in fm_channels:
+        for vi, vs in ch_an.voice_stats.items():
+            if vs.note_count > 0:
+                voice_tl.setdefault(vi, {})[ch_an.name] = vs.modal_volume
+    tl_ref = min((tl for per_ch in voice_tl.values() for tl in per_ch.values()), default=0)
+    fm_volume: dict[int, int] = {}
+    fm_volume_note: dict[int, str] = {}
+
     fm_items: list[tuple] = []  # (vi, inst, min_sem, max_sem, has_trans, initial_trans, alg_str, used_by, split_point, inst2)
     for vi in sorted(all_voices.keys()):
         voice_def = next((v for v in song.voices if v.index == vi), None)
@@ -632,6 +668,13 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             dominant = max(note_bearing_channels,
                            key=lambda c: c.voice_stats[vi].note_count)
             initial_trans = dominant.voice_stats[vi].modal_transpose
+            fm_volume[vi] = _tl_volume(voice_tl[vi][dominant.name] - tl_ref)
+            per_ch = [f"{name} ${tl & 0xFF:02X} → {_tl_volume(tl - tl_ref)}"
+                      for name, tl in voice_tl[vi].items()]
+            fm_volume_note[vi] = "TL " + ", ".join(per_ch)
+            if len({_tl_volume(tl - tl_ref) for tl in voice_tl[vi].values()}) > 1:
+                fm_volume_note[vi] += (f"  (using {dominant.name}; add a channel_instrument_map "
+                                       "variant for the others)")
         else:
             initial_trans = 0
         if min_sem is not None and max_sem is not None:
@@ -712,12 +755,19 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         lines.append("  # --- percussion ---")
         for base_name, inst in dac_base_insts:
             lines.append(f"  - [{inst}, \"{base_name[1:].lower()}.raw\", 64, 0]")
+    if fm_items:
+        lines.append(f"  # FM volumes bake in each channel's TL offset (smpsHeaderFM volume + smpsAlterVol, "
+                     f"{_TL_STEP_DB} dB/step)")
+        lines.append(f"  # relative to the loudest channel:  {_FM_BASE_VOLUME} × 10^(−steps×{_TL_STEP_DB}/20)")
     for vi, inst, _min_sem, _max_sem, _has_trans, _initial_trans, alg_str, used_by, split_point, inst2 in fm_items:
         lines.append(f"  # --- voice ${vi:02X}: {alg_str} — {used_by} ---")
-        lines.append(f"  - [{inst}, \"fm_v{vi:02x}_lo.raw\", 32, 0]" if split_point is not None
-                     else f"  - [{inst}, \"fm_v{vi:02x}.raw\", 32, 0]")
+        vol = fm_volume.get(vi, _FM_BASE_VOLUME)
+        if vi in fm_volume_note:
+            lines.append(f"  #     {fm_volume_note[vi]}")
+        lines.append(f"  - [{inst}, \"fm_v{vi:02x}_lo.raw\", {vol}, 0]" if split_point is not None
+                     else f"  - [{inst}, \"fm_v{vi:02x}.raw\", {vol}, 0]")
         if split_point is not None:
-            lines.append(f"  - [{inst2}, \"fm_v{vi:02x}_hi.raw\", 32, 0]")
+            lines.append(f"  - [{inst2}, \"fm_v{vi:02x}_hi.raw\", {vol}, 0]")
     for _form_byte, label, inst, _ts, _ch_name, _ch_init_trans in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
         lines.append(f"  - [{inst}, \"psg_noise.raw\", 16, 0]")
@@ -788,21 +838,31 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             initial_voice = _noise_ch_initial_voice.get(ch_name, "")
 
             if noise_rate == 3 and ts.note_count > 0:
-                idx = min_sem + ch_init_trans
-                chip_freq = 130.98 * (2.0 ** (idx / 12.0))
-                synth_idx = round(45 + 12.0 * math.log2(chip_freq / 440.0))
-                # root must satisfy Nyquist: target_rate > 2 × chip_freq
-                root_name = _noise_root_for_synth(min_sem % 12, chip_freq)
+                # The LFSR is clocked by tone channel 2, whose divider the driver looks up in
+                # PSGFrequencies from the channel's own note — not a chromatic extrapolation:
+                # nMaxPSG (index 69) is divider 0 → N=1, not the ~7 kHz an "A8" would give.
+                tone2_n: int | None = _rate3_tone2_n(min_sem, ch_init_trans)
+                shift_hz = 3_579_545 / (32.0 * tone2_n)
+                # root must satisfy Nyquist for the LFSR shift rate where that is achievable;
+                # above it the highest-rate root is the best a MOD sample can do.
+                root_name = _noise_root_for_synth(min_sem % 12, shift_hz)
             else:
-                synth_idx = None
+                tone2_n = None
                 root_name = _note_in_octave2(min_sem)
 
             lines.append(f"  0x{form_byte:02X}:                    # {label}")
             lines.append(f"    mod_instrument: {inst}")
             lines.append(f"    root: {root_name}")
             lines.append(f"    noise_rate: {noise_rate}")
-            if synth_idx is not None:
-                lines.append(f"    synth_root: {_sem_to_yaml(synth_idx + 12)}")
+            if tone2_n is not None:
+                note_desc = semitone_to_note_name(min_sem)
+                lines.append(f"    tone2_n: {tone2_n:<4d}           # driver divider for n{note_desc} "
+                             f"{ch_init_trans:+d} → LFSR {shift_hz:,.0f} Hz")
+                if ts.max_semitone != ts.min_semitone:
+                    # Pitched noise: anchor the sample at the lowest note so MOD playback speed
+                    # follows the melody (one static LFSR rate per sample is the approximation).
+                    lines.append(f"    low: {_sem_to_yaml(min_sem)}                # n{note_desc} plays at root; "
+                                 f"notes up to n{semitone_to_note_name(ts.max_semitone)} shift the playback rate")
             envelope = initial_voice if initial_voice else "fTone_04  # TODO: verify envelope"
             lines.append(f"    envelope: {envelope}")
             lines.append("    base_volume: 0")

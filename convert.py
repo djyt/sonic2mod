@@ -393,6 +393,33 @@ def _render_warning(w: dict):
             "     [green]Fix:[/green] check the [cyan]source:[/cyan] field in your channel config."
         )
 
+    elif wtype == 'rate3_synth_root':
+        side = "above" if w['above'] else "below"
+        console.print(
+            f"\n  [bold yellow]![/bold yellow]  "
+            f"[bold]{w['context']}[/bold]  "
+            f"[yellow]rate-3 noise synth_root {w['synth_root']} is {side} the driver's PSG table "
+            f"(C3–Gs8)[/yellow]"
+        )
+        console.print(
+            "     [dim]The LFSR clock comes from the tone-2 divider the driver writes; no note "
+            "produces this frequency.[/dim]"
+        )
+        if w['above']:
+            console.print(
+                "     [dim]The only entry past Gs8 is nMaxPSG: divider 0, clocked as N=1 "
+                "(~112 kHz, near-white hiss — not the ~7 kHz of A8).[/dim]"
+            )
+            console.print(
+                "     [green]Fix:[/green] replace synth_root with  [bold cyan]tone2_n: 1[/bold cyan]"
+                "  if the channel plays nMaxPSG  [dim](analyze.py prints the right value)[/dim]"
+            )
+        else:
+            console.print(
+                "     [green]Fix:[/green] set  [bold cyan]tone2_n:[/bold cyan]  to the divider "
+                "analyze.py prints for this channel, or a synth_root inside C3–Gs8."
+            )
+
     elif wtype == 'pattern_overflow':
         pat = w['pattern']
         mx  = w['max']

@@ -9,12 +9,16 @@ channel-isolated copies), then lines the two up and reports, per channel:
     both renders and the level difference
   * level balance of each channel relative to a reference channel
   * onset timing deviations (MOD grid vs. driver tempo jitter, lost notes)
+  * vibrato on long notes: rate (Hz) and depth (+/- cents) in both renders
   * noise: onset list, decay envelope, spectral band profile (LFSR rate check)
   * DAC: per-hit low-frequency peak (playback-rate check) and band profile
 
 Requirements: numpy, ffmpeg with the libopenmpt demuxer on PATH, and a VGMPlay
-directory (VGMPlay64.exe / VGMPlay.exe + VGMPlay.ini + zlib1.dll).  Pass it
-with --vgmplay or set the VGMPLAY_DIR environment variable.
+0.51.x directory (VGMPlay64.exe / VGMPlay.exe + VGMPlay.ini + zlib1.dll; the
+libvgm-based line, whose VGMPlay.ini selects cores with ``Core = NUKE``).  It is
+looked up in this order: --vgmplay DIR, the VGMPLAY_DIR environment variable,
+then reference/vgz/vgmplay/ (untracked, like the rest of reference/vgz/ -- unzip
+a VGMPlay build there on a fresh checkout; see docs/pipeline.md).
 
 Usage::
 
@@ -22,6 +26,9 @@ Usage::
     python tools/vgm_compare.py configs/01_title_screen.yaml ref.vgz --mod output/x.mod --ref FM2
     python tools/vgm_compare.py cfg.yaml ref.vgz --skip-render     # reuse WAVs in the workdir
     python tools/vgm_compare.py cfg.yaml ref.vgz --offset 0.25     # force MOD-minus-VGM offset (s)
+
+    # CI-style: machine-readable results + non-zero exit when a threshold is exceeded
+    python tools/vgm_compare.py cfg.yaml ref.vgz --json output/compare/title.json --fail-balance-db 2
 
 Renders land in --workdir (default: output/compare/<config-name>/).
 """
@@ -31,6 +38,8 @@ from __future__ import annotations
 import argparse
 import contextlib
 import gzip
+import itertools
+import json
 import math
 import os
 import re
@@ -73,15 +82,22 @@ _MOD_FORMAT_CHANNELS = {"M.K.": 4, "M!K!": 4, "6CHN": 6, "8CHN": 8, "10CH": 10, 
 # Rendering
 # ---------------------------------------------------------------------------
 
+_VGMPLAY_EXES = ("VGMPlay64.exe", "VGMPlay.exe", "vgmplay")
+_VGMPLAY_DEFAULT = _HERE.parent / "reference" / "vgz" / "vgmplay"
+
+
 def _find_vgmplay(arg: str | None) -> Path:
+    """Resolve the VGMPlay directory: --vgmplay, then VGMPLAY_DIR, then reference/vgz/vgmplay/."""
     cand = arg or os.environ.get("VGMPLAY_DIR")
-    if not cand:
-        raise SystemExit("ERROR: VGMPlay directory not given (--vgmplay DIR or VGMPLAY_DIR env var)")
-    d = Path(cand)
-    for exe in ("VGMPlay64.exe", "VGMPlay.exe", "vgmplay"):
-        if (d / exe).exists():
-            return d
-    raise SystemExit(f"ERROR: no VGMPlay executable found in {d}")
+    d = Path(cand) if cand else _VGMPLAY_DEFAULT
+    if any((d / exe).exists() for exe in _VGMPLAY_EXES):
+        return d
+    if cand:
+        raise SystemExit(f"ERROR: no VGMPlay executable found in {d}")
+    raise SystemExit(
+        f"ERROR: VGMPlay not found in {_VGMPLAY_DEFAULT}\n"
+        "       Unzip a VGMPlay 0.51.x build there (the directory is untracked), or pass\n"
+        "       --vgmplay DIR / set VGMPLAY_DIR.  See 'VGM comparison setup' in docs/pipeline.md.")
 
 
 def _patch_ini(src: str, ym_mask: int, sn_mask: int, core: str) -> str:
@@ -108,7 +124,7 @@ def _patch_ini(src: str, ym_mask: int, sn_mask: int, core: str) -> str:
 
 
 def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path, core: str) -> None:
-    exe = next(e for e in ("VGMPlay64.exe", "VGMPlay.exe", "vgmplay") if (vgmplay / e).exists())
+    exe = next(e for e in _VGMPLAY_EXES if (vgmplay / e).exists())
     base_ini = (vgmplay / "VGMPlay.ini").read_text(encoding="utf-8", errors="replace")
     outdir.mkdir(parents=True, exist_ok=True)
     for name in ["FULL", *names]:
@@ -292,6 +308,162 @@ def auto_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float = 3.0
 
 
 # ---------------------------------------------------------------------------
+# Vibrato
+# ---------------------------------------------------------------------------
+
+_VIB_MIN_NOTE = 0.5          # seconds; shorter notes do not hold enough cycles to measure
+_VIB_FRAME = 0.005           # pitch-track frame (200 Hz)
+_VIB_BAND = (2.5, 14.0)      # plausible vibrato rates, Hz
+_VIB_MIN_DEPTH = 3.0         # cents; below this it is period-table / FNUM quantisation wobble
+_VIB_MIN_R2 = 0.35           # share of pitch-track variance a sinusoid at the rate must explain
+
+
+def _pick_partial(seg: np.ndarray) -> tuple[float, float]:
+    """(centre Hz, half-bandwidth Hz) of the partial that is easiest to isolate; (0, 0) if none.
+
+    FM voices with fractional operator multiples put partials on a lattice finer than the note's
+    own frequency (Title Screen voice $01 at A2: 55 / 82.5 / 110 Hz), so the spacing is measured
+    rather than assumed.  It is read off the peaks below 500 Hz, where a vibrato of a few tens of
+    cents is too narrow to show up as separate sideband peaks.
+    """
+    freqs, mag = spectrum(seg, 1 << math.ceil(math.log2(len(seg) * 2)))
+    keep = (freqs >= 40) & (freqs <= 4000)
+    freqs, mag = freqs[keep], mag[keep].copy()
+    if not len(mag) or mag.max() <= 0:
+        return 0.0, 0.0
+    floor = mag.max() * 10 ** (-25 / 20)
+    peaks: list[tuple[float, float]] = []            # (Hz, magnitude), strongest first
+    work = mag.copy()
+    while len(peaks) < 24:
+        k = int(np.argmax(work))
+        if work[k] < floor:
+            break
+        peaks.append((float(freqs[k]), float(work[k])))
+        work[np.abs(freqs - freqs[k]) < 12.0] = 0
+    low = sorted(f for f, _ in peaks if f < 500) or sorted(f for f, _ in peaks)
+    gaps = [b - a for a, b in itertools.pairwise(low)]
+    spacing = min(gaps) if gaps else low[0]
+    # A partial needs its own swing (2 % covers +/-35 cents) plus the first modulation sidebands.
+    ok = [(f, m) for f, m in peaks if 0.02 * f + 8.0 <= 0.45 * spacing]
+    fc = max(ok, key=lambda x: x[1])[0] if ok else min(f for f, _ in peaks)
+    return fc, min(0.45 * spacing, 3 * (0.02 * fc + 8.0))
+
+
+def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, float]:
+    """(pitch deviation in cents per _VIB_FRAME, NaN where quiet; filter half-bandwidth in Hz).
+
+    Partial tracking by heterodyne: one partial is shifted to DC, isolated with a brick-wall
+    low-pass narrower than the partial spacing, and the phase derivative of what is left is its
+    instantaneous frequency.  Every partial of an FM or PSG note moves by the same number of
+    cents, so which one is tracked does not matter.
+    """
+    n = len(seg)
+    if n < int(0.2 * SR):
+        return np.array([]), 0.0
+    fc, bw = _pick_partial(seg)
+    if fc <= 0:
+        return np.array([]), 0.0
+
+    t = np.arange(n) / SR
+    spec = np.fft.fft(seg * np.exp(-2j * np.pi * fc * t))
+    spec[np.abs(np.fft.fftfreq(n, 1 / SR)) > bw] = 0
+    z = np.fft.ifft(spec)
+
+    hop = int(_VIB_FRAME * SR)
+    nf = (n - 1) // hop
+    if nf < 8:
+        return np.array([]), 0.0
+    # Amplitude-weighted mean frequency per frame: sum(z[k+1]·conj(z[k])) has the mean phase step
+    # as its angle and ignores samples where the partial has faded out.
+    prod = (z[1:] * np.conj(z[:-1]))[:nf * hop].reshape(nf, hop).sum(axis=1)
+    amp = np.abs(z[:nf * hop]).reshape(nf, hop).mean(axis=1)
+    dev_hz = np.angle(prod) * SR / (2 * np.pi)
+    track = 1200 * np.log2(np.maximum(fc + dev_hz, 1e-6) / fc)
+    track[amp < 0.1 * amp.max()] = np.nan
+    edge = int(0.03 / _VIB_FRAME)          # brick-wall filter rings at the segment ends
+    track[:edge] = np.nan
+    track[-edge:] = np.nan
+    return track, bw
+
+
+def vibrato_estimate(seg: np.ndarray) -> dict | None:
+    """Rate (Hz) and depth (+/- cents) of periodic pitch modulation in seg; None if there is none.
+
+    Only the modulated stretch of the note is measured, so a delayed onset (smpsModSet wait) or a
+    4xy that stops before the note does not dilute the figures.  The depth is the median of the
+    per-cycle extremes, which is the same for the driver's triangle and ProTracker's sine and
+    shrugs off the pitch glitches at attack and release.
+    """
+    track, bw = pitch_track(seg)
+    ok = np.where(~np.isnan(track))[0]
+    trim = int(0.05 / _VIB_FRAME)                     # attack / release transients
+    if len(ok) < int(0.4 / _VIB_FRAME) + 2 * trim:
+        return None
+    first = int(ok[0]) + trim
+    track = track[first:int(ok[-1]) + 1 - trim]
+    if np.isnan(track).any():
+        idx = np.arange(len(track))
+        good = ~np.isnan(track)
+        track = np.interp(idx, idx[good], track[good])
+    track = np.convolve(track, np.ones(3) / 3, mode="same")[1:-1]     # 15 ms smoothing
+
+    # Local swing = half the pitch range inside a window one slowest-vibrato cycle long.  The
+    # modulated stretch is the longest run where it stays near its typical (75th percentile)
+    # value; far above that is a glitch, far below is an unmodulated part of the note.
+    win = int(1 / _VIB_BAND[0] / _VIB_FRAME)
+    if len(track) < win + int(0.2 / _VIB_FRAME):
+        return None
+    views = np.lib.stride_tricks.sliding_window_view(track, win)
+    local = (views.max(axis=1) - views.min(axis=1)) / 2
+    typical = float(np.percentile(local, 75))
+    if typical < _VIB_MIN_DEPTH:
+        return None
+    active = (local > 0.5 * typical) & (local < 2.5 * typical)
+    best_a = best_b = run_a = 0
+    for i, on in enumerate([*active, False]):
+        if on:
+            continue
+        if i - run_a > best_b - best_a:
+            best_a, best_b = run_a, i
+        run_a = i + 1
+    a, b = best_a, best_b + win - 1                   # window index -> frame span
+    if (b - a) * _VIB_FRAME < 0.3:
+        return None
+    x = track[a:b]
+    tt = np.arange(len(x)) * _VIB_FRAME
+    x = x - np.polyval(np.polyfit(tt, x, 1), tt)
+
+    nfft = 8192
+    mag = np.abs(np.fft.rfft(x * np.hanning(len(x)), nfft))
+    fr = np.fft.rfftfreq(nfft, _VIB_FRAME)
+    # Anything within 20 % of the brick-wall edge is a neighbouring partial beating through the
+    # filter skirt, not modulation.
+    band = np.where((fr >= _VIB_BAND[0]) & (fr <= min(_VIB_BAND[1], 0.8 * bw)))[0]
+    k = int(band[np.argmax(mag[band])])
+    rate = float(fr[k])
+    if 1 <= k < len(mag) - 1:
+        p, q, r = mag[k - 1], mag[k], mag[k + 1]
+        den = p - 2 * q + r
+        if den != 0:
+            rate = float((k + 0.5 * (p - r) / den) * fr[1])
+
+    basis = np.column_stack([np.sin(2 * np.pi * rate * tt), np.cos(2 * np.pi * rate * tt)])
+    coef, *_ = np.linalg.lstsq(basis, x, rcond=None)
+    var = float(np.var(x))
+    r2 = 1 - float(np.var(x - basis @ coef)) / var if var > 0 else 0.0
+    cycle = max(2, round(1 / rate / _VIB_FRAME))
+    cycles = [x[i:i + cycle] for i in range(0, len(x) - cycle + 1, cycle)]
+    if len(cycles) < 2:
+        return None
+    depth = (statistics.median(float(c.max()) for c in cycles)
+             - statistics.median(float(c.min()) for c in cycles)) / 2
+    if r2 < _VIB_MIN_R2 or depth < _VIB_MIN_DEPTH:
+        return None
+    return {"rate_hz": rate, "depth_cents": depth, "onset_s": (first + 1 + a) * _VIB_FRAME,
+            "dur_s": (b - a) * _VIB_FRAME, "r2": r2}
+
+
+# ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
 
@@ -304,7 +476,8 @@ def _hz(f: int) -> str:
 
 
 def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
-           offset: float | None, ref_chan: str, max_rows: int) -> None:
+           offset: float | None, ref_chan: str, max_rows: int) -> dict:
+    """Print the comparison and return the same numbers as a JSON-serialisable dict."""
     raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
     rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
     events = [r for r in rows if r[1] != "DAC"]
@@ -324,12 +497,17 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
         mod[n] = load_wav(workdir / f"mod_{src}.wav")
     mod["FULL"] = load_wav(workdir / "mod_FULL.wav")
 
+    offset_auto = offset is None
     if offset is None:
         offset = auto_offset(vgm["FULL"], mod["FULL"])
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
     else:
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
     print()
+    res: dict = {
+        "offset_ms": offset * 1000, "offset_auto": offset_auto,
+        "channels": {n: {} for n in names}, "notes": [], "vibrato": [],
+    }
 
     # ---- per-note pitch and level (FM + PSG tone) ----
     per_ch: dict[str, list] = {}
@@ -361,6 +539,10 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             flag = "  <-- PITCH" if (math.isnan(cm) or abs(cm) > 25) else ""
             if lm < -70:
                 flag = "  <-- SILENT in MOD"
+            res["notes"].append({
+                "channel": ch, "t_s": t, "note": note, "ref_hz": fref, "vgm_cents": cv, "mod_cents": cm,
+                "vgm_db": lv, "mod_db": lm, "diff_db": lm - lv, "silent_in_mod": lm < -70,
+            })
             if max_rows <= 0 or printed < max_rows or flag:
                 print(f"{ch:<6}{t:>7.3f}  {note:<4}{fref:>8.1f}  {_fmt(cv, 6)}  {_fmt(cm, 6)}  "
                       f"{lv:>7.1f}  {lm:>7.1f}  {lm - lv:>6.1f}{flag}")
@@ -374,6 +556,53 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             ld = level_diff.get(ch, [float('nan')])
             print(f"{ch:<6}{len(per_ch[ch]):>6}  {statistics.median(ce):>8.1f} / {min(ce):>6.1f} / {max(ce):>6.1f}"
                   f"{'':<8}  {statistics.median(ld):>+8.1f}")
+            res["channels"][ch].update({
+                "notes": len(per_ch[ch]),
+                "pitch_cents": {"median": statistics.median(ce), "min": min(ce), "max": max(ce)},
+                "level_diff_db_median": statistics.median(ld),
+            })
+        print()
+
+    # ---- vibrato on long notes ----
+    # Key-off is not in the event list, so a note runs to the next key-on on its channel and
+    # pitch_track() drops the frames where it has already faded.
+    long_notes = 0
+    vib_rows: list[str] = []
+    for ch, evs in per_ch.items():
+        for i, r in enumerate(evs):
+            t, note = r[0] / 1000.0, r[5]
+            dur = (evs[i + 1][0] / 1000.0 - t) if i + 1 < len(evs) else 3.0
+            if dur < _VIB_MIN_NOTE:
+                continue
+            long_notes += 1
+            span = min(dur, 4.0) - 0.02
+            vv = vibrato_estimate(seg_at(vgm[ch], t + 0.01, span))
+            vm = vibrato_estimate(seg_at(mod[ch], t + offset + 0.01, span))
+            if vv is None and vm is None:
+                continue
+            if vv is None or vm is None:
+                flag = "  <-- MISSING in MOD" if vm is None else "  <-- not in VGM"
+            elif (abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15
+                  or abs(vm["depth_cents"] - vv["depth_cents"]) > max(5.0, 0.3 * vv["depth_cents"])):
+                flag = "  <-- VIBRATO"
+            else:
+                flag = ""
+
+            def _vib(v: dict | None) -> str:
+                return f"{v['rate_hz']:>5.2f} Hz +/-{v['depth_cents']:>4.1f} c" if v else f"{'none':>17}"
+            vib_rows.append(f"{ch:<6}{t:>7.3f}  {note:<4}{dur:>6.2f}   {_vib(vv)}   {_vib(vm)}{flag}")
+            res["vibrato"].append({"channel": ch, "t_s": t, "note": note, "dur_s": dur,
+                                   "vgm": vv, "mod": vm, "mismatch": bool(flag)})
+    if per_ch:
+        print(f"Vibrato ({long_notes} notes of {_VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
+        if vib_rows:
+            print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'dur':>6}   {'VGM rate / depth':>17}   {'MOD rate / depth':>17}")
+            print("-" * 66)
+            for row in vib_rows:
+                print(row)
+            print("  (4xy: rate = x*(speed-1)*BPM/(160*speed) Hz; depth grows with y and with the note's period)")
+        else:
+            print("  none found")
         print()
 
     # ---- channel balance relative to reference channel ----
@@ -384,6 +613,10 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
         rv, rm = db(rms(vgm[n])) - rv_ref, db(rms(mod[n])) - rm_ref
         note = "" if abs(rm - rv) < 2 else "   <-- rebalance"
         print(f"  {n:<6} {rv:>8.1f} {rm:>8.1f} {rm - rv:>+8.1f}{note}")
+        res["channels"][n]["balance_db"] = {"vgm": rv, "mod": rm, "diff": rm - rv}
+    res["ref_channel"] = ref
+    res["mix"] = {"vgm_rms_db": db(rms(vgm["FULL"])), "vgm_peak": float(np.abs(vgm["FULL"]).max()),
+                  "mod_rms_db": db(rms(mod["FULL"])), "mod_peak": float(np.abs(mod["FULL"]).max())}
     print(f"  (absolute: VGM mix {db(rms(vgm['FULL'])):.1f} dBFS peak {np.abs(vgm['FULL']).max():.2f};"
           f" MOD mix {db(rms(mod['FULL'])):.1f} dBFS peak {np.abs(mod['FULL']).max():.2f})")
     print()
@@ -421,6 +654,11 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                   f"unmatched {missing}")
         else:
             print(f"  {n:<6} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; none matched")
+        res["channels"][n]["onsets"] = {
+            "ref": len(vo), "mod": len(mo), "matched": len(devs), "unmatched": missing,
+            "median_ms": statistics.median(devs) if devs else None,
+            "worst_ms": max(devs, key=abs) if devs else None,
+        }
     print()
 
     # ---- noise ----
@@ -428,6 +666,8 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
         vo = onsets(vgm["NOISE"], thresh_db=-50)
         mo = onsets(mod["NOISE"], thresh_db=-50)
         print(f"NOISE: {len(vo)} ref hits, {len(mo)} MOD hits")
+        noise_res: dict = {"ref_hits": len(vo), "mod_hits": len(mo)}
+        res["noise"] = noise_res
         steps = [0.0, 0.017, 0.033, 0.05, 0.067, 0.083, 0.1, 0.133, 0.167, 0.2, 0.25]
         print("  decay envelope (dB at ms after onset): " + ' '.join(f"{int(s * 1000):>5d}" for s in steps))
         for k in sorted({0, 1, len(vo) - 1} & set(range(len(vo)))):
@@ -440,8 +680,11 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             sv = seg_at(vgm["NOISE"], vo[0] + 0.005, 0.04)
             sm = seg_at(mod["NOISE"], vo[0] + offset + 0.005, 0.04)
             print("  band energy dB rel total <13 kHz: " + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
-            print("     VGM " + ' '.join(f"{x:>7.1f}" for x in band_profile(sv, bands, 13000)))
-            print("     MOD " + ' '.join(f"{x:>7.1f}" for x in band_profile(sm, bands, 13000)))
+            bv, bm = band_profile(sv, bands, 13000), band_profile(sm, bands, 13000)
+            print("     VGM " + ' '.join(f"{x:>7.1f}" for x in bv))
+            print("     MOD " + ' '.join(f"{x:>7.1f}" for x in bm))
+            noise_res["bands_hz"] = [list(b) for b in bands]
+            noise_res["band_db"] = {"vgm": bv, "mod": bm}
             print("  (a MOD profile that falls off above 4 kHz while VGM is flat means the LFSR"
                   " clock (tone2_n / synth_root) is too low)")
         print()
@@ -451,6 +694,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
         vo = onsets(vgm["DAC"], thresh_db=-40, hold=0.08)
         mo = onsets(mod["DAC"], thresh_db=-40, hold=0.08)
         print(f"DAC: {len(vo)} ref hits, {len(mo)} MOD hits (first {min(6, len(vo))} shown)")
+        res["dac"] = {"ref_hits": len(vo), "mod_hits": len(mo), "hits": []}
         bands = [(0, 150), (150, 300), (300, 600), (600, 1200), (1200, 2400), (2400, 4800), (4800, 9600), (9600, 22050)]
         print("  hit   t_vgm  lowpeak_vgm lowpeak_mod   band dB VGM / MOD: " + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
         for k in range(min(6, len(vo))):
@@ -462,11 +706,55 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             lo = (fv > 40) & (fv < 400)
             pv = fv[lo][np.argmax(mv[lo])]
             pm = fm_[lo][np.argmax(mm[lo])]
+            res["dac"]["hits"].append({"t_s": t, "lowpeak_vgm_hz": float(pv), "lowpeak_mod_hz": float(pm)})
             print(f"  {k:3d} {t:>7.3f} {pv:>11.1f} {pm:>11.1f}   "
                   + ' '.join(f"{x:.0f}" for x in band_profile(sv, bands)))
             print(f"  {'':3} {'':7} {'':11} {'':11}   "
                   + ' '.join(f"{x:.0f}" for x in band_profile(sm, bands)))
         print("  (lowpeak differing by more than ~3% means the DAC sample plays at the wrong rate)")
+    return res
+
+
+def evaluate_checks(res: dict, balance_db: float | None, pitch_cents: float | None,
+                    unmatched: int | None) -> list[dict]:
+    """Apply the --fail-* thresholds to a report() result.  One entry per enabled threshold."""
+    checks: list[dict] = []
+
+    def add(name: str, limit: float, offenders: list[tuple[str, float]]) -> None:
+        worst = max(offenders, key=lambda o: abs(o[1]), default=None)
+        checks.append({
+            "name": name, "limit": limit, "passed": not offenders,
+            "offenders": [{"where": w, "value": v} for w, v in offenders],
+            "worst": {"where": worst[0], "value": worst[1]} if worst else None,
+        })
+
+    if balance_db is not None:
+        add("balance_db", balance_db,
+            [(n, c["balance_db"]["diff"]) for n, c in res["channels"].items()
+             if "balance_db" in c and abs(c["balance_db"]["diff"]) > balance_db])
+    if pitch_cents is not None:
+        # A note that is silent or has no measurable peak in the MOD is a pitch failure too.
+        add("pitch_cents", pitch_cents,
+            [(f"{n['channel']} {n['note']} @ {n['t_s']:.3f}s", n["mod_cents"]) for n in res["notes"]
+             if n["silent_in_mod"] or math.isnan(n["mod_cents"]) or abs(n["mod_cents"]) > pitch_cents])
+    if unmatched is not None:
+        add("unmatched_onsets", unmatched,
+            [(n, c["onsets"]["unmatched"]) for n, c in res["channels"].items()
+             if "onsets" in c and c["onsets"]["unmatched"] > unmatched])
+    return checks
+
+
+def _json_safe(x):
+    """NaN/inf are not valid JSON; numpy scalars are not serialisable."""
+    if isinstance(x, dict):
+        return {k: _json_safe(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_json_safe(v) for v in x]
+    if isinstance(x, (np.floating, np.integer)):
+        x = x.item()
+    if isinstance(x, float):
+        return round(x, 4) if math.isfinite(x) else None
+    return x
 
 
 def main() -> None:
@@ -474,13 +762,20 @@ def main() -> None:
     ap.add_argument("config", help="song YAML config (channel mapping, output_file)")
     ap.add_argument("vgz", help="reference VGM/VGZ recording of the same song")
     ap.add_argument("--mod", help="MOD to compare (default: config output_file)")
-    ap.add_argument("--vgmplay", help="VGMPlay directory (default: VGMPLAY_DIR env var)")
+    ap.add_argument("--vgmplay", help="VGMPlay directory (default: VGMPLAY_DIR env var, then reference/vgz/vgmplay)")
     ap.add_argument("--workdir", help="where rendered WAVs go (default: output/compare/<config name>/)")
     ap.add_argument("--offset", type=float, help="MOD-minus-VGM time offset in seconds (default: auto)")
     ap.add_argument("--skip-render", action="store_true", help="reuse WAVs already in the workdir")
     ap.add_argument("--ref", default="FM2", help="reference channel for balance table (default FM2)")
     ap.add_argument("--core", default="NUKE", help="VGMPlay YM2612 core: NUKE (default), GPGX, GENS")
     ap.add_argument("--max-rows", type=int, default=400, help="per-note rows to print (flagged rows always print)")
+    ap.add_argument("--json", metavar="FILE", help="also write the results (and threshold checks) as JSON")
+    ap.add_argument("--fail-balance-db", type=float, metavar="DB",
+                    help="exit 1 if any channel's balance vs --ref differs from the VGM by more than DB")
+    ap.add_argument("--fail-pitch-cents", type=float, metavar="CENTS",
+                    help="exit 1 if any note is more than CENTS off, silent or unmeasurable in the MOD")
+    ap.add_argument("--fail-unmatched", type=int, metavar="N",
+                    help="exit 1 if any channel has more than N reference onsets without a MOD onset")
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -514,7 +809,30 @@ def main() -> None:
     print(f"VGZ    : {vgz}")
     print(f"Renders: {workdir}")
     print()
-    report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows)
+    res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows)
+
+    checks = evaluate_checks(res, args.fail_balance_db, args.fail_pitch_cents, args.fail_unmatched)
+    passed = all(c["passed"] for c in checks)
+    if checks:
+        print()
+        print("Threshold checks")
+        for c in checks:
+            if c["passed"]:
+                print(f"  PASS  {c['name']} <= {c['limit']:g}")
+            else:
+                w = c["worst"]
+                print(f"  FAIL  {c['name']} <= {c['limit']:g}: {len(c['offenders'])} over, "
+                      f"worst {w['where']} = {w['value']:+.1f}")
+    if args.json:
+        out = {"config": args.config, "mod": str(mod_path), "vgz": str(vgz), **res,
+               "checks": checks, "passed": passed}
+        jp = Path(args.json)
+        jp.parent.mkdir(parents=True, exist_ok=True)
+        jp.write_text(json.dumps(_json_safe(out), indent=2) + "\n", encoding="utf-8")
+        print()
+        print(f"JSON   : {jp}")
+    if not passed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

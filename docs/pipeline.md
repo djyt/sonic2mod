@@ -432,6 +432,65 @@ Example — GHZ, break at (0, 31) → body_start = 32:
 
 ---
 
+## Verifying against a VGZ (`tools/vgm_compare.py`)
+
+### VGM comparison setup
+
+`reference/vgz/` is **untracked** (`.gitignore`): it holds the reference recordings
+(`01 - Title Theme.vgz`, …) and the VGMPlay binaries, neither of which belongs in the repo.
+On a fresh checkout:
+
+1. Put the VGZ rips of the songs you want to audit in `reference/vgz/`.
+2. Unzip a **VGMPlay 0.51.x** Windows build (Valley Bell's libvgm-based player, source at
+   <https://github.com/ValleyBell/vgmplay-libvgm>) into `reference/vgz/vgmplay/` so that it contains
+   `VGMPlay64.exe` (or `VGMPlay.exe`), `VGMPlay.ini` and `zlib1.dll`.  The 0.51 line is required:
+   the tool patches `VGMPlay.ini` with `Core = NUKE` / `MuteMask = …`, and the older 0.40.x
+   "legacy" builds use a different ini layout.
+3. Install an ffmpeg build that includes the libopenmpt demuxer (the gyan.dev *full* build does;
+   check with `ffmpeg -h demuxer=libopenmpt`) and `pip install numpy`.
+
+VGMPlay is looked up as `--vgmplay DIR` → `VGMPLAY_DIR` environment variable →
+`reference/vgz/vgmplay/`, so with the layout above no flag is needed.
+
+### Running it
+
+```bash
+python convert.py configs/01_title_screen.yaml
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
+python tools/vgm_compare.py <cfg> <vgz> --skip-render        # reuse output/compare/<cfg>/*.wav
+```
+
+Sections of the report: per-note pitch/level, per-channel summary, **vibrato**, channel balance,
+onset timing, noise (decay + band profile), DAC (rate check).
+
+**Vibrato table.**  Every FM / PSG-tone note of 0.5 s or longer is pitch-tracked in both renders
+(one partial isolated by heterodyne + brick-wall filter, instantaneous frequency from the phase
+derivative).  A row is printed when either side modulates: rate in Hz and depth as ± cents, measured
+only over the modulated stretch so `smpsModSet` wait times do not dilute it.  Flags: `VIBRATO`
+(rate off by > 15 % or depth by > 5 c / 30 %), `MISSING in MOD`, `not in VGM` (MOD-only wobble —
+a `4xy` the hardware does not have, or a sample loop that is not a whole number of periods).
+Reference points: the driver's steady cycle is `2·speed·(steps+1)` frames, ProTracker's is
+`x·(speed−1)·BPM / (160·speed)` Hz.  Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c
+(theory 6.0 Hz), MOD `485` 3.98 Hz ±36 c.
+
+**CI use.**  `--json FILE` writes everything in the report (per-note rows, channel summaries,
+vibrato, noise bands, DAC peaks) plus a `checks` list and an overall `passed`.  Thresholds are
+opt-in, and any failed one makes the exit code 1:
+
+| Flag | Fails when |
+|------|-----------|
+| `--fail-balance-db DB` | a channel's level relative to `--ref` differs from the recording by more than DB |
+| `--fail-pitch-cents C` | any note is more than C cents off, silent, or unmeasurable in the MOD |
+| `--fail-unmatched N` | a channel has more than N reference onsets with no MOD onset within 40 ms |
+
+```bash
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" \
+       --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
+```
+
+`--fail-unmatched` is noisy on sustained FM channels today: the MOD re-triggers where the
+hardware ties notes, so the onset detector sees extra/shifted onsets (Title Screen FM2: 4).
+
 ## SMPS Note Range to MOD Range
 
 SMPS supports 8 octaves (C0–B7, bytes $81–$DF). MOD supports 3 octaves (C1–B3, 36 semitones). Mapping requires transposing down.

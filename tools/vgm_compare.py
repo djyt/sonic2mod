@@ -316,6 +316,7 @@ _VIB_FRAME = 0.005           # pitch-track frame (200 Hz)
 _VIB_BAND = (2.5, 14.0)      # plausible vibrato rates, Hz
 _VIB_MIN_DEPTH = 3.0         # cents; below this it is period-table / FNUM quantisation wobble
 _VIB_MIN_R2 = 0.35           # share of pitch-track variance a sinusoid at the rate must explain
+_VIB_BEAT_AM = 0.15          # level swing (fraction of mean) at the same rate that marks beating
 
 
 def _pick_partial(seg: np.ndarray) -> tuple[float, float]:
@@ -349,8 +350,9 @@ def _pick_partial(seg: np.ndarray) -> tuple[float, float]:
     return fc, min(0.45 * spacing, 3 * (0.02 * fc + 8.0))
 
 
-def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, float]:
-    """(pitch deviation in cents per _VIB_FRAME, NaN where quiet; filter half-bandwidth in Hz).
+def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, np.ndarray, float]:
+    """(pitch deviation in cents per _VIB_FRAME, NaN where quiet; the partial's level per frame;
+    filter half-bandwidth in Hz).
 
     Partial tracking by heterodyne: one partial is shifted to DC, isolated with a brick-wall
     low-pass narrower than the partial spacing, and the phase derivative of what is left is its
@@ -359,10 +361,10 @@ def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, float]:
     """
     n = len(seg)
     if n < int(0.2 * SR):
-        return np.array([]), 0.0
+        return np.array([]), np.array([]), 0.0
     fc, bw = _pick_partial(seg)
     if fc <= 0:
-        return np.array([]), 0.0
+        return np.array([]), np.array([]), 0.0
 
     t = np.arange(n) / SR
     spec = np.fft.fft(seg * np.exp(-2j * np.pi * fc * t))
@@ -372,7 +374,7 @@ def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, float]:
     hop = int(_VIB_FRAME * SR)
     nf = (n - 1) // hop
     if nf < 8:
-        return np.array([]), 0.0
+        return np.array([]), np.array([]), 0.0
     # Amplitude-weighted mean frequency per frame: sum(z[k+1]·conj(z[k])) has the mean phase step
     # as its angle and ignores samples where the partial has faded out.
     prod = (z[1:] * np.conj(z[:-1]))[:nf * hop].reshape(nf, hop).sum(axis=1)
@@ -383,7 +385,7 @@ def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, float]:
     edge = int(0.03 / _VIB_FRAME)          # brick-wall filter rings at the segment ends
     track[:edge] = np.nan
     track[-edge:] = np.nan
-    return track, bw
+    return track, amp, bw
 
 
 def vibrato_estimate(seg: np.ndarray) -> dict | None:
@@ -394,13 +396,14 @@ def vibrato_estimate(seg: np.ndarray) -> dict | None:
     per-cycle extremes, which is the same for the driver's triangle and ProTracker's sine and
     shrugs off the pitch glitches at attack and release.
     """
-    track, bw = pitch_track(seg)
+    track, amp, bw = pitch_track(seg)
     ok = np.where(~np.isnan(track))[0]
     trim = int(0.05 / _VIB_FRAME)                     # attack / release transients
     if len(ok) < int(0.4 / _VIB_FRAME) + 2 * trim:
         return None
     first = int(ok[0]) + trim
     track = track[first:int(ok[-1]) + 1 - trim]
+    amp = amp[first + 1:int(ok[-1]) - trim]            # aligned with the smoothed track below
     if np.isnan(track).any():
         idx = np.arange(len(track))
         good = ~np.isnan(track)
@@ -449,6 +452,14 @@ def vibrato_estimate(seg: np.ndarray) -> dict | None:
 
     basis = np.column_stack([np.sin(2 * np.pi * rate * tt), np.cos(2 * np.pi * rate * tt)])
     coef, *_ = np.linalg.lstsq(basis, x, rcond=None)
+    # FNUM / period vibrato moves the pitch and leaves the level alone.  Two detuned FM carriers
+    # beating also wobble a partial's phase periodically, but they swing its level at the same
+    # rate — and that rate scales with sample playback speed in the MOD, which vibrato does not.
+    lvl = amp[a:b]
+    lvl = lvl / lvl.mean() - 1 if len(lvl) == len(x) and lvl.mean() > 0 else np.zeros(len(x))
+    lvl = lvl - np.polyval(np.polyfit(tt, lvl, 1), tt)
+    am_coef, *_ = np.linalg.lstsq(basis, lvl, rcond=None)
+    am_depth = float(np.hypot(*am_coef))
     var = float(np.var(x))
     r2 = 1 - float(np.var(x - basis @ coef)) / var if var > 0 else 0.0
     cycle = max(2, round(1 / rate / _VIB_FRAME))
@@ -459,8 +470,15 @@ def vibrato_estimate(seg: np.ndarray) -> dict | None:
              - statistics.median(float(c.min()) for c in cycles)) / 2
     if r2 < _VIB_MIN_R2 or depth < _VIB_MIN_DEPTH:
         return None
-    return {"rate_hz": rate, "depth_cents": depth, "onset_s": (first + 1 + a) * _VIB_FRAME,
-            "dur_s": (b - a) * _VIB_FRAME, "r2": r2}
+    # Onset: the stretch above is only located to within one analysis window, so take the first
+    # frame of the whole track that strays 40 % of the depth from the pitch the note starts at.
+    # (Reads ~0.1 cycle late, equally on both renders.)
+    rest = float(np.median(track[:max(3, int(0.05 / _VIB_FRAME))]))
+    moved = np.where(np.abs(track[:b] - rest) > 0.4 * depth)[0]
+    onset = int(moved[0]) if len(moved) else a
+    return {"rate_hz": rate, "depth_cents": depth, "onset_s": (first + 1 + onset) * _VIB_FRAME,
+            "dur_s": (b - a) * _VIB_FRAME, "r2": r2, "am_depth": am_depth,
+            "kind": "beat" if am_depth >= _VIB_BEAT_AM else "vibrato"}
 
 
 # ---------------------------------------------------------------------------
@@ -582,6 +600,8 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                 continue
             if vv is None or vm is None:
                 flag = "  <-- MISSING in MOD" if vm is None else "  <-- not in VGM"
+            elif "beat" in (vv["kind"], vm["kind"]):
+                flag = "  <-- BEAT RATE" if abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15 else ""
             elif (abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15
                   or abs(vm["depth_cents"] - vv["depth_cents"]) > max(5.0, 0.3 * vv["depth_cents"])):
                 flag = "  <-- VIBRATO"
@@ -589,18 +609,24 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                 flag = ""
 
             def _vib(v: dict | None) -> str:
-                return f"{v['rate_hz']:>5.2f} Hz +/-{v['depth_cents']:>4.1f} c" if v else f"{'none':>17}"
+                if not v:
+                    return f"{'none':>18}"
+                return f"{v['rate_hz']:>5.2f} Hz +/-{v['depth_cents']:>4.1f} c{'b' if v['kind'] == 'beat' else ' '}"
             vib_rows.append(f"{ch:<6}{t:>7.3f}  {note:<4}{dur:>6.2f}   {_vib(vv)}   {_vib(vm)}{flag}")
             res["vibrato"].append({"channel": ch, "t_s": t, "note": note, "dur_s": dur,
                                    "vgm": vv, "mod": vm, "mismatch": bool(flag)})
     if per_ch:
         print(f"Vibrato ({long_notes} notes of {_VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
         if vib_rows:
-            print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'dur':>6}   {'VGM rate / depth':>17}   {'MOD rate / depth':>17}")
-            print("-" * 66)
+            print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'dur':>6}   {'VGM rate / depth':>18}   {'MOD rate / depth':>18}")
+            print("-" * 68)
             for row in vib_rows:
                 print(row)
             print("  (4xy: rate = x*(speed-1)*BPM/(160*speed) Hz; depth grows with y and with the note's period)")
+            print("  (b = beating of detuned FM carriers, not smpsModSet: the level swings at the same rate."
+                  "  Its rate follows")
+            print("   sample playback speed, so a BEAT RATE mismatch points at synth_root / multi-sampling,"
+                  " not at 4xy)")
         else:
             print("  none found")
         print()

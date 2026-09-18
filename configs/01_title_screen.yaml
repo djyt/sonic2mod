@@ -65,7 +65,7 @@ sample_list:
   # --- voice $02: harmony chord stabs (FM3 $0D / FM4 $0C ≈ 3.5 steps / −2.6 dB below FM2) ---
   - [6, "fm_voice2.raw",     24, 0]
   # --- PSG white noise: the VGM reference puts the hiss ~10 dB below where 48 landed it ---
-  - [7, "psg_noise.raw",      6, 0] # baked: 16 at PSG attenuation 4 (−8 dB)
+  - [7, "psg_noise.raw",      5, 0] # baked: 16 at PSG attenuation 4 (−8 dB); VGZ: +1.0 dB at 6
   # --- voice $01 FM3 ending variant: smpsAlterNote $03 detune (+5 cents) → finetune +1, so the
   #     FM2/FM3/FM4 unison chord beats instead of summing in phase ---
   - [8, "fm_voice1.raw",     32, 1]

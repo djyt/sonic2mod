@@ -37,26 +37,24 @@ sample_list:
   - [1, "kick.raw", 64, 0]
   - [2, "snare.raw", 64, 0]
   # --- voice $00: alg 2: (1+(2→3))→4, fb 4 — FM1, FM3 ---
-  - [3, "fm_v00.raw", 32, 0]
+  - [3, "fm_v00.raw",  9, 0] # VGZ: +11.5 dB at 32
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
-  - [4, "fm_v01.raw", 32, 0]
+  - [4, "fm_v01.raw", 15, 0] # VGZ: +6.9 dB at 32
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM4, FM5 ---
-  - [5, "fm_v02.raw", 32, 0]
+  - [5, "fm_v02.raw",  8, 0] # VGZ: +12.1 dB at 32
   # --- voice $03: alg 3: ((1→2)+3)→4, fb 4 — FM4 ---
-  - [6, "fm_v03.raw", 32, 0]
+  - [6, "fm_v03.raw", 14, 0] # VGZ: +6.9 dB at 32
   # --- voice $04: alg 2: (1+(2→3))→4, fb 0 — FM5 ---
-  - [7, "fm_v04.raw", 32, 0]
+  - [7, "fm_v04.raw", 10, 0] # VGZ: +9.8 dB at 32
   # --- PSG tone fTone_08 ---
-  - [8, "psg_fTone_08_lo.raw", 32, 0] # baked: 64 at PSG attenuation 3 (−6 dB)
-  - [9, "psg_fTone_08_hi.raw", 32, 0] # baked: 64 at PSG attenuation 3 (−6 dB)
+  - [8, "psg_fTone_08_lo.raw",  7, 0] # baked: 64 at PSG attenuation 3 (−6 dB); VGZ: +13.5 dB at 32
+  - [9, "psg_fTone_08_hi.raw",  6, 0] # baked: 64 at PSG attenuation 3 (−6 dB); VGZ: +14.1 dB at 32
   # --- PSG noise (form $E7) ---
-  # TODO (audit): psg_map[0xE7] uses instrument 10, which had NO entry here and so played at the
-  # default 64; the line below for instrument 11 (unused) was presumably meant for it.  The entry
-  # for 10 keeps today's level — check it against the VGZ before trusting either number.
-  - [10, "psg_noise.raw", 32, 0] # baked: 64 at PSG attenuation 3 (−6 dB)
-  - [11, "psg_noise.raw", 16, 0]
+  # psg_map[0xE7] uses instrument 10.  It used to have no line here (so it played at the default 64)
+  # while a line for the unused instrument 11 carried the intended volume; measured against the VGZ.
+  - [10, "psg_noise.raw", 13, 0] # baked: 64 at PSG attenuation 3 (−6 dB); VGZ: +7.7 dB at 32
   # --- voice $00: tuned!
-  - [12, "fm_v00.raw", 32, 1]
+  - [12, "fm_v00.raw",  8, 1] # VGZ: +11.5 dB at 32
 
 dac_samples:
   # dKick: ×2 — native ~8250 Hz → note C2
@@ -121,12 +119,12 @@ psg_voice_map:
       high: B6
       mod_instrument: 8
       root: F2
-      synth_root: F5
+      synth_root: F4   # pitch audit: was F5, 12 semitones too high
     - low:  C7
       high: F7
       mod_instrument: 9
       root: C2
-      synth_root: C7
+      synth_root: C6   # pitch audit: was C7, 12 semitones too high
 
 
 # -------------------------------------------------------------------------------------------------

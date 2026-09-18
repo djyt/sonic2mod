@@ -37,21 +37,21 @@ sample_list:
   # --- voice $00: alg 4: (1→2)+(3→4), fb 7 — FM1 ---
   - [3, "fm_v00.raw", 32, 0]
   # --- voice $01: alg 0: 1→2→3→4, fb 3 — FM2 ---
-  - [4, "fm_v01.raw", 32, 0]
+  - [4, "fm_v01.raw", 25, 0] # VGZ: +2.2 dB at 32
   # --- voice $02: alg 5: 1→(2+3+4), fb 7 — FM4, FM5 ---
-  - [5, "fm_v02.raw", 32, 0]
-  - [6, "fm_v02.raw", 32, 1]
+  - [5, "fm_v02.raw", 19, 0] # VGZ: +4.6 dB at 32
+  - [6, "fm_v02.raw", 19, 1] # VGZ: +4.6 dB at 32
   # --- voice $03: alg 4: (1→2)+(3→4), fb 5 — FM4, FM5 ---
-  - [7, "fm_v03.raw", 32, 0]
+  - [7, "fm_v03.raw", 15, 0] # VGZ: +6.7 dB at 32
   # --- voice $04: alg 4: (1→2)+(3→4), fb 0 — FM1 ---
-  - [8, "fm_v04.raw", 32, 0]
+  - [8, "fm_v04.raw", 20, 0] # VGZ: +4.2 dB at 32
   # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM3 ---
-  - [9, "fm_v05.raw", 32, 0]
+  - [9, "fm_v05.raw", 12, 0] # VGZ: +8.2 dB at 32
   # --- PSG noise (form $E7) ---
-  - [12, "psg_noise.raw",  5, 0] # baked: 16 at PSG attenuation 5 (−10 dB)
+  - [12, "psg_noise.raw",  4, 0] # baked: 16 at PSG attenuation 5 (−10 dB); VGZ: +2.1 dB at 5
   # --- PSG tone fTone_06 ---
-  - [10, "psg_fTone_06_lo.raw",  8, 0] # baked: 32 at PSG attenuation 6 (−12 dB)
-  - [11, "psg_fTone_06_hi.raw",  8, 0] # baked: 32 at PSG attenuation 6 (−12 dB)
+  - [10, "psg_fTone_06_lo.raw",  9, 0] # baked: 32 at PSG attenuation 6 (−12 dB); VGZ: -1.1 dB at 8
+  - [11, "psg_fTone_06_hi.raw",  5, 0] # baked: 32 at PSG attenuation 6 (−12 dB); VGZ: +4.6 dB at 8
 
 dac_samples:
   # dKick: ×59 — native ~8250 Hz → note C2
@@ -128,7 +128,7 @@ psg_voice_map:
       high: D7
       mod_instrument: 11
       root: C1
-      synth_root: C5
+      synth_root: C4   # pitch audit: was C5, 12 semitones too high
 
 
 # -------------------------------------------------------------------------------------------------

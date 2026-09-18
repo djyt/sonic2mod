@@ -1,6 +1,7 @@
 # User-facing improvements — from the accuracy audits
 
-Sources: `docs/audits/01_title_screen_audit.md` (2026-09-17), `docs/audits/02_ghz_audit.md` (2026-09-18). Each item
+Sources: `docs/audits/01_title_screen_audit.md` (2026-09-17), `docs/audits/02_ghz_audit.md` (2026-09-18),
+`docs/audits/00_soundtrack_survey.md` (2026-09-18, all 18 configs: pitch + levels). Each item
 names the problem an audit measured, what to change, and where. Verify any of them with:
 
 ```bash
@@ -8,7 +9,8 @@ python tools/vgm_pitch_audit.py configs/<song>.yaml "reference/vgz/<song>.vgz"  
 python tools/vgm_compare.py     configs/<song>.yaml "reference/vgz/<song>.vgz"   # levels, timing, timbre
 ```
 
-Audited so far: Title Screen, Green Hill Zone. VGZs on hand but not audited: Marble Zone, Spring Yard Zone.
+Fully audited: Title Screen, Green Hill Zone. Every other config has been surveyed for pitch and levels
+(all 18 have a VGZ); what each still needs is listed in `docs/audits/00_soundtrack_survey.md` §3.
 
 Status key: `[ ]` open, `[x]` done.
 
@@ -49,7 +51,8 @@ Status key: `[ ]` open, `[x]` done.
 - **Fix:** at first use of an `(instrument, channel)` pair bake `sample_volume × 10^(−TL×0.75/20)` into the instrument's default volume (create a variant slot when two channels share an instrument at different TLs), and emit `Cxx` only when `smpsAlterVol` moves the channel off that baked level.
 - **Interim:** hand-compute volumes as done in `configs/01_title_screen.yaml` (comment block above `sample_list`).
 
-### [ ] 5. Global PSG-to-FM level calibration
+### [x] 5. Global PSG-to-FM level calibration
+- **Done (2026-09-18) — by measurement, not by a global gain.** A gain on the synthesised PSG samples would cost sample resolution; the level belongs in the `sample_list` volume. With a VGZ for every song, `vgm_compare.py --write-volumes` set every instrument's volume from its measured level error and a second render verified it: instruments ≥ 2 dB off 74 → 2, every song except Drowning at ≤ 1.2 dB weighted RMS error (Marble Zone 9.7 → 0.3, Star Light 9.2 → 0.6, Scrap Brain 6.3 → 0.5). The fitted formula (`76 × carriers × 10^(−(0.75·TL + pan)/20)`, PSG base 16, in the `analyze.py` skeleton) predicted the same errors beforehand and stays as the starting point for new configs. Table in `docs/audits/00_soundtrack_survey.md`.
 - **Measured:** noise was +11.6 dB vs FM2 compared with the recording; configs use `psg_noise.raw` volumes of 16, 16, 16, 24, 32, 32, 48, 64 for the same synthesised sample.
 - **Fix:** one `psg_to_fm_db` (or equivalent gain) in `configs/settings.yaml` applied to synthesised PSG samples, verified once with `vgm_compare.py`; drop the per-song guesses.
 - **Caveat:** VGMPlay's PSG/FM ratio approximates hardware to roughly ±3 dB.
@@ -76,7 +79,11 @@ Status key: `[ ]` open, `[x]` done.
 ### [x] 11. Loop extension replayed flags written just before the jump label
 - `_extend_looping_channels` chose the loop body by tick, so `smpsPSGAlterVol $FF` before `Mus85_SYZ_Jump03:` ran on every repetition: Spring Yard's hi-hat crept from attenuation 5 (−10 dB) to 0 within five loops and stayed there. The SYZ VGZ shows attenuation 5 throughout. Fixed with a per-channel label → event index from the parser. Changed SYZ (500 cells) and Marble Zone (2).
 
-### [ ] 12. Marble Zone noise instrument has no volume entry
+### [ ] 13. Samples synthesised at the wrong pitch — 10 fixed, 4 songs left
+- The survey's pitch audit found ten instruments whose every note was out by the same interval (nine by whole octaves, Star Light's PSG by two) — `synth_root` errors in seven configs, all corrected; wrong notes 1623 → 395. Left: **Drowning** (200; needs mid-song `smpsSetTempoMod` in the converter), **Invincibility** (64) and **Stage Clear** (22; one instrument shared across transpositions — needs a `channel_instrument_map` variant or range split), **Star Light** (48) and **Continue Screen** (31; scattered ±100–300 c). Details in `docs/audits/00_soundtrack_survey.md`.
+
+### [x] 12. Marble Zone noise instrument has no volume entry
+- **Resolved by measurement (2026-09-18):** instrument 10 measured +7.7 dB and is now 13. The orphaned `[11, "psg_noise.raw", …]` line is unused and can be deleted.
 - `psg_map[0xE7]` uses instrument 10, which had no `sample_list` line (so it played at the default 64); the `psg_noise.raw, 16` line is for instrument 11, which nothing uses. An entry for 10 was added at today's level (now 32 = 64 at attenuation 3) so the sound did not change — check against the MZ VGZ when that song is audited; the author probably meant 16.
 
 ### [x] 10. Coordination flags were applied one note early (parser)
@@ -89,7 +96,11 @@ Status key: `[ ]` open, `[x]` done.
 ### [x] `tools/vgm_compare.py` levels use L/R power, not a mono mix
 Averaging to mono read hard-panned YM2612 channels ~5 dB low against centred ones (2.1 dB vs a power sum) while every MOD channel lost the same ~1 dB — GHZ FM4/FM5 looked hotter than they are and two GHZ volumes were over-corrected (since reverted). Title Screen (no pans) unaffected.
 
+### [x] `tools/vgm_compare.py` — per-instrument level table and `--write-volumes`
+Level error per MOD instrument with a per-channel / per-`Cxx` breakdown and the `sample_list` volume that zeroes it; `--write-volumes` applies them (≥ 1 dB), `--reuse-vgm` re-renders only the MOD. Anchored on the song's median note (DAC only when ≥ 2 dB quieter), clamps small excesses over 64 and scales everything together for large ones, refuses when channels disagree by > 3 dB or the error is > 18 dB. Alignment now comes from note starts (the envelope method was 0.9 s out on Chaos Emerald, 1.2 s on Drowning).
+
 ### [x] `tools/vgm_pitch_audit.py` — symbolic pitch audit (no rendering)
+- [x] Aligns itself to the recording (note-start matching) and gives a verdict per instrument: "synth_root is 1 octave too high (243 of 243 notes)" vs "mixed". `--json` for scripting.
 Chip frequency-register timeline vs the pitch each MOD note sounds at (from `root` / `synth_root` / finetune); sees legato pitch changes, ignores grace notes and vibrato steps below `--min-ms`; exit 1 on any wrong or missing note. GHZ 867/867, Title Screen 86/86.
 - [ ] Fold it into `vgm_compare.py` as the pitch verdict: that tool's per-note pitch column measures audio windows and flagged 245 GHZ notes that were all artefacts of grace notes and legato runs. At minimum flag on MOD-vs-VGM, not MOD-vs-key-on.
 

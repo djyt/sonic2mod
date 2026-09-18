@@ -99,6 +99,36 @@ row (`C00`), or dropped if the next event is already there.  Cuts on later rows 
 the effect column to themselves (the `4xy` continuation skips that row).  Exception to the order
 above: an attack-row `ECx` does displace `4xy` — a note that short has no audible vibrato.
 
+### Notes that start between rows (`EDx`)
+
+A note whose tick is not a multiple of `ticks_per_row` goes on the row it starts **in**, delayed
+with `EDx` (`SmpsToModConverter._note_cell`).  Before, it was rounded to the nearer row — up to half
+a row early or late, and because Python rounds halves to even, early and late on alternate notes
+(GHZ FM4/FM5 play 115 / 155 notes one tick off the grid).
+
+- **The delay is measured in frames, not average ticks.**  With tempo modifier *m*, `TempoWait`
+  holds every *m*-th frame, so tick *k* falls on frame `k + k // (m − 1)` and ticks are unevenly
+  spaced.  GHZ (*m* = 3, 2 ticks per row): an odd tick comes 1 frame = 16.7 ms after its row
+  starts, not the 25 ms an average tick lasts — exactly `ED1` at speed 3.  Measured: FM4/FM5
+  median onset error +17 ms with the average-tick delay (`ED2`), +1 ms with the frame delay.
+  `x = round(frames × target_speed × _ticks_per_frame / _effective_tpr)`.
+- **`EDx` needs the cell's one effect slot**, so it is used only when the slot is free: the note
+  needs no `Cxx`, and no cut (note fill, or a PSG note's end) falls inside the attack row.
+  Otherwise the note is rounded as before.  An attack-row `4xy` is given up for it (later rows
+  carry the vibrato), and a rest's `C00` on the same row is overwritten — the new note ends the
+  old one anyway.
+- **Two note-ons cannot share a cell.**  When the row already holds the channel's previous
+  note-on — a 1-tick grace note and the note it slides into under `smpsNoAttack` — the later one
+  takes the next row, undelayed: late by less than a row (GHZ: 33 ms) instead of erasing the
+  grace.  The slide target is still re-triggered; a `3xx` slide is not possible when the two
+  notes sit in different `voice_map` ranges, as they do in GHZ.
+- DAC notes carry no other effect, so they always get their delay (Title Screen's 2-tick snare
+  roll: three hits on three rows instead of two on one).
+
+Songs with off-grid notes: Title Screen (DAC), GHZ (FM3–FM5), Spring Yard (FM4, FM5, PSG1),
+Ending (DAC), Chaos Emerald (PSG1, PSG2); songs whose notes all sit on the grid do not change.  GHZ key-ons with no
+MOD note row: FM1 4, FM3 2, FM4 15, FM5 15 → 0 on every channel.
+
 ### FM levels (`fm_volume_scaling: baked`)
 
 On the chip an FM note's level is set by the track's TL offset — `smpsHeaderFM` volume plus every
@@ -653,9 +683,14 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 
 **Onset timing** matches each FM / PSG / noise key-on in the register log to a MOD note row, one
 to one, so `unmatched` is a count of notes the MOD really lacks or places more than 40 ms off, and
-`MOD-only` counts rows the chip has no key-on for (a re-trigger where the hardware ties).  Title
-Screen: 0 unmatched on every FM channel; GHZ: FM1 4, FM3 2, FM4 15, FM5 15 — the grace notes of
-todo item 3.  The 40 ms window follows the running deviation of the notes matched so far, and the
+`MOD-only` counts rows the chip has no key-on for (a re-trigger where the hardware ties); the times of
+unmatched key-ons are listed under the channel (JSON `unmatched_s`).  MOD rows carrying `EDx` are
+timed at their delayed start.  A chip key-on only counts as a note when the channel was keyed off
+or the pitch moved by more than 70 cents: the driver's `FMNoteOn` writes key-on unconditionally,
+and under `smpsNoAttack` only the key-OFF is skipped, so ties (GHZ `nA5, $10, smpsNoAttack, $3B`)
+and tied `smpsDetune` scoops (Scrap Brain FM4, +36 c) log a key-on the chip ignores.  Title
+Screen: 0 unmatched on every FM channel; GHZ read FM1 4, FM3 2, FM4 15, FM5 15 before todo item 3
+(grace notes, off-grid notes and the tie key-ons above) and reads 0 since.  The 40 ms window follows the running deviation of the notes matched so far, and the
 change from the song's first notes to its last is printed as `drift` when it reaches 20 ms: a
 MOD that runs slightly off the driver's tempo is one finding, not a lost note per bar (Special
 Stage: +130 ms over its 33 s pass, 0 unmatched).  An audio onset detector cannot do this on sustained channels (it read 28–143

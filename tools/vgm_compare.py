@@ -367,7 +367,9 @@ def mod_note_events(mod: bytes, speed: int) -> tuple[dict[int, list[tuple]], dic
             elif eff == 0xD:
                 brk = (par >> 4) * 10 + (par & 15)
             if period and ins:
-                events[c].append((now, ins, par if eff == 0xC else None))
+                # EDx: the note starts x MOD ticks into the row
+                late = (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
+                events[c].append((now + late, ins, par if eff == 0xC else None))
         now += speed * 2.5 / bpm
         if jump is not None:
             if jump <= posi:
@@ -933,6 +935,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     for n in names:
         symbolic = n in note_times and n != "DAC"
         extra = drift_ms = None
+        lost: list[float] = []
         if symbolic:
             vo = [t for t in note_times[n] if t + offset < mod_end - 0.15]
             mo = [e[0] - offset for e in events_by_chan.get(chan_map[src_of[n]], [])]
@@ -949,6 +952,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                 elif d < run:                     # a MOD note the chip has no key-on for
                     extra, j = extra + 1, j + 1
                 else:
+                    lost.append(vo[i])
                     missing, i = missing + 1, i + 1
             extra += len(mo) - j
             if len(devs) >= 10:
@@ -971,8 +975,12 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                   + (f", drift {drift_ms:+.0f} ms" if drift_ms is not None and abs(drift_ms) >= 20 else ""))
         else:
             print(f"  {n:<6} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; none matched")
+        if lost:
+            print(f"         no MOD note row at: {', '.join(f'{t:.2f}' for t in lost[:12])}"
+                  + (f" ... (+{len(lost) - 12})" if len(lost) > 12 else "") + " s")
         res["channels"][n]["onsets"] = {
             "method": "key-on" if symbolic else "audio", "mod_only": extra, "drift_ms": drift_ms,
+            "unmatched_s": lost,
             "ref": len(vo), "mod": len(mo), "matched": len(devs), "unmatched": missing,
             "median_ms": statistics.median(devs) if devs else None,
             "worst_ms": max(devs, key=abs) if devs else None,

@@ -210,7 +210,7 @@ class PsgSynthesisSettings:
     release_padding: float = 0.2
     normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
     psg_output_max: int = 4096       # Hardware PSG max amplitude; noise peaks at 4096/2=2048 (C source halves it)
-    psg_envelope_tables: dict[str, list[int]] = field(default_factory=dict)  # {"PSG1": [0,0,...], ...}
+    # Envelope tables are not a setting: the driver's own live in core.driver_tables.PSG_ENVELOPES_BY_NAME.
     # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
     # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
     # 2 dB/step law (same scheme as SynthesisSettings.fm_volume_mode).  "absolute": legacy —
@@ -226,6 +226,12 @@ class PsgSynthesisSettings:
         except yaml.YAMLError as e:
             raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
         s = data.get("psg_synthesis", {})
+        if "psg_envelope_tables" in s:
+            warnings.warn(
+                f"{filepath}: psg_synthesis.psg_envelope_tables is ignored — the envelopes come from "
+                "the driver transcription in core/driver_tables.py (PSG_ENVELOPES_BY_NAME); delete the block",
+                stacklevel=2,
+            )
         _psg_sd = s.get("sustain_duration", 1.0)
         return cls(
             enabled=s.get("enabled", False),
@@ -236,7 +242,6 @@ class PsgSynthesisSettings:
             normalize_samples=s.get("normalize_samples", False),
             psg_output_max=s.get("psg_output_max", 4096),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
-            psg_envelope_tables=s.get("psg_envelope_tables", {}),
         )
 
 

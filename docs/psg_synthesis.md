@@ -66,7 +66,9 @@ File > Import > Raw Data
 | `sustain_duration` | float | `1.0` | Seconds held before key-off |
 | `release_padding` | float | `0.2` | Seconds captured after key-off |
 | `psg_output_max` | int | `4096` | Tone peak amplitude from C emulator; white noise peaks at 2048 (halved in sn76489.c) |
-| `psg_envelope_tables` | dict | `{}` | Named per-frame attenuation tables (`fTone_01`–`fTone_09`) |
+
+The envelope tables are not a setting; see § Envelope Tables.  A `psg_envelope_tables` block left
+in `settings.yaml` is ignored with a warning.
 
 ---
 
@@ -175,24 +177,27 @@ inaudible output. Set `synth_root` to the SMPS note the chip actually plays at.
 
 ## Envelope Tables
 
-Nine Sonic 1 ROM envelope tables are defined in `configs/settings.yaml` under `psg_envelope_tables`:
+The nine Sonic 1 driver envelopes (`PSG1`–`PSG9`, `s1.sounddriver.asm` lines 43–60) are
+transcribed once, in `core/driver_tables.py`:
 
-```yaml
-psg_envelope_tables:
-  fTone_01: [0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7]
-  fTone_02: [0,2,4,6,8,16]
-  fTone_03: [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
-  fTone_04: [0,0,2,3,4,4,5,5,5,6]
-  fTone_05: [0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,4]
-  fTone_06: [3,3,3,2,2,2,2,1,1,1,0,0,0,0]
-  fTone_07: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,4,5,5,5,6,7]
-  fTone_08: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7]
-  fTone_09: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+- `PSG_ENVELOPES` — the driver's tables with their `$80` terminators, indexed by
+  `VoiceIndex − 1`; what the SFX driver (`sfx/driver.py`) steps.
+- `PSG_ENVELOPES_BY_NAME` — the same tables under the `smpsPSGvoice` labels the music files use,
+  `fTone_01` … `fTone_09`, without the terminator; what a config's `envelope:` name resolves to
+  (`sn76489/sample_generator.py::_resolve_envelope`).
+
+```python
+>>> from core.driver_tables import PSG_ENVELOPES_BY_NAME
+>>> PSG_ENVELOPES_BY_NAME["fTone_04"]
+(0, 0, 2, 3, 4, 4, 5, 5, 5, 6)
 ```
 
 - Each value is an **attenuation delta** added to `base_volume` per VBlank frame (60 Hz NTSC / 50 Hz PAL).
 - `0` = no attenuation above base; higher = quieter.
 - Last entry is held indefinitely (driver uses `$80` terminator; synthesizer clamps index at `len - 1`).
+- `configs/settings.yaml` used to carry a second copy of these tables (`psg_envelope_tables`); its
+  `fTone_07` had lost a leading zero.  No config or Sonic 1 song uses `fTone_07`, so removing the
+  copy changed no MOD.
 - The driver steps the envelope once per frame at `DurationTimeout` expiry.
 - For envelope descriptions, see `docs/smps_driver.md` §PSG Channels.
 

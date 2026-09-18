@@ -26,6 +26,7 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
+from core.driver_tables import PSG_ENVELOPES_BY_NAME
 from core.pcm import int8_to_raw16, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
@@ -39,18 +40,23 @@ from sn76489.renderer import (
 # Public API
 # ---------------------------------------------------------------------------
 
-def _resolve_envelope(entry: PsgInstrumentEntry, psg_synth: PsgSynthesisSettings,
-                      verbose: bool = False):
-    """Return envelope list or None. Resolves string names via psg_synth.psg_envelope_tables."""
+def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[int] | None:
+    """Return the entry's envelope as a list, or None for constant volume.
+
+    A name (``fTone_01`` … ``fTone_09``) is the driver's table from
+    core.driver_tables.PSG_ENVELOPES_BY_NAME; an inline list is used as written.
+    """
     e = entry.envelope
     if e is None:
         return None
     if isinstance(e, str):
-        table = psg_synth.psg_envelope_tables.get(e)
-        if table is None and verbose:
-            print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
-        return table
-    return e  # already a list
+        table = PSG_ENVELOPES_BY_NAME.get(e)
+        if table is None:
+            if verbose:
+                print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
+            return None
+        return list(table)
+    return list(e)  # already a list
 
 
 def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = False,
@@ -66,7 +72,7 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
     mod_root_idx = entry.root.value
     target_rate  = round(psg_synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
 
-    resolved_env = _resolve_envelope(entry, psg_synth, verbose=verbose)
+    resolved_env = _resolve_envelope(entry, verbose=verbose)
     env_info = f" envelope={entry.envelope}({len(resolved_env)}fr)" if resolved_env else ""
 
     entry_type = entry.type.lower()
@@ -181,7 +187,7 @@ def generate_psg_samples(
 
     Args:
         config:    ConversionConfig — provides psg_map and region.
-        psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release/psg_envelope_tables.
+        psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -243,7 +249,6 @@ def _smoke_test() -> None:
         enabled=True,
         sustain_duration=0.5,
         release_padding=0.1,
-        psg_envelope_tables={"fTone_04": [0, 0, 2, 3, 4, 4, 5, 5, 5, 6]},
     )
 
     fake_config = ConversionConfig()

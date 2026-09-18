@@ -188,7 +188,7 @@ already taken everything there is.
    are dropped until the note is representable, preserving the pitch class.
 4. **PSG3 noise is silenced at `smpsStop`** (the `FixBugs` behaviour). Vanilla leaves it ringing,
    which would poison the rest of the render.
-5. **`configs/settings.yaml`'s `fTone_07` is wrong** — the driver's `PSG7` has six leading zeros
-   (27 values), that file has five (26). `core/driver_tables.py` transcribes from the driver. The music MOD
-   path still uses the settings.yaml copy; fixing it there would change MOD output for any song
-   using PSG7, so it has been left alone deliberately.
+5. **One envelope transcription.** `core/driver_tables.py` holds the driver's `PSG1`–`PSG9`
+   tables; both this renderer and the music MOD path (`PSG_ENVELOPES_BY_NAME`) read them.
+   `configs/settings.yaml` used to carry its own copy whose `fTone_07` was one leading zero
+   short; it was removed (no song or config used it, so no MOD changed).

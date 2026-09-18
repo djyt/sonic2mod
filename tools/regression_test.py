@@ -8,6 +8,10 @@ Usage:
   python tools/regression_test.py
       Run conversions, then diff against saved baselines.
       Prints PASS/FAIL per test case.
+
+  python tools/regression_test.py --generate-baselines --only title_screen
+      Restrict either mode to the named test case(s).  Use this to accept an
+      intended change in one song without rewriting the other baselines.
 """
 
 import argparse
@@ -88,10 +92,22 @@ def run_conversion(config: str, root: Path, output_override: Path | None = None)
     return True
 
 
-def generate_baselines(root: Path):
+def _select_cases(only: list[str] | None) -> list[dict]:
+    """Return the test cases named in ``only`` (all of them when it is empty)."""
+    if not only:
+        return TEST_CASES
+    known = {tc["name"] for tc in TEST_CASES}
+    unknown = [n for n in only if n not in known]
+    if unknown:
+        print(f"Unknown test case(s): {', '.join(unknown)}.  Known: {', '.join(sorted(known))}")
+        sys.exit(2)
+    return [tc for tc in TEST_CASES if tc["name"] in only]
+
+
+def generate_baselines(root: Path, only: list[str] | None = None):
     BASELINES_DIR.mkdir(parents=True, exist_ok=True)
     print("Generating baselines...")
-    for tc in TEST_CASES:
+    for tc in _select_cases(only):
         print(f"\n  [{tc['name']}] Running convert.py --config {tc['config']} ...")
         tmp_path = _regression_output_path(root, tc["name"])
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
@@ -110,10 +126,10 @@ def generate_baselines(root: Path):
     print("\nBaselines generated.")
 
 
-def run_tests(root: Path):
+def run_tests(root: Path, only: list[str] | None = None):
     print("Running regression tests...")
     all_passed = True
-    for tc in TEST_CASES:
+    for tc in _select_cases(only):
         print(f"\n  [{tc['name']}] {tc['description']}")
         baseline_path = root / tc["baseline"]
         if not baseline_path.exists():
@@ -169,13 +185,19 @@ def main():
         action="store_true",
         help="Generate baseline MODs from current code (run before implementing a fix)",
     )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        metavar="NAME",
+        help="Restrict to these test case names (e.g. --only title_screen)",
+    )
     args = parser.parse_args()
 
     root = _HERE.parent  # project root
     if args.generate_baselines:
-        generate_baselines(root)
+        generate_baselines(root, args.only)
     else:
-        run_tests(root)
+        run_tests(root, args.only)
 
 
 if __name__ == "__main__":

@@ -58,6 +58,11 @@ channels:
 # Samples. FM samples auto-generated if fm_synthesis: true in settings.yaml
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
+#
+# Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements against
+# reference/vgz/02 - Green Hill Zone.vgz (relative to FM2 = inst 3/4 at 32); see docs/audits/02_ghz_audit.md.
+# FM4/FM5 levels on the shared instruments 11/13/14 are still 3-5 dB hot: that needs the converter
+# to honour the smpsHeaderFM TL and the 0.75 dB/step smpsAlterVol law (todo item 4), not a volume here.
 sample_list:
   # --- percussion ---
   - [1,  "kick.raw",        64, 0]
@@ -67,12 +72,10 @@ sample_list:
   # --- voice $01: bass/rhythm pad (FM2 main loop) ---
   - [4,  "ghz_v01.raw",     32, 0]
   # --- voice $02: bright lead (FM1 intro, FM3 opening) ---
-  - [5,  "ghz_v02.raw",     32, 0]
+  - [5,  "ghz_v02.raw",     24, 0] # VGZ: FM1 +2.1 dB / FM3 +3.5 dB at 32
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
   - [6,  "ghz_v04.raw",     32, 0]
-  - [7,  "ghz_v04_lo.raw",  32, 0]
-  - [8,  "ghz_v04.raw",     32, 1] # Same Sample finetune +1 (~+12.5 cents)
-  - [9,  "ghz_v04_lo.raw",  32, 1] # Same Sample finetune +1 (~+12.5 cents)
+  - [8,  "ghz_v04.raw",     19, 1] # Same sample, finetune +1 (~+12.5 cents). VGZ: FM5 (TL $20) +4.5 dB at 32
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
   - [10, "ghz_v05.raw",     26, 0]
   - [11, "ghz_v05_lo.raw",  16, 0]
@@ -84,7 +87,7 @@ sample_list:
   - [14, "ghz_v08.raw",     32, 0]
   - [15, "ghz_v08_hi.raw",  32, 0]
   # --- PSG White Noise ---
-  - [16, "psg_noise.raw",   32, 0]
+  - [16, "psg_noise.raw",   14, 0] # VGZ: +6.9 dB at 32
   # --- PSG Voices ---
   - [17, "psg_tone01.raw",  16, 0]
   - [18, "psg_tone03.raw",  16, 0]
@@ -139,11 +142,6 @@ voice_map:
       mod_instrument: 6
       root: C2
       synth_root: C5
-    - low:  B4
-      high: B4
-      mod_instrument: 7
-      root: B1
-      synth_root: B2
 
   # $05 → main melody
   5:
@@ -194,9 +192,10 @@ voice_map:
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
     mod_instrument: 16
-    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    root: A3               # target_rate ≈ 27928 Hz
     noise_rate: 3
-    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
+    tone2_n: 1             # nMaxPSG → PSGFrequencies[69]: the driver writes tone-2 divider 0, which the
+                           # VDP PSG clocks as N=1 (LFSR ≈ 112 kHz, near-white hiss).  The VGZ confirms N=0.
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
 
@@ -235,11 +234,6 @@ channel_instrument_map:
         root: C2
         synth_root: C5
         mod_instrument: 8    # same audio as inst 6, finetune +1
-      - low:  B4
-        high: B4
-        mod_instrument: 9
-        root: B1
-        synth_root: B3
 
 
 # -------------------------------------------------------------------------------------------------

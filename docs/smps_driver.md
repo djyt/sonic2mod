@@ -188,7 +188,7 @@ smpsNoteFill $0A   ; note silences after 10 frames (V-ints)
 - **Frames, not tempo ticks.** `TempoWait` only bumps `DurationTimeout`; `NoteTimeoutUpdate` (and
   `DoModulation`) still run on the skipped frame. With `smpsHeaderTempo $01,$05` a duration byte
   of 12 lasts 250 ms but a fill of 12 lasts 200 ms. Verified on the Title Screen VGZ
-  (`docs/title_screen_audit.md`).
+  (`docs/audits/01_title_screen_audit.md`).
 - **NoteTimeout and duration run in parallel.** Duration controls when the *next note starts*; NoteTimeout controls when the *current note silences*.
 - `NoteTimeout` is reset to `NoteTimeoutMaster` (the last-set fill value) on every new note, even if `smpsNoteFill` is not repeated. The fill value persists until changed.
 

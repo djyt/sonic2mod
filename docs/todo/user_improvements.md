@@ -1,11 +1,14 @@
-# User-facing improvements — from the Title Screen accuracy audit
+# User-facing improvements — from the accuracy audits
 
-Source: `docs/title_screen_audit.md` (2026-09-17). Each item names the problem the audit
-measured, what to change, and where. Verify any of them with:
+Sources: `docs/audits/01_title_screen_audit.md` (2026-09-17), `docs/audits/02_ghz_audit.md` (2026-09-18). Each item
+names the problem an audit measured, what to change, and where. Verify any of them with:
 
 ```bash
-python tools/vgm_compare.py configs/<song>.yaml "reference/vgz/<song>.vgz"
+python tools/vgm_pitch_audit.py configs/<song>.yaml "reference/vgz/<song>.vgz"   # every note right?
+python tools/vgm_compare.py     configs/<song>.yaml "reference/vgz/<song>.vgz"   # levels, timing, timbre
 ```
+
+Audited so far: Title Screen, Green Hill Zone. VGZs on hand but not audited: Marble Zone, Spring Yard Zone.
 
 Status key: `[ ]` open, `[x]` done.
 
@@ -29,11 +32,13 @@ Status key: `[ ]` open, `[x]` done.
 - **Where:** `core/smps2mod.py` around the `_smps_cycle` / `eff_vib_depth` code; update `docs/pipeline.md` gotcha 4.
 
 ### [ ] 3. Sub-row onsets via `EDx` note delay
+- **GHZ:** FM3/FM4/FM5 play `nC6, $01, smpsNoAttack, nB5, $0F` (1-tick grace + legato slide) 17× each; at `ticks_per_row: 2` the grace is silenced by a rest's `C00` (FM3) or overwritten (FM4/FM5). `EDx` alone cannot put two notes in one row — see the three options in `docs/audits/02_ghz_audit.md` § Grace notes (`ticks_per_row: 1` / speed 2, `3xx` legato for `smpsNoAttack`, or drop the grace deliberately).
 - **Measured:** the 2-tick DAC snare roll at ticks 224/226/228 loses the first hit (collides with a rest on row 74).
 - **Fix:** when `tick % ticks_per_row != 0` and the effect slot is free, emit `EDx` with `x = round(offset_ticks × speed / tpr)`; let a delayed note win over a rest `C00` on the same row.
 - **Where:** `_tick_to_pattern_row` callers in `core/smps2mod.py`.
 
 ### [ ] 4. Bake channel TL into instrument volume instead of per-note `Cxx`
+- **GHZ (biggest remaining error in that song):** with `fm_volume_scaling: false` the header TL is ignored *and* one `smpsAlterVol` step becomes one linear MOD volume unit (≈ 0.3 dB) instead of 0.75 dB. FM4 is +3.5…+8 dB and FM5 +4.5…+10 dB on the affected notes; FM1's fade drifts from +7.6 to +3.1 dB across `C1A`→`C1F`. Instruments 11/13/14 are shared by FM3/FM4/FM5 at different TLs, so sample volumes cannot fix it. Per-instrument table in `docs/audits/02_ghz_audit.md`.
 - **Measured:** with `fm_volume_scaling: false` FM1/FM3/FM4/FM5 were 1.8–3.2 dB too hot vs FM2 (header TL `$0C/$09/$0D/$0C/$0E` ignored). With it `true`, every note gets a `Cxx` (MOD resets volume on trigger) — the "clutter" that keeps it off.
 - **Fix:** at first use of an `(instrument, channel)` pair bake `sample_volume × 10^(−TL×0.75/20)` into the instrument's default volume (create a variant slot when two channels share an instrument at different TLs), and emit `Cxx` only when `smpsAlterVol` moves the channel off that baked level.
 - **Interim:** hand-compute volumes as done in `configs/01_title_screen.yaml` (comment block above `sample_list`).
@@ -49,6 +54,7 @@ Status key: `[ ]` open, `[x]` done.
 - **Open:** when neither `tone2_n` nor `synth_root` is given, derive N from the channel's first noise note through the driver table (`sfx/tables.py` `PSG_FREQUENCIES`), treating 0 as 1. Check other configs that set `synth_root` on rate-3 noise entries.
 
 ### [ ] 7. Multi-sample wide FM ranges
+- **GHZ:** detuned-carrier beating scales with playback rate — voice $04 (synthesised at C5) beats at 6.5 Hz on C6 where hardware beats at 4.46 Hz; FM3/FM4 low notes beat at 2.5–3 Hz in the MOD only.
 - **Measured:** voice 1 synthesised at A2, played up to D4 (17 semitones) → envelope runs up to 2.7× faster on top notes (G3: 5.7 dB decay in 0.3 s vs 3.5 dB on hardware).
 - **Fix:** split ranges wider than ~9 semitones into two `voice_map` entries with their own `root`/`synth_root` (e.g. `A2–D3` at root A1, `D#3–D4` at root D#2). Could be automated: a `max_range_semitones` option that auto-splits and synthesises each half.
 
@@ -57,9 +63,19 @@ Status key: `[ ]` open, `[x]` done.
 - **Done for Title Screen:** FM5 and FM3's ending note use finetune +1 variants via `channel_instrument_map`.
 - **Open:** synthesise the variant with the FNUM offset applied instead of using finetune, and auto-create it when a channel carries `smpsAlterNote` ≠ 0.
 
+### [ ] 9. FM frequency convention is an octave off in two places that cancel
+- `tools/vgm_analyze._fnum_to_hz` and `ym2612/renderer.freq_to_fnum_block` use `2^(20−block)`; the chip and the driver's `MakeFMFrequency` (`f·2^21/fs`) are `2^(21−block)`. The analyzer reads FM an octave high, the synth renders an octave below the `synth_root` name, and configs tuned one against the other sound right (GHZ 867/867). Fix = both functions plus every FM `synth_root` down an octave, in one commit. `sfx/` already uses the driver table and is correct. Project memory's "FM chip plays one octave above the SMPS label" is this artefact.
+
+### [x] 10. Coordination flags were applied one note early (parser)
+- A note byte with no duration byte stayed "pending" while the flags after it were emitted, so `smpsSetvoice` / `smpsAlterPitch` / `smpsAlterVol` / `smpsNoteFill` hit the *previous* note. Fixed in `core/smps_parser.py` (flags, `smpsCall` and `smpsReturn` complete the pending note — matches `FMDoNext`'s put-back). Found by the GHZ audit: last intro note of FM3 played on voice $08 two octaves low. GHZ 52 cells / SBZ 7 cells changed; the GHZ config's one-note `B4` workaround instruments (7, 9 — 115 KB) were removed.
+
 ---
 
 ## Tooling / workflow
+
+### [x] `tools/vgm_pitch_audit.py` — symbolic pitch audit (no rendering)
+Chip frequency-register timeline vs the pitch each MOD note sounds at (from `root` / `synth_root` / finetune); sees legato pitch changes, ignores grace notes and vibrato steps below `--min-ms`; exit 1 on any wrong or missing note. GHZ 867/867, Title Screen 86/86.
+- [ ] Fold it into `vgm_compare.py` as the pitch verdict: that tool's per-note pitch column measures audio windows and flagged 245 GHZ notes that were all artefacts of grace notes and legato runs. At minimum flag on MOD-vs-VGM, not MOD-vs-key-on.
 
 ### [x] `tools/vgm_compare.py` — rendered per-channel MOD-vs-VGZ audit
 Per-note pitch and level, channel balance, onset timing, vibrato, noise spectrum, DAC rate. Needs VGMPlay and an ffmpeg build with libopenmpt.

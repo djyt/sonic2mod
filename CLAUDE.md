@@ -18,7 +18,8 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
-| `docs/title_screen_audit.md` | **Accuracy audit vs VGZ** (2026-09) — method, per-channel numbers, config fixes, pending converter work (note fill frames, vibrato formula, EDx delay, volume baking) |
+| `docs/audits/02_ghz_audit.md` | **GHZ accuracy audit vs VGZ** (2026-09) — 867/867 notes, parser flag-ordering bug, `smpsAlterVol` law / TL level errors per instrument, grace notes, FM octave-convention trap |
+| `docs/audits/01_title_screen_audit.md` | **Accuracy audit vs VGZ** (2026-09) — method, per-channel numbers, config fixes, pending converter work (note fill frames, vibrato formula, EDx delay, volume baking) |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
 | `reference/mml2mod-master/` | Reference MML-to-MOD converter |
 
@@ -67,6 +68,7 @@ sonic2mod/
   tools/             # Debug / analysis utilities
     vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files (+ rate-3 noise divider, DAC seeks)
     vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
+    vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
     regression_test.py  #   Before/after regression test runner
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
@@ -123,6 +125,10 @@ python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip fm --cha
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
+
+# Is every note right?  Symbolic, no rendering, exit 1 on a wrong/missing note.  Run this FIRST:
+# vgm_compare's per-note pitch column is unreliable on grace notes and legato runs.
+python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
 
 # Audit a conversion against its VGZ: per-note pitch/level, channel balance, onset timing, vibrato
 # rate/depth on long notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -187,6 +193,9 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - Duration persistence: last explicit `dc.b` duration carries to subsequent notes
 - Labels emit no bytes: if one sits between a note byte and its duration byte, the duration still
   binds to that note (`SmpsParser._label_precedes_duration`). Affects 2 SFX, 0 music files
+- Coordination flags DO complete a pending note: a note byte with no duration byte plays with the
+  saved duration, and any flag / `smpsCall` / `smpsReturn` after it applies from the NEXT note
+  (`FMDoNext` puts the non-duration byte back)
 - `SmpsNote.is_retrigger` marks notes synthesised from a standalone duration byte — the driver's
   `.gotduration` path skips `FMSetFreq`, so those re-key at the **existing** frequency
 - SFX headers (`smpsHeaderTempoSFX`/`ChanSFX`/`SFXChannel`) set `SmpsSongHeader.is_sfx` and

@@ -23,6 +23,7 @@ from core.config import (
     derive_bpm,
     exact_bpm,
 )
+from core.driver_state import source_names
 from core.mod import apply_pattern_breaks
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
@@ -156,22 +157,13 @@ def main():
     tbl.add_column("Transpose", justify="right", style="dim")
     tbl.add_column("Jump",      style="dim")
 
-    dac_idx = fm_idx = psg_idx = 0
-    for ch in song.channels:
+    for ch, source_name in zip(song.channels, source_names(song), strict=True):
         note_count   = sum(1 for e in ch.events if e.is_note and not e.note.is_rest)
         effect_count = sum(1 for e in ch.events if e.is_effect)
         total_ticks  = 0
         if ch.events:
             last = ch.events[-1]
             total_ticks = last.tick_position + (last.note.duration if last.is_note and last.note else 0)
-
-        ch_type = ch.header.channel_type
-        if ch_type == "DAC":
-            dac_idx += 1;  source_name = "DAC"
-        elif ch_type == "FM":
-            fm_idx += 1;   source_name = f"FM{fm_idx}"
-        else:
-            psg_idx += 1;  source_name = f"PSG{psg_idx}"
 
         ch_cfg   = cfg_by_source.get(source_name)
         tr_val   = (ch_cfg.transpose if ch_cfg else 0)

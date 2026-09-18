@@ -23,14 +23,14 @@ from collections import Counter, defaultdict
 import yaml
 
 sys.path.insert(0, ".")
-from core.driver_tables import psg_index_semitone
+from core.driver_state import chip_pitch
 from core.smps_parser import SmpsParser
-from core.tables import semitone_to_note_name
+from core.tables import semitone_to_note_name, synth_note_name
 
 SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/credits_skeleton.yaml"
 OUT = "configs/13_credits.yaml"
 MOD_LO, MOD_SPAN = 12, 35          # MOD C1 in SMPS semitones; C1..B3
-_MOD_NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"]
+
 
 with open(SKEL, encoding="utf-8") as fh:
     skel = yaml.safe_load(fh)
@@ -54,8 +54,7 @@ def dist(a, b):
     return sum(abs(x - y) for x, y in zip(vec(a), vec(b), strict=True)) + (0 if a.feedback == b.feedback else 20)
 
 
-def mod_name(semi):
-    return f"{_MOD_NAMES[semi % 12]}{semi // 12}"
+mod_name = synth_note_name   # YAML config note name for a semitone
 
 
 def smps_name(semi):
@@ -100,11 +99,11 @@ for ch in song.channels:
             elif k == "smpsPSGform":
                 cur, noise = None, True         # noise from here on (cfSetPSGNoise is permanent)
         elif ev.is_note and not ev.note.is_rest and cur is not None:
-            p = ev.note.note_value - 0x81 + tr
+            src = ev.note.note_value - 0x81
             if kind == "FM" and isinstance(cur, int):
-                fm_notes[cur][p] += 1
+                fm_notes[cur][chip_pitch(src, tr, False)] += 1
             else:                               # PSG tone (noise sections set cur = None above)
-                psg_notes[str(cur)][psg_index_semitone(p)] += 1
+                psg_notes[str(cur)][chip_pitch(src, tr, True)] += 1
 
 # ---- PSG tone entries packed by range
 psg_entries = []

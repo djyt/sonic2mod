@@ -34,9 +34,10 @@ from core.analysis import (
 )
 from core.cli import branding, cli_console
 from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
+from core.driver_tables import psg_tone2_divider
+from core.levels import PSG_STEP_DB, TL_STEP_DB, db_to_mod_volume, fm_level_db
 from core.smps_parser import SmpsParser
-from core.tables import PERIOD_TABLE, ModNote
-from sfx.tables import PSG_FREQUENCIES_EXTENDED, psg_note_index
+from core.tables import PERIOD_TABLE, ModNote, synth_note_name
 
 console = cli_console(highlight=True)
 
@@ -464,12 +465,7 @@ def render_config_coverage(analysis: SongAnalysis):
 
 
 # YAML-compatible note name table (uses 's' suffix for sharps, e.g. Fs not F#)
-_YAML_CHROMATIC = ['C', 'Cs', 'D', 'Ds', 'E', 'F', 'Fs', 'G', 'Gs', 'A', 'As', 'B']
-
-
-def _sem_to_yaml(semitone: int) -> str:
-    """Convert semitone to YAML config note name (e.g. 'C3', 'Fs2', 'As4')."""
-    return f"{_YAML_CHROMATIC[semitone % 12]}{semitone // 12}"
+_sem_to_yaml = synth_note_name   # YAML config note name, e.g. 'C3', 'Fs2', 'As4'
 
 
 def _note_in_octave2(semitone: int) -> str:
@@ -502,37 +498,22 @@ def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int 
 # measured against the VGZs in docs/audits/ (13 instruments, Title Screen + GHZ): each implies a
 # value between 68 and 92, median 76 — so expect the skeleton's numbers to be within ~2 dB.
 _FM_K = 76.0
-_TL_STEP_DB = 0.75        # YM2612 total level: 0.75 dB per step
-_PAN_LAW_DB = 3.0         # a hard-panned note vs a centred one (settings.yaml fm_pan_law_db)
 _PSG_TONE_VOLUME = 16     # sample_list volume of a PSG tone at attenuation 0 (GHZ measures within 1 dB)
 _PSG_NOISE_VOLUME = 16    # ... of PSG noise at attenuation 0
-_PSG_STEP_DB = 2.0        # SN76489 attenuation: 2 dB per step
 
 
-def _fm_level_db(tl: int, hard_pan: bool) -> float:
-    """Hardware level of an FM note, as the converter's baked volume mode models it."""
-    return -_TL_STEP_DB * tl - (_PAN_LAW_DB if hard_pan else 0.0)
-
-
-def _carrier_balance_enabled() -> bool:
-    """fm_synthesis.carrier_balance from configs/settings.yaml (default on)."""
+def _synth_settings() -> SynthesisSettings:
+    """configs/settings.yaml, so the skeleton models levels the way the converter will."""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
     try:
-        return SynthesisSettings.from_yaml(path).carrier_balance if os.path.exists(path) else True
+        return SynthesisSettings.from_yaml(path) if os.path.exists(path) else SynthesisSettings()
     except ValueError:
-        return True
+        return SynthesisSettings()
 
 
 def _db_volume(base: int, db: float) -> int:
-    return max(1, min(64, round(base * 10 ** (db / 20))))
-
-
-def _rate3_tone2_n(min_semitone: int, transpose: int) -> int:
-    """Tone-2 divider the driver writes for a rate-3 noise note (PSGSetFreq table lookup).
-
-    nMaxPSG's table entry is divider 0, which the Sega VDP PSG clocks as N=1.
-    """
-    return max(1, PSG_FREQUENCIES_EXTENDED[psg_note_index(0x81 + min_semitone, transpose)])
+    """A sample_list volume scaled by a dB offset; never 0, which would be a useless suggestion."""
+    return db_to_mod_volume(base, db, minimum=1)
 
 
 _VALID_MOD_CHANNELS = (4, 8, 10, 12, 14, 16)
@@ -635,12 +616,14 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 voice_tl.setdefault(vi, {})[ch_an.name] = (vs.modal_volume, vs.modal_hard_pan)
     # carrier_balance renders an N-carrier voice 20·log10(N) dB quieter than the chip plays it, so
     # its sample needs N times the volume to sit where the hardware has it.
+    _settings = _synth_settings()
+    _PAN_LAW_DB = _settings.fm_pan_law_db   # a hard-panned note vs a centred one
     carrier_gain: dict[int, int] = {}
-    if _carrier_balance_enabled():
+    if _settings.carrier_balance:
         carrier_gain = {v.index: len(_CARRIER_LABELS_BY_ALG.get(v.algorithm, ['?'])) for v in song.voices}
 
     def _fm_volume(vi: int, lv: tuple[int, bool]) -> int:
-        return max(1, min(64, round(_FM_K * carrier_gain.get(vi, 1) * 10 ** (_fm_level_db(*lv) / 20))))
+        return max(1, min(64, round(_FM_K * carrier_gain.get(vi, 1) * 10 ** (fm_level_db(lv[0], lv[1], _PAN_LAW_DB) / 20))))
     fm_volume: dict[int, int] = {}
     fm_volume_note: dict[int, str] = {}
 
@@ -761,7 +744,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             lines.append(f"  - [{inst}, \"{base_name[1:].lower()}.raw\", 64, 0]")
     if fm_items:
         lines.append(f"  # FM volumes bake in each channel's level: TL offset (smpsHeaderFM volume + smpsAlterVol, "
-                     f"{_TL_STEP_DB} dB/step)")
+                     f"{TL_STEP_DB} dB/step)")
         lines.append(f"  # and −{_PAN_LAW_DB:g} dB when hard-panned:  {_FM_K:g} × carriers × 10^(dB/20), max 64.  "
                      "Starting points (~2 dB) —")
         lines.append("  # measure with tools/vgm_compare.py; every channel sharing an instrument should read the same error.")
@@ -783,13 +766,13 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         if _users:
             psg_att[_lbl] = max(_users, key=lambda t: t.note_count).modal_volume
     if psg_noise_items or psg_tone_items:
-        lines.append(f"  # PSG volumes bake in the track attenuation ({_PSG_STEP_DB:g} dB/step): "
+        lines.append(f"  # PSG volumes bake in the track attenuation ({PSG_STEP_DB:g} dB/step): "
                      f"tone {_PSG_TONE_VOLUME} / noise {_PSG_NOISE_VOLUME} at attenuation 0.")
 
     def _psg_line(inst: int, fname: str, base: int, lbl: str) -> str:
         att = psg_att.get(lbl, 0)
-        return (f"  - [{inst}, \"{fname}\", {_db_volume(base, -_PSG_STEP_DB * att)}, 0]"
-                + (f"   # attenuation {att} (−{att * _PSG_STEP_DB:g} dB)" if att else ""))
+        return (f"  - [{inst}, \"{fname}\", {_db_volume(base, -PSG_STEP_DB * att)}, 0]"
+                + (f"   # attenuation {att} (−{att * PSG_STEP_DB:g} dB)" if att else ""))
 
     for _form_byte, label, inst, _ts, _ch_name, _ch_init_trans in psg_noise_items:
         lines.append(f"  # --- PSG noise ({label}) ---")
@@ -864,7 +847,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 # The LFSR is clocked by tone channel 2, whose divider the driver looks up in
                 # PSGFrequencies from the channel's own note — not a chromatic extrapolation:
                 # nMaxPSG (index 69) is divider 0 → N=1, not the ~7 kHz an "A8" would give.
-                tone2_n: int | None = _rate3_tone2_n(min_sem, ch_init_trans)
+                tone2_n: int | None = psg_tone2_divider(0x81 + min_sem, ch_init_trans)
                 shift_hz = 3_579_545 / (32.0 * tone2_n)
                 # root must satisfy Nyquist for the LFSR shift rate where that is achievable;
                 # above it the highest-rate root is the best a MOD sample can do.

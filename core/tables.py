@@ -127,6 +127,17 @@ def semitone_to_note_name(semitone: int) -> str:
 # Private alias retained for backwards-compatible internal usage in this module.
 _semitone_to_name = semitone_to_note_name
 
+# The same twelve names as _CHROMATIC_NAMES, except that index 5 is spelled 'F' rather
+# than the driver's 'Es'.  This is the spelling YAML configs use (low:, high:, root:,
+# synth_root:) and the one parse_synth_note accepts, so it is what anything writing a
+# config must emit.  Keeping the two apart matters: 'Es' is an SMPS label, 'F' is not.
+_SYNTH_NAMES = ('C', 'Cs', 'D', 'Ds', 'E', 'F', 'Fs', 'G', 'Gs', 'A', 'As', 'B')
+
+
+def synth_note_name(semitone: int) -> str:
+    """Semitone offset from C0 as a YAML config note name (84 -> 'C7').  Inverse of parse_synth_note."""
+    return f"{_SYNTH_NAMES[semitone % 12]}{semitone // 12}"
+
 
 def parse_smps_note(name: str) -> int:
     """Convert an SMPS note name to semitone offset from C0 (0 = C0, 12 = C1, …).

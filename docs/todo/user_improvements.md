@@ -38,7 +38,9 @@ Status key: `[ ]` open, `[x]` done.
 - **Where:** `_tick_to_pattern_row` callers in `core/smps2mod.py`.
 
 ### [ ] 4. Bake channel TL into instrument volume instead of per-note `Cxx`
-- **GHZ (biggest remaining error in that song):** with `fm_volume_scaling: false` the header TL is ignored *and* one `smpsAlterVol` step becomes one linear MOD volume unit (≈ 0.3 dB) instead of 0.75 dB. FM4 is +3.5…+8 dB and FM5 +4.5…+10 dB on the affected notes; FM1's fade drifts from +7.6 to +3.1 dB across `C1A`→`C1F`. Instruments 11/13/14 are shared by FM3/FM4/FM5 at different TLs, so sample volumes cannot fix it. Per-instrument table in `docs/audits/02_ghz_audit.md`.
+- **GHZ (biggest remaining level error in that song):** with `fm_volume_scaling: false` the header TL is ignored *and* one `smpsAlterVol` step becomes one linear MOD volume unit (≈ 0.3 dB) instead of 0.75 dB. Notes carrying a `Cxx` are +3.4…+6.7 dB on FM4/FM5 (FM5 `$13`→`$19`: predicted +3.6, measured +3.4); FM1's fade drifts from +5.8 to +0.4 dB across `C1A`→`C1F`. Per-instrument table in `docs/audits/02_ghz_audit.md`.
+- **Pan law:** a centred YM2612 channel drives both speakers, an Amiga channel one. FM3 (centre), FM4 (left) and FM5 (right) share GHZ instrument 14 at the same TL and FM4/FM5 still read ~+2.9 dB. Bake −3 dB for channels the song hard-pans (needs the dominant `smpsPan` per channel/voice).
+- **Sample cost — prefer `Cxx` on the minority channel over variant slots:** MOD instruments cannot share sample data (~61 KB each in GHZ). Variants by TL alone: +2 instruments / +122 KB on a 760 KB MOD; with the pan law: +4 / +248 KB. Baking the busiest channel's level and emitting `Cxx` on the other channels' notes costs no samples (GHZ: FM3's 16 notes on instrument 5 and 63 on 11/13/14). Make that the default, variants optional.
 - **Measured:** with `fm_volume_scaling: false` FM1/FM3/FM4/FM5 were 1.8–3.2 dB too hot vs FM2 (header TL `$0C/$09/$0D/$0C/$0E` ignored). With it `true`, every note gets a `Cxx` (MOD resets volume on trigger) — the "clutter" that keeps it off.
 - **Fix:** at first use of an `(instrument, channel)` pair bake `sample_volume × 10^(−TL×0.75/20)` into the instrument's default volume (create a variant slot when two channels share an instrument at different TLs), and emit `Cxx` only when `smpsAlterVol` moves the channel off that baked level.
 - **Interim:** hand-compute volumes as done in `configs/01_title_screen.yaml` (comment block above `sample_list`).
@@ -73,6 +75,9 @@ Status key: `[ ]` open, `[x]` done.
 ---
 
 ## Tooling / workflow
+
+### [x] `tools/vgm_compare.py` levels use L/R power, not a mono mix
+Averaging to mono read hard-panned YM2612 channels ~5 dB low against centred ones (2.1 dB vs a power sum) while every MOD channel lost the same ~1 dB — GHZ FM4/FM5 looked hotter than they are and two GHZ volumes were over-corrected (since reverted). Title Screen (no pans) unaffected.
 
 ### [x] `tools/vgm_pitch_audit.py` — symbolic pitch audit (no rendering)
 Chip frequency-register timeline vs the pitch each MOD note sounds at (from `root` / `synth_root` / finetune); sees legato pitch changes, ignores grace notes and vibrato steps below `--min-ms`; exit 1 on any wrong or missing note. GHZ 867/867, Title Screen 86/86.

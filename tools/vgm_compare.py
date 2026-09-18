@@ -198,14 +198,23 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
 # Signal helpers
 # ---------------------------------------------------------------------------
 
-def load_wav(path: Path) -> np.ndarray:
+def load_wav(path: Path, stereo: bool = False) -> np.ndarray:
+    """Mono mix (L+R)/2 by default; with stereo=True the (frames, channels) array.
+
+    Pitch, onsets and envelopes use the mono mix.  LEVELS must use the stereo array: rms() of it
+    is the power average of both sides, which is what a hard-panned channel actually delivers.
+    Averaging to mono first reads a hard-panned YM2612 channel ~5 dB low against a centred one
+    (GHZ FM4/FM5), while every libopenmpt MOD channel loses the same ~1 dB, so the error does
+    not cancel between the two renders.
+    """
     with wave.open(str(path), 'rb') as w:
         n, ch, sw, sr = w.getnframes(), w.getnchannels(), w.getsampwidth(), w.getframerate()
         raw = w.readframes(n)
     if sw != 2 or sr != SR:
         raise SystemExit(f"ERROR: {path} must be 16-bit {SR} Hz (got {sw * 8}-bit {sr} Hz)")
     a = np.frombuffer(raw, dtype='<i2').astype(np.float64) / 32768.0
-    return a.reshape(-1, ch).mean(axis=1) if ch > 1 else a
+    a = a.reshape(-1, ch)
+    return a if stereo else a.mean(axis=1)
 
 
 def db(x: float) -> float:
@@ -219,7 +228,7 @@ def rms(seg: np.ndarray) -> float:
 def seg_at(a: np.ndarray, t: float, dur: float) -> np.ndarray:
     s, e = int(t * SR), int((t + dur) * SR)
     if s < 0 or s >= len(a):
-        return np.zeros(max(e - s, 1))
+        return np.zeros((max(e - s, 1), *a.shape[1:]))
     return a[s:e]
 
 
@@ -509,11 +518,14 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             names.append("NOISE")
         else:
             names.append(src)
-    vgm = {n: load_wav(workdir / f"vgm_{n}.wav") for n in ["FULL", *names]}
-    mod = {}
+    # *_st: stereo arrays, used for every level figure (see load_wav); vgm / mod: mono mixes.
+    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
+    mod_st = {}
     for src, n in zip(chan_map, names, strict=True):
-        mod[n] = load_wav(workdir / f"mod_{src}.wav")
-    mod["FULL"] = load_wav(workdir / "mod_FULL.wav")
+        mod_st[n] = load_wav(workdir / f"mod_{src}.wav", stereo=True)
+    mod_st["FULL"] = load_wav(workdir / "mod_FULL.wav", stereo=True)
+    vgm = {n: a.mean(axis=1) for n, a in vgm_st.items()}
+    mod = {n: a.mean(axis=1) for n, a in mod_st.items()}
 
     offset_auto = offset is None
     if offset is None:
@@ -550,7 +562,8 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             sm = seg_at(mod[ch], t + offset + 0.025, win)
             cv = cents(peak_near(sv, fref), fref)
             cm = cents(peak_near(sm, fref), fref)
-            lv, lm = db(rms(sv)), db(rms(sm))
+            lv = db(rms(seg_at(vgm_st[ch], t + 0.025, win)))
+            lm = db(rms(seg_at(mod_st[ch], t + offset + 0.025, win)))
             level_diff.setdefault(ch, []).append(lm - lv)
             if not math.isnan(cm):
                 cent_err.setdefault(ch, []).append(cm)
@@ -633,18 +646,18 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     # ---- channel balance relative to reference channel ----
     ref = ref_chan if ref_chan in vgm else names[0]
-    print(f"Whole-song channel RMS relative to {ref} (dB):   VGM     MOD    MOD-VGM")
-    rv_ref, rm_ref = db(rms(vgm[ref])), db(rms(mod[ref]))
+    print(f"Whole-song channel RMS relative to {ref} (dB, L/R power):   VGM     MOD    MOD-VGM")
+    rv_ref, rm_ref = db(rms(vgm_st[ref])), db(rms(mod_st[ref]))
     for n in names:
-        rv, rm = db(rms(vgm[n])) - rv_ref, db(rms(mod[n])) - rm_ref
+        rv, rm = db(rms(vgm_st[n])) - rv_ref, db(rms(mod_st[n])) - rm_ref
         note = "" if abs(rm - rv) < 2 else "   <-- rebalance"
         print(f"  {n:<6} {rv:>8.1f} {rm:>8.1f} {rm - rv:>+8.1f}{note}")
         res["channels"][n]["balance_db"] = {"vgm": rv, "mod": rm, "diff": rm - rv}
     res["ref_channel"] = ref
-    res["mix"] = {"vgm_rms_db": db(rms(vgm["FULL"])), "vgm_peak": float(np.abs(vgm["FULL"]).max()),
-                  "mod_rms_db": db(rms(mod["FULL"])), "mod_peak": float(np.abs(mod["FULL"]).max())}
-    print(f"  (absolute: VGM mix {db(rms(vgm['FULL'])):.1f} dBFS peak {np.abs(vgm['FULL']).max():.2f};"
-          f" MOD mix {db(rms(mod['FULL'])):.1f} dBFS peak {np.abs(mod['FULL']).max():.2f})")
+    res["mix"] = {"vgm_rms_db": db(rms(vgm_st["FULL"])), "vgm_peak": float(np.abs(vgm_st["FULL"]).max()),
+                  "mod_rms_db": db(rms(mod_st["FULL"])), "mod_peak": float(np.abs(mod_st["FULL"]).max())}
+    print(f"  (absolute: VGM mix {db(rms(vgm_st['FULL'])):.1f} dBFS peak {np.abs(vgm_st['FULL']).max():.2f};"
+          f" MOD mix {db(rms(mod_st['FULL'])):.1f} dBFS peak {np.abs(mod_st['FULL']).max():.2f})")
     print()
 
     # ---- onset timing ----

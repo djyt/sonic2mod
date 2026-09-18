@@ -500,6 +500,10 @@ class SmpsParser:
             m = re.match(r'smpsCall\s+(\S+)', line)
             if m:
                 call_target = m.group(1)
+                # A coordination flag completes any note that is still waiting for a duration
+                # byte (see the effect-macro branch below).
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
+                pending_note = None
                 if call_target in self.labels:
                     target_line = self.labels[call_target] + 1
                     tick, last_duration, pending_note, last_note_value, chan_tempo_div = self._parse_call(
@@ -513,11 +517,19 @@ class SmpsParser:
 
             # smpsReturn — only hit during call inlining
             if line.startswith('smpsReturn'):
-                return tick, last_duration, pending_note, last_note_value, chan_tempo_div
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
+                return tick, last_duration, None, last_note_value, chan_tempo_div
 
-            # Effect macros — do not advance tick; pending_note is unchanged.
+            # Effect macros — do not advance tick themselves, but they do complete a pending note.
+            # FMDoNext/PSGDoNext read the byte after a note: a duration (< $80) is consumed,
+            # anything else is put back (`subq.w #1,a4`) and the note plays with the saved
+            # duration.  So a flag can never sit between a note and its duration byte, and a note
+            # that is still pending here started BEFORE this flag takes effect.  (Labels emit no
+            # bytes and are handled separately above.)
             effect = self._try_parse_effect(line)
             if effect is not None:
+                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
+                pending_note = None
                 if effect.effect_type == 'smpsChanTempoDiv':
                     # Parser-time state: update divider, do NOT emit to events.
                     chan_tempo_div = effect.params[0]

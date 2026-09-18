@@ -206,6 +206,8 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - Standalone duration bytes in `dc.b` **retrigger the last note** by default — without preceding `smpsNoAttack`: `SmpsNote(note_value=last_note_value, is_rest=False)`; with `smpsNoAttack` pending: rest/sustain `(is_rest=True, is_no_attack=True)`
 - Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
 - Loop unrolling uses `stop_line` parameter to prevent re-entry into `smpsLoop`
+- `_extend_looping_channels` replays the events AFTER the jump label (`SmpsChannel.label_event_index`),
+  not every event at the label's tick — a flag written just before the label is not part of the loop
 - YAML config requires `pyyaml` (`pip install pyyaml`)
 
 ## SMPS Effect → MOD Effect Mapping
@@ -226,7 +228,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsPan` | $E0 | (level) | No MOD panning, but hard-panned FM notes count `fm_pan_law_db` (3 dB) quieter |
 | `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
 | `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
-| `smpsPSGAlterVol` | $EC | `Cxx` | Same path as smpsAlterVol; delta adds to current_volume |
+| `smpsPSGAlterVol` | $EC | `Cxx` | SN76489 attenuation (2 dB/step); `Cxx` only where a note's attenuation differs from its instrument's baked one |
 | `smpsPSGform` | $F3 | (routing) | Looks up `psg_map[byte]` → new PSG instrument |
 | `smpsPSGvoice` | $F5 | (routing) | Looks up `psg_voice_map[label]` → new PSG instrument |
 | `smpsNop` | $E2 | ignored | No MOD equivalent |
@@ -251,7 +253,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 
 7. **`smpsNoteFill` and `smpsModSet` wait/speed count V-int frames, not ticks** — `TempoWait` only delays `DurationTimeout`. `SmpsToModConverter._ticks_per_frame` = `(mod−1)/mod` converts them (done for fill + wait; the vibrato *rate* formula is still open). Neither is multiplied by the tempo divider. Cuts are placed to the MOD tick on whichever row they fall (`ECx` in-row, `C00` on a boundary); a fill that outlasts the note emits nothing. A fill equal to the duration byte DOES fire when the tempo modifier is > 1.
 
-7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
+7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 
 8. **smpsModSet step count halved in hardware** — driver does `lsr.b #1` before storing. Value 16 → 8 actual oscillation steps.
 

@@ -87,6 +87,10 @@ class SmpsChannel:
     events: list = field(default_factory=list)  # list of SmpsEvent
     has_jump: bool = False
     jump_target_label: str = ""
+    # label -> index into `events` of the first event AFTER that label in this channel's stream.
+    # A tick alone cannot say whether a zero-duration event at the label's tick (a coordination
+    # flag written just before the label) is inside the loop that jumps to it.
+    label_event_index: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -426,6 +430,7 @@ class SmpsParser:
                 # music conversion path is bit-identical.
                 if pending_note is not None and self._label_precedes_duration(i + 1):
                     self.label_tick_pos[label_name] = tick
+                    channel.label_event_index[label_name] = len(channel.events) + 1   # after the pending note
                     _seen_labels.add(label_name)
                     i += 1
                     continue
@@ -434,6 +439,7 @@ class SmpsParser:
                 )
                 pending_note = None
                 self.label_tick_pos[label_name] = tick
+                channel.label_event_index[label_name] = len(channel.events)
                 _seen_labels.add(label_name)
                 i += 1
                 continue

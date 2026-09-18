@@ -126,8 +126,39 @@ at volume 64 and vanish.
 
 Legacy modes: `fm_volume_scaling: true` (header TL + log law as an absolute volume, `Cxx` on
 every FM note) and `false` (header TL ignored, one `smpsAlterVol` step = one *linear* volume unit
-≈ 0.3 dB — FM1's GHZ fade drifted 5 dB).  PSG is unaffected: its path already uses the chip's
-2 dB/step law as an absolute volume.
+≈ 0.3 dB — FM1's GHZ fade drifted 5 dB).
+
+### PSG levels (`psg_volume_scaling: baked`)
+
+Same scheme on the SN76489: level = −2 dB × attenuation (`smpsHeaderPSG` volume +
+`smpsPSGAlterVol`, 15 = silent), planned by `_plan_psg_levels` with the converter's own instrument
+tracking (header voice, `smpsPSGform` → `psg_map`, `smpsPSGvoice` → `psg_voice_map` and its
+per-note range dispatch).  The attenuation most of an instrument's notes play at needs no command
+and is what its `sample_list` volume stands for.  There is no pan term — the PSG is mono.
+
+The legacy mode (`absolute`) made the volume `64 × 10^(−2·att/20) × sample volume / 64`, so every
+PSG note whose track attenuation was not 0 carried a `Cxx` — 3241 of 3241 PSG notes across the 18
+configs; baked leaves 498.  That is more than tidiness: the effect column is now free on most PSG
+notes, so an attack-row note cut no longer has to move to the next row to make room for the
+volume (Title Screen 12, Spring Yard 264 cuts restored to the tick).
+
+The configs were migrated when the mode was introduced: each PSG `sample_list` volume became what
+its dominant attenuation emitted before (Title Screen noise 16 → 6, i.e. the old `C06`; the change
+is recorded in a trailing comment on each line).  Per-note effective volume is identical before
+and after on every song except 268 Scrap Brain notes that went 12 → 13 — the single rounding is
+the more accurate one (32 × 10^(−8/20) = 12.7).
+
+---
+
+## Loop extension (`_extend_looping_channels`)
+
+A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) is extended by
+replaying the loop body until the song's last tick.  The body is the events **after the jump
+label** — `SmpsChannel.label_event_index`, recorded by the parser — not "events at or after the
+label's tick": a coordination flag written just before the label shares its tick but is not in
+the loop.  Spring Yard PSG3 has `smpsPSGAlterVol $FF` immediately before `Mus85_SYZ_Jump03:`; the
+tick-based selection replayed it every repetition and the hi-hat crept from attenuation 5 to 0 in
+five loops.  The SYZ VGZ shows attenuation 5 for the whole song.  (Marble Zone: 2 cells.)
 
 ---
 

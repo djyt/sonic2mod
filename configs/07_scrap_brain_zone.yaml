@@ -54,17 +54,17 @@ sample_list:
   # --- voice $06: Alg 5, FB 7 — FM5 ---
   - [12, "fm_v06.raw", 64, 0]
   # --- PSG noise (form $E7) ---
-  - [17, "psg_noise.raw", 32, 0]
+  - [17, "psg_noise.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
   # --- PSG tone $00 ---
-  - [13, "psg_$00.raw", 32, 0]
+  - [13, "psg_$00.raw", 20, 0] # baked: 32 at PSG attenuation 2 (−4 dB)
   # --- PSG tone fTone_06 ---
-  - [14, "psg_fTone_06.raw", 32, 0]
+  - [14, "psg_fTone_06.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
   # --- PSG tone fTone_05 ---
-  - [15, "psg_fTone_05.raw", 32, 0]
+  - [15, "psg_fTone_05.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
   # --- PSG noise (fTone_04 envelope) ---
-  - [16, "psg_noise.raw", 32, 0]
+  - [16, "psg_noise.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
   # --- PSG noise (fTone_08 envelope) ---
-  - [18, "psg_noise.raw", 32, 0]
+  - [18, "psg_noise.raw", 10, 0] # baked: 32 at PSG attenuation 5 (−10 dB)
   
   # Detuned Voice 2
   - [19, "fm_v02.raw", 32, 1]

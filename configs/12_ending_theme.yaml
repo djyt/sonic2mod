@@ -47,9 +47,9 @@ sample_list:
   - [7, "fm_v03_lo.raw", 32, 0]
   - [8, "fm_v03_hi.raw", 32, 0]
   # --- PSG noise (form $E7) ---
-  - [10, "psg_noise.raw", 16, 0]
+  - [10, "psg_noise.raw",  8, 0] # baked: 16 at PSG attenuation 3 (−6 dB)
   # --- PSG tone fTone_05 ---
-  - [9, "psg_fTone_05.raw", 32, 0]
+  - [9, "psg_fTone_05.raw", 10, 0] # baked: 32 at PSG attenuation 5 (−10 dB)
   # Pitch Adjusted version
   - [11, "fm_v03_hi.raw", 32, 1]
 

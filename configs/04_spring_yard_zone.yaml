@@ -48,10 +48,10 @@ sample_list:
   # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM3 ---
   - [9, "fm_v05.raw", 32, 0]
   # --- PSG noise (form $E7) ---
-  - [12, "psg_noise.raw", 16, 0]
+  - [12, "psg_noise.raw",  5, 0] # baked: 16 at PSG attenuation 5 (−10 dB)
   # --- PSG tone fTone_06 ---
-  - [10, "psg_fTone_06_lo.raw", 32, 0]
-  - [11, "psg_fTone_06_hi.raw", 32, 0]
+  - [10, "psg_fTone_06_lo.raw",  8, 0] # baked: 32 at PSG attenuation 6 (−12 dB)
+  - [11, "psg_fTone_06_hi.raw",  8, 0] # baked: 32 at PSG attenuation 6 (−12 dB)
 
 dac_samples:
   # dKick: ×59 — native ~8250 Hz → note C2

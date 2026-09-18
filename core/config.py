@@ -196,6 +196,13 @@ def _parse_tone2_n(entry: dict, context: str) -> int | None:
     return n
 
 
+def _psg_volume_mode(value) -> str:
+    v = str(value).strip().lower()
+    if v not in ("baked", "absolute"):
+        raise ValueError(f"psg_volume_scaling must be baked or absolute (got '{value}')")
+    return v
+
+
 @dataclass
 class PsgSynthesisSettings:
     enabled: bool = False
@@ -206,6 +213,11 @@ class PsgSynthesisSettings:
     normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
     psg_output_max: int = 4096       # Hardware PSG max amplitude; noise peaks at 4096/2=2048 (C source halves it)
     psg_envelope_tables: dict[str, list[int]] = field(default_factory=dict)  # {"PSG1": [0,0,...], ...}
+    # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
+    # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
+    # 2 dB/step law (same scheme as SynthesisSettings.fm_volume_mode).  "absolute": legacy —
+    # volume = 64 × 10^(−2·att/20) × sample volume / 64, so a Cxx on nearly every PSG note.
+    psg_volume_scaling: str = "baked"
 
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
@@ -225,6 +237,7 @@ class PsgSynthesisSettings:
             release_padding=s.get("release_padding", 0.2),
             normalize_samples=s.get("normalize_samples", False),
             psg_output_max=s.get("psg_output_max", 4096),
+            psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
             psg_envelope_tables=s.get("psg_envelope_tables", {}),
         )
 

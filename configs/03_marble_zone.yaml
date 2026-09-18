@@ -47,9 +47,13 @@ sample_list:
   # --- voice $04: alg 2: (1+(2→3))→4, fb 0 — FM5 ---
   - [7, "fm_v04.raw", 32, 0]
   # --- PSG tone fTone_08 ---
-  - [8, "psg_fTone_08_lo.raw", 64, 0]
-  - [9, "psg_fTone_08_hi.raw", 64, 0]
+  - [8, "psg_fTone_08_lo.raw", 32, 0] # baked: 64 at PSG attenuation 3 (−6 dB)
+  - [9, "psg_fTone_08_hi.raw", 32, 0] # baked: 64 at PSG attenuation 3 (−6 dB)
   # --- PSG noise (form $E7) ---
+  # TODO (audit): psg_map[0xE7] uses instrument 10, which had NO entry here and so played at the
+  # default 64; the line below for instrument 11 (unused) was presumably meant for it.  The entry
+  # for 10 keeps today's level — check it against the VGZ before trusting either number.
+  - [10, "psg_noise.raw", 32, 0] # baked: 64 at PSG attenuation 3 (−6 dB)
   - [11, "psg_noise.raw", 16, 0]
   # --- voice $00: tuned!
   - [12, "fm_v00.raw", 32, 1]

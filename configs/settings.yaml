@@ -65,3 +65,11 @@ fm_volume_scaling: baked
 # baked mode only: a hard-panned (smpsPan left/right) note is this many dB quieter than a centred one.
 # A centred YM2612 channel drives both speakers, every Amiga channel drives one.  0 disables.
 fm_pan_law_db: 3
+
+
+# PSG counterpart of fm_volume_scaling (SN76489 attenuation: smpsHeaderPSG volume + smpsPSGAlterVol, 2 dB/step):
+#   baked     For each PSG instrument the attenuation most of its notes play at needs no command and is
+#             what its sample_list volume stands for; other notes get Cxx on the 2 dB/step law.  Frees
+#             the effect column on most PSG notes for vibrato / note cut.  (default)
+#   absolute  Legacy: volume = 64 x 10^(-2 x att / 20) x sample volume / 64, a Cxx on nearly every PSG note.
+psg_volume_scaling: baked

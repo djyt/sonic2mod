@@ -44,7 +44,7 @@ sample_list:
   # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
   - [7, "fm_v05.raw", 32, 0]
   # --- PSG tone fTone_05 ---
-  - [8, "psg_fTone_05.raw", 32, 0]
+  - [8, "psg_fTone_05.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB)
 
 dac_samples:
   # dSnare: ×47 — native ~24000 Hz → note Fs3

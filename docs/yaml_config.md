@@ -272,9 +272,16 @@ psg_map:
     low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
     synth_root: A3         # LFSR synthesis freq — sets tone2_n for rate-3; independent of root
     noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (LFSR freq from synth_root)
+    tone2_n: 1             # optional, rate 3 only: explicit tone-ch2 divider (1–1023); overrides synth_root
     envelope: fTone_04     # Named envelope from settings.yaml psg_envelope_tables, or inline list
     base_volume: 0         # SN76489 base attenuation (0=max, 15=silent)
 ```
+
+`tone2_n` is the direct way to set the rate-3 LFSR clock. Sonic 1's `nMaxPSG` (the usual noise
+trigger note) maps to `PSGFrequencies[69]` = 223721 Hz, i.e. a divider of **0**, which the Sega
+VDP PSG clocks as N=1 (112 kHz shift rate, near-white hiss); use `tone2_n: 1` for it. Check the
+real value with `python tools/vgm_analyze.py <song>.vgz --chip psg --channel NOISE`, which prints
+`white/tone2 N=<n>` for every noise key-on.
 
 SN76489 noise register byte encoding:
 - Bits [1:0]: rate — 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (LFSR freq set by synth_root)
@@ -285,7 +292,7 @@ SN76489 noise register byte encoding:
 - `0` = N/512 (fixed LFSR clock, fastest preset)
 - `1` = N/1024
 - `2` = N/2048
-- `3` = follow tone ch2 — synthesizer derives `tone2_n` from `synth_root` (or `root`)
+- `3` = follow tone ch2 — synthesizer uses `tone2_n` if given, else derives it from `synth_root` (or `root`)
 
 ### psg_voice_map
 

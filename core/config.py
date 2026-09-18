@@ -113,7 +113,11 @@ class PsgInstrumentEntry:
     synth_root: int | None = None        # Synthesis pitch override — SMPS semitone (None = use root)
     low: int | None = None               # SMPS semitone lower bound for melodic root offset
     high: int | None = None              # SMPS semitone upper bound (inclusive); used for list-entry range dispatch
-    noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers)
+    noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers), 3 = follow tone ch2
+    tone2_n: int | None = None           # noise_rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR
+                                             # clock; overrides the value derived from synth_root/root.
+                                             # nMaxPSG in the Sonic 1 driver writes N=0, which the Sega
+                                             # VDP PSG treats as N=1 (maximum shift rate) — use tone2_n: 1.
     envelope: str | list[int] | None = None  # Named table str ("PSG4") or inline list[int]; None = constant volume
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
     vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
@@ -134,10 +138,21 @@ def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_v
         low=low,
         high=high,
         noise_rate=v.get('noise_rate', 0),
+        tone2_n=_parse_tone2_n(v, context),
         envelope=v.get('envelope', default_envelope),
         base_volume=v.get('base_volume', 0),
         vibrato=pvm_vibrato,
     )
+
+
+def _parse_tone2_n(entry: dict, context: str) -> int | None:
+    """Validate the optional ``tone2_n`` key (SN76489 tone-ch2 divider, 1–1023)."""
+    if 'tone2_n' not in entry or entry['tone2_n'] is None:
+        return None
+    n = int(entry['tone2_n'])
+    if not 1 <= n <= 1023:
+        raise ValueError(f"{context}.tone2_n must be 1–1023 (got {n})")
+    return n
 
 
 @dataclass
@@ -439,6 +454,7 @@ class ConversionConfig:
                 low=_opt(psg_entry, 'low', parse_smps_note),
                 high=_opt(psg_entry, 'high', parse_smps_note),
                 noise_rate=psg_entry.get('noise_rate', 0),
+                tone2_n=_parse_tone2_n(psg_entry, _ctx),
                 envelope=psg_entry.get('envelope', None),
                 base_volume=psg_entry.get('base_volume', 0),
                 vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),

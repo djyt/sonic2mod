@@ -32,7 +32,9 @@ The YM2612 outputs one audio sample every 24 internal clocks.
 collects one (L, R) pair per batch, yielding exactly ``n`` samples.
 """
 
+import array
 import ctypes
+import functools
 
 from .build import get_lib_path
 
@@ -81,12 +83,45 @@ def _load_lib() -> ctypes.CDLL:
     lib.OPN2_Write.restype  = None
     lib.OPN2_Write.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint8]
 
-    # void OPN2_RenderBatch(void *chip, int n_samples, int32_t *buf_l, int32_t *buf_r)
+    # void OPN2_RenderBatch(void *chip, int n_samples, int32_t *buf_l, int32_t *buf_r, int32_t dc)
     lib.OPN2_RenderBatch.restype  = None
     lib.OPN2_RenderBatch.argtypes = [ctypes.c_void_p, ctypes.c_int,
-                                      ctypes.c_void_p, ctypes.c_void_p]
+                                      ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int32]
+
+    # void OPN2_RenderBatchMono(void *chip, int n_samples, int32_t *buf, int32_t dc)
+    lib.OPN2_RenderBatchMono.restype  = None
+    lib.OPN2_RenderBatchMono.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
+                                          ctypes.c_int32]
+
+    # void PCM_BoxDownsample(const int32_t *in, int in_len, int32_t *out, int out_len,
+    #                        int from_rate, int to_rate)
+    lib.PCM_BoxDownsample.restype  = None
+    lib.PCM_BoxDownsample.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
+                                      ctypes.c_int, ctypes.c_int, ctypes.c_int]
 
     return lib
+
+
+@functools.cache
+def _shared_lib() -> ctypes.CDLL:
+    """The loaded DLL, for helpers that need no chip instance (box_downsample)."""
+    return _load_lib()
+
+
+def box_downsample(mono: array.array, from_rate: int, to_rate: int) -> array.array:
+    """Box-filter (averaging) downsample of a mono int32 array, in C.
+
+    Same arithmetic as ym2612.renderer._resample_py (see PCM_BoxDownsample in
+    ym3438_batch.c); only useful for downsampling (to_rate < from_rate).
+    """
+    assert mono.itemsize == 4 and mono.typecode == 'i', "box_downsample wants array('i')"
+    out_len = round(len(mono) * to_rate / from_rate)
+    out = array.array('i', bytes(out_len * 4))
+    if out_len:
+        in_buf, _ = mono.buffer_info()
+        out_buf, _ = out.buffer_info()
+        _shared_lib().PCM_BoxDownsample(in_buf, len(mono), out_buf, out_len, from_rate, to_rate)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +138,11 @@ class OPN2:
 
         Args:
             mode: "ym2612" (Mega Drive VA2, default) or "ym3438" (YM3438 accurate).
+                  Remembered on the instance: ``reset()`` with no argument keeps it.
         """
+        if mode not in ("ym2612", "ym3438"):
+            raise ValueError(f"OPN2 mode must be 'ym2612' or 'ym3438' (got {mode!r})")
+        self.mode = mode
         self._lib = _load_lib()
 
         # Opaque storage for ym3438_t — 8 KB, well above the actual struct size
@@ -123,11 +162,24 @@ class OPN2:
     # Core control
     # ------------------------------------------------------------------
 
-    def reset(self, mode: str = "ym2612") -> None:
-        """Reset the chip and set the chip-type mode."""
-        chip_type = _YM3438_MODE_YM2612 if mode == "ym2612" else 0
+    def reset(self, mode: str | None = None) -> None:
+        """Reset the chip; ``mode`` switches chip type, None keeps the instance's."""
+        if mode is not None:
+            if mode not in ("ym2612", "ym3438"):
+                raise ValueError(f"OPN2 mode must be 'ym2612' or 'ym3438' (got {mode!r})")
+            self.mode = mode
+        chip_type = _YM3438_MODE_YM2612 if self.mode == "ym2612" else 0
         self._lib.OPN2_SetChipType(ctypes.c_uint32(chip_type))
         self._lib.OPN2_Reset(self._chip)
+
+    @property
+    def _dc(self) -> int:
+        """What 24 clocks of silence sum to: the batch helpers subtract it to zero-centre.
+
+        In YM2612 mode every clock carries a sign-only bias of ±3 (see render_samples), so
+        silence sums to 72; in YM3438 mode the non-output clocks are 0.
+        """
+        return _CLOCKS_PER_SAMPLE * 3 if self.mode == "ym2612" else 0
 
     def _clock_n(self, n: int) -> None:
         """Clock the chip n times, discarding output."""
@@ -226,22 +278,38 @@ class OPN2:
         is the standard way to use Nuked-OPN2 at the native sample rate.
 
         A DC offset of ``_CLOCKS_PER_SAMPLE × 3 = 72`` is subtracted to
-        zero-centre the waveform (silence produces 0 after this removal).
+        zero-centre the waveform (silence produces 0 after this removal); in
+        YM3438 mode there is no bias and nothing is subtracted (``_dc``).
 
         Returns:
             List of (left, right) tuples centred on 0.
         """
         buf_l = (ctypes.c_int32 * n_samples)()
         buf_r = (ctypes.c_int32 * n_samples)()
-        self._lib.OPN2_RenderBatch(self._chip, n_samples, buf_l, buf_r)
+        self._lib.OPN2_RenderBatch(self._chip, n_samples, buf_l, buf_r, self._dc)
         return list(zip(buf_l, buf_r, strict=True))
+
+    def render_mono(self, n_samples: int) -> array.array:
+        """Clock the chip for n_samples and return them folded to mono, ``(L + R) // 2``.
+
+        The fold happens in C (OPN2_RenderBatchMono) and the result comes back as an
+        ``array('i')`` rather than a list of tuples: the note renderer only ever wants
+        mono, and building 400 000 tuples per sample used to cost a fifth of the
+        emulation time itself.  Same chip time and same values as
+        ``core.pcm.to_mono(render_samples(n))``.
+        """
+        out = array.array('i', bytes(n_samples * 4))
+        if n_samples:
+            buf, _ = out.buffer_info()
+            self._lib.OPN2_RenderBatchMono(self._chip, n_samples, buf, self._dc)
+        return out
 
     def _render_samples_legacy(self, n_samples: int) -> list:
         """Original Python-loop implementation — kept for reference only.
 
         Replaced by render_samples() which calls OPN2_RenderBatch in C.
         """
-        dc = _CLOCKS_PER_SAMPLE * 3
+        dc = self._dc
 
         out = []
         lib     = self._lib

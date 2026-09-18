@@ -12,12 +12,18 @@ Usage:
   python tools/regression_test.py --generate-baselines --only title_screen
       Restrict either mode to the named test case(s).  Use this to accept an
       intended change in one song without rewriting the other baselines.
+
+  python tools/regression_test.py --jobs 4
+      Conversions run as parallel subprocesses (default: one per CPU); --jobs 1
+      runs them one at a time.  Results are always printed in _SONGS order.
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 # Add project root to path
@@ -75,8 +81,8 @@ def _regression_output_path(root: Path, name: str) -> Path:
     return root / "output" / f"_regression_{name}.mod"
 
 
-def run_conversion(config: str, root: Path, output_override: Path | None = None) -> bool:
-    """Run convert.py with the given config. Returns True on success."""
+def run_conversion(config: str, root: Path, output_override: Path | None = None) -> tuple[bool, str]:
+    """Run convert.py with the given config.  Returns (ok, failure_text)."""
     cmd = [sys.executable, "convert.py", config]
     if output_override is not None:
         cmd += ["--output", str(output_override)]
@@ -85,14 +91,41 @@ def run_conversion(config: str, root: Path, output_override: Path | None = None)
         cwd=str(root),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if result.returncode != 0:
-        print(f"  convert.py failed (exit {result.returncode}):")
-        print(result.stdout[-2000:] if result.stdout else "")
-        print(result.stderr[-2000:] if result.stderr else "")
-        return False
-    return True
+        text = f"  convert.py failed (exit {result.returncode}):\n"
+        text += (result.stdout[-2000:] if result.stdout else "") + "\n"
+        text += (result.stderr[-2000:] if result.stderr else "")
+        return False, text
+    return True, ""
+
+
+def _ensure_native_libs(root: Path) -> None:
+    """Build ym3438.dll / sn76489.dll once, before parallel conversions could race to."""
+    subprocess.run(
+        [sys.executable, "-c",
+         "import ym2612.build, sn76489.build; "
+         "ym2612.build.get_lib_path(); sn76489.build.get_lib_path()"],
+        cwd=str(root), capture_output=True, check=False,
+    )
+
+
+def convert_all(cases: list[dict], root: Path, jobs: int) -> dict[str, tuple[bool, str]]:
+    """Convert every case, up to ``jobs`` at a time; {name: (ok, failure_text)}."""
+    for tc in cases:
+        _regression_output_path(root, tc["name"]).parent.mkdir(parents=True, exist_ok=True)
+    if jobs > 1:
+        _ensure_native_libs(root)
+    with ThreadPoolExecutor(max_workers=max(1, min(jobs, len(cases)))) as pool:
+        futures = {
+            tc["name"]: pool.submit(run_conversion, tc["config"], root,
+                                    _regression_output_path(root, tc["name"]))
+            for tc in cases
+        }
+        return {name: f.result() for name, f in futures.items()}
 
 
 def _select_cases(only: list[str] | None) -> list[dict]:
@@ -107,15 +140,17 @@ def _select_cases(only: list[str] | None) -> list[dict]:
     return [tc for tc in TEST_CASES if tc["name"] in only]
 
 
-def generate_baselines(root: Path, only: list[str] | None = None):
+def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1):
     BASELINES_DIR.mkdir(parents=True, exist_ok=True)
-    print("Generating baselines...")
-    for tc in _select_cases(only):
-        print(f"\n  [{tc['name']}] Running convert.py --config {tc['config']} ...")
+    cases = _select_cases(only)
+    print(f"Generating baselines ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
+    results = convert_all(cases, root, jobs)
+    for tc in cases:
+        print(f"\n  [{tc['name']}] convert.py --config {tc['config']}")
         tmp_path = _regression_output_path(root, tc["name"])
-        tmp_path.parent.mkdir(parents=True, exist_ok=True)
-        ok = run_conversion(tc["config"], root, output_override=tmp_path)
+        ok, failure = results[tc["name"]]
         if not ok:
+            print(failure)
             print("  SKIPPED (conversion failed)")
             tmp_path.unlink(missing_ok=True)
             continue
@@ -129,23 +164,26 @@ def generate_baselines(root: Path, only: list[str] | None = None):
     print("\nBaselines generated.")
 
 
-def run_tests(root: Path, only: list[str] | None = None):
-    print("Running regression tests...")
+def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
+    cases = _select_cases(only)
+    print(f"Running regression tests ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
     all_passed = True
-    for tc in _select_cases(only):
+    results = convert_all(cases, root, jobs)
+    for tc in cases:
         print(f"\n  [{tc['name']}] {tc['description']}")
+        tmp_path = _regression_output_path(root, tc["name"])
         baseline_path = root / tc["baseline"]
         if not baseline_path.exists():
             print(f"  SKIP — no baseline at {baseline_path}")
             print("         Run with --generate-baselines first.")
+            tmp_path.unlink(missing_ok=True)
             all_passed = False
             continue
 
-        tmp_path = _regression_output_path(root, tc["name"])
-        tmp_path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"  Running convert.py --config {tc['config']} ...")
-        ok = run_conversion(tc["config"], root, output_override=tmp_path)
+        print(f"  convert.py --config {tc['config']}")
+        ok, failure = results[tc["name"]]
         if not ok:
+            print(failure)
             print("  FAIL (conversion error)")
             tmp_path.unlink(missing_ok=True)
             all_passed = False
@@ -194,13 +232,22 @@ def main():
         metavar="NAME",
         help="Restrict to these test case names (e.g. --only title_screen)",
     )
+    parser.add_argument(
+        "--jobs", "-j",
+        type=int,
+        default=os.cpu_count() or 1,
+        metavar="N",
+        help="Run up to N conversions at once (default: CPU count; 1 = one at a time)",
+    )
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("--jobs must be at least 1")
 
     root = _HERE.parent  # project root
     if args.generate_baselines:
-        generate_baselines(root, args.only)
+        generate_baselines(root, args.only, args.jobs)
     else:
-        run_tests(root, args.only)
+        run_tests(root, args.only, args.jobs)
 
 
 if __name__ == "__main__":

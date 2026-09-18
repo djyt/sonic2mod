@@ -19,7 +19,11 @@ Usage (smoke test)::
 from __future__ import annotations
 
 import sys
+import threading
 import warnings
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
 _HERE = Path(__file__).parent
@@ -34,6 +38,40 @@ from core.smps_parser import SmpsSong, SmpsVoice
 from core.tables import PERIOD_TABLE, ModNote
 from ym2612.renderer import freq_to_fnum_block, note_to_freq, render_note_raw
 from ym2612.wrapper import OPN2
+
+# ---------------------------------------------------------------------------
+# Render jobs and worker chips
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _RenderJob:
+    """One MOD instrument to synthesise: what generate_fm_samples decided before rendering."""
+    inst: int
+    voice_idx: int
+    voice: SmpsVoice
+    entry: InstrumentRange
+    synth_idx: int
+    target_rate: int
+    source_label: str = ""
+    mod_root_idx: int | None = None
+
+
+_worker = threading.local()
+
+
+def _thread_opn2(mode: str) -> OPN2:
+    """This thread's OPN2 instance, created on first use.
+
+    An OPN2 owns one ym3438_t; two threads must never share one.  Nuked-OPN2's only
+    global is the chip-type flag, which every reset writes with the same value.
+    """
+    opn2 = getattr(_worker, "opn2", None)
+    if opn2 is None:
+        opn2 = _worker.opn2 = OPN2(mode=mode)
+    elif opn2.mode != mode:
+        opn2.reset(mode)      # a later call with another fm_synthesis.mode re-uses the chip
+    return opn2
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -55,16 +93,16 @@ def generate_fm_samples(
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
         Only entries with entry.root set are included.
+
+    Instruments render concurrently, one per thread, ``synth.worker_threads()`` at a time
+    (the ``threads`` setting); the output does not depend on the thread count.
     """
     voice_lookup = {v.index: v for v in song.voices}
     result: dict[int, tuple[bytes, int]] = {}
 
-    # Create one OPN2 instance — render_note_raw resets it on each call
-    opn2 = OPN2(mode=synth.mode)
-
-    # --- Pass 1: render all instruments to raw mono lists ---
-    raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
-    already_synthesized: set[int] = set()
+    # --- Pass 1: decide what to render (one job per MOD instrument) ---
+    jobs: list[_RenderJob] = []
+    already_synthesized: set[int] = set()   # the first entry to name an instrument renders it
 
     def _collect(voice_idx, voice, entry, source_label="",
                  synth_idx=None, target_rate=None):
@@ -74,6 +112,7 @@ def generate_fm_samples(
         if entry.mod_instrument in already_synthesized:
             return
 
+        mod_root_idx = None
         if has_root:
             mod_root_idx = entry.root.value
             base_rate    = synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
@@ -87,60 +126,15 @@ def generate_fm_samples(
                 synth_idx   = entry.low - 12
                 target_rate = round(base_rate)
 
-        assert synth_idx is not None
-        _freq = note_to_freq(synth_idx)
-        _fnum, _block = freq_to_fnum_block(_freq, synth.clock_rate)
+        assert synth_idx is not None and target_rate is not None
         if verbose:
+            _freq = note_to_freq(synth_idx)
+            _fnum, _block = freq_to_fnum_block(_freq, synth.clock_rate)
             print(f"  [synth] inst={entry.mod_instrument} voice=${voice_idx:02X} "
                   f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
 
-        headroom_tl = round(synth.headroom_db / 0.75)
-        assert isinstance(synth.sustain_duration, float), "sustain_duration must be resolved before synthesis"
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            mono, rate = render_note_raw(
-                voice,
-                synth_idx,
-                sustain_secs=synth.sustain_duration,
-                release_secs=synth.release_padding,
-                target_rate=target_rate,
-                opn2=opn2,
-                clock_rate=synth.clock_rate,
-                headroom_tl=headroom_tl,
-                carrier_balance=synth.carrier_balance,
-            )
-
-        label = f" [{source_label}]" if source_label else ""
-        if not mono:
-            if verbose:
-                root_str = entry.root.name if has_root else f"synth_idx={synth_idx}"
-                print(f"  Warning: instrument {entry.mod_instrument} (voice {voice_idx}"
-                      f"{label}, {root_str}) rendered empty — skipping")
-            return
-
-        mono = _trim_trailing_silence(mono)
-        if not mono:
-            if verbose:
-                print(f"  Warning: instrument {entry.mod_instrument} rendered all silence — skipping")
-            return
-
-        for w in caught:
-            if verbose and issubclass(w.category, UserWarning) and "silence" in str(w.message):
-                print(f"  Warning: instrument {entry.mod_instrument} rendered silence")
-
-        if verbose:
-            pre_peak = peak(mono)
-            if has_root:
-                root_str = f"root={entry.root.name} (idx={mod_root_idx}), synth_idx={synth_idx}"
-                if entry.synth_root is not None:
-                    root_str += " [synth_root override]"
-            else:
-                root_str = f"synth_idx={synth_idx}"
-            print(f"  Instrument {entry.mod_instrument:2d}: voice={voice_idx}{label}, "
-                  f"{root_str}, "
-                  f"rate={target_rate} Hz, {len(mono)} samples, peak={pre_peak}")
-
-        raw_data[entry.mod_instrument] = (mono, rate)
+        jobs.append(_RenderJob(entry.mod_instrument, voice_idx, voice, entry, synth_idx,
+                               target_rate, source_label, mod_root_idx))
         already_synthesized.add(entry.mod_instrument)
 
     for voice_idx, range_list in config.voice_map.items():
@@ -200,6 +194,59 @@ def generate_fm_samples(
                 _collect(voice_idx, voice, entry,
                          source_label=ch_name,
                          synth_idx=_STD_SYNTH_IDX, target_rate=_std_rate)
+
+    # --- Render: every instrument on its own thread ---
+    # Nuked-OPN2 keeps all chip state in the per-instance struct and ctypes releases the
+    # GIL for the batch call, so the renders run truly in parallel; each worker thread
+    # keeps its own OPN2 (see _thread_opn2).  The results are byte-identical to a serial
+    # render and are consumed in job order, so the MOD does not depend on scheduling.
+    sustain_secs = synth.sustain_duration
+    assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
+    headroom_tl = round(synth.headroom_db / 0.75)
+
+    def _render(job: _RenderJob) -> tuple[Sequence[int], int]:
+        mono, rate = render_note_raw(
+            job.voice,
+            job.synth_idx,
+            sustain_secs=sustain_secs,
+            release_secs=synth.release_padding,
+            target_rate=job.target_rate,
+            opn2=_thread_opn2(synth.mode),
+            clock_rate=synth.clock_rate,
+            headroom_tl=headroom_tl,
+            carrier_balance=synth.carrier_balance,
+        )
+        return _trim_trailing_silence(mono), rate
+
+    raw_data: dict[int, tuple[Sequence[int], int]] = {}   # inst_num -> (mono, rate)
+    if jobs:
+        workers = min(len(jobs), synth.worker_threads())
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            rendered = list(pool.map(_render, jobs))
+    else:
+        rendered = []
+
+    for job, (mono, rate) in zip(jobs, rendered, strict=True):
+        label = f" [{job.source_label}]" if job.source_label else ""
+        if not mono:
+            if verbose:
+                root_str = job.entry.root.name if job.entry.root is not None else f"synth_idx={job.synth_idx}"
+                print(f"  Warning: instrument {job.inst} (voice {job.voice_idx}"
+                      f"{label}, {root_str}) rendered silence — skipping")
+            continue
+
+        if verbose:
+            if job.entry.root is not None:
+                root_str = f"root={job.entry.root.name} (idx={job.mod_root_idx}), synth_idx={job.synth_idx}"
+                if job.entry.synth_root is not None:
+                    root_str += " [synth_root override]"
+            else:
+                root_str = f"synth_idx={job.synth_idx}"
+            print(f"  Instrument {job.inst:2d}: voice={job.voice_idx}{label}, "
+                  f"{root_str}, "
+                  f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}")
+
+        raw_data[job.inst] = (mono, rate)
 
     # --- Pass 2: convert mono lists to int8 bytes ---
     if synth.normalize_samples:

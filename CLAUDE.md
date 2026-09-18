@@ -61,11 +61,12 @@ sonic2mod/
   output/            # Generated .mod files
   ym2612/            # YM2612 sample synthesis package (all segments complete)
     build.py         #   Auto-compiles ym3438.c → ym2612/ym3438.dll (spec for core.cbuild)
-    wrapper.py       #   ctypes OPN2 class — write_reg, key_on/off, render_samples
+    wrapper.py       #   ctypes OPN2 class — write_reg, key_on/off, render_samples, render_mono; box_downsample
+    ym3438_batch.c   #   C batch helpers: OPN2_RenderBatch(Mono), PCM_BoxDownsample (same arithmetic as the Python loops)
     voice.py         #   SmpsVoice → YM2612 register writes (program_voice)
     renderer.py      #   SmpsVoice + mod_note_index → 8-bit PCM (render_note)
-    sample_generator.py #  voice_map → {inst: (pcm, rate)} dict (generate_fm_samples)
-    validate.py      #   Standalone test: python ym2612/validate.py
+    sample_generator.py #  voice_map → {inst: (pcm, rate)} dict (generate_fm_samples); one thread per instrument (`threads` setting)
+    validate.py      #   Standalone test: python ym2612/validate.py (also checks the C helpers against the Python definitions)
   sn76489/            # SN76489 PSG sample synthesis package (all segments complete)
     build.py          #   Auto-compiles sn76489.c → sn76489/sn76489.dll (spec for core.cbuild)
     wrapper.py        #   ctypes SN76489 class — write_tone_freq/volume/noise, render_samples
@@ -169,7 +170,8 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 ## Regression Testing
 
 Baselines live in `tests/baselines/`.  All 19 song configs are test cases — a converter change
-is only safe once every one of them still produces a byte-identical MOD.
+is only safe once every one of them still produces a byte-identical MOD.  The conversions run
+as parallel subprocesses (one per CPU by default; the whole suite takes a few seconds).
 
 ```bash
 # BEFORE implementing a fix — save current output as baseline:
@@ -180,6 +182,9 @@ python tools/regression_test.py
 
 # Accept an intended change in ONE song without rewriting the other baselines
 python tools/regression_test.py --generate-baselines --only title_screen
+
+# Limit parallelism (e.g. when reading a failing conversion's output); -j 1 runs them one at a time
+python tools/regression_test.py --jobs 4
 ```
 
 **Workflow for any converter change:**

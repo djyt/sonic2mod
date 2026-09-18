@@ -20,9 +20,11 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import array
 import math
 import struct
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 _HERE = Path(__file__).parent
@@ -33,7 +35,7 @@ from core.pcm import normalize_int8
 from core.pcm import to_mono as _to_mono
 from core.smps_parser import SmpsVoice
 from ym2612.voice import program_voice
-from ym2612.wrapper import OPN2
+from ym2612.wrapper import OPN2, box_downsample
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -95,7 +97,11 @@ def _set_freq(opn2: OPN2, fnum: int, block: int, channel: int) -> None:
 
 
 def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> list:
-    """Key-on → sustain → key-off → release → list of (L, R) int16 pairs."""
+    """Key-on → sustain → key-off → release → list of (L, R) int16 pairs.
+
+    Stereo reference path, kept for tools/test_voice.py and the smoke test; the
+    conversion pipeline renders through _render_raw_mono.
+    """
     opn2.key_on(channel)
     sustain_samples = opn2.render_samples(sustain_n)
     opn2.key_off(channel)
@@ -103,18 +109,38 @@ def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> lis
     return sustain_samples + release_samples
 
 
-def _normalize_int8(mono: list) -> bytes:
+def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channel: int):
+    """Key-on → sustain → key-off → release → mono ``array('i')``.
+
+    Equal to ``_to_mono(_render_raw(...))`` value for value; the fold runs in C.
+    """
+    opn2.key_on(channel)
+    sustain = opn2.render_mono(sustain_n)
+    opn2.key_off(channel)
+    return sustain + opn2.render_mono(release_n)
+
+
+def _normalize_int8(mono: Sequence[int]) -> bytes:
     """Peak-normalise to +-127 and quantise to int8 (see core.pcm.normalize_int8)."""
     return normalize_int8(mono, "render_note")
 
 
 
-def _resample(mono: list, from_rate: int, to_rate: int) -> list:
-    """Box-filter (averaging) downsampler — no external libraries.
+def _resample(mono, from_rate: int, to_rate: int):
+    """Box-filter (averaging) downsampler.  Returns an ``array('i')``.
 
     Only useful for downsampling (to_rate < from_rate).  Each output sample is
     the integer-average of all input samples that fall within its time window.
+    Runs in C (PCM_BoxDownsample); ``_resample_py`` below is the definition it
+    reproduces, and ``python ym2612/validate.py`` checks the two agree.
     """
+    if not isinstance(mono, array.array):
+        mono = array.array('i', mono)
+    return box_downsample(mono, from_rate, to_rate)
+
+
+def _resample_py(mono: list, from_rate: int, to_rate: int) -> list:
+    """Reference implementation of _resample in pure Python (slow; tests only)."""
     ratio   = from_rate / to_rate
     out_len = round(len(mono) * to_rate / from_rate)
     result  = []
@@ -141,14 +167,18 @@ def _render_pipeline(
     clock_rate: int = _CLOCK_RATE,
     headroom_tl: int = 0,
     carrier_balance: bool = False,
-) -> tuple[list, int]:
-    """Common synthesis pipeline → (mono_list, out_rate) before int8 packing."""
+) -> tuple[array.array, int]:
+    """Common synthesis pipeline → (mono, out_rate) before int8 packing.
+
+    ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
+    used to be, so the callers' trim / peak / int8 steps are unchanged.
+    """
     native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
 
     if opn2 is None:
         opn2 = OPN2(mode="ym2612")
     else:
-        opn2.reset()
+        opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
 
     program_voice(opn2, voice, channel,
                   headroom_tl=headroom_tl, carrier_balance=carrier_balance)
@@ -159,8 +189,7 @@ def _render_pipeline(
 
     sustain_n = math.ceil(native_rate * sustain_secs)
     release_n = math.ceil(native_rate * release_secs)
-    raw       = _render_raw(opn2, sustain_n, release_n, channel)
-    mono      = _to_mono(raw)
+    mono      = _render_raw_mono(opn2, sustain_n, release_n, channel)
 
     if target_rate is not None and target_rate != native_rate:
         mono     = _resample(mono, native_rate, target_rate)
@@ -220,8 +249,8 @@ def render_note_raw(
     clock_rate: int = _CLOCK_RATE,
     headroom_tl: int = 0,
     carrier_balance: bool = False,
-) -> tuple[list, int]:
-    """Like render_note but returns (mono_list, out_rate) before int8 packing.
+) -> tuple[array.array, int]:
+    """Like render_note but returns (mono, out_rate) before int8 packing.
 
     Used by generate_fm_samples for global normalization across all instruments,
     so relative levels between patches match the original chip output balance.

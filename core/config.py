@@ -1,5 +1,6 @@
 """Per-song conversion configuration."""
 
+import os
 import warnings
 from dataclasses import dataclass, field
 
@@ -250,6 +251,7 @@ class SynthesisSettings:
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
     headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
     carrier_balance: bool = True      # Add extra TL per carrier count (normalises multi-carrier algos)
+    threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
@@ -274,6 +276,31 @@ class SynthesisSettings:
             raise ValueError(f"fm_volume_scaling must be baked, true or false (got '{self.fm_volume_scaling}')")
         return "absolute" if v else "off"
 
+    def worker_threads(self) -> int:
+        """How many FM instruments render at once (see `threads` in settings.yaml).
+
+        "normal" — one thread per CPU core but one, so a conversion leaves a core for
+                   whatever else the machine is doing (never below 1).  Default.
+        "max"    — one thread per core.
+        n        — exactly n threads; 1 renders the instruments one after another.
+        The rendered samples do not depend on this: each thread owns its own chip and the
+        results are consumed in a fixed order.
+        """
+        cores = os.cpu_count() or 1
+        v = self.threads
+        if isinstance(v, str):
+            key = v.strip().lower()
+            if key == "normal":
+                return max(1, cores - 1)
+            if key == "max":
+                return cores
+            if key.isdigit():
+                v = int(key)
+        if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+            raise ValueError(
+                f"fm_synthesis.threads must be 'normal', 'max' or a positive integer (got {self.threads!r})")
+        return v
+
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
         import yaml
@@ -294,6 +321,7 @@ class SynthesisSettings:
             normalize_samples=s.get("normalize_samples", True),
             headroom_db=s.get("headroom_db", 6.0),
             carrier_balance=s.get("carrier_balance", True),
+            threads=s.get("threads", "normal"),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
             fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
         )

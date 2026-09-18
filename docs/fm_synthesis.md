@@ -82,18 +82,20 @@ synthesis:
   normalize_samples: false  # true = per-sample peak normalization; false = global (preserves balance)
   headroom_db: 6.0          # Carrier TL boost to prevent DAC clipping; 6 dB ≈ 8 TL steps
   carrier_balance: true     # Scale boost by carrier count (prevents multi-carrier over-attenuation)
+  threads: normal           # Instruments rendered at once: normal (cores − 1), max (all cores), or a number
 ```
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
 | `enabled` | bool | `false` | Set `true` to generate samples; requires gcc/MSVC |
-| `mode` | str | `"ym2612"` | `"ym2612"` = slightly warmer; `"ym3438"` = bit-exact |
+| `mode` | str | `"ym2612"` | `"ym2612"` = MD1/MD2 VA2 DAC behaviour (sign bias, ×3 level); `"ym3438"` = discrete YM3438. The renderer keeps the instance's mode across its per-note resets, and the batch helpers subtract the mode's own DC (72 / 0) so silence is 0 in both |
 | `clock_rate` | int | `7670454` | Do not change for Sonic 1 |
 | `amiga_clock` | int | `3546895` | PAL Amiga; use 3579545 for NTSC Amiga (rare) |
 | `sustain_duration` | float | `1.5` | Longer = more of the sustain envelope captured |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
 | `normalize_samples` | bool | `false` | See Normalization section below |
 | `headroom_db` | float | `6.0` | See Headroom section below |
+| `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
 | `carrier_balance` | bool | `true` | See Headroom section below |
 
 **Clock rates explained:**
@@ -294,7 +296,7 @@ increase `headroom_db`. If samples are too quiet relative to DAC drums, decrease
 ### Step 1 — OPN2 reset and voice programming
 
 ```python
-opn2.reset(mode)
+opn2.reset()                 # keeps the instance's mode (OPN2(mode=settings.mode))
 program_voice(opn2, voice, channel=0, headroom_tl=..., carrier_balance=...)
 ```
 
@@ -317,31 +319,47 @@ opn2.write_reg(0xA0 + ch, fnum_lo, bank)  # write low byte (triggers frequency l
 
 ```python
 opn2.key_on(channel)                    # all 4 operators, reg 0x28
-sustain_samples = opn2.render_samples(int(native_rate * sustain_secs))
+mono  = opn2.render_mono(ceil(native_rate * sustain_secs))    # array('i')
 opn2.key_off(channel)                   # releases note
-release_samples = opn2.render_samples(int(native_rate * release_secs))
+mono += opn2.render_mono(ceil(native_rate * release_secs))
 ```
 
-`render_samples(n)` clocks the OPN2 24 times per output sample, accumulating all 24 `mol`/`mor`
-values, then subtracting DC = 72 (24 × 3) to zero-centre the result. Returns `[(L,R), ...]`.
+The chip is clocked 24 times per output sample, all 24 `mol`/`mor` values are accumulated and
+DC = 72 (24 × 3) subtracted to zero-centre the result.  `render_samples(n)` returns that as
+`[(L,R), ...]`; `render_mono(n)` folds each pair to `(L + R) // 2` in C (`OPN2_RenderBatchMono`
+in `ym3438_batch.c`) and returns an `array('i')`.  The note renderer uses `render_mono`: building
+400 000 tuples per sample used to cost a fifth of the emulation time itself.  The SFX driver
+(`sfx/render.py`) still uses the stereo call — it mixes L and R separately.
 
-### Step 4 — Stereo → mono → optional resample
+### Step 4 — Optional resample
 
 ```python
-mono = [(l + r) // 2 for l, r in samples]
 if target_rate != native_rate:
-    mono = _resample(mono, native_rate, target_rate)
+    mono = _resample(mono, native_rate, target_rate)   # box_downsample → PCM_BoxDownsample (C)
 ```
 
-`_resample` is a simple box-filter (integer average of input samples per window).
-No external libraries required. Only downsampling is supported.
+`_resample` is a simple box-filter (integer average of input samples per window, floor
+division).  It runs in C (`PCM_BoxDownsample`); `_resample_py` in the same module is the Python
+definition it reproduces, and `python ym2612/validate.py` checks the two agree exactly.  Only
+downsampling is supported.
 
 ### Step 5 — Normalization and int8 packing
 
 - `render_note()`: normalizes each sample individually before returning `bytes`.
-- `render_note_raw()`: returns the raw `list[int]` for batch global normalization.
+- `render_note_raw()`: returns the raw mono `array('i')` for batch global normalization.
 - `generate_fm_samples()`: uses `render_note_raw()` for all instruments, then applies global
   or per-sample normalization in a second pass.
+
+### Concurrency
+
+`generate_fm_samples()` first decides every instrument's job (voice, synth pitch, target rate),
+then renders the jobs on a thread pool, one instrument per thread, `threads` at a time
+(`normal` = cores − 1, `max`, or a number).  ctypes releases the GIL for the batch call and Nuked-OPN2
+keeps all chip state in the per-instance struct, so the renders run truly in parallel; each
+worker thread owns its own `OPN2`.  The emulator's one global is the chip-type flag, which every
+reset writes with the same value.  Results are consumed in job order, so the MOD is
+byte-identical whatever the thread count.  GHZ (11 instruments) converts in about 1 s instead
+of 4.5 s; Credits (25 instruments, 10 s sustain) in about 2 s instead of 12.5 s.
 
 Final encoding: `(max(-128, min(127, round(v * scale))) & 0xFF)` — int8 stored as uint8.
 
@@ -405,12 +423,14 @@ Bank 1 (port 2/3): channels 3, 4, 5  → ch_in_bank = (channel - 3) % 3
 ### `ym2612/wrapper.py` — OPN2 class
 
 ```python
-OPN2(mode="ym2612")         # builds DLL, resets chip
-opn2.reset(mode="ym2612")   # full chip reset + set chip type
+OPN2(mode="ym2612")         # builds DLL, resets chip; the mode is remembered on the instance
+opn2.reset(mode=None)       # full chip reset; None keeps the instance's mode, a string switches it
 opn2.write_reg(addr, data, bank=0)  # write YM register with flush
 opn2.key_on(channel, operators=0xF) # trigger key-on
 opn2.key_off(channel)                # release all operators
 opn2.render_samples(n) → list[tuple[int,int]]  # n stereo pairs (L,R)
+opn2.render_mono(n) → array('i')                 # the same n samples as (L + R) // 2, folded in C
+box_downsample(mono, from_rate, to_rate) → array('i')  # module function; the box filter in C
 OPN2.NATIVE_RATE            # ≈ 53,267 Hz (class attribute)
 ```
 
@@ -433,7 +453,7 @@ render_note(voice, mod_note_index,
     → (bytes, int)   # 8-bit signed PCM, sample_rate_hz
 
 render_note_raw(voice, mod_note_index, ...)
-    → (list[int], int)   # pre-normalized mono, sample_rate_hz
+    → (array('i'), int)  # pre-normalized mono, sample_rate_hz
 
 note_to_freq(mod_note_index) → float
     # 440 × 2^((idx-45)/12); idx 0=C1, 35=B3, 45=A4(440Hz)
@@ -450,6 +470,7 @@ freq_to_fnum_block(freq, clock_rate=7670454) → (int, int)
 generate_fm_samples(song, config, synth) → dict[int, tuple[bytes, int]]
 # Returns {mod_instrument_number: (pcm_bytes, target_rate_hz)}
 # Only voice_map entries with entry.root set are included.
+# Renders on a thread pool, one instrument per thread, synth.worker_threads() at a time (the `threads` setting).
 ```
 
 Processing order:

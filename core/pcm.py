@@ -1,14 +1,16 @@
 """Small PCM helpers shared by the YM2612 and SN76489 synthesis pipelines.
 
-Both chip packages render to a list of raw mono ints and then have to do the same
-three things: drop the silent tail, quantise to the signed 8 bits a MOD sample
-holds, and (in the smoke tests) dump a 16-bit .raw for Audacity.
+Both chip packages render to a sequence of raw mono ints (a list, or the ``array('i')``
+the YM2612 batch helper returns) and then have to do the same three things: drop the
+silent tail, quantise to the signed 8 bits a MOD sample holds, and (in the smoke tests)
+dump a 16-bit .raw for Audacity.
 """
 
 from __future__ import annotations
 
 import struct
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
 
 INT8_PEAK = 127.0
@@ -20,20 +22,20 @@ def to_mono(samples: list) -> list:
     return [(left + right) // 2 for left, right in samples]
 
 
-def trim_trailing_silence(mono: list) -> list:
-    """Remove trailing zero samples (chip-silent) from a raw mono list."""
+def trim_trailing_silence(mono: Sequence[int]) -> Sequence[int]:
+    """Remove trailing zero samples (chip-silent) from a raw mono sequence (same type back)."""
     i = len(mono)
     while i > 0 and mono[i - 1] == 0:
         i -= 1
     return mono[:i]
 
 
-def peak(mono: list) -> int:
+def peak(mono: Sequence[int]) -> int:
     """Largest absolute sample value; 0 for an empty or silent list."""
     return max((abs(v) for v in mono), default=0)
 
 
-def to_int8(mono: list, scale: float) -> bytes:
+def to_int8(mono: Sequence[int], scale: float) -> bytes:
     """Scale and clamp a raw mono list into signed 8-bit PCM (2's complement via & 0xFF)."""
     out = bytearray(len(mono))
     for i, v in enumerate(mono):
@@ -41,7 +43,7 @@ def to_int8(mono: list, scale: float) -> bytes:
     return bytes(out)
 
 
-def normalize_int8(mono: list, context: str = "render") -> bytes:
+def normalize_int8(mono: Sequence[int], context: str = "render") -> bytes:
     """Peak-normalise to +-127 and quantise to int8.
 
     Returns b'' for an empty list, and a zero-filled string (with a warning) for
@@ -56,7 +58,7 @@ def normalize_int8(mono: list, context: str = "render") -> bytes:
     return to_int8(mono, INT8_PEAK / pk)
 
 
-def write_raw16(path: Path, mono: list, normalize: bool = True) -> int:
+def write_raw16(path: Path, mono: Sequence[int], normalize: bool = True) -> int:
     """Write a raw mono list as 16-bit signed little-endian PCM; returns bytes written.
 
     Used only by the packages' smoke tests, to produce something Audacity can import

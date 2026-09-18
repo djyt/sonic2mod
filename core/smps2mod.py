@@ -223,6 +223,58 @@ class SmpsToModConverter:
         exact = period * (abs(delta) * steps / 2) / word / 2
         return 0 if exact < 0.35 else max(1, min(0xF, round(exact)))
 
+    # --- global duration divider (smpsSetTempoDiv, $EB) -------------------------------------
+    def _apply_global_tempo_div(self) -> list[tuple[int, int]]:
+        """Re-time every channel for smpsSetTempoDiv (cfSetTempoDividerAll), which writes a new
+        TempoDivider into EVERY track.  Returns the [(tick, divider)] changes found (Credits: $02
+        then $01 in the DAC track, a half-tempo passage).
+
+        The parser scaled each channel's durations by its OWN divider only (the header value and
+        smpsChanTempoDiv).  The driver multiplies a duration by the track's divider when the note
+        is READ, so a note begun before the change keeps its length and the first note read after
+        it takes the new one; the last write wins, whether it was the track's own smpsChanTempoDiv
+        or the global flag.  The carrying channel is re-timed first (the change's real tick
+        depends on any earlier change), then the others.  Labels (loop targets) are not re-timed.
+        """
+        found = [ch for ch in self.song.channels
+                 if any(ev.is_effect and ev.effect.effect_type == 'smpsSetTempoDiv' for ev in ch.events)]
+        if not found:
+            return []
+        header_div = self.song.header.tempo_divider
+        changes: list[tuple[int, int]] = []
+
+        def retime(ch, changes):
+            own_parse = header_div          # divider the parser used for the next note
+            own_div, own_tick = header_div, -1
+            act = 0
+            new_changes = []
+            for ev in ch.events:
+                if ev.is_note:
+                    d_raw = ev.note.duration / own_parse
+                    g = [c for c in changes if c[0] <= act and c[0] > own_tick]
+                    div = g[-1][1] if g else own_div
+                    ev.tick_position = act
+                    ev.note.duration = round(d_raw * div)
+                    act += ev.note.duration
+                else:
+                    ev.tick_position = act
+                    kind = ev.effect.effect_type
+                    if kind == 'smpsChanTempoDiv':
+                        own_parse = own_div = ev.effect.params[0]
+                        own_tick = act
+                    elif kind == 'smpsSetTempoDiv':
+                        # Writes this track's divider too (cfSetTempoDividerAll covers every track).
+                        own_div, own_tick = ev.effect.params[0], act
+                        new_changes.append((act, ev.effect.params[0]))
+            return new_changes
+
+        for ch in found:
+            changes = sorted(set(changes) | set(retime(ch, changes)))
+        for ch in self.song.channels:
+            if ch not in found:
+                retime(ch, changes)
+        return changes
+
     # --- mid-song tempo changes (smpsSetTempoMod, $EA) --------------------------------------
     def _collect_tempo_segments(self) -> list[tuple[int, int]]:
         """[(start tick, tempo modifier)] in tick order, the header's value first.
@@ -542,13 +594,14 @@ class SmpsToModConverter:
         if self.config.target_speed != 6:
             self.mod.set_speed(self.config.target_speed)
 
+        # Global duration divider changes re-time every channel (before anything reads ticks)
+        for tick, div in self._apply_global_tempo_div():
+            self._infos.append({'type': 'tempo_div_change', 'tick': tick, 'divider': div,
+                                'row': int(tick // self._effective_tpr)})
+
         # Extend channels whose loop body is too short to cover the full song
         self._extend_looping_channels()
         self._tempo_segments = self._collect_tempo_segments()
-        for ch in self.song.channels:
-            if any(ev.is_effect and ev.effect.effect_type == 'smpsSetTempoDiv' for ev in ch.events):
-                self._add_warning({'type': 'tempo_div_unsupported', 'channel': ch.header.label})
-                break
 
         # Convert channels
         self._convert_all_channels()
@@ -688,12 +741,12 @@ class SmpsToModConverter:
                         found = self.config.psg_map.get(eff.params[0])
                         if found is not None:
                             entry, entries = found, None
-                    elif eff.effect_type == 'smpsPSGvoice':
+                    elif eff.effect_type == 'smpsPSGvoice' and (entry is None or entry.type == "tone"):
                         found = self.config.psg_voice_map.get(eff.params[0])
                         if found is not None:
                             entry, entries = found[0], found
                 elif event.is_note and not event.note.is_rest and entry is not None:
-                    e = _psg_range_entry(entries, event.note.note_value - 0x81) or entry
+                    e = _psg_range_entry(entries, self._range_key(event.note.note_value - 0x81, transpose, True)) or entry
                     if e.type != "tone" and e.noise_rate == 3:
                         rec = seen.setdefault(e.mod_instrument, {'entry': e, 'notes': {}})
                         key = (event.note.note_value, transpose)
@@ -714,12 +767,25 @@ class SmpsToModConverter:
                          'used': e.tone2_n is None and e.synth_root is None}
         return out
 
-    def _fm_range_entry(self, source: str, voice_idx, source_semitone: int):
-        """voice_map / channel_instrument_map entry covering this source note, or None."""
+    def _range_key(self, source_semitone: int, drv_transpose: int, is_psg: bool) -> int:
+        """What a note is matched against voice_map / psg_voice_map ranges with, and what `root`
+        anchors: the source byte (range_space: source) or the chip's real pitch (range_space:
+        chip = byte + pitch_offset + smpsChangeTransposition; PSG through the driver's frequency
+        table, sfx.tables.psg_index_semitone, so notes past its ends sound as the hardware does).
+        """
+        if self.config.range_space != "chip":
+            return source_semitone
+        if is_psg:
+            from sfx.tables import psg_index_semitone
+            return psg_index_semitone(source_semitone + drv_transpose)
+        return source_semitone + drv_transpose
+
+    def _fm_range_entry(self, source: str, voice_idx, key: int):
+        """voice_map / channel_instrument_map entry covering this note (`key`: see _range_key), or None."""
         ranges = (self.config.channel_instrument_map.get(source, {}).get(voice_idx)
                   or self.config.voice_map.get(voice_idx))
         for entry in ranges or ():
-            if entry.low <= source_semitone <= entry.high:
+            if entry.low <= key <= entry.high:
                 return entry
         return None
 
@@ -743,21 +809,24 @@ class SmpsToModConverter:
             entries = self.config.psg_voice_map.get(channel.header.psg_voice_label)
             if entries:
                 instrument = entries[0].mod_instrument
+            tr, noise = channel.header.pitch_offset, False
             for event in channel.events:
                 if event.is_effect:
                     eff = event.effect
                     if eff.effect_type == 'smpsAlterVol':
                         att = max(0, min(15, att + eff.params[0]))
+                    elif eff.effect_type == 'smpsChangeTransposition':
+                        tr += eff.params[0]
                     elif eff.effect_type == 'smpsPSGform':
                         entry = self.config.psg_map.get(eff.params[0])
                         if entry is not None:
-                            instrument, entries = entry.mod_instrument, None
-                    elif eff.effect_type == 'smpsPSGvoice':
+                            instrument, entries, noise = entry.mod_instrument, None, entry.type != "tone"
+                    elif eff.effect_type == 'smpsPSGvoice' and not noise:
                         found = self.config.psg_voice_map.get(eff.params[0])
                         if found is not None:
                             instrument, entries = found[0].mod_instrument, found
                 elif event.is_note and not event.note.is_rest and att < 15:
-                    ranged = _psg_range_entry(entries, event.note.note_value - 0x81)
+                    ranged = _psg_range_entry(entries, self._range_key(event.note.note_value - 0x81, tr, True))
                     inst = ranged.mod_instrument if ranged is not None else instrument
                     per_level = counts.setdefault(inst, {})
                     level = -_PSG_STEP_DB * att
@@ -778,6 +847,7 @@ class SmpsToModConverter:
             if not chan_cfg.enabled or channel is None or channel.header.channel_type != "FM":
                 continue
             tl, hard, voice, instrument = channel.header.volume, False, None, chan_cfg.instrument
+            tr = channel.header.pitch_offset
             for event in channel.events:
                 if event.is_effect:
                     eff = event.effect
@@ -788,8 +858,10 @@ class SmpsToModConverter:
                         tl = max(0, min(127, tl + eff.params[0]))
                     elif eff.effect_type == 'smpsPan':
                         hard = _pan_is_hard(eff.params)
+                    elif eff.effect_type == 'smpsChangeTransposition':
+                        tr += eff.params[0]
                 elif event.is_note and not event.note.is_rest and not event.note.is_dac:
-                    entry = self._fm_range_entry(chan_cfg.source, voice, event.note.note_value - 0x81)
+                    entry = self._fm_range_entry(chan_cfg.source, voice, self._range_key(event.note.note_value - 0x81, tr, False))
                     inst = entry.mod_instrument if entry is not None else instrument
                     per_level = counts.setdefault(inst, {})
                     level = self._fm_level_db(tl, hard)
@@ -1019,7 +1091,10 @@ class SmpsToModConverter:
 
                 elif eff.effect_type == 'smpsPSGvoice':
                     label = eff.params[0]
-                    entries = self.config.psg_voice_map.get(label)
+                    # In noise mode (after smpsPSGform) this only changes the envelope: the
+                    # channel stays on its psg_map noise instrument.
+                    entries = (None if current_psg_entry is not None and current_psg_entry.type != "tone"
+                               else self.config.psg_voice_map.get(label))
                     if entries is not None:
                         instrument = entries[0].mod_instrument
                         current_psg_entry = entries[0]
@@ -1105,12 +1180,13 @@ class SmpsToModConverter:
                     # (same lookup as the level pre-pass in _plan_fm_levels).
                     ranges = (self.config.channel_instrument_map.get(chan_cfg.source, {}).get(current_voice_idx)
                               or self.config.voice_map.get(current_voice_idx))   # for the map_gap warning
-                    entry = self._fm_range_entry(chan_cfg.source, current_voice_idx, source_semitone)
+                    range_key = self._range_key(source_semitone, transpose - chan_cfg.transpose, is_psg)
+                    entry = self._fm_range_entry(chan_cfg.source, current_voice_idx, range_key)
                     if entry is not None:
                         active_range_entry = entry
                         final_instrument = entry.mod_instrument
                         if entry.root is not None:
-                            out_raw = entry.root.value + (source_semitone - entry.low)
+                            out_raw = entry.root.value + (range_key - entry.low)
                             out = max(0, min(35, out_raw))
                             if out != out_raw:
                                 self._add_warning({
@@ -1129,7 +1205,7 @@ class SmpsToModConverter:
                         # Per-note range dispatch for multi-entry psg_voice_map lists.
                         # Mirrors voice_map FM dispatch: pick the entry whose low/high bracket
                         # contains the source semitone, update instrument accordingly.
-                        _psg_e = _psg_range_entry(current_psg_entries, source_semitone)
+                        _psg_e = _psg_range_entry(current_psg_entries, range_key)
                         if _psg_e is not None:
                             current_psg_entry = _psg_e
                             final_instrument = _psg_e.mod_instrument
@@ -1144,7 +1220,7 @@ class SmpsToModConverter:
                         if current_psg_entry is not None and current_psg_entry.root is not None:
                             if current_psg_entry.low is not None:
                                 # Melodic anchor: root + (source − low), clamped to MOD range
-                                psg_out_raw = current_psg_entry.root.value + (source_semitone - current_psg_entry.low)
+                                psg_out_raw = current_psg_entry.root.value + (range_key - current_psg_entry.low)
                                 psg_out = max(0, min(35, psg_out_raw))
                                 if psg_out != psg_out_raw:
                                     self._add_warning({

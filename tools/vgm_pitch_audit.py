@@ -106,7 +106,11 @@ def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
                 psg_vol[ch] = b & 15
             elif ch < 3:
                 psg_n[ch] = ((psg_n[ch] & 0x3F0) | (b & 15)) if b & 0x80 else ((psg_n[ch] & 0x00F) | ((b & 0x3F) << 4))
-            if ch < 3:
+            # The driver writes a period as latch + data byte; the value between the two is never
+            # heard, so wait for the data byte when it comes next (else a phantom note appears).
+            two_byte = (not is_vol and ch < 3 and b & 0x80 and pos + 3 < len(data)
+                        and data[pos + 2] == 0x50 and not data[pos + 3] & 0x80)
+            if ch < 3 and not two_byte:
                 psg_mark(ch)
             pos += 2
         elif c == 0x61:

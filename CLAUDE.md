@@ -72,6 +72,7 @@ sonic2mod/
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
     regression_test.py  #   Before/after regression test runner
+    make_credits_config.py  # Regenerates configs/13_credits.yaml from the song (chip-pitch ranges, 31-instrument fold)
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
 ```
 
@@ -149,7 +150,7 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 ## Regression Testing
 
 Baselines live in `tests/baselines/`. Test cases: GHZ, Title Screen, Special Stage, Stage Clear,
-Scrap Brain Zone
+Scrap Brain Zone, Credits
 
 ```bash
 # BEFORE implementing a fix — save current output as baseline:
@@ -238,7 +239,9 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsPSGform` | $F3 | (routing) | Looks up `psg_map[byte]` → new PSG instrument |
 | `smpsPSGvoice` | $F5 | (routing) | Looks up `psg_voice_map[label]` → new PSG instrument |
 | `smpsSetTempoMod` | $EA | `Fxx` | Mid-song tempo change (Drowning, Credits): BPM scaled by the new tick rate, written on the change's row; fills / vibrato / `EDx` follow the new modifier |
-| `smpsSetTempoDiv` | $EB | (warning) | Global duration divider (Credits) — parsed, not applied |
+| `smpsSetTempoDiv` | $EB | (re-timing) | Every track's duration divider from that tick (Credits' half-tempo passage): `_apply_global_tempo_div` re-times all channels; last write wins against a track's own `smpsChanTempoDiv` |
+| `smpsChanTempoDiv` | $E5 | (durations) | This track's divider; applied at parse time and kept as an event so the re-timing above knows it |
+| `smpsPSGform` | $F3 | (routing) | Noise mode is **permanent** (`cfSetPSGNoise` sets VoiceControl $E0); a later `smpsPSGvoice` only changes the hi-hat's envelope |
 | `smpsNop` | $E2 | ignored | No MOD equivalent |
 
 **Effect priority (one per row):** volume (Cxx) > vibrato (4xy) > note cut (ECx).  A note that starts
@@ -267,6 +270,8 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 
+7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. The converter used to switch to a tone instrument there (Scrap Brain PSG3: 406 cells; the recording has no PSG3 tone at all). A note transposed past the PSG table's ends (Credits PSG1 indices 125–127) plays whatever ROM follows the table — `sfx.tables.psg_index_semitone` gives the written pitch there, the audit shows what the hardware did.
+
 7c. **A MOD BPM is a whole number** — `auto_bpm` rounds; choose `target_speed` so the exact BPM is (nearly) integer (speed changes MOD ticks per row, not the row grid). `convert.py` prints the rounding error and the better speed; Special Stage at speed 3 ran 0.44 % slow. Details: `docs/pipeline.md` §BPM and speed setup.
 
 8. **smpsModSet → `4xy`** — only the FIRST half-swing uses the halved step count (`lsr.b #1`); the counter reloads from the original byte, so the steady cycle is `2·speed·(steps+1)` frames and the swing is `delta·steps/2` units of the note's own FNUM (644 C … 1216 B) or PSG divider. `_vibrato_speed` / `_vibrato_depth` turn that into x and a per-note y; verified against six songs' VGZs. No config needs a `vibrato:` override any more. Details: `docs/pipeline.md` gotcha 4.
@@ -284,6 +289,7 @@ and does NOT affect range lookup.
 - `root` — **absolute** MOD note anchor; source `low` always plays here regardless of `smpsChangeTransposition` or pitch_offset
 - `synth_root` — synthesis pitch override; `target_rate` is NOT adjusted — output pitch = synth_root's frequency
 - `vibrato: XY` — per-entry vibrato override (speed X, depth Y; `0` = none); also works in `psg_map` / `psg_voice_map`. Not used by any shipped config — the computed `4xy` matches the hardware
+- `range_space: chip` (song-level) — match `low`/`high` and anchor `root` on the **real pitch the chip plays** (byte + pitch_offset + `smpsChangeTransposition`; PSG through the driver table) instead of the source byte. Needed when a song changes key with `$E9` while keeping a voice (Credits: FM2 twenty times); then `synth_root` = `low` and a merged voice's entry keeps its own range. Source space stays the default
 - Output formula: `root + (source − low)`, clamped C1–B3
 - Rootless entries use channel-transpose path: `smps_note + total_transpose`
 - When `voice_map` covers all notes for a channel, set `transpose: 0`

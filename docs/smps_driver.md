@@ -18,13 +18,13 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E2 | `smpsNop` | — | byte | Write game-sync flag to shared RAM; no audio effect | parsed, ignored |
 | $E3 | `smpsReturn` | — | — | Return from `smpsCall` subroutine (S1/S2 drivers) | terminates inline |
 | $E4 | `smpsFade` | — | — | Fade in previous song (1-Up jingle mechanism) | ignored |
-| $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | parsed; per-channel divider applied to note durations at parse time |
+| $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | applied to durations at parse time and kept as an event (the global `$EB` re-timing needs it) |
 | $E6 | `smpsAlterVol` | — | signed byte | Add delta to SMPS_Track.Volume attenuation (cumulative) | → `Cxx` Set Volume |
 | $E7 | `smpsNoAttack` | — | — | Suppress attack envelope on next note | flagged on note |
 | $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in **frames** | → `ECx` / `C00` Note Cut |
 | $E9 | `smpsChangeTransposition` | `smpsAlterPitch` | signed byte | **Semitone shift** — add to SMPS_Track.Transpose; all subsequent notes pitched accordingly | → updates `total_transpose`; affects note placement |
 | $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier (every track) and restart the TempoWait counter | → `Fxx` BPM change on that row; fills / vibrato / `EDx` use the new modifier |
-| $EB | `smpsSetTempoDiv` | — | byte | Set every track's tempo divider | parsed, warned, not applied (Credits only) |
+| $EB | `smpsSetTempoDiv` | — | byte | Set every track's tempo divider (applies to each note as it is read; last write wins over `$E5`) | every channel re-timed (`_apply_global_tempo_div`); Credits' half-tempo passage |
 | $EC | `smpsPSGAlterVol` | — | signed byte | PSG volume attenuation delta | → `Cxx` Set Volume (same as smpsAlterVol) |
 | $ED | (S1 specific) | — | — | Clear "push block" sound flag | ignored |
 | $EE | `smpsStopSpecial` | — | — | Stop special SFX, resume interrupted music track | ignored |

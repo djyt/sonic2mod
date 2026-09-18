@@ -64,6 +64,13 @@ TEST_CASES = [
         "ignore_channels": [],
         "description": "Scrap Brain Zone — all channels",
     },
+    {
+        "name": "credits",
+        "config": "configs/13_credits.yaml",
+        "baseline": "tests/baselines/credits_baseline.mod",
+        "ignore_channels": [],
+        "description": "Credits — tempo steps, global divider, range_space: chip, 31 instruments",
+    },
 ]
 
 

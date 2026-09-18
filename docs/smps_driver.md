@@ -23,8 +23,8 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E7 | `smpsNoAttack` | — | — | Suppress attack envelope on next note | flagged on note |
 | $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in **frames** | → `ECx` / `C00` Note Cut |
 | $E9 | `smpsChangeTransposition` | `smpsAlterPitch` | signed byte | **Semitone shift** — add to SMPS_Track.Transpose; all subsequent notes pitched accordingly | → updates `total_transpose`; affects note placement |
-| $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier | ignored |
-| $EB | `smpsSetTempoDiv` | — | byte | Set global tempo divider | ignored |
+| $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier (every track) and restart the TempoWait counter | → `Fxx` BPM change on that row; fills / vibrato / `EDx` use the new modifier |
+| $EB | `smpsSetTempoDiv` | — | byte | Set every track's tempo divider | parsed, warned, not applied (Credits only) |
 | $EC | `smpsPSGAlterVol` | — | signed byte | PSG volume attenuation delta | → `Cxx` Set Volume (same as smpsAlterVol) |
 | $ED | (S1 specific) | — | — | Clear "push block" sound flag | ignored |
 | $EE | `smpsStopSpecial` | — | — | Stop special SFX, resume interrupted music track | ignored |

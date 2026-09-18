@@ -23,7 +23,14 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, derive_bpm
+from core.config import (
+    ConversionConfig,
+    PsgSynthesisSettings,
+    SynthesisSettings,
+    bpm_rounding_options,
+    derive_bpm,
+    exact_bpm,
+)
 from core.mod import apply_pattern_breaks
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
@@ -143,6 +150,23 @@ def main():
         )
         config.target_bpm = derived
         bpm_note = "  [dim](auto-derived)[/dim]"
+        # A MOD BPM is a whole number; say how far off the driver's tempo that leaves the song,
+        # and which target_speed would leave it closer (the row grid does not change with speed).
+        exact = exact_bpm(song.header.tempo_divider, song.header.tempo_modifier,
+                          config.ticks_per_row, config.target_speed, fps)
+        if exact == exact:
+            err = (derived / exact - 1) * 100
+            if abs(err) >= 0.1:
+                bpm_note += f"  [yellow]{exact:.3f} rounded: {err:+.2f} %, {abs(err) * 600:.0f} ms per minute[/yellow]"
+                best = [o for o in bpm_rounding_options(song.header.tempo_divider, song.header.tempo_modifier,
+                                                        config.ticks_per_row, fps)
+                        if abs(o["error_pct"]) < abs(err) - 0.05]
+                if best:
+                    o = best[0]
+                    bpm_note += (f"  [dim]→ target_speed: {o['speed']} gives {o['exact']:.3f} → "
+                                 f"{o['bpm']} ({o['error_pct']:+.2f} %)[/dim]")
+            elif abs(exact - derived) > 1e-9:
+                bpm_note += f"  [dim]{exact:.3f} rounded, {err:+.2f} %[/dim]"
 
     _row("Parse",
          f"[cyan]{config.input_file}[/cyan]",
@@ -282,6 +306,12 @@ def main():
                 f"rate-3 noise inst [bold]{info['instrument']}[/bold]  tone-2 divider "
                 f"[bold]{info['n']}[/bold]  [dim]from n{info['note']} {info['transpose']:+d} "
                 f"in the driver's PSG table[/dim]"
+            )
+        elif info['type'] == 'tempo_change':
+            detail_lines.append(
+                f"tempo change at pattern [bold]{info['pattern']}[/bold] row [bold]{info['row']:02d}[/bold]: "
+                f"modifier [bold]{info['modifier']}[/bold] → BPM [bold]{info['bpm']}[/bold] "
+                f"[dim](Fxx; exact {info['exact_bpm']:.2f})[/dim]"
             )
         elif info['type'] == 'vibrato_rate_limit':
             detail_lines.append(
@@ -431,6 +461,35 @@ def _render_warning(w: dict):
                 "     [green]Fix:[/green] set  [bold cyan]tone2_n:[/bold cyan]  to the divider "
                 "analyze.py prints for this channel, or a synth_root inside C3–Gs8."
             )
+
+    elif wtype == 'tempo_no_slot':
+        console.print(
+            f"\n  [bold yellow]![/bold yellow]  "
+            f"[yellow]tempo change at pattern {w['pattern']} row {w['row']:02d} (modifier {w['modifier']} → "
+            f"BPM {w['bpm']}) has no cell with a free effect slot — not written[/yellow]"
+        )
+        console.print(
+            "     [green]Fix:[/green] raise [cyan]num_mod_channels:[/cyan] by one so a spare channel can carry Fxx."
+        )
+
+    elif wtype == 'tempo_bpm_range':
+        console.print(
+            f"\n  [bold yellow]![/bold yellow]  "
+            f"[yellow]tempo change at pattern {w['pattern']} row {w['row']:02d}: modifier {w['modifier']} "
+            f"needs BPM {w['exact_bpm']:.1f}, outside 32–255 — clamped to {w['bpm']}[/yellow]"
+        )
+        console.print(
+            "     [green]Fix:[/green] a larger [cyan]ticks_per_row:[/cyan] (or smaller [cyan]target_speed:[/cyan]) "
+            "lowers every segment's BPM in proportion."
+        )
+
+    elif wtype == 'tempo_div_unsupported':
+        console.print(
+            f"\n  [bold yellow]![/bold yellow]  "
+            f"[bold]{channel}[/bold]  "
+            "[yellow]smpsSetTempoDiv (global duration divider) is parsed but not applied — "
+            "note lengths after it are wrong[/yellow]"
+        )
 
     elif wtype == 'pattern_overflow':
         pat = w['pattern']

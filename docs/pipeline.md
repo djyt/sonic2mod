@@ -112,9 +112,12 @@ a row early or late, and because Python rounds halves to even, early and late on
   starts, not the 25 ms an average tick lasts — exactly `ED1` at speed 3.  Measured: FM4/FM5
   median onset error +17 ms with the average-tick delay (`ED2`), +1 ms with the frame delay.
   `x = round(frames × target_speed × _ticks_per_frame / _effective_tpr)`.
-- **`EDx` needs the cell's one effect slot**, so it is used only when the slot is free: the note
-  needs no `Cxx`, and no cut (note fill, or a PSG note's end) falls inside the attack row.
-  Otherwise the note is rounded as before.  An attack-row `4xy` is given up for it (later rows
+- **`EDx` needs the cell's one effect slot.**  A cut (note fill, or a PSG note's end) inside the
+  attack row keeps it, and the note is rounded as before.  A `Cxx` due on the attack row gives
+  way when the note lasts into the next row: the volume is set on the first later row of the note
+  with a free slot instead (one row at the instrument's own level — a lost row of level beats
+  33 ms of timing; Drowning FM4 pans every other note hard, so half its notes carry a −3 dB `Cxx`
+  and all of them start a tick off the grid).  An attack-row `4xy` is given up for it (later rows
   carry the vibrato), and a rest's `C00` on the same row is overwritten — the new note ends the
   old one anyway.
 - **Two note-ons cannot share a cell.**  When the row already holds the channel's previous
@@ -126,8 +129,8 @@ a row early or late, and because Python rounds halves to even, early and late on
   roll: three hits on three rows instead of two on one).
 
 Songs with off-grid notes: Title Screen (DAC), GHZ (FM3–FM5), Spring Yard (FM4, FM5, PSG1),
-Ending (DAC), Chaos Emerald (PSG1, PSG2); songs whose notes all sit on the grid do not change.  GHZ key-ons with no
-MOD note row: FM1 4, FM3 2, FM4 15, FM5 15 → 0 on every channel.
+Ending (DAC), Chaos Emerald (PSG1, PSG2), Drowning (FM4, FM5); songs whose notes all sit on the grid do not change.
+GHZ key-ons with no MOD note row: FM1 4, FM3 2, FM4 15, FM5 15 → 0 on every channel.
 
 ### FM levels (`fm_volume_scaling: baked`)
 
@@ -234,6 +237,32 @@ MOD timing is set by two `Fxx` effects placed in Pattern 0, Row 0:
 - **Channel 1:** `Fxx` where xx = speed (range $01–$1F = ticks per row)
 
 These are written automatically by `smps2mod.py`. See `docs/yaml_config.md` §BPM Derivation for the formula and `auto_bpm` option.
+
+**Whole-number BPM.**  The formula rarely lands on an integer, and the MOD's BPM is one:
+Special Stage (modifier 8, divider 2, 2 ticks per row) at speed 3 is 98.4375 → 98, which ran
+0.44 % slow — 139 ms behind the hardware over its 33 s pass; Star Light and Chaos Emerald were
+187.5 → 188 (+0.27 %).  `target_speed` only changes how many MOD ticks a row has, never the row
+grid, so it is free to choose: speed 4 makes those two exactly 250, speed 6 makes Special Stage
+196.875 → 197 (+0.06 %).  `convert.py` prints the exact value, the error in ms per minute and
+the speed that would do better (`core.config.bpm_rounding_options`); the `analyze.py` skeleton
+picks that speed.  Residuals now: Invincibility, Continue and Game Over ±0.07 %, everything else
+exact.
+
+**Mid-song tempo changes** (`smpsSetTempoMod`, $EA — Drowning ×4, Credits ×5).  The flag sets
+every track's modifier and restarts the TempoWait counter.  The converter collects the changes
+(`_collect_tempo_segments`), scales the BPM by the change in tick rate and writes `Fxx` on the
+row of each change — in a spare MOD channel when there is one, else any cell without an effect,
+else a cell holding only a `4xy` continuation (`_write_tempo_changes`; a song that loops back into
+another segment gets an `Fxx` at the loop target too).  Note fills, vibrato rates and `EDx`
+delays use the modifier in force at their tick (`_tpf_at`).  Every segment's BPM must fit
+32–255: Drowning goes 75 → 100 → 112 → 125 → 135 at 2 ticks per row (1 tick per row would need
+270 at the end); `convert.py` warns when a segment is clamped.  `smpsSetTempoDiv` ($EB, the
+global duration divider, Credits only) is parsed and warned about, not applied.
+
+*Inherent:* the driver's holds come at the end of each counter cycle, so the first frames after a
+change run a little fast and the MOD ends up one to two frames (17–48 ms) behind at each change,
+flat in between — Drowning is +59 ms behind by its end.  The audit tools follow that; a listener
+has nothing to compare it with.
 
 ---
 
@@ -443,8 +472,8 @@ at ~990 ms instead of 433 ms.
 attack row included — so notes shorter than the wait no longer get vibrato at all (they used to
 get it on the attack row unconditionally).
 
-**Not covered:** mid-song `smpsSetTempoMod` (Credits, Drowning) — the header modifier is used
-throughout.  The rate and depth of the `4xy` itself are gotcha 4.
+Mid-song `smpsSetTempoMod` is followed (§BPM and speed setup); the rate and depth of the `4xy`
+itself are gotcha 4.
 
 ---
 
@@ -693,7 +722,9 @@ Screen: 0 unmatched on every FM channel; GHZ read FM1 4, FM3 2, FM4 15, FM5 15 b
 (grace notes, off-grid notes and the tie key-ons above) and reads 0 since.  The 40 ms window follows the running deviation of the notes matched so far, and the
 change from the song's first notes to its last is printed as `drift` when it reaches 20 ms: a
 MOD that runs slightly off the driver's tempo is one finding, not a lost note per bar (Special
-Stage: +130 ms over its 33 s pass, 0 unmatched).  An audio onset detector cannot do this on sustained channels (it read 28–143
+Stage read +139 ms over its 33 s pass before its speed was changed, 0 unmatched).  The matcher
+also re-syncs across a step of up to 120 ms when the next two notes confirm it (a tempo change).
+An audio onset detector cannot do this on sustained channels (it read 28–143
 unmatched per GHZ channel with every note in place).  The DAC still uses it — the log holds PCM
 seeks, not hits (GHZ has two seeks 20 ms apart and hits with none) — so its count stays
 approximate (Title Screen 3, GHZ 60).

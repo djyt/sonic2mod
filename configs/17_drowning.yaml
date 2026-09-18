@@ -1,9 +1,9 @@
 # -------------------------------------------------------------------------------------------------
 # DROWNING Conversion Script
 #
-# Todo: This track is intended to speed up as it progresses. 
-#       The tooling currently doesn't support that!
-#       Given this only impacts one short track, it's probably easier to handle this manually
+# The track speeds up in four steps (smpsSetTempoMod $03, $04, $06, $0A after the header's $02):
+# the converter writes an Fxx BPM change at each one — 75 → 100 → 112 → 125 → 135 BPM (112.5 rounds down).  Two ticks
+# per row keeps every segment under the MOD ceiling of 255 (one tick per row needs 270 at the end).
 # -------------------------------------------------------------------------------------------------
 
 name: Drowning
@@ -13,7 +13,7 @@ samples_dir: "samples/"
 
 auto_bpm: true
 target_speed: 2
-ticks_per_row: 1
+ticks_per_row: 2             # see header comment: BPM 75–135 across the tempo steps
 num_mod_channels: 8
 region: ntsc
 
@@ -33,15 +33,15 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "snare.raw", 64, 0]
+  - [1, "snare.raw", 27, 0] # VGZ: +7.6 dB at 64
   # --- voice $00: alg 4: (1→2)+(3→4), fb 7 — FM1, FM5 ---
   - [2, "fm_v00.raw", 32, 0]
   # --- voice $01: alg 0: 1→2→3→4, fb 3 — FM2 ---
-  - [3, "fm_v01.raw", 32, 0]
+  - [3, "fm_v01.raw", 23, 0] # VGZ: +3.0 dB at 32
   # --- voice $02: alg 4: (1→2)+(3→4), fb 5 — FM3 ---
-  - [4, "fm_v02.raw", 32, 0]
+  - [4, "fm_v02.raw", 64, 0] # VGZ: FM3 reads -8.5 dB at 32 (its 50 ms notes are too short for the per-note table); 64 is the ceiling
   # --- voice $03: alg 7: 1+2+3+4, fb 0 — FM4 ---
-  - [5, "fm_v03.raw", 32, 0]
+  - [5, "fm_v03.raw", 26, 0] # VGZ: +1.7 dB at 32
 
 dac_samples:
   # dSnare: ×41 — native ~24000 Hz → note Fs3

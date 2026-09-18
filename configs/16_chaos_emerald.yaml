@@ -11,7 +11,7 @@ output_file: output/16_chaos_emerald.mod
 samples_dir: "samples/"
 
 auto_bpm: true
-target_speed: 3
+target_speed: 4             # 250 BPM exactly; speed 3 gave 187.5 → 188 (+0.27 %)
 ticks_per_row: 2
 num_mod_channels: 8
 region: ntsc

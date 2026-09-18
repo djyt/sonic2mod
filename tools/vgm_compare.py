@@ -949,6 +949,12 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                     devs.append(d)
                     run = 0.5 * run + 0.5 * d
                     i, j = i + 1, j + 1
+                elif abs(d - run) <= 120 and all(
+                        i + n < len(vo) and j + n < len(mo) and abs((mo[j + n] - vo[i + n]) * 1000 - d) <= 40
+                        for n in (1, 2)):
+                    # A step in the deviation that the next two notes confirm: a tempo change
+                    # (the MOD falls up to two frames behind at each smpsSetTempoMod).
+                    run = d
                 elif d < run:                     # a MOD note the chip has no key-on for
                     extra, j = extra + 1, j + 1
                 else:

@@ -20,8 +20,9 @@ from .tables import semitone_to_note_name  # noqa: F401 — re-exported for anal
 UNSUPPORTED_EFFECTS = {'smpsPan', 'smpsNop'}
 
 PARTIAL_EFFECTS = {
-    'smpsAlterNote': 'FNUM offset (~10 cents) — not applied to pitch',
-    'smpsModSet':    'approximate (sine vs triangle wave)',
+    'smpsAlterNote':   'FNUM offset (~10 cents) — not applied to pitch',
+    'smpsModSet':      'approximate (sine vs triangle wave)',
+    'smpsSetTempoDiv': 'global duration divider — parsed, not applied',
 }
 
 # Known Sonic 1 DAC sample native playback rates and suggested MOD notes.

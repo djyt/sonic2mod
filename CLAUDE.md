@@ -206,7 +206,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsModSet` | $F0 | `4xy` | Vibrato; steps halved in hardware |
 | `smpsModOn` | $F1 | `4xy` | Re-activates stored mod params |
 | `smpsModOff` | $F4 | (clear) | No MOD output |
-| `smpsNoteFill` | $E8 | `ECx` | Note cut; only values 1–15 representable |
+| `smpsNoteFill` | $E8 | `ECx`/`C00` | Note cut; fill is in **frames** → scaled `(mod−1)/mod` to ticks, placed to the MOD tick |
 | `smpsJump` | $F6 | `Bxx` | Position jump; first occurrence only |
 | `smpsSetvoice` | $EF | (routing) | Updates voice_map instrument lookup |
 | `smpsChangeTransposition` | $E9 | (pitch) | Adds to total_transpose |
@@ -237,7 +237,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 
 6. **FM5 falls through into FM1 data** — parser does not stop at label boundaries; FM5 typically lacks `smpsStop` and shares FM1's note data (intentional chorus/detune design).
 
-7. **`smpsNoteFill` > 15 ignored** — ECx has a 4-bit parameter; fill values 16+ cannot be represented and produce no MOD effect (note sustains naturally to full duration).
+7. **`smpsNoteFill` and `smpsModSet` wait/speed count V-int frames, not ticks** — `TempoWait` only delays `DurationTimeout`. `SmpsToModConverter._ticks_per_frame` = `(mod−1)/mod` converts them (done for fill + wait; the vibrato *rate* formula is still open). Neither is multiplied by the tempo divider. Cuts are placed to the MOD tick on whichever row they fall (`ECx` in-row, `C00` on a boundary); a fill that outlasts the note emits nothing. A fill equal to the duration byte DOES fire when the tempo modifier is > 1.
 
 8. **smpsModSet step count halved in hardware** — driver does `lsr.b #1` before storing. Value 16 → 8 actual oscillation steps.
 

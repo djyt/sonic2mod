@@ -560,7 +560,9 @@ class SmpsParser:
                                    VBlank. The parser stores all durations as raw_ticks ×
                                    chan_tempo_div (VBlank units), so fill_raw is already in
                                    the same units — no conversion needed.
-          smpsModSet   params[0] — wait before vibrato (raw ticks → DT units)
+          smpsModSet   params[0] — wait before vibrato: NOT scaled.  ModulationWait is
+                                   decremented once per V-int frame (DoModulation) and never
+                                   multiplied by a tempo divider — same units as the fill.
           smpsModSet   params[1] — speed_raw; scales _smps_cycle to DT units so that
                                    vibrato_speed = round(16 * effective_tpr / smps_cycle)
                                    gives the same result as the old formula.
@@ -574,7 +576,6 @@ class SmpsParser:
             return effect
         if effect.effect_type == 'smpsModSet':
             p = list(effect.params)
-            p[0] = p[0] * chan_tempo_div   # wait
             p[1] = p[1] * chan_tempo_div   # speed_raw (scales _smps_cycle to DT units)
             return SmpsEffect('smpsModSet', p)
         return effect

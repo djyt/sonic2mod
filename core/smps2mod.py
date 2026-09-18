@@ -111,6 +111,24 @@ class SmpsToModConverter:
         """
         return self.config.ticks_per_row * self.song.header.tempo_divider
 
+    @property
+    def _ticks_per_frame(self) -> float:
+        """Duration ticks that elapse per V-int frame: (modifier - 1) / modifier.
+
+        TempoWait fires once every `modifier` frames and only does `addq.b #1` on each
+        track's DurationTimeout, cancelling that frame's decrement.  NoteTimeoutUpdate
+        (smpsNoteFill) and DoModulation (smpsModSet wait/speed) still run on those frames,
+        so they count FRAMES while note durations and tick positions count TICKS.  Multiply a
+        frame count by this to place it on the converter's tick timeline.
+
+        Region-independent (both clocks scale with fps).  SFX have no tempo modifier.
+        Mid-song smpsSetTempoMod (Credits, Drowning) is not tracked; the header value is used.
+        """
+        mod = self.song.header.tempo_modifier
+        if self.song.header.is_sfx or mod <= 1:
+            return 1.0
+        return (mod - 1) / mod
+
     def _ticks_to_secs(self, ticks: int) -> float:
         """Convert raw SMPS parser ticks to wall-clock seconds."""
         ticks_per_sec = (self.config.target_bpm * self._effective_tpr
@@ -774,37 +792,45 @@ class SmpsToModConverter:
 
                     self.mod.set_note(final_note, final_instrument)
 
-                    # Note fill: silence the channel at the exact tick the driver
-                    # fires PSGNoteOff/FMNoteOff.  Skip when fill >= note.duration —
-                    # the hardware edge case where DurationTimeout fires before
-                    # NoteTimeout so the fill timer never completes (note sustains).
+                    # Note fill: silence the channel when the driver fires
+                    # PSGNoteOff/FMNoteOff.  The fill byte counts V-int FRAMES (it is
+                    # decremented on TempoWait frames too), so it is scaled onto the tick
+                    # timeline first.  Skip when the fill outlasts the note: DurationTimeout
+                    # expires first and the fill timer never completes (note sustains).
                     fill_placed = False
                     effect_slot_used = False   # True only when ECx occupies the current row's slot
-                    if note_fill > 0 and note_fill < note.duration:
-                        fill_pat, fill_row = self._tick_to_pattern_row(tick + note_fill)
-                        if fill_pat == pattern and fill_row == row:
-                            # Fill fires within the current row: ECx.
-                            # Scale fill from SMPS ticks to MOD VBL ticks,
-                            # cap at speed-1 so the effect always fires.
-                            ec_val = round(
-                                note_fill * self.config.target_speed
-                                / self._effective_tpr
-                            )
-                            ec_val = min(ec_val, self.config.target_speed - 1)
-                            if ec_val > 0:
-                                self.mod.set_effect(0xE, 0xC0 | ec_val)
-                                fill_placed = True
-                                effect_slot_used = True  # ECx on this row; no room for Cxx
-                        elif fill_pat < self.config.max_patterns:
-                            # Fill fires on a later row: write C00 there directly.
+                    fill_pat = fill_row = -1
+                    fill_ticks = note_fill * self._ticks_per_frame
+                    if note_fill > 0 and fill_ticks < note.duration:
+                        # Work in absolute MOD ticks (rows × speed) so the cut keeps its
+                        # sub-row position: a whole row → C00 on that row, otherwise ECx.
+                        speed = self.config.target_speed
+                        note_abs = (pattern * 64 + row) * speed
+                        next_pat, next_row = self._tick_to_pattern_row(tick + note.duration)
+                        next_abs = (next_pat * 64 + next_row) * speed
+                        fill_abs = max(note_abs + 1,
+                                       round((tick + fill_ticks) * speed / self._effective_tpr))
+                        # Effect priority: volume beats note cut.  If the attack row needs its
+                        # slot for Cxx, the cut moves to the start of the next row instead.
+                        _sv = _sample_vol_map.get(final_instrument, 64)
+                        if fill_abs < note_abs + speed and round(current_volume * _sv / 64) != _sv:
+                            fill_abs = note_abs + speed
+                        fill_row_total, fill_sub = divmod(fill_abs, speed)
+                        # At or past the row of the next event, the next note / rest takes over.
+                        if fill_abs < next_abs and fill_row_total // 64 < self.config.max_patterns:
+                            fill_pat, fill_row = fill_row_total // 64, fill_row_total % 64
                             while fill_pat >= len(self.mod.patterns):
                                 self.mod.add_patterns(1)
                             self._set_cursor(fill_pat, mod_chan, fill_row)
-                            self.mod.set_effect(0xC, 0)
+                            if fill_sub:
+                                self.mod.set_effect(0xE, 0xC0 | fill_sub)
+                            else:
+                                self.mod.set_effect(0xC, 0)
                             # Restore cursor to the current note's cell.
                             self._set_cursor(pattern, mod_chan, row)
                             fill_placed = True
-                            # effect_slot_used stays False: current row is free for Cxx
+                            # ECx on the attack row leaves no room for Cxx / 4xy there.
+                            effect_slot_used = (fill_pat, fill_row) == (pattern, row)
 
                     # PSG auto note-cut: emit silence at the note's natural end if no
                     # explicit smpsNoteFill was placed.  Mirrors hardware PSGDoNext
@@ -859,24 +885,26 @@ class SmpsToModConverter:
                         if emit_vol != sv:
                             self.mod.set_effect(0xC, emit_vol)
 
-                        # Vibrato effect (4xy) on attack row
-                        elif vibrato_active and eff_vib_speed > 0:
+                        # Vibrato effect (4xy) on attack row — only when the modulation
+                        # wait is over for most of it (see vib_start_tick below).
+                        elif (vibrato_active and eff_vib_speed > 0
+                              and vibrato_wait * self._ticks_per_frame <= self._effective_tpr / 2):
                             param = (eff_vib_speed << 4) | eff_vib_depth
                             self.mod.set_effect(0x4, param)
 
                     # Emit 4xy on every continuation row within the note's vibrato span.
                     # In ProTracker, 4xy only applies on rows where the effect is present,
                     # so we repeat it each row to get continuous vibrato matching SMPS
-                    # modulation.  The SMPS wait delay is respected: vibrato starts at the
-                    # row corresponding to tick + vibrato_wait.
+                    # modulation.  The SMPS wait is in FRAMES (DoModulation runs on TempoWait
+                    # frames too); a row carries 4xy when modulation runs for at least half of it.
                     if vibrato_active and eff_vib_speed > 0:
-                        vib_start_tick = tick + vibrato_wait
+                        vib_start_tick = tick + vibrato_wait * self._ticks_per_frame
                         note_end_tick  = tick + note.duration
                         tpr = self._effective_tpr
                         fill_coord = (fill_pat, fill_row) if fill_placed else None
                         cont_tick = tick + tpr   # start one row past the attack
                         while cont_tick < note_end_tick:
-                            if cont_tick >= vib_start_tick:
+                            if cont_tick + tpr / 2 >= vib_start_tick:
                                 cont_pat, cont_row = self._tick_to_pattern_row(cont_tick)
                                 if cont_pat >= self.config.max_patterns:
                                     break

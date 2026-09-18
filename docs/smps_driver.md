@@ -21,7 +21,7 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | parsed; per-channel divider applied to note durations at parse time |
 | $E6 | `smpsAlterVol` | — | signed byte | Add delta to SMPS_Track.Volume attenuation (cumulative) | → `Cxx` Set Volume |
 | $E7 | `smpsNoAttack` | — | — | Suppress attack envelope on next note | flagged on note |
-| $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in ticks | → `ECx` Note Cut |
+| $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in **frames** | → `ECx` / `C00` Note Cut |
 | $E9 | `smpsChangeTransposition` | `smpsAlterPitch` | signed byte | **Semitone shift** — add to SMPS_Track.Transpose; all subsequent notes pitched accordingly | → updates `total_transpose`; affects note placement |
 | $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier | ignored |
 | $EB | `smpsSetTempoDiv` | — | byte | Set global tempo divider | ignored |
@@ -192,7 +192,15 @@ smpsNoteFill $0A   ; note silences after 10 frames (V-ints)
 - **NoteTimeout and duration run in parallel.** Duration controls when the *next note starts*; NoteTimeout controls when the *current note silences*.
 - `NoteTimeout` is reset to `NoteTimeoutMaster` (the last-set fill value) on every new note, even if `smpsNoteFill` is not repeated. The fill value persists until changed.
 
-**sonic2mod mapping:** → `ECx` (Note Cut), where x = fill value. Only emitted if `0 < fill ≤ 15` (ECx is a 4-bit parameter). Fill values > 15 are valid in SMPS (longer cut timing) but cannot be represented in MOD — the note sustains to full duration instead.
+- **A fill equal to the duration byte still fires** when the tempo modifier is > 1: the note lasts
+  `duration × mod/(mod−1)` frames, the fill exactly `fill` frames.  (Only with no TempoWait frames
+  in the span does DurationTimeout win the tie.)
+- The fill byte is **not** multiplied by the tempo divider (`cfNoteTimeout` stores it raw;
+  `SetDuration` multiplies durations only).  Same for `ModulationWait` / `ModulationSpeed`.
+
+**sonic2mod mapping:** the fill is scaled to ticks (`× (mod−1)/mod`) and placed to the MOD tick —
+`ECx` inside a row, `C00` on a row boundary, on whichever row of the note it falls.  No cut when
+the fill outlasts the note.  See `docs/pipeline.md` gotchas 3 and 4b.
 
 ---
 

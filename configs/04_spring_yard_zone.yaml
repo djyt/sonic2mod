@@ -85,7 +85,6 @@ voice_map:
       mod_instrument: 5
       root: A1
       synth_root: A4
-      vibrato: 0
   # $03 — alg 4: (1→2)+(3→4), fb 5 — used by FM4, FM5
   3:
     - low:  A3
@@ -143,7 +142,6 @@ channel_instrument_map:
       mod_instrument: 6
       root: A1
       synth_root: A4
-      vibrato: 0
 
 
 # -------------------------------------------------------------------------------------------------

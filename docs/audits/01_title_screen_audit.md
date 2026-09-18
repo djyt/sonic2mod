@@ -77,7 +77,7 @@ count frames (60 Hz NTSC / 50 Hz PAL) while durations count ticks (`fps × (mod�
 Fix: `fill_ticks = fill_frames × ticks_per_sec / fps` before `_tick_to_pattern_row(tick + fill)`;
 same scaling for `vibrato_wait`.  For the Title Screen (mod 5) that is ×0.8.
 
-### 2. Vibrato mapping
+### 2. Vibrato mapping — fixed 2026-09-18 (`4C3`: 5.99 Hz ±18 c against the hardware's 5.99 Hz ±19 c; see `docs/pipeline.md` gotcha 4)
 
 Driver behaviour (`DoModulation`): every `speed` frames add `delta` to the accumulator; after
 `steps` adds the delta is negated and one frame is spent reloading. The first half-cycle uses

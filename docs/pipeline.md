@@ -67,7 +67,7 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 | SMPS Command | Byte | Parameters | MOD Effect | MOD Code | Notes |
 |-------------|------|------------|------------|----------|-------|
 | `smpsAlterVol` | $E6 | signed TL delta | Set Volume | `Cxx` (Cmd C) | FM: cumulative TL offset, 0.75 dB/step. `Cxx` only on notes whose level differs from the instrument's baked level — see §FM levels |
-| `smpsModSet` | $F0 | wait,speed,change,step | Vibrato | `4xy` (Cmd 4) | x=speed nibble, y=change nibble; approximate (triangle→sine) |
+| `smpsModSet` | $F0 | wait,speed,change,step | Vibrato | `4xy` (Cmd 4) | x from the driver's cycle length, y per note from its swing in cents (gotcha 4); triangle→sine |
 | `smpsModOn` | $F1 | — | Vibrato (continues) | `4xy` | Re-activates stored params |
 | `smpsModOff` | $F4 | — | (clears vibrato state) | none | No MOD effect; future notes have no vibrato |
 | `smpsNoteFill` | $E8 | frames | Note Cut | `ECx` / `C00` | Fill is in V-int **frames**; scaled by `(mod−1)/mod` onto the tick timeline, then placed to the MOD tick: `ECx` inside a row, `C00` on a row boundary. Any fill length works; skipped when it outlasts the note |
@@ -339,13 +339,41 @@ driver's DurationTimeout expires first), or the cut would land on the next event
 
 ---
 
-### 4. smpsModSet step count is halved in hardware
+### 4. smpsModSet → `4xy`: rate from the cycle in frames, depth per note
 
-**Problem:** Vibrato seems shallower than expected.
+**The driver** (`DoModulation`, once per V-int frame, after `wait` frames): every `speed` frames
+it adds `delta` to an accumulator; when the step counter reaches 0 it reloads it from the
+**original** `steps` byte, negates `delta` and spends that update.  Only the first half-swing uses
+the halved count (`lsr.b #1` on `smpsModSet` / note start).  So:
 
-**Cause:** The Sonic 1 driver halves the `step` parameter before storing it (`lsr.b #1`). `step=16` → 8 actual oscillation steps.
+- steady cycle = `2 · speed · (steps + 1)` **frames** — not ticks, and not multiplied by the tempo
+  divider (the parser used to multiply `speed` by it);
+- swing = `delta · steps / 2` either side of centre, in the units of the note's own frequency
+  word, which it is added to: the YM2612 FNUM of the note's pitch class (644 for C … 1216 for B)
+  or, on a PSG channel, the SN76489 divider from `PSGFrequencies`.  The same `smpsModSet` is
+  therefore deeper in cents on C than on B, and enormous on a high PSG note (Stage Clear's last
+  PSG1 note: divider 127 ± 16 = ±200 c at 6 Hz — real, it is in the register log).
 
-**Fix:** MOD vibrato (`4xy`) has different semantics (sinusoidal, not triangle). Treat the translation as approximate. Tune `4xy` values manually in the tracker if needed.
+**ProTracker:** the vibrato position advances by `x` on each of a row's `speed − 1` processing
+ticks and wraps at 64; the sine peaks at about `2·y` period units.
+
+**Conversion** (`SmpsToModConverter._vibrato_speed` / `_vibrato_depth`):
+
+```
+x = 64 · _effective_tpr / ((target_speed − 1) · cycle_frames · _ticks_per_frame)
+y = period · (delta · steps / 2) / frequency_word / 2          (per note)
+```
+
+Region-independent.  `y` below 0.35 means the smallest depth would overshoot the hardware
+threefold, so no vibrato is written (Spring Yard FM4/FM5: ±3 c on hardware).  When `x` would
+exceed 15 `convert.py` says so.  A per-entry `vibrato:` override still wins, but none is needed
+any more: the eight that existed were workarounds for the old formula and are gone.
+
+**Measured** (hardware → MOD): Title Screen FM4 5.99 Hz ±19 c → 5.99 Hz ±18 c (`4C3`; was `485` =
+3.98 Hz ±36 c); GHZ PSG1 7.35 Hz ±7 c → 7.44 Hz ±7 c (was 4.98 Hz); Scrap Brain FM1 4.96 Hz ±54 c →
+5.23 Hz ±53 c; Spring Yard FM1 5.99 Hz ±25 c → 6.24 Hz ±19 c; Stage Clear FM5 4.99 Hz ±15 c →
+4.99 Hz ±14 c; Special Stage 4.25 Hz ±20…32 c → 4.06 Hz ±20…30 c.  What is left is the 4-bit
+grid: one step of `x` is 0.4–0.6 Hz, one step of `y` is 10–30 c depending on the period.
 
 **Known inaccuracy (measured 2026-09, see `docs/audits/01_title_screen_audit.md` §2):** the current
 speed/depth formula runs the LFO too slow and too deep — Title Screen FM4 `smpsModSet $00,$01,$06,$04`
@@ -386,7 +414,7 @@ attack row included — so notes shorter than the wait no longer get vibrato at 
 get it on the attack row unconditionally).
 
 **Not covered:** mid-song `smpsSetTempoMod` (Credits, Drowning) — the header modifier is used
-throughout.  The `smpsModSet` *speed* → `4xy` rate formula is a separate issue (gotcha 4).
+throughout.  The rate and depth of the `4xy` itself are gotcha 4.
 
 ---
 
@@ -606,7 +634,7 @@ inside the note (GHZ PSG1 `smpsModSet $0E,$01,$01,$03`: 7.35 Hz ±7 c on hardwar
 MOD 4.98 Hz).
 Reference points: the driver's steady cycle is `2·speed·(steps+1)` frames, ProTracker's is
 `x·(speed−1)·BPM / (160·speed)` Hz.  Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c
-(theory 6.0 Hz), MOD `485` 3.98 Hz ±36 c.
+(theory 6.0 Hz); MOD `485` 3.98 Hz ±36 c before the formula was fixed, `4C3` 5.99 Hz ±18 c after.
 
 **CI use.**  `--json FILE` writes everything in the report (per-note rows, channel summaries,
 vibrato, noise bands, DAC peaks) plus a `checks` list and an overall `passed`.  Thresholds are

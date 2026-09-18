@@ -82,7 +82,6 @@ voice_map:
       mod_instrument: 4
       root: D2
       synth_root: D4
-      vibrato: 12               # Override Vibrato with more subtle setting
       
 # -------------------------------------------------------------------------------------------------
 # PSG Sounds

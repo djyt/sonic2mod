@@ -26,7 +26,7 @@ python tools/vgm_compare.py    configs/02_green_hill_zone.yaml "reference/vgz/02
 | Noise timbre (before) | `synth_root: A8` → LFSR at 7 kHz: energy bunched below 4 kHz (0–500 Hz −6.8 dB vs −14.4 dB on hardware). |
 | Noise timbre (after) | `tone2_n: 1` (the VGZ shows tone-2 divider N=0 on every hit): 4–8 kHz band −4.7 dB vs −4.9 dB on hardware.  8–13 kHz still ~7 dB down (27.9 kHz sample rate), as on the Title Screen. |
 | Detuned-carrier beating | FM4/FM5 C6 notes beat at 4.46 Hz on hardware and 6.5 Hz in the MOD; FM3/FM4 low notes show 2.5–3 Hz beating in the MOD only.  Not vibrato — those channels have no `smpsModSet`.  The rate follows sample playback speed (voice $04 is synthesised at C5 and played at C6 and above) → todo item 7. |
-| Vibrato | FM1's `smpsModSet $0D,$01,$07,$04` is switched off in the config (`vibrato: 0`, "sounds awful") — expected until the `4xy` formula is fixed (todo item 2).  PSG1's `$0E,$01,$01,$03` is emitted but cannot be measured yet (the analyzer reports every PSG period change as a key-on). |
+| Vibrato | **Fixed 2026-09-18 (todo item 2).**  FM1's `smpsModSet $0D,$01,$07,$04` was switched off in the config (`vibrato: 0`, "sounds awful") because the old formula got it wrong; the override is gone and the MOD plays `4A1`–`4A5` by note (hardware: 6.00 Hz, ±25 c at G4, ±38 c at C4).  PSG1's `$0E,$01,$01,$03`: hardware 7.35 Hz ±7 c, MOD 7.44 Hz ±7 c (was 4.98 Hz). |
 | DAC | Snare 308 Hz vs 315 Hz (+2 %), kick 52.5 Hz vs 55.2 Hz (+5 %); band profiles match.  Level −1.0 dB with the samples already at 64. |
 | Size | 875 KB → 760 KB (two 57 KB samples that carried one note each removed). |
 

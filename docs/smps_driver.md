@@ -163,14 +163,21 @@ smpsModSet wait, speed, change, step
 
 | Parameter | Field | Meaning |
 |-----------|-------|---------|
-| `wait` | ModulationWait | Ticks to delay before modulation starts |
-| `speed` | ModulationSpeed | Rate of modulation oscillation (timer ticks per step) |
-| `change` | ModulationDelta | FNUM units added/subtracted per step |
-| `step` | ModulationSteps | Total steps across one cycle — **halved before storage** |
+| `wait` | ModulationWait | V-int **frames** before modulation starts (not tempo ticks) |
+| `speed` | ModulationSpeed | **Frames** per step; reloaded from the data each step, never multiplied by the tempo divider |
+| `change` | ModulationDelta | Signed; added per step to the note's frequency word — FNUM on FM, SN76489 divider on PSG |
+| `step` | ModulationSteps | Steps per half-swing — **halved for the first half-swing only** |
 
-> **Hardware quirk:** The driver stores `step / 2` (arithmetic right-shift: `lsr.b #1`). If the song specifies `$10` (16 steps), the driver performs 8 up-steps + 8 down-steps. sonic2mod passes the raw value as-is.
+> **Hardware quirk:** `smpsModSet` and every note start store `step / 2` (`lsr.b #1`), but when the
+> counter runs out `DoModulation` reloads it from the **original** byte (`move.b 3(a0),…`), negates
+> the delta and spends that update.  So with `$04`: 2 steps up, then 4 down, 4 up, … — a triangle
+> of `delta·step/2` either side of centre with a steady cycle of `2·speed·(step+1)` frames
+> (`$00,$01,$06,$04` → 10 frames = 6 Hz, ±12 FNUM; measured 5.99 Hz on the Title Screen).
+> An odd `step` leaves the triangle half a delta off-centre.
 
-**MOD mapping:** `4xy` Vibrato, where x = speed (upper nibble) and y = depth (lower nibble). MOD vibrato is sinusoidal; SMPS modulation is triangle-wave. The translation is an approximation.
+**MOD mapping:** `4xy` Vibrato; x is derived from the cycle length and y per note from the swing
+relative to the note's FNUM / divider — formulas and measurements in `docs/pipeline.md` gotcha 4.
+MOD vibrato is sinusoidal where SMPS modulation is a triangle; peaks are matched.
 
 **smpsModOn ($F1):** Re-enables modulation using the most recently stored ModSet parameters.
 **smpsModOff ($F4):** Disables modulation. Next note will not vibrate.

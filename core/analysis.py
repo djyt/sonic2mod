@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import cast
 
 from .config import ConversionConfig
+from .driver_state import pan_is_hard, source_names
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import semitone_to_note_name  # noqa: F401 — re-exported for analyze.py
 
@@ -231,23 +232,10 @@ def analyze_song(song: SmpsSong, file_path: str,
         for ch_cfg in config.channels:
             cfg_channels[ch_cfg.source] = ch_cfg
 
-    channel_analyses = []
-    dac_idx = fm_idx = psg_idx = 0
-
-    for ch in song.channels:
-        ch_type = ch.header.channel_type
-        if ch_type == "DAC":
-            dac_idx += 1
-            source_name = "DAC"
-        elif ch_type == "FM":
-            fm_idx += 1
-            source_name = f"FM{fm_idx}"
-        else:
-            psg_idx += 1
-            source_name = f"PSG{psg_idx}"
-
-        analysis = _analyze_channel(ch, source_name, ch_type, config, cfg_channels)
-        channel_analyses.append(analysis)
+    channel_analyses = [
+        _analyze_channel(ch, source_name, ch.header.channel_type, config, cfg_channels)
+        for ch, source_name in zip(song.channels, source_names(song), strict=True)
+    ]
 
     return SongAnalysis(
         file_path=file_path,
@@ -369,7 +357,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                 cumulative_volume += cast(int, eff.params[0])
 
             elif eff.effect_type == 'smpsPan':
-                hard_pan = str(eff.params[0]).split(',')[0].strip().lower() in ('panleft', 'panright')
+                hard_pan = pan_is_hard(eff.params)
 
             elif eff.effect_type == 'smpsChangeTransposition':
                 delta = eff.params[0]

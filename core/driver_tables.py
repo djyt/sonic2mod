@@ -162,6 +162,14 @@ def psg_index_semitone(index: int) -> int:
     return 36 + index
 
 
+def psg_tone2_divider(note_value: int, transpose: int) -> int:
+    """Tone-2 divider the driver writes for a note — what clocks a rate-3 noise LFSR.
+
+    nMaxPSG's table entry is divider 0, which the Sega VDP PSG clocks as N=1.
+    """
+    return max(1, PSG_FREQUENCIES_EXTENDED[psg_note_index(note_value, transpose)])
+
+
 # ---------------------------------------------------------------------------
 # PSG volume envelopes — :43-60
 # ---------------------------------------------------------------------------

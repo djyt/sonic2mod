@@ -3,7 +3,7 @@
 import warnings
 from dataclasses import dataclass, field
 
-from .tables import ModNote, parse_smps_note, parse_synth_note
+from .tables import ModNote, parse_smps_note, parse_synth_note, synth_note_name
 
 
 @dataclass
@@ -177,13 +177,10 @@ def rate3_synth_root_issues(config: 'ConversionConfig') -> list[dict]:
             continue
         issues.append({
             'context': context,
-            'synth_root': f"{_SYNTH_NOTE_NAMES[e.synth_root % 12]}{e.synth_root // 12}",
+            'synth_root': synth_note_name(e.synth_root),
             'above': e.synth_root > _RATE3_SYNTH_ROOT_MAX,
         })
     return issues
-
-
-_SYNTH_NOTE_NAMES = ('C', 'Cs', 'D', 'Ds', 'E', 'F', 'Fs', 'G', 'Gs', 'A', 'As', 'B')
 
 
 def _parse_tone2_n(entry: dict, context: str) -> int | None:

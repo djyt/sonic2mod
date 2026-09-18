@@ -37,15 +37,11 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
-from core.driver_tables import psg_index_semitone
+from core.driver_state import chip_pitch
 from core.smps_parser import SmpsParser
-from core.tables import parse_smps_note, parse_synth_note, semitone_to_note_name
+from core.tables import parse_smps_note, parse_synth_note, semitone_to_note_name, synth_note_name
 
-_MOD_NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"]
-
-
-def mod_name(semi: int) -> str:
-    return f"{_MOD_NAMES[semi % 12]}{semi // 12}"
+mod_name = synth_note_name   # YAML config note name for a semitone
 
 
 def chip_notes(cfg: ConversionConfig):
@@ -90,10 +86,11 @@ def chip_notes(cfg: ConversionConfig):
                     noise = True
             elif ev.is_note and not ev.note.is_rest and not noise and cur is not None:
                 src = ev.note.note_value - 0x81
+                pitch = chip_pitch(src, tr, kind == "PSG")
                 if kind == "FM":
-                    out[("fm", cur, name)].append((src, src + tr))
+                    out[("fm", cur, name)].append((src, pitch))
                 elif str(cur) in labels:
-                    out[("psg", str(cur), name)].append((src, psg_index_semitone(src + tr)))
+                    out[("psg", str(cur), name)].append((src, pitch))
     return out
 
 

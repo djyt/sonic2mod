@@ -616,15 +616,24 @@ opt-in, and any failed one makes the exit code 1:
 |------|-----------|
 | `--fail-balance-db DB` | a channel's level relative to `--ref` differs from the recording by more than DB |
 | `--fail-pitch-cents C` | the pitch verdict has a wrong note (more than C cents from the chip register) or a missing one, or a note is silent in the MOD render |
-| `--fail-unmatched N` | a channel has more than N reference onsets with no MOD onset within 40 ms |
+| `--fail-unmatched N` | a channel has more than N chip key-ons with no MOD note row within 40 ms (DAC: detected audio onsets) |
 
 ```bash
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" \
        --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
 ```
 
-`--fail-unmatched` is noisy on sustained FM channels today: the MOD re-triggers where the
-hardware ties notes, so the onset detector sees extra/shifted onsets (Title Screen FM2: 4).
+**Onset timing** matches each FM / PSG / noise key-on in the register log to a MOD note row, one
+to one, so `unmatched` is a count of notes the MOD really lacks or places more than 40 ms off, and
+`MOD-only` counts rows the chip has no key-on for (a re-trigger where the hardware ties).  Title
+Screen: 0 unmatched on every FM channel; GHZ: FM1 4, FM3 2, FM4 15, FM5 15 — the grace notes of
+todo item 3.  The 40 ms window follows the running deviation of the notes matched so far, and the
+change from the song's first notes to its last is printed as `drift` when it reaches 20 ms: a
+MOD that runs slightly off the driver's tempo is one finding, not a lost note per bar (Special
+Stage: +130 ms over its 33 s pass, 0 unmatched).  An audio onset detector cannot do this on sustained channels (it read 28–143
+unmatched per GHZ channel with every note in place).  The DAC still uses it — the log holds PCM
+seeks, not hits (GHZ has two seeks 20 ms apart and hits with none) — so its count stays
+approximate (Title Screen 3, GHZ 60).
 
 ## SMPS Note Range to MOD Range
 

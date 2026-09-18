@@ -85,6 +85,9 @@ record) but not its old plan — anything still open under it is called out as *
 
 ---
 
+### [ ] 14. Special Stage runs 0.4 % slow
+- **Measured (2026-09-18, `vgm_compare.py` onset timing):** every channel's MOD note rows fall steadily behind the chip's key-ons — about +130 ms over the 33 s pass (`smpsHeaderTempo $02,$08`, `target_speed: 3`, `auto_bpm`). GHZ, Title Screen, Marble Zone and Scrap Brain show no drift. Cause not established: integer-BPM rounding alone predicts roughly half of it. Check the BPM derivation for this tempo, then the other songs' `drift` figures.
+
 ## Tooling / workflow
 
 ### [x] `tools/vgm_compare.py` levels use L/R power, not a mono mix
@@ -105,7 +108,7 @@ Per-note pitch and level, channel balance, onset timing, vibrato, noise spectrum
 - [x] Beating vs vibrato: rows are tagged `b` when the partial's level swings at the same rate (≥ 15 %) — that is two detuned FM carriers beating, not `smpsModSet`. **Correction:** the GHZ FM4/FM5 C6 rows (4.46 Hz vs 6.5 Hz) first recorded here as item 2 evidence are beating — those channels have no modulation at all. The rate differs because the MOD sample is resampled, so they belong to item 7 (multi-sampling / `synth_root`), as do the MOD-only 2.5–3 Hz rows on FM3/FM4.
 - [x] PSG vibrato shows in the table (2026-09-18): `vgm_analyze._parse_vgm` starts a PSG note when the channel becomes audible or its period moves more than 70 cents (`psg_mod_cents`, `--psg-mod-cents`) from where the note started; smaller moves are modulation. Volume alone could not be the test — legato PSG notes change period with no silence between them. It also no longer judges the half-written period between the SN76489's two frequency bytes. GHZ PSG1 rows 277 → 72; `smpsModSet $0E,$01,$01,$03` reads 7.35 Hz ±7 c on hardware (theory 7.5 Hz) against 4.98 Hz in the MOD — second test case for item 2. **Measured before:** a modulated PSG note was chopped into frame-long "notes", so none reached the 0.5 s the table needs, and the per-note table listed the fragments (the per-instrument levels come out the same either way).
 - [x] VGMPlay location: defaults to `reference/vgz/vgmplay/` (untracked) after `--vgmplay` / `VGMPLAY_DIR`; fresh-checkout setup in `docs/pipeline.md` § Verifying against a VGZ. Needs the 0.51.x (libvgm) line for the `Core = NUKE` ini key. No direct binary download URL is recorded — only the source repo could be confirmed.
-- [ ] `--fail-unmatched` is noisy on sustained FM channels (MOD re-triggers where hardware ties notes → extra onsets; Title Screen FM2 reports 4). Match on key-on events instead of detected onsets for channels that have them.
+- [x] Onset timing / `--fail-unmatched` match chip key-ons to MOD note rows one to one (2026-09-18) for FM, PSG tone and noise; `MOD-only` reports rows the chip has no key-on for; JSON gains `method` / `mod_only`. Title Screen FM channels: 0 unmatched. GHZ: FM1 4, FM3 2, FM4 15, FM5 15, everything else 0 — exactly the lost grace notes of item 3, which makes this the measure for that item. The window follows the running deviation and a `drift` figure is printed (JSON `drift_ms`), which is how item 14 was found. **Measured before:** the audio onset detector read 4 unmatched on Title Screen FM2 and 28–143 per GHZ channel with every note in place. **Still open:** the DAC keeps the audio detector (the VGM logs PCM seeks, not hits: two seeks 20 ms apart, hits with no seek), so its count is approximate — Title Screen 3, GHZ 60.
 
 ### [x] `tools/vgm_analyze.py` — tone-2 divider on rate-3 noise rows, DAC seek events, per-channel counts
 - [x] `reference/vgm/` paths in the CLAUDE.md examples and the tool docstring corrected to `reference/vgz/`.

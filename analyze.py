@@ -8,22 +8,14 @@ Requires: pip install rich
 """
 
 import argparse
-import io
 import os
 import sys
 
-# Force UTF-8 output on Windows so Rich can render Unicode symbols
-if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-
 try:
     from rich import box
-    from rich.align import Align
-    from rich.console import Console
     from rich.panel import Panel
     from rich.syntax import Syntax
     from rich.table import Table
-    from rich.text import Text
 except ImportError:
     print("Error: 'rich' is required. Install with: pip install rich")
     sys.exit(1)
@@ -40,25 +32,16 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
+from core.cli import branding, cli_console
 from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
 from core.smps_parser import SmpsParser
 from core.tables import PERIOD_TABLE, ModNote
 from sfx.tables import PSG_FREQUENCIES_EXTENDED, psg_note_index
 
-console = Console(legacy_windows=False)
+console = cli_console(highlight=True)
 
 
 from core.version import get_version as _get_version
-
-
-def _print_branding(version: str) -> None:
-    t = Text(justify="center")
-    t.append("SONIC2MOD", style="bold bright_yellow")
-    t.append(f"  v{version}", style="bold cyan")
-    t.append("  ·  reassembler", style="dim white")
-    console.print(Panel(Align.center(t), border_style="yellow", padding=(0, 2)))
-    console.print()
-
 
 _ALG_TOPOLOGY = {
     0: "1→2→3→4",
@@ -963,7 +946,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
 # ---------------------------------------------------------------------------
 
 def main():
-    _print_branding(_get_version())
+    branding(console, "SONIC2MOD", _get_version())
 
     parser = argparse.ArgumentParser(
         description="Analyse a Sonic 1 SMPS assembly file and display structured info"

@@ -37,9 +37,9 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
+from core.driver_tables import psg_index_semitone
 from core.smps_parser import SmpsParser
 from core.tables import parse_smps_note, parse_synth_note, semitone_to_note_name
-from sfx.tables import psg_index_semitone
 
 _MOD_NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"]
 

@@ -7,6 +7,11 @@ from .tables import PERIOD_TABLE, ModNote
 BYTE_ORDER: Literal["little", "big"] = "big"
 
 
+def row_to_bcd(row: int) -> int:
+    """BCD-encode a row number for Dxx (pattern break): 32 -> 0x32, 10 -> 0x10."""
+    return ((row // 10) << 4) | (row % 10)
+
+
 class ModSample:
     _name: str
     length: int
@@ -126,7 +131,44 @@ class ModFile:
         return output
 
     def get_index(self):
-        return (self._chan * 4) + (self._row * (self.CHANNELS * 4))
+        return self.cell_index(self._row, self._chan)
+
+    # ------------------------------------------------------------------
+    # Cell addressing — the one place that knows a cell is 4 bytes at
+    # channel*4 + row*CHANNELS*4, so callers never index pattern data by hand.
+    # ------------------------------------------------------------------
+
+    def cell_index(self, row: int, channel: int) -> int:
+        """Byte offset of (row, channel) within a pattern's data."""
+        return channel * 4 + row * (self.CHANNELS * 4)
+
+    def ensure_pattern(self, index: int) -> None:
+        """Grow the pattern list so `index` exists.  No-op when it already does."""
+        if index >= len(self.patterns):
+            self.add_patterns(index - len(self.patterns) + 1)
+
+    def effect_at(self, pattern: int, row: int, channel: int) -> tuple[int, int]:
+        """(effect nibble, parameter byte) of one cell."""
+        data = self.patterns[pattern].get_bytes()
+        i = self.cell_index(row, channel)
+        return data[i + 2] & 0x0F, data[i + 3]
+
+    def note_at(self, pattern: int, row: int, channel: int) -> int:
+        """12-bit Amiga period of one cell; 0 = no note trigger."""
+        data = self.patterns[pattern].get_bytes()
+        i = self.cell_index(row, channel)
+        return ((data[i] & 0x0F) << 8) | data[i + 1]
+
+    def effect_slot_free(self, pattern: int, row: int, channel: int) -> bool:
+        """True when this cell carries no effect (a command may be written there)."""
+        return self.effect_at(pattern, row, channel) == (0, 0)
+
+    def free_effect_channel(self, pattern: int, row: int, order=None) -> int | None:
+        """First channel of `order` (default 0..CHANNELS-1) with a free effect slot at this row."""
+        for ch in (range(self.CHANNELS) if order is None else order):
+            if self.effect_slot_free(pattern, row, ch):
+                return ch
+        return None
 
     def set_channel(self, chan: int):
         if chan < 0 or chan > self.CHANNELS - 1:
@@ -339,10 +381,6 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
     """
     stride = mod.CHANNELS * 4  # bytes per row
 
-    def _to_bcd(n: int) -> int:
-        """BCD-encode a row number: 32 → 0x32, 10 → 0x10."""
-        return (n // 10) * 16 + (n % 10)
-
     for orig_slot, row in sorted(breaks):
         P = orig_slot  # pattern indices don't shift (we append, not insert)
 
@@ -400,11 +438,11 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
         #   new_row    = body_row % 64
         # If new_row != 0 a Dxx (BCD row) must accompany the Bxx so the
         # player starts at the right row within the new pattern.
-        for pat in mod.patterns:
+        for pat_i, pat in enumerate(mod.patterns):
             pat_data = pat.get_bytes()
             for row_i in range(64):
                 for chan_i in range(mod.CHANNELS):
-                    idx = chan_i * 4 + row_i * stride
+                    idx = mod.cell_index(row_i, chan_i)
                     if (pat_data[idx + 2] & 0xF) != 0xB:
                         continue
                     target = pat_data[idx + 3]
@@ -418,24 +456,15 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
                     new_row_num = br % 64
                     pat.set_entry(idx + 3, new_pat_num & 0x7F)
                     if new_row_num != 0:
-                        bcd = _to_bcd(new_row_num)
-                        for dxx_ch in range(mod.CHANNELS):
-                            if dxx_ch == chan_i:
-                                continue
-                            didx = dxx_ch * 4 + row_i * stride
-                            if (pat_data[didx + 2] & 0xF) == 0 and pat_data[didx + 3] == 0:
-                                pat.set_entry(didx + 2, (pat_data[didx + 2] & 0xF0) | 0xD)
-                                pat.set_entry(didx + 3, bcd)
-                                break
+                        dxx_ch = mod.free_effect_channel(
+                            pat_i, row_i, [c for c in range(mod.CHANNELS) if c != chan_i])
+                        if dxx_ch is not None:
+                            didx = mod.cell_index(row_i, dxx_ch)
+                            pat.set_entry(didx + 2, (pat_data[didx + 2] & 0xF0) | 0xD)
+                            pat.set_entry(didx + 3, row_to_bcd(new_row_num))
 
         # --- write Bxx at (P, row) → P+1 on the first free channel ----------
-        pat_data = mod.patterns[P].get_bytes()
-        bxx_chan = 0
-        for ch in range(mod.CHANNELS):
-            idx = ch * 4 + row * stride
-            if (pat_data[idx + 2] & 0xF) == 0 and pat_data[idx + 3] == 0:
-                bxx_chan = ch
-                break
+        bxx_chan = mod.free_effect_channel(P, row) or 0
         mod.set_active_pattern(P)
         mod.set_channel(bxx_chan)
         mod.set_row(row)

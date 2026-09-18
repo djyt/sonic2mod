@@ -65,7 +65,7 @@ ignore = [
     "PTH100", "PTH102", "PTH103", "PTH107", "PTH110", "PTH111",
     "PTH112", "PTH113", "PTH116", "PTH117", "PTH118", "PTH119",
     "PTH120", "PTH122", "PTH123",
-    # Private member access — convert.py intentionally accesses converter._warnings etc.
+    # Private member access — sfx/chips.py and tools/ reuse a few private helpers
     "SLF001",
     # Typing-only imports — not restructuring imports right now
     "TC001", "TC002", "TC003",

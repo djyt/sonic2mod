@@ -18,7 +18,6 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
-import struct
 import sys
 import warnings
 from pathlib import Path
@@ -29,19 +28,12 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
 from core.mod import ModSample
+from core.pcm import int8_to_raw16, peak, to_int8
+from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
 from core.tables import PERIOD_TABLE, ModNote
 from ym2612.renderer import freq_to_fnum_block, note_to_freq, render_note_raw
 from ym2612.wrapper import OPN2
-
-
-def _trim_trailing_silence(mono: list) -> list:
-    """Remove trailing zero samples (chip-silent) from raw mono list."""
-    i = len(mono)
-    while i > 0 and mono[i - 1] == 0:
-        i -= 1
-    return mono[:i]
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -137,7 +129,7 @@ def generate_fm_samples(
                 print(f"  Warning: instrument {entry.mod_instrument} rendered silence")
 
         if verbose:
-            pre_peak = max(abs(v) for v in mono)
+            pre_peak = peak(mono)
             if has_root:
                 root_str = f"root={entry.root.name} (idx={mod_root_idx}), synth_idx={synth_idx}"
                 if entry.synth_root is not None:
@@ -213,32 +205,17 @@ def generate_fm_samples(
     if synth.normalize_samples:
         # Per-sample normalization — each instrument scaled to its own peak ±127
         for inst_num, (mono, rate) in raw_data.items():
-            peak = max(abs(v) for v in mono) if mono else 0
-            if peak == 0:
-                result[inst_num] = (bytes(len(mono)), rate)
-                continue
-            scale = 127.0 / peak
-            pcm = bytearray(len(mono))
-            for i, v in enumerate(mono):
-                pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
-            result[inst_num] = (bytes(pcm), rate)
+            pk = peak(mono)
+            result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
     else:
         # Global normalization — all instruments scaled by the same factor so
         # relative levels reflect actual chip output balance (quiet patches stay quiet)
-        all_peaks = [abs(v) for mono, _ in raw_data.values() for v in mono]
-        global_peak = max(all_peaks) if all_peaks else 0
-        if global_peak == 0:
-            for inst_num, (mono, rate) in raw_data.items():
-                result[inst_num] = (bytes(len(mono)), rate)
-        else:
-            scale = 127.0 / global_peak
-            if verbose:
-                print(f"  Global peak: {global_peak}  (scale={scale:.4f})")
-            for inst_num, (mono, rate) in raw_data.items():
-                pcm = bytearray(len(mono))
-                for i, v in enumerate(mono):
-                    pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
-                result[inst_num] = (bytes(pcm), rate)
+        global_peak = max((peak(mono) for mono, _ in raw_data.values()), default=0)
+        scale = 127.0 / global_peak if global_peak else 0.0
+        if verbose and global_peak:
+            print(f"  Global peak: {global_peak}  (scale={scale:.4f})")
+        for inst_num, (mono, rate) in raw_data.items():
+            result[inst_num] = ((bytes(len(mono)) if global_peak == 0 else to_int8(mono, scale)), rate)
 
     return result
 
@@ -292,14 +269,14 @@ def _smoke_test() -> None:
     )
 
     # Minimal fake SmpsSong
-    from smps_parser import SmpsSong, SmpsSongHeader  # pyright: ignore[reportMissingImports]
+    from core.smps_parser import SmpsSong, SmpsSongHeader
     fake_song = SmpsSong(
         header=SmpsSongHeader(voice_label="test"),
         voices=[voice1],
     )
 
     # Minimal ConversionConfig with voice_map for voice 1
-    from tables import ModNote  # pyright: ignore[reportMissingImports]
+    from core.tables import ModNote
     fake_config = ConversionConfig()
     fake_config.voice_map = {
         1: [
@@ -328,20 +305,11 @@ def _smoke_test() -> None:
     # Write instrument 5 as 16-bit raw for Audacity
     if 5 in samples:
         pcm, rate = samples[5]
-        # Convert 8-bit signed (stored as uint8 via & 0xFF) → 16-bit for Audacity
-        # Interpret each byte as signed int8 then scale to int16
-        raw16 = bytearray(len(pcm) * 2)
-        for i, b in enumerate(pcm):
-            val8 = b if b < 128 else b - 256   # uint8 → int8
-            val16 = max(-32768, min(32767, val8 * 256))
-            struct.pack_into('<h', raw16, i * 2, val16)
-
         out_path = Path(__file__).parent.parent / "output" / "sample_gen_test.raw"
-        out_path.parent.mkdir(exist_ok=True)
-        out_path.write_bytes(bytes(raw16))
+        n = int8_to_raw16(out_path, pcm)
 
         print()
-        print(f"  Written: {out_path}  ({len(raw16)} bytes, 16-bit for Audacity)")
+        print(f"  Written: {out_path}  ({n} bytes, 16-bit for Audacity)")
         print()
         print("Load in Audacity:  File > Import > Raw Data")
         print("  Encoding  : Signed 16-bit PCM")

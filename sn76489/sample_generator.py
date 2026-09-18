@@ -17,7 +17,6 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
-import struct
 import sys
 import warnings
 from pathlib import Path
@@ -27,21 +26,14 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
+from core.pcm import int8_to_raw16, to_int8
+from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
 from sn76489.renderer import (
     note_to_psg_n,
     render_psg_noise_raw,
     render_psg_tone_raw,
 )
-
-
-def _trim_trailing_silence(mono: list) -> list:
-    """Remove trailing zero samples (chip-silent) from raw mono list."""
-    i = len(mono)
-    while i > 0 and mono[i - 1] == 0:
-        i -= 1
-    return mono[:i]
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -227,10 +219,7 @@ def generate_psg_samples(
         print(f"  PSG hardware-max scale: psg_output_max={psg_synth.psg_output_max}  scale={scale:.5f}"
               f"  (white noise -> +-{round(psg_synth.psg_output_max / 2 * scale)}, tone -> +-{round(psg_synth.psg_output_max * scale)})")
     for inst_num, (mono, rate) in raw_data.items():
-        pcm = bytearray(len(mono))
-        for i, v in enumerate(mono):
-            pcm[i] = max(-128, min(127, round(v * scale))) & 0xFF
-        result[inst_num] = (bytes(pcm), rate)
+        result[inst_num] = (to_int8(mono, scale), rate)
 
     return result
 
@@ -296,14 +285,9 @@ def _smoke_test() -> None:
     out_dir.mkdir(exist_ok=True)
 
     for inst_num, (pcm, _) in samples.items():
-        raw16 = bytearray(len(pcm) * 2)
-        for i, b in enumerate(pcm):
-            val8  = b if b < 128 else b - 256
-            val16 = max(-32768, min(32767, val8 * 256))
-            struct.pack_into('<h', raw16, i * 2, val16)
         out_path = out_dir / f"psg_sample_gen_test_{inst_num}.raw"
-        out_path.write_bytes(bytes(raw16))
-        print(f"  Written: {out_path}  ({len(raw16)} bytes, 16-bit for Audacity)")
+        n = int8_to_raw16(out_path, pcm)
+        print(f"  Written: {out_path}  ({n} bytes, 16-bit for Audacity)")
 
     print()
     print("SUCCESS")

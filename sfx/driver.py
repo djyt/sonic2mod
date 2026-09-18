@@ -13,6 +13,17 @@ frequency, which is the only case where the caller writes the frequency register
 
 from __future__ import annotations
 
+from core.driver_tables import (
+    ENVELOPE_TERMINATOR,
+    FM_FREQUENCIES,
+    PAN_VALUES,
+    PSG_ENVELOPES,
+    PSG_FREQUENCIES,
+    PSG_FREQUENCIES_EXTENDED,
+    fm_note_index,
+    psg_note_index,
+)
+
 from .chips import (
     fm_key_off,
     fm_key_on,
@@ -24,16 +35,6 @@ from .chips import (
     psg_set_freq,
     psg_set_noise,
     psg_set_volume,
-)
-from .tables import (
-    ENVELOPE_TERMINATOR,
-    FM_FREQUENCIES,
-    PAN_VALUES,
-    PSG_ENVELOPES,
-    PSG_FREQUENCIES,
-    PSG_FREQUENCIES_EXTENDED,
-    fm_note_index,
-    psg_note_index,
 )
 from .track import SfxTrack
 

@@ -121,6 +121,7 @@ psg_voice_map:
 | `high` | note | no | Upper bound of melodic range (paired with `low`) |
 | `synth_root` | note | no | Synthesis pitch override; for noise entries, sets the LFSR frequency (tone2_n); does NOT affect `target_rate` |
 | `noise_rate` | int | no | Noise divider: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (tone2_n derived from synth_root) |
+| `tone2_n` | int | no | Rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR clock; overrides the `synth_root`/`root` derivation. `nMaxPSG` needs `tone2_n: 1` |
 | `envelope` | str/list | no | Named table key (e.g. `fTone_04`) or inline list of per-frame attenuation deltas |
 | `base_volume` | int | no | SN76489 base attenuation (0=max, 15=silent) |
 
@@ -341,9 +342,19 @@ synth_root = low + total_transpose
 In Sonic 1, PSG3's driver writes its own note frequency to SN76489 tone channel 2 (`$C0`)
 even in noise mode, so the LFSR tracks PSG3's own notes — not SMPS PSG channel 2.
 
-The synthesizer derives `tone2_n` from `synth_root` (or `root` if absent) and writes it to
-tone ch2 before rendering.  A fast warmup (N=1, 4096 discarded samples) spins the LFSR into
-its pseudo-random region to avoid the initial DC-bias artifact.
+The synthesizer uses `tone2_n` from the entry when given, otherwise derives it from `synth_root`
+(or `root` if absent), and writes it to tone ch2 before rendering.  A fast warmup (N=1, 4096
+discarded samples) spins the LFSR into its pseudo-random region to avoid the initial DC-bias
+artifact.
+
+**`nMaxPSG` is N=0, not a musical note.**  The common Sonic 1 noise trigger `nMaxPSG` (= nA5)
+indexes the last `PSGFrequencies` entry, 223721.56 Hz, so the driver writes divider **0** to tone
+ch2.  The Sega VDP PSG clocks a zero divider as N=1: LFSR shift rate = clock/32 ≈ 112 kHz, which is
+near-white hiss out to the sampling Nyquist.  Set `tone2_n: 1` for those channels (the Title Screen
+was previously configured as `synth_root: A8` → N≈16 → 7 kHz, which sounds like a dull rattle).
+`tools/vgm_analyze.py --chip psg --channel NOISE` prints the divider actually written in a VGZ
+recording (`white/tone2 N=0`), and `tools/vgm_compare.py` shows the resulting band profile
+against the MOD's.
 
 **Calculating synth_root for Sonic 1 rate-3 entries:**
 

@@ -18,6 +18,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | Module descriptions — IR data classes, parser stages, ModFile layout |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
+| `docs/title_screen_audit.md` | **Accuracy audit vs VGZ** (2026-09) — method, per-channel numbers, config fixes, pending converter work (note fill frames, vibrato formula, EDx delay, volume baking) |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
 | `reference/mml2mod-master/` | Reference MML-to-MOD converter |
 
@@ -64,7 +65,8 @@ sonic2mod/
     validate.py       #   Standalone test: python sfx/validate.py
   docs/              # Technical documentation
   tools/             # Debug / analysis utilities
-    vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files
+    vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files (+ rate-3 noise divider, DAC seeks)
+    vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
     regression_test.py  #   Before/after regression test runner
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
@@ -119,8 +121,13 @@ python sn76489/validate.py      # C3 tone + white noise → output/psg_{tone,noi
 python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
 # Analyse SN76489 PSG noise channel (compare against title_screen.yaml output)
 python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip psg --channel NOISE
-# Show all chips / all channels
+# Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
 python tools/vgm_analyze.py "reference/vgm/01 - Title Theme.vgz" --chip all --max-rows 0
+
+# Audit a conversion against its VGZ: per-note pitch/level, channel balance, onset timing, noise
+# spectrum, DAC rate.  Needs VGMPlay (C:\coding\amiga\music\vgmplay or VGMPLAY_DIR) and an ffmpeg
+# build with libopenmpt.  Renders go to output/compare/<config>/; --skip-render reuses them.
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --vgmplay C:\coding\amiga\music\vgmplay
 ```
 
 ## Regression Testing
@@ -278,6 +285,8 @@ Smoke tests: `python ym2612/validate.py` / `renderer.py` / `sample_generator.py`
 
 Full reference: `docs/psg_synthesis.md`.
 Enable: set `psg_synthesis: {enabled: true}` in `configs/settings.yaml`.
+Rate-3 noise (`noise_rate: 3`): set `tone2_n` explicitly. `nMaxPSG` writes divider 0, which the
+VDP PSG clocks as N=1 → `tone2_n: 1` (not `synth_root: A8`, which gives a 7 kHz dull rattle).
 Smoke tests: `python sn76489/validate.py` / `renderer.py` / `sample_generator.py`
 
 ## Testing

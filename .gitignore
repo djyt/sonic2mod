@@ -1,6 +1,7 @@
 /.claude
 /output
 /sonic_1
+reference/vgz
 *.egg-info/
 *__pycache__*
 *.code-workspace

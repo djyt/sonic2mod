@@ -114,10 +114,15 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
         # emulator reset default (N=1 → LFSR near sample_rate/2, wrong timbre).
         tone2_n = None
         if entry.noise_rate == 3:
-            synth_idx = (entry.synth_root - 12
-                         if entry.synth_root is not None
-                         else mod_root_idx)
-            tone2_n = note_to_psg_n(synth_idx, psg_synth.clock_rate)
+            if entry.tone2_n is not None:
+                # Explicit divider from the config (e.g. tone2_n: 1 for nMaxPSG, which the
+                # driver writes as N=0 and the Sega VDP PSG clocks as N=1).
+                tone2_n = entry.tone2_n
+            else:
+                synth_idx = (entry.synth_root - 12
+                             if entry.synth_root is not None
+                             else mod_root_idx)
+                tone2_n = note_to_psg_n(synth_idx, psg_synth.clock_rate)
         # Cap sustain to envelope length so the sample ends at the natural decay tail
         # rather than holding noise output for the full song-longest-note duration.
         # Include ramp-to-silence frames so _render_with_envelope can fade to attenuation 15.

@@ -277,6 +277,26 @@ Example — source C5–B6 (span = 12 semitones):
 
 **Fix:** MOD vibrato (`4xy`) has different semantics (sinusoidal, not triangle). Treat the translation as approximate. Tune `4xy` values manually in the tracker if needed.
 
+**Known inaccuracy (measured 2026-09, see `docs/title_screen_audit.md` §2):** the current
+speed/depth formula runs the LFO too slow and too deep — Title Screen FM4 `smpsModSet $00,$01,$06,$04`
+is 5.75 Hz / ±19 cents on hardware but `485` = 3.85 Hz / ±33 cents in the MOD; `4C3` would be right.
+Modulation timers count V-int **frames** (60 Hz), not tempo ticks; the steady cycle is
+`2·speed·(steps+1)` frames with amplitude `delta·steps/2` FNUM units, and ProTracker's cycle is
+`64/x` processing ticks (`speed−1` per row) with amplitude ≈ `2·y` period units.
+
+---
+
+### 4b. smpsNoteFill counts frames, not ticks
+
+**Problem:** Note cuts land late on songs with a tempo modifier (Title Screen fill `$0C` cuts at
+250 ms in the MOD, 200 ms on hardware).
+
+**Cause:** `TempoWait` only delays `DurationTimeout`; `NoteTimeoutUpdate` still runs every V-int,
+so the fill value is in frames (60 Hz) while durations are in ticks (`fps × (mod−1)/mod`).
+
+**Fix (pending):** scale the fill by `ticks_per_sec / fps` before placing `ECx`/`C00`
+(`×0.8` for tempo modifier 5). Same scaling applies to `ModulationWait`.
+
 ---
 
 ### 5. Wrong operator order → distorted FM synthesis

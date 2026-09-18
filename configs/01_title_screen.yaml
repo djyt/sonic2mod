@@ -46,20 +46,29 @@ channels:
 # Samples. FM samples auto-generated if fm_synthesis: true in settings.yaml
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
+#
+# FM volumes bake in the smpsHeaderFM TL offsets (FM1 $0C, FM2 $09, FM3 $0D, FM4 $0C, FM5 $0E;
+# 0.75 dB per step) relative to FM2, so no per-note Cxx is needed:  32 × 10^(−steps×0.75/20).
+# FM3/FM4 end on voice $01 with smpsAlterVol −4/−3, which lands them exactly on FM2's $09, so
+# instrument 5 serves all three at 32.  Verified against reference/vgz with tools/vgm_compare.py.
+# -------------------------------------------------------------------------------------------------
 sample_list:
   # --- percussion ---
   - [1, "kick.raw",          64, 0]
   - [2, "snare.raw",         64, 0]
-  # --- voice $00: bright lead synth (FM1 + FM5) ---
-  - [3, "fm_voice0.raw",     32, 0]
-  # --- voice $00 channel override: FM5 detuned variants (finetune +1 ≈ +12.5 cents) ---
-  - [4, "fm_voice0.raw",     32, 1]
-  # --- voice $01: bass / sustain pad (FM2 + FM3/FM4 ending) ---
+  # --- voice $00: bright lead synth (FM1, TL $0C = 3 steps / −2.25 dB below FM2) ---
+  - [3, "fm_voice0.raw",     25, 0]
+  # --- voice $00 FM5 variant: TL $0E (−3.75 dB); smpsAlterNote $03 ≈ +5..8 cents → finetune +1 ---
+  - [4, "fm_voice0.raw",     21, 1]
+  # --- voice $01: bass / sustain pad (FM2 $09; FM3/FM4 ending chord also at $09) ---
   - [5, "fm_voice1.raw",     32, 0]
-  # --- voice $02: harmony chord stabs (FM3/FM4 main melody) ---
-  - [6, "fm_voice2.raw",     32, 0]
-  # --- PSG White Noise ---
-  - [7, "psg_noise.raw",     48, 0]
+  # --- voice $02: harmony chord stabs (FM3 $0D / FM4 $0C ≈ 3.5 steps / −2.6 dB below FM2) ---
+  - [6, "fm_voice2.raw",     24, 0]
+  # --- PSG white noise: the VGM reference puts the hiss ~10 dB below where 48 landed it ---
+  - [7, "psg_noise.raw",     16, 0]
+  # --- voice $01 FM3 ending variant: smpsAlterNote $03 detune (+5 cents) → finetune +1, so the
+  #     FM2/FM3/FM4 unison chord beats instead of summing in phase ---
+  - [8, "fm_voice1.raw",     32, 1]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -107,13 +116,14 @@ voice_map:
 # PSG Sounds
 # -------------------------------------------------------------------------------------------------
 psg_map:
-  0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
+  0xE7:                    # form $E7 — white noise, LFSR clocked by PSG3's own tone register $C0 (rate 3)
     mod_instrument: 7
-    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    root: A3               # target_rate ≈ 27928 Hz → 14 kHz bandwidth keeps most of the hiss
     noise_rate: 3
-    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
+    tone2_n: 1             # nMaxPSG → PSGFrequencies[69] = 223721 Hz → N=0; the VDP PSG clocks N=0 as
+                           # N=1 (112 kHz shift rate = near-white hiss).  The VGM confirms tone2 = 0.
     envelope: fTone_04     # Quick stepped fade (10 frames)
-    base_volume: 0         # SN76489 base attenuation (0=max)
+    base_volume: 0         # header volume $04 is applied by the converter as Cxx; keep 0 here
     
     
 # -------------------------------------------------------------------------------------------------
@@ -130,7 +140,15 @@ channel_instrument_map:
         mod_instrument: 4
         root: G2
         synth_root: G5
-    
+  # FM3's closing nA2 carries smpsAlterNote $03 too — same trick, voice $01
+  FM3:
+    1:
+      - low:  A2
+        high: D4
+        mod_instrument: 8
+        root: A1
+        synth_root: A2
+
     
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro

@@ -25,7 +25,9 @@ Output columns (FM):
                 lower than chip output, so A6 chip → A5 SMPS label)
 
 Output columns (PSG tone):
-    time_ms   — milliseconds from track start
+    time_ms   — milliseconds from track start (a row = the channel becoming audible, or its
+                period leaving the current note by more than --psg-mod-cents; smaller moves
+                are smpsModSet vibrato steps and do not start a row)
     chan      — PSG1..PSG3
     period    — 10-bit SN76489 period register value
     —         — (blk column unused, shown as —)
@@ -170,8 +172,14 @@ def _parse_vgm(
     psg_clock: int,
     channel_filter: set[str] | None,
     chip: str,
+    psg_mod_cents: float = 70.0,
 ) -> tuple[list[tuple], dict[str, list[float]], dict[str, list[float]]]:
     """Parse VGM binary data and return a list of key-on event rows.
+
+    The SN76489 has no key-on, so a PSG tone row starts when the channel becomes audible or when
+    its period moves more than ``psg_mod_cents`` away from the period the current note started on.
+    Smaller moves are the driver's modulation (smpsModSet rewrites the divider every few frames)
+    and stay inside the note; pass 0 to get a row for every period write.
 
     FM rows:       (time_ms, chan_name, fnum, block, freq_hz, note_name)
     PSG tone rows: (time_ms, chan_name, period, 0, freq_hz, note_name)
@@ -241,6 +249,15 @@ def _parse_vgm(
         tl_dict = fm_tl[bank][ch_idx]
         linear_sum = sum(10 ** (-(tl_dict[s] * 0.75) / 20.0) for s in _CARRIER_SLOTS_BY_ALG[alg])
         fm_amp_samples.setdefault(ch_name, []).append(linear_sum)
+
+    def _psg_new_note(ch: int) -> bool:
+        """Audible, and the period has left the current note (see psg_mod_cents)."""
+        new, old = psg_freq[ch], psg_prev_freq[ch]
+        if psg_vol[ch] >= 0xF or new == old:
+            return False
+        if new <= 0 or old <= 0 or psg_mod_cents <= 0:
+            return True
+        return abs(1200.0 * math.log2(new / old)) > psg_mod_cents
 
     def _emit_psg_keyon(ch: int) -> None:
         """Emit a PSG key-on event.
@@ -356,15 +373,18 @@ def _parse_vgm(
                 else:
                     # Tone frequency low nibble
                     psg_freq[ch] = (psg_freq[ch] & 0x3F0) | nib
-                    # Secondary key-on: period changed while channel is audible
-                    if psg_vol[ch] < 0xF and psg_freq[ch] != psg_prev_freq[ch]:
+                    # Secondary key-on: period changed while channel is audible.  The driver always
+                    # follows the latch with the high-bits byte; judging the half-written period
+                    # would report a note that never sounds, so wait for that byte when it is next.
+                    two_byte = pos + 1 < end and data[pos] == 0x50 and not data[pos + 1] & 0x80
+                    if not two_byte and _psg_new_note(ch):
                         _emit_psg_keyon(ch)
             elif psg_latch_ch is not None and psg_latch_type == 0 and psg_latch_ch < 3:
                 # Data byte: high 6 bits of tone period
                 psg_freq[psg_latch_ch] = (b & 0x3F) << 4 | (psg_freq[psg_latch_ch] & 0xF)
                 # Secondary key-on: period changed while channel is audible
                 ch = psg_latch_ch
-                if psg_vol[ch] < 0xF and psg_freq[ch] != psg_prev_freq[ch]:
+                if _psg_new_note(ch):
                     _emit_psg_keyon(ch)
 
         elif cmd == 0x50 and chip not in ('psg', 'all'):
@@ -493,6 +513,11 @@ def main() -> None:
         help=f"SN76489 clock in Hz (default {_DEFAULT_PSG_CLOCK}; read from file if present)",
     )
     ap.add_argument(
+        "--psg-mod-cents", type=float, default=70.0, dest="psg_mod_cents", metavar="CENTS",
+        help="PSG period moves within CENTS of the note's starting pitch are modulation, not a new "
+             "note (default 70; 0 = one row per period write)",
+    )
+    ap.add_argument(
         "--max-rows", type=int, default=200,
         help="Maximum rows to print (default 200; use 0 for unlimited)",
     )
@@ -527,6 +552,7 @@ def main() -> None:
         psg_clock=args.psg_clock,
         channel_filter=channel_filter,
         chip=args.chip,
+        psg_mod_cents=args.psg_mod_cents,
     )
 
     print(f"File   : {path}")

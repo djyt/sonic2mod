@@ -5,8 +5,10 @@ Renders the reference VGZ one chip channel at a time (VGMPlay with mute masks)
 and the converted MOD one MOD channel at a time (ffmpeg + libopenmpt on
 channel-isolated copies), then lines the two up and reports, per channel:
 
-  * every key-on event: reference pitch, MOD pitch error in cents, level in
-    both renders and the level difference
+  * every note: reference pitch, pitch of both renders in cents from it (measured on the
+    note's strongest partial), level in both renders and the level difference
+  * the pitch verdict: tools/vgm_pitch_audit.py's symbolic audit (chip frequency registers vs
+    the pitch each MOD note sounds at) - the authority on "is every note right"
   * level balance of each channel relative to a reference channel
   * level error per MOD instrument (grouped by channel and Cxx), with the sample_list volume that
     would zero it; --write-volumes applies those to the config
@@ -252,23 +254,36 @@ def spectrum(seg: np.ndarray, nfft: int) -> tuple[np.ndarray, np.ndarray]:
     return np.fft.rfftfreq(nfft, 1 / SR), mag
 
 
-def peak_near(seg: np.ndarray, f0: float, semis: float = 0.75) -> float:
-    """Interpolated spectral peak within +/- semis of f0 (0.0 if the window is empty)."""
-    if len(seg) < 64:
-        return 0.0
-    nfft = 1 << max(15, math.ceil(math.log2(len(seg) * 4)))
-    freqs, mag = spectrum(seg, nfft)
+def _band_peak(freqs: np.ndarray, mag: np.ndarray, f0: float, semis: float) -> tuple[float, float]:
+    """(interpolated peak Hz, its magnitude) within +/- semis of f0; (0, 0) when the band is empty."""
     lo, hi = f0 / 2 ** (semis / 12), f0 * 2 ** (semis / 12)
     idx = np.where((freqs >= lo) & (freqs <= hi))[0]
     if len(idx) == 0:
-        return 0.0
+        return 0.0, 0.0
     k = idx[np.argmax(mag[idx])]
     d = 0.0
     if 1 <= k < len(mag) - 1:
         a, b, c = (np.log(mag[k - 1] + 1e-12), np.log(mag[k] + 1e-12), np.log(mag[k + 1] + 1e-12))
         den = a - 2 * b + c
         d = 0.5 * (a - c) / den if den != 0 else 0.0
-    return float((k + d) * SR / nfft)
+    return float((k + d) * freqs[1]), float(mag[k])
+
+
+def harmonic_cents(seg: np.ndarray, f0: float, harmonic: int | None = None, semis: float = 0.75) -> tuple[int, float]:
+    """(harmonic used, cents that partial is from harmonic * f0).
+
+    An FM voice whose carriers run at a frequency multiple of 2 or more has no energy at the
+    channel's register frequency, and a peak search there only finds leakage.  With `harmonic`
+    None the strongest of the first four partials is used; pass that number back in to measure
+    the other render on the same partial.
+    """
+    if len(seg) < 64:
+        return harmonic or 1, float("nan")
+    nfft = 1 << max(15, math.ceil(math.log2(len(seg) * 4)))
+    freqs, mag = spectrum(seg, nfft)
+    cands = [harmonic] if harmonic else [k for k in (1, 2, 3, 4) if k * f0 < SR / 2.5]
+    k, (f, _) = max(((k, _band_peak(freqs, mag, k * f0, semis)) for k in cands), key=lambda c: c[1][1])
+    return k, cents(f, k * f0)
 
 
 def band_profile(seg: np.ndarray, bands: list[tuple[int, int]], fmax: float = 22050) -> list[float]:
@@ -680,8 +695,11 @@ def _hz(f: int) -> str:
 
 
 def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
-           offset: float | None, ref_chan: str, max_rows: int) -> dict:
-    """Print the comparison and return the same numbers as a JSON-serialisable dict."""
+           offset: float | None, ref_chan: str, max_rows: int, pitch_tol: float = 35.0) -> dict:
+    """Print the comparison and return the same numbers as a JSON-serialisable dict.
+
+    `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
+    """
     raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
     rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
     events = [r for r in rows if r[1] != "DAC"]
@@ -705,12 +723,12 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     mod = {n: a.mean(axis=1) for n, a in mod_st.items()}
 
     offset_auto = offset is None
+    chip_tl, chip_end = vgm_pitch_audit.chip_timeline(raw)
+    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod_path.read_bytes(), cfg)
     if offset is None:
         # Note starts from the register log against the MOD's note rows: exact, and immune to the
         # envelope method's failure on sparse or tempo-drifting songs (Chaos Emerald +920 ms,
         # Drowning +1205 ms).  The envelope correlation is kept for songs with no pitched notes.
-        chip_tl, _ = vgm_pitch_audit.chip_timeline(raw)
-        mod_tl, _ = vgm_pitch_audit.mod_timeline(mod_path.read_bytes(), cfg)
         if any(mod_tl.values()):
             offset = vgm_pitch_audit.auto_offset(chip_tl, mod_tl, {c.source: c.mod_channel for c in cfg.channels})
             env = auto_offset(vgm["FULL"], mod["FULL"])
@@ -729,14 +747,17 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     # ---- per-note pitch and level (FM + PSG tone) ----
     per_ch: dict[str, list] = {}
+    # Notes the recording plays as the MOD's single pass ends or later (its second time round the
+    # loop) have nothing to be compared with; 150 ms keeps the measuring window inside the render.
     for r in events:
-        if r[1] in vgm and r[1] != "NOISE" and r[4] > 0:
+        if r[1] in vgm and r[1] != "NOISE" and r[4] > 0 and r[0] / 1000.0 + offset < mod_end - 0.15:
             per_ch.setdefault(r[1], []).append(r)
     level_diff: dict[str, list[float]] = {}
     cent_err: dict[str, list[float]] = {}
     printed = 0
     if per_ch:
-        print("Per-note comparison (levels are dBFS of the isolated channel; diff = MOD - VGM)")
+        print("Per-note comparison (levels are dBFS of the isolated channel; diff = MOD - VGM; vgm_c / mod_c = cents")
+        print("from the chip's key-on pitch, measured in the audio - PITCH flags the two renders disagreeing)")
         print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'ref_hz':>8}  {'vgm_c':>6}  {'mod_c':>6}  {'vgm_dB':>7}  {'mod_dB':>7}  {'diff':>6}")
         print("-" * 78)
     for ch, evs in per_ch.items():
@@ -748,18 +769,22 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
             win = min(0.3 if fref < 200 else 0.1, max(0.04, dur - 0.03))
             sv = seg_at(vgm[ch], t + 0.025, win)
             sm = seg_at(mod[ch], t + offset + 0.025, win)
-            cv = cents(peak_near(sv, fref), fref)
-            cm = cents(peak_near(sm, fref), fref)
+            harm, cv = harmonic_cents(sv, fref)
+            _, cm = harmonic_cents(sm, fref, harm)
             lv = db(rms(seg_at(vgm_st[ch], t + 0.025, win)))
             lm = db(rms(seg_at(mod_st[ch], t + offset + 0.025, win)))
             level_diff.setdefault(ch, []).append(lm - lv)
             if not math.isnan(cm):
                 cent_err.setdefault(ch, []).append(cm)
-            flag = "  <-- PITCH" if (math.isnan(cm) or abs(cm) > 25) else ""
+            # MOD against VGM, not against the key-on register value: on a grace note or a legato
+            # run the window holds the NEXT pitch in both renders, and that is not an error.
+            pitch_diff = cm - cv
+            flag = "  <-- PITCH" if (not math.isnan(cv) and (math.isnan(cm) or abs(pitch_diff) > 25)) else ""
             if lm < -70:
                 flag = "  <-- SILENT in MOD"
             res["notes"].append({
                 "channel": ch, "t_s": t, "note": note, "ref_hz": fref, "vgm_cents": cv, "mod_cents": cm,
+                "pitch_diff_cents": pitch_diff,
                 "vgm_db": lv, "mod_db": lm, "diff_db": lm - lv, "silent_in_mod": lm < -70,
             })
             if max_rows <= 0 or printed < max_rows or flag:
@@ -780,6 +805,19 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                 "pitch_cents": {"median": statistics.median(ce), "min": min(ce), "max": max(ce)},
                 "level_diff_db_median": statistics.median(ld),
             })
+        print()
+
+    # ---- pitch verdict: symbolic (vgm_pitch_audit), not the audio windows above ----
+    if any(mod_tl.values()):
+        pa = vgm_pitch_audit.audit(chip_tl, chip_end, mod_tl, mod_end, {c.source: c.mod_channel for c in cfg.channels},
+                                   offset, tolerance=pitch_tol)
+        res["pitch_audit"] = pa
+        n_ok = sum(c["ok"] for c in pa["channels"].values())
+        print(f"Pitch verdict (chip frequency registers vs the pitch each MOD note sounds at; wrong = over {pitch_tol:g} cents)")
+        print(f"  {n_ok} of {n_ok + pa['bad']} notes right" + ("" if pa["bad"] else " - every note is at the hardware's pitch"))
+        vgm_pitch_audit.print_audit(pa, 60.0, indent="  ")
+        if pa["bad"]:
+            print("  (times and every wrong note: python tools/vgm_pitch_audit.py <config> <vgz> --list)")
         print()
 
     # ---- vibrato on long notes ----
@@ -996,7 +1034,16 @@ def evaluate_checks(res: dict, balance_db: float | None, pitch_cents: float | No
         add("balance_db", balance_db,
             [(n, c["balance_db"]["diff"]) for n, c in res["channels"].items()
              if "balance_db" in c and abs(c["balance_db"]["diff"]) > balance_db])
-    if pitch_cents is not None:
+    if pitch_cents is not None and "pitch_audit" in res:
+        # The symbolic audit, run at this tolerance (report(pitch_tol=...)).
+        bad = []
+        for src, c in res["pitch_audit"]["channels"].items():
+            bad += [(f"{src} {w['chip']} @ {w['t_s']:.3f}s plays {w['mod']}", w["cents"]) for w in c["wrong_notes"]]
+            bad += [(f"{src} {m['chip']} @ {m['t_s']:.3f}s has no MOD note", float("nan")) for m in c["missing_notes"]]
+        bad += [(f"{n['channel']} {n['note']} @ {n['t_s']:.3f}s is silent in the MOD", float("nan"))
+                for n in res["notes"] if n["silent_in_mod"]]
+        add("pitch_cents", pitch_cents, bad)
+    elif pitch_cents is not None:
         # A note that is silent or has no measurable peak in the MOD is a pitch failure too.
         add("pitch_cents", pitch_cents,
             [(f"{n['channel']} {n['note']} @ {n['t_s']:.3f}s", n["mod_cents"]) for n in res["notes"]
@@ -1042,7 +1089,8 @@ def main() -> None:
     ap.add_argument("--fail-balance-db", type=float, metavar="DB",
                     help="exit 1 if any channel's balance vs --ref differs from the VGM by more than DB")
     ap.add_argument("--fail-pitch-cents", type=float, metavar="CENTS",
-                    help="exit 1 if any note is more than CENTS off, silent or unmeasurable in the MOD")
+                    help="exit 1 if any MOD note is more than CENTS from the chip's frequency register (symbolic "
+                         "audit, as vgm_pitch_audit.py), missing, or silent in the MOD render")
     ap.add_argument("--fail-unmatched", type=int, metavar="N",
                     help="exit 1 if any channel has more than N reference onsets without a MOD onset")
     args = ap.parse_args()
@@ -1081,7 +1129,8 @@ def main() -> None:
     print(f"VGZ    : {vgz}")
     print(f"Renders: {workdir}")
     print()
-    res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows)
+    res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
+                 pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
 
     if args.write_volumes:
         changes = write_volumes(Path(args.config), res["instrument_levels"]["instruments"])

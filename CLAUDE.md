@@ -129,11 +129,12 @@ python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --ma
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.
-# vgm_compare's per-note pitch column is unreliable on grace notes and legato runs.
+# vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
+# cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
 
-# Audit a conversion against its VGZ: per-note pitch/level, channel balance, onset timing, vibrato
-# rate/depth on long notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
+# Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
+# vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
 # reference/vgz/vgmplay/ (untracked, like the VGZ rips; or --vgmplay DIR / VGMPLAY_DIR) and an
 # ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
 # Renders go to output/compare/<config>/; --skip-render reuses them.

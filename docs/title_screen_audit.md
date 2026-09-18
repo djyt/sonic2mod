@@ -6,9 +6,11 @@ and what is still open.  Reproduce with:
 
 ```bash
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" \
-       --vgmplay C:\coding\amiga\music\vgmplay
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
 ```
+
+(VGMPlay is picked up from `reference/vgz/vgmplay/`; setup in `docs/pipeline.md` § Verifying
+against a VGZ.)
 
 `vgm_compare.py` renders the VGZ one chip channel at a time (VGMPlay, Nuked OPN2 core, mute
 masks) and the MOD one channel at a time (ffmpeg + libopenmpt on channel-isolated copies), aligns
@@ -30,7 +32,7 @@ DAC hit, SMPS tick 12) and compares every key-on.
 | Noise level | Was +11.6 dB relative to FM2 compared with the recording; now +1.5 dB (sample volume 48 → 16). |
 | Noise envelope | fTone_04 decay shape matches within 1–2 dB out to 133 ms. |
 | Note fill | Fill 3 cuts at 42 ms in the MOD vs 50 ms on hardware; fill 12 cuts at 250 ms vs **200 ms**. The driver counts fill in frames (60 Hz), the converter counts ticks (48/s). |
-| Vibrato (FM4 closing A2) | Hardware: 5.75 Hz, ±19 cents. MOD (`485`): 3.85 Hz, ±33 cents. Formula in `smps2mod.py` is off (see below). |
+| Vibrato (FM4 closing A2) | Hardware: 5.75 Hz, ±19 cents. MOD (`485`): 3.85 Hz, ±33 cents (measured by hand; the `vgm_compare.py` vibrato table added later reads 5.99 Hz ±19 c vs 3.98 Hz ±36 c, matching the 6.0 / 4.0 Hz theory). Formula in `smps2mod.py` is off (see below). |
 | Envelope decay | Sustained FM2 notes track the recording within ~2 dB over 2 s. Short notes played far above the sample's synth pitch decay proportionally faster (sample-rate scaling), e.g. G3 on voice 1 (synthesised at A2) loses 5.7 dB in 0.3 s vs 3.5 dB on hardware. |
 | DAC | Kick fundamental 55.2 Hz vs 53.8 Hz (C2 = 8287 Hz vs the original 8250 Hz); snare band profile matches; the recording's DPCM hiss is absent in the MOD (cleaner, not wrong). DAC level relative to FM2 matches to 0.1 dB. |
 | Detune | FM5's `smpsAlterNote $03` is +5…8 cents on hardware; finetune +1 gives +12.5 cents (closest available). FM3's ending note now also gets the detuned variant so the A2 unison beats instead of summing in phase. |
@@ -58,9 +60,9 @@ Per-channel level after the fix (whole-song RMS relative to FM2, dB):
 2. `psg_map[0xE7]`: `synth_root: A8` replaced by the new `tone2_n: 1`; volume 48 → 16.
 3. `channel_instrument_map.FM3` voice 1 → instrument 8 (`fm_voice1.raw`, finetune +1).
 
-`tests/baselines/title_screen_baseline.mod` now differs on purpose (channel 6: `C13` → `C06`;
-channel 3: instrument 5 → 8 on the closing note). Regenerate with
-`python tools/regression_test.py --generate-baselines` once accepted.
+`tests/baselines/title_screen_baseline.mod` was regenerated for these 25 intended differences
+(24× channel 6 `C13` → `C06`; channel 3 instrument 5 → 8 on the closing note) with
+`python tools/regression_test.py --generate-baselines --only title_screen`.
 
 ---
 

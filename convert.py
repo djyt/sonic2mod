@@ -277,6 +277,12 @@ def main():
                 f"PSG synthesized [bold]{info['count']}[/bold] instrument"
                 f"{'s' if info['count'] != 1 else ''}"
             )
+        elif info['type'] == 'rate3_divider':
+            detail_lines.append(
+                f"rate-3 noise inst [bold]{info['instrument']}[/bold]  tone-2 divider "
+                f"[bold]{info['n']}[/bold]  [dim]from n{info['note']} {info['transpose']:+d} "
+                f"in the driver's PSG table[/dim]"
+            )
         elif info['type'] == 'auto_sustain_fm':
             detail_lines.append(f"auto sustain FM [bold]{info['secs']}[/bold] s")
         elif info['type'] == 'auto_sustain_psg':

@@ -56,7 +56,7 @@ sample_list:
   # --- PSG noise (form $E7) ---
   - [17, "psg_noise.raw",  5, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +9.5 dB at 16
   # --- PSG tone $00 ---
-  - [13, "psg_$00.raw",  8, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: +7.5 dB at 20
+  - [13, "psg_$00.raw",  9, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: -0.5 dB at 8
   # --- PSG tone fTone_06 ---
   - [14, "psg_fTone_06.raw", 13, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +2.0 dB at 16
   # --- PSG tone fTone_05 ---
@@ -161,9 +161,8 @@ voice_map:
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
     mod_instrument: 17
-    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    root: A3
     noise_rate: 3
-    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16; A8→N≈16 ✓
     envelope: fTone_04
     base_volume: 0
 
@@ -189,15 +188,13 @@ psg_voice_map:
   fTone_04:
     type: white_noise
     noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope
-    synth_root: A8         # pitch_offset=$00; PSGFrequencies[nA5+0=69] ≈ 7049 Hz → N≈16 ✓
     mod_instrument: 16
-    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    root: A3
   fTone_08:
     type: white_noise
     noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope
-    synth_root: A8
     mod_instrument: 18
-    root: A3               # target_rate ≈ 27928 Hz; Nyquist 13964 Hz > LFSR 7049 Hz (no aliasing)
+    root: A3
 
 channel_instrument_map:
   FM3:

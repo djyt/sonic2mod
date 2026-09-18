@@ -61,7 +61,8 @@ def _resolve_envelope(entry: PsgInstrumentEntry, psg_synth: PsgSynthesisSettings
     return e  # already a list
 
 
-def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = False):
+def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = False,
+                      rate3_dividers: dict | None = None):
     """Render one PsgInstrumentEntry into raw_data. No-op if inst already seen."""
     inst_num = entry.mod_instrument
     if inst_num in seen:
@@ -118,6 +119,10 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
                 # Explicit divider from the config (e.g. tone2_n: 1 for nMaxPSG, which the
                 # driver writes as N=0 and the Sega VDP PSG clocks as N=1).
                 tone2_n = entry.tone2_n
+            elif entry.synth_root is None and rate3_dividers and inst_num in rate3_dividers:
+                # Neither given: the divider the driver writes for this instrument's notes,
+                # worked out from the song by SmpsToModConverter._derive_rate3_dividers.
+                tone2_n = rate3_dividers[inst_num]
             else:
                 synth_idx = (entry.synth_root - 12
                              if entry.synth_root is not None
@@ -178,6 +183,7 @@ def generate_psg_samples(
     config: ConversionConfig,
     psg_synth: PsgSynthesisSettings,
     verbose: bool = False,
+    rate3_dividers: dict | None = None,
 ) -> dict:
     """Render PSG samples for every PsgInstrumentEntry in config.psg_map.
 
@@ -197,12 +203,14 @@ def generate_psg_samples(
     seen: set[int] = set()
 
     for entry in config.psg_map.values():
-        _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
+        _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose,
+                              rate3_dividers=rate3_dividers)
 
     # Also synthesize tone entries from psg_voice_map (smpsPSGvoice routing).
     for entries in config.psg_voice_map.values():
         for entry in entries:
-            _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose)
+            _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose,
+                              rate3_dividers=rate3_dividers)
 
     # --- Normalization pass ---
     # Scale using hardware output maximum to preserve natural amplitude relationships.

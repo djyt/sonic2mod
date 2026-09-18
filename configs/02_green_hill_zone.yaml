@@ -193,9 +193,8 @@ psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
     mod_instrument: 16
     root: A3               # target_rate ≈ 27928 Hz
-    noise_rate: 3
-    tone2_n: 1             # nMaxPSG → PSGFrequencies[69]: the driver writes tone-2 divider 0, which the
-                           # VDP PSG clocks as N=1 (LFSR ≈ 112 kHz, near-white hiss).  The VGZ confirms N=0.
+    noise_rate: 3          # LFSR divider derived from the song: nMaxPSG → PSGFrequencies[69], divider 0, which
+                           # the VDP PSG clocks as N=1 (LFSR ≈ 112 kHz, near-white hiss).  The VGZ confirms N=0.
     envelope: fTone_04     # Quick stepped fade (10 frames)
     base_volume: 0         # SN76489 base attenuation (0=max)
 

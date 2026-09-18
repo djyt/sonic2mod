@@ -383,7 +383,12 @@ class SmpsToModConverter:
         # PSG synthesis block
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
             from sn76489.sample_generator import generate_psg_samples
-            psg_samples = generate_psg_samples(self.config, psg_synth)
+            rate3 = self._derive_rate3_dividers()
+            for inst, d in sorted(rate3.items()):
+                if d['used']:
+                    self._infos.append({'type': 'rate3_divider', 'instrument': inst, **d})
+            psg_samples = generate_psg_samples(
+                self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()})
             self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg")
             self._infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
 
@@ -482,6 +487,81 @@ class SmpsToModConverter:
                 'span': loop_span,
             })
 
+    def _source_map(self) -> dict:
+        """Source name ("DAC", "FM1"…, "PSG1"…) -> parsed channel, in header order."""
+        source_map, fm_idx, psg_idx = {}, 0, 0
+        for ch in self.song.channels:
+            ch_type = ch.header.channel_type
+            if ch_type == "DAC":
+                source_map["DAC"] = ch
+            elif ch_type == "FM":
+                fm_idx += 1
+                source_map[f"FM{fm_idx}"] = ch
+            elif ch_type == "PSG":
+                psg_idx += 1
+                source_map[f"PSG{psg_idx}"] = ch
+        return source_map
+
+    def _derive_rate3_dividers(self) -> dict[int, dict]:
+        """Tone-2 divider the driver writes for each rate-3 (`noise_rate: 3`) noise instrument.
+
+        In rate-3 mode the LFSR is clocked by tone channel 2, and the Sonic 1 driver keeps writing
+        PSG3's own note there: divider = PSGFrequencies[note − $81 + transpose].  So the right
+        divider is in the song data, not something a config has to state: the hi-hat's `nMaxPSG`
+        is table entry 69 = divider 0, which the Sega VDP PSG clocks as 1 (near-white hiss), and
+        Marble Zone's pitched noise is whatever its notes say.
+
+        The divider is taken at the entry's `low` note when it has one (the sample plays at `root`
+        for that note, and MOD playback speed moves it from there), otherwise from the note the
+        instrument plays most.  Returns {instrument: {'n', 'note', 'transpose', 'used'}};
+        `used` is False when the config states `tone2_n` or `synth_root`, which win.
+        """
+        from sfx.tables import PSG_FREQUENCIES_EXTENDED, psg_note_index
+
+        seen: dict[int, dict] = {}        # instrument -> {'entry', 'notes': {(note_value, transpose): count}}
+        source_map = self._source_map()
+        for chan_cfg in self.config.channels:
+            channel = source_map.get(chan_cfg.source)
+            if not chan_cfg.enabled or channel is None or channel.header.channel_type != "PSG":
+                continue
+            transpose = channel.header.pitch_offset
+            entries = self.config.psg_voice_map.get(channel.header.psg_voice_label)
+            entry = entries[0] if entries else None
+            for event in channel.events:
+                if event.is_effect:
+                    eff = event.effect
+                    if eff.effect_type == 'smpsChangeTransposition':
+                        transpose += eff.params[0]
+                    elif eff.effect_type == 'smpsPSGform':
+                        found = self.config.psg_map.get(eff.params[0])
+                        if found is not None:
+                            entry, entries = found, None
+                    elif eff.effect_type == 'smpsPSGvoice':
+                        found = self.config.psg_voice_map.get(eff.params[0])
+                        if found is not None:
+                            entry, entries = found[0], found
+                elif event.is_note and not event.note.is_rest and entry is not None:
+                    e = _psg_range_entry(entries, event.note.note_value - 0x81) or entry
+                    if e.type != "tone" and e.noise_rate == 3:
+                        rec = seen.setdefault(e.mod_instrument, {'entry': e, 'notes': {}})
+                        key = (event.note.note_value, transpose)
+                        rec['notes'][key] = rec['notes'].get(key, 0) + 1
+
+        out: dict[int, dict] = {}
+        for inst, rec in seen.items():
+            e, notes = rec['entry'], rec['notes']
+            at_low = {k: c for k, c in notes.items() if e.low is not None and k[0] - 0x81 == e.low}
+            if at_low:
+                note_value, transpose = max(at_low, key=lambda k: at_low[k])
+            else:
+                note_value, transpose = max(notes, key=lambda k: notes[k])
+                if e.low is not None:                       # anchor never played: same transpose, the anchor note
+                    note_value = e.low + 0x81
+            n = max(1, PSG_FREQUENCIES_EXTENDED[psg_note_index(note_value, transpose)])
+            out[inst] = {'n': n, 'note': _semitone_to_name(note_value - 0x81), 'transpose': transpose,
+                         'used': e.tone2_n is None and e.synth_root is None}
+        return out
+
     def _fm_range_entry(self, source: str, voice_idx, source_semitone: int):
         """voice_map / channel_instrument_map entry covering this source note, or None."""
         ranges = (self.config.channel_instrument_map.get(source, {}).get(voice_idx)
@@ -566,26 +646,8 @@ class SmpsToModConverter:
 
     def _convert_all_channels(self):
         """Convert all SMPS channels to MOD channels."""
-        # Build a map from source name to parsed channel
-        source_map = {}
-
-        # Assign source names based on header order:
-        # First is DAC (if present), then FM1..FMn, then PSG1..PSGn
-        dac_idx = 0
-        fm_idx = 0
-        psg_idx = 0
-
-        for ch in self.song.channels:
-            ch_type = ch.header.channel_type
-            if ch_type == "DAC":
-                source_map["DAC"] = ch
-                dac_idx += 1
-            elif ch_type == "FM":
-                fm_idx += 1
-                source_map[f"FM{fm_idx}"] = ch
-            elif ch_type == "PSG":
-                psg_idx += 1
-                source_map[f"PSG{psg_idx}"] = ch
+        # Source names follow header order: DAC (if present), then FM1..FMn, then PSG1..PSGn
+        source_map = self._source_map()
 
         self._fm_baseline_db: dict[int, float] = {}
         if self._fm_volume_mode == "baked":

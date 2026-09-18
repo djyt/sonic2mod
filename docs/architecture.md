@@ -4,7 +4,7 @@
 
 sonic2mod converts Sonic 1 SMPS (Sample Music Playback System) assembly music into Amiga ProTracker MOD format. The tool parses macro-based assembly text, builds an intermediate representation, then maps notes, timing, and effects into a binary MOD file.
 
-Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema), `docs/fm_synthesis.md` (YM2612 synthesis), `docs/psg_synthesis.md` (SN76489 PSG synthesis).
+Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.md` (effect mapping, gotchas), `docs/smps_format.md` (assembly syntax), `docs/yaml_config.md` (YAML schema), `docs/fm_synthesis.md` (YM2612 synthesis), `docs/psg_synthesis.md` (SN76489 PSG synthesis), `docs/sfx_rendering.md` (the offline SFX driver).
 
 ## Data Flow
 
@@ -12,24 +12,44 @@ Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.m
   .asm file
      │
      ▼
- SmpsParser.parse_file()      ← smps_parser.py
+ SmpsParser.parse_file()      ← core/smps_parser.py
      │
      ▼
-  SmpsSong (IR)               ← dataclasses in smps_parser.py
+  SmpsSong (IR)               ← dataclasses in core/smps_parser.py
      │
      ▼
- SmpsToModConverter.convert() ← smps2mod.py
+ SmpsToModConverter.convert() ← core/smps2mod.py   (walks channels with core/driver_state.py)
      │
      ▼
-  ModFile                     ← mod.py
+  ModFile                     ← core/mod.py
      │
      ▼
   .mod binary
 ```
 
+## Layering
+
+```
+core/        parser, IR, config, the driver tables and state machine, level laws,
+             the MOD writer, the shared CLI chrome, the C build and PCM helpers
+  ↑
+ym2612/      emulator wrappers and renderers; import core, never each other
+sn76489/
+  ↑
+sfx/         the offline SFX driver; imports core and both chip packages
+  ↑
+tools/       analysis and audit utilities
+*.py         the three CLIs — thin
+```
+
+`core/` is the bottom layer and imports nothing from `sfx/`, `ym2612/` or `sn76489/`.  The Sonic 1
+driver tables used to live in `sfx/tables.py`, which forced the converter to import the SFX package
+(by function-level imports, to dodge the cycle); they are now `core/driver_tables.py` and
+`sfx/tables.py` re-exports them under the name the SFX driver has always used.
+
 ## Module Descriptions
 
-### tables.py
+### core/tables.py
 
 Foundation module with no dependencies.
 
@@ -38,8 +58,64 @@ Foundation module with no dependencies.
 - **`SMPS_NOTE_NAMES` dict**: Maps all SMPS note name strings to their byte values. Built from the `_smps2asm_inc.asm` enumeration: `nRst=$80`, `nC0=$81`, 12 semitones per octave through octave 7. Includes enharmonic aliases (`nDb0`=`nCs0`, `nF0`=`nEs0`, etc.) and `nMaxPSG`=`nA5` ($C6).
 - **`SMPS_DAC_NAMES` dict**: Sonic 1 DAC sample names to byte values: `dKick=$81`, `dSnare=$82`, `dTimpani=$83`, `dHiTimpani=$88`, `dMidTimpani=$89`, `dLowTimpani=$8A`, `dVLowTimpani=$8B`.
 - **`smps_note_to_mod_note(note_value, transpose)`**: Computes `semitone = (note_value - 0x81) + transpose`, clamps to 0–35, returns `ModNote`.
+- **`semitone_to_note_name(semitone)`** / **`synth_note_name(semitone)`**: the two note spellings. The first is the driver's (index 5 is `Es`), used for SMPS labels; the second is the one YAML configs use (`F`) and is the inverse of `parse_synth_note`. Anything writing a config must emit the second — keeping them apart matters, because `Es` is a valid SMPS label and not a valid config note.
 
-### mod.py
+### core/driver_tables.py
+
+A transcription of `sonic_1/s1.sounddriver.asm`, not a recomputation from music theory — the
+driver's tables are what the hardware plays, and they differ from equal temperament audibly.
+Self-checks against known-good assembled values run at import.
+
+- **`FM_FREQUENCIES`** (96 entries) / **`PSG_FREQUENCIES`** (70) / **`PSG_FREQUENCIES_EXTENDED`** (128).
+- **`fm_note_index` / `psg_note_index`**: note byte + transpose → table index, wrapping mod 128 as the driver does.
+- **`psg_index_semitone(index)`**: the real pitch a PSG table index sounds at, including past the table's end.
+- **`psg_tone2_divider(note_value, transpose)`**: the tone-2 divider a note writes — what clocks a rate-3 noise LFSR.
+- **`SMPS_OP_TO_REG_OFFSET`**, **`FM_SLOT_MASK`**, **`CARRIER_OFFSETS_BY_ALG`**: the FM register layout. Read by both `ym2612/voice.py` (sample synthesis) and `sfx/chips.py` (driver emulation).
+- **`PSG_ENVELOPES`**, **`PAN_VALUES`**, **`HW_FM_CHANNEL`**, **`PSG_CHANNEL`**.
+
+### core/driver_state.py
+
+The SMPS track state that decides an event's pitch, level and instrument. Four passes over a
+channel's events used to each re-implement it — the two level pre-passes, the rate-3 divider
+derivation and `_convert_channel` — and they had drifted.
+
+- **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_range_entry`, `psg_ranged_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
+- **`source_names(song)` / `source_map(song)`**: `"DAC"`, `"FM1"…`, `"PSG1"…` in header order.
+- **`chip_pitch(semitone, transpose, is_psg)`**: the real pitch the chip plays — PSG through the driver table, so notes past its ends sound as the hardware does. What `range_space: chip` matches on.
+- **`pan_is_hard(params)`**, **`psg_range_entry(entries, key)`**.
+
+State that only matters while emitting MOD data (note fill, vibrato, cursor) stays in the
+converter. `core/analysis.py` keeps its own loop on purpose: it describes the song with no config
+in hand, tracks volume unclamped, and names PSG tones no `psg_voice_map` mentions.
+
+### core/levels.py
+
+The chip level laws, in one place: `TL_STEP_DB` (0.75), `PSG_STEP_DB` (2.0),
+`DEFAULT_FM_PAN_LAW_DB` (3.0), `fm_level_db`, `psg_level_db`, `db_to_mod_volume`, `fm_tl_to_mod`,
+`psg_att_to_mod`, and `modal_level` (the most common level, ties to the louder one — what a
+"baked" `sample_list` volume stands for). Used by the converter and by `analyze.py`'s YAML
+skeleton, which therefore predict the same numbers.
+
+### core/cli.py
+
+Shared Rich chrome for `convert.py`, `analyze.py` and `sonic2wav.py`: `cli_console()` (with the
+Windows UTF-8 stdout fix, idempotent), `branding(console, product, version)`, `row_printer`,
+`error_printer`, and the `LABEL_W` label column width.
+
+### core/cbuild.py
+
+**`CLibrary`** — a spec (`name`, `out_dir`, `sources`, `include`, `defines`, `gcc_libs`) plus
+`get_lib_path()`, which rebuilds when a source is newer than the cached `.dll` / `.so` and
+compiles with gcc or MSVC. `ym2612/build.py` and `sn76489/build.py` are each ~30 lines of spec
+over it.
+
+### core/pcm.py
+
+Helpers shared by the two synthesis pipelines: `to_mono`, `trim_trailing_silence`, `peak`,
+`to_int8(mono, scale)`, `normalize_int8(mono, context)`, and `write_raw16` / `int8_to_raw16`
+for the smoke tests' Audacity dumps.
+
+### core/mod.py
 
 MOD file writer adapted from [mml2mod-master](../mml2mod-master/mod.py).
 
@@ -50,6 +126,13 @@ Key changes from original:
 - Added `set_position_jump(position)` for Bxx song loop effect.
 - Added `create_placeholder_samples(count)` for generating silent 2-byte placeholder samples.
 - `add_samples()` uses `continue` instead of `exit()` on errors (non-fatal).
+- Added the cell-addressing helpers `cell_index(row, channel)`, `ensure_pattern(index)`,
+  `effect_at(pattern, row, channel)`, `note_at(...)`, `effect_slot_free(...)` and
+  `free_effect_channel(pattern, row, order=None)`, plus the module-level `row_to_bcd(row)`.
+  These are the only place that knows a cell is 4 bytes at `channel*4 + row*CHANNELS*4`; the
+  converter used to compute that stride itself in four places and `apply_pattern_breaks` in two.
+  Note that `set_active_pattern` already grows the pattern list, so callers need no
+  `add_patterns` loop before it.
 
 Classes:
 - **`ModSample`**: 30-byte sample header + raw PCM data. Fields: name (22 bytes), length (words), finetune, volume, repeat offset, repeat length.
@@ -69,7 +152,7 @@ Offset  Size   Content
 ...            Sample PCM data (concatenated)
 ```
 
-### smps_parser.py
+### core/smps_parser.py
 
 The core parser. Converts SMPS assembly text into an intermediate representation.
 
@@ -134,7 +217,7 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | `smpsPSGvoice` | `smpsPSGvoice` | voice name |
 | `smpsChangeTransposition` | `smpsChangeTransposition` | signed semitones |
 
-### config.py
+### core/config.py
 
 Per-song conversion configuration with YAML loading.
 
@@ -181,7 +264,7 @@ Per-song conversion configuration with YAML loading.
 - PSG transpose: -36
 - DAC samples: dKick→inst 1, dSnare→inst 7, dTimpani→inst 8, timpani variants→inst 9–12
 
-### smps2mod.py
+### core/smps2mod.py
 
 Conversion engine that walks the IR and writes MOD data.
 
@@ -191,20 +274,39 @@ Conversion engine that walks the IR and writes MOD data.
 2. Optionally run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) to synthesize PCM
 3. Load samples (from file list) or create placeholders
 4. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
-5. Convert all channels via `_convert_all_channels()`
-6. Set song loop point from `smpsJump` via `_set_loop_point()`
+5. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`), then extend short loop bodies (`_extend_looping_channels()`)
+6. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
+7. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
+
+`_set_loop_point()` is called by `convert.py` afterwards - after `apply_pattern_breaks`, so the
+`Bxx` lands at the right post-break position (see the call-order gotcha in `CLAUDE.md`).
 
 #### Channel Conversion
 
-For each configured channel, walks its event list maintaining per-channel state:
+Every pass over a channel's events - `_convert_channel`, the `_plan_levels` level pre-passes and
+`_derive_rate3_dividers` - walks with the same `DriverState` (`core/driver_state.py`), so they
+cannot disagree about what a note plays:
+
+| DriverState field | Updated by | Used for |
+|-------------------|------------|----------|
+| `tl` / `att` | `smpsAlterVol`, starting from the header volume | the note's level, hence `Cxx` |
+| `hard_panned` | `smpsPan` | the -3 dB pan term in the FM level |
+| `transpose` | `smpsChangeTransposition`, starting from the header pitch offset | pitch, and the `range_space: chip` lookup |
+| `voice` | `smpsSetvoice` | `voice_map` / `channel_instrument_map` lookup |
+| `psg_entry` / `psg_entries` / `psg_label` | `smpsPSGform` to `psg_map`, `smpsPSGvoice` to `psg_voice_map`, and the `smpsHeaderPSG` voice | PSG instrument, root anchoring, warning context |
+| `instrument` | all of the above | the MOD instrument a note lands on |
+
+`_convert_channel` keeps only the state the driver knows nothing about:
 
 | State Variable | Updated By | Used For |
 |----------------|------------|----------|
-| `current_volume` | `smpsAlterVol` | Cxx volume effect |
-| `alter_note` | `smpsAlterNote` | Added to transpose before note lookup |
-| `note_fill` | `smpsNoteFill` | ECx note cut effect |
-| `vibrato_active/speed/depth` | `smpsModSet/On/Off` | 4xy vibrato effect |
-| `transpose` | `smpsChangeTransposition` | Cumulative pitch offset |
+| `current_volume` | `smpsAlterVol` | `Cxx` in the non-baked volume modes only |
+| `note_fill` | `smpsNoteFill` | `ECx` / `C00` note cut |
+| `vibrato_active/speed/change/steps/wait` | `smpsModSet/On/Off` | `4xy` vibrato |
+| `last_note_cell` | each note-on | keeps two note-ons out of one cell |
+
+`smpsAlterNote` / `smpsDetune` updates nothing: it is a raw FNUM offset (about 10 cents), not
+semitones, and affects neither pitch placement nor range lookup.
 
 #### Tick-to-Pattern/Row Conversion
 
@@ -222,9 +324,13 @@ With `ticks_per_row=6`:
 #### Effect Priority
 
 Only one effect per note per row. Priority order (first match wins):
-1. Volume change (`Cxx`) — if volume differs from channel default
-2. Vibrato (`4xy`) — if modulation is active
-3. Note cut (`ECx`) — if note fill is set
+1. Volume change (`Cxx`) - if the note's level differs from its instrument's baked level
+2. Vibrato (`4xy`) - if modulation is active
+3. Note cut (`ECx`) - if note fill is set
+
+A note that starts between rows takes `EDx` on the row it starts in when the slot is free, which
+displaces an attack-row `4xy`; a displaced `Cxx` moves to the note's next free row. Full rules:
+`docs/pipeline.md` section "Notes that start between rows".
 
 #### DAC Handling
 
@@ -245,6 +351,14 @@ YAML config is the required positional argument. `--output` overrides `output_fi
 
 Output path defaults to `<input_basename>.mod` if not set in YAML.
 
+Console chrome (branding panel, label column, error printer) comes from `core/cli.py`, shared with
+`analyze.py` and `sonic2wav.py`.
+
+The converter reports through two public lists, `SmpsToModConverter.warnings` and `.infos`, each
+holding dicts with a `type` key. `convert.py` renders the informational ones inline and dispatches
+warnings through `_WARNING_RENDERERS`, a `{type: function}` table - a new warning type is one
+function and one entry, and an unrecognised type prints nothing.
+
 ---
 
 ## sn76489/ — SN76489 PSG Synthesis Package
@@ -254,7 +368,7 @@ Full reference: `docs/psg_synthesis.md`.
 
 ### build.py
 
-Auto-compiles `reference/SN76489/sn76489.c` + `panning.c` → `sn76489/sn76489.dll` (Windows) or `sn76489.so` (Unix). Rebuilds only when C sources are newer than the compiled library.
+Auto-compiles `reference/SN76489/sn76489.c` + `panning.c` → `sn76489/sn76489.dll` (Windows) or `sn76489.so` (Unix). Rebuilds only when C sources are newer than the compiled library. The compile itself is `core.cbuild.CLibrary`, shared with `ym2612/build.py`; this module is only the spec.
 
 ### wrapper.py — `SN76489` class
 
@@ -284,8 +398,9 @@ generate_psg_samples(config, psg_synth, verbose=False) → dict[int, tuple[bytes
 ```
 
 Iterates all `PsgInstrumentEntry` objects from `config.psg_map` and `config.psg_voice_map`,
-synthesizes each, applies global normalization (`127.0 / psg_output_max`), and returns a
-`{inst_num: (pcm_bytes, sample_rate_hz)}` dict ready for `ModFile` insertion.
+synthesizes each, applies global normalization (`127.0 / psg_output_max`, through
+`core.pcm.to_int8`), and returns a `{inst_num: (pcm_bytes, sample_rate_hz)}` dict ready for
+`ModFile` insertion.
 
 ### validate.py
 

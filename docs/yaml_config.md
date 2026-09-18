@@ -476,4 +476,4 @@ Unspecified channels are skipped. This converts only FM1.
 
 ### Full Sonic 1 Song
 
-See [`configs/title_screen.yaml`](../configs/title_screen.yaml) for a complete example with all 9 channels, per-channel transpose, and DAC sample mappings.
+See [`configs/01_title_screen.yaml`](../configs/01_title_screen.yaml) for a complete example with all 9 channels, per-channel transpose, and DAC sample mappings.

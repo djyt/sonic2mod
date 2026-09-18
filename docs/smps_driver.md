@@ -60,7 +60,7 @@ This is the single most common source of confusion. They are fundamentally diffe
 - At FNUM ≈ 720 (C4), adding 3 yields FNUM = 723 ≈ +10 cents (logarithmic).
 - **Effect is sub-semitone** — cannot shift by a full semitone or change octave.
 - Stored in `SMPS_Track.Detune`.
-- **sonic2mod**: stored in `alter_note` field; explicitly NOT applied to semitone calculation or `voice_map` range lookup. Used only for chorus-style detuning.
+- **sonic2mod**: parsed as an `smpsAlterNote` event and then ignored — `DriverState.apply` does not track it, and it reaches neither the semitone calculation nor the `voice_map` range lookup. For chorus-style detuning use a `channel_instrument_map` variant with `finetune:` instead.
 - Typical values: `$02`–`$04` (detuned unison for chorus). Larger values cause obvious pitch drift.
 
 ### smpsChangeTransposition / smpsAlterPitch ($E9) — semitone shift
@@ -229,7 +229,8 @@ Each operator block (6 parameter bytes) uses this per-register order:
 ### YM2612 register mapping (sonic2mod)
 
 ```python
-_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
+# core/driver_tables.py — read by ym2612/voice.py and sfx/chips.py
+SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
 # SMPS OP1 → YM offset 0x0C
 # SMPS OP2 → YM offset 0x04
 # SMPS OP3 → YM offset 0x08

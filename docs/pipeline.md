@@ -4,7 +4,7 @@ How SMPS assembly music maps to Amiga ProTracker MOD format.
 
 Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (assembly syntax),
 `docs/architecture.md` (module overview), `docs/mod_effects.txt` (ProTracker effect reference),
-`docs/synthesis.md` (FM synthesis — synth_root, pitch matching, OPN2 internals),
+`docs/fm_synthesis.md` (FM synthesis — synth_root, pitch matching, OPN2 internals),
 `docs/psg_synthesis.md` (PSG synthesis — psg_map/psg_voice_map, envelope tables, SN76489 internals),
 `docs/yaml_config.md` (full YAML schema).
 
@@ -111,7 +111,7 @@ a row early or late, and because Python rounds halves to even, early and late on
   spaced.  GHZ (*m* = 3, 2 ticks per row): an odd tick comes 1 frame = 16.7 ms after its row
   starts, not the 25 ms an average tick lasts — exactly `ED1` at speed 3.  Measured: FM4/FM5
   median onset error +17 ms with the average-tick delay (`ED2`), +1 ms with the frame delay.
-  `x = round(frames × target_speed × _ticks_per_frame / _effective_tpr)`.
+  `x = round(frames × target_speed × _tpf_at(tick) / _effective_tpr)`.
 - **`EDx` needs the cell's one effect slot.**  A cut (note fill, or a PSG note's end) inside the
   attack row keeps it, and the note is rounded as before.  A `Cxx` due on the attack row gives
   way when the note lasts into the next row: the volume is set on the first later row of the note
@@ -140,8 +140,9 @@ a hard-panned one drives one (−3 dB power).  A MOD note's level is its instrum
 volume unless a `Cxx` overrides it, and instruments cannot share sample data, so a second copy of
 a sample at another volume costs its full size.
 
-`SmpsToModConverter._plan_fm_levels` therefore walks the FM channels first and, for every MOD
-instrument, counts notes per level `−0.75 × TL − pan`.  The level with the most notes is that
+`SmpsToModConverter._plan_levels(source_map, "FM")` therefore walks the FM channels first — with
+the same `DriverState` the conversion uses — and, for every MOD instrument, counts notes per level
+`−0.75 × TL − pan`.  The laws themselves live in `core/levels.py`.  The level with the most notes is that
 instrument's **baked level**: it is what the `sample_list` volume stands for, and those notes get
 no command.  A note at any other level gets `Cxx = volume × 10^(ΔdB / 20)` (clamped to 64).  So:
 
@@ -164,9 +165,9 @@ every FM note) and `false` (header TL ignored, one `smpsAlterVol` step = one *li
 ### PSG levels (`psg_volume_scaling: baked`)
 
 Same scheme on the SN76489: level = −2 dB × attenuation (`smpsHeaderPSG` volume +
-`smpsPSGAlterVol`, 15 = silent), planned by `_plan_psg_levels` with the converter's own instrument
-tracking (header voice, `smpsPSGform` → `psg_map`, `smpsPSGvoice` → `psg_voice_map` and its
-per-note range dispatch).  The attenuation most of an instrument's notes play at needs no command
+`smpsPSGAlterVol`, 15 = silent), planned by `_plan_levels(source_map, "PSG")` — the same pass, with the
+same `DriverState` instrument tracking the conversion uses (header voice, `smpsPSGform` →
+`psg_map`, `smpsPSGvoice` → `psg_voice_map` and its per-note range dispatch).  The attenuation most of an instrument's notes play at needs no command
 and is what its `sample_list` volume stands for.  There is no pan term — the PSG is mono.
 
 The legacy mode (`absolute`) made the volume `64 × 10^(−2·att/20) × sample volume / 64`, so every
@@ -322,7 +323,7 @@ keeping a voice breaks that model: the same byte must reach different MOD notes.
 does it twenty times, and the whole medley moves voices between octaves; matched on source bytes
 it audited at 8 % of notes right.  With `range_space: chip` (song-level) the key is the real pitch
 — byte + pitch_offset + accumulated `$E9`, PSG through the driver's frequency table
-(`sfx.tables.psg_index_semitone`) — so `low`/`high` are chip pitches, `synth_root` is simply `low`,
+(`core.driver_tables.psg_index_semitone`) — so `low`/`high` are chip pitches, `synth_root` is simply `low`,
 and a voice spanning more than three octaves gets one entry per window.  Two voices sharing one
 sample keep separate entries: `root_e = root_head + (low_e − low_head)`.  `configs/13_credits.yaml`
 is generated this way (1623 of 1635 notes right; the 12 left are detune scoops the converter does
@@ -451,7 +452,7 @@ ticks and wraps at 64; the sine peaks at about `2·y` period units.
 **Conversion** (`SmpsToModConverter._vibrato_speed` / `_vibrato_depth`):
 
 ```
-x = 64 · _effective_tpr / ((target_speed − 1) · cycle_frames · _ticks_per_frame)
+x = 64 · _effective_tpr / ((target_speed − 1) · cycle_frames · _tpf_at(tick))
 y = period · (delta · steps / 2) / frequency_word / 2          (per note)
 ```
 
@@ -483,7 +484,7 @@ Modulation timers count V-int **frames** (60 Hz), not tempo ticks; the steady cy
 **Cause:** `TempoWait` only delays `DurationTimeout`; `NoteTimeoutUpdate` still runs every V-int,
 so the fill value is in frames (60 Hz) while durations are in ticks (`fps × (mod−1)/mod`).
 
-**Fix (done):** `SmpsToModConverter._ticks_per_frame` = `(mod−1)/mod` (1.0 for SFX / mod ≤ 1)
+**Fix (done):** `SmpsToModConverter._tpf(modifier)` = `(mod−1)/mod` (1.0 for SFX / mod ≤ 1); `_tpf_at(tick)` picks the modifier in force at a tick, so mid-song `smpsSetTempoMod` is honoured
 converts frame counts to ticks; the fill and the `smpsModSet` wait both go through it
 (`×0.8` for tempo modifier 5, `×0.667` for GHZ's 3).  The same ratio decides whether the fill fires
 at all: a fill equal to the duration byte **does** fire when the song has a tempo modifier, because
@@ -513,9 +514,9 @@ itself are gotcha 4.
 
 **Problem:** Synthesized FM samples sound like an overdriven guitar / extreme distortion.
 
-**Cause:** Wrong `_SMPS_OP_TO_REG_OFFSET` mapping in `ym2612/voice.py`. SMPS stores operators in reversed order (OP4,OP3,OP2,OP1); the correct mapping is `(0x0C, 0x04, 0x08, 0x00)`. The wrong mapping `(0x00, 0x08, 0x04, 0x0C)` puts OP1 (often TL≈$01, near max volume) into the self-feedback slot.
+**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` mapping (`core/driver_tables.py`). SMPS stores operators in reversed order (OP4,OP3,OP2,OP1); the correct mapping is `(0x0C, 0x04, 0x08, 0x00)`. The wrong mapping `(0x00, 0x08, 0x04, 0x0C)` puts OP1 (often TL≈$01, near max volume) into the self-feedback slot.
 
-**Fix:** Verify `_SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `ym2612/voice.py`. Do not change it.
+**Fix:** Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/driver_tables.py` — `ym2612/voice.py` and `sfx/chips.py` both read it from there. Do not change it.
 
 ---
 

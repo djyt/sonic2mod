@@ -165,8 +165,6 @@ def _render_pipeline(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
-    headroom_tl: int = 0,
-    carrier_balance: bool = False,
 ) -> tuple[array.array, int]:
     """Common synthesis pipeline → (mono, out_rate) before int8 packing.
 
@@ -180,8 +178,7 @@ def _render_pipeline(
     else:
         opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
 
-    program_voice(opn2, voice, channel,
-                  headroom_tl=headroom_tl, carrier_balance=carrier_balance)
+    program_voice(opn2, voice, channel)
 
     freq        = note_to_freq(mod_note_index)
     fnum, block = freq_to_fnum_block(freq, clock_rate)
@@ -209,8 +206,6 @@ def render_note(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
-    headroom_tl: int = 0,
-    carrier_balance: bool = False,
 ) -> tuple[bytes, int]:
     """Render one FM note to 8-bit signed mono PCM, peak-normalized to ±127.
 
@@ -224,8 +219,6 @@ def render_note(
                          None → create and reset a fresh instance internally.
         channel:         YM2612 channel 0–5 to use for rendering.
         clock_rate:      Master clock frequency (Hz); default = MD NTSC 7,670,454.
-        headroom_tl:     TL steps added to carrier operators to prevent DAC clipping.
-        carrier_balance: Add extra TL for multi-carrier algorithms (alg 4/5/6/7).
 
     Returns:
         (pcm_bytes, sample_rate_hz) — 8-bit signed mono PCM and its sample rate.
@@ -233,7 +226,6 @@ def render_note(
     mono, out_rate = _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
         target_rate, opn2, channel, clock_rate,
-        headroom_tl=headroom_tl, carrier_balance=carrier_balance,
     )
     return _normalize_int8(mono), out_rate
 
@@ -247,8 +239,6 @@ def render_note_raw(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
-    headroom_tl: int = 0,
-    carrier_balance: bool = False,
 ) -> tuple[array.array, int]:
     """Like render_note but returns (mono, out_rate) before int8 packing.
 
@@ -258,7 +248,6 @@ def render_note_raw(
     return _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
         target_rate, opn2, channel, clock_rate,
-        headroom_tl=headroom_tl, carrier_balance=carrier_balance,
     )
 
 

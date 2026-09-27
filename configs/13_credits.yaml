@@ -60,34 +60,34 @@ sample_list:
   - [3, "timpani.raw", 62, 0]   # VGZ: +0.1 dB at 64
   # --- FM voices (volumes: skeleton estimates; set from the VGZ with vgm_compare --write-volumes) ---
   - [4, "fm_v00.raw", 22, 0]   # $00, $19  A1-Es3   # VGZ: +1.9 dB at 29
-  - [5, "fm_v02_lo.raw", 7, 0]   # $02  D1-C4   # VGZ: +1.9 dB at 9
-  - [6, "fm_v02_lo.raw", 22, 0]   # $01, $02, $04, $16  D2-B4
-  - [7, "fm_v03.raw", 55, 0]   # $03  C4-E5   # VGZ: +1.5 dB at 64
+  - [5, "fm_v02_lo.raw", 6, 0]   # $02  D1-C4; VGZ: +1.9 dB at 7
+  - [6, "fm_v02_lo.raw", 14, 0]   # $01, $02, $04, $16  D2-B4; VGZ: +3.8 dB at 22
+  - [7, "fm_v03.raw", 34, 0]   # $03  C4-E5; VGZ: +4.3 dB at 55
   - [8, "fm_v05.raw", 25, 0]   # $05  E4-Es5   # VGZ: +0.3 dB at 27
-  - [9, "fm_v07.raw", 20, 0]   # $07  G4-A5   # VGZ: +2.1 dB at 25
+  - [9, "fm_v07.raw", 13, 0]   # $07  G4-A5; VGZ: +3.8 dB at 20
   - [10, "fm_v08.raw", 10, 0]   # $08  A3-B4   # VGZ: +1.0 dB at 12
   - [11, "fm_v09.raw", 17, 0]   # $09  G1-B2   # VGZ: +2.8 dB at 23
   - [12, "fm_v0a_lo.raw", 27, 0]   # $0A, $1C  D4-C6   # VGZ: -0.4 dB at 25
   - [13, "fm_v0b_lo.raw", 64, 0]   # $0B  G3-E5   # VGZ: -3.6 dB at 64
-  - [14, "fm_v0c.raw", 10, 0]   # $0C  Cs3-B3   # VGZ: +0.6 dB at 11
-  - [15, "fm_v0d.raw", 15, 0]   # $0D  G4-As5   # VGZ: -3.9 dB at 10
+  - [14, "fm_v0c.raw",  7, 0]   # $0C  Cs3-B3; VGZ: +2.9 dB at 10
+  - [15, "fm_v0d.raw",  9, 0]   # $0D  G4-As5; VGZ: +4.2 dB at 15
   - [16, "fm_v0e.raw", 64, 0]   # $0E  Fs7-Fs7
   - [17, "fm_v0f.raw", 22, 0]   # $0F  C5-C6   # VGZ: +2.1 dB at 29
   - [18, "fm_v10.raw", 20, 0]   # $10, $1D  G2-B3   # VGZ: +2.0 dB at 25
-  - [19, "fm_v12_lo.raw", 37, 0]   # $12  A4-G6   # VGZ: +2.3 dB at 48
+  - [19, "fm_v12_lo.raw", 14, 0]   # $12  A4-G6; VGZ: +8.3 dB at 37
   - [20, "fm_v14.raw", 20, 0]   # $06, $14  C2-E3   # VGZ: +3.6 dB at 29
   - [21, "fm_v15.raw", 10, 0]   # $15  C4-A5   # VGZ: +2.2 dB at 14
-  - [22, "fm_v17.raw", 27, 0]   # $17  A4-Es5   # VGZ: -3.3 dB at 18
-  - [23, "fm_v18.raw", 40, 0]   # $11, $18  G4-A6   # VGZ: -2.0 dB at 31
+  - [22, "fm_v17.raw", 19, 0]   # $17  A4-Es5; VGZ: +3.2 dB at 27
+  - [23, "fm_v18.raw", 18, 0]   # $11, $18  G4-A6; VGZ: +6.8 dB at 40
   - [24, "fm_v1a_lo.raw", 17, 0]   # $1A  A2-E5   # VGZ: +2.0 dB at 23
   - [25, "fm_v1a_lo.raw", 57, 0]   # $1A  B5-B5
   - [26, "fm_v1b.raw", 64, 0]   # $1B  A0-A0
-  - [27, "fm_v1f.raw", 22, 0]   # $1F  D5-E6   # VGZ: +1.8 dB at 26
+  - [27, "fm_v1f.raw", 13, 0]   # $1F  D5-E6; VGZ: +4.6 dB at 22
   - [28, "fm_v20.raw", 20, 0]   # $20  D4-B4   # VGZ: -0.3 dB at 19
   # --- PSG ---
   - [29, "psg_tone1.raw", 5, 0]   # fTone_06  A2-G5   # VGZ: -8.7 dB at 2 (per-note) — PSG1 channel RMS then +1.0
-  - [30, "psg_tone2.raw", 8, 0]   # $00, fTone_01, fTone_05, fTone_06, fTone_08, fTone_09  Cs4-G6
-  - [31, "psg_noise.raw", 5, 0]   # VGZ: +8.9 dB at 16
+  - [30, "psg_tone2.raw", 12, 0]   # $00, fTone_01, fTone_05, fTone_06, fTone_08, fTone_09  Cs4-G6; VGZ: -3.3 dB at 8
+  - [31, "psg_noise.raw", 6, 0] # VGZ: -1.2 dB at 5
 
 dac_samples:
   - name: dKick

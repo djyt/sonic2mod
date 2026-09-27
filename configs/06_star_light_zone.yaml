@@ -37,19 +37,19 @@ sample_list:
   # --- percussion ---
   - [1, "kick.raw", 56, 0] # VGZ: -1.9 dB at 45
   # --- voice $00: alg 4: (1→2)+(3→4), fb 6 — FM1 ---
-  - [2, "fm_v00_lo.raw", 64, 0]
-  - [3, "fm_v00_hi.raw", 64, 0]
+  - [2, "fm_v00_lo.raw", 53, 0] # VGZ: +1.6 dB at 64
+  - [3, "fm_v00_hi.raw", 56, 0] # VGZ: +1.1 dB at 64
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
   - [4, "fm_v01.raw", 27, 0] # VGZ: -1.7 dB at 32
   # --- voice $02: alg 4: (1→2)+(3→4), fb 0 — FM3, FM4 ---
-  - [5, "fm_v02.raw",  9, 0] # VGZ: +8.4 dB at 32
+  - [5, "fm_v02.raw",  7, 0] # VGZ: +2.6 dB at 9
   # --- voice $03: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
   - [6, "fm_v03_lo.raw", 18, 0] # VGZ: +1.9 dB at 32
   - [7, "fm_v03_hi.raw", 19, 0] # VGZ: +1.5 dB at 32
   # --- voice $04: alg 4: (1→2)+(3→4), fb 7 — FM5 ---
-  - [8, "fm_v04.raw",  9, 0] # VGZ: -0.7 dB at 8
+  - [8, "fm_v04.raw",  6, 0] # VGZ: +4.3 dB at 9
   # --- voice $05: alg 4: (1→2)+(3→4), fb 6 — FM5 ---
-  - [9, "fm_v05.raw", 64, 0] # VGZ: -10.7 dB at 32
+  - [9, "fm_v05.raw", 42, 0] # VGZ: +3.7 dB at 64
   # --- PSG noise (form $E7) ---
   - [11, "psg_noise.raw",  4, 0] # baked: 64 at PSG attenuation 4 (−8 dB); VGZ: +13.3 dB at 25
   # --- PSG tone fTone_05 ---

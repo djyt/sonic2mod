@@ -256,7 +256,7 @@ Only carrier operators produce audio output. Carrier TL controls output volume.
 | 6 | 0x04, 0x08, 0x0C (OP2+OP3+OP4) | Three carriers + OP1 self-feedback |
 | 7 | 0x00, 0x04, 0x08, 0x0C (all) | Four carriers; pure additive synthesis |
 
-Algorithms 4–7 with TL=0 carriers are prone to clipping in synthesis. See `headroom_db` and `carrier_balance` in `configs/settings.yaml`.
+Algorithms 4–7 with several carriers at TL 0 overflow the chip's 9-bit channel accumulator; the synthesis reproduces that clipping unchanged (`docs/fm_synthesis.md` § Carrier levels and the channel accumulator).
 
 ### smpsVcAmpMod note (SMPS2ASM version difference)
 

@@ -202,7 +202,6 @@ def generate_fm_samples(
     # render and are consumed in job order, so the MOD does not depend on scheduling.
     sustain_secs = synth.sustain_duration
     assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
-    headroom_tl = round(synth.headroom_db / 0.75)
 
     def _render(job: _RenderJob) -> tuple[Sequence[int], int]:
         # A MOD sample holds at most max_sample_kb (settings.yaml), so at this instrument's
@@ -220,8 +219,6 @@ def generate_fm_samples(
             target_rate=job.target_rate,
             opn2=_thread_opn2(synth.mode),
             clock_rate=synth.clock_rate,
-            headroom_tl=headroom_tl,
-            carrier_balance=synth.carrier_balance,
         )
         return _trim_trailing_silence(mono), rate
 

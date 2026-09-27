@@ -163,6 +163,11 @@ def resolve_synth_roots(song, config) -> list[dict]:
     # written so that its notes play that sample in tune (make_credits_config.py) — so its own
     # D says nothing about the sample.  The pitch is chosen for the whole group: the chip
     # pitch their notes play most often, at most an octave above the first entry's D.
+    # The octave cap on the shift, or the merged build's own (merge_max_synth_shift: the Amiga
+    # port trades envelope timing at the busiest note for half the bytes)
+    cap = 12
+    if getattr(config, "merge_active", False):
+        cap = max(0, min(12, int(getattr(config, "merge_max_synth_shift", 12))))
     groups: dict[int, list] = {}
     for item in items:
         groups.setdefault(item[1].mod_instrument, []).append(item)
@@ -180,7 +185,7 @@ def resolve_synth_roots(song, config) -> list[dict]:
                     continue
                 for chip, n in pitches.get(id(e), {}).items():
                     counts[chip] = counts.get(chip, 0) + n
-            shift = max(0, min(max(counts, key=lambda c: (counts[c], -c)) - d_first, 12))
+            shift = max(0, min(max(counts, key=lambda c: (counts[c], -c)) - d_first, cap))
             pitch = d_first + shift
         for _, e, _, d, stated in group:
             if stated and e is not first:

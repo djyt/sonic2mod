@@ -8,7 +8,8 @@ fm_synthesis:
   mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
-  sustain_duration: auto    # Seconds the note is held on before key-off; or 'auto' to auto-detect
+  sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
+                            # its own longest ring in the song (docs/fm_synthesis.md § sustain_duration: auto)
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" = CPU cores - 1
@@ -19,7 +20,7 @@ psg_synthesis:
   enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation
   clock_rate: 3579545       # SN76489 NTSC Mega Drive clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
-  sustain_duration: auto    # Seconds of tone held before key-off; or 'auto' to auto-detect
+  sustain_duration: auto    # Seconds of tone held before key-off; or 'auto': per instrument, as FM
   release_padding: 0.2      # Seconds of silence/release after key-off
 
 max_sample_kb: 128          # Maximum Sample Length: 64 = Amiga ProTracker | 128 = Modern Trackers

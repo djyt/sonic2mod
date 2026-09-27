@@ -90,10 +90,11 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
                   f"root={entry.root.name} rate={target_rate}Hz{env_info}")
         # A MOD sample holds at most max_sample_kb (settings.yaml), so at this rate the
         # sustain can only be so long (the converter warns where a note needs more).
-        tone_sustain = min(psg_synth.sustain_duration,
-                           max_sustain_secs(target_rate, psg_synth.release_padding,
-                                            psg_synth.max_sample_bytes))
-        if verbose and tone_sustain < psg_synth.sustain_duration:
+        # This instrument's own longest ring when `auto` resolved one, else the setting
+        want = psg_synth.sustain_by_instrument.get(inst_num, psg_synth.sustain_duration)
+        tone_sustain = min(want, max_sustain_secs(target_rate, psg_synth.release_padding,
+                                                  psg_synth.max_sample_bytes))
+        if verbose and tone_sustain < want:
             print(f"  [psg synth] inst={inst_num} sustain capped at {tone_sustain:.2f}s "
                   f"({psg_synth.max_sample_kb} KiB sample limit at {target_rate}Hz)")
         with warnings.catch_warnings(record=True) as caught:

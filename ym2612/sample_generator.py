@@ -140,11 +140,14 @@ def generate_fm_samples(
     assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
 
     def _render(job: _RenderJob) -> tuple[Sequence[int], int, int]:
-        # A MOD sample holds at most max_sample_kb (settings.yaml), so at this instrument's
-        # rate the sustain can only be so long (the converter warns where a note needs more).
-        sustain = min(sustain_secs, max_sustain_secs(job.target_rate, synth.release_padding,
-                                                     synth.max_sample_bytes))
-        if verbose and sustain < sustain_secs:
+        # This instrument's own longest ring when `auto` resolved one (sustain_by_instrument),
+        # else the setting; and a MOD sample holds at most max_sample_kb (settings.yaml), so
+        # at this instrument's rate the sustain can only be so long (the converter warns
+        # where a note needs more).
+        want = synth.sustain_by_instrument.get(job.inst, sustain_secs)
+        sustain = min(want, max_sustain_secs(job.target_rate, synth.release_padding,
+                                             synth.max_sample_bytes))
+        if verbose and sustain < want:
             print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
                   f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
         mono, rate = render_layers(

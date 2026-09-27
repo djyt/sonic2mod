@@ -36,7 +36,7 @@ from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
 from core.tables import PERIOD_TABLE, ModNote
-from ym2612.renderer import freq_to_fnum_block, note_to_freq, render_note_raw
+from ym2612.renderer import note_to_fnum_block, note_to_freq, render_note_raw
 from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
@@ -54,6 +54,7 @@ class _RenderJob:
     target_rate: int
     source_label: str = ""
     mod_root_idx: int | None = None
+    tl_offset: int = 0           # track volume on the carriers (the level the sample stands for)
 
 
 _worker = threading.local()
@@ -82,16 +83,20 @@ def generate_fm_samples(
     config: ConversionConfig,
     synth: SynthesisSettings,
     verbose: bool = False,
+    tl_offsets: dict[int, int] | None = None,
 ) -> dict:
     """Render FM samples for every InstrumentRange entry that has a root anchor.
 
     Args:
-        song:   Parsed SmpsSong — provides song.voices (list[SmpsVoice]).
-        config: ConversionConfig — provides voice_map.
-        synth:  SynthesisSettings — clock/amiga_clock/sustain/release.
+        song:       Parsed SmpsSong — provides song.voices (list[SmpsVoice]).
+        config:     ConversionConfig — provides voice_map.
+        synth:      SynthesisSettings — clock/amiga_clock/sustain/release.
+        tl_offsets: {instrument: track volume} to render each instrument at (the converter's
+                    _plan_fm_render_levels: the level most of its notes play at); 0 = bare voice.
 
     Returns:
-        {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
+        {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
+        peak-normalised to its full 8 bits (its level is the sample_list volume's job).
         Only entries with entry.root set are included.
 
     Instruments render concurrently, one per thread, ``synth.worker_threads()`` at a time
@@ -128,13 +133,13 @@ def generate_fm_samples(
 
         assert synth_idx is not None and target_rate is not None
         if verbose:
-            _freq = note_to_freq(synth_idx)
-            _fnum, _block = freq_to_fnum_block(_freq, synth.clock_rate)
+            _fnum, _block = note_to_fnum_block(synth_idx, synth.clock_rate)
             print(f"  [synth] inst={entry.mod_instrument} voice=${voice_idx:02X} "
-                  f"synth_idx={synth_idx} -> {_freq:.1f} Hz -> fnum={_fnum} block={_block}")
+                  f"synth_idx={synth_idx} -> {note_to_freq(synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
 
         jobs.append(_RenderJob(entry.mod_instrument, voice_idx, voice, entry, synth_idx,
-                               target_rate, source_label, mod_root_idx))
+                               target_rate, source_label, mod_root_idx,
+                               tl_offset=(tl_offsets or {}).get(entry.mod_instrument, 0)))
         already_synthesized.add(entry.mod_instrument)
 
     for voice_idx, range_list in config.voice_map.items():
@@ -219,6 +224,7 @@ def generate_fm_samples(
             target_rate=job.target_rate,
             opn2=_thread_opn2(synth.mode),
             clock_rate=synth.clock_rate,
+            tl_offset=job.tl_offset,
         )
         return _trim_trailing_silence(mono), rate
 
@@ -252,21 +258,12 @@ def generate_fm_samples(
 
         raw_data[job.inst] = (mono, rate)
 
-    # --- Pass 2: convert mono lists to int8 bytes ---
-    if synth.normalize_samples:
-        # Per-sample normalization — each instrument scaled to its own peak ±127
-        for inst_num, (mono, rate) in raw_data.items():
-            pk = peak(mono)
-            result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
-    else:
-        # Global normalization — all instruments scaled by the same factor so
-        # relative levels reflect actual chip output balance (quiet patches stay quiet)
-        global_peak = max((peak(mono) for mono, _ in raw_data.values()), default=0)
-        scale = 127.0 / global_peak if global_peak else 0.0
-        if verbose and global_peak:
-            print(f"  Global peak: {global_peak}  (scale={scale:.4f})")
-        for inst_num, (mono, rate) in raw_data.items():
-            result[inst_num] = ((bytes(len(mono)) if global_peak == 0 else to_int8(mono, scale)), rate)
+    # --- Pass 2: quantise, each instrument to its own full 8 bits ---
+    # The level is the sample_list volume's job (measured against the VGZ), so nothing is
+    # gained by leaving a quiet instrument quiet in the sample — it only loses bits.
+    for inst_num, (mono, rate) in raw_data.items():
+        pk = peak(mono)
+        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
 
     return result
 

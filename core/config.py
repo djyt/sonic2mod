@@ -243,8 +243,6 @@ class PsgSynthesisSettings:
     amiga_clock: int = 3_546_895     # PAL Amiga clock for target_rate calculation
     sustain_duration: float | str = 1.0
     release_padding: float = 0.2
-    normalize_samples: bool = False  # True = per-sample normalize; False = global (preserves balance)
-    psg_output_max: int = 4096       # Hardware PSG max amplitude; noise peaks at 4096/2=2048 (C source halves it)
     # Envelope tables are not a setting: the driver's own live in core.driver_tables.PSG_ENVELOPES_BY_NAME.
     # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
     # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
@@ -273,6 +271,13 @@ class PsgSynthesisSettings:
                 "the driver transcription in core/driver_tables.py (PSG_ENVELOPES_BY_NAME); delete the block",
                 stacklevel=2,
             )
+        for key in ("normalize_samples", "psg_output_max"):
+            if key in s:
+                warnings.warn(
+                    f"{filepath}: psg_synthesis.{key} is ignored — every sample is peak-normalised "
+                    "to its full 8 bits and the sample_list volume carries its level; delete the line",
+                    stacklevel=2,
+                )
         _psg_sd = s.get("sustain_duration", 1.0)
         return cls(
             enabled=s.get("enabled", False),
@@ -280,8 +285,6 @@ class PsgSynthesisSettings:
             amiga_clock=s.get("amiga_clock", 3_546_895),
             sustain_duration=_psg_sd if _psg_sd == "auto" else float(_psg_sd),
             release_padding=s.get("release_padding", 0.2),
-            normalize_samples=s.get("normalize_samples", False),
-            psg_output_max=s.get("psg_output_max", 4096),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
             max_sample_kb=_max_sample_kb(data, filepath),
         )
@@ -295,7 +298,6 @@ class SynthesisSettings:
     amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
-    normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
@@ -364,11 +366,17 @@ class SynthesisSettings:
         for key in ("headroom_db", "carrier_balance"):
             if key in s:
                 warnings.warn(
-                    f"{filepath}: fm_synthesis.{key} is ignored — carriers render at the TL the voice "
-                    "states, and the chip's own 9-bit channel accumulator clips multi-carrier voices "
+                    f"{filepath}: fm_synthesis.{key} is ignored — carriers render at the voice's TL plus "
+                    "the channel's own volume, and the chip's 9-bit channel accumulator clips them "
                     "exactly as the hardware does; delete the line",
                     stacklevel=2,
                 )
+        if "normalize_samples" in s:
+            warnings.warn(
+                f"{filepath}: fm_synthesis.normalize_samples is ignored — every sample is peak-normalised "
+                "to its full 8 bits and the sample_list volume carries its level; delete the line",
+                stacklevel=2,
+            )
         _fm_sd = s.get("sustain_duration", 1.5)
         return cls(
             enabled=s.get("enabled", False),
@@ -377,7 +385,6 @@ class SynthesisSettings:
             amiga_clock=s.get("amiga_clock", 3_546_895),
             sustain_duration=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
             release_padding=s.get("release_padding", 0.5),
-            normalize_samples=s.get("normalize_samples", True),
             threads=s.get("threads", "normal"),
             max_sample_kb=_max_sample_kb(data, filepath),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),

@@ -31,11 +31,13 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.driver_tables import FM_FREQUENCIES
 from core.pcm import normalize_int8
 from core.pcm import to_mono as _to_mono
+from core.resample import resample
 from core.smps_parser import SmpsVoice
 from ym2612.voice import program_voice
-from ym2612.wrapper import OPN2, box_downsample
+from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -55,6 +57,23 @@ def note_to_freq(mod_note_index: int) -> float:
     Index 0 = C1 (≈ 32.7 Hz), index 33 = A3 (220 Hz), index 45 = A4 (440 Hz).
     """
     return 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
+
+
+def note_to_fnum_block(mod_note_index: int, clock_rate: int = _CLOCK_RATE) -> tuple[int, int]:
+    """(fnum, block) the Sonic 1 driver writes for this note.
+
+    Its FM frequency table (core.driver_tables.FM_FREQUENCIES: index 1 = nC0, so MOD index
+    i, C1 = 0, is table index i + 13) runs fnum 644–1216 with the block from the octave.
+    Using the same registers as the hardware matters beyond pitch: rate scaling and detune
+    read the key code (block and the fnum's top bits), so a note written as fnum 1148 in one
+    block and as 574 in the next sounds the same pitch with a different envelope and detune.
+    Off the table, or at another clock, the formula in freq_to_fnum_block stands in.
+    """
+    i = mod_note_index + 13
+    if clock_rate == _CLOCK_RATE and 0 <= i < len(FM_FREQUENCIES):
+        word = FM_FREQUENCIES[i]
+        return word & 0x7FF, (word >> 11) & 0x7
+    return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
 
 
 def freq_to_fnum_block(freq: float, clock_rate: int = _CLOCK_RATE) -> tuple[int, int]:
@@ -126,30 +145,15 @@ def _normalize_int8(mono: Sequence[int]) -> bytes:
 
 
 
-def _resample(mono, from_rate: int, to_rate: int):
-    """Box-filter (averaging) downsampler.  Returns an ``array('i')``.
+def _resample(mono, from_rate: int, to_rate: int) -> array.array:
+    """Polyphase windowed-sinc resample (core.resample, the SFX renderer's), back to ints.
 
-    Only useful for downsampling (to_rate < from_rate).  Each output sample is
-    the integer-average of all input samples that fall within its time window.
-    Runs in C (PCM_BoxDownsample); ``_resample_py`` below is the definition it
-    reproduces, and ``python ym2612/validate.py`` checks the two agree.
+    A box average, which this used to be, rolls off 3.9 dB at the target's Nyquist and
+    leaves aliases only ~6 dB down; the Kaiser-windowed sinc keeps the band flat and the
+    stopband >70 dB down.
     """
-    if not isinstance(mono, array.array):
-        mono = array.array('i', mono)
-    return box_downsample(mono, from_rate, to_rate)
-
-
-def _resample_py(mono: list, from_rate: int, to_rate: int) -> list:
-    """Reference implementation of _resample in pure Python (slow; tests only)."""
-    ratio   = from_rate / to_rate
-    out_len = round(len(mono) * to_rate / from_rate)
-    result  = []
-    for i in range(out_len):
-        start = int(i * ratio)
-        end   = min(len(mono), int((i + 1) * ratio) + 1)
-        chunk = mono[start:end]
-        result.append(sum(chunk) // len(chunk) if chunk else 0)
-    return result
+    out = resample(mono, from_rate, to_rate)
+    return array.array('i', (math.floor(v + 0.5) for v in out))
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +169,7 @@ def _render_pipeline(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    tl_offset: int = 0,
 ) -> tuple[array.array, int]:
     """Common synthesis pipeline → (mono, out_rate) before int8 packing.
 
@@ -178,10 +183,9 @@ def _render_pipeline(
     else:
         opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
 
-    program_voice(opn2, voice, channel)
+    program_voice(opn2, voice, channel, tl_offset=tl_offset)
 
-    freq        = note_to_freq(mod_note_index)
-    fnum, block = freq_to_fnum_block(freq, clock_rate)
+    fnum, block = note_to_fnum_block(mod_note_index, clock_rate)
     _set_freq(opn2, fnum, block, channel)
 
     sustain_n = math.ceil(native_rate * sustain_secs)
@@ -206,6 +210,7 @@ def render_note(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    tl_offset: int = 0,
 ) -> tuple[bytes, int]:
     """Render one FM note to 8-bit signed mono PCM, peak-normalized to ±127.
 
@@ -219,13 +224,14 @@ def render_note(
                          None → create and reset a fresh instance internally.
         channel:         YM2612 channel 0–5 to use for rendering.
         clock_rate:      Master clock frequency (Hz); default = MD NTSC 7,670,454.
+        tl_offset:       Track volume added to the carriers' TL (see program_voice); 0 = bare voice.
 
     Returns:
         (pcm_bytes, sample_rate_hz) — 8-bit signed mono PCM and its sample rate.
     """
     mono, out_rate = _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
-        target_rate, opn2, channel, clock_rate,
+        target_rate, opn2, channel, clock_rate, tl_offset=tl_offset,
     )
     return _normalize_int8(mono), out_rate
 
@@ -239,6 +245,7 @@ def render_note_raw(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    tl_offset: int = 0,
 ) -> tuple[array.array, int]:
     """Like render_note but returns (mono, out_rate) before int8 packing.
 
@@ -247,7 +254,7 @@ def render_note_raw(
     """
     return _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
-        target_rate, opn2, channel, clock_rate,
+        target_rate, opn2, channel, clock_rate, tl_offset=tl_offset,
     )
 
 

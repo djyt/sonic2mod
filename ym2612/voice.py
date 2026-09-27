@@ -28,7 +28,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.driver_tables import SMPS_OP_TO_REG_OFFSET
+from core.driver_tables import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
 from core.smps_parser import SmpsVoice
 from ym2612.wrapper import OPN2
 
@@ -37,10 +37,13 @@ from ym2612.wrapper import OPN2
 # sfx/chips.py.  Getting the operator order backwards puts the OP1 carrier in the
 # self-feedback slot (severe distortion).
 #
-# Every operator's TL is written as the voice states it.  55 Sonic 1 voices put two or
-# more carriers at TL 0 (every GHZ lead among them); their sum overflows the chip's
-# 9-bit channel accumulator (Nuked's OPN2_ChGenerate clamp, hardware behaviour) and
-# that clipping is part of the sound the game plays, so nothing here attenuates it.
+# Every operator's TL is written as the voice states it, plus the track volume on the
+# carriers exactly as the driver's SetVoice adds it (add.b: modulo 256, and the chip
+# keeps 7 bits).  55 Sonic 1 voices put two or more carriers at TL 0 (every GHZ lead
+# among them); at the channel's volume their sum may overflow the chip's 9-bit channel
+# accumulator (Nuked's OPN2_ChGenerate clamp, hardware behaviour) and that clipping is
+# part of the sound the game plays, so nothing here softens it — nor adds any: at TL 0
+# a GHZ lead clips a third of its samples where the hardware, at FM1's +18, clips none.
 # A lone carrier at TL 0 fills the accumulator exactly and can never clip.
 
 
@@ -52,7 +55,7 @@ def _parse_op_vals(raw: str | None, count: int = 4) -> list[int]:
     return (vals + [0] * count)[:count]
 
 
-def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int) -> None:
+def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0) -> None:
     """Program a SMPS voice onto a YM2612 channel.
 
     Writes all operator and channel-level registers for the voice.  Does NOT
@@ -62,10 +65,13 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int) -> None:
         opn2:            Initialised OPN2 emulator instance.
         voice:           Parsed SMPS voice (SmpsVoice dataclass from smps_parser).
         channel:         YM2612 channel 0–5.
+        tl_offset:       Track volume (smpsHeaderFM volume + smpsAlterVol, 0–127) added to the
+                         carrier operators' TL the way SetVoice does; 0 = the bare voice.
     """
     bank       = channel // 3
     ch_in_bank = channel % 3
     p          = voice.params
+    carriers   = CARRIER_OFFSETS_BY_ALG[voice.algorithm & 0x7]
 
     # Channel-level registers
     opn2.write_reg(0xB0 + ch_in_bank,
@@ -92,7 +98,10 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int) -> None:
         opn2.write_reg(0x30 + base,
                        ((detune[smps_op] & 0x7) << 4) | (mul[smps_op] & 0xF),
                        bank=bank)
-        opn2.write_reg(0x40 + base, tl[smps_op] & 0x7F, bank=bank)
+        level = tl[smps_op] & 0xFF
+        if off in carriers:
+            level = (level + tl_offset) & 0xFF     # add.b; the chip's TL field keeps 7 bits
+        opn2.write_reg(0x40 + base, level, bank=bank)
         opn2.write_reg(0x50 + base,
                        ((ks[smps_op] & 0x3) << 6) | (ar[smps_op] & 0x1F),
                        bank=bank)

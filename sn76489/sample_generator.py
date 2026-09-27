@@ -28,7 +28,7 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
 from core.driver_tables import PSG_ENVELOPES_BY_NAME
-from core.pcm import int8_to_raw16, max_sustain_secs, to_int8
+from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
 from sn76489.renderer import (
@@ -230,23 +230,13 @@ def generate_psg_samples(
             _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose,
                               rate3_dividers=rate3_dividers)
 
-    # --- Normalization pass ---
-    # Scale using hardware output maximum to preserve natural amplitude relationships.
-    # White noise is halved by the C emulator (sn76489.c line 242-243: chip->Channels[3] >>= 1),
-    # so it peaks at psg_output_max/2 = 2048, mapping to ±64 in int8 at default settings.
-    # Tones peak at psg_output_max = 4096, mapping to ±127 in int8.
+    # --- Quantise, each instrument to its own full 8 bits ---
+    # The level is the sample_list volume's job (measured against the VGZ); the noise channel
+    # used to sit at half scale (the emulator halves it), which only cost it a bit.
     result: dict[int, tuple[bytes, int]] = {}
-
-    if not raw_data:
-        return result
-
-    scale = 127.0 / psg_synth.psg_output_max
-    if verbose:
-        print(f"  PSG hardware-max scale: psg_output_max={psg_synth.psg_output_max}  scale={scale:.5f}"
-              f"  (white noise -> +-{round(psg_synth.psg_output_max / 2 * scale)}, tone -> +-{round(psg_synth.psg_output_max * scale)})")
     for inst_num, (mono, rate) in raw_data.items():
-        result[inst_num] = (to_int8(mono, scale), rate)
-
+        pk = peak(mono)
+        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
     return result
 
 

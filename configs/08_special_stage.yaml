@@ -47,10 +47,10 @@ channels:
 sample_list:
   - [1,  "ss_v0.raw",      32, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
   - [2,  "ss_v1.raw",      40, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
-  - [3,  "ss_v2.raw",      64, 0]
-  - [4,  "ss_v3.raw",      22, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
-  - [5,  "psg_tone04.raw", 25, 0] # baked: 32 at PSG attenuation 3 (−6 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
-  - [6,  "psg_tone08.raw", 33, 0] # baked: 40 at PSG attenuation 1 (−2 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
+  - [3,  "ss_v2.raw",      41, 0] # VGZ: +3.9 dB at 64
+  - [4,  "ss_v3.raw",      30, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: -2.7 dB at 22
+  - [5,  "psg_tone04.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: +3.6 dB at 25
+  - [6,  "psg_tone08.raw", 62, 0] # baked: 40 at PSG attenuation 1 (−2 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: -5.5 dB at 33
 
 
 # -------------------------------------------------------------------------------------------------

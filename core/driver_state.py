@@ -94,18 +94,27 @@ def resolve_synth_roots(song, config) -> list[dict]:
     `low`.  This walks every enabled FM/PSG channel with the DriverState, collects D for each
     note an entry routes, and
 
-    - sets `synth_root = D` where the config left it out (the value most notes give; a
-      config never needs to state it), and
+    - where the config leaves synth_root out, renders at the chip pitch the entry's notes play
+      most often (ties to the lower one: a sample played below its rendering pitch runs
+      slower and must be longer) and sets `synth_shift` = that pitch − D, capped so the
+      lowest note the entry places still lands on C1.  Envelopes run in real time on the
+      chip but stretch with playback rate in a MOD, so rendering at the busiest note keeps
+      the most notes' attack and decay at the hardware's speed.  A config never needs to
+      state it.
     - sets `synth_shift = synth_root − D` where it is stated, so a sample rendered anywhere in
-      its range (`synth_root` in the middle, say) is placed lower by that much and stays in
-      tune: the conversion subtracts synth_shift from m.
+      its range is placed lower by that much and stays in tune: the conversion subtracts
+      synth_shift from m.
 
     Returns one dict per entry: {'context', 'instrument', 'synth_root', 'derived', 'shift',
-    'votes': {D: notes}}.  More than one D means the entry's low is played at several chip
-    pitches (several pitch offsets or an smpsChangeTransposition under one source range —
-    what `range_space: chip` and a split entry are for); the caller warns.
+    'votes': {D: notes}, 'pitches': {chip pitch: notes}}.  More than one D means the entry's
+    low is played at several chip pitches (several pitch offsets or an
+    smpsChangeTransposition under one source range — what `range_space: chip` and a split
+    entry are for); the caller warns.
     """
     votes: dict[int, dict[int, int]] = {}       # id(entry) -> {D: notes}
+    pitches: dict[int, dict[int, int]] = {}     # id(entry) -> {chip pitch: notes}
+    lowest: dict[int, int] = {}                 # id(entry) -> smallest m − root it places
+    highest: dict[int, int] = {}                # id(entry) -> largest m − root it places
     smap = source_map(song)
     for chan_cfg in config.channels:
         channel = smap.get(chan_cfg.source)
@@ -141,6 +150,11 @@ def resolve_synth_roots(song, config) -> list[dict]:
                 m_rel = key - entry.low
             per = votes.setdefault(id(entry), {})
             per[real - m_rel] = per.get(real - m_rel, 0) + 1
+            pp = pitches.setdefault(id(entry), {})
+            pp[real] = pp.get(real, 0) + 1
+            rel = int(m_rel)
+            lowest[id(entry)] = min(lowest.get(id(entry), rel), rel)
+            highest[id(entry)] = max(highest.get(id(entry), rel), rel)
 
     def entries():
         for v, ranges in config.voice_map.items():
@@ -155,21 +169,60 @@ def resolve_synth_roots(song, config) -> list[dict]:
                 if e.type == "tone":
                     yield f"psg_voice_map[{label}][{i}]", e
 
-    out = []
+    # Pass 1: what each entry needs on its own.
+    items = []                                  # (context, entry, votes, D, stated)
     for context, e in entries():
         if e.root is None:
             continue
         per = votes.get(id(e), {})
-        derived = max(per, key=lambda d: per[d]) if per else None
-        stated_root = e.synth_root
-        stated = stated_root is not None
-        if stated_root is None:
-            e.synth_root = derived               # None stays None: the generator's own fallback
-            e.synth_shift = 0
+        items.append((context, e, per, max(per, key=lambda d: per[d]) if per else None,
+                      e.synth_root is not None))
+
+    # Pass 2: one rendering pitch per instrument.  The sample generators render an
+    # instrument once, for the first entry that names it (Credits folds voices onto 31 slots,
+    # Stage Clear's PSG2 sits two octaves up its PSG1 sample), and a later entry's `root` is
+    # written so that its notes play that sample in tune (make_credits_config.py) — so its own
+    # D says nothing about the sample.  Moving the rendering pitch by s semitones therefore
+    # moves every entry's placement by the same s: the chip pitch their notes play most often
+    # sets s, held within the window where the lowest note any of them places still lands on
+    # C1 and, when both fit, the highest on B3.
+    groups: dict[int, list] = {}
+    for item in items:
+        groups.setdefault(item[1].mod_instrument, []).append(item)
+    for group in groups.values():
+        _, first, _, d_first, first_stated = group[0]
+        if d_first is None:
+            pitch, shift = first.synth_root, 0          # no notes: nothing to place
+        elif first_stated:
+            pitch = first.synth_root                    # the config says where the sample is
+            shift = pitch - d_first
         else:
-            e.synth_shift = (stated_root - derived) if derived is not None else 0
+            counts: dict[int, int] = {}
+            floor_cap = 10 ** 6
+            ceil_need = -10 ** 6
+            for _, e, _, d, _ in group:
+                if d is None:
+                    continue
+                for chip, n in pitches.get(id(e), {}).items():
+                    counts[chip] = counts.get(chip, 0) + n
+                floor_cap = min(floor_cap, e.root.value + lowest[id(e)])
+                ceil_need = max(ceil_need, e.root.value + highest[id(e)] - 35)
+            shift = min(max(counts, key=lambda c: (counts[c], -c)) - d_first, floor_cap)
+            if ceil_need <= floor_cap:
+                shift = max(shift, ceil_need)
+            pitch = d_first + shift
+        for _, e, _, d, stated in group:
+            if stated and e is not first:
+                e.synth_shift = (e.synth_root - d) if d is not None else 0   # its own say, as before
+            else:
+                e.synth_root = pitch
+                e.synth_shift = shift if d is not None else 0
+
+    out = []
+    for context, e, per, _d, stated in items:
         out.append({'context': context, 'instrument': e.mod_instrument, 'synth_root': e.synth_root,
-                    'derived': not stated, 'shift': e.synth_shift, 'votes': per})
+                    'derived': not stated, 'shift': e.synth_shift, 'votes': per,
+                    'pitches': pitches.get(id(e), {})})
     return out
 
 

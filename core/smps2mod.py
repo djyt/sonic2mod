@@ -23,6 +23,7 @@ from .driver_state import source_map as source_map_for
 from .driver_tables import PSG_FREQUENCIES_EXTENDED, psg_tone2_divider
 from .levels import (
     DEFAULT_FM_PAN_LAW_DB,
+    fm_level_db,
     fm_tl_to_mod,
     modal_level,
     psg_att_to_mod,
@@ -537,7 +538,7 @@ class SmpsToModConverter:
         for r in resolve_synth_roots(self.song, self.config):
             derived += r['derived']
             stated += not r['derived']
-            if r['shift']:
+            if r['shift'] and not r['derived']:
                 self.infos.append({'type': 'synth_shift', **r})
             if len(r['votes']) > 1:
                 self._add_warning({'type': 'synth_root_ambiguous', 'channel': 'map',
@@ -584,7 +585,14 @@ class SmpsToModConverter:
                     fm_skipped_insts.update(_insts)
                     print(f"Warning: voice_map[{_vi}] voice ${_vi:02X} not defined in song "
                           f"(inst {_insts}) — remove this entry from voice_map")
-            fm_samples = generate_fm_samples(self.song, self.config, synth)
+            # Each sample is rendered at the level most of its notes play at — the carriers carry
+            # the channel volume as the driver's SetVoice writes it — so the chip clips a
+            # multi-carrier voice as much as the hardware does at that level and no more.
+            self._fm_render_levels = (self._plan_fm_render_levels(source_map_for(self.song))
+                                      if self._fm_volume_mode == "baked" else {})
+            fm_samples = generate_fm_samples(
+                self.song, self.config, synth,
+                tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()})
             self.infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
             self._install_synthesized_samples(fm_samples, self.config.sample_list, "fm",
                                               synth.max_sample_bytes)
@@ -826,20 +834,12 @@ class SmpsToModConverter:
                          'used': e.tone2_n is None and e.synth_root is None}
         return out
 
-    def _plan_levels(self, source_map: dict, kind: str) -> dict[int, float]:
-        """"baked" volume mode: the level (dB) each MOD instrument's sample_list volume stands for.
-
-        Walks every enabled channel of `kind` ("FM" or "PSG") with the same DriverState the
-        conversion uses, counting notes per (instrument, level).  The level with the most notes
-        is the instrument's baseline — those notes need no Cxx.  Ties go to the louder level so
-        the others are attenuated rather than boosted past 64.
-
-        FM levels come from the TL offset (smpsHeaderFM volume + smpsAlterVol) and the pan;
-        PSG levels from the attenuation (smpsHeaderPSG volume + smpsPSGAlterVol).  A PSG note
-        at attenuation 15 is silent and does not vote.
+    def _count_levels(self, source_map: dict, kind: str, level_of) -> dict[int, dict]:
+        """{MOD instrument: {level_of(state): notes}} over every enabled channel of `kind` ("FM" or
+        "PSG"), walked with the same DriverState the conversion uses.  A PSG note at
+        attenuation 15 is silent and does not vote.
         """
-        pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
-        counts: dict[int, dict[float, int]] = {}
+        counts: dict[int, dict] = {}
         for chan_cfg in self.config.channels:
             channel = source_map.get(chan_cfg.source)
             if not chan_cfg.enabled or channel is None or channel.header.channel_type != kind:
@@ -857,10 +857,38 @@ class SmpsToModConverter:
                 entry = (psg_range_entry(st.psg_entries, key) if st.is_psg
                          else st.fm_range_entry(chan_cfg.source, key))
                 inst = entry.mod_instrument if entry is not None else st.instrument
-                per_level = counts.setdefault(inst, {})
-                level = st.level_db(pan_law)
-                per_level[level] = per_level.get(level, 0) + 1
+                per = counts.setdefault(inst, {})
+                k = level_of(st)
+                per[k] = per.get(k, 0) + 1
+        return counts
+
+    def _plan_levels(self, source_map: dict, kind: str) -> dict[int, float]:
+        """"baked" volume mode: the level (dB) each MOD instrument's sample_list volume stands for.
+
+        The level with the most notes is the instrument's baseline — those notes need no Cxx.
+        Ties go to the louder level so the others are attenuated rather than boosted past 64.
+
+        FM levels come from the TL offset (smpsHeaderFM volume + smpsAlterVol) and the pan;
+        PSG levels from the attenuation (smpsHeaderPSG volume + smpsPSGAlterVol).
+        """
+        pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+        counts = self._count_levels(source_map, kind, lambda st: st.level_db(pan_law))
         return {inst: modal_level(levels) for inst, levels in counts.items()}
+
+    def _plan_fm_render_levels(self, source_map: dict) -> dict[int, tuple[int, bool]]:
+        """{MOD instrument: (carrier TL offset, hard-panned)} its FM sample is rendered at.
+
+        The level most of the instrument's notes play at, chosen as _plan_levels chooses its
+        baseline (ties to the louder), so the sample carries the level its sample_list volume
+        stands for.  The driver adds the track volume to the carrier TLs before the chip sums
+        them (SetVoice), so rendering at that offset clips a multi-carrier voice exactly as
+        much as the hardware does at that level — at TL 0 every GHZ lead clipped a third of
+        its samples where the hardware, at the channel's +18 TL, clips none.
+        """
+        pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+        counts = self._count_levels(source_map, "FM", lambda st: (st.tl, st.hard_panned))
+        return {inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
+                for inst, per in counts.items()}
 
     def _convert_all_channels(self):
         """Convert all SMPS channels to MOD channels."""
@@ -870,6 +898,16 @@ class SmpsToModConverter:
         self._fm_baseline_db: dict[int, float] = {}
         if self._fm_volume_mode == "baked":
             self._fm_baseline_db = self._plan_levels(source_map, "FM")
+            # The samples were rendered (before the loop bodies were extended) at what this
+            # walk now says is each instrument's baseline; the two must agree or the Cxx law
+            # would be measured from a level the sample does not carry.
+            pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+            for inst, (tl, pan) in getattr(self, '_fm_render_levels', {}).items():
+                base = self._fm_baseline_db.get(inst)
+                if base is not None and abs(fm_level_db(tl, pan, pan_law) - base) > 1e-9:
+                    print(f"Warning: instrument {inst} was rendered at TL +{tl}"
+                          f"{' panned' if pan else ''} ({fm_level_db(tl, pan, pan_law):+.2f} dB) but its "
+                          f"baked level is {base:+.2f} dB — the loop extension changed the modal level")
         self._psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
             self._psg_baseline_db = self._plan_levels(source_map, "PSG")

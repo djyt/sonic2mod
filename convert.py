@@ -282,8 +282,8 @@ def main():
             )
         elif info['type'] == 'synth_roots':
             detail_lines.append(
-                f"synthesis pitches: [bold]{info['derived']}[/bold] entries rendered at the pitch the chip "
-                f"plays for their low note [dim](derived), {info['stated']} stated[/dim]")
+                f"synthesis pitches: [bold]{info['derived']}[/bold] entries rendered at the chip pitch "
+                f"they play most often [dim](derived), {info['stated']} stated[/dim]")
         elif info['type'] == 'synth_shift':
             from core.tables import synth_note_name
             detail_lines.append(

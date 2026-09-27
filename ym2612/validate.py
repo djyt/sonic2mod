@@ -26,7 +26,7 @@ from pathlib import Path
 _HERE = Path(__file__).parent
 sys.path.insert(0, str(_HERE.parent))
 
-from ym2612.wrapper import OPN2, box_downsample
+from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -130,16 +130,13 @@ def _debug_samples(label: str, samples: list, n: int = 20) -> None:
 
 
 def check_c_helpers() -> None:
-    """The C mono render and box downsample must equal their Python definitions exactly.
+    """The C mono render must equal its Python definition exactly.
 
-    The conversion pipeline renders through OPN2_RenderBatchMono and PCM_BoxDownsample
-    (ym3438_batch.c); core.pcm.to_mono and renderer._resample_py are what they reproduce.
-    A mismatch here means every FM sample in every MOD would change.
+    The conversion pipeline renders through OPN2_RenderBatchMono (ym3438_batch.c);
+    core.pcm.to_mono is what it reproduces.  A mismatch here means every FM sample in
+    every MOD would change.
     """
-    import array
-
     from core.pcm import to_mono
-    from ym2612.renderer import _resample_py
 
     n = 20_000
     stereo = OPN2(mode="ym2612")
@@ -165,19 +162,7 @@ def check_c_helpers() -> None:
         print("FAIL: check_c_helpers rendered silence — nothing was compared")
         sys.exit(1)
 
-    for to_rate in (8287, 16574, 7093, 53000):
-        if list(box_downsample(got, RATE, to_rate)) != _resample_py(ref, RATE, to_rate):
-            print(f"FAIL: PCM_BoxDownsample differs from _resample_py at {to_rate} Hz")
-            sys.exit(1)
-    # Negative sums exercise the floor division; an empty input must give an empty output.
-    neg = array.array('i', [-3, -4, -5, 7, -1, 0, 2, -9, 11, -13] * 500)
-    if list(box_downsample(neg, RATE, 8287)) != _resample_py(list(neg), RATE, 8287):
-        print("FAIL: PCM_BoxDownsample floor division differs on negative sums")
-        sys.exit(1)
-    if list(box_downsample(array.array('i'), RATE, 8287)) != []:
-        print("FAIL: PCM_BoxDownsample of an empty array is not empty")
-        sys.exit(1)
-    print("C helpers (mono render, box downsample) match the Python definitions.")
+    print("C helper (mono render) matches the Python definition.")
 
     # Both chip modes must render silence as exactly 0 (the DC the helpers subtract is
     # per mode), and reset() must keep the instance's mode: the renderer relies on both.

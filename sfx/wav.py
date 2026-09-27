@@ -13,8 +13,8 @@ def to_int16(left: list[float], right: list[float], scale: float = 1.0) -> array
     """Interleave and quantise two float channels to clamped 16-bit samples."""
     out = array('h', bytes(4 * len(left)))
     for i, (lv, rv) in enumerate(zip(left, right, strict=True)):
-        li = int(round(lv * scale))
-        ri = int(round(rv * scale))
+        li = round(lv * scale)
+        ri = round(rv * scale)
         out[2 * i] = _INT16_MAX if li > _INT16_MAX else (_INT16_MIN if li < _INT16_MIN else li)
         out[2 * i + 1] = _INT16_MAX if ri > _INT16_MAX else (_INT16_MIN if ri < _INT16_MIN else ri)
     return out

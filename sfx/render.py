@@ -35,7 +35,7 @@ _SILENCE_FLOOR = 1.0 / 32768.0
 class RenderResult:
     """Mixed stereo output at NATIVE_RATE, in normalised float units."""
 
-    __slots__ = ("left", "right", "rate", "ticks", "warnings", "truncated")
+    __slots__ = ("left", "rate", "right", "ticks", "truncated", "warnings")
 
     def __init__(self, left, right, rate, ticks, warnings, truncated):
         self.left = left
@@ -56,7 +56,7 @@ class RenderResult:
     def peak(self) -> float:
         if not self.left:
             return 0.0
-        return max(max(abs(v) for v in self.left), max(abs(v) for v in self.right))
+        return max(abs(v) for side in (self.left, self.right) for v in side)
 
 
 def render_sfx(song, opn2, sn, *, fps: float = 60.0,
@@ -110,7 +110,7 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
             ticks += 1
 
         frame += 1
-        boundary = int(round(frame * samples_per_frame))
+        boundary = round(frame * samples_per_frame)
         n = boundary - rendered
 
         # Register writes during this frame already advanced the chip; their audio

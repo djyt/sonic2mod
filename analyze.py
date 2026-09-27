@@ -768,7 +768,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             lines.append(f"  # --- PSG tone {label} ---")
             lines.append(_psg_line(inst, f"psg_{label}_lo.raw" if psg_split is not None else f"psg_{label}.raw",
                                    _PSG_TONE_VOLUME, label))
-            if psg_split is not None:
+            if psg_split is not None and psg_inst2 is not None:   # both set together for a split range
                 lines.append(_psg_line(psg_inst2, f"psg_{label}_hi.raw", _PSG_TONE_VOLUME, label))
 
     # --- dac_samples ---

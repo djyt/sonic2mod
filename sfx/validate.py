@@ -20,13 +20,13 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.smps_parser import SmpsParser          # noqa: E402
-from sfx import tables                           # noqa: E402
-from sfx.batch import render_one                 # noqa: E402
-from sfx.render import NATIVE_RATE               # noqa: E402
-from sfx.resample import resample                # noqa: E402
-from sn76489.wrapper import SN76489              # noqa: E402
-from ym2612.wrapper import OPN2                  # noqa: E402
+from core.smps_parser import SmpsParser
+from sfx import tables
+from sfx.batch import render_one
+from sfx.render import NATIVE_RATE
+from sfx.resample import resample
+from sn76489.wrapper import SN76489
+from ym2612.wrapper import OPN2
 
 # Channel tick totals, derived independently from the assembly byte stream.
 EXPECTED_TICKS = {

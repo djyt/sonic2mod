@@ -45,12 +45,12 @@ sample_list:
   - [6, "fm_v02.raw", 23, 0] # VGZ: -1.7 dB at 19
   # --- voice $03: alg 2: (1+(2→3))→4, fb 7 — FM1, FM5 ---
   - [7, "fm_v03_lo.raw", 32, 0]
-  - [8, "fm_v03_hi.raw", 22, 0] # VGZ: -1.5 dB at 18
+  - [8, "fm_v03_hi.raw", 19, 0] # VGZ: +1.2 dB at 22
   # --- PSG noise (form $E7) ---
   - [10, "psg_noise.raw",  3, 0] # baked: 16 at PSG attenuation 3 (−6 dB); VGZ: +5.5 dB at 6
   # --- PSG tone fTone_05 ---
   - [9, "psg_fTone_05.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +6.6 dB at 10
-  - [12, "psg_fTone_05_hi.raw",  4, 0] # PSG2's E6-B6, see psg_voice_map; volume as instrument 9; VGZ: +1.2 dB at 5
+  - [12, "psg_fTone_05_hi.raw",  5, 0] # PSG2's E6-B6, see psg_voice_map; volume as instrument 9; VGZ: -1.4 dB at 4
   # Pitch Adjusted version
   - [11, "fm_v03_hi.raw", 21, 1] # VGZ: -1.5 dB at 18
 

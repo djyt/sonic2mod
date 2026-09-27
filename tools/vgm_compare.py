@@ -52,6 +52,7 @@ import statistics
 import subprocess
 import sys
 import wave
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 try:
@@ -186,7 +187,9 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
         raise SystemExit("ERROR: this ffmpeg build has no libopenmpt demuxer")
     data = mod_path.read_bytes()
     outdir.mkdir(parents=True, exist_ok=True)
-    for name, ch in [("FULL", None), *channels.items()]:
+
+    def render(item: tuple[str, int | None]) -> tuple[str, str | None]:
+        name, ch = item
         iso = outdir / f"_mod_{name}.mod"
         iso.write_bytes(_isolate_mod(data, ch))
         wav = outdir / f"mod_{name}.wav"
@@ -194,9 +197,15 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
                             "-sample_rate", str(SR), "-i", str(iso), "-ar", str(SR), "-ac", "2", str(wav)],
                            capture_output=True, text=True, check=False)
         iso.unlink(missing_ok=True)
-        if r.returncode != 0 or not wav.exists():
-            raise SystemExit(f"ERROR: ffmpeg failed for MOD channel {name}:\n{r.stderr}")
-        print(f"  rendered MOD {name}")
+        return name, (r.stderr if r.returncode != 0 or not wav.exists() else None)
+
+    # One ffmpeg per channel; they are independent, so they run at once (cores - 1 of them).
+    items = [("FULL", None), *channels.items()]
+    with ThreadPoolExecutor(max_workers=max(1, min(len(items), (os.cpu_count() or 2) - 1))) as pool:
+        for name, err in pool.map(render, items):
+            if err is not None:
+                raise SystemExit(f"ERROR: ffmpeg failed for MOD channel {name}:\n{err}")
+            print(f"  rendered MOD {name}")
 
 
 # ---------------------------------------------------------------------------

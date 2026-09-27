@@ -123,10 +123,11 @@ def generate_fm_samples(
             base_rate    = synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
 
             if entry.synth_root is not None:
-                # Synthesize at synth_root; target_rate is not compensated.
-                # Output pitch = synth_root's frequency when played at root's period.
+                # Synthesise at synth_root, synth_shift semitones above the pitch `root` sounds
+                # (resolve_synth_roots); the rate is raised by the same ratio so that MOD note
+                # root still sounds that pitch and no note moves.
                 synth_idx   = entry.synth_root - 12
-                target_rate = round(base_rate)
+                target_rate = round(base_rate * 2.0 ** (entry.synth_shift / 12.0))
             else:
                 synth_idx   = entry.low - 12
                 target_rate = round(base_rate)

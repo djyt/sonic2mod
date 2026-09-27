@@ -37,7 +37,7 @@ sample_list:
   - [3, "fm_v00_lo.raw", 32, 0]
   - [4, "fm_v00_hi.raw", 32, 0]
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM3 ---
-  - [5, "fm_v01.raw", 10, 0] # VGZ: +2.5 dB at 13
+  - [5, "fm_v01.raw", 14, 0] # VGZ: -3.1 dB at 10
   # --- voice $02: alg 5: 1→(2+3+4), fb 7 — FM1, FM4 ---
   - [6, "fm_v02.raw", 22, 0] # VGZ: -3.3 dB at 15
   # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM5 ---

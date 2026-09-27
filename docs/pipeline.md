@@ -742,6 +742,14 @@ inst sample            vol notes    err spread suggest   per channel (Cxx: err x
 `--write-volumes` rewrites the config's `sample_list` volumes to the suggestions (errors of 1 dB
 or more) and records `# VGZ: +4.6 dB at 16` on the line.  Re-convert and re-run to verify.
 
+`tools/measure_volumes.py` does that for every song at once (cores − 1 in parallel, one process
+per song): convert, one `--write-volumes` pass, re-convert, verify, then one line per song with
+the volumes changed, what is still 1 dB or more off (instruments at the 64 ceiling, channels that
+disagree and two-note instruments are marked as such) and the pitch verdict.  Run it after any
+change to how samples are rendered.  It makes exactly one write pass: the errors are relative to
+the song's median note, so once many instruments move the frame moves with them and a further
+pass drifts the whole song.  The reference renders are reused whenever they exist.
+
 **Vibrato table.**  Every FM / PSG-tone note of 0.5 s or longer is pitch-tracked in both renders
 (one partial isolated by heterodyne + brick-wall filter, instantaneous frequency from the phase
 derivative).  A row is printed when either side modulates: rate in Hz and depth as ± cents, measured

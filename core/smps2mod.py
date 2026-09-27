@@ -378,8 +378,11 @@ class SmpsToModConverter:
                     if ft_sl != 0:
                         self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
 
-    def _synthesis_roots(self, kind: str) -> dict[int, int]:
-        """{MOD instrument: MOD note index its sample is synthesised for}.
+    def _synthesis_roots(self, kind: str) -> dict[int, tuple[int, int]]:
+        """{MOD instrument: (MOD note index its sample is synthesised for, synth_shift)}.
+
+        The sample's own rate is `root`'s playback rate times 2^(synth_shift / 12) (the
+        generators render synth_shift semitones above the pitch `root` sounds).
 
         The first entry that names an instrument decides, in the order the sample generators
         walk the maps; a later entry sharing the instrument anchors another range onto that
@@ -388,7 +391,7 @@ class SmpsToModConverter:
         the song lacks skipped, a rootless channel_instrument_map entry at C1.  PSG: psg_map
         then psg_voice_map.  An instrument absent here is not synthesised (loaded from disk).
         """
-        roots: dict[int, int] = {}
+        roots: dict[int, tuple[int, int]] = {}
         if kind == "FM":
             voices = {v.index for v in self.song.voices}
             cim = [(vi, e) for vim in self.config.channel_instrument_map.values()
@@ -396,19 +399,19 @@ class SmpsToModConverter:
             rooted = [(vi, e) for vi, rs in self.config.voice_map.items() for e in rs] + cim
             for vi, e in rooted:
                 if vi in voices and e.root is not None:
-                    roots.setdefault(e.mod_instrument, e.root.value)
+                    roots.setdefault(e.mod_instrument, (e.root.value, e.synth_shift))
             for vi, e in cim:
                 if vi in voices and e.root is None:
-                    roots.setdefault(e.mod_instrument, ModNote.C1.value)
+                    roots.setdefault(e.mod_instrument, (ModNote.C1.value, 0))
         else:
             entries = list(self.config.psg_map.values())
             entries += [e for es in self.config.psg_voice_map.values() for e in es]
             for e in entries:
                 if e.root is not None:
-                    roots.setdefault(e.mod_instrument, e.root.value)
+                    roots.setdefault(e.mod_instrument, (e.root.value, e.synth_shift))
         return roots
 
-    def _sustain_needs(self, kind: str) -> dict[int, tuple[float, int | None]]:
+    def _sustain_needs(self, kind: str) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
         over the enabled channels of `kind` ("FM" / "PSG").
 
@@ -418,8 +421,9 @@ class SmpsToModConverter:
         (C00) or the next note restarts it.  One row is added, the most the row grid moves
         a note's start (EDx) or its end.  Its wall-clock length follows the MOD's tempo
         segments (_tick_span_secs).  Played above the synthesis root (_synthesis_roots) the
-        sample runs faster by root period / note period and needs proportionally more of it;
-        a positive sample_list finetune does the same by 2^(finetune / 96).
+        sample runs faster by root period / note period and needs proportionally more of it,
+        and a sample rendered synth_shift semitones above the root's pitch runs 2^(shift/12)
+        slower at every note; a positive sample_list finetune adds 2^(finetune / 96).
 
         The MOD note is the one _convert_channel will trigger, found the same way: the same
         DriverState walk, the range lookup in the config's range_space, root + (key - low)
@@ -428,7 +432,7 @@ class SmpsToModConverter:
         finetunes = {e[0]: e[3] for e in (self.config.sample_list or []) if len(e) > 3}
         roots = self._synthesis_roots(kind)
         source_map = source_map_for(self.song)
-        needs: dict[int, tuple[float, int | None]] = {}
+        needs: dict[int, tuple[float, tuple[int, int] | None]] = {}
         for chan_cfg in self.config.channels:
             channel = source_map.get(chan_cfg.source)
             if not chan_cfg.enabled or channel is None or channel.header.channel_type != kind:
@@ -460,7 +464,7 @@ class SmpsToModConverter:
                         # In noise mode the instrument may be an envelope variant of the entry
                         inst = st.instrument if st.in_noise_mode else entry.mod_instrument
                         if entry.root is not None and entry.low is not None:
-                            out_idx = entry.root.value + (key - entry.low) - entry.synth_shift
+                            out_idx = entry.root.value + (key - entry.low)
                         elif entry.root is not None and entry.type != "tone":
                             out_idx = entry.root.value
                 else:
@@ -468,10 +472,9 @@ class SmpsToModConverter:
                     if entry is not None:
                         inst = entry.mod_instrument
                         if entry.root is not None:
-                            out_idx = entry.root.value + (key - entry.low) - entry.synth_shift
+                            out_idx = entry.root.value + (key - entry.low)
                 if out_idx is None:
-                    shift = entry.synth_shift if (st.is_psg and entry is not None) else 0
-                    out_idx = source_semitone + st.transpose + chan_cfg.transpose - shift
+                    out_idx = source_semitone + st.transpose + chan_cfg.transpose
                 out_idx = max(0, min(35, out_idx))
                 rings.append([event.tick_position, note.duration, inst, out_idx])
 
@@ -480,14 +483,15 @@ class SmpsToModConverter:
                     continue
                 start, ticks, inst, out_idx = ring
                 secs = self._tick_span_secs(start, start + ticks + self._effective_tpr)
-                root_idx = roots.get(inst)
-                if root_idx is not None:
-                    secs *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[out_idx]
+                root = roots.get(inst)
+                if root is not None:
+                    root_idx, shift = root
+                    secs *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[out_idx] / 2.0 ** (shift / 12.0)
                 if finetunes.get(inst, 0) > 0:
                     secs *= 2.0 ** (finetunes[inst] / 96.0)
                 prev = needs.get(inst)
                 if prev is None or secs > prev[0]:
-                    needs[inst] = (secs, root_idx)
+                    needs[inst] = (secs, root)
         return needs
 
     _AUTO_SUSTAIN_CAP_SECS = 10.0
@@ -508,10 +512,11 @@ class SmpsToModConverter:
         if not settings.enabled:
             return settings
         sustain = float(settings.sustain_duration)
-        for inst, (need, root_idx) in sorted(needs.items()):
-            if root_idx is None:
+        for inst, (need, root) in sorted(needs.items()):
+            if root is None:
                 continue
-            rate = round(settings.amiga_clock / PERIOD_TABLE[root_idx])
+            root_idx, shift = root
+            rate = round(settings.amiga_clock / PERIOD_TABLE[root_idx] * 2.0 ** (shift / 12.0))
             fits = max_sustain_secs(rate, settings.release_padding, settings.max_sample_bytes)
             have = min(sustain, fits)
             if need <= have + 0.005:
@@ -532,8 +537,9 @@ class SmpsToModConverter:
             self._add_warning({'type': 'rate3_synth_root', 'extra_ctx': issue['context'], **issue})
 
         # Every rooted entry's rendering pitch comes from the song (core.driver_state.resolve_synth_roots):
-        # the pitch the chip plays for its `low`, or, when stated, wherever the config put it with
-        # the notes placed lower by the difference.  Before anything reads synth_root / synth_shift.
+        # the chip pitch its notes play most often, or, when stated, wherever the config put it; the
+        # sample's rate carries the difference from the pitch `root` sounds (synth_shift), so no note
+        # moves.  Before anything reads synth_root / synth_shift.
         derived = stated = 0
         for r in resolve_synth_roots(self.song, self.config):
             derived += r['derived']
@@ -1162,9 +1168,9 @@ class SmpsToModConverter:
                         active_range_entry = entry
                         final_instrument = entry.mod_instrument
                         if entry.root is not None:
-                            # root is where synth_root sounds; a sample rendered above the
-                            # pitch of `low` is placed that much lower (synth_shift)
-                            out_raw = entry.root.value + (range_key - entry.low) - entry.synth_shift
+                            # root is where the pitch of `low` sounds (a sample rendered above it
+                            # carries the difference in its rate: resolve_synth_roots)
+                            out_raw = entry.root.value + (range_key - entry.low)
                             out = max(0, min(35, out_raw))
                             if out != out_raw:
                                 self._add_warning({
@@ -1198,8 +1204,7 @@ class SmpsToModConverter:
                         if st.psg_entry is not None and st.psg_entry.root is not None:
                             if st.psg_entry.low is not None:
                                 # Melodic anchor: root + (source − low), clamped to MOD range
-                                psg_out_raw = (st.psg_entry.root.value + (range_key - st.psg_entry.low)
-                                               - st.psg_entry.synth_shift)
+                                psg_out_raw = st.psg_entry.root.value + (range_key - st.psg_entry.low)
                                 psg_out = max(0, min(35, psg_out_raw))
                                 if psg_out != psg_out_raw:
                                     self._add_warning({
@@ -1254,14 +1259,8 @@ class SmpsToModConverter:
                                 if _lbls:
                                     w['psg_available_labels'] = _lbls
                                 self._add_warning(w)
-                            # A rooted PSG entry without `low` (transpose path) is rendered at its
-                            # synth_root; its notes are placed lower by synth_shift like an
-                            # anchored entry's (resolve_synth_roots)
-                            _shift = (st.psg_entry.synth_shift
-                                      if is_psg and st.psg_entry is not None and st.psg_entry.root is not None
-                                      else 0)
                             final_note = smps_note_to_mod_note(
-                                note.note_value, total_transpose - _shift, chan_cfg.source,
+                                note.note_value, total_transpose, chan_cfg.source,
                                 voice_idx=st.voice,
                                 warn_fn=_warn_psg,
                                 extra_ctx=_psg_label)

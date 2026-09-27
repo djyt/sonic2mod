@@ -6,14 +6,16 @@ itself, plus the analyser and two config-generating tools.  They had already dri
 (the rule for what a `smpsPSGvoice` may do once the channel is in noise mode was
 written three different ways), so it lives here once.
 
-    st = DriverState.for_channel(channel, config, chan_cfg.instrument)
-    for event in channel.events:
-        if event.is_effect:
-            st.apply(event.effect)
-        elif event.is_note and not event.note.is_rest:
-            key = st.range_key(event.note.note_value - 0x81)
-            entry = st.psg_ranged_entry(key) if st.is_psg else st.fm_range_entry(source, key)
-            inst = entry.mod_instrument if entry is not None else st.instrument
+    for chan_cfg, channel in enabled_channels(song, config, ("FM", "PSG")):
+        for event, st, res in walk_channel(channel, config, chan_cfg):
+            if res is not None:                 # a pitched note: res.instrument, res.index ...
+                ...
+
+`walk_channel` advances a `DriverState` through the channel's events and hands every
+pitched note to `resolve_note`, the one place that says which MOD instrument a note is
+routed to and which MOD note it triggers (`ResolvedNote`).  The conversion, its level and
+sustain pre-passes, the noise / rate-3 derivations and `resolve_synth_roots` all read that
+one answer.
 
 `DriverState` tracks only what every caller needs: the hardware level, the pan, the
 driver transpose, the current FM voice and the active PSG instrument entry.  State
@@ -22,6 +24,8 @@ in the converter.
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from .driver_tables import psg_index_semitone
 from .levels import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
@@ -116,43 +120,20 @@ def resolve_synth_roots(song, config) -> list[dict]:
     """
     votes: dict[int, dict[int, int]] = {}       # id(entry) -> {D: notes}
     pitches: dict[int, dict[int, int]] = {}     # id(entry) -> {chip pitch: notes}
-    smap = source_map(song)
-    for chan_cfg in config.channels:
-        channel = smap.get(chan_cfg.source)
-        if not chan_cfg.enabled or channel is None or channel.header.channel_type not in ("FM", "PSG"):
-            continue
-        st = DriverState.for_channel(channel, config, chan_cfg.instrument)
-        for event in channel.events:
-            if event.is_effect:
-                st.apply(event.effect)
+    for chan_cfg, channel in enabled_channels(song, config, ("FM", "PSG")):
+        for _event, st, res in walk_channel(channel, config, chan_cfg):
+            if res is None:
                 continue
-            if not event.is_note or event.note.is_rest or getattr(event.note, "is_dac", False):
+            entry = res.entry
+            if entry is None or entry.root is None:
                 continue
-            src = event.note.note_value - 0x81
-            key = st.range_key(src)
-            real = chip_pitch(src, st.transpose, st.is_psg)
-            if st.is_psg:
-                if st.in_noise_mode:
-                    continue
-                ranged = psg_range_entry(st.psg_entries, key)
-                if ranged is not None:
-                    st.psg_entry = ranged
-                entry = st.psg_entry
-                if entry is None or entry.root is None or entry.type != "tone":
-                    continue
-                if entry.low is not None:
-                    m_rel = key - entry.low                      # m − root, anchored
-                else:
-                    m_rel = src + st.transpose + chan_cfg.transpose - entry.root.value
-            else:
-                entry = st.fm_range_entry(chan_cfg.source, key)
-                if entry is None or entry.root is None:
-                    continue
-                m_rel = key - entry.low
+            if st.is_psg and (st.in_noise_mode or entry.type != "tone"):
+                continue
+            m_rel = res.raw_index - entry.root.value      # m - root: anchored, or the transpose path
             per = votes.setdefault(id(entry), {})
-            per[real - m_rel] = per.get(real - m_rel, 0) + 1
+            per[res.chip - m_rel] = per.get(res.chip - m_rel, 0) + 1
             pp = pitches.setdefault(id(entry), {})
-            pp[real] = pp.get(real, 0) + 1
+            pp[res.chip] = pp.get(res.chip, 0) + 1
 
     def entries():
         for v, ranges in config.voice_map.items():
@@ -331,11 +312,15 @@ class DriverState:
             return source_semitone
         return chip_pitch(source_semitone, self.transpose, self.is_psg)
 
+    def fm_ranges(self, source: str):
+        """The range list the current voice routes through on this channel: its
+        channel_instrument_map list, else its voice_map list, else None."""
+        return (self.config.channel_instrument_map.get(source, {}).get(self.voice)
+                or self.config.voice_map.get(self.voice))
+
     def fm_range_entry(self, source: str, key: int):
         """voice_map / channel_instrument_map entry covering this note, or None."""
-        ranges = (self.config.channel_instrument_map.get(source, {}).get(self.voice)
-                  or self.config.voice_map.get(self.voice))
-        for entry in ranges or ():
+        for entry in self.fm_ranges(source) or ():
             if entry.low <= key <= entry.high:
                 return entry
         return None
@@ -354,3 +339,105 @@ class DriverState:
     def is_silent(self) -> bool:
         """True when the track's own volume puts a note below audibility."""
         return self.att >= PSG_ATT_SILENT if self.is_psg else self.tl >= FM_TL_SILENT
+
+
+# --- resolving a note ---------------------------------------------------------
+
+
+@dataclass(slots=True)
+class ResolvedNote:
+    """What one SMPS note plays in the MOD: which instrument, at which MOD note.
+
+    `path` says how the MOD note was found:
+      "fm_root"   - an FM voice_map / channel_instrument_map entry with `root`:
+                    root + (key - low)
+      "psg_root"  - a PSG entry with `root` and `low`: the same formula
+      "psg_fixed" - a noise entry with `root`: always root (its note bytes carry no pitch)
+      "transpose" - no anchor: source + driver transpose + the channel config's transpose
+                    (a rootless entry still names the instrument)
+    `index` is clamped to the MOD's three octaves; `raw_index` is not.
+    """
+    instrument: int          # MOD instrument slot
+    index: int               # MOD note index, 0 = C1 .. 35 = B3
+    raw_index: int           # the same before clamping
+    path: str
+    entry: object | None     # the InstrumentRange / PsgInstrumentEntry that routed it, or None
+    source: int              # source semitone (note byte - $81)
+    key: int                 # what the ranges were matched against (DriverState.range_key)
+    chip: int                # the real pitch the chip plays (chip_pitch)
+    total_transpose: int     # driver transpose + the channel config's transpose
+
+    @property
+    def clamped(self) -> bool:
+        return self.index != self.raw_index
+
+    @property
+    def anchored(self) -> bool:
+        """True when a `root` placed the note (the transpose path did not)."""
+        return self.path != "transpose"
+
+
+def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, source: str) -> ResolvedNote:
+    """Which MOD instrument and MOD note a pitched note plays, given the track state.
+
+    FM: the current voice's range entry covering the note (channel_instrument_map first,
+    then voice_map) names the instrument; with `root` it also places the note.  PSG: a
+    multi-entry psg_voice_map list dispatches per note on `low`/`high` (and that entry
+    stays active, as the driver keeps a voice), otherwise the active entry; `root` with
+    `low` places a tone, `root` alone places noise, and a rooted tone without `low` falls
+    to the transpose path.  Noise mode's instrument is the state's own (the envelope
+    variant smpsPSGform / smpsPSGvoice chose).
+    """
+    key = st.range_key(source_semitone)
+    total = st.transpose + chan_transpose
+    chip = chip_pitch(source_semitone, st.transpose, st.is_psg)
+    inst, raw, path, entry = st.instrument, None, "transpose", None
+    if not st.is_psg:
+        entry = st.fm_range_entry(source, key)
+        if entry is not None:
+            inst = entry.mod_instrument
+            if entry.root is not None:
+                raw, path = entry.root.value + (key - entry.low), "fm_root"
+    else:
+        ranged = psg_range_entry(st.psg_entries, key)
+        if ranged is not None:
+            st.psg_entry = ranged
+            inst = ranged.mod_instrument
+        entry = st.psg_entry
+        if entry is not None and entry.root is not None:
+            if entry.low is not None:
+                raw, path = entry.root.value + (key - entry.low), "psg_root"
+            elif entry.type != "tone":
+                raw, path = entry.root.value, "psg_fixed"
+    if raw is None:
+        raw = source_semitone + total
+    return ResolvedNote(inst, max(0, min(35, raw)), raw, path, entry,
+                        source_semitone, key, chip, total)
+
+
+def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
+    """Yield (event, state, resolved) for every event of a channel, in order.
+
+    The state is advanced past each coordination flag before the flag is yielded, and every
+    pitched note (not a rest, not a DAC hit) comes with its `ResolvedNote`; the other events
+    come with None.  The same `DriverState` object is yielded every time - read it as you go.
+    Pass `st` to start from a state you set up yourself.
+    """
+    if st is None:
+        st = DriverState.for_channel(channel, config, chan_cfg.instrument)
+    for event in channel.events:
+        res = None
+        if event.is_effect:
+            st.apply(event.effect)
+        elif event.is_note and not event.note.is_rest and not event.note.is_dac:
+            res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source)
+        yield event, st, res
+
+
+def enabled_channels(song, config, kinds=("FM", "PSG")):
+    """(chan_cfg, parsed channel) for every enabled config channel of the given chip kinds."""
+    smap = source_map(song)
+    for chan_cfg in config.channels:
+        channel = smap.get(chan_cfg.source)
+        if chan_cfg.enabled and channel is not None and channel.header.channel_type in kinds:
+            yield chan_cfg, channel

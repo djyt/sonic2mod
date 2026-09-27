@@ -47,7 +47,7 @@ sample_list:
   - [6, "fm_v03_lo.raw", 18, 0] # VGZ: +1.9 dB at 32
   - [7, "fm_v03_hi.raw", 19, 0] # VGZ: +1.5 dB at 32
   # --- voice $04: alg 4: (1→2)+(3→4), fb 7 — FM5 ---
-  - [8, "fm_v04.raw",  9, 0] # VGZ: -3.3 dB at 6
+  - [8, "fm_v04.raw",  8, 0] # VGZ: +1.5 dB at 9
   # --- voice $05: alg 4: (1→2)+(3→4), fb 6 — FM5 ---
   - [9, "fm_v05.raw", 32, 0] # VGZ: +2.4 dB at 42
   # --- PSG noise (form $E7) ---

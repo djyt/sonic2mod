@@ -136,10 +136,10 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
 
 - **`synth_root`** is the frequency rendered via the SN76489 emulator.  It is derived from the
   song (`core.driver_state.resolve_synth_roots`: the chip pitch the instrument's notes play most
-  often, through the driver's table, held so the placed notes fit C1–B3; the notes are placed
-  lower by `synth_shift` to stay in tune, and entries sharing an instrument share the shift), so
-  no config states it.  A stated value is a rendering pitch elsewhere in the range, handled the
-  same way (`docs/fm_synthesis.md` §Pitch).
+  often, through the driver's table, at most an octave above the pitch `root` sounds); the
+  sample's rate is raised by 2^(`synth_shift`/12) so no note moves.  No config states it.  A
+  stated value is a rendering pitch elsewhere in the range, handled the same way
+  (`docs/fm_synthesis.md` §Pitch).
 
 - For **noise entries**, `root` controls `target_rate` and the MOD anchor where `low` plays.
   When `low` is set, notes trigger at `root + (source − low)` — the same melodic formula as tones.

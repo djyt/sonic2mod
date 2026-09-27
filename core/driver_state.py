@@ -95,15 +95,18 @@ def resolve_synth_roots(song, config) -> list[dict]:
     note an entry routes, and
 
     - where the config leaves synth_root out, renders at the chip pitch the entry's notes play
-      most often (ties to the lower one: a sample played below its rendering pitch runs
-      slower and must be longer) and sets `synth_shift` = that pitch − D, capped so the
-      lowest note the entry places still lands on C1.  Envelopes run in real time on the
-      chip but stretch with playback rate in a MOD, so rendering at the busiest note keeps
-      the most notes' attack and decay at the hardware's speed.  A config never needs to
-      state it.
-    - sets `synth_shift = synth_root − D` where it is stated, so a sample rendered anywhere in
-      its range is placed lower by that much and stays in tune: the conversion subtracts
-      synth_shift from m.
+      most often (ties to the lower one), at most an octave above D, and sets
+      `synth_shift` = that pitch − D.  Envelopes run in real time on the chip but stretch
+      with playback rate in a MOD, so rendering at the busiest note keeps the most notes'
+      attack and decay at the hardware's speed.  A config never needs to state it.
+    - sets `synth_shift = synth_root − D` where it is stated (a rendering pitch anywhere in
+      the range).
+
+    The shift never moves a note: the sample generators give the sample a rate 2^(shift/12)
+    higher than `root`'s playback rate, so MOD note `root` still sounds D and every note keeps
+    its place, its playback rate and its bandwidth (placing notes lower instead halved the
+    Chaos Emerald lead's rate to 4 kHz).  The cost is the sample's size, 2^(shift/12) times —
+    hence the octave cap.
 
     Returns one dict per entry: {'context', 'instrument', 'synth_root', 'derived', 'shift',
     'votes': {D: notes}, 'pitches': {chip pitch: notes}}.  More than one D means the entry's
@@ -113,8 +116,6 @@ def resolve_synth_roots(song, config) -> list[dict]:
     """
     votes: dict[int, dict[int, int]] = {}       # id(entry) -> {D: notes}
     pitches: dict[int, dict[int, int]] = {}     # id(entry) -> {chip pitch: notes}
-    lowest: dict[int, int] = {}                 # id(entry) -> smallest m − root it places
-    highest: dict[int, int] = {}                # id(entry) -> largest m − root it places
     smap = source_map(song)
     for chan_cfg in config.channels:
         channel = smap.get(chan_cfg.source)
@@ -152,9 +153,6 @@ def resolve_synth_roots(song, config) -> list[dict]:
             per[real - m_rel] = per.get(real - m_rel, 0) + 1
             pp = pitches.setdefault(id(entry), {})
             pp[real] = pp.get(real, 0) + 1
-            rel = int(m_rel)
-            lowest[id(entry)] = min(lowest.get(id(entry), rel), rel)
-            highest[id(entry)] = max(highest.get(id(entry), rel), rel)
 
     def entries():
         for v, ranges in config.voice_map.items():
@@ -182,10 +180,8 @@ def resolve_synth_roots(song, config) -> list[dict]:
     # instrument once, for the first entry that names it (Credits folds voices onto 31 slots,
     # Stage Clear's PSG2 sits two octaves up its PSG1 sample), and a later entry's `root` is
     # written so that its notes play that sample in tune (make_credits_config.py) — so its own
-    # D says nothing about the sample.  Moving the rendering pitch by s semitones therefore
-    # moves every entry's placement by the same s: the chip pitch their notes play most often
-    # sets s, held within the window where the lowest note any of them places still lands on
-    # C1 and, when both fit, the highest on B3.
+    # D says nothing about the sample.  The pitch is chosen for the whole group: the chip
+    # pitch their notes play most often, at most an octave above the first entry's D.
     groups: dict[int, list] = {}
     for item in items:
         groups.setdefault(item[1].mod_instrument, []).append(item)
@@ -198,18 +194,12 @@ def resolve_synth_roots(song, config) -> list[dict]:
             shift = pitch - d_first
         else:
             counts: dict[int, int] = {}
-            floor_cap = 10 ** 6
-            ceil_need = -10 ** 6
             for _, e, _, d, _ in group:
                 if d is None:
                     continue
                 for chip, n in pitches.get(id(e), {}).items():
                     counts[chip] = counts.get(chip, 0) + n
-                floor_cap = min(floor_cap, e.root.value + lowest[id(e)])
-                ceil_need = max(ceil_need, e.root.value + highest[id(e)] - 35)
-            shift = min(max(counts, key=lambda c: (counts[c], -c)) - d_first, floor_cap)
-            if ceil_need <= floor_cap:
-                shift = max(shift, ceil_need)
+            shift = max(0, min(max(counts, key=lambda c: (counts[c], -c)) - d_first, 12))
             pitch = d_first + shift
         for _, e, _, d, stated in group:
             if stated and e is not first:

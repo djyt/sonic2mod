@@ -288,8 +288,8 @@ def main():
             from core.tables import synth_note_name
             detail_lines.append(
                 f"{_escape(info['context'])}: rendered at [bold]{synth_note_name(info['synth_root'])}[/bold], "
-                f"{abs(info['shift'])} semitones {'above' if info['shift'] > 0 else 'below'} the pitch of its low "
-                f"note; the notes are placed the other way so they stay in tune")
+                f"{abs(info['shift'])} semitones {'above' if info['shift'] > 0 else 'below'} the pitch its "
+                f"root sounds; the sample's rate carries the difference, no note moves")
         elif info['type'] == 'noise_envelope':
             how = "derived from the song" if info['derived'] else "stated in the config"
             detail_lines.append(

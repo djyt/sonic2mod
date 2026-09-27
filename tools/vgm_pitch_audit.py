@@ -149,7 +149,7 @@ def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int]]:
         if e.mod_instrument in inst or e.root is None:
             return
         if e.synth_root is not None:
-            s = e.synth_root
+            s = e.synth_root - e.synth_shift          # the pitch `root` sounds: the sample's rate carries the rest
         elif default_low and e.low is not None:       # FM: sample_generator falls back to `low`
             s = e.low
         else:                                         # PSG tone: falls back to `root`

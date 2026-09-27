@@ -141,7 +141,7 @@ This is the most critical (and confusing) part of synthesis configuration.
 |---------|-----------|---------|
 | `root` | `voice_map` entry | **The sample's base note**: the MOD note at which playback sounds at `synth_root`, and the note where `low` plays when `synth_root` is derived; also determines `target_rate` |
 | `synth_root` | derived from the song; a `voice_map` entry may state it | **Rendering pitch** — the frequency the chip renders at: the chip pitch the instrument's notes play most often |
-| `low` | `voice_map` entry | **Source range start**; the chip pitch it plays at is where `root` would sound with no `synth_shift` |
+| `low` | `voice_map` entry | **Source range start**; the chip pitch it plays at is what MOD note `root` sounds |
 
 ### How they interact
 
@@ -159,13 +159,17 @@ chip really plays for the entry's `low` note (`low` plus the pitch offset and ev
 and the placement `m = root + (key − low)`, every note sounds at its chip pitch.  It then renders
 higher than D where that serves the notes: envelopes run in real time on the chip but stretch
 with playback rate in a MOD, so the sample is rendered at the chip pitch the instrument's notes
-play most often (ties to the lower), and every note is placed `synth_shift = synth_root − D`
-semitones lower to stay in tune.  The shift is held within the window where the lowest note
-still lands on C1 and, when both fit, the highest on B3.  An instrument several entries share
-(Credits folds voices onto 31 slots, Stage Clear's PSG2 sits two octaves up its PSG1 sample) is
-rendered once, for the first entry that names it, and every entry sharing it takes the same
-shift — a later entry's `root` is already written so that it plays the first entry's sample in
-tune.  A config never needs to state any of this; `convert.py` prints how many entries were
+play most often (ties to the lower; at most an octave above D), and `synth_shift = synth_root − D`.
+The shift never moves a note: the generator gives the sample a rate 2^(synth_shift/12) higher
+than `root`'s playback rate, so MOD note `root` still sounds D, and every note keeps its place,
+its playback rate and its bandwidth.  (Placing the notes lower instead, which the converter did
+for one afternoon, halved the Chaos Emerald lead's playback rate to 4 kHz and lost everything
+above 2 kHz; the hardware has a fifth of that lead's energy between 3 and 6 kHz.)  The cost is
+the sample's size, 2^(synth_shift/12) times — hence the octave cap.  An instrument several
+entries share (Credits folds voices onto 31 slots, Stage Clear's PSG2 sits two octaves up its
+PSG1 sample) is rendered once, for the first entry that names it, and the pitch is chosen over
+all of them; a later entry's `root` is already written so that it plays the first entry's sample
+in tune.  A config never needs to state any of this; `convert.py` prints how many entries were
 derived.
 
 When an entry's `low` is played at several chip pitches (a voice used at two pitch offsets, or
@@ -176,9 +180,8 @@ under an `smpsChangeTransposition`, inside one source range) the most-played pit
 **Stating synth_root renders elsewhere in the range.**  A stated `synth_root` is the rendering
 pitch, wherever in the range you want it — the middle, say, so the sample is stretched at most
 half the range each way instead of a whole range upwards.  The entry's `synth_shift` is
-`synth_root − D`, and every note is placed that much lower: `m = root + (key − low) − synth_shift`.
-The low note then plays below `root`, the note at `synth_root` plays at `root`, and all of them
-stay in tune.  Mind the C1–B3 range: the low notes now sit `synth_shift` semitones under `root`.
+`synth_root − D`, the sample's rate is raised by 2^(synth_shift/12), and the placement is the
+usual `m = root + (key − low)`: the low note still plays at `root` and sounds D.
 
 ```yaml
 voice_map:
@@ -186,8 +189,8 @@ voice_map:
     - low: G3          # chip pitches (range_space: chip); the range runs G3–B4
       high: B4
       mod_instrument: 7
-      root: C2         # the note where playback sounds at synth_root
-      synth_root: D4   # rendered at D4, the middle; G3 plays at C2 − 7 = F1, B4 at C2 + 9 = A2
+      root: C2         # the note where G3 sounds
+      synth_root: D4   # rendered at D4, the middle; the sample's rate is 2^(7/12) × C2's, notes stay put
 ```
 
 **A `synth_root` name is a real pitch.**  `synth_root: A4` renders 440 Hz: `note_to_freq` gives the

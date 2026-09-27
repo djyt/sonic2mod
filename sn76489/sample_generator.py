@@ -71,7 +71,10 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
     # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
     # Noise and tone both use this. For noise, this is the only pitch-relevant parameter.
     mod_root_idx = entry.root.value
-    target_rate  = round(psg_synth.amiga_clock / PERIOD_TABLE[mod_root_idx])
+    # A tone rendered synth_shift semitones above the pitch `root` sounds (resolve_synth_roots)
+    # gets a rate raised by the same ratio, so MOD note root still sounds that pitch.
+    target_rate  = round(psg_synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
+                         * 2.0 ** (getattr(entry, "synth_shift", 0) / 12.0))
 
     resolved_env = _resolve_envelope(entry, verbose=verbose)
     env_info = f" envelope={entry.envelope}({len(resolved_env)}fr)" if resolved_env else ""

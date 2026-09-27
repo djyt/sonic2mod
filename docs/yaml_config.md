@@ -151,7 +151,7 @@ voice_map:
       high: G6                # Top of source-note range (inclusive)
       mod_instrument: 4       # MOD instrument slot (1-based)
       root: Fs2               # G5 plays at F#2; each semitone above shifts output by 1
-      synth_root: C6          # (optional) render at C6 instead of the pitch the chip plays for G5; notes are placed lower to stay in tune
+      synth_root: C6          # (optional) render at C6 instead of the pitch the chip plays for G5; the sample's rate carries the difference
     - low:  Gs6
       high: C7
       mod_instrument: 12

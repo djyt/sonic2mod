@@ -92,6 +92,7 @@ sonic2mod/
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
     regression_test.py  #   Before/after regression test runner
+    measure_volumes.py  #   All songs: convert, vgm_compare --write-volumes, re-convert, verify — cores-1 songs at once
     make_credits_config.py  # Regenerates configs/13_credits.yaml from the song (chip-pitch ranges, 31-instrument fold)
     config_to_chip_space.py # Converts a config's source-byte ranges to chip pitches (range_space: chip); warns where a range needs its own instrument
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
@@ -166,6 +167,13 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 python tools/vgm_compare.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --write-volumes
 # CI-style: JSON results + exit 1 when a threshold is exceeded (also --fail-unmatched N)
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
+
+# Every song at once (cores-1 in parallel): convert, one --write-volumes pass, re-convert, verify; prints the
+# volumes changed, what is still >= 1 dB off (ceiling / channels-disagree / 2-note ones marked) and the pitch
+# verdict per song.  Run after any change to how samples are rendered.  One write pass only: the errors are
+# relative to the song's median note, so a further pass drifts the whole song.  Reference renders are reused.
+python tools/measure_volumes.py
+python tools/measure_volumes.py --only green_hill special_stage --no-write
 ```
 
 ## Regression Testing
@@ -317,10 +325,10 @@ and does NOT affect range lookup.
 - `low`/`high` — SMPS note names without `n` prefix (e.g. `G5`, `Gs6`, `C7`)
 - `mod_instrument` — MOD instrument slot (1-based)
 - `root` — **absolute** MOD note anchor; source `low` always plays here regardless of `smpsChangeTransposition` or pitch_offset
-- `synth_root` — **derived** (`core.driver_state.resolve_synth_roots`): the chip pitch the instrument's notes play most often (envelopes stretch with playback rate in a MOD, so the busiest note keeps the hardware's timing), placed lower by `synth_shift = synth_root − D` (D = the chip pitch of `low`) so every note stays in tune, held so the placed notes fit C1–B3; entries sharing an instrument share the shift (the sample is rendered once, for the first). No config states it. Stated, it is the rendering pitch anywhere in the range, handled the same way (`root` = where `synth_root` sounds). `target_rate` is NOT adjusted. `synth_root_ambiguous` warns when `low` is played at several chip pitches (→ `range_space: chip` or split)
+- `synth_root` — **derived** (`core.driver_state.resolve_synth_roots`): the chip pitch the instrument's notes play most often (envelopes stretch with playback rate in a MOD, so the busiest note keeps the hardware's timing), at most an octave above D (the chip pitch of `low`). `synth_shift = synth_root − D` goes into the **sample's rate** (`target_rate × 2^(shift/12)`), never into the placement: MOD note `root` still sounds D, every note keeps its place, playback rate and bandwidth, and the sample costs 2^(shift/12) times the bytes. An instrument several entries share is rendered once, for the first entry, with the pitch chosen over all of them. No config states it. Stated, it is the rendering pitch anywhere in the range, handled the same way. `synth_root_ambiguous` warns when `low` is played at several chip pitches (→ `range_space: chip` or split)
 - `vibrato: XY` — per-entry vibrato override (speed X, depth Y; `0` = none); also works in `psg_map` / `psg_voice_map`. Not used by any shipped config — the computed `4xy` matches the hardware
 - `range_space: chip` (song-level) — match `low`/`high` and anchor `root` on the **real pitch the chip plays** (byte + pitch_offset + `smpsChangeTransposition`; PSG through the driver table) instead of the source byte. Needed when a song changes key with `$E9` while keeping a voice (Credits: FM2 twenty times); then the derived `synth_root` is simply `low` and a merged voice's entry keeps its own range. Source space stays the default
-- Output formula: `root + (source − low) − synth_shift`, clamped C1–B3
+- Output formula: `root + (source − low)`, clamped C1–B3
 - Rootless entries use channel-transpose path: `smps_note + total_transpose`
 - When `voice_map` covers all notes for a channel, set `transpose: 0`
 
@@ -331,7 +339,7 @@ voice_map:
       high: G6
       mod_instrument: 4
       root: Fs2             # G5 plays at F#2; each semitone above shifts output up by 1
-      synth_root: C6        # (optional) render at C6 instead of G5's chip pitch; notes placed lower to stay in tune
+      synth_root: C6        # (optional) render at C6 instead of G5's chip pitch; the sample's rate carries the difference
       vibrato: 31           # (optional) override vibrato for this range (speed=3, depth=1)
     - low:  Gs6
       high: C7

@@ -71,8 +71,33 @@ TEST_CASES = [
         "baseline": f"tests/baselines/{baseline}_baseline.mod",
         "ignore_channels": _CASE_OVERRIDES.get(name, []),
         "description": f"{desc} — all channels",
+        "args": [],
     }
     for stem, name, baseline, desc in _SONGS
+]
+
+
+def _has_merge(stem: str) -> bool:
+    """True when the config has a `merge:` section (the reduced build is a test case too)."""
+    path = _HERE.parent / "configs" / f"{stem}.yaml"
+    try:
+        with open(path, encoding="utf-8") as f:
+            return any(line.startswith("merge:") for line in f)
+    except OSError:
+        return False
+
+
+# The merged (channel-folded) build of every song that has merge groups: convert.py --merged
+TEST_CASES += [
+    {
+        "name": f"{name}_merged",
+        "config": f"configs/{stem}.yaml",
+        "baseline": f"tests/baselines/{baseline}_merged_baseline.mod",
+        "ignore_channels": _CASE_OVERRIDES.get(f"{name}_merged", []),
+        "description": f"{desc} — merged build",
+        "args": ["--merged"],
+    }
+    for stem, name, baseline, desc in _SONGS if _has_merge(stem)
 ]
 
 
@@ -81,9 +106,10 @@ def _regression_output_path(root: Path, name: str) -> Path:
     return root / "output" / f"_regression_{name}.mod"
 
 
-def run_conversion(config: str, root: Path, output_override: Path | None = None) -> tuple[bool, str]:
+def run_conversion(config: str, root: Path, output_override: Path | None = None,
+                   extra_args: list[str] | None = None) -> tuple[bool, str]:
     """Run convert.py with the given config.  Returns (ok, failure_text)."""
-    cmd = [sys.executable, "convert.py", config]
+    cmd = [sys.executable, "convert.py", config, *(extra_args or [])]
     if output_override is not None:
         cmd += ["--output", str(output_override)]
     result = subprocess.run(
@@ -122,7 +148,7 @@ def convert_all(cases: list[dict], root: Path, jobs: int) -> dict[str, tuple[boo
     with ThreadPoolExecutor(max_workers=max(1, min(jobs, len(cases)))) as pool:
         futures = {
             tc["name"]: pool.submit(run_conversion, tc["config"], root,
-                                    _regression_output_path(root, tc["name"]))
+                                    _regression_output_path(root, tc["name"]), tc.get("args"))
             for tc in cases
         }
         return {name: f.result() for name, f in futures.items()}
@@ -146,7 +172,7 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
     print(f"Generating baselines ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
     results = convert_all(cases, root, jobs)
     for tc in cases:
-        print(f"\n  [{tc['name']}] convert.py --config {tc['config']}")
+        print(f"\n  [{tc['name']}] convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
         tmp_path = _regression_output_path(root, tc["name"])
         ok, failure = results[tc["name"]]
         if not ok:
@@ -180,7 +206,7 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
             all_passed = False
             continue
 
-        print(f"  convert.py --config {tc['config']}")
+        print(f"  convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
         ok, failure = results[tc["name"]]
         if not ok:
             print(failure)

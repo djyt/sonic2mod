@@ -118,6 +118,19 @@ SMPS_NOTE_NAMES = _build_smps_note_names()
 
 _CHROMATIC_NAMES = ['C', 'Cs', 'D', 'Ds', 'E', 'Es', 'Fs', 'G', 'Gs', 'A', 'As', 'B']
 
+# MOD note name -> ModNote: "C2", "Fs3" / "F#3" / "Gb3" (the DAC mapping's mod_note spelling)
+MOD_NOTE_MAP: dict[str, ModNote] = {}
+for _oct in range(1, 4):
+    for _name, _enum in [
+        ("C", "C"), ("C#", "Cs"), ("Cs", "Cs"), ("Db", "Cs"), ("D", "D"), ("D#", "Ds"), ("Ds", "Ds"),
+        ("Eb", "Ds"), ("E", "E"), ("F", "F"), ("F#", "Fs"), ("Fs", "Fs"), ("Gb", "Fs"), ("G", "G"),
+        ("G#", "Gs"), ("Gs", "Gs"), ("Ab", "Gs"), ("A", "A"), ("A#", "As"), ("As", "As"), ("Bb", "As"),
+        ("B", "B"),
+    ]:
+        MOD_NOTE_MAP[f"{_name}{_oct}"] = ModNote[f"{_enum}{_oct}"]
+del _oct, _name, _enum
+
+
 def semitone_to_note_name(semitone: int) -> str:
     """Return SMPS primary note name for a semitone offset from C0 (e.g. 84 → 'C7')."""
     octave = semitone // 12

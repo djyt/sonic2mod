@@ -145,3 +145,16 @@ channel_instrument_map:
 mod_pattern_breaks:
   - pattern: 0
     row: 15
+
+# -------------------------------------------------------------------------------------------------
+# Amiga build (convert.py --merged): 7 channels -> 4.  FM5 is FM1's detuned double, FM3 plays
+# a third / fourth above FM4 on every note, and the PSG3 hi-hat lands on 24 of the 30 drum
+# hits.  tools/merge_survey.py measured the pairs; the composites are rendered per interval.
+# -------------------------------------------------------------------------------------------------
+merge:
+  - primary: FM1
+    followers: [FM5]
+  - primary: FM4
+    followers: [FM3]
+  - primary: DAC
+    followers: [PSG3]

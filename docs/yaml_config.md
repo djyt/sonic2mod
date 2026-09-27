@@ -109,6 +109,10 @@ samples_dir: "./samples/"       # Base path for sample files
 # mod_pattern_breaks:    Insert Bxx jumps + repack patterns to eliminate blank loop rows
 #   - pattern: 0         # Pattern to split
 #     row: 31            # Last intro row; body starts at row+1
+# merge:                 Channel folding for the Amiga build (convert.py --merged), see below
+#   - primary: FM1
+#     followers: [FM5]
+# merge_output_file:     Where --merged writes (default: output_file stem + "_merged.mod")
 ```
 
 ## Channel Source Names
@@ -495,3 +499,43 @@ Unspecified channels are skipped. This converts only FM1.
 ### Full Sonic 1 Song
 
 See [`configs/01_title_screen.yaml`](../configs/01_title_screen.yaml) for a complete example with all 9 channels, per-channel transpose, and DAC sample mappings.
+
+## merge — folding channels for the Amiga build
+
+The reference MOD keeps every SMPS channel. The Amiga port wants 3 or 4 channels with one left
+free for sound effects, so a config can name groups of channels that fold onto one:
+
+```yaml
+merge:
+  - primary: FM1          # the lead ...
+    followers: [FM5]      # ... and its detuned double
+  - primary: FM4
+    followers: [FM3]      # chord stabs: FM3 a third / fourth above FM4 on every note
+  - primary: DAC
+    followers: [PSG3]     # the hi-hat lands on the drum hits
+merge_output_file: output/01_title_screen_4ch.mod   # optional
+```
+
+`python convert.py configs/01_title_screen.yaml --merged` then writes the reduced MOD: the
+followers are dropped, the remaining channels are packed onto MOD channels 0..n-1 in their
+configured order (set `num_mod_channels` to pad, e.g. to leave a fourth channel free), and the
+primary plays a **composite instrument** wherever a follower sounds with it. Composites take
+free instrument slots and are named `merge FM1+FM5` in the sample list. Nothing else in the
+config changes, and the plain `convert.py` run is unaffected, so the reference MOD, its
+baselines and audits stay the ground truth.
+
+- **Two FM voices** (FM1+FM5, FM4+FM3) are rendered together on the YM2612, one chip channel
+  per voice keyed at once, at the follower's interval, `smpsDetune` and level relative to the
+  primary's. One composite per distinct interval: the stabs need one per third, fourth and
+  fifth. The chip sums and clips them as the hardware does.
+- **Anything else** (DAC + PSG hi-hat, FM + PSG tone) is mixed from the finished samples at the
+  primary's playback rate, the follower at its `sample_list` volume and baked level. A sum that
+  passes full scale plays at volume 64 and is reported.
+- The primary's effects apply to the composite: its vibrato, note fill, `Cxx` and `EDx`.
+
+What folds cleanly is a property of the song. `python tools/merge_survey.py configs/<song>.yaml`
+lines up every pair of channels and prints, per pair, how many follower notes fold and how many
+are lost (a follower note with no primary note-on is an *orphan* and needs its own channel; one
+that keeps ringing under the primary's next note-on is *held*; one that ends sooner leaves the
+primary alone), then suggests groups. The converter prints the same counts for the groups it was
+given. Rules in `docs/pipeline.md` § Channel merging.

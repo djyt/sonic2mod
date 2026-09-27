@@ -25,6 +25,7 @@ from core.config import (
     exact_bpm,
 )
 from core.driver_state import source_names
+from core.merge import prepare_merged_config
 from core.mod import apply_pattern_breaks
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
@@ -59,6 +60,9 @@ def main():
     )
     parser.add_argument('config', nargs='?', help="YAML configuration file")
     parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
+    parser.add_argument('--merged', action='store_true',
+                        help="The reduced build: fold the config's `merge:` followers onto their "
+                             "primaries (composite instruments) and write merge_output_file")
     parser.add_argument('--version', action='version',
                         version=f"sonic2mod {_get_version()}")
 
@@ -72,6 +76,11 @@ def main():
         config = ConversionConfig.from_yaml(args.config)
     except (ValueError, TypeError) as e:
         _error(str(e))
+    if args.merged:
+        try:
+            prepare_merged_config(config)
+        except ValueError as e:
+            _error(str(e))
     if args.output:
         config.output_file = args.output
 
@@ -299,6 +308,14 @@ def main():
             detail_lines.append(f"auto sustain FM [bold]{info['secs']}[/bold] s")
         elif info['type'] == 'auto_sustain_psg':
             detail_lines.append(f"auto sustain PSG [bold]{info['secs']}[/bold] s")
+        elif info['type'] == 'merge_group':
+            detail_lines.append(
+                f"merged [bold]{info['label']}[/bold]: {info['paired']} follower notes folded into "
+                f"[bold]{len(info['composites'])}[/bold] composite instrument"
+                f"{'s' if len(info['composites']) != 1 else ''}, "
+                f"{info['alone']} notes the primary plays alone")
+            for inst, notes, detail in info['composites']:
+                detail_lines.append(f"  [dim]inst {inst:2d}  {notes:3d} notes  {_escape(detail)}[/dim]")
 
     loop_str = (f"  ·  loop [dim]→[/dim] pattern [bold]{loop_target}[/bold]"
                 if loop_target is not None else "")
@@ -506,6 +523,55 @@ def _warn_sample_truncated(w: dict, ctx_str: str) -> None:
     )
 
 
+def _warn_merge_lost(w: dict, ctx_str: str) -> None:
+    parts = []
+    for key, what in (('orphans', "start with no primary note (lost)"),
+                      ('held', "ring under a primary note-on (ring lost)"),
+                      ('shorter', "end before the primary's note (played alone)"),
+                      ('truncated', "are cut by the primary's rest")):
+        if w[key]:
+            parts.append(f"{w[key]} {what}")
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[bold]{w['primary']}+{w['follower']}[/bold]  "
+        f"[yellow]of {w['follower']}'s {w['notes']} notes: {'; '.join(parts) if parts else 'all fold'}[/yellow]"
+    )
+    if w['vibrato']:
+        console.print(f"     [dim]{w['vibrato']} pairs modulate differently; the primary's vibrato applies[/dim]")
+    console.print(
+        "     [green]Fix:[/green] tools/merge_survey.py lists every pair's counts; a follower with "
+        "orphans needs its own channel."
+    )
+
+
+def _warn_merge_headroom(w: dict, ctx_str: str) -> None:
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]merge {w['group']}: composite instrument {w['instrument']} sums {w['db']:.1f} dB past "
+        f"full scale — played at volume 64, {w['db']:.1f} dB quieter than the two channels were[/yellow]"
+    )
+
+
+def _warn_merge_unsupported(w: dict, ctx_str: str) -> None:
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]merge {w['primary']} at tick {w['tick']}: {w['reason']} — the primary plays alone[/yellow]"
+    )
+
+
+def _warn_merge_missing(w: dict, ctx_str: str) -> None:
+    if w['type'] == 'merge_missing_sample':
+        console.print(
+            f"\n  [bold yellow]![/bold yellow]  "
+            f"[yellow]composite instrument {w['instrument']}: instrument {w['missing']} has no sample to mix[/yellow]"
+        )
+    else:
+        console.print(
+            f"\n  [bold yellow]![/bold yellow]  "
+            f"[yellow]the extended loop needs a composite the plan has no instrument for: {w['key']}[/yellow]"
+        )
+
+
 def _warn_rest_no_slot(w: dict, ctx_str: str) -> None:
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
@@ -560,6 +626,11 @@ _WARNING_RENDERERS = {
     'sustain_short': _warn_sustain_short,
     'sample_truncated': _warn_sample_truncated,
     'rest_no_slot': _warn_rest_no_slot,
+    'merge_lost': _warn_merge_lost,
+    'merge_headroom': _warn_merge_headroom,
+    'merge_unsupported': _warn_merge_unsupported,
+    'merge_missing_sample': _warn_merge_missing,
+    'merge_missing_composite': _warn_merge_missing,
 }
 
 

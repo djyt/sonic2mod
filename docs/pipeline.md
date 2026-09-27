@@ -803,6 +803,60 @@ unmatched per GHZ channel with every note in place).  The DAC still uses it — 
 seeks, not hits (GHZ has two seeks 20 ms apart and hits with none) — so its count stays
 approximate (Title Screen 3, GHZ 60).
 
+## Channel merging (`merge:`, `convert.py --merged`)
+
+The Amiga build folds SMPS channels onto one MOD channel (`core/merge.py`; config in
+`docs/yaml_config.md` § merge). A group names a **primary** and its **followers**; the followers
+leave the output and the primary plays a composite instrument wherever a follower sounds with it.
+
+**Per primary note-on at tick t**, with the follower's note-ons as `walk_channel` resolves them
+(`smpsNoAttack` continuations extend a note; a rest ends it):
+
+| Follower at t | Result | Counted as |
+|---|---|---|
+| note-on, same duration | composite | `paired` |
+| note-on, longer | composite; its tail is cut by the primary's next rest (`truncated`) or re-attacked by the primary's next note (`held` there) | `paired` |
+| note-on, shorter | the primary alone: a composite cannot key one voice off early | `shorter` |
+| none, resting | the primary alone (right) | `alone` |
+| none, still sounding | the primary alone; the follower's ring is lost | `held` |
+| note-on with no primary note-on | lost | `orphan` |
+
+A pair is clean when nothing is lost; `tools/merge_survey.py` prints the counts for every
+ordered pair of a song's channels and suggests groups (never one with orphans). Follower notes
+whose modulation state differs from the primary's are counted (`vibrato`) but play with the
+primary's `4xy`.
+
+**Composite instruments.** One per distinct key, allocated from the free instrument slots:
+
+- two FM voices → `("fm", primary instrument, (follower voice, interval, detune, TL delta)...)`:
+  an `FmInstrument` with one `FmLayer` per voice, added to the instrument catalogue and rendered
+  by `ym2612.renderer.render_layers` — each layer on its own YM2612 channel at the composite's
+  rendering pitch plus its interval, with the follower's `smpsDetune` (relative to the
+  primary's) added to the frequency word as `FMUpdateFreq` does, and its carrier TL the
+  follower's track level relative to the primary's (a hard pan counts 4 steps). The sample is
+  rendered at the level the composite's own notes play most (`_plan_fm_render_levels` counts it
+  like any instrument) and its `sample_list` volume is the primary's, moved by the difference
+  between the composite's and the primary instrument's baked levels.
+- anything else → `("pcm", primary instrument, primary MOD note, (follower instrument, follower
+  MOD note, level gain)...)`: mixed by `mix_pcm_composites` once every sample is in. A MOD
+  sample triggered at note n plays at `amiga_clock / PERIOD[n]` whatever rate it was made at, so
+  the follower is resampled by the period ratio of the two notes onto the primary sample's time
+  axis and added at `sample_list volume × 10^((level − baked level)/20)`. The sum is
+  peak-normalised and the composite's volume set to the sum's level; past full scale it stays
+  at 64 and `merge_headroom` says by how much.
+
+**When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`)
+and before the samples render, so the FM composites are catalogue entries like any other; it is
+stored on `config.merge_plan`, which `walk_channel` reads, so the level pre-passes, the sustain
+scan and `_convert_channel` all see the composite instruments the same way (the DAC branch asks
+the plan directly). After `_extend_looping_channels` the tick map is rebuilt (`refresh_ticks`);
+a composite the extended song would need that the plan lacks is reported.
+
+**Verification.** The reference MOD is untouched by all this; the merged build is a second
+regression case per song that has a `merge:` section (`<name>_merged`). `vgm_compare.py` audits
+per channel against the VGZ, so a merged channel would have to be compared against the sum of
+its source channels — not done yet.
+
 ## SMPS Note Range to MOD Range
 
 SMPS supports 8 octaves (C0–B7, bytes $81–$DF). MOD supports 3 octaves (C1–B3, 36 semitones). Mapping requires transposing down.

@@ -23,7 +23,7 @@ from .driver_state import (
     walk_channel,
 )
 from .driver_state import source_map as source_map_for
-from .driver_tables import PSG_FREQUENCIES_EXTENDED, psg_tone2_divider
+from .driver_tables import PSG_ENVELOPES_BY_NAME, PSG_FREQUENCIES_EXTENDED, noise_envelope_frames, psg_tone2_divider
 from .instruments import fm_catalogue, psg_catalogue
 from .levels import (
     DEFAULT_FM_PAN_LAW_DB,
@@ -32,7 +32,7 @@ from .levels import (
     modal_level,
     psg_att_to_mod,
 )
-from .merge import build_merge_plan, mix_pcm_composites, refresh_ticks
+from .merge import build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
 from .smps_parser import SmpsChannel, SmpsSong
@@ -521,10 +521,16 @@ class SmpsToModConverter:
                                'row': int(tick // self._effective_tpr)})
         self._tempo_segments = self._collect_tempo_segments()
 
+        # Extend channels whose loop body is too short to cover the full song, before anything
+        # counts notes: a replayed body is as many notes as it plays (GHZ's PSG3 hi-hat is 4
+        # events that become 264), and a replayed body may carry a tempo change.
+        self._extend_looping_channels()
+        self._tempo_segments = self._collect_tempo_segments()
+
         # The merged build: which composite instruments the groups need and where they play,
         # decided while the ticks are final and before anything renders (core/merge.py).
         self._merge = None
-        if self.config.merge_active and self.config.merge:
+        if self.config.merge_active:
             self._merge = self._build_merge_plan()
 
         # Resolve 'auto' sustain durations from the longest ring each instrument plays, in the
@@ -633,15 +639,6 @@ class SmpsToModConverter:
         if self.config.target_speed != 6:
             self.mod.set_speed(self.config.target_speed)
 
-        # Extend channels whose loop body is too short to cover the full song
-        self._extend_looping_channels()
-        self._tempo_segments = self._collect_tempo_segments()
-        if self._merge is not None:
-            missing = refresh_ticks(self._merge, self.song, self.config, pan_law_db=self._merge_pan_law,
-                                    baselines=self._merge_baselines)
-            for key in missing:
-                self._add_warning({'type': 'merge_missing_composite', 'channel': 'merge', 'key': repr(key)})
-
         # Convert channels
         self._convert_all_channels()
         self._place_leading_rests()
@@ -732,6 +729,29 @@ class SmpsToModConverter:
                 'span': loop_span,
             })
 
+    def _sample_secs(self) -> dict[int, float]:
+        """{instrument: seconds its sample lasts} for the instruments whose sample, not the
+        note's duration, says how long a note is heard: the drums (their file on disk, played
+        at their mod_note) and the noise instruments (their envelope, then the ramp to
+        silence).  What core.merge bounds a note's sounding span with."""
+        import os
+        clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
+        files = {e[0]: e[1] for e in (self.config.sample_list or [])}
+        out: dict[int, float] = {}
+        for d in self.config.dac_samples:
+            path = os.path.join(self.config.samples_dir, files.get(d.mod_instrument, ""))
+            note = _MOD_NOTE_MAP.get(d.mod_note)
+            if d.mod_instrument in files and note is not None and os.path.exists(path):
+                out[d.mod_instrument] = os.path.getsize(path) / (clock / PERIOD_TABLE[note.value])
+        fps = 50.0 if self.config.region.lower() == 'pal' else 60.0
+        for inst, d in self._derive_noise_envelopes().items():
+            env = d['envelope']
+            env = PSG_ENVELOPES_BY_NAME.get(env) if isinstance(env, str) else env
+            frames = noise_envelope_frames(env if isinstance(env, list) else None)
+            if frames is not None:
+                out[inst] = frames / fps
+        return out
+
     def _build_merge_plan(self):
         """core.merge.build_merge_plan with this conversion's pan law and baked levels, its
         findings reported as infos / warnings."""
@@ -742,7 +762,8 @@ class SmpsToModConverter:
         if self._psg_volume_mode == "baked":
             self._merge_baselines["PSG"] = self._plan_levels("PSG")
         plan = build_merge_plan(self.song, self.config, pan_law_db=self._merge_pan_law,
-                                baselines=self._merge_baselines)
+                                baselines=self._merge_baselines, sample_secs=self._sample_secs(),
+                                tick_secs=lambda t: self._tick_span_secs(t, t + 1))
         for g in plan.groups:
             comps = [c for c in plan.composites.values() if c.group is g]
             stats = [s for s in plan.stats if s.primary == g.primary]
@@ -754,11 +775,11 @@ class SmpsToModConverter:
         if plan.unused:
             self.infos.append({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
         for s in plan.stats:
-            if s.lost or s.vibrato:
+            if s.lost or s.vibrato or s.cuts:
                 self._add_warning({'type': 'merge_lost', 'channel': s.primary, 'primary': s.primary,
                                    'follower': s.follower, 'held': s.held, 'shorter': s.shorter,
                                    'truncated': s.truncated, 'orphans': s.orphans, 'solo_cut': s.solo_cut,
-                                   'vibrato': s.vibrato, 'notes': s.follower_notes})
+                                   'cuts': s.cuts, 'vibrato': s.vibrato, 'notes': s.follower_notes})
         for u in plan.unsupported:
             self._add_warning({'type': 'merge_unsupported', 'channel': u['primary'], **u})
         return plan

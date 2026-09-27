@@ -538,8 +538,9 @@ def _warn_merge_lost(w: dict, ctx_str: str) -> None:
                       ('held', "ring under a primary note-on (ring lost)"),
                       ('shorter', "end before the primary's note (played alone)"),
                       ('truncated', "are cut by the primary's rest"),
-                      ('solo_cut', "play alone but are cut by the primary's next note")):
-        if w[key]:
+                      ('solo_cut', "play alone but are cut by the primary's next note"),
+                      ('cuts', "cut the primary's tail (cut_primary)")):
+        if w.get(key):
             parts.append(f"{w[key]} {what}")
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
@@ -570,16 +571,10 @@ def _warn_merge_unsupported(w: dict, ctx_str: str) -> None:
 
 
 def _warn_merge_missing(w: dict, ctx_str: str) -> None:
-    if w['type'] == 'merge_missing_sample':
-        console.print(
-            f"\n  [bold yellow]![/bold yellow]  "
-            f"[yellow]composite instrument {w['instrument']}: instrument {w['missing']} has no sample to mix[/yellow]"
-        )
-    else:
-        console.print(
-            f"\n  [bold yellow]![/bold yellow]  "
-            f"[yellow]the extended loop needs a composite the plan has no instrument for: {w['key']}[/yellow]"
-        )
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]composite instrument {w['instrument']}: instrument {w['missing']} has no sample to mix[/yellow]"
+    )
 
 
 def _warn_rest_no_slot(w: dict, ctx_str: str) -> None:
@@ -640,7 +635,6 @@ _WARNING_RENDERERS = {
     'merge_headroom': _warn_merge_headroom,
     'merge_unsupported': _warn_merge_unsupported,
     'merge_missing_sample': _warn_merge_missing,
-    'merge_missing_composite': _warn_merge_missing,
 }
 
 

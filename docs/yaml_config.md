@@ -513,7 +513,9 @@ merge:
     followers: [FM3]      # chord stabs: FM3 a third / fourth above FM4 on every note
   - primary: DAC
     followers: [PSG3]     # the hi-hat lands on the drum hits
+    cut_primary: true     # a hat over a drum's decay plays and cuts the tail (Green Hill)
 merge_output_file: output/01_title_screen_4ch.mod   # optional
+merge_drop: [FM3, PSG1]                              # optional: left out of the merged build altogether
 ```
 
 `python convert.py configs/01_title_screen.yaml --merged` then writes the reduced MOD: the
@@ -534,9 +536,18 @@ baselines and audits stay the ground truth.
 - The primary's effects apply to the composite: its vibrato, note fill, `Cxx` and `EDx`.
 - A follower note that starts while the primary is silent is placed on the merged channel as
   the follower's own note (its instrument, pitch and level), so two channels that never sound
-  at once can share a MOD channel outright.
+  at once can share a MOD channel outright. A drum or noise note sounds for its sample, not
+  its SMPS duration, so a hat two ticks after a kick's sample has ended is such a note.
+- `cut_primary: true` on a group lets a follower note that starts while the primary still
+  sounds play anyway, cutting the primary's tail; that is what a hi-hat does to a drum's decay
+  on a 4-channel Amiga, and it is how Green Hill's 262 hats ride its 172 drum hits. Off, those
+  notes are lost (`orphan`).
 - Instruments no note of the merged build plays are not rendered, so the merged MOD carries
   only the samples it uses.
+- A song with more independent voices than the Amiga has channels needs `merge_drop:` as
+  well: those channels are left out of the merged build (they still vote for their
+  instruments' levels, so the measured volumes hold). Which parts to drop is a musical
+  decision the survey cannot make; Green Hill Zone keeps drums, bass, lead and one harmony.
 
 What folds cleanly is a property of the song. `python tools/merge_survey.py configs/<song>.yaml`
 lines up every pair of channels and prints, per pair, how many follower notes fold, how many play

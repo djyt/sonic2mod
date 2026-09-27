@@ -312,13 +312,12 @@ Conversion engine that walks the IR and writes MOD data.
 #### `SmpsToModConverter.convert()` Flow
 
 1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch
-2. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`); in the merged build, `_build_merge_plan()` (core/merge.py) decides the composite instruments while the ticks are final
+2. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`) and extend short loop bodies (`_extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
 3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`_sustain_needs`)
 4. Run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
 5. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
-6. Extend short loop bodies (`_extend_looping_channels()`); refresh the merge plan's tick map
-7. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
-8. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
+6. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
+7. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
 
 `_set_loop_point()` is called by `convert.py` afterwards - after `apply_pattern_breaks`, so the
 `Bxx` lands at the right post-break position (see the call-order gotcha in `CLAUDE.md`).

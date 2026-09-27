@@ -461,12 +461,13 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
 def enabled_channels(song, config, kinds=("FM", "PSG")):
     """(chan_cfg, parsed channel) for every enabled config channel of the given chip kinds.
 
-    In the merged build (`convert.py --merged`) the followers are disabled in the output but
-    still walked here: their notes vote for their instruments' levels, envelopes and rendering
-    pitches, which the composites and the solo notes are made from.
+    In the merged build (`convert.py --merged`) the followers and the dropped channels are
+    disabled in the output but still walked here: their notes vote for their instruments'
+    levels, envelopes and rendering pitches, which the composites and the solo notes are made
+    from, and the sample_list volumes were measured with those votes.
     """
     smap = source_map(song)
-    followers = ({f for g in config.merge for f in g.followers}
+    followers = ({f for g in config.merge for f in g.followers} | set(config.merge_drop)
                  if getattr(config, "merge_active", False) else set())
     for chan_cfg in config.channels:
         channel = smap.get(chan_cfg.source)

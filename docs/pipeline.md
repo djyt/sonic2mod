@@ -810,7 +810,10 @@ The Amiga build folds SMPS channels onto one MOD channel (`core/merge.py`; confi
 leave the output and the primary plays a composite instrument wherever a follower sounds with it.
 
 **Per primary note-on at tick t**, with the follower's note-ons as `walk_channel` resolves them
-(`smpsNoAttack` continuations extend a note; a rest ends it):
+(`smpsNoAttack` continuations extend a note; a rest ends it; a drum or noise note *sounds* for
+its sample's length when that is shorter, `NoteOn.sounding`, from the drum file's size at its
+`mod_note` and the noise envelope's frames). A mixed (non-chip) pair needs no equal durations:
+each sample plays out as it is.
 
 | Follower at t | Result | Counted as |
 |---|---|---|
@@ -819,7 +822,7 @@ leave the output and the primary plays a composite instrument wherever a followe
 | note-on, shorter | the primary alone: a composite cannot key one voice off early | `shorter` |
 | none, resting | the primary alone (right) | `alone` |
 | none, still sounding | the primary alone; the follower's ring is lost | `held` |
-| note-on while the primary sounds, no primary note-on | lost | `orphan` |
+| note-on while the primary sounds, no primary note-on | lost; with the group's `cut_primary: true` it plays as a solo note and cuts the primary's tail | `orphan` / `cuts` |
 | note-on while the primary is silent | the follower's own note, spliced into the primary's event stream with the follower's instrument, MOD note and level (`walk_channel` yields it with the follower's state); the follower's rest follows it unless the primary takes the channel back first | `solo` (`solo_cut` when a primary note-on ends it early) |
 
 A pair is clean when nothing is lost; `tools/merge_survey.py` prints the counts for every
@@ -857,12 +860,12 @@ kept until the mix is done and blanked after.
   peak-normalised and the composite's volume set to the sum's level; past full scale it stays
   at 64 and `merge_headroom` says by how much.
 
-**When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`)
-and before the samples render, so the FM composites are catalogue entries like any other; it is
-stored on `config.merge_plan`, which `walk_channel` reads, so the level pre-passes, the sustain
-scan and `_convert_channel` all see the composite instruments the same way (the DAC branch asks
-the plan directly). After `_extend_looping_channels` the tick map is rebuilt (`refresh_ticks`);
-a composite the extended song would need that the plan lacks is reported.
+**When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`
+and `_extend_looping_channels`, which now runs before anything counts notes) and before the
+samples render, so the FM composites are catalogue entries like any other; it is stored on
+`config.merge_plan`, which `walk_channel` reads, so the level pre-passes, the sustain scan and
+`_convert_channel` all see the composite instruments the same way (the DAC branch asks the plan
+directly).
 
 **Verification.** The reference MOD is untouched by all this; the merged build is a second
 regression case per song that has a `merge:` section (`<name>_merged`).

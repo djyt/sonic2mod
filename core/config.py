@@ -101,6 +101,8 @@ class MergeGroup:
     """One `merge:` group: the followers fold onto the primary's MOD channel (core/merge.py)."""
     primary: str
     followers: list[str]
+    cut_primary: bool = False   # a follower note that starts while the primary still sounds cuts it
+                                # (a hi-hat over a drum's tail) instead of being lost
 
     @property
     def label(self) -> str:
@@ -526,6 +528,7 @@ class ConversionConfig:
     # Channel folding for the reduced (Amiga) build, used with `convert.py --merged` (core/merge.py):
     # each group's followers are dropped and their notes rendered into the primary's instruments.
     merge: list = field(default_factory=list)              # list[MergeGroup]
+    merge_drop: list = field(default_factory=list)         # channels left out of the merged build altogether
     merge_output_file: str | None = None                   # default: output_file stem + "_merged"
     merge_active: bool = False                             # set by core.merge.prepare_merged_config
     merge_plan: Any = field(default=None, repr=False)      # core.merge.MergePlan, set by the converter
@@ -755,7 +758,10 @@ class ConversionConfig:
             followers = g.get('followers', [])
             if isinstance(followers, str):
                 followers = [followers]
-            config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers]))
+            config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers],
+                                           bool(g.get('cut_primary', False))))
+        drop = data.get('merge_drop', []) or []
+        config.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
         config.merge_output_file = data.get('merge_output_file')
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts

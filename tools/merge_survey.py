@@ -8,7 +8,9 @@ note-ons up with the primary's the way core/merge.py will, and prints the counts
     solo        follower notes that start while the primary is silent — placed on the merged
                 channel as the follower's own note (cut = a primary note-on re-takes the channel)
     alone       primary notes with the follower resting (fine: the primary plays as before)
-    orphans     follower notes that start while the primary sounds — LOST on the merged channel
+    orphans     follower notes that start while the primary sounds — LOST on the merged channel,
+                unless the group says `cut_primary: true`: then they play and cut the primary's
+                tail (a hi-hat over a drum's decay), and the drum channel is usually the place
     held        primary note-ons under a follower note that keeps sounding — its ring is lost
     shorter     follower notes at the primary's tick that end sooner — the primary plays alone
     truncated   follower notes cut by the primary's rest
@@ -49,6 +51,7 @@ def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], 
     conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
     resolve_synth_roots(song, cfg)
     conv._apply_global_tempo_div()
+    conv._extend_looping_channels()          # a replayed loop body is as many notes as it plays
     pan_law = synth.fm_pan_law_db if synth else DEFAULT_FM_PAN_LAW_DB
     baselines = {}
     if conv._fm_volume_mode == "baked":
@@ -63,7 +66,9 @@ def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], 
         return 10 ** ((n.level_db - base) / 20.0)
 
     sources = [c.source for c in cfg.channels if c.enabled]
-    notes = {src: channel_notes(song, cfg, src, pan_law) for src in sources}
+    sample_secs = conv._sample_secs()
+    notes = {src: channel_notes(song, cfg, src, pan_law, sample_secs, lambda t: conv._tick_span_secs(t, t + 1))
+             for src in sources}
     counts = {src: len(notes[src][0]) for src in sources}
     stats = []
     for p in sources:
@@ -105,7 +110,7 @@ def main() -> None:
         if not args.all and not s.clean:
             continue
         verdict = ("clean" if s.clean else
-                   "orphans: needs its own channel" if s.orphans else
+                   "orphans: own channel, or cut_primary" if s.orphans else
                    "folds with losses")
         print(f"{s.primary:8} {s.follower:8} {s.follower_notes:5d} {s.paired:6d} {s.solo:4d} {s.solo_cut:3d} "
               f"{s.alone:5d} {s.orphans:6d} {s.held:4d} {s.shorter:5d} {s.truncated:5d} {s.vibrato:3d} "

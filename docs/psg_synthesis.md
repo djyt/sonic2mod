@@ -135,9 +135,11 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
   ```
   This controls how fast the Amiga plays back the sample. It does NOT change because of `synth_root`.
 
-- **`synth_root`** overrides the frequency used when rendering via the SN76489 emulator.
-  The chip synthesizes at `synth_root`'s frequency, but the MOD sampler plays it at the `root` rate.
-  Use this when the actual chip pitch differs from `root` due to transposition.
+- **`synth_root`** is the frequency rendered via the SN76489 emulator.  It is derived from the
+  song (`core.driver_state.resolve_synth_roots`: the pitch the chip plays for the entry's `low`,
+  through the driver's table, or for a `low`-less entry the pitch its transpose path implies), so
+  no config states it.  A stated value is a rendering pitch elsewhere in the range; the notes are
+  then placed lower by `synth_shift` so they stay in tune (`docs/fm_synthesis.md` §Pitch).
 
 - For **noise entries**, `root` controls `target_rate` and the MOD anchor where `low` plays.
   When `low` is set, notes trigger at `root + (source − low)` — the same melodic formula as tones.
@@ -150,9 +152,9 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
 N = round(clock_rate / (2 × freq × 16)),  clamped 1–1023
 ```
 
-For MOD note index (0=C1, 12=C2, 24=C3, 33=A3):
+For MOD note index (0=C1, 12=C2, 24=C3, 33=A3, 45=A4):
 ```
-freq = 440 × 2^((note_idx - 33) / 12)
+freq = 440 × 2^((note_idx - 45) / 12)
 ```
 
 `note_to_psg_n(mod_note_index, clock_rate)` in `sn76489/renderer.py` does this calculation.
@@ -166,8 +168,9 @@ synth_note_idx = root.value         (otherwise)
 
 The −12 offset maps SMPS semitone convention to renderer index (idx 0 = C1).
 
-**Missing synth_root on a transposed tone** → synthesizes at wrong octave → thin or
-inaudible output. Set `synth_root` to the SMPS note the chip actually plays at.
+A `synth_root_ambiguous` warning means the entry's `low` is played at several chip pitches
+(Spring Yard's `fTone_06`: three notes fall off the end of the driver's table) — split the
+entry or use `range_space: chip`.
 
 ---
 
@@ -326,16 +329,13 @@ Returns a dict ready for insertion into a `ModFile` via `sample_list`.
 
 ## Common Mistakes
 
-### Missing synth_root on a transposed tone
+### A stated synth_root that is not what the chip plays
 
-A PSG tone channel with `smpsChangeTransposition` plays the chip at a different pitch than the SMPS
-byte label. If `synth_root` is not set, the emulator synthesizes at the `root` pitch (wrong octave),
-producing a different timbre or silence.
-
-**Fix:** Set `synth_root` to the SMPS note the chip actually plays at after transposition:
-```
-synth_root = low + total_transpose
-```
+Until 2026-09-27 every entry had to state `synth_root`, and a wrong value rendered the tone in
+the wrong octave (Spring Yard's `fTone_06` was an octave high for four notes).  The converter now
+derives it from the song, so delete stated values rather than correct them.  A value you do
+state is honoured as a rendering pitch and the notes are re-placed to stay in tune; the only
+audible effect of a wrong one is a stretched sample, never a wrong pitch.
 
 ### Rate 3 (follow ch2; form bytes `$E3` / `$E7`) — pitch and timbre
 

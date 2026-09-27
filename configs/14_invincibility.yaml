@@ -57,13 +57,11 @@ voice_map:
       high: Cs6
       mod_instrument: 3
       root: C1
-      synth_root: G3
   1:
     - low:  G1   # was G2-D4 (source bytes) for FM2
       high: D3
       mod_instrument: 5
       root: G1
-      synth_root: G1
 psg_map:
   0xE7:                    # form $E7
     mod_instrument: 6
@@ -82,7 +80,6 @@ channel_instrument_map:
       high: Cs6
       mod_instrument: 4
       root: G1
-      synth_root: G4
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern breaks to align to grid

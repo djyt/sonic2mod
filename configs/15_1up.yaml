@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------------------------
 # 1-Up / Extra Life Conversion Script
-# Todo: analyze.py suggests the wrong synth_root for psg_voice_map. Manually corrected.
+# synth_root is not stated: the converter renders each entry at the pitch the chip plays for its low note.
 # -------------------------------------------------------------------------------------------------
 name: 1-Up (Extra Life)
 input_file: "input/Mus88 - Extra Life.asm"
@@ -64,21 +64,18 @@ voice_map:
       high: Fs7
       mod_instrument: 2
       root: Cs2
-      synth_root: Cs5
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  A6
       high: D7
       mod_instrument: 3
       root: A2
-      synth_root: A4
   # $02 — alg 2: (1+(2→3))→4, fb 7 — used by FM3, FM5
   2:
     - low:  G4
       high: A4
       mod_instrument: 4
       root: G2
-      synth_root: G2
 
 psg_voice_map:
   fTone_05:
@@ -86,7 +83,6 @@ psg_voice_map:
     high: D7
     mod_instrument: 5
     root: A2
-    synth_root: A5
 
 # -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.
@@ -98,7 +94,6 @@ channel_instrument_map:
         high: Fs7
         mod_instrument: 6
         root: Cs2
-        synth_root: Cs5
         
   FM5:
     2:
@@ -106,4 +101,3 @@ channel_instrument_map:
         high: A4
         mod_instrument: 7
         root: G2
-        synth_root: G2

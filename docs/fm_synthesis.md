@@ -145,9 +145,9 @@ This is the most critical (and confusing) part of synthesis configuration.
 
 | Concept | Where set | Controls |
 |---------|-----------|---------|
-| `root` | `voice_map` entry | **MOD note placement** — where the sample is triggered in the pattern; also determines `target_rate` |
-| `synth_root` | `voice_map` entry (optional) | **Synthesis pitch** — the frequency the chip renders at |
-| `low` | `voice_map` entry | **Source range start** and **default synthesis pitch** when `synth_root` is absent |
+| `root` | `voice_map` entry | **The sample's base note**: the MOD note at which playback sounds at `synth_root`, and the note where `low` plays when `synth_root` is derived; also determines `target_rate` |
+| `synth_root` | derived from the song; a `voice_map` entry may state it | **Rendering pitch** — the frequency the chip renders at |
+| `low` | `voice_map` entry | **Source range start**; the chip pitch it plays at is the default rendering pitch |
 
 ### How they interact
 
@@ -155,16 +155,37 @@ This is the most critical (and confusing) part of synthesis configuration.
 ```python
 target_rate = round(amiga_clock / PERIOD_TABLE[root.value])
 ```
-`synth_root` does NOT affect `target_rate`. This is intentional.
+`synth_root` does NOT affect `target_rate`.  A sample rendered at `synth_root` and played at
+MOD note `m` therefore sounds at `synth_root + (m − root)` semitones.
 
-**synth_note_idx** (the note the OPN2 chip renders at) is:
-```python
-if entry.synth_root is not None:
-    synth_note_idx = entry.synth_root - 12   # SMPS semitone → renderer index
-else:
-    synth_note_idx = entry.low - 12           # default: synthesize at 'low'
+**synth_root is derived.**  Before anything is rendered, `core.driver_state.resolve_synth_roots`
+walks every channel with the `DriverState` and, for each rooted entry, takes the pitch the chip
+really plays for the entry's `low` note (`low` plus the pitch offset and every
+`smpsChangeTransposition`; for PSG through the driver's frequency table).  A config never needs
+to state it: with `synth_root = D` (that derived pitch) and the placement `m = root + (key − low)`,
+every note sounds at its chip pitch.  `convert.py` prints how many entries were derived.
+
+When an entry's `low` is played at several chip pitches (a voice used at two pitch offsets, or
+under an `smpsChangeTransposition`, inside one source range) the most-played pitch is used and a
+`synth_root_ambiguous` warning names the others: that entry needs `range_space: chip`
+(`tools/config_to_chip_space.py`) or a split.
+
+**Stating synth_root renders elsewhere in the range.**  A stated `synth_root` is the rendering
+pitch, wherever in the range you want it — the middle, say, so the sample is stretched at most
+half the range each way instead of a whole range upwards.  The entry's `synth_shift` is
+`synth_root − D`, and every note is placed that much lower: `m = root + (key − low) − synth_shift`.
+The low note then plays below `root`, the note at `synth_root` plays at `root`, and all of them
+stay in tune.  Mind the C1–B3 range: the low notes now sit `synth_shift` semitones under `root`.
+
+```yaml
+voice_map:
+  5:
+    - low: G3          # chip pitches (range_space: chip); the range runs G3–B4
+      high: B4
+      mod_instrument: 7
+      root: C2         # the note where playback sounds at synth_root
+      synth_root: D4   # rendered at D4, the middle; G3 plays at C2 − 7 = F1, B4 at C2 + 9 = A2
 ```
-The `-12` offset exists because SMPS semitone 0 = C0, but the renderer's index 0 = C1 (one octave higher).
 
 **A `synth_root` name is a real pitch.**  `synth_root: A4` renders 440 Hz: `note_to_freq` gives the
 standard frequency and `freq_to_fnum_block` uses the chip's formula
@@ -173,53 +194,14 @@ real pitch too — the driver's table puts `nC0` at 16.35 Hz — so the chip pit
 simply `note + pitch_offset + smpsChangeTransposition`, and `tools/vgm_analyze.py` shows the same
 names.  (Before 2026-09-18 both `freq_to_fnum_block` and the analyzer used `2^(20−block)`: the
 synthesiser rendered an octave below the name and the analyzer read an octave high, so every
-config carried `synth_root` values one octave above the rule below.  All 103 were lowered when
-the formulas were fixed; the generated MODs are byte-identical.)
+config carried `synth_root` values one octave above the rule.  All 103 were lowered when the
+formulas were fixed.  On 2026-09-27 the 163 stated values were checked against the derivation:
+162 matched and Spring Yard's `fTone_06` was an octave high — its four notes in the PSG table
+were wrong until the derivation replaced it — and all were removed from the configs.)
 
-**What the Amiga hears:**
-When the Amiga plays the sample at its period (derived from `root`), the output pitch is the
-frequency of `synth_root` (or `low` if no `synth_root`). This works correctly when:
-
-```
-synth_root matches the actual chip pitch for that channel and voice switch
-```
-
-### When to use synth_root
-
-**Case 1 — No smpsChangeTransposition:** `synth_root` is not needed. Synthesize at `low`.
-
-```yaml
-voice_map:
-  5:
-    - low: C4
-      high: B5
-      mod_instrument: 7
-      root: C2
-      # synth_root omitted: synthesize at C4
-```
-
-**Case 2 — smpsChangeTransposition shifts the chip pitch:** The SMPS byte says C5 but the chip
-actually plays at C2 (because total_transpose = -36). Set `synth_root: C2` so the OPN2 renders
-at C2's frequency — matching what the game plays.
-
-```yaml
-voice_map:
-  8:
-    - low: C5
-      high: B6
-      mod_instrument: 22
-      root: C2
-      synth_root: C2    # chip pitch = C2 due to total_transpose -36
-```
-
-Without `synth_root`, synthesis would render at C5 (523 Hz), which is three octaves too high.
-FM timbre changes significantly with pitch — at C5 the modulation sidebands are outside the
-audible range for a bass voice, producing a thin or near-silent result.
-
-**Computing synth_root:**
-```
-synth_root = low + total_transpose − chan_cfg.transpose
-```
+**Why the rendering pitch matters:** FM timbre changes with pitch.  A bass voice rendered three
+octaves too high has its modulation sidebands outside the audible range and comes out thin or
+near-silent, which is what a missing transposition used to do before the derivation.
 where:
 - `low` = SMPS source note (the `low` field)
 - `total_transpose` = header pitch_offset + accumulated smpsChangeTransposition

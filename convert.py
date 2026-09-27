@@ -10,6 +10,7 @@ import os
 import sys
 
 from rich import box
+from rich.markup import escape as _escape
 from rich.padding import Padding
 from rich.table import Table
 
@@ -279,6 +280,16 @@ def main():
                 f"[bold]{info['wanted_cycle_frames']}[/bold] frames is faster than 4Fy can play "
                 f"[dim]({info['played_cycle_frames']:.1f} frames at this speed/BPM)[/dim]"
             )
+        elif info['type'] == 'synth_roots':
+            detail_lines.append(
+                f"synthesis pitches: [bold]{info['derived']}[/bold] entries rendered at the pitch the chip "
+                f"plays for their low note [dim](derived), {info['stated']} stated[/dim]")
+        elif info['type'] == 'synth_shift':
+            from core.tables import synth_note_name
+            detail_lines.append(
+                f"{_escape(info['context'])}: rendered at [bold]{synth_note_name(info['synth_root'])}[/bold], "
+                f"{abs(info['shift'])} semitones {'above' if info['shift'] > 0 else 'below'} the pitch of its low "
+                f"note; the notes are placed the other way so they stay in tune")
         elif info['type'] == 'noise_envelope':
             how = "derived from the song" if info['derived'] else "stated in the config"
             detail_lines.append(
@@ -520,7 +531,23 @@ def _warn_noise_envelopes(w: dict, ctx_str: str) -> None:
     )
 
 
+def _warn_synth_root_ambiguous(w: dict, ctx_str: str) -> None:
+    from core.tables import synth_note_name
+    votes = ", ".join(f"{synth_note_name(d)} ({n} notes)"
+                      for d, n in sorted(w['votes'].items(), key=lambda kv: -kv[1]))
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]{_escape(w['context'])} (instrument {w['instrument']}): its low note is played at several chip "
+        f"pitches — {votes}; rendered at {synth_note_name(w['synth_root'])}, the others are out of tune[/yellow]"
+    )
+    console.print(
+        "     [green]Fix:[/green] [cyan]range_space: chip[/cyan] (python tools/config_to_chip_space.py) "
+        "gives each pitch its own range; or split the entry."
+    )
+
+
 _WARNING_RENDERERS = {
+    'synth_root_ambiguous': _warn_synth_root_ambiguous,
     'noise_envelopes': _warn_noise_envelopes,
     'clamp_high': _warn_clamp,
     'clamp_low': _warn_clamp,

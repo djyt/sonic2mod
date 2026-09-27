@@ -72,44 +72,36 @@ voice_map:
       high: G4
       mod_instrument: 4
       root: G2
-      synth_root: G3
     - low:  G5   # was C6-C7 (source bytes) for FM1
       high: C6
       mod_instrument: 5
       root: G2
-      synth_root: G5
   1:
     - low:  G1   # was G4-G5 (source bytes) for FM2
       high: G2
       mod_instrument: 6
       root: G2
-      synth_root: G1
   2:
     - low:  A4   # was A5-D6 (source bytes) for FM4, FM3
       high: D5
       mod_instrument: 7
       root: A2
-      synth_root: A4
   3:
     - low:  G4   # was G5-C6 (source bytes) for FM5
       high: C5
       mod_instrument: 8
       root: G2
-      synth_root: G4
 psg_voice_map:
   fTone_05:
     - low:  G3   # was G4-B5 (source bytes) for PSG1
       high: G4
       mod_instrument: 9
       root: G1
-      synth_root: G3
     - low:  G5   # was G4-B5 (source bytes) for PSG2
       high: B5
       mod_instrument: 9
       root: G3
-      synth_root: G5
     - low:  G5   # was C6-C7 (source bytes) for PSG1, PSG2
       high: C6
       mod_instrument: 10
       root: G1
-      synth_root: G5

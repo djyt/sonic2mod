@@ -439,6 +439,10 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     cfg = ConversionConfig.from_yaml(args.config)
+    # synth_root / synth_shift come from the song (what the converter does before rendering)
+    from core.driver_state import resolve_synth_roots
+    from core.smps_parser import SmpsParser
+    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
     mod_path = Path(args.mod or cfg.output_file)
     raw = Path(args.vgz).read_bytes()
     chip, vgm_end = chip_timeline(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)

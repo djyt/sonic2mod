@@ -69,42 +69,36 @@ voice_map:
       high: A6
       mod_instrument: 3
       root: A2
-      synth_root: A4
   # $01 — alg 0: 1→2→3→4, fb 3 — used by FM2
   1:
     - low:  D4
       high: E5
       mod_instrument: 4
       root: D2
-      synth_root: D2
   # $02 — alg 5: 1→(2+3+4), fb 7 — used by FM4, FM5
   2:
     - low:  A5
       high: D7
       mod_instrument: 5
       root: A1
-      synth_root: A4
   # $03 — alg 4: (1→2)+(3→4), fb 5 — used by FM4, FM5
   3:
     - low:  A3
       high: D4
       mod_instrument: 7
       root: A2
-      synth_root: A2
   # $04 — alg 4: (1→2)+(3→4), fb 0 — used by FM1
   4:
     - low:  A5
       high: A6
       mod_instrument: 8
       root: A2
-      synth_root: A4
   # $05 — alg 2: (1+(2→3))→4, fb 7 — used by FM3
   5:
     - low:  C5
       high: A6
       mod_instrument: 9
       root: C2
-      synth_root: C4
 
 psg_map:
   0xE7:                    # form $E7
@@ -117,12 +111,10 @@ psg_voice_map:
       high: B4
       mod_instrument: 10
       root: A2
-      synth_root: A3
     - low:  C5
       high: D7
       mod_instrument: 11
       root: C1
-      synth_root: C4   # pitch audit: was C5, 12 semitones too high
 
 
 # -------------------------------------------------------------------------------------------------
@@ -137,7 +129,6 @@ channel_instrument_map:
       high: D7
       mod_instrument: 6
       root: A1
-      synth_root: A4
 
 
 # -------------------------------------------------------------------------------------------------

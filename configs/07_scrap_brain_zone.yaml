@@ -93,21 +93,18 @@ voice_map:
       high: A4
       mod_instrument: 4
       root: G2
-      synth_root: G2
   # $01 — Alg 4, FB 5 — used by FM3
   1:
     - low:  A4
       high: G5
       mod_instrument: 5
       root: A2
-      synth_root: A3
   # $02 — Alg 5, FB 7 — used by FM1, FM4, FM5
   2:
     - low:  B5
       high: B6
       mod_instrument: 6
       root: B2
-      synth_root: B4
 
   # $03 — Alg 1, FB 5 — used by FM1, FM3
   3:
@@ -115,7 +112,6 @@ voice_map:
       high: C7
       mod_instrument: 7
       root: C2
-      synth_root: C5
 
   # $04 — Alg 5, FB 7 — used by FM4, FM5
   4:
@@ -123,13 +119,11 @@ voice_map:
       high: B5
       mod_instrument: 8
       root: B2
-      synth_root: B3
 
     - low:  C6
       high: Cs6
       mod_instrument: 9
       root: C2
-      synth_root: C5
 
   # $05 — Alg 0, FB 6 — used by FM1, FM4
   5:
@@ -137,13 +131,11 @@ voice_map:
       high: B5
       mod_instrument: 10
       root: G2
-      synth_root: G2   # pitch audit: was G3, 12 semitones too high
 
     - low:  C6
       high: Gs6
       mod_instrument: 11
       root: C2
-      synth_root: C5
 
   # $06 — Alg 5, FB 7 — used by FM5
   6:
@@ -151,7 +143,6 @@ voice_map:
       high: G6
       mod_instrument: 12
       root: G2
-      synth_root: G5   # pitch audit: was G4, 12 semitones too low
 
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
@@ -166,19 +157,16 @@ psg_voice_map:
     high: As5
     mod_instrument: 13
     root: D2
-    synth_root: D4
   fTone_06:
     low:  E6
     high: Gs6
     mod_instrument: 14
     root: E2
-    synth_root: E5   # pitch audit: was E6, 12 semitones too high
   fTone_05:
     low:  G6
     high: G7
     mod_instrument: 15
     root: G2
-    synth_root: G5   # pitch audit at --min-ms 25: was G6, 12 semitones too high (all 512 PSG2 notes are shorter than 60 ms)
 
 channel_instrument_map:
   FM3:
@@ -187,7 +175,6 @@ channel_instrument_map:
       high: A4
       mod_instrument: 20
       root: G2
-      synth_root: G2
 
   FM5:
     2:
@@ -195,7 +182,6 @@ channel_instrument_map:
       high: B6
       mod_instrument: 19
       root: B2
-      synth_root: B4
 
 
 # -------------------------------------------------------------------------------------------------

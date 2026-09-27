@@ -279,8 +279,7 @@ for v in sorted(entries):
     lines += [tag, f"  {v}:"]
     for e in entries[v]:
         lines += [f"    - low:  {smps_name(e['lo'])}", f"      high: {smps_name(e['hi'])}",
-                  f"      mod_instrument: {e['inst']}", f"      root: {mod_name(e['root'])}",
-                  f"      synth_root: {smps_name(e['synth'])}"]
+                  f"      mod_instrument: {e['inst']}", f"      root: {mod_name(e['root'])}"]
 lines += ["", "psg_map:"]
 for k, e in skel["psg_map"].items():
     # Noise type and rate come from the form byte, the envelope from the song (the converter
@@ -295,8 +294,7 @@ for label, es in by_label.items():
     lines.append(f"  {key}:")
     for e in es:
         lines += [f"    - low:  {smps_name(e['lo'])}", f"      high: {smps_name(e['hi'])}",
-                  f"      mod_instrument: {e['inst']}", f"      root: {mod_name(e['root'])}",
-                  f"      synth_root: {smps_name(e['synth'])}"]
+                  f"      mod_instrument: {e['inst']}", f"      root: {mod_name(e['root'])}"]
 with open(OUT, "w", encoding="utf-8", newline="") as fh:
     fh.write("\n".join(lines) + "\n")
 print(f"wrote {OUT}: FM 4-{fm_last} ({len(groups)} instruments from {len(entries)} voices), "

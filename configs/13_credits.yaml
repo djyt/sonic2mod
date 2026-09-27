@@ -110,227 +110,194 @@ voice_map:
       high: Es3
       mod_instrument: 4
       root: As1
-      synth_root: G2
   # $01 — alg 4, fb 5, 6 notes — shares voice $02's sample
   1:
     - low:  G4
       high: B4
       mod_instrument: 6
       root: F3
-      synth_root: G4
   # $02 — alg 4, fb 5, 133 notes
   2:
     - low:  D1
       high: C4
       mod_instrument: 5
       root: C1
-      synth_root: D1
     - low:  E4
       high: E4
       mod_instrument: 6
       root: D3
-      synth_root: E4
   # $03 — alg 4, fb 0, 30 notes
   3:
     - low:  C4
       high: E5
       mod_instrument: 7
       root: C1
-      synth_root: C4
   # $04 — alg 4, fb 5, 48 notes — shares voice $02's sample
   4:
     - low:  D2
       high: Cs3
       mod_instrument: 6
       root: C1
-      synth_root: D2
   # $05 — alg 1, fb 6, 28 notes
   5:
     - low:  E4
       high: Es5
       mod_instrument: 8
       root: C1
-      synth_root: E4
   # $06 — alg 0, fb 3, 22 notes — shares voice $14's sample
   6:
     - low:  C2
       high: E3
       mod_instrument: 20
       root: C1
-      synth_root: C2
   # $07 — alg 4, fb 7, 8 notes
   7:
     - low:  G4
       high: A5
       mod_instrument: 9
       root: C1
-      synth_root: G4
   # $08 — alg 2, fb 4, 52 notes
   8:
     - low:  A3
       high: B4
       mod_instrument: 10
       root: C1
-      synth_root: A3
   # $09 — alg 2, fb 7, 100 notes
   9:
     - low:  G1
       high: B2
       mod_instrument: 11
       root: C1
-      synth_root: G1
   # $0A — alg 2, fb 7, 119 notes
   10:
     - low:  D4
       high: C6
       mod_instrument: 12
       root: C1
-      synth_root: D4
   # $0B — alg 4, fb 6, 28 notes
   11:
     - low:  G3
       high: E5
       mod_instrument: 13
       root: C1
-      synth_root: G3
   # $0C — alg 4, fb 0, 56 notes
   12:
     - low:  Cs3
       high: B3
       mod_instrument: 14
       root: C1
-      synth_root: Cs3
   # $0D — alg 4, fb 7, 25 notes
   13:
     - low:  G4
       high: As5
       mod_instrument: 15
       root: C1
-      synth_root: G4
   # $0E — alg 4, fb 6, 4 notes
   14:
     - low:  Fs7
       high: Fs7
       mod_instrument: 16
       root: C1
-      synth_root: Fs7
   # $0F — alg 1, fb 5, 58 notes
   15:
     - low:  C5
       high: C6
       mod_instrument: 17
       root: C1
-      synth_root: C5
   # $10 — alg 0, fb 1, 128 notes
   16:
     - low:  G2
       high: G3
       mod_instrument: 18
       root: C1
-      synth_root: G2
   # $11 — alg 5, fb 7, 18 notes — shares voice $18's sample
   17:
     - low:  G4
       high: Cs5
       mod_instrument: 23
       root: C1
-      synth_root: G4
   # $12 — alg 5, fb 7, 78 notes
   18:
     - low:  A4
       high: G6
       mod_instrument: 19
       root: C1
-      synth_root: A4
   # $14 — alg 0, fb 3, 30 notes
   20:
     - low:  D2
       high: C3
       mod_instrument: 20
       root: D1
-      synth_root: D2
   # $15 — alg 2, fb 7, 19 notes
   21:
     - low:  C4
       high: A5
       mod_instrument: 21
       root: C1
-      synth_root: C4
   # $16 — alg 4, fb 5, 32 notes — shares voice $02's sample
   22:
     - low:  A2
       high: D3
       mod_instrument: 6
       root: G1
-      synth_root: A2
   # $17 — alg 4, fb 0, 19 notes
   23:
     - low:  A4
       high: Es5
       mod_instrument: 22
       root: C1
-      synth_root: A4
   # $18 — alg 5, fb 7, 24 notes
   24:
     - low:  G5
       high: A6
       mod_instrument: 23
       root: C2
-      synth_root: G5
   # $19 — alg 0, fb 4, 56 notes — shares voice $00's sample
   25:
     - low:  A1
       high: D3
       mod_instrument: 4
       root: C1
-      synth_root: A1
   # $1A — alg 2, fb 7, 48 notes
   26:
     - low:  A2
       high: E5
       mod_instrument: 24
       root: C1
-      synth_root: A2
     - low:  B5
       high: B5
       mod_instrument: 25
       root: C1
-      synth_root: B5
   # $1B — alg 2, fb 7, 1 notes
   27:
     - low:  A0
       high: A0
       mod_instrument: 26
       root: C1
-      synth_root: A0
   # $1C — alg 2, fb 7, 64 notes — shares voice $0A's sample
   28:
     - low:  D4
       high: D5
       mod_instrument: 12
       root: C1
-      synth_root: D4
   # $1D — alg 0, fb 1, 64 notes — shares voice $10's sample
   29:
     - low:  A2
       high: B3
       mod_instrument: 18
       root: D1
-      synth_root: A2
   # $1F — alg 6, fb 6, 42 notes
   31:
     - low:  D5
       high: E6
       mod_instrument: 27
       root: C1
-      synth_root: D5
   # $20 — alg 2, fb 7, 50 notes
   32:
     - low:  D4
       high: B4
       mod_instrument: 28
       root: C1
-      synth_root: D4
 
 psg_map:
   231:
@@ -343,39 +310,32 @@ psg_voice_map:
       high: G5
       mod_instrument: 29
       root: C1
-      synth_root: A2
     - low:  A5
       high: D6
       mod_instrument: 30
       root: Gs2
-      synth_root: A5
   fTone_05:
     - low:  Cs4
       high: G6
       mod_instrument: 30
       root: C1
-      synth_root: Cs4
   fTone_08:
     - low:  D4
       high: Es6
       mod_instrument: 30
       root: Cs1
-      synth_root: D4
   "$00":
     - low:  E4
       high: D6
       mod_instrument: 30
       root: Ds1
-      synth_root: E4
   fTone_09:
     - low:  Es4
       high: Es6
       mod_instrument: 30
       root: E1
-      synth_root: Es4
   fTone_01:
     - low:  G4
       high: E5
       mod_instrument: 30
       root: Fs1
-      synth_root: G4

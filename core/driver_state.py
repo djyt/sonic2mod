@@ -83,6 +83,96 @@ def psg_range_entry(entries, key: int):
 # --- the state machine ------------------------------------------------------
 
 
+def resolve_synth_roots(song, config) -> list[dict]:
+    """Fill in every rooted map entry's `synth_root` from the song, and its `synth_shift`.
+
+    A sample is rendered at synth_root and played at root's rate, so MOD note m sounds at
+    synth_root + (m − root).  A source note is placed at m = root + (key − low) (an anchored
+    entry) or at its channel transpose (a rooted PSG entry without `low`), and the chip plays
+    it at its real pitch (chip_pitch).  For the note to be in tune the sample must be rendered
+    at D = chip pitch − (m − root): for an anchored entry that is the pitch the chip plays for
+    `low`.  This walks every enabled FM/PSG channel with the DriverState, collects D for each
+    note an entry routes, and
+
+    - sets `synth_root = D` where the config left it out (the value most notes give; a
+      config never needs to state it), and
+    - sets `synth_shift = synth_root − D` where it is stated, so a sample rendered anywhere in
+      its range (`synth_root` in the middle, say) is placed lower by that much and stays in
+      tune: the conversion subtracts synth_shift from m.
+
+    Returns one dict per entry: {'context', 'instrument', 'synth_root', 'derived', 'shift',
+    'votes': {D: notes}}.  More than one D means the entry's low is played at several chip
+    pitches (several pitch offsets or an smpsChangeTransposition under one source range —
+    what `range_space: chip` and a split entry are for); the caller warns.
+    """
+    votes: dict[int, dict[int, int]] = {}       # id(entry) -> {D: notes}
+    smap = source_map(song)
+    for chan_cfg in config.channels:
+        channel = smap.get(chan_cfg.source)
+        if not chan_cfg.enabled or channel is None or channel.header.channel_type not in ("FM", "PSG"):
+            continue
+        st = DriverState.for_channel(channel, config, chan_cfg.instrument)
+        for event in channel.events:
+            if event.is_effect:
+                st.apply(event.effect)
+                continue
+            if not event.is_note or event.note.is_rest or getattr(event.note, "is_dac", False):
+                continue
+            src = event.note.note_value - 0x81
+            key = st.range_key(src)
+            real = chip_pitch(src, st.transpose, st.is_psg)
+            if st.is_psg:
+                if st.in_noise_mode:
+                    continue
+                ranged = psg_range_entry(st.psg_entries, key)
+                if ranged is not None:
+                    st.psg_entry = ranged
+                entry = st.psg_entry
+                if entry is None or entry.root is None or entry.type != "tone":
+                    continue
+                if entry.low is not None:
+                    m_rel = key - entry.low                      # m − root, anchored
+                else:
+                    m_rel = src + st.transpose + chan_cfg.transpose - entry.root.value
+            else:
+                entry = st.fm_range_entry(chan_cfg.source, key)
+                if entry is None or entry.root is None:
+                    continue
+                m_rel = key - entry.low
+            per = votes.setdefault(id(entry), {})
+            per[real - m_rel] = per.get(real - m_rel, 0) + 1
+
+    def entries():
+        for v, ranges in config.voice_map.items():
+            for i, e in enumerate(ranges):
+                yield f"voice_map[{v}][{i}]", e
+        for src, vim in config.channel_instrument_map.items():
+            for v, ranges in vim.items():
+                for i, e in enumerate(ranges):
+                    yield f"channel_instrument_map[{src}][{v}][{i}]", e
+        for label, lst in config.psg_voice_map.items():
+            for i, e in enumerate(lst):
+                if e.type == "tone":
+                    yield f"psg_voice_map[{label}][{i}]", e
+
+    out = []
+    for context, e in entries():
+        if e.root is None:
+            continue
+        per = votes.get(id(e), {})
+        derived = max(per, key=lambda d: per[d]) if per else None
+        stated_root = e.synth_root
+        stated = stated_root is not None
+        if stated_root is None:
+            e.synth_root = derived               # None stays None: the generator's own fallback
+            e.synth_shift = 0
+        else:
+            e.synth_shift = (stated_root - derived) if derived is not None else 0
+        out.append({'context': context, 'instrument': e.mod_instrument, 'synth_root': e.synth_root,
+                    'derived': not stated, 'shift': e.synth_shift, 'votes': per})
+    return out
+
+
 class DriverState:
     """Mutable SMPS track state, advanced one coordination flag at a time."""
 

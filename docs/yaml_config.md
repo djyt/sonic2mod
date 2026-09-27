@@ -140,7 +140,7 @@ Notes outside C1–B3 after transpose are clamped with a warning. Use per-channe
 
 ## voice_map
 
-Routes a SMPS voice index + source-note range to a specific MOD instrument slot, with an optional pitch anchor (`root`) and optional synthesis-pitch override (`synth_root`).
+Routes a SMPS voice index + source-note range to a specific MOD instrument slot, with an optional pitch anchor (`root`). The rendering pitch is derived from the song; `synth_root` may state one (see below).
 
 For synthesis pitch matching (how `root`, `synth_root`, and `low` interact with `target_rate`), see `docs/fm_synthesis.md` §Pitch.
 
@@ -151,7 +151,7 @@ voice_map:
       high: G6                # Top of source-note range (inclusive)
       mod_instrument: 4       # MOD instrument slot (1-based)
       root: Fs2               # G5 plays at F#2; each semitone above shifts output by 1
-      synth_root: C6          # (optional) synthesize at C6; output pitch = C6 frequency
+      synth_root: C6          # (optional) render at C6 instead of the pitch the chip plays for G5; notes are placed lower to stay in tune
     - low:  Gs6
       high: C7
       mod_instrument: 12
@@ -162,35 +162,42 @@ voice_map:
 
 ### root — pitch anchor
 
-`root` is an **absolute** MOD note anchor. Source `low` always plays at `root`, unconditionally — `smpsChangeTransposition` events and header pitch_offset do not affect this. The placement formula is:
+`root` is an **absolute** MOD note anchor: the note at which playback sounds at the entry's rendering pitch (`synth_root`). With the rendering pitch derived, that is the pitch the chip plays for `low`, so source `low` plays at `root`, unconditionally — `smpsChangeTransposition` events and header pitch_offset do not affect this. The placement formula is:
 
 ```
-output = root + (source − low)
+output = root + (source − low) − synth_shift      # synth_shift is 0 unless synth_root is stated
 ```
 
 Each semitone above `low` shifts the output up by 1, clamped to C1–B3.
 
 Without `root`, the entry still selects the correct `mod_instrument` but pitch falls through to the channel-transpose path (`smps_note + total_transpose`).
 
-### synth_root — synthesis pitch override
+### synth_root — rendering pitch (derived; optional)
 
-When synthesis is enabled, each `voice_map` entry is synthesized at `low` by default. For channels that use `smpsChangeTransposition`, `low` is the SMPS byte value but the chip actually plays at a different pitch (after transposition). `synth_root` lets you specify the pitch the chip actually synthesizes at.
+Every rooted entry is rendered at the pitch the chip really plays for its `low` note — `low`
+plus the pitch offset and every `smpsChangeTransposition`, PSG through the driver's table —
+which `core.driver_state.resolve_synth_roots` reads from the song before synthesis.  No shipped
+config states `synth_root`; `convert.py` counts the derived entries and warns
+(`synth_root_ambiguous`) where an entry's `low` is played at several chip pitches, which is the
+cue for `range_space: chip` or a split entry.
 
-`synth_root` sets a different SMPS semitone to synthesize at (same note-name syntax as `low`/`high`). `target_rate` is **not** adjusted — the output pitch equals `synth_root`'s frequency.
+Stating `synth_root` picks a different rendering pitch, anywhere in the range.  The output is
+kept in tune by placing every note lower by `synth_shift = synth_root − derived`:
 
 ```
-target_rate = amiga_clock / PERIOD_TABLE[root]   # unchanged by synth_root
-synth_idx   = synth_root − 12                    # synthesis at synth_root's frequency
+target_rate = amiga_clock / PERIOD_TABLE[root]           # unchanged by synth_root
+output      = root + (source − low) − synth_shift        # root is where synth_root sounds
 ```
 
-**Example** — GHZ voice $08, FM3, source C5–B6, total_transpose −36 (pitch_offset −12 + smpsAlterPitch −24). The chip plays at C5 − 36 = SMPS C2 (65 Hz). Set `synth_root: C2` so synthesis and output pitch are both authentic:
+**Example** — a voice whose chip range is G3–B4, rendered in the middle so the sample is
+stretched at most a fifth each way rather than a ninth upwards:
 
 ```yaml
-- low:  C5
-  high: B6
+- low:  G3
+  high: B4
   mod_instrument: 22
-  root: C2
-  synth_root: C2    # chip pitch = C2; heard = 65 Hz at C2 period
+  root: C2          # playback at C2 sounds D4
+  synth_root: D4    # G3 plays at F1, B4 at A2
 ```
 
 ### vibrato — per-entry override
@@ -205,7 +212,6 @@ voice_map:
       high: E7
       mod_instrument: 4
       root: A2
-      synth_root: A5
       vibrato: 12      # speed=1, depth=2 (overrides smpsModSet params for this range)
 ```
 

@@ -65,7 +65,6 @@ File > Import > Raw Data
 | `amiga_clock` | int | `3546895` | PAL Amiga clock used for `target_rate` calc |
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = the longest ring any PSG instrument's notes need at their playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
 | `release_padding` | float | `0.2` | Seconds captured after key-off |
-| `psg_output_max` | int | `4096` | Tone peak amplitude from C emulator; white noise peaks at 2048 (halved in sn76489.c) |
 
 The envelope tables are not a setting; see § Envelope Tables.  A `psg_envelope_tables` block left
 in `settings.yaml` is ignored with a warning.
@@ -136,10 +135,11 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
   This controls how fast the Amiga plays back the sample. It does NOT change because of `synth_root`.
 
 - **`synth_root`** is the frequency rendered via the SN76489 emulator.  It is derived from the
-  song (`core.driver_state.resolve_synth_roots`: the pitch the chip plays for the entry's `low`,
-  through the driver's table, or for a `low`-less entry the pitch its transpose path implies), so
-  no config states it.  A stated value is a rendering pitch elsewhere in the range; the notes are
-  then placed lower by `synth_shift` so they stay in tune (`docs/fm_synthesis.md` §Pitch).
+  song (`core.driver_state.resolve_synth_roots`: the chip pitch the instrument's notes play most
+  often, through the driver's table, held so the placed notes fit C1–B3; the notes are placed
+  lower by `synth_shift` to stay in tune, and entries sharing an instrument share the shift), so
+  no config states it.  A stated value is a rendering pitch elsewhere in the range, handled the
+  same way (`docs/fm_synthesis.md` §Pitch).
 
 - For **noise entries**, `root` controls `target_rate` and the MOD anchor where `low` plays.
   When `low` is set, notes trigger at `root + (source − low)` — the same melodic formula as tones.
@@ -148,13 +148,14 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
 
 ### PSG frequency divider
 
-```
-N = round(clock_rate / (2 × freq × 16)),  clamped 1–1023
-```
+`note_to_psg_n` writes the divider the Sonic 1 driver writes for the note: its entry in
+`core.driver_tables.PSG_FREQUENCIES` (index 0 = nC0 = 130.98 Hz = C3, so MOD index i is table
+index i − 24).  The table differs from the rounded equal-temperament divider on 29 of its 70
+entries — a few cents in the usual range, up to 85 cents at the top — and the table is what the
+hardware plays.  Off the table, or at another clock, the formula stands in:
 
-For MOD note index (0=C1, 12=C2, 24=C3, 33=A3, 45=A4):
 ```
-freq = 440 × 2^((note_idx - 45) / 12)
+N = round(clock_rate / (2 × freq × 16)),  clamped 1–1023,   freq = 440 × 2^((note_idx − 45) / 12)
 ```
 
 `note_to_psg_n(mod_note_index, clock_rate)` in `sn76489/renderer.py` does this calculation.
@@ -209,18 +210,14 @@ envelope: [0, 0, 2, 4, 6, 10, 15]
 
 ---
 
-## Normalization
+## Quantisation
 
-PSG uses hardware-max normalization to preserve the natural amplitude ratio of tone vs. noise:
-
-```
-scale = 127.0 / psg_output_max
-```
-
-- Tones peak at ±127 (int8 max), since the SN76489 emulator tone amplitude peaks at `psg_output_max` (default 4096).
-- White noise peaks at ±64, because `sn76489.c` halves the noise channel output (`Channels[3] >>= 1` with boost_noise set), so it peaks at `psg_output_max / 2` = 2048.
-- This 2:1 ratio mirrors the actual hardware balance on a Mega Drive.
-- There is no per-sample normalize option; the relative tone:noise balance is always preserved.
+Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and
+first-order noise shaping (`core.pcm.to_int8`, shared with the FM pipeline and `sfx/amiga.py`).
+The tone:noise balance, like every other level, is the `sample_list` volume's job, measured
+against the VGZ (`tools/vgm_compare.py --write-volumes`).  The old fixed scale
+(`psg_output_max`, removed 2026-09-27; the key warns and is ignored) left the noise channel at
+half scale, which only cost it a bit.
 
 ---
 
@@ -319,9 +316,8 @@ Renders all `PsgInstrumentEntry` objects from `config.psg_map` and `config.psg_v
 Pipeline:
 1. Iterate all entries; call `render_psg_tone_raw()` or `render_psg_noise_raw()` per entry.
 2. Trim trailing silence from each raw list.
-3. Global normalization pass: `scale = 127.0 / psg_synth.psg_output_max`.
-4. Convert to int8 bytes.
-5. Return `{inst_num: (pcm_bytes, sample_rate_hz)}`.
+3. Peak-normalise each instrument to ±127 and quantise (dithered) to int8 bytes.
+4. Return `{inst_num: (pcm_bytes, sample_rate_hz)}`.
 
 Returns a dict ready for insertion into a `ModFile` via `sample_list`.
 
@@ -409,9 +405,8 @@ The timbre approximation is acceptable for Marble Zone: the noise bursts are sho
 YAML key `psg_form_map` is deprecated. Use `psg_map` instead. The old key still works but
 produces a `DeprecationWarning`.
 
-### psg_output_max mismatch
+### Noise too loud or too quiet against the tones
 
-If `psg_output_max` does not match the actual peak amplitude from the emulator, the noise
-channel will be too quiet or too loud relative to tones. The default value of 4096 matches
-the `PSGVolumeValues[0]` entry in `sn76489.c`. Do not change it unless you modify the
-C emulator's volume table.
+Every sample is peak-normalised, so the noise:tone balance is the `sample_list` volumes' —
+measure them with `tools/vgm_compare.py --write-volumes` (the old `psg_output_max` scale is
+gone).

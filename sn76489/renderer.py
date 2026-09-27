@@ -28,6 +28,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.driver_tables import PSG_FREQUENCIES
 from core.pcm import normalize_int8, write_raw16
 from core.pcm import to_mono as _to_mono
 from sn76489.wrapper import SN76489
@@ -47,11 +48,17 @@ _AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 # ---------------------------------------------------------------------------
 
 def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
-    """MOD note index → SN76489 10-bit frequency divider N.
+    """MOD note index → the SN76489 10-bit divider N the Sonic 1 driver writes for that note.
 
-    Formula: N = clock / (2 × freq × 16), clamped 1–1023.
+    The driver's PSG table (core.driver_tables.PSG_FREQUENCIES, index 0 = nC0 = 130.98 Hz = C3,
+    so MOD index i, C1 = 0, is table index i − 24) is what the hardware plays; it differs from
+    the rounded equal-temperament divider on 29 of its 70 entries, by up to 85 cents at the top.
+    Off the table, or at another clock, the formula N = clock / (32 × freq) stands in.
     Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
+    i = mod_note_index - 24
+    if clock_rate == _NTSC_CLOCK and 0 <= i < len(PSG_FREQUENCIES) and PSG_FREQUENCIES[i]:
+        return PSG_FREQUENCIES[i]
     freq = 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
     n = round(clock_rate / (2.0 * freq * 16.0))
     return max(1, min(1023, n))

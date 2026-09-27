@@ -30,7 +30,7 @@ sample_list:
   - [1, "snare.raw", 64, 0]
   - [2, "timpani.raw", 64, 0]
   # --- voice $00: alg 5: 1→(2+3+4), fb 7 — FM1, FM5 ---
-  - [3, "fm_v00.raw", 16, 0] # VGZ: +8.7 dB at 44
+  - [3, "fm_v00.raw", 20, 0] # VGZ: -2.1 dB at 16
   # --- voice $01: alg 0: 1→2→3→4, fb 4 — FM2 ---
   - [4, "fm_v01.raw", 23, 0] # VGZ: +3.0 dB at 32
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM3, FM4 ---

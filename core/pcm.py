@@ -8,6 +8,8 @@ dump a 16-bit .raw for Audacity.
 
 from __future__ import annotations
 
+import math
+import random
 import struct
 import warnings
 from collections.abc import Sequence
@@ -57,11 +59,27 @@ def peak(mono: Sequence[int]) -> int:
     return max((abs(v) for v in mono), default=0)
 
 
-def to_int8(mono: Sequence[int], scale: float) -> bytes:
-    """Scale and clamp a raw mono list into signed 8-bit PCM (2's complement via & 0xFF)."""
+def to_int8(mono: Sequence[int], scale: float, dither: bool = True) -> bytes:
+    """Scale and quantise a raw mono list into signed 8-bit PCM (2's complement via & 0xFF).
+
+    The quantiser adds TPDF dither with first-order noise shaping, the same treatment
+    sfx/amiga.py gives the SFX exports, so a decaying tail fades into a faint hiss instead
+    of stepping through the last few levels.  The dither sequence is seeded from the
+    sample's length, so a render is byte-identical from run to run.
+    """
+    rng = random.Random(len(mono))
     out = bytearray(len(mono))
+    err = 0.0
     for i, v in enumerate(mono):
-        out[i] = max(-128, min(127, round(v * scale))) & 0xFF
+        x = v * scale - err
+        d = x + (rng.random() - rng.random()) if dither else x
+        q = math.floor(d + 0.5)
+        if q > 127:
+            q = 127
+        elif q < -128:
+            q = -128
+        err = q - x
+        out[i] = q & 0xFF
     return bytes(out)
 
 

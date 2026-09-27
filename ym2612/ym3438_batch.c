@@ -11,7 +11,6 @@
  *
  * Also provides the two per-sample loops the note renderer used to run in Python:
  *   OPN2_RenderBatchMono  -- the same render folded to mono, (L + R) // 2
- *   PCM_BoxDownsample     -- the box-filter downsampler of renderer.py::_resample_py
  * Both reproduce the Python arithmetic exactly (floor division), so a MOD rendered
  * through them is byte-identical to one rendered through the Python loops.
  */
@@ -83,42 +82,5 @@ void OPN2_RenderBatchMono(void *chip, int n_samples, int32_t *buf, int32_t dc)
             r += out[1];
         }
         buf[s] = floor_div((int64_t)(l - DC) + (int64_t)(r - DC), 2);
-    }
-}
-
-/*
- * PCM_BoxDownsample
- *
- * The box-filter (averaging) downsampler of ym2612/renderer.py::_resample_py, in C,
- * reproducing its arithmetic exactly:
- *
- *     ratio = from_rate / to_rate                       (double)
- *     for i in range(out_len):
- *         start = int(i * ratio)
- *         end   = min(in_len, int((i + 1) * ratio) + 1)
- *         out[i] = sum(in[start:end]) // (end - start)   (0 for an empty window)
- *
- * out_len is computed by the caller (Python's round() of in_len * to_rate / from_rate)
- * so its half-to-even rounding is not re-implemented here.
- */
-void PCM_BoxDownsample(const int32_t *in, int in_len, int32_t *out, int out_len,
-                       int from_rate, int to_rate)
-{
-    const double ratio = (double)from_rate / (double)to_rate;
-    int i, j;
-
-    for (i = 0; i < out_len; i++) {
-        int start = (int)(i * ratio);
-        int end   = (int)((i + 1) * ratio) + 1;
-        int64_t sum = 0;
-        if (end > in_len)
-            end = in_len;
-        if (start >= end) {
-            out[i] = 0;
-            continue;
-        }
-        for (j = start; j < end; j++)
-            sum += in[j];
-        out[i] = floor_div(sum, end - start);
     }
 }

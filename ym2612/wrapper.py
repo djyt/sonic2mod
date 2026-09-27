@@ -34,7 +34,6 @@ collects one (L, R) pair per batch, yielding exactly ``n`` samples.
 
 import array
 import ctypes
-import functools
 
 from .build import get_lib_path
 
@@ -93,35 +92,7 @@ def _load_lib() -> ctypes.CDLL:
     lib.OPN2_RenderBatchMono.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
                                           ctypes.c_int32]
 
-    # void PCM_BoxDownsample(const int32_t *in, int in_len, int32_t *out, int out_len,
-    #                        int from_rate, int to_rate)
-    lib.PCM_BoxDownsample.restype  = None
-    lib.PCM_BoxDownsample.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
-                                      ctypes.c_int, ctypes.c_int, ctypes.c_int]
-
     return lib
-
-
-@functools.cache
-def _shared_lib() -> ctypes.CDLL:
-    """The loaded DLL, for helpers that need no chip instance (box_downsample)."""
-    return _load_lib()
-
-
-def box_downsample(mono: array.array, from_rate: int, to_rate: int) -> array.array:
-    """Box-filter (averaging) downsample of a mono int32 array, in C.
-
-    Same arithmetic as ym2612.renderer._resample_py (see PCM_BoxDownsample in
-    ym3438_batch.c); only useful for downsampling (to_rate < from_rate).
-    """
-    assert mono.itemsize == 4 and mono.typecode == 'i', "box_downsample wants array('i')"
-    out_len = round(len(mono) * to_rate / from_rate)
-    out = array.array('i', bytes(out_len * 4))
-    if out_len:
-        in_buf, _ = mono.buffer_info()
-        out_buf, _ = out.buffer_info()
-        _shared_lib().PCM_BoxDownsample(in_buf, len(mono), out_buf, out_len, from_rate, to_rate)
-    return out
 
 
 # ---------------------------------------------------------------------------

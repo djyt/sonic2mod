@@ -1138,6 +1138,11 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     cfg = ConversionConfig.from_yaml(args.config)
+    # synth_root / synth_shift come from the song (what the converter does before rendering);
+    # without this the symbolic verdict reads every shifted entry as wrong
+    from core.driver_state import resolve_synth_roots
+    from core.smps_parser import SmpsParser
+    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):

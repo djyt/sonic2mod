@@ -111,6 +111,13 @@ Windows UTF-8 stdout fix, idempotent), `branding(console, product, version)`, `r
 compiles with gcc or MSVC. `ym2612/build.py` and `sn76489/build.py` are each ~30 lines of spec
 over it.
 
+### core/resample.py
+
+Polyphase Kaiser-windowed sinc resampler (32 taps, 512 phases, >70 dB stopband), standard
+library only.  The SFX renderer takes 53267 Hz to 44100 Hz through it and the FM sample
+pipeline takes 53267 Hz to each instrument's MOD target rate; `sfx/resample.py` re-exports it
+under the name the SFX driver uses.
+
 ### core/pcm.py
 
 Helpers shared by the two synthesis pipelines: `to_mono`, `trim_trailing_silence`, `peak`,
@@ -401,8 +408,8 @@ generate_psg_samples(config, psg_synth, verbose=False) → dict[int, tuple[bytes
 ```
 
 Iterates all `PsgInstrumentEntry` objects from `config.psg_map` and `config.psg_voice_map`,
-synthesizes each, applies global normalization (`127.0 / psg_output_max`, through
-`core.pcm.to_int8`), and returns a `{inst_num: (pcm_bytes, sample_rate_hz)}` dict ready for
+synthesizes each, peak-normalises and quantises it (dithered, through `core.pcm.to_int8`),
+and returns a `{inst_num: (pcm_bytes, sample_rate_hz)}` dict ready for
 `ModFile` insertion.
 
 ### validate.py

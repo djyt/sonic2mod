@@ -10,7 +10,6 @@ fm_synthesis:
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: auto    # Seconds the note is held on before key-off; or 'auto' to auto-detect
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
-  normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" = CPU cores - 1
                             # "max"    = every core, 
@@ -22,7 +21,6 @@ psg_synthesis:
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: auto    # Seconds of tone held before key-off; or 'auto' to auto-detect
   release_padding: 0.2      # Seconds of silence/release after key-off
-  psg_output_max: 4096      # PSG hardware max amplitude; white noise peaks at 2048 (half), tones at 4096
 
 max_sample_kb: 128          # Maximum Sample Length: 64 = Amiga ProTracker | 128 = Modern Trackers
 

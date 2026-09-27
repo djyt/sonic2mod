@@ -72,12 +72,12 @@ Load `.raw` smoke test files in Audacity:
 ## Settings Reference (`configs/settings.yaml`)
 
 ```yaml
-synthesis:
-  enabled: false            # Master switch; false = silent placeholder samples
+fm_synthesis:
+  enabled: true             # Master switch; false = samples loaded from samples_dir instead
   mode: ym2612              # "ym2612" (MD1/MD2 VA2) or "ym3438" (YM3438 accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target_rate calculation
-  sustain_duration: 1.5     # Seconds note held on before key-off
+  sustain_duration: auto    # Seconds note held on before key-off, or auto (see § sustain_duration: auto)
   release_padding: 0.5      # Seconds captured after key-off (release tail)
   normalize_samples: false  # true = per-sample peak normalization; false = global (preserves balance)
   headroom_db: 6.0          # Carrier TL boost to prevent DAC clipping; 6 dB ≈ 8 TL steps
@@ -91,7 +91,7 @@ synthesis:
 | `mode` | str | `"ym2612"` | `"ym2612"` = MD1/MD2 VA2 DAC behaviour (sign bias, ×3 level); `"ym3438"` = discrete YM3438. The renderer keeps the instance's mode across its per-note resets, and the batch helpers subtract the mode's own DC (72 / 0) so silence is 0 in both |
 | `clock_rate` | int | `7670454` | Do not change for Sonic 1 |
 | `amiga_clock` | int | `3546895` | PAL Amiga; use 3579545 for NTSC Amiga (rare) |
-| `sustain_duration` | float | `1.5` | Longer = more of the sustain envelope captured |
+| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = the longest ring in the song, see below |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
 | `normalize_samples` | bool | `false` | See Normalization section below |
 | `headroom_db` | float | `6.0` | See Headroom section below |
@@ -101,6 +101,39 @@ synthesis:
 **Clock rates explained:**
 - `clock_rate = 7670454` Hz → native synthesis rate = 7670454 / 6 / 24 ≈ **53,267 Hz**
 - `amiga_clock = 3546895` Hz → `target_rate = amiga_clock / period` where period is from PERIOD_TABLE
+
+### `sustain_duration: auto`
+
+A synthesised sample does not loop: a note that outlasts its sample goes silent.  `auto`
+makes the sustain long enough for the song.  `SmpsToModConverter._resolve_sustain` calls
+`_sustain_needs`, which walks every enabled FM channel with the same `DriverState` as the
+conversion and measures, per MOD instrument, the longest **ring** any of its notes needs:
+
+- A ring is a note plus the `smpsNoAttack` continuations after it (no `C00` is written for
+  those, so the sample keeps advancing).  A plain rest or the next note restarts the sample.
+  One row is added for the row grid (`EDx` delays, cut placement).
+- Its length is measured in the MOD's own time, summed over the tempo segments
+  (`smpsSetTempoMod` changes the BPM), after `smpsSetTempoDiv` re-timing.
+- It is measured at the sample's playback rate.  The sample is synthesised at the rate of
+  the **first** entry naming the instrument (`_synthesis_roots`, the order
+  `generate_fm_samples` walks the maps); a note played above that root runs the sample
+  faster by root period / note period.  A positive `sample_list` finetune adds
+  2^(finetune / 96).  The MOD note is the one the conversion triggers (range lookup in the
+  config's `range_space`, `root + (key − low)`, or the channel transpose).
+
+The FM sustain is the largest need over its instruments, capped at 10 s.  Independently,
+`generate_fm_samples` caps each instrument's sustain to what a sample may hold at its rate
+(`core.pcm.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
+is a top-level key of `settings.yaml`: `128` is the format's own limit (131070 bytes, a
+16-bit word count, which Paula's length register shares and OpenMPT, the FT2 clone and
+ProTracker 2.3E+/3.x play), `64` is the original ProTracker editor's (65534 bytes, its
+four-hex-digit length field).  Where a note still outlasts its sample, `convert.py` prints a
+`sustain_short` warning naming the instrument, the seconds needed and the limit that applies
+(the setting, the 10 s cap, or the sample limit; the fix for the last is a lower `root`, which
+halves the bytes per second per octave).  PSG works the same way (`docs/psg_synthesis.md`).
+Stage Clear's PSG instrument 9 is the known case: its PSG2 range plays the PSG1 sample two
+octaves up, so a 2.55 s note needs 13 s of it.  At `max_sample_kb: 64`, 17 instruments in
+six songs (Marble Zone, Spring Yard, Scrap Brain, Robotnik, Final Zone, Credits) warn as well.
 
 ---
 

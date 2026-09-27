@@ -8,7 +8,11 @@ fm_synthesis:
   mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
-  sustain_duration: auto    # Seconds the note is held on before key-off; or 'auto' to use longest note in song (capped at 10 s)
+  sustain_duration: auto    # Seconds the note is held on before key-off; or 'auto': the longest ring any of the
+                            # song's notes needs from its instrument's sample, at the pitch it plays (a note above
+                            # the root runs the sample faster), capped at 10 s.  Each instrument is also capped
+                            # to what a sample may hold (max_sample_kb below) at its rate; convert.py warns per
+                            # instrument where a note still outlasts its sample.  docs/fm_synthesis.md
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)
   headroom_db: 6.0          # base headroom below clip applied to every carrier (dB); 6 dB ≈ 8 TL steps
@@ -21,9 +25,19 @@ psg_synthesis:
   enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation
   clock_rate: 3579545       # SN76489 NTSC Mega Drive clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
-  sustain_duration: auto    # Seconds of tone held before key-off; or 'auto' to use longest note in song (capped at 10 s)
+  sustain_duration: auto    # Seconds of tone held before key-off; or 'auto' as for FM above (longest ring at its
+                            # playback pitch, 10 s cap, per-instrument MOD sample limit, warnings)
   release_padding: 0.2      # Seconds of silence/release after key-off
   psg_output_max: 4096      # PSG hardware max amplitude; white noise peaks at 2048 (half), tones at 4096
+
+# Longest sample the MOD may hold, in KiB (both synthesis pipelines cap each instrument's
+# sustain to fit, and a sample_list sample over it is cut):
+#   128  The format's own limit (131070 bytes: the length is a 16-bit word count, as Paula's
+#        length register is).  OpenMPT, the FT2 clone and ProTracker 2.3E+/3.x play these.  (default)
+#   64   The original ProTracker editor's limit (65534 bytes, its four-hex-digit length field);
+#        pick this for a real Amiga running ProTracker 1.x-2.3D.  Longer rings then get a
+#        sustain_short warning: lower the instrument's root (an octave halves the bytes per second).
+max_sample_kb: 128
 
 
 # -------------------------------------------------------------------------------------------------

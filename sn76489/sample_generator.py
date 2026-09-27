@@ -27,7 +27,7 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
 from core.driver_tables import PSG_ENVELOPES_BY_NAME
-from core.pcm import int8_to_raw16, to_int8
+from core.pcm import int8_to_raw16, max_sustain_secs, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
 from sn76489.renderer import (
@@ -87,11 +87,19 @@ def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = Fal
             print(f"  [psg synth] inst={inst_num} tone  "
                   f"synth_note={synth_note_idx} freq={freq_hz:.1f}Hz N={n_val}  "
                   f"root={entry.root.name} rate={target_rate}Hz{env_info}")
+        # A MOD sample holds at most max_sample_kb (settings.yaml), so at this rate the
+        # sustain can only be so long (the converter warns where a note needs more).
+        tone_sustain = min(psg_synth.sustain_duration,
+                           max_sustain_secs(target_rate, psg_synth.release_padding,
+                                            psg_synth.max_sample_bytes))
+        if verbose and tone_sustain < psg_synth.sustain_duration:
+            print(f"  [psg synth] inst={inst_num} sustain capped at {tone_sustain:.2f}s "
+                  f"({psg_synth.max_sample_kb} KiB sample limit at {target_rate}Hz)")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             mono, rate = render_psg_tone_raw(
                 synth_note_idx,
-                sustain_secs=psg_synth.sustain_duration,
+                sustain_secs=tone_sustain,
                 release_secs=psg_synth.release_padding,
                 clock_rate=psg_synth.clock_rate,
                 target_rate=target_rate,

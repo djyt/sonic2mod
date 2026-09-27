@@ -63,7 +63,7 @@ File > Import > Raw Data
 | `enabled` | bool | `false` | Set `true`; requires gcc/MSVC for sn76489.c |
 | `clock_rate` | int | `3579545` | NTSC Mega Drive SN76489 clock (Hz) |
 | `amiga_clock` | int | `3546895` | PAL Amiga clock used for `target_rate` calc |
-| `sustain_duration` | float | `1.0` | Seconds held before key-off |
+| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = the longest ring any PSG instrument's notes need at their playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
 | `release_padding` | float | `0.2` | Seconds captured after key-off |
 | `psg_output_max` | int | `4096` | Tone peak amplitude from C emulator; white noise peaks at 2048 (halved in sn76489.c) |
 

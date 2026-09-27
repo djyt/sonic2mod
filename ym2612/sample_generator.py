@@ -32,7 +32,7 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
 from core.mod import ModSample
-from core.pcm import int8_to_raw16, peak, to_int8
+from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
 from core.tables import PERIOD_TABLE, ModNote
@@ -205,10 +205,17 @@ def generate_fm_samples(
     headroom_tl = round(synth.headroom_db / 0.75)
 
     def _render(job: _RenderJob) -> tuple[Sequence[int], int]:
+        # A MOD sample holds at most max_sample_kb (settings.yaml), so at this instrument's
+        # rate the sustain can only be so long (the converter warns where a note needs more).
+        sustain = min(sustain_secs, max_sustain_secs(job.target_rate, synth.release_padding,
+                                                     synth.max_sample_bytes))
+        if verbose and sustain < sustain_secs:
+            print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
+                  f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
         mono, rate = render_note_raw(
             job.voice,
             job.synth_idx,
-            sustain_secs=sustain_secs,
+            sustain_secs=sustain,
             release_secs=synth.release_padding,
             target_rate=job.target_rate,
             opn2=_thread_opn2(synth.mode),

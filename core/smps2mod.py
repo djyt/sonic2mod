@@ -27,6 +27,7 @@ from .levels import (
     psg_att_to_mod,
 )
 from .mod import ModFile, ModSample, row_to_bcd
+from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import (
     PERIOD_TABLE,
@@ -91,6 +92,7 @@ class SmpsToModConverter:
         self.warnings: list[dict] = []
         self.infos: list[dict] = []
         self._seen_warnings: set = set()
+        self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see _place_leading_rests
         self._vib_rate_limited: set = set()
 
     def _add_warning(self, w: dict):
@@ -324,11 +326,22 @@ class SmpsToModConverter:
             if not 32 <= exact <= 255:
                 self._add_warning({'type': 'tempo_bpm_range', 'channel': 'all', **info})
 
-    def _ticks_to_secs(self, ticks: int) -> float:
-        """Convert raw SMPS parser ticks to wall-clock seconds."""
-        ticks_per_sec = (self.config.target_bpm * self._effective_tpr
-                         / (self.config.target_speed * 2.5))
-        return ticks / ticks_per_sec if ticks_per_sec > 0 else 0.0
+    def _tick_span_secs(self, start: float, end: float) -> float:
+        """Seconds the MOD takes to play from tick `start` to tick `end`.
+
+        A tick lasts target_speed x 2.5 / (BPM x ticks per row) seconds at the BPM in force,
+        and smpsSetTempoMod changes that BPM mid-song (_bpm_for, the rounded value the Fxx
+        writes), so the span is summed over the tempo segments it crosses.
+        """
+        segs = getattr(self, '_tempo_segments', None) or [(0, self.song.header.tempo_modifier)]
+        total = 0.0
+        for i, (seg_start, modifier) in enumerate(segs):
+            seg_end = segs[i + 1][0] if i + 1 < len(segs) else float('inf')
+            lo, hi = max(start, seg_start), min(end, seg_end)
+            if hi > lo:
+                total += ((hi - lo) * self.config.target_speed * 2.5
+                          / (self._bpm_for(modifier) * self._effective_tpr))
+        return total
 
     def _set_cursor(self, pattern: int, channel: int, row: int) -> None:
         """Position the MOD file cursor at (pattern, channel, row)."""
@@ -336,12 +349,18 @@ class SmpsToModConverter:
         self.mod.set_channel(channel)
         self.mod.set_row(row)
 
-    def _install_synthesized_samples(self, samples_dict: dict, sample_list, prefix: str) -> None:
-        """Install synthesized PCM samples into mod.samples and apply sample_list overrides."""
+    def _install_synthesized_samples(self, samples_dict: dict, sample_list, prefix: str,
+                                     max_bytes: int = MAX_MOD_SAMPLE_BYTES) -> None:
+        """Install synthesized PCM samples into mod.samples and apply sample_list overrides.
+        `max_bytes` is the settings' sample limit (max_sample_kb); a longer sample is cut."""
         sl_name_map = {e[0]: e[1] for e in sample_list} if sample_list else {}
-        _MAX_SAMPLE_BYTES = 65535 * 2  # MOD 16-bit word length field limit
         for inst_num, (pcm_orig, _) in samples_dict.items():
-            pcm_data = pcm_orig[:_MAX_SAMPLE_BYTES] if len(pcm_orig) > _MAX_SAMPLE_BYTES else pcm_orig
+            pcm_data = pcm_orig[:max_bytes]
+            if len(pcm_orig) > max_bytes:
+                # The generators cap the sustain to the limit; this is a last resort.
+                self._add_warning({'type': 'sample_truncated', 'channel': prefix,
+                                   'extra_ctx': f'instrument {inst_num}', 'instrument': inst_num,
+                                   'bytes': len(pcm_orig), 'max_bytes': max_bytes})
             sample = ModSample(sl_name_map.get(inst_num, f"{prefix}_inst{inst_num}"))
             sample.data = pcm_data
             sample.length = len(pcm_data) // 2
@@ -357,98 +376,149 @@ class SmpsToModConverter:
                     if ft_sl != 0:
                         self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
 
-    def _max_note_duration_secs(self, channel_types: set) -> float:
-        """Return max effective synthesis duration (seconds) across channels of given types.
+    def _synthesis_roots(self, kind: str) -> dict[int, int]:
+        """{MOD instrument: MOD note index its sample is synthesised for}.
 
-        For rooted FM voice_map entries the Amiga plays the sample at a pitch-shifted
-        rate whenever the note is above the root.  Lower MOD period = higher playback
-        rate = sample consumed faster.  Each note's raw tick duration is therefore
-        scaled by root_period / note_period so that the synthesised sample is long
-        enough to cover the full note at its actual playback rate.
-
-        Regular rests (is_no_attack=False) emit C00 (mute) in the MOD and the next
-        note always restarts the sample from byte 0, so they do not add to the
-        required length.  smpsNoAttack continuations (is_no_attack=True) emit no C00
-        and the sample keeps advancing — these are included in the ring duration.
+        The first entry that names an instrument decides, in the order the sample generators
+        walk the maps; a later entry sharing the instrument anchors another range onto that
+        same sample (Credits folds its voices into 31 slots this way, Stage Clear's PSG2 sits
+        two octaves up its PSG1 sample).  FM: voice_map then channel_instrument_map, voices
+        the song lacks skipped, a rootless channel_instrument_map entry at C1.  PSG: psg_map
+        then psg_voice_map.  An instrument absent here is not synthesised (loaded from disk).
         """
-        # Build ordered source-name lists to match SmpsChannels → ChannelConfigs.
-        fm_sources  = [c.source for c in self.config.channels if c.source.startswith('FM')]
-        psg_sources = [c.source for c in self.config.channels if c.source.startswith('PSG')]
-        fm_idx = psg_idx = 0
+        roots: dict[int, int] = {}
+        if kind == "FM":
+            voices = {v.index for v in self.song.voices}
+            cim = [(vi, e) for vim in self.config.channel_instrument_map.values()
+                   for vi, rs in vim.items() for e in rs]
+            rooted = [(vi, e) for vi, rs in self.config.voice_map.items() for e in rs] + cim
+            for vi, e in rooted:
+                if vi in voices and e.root is not None:
+                    roots.setdefault(e.mod_instrument, e.root.value)
+            for vi, e in cim:
+                if vi in voices and e.root is None:
+                    roots.setdefault(e.mod_instrument, ModNote.C1.value)
+        else:
+            entries = list(self.config.psg_map.values())
+            entries += [e for es in self.config.psg_voice_map.values() for e in es]
+            for e in entries:
+                if e.root is not None:
+                    roots.setdefault(e.mod_instrument, e.root.value)
+        return roots
 
-        max_needed_secs = 0.0
+    def _sustain_needs(self, kind: str) -> dict[int, tuple[float, int | None]]:
+        """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
+        over the enabled channels of `kind` ("FM" / "PSG").
 
-        for ch in self.song.channels:
-            ch_type = ch.header.channel_type
-            # Track the source name (e.g. "FM3") for CIM lookup, regardless of filter.
-            ch_source: str | None = None
-            if ch_type == 'FM' and fm_idx < len(fm_sources):
-                ch_source = fm_sources[fm_idx]
-                fm_idx += 1
-            elif ch_type == 'PSG' and psg_idx < len(psg_sources):
-                ch_source = psg_sources[psg_idx]
-                psg_idx += 1
+        The seconds are the longest ring of any of the instrument's notes, measured at the
+        sample's own synthesis rate.  A ring is a note plus the smpsNoAttack continuations
+        after it: no C00 is written for those, so the sample keeps advancing; a plain rest
+        (C00) or the next note restarts it.  One row is added, the most the row grid moves
+        a note's start (EDx) or its end.  Its wall-clock length follows the MOD's tempo
+        segments (_tick_span_secs).  Played above the synthesis root (_synthesis_roots) the
+        sample runs faster by root period / note period and needs proportionally more of it;
+        a positive sample_list finetune does the same by 2^(finetune / 96).
 
-            if ch_type not in channel_types:
+        The MOD note is the one _convert_channel will trigger, found the same way: the same
+        DriverState walk, the range lookup in the config's range_space, root + (key - low)
+        for a rooted entry, the channel transpose otherwise.
+        """
+        finetunes = {e[0]: e[3] for e in (self.config.sample_list or []) if len(e) > 3}
+        roots = self._synthesis_roots(kind)
+        source_map = source_map_for(self.song)
+        needs: dict[int, tuple[float, int | None]] = {}
+        for chan_cfg in self.config.channels:
+            channel = source_map.get(chan_cfg.source)
+            if not chan_cfg.enabled or channel is None or channel.header.channel_type != kind:
                 continue
-
-            is_fm = (ch_type == 'FM')
-
-            # Walk all events in order, tracking voice changes.
-            current_voice = ch.header.voice
-            note_events_with_voice: list[tuple] = []
-            for ev in ch.events:
-                if ev.is_effect and ev.effect.effect_type == 'smpsSetvoice':
-                    current_voice = ev.effect.params[0]
-                elif ev.is_note:
-                    note_events_with_voice.append((ev, current_voice))
-
-            for i, (ev, voice) in enumerate(note_events_with_voice):
-                if ev.note.is_rest:
+            st = DriverState.for_channel(channel, self.config, chan_cfg.instrument)
+            rings: list = []        # [start tick, ring ticks, instrument, out idx] or None
+            for event in channel.events:
+                if event.is_effect:
+                    st.apply(event.effect)
                     continue
-
-                # Sum note duration + any immediately following smpsNoAttack
-                # continuations (sample keeps advancing, no C00 fired).
-                ring_ticks = ev.note.duration
-                for j in range(i + 1, len(note_events_with_voice)):
-                    nxt_ev, _ = note_events_with_voice[j]
-                    if nxt_ev.note.is_rest and nxt_ev.note.is_no_attack:
-                        ring_ticks += nxt_ev.note.duration
+                if not event.is_note:
+                    continue
+                note = event.note
+                if note.is_rest:
+                    if note.is_no_attack and rings and rings[-1] is not None:
+                        rings[-1][1] += note.duration       # continuation: no C00, keeps advancing
                     else:
-                        break
-
-                ring_secs = self._ticks_to_secs(ring_ticks)
-
-                # For rooted FM entries: scale by root_period / note_period.
-                # The sample is synthesised at target_rate = amiga_clock/(2×root_period).
-                # When played at a higher note (lower period) it runs faster, so the
-                # synthesis must be proportionally longer.
-                if is_fm:
-                    source_semitone = ev.note.note_value - 0x81
-                    vm = self.config.voice_map.get(voice, [])
-                    if ch_source and ch_source in self.config.channel_instrument_map:
-                        cim_ranges = self.config.channel_instrument_map[ch_source].get(voice)
-                        if cim_ranges is not None:
-                            vm = cim_ranges
-                    entry = next(
-                        (e for e in vm if e.root is not None
-                         and e.low <= source_semitone <= e.high),
-                        None,
-                    )
+                        rings.append(None)                  # C00 ends the ring
+                    continue
+                source_semitone = note.note_value - 0x81
+                key = st.range_key(source_semitone)
+                inst, out_idx = st.instrument, None
+                if st.is_psg:
+                    ranged = psg_range_entry(st.psg_entries, key)
+                    if ranged is not None:
+                        st.psg_entry = ranged               # as _convert_channel does
+                    entry = st.psg_entry
                     if entry is not None:
-                        root_period = PERIOD_TABLE[entry.root.value]
-                        out_note = max(0, min(
-                            entry.root.value + (source_semitone - entry.low),
-                            len(PERIOD_TABLE) - 2,
-                        ))
-                        note_period = PERIOD_TABLE[out_note]
-                        if root_period > 0 and note_period > 0:
-                            ring_secs *= root_period / note_period
+                        inst = entry.mod_instrument
+                        if entry.root is not None and entry.low is not None:
+                            out_idx = entry.root.value + (key - entry.low)
+                        elif entry.root is not None and entry.type != "tone":
+                            out_idx = entry.root.value
+                else:
+                    entry = st.fm_range_entry(chan_cfg.source, key)
+                    if entry is not None:
+                        inst = entry.mod_instrument
+                        if entry.root is not None:
+                            out_idx = entry.root.value + (key - entry.low)
+                if out_idx is None:
+                    out_idx = source_semitone + st.transpose + chan_cfg.transpose
+                out_idx = max(0, min(35, out_idx))
+                rings.append([event.tick_position, note.duration, inst, out_idx])
 
-                if ring_secs > max_needed_secs:
-                    max_needed_secs = ring_secs
+            for ring in rings:
+                if ring is None:
+                    continue
+                start, ticks, inst, out_idx = ring
+                secs = self._tick_span_secs(start, start + ticks + self._effective_tpr)
+                root_idx = roots.get(inst)
+                if root_idx is not None:
+                    secs *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[out_idx]
+                if finetunes.get(inst, 0) > 0:
+                    secs *= 2.0 ** (finetunes[inst] / 96.0)
+                prev = needs.get(inst)
+                if prev is None or secs > prev[0]:
+                    needs[inst] = (secs, root_idx)
+        return needs
 
-        return max_needed_secs
+    _AUTO_SUSTAIN_CAP_SECS = 10.0
+
+    def _resolve_sustain(self, settings, kind: str):
+        """Settings with `sustain_duration: auto` resolved to the longest ring any of the
+        kind's instruments plays (capped at 10 s), and a warning for every synthesised
+        instrument whose sample cannot hold one of its notes: the setting is shorter, the cap
+        is, or the MOD sample limit at the instrument's rate is (max_sustain_secs)."""
+        needs = self._sustain_needs(kind)
+        auto = settings.sustain_duration == "auto"
+        if auto:
+            secs = min(max((n for n, _ in needs.values()), default=0.0), self._AUTO_SUSTAIN_CAP_SECS)
+            if secs <= 0:
+                secs = float(type(settings)().sustain_duration)    # no notes: the field's default
+            settings = dataclasses.replace(settings, sustain_duration=secs)
+            self.infos.append({'type': f'auto_sustain_{kind.lower()}', 'secs': round(secs, 3)})
+        if not settings.enabled:
+            return settings
+        sustain = float(settings.sustain_duration)
+        for inst, (need, root_idx) in sorted(needs.items()):
+            if root_idx is None:
+                continue
+            rate = round(settings.amiga_clock / PERIOD_TABLE[root_idx])
+            fits = max_sustain_secs(rate, settings.release_padding, settings.max_sample_bytes)
+            have = min(sustain, fits)
+            if need <= have + 0.005:
+                continue
+            limit = ('mod' if fits < sustain
+                     else 'cap' if auto and need > self._AUTO_SUSTAIN_CAP_SECS
+                     else 'setting')
+            self._add_warning({'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',
+                               'kind': kind, 'instrument': inst, 'need': need, 'have': have,
+                               'rate': rate, 'limit': limit, 'max_kb': settings.max_sample_kb})
+        return settings
 
     def convert(self):
         """Main entry point. Returns a ModFile."""
@@ -470,40 +540,18 @@ class SmpsToModConverter:
                     for e in entries
                 )
 
-        # Resolve 'auto' sustain durations by scanning parsed note events
-        synth = self.synth
-        if synth and synth.sustain_duration == "auto":
-            secs = min(self._max_note_duration_secs({'FM'}), 10.0)
-            if secs > 0:
-                # Scale for the highest positive finetune on any FM-synthesized instrument.
-                # Positive finetune → lower ProTracker period → faster sample playback →
-                # the sample runs out before the note ends without this compensation.
-                _fm_insts: set[int] = {
-                    e.mod_instrument
-                    for ranges in self.config.voice_map.values()
-                    for e in ranges
-                }
-                for _cim in self.config.channel_instrument_map.values():
-                    for _ranges in _cim.values():
-                        _fm_insts.update(e.mod_instrument for e in _ranges)
-                _ft_max = 0
-                if self.config.sample_list:
-                    for _sl in self.config.sample_list:
-                        if _sl[0] in _fm_insts and len(_sl) > 3 and _sl[3] > 0:
-                            _ft_max = max(_ft_max, _sl[3])
-                if _ft_max > 0:
-                    # Each finetune step = 1/8 semitone = 1/96 octave.
-                    # Speed factor = 2^(ft/96); compensate by extending sustain.
-                    secs = min(secs * (2.0 ** (_ft_max / 96.0)), 10.0)
-                synth = dataclasses.replace(synth, sustain_duration=secs)
-                self.infos.append({'type': 'auto_sustain_fm', 'secs': round(secs, 3)})
+        # Global duration divider changes re-time every channel (before anything reads ticks).
+        # The tempo segments are collected now for the sustain scan, and again below once the
+        # loop bodies are extended (a replayed body may carry a tempo change).
+        for tick, div in self._apply_global_tempo_div():
+            self.infos.append({'type': 'tempo_div_change', 'tick': tick, 'divider': div,
+                               'row': int(tick // self._effective_tpr)})
+        self._tempo_segments = self._collect_tempo_segments()
 
-        psg_synth = self.psg_synth
-        if psg_synth and psg_synth.sustain_duration == "auto":
-            secs = min(self._max_note_duration_secs({'PSG'}), 10.0)
-            if secs > 0:
-                psg_synth = dataclasses.replace(psg_synth, sustain_duration=secs)
-                self.infos.append({'type': 'auto_sustain_psg', 'secs': round(secs, 3)})
+        # Resolve 'auto' sustain durations from the longest ring each instrument plays, in the
+        # MOD's own time, and warn where a sample cannot hold a note.
+        synth = self._resolve_sustain(self.synth, 'FM') if self.synth else None
+        psg_synth = self._resolve_sustain(self.psg_synth, 'PSG') if self.psg_synth else None
 
         # Load or synthesize samples
         if synth and synth.enabled and synth.mode == "ym2612":
@@ -520,7 +568,8 @@ class SmpsToModConverter:
                           f"(inst {_insts}) — remove this entry from voice_map")
             fm_samples = generate_fm_samples(self.song, self.config, synth)
             self.infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
-            self._install_synthesized_samples(fm_samples, self.config.sample_list, "fm")
+            self._install_synthesized_samples(fm_samples, self.config.sample_list, "fm",
+                                              synth.max_sample_bytes)
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             if self.config.sample_list:
                 for entry in self.config.sample_list:
@@ -552,7 +601,8 @@ class SmpsToModConverter:
                     self.infos.append({'type': 'rate3_divider', 'instrument': inst, **d})
             psg_samples = generate_psg_samples(
                 self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()})
-            self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg")
+            self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg",
+                                              psg_synth.max_sample_bytes)
             self.infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
 
         # Set timing
@@ -560,17 +610,13 @@ class SmpsToModConverter:
         if self.config.target_speed != 6:
             self.mod.set_speed(self.config.target_speed)
 
-        # Global duration divider changes re-time every channel (before anything reads ticks)
-        for tick, div in self._apply_global_tempo_div():
-            self.infos.append({'type': 'tempo_div_change', 'tick': tick, 'divider': div,
-                                'row': int(tick // self._effective_tpr)})
-
         # Extend channels whose loop body is too short to cover the full song
         self._extend_looping_channels()
         self._tempo_segments = self._collect_tempo_segments()
 
         # Convert channels
         self._convert_all_channels()
+        self._place_leading_rests()
         if len(self._tempo_segments) > 1:
             self._write_tempo_changes()
 
@@ -934,11 +980,16 @@ class SmpsToModConverter:
                     if note.is_no_attack:
                         continue
                     pattern, row = self._tick_to_pattern_row(tick)
-                    # Skip C00 at pattern 0 row 0 — nothing is playing yet and
-                    # that cell holds the speed/BPM command.
-                    if pattern < self.config.max_patterns and (pattern > 0 or row > 0):
-                        self._set_cursor(pattern, mod_chan, row)
-                        self.mod.set_effect(0xC, 0)  # C00: mute channel
+                    if pattern >= self.config.max_patterns:
+                        continue
+                    if (pattern, row) == (0, 0):
+                        # A leading rest.  Its C00 matters once the song loops back to
+                        # position 0, and the cell may hold a tempo command, so it is
+                        # placed after every channel is converted (_place_leading_rests).
+                        self._leading_rest_channels[mod_chan] = chan_cfg.source
+                        continue
+                    self._set_cursor(pattern, mod_chan, row)
+                    self.mod.set_effect(0xC, 0)  # C00: mute channel
                     continue
 
                 # Calculate pattern/row from tick
@@ -1269,6 +1320,52 @@ class SmpsToModConverter:
                         # Restore cursor to the attack row
                         self._set_cursor(pattern, mod_chan, row)
 
+    def _loop_target_tick(self) -> int | None:
+        """Tick the song loops back to: the latest smpsJump target over the channels (the
+        Bxx target, _set_loop_point); None when no channel jumps."""
+        label_tick_pos = self.song.label_tick_pos
+        target = None
+        for ch in self.song.channels:
+            if ch.has_jump and ch.jump_target_label:
+                tick = label_tick_pos.get(ch.jump_target_label)
+                if tick is not None and (target is None or tick > target):
+                    target = tick
+        return target
+
+    def _place_leading_rests(self) -> None:
+        """C00 at pattern 0 row 0 for every channel whose first event is a rest.
+
+        Nothing plays there on the first pass, but a song that loops to position 0 (Robotnik,
+        Special Stage) comes back with the last note before the Bxx still ringing, and this
+        C00 is what ends it: without one the note rang through the leading rest until the
+        channel's next event.  Row 0 also holds the Fxx speed and BPM commands (channels 0
+        and 1, ModFile.set_bpm / set_speed); one in the way moves to a free cell on that row,
+        spare channels first.  A note delayed into row 0 (EDx) restarts the sample itself.
+        When no cell is free the C00 is dropped, with a warning if the loop does return to
+        row 0 (Star Light rests on all nine channels but loops to position 1: no warning).
+        """
+        if not self._leading_rest_channels:
+            return
+        loops_to_row0 = self._loop_target_tick() == 0
+        used = {c.mod_channel for c in self.config.channels if c.enabled}
+        order = ([c for c in range(self.mod.CHANNELS) if c not in used]
+                 + [c for c in sorted(used) if c not in self._leading_rest_channels])
+        for ch in sorted(self._leading_rest_channels):
+            if self.mod.note_at(0, 0, ch):
+                continue
+            eff, par = self.mod.effect_at(0, 0, ch)
+            if (eff, par) != (0, 0):
+                slot = self.mod.free_effect_channel(0, 0, order)
+                if slot is None:
+                    if loops_to_row0:
+                        self._add_warning({'type': 'rest_no_slot',
+                                           'channel': self._leading_rest_channels[ch], 'mod_channel': ch})
+                    continue
+                self._set_cursor(0, slot, 0)
+                self.mod.set_effect(eff, par)
+            self._set_cursor(0, ch, 0)
+            self.mod.set_effect(0xC, 0)
+
     def _tick_to_pattern_row(self, tick):
         """Convert a tick position to (pattern_index, row_within_pattern).
 
@@ -1294,15 +1391,7 @@ class SmpsToModConverter:
                 When provided, the loop target tick is mapped to its post-break
                 position by applying each break's shift in sorted order.
         """
-        label_tick_pos = self.song.label_tick_pos
-        loop_target_tick = None
-
-        for ch in self.song.channels:
-            if ch.has_jump and ch.jump_target_label:
-                tick = label_tick_pos.get(ch.jump_target_label)
-                if tick is not None and (loop_target_tick is None or tick > loop_target_tick):
-                    loop_target_tick = tick
-
+        loop_target_tick = self._loop_target_tick()
         if loop_target_tick is None:
             return  # No smpsJump found; nothing to do
 

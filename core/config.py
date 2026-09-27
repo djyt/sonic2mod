@@ -5,6 +5,7 @@ import warnings
 from dataclasses import dataclass, field
 
 from .mod import ModFile
+from .pcm import sample_limit_bytes
 from .tables import ModNote, parse_smps_note, parse_synth_note, synth_note_name
 
 
@@ -202,6 +203,16 @@ def _psg_volume_mode(value) -> str:
     return v
 
 
+def _max_sample_kb(data: dict, filepath: str) -> int:
+    """Top-level `max_sample_kb` of settings.yaml, validated (128 default)."""
+    kb = data.get("max_sample_kb", 128)
+    try:
+        sample_limit_bytes(kb)
+    except ValueError as e:
+        raise ValueError(f"{filepath}: {e}") from e
+    return kb
+
+
 @dataclass
 class PsgSynthesisSettings:
     enabled: bool = False
@@ -217,6 +228,12 @@ class PsgSynthesisSettings:
     # 2 dB/step law (same scheme as SynthesisSettings.fm_volume_mode).  "absolute": legacy —
     # volume = 64 × 10^(−2·att/20) × sample volume / 64, so a Cxx on nearly every PSG note.
     psg_volume_scaling: str = "baked"
+    max_sample_kb: int = 128         # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
+
+    @property
+    def max_sample_bytes(self) -> int:
+        """Bytes one synthesised sample may hold (core.pcm.sample_limit_bytes)."""
+        return sample_limit_bytes(self.max_sample_kb)
 
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
@@ -243,6 +260,7 @@ class PsgSynthesisSettings:
             normalize_samples=s.get("normalize_samples", False),
             psg_output_max=s.get("psg_output_max", 4096),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
+            max_sample_kb=_max_sample_kb(data, filepath),
         )
 
 
@@ -261,6 +279,12 @@ class SynthesisSettings:
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
+    max_sample_kb: int = 128          # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
+
+    @property
+    def max_sample_bytes(self) -> int:
+        """Bytes one synthesised sample may hold (core.pcm.sample_limit_bytes)."""
+        return sample_limit_bytes(self.max_sample_kb)
 
     @property
     def fm_volume_mode(self) -> str:
@@ -328,6 +352,7 @@ class SynthesisSettings:
             headroom_db=s.get("headroom_db", 6.0),
             carrier_balance=s.get("carrier_balance", True),
             threads=s.get("threads", "normal"),
+            max_sample_kb=_max_sample_kb(data, filepath),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
             fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
         )

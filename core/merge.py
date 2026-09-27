@@ -20,8 +20,9 @@ combination, rendered on the YM2612 with one channel per voice keyed together
 does.  A pair that is not two FM voices (DAC + PSG hi-hat, FM + PSG tone) is mixed from the
 two finished samples instead, the follower resampled by the period ratio of the two notes.
 
-What merges, per primary note-on at tick t (and per follower note-on while the primary is
-silent):
+What merges, per primary note-on at tick t (a follower note-on within `merge_tolerance` ticks
+counts as at t; a grace note and the smpsNoAttack note it bends into are one note at the
+target pitch), and per follower note-on while the primary is silent:
   - a follower note-on at t with the same duration        → composite (the usual case); a
                                                              mixed (non-chip) composite needs no
                                                              equal durations: each sample plays
@@ -150,18 +151,22 @@ class NoteOn:
     vibrato: bool = False
     note_value: int = 0x81    # the SMPS note byte
     state: object = None      # the follower's DriverState at this note (a copy), for a solo note
+    ticks: list = field(default_factory=list)   # every note-on tick folded into this note (a grace
+                                                # note and the note it bends into); [tick] otherwise
 
 
 def channel_notes(song, config, source: str, pan_law_db: float,
                   sample_secs: dict[int, float] | None = None,
-                  tick_secs=None) -> tuple[dict[int, NoteOn], list[int]]:
+                  tick_secs=None, grace: int = 0) -> tuple[dict[int, NoteOn], list[int]]:
     """({tick: NoteOn}, [rest ticks]) for a channel, enabled or not, walked as the converter
     walks it (with no merge plan in force).
 
     `sample_secs` ({instrument: seconds its sample lasts}, for the drums and the noise
     instruments) and `tick_secs(tick)` (seconds one driver tick lasts there) bound each such
     note's `sounding` span: a hi-hat two ticks after a kick starts over silence, not over
-    the kick.
+    the kick.  A note of `grace` ticks or fewer followed by an smpsNoAttack note is a grace
+    note bending into it: the two are one NoteOn at the target pitch (`ticks` keeps both
+    note-on ticks), which is what a chord is folded on.
     """
     channel = source_map(song)[source]
     sample_secs = sample_secs or {}
@@ -211,12 +216,24 @@ def channel_notes(song, config, source: str, pan_law_db: float,
                            note_value=note.note_value)
             else:
                 assert res is not None
+                if (note.is_no_attack and last is not None and last.kind == kind
+                        and last.tick + last.duration == tick and last.duration <= grace):
+                    # A grace note bending into this one: one note, at this (the target) pitch
+                    last.duration += note.duration
+                    last.sounding = sounding(last.tick, last.duration, res.instrument)
+                    last.instrument, last.index = res.instrument, res.index
+                    last.chip = None if res.path == "psg_fixed" else res.chip
+                    last.note_value, last.detune = note.note_value, res.detune
+                    last.state = copy.copy(st)
+                    last.ticks.append(tick)
+                    continue
                 n = NoteOn(tick, note.duration, sounding(tick, note.duration, res.instrument),
                            res.instrument, res.index, kind,
                            chip=None if res.path == "psg_fixed" else res.chip,
                            detune=res.detune, tl=st.tl, hard_panned=st.hard_panned,
                            voice=st.voice, level_db=st.level_db(pan_law_db), vibrato=vib,
                            note_value=note.note_value, state=copy.copy(st))
+            n.ticks = [tick]
             notes[tick] = n
             last = n
     finally:
@@ -296,16 +313,37 @@ def follower_key(p: NoteOn, f: NoteOn, level_scale: float) -> tuple:
     return ("pcm", f.instrument, f.index, round(level_scale, 4))
 
 
+def match_onsets(p_notes: dict[int, NoteOn], f_notes: dict[int, NoteOn], tolerance: int) -> dict[int, int]:
+    """{primary tick: follower tick} for every follower note-on within `tolerance` ticks of a
+    primary note-on, the nearest first, each follower note used once."""
+    f_ticks = sorted(f_notes)
+    used: set[int] = set()
+    out: dict[int, int] = {}
+    for t in sorted(p_notes):
+        best = None
+        for k in range(bisect.bisect_left(f_ticks, t - tolerance), len(f_ticks)):
+            ft = f_ticks[k]
+            if ft > t + tolerance:
+                break
+            if ft not in used and (best is None or abs(ft - t) < abs(best - t)):
+                best = ft
+        if best is not None:
+            used.add(best)
+            out[t] = best
+    return out
+
+
 def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
                   f_notes: dict[int, NoteOn], f_rests: list[int],
                   primary: str, follower: str, level_scale=lambda n: 1.0,
-                  cut_primary: bool = False) -> PairStats:
+                  cut_primary: bool = False, tolerance: int = 0) -> PairStats:
     """Line a follower's notes up with a primary's."""
     st = PairStats(primary, follower)
     f_ticks = sorted(f_notes)
+    matched = match_onsets(p_notes, f_notes, tolerance)
     for t in sorted(p_notes):
         p = p_notes[t]
-        f = f_notes.get(t)
+        f = f_notes[matched[t]] if t in matched else None
         if f is None:
             if _sounding_at(f_ticks, f_notes, t) is not None:
                 st.held += 1
@@ -323,8 +361,9 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
         fk = follower_key(p, f, level_scale(f))
         st.keys.add((p.instrument, fk) if fk[0] == "fm" else (p.instrument, p.index, fk))
     p_ticks = sorted(p_notes)
+    taken = set(matched.values())
     for t in f_ticks:
-        if t in p_notes:
+        if t in taken:
             continue
         if _sounding_at(p_ticks, p_notes, t) is not None:
             if not cut_primary:
@@ -463,17 +502,20 @@ def build_merge_plan(song, config, *, pan_law_db: float,
             return 1.0
         return 10 ** ((n.level_db - base) / 20.0)
 
+    tol = max(0, int(getattr(config, "merge_tolerance", 0)))
     for g in plan.groups:
-        p_notes, p_rests = channel_notes(song, config, g.primary, pan_law_db, sample_secs, tick_secs)
-        followers = [(f, *channel_notes(song, config, f, pan_law_db, sample_secs, tick_secs))
+        p_notes, p_rests = channel_notes(song, config, g.primary, pan_law_db, sample_secs, tick_secs, tol)
+        followers = [(f, *channel_notes(song, config, f, pan_law_db, sample_secs, tick_secs, tol))
                      for f in g.followers]
+        matched = {f: match_onsets(p_notes, f_notes, tol) for f, f_notes, _ in followers}
         for f, f_notes, f_rests in followers:
             plan.stats.append(pair_channels(p_notes, p_rests, f_notes, f_rests, g.primary, f, level_scale,
-                                            cut_primary=g.cut_primary))
+                                            cut_primary=g.cut_primary, tolerance=tol))
         for t in sorted(p_notes):
             p = p_notes[t]
-            present = [(f, f_notes[t]) for f, f_notes, _ in followers
-                       if t in f_notes and (f_notes[t].duration >= p.duration or not chip_pair(p, f_notes[t]))]
+            present = [(f, f_notes[matched[f][t]]) for f, f_notes, _ in followers
+                       if t in matched[f] and (f_notes[matched[f][t]].duration >= p.duration
+                                               or not chip_pair(p, f_notes[matched[f][t]]))]
             if not present:
                 continue
             spec = cat.instruments.get(p.instrument)
@@ -500,9 +542,10 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                 config.sample_list.append(comp.entry)
                 plan.composites[key] = comp
             comp.notes += 1
-            plan.ticks[(g.primary, t)] = comp.inst
-            if comp.note is not None:
-                plan.notes[(g.primary, t)] = comp.note
+            for tt in (p.ticks or [t]):           # the grace note and the note it bends into alike
+                plan.ticks[(g.primary, tt)] = comp.inst
+                if comp.note is not None:
+                    plan.notes[(g.primary, tt)] = comp.note
         _splice_solo_notes(plan, song, g, p_notes, p_rests)
     config.merge_plan = plan
     unused = _unused_instruments(plan, song, config)

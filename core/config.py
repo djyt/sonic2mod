@@ -531,6 +531,10 @@ class ConversionConfig:
     # each group's followers are dropped and their notes rendered into the primary's instruments.
     merge: list = field(default_factory=list)              # list[MergeGroup]
     merge_drop: list = field(default_factory=list)         # channels left out of the merged build altogether
+    # Ticks a follower's note-on may be from the primary's and still fold (Green Hill's FM3 starts
+    # its chord one tick after FM4/FM5); a note that short before a legato note is a grace note,
+    # folded to the note it bends into.
+    merge_tolerance: int = 1
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -771,6 +775,7 @@ class ConversionConfig:
         config.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
         config.merge_output_file = data.get('merge_output_file')
         config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
+        config.merge_tolerance = int(data.get('merge_tolerance', 1))
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])

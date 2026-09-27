@@ -67,7 +67,8 @@ def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], 
 
     sources = [c.source for c in cfg.channels if c.enabled]
     sample_secs = conv._sample_secs()
-    notes = {src: channel_notes(song, cfg, src, pan_law, sample_secs, lambda t: conv._tick_span_secs(t, t + 1))
+    tol = max(0, int(cfg.merge_tolerance))
+    notes = {src: channel_notes(song, cfg, src, pan_law, sample_secs, lambda t: conv._tick_span_secs(t, t + 1), tol)
              for src in sources}
     counts = {src: len(notes[src][0]) for src in sources}
     stats = []
@@ -75,7 +76,7 @@ def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], 
         for f in sources:
             if p == f or not counts[f]:
                 continue
-            stats.append(pair_channels(*notes[p], *notes[f], p, f, level_scale))
+            stats.append(pair_channels(*notes[p], *notes[f], p, f, level_scale, tolerance=tol))
     return stats, counts
 
 

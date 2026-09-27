@@ -637,14 +637,11 @@ class SmpsToModConverter:
                     self._add_warning({'type': 'merge_headroom', 'channel': 'merge',
                                        'instrument': c.inst, 'db': c.headroom_db, 'group': c.group.label})
 
-        # Set timing
-        self.mod.set_bpm(self.config.target_bpm)
-        if self.config.target_speed != 6:
-            self.mod.set_speed(self.config.target_speed)
 
         # Convert channels
         self._convert_all_channels()
         self._place_leading_rests()
+        self._place_tempo_commands()
         if len(self._tempo_segments) > 1:
             self._write_tempo_changes()
 
@@ -1439,11 +1436,11 @@ class SmpsToModConverter:
         Nothing plays there on the first pass, but a song that loops to position 0 (Robotnik,
         Special Stage) comes back with the last note before the Bxx still ringing, and this
         C00 is what ends it: without one the note rang through the leading rest until the
-        channel's next event.  Row 0 also holds the Fxx speed and BPM commands (channels 0
-        and 1, ModFile.set_bpm / set_speed); one in the way moves to a free cell on that row,
-        spare channels first.  A note delayed into row 0 (EDx) restarts the sample itself.
-        When no cell is free the C00 is dropped, with a warning if the loop does return to
-        row 0 (Star Light rests on all nine channels but loops to position 1: no warning).
+        channel's next event.  The Fxx speed and BPM commands are placed after this
+        (_place_tempo_commands) in the cells left free.  A note delayed into row 0 (EDx)
+        restarts the sample itself.  When no cell is free the C00 is dropped, with a warning
+        if the loop does return to row 0 (Star Light rests on all nine channels but loops to
+        position 1: no warning).
         """
         if not self._leading_rest_channels:
             return
@@ -1466,6 +1463,38 @@ class SmpsToModConverter:
                 self.mod.set_effect(eff, par)
             self._set_cursor(0, ch, 0)
             self.mod.set_effect(0xC, 0)
+
+    def _place_tempo_commands(self) -> None:
+        """The BPM and speed (Fxx) on pattern 0 row 0, in cells whose effect slot is free.
+
+        They used to be written before the channels, on channels 0 and 1, where a note's own
+        effect on row 0 (a Cxx, a legato 3FF) silently overwrote them: Special Stage lost its
+        speed 3 and played at half tempo.  Now they go last: a spare channel first, then any
+        channel whose row-0 cell has no effect; failing that, a leading rest's C00 gives way
+        (the tempo matters more than one ring through the first rest).
+        """
+        wanted = [(0xF, self.config.target_bpm)]
+        if self.config.target_speed != 6:
+            wanted.insert(0, (0xF, self.config.target_speed))
+        used = {c.mod_channel for c in self.config.channels if c.enabled}
+        order = [c for c in range(self.mod.CHANNELS) if c not in used] + sorted(used)
+        for eff, par in wanted:
+            slot = self.mod.free_effect_channel(0, 0, order)
+            if slot is None:
+                # Take a leading rest's C00 (a cell with no note); a sample restart (EDx)
+                # or a note's own command stays.
+                for ch in order:
+                    if not self.mod.note_at(0, 0, ch) and self.mod.effect_at(0, 0, ch) == (0xC, 0):
+                        slot = ch
+                        self._add_warning({'type': 'rest_no_slot', 'mod_channel': ch,
+                                           'channel': self._leading_rest_channels.get(ch, f'MOD channel {ch}')})
+                        break
+            if slot is None:
+                self._add_warning({'type': 'tempo_no_slot', 'pattern': 0, 'row': 0,
+                                   'modifier': self.song.header.tempo_modifier, 'bpm': par})
+                continue
+            self._set_cursor(0, slot, 0)
+            self.mod.set_effect(eff, par)
 
     def _tick_to_pattern_row(self, tick):
         """Convert a tick position to (pattern_index, row_within_pattern).

@@ -103,6 +103,8 @@ class MergeGroup:
     followers: list[str]
     cut_primary: bool = False   # a follower note that starts while the primary still sounds cuts it
                                 # (a hi-hat over a drum's tail) instead of being lost
+    max_composites: int | None = None   # keep only the N most-played composites (the rest of the
+                                        # chords play the primary alone): a memory budget
 
     @property
     def label(self) -> str:
@@ -529,6 +531,9 @@ class ConversionConfig:
     # each group's followers are dropped and their notes rendered into the primary's instruments.
     merge: list = field(default_factory=list)              # list[MergeGroup]
     merge_drop: list = field(default_factory=list)         # channels left out of the merged build altogether
+    # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
+    # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
+    merge_max_synth_shift: int = 12
     merge_output_file: str | None = None                   # default: output_file stem + "_merged"
     merge_active: bool = False                             # set by core.merge.prepare_merged_config
     merge_plan: Any = field(default=None, repr=False)      # core.merge.MergePlan, set by the converter
@@ -758,11 +763,14 @@ class ConversionConfig:
             followers = g.get('followers', [])
             if isinstance(followers, str):
                 followers = [followers]
+            _mc = g.get('max_composites')
             config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers],
-                                           bool(g.get('cut_primary', False))))
+                                           bool(g.get('cut_primary', False)),
+                                           int(_mc) if _mc is not None else None))
         drop = data.get('merge_drop', []) or []
         config.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
         config.merge_output_file = data.get('merge_output_file')
+        config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])

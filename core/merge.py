@@ -353,6 +353,8 @@ class Composite:
     fm: FmInstrument | None = None     # chip-rendered: an entry for the instrument catalogue
     entry: list | None = None          # its sample_list entry [inst, name, volume, finetune]
     headroom_db: float = 0.0           # pcm mix: dB the sum exceeded full scale by (volume clamped)
+    note: int | None = None            # pcm mix: the MOD note it is triggered at, when not the
+                                       # primary's (the layer with the highest rate sets it)
 
     @property
     def detail(self) -> str:
@@ -368,7 +370,8 @@ class Composite:
             return "chip: " + "; ".join(parts)
         parts = [f"inst {inst} at note {idx}" + (f" ×{scale:g}" if scale != 1 else "")
                  for _k, inst, idx, scale in self.key[3]]
-        return f"mix at note {self.key[2]}: " + "; ".join(parts)
+        at = f"mix at note {self.key[2]}" + (f", triggered at {self.note}" if self.note is not None else "")
+        return f"{at}: " + "; ".join(parts)
 
 
 @dataclass
@@ -376,6 +379,7 @@ class MergePlan:
     groups: list[MergeGroup]
     composites: dict[tuple, Composite] = field(default_factory=dict)
     ticks: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> composite
+    notes: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> its trigger note
     stats: list[PairStats] = field(default_factory=list)
     unsupported: list[dict] = field(default_factory=list)
     solo: dict[tuple[str, int], tuple[str, NoteOn]] = field(default_factory=dict)  # (primary, tick) -> (follower, note)
@@ -394,6 +398,10 @@ class MergePlan:
 
     def instrument_at(self, source: str, tick: int, default: int) -> int:
         return self.ticks.get((source, tick), default)
+
+    def note_at(self, source: str, tick: int, default: int) -> int:
+        """The MOD note the composite at (source, tick) is triggered at; `default` otherwise."""
+        return self.notes.get((source, tick), default)
 
     @property
     def fm_instruments(self) -> list[FmInstrument]:
@@ -482,10 +490,19 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                     layers = [FmLayer(p.voice)] + [fm_layer(p, fn) for _, fn in present]
                     comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]",
                                            source_label=g.label)
+                else:
+                    # Mixed at, and triggered from, the note of the layer that plays fastest: a
+                    # hi-hat at A3 mixed onto a kick at C2 would otherwise be resampled down to
+                    # the kick's 8 kHz and lose everything above 4 kHz.
+                    best = min([p.index] + [fn.index for _, fn in present], key=lambda i: PERIOD_TABLE[i])
+                    if best != p.index:
+                        comp.note = best
                 config.sample_list.append(comp.entry)
                 plan.composites[key] = comp
             comp.notes += 1
             plan.ticks[(g.primary, t)] = comp.inst
+            if comp.note is not None:
+                plan.notes[(g.primary, t)] = comp.note
         _splice_solo_notes(plan, song, g, p_notes, p_rests)
     config.merge_plan = plan
     unused = _unused_instruments(plan, song, config)
@@ -502,14 +519,25 @@ def _assign_slots(plan: MergePlan, config, slots: list[int]) -> None:
     dropped (its notes play the primary alone) and reported."""
     order = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst), reverse=False)
     remap: dict[int, int | None] = {}
+    reason: dict[int, str] = {}
+    kept: dict[str, int] = {}                  # composites given a slot, per group
     for c in order:
+        cap = c.group.max_composites
+        if cap is not None and kept.get(c.group.primary, 0) >= cap:
+            remap[c.inst] = None
+            reason[c.inst] = f"over the group's max_composites: {cap}"
+            continue
         remap[c.inst] = slots.pop(0) if slots else None
+        if remap[c.inst] is None:
+            reason[c.inst] = 'no free instrument slot'
+        else:
+            kept[c.group.primary] = kept.get(c.group.primary, 0) + 1
     for key in list(plan.composites):
         c = plan.composites[key]
         real = remap[c.inst]
         if real is None:
             plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail,
-                                     'reason': 'no free instrument slot'})
+                                     'reason': reason[c.inst]})
             if c.entry in config.sample_list:
                 config.sample_list.remove(c.entry)
             del plan.composites[key]
@@ -520,6 +548,7 @@ def _assign_slots(plan: MergePlan, config, slots: list[int]) -> None:
             c.fm.inst = real
         c.inst = real
     plan.ticks = {k: remap[v] for k, v in plan.ticks.items() if remap.get(v) is not None}  # type: ignore[misc]
+    plan.notes = {k: n for k, n in plan.notes.items() if k in plan.ticks}
 
 
 def _splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, NoteOn], p_rests: list[int]) -> None:
@@ -591,8 +620,9 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
-    made at, so the follower is resampled by the period ratio of the two notes onto the
-    primary sample's time axis and added at its sample_list volume times its level gain.
+    made at, so every layer is resampled by the period ratio of its note and the composite's
+    trigger note (the fastest layer's, `Composite.note`; the primary's otherwise) and added at
+    its sample_list volume times its level gain.
     The sum is peak-normalised and the composite's volume set so it plays at the sum's level;
     a sum past full scale keeps volume 64 and is reported (`headroom_db`).  Returns one dict
     per problem (a missing sample).
@@ -607,7 +637,10 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
             problems.append({'instrument': comp.inst, 'missing': p_inst})
             continue
         total = [v * base._volume / 64.0 for v in _signed(base.data)]
-        r_p = amiga_clock / PERIOD_TABLE[p_idx]
+        r_p = amiga_clock / PERIOD_TABLE[comp.note if comp.note is not None else p_idx]
+        r_base = amiga_clock / PERIOD_TABLE[p_idx]
+        if round(r_base) != round(r_p):
+            total = resample(total, round(r_base), round(r_p))
         for _, f_inst, f_idx, scale in subs:
             fs = mod.samples[f_inst - 1]
             if not fs.data:

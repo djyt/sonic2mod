@@ -514,8 +514,12 @@ merge:
   - primary: DAC
     followers: [PSG3]     # the hi-hat lands on the drum hits
     cut_primary: true     # a hat over a drum's decay plays and cuts the tail (Green Hill)
+  - primary: FM5
+    followers: [FM4]
+    max_composites: 4     # optional memory budget: the 4 most-played chords; the rest play FM5 alone
 merge_output_file: output/01_title_screen_4ch.mod   # optional
 merge_drop: [FM3, PSG1]                              # optional: left out of the merged build altogether
+merge_max_synth_shift: 0                             # optional: render no sample above its root's pitch (half the bytes)
 ```
 
 `python convert.py configs/01_title_screen.yaml --merged` then writes the reduced MOD: the
@@ -538,12 +542,21 @@ baselines and audits stay the ground truth.
   the follower's own note (its instrument, pitch and level), so two channels that never sound
   at once can share a MOD channel outright. A drum or noise note sounds for its sample, not
   its SMPS duration, so a hat two ticks after a kick's sample has ended is such a note.
+- `max_composites: N` on a group keeps only its N most-played composite instruments (the
+  converter says which chords are left to the primary alone); the sample bytes are the
+  price of every distinct interval, so this is the memory budget for a chord channel.
 - `cut_primary: true` on a group lets a follower note that starts while the primary still
   sounds play anyway, cutting the primary's tail; that is what a hi-hat does to a drum's decay
   on a 4-channel Amiga, and it is how Green Hill's 262 hats ride its 172 drum hits. Off, those
   notes are lost (`orphan`).
 - Instruments no note of the merged build plays are not rendered, so the merged MOD carries
-  only the samples it uses.
+  only the samples it uses. `merge_max_synth_shift` (merged build only) caps how far above
+  its root's pitch a sample is rendered: the reference build renders at the busiest note, up
+  to an octave up, which doubles a sample's rate and bytes; `0` renders at the root's pitch
+  for half the size, at the cost of envelopes running twice as fast an octave up.
+- A mixed composite (a drum with its hi-hat) is mixed at, and triggered from, the note of the
+  layer that plays fastest, so the hat keeps its bandwidth instead of being resampled down to
+  the kick's rate.
 - A song with more independent voices than the Amiga has channels needs `merge_drop:` as
   well: those channels are left out of the merged build (they still vote for their
   instruments' levels, so the measured volumes hold). Which parts to drop is a musical

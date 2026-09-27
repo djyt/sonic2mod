@@ -858,8 +858,9 @@ the primary alone, and `merge_unsupported` says so.
 - anything else → `("pcm", primary instrument, primary MOD note, (follower instrument, follower
   MOD note, level gain)...)`: mixed by `mix_pcm_composites` once every sample is in. A MOD
   sample triggered at note n plays at `amiga_clock / PERIOD[n]` whatever rate it was made at, so
-  the follower is resampled by the period ratio of the two notes onto the primary sample's time
-  axis and added at `sample_list volume × 10^((level − baked level)/20)`. The sum is
+  every layer is resampled by the period ratio of its note and the composite's trigger note
+  (the fastest layer's, so a hat on a kick keeps its treble; `MergePlan.note_at` gives the
+  converter that note) and added at `sample_list volume × 10^((level − baked level)/20)`. The sum is
   peak-normalised and the composite's volume set to the sum's level; past full scale it stays
   at 64 and `merge_headroom` says by how much.
 

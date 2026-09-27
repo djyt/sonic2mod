@@ -1080,14 +1080,17 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
 
 def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None, ref_chan: str,
-                  labels: dict[str, list[str]]) -> dict:
+                  labels: dict[str, list[str]], max_rows: int = 400) -> dict:
     """The merged build: every MOD channel against the sum of the chip channels folded onto it.
 
-    Whole-song balance and audio onsets only: a merged channel carries several note streams, so
-    the per-note pitch and level audit and the symbolic verdict (one stream per channel) do not
-    apply.  Composite instruments are checked by their level here and by ear.
+    Whole-song balance, audio onsets, and the pitch of each merged channel at its PRIMARY's
+    chip key-ons (the first source of the label): both renders hold the primary and its
+    followers, so the same partial is measured on both sides and the difference is the MOD's
+    error.  The symbolic verdict (one note stream per channel) does not apply.
     """
     names = list(labels)
+    raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
+    rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
     vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
     mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]}
     vgm = {n: a.mean(axis=1) for n, a in vgm_st.items()}
@@ -1101,6 +1104,67 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     print()
     res: dict = {"offset_ms": offset * 1000, "offset_auto": offset_auto, "merged": True,
                  "channels": {n: {"sources": labels[n]} for n in names}, "notes": [], "vibrato": []}
+    mod_end = len(mod["FULL"]) / SR
+
+    # ---- per-note pitch and level at the primary's key-ons ----
+    per_ch: dict[str, list] = {}
+    for n in names:
+        primary = labels[n][0]
+        if primary in ("DAC", "NOISE"):
+            continue
+        per_ch[n] = [r for r in rows if r[1] == primary and r[4] > 0 and r[0] / 1000.0 + offset < mod_end - 0.15]
+    printed = 0
+    cent_err: dict[str, list[float]] = {}
+    level_diff: dict[str, list[float]] = {}
+    if per_ch:
+        print("Per-note comparison at the primary's key-ons (levels are dBFS of the merged channel; diff = MOD - VGM;")
+        print("vgm_c / mod_c = cents from the chip's key-on pitch, measured in the audio - PITCH flags the two renders disagreeing)")
+        print(f"{'chan':<14}{'t_vgm':>7}  {'ref':<4}{'ref_hz':>8}  {'vgm_c':>6}  {'mod_c':>6}  {'vgm_dB':>7}  {'mod_dB':>7}  {'diff':>6}")
+        print("-" * 86)
+    for n, evs in per_ch.items():
+        for i, r in enumerate(evs):
+            t, _, _, _, fref, note, _ = r
+            t /= 1000.0
+            t_end = evs[i + 1][0] / 1000.0 if i + 1 < len(evs) else t + 2.0
+            dur = t_end - t
+            win = min(0.3 if fref < 200 else 0.1, max(0.04, dur - 0.03))
+            sv = seg_at(vgm[n], t + 0.025, win)
+            sm = seg_at(mod[n], t + offset + 0.025, win)
+            harm, cv = harmonic_cents(sv, fref)
+            _, cm = harmonic_cents(sm, fref, harm)
+            lv = db(rms(seg_at(vgm_st[n], t + 0.025, win)))
+            lm = db(rms(seg_at(mod_st[n], t + offset + 0.025, win)))
+            level_diff.setdefault(n, []).append(lm - lv)
+            if not math.isnan(cm):
+                cent_err.setdefault(n, []).append(cm)
+            pitch_diff = cm - cv
+            flag = "  <-- PITCH" if (not math.isnan(cv) and (math.isnan(cm) or abs(pitch_diff) > 25)) else ""
+            if lm < -70:
+                flag = "  <-- SILENT in MOD"
+            res["notes"].append({
+                "channel": n, "t_s": t, "note": note, "ref_hz": fref, "vgm_cents": cv, "mod_cents": cm,
+                "pitch_diff_cents": pitch_diff, "vgm_db": lv, "mod_db": lm, "diff_db": lm - lv,
+                "silent_in_mod": lm < -70,
+            })
+            if max_rows <= 0 or printed < max_rows or flag:
+                print(f"{n:<14}{t:>7.3f}  {note:<4}{fref:>8.1f}  {_fmt(cv, 6)}  {_fmt(cm, 6)}  "
+                      f"{lv:>7.1f}  {lm:>7.1f}  {lm - lv:>6.1f}{flag}")
+                printed += 1
+    if per_ch:
+        print()
+        print("Per-channel summary (at the primary's key-ons)")
+        print(f"{'chan':<14}{'notes':>6}  {'pitch err cents (median/min/max)':<34}  {'level diff dB (median)':<22}")
+        for n in per_ch:
+            ce = cent_err.get(n, [float('nan')])
+            ld = level_diff.get(n, [float('nan')])
+            print(f"{n:<14}{len(per_ch[n]):>6}  {statistics.median(ce):>8.1f} / {min(ce):>6.1f} / {max(ce):>6.1f}"
+                  f"{'':<8}  {statistics.median(ld):>+8.1f}")
+            res["channels"][n].update({
+                "notes": len(per_ch[n]),
+                "pitch_cents": {"median": statistics.median(ce), "min": min(ce), "max": max(ce)},
+                "level_diff_db_median": statistics.median(ld),
+            })
+        print()
 
     ref = next((n for n in names if ref_chan in labels[n]), names[0])
     print(f"Whole-song channel RMS relative to {ref} (dB, L/R power); a merged channel against the sum of its"
@@ -1230,16 +1294,16 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     cfg = ConversionConfig.from_yaml(args.config)
-    # synth_root / synth_shift come from the song (what the converter does before rendering);
-    # without this the symbolic verdict reads every shifted entry as wrong
-    from core.driver_state import resolve_synth_roots
-    from core.smps_parser import SmpsParser
-    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
     if args.merged:
         try:
             prepare_merged_config(cfg)          # followers off, channels packed, merge_output_file
         except ValueError as e:
             raise SystemExit(f"ERROR: {e}") from e
+    # synth_root / synth_shift come from the song (what the converter does before rendering);
+    # without this the symbolic verdict reads every shifted entry as wrong
+    from core.driver_state import resolve_synth_roots
+    from core.smps_parser import SmpsParser
+    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):
@@ -1288,7 +1352,7 @@ def main() -> None:
     print(f"Renders: {workdir}")
     print()
     if args.merged:
-        res = report_merged(vgz, mod_path, workdir, args.offset, args.ref, labels)
+        res = report_merged(vgz, mod_path, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
         res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)

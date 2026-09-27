@@ -1171,9 +1171,10 @@ class SmpsToModConverter:
                     dac_cfg = dac_map.get(note.dac_name)
                     if dac_cfg:
                         dac_inst = dac_cfg.mod_instrument
+                        dac_note = _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3)
                         if self._merge is not None:          # a drum with its hi-hat folded in
                             dac_inst = self._merge.instrument_at(chan_cfg.source, tick, dac_inst)
-                        dac_note = _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3)
+                            dac_note = ModNote(self._merge.note_at(chan_cfg.source, tick, dac_note.value))
                         self.mod.set_note(dac_note, dac_inst)
                     else:
                         # Fallback: use default instrument and C3
@@ -1187,7 +1188,8 @@ class SmpsToModConverter:
                     assert res is not None
                     source_semitone = res.source
                     final_instrument = res.instrument
-                    final_note = ModNote(res.index)
+                    final_note = ModNote(res.index if self._merge is None
+                                         else self._merge.note_at(chan_cfg.source, tick, res.index))
                     active_range_entry = None if is_psg else res.entry
                     self._warn_resolution(res, st, chan_cfg, note)
                     # A solo note carries none of this channel's modulation

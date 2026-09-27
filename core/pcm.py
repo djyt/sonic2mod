@@ -54,12 +54,12 @@ def trim_trailing_silence(mono: Sequence[int]) -> Sequence[int]:
     return mono[:i]
 
 
-def peak(mono: Sequence[int]) -> int:
+def peak(mono: Sequence[float]) -> int:
     """Largest absolute sample value; 0 for an empty or silent list."""
-    return max((abs(v) for v in mono), default=0)
+    return int(max((abs(v) for v in mono), default=0))
 
 
-def to_int8(mono: Sequence[int], scale: float, dither: bool = True) -> bytes:
+def to_int8(mono: Sequence[float], scale: float, dither: bool = True) -> bytes:
     """Scale and quantise a raw mono list into signed 8-bit PCM (2's complement via & 0xFF).
 
     The quantiser adds TPDF dither with first-order noise shaping, the same treatment

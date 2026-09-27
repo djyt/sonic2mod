@@ -26,7 +26,7 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
-from core.driver_tables import PSG_ENVELOPES_BY_NAME
+from core.driver_tables import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from core.instruments import psg_catalogue
 from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
@@ -139,12 +139,8 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
         # Cap sustain to envelope length so the sample ends at the natural decay tail
         # rather than holding noise output for the full song-longest-note duration.
         # Include ramp-to-silence frames so _render_with_envelope can fade to attenuation 15.
-        if resolved_env:
-            held_att = min(15, entry.base_volume + resolved_env[-1])
-            ramp_frames = max(0, 15 - held_att)
-            noise_sustain = (len(resolved_env) + ramp_frames + 1) / fps
-        else:
-            noise_sustain = min(psg_synth.sustain_duration, 0.5)
+        env_frames = noise_envelope_frames(resolved_env, entry.base_volume)
+        noise_sustain = env_frames / fps if env_frames is not None else min(psg_synth.sustain_duration, 0.5)
         if verbose:
             print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
                   f"rate={entry.noise_rate}  tone2_n={tone2_n}  root={entry.root.name}  "

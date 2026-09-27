@@ -1264,6 +1264,8 @@ def main() -> None:
                 chan_map["+".join(srcs)] = c.mod_channel
         masks = {lab: group_masks(srcs) for lab, srcs in labels.items()}
         vgm_names = list(labels)
+        if cfg.merge_drop:
+            print(f"Dropped from the merged build (in the VGM mix, not the MOD): {', '.join(cfg.merge_drop)}")
     else:
         chan_map = {c.source: c.mod_channel for c in cfg.channels}
         vgm_names = ["NOISE" if (s == "PSG3" and noise_used) else s for s in chan_map]

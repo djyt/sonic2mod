@@ -19,6 +19,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import os
 import shutil
 import subprocess
@@ -246,6 +247,9 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
 
 
 def main():
+    # convert.py's output (quoted on a failure) is UTF-8; a Windows console may not be
+    with contextlib.suppress(Exception):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
     parser = argparse.ArgumentParser(description="sonic2mod regression test suite")
     parser.add_argument(
         "--generate-baselines",

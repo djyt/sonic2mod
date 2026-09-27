@@ -289,3 +289,13 @@ assert CARRIER_OFFSETS_BY_ALG[0] == (0x0C,)
 assert CARRIER_OFFSETS_BY_ALG[4] == (0x08, 0x0C)
 assert set(CARRIER_OFFSETS_BY_ALG[5]) == {0x04, 0x08, 0x0C}
 assert len(CARRIER_OFFSETS_BY_ALG[7]) == 4
+
+
+def noise_envelope_frames(envelope: list[int] | None, base_volume: int = 0) -> int | None:
+    """Frames a noise note sounds for: its envelope, then the ramp to attenuation 15 the
+    renderer adds so the sample ends in silence (sn76489.sample_generator).  None = no
+    envelope (the note holds as long as it is keyed)."""
+    if not envelope:
+        return None
+    held_att = min(15, base_volume + envelope[-1])
+    return len(envelope) + max(0, 15 - held_att) + 1

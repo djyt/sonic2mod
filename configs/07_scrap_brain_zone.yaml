@@ -39,21 +39,21 @@ sample_list:
   # --- voice $00: Alg 0, FB 1 — FM2, FM3 ---
   - [4, "fm_v00.raw", 20, 0] # VGZ: +4.3 dB at 32
   # --- voice $01: Alg 4, FB 5 — FM3 ---
-  - [5, "fm_v01.raw", 26, 0] # VGZ: +1.8 dB at 32
+  - [5, "fm_v01.raw", 19, 0] # VGZ: +2.9 dB at 26
   # --- voice $02: Alg 5, FB 7 — FM1, FM4, FM5 ---
-  - [6, "fm_v02.raw", 32, 0]
+  - [6, "fm_v02.raw", 13, 0] # VGZ: +7.8 dB at 32
   # --- voice $03: Alg 1, FB 5 — FM1, FM3 ---
   - [7, "fm_v03.raw", 22, 0] # VGZ: -2.8 dB at 16
   # --- voice $04: Alg 5, FB 7 — FM4, FM5 ---
-  - [8, "fm_v04_lo.raw", 32, 0]
-  - [9, "fm_v04_hi.raw", 32, 0]
+  - [8, "fm_v04_lo.raw", 13, 0] # VGZ: +7.8 dB at 32
+  - [9, "fm_v04_hi.raw", 15, 0] # VGZ: +6.8 dB at 32
   # --- voice $05: Alg 0, FB 6 — FM1, FM4 ---
   - [10, "fm_v05_lo.raw", 10, 0] # VGZ: +9.8 dB at 32
   - [11, "fm_v05_hi.raw", 32, 0]
   # --- voice $06: Alg 5, FB 7 — FM5 ---
-  - [12, "fm_v06.raw", 36, 0] # VGZ: +5.1 dB at 64
+  - [12, "fm_v06.raw", 14, 0] # VGZ: +8.1 dB at 36
   # --- PSG noise (form $E7, envelope fTone_04 from the song) ---
-  - [17, "psg_noise.raw",  5, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +9.5 dB at 16
+  - [17, "psg_noise.raw",  6, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: -1.9 dB at 5
   # --- PSG tone $00 ---
   - [13, "psg_$00.raw",  9, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: -0.5 dB at 8
   # --- PSG tone fTone_06 ---
@@ -64,7 +64,7 @@ sample_list:
   - [18, "psg_noise.raw",  3, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +10.7 dB at 10
   
   # Detuned Voice 2
-  - [19, "fm_v02.raw", 12, 1] # VGZ: +8.7 dB at 32
+  - [19, "fm_v02.raw",  4, 1] # VGZ: +8.9 dB at 12
   # Detuned Voice 1
   - [20, "fm_v00.raw", 15, 1] # VGZ: +4.2 dB at 24
 

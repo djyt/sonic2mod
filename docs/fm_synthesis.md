@@ -80,8 +80,6 @@ fm_synthesis:
   sustain_duration: auto    # Seconds note held on before key-off, or auto (see § sustain_duration: auto)
   release_padding: 0.5      # Seconds captured after key-off (release tail)
   normalize_samples: false  # true = per-sample peak normalization; false = global (preserves balance)
-  headroom_db: 6.0          # Carrier TL boost to prevent DAC clipping; 6 dB ≈ 8 TL steps
-  carrier_balance: true     # Scale boost by carrier count (prevents multi-carrier over-attenuation)
   threads: normal           # Instruments rendered at once: normal (cores − 1), max (all cores), or a number
 ```
 
@@ -94,9 +92,7 @@ fm_synthesis:
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = the longest ring in the song, see below |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
 | `normalize_samples` | bool | `false` | See Normalization section below |
-| `headroom_db` | float | `6.0` | See Headroom section below |
 | `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
-| `carrier_balance` | bool | `true` | See Headroom section below |
 
 **Clock rates explained:**
 - `clock_rate = 7670454` Hz → native synthesis rate = 7670454 / 6 / 24 ≈ **53,267 Hz**
@@ -253,56 +249,43 @@ Each instrument is independently peak-normalized to ±127. Use when:
 - A few very loud voices are drowning others at global scale
 - You plan to set MOD sample volumes manually
 
-**Downside:** Quiet voices (e.g. algorithm 4 with TL=0 on both carriers) are boosted to the same
-level as loud voices, losing the authentic balance.
+**Downside:** Quiet voices (e.g. Star Light voice $00, carriers at TL 23 and 16) are boosted to the
+same level as loud voices, losing the authentic balance.
 
 ---
 
-## Headroom and Carrier Balance (Anti-Clipping)
+## Carrier levels and the channel accumulator
 
-### The problem
+Every operator's TL is written exactly as the SMPS voice states it.  Nothing attenuates the
+carriers: the `headroom_db` / `carrier_balance` settings were removed on 2026-09-27, and either key
+left in `settings.yaml` now warns and is ignored.
 
-YM2612 voices with algorithm 4, 5, 6, or 7 have multiple carrier operators. When carrier TL = 0
-(maximum volume), their outputs sum in the OPN2's 9-bit internal DAC and clip before any Python
-normalization can correct it. The resulting samples have hard-clipped waveforms.
+The chip sums a channel's carriers into a 9-bit accumulator (`OPN2_ChGenerate` in Nuked: each
+operator's 14-bit output `>> 5`, the sum clamped to −256…255), in both chip modes.  One carrier at
+TL 0 fills it exactly and can never clip.  Two or more carriers at TL 0 overflow it, and that
+clipping is what the hardware plays: 55 Sonic 1 voices are built this way, every GHZ lead among
+them.  Measured at C2, one second held, with the voice's own TLs:
 
-### The fix: carrier TL boost
+| Voice | Algorithm, carrier TLs | Samples on the rail |
+|-------|------------------------|---------------------|
+| Title Screen $00 | alg 2, one carrier at 0 | 0 % (peak −1.3 dB) |
+| GHZ $04 | alg 4, 0 / 0 | 21 % |
+| GHZ $02 | alg 6, 0 / 0 / 0 | 33 % |
+| Scrap Brain $04 | alg 5, 27 / 0 / 0 | 15 % |
+| Game Over $03 | alg 7, 11–13 | 2 % |
 
-`voice.py:program_voice()` adds a TL attenuation boost to carrier operators before writing to the
-OPN2 emulator. Modulators are unaffected (timbre preserved).
+The removed boosts attenuated every carrier by 6 dB plus 20·log10(carriers) dB.  That took the
+distortion out of voices the game plays distorted, and because it was applied before the
+accumulator's 5-bit shift it also threw away resolution that no later scaling could restore
+(Game Over's alg-7 organ rendered with 5 effective bits, Star Light voice $00 with 4.6; a
+single-carrier voice lost a bit for nothing).  Levels never depended on either setting: global
+normalization scales every instrument by one factor, so the uniform part cancelled exactly, and
+the `sample_list` volumes are measured against the VGZ (`tools/vgm_compare.py --write-volumes`)
+in any case.
 
-**`headroom_db`:** Base boost for every carrier, regardless of algorithm. Converts to TL steps:
-```python
-headroom_tl = round(headroom_db / 0.75)
-# 6.0 dB → 8 TL steps   (default)
-# 3.0 dB → 4 TL steps
-# 12.0 dB → 16 TL steps
-```
-Each TL step = 0.75 dB attenuation.
-
-**`carrier_balance`:** Additional boost proportional to carrier count, to compensate for the fact
-that 3 carriers sum to 3× the amplitude of 1 carrier:
-```python
-balance_tl = round(20 * math.log10(N_carriers) / 0.75)
-# 1 carrier: +0   (Alg 0–3)
-# 2 carriers: +8  (Alg 4)    — extra 6 dB
-# 3 carriers: +13 (Alg 5/6)  — extra 9.5 dB
-# 4 carriers: +16 (Alg 7)    — extra 12 dB
-```
-
-**Total carrier boost at defaults:**
-| Algorithm | Carriers | headroom | balance | Total boost |
-|-----------|----------|----------|---------|-------------|
-| 0–3 | 1 | +8 TL | +0 | **+8 TL** |
-| 4 | 2 | +8 TL | +8 | **+16 TL** |
-| 5, 6 | 3 | +8 TL | +13 | **+21 TL** |
-| 7 | 4 | +8 TL | +16 | **+24 TL** |
-
-Maximum TL is clamped to 127 (`min(127, eff_tl + total_boost)`).
-
-**Tuning headroom_db:** If synthesized samples still clip (waveform flattens at peaks in Audacity),
-increase `headroom_db`. If samples are too quiet relative to DAC drums, decrease it. The default
-6.0 dB is a reasonable starting point for most Sonic 1 voices.
+Flat-topped peaks on an algorithm 4–7 voice with carriers at TL 0 are therefore correct, and the
+VGZ shows the same waveform.  The SFX renderer (`sfx/`) has always written the voice's TLs
+unchanged, so effects and music now clip alike.
 
 ---
 
@@ -312,7 +295,7 @@ increase `headroom_db`. If samples are too quiet relative to DAC drums, decrease
 
 ```python
 opn2.reset()                 # keeps the instance's mode (OPN2(mode=settings.mode))
-program_voice(opn2, voice, channel=0, headroom_tl=..., carrier_balance=...)
+program_voice(opn2, voice, channel=0)
 ```
 
 `program_voice()` writes 30 YM2612 registers:
@@ -452,7 +435,7 @@ OPN2.NATIVE_RATE            # ≈ 53,267 Hz (class attribute)
 ### `ym2612/voice.py` — program_voice
 
 ```python
-program_voice(opn2, voice, channel, headroom_tl=0, carrier_balance=False)
+program_voice(opn2, voice, channel)
 ```
 
 Writes 30 YM2612 registers for the given `SmpsVoice`. Does NOT set frequency or key-on.
@@ -463,8 +446,7 @@ Writes 30 YM2612 registers for the given `SmpsVoice`. Does NOT set frequency or 
 render_note(voice, mod_note_index,
             sustain_secs=1.5, release_secs=0.5,
             target_rate=None, opn2=None, channel=0,
-            clock_rate=7670454,
-            headroom_tl=0, carrier_balance=False)
+            clock_rate=7670454)
     → (bytes, int)   # 8-bit signed PCM, sample_rate_hz
 
 render_note_raw(voice, mod_note_index, ...)
@@ -528,9 +510,9 @@ different octaves; bass voices synthesized at C5 lose their low-frequency charac
 
 ### Clipping (flat waveform peaks)
 
-**Cause:** Algorithm 4/5/6/7 with TL=0 carriers; multiple carriers summing to saturation
-inside OPN2 before Python normalization.
-→ Increase `headroom_db` (try 9.0 or 12.0). Enable `carrier_balance: true`.
+**Cause:** Algorithm 4/5/6/7 with two or more carriers at TL 0 overflows the chip's 9-bit channel
+accumulator.  That is hardware behaviour, not a synthesis fault: the VGZ has the same waveform
+(§ Carrier levels and the channel accumulator).  A single-carrier voice cannot clip in the sample.
 
 ### Wrong pitch in MOD
 

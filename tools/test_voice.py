@@ -18,7 +18,6 @@ Load in Audacity:  File > Import > Raw Data
 
 from __future__ import annotations
 
-import math
 import struct
 import sys
 from pathlib import Path
@@ -48,9 +47,6 @@ _MOD_NOTE_INDEX = 90      # Fs8 (5924 Hz)
 _SUSTAIN_SECS   = 2.0     # longer than normal — let the full envelope breathe
 _RELEASE_SECS   = 0.5
 
-# Match the synthesis settings used by sample_generator.py
-_HEADROOM_DB    = 6.0
-_CARRIER_BAL    = True
 _CLOCK_RATE     = 7_670_454
 
 _OUT_PATH = _ROOT / "output" / "test_voice.raw"
@@ -72,20 +68,11 @@ def main() -> None:
 
     # --- synthesis parameters ---
     native_rate  = _CLOCK_RATE // 6 // 24
-    headroom_tl  = round(_HEADROOM_DB / 0.75)
     freq         = note_to_freq(_MOD_NOTE_INDEX)   # Ds4 ≈ 311 Hz
     fnum, block  = freq_to_fnum_block(freq, _CLOCK_RATE)
 
     print(f"  Synthesis freq   = {freq:.2f} Hz  (fnum={fnum}, block={block})")
     print(f"  Native rate      = {native_rate} Hz  (no downsampling)")
-    print(f"  headroom_tl      = {headroom_tl}  carrier_balance = {_CARRIER_BAL}")
-
-    # --- carrier count for balance TL ---
-    from ym2612.voice import _CARRIER_OFFSETS_BY_ALG
-    n_carriers   = len(_CARRIER_OFFSETS_BY_ALG[voice.algorithm & 0x7])
-    balance_tl   = round(20 * math.log10(n_carriers) / 0.75) if (_CARRIER_BAL and n_carriers > 1) else 0
-    total_boost  = headroom_tl + balance_tl
-    print(f"  carriers         = {n_carriers}  balance_tl={balance_tl}  total boost={total_boost} TL steps")
 
     # --- render ---
     sustain_n = int(native_rate * _SUSTAIN_SECS)
@@ -94,7 +81,7 @@ def main() -> None:
           f"({_SUSTAIN_SECS + _RELEASE_SECS:.1f}s) ...")
 
     opn2 = OPN2(mode="ym2612")
-    program_voice(opn2, voice, 0, headroom_tl=headroom_tl, carrier_balance=_CARRIER_BAL)
+    program_voice(opn2, voice, 0)
     _set_freq(opn2, fnum, block, 0)
     raw  = _render_raw(opn2, sustain_n, release_n, 0)
     mono = _to_mono(raw)

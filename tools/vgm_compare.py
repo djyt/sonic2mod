@@ -506,7 +506,7 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
             changes.append(f"  !! instrument {it['instrument']}: no sample_list line with volume {it['volume']} — not changed")
             continue
         note = f"VGZ: {it['err_db']:+.1f} dB at {it['volume']}"
-        tail = re.sub(r"\s*;?\s*VGZ: [^;]*", "", m.group(4)).rstrip()
+        tail = re.sub(r"\s*[;#]?\s*VGZ: [^;]*", "", m.group(4)).rstrip()
         tail = f"{tail}; {note}" if tail.strip().startswith("#") and tail.strip() != "#" else f" # {note}"
         text = text[:m.start()] + f"{m.group(1)}{new:>{len(m.group(2))}}{m.group(3)}{tail}" + text[m.end():]
         changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")

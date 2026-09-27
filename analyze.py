@@ -605,16 +605,10 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for vi, vs in ch_an.voice_stats.items():
             if vs.note_count > 0:
                 voice_tl.setdefault(vi, {})[ch_an.name] = (vs.modal_volume, vs.modal_hard_pan)
-    # carrier_balance renders an N-carrier voice 20·log10(N) dB quieter than the chip plays it, so
-    # its sample needs N times the volume to sit where the hardware has it.
-    _settings = _synth_settings()
-    _PAN_LAW_DB = _settings.fm_pan_law_db   # a hard-panned note vs a centred one
-    carrier_gain: dict[int, int] = {}
-    if _settings.carrier_balance:
-        carrier_gain = {v.index: len(_CARRIER_LABELS_BY_ALG.get(v.algorithm, ['?'])) for v in song.voices}
+    _PAN_LAW_DB = _synth_settings().fm_pan_law_db   # a hard-panned note vs a centred one
 
     def _fm_volume(vi: int, lv: tuple[int, bool]) -> int:
-        return max(1, min(64, round(_FM_K * carrier_gain.get(vi, 1) * 10 ** (fm_level_db(lv[0], lv[1], _PAN_LAW_DB) / 20))))
+        return max(1, min(64, round(_FM_K * 10 ** (fm_level_db(lv[0], lv[1], _PAN_LAW_DB) / 20))))
     fm_volume: dict[int, int] = {}
     fm_volume_note: dict[int, str] = {}
 
@@ -648,8 +642,6 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             per_ch = [f"{name} ${lv[0] & 0xFF:02X}{' panned' if lv[1] else ''} → {_fm_volume(vi, lv)}"
                       for name, lv in voice_tl[vi].items()]
             fm_volume_note[vi] = "TL " + ", ".join(per_ch)
-            if carrier_gain.get(vi, 1) > 1:
-                fm_volume_note[vi] += f"  [×{carrier_gain[vi]} carriers]"
             if len({_fm_volume(vi, lv) for lv in voice_tl[vi].values()}) > 1:
                 fm_volume_note[vi] += (f"  (volume is {dominant.name}'s; fm_volume_scaling: baked "
                                        "puts Cxx on the others)")
@@ -736,7 +728,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     if fm_items:
         lines.append(f"  # FM volumes bake in each channel's level: TL offset (smpsHeaderFM volume + smpsAlterVol, "
                      f"{TL_STEP_DB} dB/step)")
-        lines.append(f"  # and −{_PAN_LAW_DB:g} dB when hard-panned:  {_FM_K:g} × carriers × 10^(dB/20), max 64.  "
+        lines.append(f"  # and −{_PAN_LAW_DB:g} dB when hard-panned:  {_FM_K:g} × 10^(dB/20), max 64.  "
                      "Starting points (~2 dB) —")
         lines.append("  # measure with tools/vgm_compare.py; every channel sharing an instrument should read the same error.")
     for vi, inst, _min_sem, _max_sem, _has_trans, _initial_trans, alg_str, used_by, split_point, inst2 in fm_items:

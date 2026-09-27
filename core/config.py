@@ -296,8 +296,6 @@ class SynthesisSettings:
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
     normalize_samples: bool = True    # True = peak-normalize to ±127; False = raw chip levels
-    headroom_db: float = 6.0          # Base headroom below clipping applied to every carrier (dB)
-    carrier_balance: bool = True      # Add extra TL per carrier count (normalises multi-carrier algos)
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
@@ -363,6 +361,14 @@ class SynthesisSettings:
         except yaml.YAMLError as e:
             raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
         s = data.get("fm_synthesis", {})
+        for key in ("headroom_db", "carrier_balance"):
+            if key in s:
+                warnings.warn(
+                    f"{filepath}: fm_synthesis.{key} is ignored — carriers render at the TL the voice "
+                    "states, and the chip's own 9-bit channel accumulator clips multi-carrier voices "
+                    "exactly as the hardware does; delete the line",
+                    stacklevel=2,
+                )
         _fm_sd = s.get("sustain_duration", 1.5)
         return cls(
             enabled=s.get("enabled", False),
@@ -372,8 +378,6 @@ class SynthesisSettings:
             sustain_duration=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
             release_padding=s.get("release_padding", 0.5),
             normalize_samples=s.get("normalize_samples", True),
-            headroom_db=s.get("headroom_db", 6.0),
-            carrier_balance=s.get("carrier_balance", True),
             threads=s.get("threads", "normal"),
             max_sample_kb=_max_sample_kb(data, filepath),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),

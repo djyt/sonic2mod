@@ -11,8 +11,6 @@ fm_synthesis:
   sustain_duration: auto    # Seconds the note is held on before key-off; or 'auto' to auto-detect
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   normalize_samples: false  # true = peak-normalize each FM sample to ±127; false = raw chip levels (preserves relative instrument volume)
-  headroom_db: 6.0          # base headroom below clip applied to every carrier (dB); 6 dB ≈ 8 TL steps
-  carrier_balance: true     # add extra TL per carrier count so alg 4/5/6/7 don't clip harder than alg 0-3
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" = CPU cores - 1
                             # "max"    = every core, 

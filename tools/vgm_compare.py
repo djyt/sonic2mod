@@ -1097,7 +1097,8 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     mod = {n: a.mean(axis=1) for n, a in mod_st.items()}
     offset_auto = offset is None
     if offset is None:
-        offset = auto_offset(vgm["FULL"], mod["FULL"])
+        # Within three quarters of a second: a repetitive song correlates a whole bar off
+        offset = auto_offset(vgm["FULL"], mod["FULL"], max_lag=0.75)
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
     else:
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")

@@ -422,6 +422,7 @@ class MergePlan:
     stats: list[PairStats] = field(default_factory=list)
     unsupported: list[dict] = field(default_factory=list)
     solo: dict[tuple[str, int], tuple[str, NoteOn]] = field(default_factory=dict)  # (primary, tick) -> (follower, note)
+    spliced: set[tuple[str, int]] = field(default_factory=set)   # (follower, tick) of every note-on now on a primary
     unused: set[int] = field(default_factory=set)   # instruments no note of the merged build plays
     blank_after_mix: set[int] = field(default_factory=set)   # unused, but a pcm composite is mixed from them
 
@@ -609,6 +610,7 @@ def _splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, 
             if (g.primary, t) in plan.solo:
                 continue                                    # an earlier follower already took this tick
             plan.solo[(g.primary, t)] = (st.follower, n)
+            plan.spliced.update((st.follower, tt) for tt in (n.ticks or [t]))
             ev = SmpsEvent(note=SmpsNote(note_value=n.note_value, duration=n.duration), tick_position=t)
             ev.merged = n                                   # type: ignore[attr-defined]
             # The primary's own rest at this tick would put a C00 in the note's cell

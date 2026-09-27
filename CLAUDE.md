@@ -337,6 +337,8 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 8. **smpsModSet → `4xy`** — only the FIRST half-swing uses the halved step count (`lsr.b #1`); the counter reloads from the original byte, so the steady cycle is `2·speed·(steps+1)` frames and the swing is `delta·steps/2` units of the note's own FNUM (644 C … 1216 B) or PSG divider. `_vibrato_speed` / `_vibrato_depth` turn that into x and a per-note y; verified against six songs' VGZs. No config needs a `vibrato:` override any more. Details: `docs/pipeline.md` gotcha 4.
 
+8a. **Row-0 tempo commands are placed last** (`_place_tempo_commands`): the BPM and speed `Fxx` go into free effect cells after every channel is converted; written first on channels 0/1 they were overwritten by a note's own row-0 `Cxx`/`3FF` (the merged Green Hill lost its speed and ran at half tempo).  A missing speed shows as a MOD that plays at speed 6.
+
 9. **`mod_pattern_breaks` call order is mandatory** — must be called AFTER `converter.convert()` (writes note data) and BEFORE `converter._set_loop_point()` (writes `Bxx`). Wrong order → loop target lands in wrong pattern. Break coordinate formula: `body_start = P*64 + break_row + 1`; flat rows before `body_start` use `flat//64 : flat%64`, rows after use pattern `P+1 + br//64 : br%64` where `br = flat_row - body_start`. If `target_row != 0`, also write `Dxx` (BCD row) on a free channel at the same row.
 
 ## voice_map (per-voice octave-range instrument routing)

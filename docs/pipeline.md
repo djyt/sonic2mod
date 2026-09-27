@@ -197,6 +197,16 @@ the more accurate one (32 × 10^(−8/20) = 12.7).
 
 ---
 
+## Tempo commands on row 0 (`_place_tempo_commands`)
+
+The BPM and, when it is not 6, the speed are `Fxx` on pattern 0 row 0.  They are placed
+after every channel is converted, into cells whose effect slot is free (spare channels first,
+then any channel with no effect on row 0; a leading rest's `C00` gives way if nothing else is
+free, with a warning).  They used to be written first, on channels 0 and 1, where a note's own
+row-0 effect silently overwrote them: the merged Green Hill build lost its speed 3 to a `Cxx`
+and played at half tempo.  Mid-song `smpsSetTempoMod` changes are placed the same way
+(`_write_tempo_changes`).
+
 ## Loop extension (`_extend_looping_channels`)
 
 A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) is extended by

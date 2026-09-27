@@ -310,7 +310,7 @@ Instrument is 1-based (1–31); 0 = no instrument (continue previous).
 | Patterns | 127 |
 | Rows per pattern | 64 |
 | Channels | 4, 8, 10, 12, 14, or 16 (format tag required) |
-| Sample size | 65534 bytes (words × 2) |
+| Sample size | 131070 bytes (65535 words × 2) in the format; original ProTracker's editor takes 65534. `max_sample_kb` (settings.yaml, 128 or 64) is what the generators cap each instrument's sustain to, and `sample_truncated` warns if one is cut anyway |
 | Note range | C1–B3 (36 semitones) |
 
 ---
@@ -573,6 +573,38 @@ converter._set_loop_point(config.mod_pattern_breaks) # writes Bxx in final layou
 **Cause:** A duration byte with no preceding note on the same `dc.b` line emits a continuation event. Without a preceding `smpsNoAttack`, the parser **retriggles the last note** (`is_rest=False, note_value=last_note_value`) — e.g. staccato arpeggio in 1-Up. With a preceding `smpsNoAttack`, it emits a rest/sustain (`is_rest=True, is_no_attack=True`) — e.g. held note in GHZ. This is correct per the SMPS driver behavior (`FMNoteOn` is gated by the no-attack flag).
 
 **Fix:** No fix needed — this is working as designed. The implicit wait correctly represents the held note duration.
+
+---
+
+### 11. A leading rest needs its `C00` at pattern 0 row 0
+
+**Problem:** Robotnik and Special Stage loop to position 0.  On every pass after the first, the
+last note before the `Bxx` kept ringing through the channel's opening rest (6.4 s on Robotnik's
+FM channels) until the channel's next event.
+
+**Cause:** The emitter skipped the `C00` of a rest at pattern 0 row 0 because nothing plays there
+on the first pass and that row holds the `Fxx` speed / BPM commands.
+
+**Fix:** `_place_leading_rests` runs after all channels are converted: it writes the `C00`, and
+moves an `Fxx` in the way to a free cell on row 0 (spare channels first, then any cell without an
+effect).  Only when no cell is free is the `C00` dropped, and only if the song does loop back to
+row 0 (`_loop_target_tick() == 0`) is that a `rest_no_slot` warning — Star Light rests on all
+nine channels but loops to position 1.
+
+---
+
+### 12. A note outlasts its sample (`sustain_duration: auto`)
+
+**Problem:** Synthesised samples do not loop, so a note longer than the sample goes silent.
+
+**Cause / rules:** `_sustain_needs` measures the longest ring per instrument in the MOD's own
+time (tempo segments, after `smpsSetTempoDiv` re-timing), at the sample's playback rate (root
+period / note period against the **first** entry's root, the one the sample is rendered for),
+with a positive finetune and one row of margin.  The auto sustain is the largest need, capped
+at 10 s; each generator also caps every instrument to the sample limit at its rate
+(`max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original
+ProTracker's 65534).  `sustain_short` warnings name what is left.  Full rules: `docs/fm_synthesis.md`
+§ `sustain_duration: auto`.
 
 ---
 

@@ -459,6 +459,49 @@ def _warn_pattern_overflow(w: dict, ctx_str: str) -> None:
     )
 
 
+def _warn_sustain_short(w: dict, ctx_str: str) -> None:
+    limit = {
+        'mod': f"the {w['max_kb']} KiB sample limit, [cyan]max_sample_kb[/cyan], at {w['rate']} Hz",
+        'cap': "the 10 s auto cap",
+        'setting': f"[cyan]{w['kind'].lower()}_synthesis.sustain_duration[/cyan]",
+    }[w['limit']]
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]{w['kind']} instrument {w['instrument']}: a note needs {w['need']:.2f} s of sample "
+        f"at its playback pitch, the sample holds {w['have']:.2f} s ({limit}) — "
+        f"it goes silent early[/yellow]"
+    )
+    if w['limit'] == 'mod':
+        console.print(
+            "     [green]Fix:[/green] a lower [cyan]root:[/cyan] renders the instrument at a lower rate "
+            "(an octave halves the bytes per second), or shorten [cyan]release_padding:[/cyan]."
+        )
+    elif w['limit'] == 'setting':
+        console.print(
+            "     [green]Fix:[/green] set [cyan]sustain_duration: auto[/cyan] in settings.yaml."
+        )
+
+
+def _warn_sample_truncated(w: dict, ctx_str: str) -> None:
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]instrument {w['instrument']} rendered {w['bytes']} bytes, more than the sample limit "
+        f"({w['max_bytes']} bytes, [cyan]max_sample_kb[/cyan]) — cut at the limit[/yellow]"
+    )
+
+
+def _warn_rest_no_slot(w: dict, ctx_str: str) -> None:
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]{w['channel']} starts with a rest, but pattern 0 row 0 has no free effect slot for "
+        f"its C00 — the last note before the loop rings through it[/yellow]"
+    )
+    console.print(
+        "     [green]Fix:[/green] set [cyan]num_mod_channels:[/cyan] to the next count up (4, 8, 10, 12, 14, 16) "
+        "so a spare channel can carry the tempo commands."
+    )
+
+
 _WARNING_RENDERERS = {
     'clamp_high': _warn_clamp,
     'clamp_low': _warn_clamp,
@@ -468,6 +511,9 @@ _WARNING_RENDERERS = {
     'tempo_no_slot': _warn_tempo_no_slot,
     'tempo_bpm_range': _warn_tempo_bpm_range,
     'pattern_overflow': _warn_pattern_overflow,
+    'sustain_short': _warn_sustain_short,
+    'sample_truncated': _warn_sample_truncated,
+    'rest_no_slot': _warn_rest_no_slot,
 }
 
 

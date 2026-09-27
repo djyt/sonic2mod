@@ -23,6 +23,7 @@ from .driver_state import (
 )
 from .driver_state import source_map as source_map_for
 from .driver_tables import PSG_FREQUENCIES_EXTENDED, psg_tone2_divider
+from .instruments import fm_catalogue, psg_catalogue
 from .levels import (
     DEFAULT_FM_PAN_LAW_DB,
     fm_level_db,
@@ -383,34 +384,15 @@ class SmpsToModConverter:
         """{MOD instrument: (MOD note index its sample is synthesised for, synth_shift)}.
 
         The sample's own rate is `root`'s playback rate times 2^(synth_shift / 12) (the
-        generators render synth_shift semitones above the pitch `root` sounds).
-
-        The first entry that names an instrument decides, in the order the sample generators
-        walk the maps; a later entry sharing the instrument anchors another range onto that
-        same sample (Credits folds its voices into 31 slots this way, Stage Clear's PSG2 sits
-        two octaves up its PSG1 sample).  FM: voice_map then channel_instrument_map, voices
-        the song lacks skipped, a rootless channel_instrument_map entry at C1.  PSG: psg_map
-        then psg_voice_map.  An instrument absent here is not synthesised (loaded from disk).
+        generators render synth_shift semitones above the pitch `root` sounds).  Read from the
+        instrument catalogue (core.instruments), which is what the generators render from; an
+        instrument absent here is not synthesised (loaded from disk).
         """
-        roots: dict[int, tuple[int, int]] = {}
         if kind == "FM":
-            voices = {v.index for v in self.song.voices}
-            cim = [(vi, e) for vim in self.config.channel_instrument_map.values()
-                   for vi, rs in vim.items() for e in rs]
-            rooted = [(vi, e) for vi, rs in self.config.voice_map.items() for e in rs] + cim
-            for vi, e in rooted:
-                if vi in voices and e.root is not None:
-                    roots.setdefault(e.mod_instrument, (e.root.value, e.synth_shift))
-            for vi, e in cim:
-                if vi in voices and e.root is None:
-                    roots.setdefault(e.mod_instrument, (ModNote.C1.value, 0))
-        else:
-            entries = list(self.config.psg_map.values())
-            entries += [e for es in self.config.psg_voice_map.values() for e in es]
-            for e in entries:
-                if e.root is not None:
-                    roots.setdefault(e.mod_instrument, (e.root.value, e.synth_shift))
-        return roots
+            return {i.inst: (i.rate_root_idx, i.synth_shift)
+                    for i in fm_catalogue(self.song, self.config).instruments.values()}
+        return {i.inst: (i.root_idx, i.entry.synth_shift)
+                for i in psg_catalogue(self.config).values()}
 
     def _sustain_needs(self, kind: str) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
@@ -551,16 +533,13 @@ class SmpsToModConverter:
         # Load or synthesize samples
         if synth and synth.enabled and synth.mode == "ym2612":
             from ym2612.sample_generator import generate_fm_samples
-            # Warn about voice_map entries whose voice index doesn't exist in the song,
-            # and collect their instruments to suppress spurious "file not found" warnings.
-            _voice_indices = {v.index for v in self.song.voices}
+            # Warn about map entries whose voice index doesn't exist in the song, and
+            # collect their instruments to suppress spurious "file not found" warnings.
             fm_skipped_insts: set = set()
-            for _vi, _ranges in self.config.voice_map.items():
-                if _vi not in _voice_indices:
-                    _insts = [e.mod_instrument for e in _ranges]
-                    fm_skipped_insts.update(_insts)
-                    print(f"Warning: voice_map[{_vi}] voice ${_vi:02X} not defined in song "
-                          f"(inst {_insts}) — remove this entry from voice_map")
+            for _ctx, _vi, _insts in fm_catalogue(self.song, self.config).missing_voices:
+                fm_skipped_insts.update(_insts)
+                print(f"Warning: {_ctx} voice ${_vi:02X} not defined in song "
+                      f"(inst {_insts}) — remove this entry from {_ctx.split('[')[0]}")
             # Each sample is rendered at the level most of its notes play at — the carriers carry
             # the channel volume as the driver's SetVoice writes it — so the chip clips a
             # multi-carrier voice as much as the hardware does at that level and no more.

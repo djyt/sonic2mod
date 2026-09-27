@@ -1,7 +1,7 @@
 """YM2612 sample generator — Segment 4 of the YM2612 synthesis pipeline.
 
-Reads the song's FM voices and per-song voice_map, calls render_note()
-for each InstrumentRange entry that has a root anchor, and returns populated
+Renders every FM instrument in the song's catalogue (core.instruments.fm_catalogue: the
+entry each MOD instrument is rendered for, and its layers) with render_layers, and returns
 {instrument_number: (pcm_bytes, sample_rate_hz)} pairs ready for MOD file assembly.
 
 Public API::
@@ -31,12 +31,12 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
+from core.instruments import FmInstrument, fm_catalogue
 from core.mod import ModSample
 from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
-from core.tables import PERIOD_TABLE, ModNote
-from ym2612.renderer import note_to_fnum_block, note_to_freq, render_note_raw
+from ym2612.renderer import note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
@@ -45,16 +45,14 @@ from ym2612.wrapper import OPN2
 
 @dataclass
 class _RenderJob:
-    """One MOD instrument to synthesise: what generate_fm_samples decided before rendering."""
-    inst: int
-    voice_idx: int
-    voice: SmpsVoice
-    entry: InstrumentRange
-    synth_idx: int
+    """One MOD instrument to synthesise: its catalogue entry, resolved for this render."""
+    spec: FmInstrument
+    layers: list[tuple[SmpsVoice, int, int, int]]   # (voice, semitones, FNUM detune, carrier TL)
     target_rate: int
-    source_label: str = ""
-    mod_root_idx: int | None = None
-    tl_offset: int = 0           # track volume on the carriers (the level the sample stands for)
+
+    @property
+    def inst(self) -> int:
+        return self.spec.inst
 
 
 _worker = threading.local()
@@ -85,19 +83,19 @@ def generate_fm_samples(
     verbose: bool = False,
     tl_offsets: dict[int, int] | None = None,
 ) -> dict:
-    """Render FM samples for every InstrumentRange entry that has a root anchor.
+    """Render an FM sample for every instrument in the song's catalogue.
 
     Args:
         song:       Parsed SmpsSong — provides song.voices (list[SmpsVoice]).
-        config:     ConversionConfig — provides voice_map.
+        config:     ConversionConfig — provides voice_map / channel_instrument_map.
         synth:      SynthesisSettings — clock/amiga_clock/sustain/release.
         tl_offsets: {instrument: track volume} to render each instrument at (the converter's
                     _plan_fm_render_levels: the level most of its notes play at); 0 = bare voice.
+                    A layer's own tl_offset is relative to it.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
         peak-normalised to its full 8 bits (its level is the sample_list volume's job).
-        Only entries with entry.root set are included.
 
     Instruments render concurrently, one per thread, ``synth.worker_threads()`` at a time
     (the ``threads`` setting); the output does not depend on the thread count.
@@ -105,101 +103,29 @@ def generate_fm_samples(
     voice_lookup = {v.index: v for v in song.voices}
     result: dict[int, tuple[bytes, int]] = {}
 
-    # --- Pass 1: decide what to render (one job per MOD instrument) ---
+    # --- Pass 1: what to render (core.instruments: one job per MOD instrument) ---
+    cat = fm_catalogue(song, config)
+    if verbose:
+        for context, voice_idx, _insts in cat.missing_voices:
+            print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
     jobs: list[_RenderJob] = []
-    already_synthesized: set[int] = set()   # the first entry to name an instrument renders it
-
-    def _collect(voice_idx, voice, entry, source_label="",
-                 synth_idx=None, target_rate=None):
-        has_root = entry.root is not None
-        if not has_root and synth_idx is None:
-            return
-        if entry.mod_instrument in already_synthesized:
-            return
-
-        mod_root_idx = None
-        if has_root:
-            mod_root_idx = entry.root.value
-            base_rate    = synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
-
-            if entry.synth_root is not None:
-                # Synthesise at synth_root, synth_shift semitones above the pitch `root` sounds
-                # (resolve_synth_roots); the rate is raised by the same ratio so that MOD note
-                # root still sounds that pitch and no note moves.
-                synth_idx   = entry.synth_root - 12
-                target_rate = round(base_rate * 2.0 ** (entry.synth_shift / 12.0))
-            else:
-                synth_idx   = entry.low - 12
-                target_rate = round(base_rate)
-
-        assert synth_idx is not None and target_rate is not None
+    for spec in cat.instruments.values():
+        if spec.legacy:
+            warnings.warn(
+                f"Synthesizing voice {spec.layers[0].voice_idx} via deprecated legacy_voice_map at C5/C1. "
+                "Add a voice_map range entry with an explicit root for correct pitch.",
+                DeprecationWarning,
+                stacklevel=1,
+            )
+        base_tl = (tl_offsets or {}).get(spec.inst, 0)
+        layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset)
+                  for lay in spec.layers]
+        target_rate = spec.target_rate(synth.amiga_clock)
         if verbose:
-            _fnum, _block = note_to_fnum_block(synth_idx, synth.clock_rate)
-            print(f"  [synth] inst={entry.mod_instrument} voice=${voice_idx:02X} "
-                  f"synth_idx={synth_idx} -> {note_to_freq(synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
-
-        jobs.append(_RenderJob(entry.mod_instrument, voice_idx, voice, entry, synth_idx,
-                               target_rate, source_label, mod_root_idx,
-                               tl_offset=(tl_offsets or {}).get(entry.mod_instrument, 0)))
-        already_synthesized.add(entry.mod_instrument)
-
-    for voice_idx, range_list in config.voice_map.items():
-        if voice_idx not in voice_lookup:
-            if verbose:
-                print(f"  Warning: voice {voice_idx} not found in song, skipping")
-            continue
-        voice = voice_lookup[voice_idx]
-        for entry in range_list:
-            _collect(voice_idx, voice, entry)
-
-    for ch_name, vim in config.channel_instrument_map.items():
-        for voice_idx, range_list in vim.items():
-            if voice_idx not in voice_lookup:
-                if verbose:
-                    print(f"  Warning: voice {voice_idx} not found in song "
-                          f"(channel_instrument_map.{ch_name}), skipping")
-                continue
-            voice = voice_lookup[voice_idx]
-            for entry in range_list:
-                _collect(voice_idx, voice, entry, source_label=ch_name)
-
-    # Standard fallback: C4 synthesis (synth_idx=36, 261.6 Hz) played at C1 rate — what an SMPS
-    # nC5 sounds like on a channel with the usual $F4 (−12) pitch offset.
-    _STD_SYNTH_IDX = 36   # semitone 48 = C4 → renderer idx 36
-    _std_rate = round(synth.amiga_clock / PERIOD_TABLE[ModNote.C1.value])
-
-    # --- Fallback 1: legacy_voice_map entries not yet synthesized ---
-    # These come from old-style YAML voice_map: {0: 4} (int values).
-    for voice_idx, inst_num in config.legacy_voice_map.items():
-        if inst_num in already_synthesized:
-            continue
-        if voice_idx not in voice_lookup:
-            if verbose:
-                print(f"  Warning: voice {voice_idx} not found in song (legacy_voice_map fallback)")
-            continue
-        warnings.warn(
-            f"Synthesizing voice {voice_idx} via deprecated legacy_voice_map at C5/C1. "
-            "Add a voice_map range entry with an explicit root for correct pitch.",
-            DeprecationWarning,
-            stacklevel=1,
-        )
-        entry = InstrumentRange(low=60, high=60, mod_instrument=inst_num)
-        _collect(voice_idx, voice_lookup[voice_idx], entry,
-                 source_label="legacy_voice_map",
-                 synth_idx=_STD_SYNTH_IDX, target_rate=_std_rate)
-
-    # --- Fallback 2: rootless channel_instrument_map entries ---
-    for ch_name, vim in config.channel_instrument_map.items():
-        for voice_idx, range_list in vim.items():
-            if voice_idx not in voice_lookup:
-                continue
-            voice = voice_lookup[voice_idx]
-            for entry in range_list:
-                if entry.root is not None:
-                    continue
-                _collect(voice_idx, voice, entry,
-                         source_label=ch_name,
-                         synth_idx=_STD_SYNTH_IDX, target_rate=_std_rate)
+            _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate)
+            print(f"  [synth] inst={spec.inst} voice=${spec.layers[0].voice_idx:02X} "
+                  f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
+        jobs.append(_RenderJob(spec, layers, target_rate))
 
     # --- Render: every instrument on its own thread ---
     # Nuked-OPN2 keeps all chip state in the per-instance struct and ctypes releases the
@@ -217,15 +143,14 @@ def generate_fm_samples(
         if verbose and sustain < sustain_secs:
             print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
                   f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
-        mono, rate = render_note_raw(
-            job.voice,
-            job.synth_idx,
+        mono, rate = render_layers(
+            job.layers,
+            job.spec.synth_idx,
             sustain_secs=sustain,
             release_secs=synth.release_padding,
             target_rate=job.target_rate,
             opn2=_thread_opn2(synth.mode),
             clock_rate=synth.clock_rate,
-            tl_offset=job.tl_offset,
         )
         return _trim_trailing_silence(mono), rate
 
@@ -238,22 +163,24 @@ def generate_fm_samples(
         rendered = []
 
     for job, (mono, rate) in zip(jobs, rendered, strict=True):
-        label = f" [{job.source_label}]" if job.source_label else ""
+        spec, entry = job.spec, job.spec.entry
+        label = f" [{spec.source_label}]" if spec.source_label else ""
+        voices_str = "+".join(str(lay.voice_idx) for lay in spec.layers)
         if not mono:
             if verbose:
-                root_str = job.entry.root.name if job.entry.root is not None else f"synth_idx={job.synth_idx}"
-                print(f"  Warning: instrument {job.inst} (voice {job.voice_idx}"
+                root_str = entry.root.name if entry.root is not None else f"synth_idx={spec.synth_idx}"
+                print(f"  Warning: instrument {job.inst} (voice {voices_str}"
                       f"{label}, {root_str}) rendered silence — skipping")
             continue
 
         if verbose:
-            if job.entry.root is not None:
-                root_str = f"root={job.entry.root.name} (idx={job.mod_root_idx}), synth_idx={job.synth_idx}"
-                if job.entry.synth_root is not None:
+            if entry.root is not None:
+                root_str = f"root={entry.root.name} (idx={spec.root_idx}), synth_idx={spec.synth_idx}"
+                if entry.synth_root is not None:
                     root_str += " [synth_root override]"
             else:
-                root_str = f"synth_idx={job.synth_idx}"
-            print(f"  Instrument {job.inst:2d}: voice={job.voice_idx}{label}, "
+                root_str = f"synth_idx={spec.synth_idx}"
+            print(f"  Instrument {job.inst:2d}: voice={voices_str}{label}, "
                   f"{root_str}, "
                   f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}")
 

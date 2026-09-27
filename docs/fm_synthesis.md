@@ -88,7 +88,7 @@ fm_synthesis:
 | `mode` | str | `"ym2612"` | `"ym2612"` = MD1/MD2 VA2 DAC behaviour (sign bias, ×3 level); `"ym3438"` = discrete YM3438. The renderer keeps the instance's mode across its per-note resets, and the batch helpers subtract the mode's own DC (72 / 0) so silence is 0 in both |
 | `clock_rate` | int | `7670454` | Do not change for Sonic 1 |
 | `amiga_clock` | int | `3546895` | PAL Amiga; use 3579545 for NTSC Amiga (rare) |
-| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = the longest ring in the song, see below |
+| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = each instrument its own longest ring, see below |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
 | `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
 
@@ -115,7 +115,12 @@ conversion and measures, per MOD instrument, the longest **ring** any of its not
   2^(finetune / 96).  The MOD note is the one the conversion triggers (range lookup in the
   config's `range_space`, `root + (key − low)`, or the channel transpose).
 
-The FM sustain is the largest need over its instruments, capped at 10 s.  Independently,
+Each instrument is rendered for its own need, capped at 10 s (`sustain_by_instrument` on
+the resolved settings; the largest of them becomes `sustain_duration`, for anything not
+measured).  Rendering every instrument for the song's longest ring cost the Title Screen's
+stab instruments six times the sample they play, and the ending unison note's variant set
+the length of every other sample.  A stated number still renders every instrument that
+long.  In the merged build an instrument the plan does not render sets nothing.  Independently,
 `generate_fm_samples` caps each instrument's sustain to what a sample may hold at its rate
 (`core.pcm.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
 is a top-level key of `settings.yaml`: `128` is the format's own limit (131070 bytes, a

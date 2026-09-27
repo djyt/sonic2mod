@@ -433,18 +433,29 @@ class SmpsToModConverter:
     _AUTO_SUSTAIN_CAP_SECS = 10.0
 
     def _resolve_sustain(self, settings, kind: str):
-        """Settings with `sustain_duration: auto` resolved to the longest ring any of the
-        kind's instruments plays (capped at 10 s), and a warning for every synthesised
-        instrument whose sample cannot hold one of its notes: the setting is shorter, the cap
-        is, or the MOD sample limit at the instrument's rate is (max_sustain_secs)."""
+        """Settings with `sustain_duration: auto` resolved per instrument: each synthesised
+        instrument is rendered for its own longest ring (capped at 10 s;
+        `sustain_by_instrument`), `sustain_duration` itself becoming the largest of them for
+        anything not measured.  A stated number renders every instrument that long.  Warns for
+        every synthesised instrument whose sample cannot hold one of its notes: the setting is
+        shorter, the cap is, or the MOD sample limit at the instrument's rate is
+        (max_sustain_secs).  In the merged build an instrument that is not rendered
+        (MergePlan.unused) sets nothing."""
         needs = self._sustain_needs(kind)
+        if self._merge is not None:
+            needs = {i: n for i, n in needs.items() if i not in self._merge.unused}
         auto = settings.sustain_duration == "auto"
+        per_inst: dict[int, float] = {}
         if auto:
             secs = min(max((n for n, _ in needs.values()), default=0.0), self._AUTO_SUSTAIN_CAP_SECS)
             if secs <= 0:
                 secs = float(type(settings)().sustain_duration)    # no notes: the field's default
-            settings = dataclasses.replace(settings, sustain_duration=secs)
-            self.infos.append({'type': f'auto_sustain_{kind.lower()}', 'secs': round(secs, 3)})
+            per_inst = {i: min(n, self._AUTO_SUSTAIN_CAP_SECS)
+                        for i, (n, root) in needs.items() if root is not None and n > 0}
+            settings = dataclasses.replace(settings, sustain_duration=secs, sustain_by_instrument=per_inst)
+            self.infos.append({'type': f'auto_sustain_{kind.lower()}', 'secs': round(secs, 3),
+                               'shortest': round(min(per_inst.values(), default=secs), 3),
+                               'instruments': len(per_inst)})
         if not settings.enabled:
             return settings
         sustain = float(settings.sustain_duration)
@@ -454,10 +465,11 @@ class SmpsToModConverter:
             root_idx, shift = root
             rate = round(settings.amiga_clock / PERIOD_TABLE[root_idx] * 2.0 ** (shift / 12.0))
             fits = max_sustain_secs(rate, settings.release_padding, settings.max_sample_bytes)
-            have = min(sustain, fits)
+            want = per_inst.get(inst, sustain)
+            have = min(want, fits)
             if need <= have + 0.005:
                 continue
-            limit = ('mod' if fits < sustain
+            limit = ('mod' if fits < want
                      else 'cap' if auto and need > self._AUTO_SUSTAIN_CAP_SECS
                      else 'setting')
             self._add_warning({'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',

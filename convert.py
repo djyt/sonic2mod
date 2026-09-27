@@ -304,10 +304,14 @@ def main():
             detail_lines.append(
                 f"noise instrument [bold]{info['instrument']}[/bold]: envelope "
                 f"[bold]{info['envelope']}[/bold] [dim]({how}, {info['notes']} notes)[/dim]")
-        elif info['type'] == 'auto_sustain_fm':
-            detail_lines.append(f"auto sustain FM [bold]{info['secs']}[/bold] s")
-        elif info['type'] == 'auto_sustain_psg':
-            detail_lines.append(f"auto sustain PSG [bold]{info['secs']}[/bold] s")
+        elif info['type'] in ('auto_sustain_fm', 'auto_sustain_psg'):
+            kind = 'FM' if info['type'] == 'auto_sustain_fm' else 'PSG'
+            if info.get('instruments'):
+                detail_lines.append(
+                    f"auto sustain {kind}: each instrument its own longest ring, "
+                    f"[bold]{info['shortest']}[/bold]–[bold]{info['secs']}[/bold] s over {info['instruments']}")
+            else:
+                detail_lines.append(f"auto sustain {kind} [bold]{info['secs']}[/bold] s")
         elif info['type'] == 'merge_group':
             detail_lines.append(
                 f"merged [bold]{info['label']}[/bold]: {info['paired']} follower notes folded into "

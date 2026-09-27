@@ -255,6 +255,9 @@ class PsgSynthesisSettings:
     amiga_clock: int = 3_546_895     # PAL Amiga clock for target_rate calculation
     sustain_duration: float | str = 1.0
     release_padding: float = 0.2
+    # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
+    # _resolve_sustain); an instrument absent here gets sustain_duration.  Empty when a number is stated.
+    sustain_by_instrument: dict = field(default_factory=dict)
     # Envelope tables are not a setting: the driver's own live in core.driver_tables.PSG_ENVELOPES_BY_NAME.
     # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
     # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
@@ -310,6 +313,7 @@ class SynthesisSettings:
     amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
+    sustain_by_instrument: dict = field(default_factory=dict)   # as PsgSynthesisSettings
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"

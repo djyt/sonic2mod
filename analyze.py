@@ -847,10 +847,11 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 tone2_n = None
                 root_name = _note_in_octave2(min_sem)
 
-            lines.append(f"  0x{form_byte:02X}:                    # {label}")
+            noise_kind = "white" if form_byte & 0x04 else "periodic"
+            lines.append(f"  0x{form_byte:02X}:                    # {label}: {noise_kind} noise, rate {noise_rate} "
+                         "(both read from the byte)")
             lines.append(f"    mod_instrument: {inst}")
             lines.append(f"    root: {root_name}")
-            lines.append(f"    noise_rate: {noise_rate}")
             if tone2_n is not None:
                 # Not emitted as a key: the converter derives the divider from the song itself
                 # (_derive_rate3_dividers); an explicit tone2_n here would only shadow that.
@@ -862,9 +863,9 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                     # follows the melody (one static LFSR rate per sample is the approximation).
                     lines.append(f"    low: {_sem_to_yaml(min_sem)}                # n{note_desc} plays at root; "
                                  f"notes up to n{semitone_to_note_name(ts.max_semitone)} shift the playback rate")
-            envelope = initial_voice if initial_voice else "fTone_04  # TODO: verify envelope"
-            lines.append(f"    envelope: {envelope}")
-            lines.append("    base_volume: 0")
+            # The envelope is not a key: the converter derives it from the song (the header
+            # voice or the last smpsPSGvoice); `envelopes: {label: inst}` gives a label its own sample.
+            lines.append(f"    # envelope derived from the song: {initial_voice or 'header voice'}")
 
     # --- psg_voice_map ---
     if psg_tone_items:
@@ -873,10 +874,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for label, inst, ts, psg_split, psg_inst2, is_noise_voice in psg_tone_items:
             lines.append(f"  {label}:")
             if is_noise_voice:
-                lines.append("    type: white_noise")
-                lines.append("    noise_rate: 0")
-                lines.append(f"    mod_instrument: {inst}")
-                lines.append("    root: A3")
+                lines.append(f"    # {label} is only ever an envelope on a noise channel: give it its own")
+                lines.append(f"    # sample with psg_map[<form>].envelopes: {{{label}: {inst}}} if it needs one")
             elif ts.note_count == 0:
                 lines.append(f"    mod_instrument: {inst}")
                 lines.append("    # (no notes — placeholder only)")

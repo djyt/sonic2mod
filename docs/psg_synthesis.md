@@ -76,40 +76,35 @@ in `settings.yaml` is ignored with a warning.
 
 ### psg_map
 
-Keyed by `smpsPSGform` byte (hex or decimal). When `smpsPSGform $E7` appears in channel data, the PSG channel switches to this instrument.
+Keyed by `smpsPSGform` byte (hex or decimal). When `smpsPSGform $E7` appears in channel data, the PSG channel switches to this instrument, and stays a noise channel (nothing in Sonic 1 music turns it back).
 
-The `type` field is **auto-inferred** from bit 2 of the byte: 0 = `periodic_noise`, 1 = `white_noise`. Use `type: tone` explicitly for tone entries (routed via `psg_voice_map` instead).
+The key is the SN76489 noise register byte, `$E0 | white << 2 | rate`, so the noise **type** (bit 2: 0 = `periodic_noise`, 1 = `white_noise`) and **rate** (bits 0–1: 0 = N/512, 1 = N/1024, 2 = N/2048, 3 = follow tone channel 2) are read from it.  The **envelope** is read from the song: `smpsPSGform` does not change it, so the noise plays with the driver's VoiceIndex — the header voice or the last `smpsPSGvoice` — and `SmpsToModConverter._derive_noise_envelopes` picks the label most of the instrument's notes play under.  A config states only what is a conversion choice:
 
 ```yaml
 psg_map:
-  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise, rate 3 = follow PSG3's own tone register $C0
+  0xE7:                    # smpsPSGform byte: white noise, rate 3 (LFSR clocked by PSG3's own tone register)
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A2               # MOD note anchor — determines target_rate AND where low plays
     low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
-    noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 — the LFSR divider is then derived
-                           #   from the song (here: nA3 + transpose $0B → PSGFrequencies[56] → N=34); state nothing else
-    envelope: fTone_09     # PSG3 header voice (smpsPSGform changes noise type only, not envelope)
-    base_volume: 0         # SN76489 attenuation 0=max, 15=silent
+    envelopes:             # optional: a noise-mode envelope that gets its own sample
+      fTone_08: 18         #   (Scrap Brain's hi-hat variant); other labels play mod_instrument
 ```
+
+Optional overrides: `envelope:` (a label or inline list) replaces the derived envelope; `tone2_n:` / `synth_root:` replace the derived rate-3 divider.  A stated `type` or `noise_rate` that contradicts the key byte warns and is ignored.  When one instrument is played with several envelopes and none has a variant, `convert.py` warns (`noise_envelopes`) — Credits' PSG3 plays `fTone_04`, `fTone_08` and `fTone_09` through one sample because the song has no free slot.
 
 ### psg_voice_map
 
-Keyed by `smpsPSGvoice` label name (e.g. `fTone_01`–`fTone_09`). When `smpsPSGvoice fTone_03` appears in channel data, the PSG channel switches to this instrument.
+Keyed by `smpsPSGvoice` label name (e.g. `fTone_01`–`fTone_09`). When `smpsPSGvoice fTone_03` appears in channel data on a **tone** channel, the PSG channel switches to this instrument; the envelope defaults to the label.  A noise channel never consults this map — there `smpsPSGvoice` only changes the envelope (see `envelopes:` above), and a noise `type` in a `psg_voice_map` entry is a config error.
 
 ```yaml
 psg_voice_map:
   fTone_01:
     mod_instrument: 8      # MOD instrument slot (1-based)
-    type: tone
     root: A3               # MOD note anchor; determines target_rate
     synth_root: A3         # (optional) synthesis pitch override
-    envelope: fTone_01     # Named envelope for amplitude shaping
-    base_volume: 0
   fTone_03:
     mod_instrument: 9
-    type: tone
     root: A3
-    envelope: fTone_03
 ```
 
 ### PsgInstrumentEntry fields
@@ -117,15 +112,16 @@ psg_voice_map:
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `mod_instrument` | int | yes | MOD slot (1-based, 1–31) |
-| `type` | str | yes | `tone` / `white_noise` / `periodic_noise` |
+| `type` | str | derived | `psg_map`: bit 2 of the key byte (`white_noise` / `periodic_noise`); `psg_voice_map`: always `tone` |
 | `root` | note | yes | MOD note anchor; controls `target_rate` AND where `low` plays |
 | `low` | note | no | SMPS pitch anchor for melodic formula: `output = root + (source − low)` |
 | `high` | note | no | Upper bound of melodic range (paired with `low`) |
 | `synth_root` | note | no | Synthesis pitch override; does NOT affect `target_rate`. On a rate-3 noise entry it overrides the derived LFSR divider (chromatically — the driver's table is not chromatic, so leave it out) |
-| `noise_rate` | int | no | Noise divider: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (divider derived from the song's own notes — see §noise_rate: 3) |
+| `noise_rate` | int | derived | Bits 0–1 of the `psg_map` key byte: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (divider derived from the song's own notes — see §rate 3). Stating it only warns when it disagrees |
 | `tone2_n` | int | no | Rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR clock. An override — normally omitted, because the converter derives the divider from the song (`nMaxPSG` → 1) |
-| `envelope` | str/list | no | Named table key (e.g. `fTone_04`) or inline list of per-frame attenuation deltas |
-| `base_volume` | int | no | SN76489 base attenuation (0=max, 15=silent) |
+| `envelope` | str/list | no | `psg_map`: override of the envelope derived from the song (a label such as `fTone_04`, or an inline list of per-frame attenuation deltas). `psg_voice_map`: defaults to the entry's label |
+| `envelopes` | dict | no | `psg_map` only: `{label: mod_instrument}` — a noise-mode envelope rendered as its own sample; labels not listed play `mod_instrument` |
+| `base_volume` | int | no | SN76489 base attenuation (0=max, 15=silent); 0 in every shipped config, the header volume is applied as `Cxx` |
 
 ---
 
@@ -341,9 +337,9 @@ producing a different timbre or silence.
 synth_root = low + total_transpose
 ```
 
-### noise_rate: 3 (follow ch2) — pitch and timbre
+### Rate 3 (follow ch2; form bytes `$E3` / `$E7`) — pitch and timbre
 
-`noise_rate: 3` makes the SN76489 LFSR clock from PSG tone ch2's frequency divider N.
+Rate 3 (bits 0–1 of the `smpsPSGform` byte, every Sonic 1 song's `$E7`) makes the SN76489 LFSR clock from PSG tone ch2's frequency divider N.
 In Sonic 1, PSG3's driver writes its own note frequency to SN76489 tone channel 2 (`$C0`)
 even in noise mode, so the LFSR tracks PSG3's own notes — not SMPS PSG channel 2.
 

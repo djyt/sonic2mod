@@ -68,9 +68,6 @@ psg_map:
   0xE7:                    # form $E7
     mod_instrument: 6
     root: A3
-    noise_rate: 3
-    envelope: fTone_04
-    base_volume: 0
     
 # -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.

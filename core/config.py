@@ -121,13 +121,27 @@ class PsgInstrumentEntry:
                                              # clock; overrides the value derived from synth_root/root.
                                              # nMaxPSG in the Sonic 1 driver writes N=0, which the Sega
                                              # VDP PSG treats as N=1 (maximum shift rate) — use tone2_n: 1.
-    envelope: str | list[int] | None = None  # Named table str ("PSG4") or inline list[int]; None = constant volume
+    envelope: str | list[int] | None = None  # Named table str ("fTone_04") or inline list[int].  A psg_map
+                                             # (noise) entry leaves it None: the converter derives it from
+                                             # the song (_derive_noise_envelopes); stating it is an override
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
     vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
+    envelopes: dict[str, int] = field(default_factory=dict)   # psg_map only: {smpsPSGvoice label: MOD
+                                             # instrument} — a noise-mode envelope that gets its own sample
+                                             # (Scrap Brain's fTone_08); other labels play mod_instrument
 
 
 def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_voice_map entry") -> 'PsgInstrumentEntry':
-    """Parse a single psg_voice_map entry dict into a PsgInstrumentEntry."""
+    """Parse a single psg_voice_map entry dict into a PsgInstrumentEntry (always a tone).
+
+    A noise channel never consults psg_voice_map: once smpsPSGform ran, smpsPSGvoice only
+    changes the envelope, and an envelope that needs its own sample is named under
+    psg_map[<form>].envelopes.  A noise type here is therefore a config error.
+    """
+    if v.get('type', 'tone') != 'tone' or 'noise_rate' in v:
+        raise ValueError(
+            f"{context}: psg_voice_map entries are tones; a noise-mode envelope variant goes under "
+            f"psg_map[<form byte>].envelopes: {{<label>: <mod_instrument>}}")
     root_note   = _mod_note(_require(v, 'root', context), f"{context}.root")
     synth_root  = _opt(v, 'synth_root', parse_synth_note)
     low         = _opt(v, 'low',        parse_smps_note)
@@ -633,14 +647,26 @@ class ConversionConfig:
                     for j, e in enumerate(range_list)
                 ]
 
-        # Parse psg_map: dict keyed by smpsPSGform byte (hex or int YAML keys).
-        # type is auto-inferred from bit 2 of the key byte:
-        #   bit 2 = 1 → white noise ($E4–$E7); bit 2 = 0 → periodic noise ($E0–$E3)
+        # Parse psg_map: dict keyed by smpsPSGform byte (hex or int YAML keys).  The key is the
+        # SN76489 noise register byte, $E0 | white << 2 | rate, so the noise type and rate are
+        # read from it (a stated `type` / `noise_rate` that disagrees is a config error and warns).
+        # The envelope is derived from the song by the converter unless stated.
         raw_psg_map = data.get('psg_map', {})
         for k, psg_entry in raw_psg_map.items():
             form_byte = int(str(k), 0)
             _ctx = f"psg_map[{k}]"
             inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"
+            noise_rate = form_byte & 0x03
+            for key, derived in (('type', inferred_type), ('noise_rate', noise_rate)):
+                if key in psg_entry and psg_entry[key] != derived:
+                    warnings.warn(
+                        f"{filepath}: {_ctx}.{key}: {psg_entry[key]!r} contradicts the form byte "
+                        f"${form_byte:02X} ({derived!r}); the byte wins — delete the key",
+                        stacklevel=2,
+                    )
+            raw_envs = psg_entry.get('envelopes', {}) or {}
+            if not isinstance(raw_envs, dict) or not all(isinstance(v, int) for v in raw_envs.values()):
+                raise ValueError(f"{_ctx}.envelopes must map smpsPSGvoice labels to MOD instrument numbers")
             config.psg_map[form_byte] = PsgInstrumentEntry(
                 mod_instrument=_require(psg_entry, 'mod_instrument', _ctx),
                 type=inferred_type,
@@ -648,11 +674,12 @@ class ConversionConfig:
                 synth_root=_opt(psg_entry, 'synth_root', parse_synth_note),
                 low=_opt(psg_entry, 'low', parse_smps_note),
                 high=_opt(psg_entry, 'high', parse_smps_note),
-                noise_rate=psg_entry.get('noise_rate', 0),
+                noise_rate=noise_rate,
                 tone2_n=_parse_tone2_n(psg_entry, _ctx),
                 envelope=psg_entry.get('envelope', None),
                 base_volume=psg_entry.get('base_volume', 0),
                 vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),
+                envelopes={str(label): inst for label, inst in raw_envs.items()},
             )
 
         # psg_form_map is deprecated — psg_map now serves this role

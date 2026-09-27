@@ -52,7 +52,7 @@ sample_list:
   - [11, "fm_v05_hi.raw", 32, 0]
   # --- voice $06: Alg 5, FB 7 — FM5 ---
   - [12, "fm_v06.raw", 36, 0] # VGZ: +5.1 dB at 64
-  # --- PSG noise (form $E7) ---
+  # --- PSG noise (form $E7, envelope fTone_04 from the song) ---
   - [17, "psg_noise.raw",  5, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +9.5 dB at 16
   # --- PSG tone $00 ---
   - [13, "psg_$00.raw",  9, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: -0.5 dB at 8
@@ -60,9 +60,7 @@ sample_list:
   - [14, "psg_fTone_06.raw", 13, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +2.0 dB at 16
   # --- PSG tone fTone_05 ---
   - [15, "psg_fTone_05.raw",  7, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +7.5 dB at 16
-  # --- PSG noise (fTone_04 envelope) ---
-  - [16, "psg_noise.raw",  6, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +8.5 dB at 16
-  # --- PSG noise (fTone_08 envelope) ---
+  # --- PSG noise, fTone_08 envelope variant (psg_map 0xE7 envelopes) ---
   - [18, "psg_noise.raw",  3, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +10.7 dB at 10
   
   # Detuned Voice 2
@@ -157,11 +155,10 @@ voice_map:
 
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
-    mod_instrument: 17
+    mod_instrument: 17     # plays with the envelope the song has in force: fTone_04, the PSG3 header voice
     root: A3
-    noise_rate: 3
-    envelope: fTone_04
-    base_volume: 0
+    envelopes:
+      fTone_08: 18         # the loop's smpsPSGvoice fTone_08 hi-hat gets its own sample
 
 psg_voice_map:
   $00:
@@ -182,16 +179,6 @@ psg_voice_map:
     mod_instrument: 15
     root: G2
     synth_root: G5   # pitch audit at --min-ms 25: was G6, 12 semitones too high (all 512 PSG2 notes are shorter than 60 ms)
-  fTone_04:
-    type: white_noise
-    noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope
-    mod_instrument: 16
-    root: A3
-  fTone_08:
-    type: white_noise
-    noise_rate: 3          # hardware stays in $E7 rate-3 mode; smpsPSGvoice only changes envelope
-    mod_instrument: 18
-    root: A3
 
 channel_instrument_map:
   FM3:

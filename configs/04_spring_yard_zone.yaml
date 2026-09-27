@@ -110,9 +110,6 @@ psg_map:
   0xE7:                    # form $E7
     mod_instrument: 12
     root: A3
-    noise_rate: 3
-    envelope: fTone_04
-    base_volume: 0
 
 psg_voice_map:
   fTone_06:

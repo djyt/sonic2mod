@@ -82,6 +82,7 @@ def generate_fm_samples(
     synth: SynthesisSettings,
     verbose: bool = False,
     tl_offsets: dict[int, int] | None = None,
+    peaks_out: dict[int, tuple[int, int]] | None = None,
 ) -> dict:
     """Render an FM sample for every instrument in the song's catalogue.
 
@@ -92,6 +93,9 @@ def generate_fm_samples(
         tl_offsets: {instrument: track volume} to render each instrument at (the converter's
                     _plan_fm_render_levels: the level most of its notes play at); 0 = bare voice.
                     A layer's own tl_offset is relative to it.
+        peaks_out:  filled with {instrument: (peak of the render, peak of its first layer alone)}
+                    before normalisation - a composite's volume is its primary's times that ratio,
+                    so the primary layer plays as loud as it did on its own (core.merge).
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
@@ -135,7 +139,7 @@ def generate_fm_samples(
     sustain_secs = synth.sustain_duration
     assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
 
-    def _render(job: _RenderJob) -> tuple[Sequence[int], int]:
+    def _render(job: _RenderJob) -> tuple[Sequence[int], int, int]:
         # A MOD sample holds at most max_sample_kb (settings.yaml), so at this instrument's
         # rate the sustain can only be so long (the converter warns where a note needs more).
         sustain = min(sustain_secs, max_sustain_secs(job.target_rate, synth.release_padding,
@@ -152,7 +156,14 @@ def generate_fm_samples(
             opn2=_thread_opn2(synth.mode),
             clock_rate=synth.clock_rate,
         )
-        return _trim_trailing_silence(mono), rate
+        first_peak = peak(mono)
+        if len(job.layers) > 1:
+            # The primary layer alone, at the same level: what the composite's volume is scaled from
+            alone, _ = render_layers(job.layers[:1], job.spec.synth_idx, sustain_secs=sustain,
+                                     release_secs=synth.release_padding, target_rate=job.target_rate,
+                                     opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate)
+            first_peak = peak(alone)
+        return _trim_trailing_silence(mono), rate, first_peak
 
     raw_data: dict[int, tuple[Sequence[int], int]] = {}   # inst_num -> (mono, rate)
     if jobs:
@@ -162,8 +173,10 @@ def generate_fm_samples(
     else:
         rendered = []
 
-    for job, (mono, rate) in zip(jobs, rendered, strict=True):
+    for job, (mono, rate, first_peak) in zip(jobs, rendered, strict=True):
         spec, entry = job.spec, job.spec.entry
+        if peaks_out is not None:
+            peaks_out[job.inst] = (peak(mono), first_peak)
         label = f" [{spec.source_label}]" if spec.source_label else ""
         voices_str = "+".join(str(lay.voice_idx) for lay in spec.layers)
         if not mono:

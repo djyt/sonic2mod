@@ -115,8 +115,11 @@ allocates one composite instrument per distinct (primary instrument, follower la
 FM voices as chip layers in the catalogue, anything else mixed from the finished samples by
 `mix_pcm_composites`, the follower resampled by the period ratio of the two notes. The plan sits on
 `config.merge_plan`, read by `walk_channel`; `refresh_ticks` rebuilds its tick map after the loop
-bodies are extended. `tools/merge_survey.py` runs the same pairing over every channel pair of a
-song. Full rules: `docs/pipeline.md` § Channel merging.
+bodies are extended. A follower note that starts while the primary is silent is spliced into
+the primary's event stream as the follower's own note (`_splice_solo_notes`; `walk_channel`
+yields it with the follower's state), and instruments no note of the merged build plays are
+dropped from the catalogue (`MergePlan.unused`). `tools/merge_survey.py` runs the same pairing
+over every channel pair of a song. Full rules: `docs/pipeline.md` § Channel merging.
 
 ### core/levels.py
 

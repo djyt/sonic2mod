@@ -129,6 +129,8 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
     if plan is not None:                         # core.merge: the composites, rendered as layers
         for spec in plan.fm_instruments:
             cat.instruments.setdefault(spec.inst, spec)
+        for inst in plan.unused:                 # ... and nothing the merged build never plays
+            cat.instruments.pop(inst, None)
     return cat
 
 
@@ -172,4 +174,8 @@ def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None)
     for label, entries in config.psg_voice_map.items():
         for i, entry in enumerate(entries):
             add(entry, f"psg_voice_map[{label}][{i}]")
+    plan = getattr(config, "merge_plan", None)
+    if plan is not None:
+        for inst in plan.unused:                 # core.merge: nothing the merged build never plays
+            out.pop(inst, None)
     return out

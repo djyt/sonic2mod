@@ -29,6 +29,8 @@ Usage::
     python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
     python tools/vgm_compare.py configs/01_title_screen.yaml ref.vgz --mod output/x.mod --ref FM2
     python tools/vgm_compare.py cfg.yaml ref.vgz --skip-render     # reuse WAVs in the workdir
+    python tools/vgm_compare.py cfg.yaml ref.vgz --merged          # the merged build: each MOD channel
+                                                                   # against the sum of its source channels
     python tools/vgm_compare.py cfg.yaml ref.vgz --offset 0.25     # force MOD-minus-VGM offset (s)
 
     # CI-style: machine-readable results + non-zero exit when a threshold is exceeded
@@ -65,6 +67,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
+from core.merge import prepare_merged_config
 from tools import vgm_pitch_audit
 from tools.vgm_analyze import _parse_vgm
 
@@ -129,12 +132,23 @@ def _patch_ini(src: str, ym_mask: int, sn_mask: int, core: str) -> str:
     return text
 
 
-def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path, core: str) -> None:
+def group_masks(sources: list[str]) -> tuple[int, int]:
+    """The mute masks that leave every one of `sources` audible (a merged channel's sum)."""
+    ym, sn = _YM_ALL, _SN_ALL
+    for s in sources:
+        y, n = _VGM_CHANNELS[s]
+        ym, sn = ym & y, sn & n
+    return ym, sn
+
+
+def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path, core: str,
+                        masks: dict[str, tuple[int, int]] | None = None) -> None:
+    masks = masks or _VGM_CHANNELS
     exe = next(e for e in _VGMPLAY_EXES if (vgmplay / e).exists())
     base_ini = (vgmplay / "VGMPlay.ini").read_text(encoding="utf-8", errors="replace")
     outdir.mkdir(parents=True, exist_ok=True)
     for name in ["FULL", *names]:
-        ym, sn = (0x00, 0x0) if name == "FULL" else _VGM_CHANNELS[name]
+        ym, sn = (0x00, 0x0) if name == "FULL" else masks[name]
         work = outdir / f"_vgm_{name}"
         work.mkdir(exist_ok=True)
         for f in vgmplay.iterdir():
@@ -1065,6 +1079,72 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     return res
 
 
+def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None, ref_chan: str,
+                  labels: dict[str, list[str]]) -> dict:
+    """The merged build: every MOD channel against the sum of the chip channels folded onto it.
+
+    Whole-song balance and audio onsets only: a merged channel carries several note streams, so
+    the per-note pitch and level audit and the symbolic verdict (one stream per channel) do not
+    apply.  Composite instruments are checked by their level here and by ear.
+    """
+    names = list(labels)
+    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
+    mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]}
+    vgm = {n: a.mean(axis=1) for n, a in vgm_st.items()}
+    mod = {n: a.mean(axis=1) for n, a in mod_st.items()}
+    offset_auto = offset is None
+    if offset is None:
+        offset = auto_offset(vgm["FULL"], mod["FULL"])
+        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
+    else:
+        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
+    print()
+    res: dict = {"offset_ms": offset * 1000, "offset_auto": offset_auto, "merged": True,
+                 "channels": {n: {"sources": labels[n]} for n in names}, "notes": [], "vibrato": []}
+
+    ref = next((n for n in names if ref_chan in labels[n]), names[0])
+    print(f"Whole-song channel RMS relative to {ref} (dB, L/R power); a merged channel against the sum of its"
+          " chip channels:   VGM     MOD    MOD-VGM")
+    rv_ref, rm_ref = db(rms(vgm_st[ref])), db(rms(mod_st[ref]))
+    for n in names:
+        rv, rm = db(rms(vgm_st[n])) - rv_ref, db(rms(mod_st[n])) - rm_ref
+        note = "" if abs(rm - rv) < 2 else "   <-- rebalance"
+        print(f"  {n:<14} {rv:>8.1f} {rm:>8.1f} {rm - rv:>+8.1f}{note}")
+        res["channels"][n]["balance_db"] = {"vgm": rv, "mod": rm, "diff": rm - rv}
+    res["ref_channel"] = ref
+    res["mix"] = {"vgm_rms_db": db(rms(vgm_st["FULL"])), "vgm_peak": float(np.abs(vgm_st["FULL"]).max()),
+                  "mod_rms_db": db(rms(mod_st["FULL"])), "mod_peak": float(np.abs(mod_st["FULL"]).max())}
+    print(f"  (absolute: VGM mix {db(rms(vgm_st['FULL'])):.1f} dBFS peak {np.abs(vgm_st['FULL']).max():.2f};"
+          f" MOD mix {db(rms(mod_st['FULL'])):.1f} dBFS peak {np.abs(mod_st['FULL']).max():.2f})")
+    print()
+
+    print("Onset timing (audio onsets on both sides, matched within 40 ms; a merged channel's onsets are"
+          " every note-on of its sources)")
+    for n in names:
+        thr = -50 if "NOISE" in labels[n] else -40
+        vo = onsets(vgm[n], thresh_db=thr)
+        mo = [t - offset for t in onsets(mod[n], thresh_db=thr)]
+        devs, missing = [], 0
+        for t in vo:
+            d = min(((m - t) * 1000 for m in mo), key=abs, default=float("inf"))
+            if abs(d) > 40:
+                missing += 1
+            else:
+                devs.append(d)
+        if devs:
+            print(f"  {n:<14} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; matched {len(devs)}: "
+                  f"median {statistics.median(devs):+.0f} ms, worst {max(devs, key=abs):+.0f} ms; unmatched {missing}")
+        else:
+            print(f"  {n:<14} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; none matched")
+        res["channels"][n]["onsets"] = {
+            "method": "audio", "ref": len(vo), "mod": len(mo), "matched": len(devs), "unmatched": missing,
+            "median_ms": statistics.median(devs) if devs else None,
+            "worst_ms": max(devs, key=abs) if devs else None,
+        }
+    print()
+    return res
+
+
 def evaluate_checks(res: dict, balance_db: float | None, pitch_cents: float | None,
                     unmatched: int | None) -> list[dict]:
     """Apply the --fail-* thresholds to a report() result.  One entry per enabled threshold."""
@@ -1141,6 +1221,9 @@ def main() -> None:
                          "audit, as vgm_pitch_audit.py), missing, or silent in the MOD render")
     ap.add_argument("--fail-unmatched", type=int, metavar="N",
                     help="exit 1 if any channel has more than N reference onsets without a MOD onset")
+    ap.add_argument("--merged", action="store_true",
+                    help="audit the merged build (convert.py --merged): each MOD channel against the sum of the "
+                         "chip channels folded onto it (balance and onsets; no per-note audit)")
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -1152,19 +1235,39 @@ def main() -> None:
     from core.driver_state import resolve_synth_roots
     from core.smps_parser import SmpsParser
     resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
+    if args.merged:
+        try:
+            prepare_merged_config(cfg)          # followers off, channels packed, merge_output_file
+        except ValueError as e:
+            raise SystemExit(f"ERROR: {e}") from e
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):
         if not p.exists():
             raise SystemExit(f"ERROR: file not found: {p}")
-    workdir = Path(args.workdir or Path("output") / "compare" / Path(args.config).stem)
+    workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + ("_merged" if args.merged else "")))
 
-    chan_map = {c.source: c.mod_channel for c in cfg.channels}
     raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
     rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
     noise_used = any(r[1] == "NOISE" for r in rows)
-    vgm_names = ["NOISE" if (s == "PSG3" and noise_used) else s for s in chan_map]
-    vgm_names = [n for n in vgm_names if n in _VGM_CHANNELS]
+    masks = None
+    labels: dict[str, list[str]] = {}
+    if args.merged:
+        # One render per live MOD channel, named after the chip channels folded onto it
+        followers_of = {g.primary: list(g.followers) for g in cfg.merge}
+        chan_map = {}
+        for c in sorted((c for c in cfg.channels if c.enabled), key=lambda c: c.mod_channel):
+            srcs = ["NOISE" if (s == "PSG3" and noise_used) else s for s in (c.source, *followers_of.get(c.source, []))]
+            srcs = [s for s in srcs if s in _VGM_CHANNELS]
+            if srcs:
+                labels["+".join(srcs)] = srcs
+                chan_map["+".join(srcs)] = c.mod_channel
+        masks = {lab: group_masks(srcs) for lab, srcs in labels.items()}
+        vgm_names = list(labels)
+    else:
+        chan_map = {c.source: c.mod_channel for c in cfg.channels}
+        vgm_names = ["NOISE" if (s == "PSG3" and noise_used) else s for s in chan_map]
+        vgm_names = [n for n in vgm_names if n in _VGM_CHANNELS]
 
     if not args.skip_render:
         if args.reuse_vgm and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
@@ -1172,7 +1275,7 @@ def main() -> None:
         else:
             vgmplay = _find_vgmplay(args.vgmplay)
             print(f"Rendering reference channels with {vgmplay} ...")
-            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core)
+            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core, masks)
         print("Rendering MOD channels with ffmpeg/libopenmpt ...")
         render_mod_channels(mod_path, chan_map, workdir)
         print()
@@ -1182,10 +1285,15 @@ def main() -> None:
     print(f"VGZ    : {vgz}")
     print(f"Renders: {workdir}")
     print()
-    res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
-                 pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
+    if args.merged:
+        res = report_merged(vgz, mod_path, workdir, args.offset, args.ref, labels)
+    else:
+        res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
+                     pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
 
-    if args.write_volumes:
+    if args.write_volumes and "instrument_levels" not in res:
+        print("--write-volumes: not for the merged build (its instruments are measured in the reference build)")
+    elif args.write_volumes:
         changes = write_volumes(Path(args.config), res["instrument_levels"]["instruments"])
         print(f"sample_list volumes written to {args.config}:" if changes else "sample_list volumes: nothing to change")
         for line in changes:

@@ -5,8 +5,10 @@ For every ordered pair of enabled channels (primary, follower) this lines the fo
 note-ons up with the primary's the way core/merge.py will, and prints the counts:
 
     paired      follower notes that merge into a composite instrument (same tick, not shorter)
+    solo        follower notes that start while the primary is silent — placed on the merged
+                channel as the follower's own note (cut = a primary note-on re-takes the channel)
     alone       primary notes with the follower resting (fine: the primary plays as before)
-    orphans     follower notes with no primary note-on — LOST on the merged channel
+    orphans     follower notes that start while the primary sounds — LOST on the merged channel
     held        primary note-ons under a follower note that keeps sounding — its ring is lost
     shorter     follower notes at the primary's tick that end sooner — the primary plays alone
     truncated   follower notes cut by the primary's rest
@@ -74,8 +76,8 @@ def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], 
 
 def suggest(stats: list[PairStats]) -> list[tuple[str, list[str]]]:
     """Groups from the cleanest pairs: no orphans, most notes folded, each channel used once."""
-    ranked = sorted((s for s in stats if s.orphans == 0 and s.paired),
-                    key=lambda s: (s.lost, -s.paired, len(s.keys)))
+    ranked = sorted((s for s in stats if s.orphans == 0 and (s.paired or s.solo)),
+                    key=lambda s: (s.lost, -(s.paired + s.solo), len(s.keys)))
     used: set[str] = set()
     groups: dict[str, list[str]] = {}
     for s in ranked:
@@ -95,7 +97,8 @@ def main() -> None:
     stats, counts = survey(cfg, Path(args.config).resolve().parent)
 
     print(f"{cfg.name}: " + ", ".join(f"{s} {n}" for s, n in counts.items()) + " notes\n")
-    head = f"{'primary':8} {'follower':8} {'notes':>5} {'paired':>6} {'alone':>5} {'orphan':>6} {'held':>4} {'short':>5} {'trunc':>5} {'vib':>3} {'comps':>5}  verdict"
+    head = (f"{'primary':8} {'follower':8} {'notes':>5} {'paired':>6} {'solo':>4} {'cut':>3} {'alone':>5} "
+            f"{'orphan':>6} {'held':>4} {'short':>5} {'trunc':>5} {'vib':>3} {'comps':>5}  verdict")
     print(head)
     print("-" * len(head))
     for s in sorted(stats, key=lambda s: (s.lost > 0, -s.paired, s.primary, s.follower)):
@@ -104,8 +107,9 @@ def main() -> None:
         verdict = ("clean" if s.clean else
                    "orphans: needs its own channel" if s.orphans else
                    "folds with losses")
-        print(f"{s.primary:8} {s.follower:8} {s.follower_notes:5d} {s.paired:6d} {s.alone:5d} {s.orphans:6d} "
-              f"{s.held:4d} {s.shorter:5d} {s.truncated:5d} {s.vibrato:3d} {len(s.keys):5d}  {verdict}")
+        print(f"{s.primary:8} {s.follower:8} {s.follower_notes:5d} {s.paired:6d} {s.solo:4d} {s.solo_cut:3d} "
+              f"{s.alone:5d} {s.orphans:6d} {s.held:4d} {s.shorter:5d} {s.truncated:5d} {s.vibrato:3d} "
+              f"{len(s.keys):5d}  {verdict}")
     if not args.all:
         hidden = sum(1 for s in stats if not s.clean)
         if hidden:

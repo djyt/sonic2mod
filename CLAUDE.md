@@ -128,8 +128,10 @@ python convert.py configs/01_title_screen.yaml --output output/title_screen.mod
 # The Amiga build: fold the config's merge: groups (7 channels → 4 for the Title Screen) into
 # composite instruments and write merge_output_file (default <output>_merged.mod)
 python convert.py configs/01_title_screen.yaml --merged
-# Which channel pairs of a song can fold (paired / orphans / held / shorter per pair) + the YAML
+# Which channel pairs of a song can fold (paired / solo / orphans / held / shorter per pair) + the YAML
 python tools/merge_survey.py configs/01_title_screen.yaml            # --all: every pair
+# Audit the merged build: each MOD channel against the sum of its chip channels (balance, onsets)
+python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --merged
 
 # Render all 49 sound effects to 16-bit stereo WAV (no config needed)
 python sonic2wav.py --all
@@ -330,7 +332,7 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 7c. **A MOD BPM is a whole number** — `auto_bpm` rounds; choose `target_speed` so the exact BPM is (nearly) integer (speed changes MOD ticks per row, not the row grid). `convert.py` prints the rounding error and the better speed; Special Stage at speed 3 ran 0.44 % slow. Details: `docs/pipeline.md` §BPM and speed setup.
 
-7f. **The merged build (`merge:` + `convert.py --merged`) never touches the reference MOD** — the followers are dropped, the live channels packed onto MOD channels 0..n-1, and the primary plays a composite instrument wherever a follower sounds with it: two FM voices as chip layers (`render_layers`, one YM2612 channel per voice at the follower's interval, `smpsDetune` and TL relative to the primary), anything else mixed from the finished samples by period ratio (`mix_pcm_composites`).  A follower note with no primary note-on is lost (`orphan`), one ringing under the primary's next note-on is cut (`held`), one shorter than the primary's leaves the primary alone; `tools/merge_survey.py` counts these per pair before a group is written and the converter reports them after.  The plan lives on `config.merge_plan`, read by `walk_channel`, and is rebuilt after loop extension.  Details: `docs/pipeline.md` § Channel merging.
+7f. **The merged build (`merge:` + `convert.py --merged`) never touches the reference MOD** — the followers are dropped, the live channels packed onto MOD channels 0..n-1, and the primary plays a composite instrument wherever a follower sounds with it: two FM voices as chip layers (`render_layers`, one YM2612 channel per voice at the follower's interval, `smpsDetune` and TL relative to the primary), anything else mixed from the finished samples by period ratio (`mix_pcm_composites`).  A follower note that starts while the primary is silent is spliced in as the follower's own note (`solo`; two channels that never overlap can share a MOD channel), one that starts while the primary sounds is lost (`orphan`), one ringing under the primary's next note-on is cut (`held`), one shorter than the primary's leaves the primary alone; `tools/merge_survey.py` counts these per pair before a group is written and the converter reports them after.  Followers stay in every walk of the merged build (levels, envelopes, pitches) but not in the output, and instruments no note plays are not rendered.  The plan lives on `config.merge_plan`, read by `walk_channel`, and is rebuilt after loop extension.  Details: `docs/pipeline.md` § Channel merging.
 
 8. **smpsModSet → `4xy`** — only the FIRST half-swing uses the halved step count (`lsr.b #1`); the counter reloads from the original byte, so the steady cycle is `2·speed·(steps+1)` frames and the swing is `delta·steps/2` units of the note's own FNUM (644 C … 1216 B) or PSG divider. `_vibrato_speed` / `_vibrato_depth` turn that into x and a per-note y; verified against six songs' VGZs. No config needs a `vibrato:` override any more. Details: `docs/pipeline.md` gotcha 4.
 

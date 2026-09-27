@@ -6,6 +6,7 @@ timing, and effects.
 
 import bisect
 import dataclasses
+import math
 
 from .config import (
     ChannelConfig,
@@ -520,7 +521,7 @@ class SmpsToModConverter:
         psg_synth = self._resolve_sustain(self.psg_synth, 'PSG') if self.psg_synth else None
 
         # Load or synthesize samples (a merge composite is rendered or mixed, never loaded)
-        merge_insts = self._merge.instruments if self._merge is not None else set()
+        merge_insts = (self._merge.instruments | self._merge.unused) if self._merge is not None else set()
         if synth and synth.enabled and synth.mode == "ym2612":
             from ym2612.sample_generator import generate_fm_samples
             # Warn about map entries whose voice index doesn't exist in the song, and
@@ -535,9 +536,24 @@ class SmpsToModConverter:
             # multi-carrier voice as much as the hardware does at that level and no more.
             self._fm_render_levels = (self._plan_fm_render_levels()
                                       if self._fm_volume_mode == "baked" else {})
+            fm_peaks: dict[int, tuple[int, int]] = {}
             fm_samples = generate_fm_samples(
                 self.song, self.config, synth,
-                tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()})
+                tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()},
+                peaks_out=fm_peaks)
+            if self._merge is not None:
+                # A chip composite is normalised like any sample, so its volume is the primary's
+                # times the composite's peak over its primary layer's alone: the primary plays as
+                # loud as it did, the follower adds to it as the hardware sum did.
+                for c in self._merge.composites.values():
+                    if c.fm is None or c.entry is None or c.inst not in fm_peaks:
+                        continue
+                    pk_all, pk_first = fm_peaks[c.inst]
+                    if pk_first:
+                        vol = c.entry[2] * pk_all / pk_first
+                        if vol > 64:
+                            c.headroom_db = 20 * math.log10(vol / 64)
+                        c.entry[2] = max(0, min(64, round(vol)))
             self.infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
             self._install_synthesized_samples(fm_samples, self.config.sample_list, "fm",
                                               synth.max_sample_bytes)
@@ -720,14 +736,17 @@ class SmpsToModConverter:
             stats = [s for s in plan.stats if s.primary == g.primary]
             self.infos.append({'type': 'merge_group', 'label': g.label, 'primary': g.primary,
                                'paired': sum(s.paired for s in stats),
+                               'solo': sum(s.solo for s in stats),
                                'alone': stats[0].alone if stats else 0,
                                'composites': [(c.inst, c.notes, c.detail) for c in comps]})
+        if plan.unused:
+            self.infos.append({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
         for s in plan.stats:
             if s.lost or s.vibrato:
                 self._add_warning({'type': 'merge_lost', 'channel': s.primary, 'primary': s.primary,
                                    'follower': s.follower, 'held': s.held, 'shorter': s.shorter,
-                                   'truncated': s.truncated, 'orphans': s.orphans, 'vibrato': s.vibrato,
-                                   'notes': s.follower_notes})
+                                   'truncated': s.truncated, 'orphans': s.orphans, 'solo_cut': s.solo_cut,
+                                   'vibrato': s.vibrato, 'notes': s.follower_notes})
         for u in plan.unsupported:
             self._add_warning({'type': 'merge_unsupported', 'channel': u['primary'], **u})
         return plan
@@ -956,15 +975,22 @@ class SmpsToModConverter:
         elif _fm_vol_scaling and not is_dac:
             current_volume = round(fm_tl_to_mod(st.tl) * chan_cfg.volume / 64)
 
+        _psg_mode_baked = self._psg_volume_mode == "baked"
+
         def _emit_volume(inst: int) -> int:
-            """MOD volume for a note on `inst` right now (equals the sample volume → no Cxx)."""
+            """MOD volume for a note on `inst` right now (equals the sample volume → no Cxx).
+
+            Read off `st`, which is this channel's state or, for a follower's solo note on a
+            merged channel, the follower's (so a PSG hat on the drum channel keeps its law).
+            """
             sv = _sample_vol_map.get(inst, 64)
-            if not (_psg_baked or _fm_baked):
+            baked = _psg_mode_baked if st.is_psg else _fm_baked
+            if not baked:
                 return round(current_volume * sv / 64)
-            if _psg_baked and st.is_silent:
+            if st.is_psg and st.is_silent:
                 return 0
             level = st.level_db(_pan_law)
-            baseline = self._psg_baseline_db if _psg_baked else self._fm_baseline_db
+            baseline = self._psg_baseline_db if st.is_psg else self._fm_baseline_db
             rel_db = level - baseline.get(inst, level)
             return max(0, min(64, round(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)))
 
@@ -1018,7 +1044,10 @@ class SmpsToModConverter:
                 row_total, delay = row_total + 1, 0
             return row_total // 64, row_total % 64, delay
 
-        for event, _st, res in walk_channel(channel, self.config, chan_cfg, st):
+        for event, st_ev, res in walk_channel(channel, self.config, chan_cfg, st):
+            # A follower's solo note on a merged channel arrives with the follower's state
+            # (core.merge); every other event with this channel's own.
+            st = st_ev
             if event.is_effect:
                 # walk_channel has advanced st past this flag: level, pan, transpose, FM voice
                 # and PSG instrument routing.  What is left is MOD-emission state.
@@ -1097,7 +1126,7 @@ class SmpsToModConverter:
                 self._set_cursor(pattern, mod_chan, row)
                 note_delay = 0
 
-                if is_dac:
+                if is_dac and res is None:
                     # DAC notes carry no other effect, so the slot is always free for EDx.
                     pattern, row, note_delay = _note_cell(tick, True, None)
                     if pattern >= self.config.max_patterns:
@@ -1127,6 +1156,8 @@ class SmpsToModConverter:
                     final_note = ModNote(res.index)
                     active_range_entry = None if is_psg else res.entry
                     self._warn_resolution(res, st, chan_cfg, note)
+                    # A solo note carries none of this channel's modulation
+                    _vib_on = vibrato_active and res.path != "merged"
 
                     # Where the note goes (see _note_cell): on its own row with an EDx delay when
                     # it starts between rows and the effect slot is free.  The slot is needed
@@ -1273,7 +1304,7 @@ class SmpsToModConverter:
 
                         # Vibrato effect (4xy) on attack row — only when the modulation
                         # wait is over for most of it (see vib_start_tick below).
-                        elif (vibrato_active and eff_vib_speed > 0
+                        elif (_vib_on and eff_vib_speed > 0
                               and vibrato_wait * self._tpf_at(tick) <= self._effective_tpr / 2):
                             param = (eff_vib_speed << 4) | eff_vib_depth
                             self.mod.set_effect(0x4, param)
@@ -1283,7 +1314,7 @@ class SmpsToModConverter:
                     # so we repeat it each row to get continuous vibrato matching SMPS
                     # modulation.  The SMPS wait is in FRAMES (DoModulation runs on TempoWait
                     # frames too); a row carries 4xy when modulation runs for at least half of it.
-                    if vibrato_active and eff_vib_speed > 0:
+                    if _vib_on and eff_vib_speed > 0:
                         vib_start_tick = tick + vibrato_wait * self._tpf_at(tick)
                         note_end_tick  = tick + note.duration
                         tpr = self._effective_tpr

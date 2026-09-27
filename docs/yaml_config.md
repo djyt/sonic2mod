@@ -532,10 +532,15 @@ baselines and audits stay the ground truth.
   primary's playback rate, the follower at its `sample_list` volume and baked level. A sum that
   passes full scale plays at volume 64 and is reported.
 - The primary's effects apply to the composite: its vibrato, note fill, `Cxx` and `EDx`.
+- A follower note that starts while the primary is silent is placed on the merged channel as
+  the follower's own note (its instrument, pitch and level), so two channels that never sound
+  at once can share a MOD channel outright.
+- Instruments no note of the merged build plays are not rendered, so the merged MOD carries
+  only the samples it uses.
 
 What folds cleanly is a property of the song. `python tools/merge_survey.py configs/<song>.yaml`
-lines up every pair of channels and prints, per pair, how many follower notes fold and how many
-are lost (a follower note with no primary note-on is an *orphan* and needs its own channel; one
-that keeps ringing under the primary's next note-on is *held*; one that ends sooner leaves the
-primary alone), then suggests groups. The converter prints the same counts for the groups it was
+lines up every pair of channels and prints, per pair, how many follower notes fold, how many play
+on their own (*solo*) and how many are lost (a follower note that starts while the primary
+sounds is an *orphan* and needs its own channel; one that keeps ringing under the primary's next
+note-on is *held*; one that ends sooner leaves the primary alone), then suggests groups. The converter prints the same counts for the groups it was
 given. Rules in `docs/pipeline.md` § Channel merging.

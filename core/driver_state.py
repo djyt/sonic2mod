@@ -362,6 +362,8 @@ class ResolvedNote:
       "psg_fixed" - a noise entry with `root`: always root (its note bytes carry no pitch)
       "transpose" - no anchor: source + driver transpose + the channel config's transpose
                     (a rootless entry still names the instrument)
+      "merged"    - a follower's solo note on a merged channel (core.merge): resolved on the
+                    follower's channel, carried over as it was
     `index` is clamped to the MOD's three octaves; `raw_index` is not.
     """
     instrument: int          # MOD instrument slot
@@ -437,6 +439,16 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
     plan = getattr(config, "merge_plan", None)       # core.merge: composite instruments per tick
     for event in channel.events:
         res = None
+        solo = getattr(event, "merged", None)
+        if solo is not None:
+            # A follower's note spliced into this channel while the primary is silent
+            # (core.merge): it plays the follower's instrument at the follower's level, so the
+            # follower's state at that note stands in for this channel's.
+            if not event.note.is_rest:
+                res = ResolvedNote(solo.instrument, solo.index, solo.index, "merged", None,
+                                   solo.note_value - 0x81, solo.index, solo.chip or 0, 0, solo.detune)
+            yield event, (solo.state or st), res
+            continue
         if event.is_effect:
             st.apply(event.effect)
         elif event.is_note and not event.note.is_rest and not event.note.is_dac:
@@ -447,9 +459,17 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
 
 
 def enabled_channels(song, config, kinds=("FM", "PSG")):
-    """(chan_cfg, parsed channel) for every enabled config channel of the given chip kinds."""
+    """(chan_cfg, parsed channel) for every enabled config channel of the given chip kinds.
+
+    In the merged build (`convert.py --merged`) the followers are disabled in the output but
+    still walked here: their notes vote for their instruments' levels, envelopes and rendering
+    pitches, which the composites and the solo notes are made from.
+    """
     smap = source_map(song)
+    followers = ({f for g in config.merge for f in g.followers}
+                 if getattr(config, "merge_active", False) else set())
     for chan_cfg in config.channels:
         channel = smap.get(chan_cfg.source)
-        if chan_cfg.enabled and channel is not None and channel.header.channel_type in kinds:
+        live = chan_cfg.enabled or chan_cfg.source in followers
+        if live and channel is not None and channel.header.channel_type in kinds:
             yield chan_cfg, channel

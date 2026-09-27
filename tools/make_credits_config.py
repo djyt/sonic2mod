@@ -240,7 +240,6 @@ lines = [
     "auto_bpm: true",
     "target_speed: 2",
     "ticks_per_row: 2",
-    "num_mod_channels: 10",
     "region: ntsc",
     "range_space: chip",
     "",

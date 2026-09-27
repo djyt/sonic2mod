@@ -4,6 +4,7 @@ import os
 import warnings
 from dataclasses import dataclass, field
 
+from .mod import ModFile
 from .tables import ModNote, parse_smps_note, parse_synth_note, synth_note_name
 
 
@@ -400,7 +401,11 @@ class ConversionConfig:
     target_bpm: int = 150
     target_speed: int = 6
     ticks_per_row: float = 6.0
-    num_mod_channels: int = 10
+    # MOD channel count.  None (the default) derives it from the channels section: the highest
+    # mod_channel + 1, rounded up to a count a format tag exists for (4, 8, 10, 12, 14, 16).
+    # Set it only to pad upward, so a spare channel can carry Fxx / Dxx when no note cell has a
+    # free effect slot.
+    num_mod_channels: int | None = None
     auto_bpm: bool = False        # Derive BPM from SMPS tempo header
     region: str = "ntsc"          # "ntsc" (60 Hz) or "pal" (50 Hz)
     # What voice_map / psg_voice_map low/high (and root's anchor) are compared with:
@@ -411,6 +416,29 @@ class ConversionConfig:
     range_space: str = "source"
     channels: list = field(default_factory=list)       # list of ChannelConfig
     dac_samples: list = field(default_factory=list)    # list of DacSampleConfig
+
+    @property
+    def mod_channel_count(self) -> int:
+        """The MOD's channel count: `num_mod_channels` when set, else derived from the channels."""
+        if self.num_mod_channels is not None:
+            return self.num_mod_channels
+        highest = max((c.mod_channel for c in self.channels if c.enabled), default=-1)
+        return ModFile.round_up_channels(highest + 1)
+
+    def validate_mod_channels(self) -> None:
+        """Reject a `num_mod_channels` no format tag exists for, or one the channels overflow."""
+        n = self.num_mod_channels
+        if n is None:
+            return
+        valid = list(ModFile.valid_channel_counts())
+        if n not in valid:
+            raise ValueError(f"num_mod_channels must be one of {valid} (got {n})")
+        over = sorted(c.mod_channel for c in self.channels if c.enabled and c.mod_channel >= n)
+        if over:
+            raise ValueError(
+                f"num_mod_channels: {n} leaves no room for mod_channel {over[0]} "
+                f"(needs at least {ModFile.round_up_channels(over[-1] + 1)})"
+            )
     sample_list: list | None = None                 # [inst_num, filename, volume, finetune]
     samples_dir: str = "./samples/"
     max_patterns: int = 127
@@ -430,7 +458,6 @@ class ConversionConfig:
         """
         config = cls(
             name=song_name,
-            num_mod_channels=10,
             target_bpm=150,
             target_speed=6,
             ticks_per_row=6.0,
@@ -493,7 +520,7 @@ class ConversionConfig:
             target_bpm=data.get('target_bpm', 150),
             target_speed=data.get('target_speed', 6),
             ticks_per_row=data.get('ticks_per_row', 6.0),
-            num_mod_channels=data.get('num_mod_channels', 10),
+            num_mod_channels=data.get('num_mod_channels'),
             auto_bpm=data.get('auto_bpm', False),
             region=data.get('region', 'ntsc'),
             range_space=str(data.get('range_space', 'source')),
@@ -636,4 +663,5 @@ class ConversionConfig:
             for i, b in enumerate(breaks_raw)
         ]
 
+        config.validate_mod_channels()
         return config

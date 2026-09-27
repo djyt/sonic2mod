@@ -9,7 +9,6 @@ samples_dir: "samples/"
 auto_bpm: true
 target_speed: 3
 ticks_per_row: 1
-num_mod_channels: 10
 region: ntsc
 
 channels:

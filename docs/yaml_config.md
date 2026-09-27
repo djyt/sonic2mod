@@ -31,7 +31,9 @@ range_space: source    # what voice_map/psg_voice_map low/high match: "source" (
 region: ntsc           # Console region: "ntsc" (60 Hz) or "pal" (50 Hz)
 
 # MOD format
-num_mod_channels: 10   # Channel count: 4, 8, 10, 12, 14, or 16
+# num_mod_channels: 10  # Optional. Derived from the channels section (highest mod_channel + 1,
+                       # rounded up to 4/8/10/12/14/16); set it only to pad upward so a spare
+                       # channel can carry Fxx (tempo change) / Dxx (loop row) effects
 max_patterns: 127      # Truncation limit (max 127)
 
 # Channel mappings (one entry per SMPS channel to convert)

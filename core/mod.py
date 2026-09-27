@@ -97,9 +97,24 @@ class ModFile:
 
     MAX_POSITIONS: int = 127
 
+    @classmethod
+    def valid_channel_counts(cls) -> tuple[int, ...]:
+        """The channel counts a format tag exists for: 4, 8, 10, 12, 14, 16."""
+        return tuple(sorted(cls.FORMAT_TABLE))
+
+    @classmethod
+    def round_up_channels(cls, n: int) -> int:
+        """The smallest valid channel count that holds `n` channels (16 at most)."""
+        counts = cls.valid_channel_counts()
+        return next((c for c in counts if c >= n), counts[-1])
+
     def __init__(self, channels=10):
+        if channels not in self.FORMAT_TABLE:
+            raise ValueError(
+                f"MOD channel count must be one of {list(self.FORMAT_TABLE)} (got {channels})"
+            )
         self.CHANNELS = channels
-        self.MOD_FORMAT = self.FORMAT_TABLE.get(channels, "M.K.").encode("utf-8")
+        self.MOD_FORMAT = self.FORMAT_TABLE[channels].encode("utf-8")
         self.SONG_LENGTH = self.MAX_POSITIONS
         self._name = "untitled"
         self.samples = [ModSample("") for _ in range(31)]

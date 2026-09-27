@@ -36,6 +36,7 @@ from core.cli import branding, cli_console
 from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
 from core.driver_tables import psg_tone2_divider
 from core.levels import PSG_STEP_DB, TL_STEP_DB, db_to_mod_volume, fm_level_db
+from core.mod import ModFile
 from core.smps_parser import SmpsParser
 from core.tables import PERIOD_TABLE, ModNote, synth_note_name
 
@@ -516,17 +517,6 @@ def _db_volume(base: int, db: float) -> int:
     return db_to_mod_volume(base, db, minimum=1)
 
 
-_VALID_MOD_CHANNELS = (4, 8, 10, 12, 14, 16)
-
-
-def _round_up_mod_channels(n: int) -> int:
-    """Round up to the nearest valid MOD channel count (4, 8, 10, 12, 14, 16)."""
-    for c in _VALID_MOD_CHANNELS:
-        if c >= n:
-            return c
-    return _VALID_MOD_CHANNELS[-1]
-
-
 def _channel_has_notes(ch_an: ChannelAnalysis) -> bool:
     if ch_an.channel_type == "DAC":
         return bool(ch_an.dac_counts)
@@ -567,7 +557,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         "auto_bpm: true",
         f"target_speed: {_suggest_target_speed(song.header.tempo_divider, song.header.tempo_modifier, ticks_per_row=1)}",
         "ticks_per_row: 1",
-        f"num_mod_channels: {_round_up_mod_channels(len(active_channels))}",
+        f"# {ModFile.round_up_channels(len(active_channels))} MOD channels, derived from the channels below;"
+        " set num_mod_channels: only to pad for a spare Fxx/Dxx channel",
         f"region: {region}",
         "",
         "channels:",

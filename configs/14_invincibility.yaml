@@ -9,7 +9,6 @@ samples_dir: "samples/"
 auto_bpm: true
 target_speed: 3
 ticks_per_row: 2
-num_mod_channels: 8
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 

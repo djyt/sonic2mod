@@ -85,7 +85,7 @@ class SmpsToModConverter:
         self.config = config
         self.synth = synth
         self.psg_synth = psg_synth
-        self.mod = ModFile(channels=config.num_mod_channels)
+        self.mod = ModFile(channels=config.mod_channel_count)
         # Structured warnings and informational messages collected during conversion.
         # Public: convert.py renders both after convert() returns.
         self.warnings: list[dict] = []

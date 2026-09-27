@@ -234,7 +234,7 @@ Per-song conversion configuration with YAML loading.
 | `target_bpm` | int | 150 | BPM (32–255), set via Fxx effect |
 | `target_speed` | int | 6 | Ticks per row (1–31), ProTracker default is 6 |
 | `ticks_per_row` | float | 6.0 | SMPS ticks per MOD row (controls time scaling) |
-| `num_mod_channels` | int | 10 | MOD channel count (4/8/10/12/14/16) |
+| `num_mod_channels` | int\|None | None | MOD channel count override (4/8/10/12/14/16); `mod_channel_count` derives it from `channels` when unset |
 | `channels` | list | [] | Per-channel `ChannelConfig` entries |
 | `dac_samples` | list | [] | DAC→instrument/note mappings |
 | `sample_list` | list\|None | None | Raw sample file entries `[inst, filename, vol, finetune]` |

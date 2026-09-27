@@ -39,7 +39,7 @@ _NOTE_NAMES = ('C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#',
 def _build_period_grid():
     grid = []
     for n in range(36):
-        period = int(round(856 / (2 ** (n / 12))))
+        period = round(856 / (2 ** (n / 12)))
         if period < 113:                      # below ProTracker's B-3 limit
             continue
         name = f"{_NOTE_NAMES[n % 12]}{1 + n // 12}"
@@ -209,7 +209,7 @@ def quantise_8bit(samples: list[float], *, shape: int = 1, dither: bool = True,
         elif shape >= 2:
             v -= 2.0 * e1 - e2
         d = v + (rng.random() - rng.random()) if dither else v
-        q = int(math.floor(d + 0.5))
+        q = math.floor(d + 0.5)
         if q > 127:
             q = 127
         elif q < -128:

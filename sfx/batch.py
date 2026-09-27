@@ -34,8 +34,18 @@ _NAME_RE = re.compile(r'^Snd([0-9A-Fa-f]{2})\s*(?:-\s*(.*))?$')
 class SfxRender:
     """One rendered SFX, held in memory until the global peak is known."""
 
-    __slots__ = ("path", "name", "left", "right", "rate", "ticks", "channels",
-                 "warnings", "truncated", "peak")
+    __slots__ = (
+        "channels",
+        "left",
+        "name",
+        "path",
+        "peak",
+        "rate",
+        "right",
+        "ticks",
+        "truncated",
+        "warnings",
+    )
 
     def __init__(self, path, name, left, right, rate, ticks, channels, warnings, truncated):
         self.path = path
@@ -85,7 +95,7 @@ def output_name(path: str) -> str:
 
 
 def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
-               psg_gain=1.0, psg_oob="extend", target_rate=44100,
+               psg_gain=1.0, psg_oob="extend", target_rate: int | None = 44100,
                taps=DEFAULT_TAPS) -> SfxRender:
     """Parse, render and resample a single SFX file."""
     song = SmpsParser().parse_file(path)
@@ -122,7 +132,7 @@ def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
 
 
 def render_all(paths, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
-               psg_oob="extend", target_rate=44100, taps=DEFAULT_TAPS,
+               psg_oob="extend", target_rate: int | None = 44100, taps=DEFAULT_TAPS,
                progress=None) -> list[SfxRender]:
     """Render every path with a single shared pair of chip instances."""
     opn2 = OPN2(mode="ym2612")
@@ -178,8 +188,20 @@ def peak_dbfs(render, scale: float) -> float:
 class AmigaSample:
     """One effect prepared as an 8-bit Paula sample."""
 
-    __slots__ = ("name", "data", "rate", "period", "note", "volume", "finetune",
-                 "repeat_offset", "repeat_length", "level", "channels", "warnings")
+    __slots__ = (
+        "channels",
+        "data",
+        "finetune",
+        "level",
+        "name",
+        "note",
+        "period",
+        "rate",
+        "repeat_length",
+        "repeat_offset",
+        "volume",
+        "warnings",
+    )
 
     def __init__(self, name, data, rate, period, note, repeat_offset, repeat_length,
                  level, channels, warnings):
@@ -218,7 +240,7 @@ def prepare_8bit(render, *, max_rate=DEFAULT_MAX_RATE, flat_rate=None,
         rate, period, note = choose_rate(mono, render.rate, energy_frac=energy_frac,
                                          max_rate=max_rate, clock=clock)
 
-    target = int(round(rate))
+    target = round(rate)
     resampled = resample(mono, render.rate, target, taps=taps) if target != render.rate else mono
 
     scaled, level = normalise(resampled)
@@ -262,7 +284,7 @@ def assign_volumes(samples) -> None:
     if loudest <= 0.0:
         return
     for s in samples:
-        s.volume = max(1, min(64, int(round(64.0 * s.level / loudest))))
+        s.volume = max(1, min(64, round(64.0 * s.level / loudest)))
 
 
 def write_8bit(samples, out_dir: str, *, clock=PAL_CLOCK) -> list[str]:

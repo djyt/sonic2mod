@@ -455,7 +455,8 @@ class SmpsToModConverter:
                         st.psg_entry = ranged               # as _convert_channel does
                     entry = st.psg_entry
                     if entry is not None:
-                        inst = entry.mod_instrument
+                        # In noise mode the instrument may be an envelope variant of the entry
+                        inst = st.instrument if st.in_noise_mode else entry.mod_instrument
                         if entry.root is not None and entry.low is not None:
                             out_idx = entry.root.value + (key - entry.low)
                         elif entry.root is not None and entry.type != "tone":
@@ -599,8 +600,20 @@ class SmpsToModConverter:
             for inst, d in sorted(rate3.items()):
                 if d['used']:
                     self.infos.append({'type': 'rate3_divider', 'instrument': inst, **d})
+            noise_env = self._derive_noise_envelopes()
+            for inst, d in sorted(noise_env.items()):
+                if d['envelope'] is not None:
+                    self.infos.append({'type': 'noise_envelope', 'instrument': inst,
+                                       'envelope': d['envelope'], 'derived': d['derived'],
+                                       'notes': d['counts'].get(d['envelope'], 0)})
+                others = {k: n for k, n in d['counts'].items() if k != d['envelope']}
+                if others:
+                    self._add_warning({'type': 'noise_envelopes', 'channel': 'PSG',
+                                       'extra_ctx': f'instrument {inst}', 'instrument': inst,
+                                       'envelope': d['envelope'], 'others': others})
             psg_samples = generate_psg_samples(
-                self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()})
+                self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
+                noise_envelopes={i: d['envelope'] for i, d in noise_env.items()})
             self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg",
                                               psg_synth.max_sample_bytes)
             self.infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
@@ -704,6 +717,49 @@ class SmpsToModConverter:
                 'span': loop_span,
             })
 
+    def _derive_noise_envelopes(self) -> dict[int, dict]:
+        """The envelope each noise instrument plays with, read from the song.
+
+        smpsPSGform only switches the channel to noise; the envelope is the driver's VoiceIndex
+        — the header voice (fTone_04 for sixteen of the eighteen PSG3 tracks, fTone_09 in Marble
+        Zone, fTone_08 in Robotnik) or the last smpsPSGvoice.  Walking the PSG channels with the
+        DriverState, every noise note votes for the label in force; an instrument's envelope is
+        the label most of its notes play with (ties to the first heard).  A psg_map entry's
+        `envelopes:` variants are their own instruments and carry their label.  A stated
+        `envelope:` on the entry overrides the vote.
+
+        Returns {instrument: {'envelope', 'derived', 'counts': {label: notes}}}; `counts` lists
+        every label the instrument played with, so the caller can warn where one sample stands
+        in for several envelopes (Credits' PSG3, which has no free slot for variants).
+        """
+        counts: dict[int, dict[str | None, int]] = {}
+        source_map = source_map_for(self.song)
+        for chan_cfg in self.config.channels:
+            channel = source_map.get(chan_cfg.source)
+            if not chan_cfg.enabled or channel is None or channel.header.channel_type != "PSG":
+                continue
+            st = DriverState.for_channel(channel, self.config)
+            for event in channel.events:
+                if event.is_effect:
+                    st.apply(event.effect)
+                elif event.is_note and not event.note.is_rest and st.in_noise_mode and st.psg_entry is not None:
+                    per = counts.setdefault(st.instrument, {})
+                    per[st.envelope] = per.get(st.envelope, 0) + 1
+
+        out: dict[int, dict] = {}
+        for entry in self.config.psg_map.values():
+            base_counts = counts.get(entry.mod_instrument, {})
+            if entry.envelope is not None:
+                envelope, derived = entry.envelope, False
+            elif base_counts:
+                envelope, derived = max(base_counts, key=lambda k: base_counts[k]), True
+            else:
+                envelope, derived = None, True
+            out[entry.mod_instrument] = {'envelope': envelope, 'derived': derived, 'counts': base_counts}
+            for label, inst in entry.envelopes.items():
+                out[inst] = {'envelope': label, 'derived': True, 'counts': counts.get(inst, {})}
+        return out
+
     def _derive_rate3_dividers(self) -> dict[int, dict]:
         """Tone-2 divider the driver writes for each rate-3 (`noise_rate: 3`) noise instrument.
 
@@ -732,7 +788,9 @@ class SmpsToModConverter:
                 elif event.is_note and not event.note.is_rest:
                     e = st.psg_ranged_entry(st.range_key(event.note.note_value - 0x81))
                     if e is not None and e.type != "tone" and e.noise_rate == 3:
-                        rec = seen.setdefault(e.mod_instrument, {'entry': e, 'notes': {}})
+                        # An envelope variant (psg_map entry's `envelopes:`) is its own instrument
+                        inst = st.instrument if st.in_noise_mode else e.mod_instrument
+                        rec = seen.setdefault(inst, {'entry': e, 'notes': {}})
                         key = (event.note.note_value, st.transpose)
                         rec['notes'][key] = rec['notes'].get(key, 0) + 1
 

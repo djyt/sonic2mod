@@ -266,24 +266,31 @@ see `docs/psg_synthesis.md`. Note: the older `psg_form_map` key is deprecated; u
 ### psg_map
 
 Maps `smpsPSGform` byte values to synthesized PSG instruments. The key is the raw
-`smpsPSGform` byte; `type` (white/periodic noise) is **auto-inferred** from bit 2 of the key.
-When `smpsPSGform $E7` appears in channel data, the PSG channel switches to the specified instrument.
+`smpsPSGform` byte, which is the SN76489 noise register: the noise **type** (bit 2) and **rate**
+(bits 0–1) are read from it, and the **envelope** is read from the song (the header voice or the
+last `smpsPSGvoice`; the label most of the instrument's notes play under).  When `smpsPSGform $E7`
+appears in channel data, the PSG channel switches to the specified instrument and stays a noise
+channel; a later `smpsPSGvoice` only changes its envelope.
 
 ```yaml
 psg_map:
-  0xE7:                    # smpsPSGform byte; bit 2=1 → white noise, bits [1:0]=3 → follow tone ch2
+  0xE7:                    # smpsPSGform byte: bit 2=1 → white noise, bits [1:0]=3 → follow tone ch2
     mod_instrument: 7      # MOD instrument slot (1-based)
     root: A2               # MOD anchor — determines target_rate AND where low plays
     low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
-    noise_rate: 3          # 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 — the LFSR divider is then
-                           #   derived from the song's own notes; nothing else to set
+    envelopes:             # optional: an envelope label that gets its own sample in noise mode
+      fTone_08: 18         #   (Scrap Brain's hi-hat); other labels play mod_instrument
     tone2_n: 1             # optional override, rate 3 only: explicit tone-ch2 divider (1–1023)
     synth_root: A3         # optional override, weaker than tone2_n: LFSR rate as a note name
-    envelope: fTone_04     # Driver envelope by name (fTone_01–fTone_09, core/driver_tables.py), or inline list
-    base_volume: 0         # SN76489 base attenuation (0=max, 15=silent)
+    envelope: fTone_04     # optional override of the derived envelope: a name (fTone_01–fTone_09,
+                           #   core/driver_tables.py) or an inline list
+    base_volume: 0         # SN76489 base attenuation (0=max, 15=silent); the default
 ```
 
-With `noise_rate: 3` the converter works the LFSR clock out from the song: PSG3 keeps writing its
+A stated `type` or `noise_rate` that contradicts the key byte warns and is ignored.  One instrument
+played with several envelopes and no variant for the others warns (`noise_envelopes`).
+
+With rate 3 the converter works the LFSR clock out from the song: PSG3 keeps writing its
 own note's divider to tone channel 2, so the value is `PSGFrequencies[note − $81 + transpose]` from
 the driver's table.  Sonic 1's `nMaxPSG` (the usual hi-hat note) is entry 69 = 223721 Hz, a divider
 of **0**, which the Sega VDP PSG clocks as N=1 (112 kHz shift rate, near-white hiss).  `convert.py`
@@ -297,7 +304,7 @@ SN76489 noise register byte encoding:
 - Bit [2]: type — 0=periodic noise, 1=white noise (auto-inferred; do not specify manually)
 - `$E0`–`$E3` = periodic noise; `$E4`–`$E7` = white noise; `$E7` is most common in Sonic 1
 
-`noise_rate` values:
+Rate values (bits 0–1 of the key byte):
 - `0` = N/512 (fixed LFSR clock, fastest preset)
 - `1` = N/1024
 - `2` = N/2048
@@ -320,10 +327,13 @@ psg_voice_map:
     synth_root: A4
 ```
 
-`root` and `mod_instrument` are required fields. `synth_root`, `low`, `high`, `envelope`,
-`base_volume`, and `vibrato` are optional. A list of entries (range-split) is also accepted,
-using the same format as `psg_map`. When `smpsPSGvoice fTone_03` appears in channel data,
-the PSG channel switches to the specified instrument. Labels not in the map are silently ignored.
+`root` and `mod_instrument` are required fields. `synth_root`, `low`, `high`, `envelope`
+(defaults to the label), `base_volume`, and `vibrato` are optional. A list of entries
+(range-split) is also accepted. Entries are always tones: when `smpsPSGvoice fTone_03` appears in
+channel data on a tone channel, the PSG channel switches to the specified instrument; on a noise
+channel (after `smpsPSGform`) the label only changes the envelope and this map is not consulted —
+give the label its own sample with `psg_map[<byte>].envelopes` instead. A noise `type` here is an
+error. Labels not in the map are silently ignored.
 
 ## Timing
 

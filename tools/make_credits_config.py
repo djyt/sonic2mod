@@ -283,8 +283,9 @@ for v in sorted(entries):
                   f"      synth_root: {smps_name(e['synth'])}"]
 lines += ["", "psg_map:"]
 for k, e in skel["psg_map"].items():
-    lines += [f"  {k}:", f"    mod_instrument: {psg_noise}", f"    root: {e['root']}", f"    noise_rate: {e['noise_rate']}",
-              f"    envelope: {e['envelope']}", f"    base_volume: {e.get('base_volume', 0)}"]
+    # Noise type and rate come from the form byte, the envelope from the song (the converter
+    # derives it and warns where one sample stands in for several envelopes).
+    lines += [f"  {k}:", f"    mod_instrument: {psg_noise}", f"    root: {e['root']}"]
 lines += ["", "psg_voice_map:"]
 by_label = defaultdict(list)
 for e in psg_entries:

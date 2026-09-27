@@ -86,7 +86,7 @@ def psg_range_entry(entries, key: int):
 class DriverState:
     """Mutable SMPS track state, advanced one coordination flag at a time."""
 
-    __slots__ = ("att", "config", "hard_panned", "instrument", "is_psg",
+    __slots__ = ("att", "config", "envelope", "hard_panned", "instrument", "is_psg", "noise_form",
                  "psg_entries", "psg_entry", "psg_label", "tl", "transpose", "voice")
 
     def __init__(self, config, *, is_psg: bool, transpose: int = 0,
@@ -102,6 +102,8 @@ class DriverState:
         self.psg_entry = None               # active PsgInstrumentEntry
         self.psg_entries = None             # its full psg_voice_map list, if it came from one
         self.psg_label: str | None = None   # "fTone_01" / "form 0xe7", for warnings
+        self.envelope: str | None = None    # the driver's VoiceIndex: header voice, then every smpsPSGvoice
+        self.noise_form: int | None = None  # the smpsPSGform byte once one ran (SMPS_Track.PSGNoise); permanent
 
     @classmethod
     def for_channel(cls, channel, config, instrument: int = 0) -> DriverState:
@@ -113,6 +115,7 @@ class DriverState:
                  volume=header.volume,
                  instrument=instrument)
         label = header.psg_voice_label
+        st.envelope = label or None
         entries = config.psg_voice_map.get(label) if label else None
         if entries:
             st.instrument = entries[0].mod_instrument
@@ -145,34 +148,43 @@ class DriverState:
             self.transpose += effect.params[0]
 
         elif kind == 'smpsPSGform':
+            # cfSetPSGNoise: the channel is a noise channel from here on (nothing in Sonic 1
+            # music turns it back) and the form byte says white/periodic and the rate.  The
+            # envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
             form_byte = effect.params[0]
+            self.noise_form = form_byte
             entry = self.config.psg_map.get(form_byte)
             if entry is not None:
-                self.instrument = entry.mod_instrument
                 self.psg_entry = entry
                 self.psg_entries = None         # smpsPSGform is not a voice-map event
                 self.psg_label = f"form {form_byte:#04x}"
+                self.instrument = entry.envelopes.get(self.envelope, entry.mod_instrument)
 
         elif kind == 'smpsPSGvoice':
+            # cfSetPSGTone: VoiceIndex changes whatever mode the channel is in.  In noise mode
+            # that only changes the envelope the noise plays with: the instrument stays the
+            # psg_map entry's, or the variant its `envelopes:` names for this label (Scrap
+            # Brain's fTone_08 hi-hat); psg_voice_map is not consulted (Credits' labels belong
+            # to PSG1/PSG2).  In tone mode the label picks the psg_voice_map instrument.
             label = effect.params[0]
-            entries = self.config.psg_voice_map.get(label)
-            # In noise mode (after smpsPSGform, or under a noise psg_voice_map entry) this
-            # only changes the envelope: a noise entry under the label is that envelope's
-            # variant (Scrap Brain's fTone_04 / fTone_08 instruments); a tone entry is
-            # ignored and the channel stays on its noise instrument (Credits, where the
-            # labels belong to PSG1/PSG2).  cfSetPSGNoise is permanent.
-            if entries is not None and not (self.in_noise_mode and entries[0].type == "tone"):
-                self.instrument = entries[0].mod_instrument
-                self.psg_entry = entries[0]
-                self.psg_entries = entries
-                self.psg_label = label
+            self.envelope = label
+            if self.in_noise_mode:
+                if self.psg_entry is not None:
+                    self.instrument = self.psg_entry.envelopes.get(label, self.psg_entry.mod_instrument)
+            else:
+                entries = self.config.psg_voice_map.get(label)
+                if entries is not None:
+                    self.instrument = entries[0].mod_instrument
+                    self.psg_entry = entries[0]
+                    self.psg_entries = entries
+                    self.psg_label = label
 
     # -- queries -------------------------------------------------------------
 
     @property
     def in_noise_mode(self) -> bool:
-        """True once a noise instrument is active; nothing in Sonic 1 music leaves it."""
-        return self.psg_entry is not None and self.psg_entry.type != "tone"
+        """True once smpsPSGform ran on this channel; nothing in Sonic 1 music leaves it."""
+        return self.noise_form is not None
 
     def range_key(self, source_semitone: int, range_space: str | None = None) -> int:
         """What a note is matched against voice_map / psg_voice_map ranges with.

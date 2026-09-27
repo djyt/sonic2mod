@@ -17,6 +17,7 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 import warnings
 from pathlib import Path
@@ -190,12 +191,17 @@ def generate_psg_samples(
     psg_synth: PsgSynthesisSettings,
     verbose: bool = False,
     rate3_dividers: dict | None = None,
+    noise_envelopes: dict | None = None,
 ) -> dict:
     """Render PSG samples for every PsgInstrumentEntry in config.psg_map.
 
     Args:
         config:    ConversionConfig — provides psg_map and region.
         psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release.
+        rate3_dividers:  {instrument: tone-2 divider} the converter derived for rate-3 noise.
+        noise_envelopes: {instrument: envelope label} the converter derived for the noise
+                         instruments (SmpsToModConverter._derive_noise_envelopes) — a psg_map
+                         entry's own instrument and each of its `envelopes:` variants.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -204,12 +210,18 @@ def generate_psg_samples(
         return {}
 
     fps = 50.0 if config.region.lower() == 'pal' else 60.0
+    noise_envelopes = noise_envelopes or {}
 
     raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
     seen: set[int] = set()
 
     for entry in config.psg_map.values():
-        _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose,
+        # The entry's own instrument, then one instrument per envelope variant it names
+        variants = [(entry.mod_instrument, noise_envelopes.get(entry.mod_instrument, entry.envelope))]
+        variants += [(inst, noise_envelopes.get(inst, label)) for label, inst in entry.envelopes.items()]
+        for inst, envelope in variants:
+            _synthesize_entry(dataclasses.replace(entry, mod_instrument=inst, envelope=envelope),
+                              psg_synth, fps, seen, raw_data, verbose=verbose,
                               rate3_dividers=rate3_dividers)
 
     # Also synthesize tone entries from psg_voice_map (smpsPSGvoice routing).

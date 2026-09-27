@@ -279,6 +279,11 @@ def main():
                 f"[bold]{info['wanted_cycle_frames']}[/bold] frames is faster than 4Fy can play "
                 f"[dim]({info['played_cycle_frames']:.1f} frames at this speed/BPM)[/dim]"
             )
+        elif info['type'] == 'noise_envelope':
+            how = "derived from the song" if info['derived'] else "stated in the config"
+            detail_lines.append(
+                f"noise instrument [bold]{info['instrument']}[/bold]: envelope "
+                f"[bold]{info['envelope']}[/bold] [dim]({how}, {info['notes']} notes)[/dim]")
         elif info['type'] == 'auto_sustain_fm':
             detail_lines.append(f"auto sustain FM [bold]{info['secs']}[/bold] s")
         elif info['type'] == 'auto_sustain_psg':
@@ -502,7 +507,21 @@ def _warn_rest_no_slot(w: dict, ctx_str: str) -> None:
     )
 
 
+def _warn_noise_envelopes(w: dict, ctx_str: str) -> None:
+    others = ", ".join(f"{k} ({n} notes)" for k, n in sorted(w['others'].items(), key=lambda kv: -kv[1]))
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]noise instrument {w['instrument']} is rendered with envelope {w['envelope']}, but the song "
+        f"also plays it with {others} — those notes get the wrong envelope[/yellow]"
+    )
+    console.print(
+        "     [green]Fix:[/green] give each of those labels its own sample: "
+        "[cyan]envelopes: {<label>: <free instrument>}[/cyan] on the psg_map entry."
+    )
+
+
 _WARNING_RENDERERS = {
+    'noise_envelopes': _warn_noise_envelopes,
     'clamp_high': _warn_clamp,
     'clamp_low': _warn_clamp,
     'map_gap': _warn_map_gap,

@@ -23,7 +23,8 @@ from collections import Counter, defaultdict
 import yaml
 
 sys.path.insert(0, ".")
-from core.driver_state import chip_pitch
+from core.config import ChannelConfig, ConversionConfig
+from core.driver_state import source_map, walk_channel
 from core.smps_parser import SmpsParser
 from core.tables import semitone_to_note_name, synth_note_name
 
@@ -79,31 +80,26 @@ def windows(pitches):
 # ---- chip pitches per FM voice and per PSG envelope label
 fm_notes: dict[int, Counter] = defaultdict(Counter)   # voice index -> chip pitch -> count
 psg_notes: dict[str, Counter] = defaultdict(Counter)
-for ch in song.channels:
+_bare = ConversionConfig()                    # no maps: the walk only tracks the driver's state
+for source, ch in source_map(song).items():
     kind = ch.header.channel_type
     if kind == "DAC":
         continue
-    tr, noise = ch.header.pitch_offset, False
-    cur: int | str | None = None
-    if kind == "PSG":
-        cur = "$00"
-    for ev in ch.events:
-        if ev.is_effect:
-            k = ev.effect.effect_type
-            if k == "smpsSetvoice":
-                cur = ev.effect.params[0]
-            elif k == "smpsChangeTransposition":
-                tr += ev.effect.params[0]
-            elif k == "smpsPSGvoice" and not noise:
-                cur = ev.effect.params[0]
-            elif k == "smpsPSGform":
-                cur, noise = None, True         # noise from here on (cfSetPSGNoise is permanent)
-        elif ev.is_note and not ev.note.is_rest and cur is not None:
-            src = ev.note.note_value - 0x81
-            if kind == "FM" and isinstance(cur, int):
-                fm_notes[cur][chip_pitch(src, tr, False)] += 1
-            else:                               # PSG tone (noise sections set cur = None above)
-                psg_notes[str(cur)][chip_pitch(src, tr, True)] += 1
+    # The converter's DriverState walk gives the voice, the transposition and noise mode; the
+    # PSG label is every smpsPSGvoice as written ("$00" before the first), as the driver has it
+    label = "$00"
+    for event, st, res in walk_channel(ch, _bare, ChannelConfig(source=source, mod_channel=0)):
+        if event.is_effect:
+            if event.effect.effect_type == "smpsPSGvoice" and not st.in_noise_mode:
+                label = event.effect.params[0]
+            continue
+        if res is None or st.in_noise_mode:
+            continue
+        if kind == "FM":
+            if st.voice is not None:
+                fm_notes[st.voice][res.chip] += 1
+        else:                                   # PSG tone (noise sections contribute nothing)
+            psg_notes[str(label)][res.chip] += 1
 
 # ---- PSG tone entries packed by range
 psg_entries = []

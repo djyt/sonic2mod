@@ -36,8 +36,8 @@ import yaml
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.config import ConversionConfig
-from core.driver_state import chip_pitch
+from core.config import ChannelConfig, ConversionConfig
+from core.driver_state import source_map, walk_channel
 from core.smps_parser import SmpsParser
 from core.tables import parse_smps_note, parse_synth_note, semitone_to_note_name, synth_note_name
 
@@ -63,34 +63,27 @@ def chip_notes(cfg: ConversionConfig):
     conv._extend_looping_channels()
     out: dict[tuple, list[tuple[int, int]]] = defaultdict(list)     # every (source, chip) pair
     labels = {str(k) for k in cfg.psg_voice_map}
-    for ch in song.channels:
+    cfg_by_source = {c.source: c for c in cfg.channels}
+    for source, ch in source_map(song).items():
         kind = ch.header.channel_type
         if kind == "DAC":
             continue
         name = ch.header.label.rsplit("_", 1)[-1]
-        tr = ch.header.pitch_offset
-        cur = None
-        noise = False
-        if kind == "PSG":
-            cur = ch.header.psg_voice_label or "$00"
-        for ev in ch.events:
-            if ev.is_effect:
-                k = ev.effect.effect_type
-                if k == "smpsSetvoice":
-                    cur = ev.effect.params[0]
-                elif k == "smpsChangeTransposition":
-                    tr += ev.effect.params[0]
-                elif k == "smpsPSGvoice" and not noise and str(ev.effect.params[0]) in labels:
-                    cur = ev.effect.params[0]          # an unknown label leaves the entry in force (as the converter does)
-                elif k == "smpsPSGform":
-                    noise = True
-            elif ev.is_note and not ev.note.is_rest and not noise and cur is not None:
-                src = ev.note.note_value - 0x81
-                pitch = chip_pitch(src, tr, kind == "PSG")
-                if kind == "FM":
-                    out[("fm", cur, name)].append((src, pitch))
-                elif str(cur) in labels:
-                    out[("psg", str(cur), name)].append((src, pitch))
+        chan_cfg = cfg_by_source.get(source) or ChannelConfig(source=source, mod_channel=0)
+        header_label = ch.header.psg_voice_label
+        # The same DriverState walk as the converter: st.voice is the FM voice, st.psg_label the
+        # psg_voice_map entry in force (an unknown smpsPSGvoice label leaves it), res.chip the
+        # pitch the chip plays; a channel in noise mode contributes nothing.
+        for _event, st, res in walk_channel(ch, cfg, chan_cfg):
+            if res is None or st.in_noise_mode:
+                continue
+            if kind == "FM":
+                if st.voice is not None:
+                    out[("fm", st.voice, name)].append((res.source, res.chip))
+            else:
+                cur = st.psg_label if st.psg_label else (None if header_label else "$00")
+                if cur is not None and cur in labels:
+                    out[("psg", cur, name)].append((res.source, res.chip))
     return out
 
 

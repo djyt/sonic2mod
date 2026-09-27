@@ -224,17 +224,22 @@ mod_pattern_breaks:
 
 
 # -------------------------------------------------------------------------------------------------
-# Amiga build (convert.py --merged): 9 channels -> 4.  Nine voices and nothing folds cleanly
-# (tools/merge_survey.py): FM4+FM5 harmonise at ten different intervals (31 composites), the
-# bass lands on every drum hit but would cost 18 mixed samples.  So the merged build keeps the
-# drums, the bass (FM2), the lead (FM1) and one harmony line (FM4); FM3's chords, FM5's harmony
-# and the PSG1/PSG2 counter-lines are dropped.  The PSG3 hi-hat (262 hits, its 4-event loop
-# replayed) rides the drums: 169 on a hit as kick+hat / snare+hat, 29 over silence, and 64
-# over a drum's decay, which they cut (cut_primary) as they would on any 4-channel Amiga.
-# A 3-channel build drops FM4 as well.
+# Amiga build (convert.py --merged): 9 channels -> 4.
+#   FM5+FM4: FM4 sounds with FM5 on every one of its 132 notes - the early chords (bars 0-46) are
+#   unison, unison-detuned, a third and a fourth (4 composites, 108 chords); from bar 47 FM4 drops
+#   below FM5 at seven rarer intervals (7 composites, 24 chords).  32 FM5 re-attacks under a held
+#   FM4 note re-attack the chord.  FM3 joins the chord on 25 notes but plays 89 of its 130 while
+#   FM5 sounds, so it is dropped rather than folded; PSG1/PSG2 are a pair of their own (59 of 75
+#   together) that a fifth channel could carry.
+#   DAC+PSG3: the hi-hat (262 hits, its 4-event loop replayed) rides the drums: 169 on a hit as
+#   kick+hat / snare+hat, 29 over silence, 64 over a drum's decay, which they cut (cut_primary)
+#   as on any 4-channel Amiga.
+# tools/merge_survey.py has every pair's counts.
 # -------------------------------------------------------------------------------------------------
 merge:
   - primary: DAC
     followers: [PSG3]
     cut_primary: true
-merge_drop: [FM3, FM5, PSG1, PSG2]
+  - primary: FM5
+    followers: [FM4]
+merge_drop: [FM3, PSG1, PSG2]

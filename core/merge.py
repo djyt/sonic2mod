@@ -18,7 +18,8 @@ combination, rendered on the YM2612 with one channel per voice keyed together
 does.  A pair that is not two FM voices (DAC + PSG hi-hat, FM + PSG tone) is mixed from the
 two finished samples instead, the follower resampled by the period ratio of the two notes.
 
-What merges, per primary note-on at tick t:
+What merges, per primary note-on at tick t (and per follower note-on while the primary is
+silent):
   - a follower note-on at t with the same duration        → composite (the usual case)
   - a follower note-on at t that is longer                 → composite; the follower's tail is
                                                              cut where the primary's next event
@@ -30,7 +31,11 @@ What merges, per primary note-on at tick t:
   - no follower note-on, follower resting                  → the primary alone (right)
   - no follower note-on, follower still sounding           → the primary alone (`held`: the ring
                                                              is lost)
-  - a follower note-on with no primary note-on             → lost (`orphan`)
+  - a follower note-on while the primary sounds            → lost (`orphan`)
+  - a follower note-on while the primary is silent         → placed on the merged channel as
+                                                             the follower's own note (`solo`);
+                                                             a primary note-on before it ends
+                                                             re-takes the channel (`solo_cut`)
 `tools/merge_survey.py` measures every channel pair of a song against these rules before a
 group is written; the converter reports the same counts for the groups it was given.
 
@@ -48,6 +53,7 @@ conversion) sees the composite instruments the same way.
 from __future__ import annotations
 
 import bisect
+import copy
 import math
 from dataclasses import dataclass, field
 
@@ -57,6 +63,7 @@ from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, to_int8
 from .resample import resample
+from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
 
 PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL steps (0.75 dB each)
@@ -124,6 +131,8 @@ class NoteOn:
     voice: int | None = None
     level_db: float | None = None
     vibrato: bool = False
+    note_value: int = 0x81    # the SMPS note byte
+    state: object = None      # the follower's DriverState at this note (a copy), for a solo note
 
 
 def channel_notes(song, config, source: str, pan_law_db: float) -> tuple[dict[int, NoteOn], list[int]]:
@@ -140,6 +149,8 @@ def channel_notes(song, config, source: str, pan_law_db: float) -> tuple[dict[in
         vib = False
         last: NoteOn | None = None
         for event, st, res in walk_channel(channel, config, chan_cfg):
+            if getattr(event, "merged", None) is not None:
+                continue                                    # a solo note spliced in from a follower
             if event.is_effect:
                 k = event.effect.effect_type
                 if k in ("smpsModSet", "smpsModOn"):
@@ -162,13 +173,15 @@ def channel_notes(song, config, source: str, pan_law_db: float) -> tuple[dict[in
                 if d is None:
                     continue
                 n = NoteOn(tick, note.duration, d.mod_instrument,
-                           MOD_NOTE_MAP.get(d.mod_note, ModNote.C3).value, "DAC")
+                           MOD_NOTE_MAP.get(d.mod_note, ModNote.C3).value, "DAC",
+                           note_value=note.note_value)
             else:
                 assert res is not None
                 n = NoteOn(tick, note.duration, res.instrument, res.index, kind,
                            chip=None if res.path == "psg_fixed" else res.chip,
                            detune=res.detune, tl=st.tl, hard_panned=st.hard_panned,
-                           voice=st.voice, level_db=st.level_db(pan_law_db), vibrato=vib)
+                           voice=st.voice, level_db=st.level_db(pan_law_db), vibrato=vib,
+                           note_value=note.note_value, state=copy.copy(st))
             notes[tick] = n
             last = n
     finally:
@@ -189,18 +202,21 @@ class PairStats:
     held: int = 0             # primary note-ons under a follower note that keeps sounding
     shorter: int = 0          # follower note-ons at the primary's tick that end sooner
     truncated: int = 0        # follower notes cut by the primary's rest
-    orphans: int = 0          # follower note-ons with no primary note-on
+    orphans: int = 0          # follower note-ons while the primary sounds, with no primary note-on
+    solo: int = 0             # follower note-ons while the primary is silent: placed on their own
+    solo_cut: int = 0         # solo notes a primary note-on re-takes the channel from
     vibrato: int = 0          # pairs whose modulation state differs
     keys: set = field(default_factory=set)   # distinct composite keys the pairs need
+    solo_notes: dict = field(default_factory=dict)   # {tick: NoteOn} the solo notes
 
     @property
     def lost(self) -> int:
         """Follower notes the merged channel cannot play as the hardware did."""
-        return self.held + self.shorter + self.truncated + self.orphans
+        return self.held + self.shorter + self.truncated + self.orphans + self.solo_cut
 
     @property
     def follower_notes(self) -> int:
-        return self.paired + self.shorter + self.orphans
+        return self.paired + self.shorter + self.orphans + self.solo
 
     @property
     def clean(self) -> bool:
@@ -266,7 +282,18 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
         if f.vibrato != p.vibrato:
             st.vibrato += 1
         st.keys.add((p.instrument, p.index, follower_key(p, f, level_scale(f))))
-    st.orphans = sum(1 for t in f_ticks if t not in p_notes)
+    p_ticks = sorted(p_notes)
+    for t in f_ticks:
+        if t in p_notes:
+            continue
+        if _sounding_at(p_ticks, p_notes, t) is not None:
+            st.orphans += 1
+            continue
+        st.solo += 1
+        st.solo_notes[t] = f_notes[t]
+        nxt = bisect.bisect_right(p_ticks, t)
+        if nxt < len(p_ticks) and p_ticks[nxt] < t + f_notes[t].duration:
+            st.solo_cut += 1
     st.truncated = sum(1 for r in p_rests if _sounding_at(f_ticks, f_notes, r) is not None)
     return st
 
@@ -308,6 +335,19 @@ class MergePlan:
     ticks: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> composite
     stats: list[PairStats] = field(default_factory=list)
     unsupported: list[dict] = field(default_factory=list)
+    solo: dict[tuple[str, int], tuple[str, NoteOn]] = field(default_factory=dict)  # (primary, tick) -> (follower, note)
+    unused: set[int] = field(default_factory=set)   # instruments no note of the merged build plays
+    blank_after_mix: set[int] = field(default_factory=set)   # unused, but a pcm composite is mixed from them
+
+    @property
+    def pcm_sources(self) -> set[int]:
+        """Instruments the mixed composites are made from (they must exist when the mix runs)."""
+        out: set[int] = set()
+        for c in self.composites.values():
+            if c.fm is None:
+                out.add(c.key[1])
+                out.update(k[1] for k in c.key[3])
+        return out
 
     def instrument_at(self, source: str, tick: int, default: int) -> int:
         return self.ticks.get((source, tick), default)
@@ -398,8 +438,69 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                 plan.composites[key] = comp
             comp.notes += 1
             plan.ticks[(g.primary, t)] = comp.inst
+        _splice_solo_notes(plan, song, g, p_notes, p_rests)
     config.merge_plan = plan
+    unused = _unused_instruments(plan, song, config)
+    plan.blank_after_mix = unused & plan.pcm_sources
+    plan.unused = unused - plan.pcm_sources
     return plan
+
+
+def _splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, NoteOn], p_rests: list[int]) -> None:
+    """Put every follower note that starts while the primary is silent into the primary's event
+    stream as the follower's own note (walk_channel resolves it from the NoteOn), followed by
+    the follower's rest where nothing of the primary takes the channel back."""
+    channel = source_map(song)[g.primary]
+    p_ticks = sorted(p_notes)
+    rest_ticks = set(p_rests)
+    events = channel.events
+    for st in plan.stats:
+        if st.primary != g.primary:
+            continue
+        for t, n in sorted(st.solo_notes.items()):
+            if (g.primary, t) in plan.solo:
+                continue                                    # an earlier follower already took this tick
+            plan.solo[(g.primary, t)] = (st.follower, n)
+            ev = SmpsEvent(note=SmpsNote(note_value=n.note_value, duration=n.duration), tick_position=t)
+            ev.merged = n                                   # type: ignore[attr-defined]
+            # The primary's own rest at this tick would put a C00 in the note's cell
+            events[:] = [e for e in events if not (e.tick_position == t and e.is_note and e.note.is_rest
+                                                   and getattr(e, "merged", None) is None)]
+            _insert_event(events, ev)
+            end = t + n.duration
+            nxt = bisect.bisect_right(p_ticks, t)
+            primary_next = p_ticks[nxt] if nxt < len(p_ticks) else None
+            if end not in p_notes and end not in rest_ticks and (primary_next is None or end < primary_next):
+                rest = SmpsEvent(note=SmpsNote(note_value=0x80, duration=0, is_rest=True), tick_position=end)
+                rest.merged = NoteOn(end, 0, 0, 0, n.kind)  # type: ignore[attr-defined]
+                _insert_event(events, rest)
+                rest_ticks.add(end)
+
+
+def _insert_event(events: list, ev) -> None:
+    """Insert after every event at or before its tick (the primary's flags at that tick stay ahead)."""
+    i = bisect.bisect_right([e.tick_position for e in events], ev.tick_position)
+    events.insert(i, ev)
+
+
+def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
+    """Instruments the merged build renders nothing for: named by the maps, the DAC mapping or
+    the sample list, but played by no note of a channel that stays in the output."""
+    used: set[int] = set(plan.instruments)
+    smap = source_map(song)
+    dac_map = {d.name: d.mod_instrument for d in config.dac_samples}
+    for chan_cfg in config.channels:
+        channel = smap.get(chan_cfg.source)
+        if not chan_cfg.enabled or channel is None:
+            continue
+        for event, _st, res in walk_channel(channel, config, chan_cfg):
+            if res is not None:
+                used.add(res.instrument)
+            elif event.is_note and event.note.is_dac and event.note.dac_name in dac_map:
+                used.add(plan.instrument_at(chan_cfg.source, event.tick_position, dac_map[event.note.dac_name]))
+    named = set(fm_catalogue(song, config).instruments) | set(psg_catalogue(config))
+    named |= set(dac_map.values()) | {e[0] for e in (config.sample_list or [])}
+    return named - used
 
 
 def refresh_ticks(plan: MergePlan, song, config, *, pan_law_db: float,
@@ -436,6 +537,15 @@ def refresh_ticks(plan: MergePlan, song, config, *, pan_law_db: float,
                 continue
             comp.notes += 1
             plan.ticks[(g.primary, t)] = comp.inst
+        # The solo notes were spliced before the loop bodies were extended; the replay carried
+        # them along.  Say so where the extended follower disagrees.
+        spliced = {ev.tick_position for ev in source_map(song)[g.primary].events
+                   if getattr(ev, "merged", None) is not None and not ev.note.is_rest}
+        expected: set[int] = set()
+        for f, f_notes in followers:
+            stats = pair_channels(p_notes, [], f_notes, [], g.primary, f, level_scale)
+            expected |= set(stats.solo_notes)
+        missing.extend(("solo", g.primary, t) for t in sorted(expected - spliced))
     return missing
 
 
@@ -503,4 +613,6 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         mod.samples[comp.inst - 1] = sample
         if comp.entry is not None:
             comp.entry[2] = vol
+    for inst in plan.blank_after_mix:            # a source no note plays once its composites exist
+        mod.samples[inst - 1] = ModSample("")
     return problems

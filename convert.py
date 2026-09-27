@@ -313,9 +313,14 @@ def main():
                 f"merged [bold]{info['label']}[/bold]: {info['paired']} follower notes folded into "
                 f"[bold]{len(info['composites'])}[/bold] composite instrument"
                 f"{'s' if len(info['composites']) != 1 else ''}, "
-                f"{info['alone']} notes the primary plays alone")
+                f"{info['alone']} notes the primary plays alone"
+                + (f", {info['solo']} follower notes placed on their own" if info.get('solo') else ""))
             for inst, notes, detail in info['composites']:
                 detail_lines.append(f"  [dim]inst {inst:2d}  {notes:3d} notes  {_escape(detail)}[/dim]")
+        elif info['type'] == 'merge_unused':
+            detail_lines.append(
+                f"[dim]not rendered: instrument{'s' if len(info['instruments']) != 1 else ''} "
+                f"{', '.join(str(i) for i in info['instruments'])} (no note of the merged build plays them)[/dim]")
 
     loop_str = (f"  ·  loop [dim]→[/dim] pattern [bold]{loop_target}[/bold]"
                 if loop_target is not None else "")
@@ -525,10 +530,11 @@ def _warn_sample_truncated(w: dict, ctx_str: str) -> None:
 
 def _warn_merge_lost(w: dict, ctx_str: str) -> None:
     parts = []
-    for key, what in (('orphans', "start with no primary note (lost)"),
+    for key, what in (('orphans', "start while the primary sounds (lost)"),
                       ('held', "ring under a primary note-on (ring lost)"),
                       ('shorter', "end before the primary's note (played alone)"),
-                      ('truncated', "are cut by the primary's rest")):
+                      ('truncated', "are cut by the primary's rest"),
+                      ('solo_cut', "play alone but are cut by the primary's next note")):
         if w[key]:
             parts.append(f"{w[key]} {what}")
     console.print(

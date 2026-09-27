@@ -819,12 +819,21 @@ leave the output and the primary plays a composite instrument wherever a followe
 | note-on, shorter | the primary alone: a composite cannot key one voice off early | `shorter` |
 | none, resting | the primary alone (right) | `alone` |
 | none, still sounding | the primary alone; the follower's ring is lost | `held` |
-| note-on with no primary note-on | lost | `orphan` |
+| note-on while the primary sounds, no primary note-on | lost | `orphan` |
+| note-on while the primary is silent | the follower's own note, spliced into the primary's event stream with the follower's instrument, MOD note and level (`walk_channel` yields it with the follower's state); the follower's rest follows it unless the primary takes the channel back first | `solo` (`solo_cut` when a primary note-on ends it early) |
 
 A pair is clean when nothing is lost; `tools/merge_survey.py` prints the counts for every
-ordered pair of a song's channels and suggests groups (never one with orphans). Follower notes
-whose modulation state differs from the primary's are counted (`vibrato`) but play with the
-primary's `4xy`.
+ordered pair of a song's channels and suggests groups (never one with orphans). Two channels
+that never sound at once are a clean pair with nothing but solo notes: they simply share the
+MOD channel. Follower notes whose modulation state differs from the primary's are counted
+(`vibrato`) but play with the primary's `4xy`; a solo note carries no vibrato.
+
+The followers stay in the walks of the merged build (`enabled_channels` yields them while
+`merge_active`) so their instruments keep their baked levels, envelopes and rendering pitches,
+which the composites and solo notes are made from; only `_convert_all_channels` skips them.
+Instruments no note of the merged build plays are dropped from the catalogue before rendering
+(`MergePlan.unused`, reported as "not rendered"); a sample a pcm composite is mixed from is
+kept until the mix is done and blanked after.
 
 **Composite instruments.** One per distinct key, allocated from the free instrument slots:
 
@@ -835,8 +844,11 @@ primary's `4xy`.
   primary's) added to the frequency word as `FMUpdateFreq` does, and its carrier TL the
   follower's track level relative to the primary's (a hard pan counts 4 steps). The sample is
   rendered at the level the composite's own notes play most (`_plan_fm_render_levels` counts it
-  like any instrument) and its `sample_list` volume is the primary's, moved by the difference
-  between the composite's and the primary instrument's baked levels.
+  like any instrument) and its `sample_list` volume is the primary's times the composite's
+  peak over its primary layer's alone (the generator renders that layer by itself too), moved by
+  the difference between the composite's and the primary instrument's baked levels: the primary
+  plays as loud as it did and the follower adds to it as the hardware sum did.  Past 64 the
+  volume is clamped and `merge_headroom` says by how much.
 - anything else → `("pcm", primary instrument, primary MOD note, (follower instrument, follower
   MOD note, level gain)...)`: mixed by `mix_pcm_composites` once every sample is in. A MOD
   sample triggered at note n plays at `amiga_clock / PERIOD[n]` whatever rate it was made at, so
@@ -853,9 +865,12 @@ the plan directly). After `_extend_looping_channels` the tick map is rebuilt (`r
 a composite the extended song would need that the plan lacks is reported.
 
 **Verification.** The reference MOD is untouched by all this; the merged build is a second
-regression case per song that has a `merge:` section (`<name>_merged`). `vgm_compare.py` audits
-per channel against the VGZ, so a merged channel would have to be compared against the sum of
-its source channels — not done yet.
+regression case per song that has a `merge:` section (`<name>_merged`).
+`tools/vgm_compare.py <config> <vgz> --merged` renders each merged MOD channel and, with a
+combined mute mask, the sum of the chip channels folded onto it, and reports whole-song balance
+and audio onsets per channel (the per-note audit needs one note stream per channel, so it is
+the reference build's).  Title Screen after the volume rule above: every merged channel within
+1.2 dB of its chip sum.
 
 ## SMPS Note Range to MOD Range
 

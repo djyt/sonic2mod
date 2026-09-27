@@ -18,7 +18,7 @@ sustain pre-passes, the noise / rate-3 derivations and `resolve_synth_roots` all
 one answer.
 
 `DriverState` tracks only what every caller needs: the hardware level, the pan, the
-driver transpose, the current FM voice and the active PSG instrument entry.  State
+driver transpose, the detune, the current FM voice and the active PSG instrument entry.  State
 that is only meaningful while emitting MOD data (note fill, vibrato, cursor) stays
 in the converter.
 """
@@ -200,8 +200,8 @@ def resolve_synth_roots(song, config) -> list[dict]:
 class DriverState:
     """Mutable SMPS track state, advanced one coordination flag at a time."""
 
-    __slots__ = ("att", "config", "envelope", "hard_panned", "instrument", "is_psg", "noise_form",
-                 "psg_entries", "psg_entry", "psg_label", "tl", "transpose", "voice")
+    __slots__ = ("att", "config", "detune", "envelope", "hard_panned", "instrument", "is_psg",
+                 "noise_form", "psg_entries", "psg_entry", "psg_label", "tl", "transpose", "voice")
 
     def __init__(self, config, *, is_psg: bool, transpose: int = 0,
                  volume: int = 0, instrument: int = 0):
@@ -211,6 +211,7 @@ class DriverState:
         self.tl = 0 if is_psg else volume   # YM2612 TL offset, 0-127
         self.att = volume if is_psg else 0  # SN76489 attenuation, 0-15
         self.hard_panned = False
+        self.detune = 0                     # smpsDetune / smpsAlterNote: raw FNUM (PSG: divider) offset
         self.voice: int | None = None       # smpsSetvoice index
         self.instrument = instrument        # MOD instrument slot currently routed to
         self.psg_entry = None               # active PsgInstrumentEntry
@@ -257,6 +258,12 @@ class DriverState:
 
         elif kind == 'smpsPan':
             self.hard_panned = pan_is_hard(effect.params)
+
+        elif kind == 'smpsAlterNote':
+            # SMPS_Track.Detune: added to the frequency word the driver writes (about 10 cents
+            # per unit on FM).  Not a semitone: it never moves a note or a range lookup; it is
+            # what a chorus pair's beating and a composite layer's FNUM offset come from.
+            self.detune = effect.params[0]
 
         elif kind == 'smpsChangeTransposition':
             self.transpose += effect.params[0]
@@ -366,6 +373,7 @@ class ResolvedNote:
     key: int                 # what the ranges were matched against (DriverState.range_key)
     chip: int                # the real pitch the chip plays (chip_pitch)
     total_transpose: int     # driver transpose + the channel config's transpose
+    detune: int = 0          # the track's smpsDetune in force (raw FNUM / divider units)
 
     @property
     def clamped(self) -> bool:
@@ -412,7 +420,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     if raw is None:
         raw = source_semitone + total
     return ResolvedNote(inst, max(0, min(35, raw)), raw, path, entry,
-                        source_semitone, key, chip, total)
+                        source_semitone, key, chip, total, st.detune)
 
 
 def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):

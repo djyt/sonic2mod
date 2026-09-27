@@ -191,10 +191,8 @@ def main():
     _row("Input", source, f"{len(paths)} SFX")
 
     if args.eightbit:
-        if args.flat_rate:
-            rate_label = f"flat {args.flat_rate:g} Hz"
-        else:
-            rate_label = f"auto rate ≤ {args.max_rate:g} Hz"
+        rate_label = (f"flat {args.flat_rate:g} Hz" if args.flat_rate
+                      else f"auto rate ≤ {args.max_rate:g} Hz")
         dither_label = "no dither" if args.no_dither else f"TPDF dither, shape {args.shape}"
         _row("Render", f"{args.fps:g} Hz tick · {rate_label} · signed 8-bit mono",
              f"per-sample normalise · DC removed · {dither_label}")
@@ -219,17 +217,18 @@ def main():
             _error(str(e))
 
     if args.eightbit:
-        samples = []
         with console.status("[dim]Preparing 8-bit samples…[/dim]", spinner="dots"):
-            for r in renders:
-                samples.append(prepare_8bit(
+            samples = [
+                prepare_8bit(
                     r,
                     max_rate=args.max_rate,
                     flat_rate=args.flat_rate,
                     shape=args.shape,
                     dither=not args.no_dither,
                     taps=args.taps,
-                ))
+                )
+                for r in renders
+            ]
         assign_volumes(samples)
 
         console.print()

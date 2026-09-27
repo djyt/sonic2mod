@@ -459,7 +459,10 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
         elif event.is_note and not event.note.is_rest and not event.note.is_dac:
             res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source)
             if plan is not None:
-                res.instrument = plan.instrument_at(chan_cfg.source, event.tick_position, res.instrument)
+                if (chan_cfg.source, event.tick_position) in plan.spliced:
+                    res = None          # this note now plays on its primary's channel (a solo note)
+                else:
+                    res.instrument = plan.instrument_at(chan_cfg.source, event.tick_position, res.instrument)
         yield event, st, res
 
 

@@ -17,7 +17,6 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
-import dataclasses
 import sys
 import warnings
 from pathlib import Path
@@ -28,6 +27,7 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
 from core.driver_tables import PSG_ENVELOPES_BY_NAME
+from core.instruments import psg_catalogue
 from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
@@ -60,13 +60,10 @@ def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[
     return list(e)  # already a list
 
 
-def _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose: bool = False,
+def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
                       rate3_dividers: dict | None = None):
-    """Render one PsgInstrumentEntry into raw_data. No-op if inst already seen."""
+    """Render one PsgInstrumentEntry (a catalogue instrument's) into raw_data."""
     inst_num = entry.mod_instrument
-    if inst_num in seen:
-        return
-    seen.add(inst_num)
 
     # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
     # Noise and tone both use this. For noise, this is the only pitch-relevant parameter.
@@ -196,7 +193,7 @@ def generate_psg_samples(
     rate3_dividers: dict | None = None,
     noise_envelopes: dict | None = None,
 ) -> dict:
-    """Render PSG samples for every PsgInstrumentEntry in config.psg_map.
+    """Render a PSG sample for every instrument in the config's catalogue.
 
     Args:
         config:    ConversionConfig — provides psg_map and region.
@@ -216,22 +213,12 @@ def generate_psg_samples(
     noise_envelopes = noise_envelopes or {}
 
     raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
-    seen: set[int] = set()
 
-    for entry in config.psg_map.values():
-        # The entry's own instrument, then one instrument per envelope variant it names
-        variants = [(entry.mod_instrument, noise_envelopes.get(entry.mod_instrument, entry.envelope))]
-        variants += [(inst, noise_envelopes.get(inst, label)) for label, inst in entry.envelopes.items()]
-        for inst, envelope in variants:
-            _synthesize_entry(dataclasses.replace(entry, mod_instrument=inst, envelope=envelope),
-                              psg_synth, fps, seen, raw_data, verbose=verbose,
-                              rate3_dividers=rate3_dividers)
-
-    # Also synthesize tone entries from psg_voice_map (smpsPSGvoice routing).
-    for entries in config.psg_voice_map.values():
-        for entry in entries:
-            _synthesize_entry(entry, psg_synth, fps, seen, raw_data, verbose=verbose,
-                              rate3_dividers=rate3_dividers)
+    # One render per catalogue instrument: each psg_map entry's own instrument, then its
+    # envelope variants, then the psg_voice_map tone entries (core.instruments.psg_catalogue).
+    for spec in psg_catalogue(config, noise_envelopes).values():
+        _synthesize_entry(spec.entry, psg_synth, fps, raw_data, verbose=verbose,
+                          rate3_dividers=rate3_dividers)
 
     # --- Quantise, each instrument to its own full 8 bits ---
     # The level is the sample_list volume's job (measured against the VGZ); the noise channel

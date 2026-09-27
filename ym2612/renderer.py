@@ -128,15 +128,28 @@ def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> lis
     return sustain_samples + release_samples
 
 
-def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channel: int):
-    """Key-on → sustain → key-off → release → mono ``array('i')``.
+def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels):
+    """Key-on → sustain → key-off → release → mono ``array('i')``, every channel in
+    `channels` keyed together (an int: that one channel).
 
     Equal to ``_to_mono(_render_raw(...))`` value for value; the fold runs in C.
     """
-    opn2.key_on(channel)
+    if isinstance(channels, int):
+        channels = (channels,)
+    for ch in channels:
+        opn2.key_on(ch)
     sustain = opn2.render_mono(sustain_n)
-    opn2.key_off(channel)
+    for ch in channels:
+        opn2.key_off(ch)
     return sustain + opn2.render_mono(release_n)
+
+
+def detuned_fnum_block(fnum: int, block: int, fnum_offset: int) -> tuple[int, int]:
+    """The frequency word the driver writes with an smpsAlterNote detune: the offset is added
+    to the whole block|fnum word (FMUpdateFreq), so it can carry into the block."""
+    word = ((block & 0x7) << 11 | (fnum & 0x7FF)) + fnum_offset
+    word = max(0, min(0x3FFF, word))
+    return word & 0x7FF, (word >> 11) & 0x7
 
 
 def _normalize_int8(mono: Sequence[int]) -> bytes:
@@ -160,6 +173,57 @@ def _resample(mono, from_rate: int, to_rate: int) -> array.array:
 # Public render functions
 # ---------------------------------------------------------------------------
 
+def render_layers(
+    layers: Sequence[tuple[SmpsVoice, int, int, int]],
+    mod_note_index: int,
+    sustain_secs: float = 1.5,
+    release_secs: float = 0.5,
+    target_rate: int | None = None,
+    opn2: OPN2 | None = None,
+    channel: int = 0,
+    clock_rate: int = _CLOCK_RATE,
+) -> tuple[array.array, int]:
+    """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
+
+    Each layer is (voice, semitones above `mod_note_index`, FNUM detune, carrier TL offset);
+    layer i is programmed on YM2612 channel `channel` + i, all are keyed on and off together
+    and the chip sums them as the hardware does.  One layer is an ordinary note render.
+
+    ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
+    used to be, so the callers' trim / peak / int8 steps are unchanged.
+    """
+    native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
+    if not 1 <= len(layers) <= 6 - channel:
+        raise ValueError(f"{len(layers)} layers do not fit on channels {channel}..5")
+
+    if opn2 is None:
+        opn2 = OPN2(mode="ym2612")
+    else:
+        opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
+
+    channels = []
+    for i, (voice, semitones, fnum_offset, tl_offset) in enumerate(layers):
+        ch = channel + i
+        program_voice(opn2, voice, ch, tl_offset=tl_offset)
+        fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate)
+        if fnum_offset:
+            fnum, block = detuned_fnum_block(fnum, block, fnum_offset)
+        _set_freq(opn2, fnum, block, ch)
+        channels.append(ch)
+
+    sustain_n = math.ceil(native_rate * sustain_secs)
+    release_n = math.ceil(native_rate * release_secs)
+    mono      = _render_raw_mono(opn2, sustain_n, release_n, channels)
+
+    if target_rate is not None and target_rate != native_rate:
+        mono     = _resample(mono, native_rate, target_rate)
+        out_rate = target_rate
+    else:
+        out_rate = native_rate
+
+    return mono, out_rate
+
+
 def _render_pipeline(
     voice: SmpsVoice,
     mod_note_index: int,
@@ -171,34 +235,9 @@ def _render_pipeline(
     clock_rate: int = _CLOCK_RATE,
     tl_offset: int = 0,
 ) -> tuple[array.array, int]:
-    """Common synthesis pipeline → (mono, out_rate) before int8 packing.
-
-    ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
-    used to be, so the callers' trim / peak / int8 steps are unchanged.
-    """
-    native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
-
-    if opn2 is None:
-        opn2 = OPN2(mode="ym2612")
-    else:
-        opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
-
-    program_voice(opn2, voice, channel, tl_offset=tl_offset)
-
-    fnum, block = note_to_fnum_block(mod_note_index, clock_rate)
-    _set_freq(opn2, fnum, block, channel)
-
-    sustain_n = math.ceil(native_rate * sustain_secs)
-    release_n = math.ceil(native_rate * release_secs)
-    mono      = _render_raw_mono(opn2, sustain_n, release_n, channel)
-
-    if target_rate is not None and target_rate != native_rate:
-        mono     = _resample(mono, native_rate, target_rate)
-        out_rate = target_rate
-    else:
-        out_rate = native_rate
-
-    return mono, out_rate
+    """One voice → (mono, out_rate) before int8 packing: render_layers with a single layer."""
+    return render_layers([(voice, 0, 0, tl_offset)], mod_note_index, sustain_secs, release_secs,
+                         target_rate, opn2, channel, clock_rate)
 
 
 def render_note(

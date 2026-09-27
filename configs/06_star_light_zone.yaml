@@ -9,7 +9,6 @@ samples_dir: "samples/"
 auto_bpm: true
 target_speed: 4             # 250 BPM exactly; speed 3 gave 187.5 → 188 (+0.27 %, −114 ms per pass)
 ticks_per_row: 1
-num_mod_channels: 10
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays: FM2 walks its bass down with smpsAlterPitch
                            # (-1, -2, -3), which a source-byte root anchor cannot follow (24 notes were 100-300 c high)

@@ -196,7 +196,7 @@ def main():
          f"BPM [bold]{config.target_bpm}[/bold]  ·  "
          f"Speed [bold]{config.target_speed}[/bold]  ·  "
          f"Ticks/row [bold]{config.ticks_per_row}[/bold]  ·  "
-         f"[bold]{config.num_mod_channels}[/bold] channels",
+         f"[bold]{config.mod_channel_count}[/bold] channels",
          f"FM synthesis {fm_synth_str}  ·  PSG synthesis {psg_synth_str}",
     )
 
@@ -428,7 +428,8 @@ def _warn_tempo_no_slot(w: dict, ctx_str: str) -> None:
         f"BPM {w['bpm']}) has no cell with a free effect slot — not written[/yellow]"
     )
     console.print(
-        "     [green]Fix:[/green] raise [cyan]num_mod_channels:[/cyan] by one so a spare channel can carry Fxx."
+        "     [green]Fix:[/green] set [cyan]num_mod_channels:[/cyan] to the next count up (4, 8, 10, 12, 14, 16) "
+        "so a spare channel can carry Fxx."
     )
 
 

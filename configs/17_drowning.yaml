@@ -14,7 +14,6 @@ samples_dir: "samples/"
 auto_bpm: true
 target_speed: 2
 ticks_per_row: 2             # see header comment: BPM 75–135 across the tempo steps
-num_mod_channels: 8
 region: ntsc
 
 channels:

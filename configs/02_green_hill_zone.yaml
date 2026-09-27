@@ -10,7 +10,6 @@ auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)
 target_speed: 3             # speed byte = $03 (smpsHeaderTempo $01, $03)
 ticks_per_row: 2            # GCD of main note durations ($04,$08,$0C,$10,$18...) = 4
-num_mod_channels: 10
 
 
 # -------------------------------------------------------------------------------------------------

@@ -94,7 +94,8 @@ def chip_notes(cfg: ConversionConfig):
     return out
 
 
-def convert_entries(entries: list[dict], notes_by_channel: dict[str, list[tuple[int, int]]], only_channel=None):
+def convert_entries(entries: list[dict], notes_by_channel: dict[str, list[tuple[int, int]]], only_channel=None,
+                    synth_defaults: list | None = None):
     """New entries in chip space for one voice / label.  `entries` are the YAML dicts.
 
     Every note the voice plays is attached to the entry whose source range covers it, or to the
@@ -103,8 +104,14 @@ def convert_entries(entries: list[dict], notes_by_channel: dict[str, list[tuple[
     touching ranges merged.  root is R + (low - S) so the tuning S - R is kept, clamped so the
     whole range stays inside MOD C1..B3.
     """
+    # S: the entry's rendering pitch — stated, else the value resolve_synth_roots derived from the
+    # song (the chip pitch of `low`; `synth_defaults`, parallel to `entries`), else `low` itself.
     parsed = [(parse_smps_note(str(e["low"])), parse_smps_note(str(e["high"])),
-               parse_synth_note(str(e["root"])), parse_synth_note(str(e["synth_root"])), e) for e in entries]
+               parse_synth_note(str(e["root"])),
+               parse_synth_note(str(e["synth_root"])) if "synth_root" in e
+               else (synth_defaults[i] if synth_defaults and synth_defaults[i] is not None
+                     else parse_smps_note(str(e["low"]))),
+               e) for i, e in enumerate(entries)]
     assigned: list[dict[str, list[int]]] = [defaultdict(list) for _ in parsed]
     for chan, m in notes_by_channel.items():
         if only_channel and chan != only_channel:
@@ -156,7 +163,8 @@ def render(new: list[dict], indent: str) -> list[str]:
         out.append(f"{indent}  high: {semitone_to_note_name(e['high'])}")
         out.append(f"{indent}  mod_instrument: {e['mod_instrument']}")
         out.append(f"{indent}  root: {mod_name(e['root'])}")
-        out.append(f"{indent}  synth_root: {semitone_to_note_name(e['synth_root'])}")
+        # no synth_root: in chip space the rendering pitch is the range's low, which the
+        # converter derives (resolve_synth_roots)
         for k, v in e["extra"].items():
             out.append(f"{indent}  {k}: {v}")
     return out
@@ -170,6 +178,12 @@ def main() -> None:
     text = path.read_text(encoding="utf-8")
     data = yaml.safe_load(text)
     notes = chip_notes(cfg)
+    # The rendering pitch of every entry that does not state synth_root, from the song
+    from core.driver_state import resolve_synth_roots
+    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
+
+    def defaults(entries) -> list:
+        return [e.synth_root for e in entries]
 
     sections: dict[str, list[str]] = {}
     if "voice_map" in data:
@@ -178,7 +192,7 @@ def main() -> None:
             ents = raw if isinstance(raw, list) else [raw]
             per_chan = {c: m for (kind, key, c), m in notes.items() if kind == "fm" and key == int(v)}
             lines.append(f"  {v}:")
-            lines += render(convert_entries(ents, per_chan), "    ")
+            lines += render(convert_entries(ents, per_chan, synth_defaults=defaults(cfg.voice_map[int(v)])), "    ")
         sections["voice_map"] = lines
     if "psg_voice_map" in data:
         lines = ["psg_voice_map:"]
@@ -194,7 +208,8 @@ def main() -> None:
             key = f'"{label}"' if str(label).startswith("$") else str(label)
             lines.append(f"  {key}:")
             if all("low" in e for e in ents):
-                lines += render(convert_entries(ents, per_chan), "    ")
+                lines += render(convert_entries(ents, per_chan,
+                                                synth_defaults=defaults(cfg.psg_voice_map[str(label)])), "    ")
             else:                                   # rootless / range-less entries stay as they are
                 for e in ents:
                     for k, v in e.items():
@@ -208,7 +223,9 @@ def main() -> None:
                 ents = raw if isinstance(raw, list) else [raw]
                 per_chan = {c: m for (kind, key, c), m in notes.items() if kind == "fm" and key == int(v)}
                 lines.append(f"    {v}:")
-                lines += render(convert_entries(ents, per_chan, only_channel=chan), "    ")
+                lines += render(convert_entries(ents, per_chan, only_channel=chan,
+                                                synth_defaults=defaults(cfg.channel_instrument_map[chan][int(v)])),
+                                "    ")
         sections["channel_instrument_map"] = lines
 
     # Replace each section's text block (from its top-level key to the next top-level key).

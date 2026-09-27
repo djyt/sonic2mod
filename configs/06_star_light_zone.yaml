@@ -68,52 +68,44 @@ voice_map:
       high: B4   # was B6 (source byte)
       mod_instrument: 2
       root: G2
-      synth_root: G3
     - low:  C5   # was C7 (source byte)
       high: E5   # was E7 (source byte)
       mod_instrument: 3
       root: C2
-      synth_root: C5
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  G1   # was G3 (source byte)
       high: G2   # was G4 (source byte)
       mod_instrument: 4
       root: G2
-      synth_root: G1
   # $02 — alg 4: (1→2)+(3→4), fb 0 — used by FM3, FM4
   2:
     - low:  Cs3   # was Cs6 (source byte)
       high: E4   # was E7 (source byte)
       mod_instrument: 5
       root: Cs2
-      synth_root: Cs3
   # $03 — alg 2: (1+(2→3))→4, fb 7 — used by FM5
   3:
     - low:  Ds3   # was Ds4 (source byte)
       high: B4   # was B5 (source byte)
       mod_instrument: 6
       root: Ds2
-      synth_root: Ds3
     - low:  C5   # was C6 (source byte)
       high: C6   # was C7 (source byte)
       mod_instrument: 7
       root: C2
-      synth_root: C5
   # $04 — alg 4: (1→2)+(3→4), fb 7 — used by FM5
   4:
     - low:  G4   # was G5 (source byte)
       high: As5   # was As6 (source byte)
       mod_instrument: 8
       root: G2
-      synth_root: G4
   # $05 — alg 4: (1→2)+(3→4), fb 6 — used by FM5
   5:
     - low:  Fs7   # was Ds4 (source byte): FM5 plays it under smpsAlterPitch $33 (+51) on top of pitch_offset -12
       high: Fs7
       mod_instrument: 9
       root: Ds3
-      synth_root: Fs7
 
 psg_map:
   0xE7:                    # form $E7
@@ -126,7 +118,6 @@ psg_voice_map:
     high: E5   # was E7 (source byte)
     mod_instrument: 10
     root: E2
-    synth_root: E4   # pitch audit: was E6, 24 semitones too high
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro

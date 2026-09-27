@@ -62,25 +62,21 @@ voice_map:
       high: A5
       mod_instrument: 1
       root: C2
-      synth_root: C2
   1:
     - low: C7
       high: B7
       mod_instrument: 2
       root: C3
-      synth_root: C5
   2:
     - low: A4
       high: B5
       mod_instrument: 3
       root: A1
-      synth_root: A1
   3:
     - low: D6
       high: E7
       mod_instrument: 4
       root: D2
-      synth_root: D4
       
 # -------------------------------------------------------------------------------------------------
 # PSG Sounds
@@ -91,11 +87,9 @@ psg_voice_map:
     high: C7
     mod_instrument: 5
     root: F1
-    synth_root: F5
     
   fTone_08:
     low:  C5
     high: C5
     mod_instrument: 6
     root: C3
-    synth_root: A7   # pitch audit: was C8, 3 semitones too high

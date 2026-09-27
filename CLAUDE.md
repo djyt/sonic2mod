@@ -316,10 +316,10 @@ and does NOT affect range lookup.
 - `low`/`high` — SMPS note names without `n` prefix (e.g. `G5`, `Gs6`, `C7`)
 - `mod_instrument` — MOD instrument slot (1-based)
 - `root` — **absolute** MOD note anchor; source `low` always plays here regardless of `smpsChangeTransposition` or pitch_offset
-- `synth_root` — synthesis pitch override; `target_rate` is NOT adjusted — output pitch = synth_root's frequency
+- `synth_root` — **derived** (`core.driver_state.resolve_synth_roots`): the pitch the chip plays for `low`; no config states it. Stated, it is the rendering pitch anywhere in the range and the notes are placed lower by `synth_shift = synth_root − derived` so they stay in tune (`root` = where `synth_root` sounds). `target_rate` is NOT adjusted. `synth_root_ambiguous` warns when `low` is played at several chip pitches (→ `range_space: chip` or split)
 - `vibrato: XY` — per-entry vibrato override (speed X, depth Y; `0` = none); also works in `psg_map` / `psg_voice_map`. Not used by any shipped config — the computed `4xy` matches the hardware
-- `range_space: chip` (song-level) — match `low`/`high` and anchor `root` on the **real pitch the chip plays** (byte + pitch_offset + `smpsChangeTransposition`; PSG through the driver table) instead of the source byte. Needed when a song changes key with `$E9` while keeping a voice (Credits: FM2 twenty times); then `synth_root` = `low` and a merged voice's entry keeps its own range. Source space stays the default
-- Output formula: `root + (source − low)`, clamped C1–B3
+- `range_space: chip` (song-level) — match `low`/`high` and anchor `root` on the **real pitch the chip plays** (byte + pitch_offset + `smpsChangeTransposition`; PSG through the driver table) instead of the source byte. Needed when a song changes key with `$E9` while keeping a voice (Credits: FM2 twenty times); then the derived `synth_root` is simply `low` and a merged voice's entry keeps its own range. Source space stays the default
+- Output formula: `root + (source − low) − synth_shift`, clamped C1–B3
 - Rootless entries use channel-transpose path: `smps_note + total_transpose`
 - When `voice_map` covers all notes for a channel, set `transpose: 0`
 
@@ -330,7 +330,7 @@ voice_map:
       high: G6
       mod_instrument: 4
       root: Fs2             # G5 plays at F#2; each semitone above shifts output up by 1
-      synth_root: C6        # (optional) synthesize at C6 frequency instead of G5
+      synth_root: C6        # (optional) render at C6 instead of G5's chip pitch; notes placed lower to stay in tune
       vibrato: 31           # (optional) override vibrato for this range (speed=3, depth=1)
     - low:  Gs6
       high: C7

@@ -374,11 +374,12 @@ Use `root` when:
 ### root formula
 
 ```
-output_note = entry.root.value + (source_semitone − entry.low)
+output_note = entry.root.value + (source_semitone − entry.low) − entry.synth_shift
 ```
 
 - `root` is **unconditional** — `smpsDetune`, header pitch_offset, and `smpsChangeTransposition` do NOT affect the root path.
-- Ensure `root + (high − low)` stays within C1–B3 (values 0–35) to avoid clamping.
+- `synth_shift` is 0 unless the entry states a `synth_root` other than the pitch the chip plays for `low` (`resolve_synth_roots`); then `root` is the note where `synth_root` sounds and the notes move down by the difference (`docs/fm_synthesis.md` §Pitch).
+- Ensure `root + (high − low) − synth_shift` stays within C1–B3 (values 0–35) to avoid clamping.
 
 ### Choosing root placement
 

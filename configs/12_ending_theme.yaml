@@ -70,35 +70,29 @@ voice_map:
       high: A6
       mod_instrument: 3
       root: G2
-      synth_root: G5
   1:
     - low:  A1   # was A2-B3 (source bytes) for FM3, FM4, FM2
       high: B2
       mod_instrument: 4
       root: A2
-      synth_root: A1
     - low:  Cs3   # was C4-D4 (source bytes) for FM2
       high: D3
       mod_instrument: 5
       root: Cs2
-      synth_root: Cs3
   2:
     - low:  Gs4   # was Gs5-Gs6 (source bytes) for FM3, FM4
       high: Gs5
       mod_instrument: 6
       root: Gs2
-      synth_root: Gs4
   3:
     - low:  A1   # was A2-B3 (source bytes) for FM1
       high: A2
       mod_instrument: 7
       root: A2
-      synth_root: A1
     - low:  G4   # was C4-B6 (source bytes) for FM5, FM1
       high: B5
       mod_instrument: 8
       root: G2
-      synth_root: G4
 psg_map:
   0xE7:                    # form $E7
     mod_instrument: 10
@@ -110,12 +104,10 @@ psg_voice_map:
       high: D5
       mod_instrument: 9
       root: E2
-      synth_root: E4
     - low:  E6   # was E5-D6 (source bytes) for PSG2 - a tone-and-a-half above what instrument 9's sample
       high: B6   # can reach in MOD range, so its own sample (same voice, rendered at E6)
       mod_instrument: 12
       root: E3
-      synth_root: E6
 
 # -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.
@@ -127,7 +119,6 @@ channel_instrument_map:
       high: D5
       mod_instrument: 11
       root: G2
-      synth_root: G4
 
 # -------------------------------------------------------------------------------------------------
 # Structural pattern break after intro

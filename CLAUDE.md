@@ -43,6 +43,9 @@ sonic2mod/
     driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices,
                      #   PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
                      #   (sfx/tables.py re-exports this; it used to live there)
+    instruments.py   #   The instrument catalogue: what each synthesised MOD instrument is rendered for
+                     #   (first entry to name it wins; FM instruments are layers) — both generators read it
+    merge.py         #   Channel folding for the Amiga build: merge: groups → composite instruments
     driver_state.py  #   DriverState — the SMPS track state machine (level, pan, transpose, FM voice,
                      #   PSG entry) shared by the converter, its pre-passes and the config tools;
                      #   also source_names/source_map, chip_pitch, pan_is_hard, psg_range_entry
@@ -95,6 +98,7 @@ sonic2mod/
     measure_volumes.py  #   All songs: convert, vgm_compare --write-volumes, re-convert, verify — cores-1 songs at once
     make_credits_config.py  # Regenerates configs/13_credits.yaml from the song (chip-pitch ranges, 31-instrument fold)
     config_to_chip_space.py # Converts a config's source-byte ranges to chip pitches (range_space: chip); warns where a range needs its own instrument
+    merge_survey.py     #   Which channel pairs fold cleanly onto one MOD channel (merge: groups); prints the YAML
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
 ```
 
@@ -120,6 +124,12 @@ python convert.py configs/01_title_screen.yaml
 
 # Override output path
 python convert.py configs/01_title_screen.yaml --output output/title_screen.mod
+
+# The Amiga build: fold the config's merge: groups (7 channels → 4 for the Title Screen) into
+# composite instruments and write merge_output_file (default <output>_merged.mod)
+python convert.py configs/01_title_screen.yaml --merged
+# Which channel pairs of a song can fold (paired / orphans / held / shorter per pair) + the YAML
+python tools/merge_survey.py configs/01_title_screen.yaml            # --all: every pair
 
 # Render all 49 sound effects to 16-bit stereo WAV (no config needed)
 python sonic2wav.py --all
@@ -179,8 +189,9 @@ python tools/measure_volumes.py --only green_hill special_stage --no-write
 ## Regression Testing
 
 Baselines live in `tests/baselines/`.  All 19 song configs are test cases — a converter change
-is only safe once every one of them still produces a byte-identical MOD.  The conversions run
-as parallel subprocesses (one per CPU by default; the whole suite takes a few seconds).
+is only safe once every one of them still produces a byte-identical MOD — and every config with
+a `merge:` section is a second case, `<name>_merged` (`convert.py --merged`).  The conversions
+run as parallel subprocesses (one per CPU by default; the whole suite takes a few seconds).
 
 ```bash
 # BEFORE implementing a fix — save current output as baseline:
@@ -241,6 +252,13 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - SFX headers (`smpsHeaderTempoSFX`/`ChanSFX`/`SFXChannel`) set `SmpsSongHeader.is_sfx` and
   `SmpsChannelHeader.hw_channel`; SFX run 1 tick per V-int with no tempo modifier
 - Standalone duration bytes in `dc.b` **retrigger the last note** by default — without preceding `smpsNoAttack`: `SmpsNote(note_value=last_note_value, is_rest=False)`; with `smpsNoAttack` pending: rest/sustain `(is_rest=True, is_no_attack=True)`
+- One function decides what a note plays: `core/driver_state.py`'s `resolve_note` (→ `ResolvedNote`:
+  instrument, MOD note, path, entry, chip pitch, detune) and `walk_channel`, which advances a
+  `DriverState` through a channel and yields every event with its resolution.  Every pass walks
+  this way — the conversion, `_plan_levels`, `_sustain_needs`, the noise / rate-3 derivations,
+  `resolve_synth_roots`, `core/merge.py`.  What each synthesised instrument is rendered for is
+  the catalogue in `core/instruments.py` (first entry wins; FM instruments are lists of layers),
+  read by both sample generators and `_synthesis_roots`
 - One state machine decides what a note plays: `core/driver_state.py`'s `DriverState` tracks the
   level, pan, driver transpose, FM voice and active PSG entry.  `_convert_channel`, the
   `_plan_levels` pre-passes, `_derive_rate3_dividers` and the two config tools all walk with it,
@@ -311,6 +329,8 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 7e. **Samples do not loop, so `sustain_duration: auto` (settings.yaml) must cover the longest ring** — `_sustain_needs` measures it per instrument in MOD time (tempo segments, after `smpsSetTempoDiv` re-timing) at the sample's playback rate: root period / note period against the **first** entry's root (`_synthesis_roots`, the entry the sample is rendered for; Credits folds several ranges onto one sample), plus finetune and one row of margin, with the same `DriverState` walk and `range_space` as the conversion. Auto = the largest need, 10 s cap; each generator also caps every instrument to the sample limit at its rate (`max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original ProTracker's 65534; `core.pcm.max_sustain_secs`). `sustain_short` warns per instrument where a note still outlasts its sample (a lower `root` halves bytes per second per octave). Leading rests get their `C00` at pattern 0 row 0 (`_place_leading_rests`, moving an `Fxx` aside): a song that loops to position 0 otherwise rang its last note through them. Details: `docs/fm_synthesis.md` § `sustain_duration: auto`, `docs/pipeline.md` gotchas 11–12.
 
 7c. **A MOD BPM is a whole number** — `auto_bpm` rounds; choose `target_speed` so the exact BPM is (nearly) integer (speed changes MOD ticks per row, not the row grid). `convert.py` prints the rounding error and the better speed; Special Stage at speed 3 ran 0.44 % slow. Details: `docs/pipeline.md` §BPM and speed setup.
+
+7f. **The merged build (`merge:` + `convert.py --merged`) never touches the reference MOD** — the followers are dropped, the live channels packed onto MOD channels 0..n-1, and the primary plays a composite instrument wherever a follower sounds with it: two FM voices as chip layers (`render_layers`, one YM2612 channel per voice at the follower's interval, `smpsDetune` and TL relative to the primary), anything else mixed from the finished samples by period ratio (`mix_pcm_composites`).  A follower note with no primary note-on is lost (`orphan`), one ringing under the primary's next note-on is cut (`held`), one shorter than the primary's leaves the primary alone; `tools/merge_survey.py` counts these per pair before a group is written and the converter reports them after.  The plan lives on `config.merge_plan`, read by `walk_channel`, and is rebuilt after loop extension.  Details: `docs/pipeline.md` § Channel merging.
 
 8. **smpsModSet → `4xy`** — only the FIRST half-swing uses the halved step count (`lsr.b #1`); the counter reloads from the original byte, so the steady cycle is `2·speed·(steps+1)` frames and the swing is `delta·steps/2` units of the note's own FNUM (644 C … 1216 B) or PSG divider. `_vibrato_speed` / `_vibrato_depth` turn that into x and a per-note y; verified against six songs' VGZs. No config needs a `vibrato:` override any more. Details: `docs/pipeline.md` gotcha 4.
 

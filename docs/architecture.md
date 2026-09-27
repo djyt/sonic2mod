@@ -81,7 +81,9 @@ The SMPS track state that decides an event's pitch, level and instrument. Four p
 channel's events used to each re-implement it — the two level pre-passes, the rate-3 divider
 derivation and `_convert_channel` — and they had drifted.
 
-- **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_range_entry`, `psg_ranged_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
+- **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `psg_ranged_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
+- **`resolve_note(st, source_semitone, chan_transpose, source)` → `ResolvedNote`**: the one place that says which MOD instrument a pitched note is routed to and which MOD note it triggers (`instrument`, `index`, `raw_index` before clamping, `path` = `fm_root` / `psg_root` / `psg_fixed` / `transpose`, the `entry` that routed it, `chip` pitch, `detune`).
+- **`walk_channel(channel, config, chan_cfg, st=None)`**: yields `(event, state, resolved)` for every event, the state advanced past each flag before it is yielded and every pitched note resolved. With a merge plan on the config (`convert.py --merged`) the resolved instrument is the composite where one plays. **`enabled_channels(song, config, kinds)`** yields `(chan_cfg, channel)` for the per-kind loops. The conversion, its level and sustain pre-passes, the noise / rate-3 derivations, `resolve_synth_roots` and `core/merge.py` all walk this way.
 - **`source_names(song)` / `source_map(song)`**: `"DAC"`, `"FM1"…`, `"PSG1"…` in header order.
 - **`chip_pitch(semitone, transpose, is_psg)`**: the real pitch the chip plays — PSG through the driver table, so notes past its ends sound as the hardware does. What `range_space: chip` matches on.
 - **`pan_is_hard(params)`**, **`psg_range_entry(entries, key)`**.
@@ -89,6 +91,32 @@ derivation and `_convert_channel` — and they had drifted.
 State that only matters while emitting MOD data (note fill, vibrato, cursor) stays in the
 converter. `core/analysis.py` keeps its own loop on purpose: it describes the song with no config
 in hand, tracks volume unclamped, and names PSG tones no `psg_voice_map` mentions.
+
+### core/instruments.py
+
+The instrument catalogue: `{MOD instrument: FmInstrument | PsgInstrument}` in render order, the
+first map entry to name an instrument deciding what its sample is rendered for (Credits folds
+voices onto 31 slots; Stage Clear's PSG2 plays two octaves up its PSG1 sample).
+`fm_catalogue(song, config)` walks voice_map (voices the song defines), channel_instrument_map
+(rooted), legacy_voice_map, channel_instrument_map (rootless, played at C1), then the merge plan's
+composites; `psg_catalogue(config, noise_envelopes)` walks psg_map (each entry, then its
+`envelopes:` variants) and psg_voice_map. An `FmInstrument` is a list of **`FmLayer`**s (voice,
+semitone offset, FNUM detune, carrier TL offset relative to the instrument's render level); a
+plain instrument has one layer, a composite one per folded channel. `generate_fm_samples`,
+`generate_psg_samples` and the converter's `_synthesis_roots` / `_sustain_needs` all read it.
+
+### core/merge.py
+
+Folding SMPS channels onto one MOD channel for the Amiga build (`merge:` groups,
+`convert.py --merged`). `prepare_merged_config` disables the followers, packs the remaining
+channels onto MOD channels 0..n-1 and picks the output file; `build_merge_plan` lines every
+follower's note-ons up with its primary's (`channel_notes`, `pair_channels` → `PairStats`) and
+allocates one composite instrument per distinct (primary instrument, follower layers) key — two
+FM voices as chip layers in the catalogue, anything else mixed from the finished samples by
+`mix_pcm_composites`, the follower resampled by the period ratio of the two notes. The plan sits on
+`config.merge_plan`, read by `walk_channel`; `refresh_ticks` rebuilds its tick map after the loop
+bodies are extended. `tools/merge_survey.py` runs the same pairing over every channel pair of a
+song. Full rules: `docs/pipeline.md` § Channel merging.
 
 ### core/levels.py
 
@@ -280,22 +308,26 @@ Conversion engine that walks the IR and writes MOD data.
 
 #### `SmpsToModConverter.convert()` Flow
 
-1. Set song name
-2. Optionally run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) to synthesize PCM
-3. Load samples (from file list) or create placeholders
-4. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
-5. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`), then extend short loop bodies (`_extend_looping_channels()`)
-6. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
-7. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
+1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch
+2. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`); in the merged build, `_build_merge_plan()` (core/merge.py) decides the composite instruments while the ticks are final
+3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`_sustain_needs`)
+4. Run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
+5. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
+6. Extend short loop bodies (`_extend_looping_channels()`); refresh the merge plan's tick map
+7. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
+8. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
 
 `_set_loop_point()` is called by `convert.py` afterwards - after `apply_pattern_breaks`, so the
 `Bxx` lands at the right post-break position (see the call-order gotcha in `CLAUDE.md`).
 
 #### Channel Conversion
 
-Every pass over a channel's events - `_convert_channel`, the `_plan_levels` level pre-passes and
-`_derive_rate3_dividers` - walks with the same `DriverState` (`core/driver_state.py`), so they
-cannot disagree about what a note plays:
+Every pass over a channel's events - `_convert_channel`, the `_plan_levels` level pre-passes,
+`_sustain_needs`, `_derive_noise_envelopes` and `_derive_rate3_dividers` - is a `walk_channel`
+(`core/driver_state.py`): the same `DriverState`, and every pitched note's instrument and MOD note
+from the same `resolve_note`, so they cannot disagree about what a note plays. `_convert_channel`
+keeps only the MOD-emission state (note fill, vibrato, cursor, `EDx`); its clamp / `map_gap`
+warnings come from `_warn_resolution`.
 
 | DriverState field | Updated by | Used for |
 |-------------------|------------|----------|

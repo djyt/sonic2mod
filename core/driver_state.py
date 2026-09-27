@@ -429,16 +429,20 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
     The state is advanced past each coordination flag before the flag is yielded, and every
     pitched note (not a rest, not a DAC hit) comes with its `ResolvedNote`; the other events
     come with None.  The same `DriverState` object is yielded every time - read it as you go.
-    Pass `st` to start from a state you set up yourself.
+    Pass `st` to start from a state you set up yourself.  With a merge plan on the config
+    (`convert.py --merged`), a note that plays a composite instrument is resolved to it.
     """
     if st is None:
         st = DriverState.for_channel(channel, config, chan_cfg.instrument)
+    plan = getattr(config, "merge_plan", None)       # core.merge: composite instruments per tick
     for event in channel.events:
         res = None
         if event.is_effect:
             st.apply(event.effect)
         elif event.is_note and not event.note.is_rest and not event.note.is_dac:
             res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source)
+            if plan is not None:
+                res.instrument = plan.instrument_at(chan_cfg.source, event.tick_position, res.instrument)
         yield event, st, res
 
 

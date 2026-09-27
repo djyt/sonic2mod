@@ -3,6 +3,7 @@
 import os
 import warnings
 from dataclasses import dataclass, field
+from typing import Any
 
 from .mod import ModFile
 from .pcm import sample_limit_bytes
@@ -93,6 +94,17 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
         vibrato=vibrato,
     )
+
+
+@dataclass
+class MergeGroup:
+    """One `merge:` group: the followers fold onto the primary's MOD channel (core/merge.py)."""
+    primary: str
+    followers: list[str]
+
+    @property
+    def label(self) -> str:
+        return f"{self.primary}+{'+'.join(self.followers)}"
 
 
 @dataclass
@@ -507,6 +519,12 @@ class ConversionConfig:
     psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
     psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": list[PsgInstrumentEntry], ...}
     mod_pattern_breaks: list = field(default_factory=list)  # [(pattern_slot, row), ...] — insert Bxx + split pattern
+    # Channel folding for the reduced (Amiga) build, used with `convert.py --merged` (core/merge.py):
+    # each group's followers are dropped and their notes rendered into the primary's instruments.
+    merge: list = field(default_factory=list)              # list[MergeGroup]
+    merge_output_file: str | None = None                   # default: output_file stem + "_merged"
+    merge_active: bool = False                             # set by core.merge.prepare_merged_config
+    merge_plan: Any = field(default=None, repr=False)      # core.merge.MergePlan, set by the converter
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):
@@ -726,6 +744,15 @@ class ConversionConfig:
 
         # Parse sample list
         config.sample_list = data.get('sample_list', None)
+
+        # Parse merge groups: [{primary: FM1, followers: [FM5]}, ...]
+        for i, g in enumerate(data.get('merge', []) or []):
+            _ctx = f"merge[{i}]"
+            followers = g.get('followers', [])
+            if isinstance(followers, str):
+                followers = [followers]
+            config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers]))
+        config.merge_output_file = data.get('merge_output_file')
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])

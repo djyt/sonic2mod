@@ -31,9 +31,13 @@ from .levels import (
     modal_level,
     psg_att_to_mod,
 )
+from .merge import build_merge_plan, mix_pcm_composites, refresh_ticks
 from .mod import ModFile, ModSample, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
 from .smps_parser import SmpsChannel, SmpsSong
+from .tables import (
+    MOD_NOTE_MAP as _MOD_NOTE_MAP,
+)
 from .tables import (
     PERIOD_TABLE,
     ModNote,
@@ -47,27 +51,6 @@ from .tables import (
 # smpsModSet adds its swing to the note's own FNUM: see SmpsToModConverter._vibrato_depth.
 _S1_FNUM_BASE = 644
 
-# Map MOD note name strings to ModNote enum values
-# Supports both "#" (F#3) and "s" (Fs3) sharp notation, plus "b" for flats
-_MOD_NOTE_MAP = {}
-for _oct in range(1, 4):
-    _notes = [
-        (f"C{_oct}", f"C{_oct}"),
-        (f"C#{_oct}", f"Cs{_oct}"), (f"Cs{_oct}", f"Cs{_oct}"), (f"Db{_oct}", f"Cs{_oct}"),
-        (f"D{_oct}", f"D{_oct}"),
-        (f"D#{_oct}", f"Ds{_oct}"), (f"Ds{_oct}", f"Ds{_oct}"), (f"Eb{_oct}", f"Ds{_oct}"),
-        (f"E{_oct}", f"E{_oct}"),
-        (f"F{_oct}", f"F{_oct}"),
-        (f"F#{_oct}", f"Fs{_oct}"), (f"Fs{_oct}", f"Fs{_oct}"), (f"Gb{_oct}", f"Fs{_oct}"),
-        (f"G{_oct}", f"G{_oct}"),
-        (f"G#{_oct}", f"Gs{_oct}"), (f"Gs{_oct}", f"Gs{_oct}"), (f"Ab{_oct}", f"Gs{_oct}"),
-        (f"A{_oct}", f"A{_oct}"),
-        (f"A#{_oct}", f"As{_oct}"), (f"As{_oct}", f"As{_oct}"), (f"Bb{_oct}", f"As{_oct}"),
-        (f"B{_oct}", f"B{_oct}"),
-    ]
-    for _key, _enum_name in _notes:
-        _MOD_NOTE_MAP[_key] = ModNote[_enum_name]
-del _oct, _notes, _key, _enum_name
 
 
 def _shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> int:
@@ -525,12 +508,19 @@ class SmpsToModConverter:
                                'row': int(tick // self._effective_tpr)})
         self._tempo_segments = self._collect_tempo_segments()
 
+        # The merged build: which composite instruments the groups need and where they play,
+        # decided while the ticks are final and before anything renders (core/merge.py).
+        self._merge = None
+        if self.config.merge_active and self.config.merge:
+            self._merge = self._build_merge_plan()
+
         # Resolve 'auto' sustain durations from the longest ring each instrument plays, in the
         # MOD's own time, and warn where a sample cannot hold a note.
         synth = self._resolve_sustain(self.synth, 'FM') if self.synth else None
         psg_synth = self._resolve_sustain(self.psg_synth, 'PSG') if self.psg_synth else None
 
-        # Load or synthesize samples
+        # Load or synthesize samples (a merge composite is rendered or mixed, never loaded)
+        merge_insts = self._merge.instruments if self._merge is not None else set()
         if synth and synth.enabled and synth.mode == "ym2612":
             from ym2612.sample_generator import generate_fm_samples
             # Warn about map entries whose voice index doesn't exist in the song, and
@@ -555,12 +545,13 @@ class SmpsToModConverter:
             if self.config.sample_list:
                 for entry in self.config.sample_list:
                     inst_num = entry[0]
-                    if inst_num not in fm_samples and inst_num not in psg_synth_insts and inst_num not in fm_skipped_insts:
+                    if (inst_num not in fm_samples and inst_num not in psg_synth_insts
+                            and inst_num not in fm_skipped_insts and inst_num not in merge_insts):
                         self.mod.add_samples(self.config.samples_dir, [entry])
         elif self.config.sample_list:
             # Load all disk samples, skipping any that will be PSG-synthesized
             for entry in self.config.sample_list:
-                if entry[0] not in psg_synth_insts:
+                if entry[0] not in psg_synth_insts and entry[0] not in merge_insts:
                     self.mod.add_samples(self.config.samples_dir, [entry])
         else:
             # Create placeholder samples
@@ -598,6 +589,17 @@ class SmpsToModConverter:
                                               psg_synth.max_sample_bytes)
             self.infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
 
+        # The composites mixed from finished samples (DAC + hi-hat), now that every sample is in
+        if self._merge is not None:
+            clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
+            max_bytes = self.synth.max_sample_bytes if self.synth else MAX_MOD_SAMPLE_BYTES
+            for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes):
+                self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
+            for c in self._merge.composites.values():
+                if c.headroom_db > 0:
+                    self._add_warning({'type': 'merge_headroom', 'channel': 'merge',
+                                       'instrument': c.inst, 'db': c.headroom_db, 'group': c.group.label})
+
         # Set timing
         self.mod.set_bpm(self.config.target_bpm)
         if self.config.target_speed != 6:
@@ -606,6 +608,11 @@ class SmpsToModConverter:
         # Extend channels whose loop body is too short to cover the full song
         self._extend_looping_channels()
         self._tempo_segments = self._collect_tempo_segments()
+        if self._merge is not None:
+            missing = refresh_ticks(self._merge, self.song, self.config, pan_law_db=self._merge_pan_law,
+                                    baselines=self._merge_baselines)
+            for key in missing:
+                self._add_warning({'type': 'merge_missing_composite', 'channel': 'merge', 'key': repr(key)})
 
         # Convert channels
         self._convert_all_channels()
@@ -696,6 +703,34 @@ class SmpsToModConverter:
                 'to': len(ch.events),
                 'span': loop_span,
             })
+
+    def _build_merge_plan(self):
+        """core.merge.build_merge_plan with this conversion's pan law and baked levels, its
+        findings reported as infos / warnings."""
+        self._merge_pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+        self._merge_baselines = {}
+        if self._fm_volume_mode == "baked":
+            self._merge_baselines["FM"] = self._plan_levels("FM")
+        if self._psg_volume_mode == "baked":
+            self._merge_baselines["PSG"] = self._plan_levels("PSG")
+        plan = build_merge_plan(self.song, self.config, pan_law_db=self._merge_pan_law,
+                                baselines=self._merge_baselines)
+        for g in plan.groups:
+            comps = [c for c in plan.composites.values() if c.group is g]
+            stats = [s for s in plan.stats if s.primary == g.primary]
+            self.infos.append({'type': 'merge_group', 'label': g.label, 'primary': g.primary,
+                               'paired': sum(s.paired for s in stats),
+                               'alone': stats[0].alone if stats else 0,
+                               'composites': [(c.inst, c.notes, c.detail) for c in comps]})
+        for s in plan.stats:
+            if s.lost or s.vibrato:
+                self._add_warning({'type': 'merge_lost', 'channel': s.primary, 'primary': s.primary,
+                                   'follower': s.follower, 'held': s.held, 'shorter': s.shorter,
+                                   'truncated': s.truncated, 'orphans': s.orphans, 'vibrato': s.vibrato,
+                                   'notes': s.follower_notes})
+        for u in plan.unsupported:
+            self._add_warning({'type': 'merge_unsupported', 'channel': u['primary'], **u})
+        return plan
 
     def _derive_noise_envelopes(self) -> dict[int, dict]:
         """The envelope each noise instrument plays with, read from the song.
@@ -839,6 +874,21 @@ class SmpsToModConverter:
         self._psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
             self._psg_baseline_db = self._plan_levels("PSG")
+
+        # A chip-rendered composite's sample_list volume is its primary's, which stands for the
+        # primary instrument's baked level; the composite is rendered at (and its Cxx measured
+        # from) the level ITS notes play most.  Move the volume by the difference.
+        if self._merge is not None:
+            for c in self._merge.composites.values():
+                if c.fm is None or c.entry is None:
+                    continue
+                base_p = self._fm_baseline_db.get(c.key[1])
+                base_c = self._fm_baseline_db.get(c.inst)
+                if base_p is None or base_c is None:
+                    continue
+                vol = max(0, min(64, round(c.entry[2] * 10 ** ((base_c - base_p) / 20.0))))
+                c.entry[2] = vol
+                self.mod.samples[c.inst - 1].set_volume(vol)
 
         # Convert each configured channel
         for chan_cfg in self.config.channels:
@@ -1058,6 +1108,8 @@ class SmpsToModConverter:
                     dac_cfg = dac_map.get(note.dac_name)
                     if dac_cfg:
                         dac_inst = dac_cfg.mod_instrument
+                        if self._merge is not None:          # a drum with its hi-hat folded in
+                            dac_inst = self._merge.instrument_at(chan_cfg.source, tick, dac_inst)
                         dac_note = _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3)
                         self.mod.set_note(dac_note, dac_inst)
                     else:

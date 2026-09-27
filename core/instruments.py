@@ -125,6 +125,10 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
             for i, entry in enumerate(ranges):
                 if entry.root is None:
                     add(entry, voice_idx, f"channel_instrument_map[{src}][{voice_idx}][{i}]", src)
+    plan = getattr(config, "merge_plan", None)
+    if plan is not None:                         # core.merge: the composites, rendered as layers
+        for spec in plan.fm_instruments:
+            cat.instruments.setdefault(spec.inst, spec)
     return cat
 
 

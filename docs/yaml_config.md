@@ -520,6 +520,7 @@ merge:
 merge_output_file: output/01_title_screen_4ch.mod   # optional
 merge_drop: [FM3, PSG1]                              # optional: left out of the merged build altogether
 merge_max_synth_shift: 0                             # optional: render no sample above its root's pitch (half the bytes)
+merge_tolerance: 1                                   # ticks a follower note-on may be off the primary's (default 1)
 ```
 
 `python convert.py configs/01_title_screen.yaml --merged` then writes the reduced MOD: the
@@ -542,6 +543,10 @@ baselines and audits stay the ground truth.
   the follower's own note (its instrument, pitch and level), so two channels that never sound
   at once can share a MOD channel outright. A drum or noise note sounds for its sample, not
   its SMPS duration, so a hat two ticks after a kick's sample has ended is such a note.
+- `merge_tolerance` (ticks, default 1) lets a follower that starts a tick off the primary
+  still fold, and folds a grace note of that length onto the `smpsNoAttack` note it bends into,
+  so chords are matched on the pitches they land on. Green Hill's FM3 chord tone starts one
+  tick after FM4 and FM5; without this it counted as lost.
 - `max_composites: N` on a group keeps only its N most-played composite instruments (the
   converter says which chords are left to the primary alone); the sample bytes are the
   price of every distinct interval, so this is the memory budget for a chord channel.

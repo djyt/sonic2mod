@@ -84,6 +84,19 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 | `smpsPSGvoice` | $F5 | label | (routing) | — | Looks up `psg_voice_map[label]` → new PSG instrument |
 | `smpsMaxRelRate` | $F9 | — | (none) | — | FM1 release; ignored |
 
+### Legato (`smpsNoAttack` before a note byte)
+
+The driver's `cfNoAttack` sets a flag; the next note byte writes its frequency and skips the
+key-on, so the envelope carries on at the new pitch.  Sonic 1 uses it for 1-tick grace notes
+that bend into a chord (Green Hill's stabs: FM4 and FM5 play `F2` for one tick, then `E2`
+legato; FM3 the same a tick later) and for Drowning's FM3 slide line (240 of 241 notes).  A MOD
+note-on re-triggers its sample, so `_convert_channel` writes a legato note as the target note
+with a **full-speed tone portamento**, `3FF`: the period slides to the new note within a tick
+and the sample is not re-triggered (the instrument number only resets the volume).  The
+portamento takes the effect slot, so the note gets no `EDx` (it is rounded to the nearer row)
+and a `Cxx` due on it moves to the next free row of the note, as a delayed note's does.  The
+sustain scan counts a legato note as the same ring.  Before this, every stab was heard twice.
+
 ### Effect priority (one per note-row)
 
 When multiple effects are active on the same note, **first match wins**:
@@ -812,8 +825,12 @@ leave the output and the primary plays a composite instrument wherever a followe
 **Per primary note-on at tick t**, with the follower's note-ons as `walk_channel` resolves them
 (`smpsNoAttack` continuations extend a note; a rest ends it; a drum or noise note *sounds* for
 its sample's length when that is shorter, `NoteOn.sounding`, from the drum file's size at its
-`mod_note` and the noise envelope's frames). A mixed (non-chip) pair needs no equal durations:
-each sample plays out as it is.
+`mod_note` and the noise envelope's frames). A follower note-on within `merge_tolerance` ticks
+of the primary's counts as at t (`match_onsets`, nearest first, each follower note once), and a
+note of at most that many ticks followed by an `smpsNoAttack` note is a grace note bending into
+it: the two are one note at the target pitch, so a chord is folded on the pitches it lands on
+(Green Hill's FM3 starts its grace a tick after FM4/FM5). A mixed (non-chip) pair needs no
+equal durations: each sample plays out as it is.
 
 | Follower at t | Result | Counted as |
 |---|---|---|

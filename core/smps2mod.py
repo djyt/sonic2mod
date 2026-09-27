@@ -412,6 +412,9 @@ class SmpsToModConverter:
                     continue
                 if res is None:
                     continue
+                if note.is_no_attack and rings and rings[-1] is not None:
+                    rings[-1][1] += note.duration           # legato: a portamento, the sample rings on
+                    continue
                 rings.append([event.tick_position, note.duration, res.instrument, res.index])
 
             for ring in rings:
@@ -1211,8 +1214,16 @@ class SmpsToModConverter:
                     # pans every other note hard, so half its notes carry a -3 dB Cxx, and all of
                     # them start a tick off the grid.
                     _needs_cxx = _emit_volume(final_instrument) != _sample_vol_map.get(final_instrument, 64)
+                    # smpsNoAttack before a note byte: the driver writes the new frequency and
+                    # skips the key-on (a grace note bending into the chord, Drowning's slides).
+                    # A MOD note re-triggers its sample, so the note is written with a tone
+                    # portamento at full speed instead (3FF: the period slides in a tick, no
+                    # re-trigger; the instrument number only resets the volume).  It needs the
+                    # effect slot, so no EDx, and a Cxx due moves to the next row.
+                    legato = note.is_no_attack and res.path != "merged"
                     pattern, row, note_delay = _note_cell(
-                        tick, not _needs_cxx or note.duration >= 2 * self._effective_tpr, _cut_tick)
+                        tick, not legato and (not _needs_cxx or note.duration >= 2 * self._effective_tpr),
+                        _cut_tick)
                     if pattern >= self.config.max_patterns:
                         break
                     self._set_cursor(pattern, mod_chan, row)
@@ -1291,7 +1302,10 @@ class SmpsToModConverter:
                         else:
                             self.mod.set_effect(0xE, 0xD0 | note_delay)
                             effect_slot_used = True
-                    if note_delay and _needs_cxx:
+                    if legato and not effect_slot_used:
+                        self.mod.set_effect(0x3, 0xFF)
+                        effect_slot_used = True
+                    if (note_delay or legato) and _needs_cxx:
                         # The Cxx moves to the first later row of the note whose slot is free
                         # (a cut placed above keeps its row).  One row at the instrument's own
                         # level, then the right one; a lost row of level beats 33 ms of timing.

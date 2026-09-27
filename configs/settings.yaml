@@ -9,7 +9,6 @@ fm_synthesis:
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
-                            # its own longest ring in the song (docs/fm_synthesis.md § sustain_duration: auto)
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" = CPU cores - 1

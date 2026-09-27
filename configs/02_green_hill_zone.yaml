@@ -228,8 +228,9 @@ mod_pattern_breaks:
 #   FM5+FM4: FM4 sounds with FM5 on every one of its 132 notes - the early chords (bars 0-46) are
 #   unison, unison-detuned, a third and a fourth (4 composites, 108 chords); from bar 47 FM4 drops
 #   below FM5 at seven rarer intervals (7 composites, 24 chords).  32 FM5 re-attacks under a held
-#   FM4 note re-attack the chord.  FM3 joins the chord on 25 notes but plays 89 of its 130 while
-#   FM5 sounds, so it is dropped rather than folded; PSG1/PSG2 are a pair of their own (59 of 75
+#   FM4 note re-attack the chord.  FM3 is the chord's top note (B over E+G): it starts its grace
+#   note one tick after FM4/FM5, which merge_tolerance folds; its other notes play alone where
+#   FM5 rests and are lost where it sounds.  PSG1/PSG2 are a pair of their own (59 of 75
 #   together) that a fifth channel could carry.
 #   DAC+PSG3: the hi-hat (262 hits, its 4-event loop replayed) rides the drums: 169 on a hit as
 #   kick+hat / snare+hat, 29 over silence, 64 over a drum's decay, which they cut (cut_primary)
@@ -241,5 +242,6 @@ merge:
     followers: [PSG3]
     cut_primary: true
   - primary: FM5
-    followers: [FM4]
-merge_drop: [FM3, PSG1, PSG2]
+    followers: [FM4, FM3]
+    max_composites: 8     # the 8 most-played chord shapes (139 KB); 15 rarer chords play FM5 alone
+merge_drop: [PSG1, PSG2]

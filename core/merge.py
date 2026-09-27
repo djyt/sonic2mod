@@ -318,7 +318,10 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
         st.paired += 1
         if f.vibrato != p.vibrato:
             st.vibrato += 1
-        st.keys.add((p.instrument, p.index, follower_key(p, f, level_scale(f))))
+        # A chip composite is one per (primary instrument, follower layer): the interval is
+        # in the layer, not the MOD note.  A mixed one is per primary note as well.
+        fk = follower_key(p, f, level_scale(f))
+        st.keys.add((p.instrument, fk) if fk[0] == "fm" else (p.instrument, p.index, fk))
     p_ticks = sorted(p_notes)
     for t in f_ticks:
         if t in p_notes:
@@ -415,6 +418,7 @@ def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale) -
 
 
 def _free_slots(config, song) -> list[int]:
+    """Instrument slots nothing in the config names."""
     used = {e[0] for e in (config.sample_list or [])}
     used |= set(fm_catalogue(song, config).instruments)
     used |= set(psg_catalogue(config))
@@ -441,6 +445,9 @@ def build_merge_plan(song, config, *, pan_law_db: float,
     free = _free_slots(config, song)
     if config.sample_list is None:
         config.sample_list = []
+    # Composites get provisional ids (-1, -2, ...) until the plan knows which instruments the
+    # merged build no longer plays: those slots are reusable too (_assign_slots).
+    provisional = 0
 
     def level_scale(n: NoteOn) -> float:
         base = baselines.get(n.kind, {}).get(n.instrument)
@@ -466,11 +473,8 @@ def build_merge_plan(song, config, *, pan_law_db: float,
             key = composite_key(p, [fn for _, fn in present], chip, level_scale)
             comp = plan.composites.get(key)
             if comp is None:
-                if not free:
-                    plan.unsupported.append({'primary': g.primary, 'tick': t,
-                                             'reason': 'no free instrument slot'})
-                    continue
-                inst = free.pop(0)
+                provisional -= 1
+                inst = provisional
                 vol, ft = vol_of.get(p.instrument, (64, 0))
                 comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft])
                 if chip:
@@ -485,9 +489,37 @@ def build_merge_plan(song, config, *, pan_law_db: float,
         _splice_solo_notes(plan, song, g, p_notes, p_rests)
     config.merge_plan = plan
     unused = _unused_instruments(plan, song, config)
-    plan.blank_after_mix = unused & plan.pcm_sources
-    plan.unused = unused - plan.pcm_sources
+    _assign_slots(plan, config, free + sorted(unused - plan.pcm_sources))
+    taken = plan.instruments
+    plan.blank_after_mix = (unused & plan.pcm_sources) - taken
+    plan.unused = unused - plan.pcm_sources - taken
     return plan
+
+
+def _assign_slots(plan: MergePlan, config, slots: list[int]) -> None:
+    """Give the composites their MOD instruments: the never-named slots first, then those the
+    merged build frees, the most-played composites first.  A composite left without a slot is
+    dropped (its notes play the primary alone) and reported."""
+    order = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst), reverse=False)
+    remap: dict[int, int | None] = {}
+    for c in order:
+        remap[c.inst] = slots.pop(0) if slots else None
+    for key in list(plan.composites):
+        c = plan.composites[key]
+        real = remap[c.inst]
+        if real is None:
+            plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail,
+                                     'reason': 'no free instrument slot'})
+            if c.entry in config.sample_list:
+                config.sample_list.remove(c.entry)
+            del plan.composites[key]
+            continue
+        if c.entry is not None:
+            c.entry[0] = real
+        if c.fm is not None:
+            c.fm.inst = real
+        c.inst = real
+    plan.ticks = {k: remap[v] for k, v in plan.ticks.items() if remap.get(v) is not None}  # type: ignore[misc]
 
 
 def _splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, NoteOn], p_rests: list[int]) -> None:

@@ -776,12 +776,13 @@ class SmpsToModConverter:
             self.infos.append({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
         for s in plan.stats:
             if s.lost or s.vibrato or s.cuts:
-                self._add_warning({'type': 'merge_lost', 'channel': s.primary, 'primary': s.primary,
+                self._add_warning({'type': 'merge_lost', 'channel': f"{s.primary}+{s.follower}", 'primary': s.primary,
                                    'follower': s.follower, 'held': s.held, 'shorter': s.shorter,
                                    'truncated': s.truncated, 'orphans': s.orphans, 'solo_cut': s.solo_cut,
                                    'cuts': s.cuts, 'vibrato': s.vibrato, 'notes': s.follower_notes})
         for u in plan.unsupported:
-            self._add_warning({'type': 'merge_unsupported', 'channel': u['primary'], **u})
+            self._add_warning({'type': 'merge_unsupported', 'channel': u['primary'],
+                               'extra_ctx': u.get('detail', str(u.get('tick'))), **u})
         return plan
 
     def _derive_noise_envelopes(self) -> dict[int, dict]:

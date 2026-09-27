@@ -564,9 +564,11 @@ def _warn_merge_headroom(w: dict, ctx_str: str) -> None:
 
 
 def _warn_merge_unsupported(w: dict, ctx_str: str) -> None:
+    what = (f"composite for {w['notes']} notes ({_escape(w['detail'])})" if 'notes' in w
+            else f"at tick {w.get('tick')}")
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
-        f"[yellow]merge {w['primary']} at tick {w['tick']}: {w['reason']} — the primary plays alone[/yellow]"
+        f"[yellow]merge {w['primary']}: {what}: {w['reason']} — the primary plays alone there[/yellow]"
     )
 
 

@@ -838,7 +838,10 @@ Instruments no note of the merged build plays are dropped from the catalogue bef
 (`MergePlan.unused`, reported as "not rendered"); a sample a pcm composite is mixed from is
 kept until the mix is done and blanked after.
 
-**Composite instruments.** One per distinct key, allocated from the free instrument slots:
+**Composite instruments.** One per distinct key. Slots: the ones nothing in the config names,
+then the ones the merged build frees (instruments no note plays once the followers are gone),
+the most-played composites first; a composite left without a slot is dropped, its notes play
+the primary alone, and `merge_unsupported` says so.
 
 - two FM voices → `("fm", primary instrument, (follower voice, interval, detune, TL delta)...)`:
   an `FmInstrument` with one `FmLayer` per voice, added to the instrument catalogue and rendered

@@ -991,7 +991,14 @@ instead (`FM2 + [PSG2, PSG1]`, the survey's "folds with losses" pair).
 
 **Composite instruments.** One per distinct key. Slots: the ones nothing in the config names,
 then the ones the merged build frees (instruments no note plays once the followers are gone),
-the most-played composites first (`_fit_composites`).  Each group's `max_composites` is
+the most-played composites first (`_fit_composites`).  A freed instrument that a pcm mix is
+made from (`MergePlan.mix_only`) gives up its slot too when it is a PSG instrument: the PSG
+generator still renders it, the converter keeps the sample aside (`_mix_sources`) instead of
+installing it, and `mix_pcm_composites` reads its sources from there before the slot table
+(loop points come from the sample objects).  An FM mix source stays pinned, because the FM
+catalogue holds one entry per slot and the composite would displace it; a drum does too,
+since it is loaded from disk into its slot.  Green Hill: `psg_tone06`'s slot 20, once
+blanked after mixing, now holds an eighth bass+chime mix.  Each group's `max_composites` is
 applied first; then, while the composites do not all fit, as many as are over are dropped —
 first those whose primary instrument is played anyway (dropping them needs no new slot), then
 the least played — and the fit is redone, because a dropped composite hands its notes back to

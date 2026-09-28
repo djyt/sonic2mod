@@ -448,6 +448,9 @@ class MergePlan:
     spliced: set[tuple[str, int]] = field(default_factory=set)   # (follower, tick) of every note-on now on a primary
     unused: set[int] = field(default_factory=set)   # instruments no note of the merged build plays
     blank_after_mix: set[int] = field(default_factory=set)   # unused, but a pcm composite is mixed from them
+    dropped: set[int] = field(default_factory=set)  # nothing plays or mixes them: not rendered at all
+    mix_only: set[int] = field(default_factory=set) # rendered for the mixes only; a composite may hold
+                                                    #   their slot, so they are kept aside, not installed
     fill: list = field(default_factory=list)        # per pool source: {'source', 'notes', 'placed', 'cut',
                                                     #   'lost', 'folded', 'targets': {channel: notes}} (_pool_notes)
     slots_free: int = 0                             # instrument slots the composites could take
@@ -595,14 +598,22 @@ def build_merge_plan(song, config, *, pan_law_db: float,
     # the primary's own instrument, which the unused scan must then count as played.
     _cap_composites(plan, config)
     plan.slots_wanted = len(plan.composites)
-    unused = _fit_composites(plan, song, config, free)
+    # A mix source's slot can be reused too when the source is a PSG instrument: its sample is
+    # rendered anyway and handed to the mixer directly.  An FM source shares the FM catalogue's
+    # one entry per slot with the composite, and a drum comes off disk into its slot, so those
+    # stay pinned.
+    pinned = plan.pcm_sources & (set(cat.instruments) | {d.mod_instrument for d in config.dac_samples})
+    unused = _fit_composites(plan, song, config, free, pinned)
     taken = plan.instruments
-    plan.blank_after_mix = (unused & plan.pcm_sources) - taken
-    plan.unused = unused - plan.pcm_sources - taken
+    plan.mix_only = unused & plan.pcm_sources
+    plan.blank_after_mix = plan.mix_only - taken
+    plan.dropped = unused - plan.pcm_sources
+    plan.unused = plan.dropped - taken
     return plan
 
 
-def _fit_composites(plan: MergePlan, song, config, free: list[int]) -> set[int]:
+def _fit_composites(plan: MergePlan, song, config, free: list[int],
+                    pinned: frozenset[int] | set[int] = frozenset()) -> set[int]:
     """Give every composite a MOD instrument slot - a never-named slot, or one of an instrument
     the merged build no longer plays - dropping composites while they do not all fit.
 
@@ -612,7 +623,7 @@ def _fit_composites(plan: MergePlan, song, config, free: list[int]) -> set[int]:
     played.  Returns the instruments left unused by the final plan."""
     while True:
         unused = _unused_instruments(plan, song, config)
-        slots = free + sorted(unused - plan.pcm_sources)
+        slots = free + sorted(unused - pinned)
         comps = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst))
         over = len(comps) - len(slots)
         if over <= 0:
@@ -836,8 +847,8 @@ def _signed(data: bytes) -> list[float]:
 
 def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        max_bytes: int = MAX_MOD_SAMPLE_BYTES,
-                       loops: dict[int, tuple[int, int]] | None = None,
-                       hold_secs: dict[int, float] | None = None) -> list[dict]:
+                       hold_secs: dict[int, float] | None = None,
+                       sources: dict[int, ModSample] | None = None) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -848,8 +859,9 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     a sum past full scale keeps volume 64 and is reported (`headroom_db`).  Returns one dict
     per problem (a missing sample).
 
-    `loops` ({instrument: (start, length) bytes}) says which sources were cut to a sustain
-    loop.  A looped follower is unrolled under the primary.  A looped primary mixed at its own
+    A source is the sample installed in its slot, or the one `sources` ({instrument: ModSample})
+    holds for a mix-only source whose slot a composite took (`MergePlan.mix_only`); a looped
+    source (its own loop header) is handled as follows.  A looped follower is unrolled under the primary.  A looped primary mixed at its own
     rate keeps its loop, moved past the followers' tails: the unrolled data repeats the loop
     body, so any later repeat of it is the same seamless loop, and the composite is the
     followers' length plus one loop.  Mixed at another rate (resampled) the loop points would
@@ -857,13 +869,19 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     its longest note) instead and the mix plays straight through.
     """
     problems: list[dict] = []
-    loops = loops or {}
     hold_secs = hold_secs or {}
+    sources = sources or {}
+
+    def sample_of(inst: int) -> ModSample:
+        return sources.get(inst) or mod.samples[inst - 1]
+
+    def loop_of(s: ModSample) -> tuple[int, int] | None:
+        return (s.repeat * 2, s.repeat_length * 2) if s.repeat_length > 1 else None
     for comp in plan.composites.values():
         if comp.fm is not None:
             continue
         _, p_inst, p_idx, subs = comp.key
-        base = mod.samples[p_inst - 1]
+        base = sample_of(p_inst)
         if not base.data:
             problems.append({'instrument': comp.inst, 'missing': p_inst})
             continue
@@ -873,15 +891,16 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         # The followers first: how long the mix has to run before a loop may start
         layers: list[list[float]] = []
         for _, f_inst, f_idx, scale in subs:
-            fs = mod.samples[f_inst - 1]
+            fs = sample_of(f_inst)
             if not fs.data:
                 problems.append({'instrument': comp.inst, 'missing': f_inst})
                 continue
             gain = fs._volume / 64.0 * scale
             r_f = amiga_clock / PERIOD_TABLE[f_idx]
             f_data = fs.data
-            if f_inst in loops:               # unrolled for as long as the primary's longest note
-                f_data = unroll(f_data, loops[f_inst], int(hold_secs.get(p_inst, 0.0) * r_f) + 2)
+            f_loop = loop_of(fs)
+            if f_loop is not None:            # unrolled for as long as the primary's longest note
+                f_data = unroll(f_data, f_loop, int(hold_secs.get(p_inst, 0.0) * r_f) + 2)
             sig = [v * gain for v in _signed(f_data)]
             if round(r_f) != round(r_p):
                 sig = resample(sig, round(r_f), round(r_p))
@@ -889,14 +908,15 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         tail = max((len(sig) for sig in layers), default=0)
         b_data = base.data
         keep_loop = None
-        if p_inst in loops:
-            s0, ln = loops[p_inst]
+        b_loop = loop_of(base)
+        if b_loop is not None:
+            s0, ln = b_loop
             if same_rate and ln >= 4:
                 k = max(0, -(-(tail - s0) // ln))          # repeats of the loop body before the tail ends
-                b_data = unroll(b_data, loops[p_inst], s0 + (k + 1) * ln)
+                b_data = unroll(b_data, b_loop, s0 + (k + 1) * ln)
                 keep_loop = (s0 + k * ln, ln)
             else:
-                b_data = unroll(b_data, loops[p_inst], int(hold_secs.get(p_inst, 0.0) * r_base) + 2)
+                b_data = unroll(b_data, b_loop, int(hold_secs.get(p_inst, 0.0) * r_base) + 2)
         total = [v * base._volume / 64.0 for v in _signed(b_data)]
         if not same_rate:
             total = resample(total, round(r_base), round(r_p))

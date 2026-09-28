@@ -252,7 +252,7 @@ merge:
   # drum and a bass note-on.
   - primary: FM2
     followers: [PSG2, PSG1]
-    max_composites: 7     # 17 slots are free for composites: 2 drum mixes, 8 chords, 7 of these
+    max_composites: 8     # 18 slots are free for composites: 2 drum mixes, 8 chords, 8 of these
     fill_cut: true        # PSG1's 24-tick chime rings are cut by the next bass note when folded; wherever
                           # a channel is silent for the whole ring (the lead's, which rests through
                           # patterns 2-4) the chime plays there in full instead

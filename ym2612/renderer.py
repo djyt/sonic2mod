@@ -76,6 +76,11 @@ def note_to_fnum_block(mod_note_index: int, clock_rate: int = _CLOCK_RATE) -> tu
     return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
 
 
+def fnum_block_to_freq(fnum: int, block: int, clock_rate: int = _CLOCK_RATE) -> float:
+    """The pitch (Hz) a (fnum, block) pair plays: f = fnum × (clock/144) × 2^block / 2^21."""
+    return fnum * (clock_rate / 144.0) * (1 << block) / (1 << 21)
+
+
 def freq_to_fnum_block(freq: float, clock_rate: int = _CLOCK_RATE) -> tuple[int, int]:
     """Frequency (Hz) → (fnum, block) pair for YM2612 register writes.
 

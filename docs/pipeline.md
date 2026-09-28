@@ -97,6 +97,46 @@ portamento takes the effect slot, so the note gets no `EDx` (it is rounded to th
 and a `Cxx` due on it moves to the next free row of the note, as a delayed note's does.  The
 sustain scan counts a legato note as the same ring.  Before this, every stab was heard twice.
 
+A portamento never changes the sample, so when the target note resolves to **another
+instrument** — another range of the same voice, its sample rendered for another octave — the
+target is written on the instrument that is sounding: the previous MOD note moved by the
+chip-pitch difference, with the previous instrument number.  Green Hill's FM3 grace `C6`
+(voice $08's C6–B6 range, instrument 15, rendered an octave up) bends into `B5` (its C5–B5
+range, instrument 14): written as `B2 3FF` after `C2` it slid instrument 15's sample up to
+B6, an octave high; it is now `B1 3FF`.  A target that would leave the MOD's three octaves
+that way is re-triggered on its own instrument instead.  Stage Clear has one such note.
+
+A no-attack note after an `smpsSetvoice` is re-triggered too: the hardware rewrites the
+operators under the running envelope, so the note sounds with the new voice, and a portamento
+would keep the old voice's sample.  Green Hill's FM4 and FM5 open the loop body that way (voice
+$08 → $05 at the jump label, tick 577); written as `3FF` they rode the intro's last, decayed
+note at −50 dB for four rows (first pass) and after every loop-back whatever the song's end
+left on the channel — heard as a silent start to pattern 5.  `tools/mod_lint.py` flags a `3xx`
+with nothing playable under it, and the regression suite fails a case on any such note its
+baseline does not have.
+
+A no-attack note with nothing sounding on the channel yet (no note-on before it) is a real
+note-on as well: Drowning's FM3 trill is `smpsNoAttack` from its first note, and written as
+`3FF` from row 0 the whole line was silent — `tools/mod_lint.py` reported 240 silent
+portamentos there.  After that first note the chain rides one sample, so a chain longer than
+the sample (the 10 s auto-sustain cap, `sustain_short`) goes silent where the sample ends
+unless `sustain_loops: all` loops it; the lint lists those rows too.
+
+These three rules are `legato: strict` in `settings.yaml`.  `legato: loose`
+writes every legato note as a `3FF` on the target's own instrument, as the conversion did
+before 2026-09-28 — byte-identical to those builds — which sounds right only in a player that
+swaps the sample on an instrument number (OpenMPT); FT2 clone and ProTracker do not, and the
+MODs are checked in FT2 clone.  `legato: retrigger` (the default since 2026-09-28) writes every no-attack note as a plain
+note-on, as the conversion did before 030ca81 (its pattern cells are those of that build; the
+samples keep today's lengths).  What that trades: a grace note bending into a chord is heard
+as two attacks, but a legato onto a note that has already sounded for seconds is not left on
+the sample's decayed tail.  Green Hill's FM1 shows the second case: E held 56 ticks, a
+no-attack rest holds it 56 more, then a no-attack C 2.8 s in — the hardware plays that C at
+the level of a fresh note (−13.6 dB in the VGZ), a `3FF` there rides instrument 12's sample
+where voice $06 has decayed into a beat null (−39.5 dB).  The sample-side answer (a render
+whose sustain decays as slowly as the hardware's, or a loop) is the envelope-tail question
+the audits left open; the setting is the note-side one.
+
 ### Effect priority (one per note-row)
 
 When multiple effects are active on the same note, **first match wins**:
@@ -628,7 +668,66 @@ with a positive finetune and one row of margin.  The auto sustain is the largest
 at 10 s; each generator also caps every instrument to the sample limit at its rate
 (`max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original
 ProTracker's 65534).  `sustain_short` warnings name what is left.  Full rules: `docs/fm_synthesis.md`
-§ `sustain_duration: auto`.
+§ `sustain_duration: auto`.  With sustain loops on (below) a looped instrument holds any
+note and warns nothing.
+
+---
+
+## Sustain loops and release slides (`sustain_loops`, `core/loops.py`)
+
+`sustain_loops` in `settings.yaml` (`off` | `merged` — the default: the `--merged` build only |
+`all`) makes a sample's length independent of the notes it plays, the one structural thing a
+hand-made Amiga MOD does that a plain render cannot.
+
+**The loop.** After rendering, `core.loops.find_sustain_loop` looks at the RMS envelope of the
+sustain (windows of two fundamental periods, dB below the sample's peak).  The reference is the
+`SPAN_SECS` (1 s) before the end of the instrument's longest note (`ref_n`; the span after that
+note's end when the note is shorter than the span, never the attack); the envelope is *flat*
+from the first window after which every window stays within `loop_drift_db` of the level at the
+span's end, widened by the span's swing around its trend (detrended: a decaying voice's span
+must not pass its whole decay, and its attack, as flat).  A band, not a level, so a chorus pair
+that beats is flat once the beating is steady.
+Loop candidates start at the flat point and run every even length (a MOD loop is measured in
+words) from 30 ms to `MAX_LOOP_SECS` (1.2 s: a detuned pair beating at 1 Hz needs a whole
+beat), scored by the discontinuity the loop would introduce — the RMS difference between the
+two periods after the loop start and the two after its end — plus `LENGTH_PENALTY` per second.
+A whole number of fundamental cycles is rarely the answer: nearly every Sonic 1 voice detunes its
+operators (DT1), so the waveform never repeats exactly (voice $04's best raw match is a −20 dB
+jump); the best length is where the operators' phases come closest to recurring.  `apply_loop`
+then crossfades the last 15 ms of the loop into the samples before its start and cuts the
+sample at the loop's end.  numpy scores every length at once; without it only the fundamental's
+grid is tried.
+
+Generators render a `PROBE_SECS` (4 s) sustain to search in and fall back to the note's own
+length without a loop.  No loop is made where the level at the reference has decayed below
+−50 dB (a percussive voice), where the loop would end later than the plain render (a voice
+still settling: `MAX_END_FRACTION`, and the sustain-plus-release length), or where the raw
+discontinuity is over `MAX_ERROR` (−2.5 dB, i.e. uncorrelated).  `loop_drift_db` (1 dB default)
+is the fidelity knob: a slowly decaying voice (Green Hill's $00, $06, $08: carriers with a
+sustain rate of 3–7) loops only where its last second is within that of the loop point, so at 1 dB
+its long notes keep their decay and its sample stays long; at 3–6 dB it loops earlier and its
+longest notes end that much louder than the hardware's.  Green Hill merged without its chime
+mixes: 1 dB → 184 KB of samples, 6 dB → 178 KB, 12 dB → 140 KB (unlooped 253 KB; the size is
+not monotonic in the drift, because an earlier flat point changes which loop scores best).  PSG tones are looped
+the same way (`sn76489/sample_generator.py`); noise never is.
+
+**The release.** A looped sample rings until something stops it, and a plain sample is cut
+where the hardware released, so with loops on every FM note ends with a volume slide instead
+of `C00`: `release_rate_db_s` fits the dB-per-second slope of the render's tail after key-off
+(the `release_padding`), and `SmpsToModConverter._write_release` writes one `A0y` per row from
+the rest's row (or the note fill's row, whose sub-row `ECx` position is given up) until the
+volume is gone or the next note-on's row.  The chip's release is linear in dB, so each row's
+target is the last row's times a fixed ratio and `y` is what takes the volume there
+(`(speed − 1)` slide ticks per row; rows whose share rounds to 0 are skipped so a slow release
+keeps its pace); after 64 rows a `C00` ends what is left (release rate 0 rings forever on the
+hardware).  A release that is over within a row (`RR $0F`: every Title Screen voice) stays a
+`C00`/`ECx`, and PSG notes keep their cuts (the driver sets attenuation 15 at once).  A mixed
+composite ends the way its primary does.  The vibrato continuation stops at the slide.
+
+Two things the slides made visible: a rest whose row rounds onto the next note-on's cell used
+to leave its `C00` there (`set_note` keeps the effect bytes: a silent note), now cleared by
+`_clear_stale_cut`; and the slides never reach a note-on's row (they stop at the row before the
+next note-on tick), so the two cannot collide.
 
 ---
 
@@ -865,10 +964,35 @@ Instruments no note of the merged build plays are dropped from the catalogue bef
 (`MergePlan.unused`, reported as "not rendered"); a sample a pcm composite is mixed from is
 kept until the mix is done and blanked after.
 
+**The fill pool** (`merge_fill: [PSG1, PSG2]`; a group's `fill_lost: true` for the follower
+notes it cannot fold — its orphans and shorter notes, `PairStats.lost_notes`) places notes on
+ANY output channel that is silent when they start, not only their group's primary
+(`_pool_notes`, after the groups are spliced).  Each live channel's occupancy is its own notes'
+sounding spans plus everything spliced onto it; a pool note takes the channel that stays silent
+longest — the whole note where one can, else the channel whose next note-on cuts it
+(`cut`), and never for less than a row (`fill_min_ticks`); a note with no silent channel is
+lost.  `merge_fill_cut_after: {DAC: 2, FM2: 4}` lets a channel's notes count for that many
+ticks only, so a pool note may cut a kick's decay or a bass note's second half — what a
+hand-made 4-channel cover does.  Pool notes are spliced as solo notes are (`_splice_note`), so
+they keep their own instrument, level and pitch on whatever channel they land, including the
+drum channel (the FM level law applies to every FM note on a channel, spliced or not).  The
+converter reports per source how many were placed where, cut, and lost (`merge_fill`).  Green
+Hill's chime lines cannot be pooled: PSG2 starts with a bass note-on on 107 of its 113 notes and
+PSG1 on 72 of 75, and every one of those also starts on a drum, so only 30 of 188 found a silent
+channel even with `merge_fill_cut_after`; they fold onto the bass channel as bass+chime mixes
+instead (`FM2 + [PSG2, PSG1]`, the survey's "folds with losses" pair).
+
 **Composite instruments.** One per distinct key. Slots: the ones nothing in the config names,
 then the ones the merged build frees (instruments no note plays once the followers are gone),
-the most-played composites first; a composite left without a slot is dropped, its notes play
-the primary alone, and `merge_unsupported` says so.
+the most-played composites first (`_fit_composites`).  Each group's `max_composites` is
+applied first; then, while the composites do not all fit, as many as are over are dropped —
+first those whose primary instrument is played anyway (dropping them needs no new slot), then
+the least played — and the fit is redone, because a dropped composite hands its notes back to
+the primary's own instrument, which may be one of the slots on offer.  It used to be computed
+once, before the budgets: a chord over budget fell back to FM5's instrument 11, which the unused
+scan had already given away, and eight of Green Hill's notes played an empty slot.  The
+converter prints `composite slots: N used of M free (K asked for)`; a dropped composite's notes
+play the primary alone and `merge_unsupported` says which.
 
 - two FM voices → `("fm", primary instrument, (follower voice, interval, detune, TL delta)...)`:
   an `FmInstrument` with one `FmLayer` per voice, added to the instrument catalogue and rendered
@@ -889,7 +1013,12 @@ the primary alone, and `merge_unsupported` says so.
   (the fastest layer's, so a hat on a kick keeps its treble; `MergePlan.note_at` gives the
   converter that note) and added at `sample_list volume × 10^((level − baked level)/20)`. The sum is
   peak-normalised and the composite's volume set to the sum's level; past full scale it stays
-  at 64 and `merge_headroom` says by how much.
+  at 64 and `merge_headroom` says by how much.  With sustain loops on, a looped follower is
+  unrolled under the primary, and a looped primary mixed at its own rate keeps its loop, moved
+  past the followers' tails (the unrolled data repeats the loop body, so any later repeat of it
+  is the same seamless loop): Green Hill's bass+chime mixes are the chime's length plus one
+  bass loop.  Mixed at another rate the loop points would not land on samples, so the primary
+  is unrolled for its longest note instead and the mix plays straight through.
 
 **When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`
 and `_extend_looping_channels`, which now runs before anything counts notes) and before the

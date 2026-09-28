@@ -24,6 +24,22 @@ psg_synthesis:
 
 max_sample_kb: 128          # Maximum Sample Length: 64 = Amiga ProTracker | 128 = Modern Trackers
 
+# Sustain loops (core/loops.py).  A synthesised sample otherwise holds the longest note its instrument
+# plays.  With loops, an instrument whose envelope settles (the YM2612 voice at its sustain level, a PSG
+# envelope holding) is cut where it settles plus one loop of the waveform (the best-matching length up to
+# 1.2 s, crossfaded closed), so its size no longer depends on the notes, and every FM note ends with a
+# volume slide at the voice's release rate (A0y per row) instead of a C00 - the chip's release phase.
+# A voice that keeps decaying keeps its plain render.
+#   off      never
+#   merged   the --merged (Amiga) build only; the reference MOD stays as it was   (default)
+#   all      every build
+sustain_loops: merged
+# How far (dB) a loop may freeze the level above where the instrument's longest note would have decayed
+# to: 1 loops only voices that truly settle; 3-6 also loops slowly decaying voices, which then hold their
+# level through long notes (Green Hill merged without its chime mixes: 1 dB = 184 KB of samples,
+# 6 dB = 178 KB, 12 dB = 140 KB; unlooped 253 KB).
+loop_drift_db: 1
+
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)
 # -------------------------------------------------------------------------------------------------
@@ -40,6 +56,22 @@ fm_volume_scaling: baked
 # baked mode only: a hard-panned (smpsPan left/right) note is this many dB quieter than a centred one.
 # A centred YM2612 channel drives both speakers, every Amiga channel drives one.  0 disables.
 fm_pan_law_db: 3
+
+# How a legato note (smpsNoAttack: the driver changes the frequency without a key-on) is written when its
+# target cannot ride the sample that is sounding.  A MOD tone portamento (3FF) never re-triggers and, in FT2
+# clone and ProTracker, never changes the playing sample either.
+#   strict   A target in another range of the voice (another instrument, its sample rendered for another
+#            octave) is written on the sounding instrument, its MOD note moved by the chip-pitch delta; after
+#            an smpsSetvoice, or with nothing sounding on the channel yet, the note is re-triggered.
+#   loose    Always a 3FF on the target's own instrument, as the conversion wrote it before 2026-09-28.  Right
+#            only in a player that swaps the sample on an instrument number (OpenMPT); in FT2 clone Green Hill's
+#            FM3 grace note came out an octave up, its loop label rode a decayed note, and Drowning's FM3 trill
+#            (no-attack from its first note) never started.
+#   retrigger  Every no-attack note is a plain note-on, as the conversion wrote it before commit 030ca81: a
+#            grace note bending into a chord is heard as two attacks, but a legato onto a note that has been
+#            sounding for seconds is not left riding the sample's decayed tail (Green Hill FM1, pattern 14 row 52:
+#            the hardware plays that C at the level of a fresh note, a 3FF there is 26 dB down).  (default)
+legato: retrigger
 
 
 # PSG counterpart of fm_volume_scaling (SN76489 attenuation: smpsHeaderPSG volume + smpsPSGAlterVol, 2 dB/step):

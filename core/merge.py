@@ -274,6 +274,8 @@ class PairStats:
     solo_notes: dict = field(default_factory=dict)   # {tick: NoteOn} the solo notes
     lost_notes: dict = field(default_factory=dict)   # {tick: NoteOn} orphans and shorter notes: the
                                                      # ones a fill pool can still place (fill_lost)
+    cut_notes: dict = field(default_factory=dict)    # {tick: NoteOn} paired notes whose ring the fold
+                                                     # cuts (held / truncated): fill_cut candidates
 
     @property
     def lost(self) -> int:
@@ -353,6 +355,7 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
     """Line a follower's notes up with a primary's."""
     st = PairStats(primary, follower)
     f_ticks = sorted(f_notes)
+    p_sorted = sorted(p_notes)
     matched = match_onsets(p_notes, f_notes, tolerance)
     for t in sorted(p_notes):
         p = p_notes[t]
@@ -370,6 +373,11 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
         st.paired += 1
         if f.vibrato != p.vibrato:
             st.vibrato += 1
+        if f.duration > p.duration:
+            end = f.tick + f.sounding
+            nxt = bisect.bisect_right(p_sorted, t)
+            if (nxt < len(p_sorted) and p_sorted[nxt] < end) or any(t < r < end for r in p_rests):
+                st.cut_notes[f.tick] = f    # its tail is lost to the primary's next event
         # A chip composite is one per (primary instrument, follower layer): the interval is
         # in the layer, not the MOD note.  A mixed one is per primary note as well.
         fk = follower_key(p, f, level_scale(f))
@@ -441,7 +449,7 @@ class MergePlan:
     unused: set[int] = field(default_factory=set)   # instruments no note of the merged build plays
     blank_after_mix: set[int] = field(default_factory=set)   # unused, but a pcm composite is mixed from them
     fill: list = field(default_factory=list)        # per pool source: {'source', 'notes', 'placed', 'cut',
-                                                    #   'lost', 'targets': {channel: notes}} (_pool_notes)
+                                                    #   'lost', 'folded', 'targets': {channel: notes}} (_pool_notes)
     slots_free: int = 0                             # instrument slots the composites could take
     slots_wanted: int = 0                           # composites the groups asked for (after max_composites)
 
@@ -525,14 +533,27 @@ def build_merge_plan(song, config, *, pan_law_db: float,
         return 10 ** ((n.level_db - base) / 20.0)
 
     tol = max(0, int(getattr(config, "merge_tolerance", 0)))
+    # Phase 1: every channel's notes and how each follower lines up with its primary
+    groups_data = []
     for g in plan.groups:
         p_notes, p_rests = channel_notes(song, config, g.primary, pan_law_db, sample_secs, tick_secs, tol)
         followers = [(f, *channel_notes(song, config, f, pan_law_db, sample_secs, tick_secs, tol))
                      for f in g.followers]
+        groups_data.append((g, p_notes, p_rests, followers))
+
+    def pair_all():
+        plan.stats = []
+        for g, p_notes, p_rests, followers in groups_data:
+            for f, f_notes, f_rests in followers:
+                plan.stats.append(pair_channels(p_notes, p_rests, f_notes, f_rests, g.primary, f, level_scale,
+                                                cut_primary=g.cut_primary, tolerance=tol))
+    pair_all()
+    # Phase 2: the fill pool, before anything folds - a pooled follower note leaves its group
+    if _pool_notes(plan, song, config, pan_law_db, sample_secs, tick_secs, tol, fill_min_ticks, groups_data):
+        pair_all()                      # the counts and solo notes of what is left to fold
+    # Phase 3: composites and solo notes per group
+    for g, p_notes, p_rests, followers in groups_data:
         matched = {f: match_onsets(p_notes, f_notes, tol) for f, f_notes, _ in followers}
-        for f, f_notes, f_rests in followers:
-            plan.stats.append(pair_channels(p_notes, p_rests, f_notes, f_rests, g.primary, f, level_scale,
-                                            cut_primary=g.cut_primary, tolerance=tol))
         for t in sorted(p_notes):
             p = p_notes[t]
             present = [(f, f_notes[matched[f][t]]) for f, f_notes, _ in followers
@@ -570,7 +591,6 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                     plan.notes[(g.primary, tt)] = comp.note
         _splice_solo_notes(plan, song, g, p_notes, p_rests)
     config.merge_plan = plan
-    _pool_notes(plan, song, config, pan_law_db, sample_secs, tick_secs, tol, fill_min_ticks)
     # The group budgets first (max_composites): a composite over budget hands its notes back to
     # the primary's own instrument, which the unused scan must then count as played.
     _cap_composites(plan, config)
@@ -713,44 +733,59 @@ def _free_span(spans: list[tuple[int, int]], t: int) -> int:
 
 
 def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, tick_secs,
-                grace: int, min_ticks: int) -> None:
-    """The fill pool: every note of a `merge_fill` channel, and every lost follower note of a
-    `fill_lost` group, onto whichever output channel is silent when it starts (the module
-    docstring).  Records per-source counts in plan.fill."""
-    pool: list[tuple[int, int, str, NoteOn]] = []      # (tick, source order, source, note)
+                grace: int, min_ticks: int, groups_data: list) -> bool:
+    """The fill pool: every note of a `merge_fill` channel, every lost follower note of a
+    `fill_lost` group, and every follower note of a `fill_cut` group whose ring the fold would
+    cut, onto whichever output channel is silent when it starts (the module docstring).  A
+    cut note is only moved where a channel is silent for all of it - folded, it at least keeps
+    its onset.  A pooled follower note leaves its group's notes (the caller re-pairs).  Records
+    per-source counts in plan.fill; returns True when any follower note was pooled."""
+    pool: list[tuple[int, int, str, NoteOn, bool]] = []      # (tick, order, source, note, whole note only)
     order = 0
     for src in config.merge_fill:
         notes, _ = channel_notes(song, config, src, pan_law_db, sample_secs, tick_secs, grace)
-        pool += [(t, order, src, n) for t, n in notes.items()]
+        pool += [(t, order, src, n, False) for t, n in notes.items()]
         order += 1
     for g in plan.groups:
-        if not g.fill_lost:
-            continue
         for st in plan.stats:
-            if st.primary == g.primary:
-                pool += [(t, order, st.follower, n) for t, n in st.lost_notes.items()]
-                order += 1
+            if st.primary != g.primary:
+                continue
+            if g.fill_lost:
+                pool += [(t, order, st.follower, n, False) for t, n in st.lost_notes.items()]
+            if g.fill_cut:
+                pool += [(t, order, st.follower, n, True) for t, n in st.cut_notes.items()
+                         if t not in st.lost_notes]
+            order += 1
     if not pool:
-        return
+        return False
     smap = source_map(song)
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
     spans = {c.source: _occupancy(plan, song, config, c.source, pan_law_db, sample_secs, tick_secs, grace)
              for c in live}
+    # The solo notes the groups will splice onto their primaries occupy those channels too
+    for st in plan.stats:
+        if st.primary in spans:
+            for t, n in st.solo_notes.items():
+                bisect.insort(spans[st.primary], (t, t + n.sounding))
+    follower_notes = {f: f_notes for _g, _p, _r, followers in groups_data for f, f_notes, _ in followers}
     stats: dict[str, dict] = {}
     cut_after = getattr(config, "merge_fill_cut_after", {})
-    for t, _o, src, n in sorted(pool, key=lambda x: (x[0], x[1])):
-        st = stats.setdefault(src, {'source': src, 'notes': 0, 'placed': 0, 'cut': 0, 'lost': 0, 'targets': {}})
+    pooled = False
+    for t, _o, src, n, whole in sorted(pool, key=lambda x: (x[0], x[1])):
+        st = stats.setdefault(src, {'source': src, 'notes': 0, 'placed': 0, 'cut': 0, 'lost': 0,
+                                    'folded': 0, 'targets': {}})
         st['notes'] += 1
         best = None
         for c in live:
             free = _free_span(spans[c.source], t)
-            if free < max(1, min(min_ticks, n.sounding)):
+            need = n.sounding if whole else max(1, min(min_ticks, n.sounding))
+            if free < need:
                 continue
             fit = min(free, n.sounding)
             if best is None or fit > best[0]:
                 best = (fit, c.source, free)
         if best is None:
-            st['lost'] += 1
+            st['folded' if whole else 'lost'] += 1     # a cut note without a channel folds as before
             continue
         fit, target, free = best
         _splice_note(plan, smap[target].events, target, src, t, n, free)
@@ -759,7 +794,11 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
         st['placed'] += 1
         st['cut'] += fit < n.sounding
         st['targets'][target] = st['targets'].get(target, 0) + 1
+        if src in follower_notes:
+            follower_notes[src].pop(t, None)     # no longer folded onto its primary
+            pooled = True
     plan.fill = list(stats.values())
+    return pooled
 
 
 def _insert_event(events: list, ev) -> None:

@@ -335,9 +335,11 @@ def main():
         elif info['type'] == 'merge_fill':
             where = ", ".join(f"{n} on {ch}" for ch, n in sorted(info['targets'].items(), key=lambda kv: -kv[1]))
             cut = f" ({info['cut']} cut short by the channel's next note)" if info['cut'] else ""
+            rest = (f"; {info['lost']} lost" if info['lost'] else "") + (
+                f"; {info['folded']} stay folded on their primary" if info.get('folded') else "")
             detail_lines.append(
                 f"fill pool [bold]{info['source']}[/bold]: {info['placed']} of {info['notes']} notes placed "
-                f"on silent channels[dim] — {where}{cut}; {info['lost']} lost[/dim]")
+                f"on silent channels[dim] — {where}{cut}{rest}[/dim]")
         elif info['type'] == 'merge_slots':
             short = (f" — [yellow]{info['wanted'] - info['used']} dropped: lower a group's max_composites "
                      f"or free a slot[/yellow]" if info['wanted'] > info['used'] else "")

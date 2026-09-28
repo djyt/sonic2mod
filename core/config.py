@@ -107,6 +107,9 @@ class MergeGroup:
                                         # chords play the primary alone): a memory budget
     fill_lost: bool = False     # a follower note the group cannot fold (an orphan, a shorter one)
                                 # goes to the fill pool: any output channel silent at that moment
+    fill_cut: bool = False      # a follower note whose ring the fold would cut (the primary's next
+                                # note-on or rest falls inside it) plays whole on a channel silent
+                                # for all of it when there is one; else it folds as before
 
     @property
     def label(self) -> str:
@@ -840,7 +843,8 @@ class ConversionConfig:
             config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers],
                                            bool(g.get('cut_primary', False)),
                                            int(_mc) if _mc is not None else None,
-                                           bool(g.get('fill_lost', False))))
+                                           bool(g.get('fill_lost', False)),
+                                           bool(g.get('fill_cut', False))))
         drop = data.get('merge_drop', []) or []
         config.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
         fill = data.get('merge_fill', []) or []

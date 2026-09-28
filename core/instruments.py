@@ -127,10 +127,10 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
                     add(entry, voice_idx, f"channel_instrument_map[{src}][{voice_idx}][{i}]", src)
     plan = getattr(config, "merge_plan", None)
     if plan is not None:                         # core.merge: the composites, rendered as layers
-        for inst in plan.unused:                 # nothing the merged build never plays ...
+        for inst in plan.dropped:                # nothing the merged build plays or mixes ...
             cat.instruments.pop(inst, None)
-        for spec in plan.fm_instruments:         # ... and a composite owns its slot: the plan only
-            cat.instruments[spec.inst] = spec    # reuses slots of instruments no note plays
+        for spec in plan.fm_instruments:         # ... and a composite owns its slot (the plan never
+            cat.instruments[spec.inst] = spec    # reuses an FM mix source's)
     return cat
 
 
@@ -176,6 +176,8 @@ def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None)
             add(entry, f"psg_voice_map[{label}][{i}]")
     plan = getattr(config, "merge_plan", None)
     if plan is not None:
-        for inst in plan.unused | plan.instruments:   # core.merge: nothing the merged build never
-            out.pop(inst, None)                        # plays, and no slot a composite took over
+        # core.merge: nothing the merged build plays or mixes, and no slot a composite took over -
+        # except a mix source's, which is rendered for the mixer and kept out of the slot
+        for inst in plan.dropped | (plan.instruments - plan.mix_only):
+            out.pop(inst, None)
     return out

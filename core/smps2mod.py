@@ -89,6 +89,7 @@ class SmpsToModConverter:
         self._release: dict[int, float | None] = {}
         self._release_slides = False       # end FM notes with a volume slide instead of C00
         self._pending_sustain_short: dict[tuple[str, int], dict] = {}
+        self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
 
     def _add_warning(self, w: dict):
         """Append a warning, deduplicating by (type, channel, extra_ctx, key)."""
@@ -348,32 +349,35 @@ class SmpsToModConverter:
                                      max_bytes: int = MAX_MOD_SAMPLE_BYTES) -> None:
         """Install synthesized PCM samples into mod.samples and apply sample_list overrides.
         `max_bytes` is the settings' sample limit (max_sample_kb); a longer sample is cut."""
-        sl_name_map = {e[0]: e[1] for e in sample_list} if sample_list else {}
         for inst_num, (pcm_orig, _) in samples_dict.items():
-            pcm_data = pcm_orig[:max_bytes]
-            if len(pcm_orig) > max_bytes:
-                # The generators cap the sustain to the limit; this is a last resort.
-                self._add_warning({'type': 'sample_truncated', 'channel': prefix,
-                                   'extra_ctx': f'instrument {inst_num}', 'instrument': inst_num,
-                                   'bytes': len(pcm_orig), 'max_bytes': max_bytes})
-            sample = ModSample(sl_name_map.get(inst_num, f"{prefix}_inst{inst_num}"))
-            sample.data = pcm_data
-            sample.length = len(pcm_data) // 2
-            sample.set_volume(64)
-            loop = self._loops.get(inst_num)
-            if loop is not None and loop.end <= len(pcm_data) and loop.length >= 4:
-                sample.repeat = loop.start // 2
-                sample.repeat_length = loop.length // 2
-            self.mod.samples[inst_num - 1] = sample
-        if sample_list:
-            for entry in sample_list:
-                inst_num_sl = entry[0]
-                if inst_num_sl in samples_dict:
-                    vol_sl = entry[2] if len(entry) > 2 else 64
-                    ft_sl  = entry[3] if len(entry) > 3 else 0
-                    self.mod.samples[inst_num_sl - 1].set_volume(vol_sl)
-                    if ft_sl != 0:
-                        self.mod.samples[inst_num_sl - 1].set_finetune(ft_sl)
+            self.mod.samples[inst_num - 1] = self._make_sample(inst_num, pcm_orig, prefix,
+                                                               self._loops.get(inst_num), max_bytes)
+
+    def _make_sample(self, inst_num: int, pcm_orig: bytes, prefix: str, loop: SustainLoop | None,
+                     max_bytes: int = MAX_MOD_SAMPLE_BYTES, original: bool = False) -> ModSample:
+        """A ModSample for a synthesised PCM: cut to the limit, its loop header, and the
+        sample_list volume and finetune for the instrument - the last entry naming the slot (a
+        composite's, appended by the plan) unless `original` asks for the first (the source the
+        slot was named for, kept aside for the mixer)."""
+        sample_list = self.config.sample_list or []
+        entries = [e for e in sample_list if e[0] == inst_num]
+        entry = (entries[0] if original else entries[-1]) if entries else None
+        pcm_data = pcm_orig[:max_bytes]
+        if len(pcm_orig) > max_bytes:
+            # The generators cap the sustain to the limit; this is a last resort.
+            self._add_warning({'type': 'sample_truncated', 'channel': prefix,
+                               'extra_ctx': f'instrument {inst_num}', 'instrument': inst_num,
+                               'bytes': len(pcm_orig), 'max_bytes': max_bytes})
+        sample = ModSample(entry[1] if entry else f"{prefix}_inst{inst_num}")
+        sample.data = pcm_data
+        sample.length = len(pcm_data) // 2
+        sample.set_volume(entry[2] if entry and len(entry) > 2 else 64)
+        if entry and len(entry) > 3 and entry[3] != 0:
+            sample.set_finetune(entry[3])
+        if loop is not None and loop.end <= len(pcm_data) and loop.length >= 4:
+            sample.repeat = loop.start // 2
+            sample.repeat_length = loop.length // 2
+        return sample
 
     def _synthesis_roots(self, kind: str) -> dict[int, tuple[int, int]]:
         """{MOD instrument: (MOD note index its sample is synthesised for, synth_shift)}.
@@ -658,13 +662,23 @@ class SmpsToModConverter:
                     self._add_warning({'type': 'noise_envelopes', 'channel': 'PSG',
                                        'extra_ctx': f'instrument {inst}', 'instrument': inst,
                                        'envelope': d['envelope'], 'others': others})
+            psg_loops: dict[int, SustainLoop] = {}
             psg_samples = generate_psg_samples(
                 self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
                 noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
-                loops=psg_synth.loops_for(self.config.merge_active), loops_out=self._loops)
+                loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops)
+            # A mix-only source whose slot a composite holds is kept aside for the mixer; the
+            # slot's loop entry stays the composite's
+            aside = ({i for i in psg_samples if i in self._merge.mix_only and i in self._merge.instruments}
+                     if self._merge is not None else set())
+            self._loops.update({i: lp for i, lp in psg_loops.items() if i not in aside})
             self._flush_sustain_warnings('PSG', psg_samples)
-            self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg",
+            direct = {i: v for i, v in psg_samples.items() if i not in aside}
+            self._install_synthesized_samples(direct, self.config.sample_list, "psg",
                                               psg_synth.max_sample_bytes)
+            for i in aside:
+                self._mix_sources[i] = self._make_sample(i, psg_samples[i][0], "psg", psg_loops.get(i),
+                                                         psg_synth.max_sample_bytes, original=True)
             self.infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
 
         for w in self._pending_sustain_short.values():      # kinds that were not synthesised
@@ -675,12 +689,12 @@ class SmpsToModConverter:
         if self._merge is not None:
             clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
             max_bytes = self.synth.max_sample_bytes if self.synth else MAX_MOD_SAMPLE_BYTES
-            loops = {i: (lp.start, lp.length) for i, lp in self._loops.items()}
             hold = {}
             for s in (synth, psg_synth):
                 if s is not None:
                     hold.update({i: n + s.release_padding for i, n in s.sustain_by_instrument.items()})
-            for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, loops=loops, hold_secs=hold):
+            for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, hold_secs=hold,
+                                        sources=self._mix_sources):
                 self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
             # A mixed composite ends the way its primary does (the release slide's rate)
             for c in self._merge.composites.values():

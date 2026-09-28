@@ -519,6 +519,8 @@ merge:
     followers: [FM4]
     max_composites: 4     # optional memory budget: the 4 most-played chords; the rest play FM5 alone
     fill_lost: true       # optional: the follower notes this group cannot fold go to the fill pool
+    fill_cut: true        # optional: a follower note the fold would cut short plays whole on a channel
+                          #   silent for all of it, when there is one (else it folds as before)
 merge_output_file: output/01_title_screen_4ch.mod   # optional
 merge_drop: [FM3, PSG1]                              # optional: left out of the merged build altogether
 merge_fill: [PSG2]                                   # optional: the fill pool — each note on whichever output
@@ -580,7 +582,10 @@ baselines and audits stay the ground truth.
   cannot fold (orphans, shorter ones) to the pool too. `merge_fill_cut_after: {channel:
   ticks}` lets a channel's notes count as silent after that many ticks, so a chime may cut a
   kick's decay or a bass note's second half, as a hand-made 4-channel cover would; a channel
-  absent there is never cut. Green Hill's chime lines start on the bass and drum note-ons
+  absent there is never cut. A group's `fill_cut: true` sends the follower notes the fold
+  would cut short (a chime ring longer than the bass note it rides) to the pool as well, but
+  only for a channel silent for the whole note; Green Hill's PSG1 rings play whole on the
+  lead's channel while the lead rests (patterns 2–4) and fold into the bass mixes elsewhere. Green Hill's chime lines start on the bass and drum note-ons
   almost every time, so the pool places 30 of 188; they fold onto the bass as bass+chime mixes
   instead.
 - Composites share the 31 instrument slots with the instruments the merged build still plays;

@@ -314,13 +314,19 @@ def main():
                 detail_lines.append(f"auto sustain {kind} [bold]{info['secs']}[/bold] s")
         elif info['type'] == 'merge_group':
             detail_lines.append(
-                f"merged [bold]{info['label']}[/bold]: {info['paired']} follower notes folded into "
+                f"merged [bold]{_escape(info['label'])}[/bold]: {info['paired']} follower notes folded into "
                 f"[bold]{len(info['composites'])}[/bold] composite instrument"
                 f"{'s' if len(info['composites']) != 1 else ''}, "
                 f"{info['alone']} notes the primary plays alone"
                 + (f", {info['solo']} follower notes placed on their own" if info.get('solo') else ""))
-            for inst, notes, detail in info['composites']:
-                detail_lines.append(f"  [dim]inst {inst:2d}  {notes:3d} notes  {_escape(detail)}[/dim]")
+            for inst, notes, detail, created_for, others in info['composites']:
+                share = ""
+                if created_for:
+                    share = f"  (made for {created_for})"
+                elif others:
+                    share = f"  (also {', '.join(others)})"
+                detail_lines.append(f"  [dim]inst {_escape(str(inst)):>7}  {notes:3d} notes  {_escape(detail)}"
+                                    f"{_escape(share)}[/dim]")
         elif info['type'] == 'sustain_loops':
             kb = info['bytes'] / 1024
             parts = []
@@ -340,11 +346,27 @@ def main():
             detail_lines.append(
                 f"fill pool [bold]{info['source']}[/bold]: {info['placed']} of {info['notes']} notes placed "
                 f"on silent channels[dim] — {where}{cut}{rest}[/dim]")
+        elif info['type'] == 'merge_bank':
+            detail_lines.append(
+                f"sample bank in slot [bold]{info['slot']}[/bold]: {len(info['members'])} sounds, "
+                f"{info['bytes'] / 1024:.1f} KB at volume {info['volume']}")
+            for offset, size, notes, detail in info['members']:
+                detail_lines.append(f"  [dim]9{offset >> 8:02X}  {size:6d} bytes  {notes:3d} notes  {_escape(detail)}[/dim]")
+        elif info['type'] == 'merge_bank_notes':
+            delays = (f"; {info['delays_dropped']} started a tick late without their EDx (the slot held the offset)"
+                      if info['delays_dropped'] else "")
+            detail_lines.append(
+                f"sample bank notes: {info['notes']} play from a bank (9xx at the sound's offset), "
+                f"{info['cuts']} are cut where their sound ends (the rest are ended by the channel's next "
+                f"note){delays}")
         elif info['type'] == 'merge_slots':
-            short = (f" — [yellow]{info['wanted'] - info['used']} dropped: lower a group's max_composites "
-                     f"or free a slot[/yellow]" if info['wanted'] > info['used'] else "")
+            banked = info.get('banked', 0)
+            gone = info['wanted'] - info['used'] - banked
+            short = (f" — [yellow]{gone} dropped: lower a group's max_composites or free a slot[/yellow]"
+                     if gone > 0 else "")
+            in_banks = f", {banked} more in sample banks" if banked else ""
             detail_lines.append(f"composite slots: {info['used']} used of {info['free']} free "
-                                f"({info['wanted']} asked for by the groups' budgets){short}")
+                                f"({info['wanted']} asked for by the groups' budgets{in_banks}){short}")
         elif info['type'] == 'merge_unused':
             detail_lines.append(
                 f"[dim]not rendered: instrument{'s' if len(info['instruments']) != 1 else ''} "
@@ -560,7 +582,7 @@ def _warn_merge_lost(w: dict, ctx_str: str) -> None:
     parts = []
     for key, what in (('orphans', "start while the primary sounds (lost)"),
                       ('held', "ring under a primary note-on (ring lost)"),
-                      ('shorter', "end before the primary's note (played alone)"),
+                      ('shorter', "end before the primary's note (keyed off early inside the composite)"),
                       ('truncated', "are cut by the primary's rest"),
                       ('solo_cut', "play alone but are cut by the primary's next note"),
                       ('cuts', "cut the primary's tail (cut_primary)")):
@@ -568,7 +590,7 @@ def _warn_merge_lost(w: dict, ctx_str: str) -> None:
             parts.append(f"{w[key]} {what}")
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
-        f"[bold]{w['primary']}+{w['follower']}[/bold]  "
+        f"[bold]{w['primary']}+{w['follower']}{_escape(w.get('where', ''))}[/bold]  "
         f"[yellow]of {w['follower']}'s {w['notes']} notes: {'; '.join(parts) if parts else 'all fold'}[/yellow]"
     )
     if w['vibrato']:
@@ -590,6 +612,11 @@ def _warn_merge_headroom(w: dict, ctx_str: str) -> None:
 def _warn_merge_unsupported(w: dict, ctx_str: str) -> None:
     what = (f"composite for {w['notes']} notes ({_escape(w['detail'])})" if 'notes' in w
             else f"at tick {w.get('tick')}")
+    if w.get('stand_in'):
+        console.print(
+            f"\n  [dim]merge {w['primary']}: {what}: {w['reason']} — composite instrument "
+            f"{w['stand_in']} stands in (same voices and notes; its fill / level differ)[/dim]")
+        return
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
         f"[yellow]merge {w['primary']}: {what}: {w['reason']} — the primary plays alone there[/yellow]"
@@ -600,6 +627,33 @@ def _warn_merge_fill_lost(w: dict, ctx_str: str) -> None:
     console.print(
         f"[yellow]fill pool {w['source']}: {w['lost']} of {w['notes']} notes found no silent channel "
         f"and are lost[/yellow]")
+
+
+def _warn_merge_bank_dropped(w: dict, ctx_str: str) -> None:
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]sample bank {w['primary']}: composite for {w['notes']} notes ({_escape(w['detail'])}): "
+        f"{w['reason']}[/yellow]"
+    )
+
+
+def _warn_merge_dropped(w: dict, ctx_str: str) -> None:
+    pats = ", ".join(f"{p:x}" for p in w['patterns'])
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]merge_patterns: {w['notes']} notes of {w['channel']} are lost in pattern"
+        f"{'s' if len(w['patterns']) != 1 else ''} {pats} — no group folds the channel there and it has "
+        f"no channel of its own (a `keep` in one of those patterns gives it one)[/yellow]"
+    )
+
+
+def _warn_merge_unspecified(w: dict, ctx_str: str) -> None:
+    pats = ", ".join(f"{p:x}" for p in w['patterns'])
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]merge_patterns: no block names pattern{'s' if len(w['patterns']) != 1 else ''} {pats} — "
+        f"nothing folds there; every live channel plays as in the reference build[/yellow]"
+    )
 
 
 def _warn_merge_missing(w: dict, ctx_str: str) -> None:
@@ -668,6 +722,9 @@ _WARNING_RENDERERS = {
     'merge_unsupported': _warn_merge_unsupported,
     'merge_missing_sample': _warn_merge_missing,
     'merge_fill_lost': _warn_merge_fill_lost,
+    'merge_dropped': _warn_merge_dropped,
+    'merge_bank_dropped': _warn_merge_bank_dropped,
+    'merge_unspecified': _warn_merge_unspecified,
 }
 
 

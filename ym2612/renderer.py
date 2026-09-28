@@ -133,9 +133,13 @@ def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> lis
     return sustain_samples + release_samples
 
 
-def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels):
+def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels, keyoffs=None):
     """Key-on → sustain → key-off → release → mono ``array('i')``, every channel in
     `channels` keyed together (an int: that one channel).
+
+    `keyoffs` (one entry per channel, samples after key-on, or None) keys a channel off
+    early — a composite layer whose voice the driver cut with smpsNoteFill while the others
+    played on; the rest are keyed off at `sustain_n`.
 
     Equal to ``_to_mono(_render_raw(...))`` value for value; the fold runs in C.
     """
@@ -143,9 +147,21 @@ def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels):
         channels = (channels,)
     for ch in channels:
         opn2.key_on(ch)
-    sustain = opn2.render_mono(sustain_n)
-    for ch in channels:
+    early = sorted({(min(int(k), sustain_n), ch) for ch, k in zip(channels, keyoffs or (), strict=False)
+                    if k is not None and k < sustain_n})
+    sustain = array.array('i')
+    pos = 0
+    for at, ch in early:
+        if at > pos:
+            sustain += opn2.render_mono(at - pos)
+            pos = at
         opn2.key_off(ch)
+    if sustain_n > pos:
+        sustain += opn2.render_mono(sustain_n - pos)
+    done = {ch for _, ch in early}
+    for ch in channels:
+        if ch not in done:
+            opn2.key_off(ch)
     return sustain + opn2.render_mono(release_n)
 
 
@@ -190,8 +206,9 @@ def render_layers(
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
-    Each layer is (voice, semitones above `mod_note_index`, FNUM detune, carrier TL offset);
-    layer i is programmed on YM2612 channel `channel` + i, all are keyed on and off together
+    Each layer is (voice, semitones above `mod_note_index`, FNUM detune, carrier TL offset)
+    with an optional fifth element, seconds after key-on to key that layer off (None: with the
+    others); layer i is programmed on YM2612 channel `channel` + i, all are keyed on together
     and the chip sums them as the hardware does.  One layer is an ordinary note render.
 
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
@@ -207,7 +224,10 @@ def render_layers(
         opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
 
     channels = []
-    for i, (voice, semitones, fnum_offset, tl_offset) in enumerate(layers):
+    keyoffs = []
+    for i, layer in enumerate(layers):
+        voice, semitones, fnum_offset, tl_offset = layer[:4]
+        keyoff = layer[4] if len(layer) > 4 else None
         ch = channel + i
         program_voice(opn2, voice, ch, tl_offset=tl_offset)
         fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate)
@@ -215,10 +235,11 @@ def render_layers(
             fnum, block = detuned_fnum_block(fnum, block, fnum_offset)
         _set_freq(opn2, fnum, block, ch)
         channels.append(ch)
+        keyoffs.append(None if keyoff is None else math.ceil(native_rate * keyoff))
 
     sustain_n = math.ceil(native_rate * sustain_secs)
     release_n = math.ceil(native_rate * release_secs)
-    mono      = _render_raw_mono(opn2, sustain_n, release_n, channels)
+    mono      = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
 
     if target_rate is not None and target_rate != native_rate:
         mono     = _resample(mono, native_rate, target_rate)

@@ -8,6 +8,7 @@ import bisect
 import dataclasses
 import math
 
+from .banks import pack_banks
 from .config import (
     ChannelConfig,
     ConversionConfig,
@@ -90,6 +91,8 @@ class SmpsToModConverter:
         self._release_slides = False       # end FM notes with a volume slide instead of C00
         self._pending_sustain_short: dict[tuple[str, int], dict] = {}
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
+        self._bank_delays_dropped = 0      # banked drum notes whose EDx gave way to the 9xx offset
+        self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
 
     def _add_warning(self, w: dict):
         """Append a warning, deduplicating by (type, channel, extra_ctx, key)."""
@@ -619,8 +622,15 @@ class SmpsToModConverter:
                             c.headroom_db = 20 * math.log10(vol / 64)
                         c.entry[2] = max(0, min(64, round(vol)))
             self.infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
-            self._install_synthesized_samples(fm_samples, self.config.sample_list, "fm",
-                                              synth.max_sample_bytes)
+            # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer
+            # (as a PSG one is below); the slot's loop entry is the composite's
+            fm_aside = ({i for i in fm_samples if i in self._merge.mix_only and i in self._merge.instruments}
+                        if self._merge is not None else set())
+            self._install_synthesized_samples({i: v for i, v in fm_samples.items() if i not in fm_aside},
+                                              self.config.sample_list, "fm", synth.max_sample_bytes)
+            for i in fm_aside:
+                self._mix_sources[i] = self._make_sample(i, fm_samples[i][0], "fm", self._loops.pop(i, None),
+                                                         synth.max_sample_bytes, original=True)
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             if self.config.sample_list:
                 for entry in self.config.sample_list:
@@ -693,9 +703,23 @@ class SmpsToModConverter:
             for s in (synth, psg_synth):
                 if s is not None:
                     hold.update({i: n + s.release_padding for i, n in s.sustain_by_instrument.items()})
+            banked: dict[int, ModSample] = {}
             for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, hold_secs=hold,
-                                        sources=self._mix_sources):
+                                        sources=self._mix_sources, release_db_s=self._release,
+                                        bank_out=banked):
                 self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
+            if banked:
+                # The banks' silence after each sound covers the cut's rounding: one MOD tick,
+                # at the slowest tempo the song plays
+                tick_secs = max(2.5 / self._bpm_for(m) for _, m in (self._tempo_segments or [(0, self.song.header.tempo_modifier)]))
+                for p in pack_banks(self._merge, self.config, self.mod, banked, self._merge.spare_slots,
+                                    max_bytes, tick_secs, clock):
+                    self._add_warning({'type': 'merge_bank_dropped', 'channel': p['primary'],
+                                       'extra_ctx': p['detail'], **p})
+                for b in self._merge.banks:
+                    self.infos.append({'type': 'merge_bank', 'slot': b.slot, 'bytes': b.bytes, 'volume': b.volume,
+                                       'members': [(c.offset, c.region, c.notes, c.detail) for c in b.members]})
+            self._report_merge_groups()
             # A mixed composite ends the way its primary does (the release slide's rate)
             for c in self._merge.composites.values():
                 if c.fm is None and c.key[1] in self._release:
@@ -703,11 +727,15 @@ class SmpsToModConverter:
             for c in self._merge.composites.values():
                 if c.headroom_db > 0:
                     self._add_warning({'type': 'merge_headroom', 'channel': 'merge',
-                                       'instrument': c.inst, 'db': c.headroom_db, 'group': c.group.label})
+                                       'instrument': c.inst, 'db': c.headroom_db, 'group': c.group.label,
+                                       'source': c.inst})   # one warning per composite (the dedup key)
 
 
         # Convert channels
         self._convert_all_channels()
+        if self._merge is not None and self._merge.banks:
+            self.infos.append({'type': 'merge_bank_notes', 'notes': len(self._merge.regions),
+                               'cuts': self._bank_cuts, 'delays_dropped': self._bank_delays_dropped})
         self._place_leading_rests()
         self._place_tempo_commands()
         if len(self._tempo_segments) > 1:
@@ -820,6 +848,65 @@ class SmpsToModConverter:
                 out[inst] = frames / fps
         return out
 
+    def _report_merge_groups(self) -> None:
+        """One `merge_group` info per group, once the composites have their final instruments
+        (after the mixes and the sample banks): the composites its notes play, with the group
+        each was created for and the others that share it."""
+        plan = self._merge
+        assert plan is not None
+        for g in plan.groups:
+            label = g.label + g.where
+            stats = [s for s in plan.stats if s.group is g]
+            comps = []
+            for c in sorted(plan.composites.values(), key=lambda c: (-c.uses.get(label, 0), c.inst, c.offset)):
+                n = c.uses.get(label, 0)
+                if not n:
+                    continue
+                slot = f"{c.inst} 9{c.offset >> 8:02X}" if c.banked else str(c.inst)
+                others = [lab for lab in c.uses if lab != label]
+                comps.append((slot, n, c.detail, None if c.group is g else c.group.label + c.group.where, others))
+            self.infos.append({'type': 'merge_group', 'label': label, 'primary': g.primary,
+                               'paired': sum(s.paired for s in stats),
+                               'solo': sum(s.solo for s in stats),
+                               'alone': stats[0].alone if stats else 0,
+                               'composites': comps})
+
+    def _cut_after(self, mod_chan: int, tick: int, secs: float, next_row: int) -> bool:
+        """Cut the note that started at `tick` `secs` later: `C00` on the row the cut falls
+        on, `ECx` inside it, unless the channel's next note-on (`next_row`, from
+        _next_note_row) is there first.  Seconds are V-int frames at the region's frame rate,
+        then driver ticks as a note fill is (`_tpf_at`), so a tempo change is honoured.
+        Leaves the cursor on the cut's cell; returns whether one was written."""
+        fps = 50.0 if self.config.region.lower() == 'pal' else 60.0
+        speed = self.config.target_speed
+        cut_ticks = secs * fps * self._tpf_at(tick)
+        cut_abs = max(round(tick * speed / self._effective_tpr) + 1,
+                      round((tick + cut_ticks) * speed / self._effective_tpr))
+        row_total, sub = divmod(cut_abs, speed)
+        if row_total >= next_row or row_total // 64 >= self.config.max_patterns:
+            return False
+        self._set_cursor(row_total // 64, mod_chan, row_total % 64)
+        if sub:
+            self.mod.set_effect(0xE, 0xC0 | sub)
+        else:
+            self.mod.set_effect(0xC, 0)
+        return True
+
+    def _pattern_of_tick(self, tick: int) -> int:
+        """The pattern of the reference build (after its `mod_pattern_breaks`) a note-on at
+        `tick` lands in — what a `merge_patterns:` group is matched on (core.merge)."""
+        return _shift_for_breaks(int(tick // self._effective_tpr), self.config.mod_pattern_breaks or []) // 64
+
+    def _last_pattern(self) -> int:
+        """The MOD's last pattern: the one the loop's `Bxx` row lands in (`_set_loop_point`);
+        what convert.py trims the output to.  A loop extension may overshoot the song's end by a
+        tick, and that note lands in a pattern nothing reaches."""
+        tpr = self._effective_tpr
+        end = max((ev.tick_position + (ev.note.duration if ev.note else 0)
+                   for ch in self.song.channels for ev in ch.events), default=0)
+        row = max(round(end / tpr), 1) - 1
+        return _shift_for_breaks(row, self.config.mod_pattern_breaks or []) // 64
+
     def _build_merge_plan(self):
         """core.merge.build_merge_plan with this conversion's pan law and baked levels, its
         findings reported as infos / warnings."""
@@ -832,15 +919,14 @@ class SmpsToModConverter:
         plan = build_merge_plan(self.song, self.config, pan_law_db=self._merge_pan_law,
                                 baselines=self._merge_baselines, sample_secs=self._sample_secs(),
                                 tick_secs=lambda t: self._tick_span_secs(t, t + 1),
-                                fill_min_ticks=math.ceil(self._effective_tpr))
-        for g in plan.groups:
-            comps = [c for c in plan.composites.values() if c.group is g]
-            stats = [s for s in plan.stats if s.primary == g.primary]
-            self.infos.append({'type': 'merge_group', 'label': g.label, 'primary': g.primary,
-                               'paired': sum(s.paired for s in stats),
-                               'solo': sum(s.solo for s in stats),
-                               'alone': stats[0].alone if stats else 0,
-                               'composites': [(c.inst, c.notes, c.detail) for c in comps]})
+                                fill_min_ticks=math.ceil(self._effective_tpr),
+                                pattern_of=self._pattern_of_tick, last_pattern=self._last_pattern())
+        for src, d in sorted(plan.dropped_notes.items()):
+            self._add_warning({'type': 'merge_dropped', 'channel': src, 'notes': d['notes'],
+                               'patterns': sorted(d['patterns'])})
+        if plan.unspecified:
+            self._add_warning({'type': 'merge_unspecified', 'channel': 'merge',
+                               'patterns': sorted(plan.unspecified)})
         for f in plan.fill:
             self.infos.append({'type': 'merge_fill', **f})
             if f['lost']:
@@ -848,10 +934,13 @@ class SmpsToModConverter:
         if plan.unused:
             self.infos.append({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
         self.infos.append({'type': 'merge_slots', 'free': plan.slots_free, 'wanted': plan.slots_wanted,
-                           'used': len(plan.composites)})
+                           'used': sum(1 for c in plan.composites.values() if not c.banked),
+                           'banked': sum(1 for c in plan.composites.values() if c.banked)})
         for s in plan.stats:
             if s.lost or s.vibrato or s.cuts:
-                self._add_warning({'type': 'merge_lost', 'channel': f"{s.primary}+{s.follower}", 'primary': s.primary,
+                where = s.group.where if s.group is not None else ""
+                self._add_warning({'type': 'merge_lost', 'channel': f"{s.primary}+{s.follower}{where}",
+                                   'primary': s.primary, 'where': where,
                                    'follower': s.follower, 'held': s.held, 'shorter': s.shorter,
                                    'truncated': s.truncated, 'orphans': s.orphans, 'solo_cut': s.solo_cut,
                                    'cuts': s.cuts, 'vibrato': s.vibrato, 'notes': s.follower_notes})
@@ -1105,10 +1194,16 @@ class SmpsToModConverter:
             rel_db = level - baseline.get(inst, level)
             return max(0, min(64, round(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)))
 
+        def _plays_here(ev) -> bool:
+            """A note-on this channel's output sounds: not one folded onto another channel (or
+            dropped) in its pattern by a merge_patterns group (core.merge)."""
+            return (self._merge is None or getattr(ev, "merged", None) is not None
+                    or not self._merge.is_folded(chan_cfg.source, ev.tick_position))
+
         _note_on_positions: set[tuple[int, int]] = set()
         if is_psg:
             for _ev in channel.events:
-                if _ev.is_note and not _ev.note.is_rest:
+                if _ev.is_note and not _ev.note.is_rest and _plays_here(_ev):
                     _note_on_positions.add(self._tick_to_pattern_row(_ev.tick_position))
                     _note_on_positions.add(divmod(int(_ev.tick_position // self._effective_tpr), 64))
 
@@ -1121,7 +1216,9 @@ class SmpsToModConverter:
         # Every note-on tick of this channel (spliced notes included): a release slide runs up to
         # the row before the next one, so it never lands in a note-on's cell
         _note_on_ticks = sorted(ev.tick_position for ev in channel.events
-                                if ev.is_note and not ev.note.is_rest)
+                                if ev.is_note and not ev.note.is_rest and _plays_here(ev))
+        # Patterns this channel plays nothing of its own in (a merge_patterns follower / drop)
+        _away_patterns = self._merge.away_patterns(chan_cfg.source) if self._merge is not None else frozenset()
 
         def _next_note_row(tick: int) -> int:
             """The first row (over the whole song) the next note-on after `tick` can land on."""
@@ -1234,6 +1331,26 @@ class SmpsToModConverter:
                 note = event.note
                 tick = event.tick_position
 
+                if not note.is_rest and not _plays_here(event):
+                    # This note plays on its group's primary channel in this pattern
+                    # (merge_patterns), or nowhere (dropped).  What still rings here from a
+                    # pattern the channel was live in ends now, as the re-key ended it on the
+                    # hardware; the channel's cells stay empty otherwise.
+                    if last_inst is None:
+                        continue
+                    pattern, row = self._tick_to_pattern_row(tick)
+                    if pattern >= self.config.max_patterns:
+                        continue
+                    rate = _release_rows(last_inst, tick)
+                    if rate is not None:
+                        self._write_release(mod_chan, pattern * 64 + row, last_vol, rate, tick,
+                                            _next_note_row(tick))
+                    else:
+                        self._set_cursor(pattern, mod_chan, row)
+                        self.mod.set_effect(0xC, 0)
+                    last_inst = None
+                    continue
+
                 if note.is_rest:
                     # is_no_attack=True marks an FM/DAC standalone-duration continuation —
                     # the YM2612 envelope sustains naturally; do not emit C00.
@@ -1242,6 +1359,9 @@ class SmpsToModConverter:
                     pattern, row = self._tick_to_pattern_row(tick)
                     if pattern >= self.config.max_patterns:
                         continue
+                    if (last_inst is None and _away_patterns and getattr(event, "merged", None) is None
+                            and self._pattern_of_tick(tick) in _away_patterns):
+                        continue            # nothing of this channel's sounds here: no C00 clutter
                     if (pattern, row) == (0, 0):
                         # A leading rest.  Its C00 matters once the song loops back to
                         # position 0, and the cell may hold a tempo command, so it is
@@ -1287,11 +1407,26 @@ class SmpsToModConverter:
                     if dac_cfg:
                         dac_inst = dac_cfg.mod_instrument
                         dac_note = _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3)
+                        region = None
                         if self._merge is not None:          # a drum with its hi-hat folded in
                             dac_inst = self._merge.instrument_at(chan_cfg.source, tick, dac_inst)
                             dac_note = ModNote(self._merge.note_at(chan_cfg.source, tick, dac_note.value))
+                            region = self._merge.region_at(chan_cfg.source, tick)
                         self.mod.set_note(dac_note, dac_inst)
                         last_inst, last_vol = dac_inst, _sample_vol_map.get(dac_inst, 64)
+                        if region is not None:
+                            # A sound inside a sample bank (core.banks): start at its offset and
+                            # cut the note once it is over, before the next sound in the slot
+                            offset, sound = region
+                            if offset:
+                                self.mod.set_effect(0x9, offset >> 8)
+                                if note_delay:
+                                    note_delay = 0            # the slot holds the offset
+                                    self._bank_delays_dropped += 1
+                            rate = (self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock) \
+                                / PERIOD_TABLE[dac_note.value]
+                            self._bank_cuts += self._cut_after(mod_chan, tick, sound / rate, _next_note_row(tick))
+                            self._set_cursor(pattern, mod_chan, row)
                     else:
                         # Fallback: use default instrument and C3
                         self.mod.set_note(ModNote.C3, st.instrument)
@@ -1309,19 +1444,24 @@ class SmpsToModConverter:
                                          else self._merge.note_at(chan_cfg.source, tick, res.index))
                     active_range_entry = None if is_psg else res.entry
                     self._warn_resolution(res, st, chan_cfg, note)
-                    # A solo note carries none of this channel's modulation
+                    # A solo note carries none of this channel's modulation, but its own note
+                    # fill (the follower's smpsNoteFill, on the NoteOn core.merge spliced it
+                    # from), and a PSG note ends at its duration wherever it plays
+                    _solo = getattr(event, "merged", None)
                     _vib_on = vibrato_active and res.path != "merged"
+                    _nf = note_fill if _solo is None else _solo.fill
+                    _psg_note = is_psg or (_solo is not None and _solo.kind == "PSG")
 
                     # Where the note goes (see _note_cell): on its own row with an EDx delay when
                     # it starts between rows and the effect slot is free.  The slot is needed
                     # for Cxx when this note's level differs from the instrument's, and for ECx
                     # when the note is cut inside the attack row (note fill; PSG notes also end
                     # at their duration).
-                    _fill_t = note_fill * self._tpf_at(tick)
+                    _fill_t = _nf * self._tpf_at(tick)
                     _cut_tick = None
-                    if note_fill > 0 and _fill_t < note.duration:
+                    if _nf > 0 and _fill_t < note.duration:
                         _cut_tick = tick + _fill_t
-                    elif is_psg:
+                    elif _psg_note:
                         _cut_tick = tick + note.duration
                     # A Cxx due on the attack row gives way to EDx when the note lasts into the
                     # next row: the volume is then set there (see cxx_coord below).  Drowning FM4
@@ -1383,8 +1523,8 @@ class SmpsToModConverter:
                     effect_slot_used = False   # True only when ECx occupies the current row's slot
                     fill_pat = fill_row = -1
                     slide_coords: set[tuple[int, int]] = set()   # rows a release slide took
-                    fill_ticks = note_fill * self._tpf_at(tick)
-                    if note_fill > 0 and fill_ticks < note.duration:
+                    fill_ticks = _nf * self._tpf_at(tick)
+                    if _nf > 0 and fill_ticks < note.duration:
                         # Work in absolute MOD ticks (rows × speed) so the cut keeps its
                         # sub-row position: a whole row → C00 on that row, otherwise ECx.
                         speed = self.config.target_speed
@@ -1428,7 +1568,7 @@ class SmpsToModConverter:
                     # PSG auto note-cut: emit silence at the note's natural end if no
                     # explicit smpsNoteFill was placed.  Mirrors hardware PSGDoNext
                     # setting vol=15 when the duration timer expires.
-                    if is_psg and not fill_placed:
+                    if _psg_note and not fill_placed:
                         cut_tick = tick + note.duration
                         cut_pat, cut_row = self._tick_to_pattern_row(cut_tick)
                         if cut_pat == pattern and cut_row == row:

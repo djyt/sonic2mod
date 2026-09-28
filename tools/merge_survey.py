@@ -12,7 +12,8 @@ note-ons up with the primary's the way core/merge.py will, and prints the counts
                 unless the group says `cut_primary: true`: then they play and cut the primary's
                 tail (a hi-hat over a drum's decay), and the drum channel is usually the place
     held        primary note-ons under a follower note that keeps sounding — its ring is lost
-    shorter     follower notes at the primary's tick that end sooner — the primary plays alone
+    shorter     follower notes at the primary's tick that end sooner — keyed off early inside
+                the composite (paired, not lost)
     truncated   follower notes cut by the primary's rest
     vibrato     pairs whose modulation state differs (the primary's vibrato applies)
     composites  distinct composite instruments the pair needs (MOD slots)
@@ -29,6 +30,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -42,8 +45,47 @@ from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
 
 
-def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], dict[str, int]]:
-    """PairStats for every ordered pair of enabled channels, and each channel's note count."""
+@dataclass
+class SurveyContext:
+    """A song walked as the merged build walks it, with every channel's notes in hand."""
+    song: object
+    conv: SmpsToModConverter
+    sources: list[str]                               # the enabled channels, in config order
+    notes: dict[str, tuple[dict[int, NoteOn], list[int]]]   # channel -> ({tick: NoteOn}, rests)
+    level_scale: Callable[[NoteOn], float]
+    tolerance: int
+
+    @property
+    def counts(self) -> dict[str, int]:
+        return {src: len(self.notes[src][0]) for src in self.sources}
+
+    def pattern_of(self, tick: int) -> int:
+        """The reference build's pattern a note-on at `tick` lands in (after its breaks)."""
+        return self.conv._pattern_of_tick(tick)
+
+    @property
+    def last_pattern(self) -> int:
+        """The reference MOD's last pattern (the loop's Bxx row; convert.py trims after it)."""
+        return self.conv._last_pattern()
+
+    def pair(self, primary: str, follower: str, patterns=None, cut_primary: bool = False) -> PairStats:
+        """The follower lined up with the primary, over the whole song or in `patterns` only."""
+        p_notes, p_rests = self.restrict(primary, patterns)
+        f_notes, f_rests = self.restrict(follower, patterns)
+        return pair_channels(p_notes, p_rests, f_notes, f_rests, primary, follower, self.level_scale,
+                             cut_primary=cut_primary, tolerance=self.tolerance)
+
+    def restrict(self, source: str, patterns) -> tuple[dict[int, NoteOn], list[int]]:
+        notes, rests = self.notes[source]
+        if patterns is None:
+            return notes, rests
+        return ({t: n for t, n in notes.items() if self.pattern_of(t) in patterns},
+                [r for r in rests if self.pattern_of(r) in patterns])
+
+
+def survey_context(cfg: ConversionConfig, settings_dir: Path) -> SurveyContext:
+    """Parse and prepare the song the way `convert.py --merged` does before it builds the merge
+    plan (tempo re-timing, loop extension, baked levels) and collect every channel's notes."""
     song = SmpsParser().parse_file(cfg.input_file)
     settings = settings_dir / "settings.yaml"
     synth = SynthesisSettings.from_yaml(str(settings)) if settings.exists() else SynthesisSettings()
@@ -70,13 +112,19 @@ def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], 
     tol = max(0, int(cfg.merge_tolerance))
     notes = {src: channel_notes(song, cfg, src, pan_law, sample_secs, lambda t: conv._tick_span_secs(t, t + 1), tol)
              for src in sources}
-    counts = {src: len(notes[src][0]) for src in sources}
+    return SurveyContext(song, conv, sources, notes, level_scale, tol)
+
+
+def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], dict[str, int]]:
+    """PairStats for every ordered pair of enabled channels, and each channel's note count."""
+    ctx = survey_context(cfg, settings_dir)
+    counts = ctx.counts
     stats = []
-    for p in sources:
-        for f in sources:
+    for p in ctx.sources:
+        for f in ctx.sources:
             if p == f or not counts[f]:
                 continue
-            stats.append(pair_channels(*notes[p], *notes[f], p, f, level_scale, tolerance=tol))
+            stats.append(ctx.pair(p, f))
     return stats, counts
 
 

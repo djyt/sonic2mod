@@ -1,0 +1,19 @@
+Pattern,Ch 1,Ch 2,Ch 3,Ch 4,Ch 5,Ch 6,Ch 7,Ch 8,Ch 9
+,DAC Drums,Lead,Bass,,,,,,Hi-Hat
+0,fold 1,keep,keep,keep,,,,,fold 1
+1,fold 1,keep,fold 1,fold 2,fold 2,fold 2*,fold 2,keep,fold 1
+2,fold 1,keep,fold 1,fold 2,fold 2,fold 2*,fold 2,keep,fold 1
+3,fold 1,keep,fold 1,fold 2,fold 2,fold 2*,fold 2,keep,fold 1
+4,fold 1,keep,fold 1,fold 2,fold 2,fold 2*,fold 2,keep,fold 1
+5,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+6,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+7,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+8,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+9,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+a,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+b,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+c,fold 1,keep,fold 1,keep,fold 2,fold 2,fold 3,fold 3,fold 1
+d,fold 1,keep,keep,fold 2,fold 2,keep,fold 3,fold 3,fold 1
+e,fold 1,keep,keep,fold 2,fold 2,keep,fold 3,fold 3,fold 1
+f,fold 1,keep,keep,fold 2,fold 2,keep,fold 3,fold 3,fold 1
+10,fold 1,keep,keep,fold 2,fold 2,keep,fold 3,fold 3,fold 1

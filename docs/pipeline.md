@@ -934,7 +934,7 @@ leave the output and the primary plays a composite instrument wherever a followe
 **Per primary note-on at tick t**, with the follower's note-ons as `walk_channel` resolves them
 (`smpsNoAttack` continuations extend a note; a rest ends it; a drum or noise note *sounds* for
 its sample's length when that is shorter, `NoteOn.sounding`, from the drum file's size at its
-`mod_note` and the noise envelope's frames). A follower note-on within `merge_tolerance` ticks
+`mod_note` and the noise envelope's frames — and for its note fill, which keys it off first). A follower note-on within `merge_tolerance` ticks
 of the primary's counts as at t (`match_onsets`, nearest first, each follower note once), and a
 note of at most that many ticks followed by an `smpsNoAttack` note is a grace note bending into
 it: the two are one note at the target pitch, so a chord is folded on the pitches it lands on
@@ -945,7 +945,7 @@ equal durations: each sample plays out as it is.
 |---|---|---|
 | note-on, same duration | composite | `paired` |
 | note-on, longer | composite; its tail is cut by the primary's next rest (`truncated`) or re-attacked by the primary's next note (`held` there) | `paired` |
-| note-on, shorter | the primary alone: a composite cannot key one voice off early | `shorter` |
+| note-on, shorter | composite; the follower is keyed off at its duration inside it (`keyoff_secs`: a chip layer's YM2612 key-off, a mix layer cut with its release) | `shorter` |
 | none, resting | the primary alone (right) | `alone` |
 | none, still sounding | the primary alone; the follower's ring is lost | `held` |
 | note-on while the primary sounds, no primary note-on | lost; with the group's `cut_primary: true` it plays as a solo note and cuts the primary's tail | `orphan` / `cuts` |
@@ -965,7 +965,7 @@ Instruments no note of the merged build plays are dropped from the catalogue bef
 kept until the mix is done and blanked after.
 
 **The fill pool** (`merge_fill: [PSG1, PSG2]`; a group's `fill_lost: true` for the follower
-notes it cannot fold — its orphans and shorter notes, `PairStats.lost_notes`; a group's
+notes it cannot fold — its orphans, `PairStats.lost_notes`; a group's
 `fill_cut: true` for the follower notes whose ring the fold would cut, `PairStats.cut_notes`:
 a note longer than the primary's with the primary's next note-on or rest inside it) places
 notes on ANY output channel that is silent when they start, not only their group's primary
@@ -1025,15 +1025,29 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   the difference between the composite's and the primary instrument's baked levels: the primary
   plays as loud as it did and the follower adds to it as the hardware sum did.  Past 64 the
   volume is clamped and `merge_headroom` says by how much.
-- anything else → `("pcm", primary instrument, primary MOD note, (follower instrument, follower
-  MOD note, level gain)...)`: mixed by `mix_pcm_composites` once every sample is in. A MOD
-  sample triggered at note n plays at `amiga_clock / PERIOD[n]` whatever rate it was made at, so
-  every layer is resampled by the period ratio of its note and the composite's trigger note
-  (the fastest layer's, so a hat on a kick keeps its treble; `MergePlan.note_at` gives the
-  converter that note) and added at `sample_list volume × 10^((level − baked level)/20)`. The sum is
+- anything else → `("pcm", primary instrument, (follower instrument, interval above the
+  primary's MOD note, level gain, fill)...)`: mixed by `mix_pcm_composites` once every sample
+  is in, at the primary MOD note it was first met at (`Composite.base`).  The key is a
+  **shape**, as a chip composite's is: the same chord two semitones down is the same mix
+  triggered two semitones lower (`trigger_note`; `plan.notes` holds each note's trigger, and
+  `plan.bases` the primary's note there), so Green Hill's F+A+C and Eb+G+Bb chime chords are
+  one sample — a mix that would be transposed off the MOD's three octaves gets a mix of its
+  own, keyed with its base.  A drum primary sits at one note, so its mixes only share when
+  the followers match exactly.  A MOD sample triggered at note n plays at `amiga_clock /
+  PERIOD[n]` whatever rate it was made at, so every layer is resampled by the period ratio of
+  its note and the composite's trigger note (the fastest layer's, so a hat on a kick keeps its
+  treble, or the group's `mix_note` when that is lower: Green Hill's drum mixes at F2 cost 2.5
+  times fewer bytes than at the hat's A3 and lose the hat above 5.5 kHz; `MergePlan.note_at`
+  gives the converter that note) and added at `sample_list volume
+  × 10^((level − baked level)/20)`. The sum is
   peak-normalised and the composite's volume set to the sum's level; past full scale it stays
-  at 64 and `merge_headroom` says by how much.  With sustain loops on, a looped follower is
-  unrolled under the primary, and a looped primary mixed at its own rate keeps its loop, moved
+  at 64 and `merge_headroom` says by how much (Green Hill's kick+bass mixes: the kick's
+  transient and the bass's attack coincide, 3.3 dB over, so every drum+bass mix plays that much
+  under the two chip channels' sum; the balance inside it is right).  With sustain loops on, a
+  looped follower is unrolled for the longer of the two instruments' longest notes and never
+  shorter than its sample — it used to be the primary's alone, and a drum primary has none, so
+  a looped bass under a kick was unrolled to two bytes and every drum+bass mix was the drum
+  alone until 2026-09-28 — and a looped primary mixed at its own rate keeps its loop, moved
   past the followers' tails (the unrolled data repeats the loop body, so any later repeat of it
   is the same seamless loop): Green Hill's bass+chime mixes are the chime's length plus one
   bass loop.  Mixed at another rate the loop points would not land on samples, so the primary
@@ -1053,6 +1067,122 @@ combined mute mask, the sum of the chip channels folded onto it, and reports who
 and audio onsets per channel (the per-note audit needs one note stream per channel, so it is
 the reference build's).  Title Screen after the volume rule above: every merged channel within
 1.2 dB of its chip sum.
+
+### Per-pattern folds (`merge_patterns:`, `tools/fold_csv.py`)
+
+A song-wide `merge:` group folds a follower everywhere.  Green Hill's arrangement wants
+different folds in different sections — the bass shares the drum channel through the verse
+(patterns 1–c) and has its own channel in the intro and the bridge (0, d–10); FM3 is a chord
+tone in one section and a countermelody in the next — and a MOD that is going to be finished
+by hand in a tracker wants each section folded as the arranger chose, on channels that keep
+their meaning.  That is what `merge_patterns:` is: a list of blocks, each naming the patterns
+it covers and the groups (and `drop:` channels) that hold there.  The pattern numbers are the
+**reference build's**, after its `mod_pattern_breaks`, in hex as Fast Tracker shows them; a
+note belongs to the pattern its note-on lands in (`SmpsToModConverter._pattern_of_tick`: the
+row `int(tick // tpr)` shifted past the breaks).
+
+The groups are ordinary `MergeGroup`s with a `patterns` set (`None` = song-wide, the `merge:`
+groups): `build_merge_plan` restricts each group's primary and follower notes to its patterns
+(`pattern_of` is required once any group has patterns) and pairs them as before, so a channel
+may be a follower in one block, a primary in the next and kept in a third.  What differs from
+the song-wide fold is that such a channel **stays in the output**: `prepare_merged_config`
+disables a channel only when it is a follower or dropped in every named pattern (or in a
+song-wide group / `merge_drop` / `merge_fill`).  Its notes in the patterns it follows in are
+in `MergePlan.folded` (`is_folded`), and `_convert_channel` skips them on its own channel;
+where something of its own still rings from a pattern it was live in, the first folded
+note-on ends it (a release slide or `C00`, as a rest would) — the hardware re-keyed the note
+on the primary's channel — and its rests in those patterns write nothing, so the column is
+empty for the tracker.  The same set drives `_unused_instruments`, the fill pool's occupancy
+and the PSG note-cut positions.  A fold lands on its **primary's** column, so the output has
+one MOD channel per source that is live somewhere (Green Hill: 8 of 9, PSG3 never is), and a
+primary that changes between blocks moves the fold to another column.  Two groups may share a
+primary in different patterns; `PairStats.group` keeps their stats apart, and composites are
+keyed as before, so identical chords in two blocks share one instrument (`Composite.uses`
+counts each group's notes on it; the report lists a shared composite under every group that
+plays it, saying which it was made for — the report is written after the mixes and banks,
+`_report_merge_groups`, so banked sounds show their slot and `9xx`).  Notes of a departed
+channel in patterns no group folds, and a live channel's notes in patterns it is dropped in,
+are lost and reported (`merge_dropped`); patterns no block names are reported too
+(`merge_unspecified`: nothing folds there).  A song-wide `merge:` may sit beside
+`merge_patterns:`; a channel claimed twice in one pattern is an error.
+
+`tools/fold_csv.py <config> <table.csv>` writes the section from a fold table: one row per
+pattern, one column per MOD channel of the reference build, each cell `fold N` / `keep` /
+`drop` / blank (kept when the channel plays there, else dropped) — `input/02_ghz_fold.csv`.
+A fold needs a primary the table cannot name: the tool tries every member over the fold's
+patterns with `SurveyContext.pair` (the survey's rules restricted to those patterns), the
+drums own any fold they are in (every note cuts a drum's decay on an Amiga, and the fold then
+stays on the drum column), otherwise the member that plays the fewest follower notes
+**wrong** wins: lost ones (`PairStats.lost`), plus paired ones the primary's own effects
+would distort (`distorted`) — the primary's note fill cuts the whole composite, so a fill
+shorter than a follower's note truncates it, and the primary's vibrato is the composite's.
+Green Hill's chord block (patterns 1–4, FM3+FM4+FM5 over PSG1's chime): by losses alone the
+chime won (2 lost against an FM primary's 8), but its 16-frame fill would cut every chord at
+267 ms of its 400 and put its vibrato on voices that have none, so FM3 — the chord's longest
+voice, whose rest never cuts the others — is the primary and the chime is a layer keyed off
+at its own fill inside the mix.  The per-candidate counts are printed, and the ear overrules
+the measurement by naming the primary in the table: `fold 2*` on FM5's cell is what Green Hill
+ships with, the user's choice over FM3 in an A/B listen.  Rows with equal cells join
+into one block; `--write` puts the section into the config between marker comments.  The
+config is the source of truth: the table is a quick way to draft the folds, the block can be
+edited by hand afterwards, and a re-run with `--write` replaces it from the table.  Green
+Hill's table (17 patterns, 4 blocks) folds to 8 channels; the composite budget is the
+constraint it exposes: the groups ask for 37 composite instruments (the drum+bass+hat mixes
+alone are one per bass note, with and without the bass's pluck) and 18 slots are free.
+
+**A follower's note fill in a composite.** The driver keys a follower off at its
+`smpsNoteFill` while the primary plays on (Green Hill's bass: `$04`, a 67 ms pluck under
+every kick), so `NoteOn.fill` / `fill_secs` (frames / the region's frame rate) are part of
+every follower key: a chip layer carries `FmLayer.keyoff_secs` and `render_layers` keys that
+YM2612 channel off early (`_render_raw_mono` renders in segments); a pcm layer is cut at the
+fill and decays at the voice's measured release rate (`_cut_layer`, `release_db_s` from
+`core.loops`; a 2 ms fade where there is none, a PSG note ends the instant its attenuation is
+15).  A **solo** note keeps its own fill too: `_convert_channel` reads it off the spliced
+`NoteOn` (`_nf`) instead of the channel's state, and a PSG solo note ends at its duration on
+whatever channel it lands (`_psg_note`) — until 2026-09-28 a bass note alone on the drum
+column rang its whole (looped) sample where the reference had `EC1`.
+
+### Sample banks (`bank: true`, `9xx`, `core/banks.py`)
+
+The drum column's mixes are the slot budget's biggest consumer (one per drum, bass note and
+hat, with and without the bass's pluck) and its notes carry no other command, so their effect
+slot is free for `9xx`, the sample offset (xx × 256 bytes, up to $FF00).  A group with
+`bank: true` (a DAC primary only; `prepare_merged_config` refuses a melodic one, whose notes
+need the slot for `Cxx` / `4xy` / `EDx` / `3FF`) has its mixed composites laid end to end
+in as few instruments as they fit: each sound aligned to 256 bytes and followed by one MOD
+tick of silence (at the song's slowest tempo), the bank at the loudest member's volume with
+the quieter members scaled into their bytes, one finetune per bank, never a looped sample.
+A banked composite takes no slot in the fit (`Composite.banked`; `_assign_slots` leaves its
+provisional id), the fit holds `merge_bank_slots` slots back (default 2) and whatever else it
+leaves free is the banks' too (`MergePlan.spare_slots`); `pack_banks` runs after the mixes
+exist, most-played first, installs the banks, points `plan.ticks` at the bank slots and
+records each note's `(offset, sound bytes)` in `plan.regions`.  A member that fits nowhere is
+dropped like any composite over budget (a same-shape stand-in, else the primary alone) and
+reported with its reason (`merge_bank_dropped`: "no slot left for another bank" means raise
+`merge_bank_slots`).
+
+In the output every banked note starts with `9xx` at its offset (none at offset 0) and,
+because the sample would run on into the next sound, is cut once its sound is over:
+`_cut_after` turns the sound's seconds into frames and driver ticks as a note fill does and
+writes `C00` on the row (`ECx` inside it), unless the channel's next note-on is there first.
+The tick of silence after each sound absorbs the cut's rounding.  A banked note that starts
+between rows gives up its `EDx` to the offset (counted).  The converter prints each bank's
+slot, size and sounds (`9xx`, bytes, notes) and how many notes were cut.  Green Hill: 18 drum
+sounds (170 KB) in three banks instead of 18 slots (`merge_bank_slots: 3`).
+
+**Slots, again.** Two rules wasted slots: the pinned set was computed once, before any
+composite was dropped, so a source of a dropped mix stayed reserved; and every FM mix source
+was pinned because the FM catalogue renders by slot.  Now `_fit_composites` recomputes the
+sources on each pass, and an FM source's slot may hold a **pcm** composite (`_plan_slots`,
+`pcm_only`): only chip composites enter the FM catalogue, so the source is still rendered
+there and the converter keeps it aside for the mixer (`_mix_sources`, as a PSG source is).
+Green Hill recovered its two empty slots.  A composite dropped for lack of a slot (or by
+`max_composites`) no longer loses the follower's note when a surviving composite has the same
+**shape** — the same voices at the same notes, differing only in fill or level
+(`_shape`, `_stand_in`): its notes play that one, reported as "stands in".  Green Hill's
+verse bass: 119 notes mixed, 69 alone between drum hits, 4 lost (pattern 2, pitches no drum
+mix exists for); 26 follower notes over all groups still play the primary alone
+(`merge_unsupported` lists each).
 
 ## SMPS Note Range to MOD Range
 

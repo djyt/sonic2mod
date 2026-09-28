@@ -32,8 +32,9 @@ target pitch), and per follower note-on while the primary is silent:
                                                              falls (counted as `truncated`) or
                                                              re-attacked with the primary's next
                                                              note (`held`)
-  - a follower note-on at t that is shorter                → the primary alone (`shorter`): the
-                                                             composite cannot key the follower off
+  - a follower note-on at t that is shorter                → composite, the follower keyed off at
+                                                             its duration inside it (`shorter`, a
+                                                             chip layer or a cut mix layer)
   - no follower note-on, follower resting                  → the primary alone (right)
   - no follower note-on, follower still sounding           → the primary alone (`held`: the ring
                                                              is lost)
@@ -76,12 +77,12 @@ import copy
 import math
 from dataclasses import dataclass, field
 
-from .config import MergeGroup
+from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .loops import unroll
 from .mod import ModSample
-from .pcm import MAX_MOD_SAMPLE_BYTES, peak, to_int8
+from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
 from .resample import resample
 from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
@@ -99,8 +100,10 @@ def prepare_merged_config(config) -> None:
     Raises ValueError for a group naming a channel the config lacks, a channel in two groups,
     or a follower that is its own primary.
     """
-    if not config.merge and not config.merge_drop and not config.merge_fill:
-        raise ValueError("no `merge:` groups, `merge_drop:` or `merge_fill:` channels in the config — nothing to fold")
+    if (not config.merge and not config.merge_drop and not config.merge_fill
+            and not config.merge_pattern_drop):
+        raise ValueError("no `merge:` / `merge_patterns:` groups, `merge_drop:` or `merge_fill:` channels "
+                         "in the config — nothing to fold")
     sources = {c.source for c in config.channels}
     seen: set[str] = set()
     for key, lst in (("merge_drop", config.merge_drop), ("merge_fill", config.merge_fill)):
@@ -110,21 +113,61 @@ def prepare_merged_config(config) -> None:
             if src in seen:
                 raise ValueError(f"{key}: channel {src} is listed twice (or is in merge_drop too)")
             seen.add(src)
+    for src in config.merge_pattern_drop:
+        if src not in sources:
+            raise ValueError(f"merge_patterns drop: channel {src} is not in the channels section")
+        if src in seen:
+            raise ValueError(f"merge_patterns drop: channel {src} is in merge_drop / merge_fill already")
+    # Where each channel is spoken for: a song-wide group (patterns None) claims every pattern,
+    # a merge_patterns group its own.  Two claims on one channel may not overlap.
+    claims: dict[str, list[tuple[frozenset | None, str]]] = {}
     for i, g in enumerate(config.merge):
-        ctx = f"merge[{i}]"
+        ctx = f"merge[{i}]" if g.patterns is None else f"merge_patterns {g.label}{g.where}"
         if not g.followers:
             raise ValueError(f"{ctx}: no followers for primary {g.primary}")
+        if g.primary in g.followers:
+            raise ValueError(f"{ctx}: {g.primary} follows itself")
+        if g.bank and g.primary != "DAC":
+            raise ValueError(f"{ctx}: bank: true needs the DAC channel as primary — a sample bank's "
+                             f"notes carry 9xx in their effect slot, which a melodic primary's Cxx / "
+                             f"4xy / EDx / 3FF would need")
         for src in (g.primary, *g.followers):
             if src not in sources:
                 raise ValueError(f"{ctx}: channel {src} is not in the channels section")
             if src in seen:
-                raise ValueError(f"{ctx}: channel {src} is in two merge groups (or in merge_drop)")
-            seen.add(src)
-        if g.primary in g.followers:
-            raise ValueError(f"{ctx}: {g.primary} follows itself")
-    gone = {f for g in config.merge for f in g.followers} | set(config.merge_drop) | set(config.merge_fill)
+                raise ValueError(f"{ctx}: channel {src} is in merge_drop / merge_fill as well")
+            if (g.primary, *g.followers).count(src) > 1:
+                raise ValueError(f"{ctx}: channel {src} is listed twice")
+            claims.setdefault(src, []).append((g.patterns, ctx))
+    for src, pats in config.merge_pattern_drop.items():
+        claims.setdefault(src, []).append((frozenset(pats), f"merge_patterns drop {src}"))
+    for src, lst in claims.items():
+        for a in range(len(lst)):
+            for b in range(a + 1, len(lst)):
+                pa, ca = lst[a]
+                pb, cb = lst[b]
+                both = (pa if pb is None else pb if pa is None else pa & pb)
+                if both is None or both:
+                    where = "" if both is None else f" in pattern{'s' if len(both) > 1 else ''} {format_patterns(both)}"
+                    raise ValueError(f"channel {src} is in two merge groups{where}: {ca} and {cb}")
+    # A channel leaves the output when it is a follower or dropped everywhere: song-wide, or in
+    # every pattern the merge_patterns blocks name.  Anywhere else it is live (its own channel),
+    # and in the patterns it follows in, its notes go to its primary's channel instead.
+    named = frozenset(config.merge_patterns_named)
+
+    def gone(src: str) -> bool:
+        if src in config.merge_drop or src in config.merge_fill:
+            return True
+        away: set[int] = set()
+        for g in config.merge:
+            if src in g.followers:
+                if g.patterns is None:
+                    return True
+                away |= g.patterns
+        away |= set(config.merge_pattern_drop.get(src, ()))
+        return bool(named) and named <= away
     for c in config.channels:
-        if c.source in gone:
+        if gone(c.source):
             c.enabled = False
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
     for i, c in enumerate(live):
@@ -160,6 +203,10 @@ class NoteOn:
     voice: int | None = None
     level_db: float | None = None
     vibrato: bool = False
+    fill: int = 0             # the smpsNoteFill in force (V-int frames; 0 = none): the note is
+                              # keyed off that long after key-on
+    fill_secs: float | None = None   # the same in seconds (frames / the region's frame rate)
+    secs: float | None = None        # the note's duration in seconds (None without a tick clock)
     note_value: int = 0x81    # the SMPS note byte
     state: object = None      # the follower's DriverState at this note (a copy), for a solo note
     ticks: list = field(default_factory=list)   # every note-on tick folded into this note (a grace
@@ -182,20 +229,27 @@ def channel_notes(song, config, source: str, pan_law_db: float,
     channel = source_map(song)[source]
     sample_secs = sample_secs or {}
 
-    def sounding(tick: int, duration: int, inst: int) -> int:
-        secs = sample_secs.get(inst)
-        if secs is None or tick_secs is None:
+    def sounding(tick: int, duration: int, inst: int, fill: int = 0) -> int:
+        """Ticks the note is heard: its duration, or less where its sample runs out (a drum,
+        a hi-hat) or its note fill keys it off first."""
+        limits = [x for x in (sample_secs.get(inst), fill / fps if fill else None) if x is not None]
+        if not limits or tick_secs is None:
             return duration
         per_tick = tick_secs(tick)
-        return max(1, min(duration, math.ceil(secs / per_tick))) if per_tick > 0 else duration
+        return max(1, min(duration, math.ceil(min(limits) / per_tick))) if per_tick > 0 else duration
+
+    def secs_of(tick: int, duration: int) -> float | None:
+        return tick_secs(tick) * duration if tick_secs is not None else None
     chan_cfg = next(c for c in config.channels if c.source == source)
     kind = channel.header.channel_type
     dac_map = {d.name: d for d in config.dac_samples}
     plan, config.merge_plan = config.merge_plan, None
+    fps = 50.0 if str(getattr(config, "region", "ntsc")).lower() == "pal" else 60.0
     try:
         notes: dict[int, NoteOn] = {}
         rests: list[int] = []
         vib = False
+        fill = 0
         last: NoteOn | None = None
         for event, st, res in walk_channel(channel, config, chan_cfg):
             if getattr(event, "merged", None) is not None:
@@ -206,6 +260,8 @@ def channel_notes(song, config, source: str, pan_law_db: float,
                     vib = True
                 elif k == "smpsModOff":
                     vib = False
+                elif k == "smpsNoteFill":
+                    fill = int(event.effect.params[0])
                 continue
             if not event.is_note:
                 continue
@@ -213,7 +269,8 @@ def channel_notes(song, config, source: str, pan_law_db: float,
             if note.is_rest:
                 if note.is_no_attack and last is not None and last.tick + last.duration == tick:
                     last.duration += note.duration          # the note rings on: no C00
-                    last.sounding = sounding(last.tick, last.duration, last.instrument)
+                    last.sounding = sounding(last.tick, last.duration, last.instrument, last.fill)
+                    last.secs = secs_of(last.tick, last.duration)
                 else:
                     rests.append(tick)
                     last = None
@@ -222,27 +279,32 @@ def channel_notes(song, config, source: str, pan_law_db: float,
                 d = dac_map.get(note.dac_name)
                 if d is None:
                     continue
-                n = NoteOn(tick, note.duration, sounding(tick, note.duration, d.mod_instrument),
+                n = NoteOn(tick, note.duration, sounding(tick, note.duration, d.mod_instrument, fill),
                            d.mod_instrument, MOD_NOTE_MAP.get(d.mod_note, ModNote.C3).value, "DAC",
-                           note_value=note.note_value)
+                           note_value=note.note_value, secs=secs_of(tick, note.duration))
+                n.fill, n.fill_secs = fill, (fill / fps if fill else None)
             else:
                 assert res is not None
                 if (note.is_no_attack and last is not None and last.kind == kind
                         and last.tick + last.duration == tick and last.duration <= grace):
                     # A grace note bending into this one: one note, at this (the target) pitch
                     last.duration += note.duration
-                    last.sounding = sounding(last.tick, last.duration, res.instrument)
+                    last.sounding = sounding(last.tick, last.duration, res.instrument, fill)
+                    last.secs = secs_of(last.tick, last.duration)
                     last.instrument, last.index = res.instrument, res.index
                     last.chip = None if res.path == "psg_fixed" else res.chip
                     last.note_value, last.detune = note.note_value, res.detune
                     last.state = copy.copy(st)
                     last.ticks.append(tick)
+                    last.fill, last.fill_secs = fill, (fill / fps if fill else None)
                     continue
-                n = NoteOn(tick, note.duration, sounding(tick, note.duration, res.instrument),
+                n = NoteOn(tick, note.duration, sounding(tick, note.duration, res.instrument, fill),
                            res.instrument, res.index, kind,
                            chip=None if res.path == "psg_fixed" else res.chip,
                            detune=res.detune, tl=st.tl, hard_panned=st.hard_panned,
                            voice=st.voice, level_db=st.level_db(pan_law_db), vibrato=vib,
+                           fill=fill, fill_secs=(fill / fps if fill else None),
+                           secs=secs_of(tick, note.duration),
                            note_value=note.note_value, state=copy.copy(st))
             n.ticks = [tick]
             notes[tick] = n
@@ -263,7 +325,8 @@ class PairStats:
     paired: int = 0           # follower note-ons that merge into a composite
     alone: int = 0            # primary note-ons with the follower resting (fine)
     held: int = 0             # primary note-ons under a follower note that keeps sounding
-    shorter: int = 0          # follower note-ons at the primary's tick that end sooner
+    shorter: int = 0          # follower note-ons at the primary's tick that end sooner (keyed off
+                              # early inside the composite: paired, not lost)
     truncated: int = 0        # follower notes cut by the primary's rest
     orphans: int = 0          # follower note-ons while the primary sounds, with no primary note-on
     cuts: int = 0             # ... that play anyway, cutting the primary (cut_primary groups)
@@ -276,15 +339,17 @@ class PairStats:
                                                      # ones a fill pool can still place (fill_lost)
     cut_notes: dict = field(default_factory=dict)    # {tick: NoteOn} paired notes whose ring the fold
                                                      # cuts (held / truncated): fill_cut candidates
+    group: object = None      # the MergeGroup these stats were paired for (two groups may share a
+                              # primary in different patterns); None from the survey
 
     @property
     def lost(self) -> int:
         """Follower notes the merged channel cannot play as the hardware did."""
-        return self.held + self.shorter + self.truncated + self.orphans + self.solo_cut
+        return self.held + self.truncated + self.orphans + self.solo_cut
 
     @property
     def follower_notes(self) -> int:
-        return self.paired + self.shorter + self.orphans + self.solo + self.cuts
+        return self.paired + self.orphans + self.solo + self.cuts
 
     @property
     def clean(self) -> bool:
@@ -311,21 +376,40 @@ def fm_layer(p: NoteOn, f: NoteOn) -> FmLayer:
     primary, its detune and carrier level relative to the primary's (a hard pan as TL steps)."""
     assert f.voice is not None and p.chip is not None and f.chip is not None
     tl_delta = (f.tl - p.tl) + PAN_TL_STEPS * (int(f.hard_panned) - int(p.hard_panned))
-    return FmLayer(f.voice, f.chip - p.chip, f.detune - p.detune, tl_delta)
+    return FmLayer(f.voice, f.chip - p.chip, f.detune - p.detune, tl_delta, keyoff_secs=keyoff_secs(p, f))
+
+
+def keyoff_secs(p: NoteOn, f: NoteOn) -> float | None:
+    """When a follower is keyed off inside its primary's composite: at its note fill, or at
+    its duration when that ends before the primary's (the driver keys it off there while the
+    primary plays on); None when it lasts the composite out (the primary's next event ends
+    both)."""
+    ends = [f.fill_secs] if f.fill_secs is not None else []
+    if f.secs is not None and p.secs is not None and f.duration < p.duration:
+        ends.append(f.secs)
+    return min(ends) if ends else None
+
+
+def _fill_ms(p: NoteOn, f: NoteOn) -> int | None:
+    """The follower's key-off as the composite key carries it (whole milliseconds)."""
+    k = keyoff_secs(p, f)
+    return None if k is None else round(k * 1000)
 
 
 def follower_key(p: NoteOn, f: NoteOn, level_scale: float) -> tuple:
     """The part of a composite key one follower contributes.
 
     Two FM voices are rendered together on the chip: the key is the follower's layer (voice,
-    interval, detune, level relative to the primary).  Anything else is mixed from finished
-    samples: the key is the follower's instrument and MOD note and its level relative to its
-    sample's baked level.
+    interval, detune, level relative to the primary, and when it is keyed off — its
+    smpsNoteFill).  Anything else is mixed from finished samples: the key is the follower's
+    instrument and interval above the primary's MOD note (a chord shape: the same shape at
+    another pitch plays the same mix transposed), its level relative to its sample's baked
+    level, and its fill.
     """
     if chip_pair(p, f):
         lay = fm_layer(p, f)
-        return ("fm", lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset)
-    return ("pcm", f.instrument, f.index, round(level_scale, 4))
+        return ("fm", lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, _fill_ms(p, f))
+    return ("pcm", f.instrument, f.index - p.index, round(level_scale, 4), _fill_ms(p, f))
 
 
 def match_onsets(p_notes: dict[int, NoteOn], f_notes: dict[int, NoteOn], tolerance: int) -> dict[int, int]:
@@ -366,10 +450,8 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
             else:
                 st.alone += 1
             continue
-        if chip_pair(p, f) and f.duration < p.duration:
-            st.shorter += 1                 # the chip cannot key one voice off early
-            st.lost_notes[f.tick] = f
-            continue
+        if f.duration < p.duration:
+            st.shorter += 1                 # keyed off at its duration inside the composite
         st.paired += 1
         if f.vibrato != p.vibrato:
             st.vibrato += 1
@@ -378,10 +460,10 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
             nxt = bisect.bisect_right(p_sorted, t)
             if (nxt < len(p_sorted) and p_sorted[nxt] < end) or any(t < r < end for r in p_rests):
                 st.cut_notes[f.tick] = f    # its tail is lost to the primary's next event
-        # A chip composite is one per (primary instrument, follower layer): the interval is
-        # in the layer, not the MOD note.  A mixed one is per primary note as well.
+        # A composite is one per (primary instrument, follower shape): the interval is in
+        # the key, not the MOD note, for chip layers and mixes alike.
         fk = follower_key(p, f, level_scale(f))
-        st.keys.add((p.instrument, fk) if fk[0] == "fm" else (p.instrument, p.index, fk))
+        st.keys.add((p.instrument, fk))
     p_ticks = sorted(p_notes)
     taken = set(matched.values())
     for t in f_ticks:
@@ -417,22 +499,32 @@ class Composite:
     headroom_db: float = 0.0           # pcm mix: dB the sum exceeded full scale by (volume clamped)
     note: int | None = None            # pcm mix: the MOD note it is triggered at, when not the
                                        # primary's (the layer with the highest rate sets it)
+    base: int = 0                      # pcm mix: the primary's MOD note it is mixed at; a note of the
+                                       #   same shape at another pitch triggers it transposed
+    uses: dict = field(default_factory=dict)   # {group label: notes} - the groups whose notes play it
+    banked: bool = False               # pcm mix of a `bank: true` group: shares a slot with others
+                                       # (core/banks.py), chosen with 9xx; takes no slot in the fit
+    offset: int = 0                    # banked: where its sound starts in the bank (bytes, ×256)
+    region: int = 0                    # banked: bytes of its sound (the note is cut after them)
 
     @property
     def detail(self) -> str:
         if self.key[0] == "fm":
             parts = []
-            for _k, voice, interval, detune, tl in self.key[2]:
+            for _k, voice, interval, detune, tl, fill in self.key[2]:
                 s = f"voice ${voice:02X} {interval:+d} st"
                 if detune:
                     s += f", detune {detune:+d}"
                 if tl:
                     s += f", TL {tl:+d}"
+                if fill is not None:
+                    s += f", off at {fill} ms"
                 parts.append(s)
             return "chip: " + "; ".join(parts)
-        parts = [f"inst {inst} at note {idx}" + (f" ×{scale:g}" if scale != 1 else "")
-                 for _k, inst, idx, scale in self.key[3]]
-        at = f"mix at note {self.key[2]}" + (f", triggered at {self.note}" if self.note is not None else "")
+        parts = [f"inst {inst} {itv:+d} st" + (f" ×{scale:g}" if scale != 1 else "")
+                 + (f", cut at {fill} ms" if fill is not None else "")
+                 for _k, inst, itv, scale, fill in self.key[2]]
+        at = f"mix at note {self.base}" + (f", triggered at {self.note}" if self.note is not None else "")
         return f"{at}: " + "; ".join(parts)
 
 
@@ -446,6 +538,14 @@ class MergePlan:
     unsupported: list[dict] = field(default_factory=list)
     solo: dict[tuple[str, int], tuple[str, NoteOn]] = field(default_factory=dict)  # (primary, tick) -> (follower, note)
     spliced: set[tuple[str, int]] = field(default_factory=set)   # (follower, tick) of every note-on now on a primary
+    # (channel, tick) of every note-on a live channel does NOT play itself: a follower's note in a
+    # pattern its group folds (paired, lost or spliced alike), or a note in a pattern the channel
+    # is dropped in.  The spliced set is a subset.  A channel that is a follower everywhere is not
+    # converted at all, so this matters for the ones `merge_patterns:` keeps live elsewhere.
+    folded: set[tuple[str, int]] = field(default_factory=set)
+    dropped_notes: dict[str, dict] = field(default_factory=dict)   # {channel: {'notes', 'patterns'}} lost outright
+    unspecified: set[int] = field(default_factory=set)   # patterns of the song no merge_patterns block names
+    pattern_drop: dict[str, set[int]] = field(default_factory=dict)   # config.merge_pattern_drop
     unused: set[int] = field(default_factory=set)   # instruments no note of the merged build plays
     blank_after_mix: set[int] = field(default_factory=set)   # unused, but a pcm composite is mixed from them
     dropped: set[int] = field(default_factory=set)  # nothing plays or mixes them: not rendered at all
@@ -455,6 +555,12 @@ class MergePlan:
                                                     #   'lost', 'folded', 'targets': {channel: notes}} (_pool_notes)
     slots_free: int = 0                             # instrument slots the composites could take
     slots_wanted: int = 0                           # composites the groups asked for (after max_composites)
+    spare_slots: list[int] = field(default_factory=list)   # slots the fit left free (the banks take them)
+    banks: list = field(default_factory=list)       # core.banks.Bank, once the mixes are packed
+    regions: dict[tuple[str, int], tuple[int, int]] = field(default_factory=dict)   # (primary, tick) ->
+                                                    #   (offset bytes, sound bytes) of a banked note
+    bases: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> the primary's
+                                                    #   MOD note there (a pcm composite is transposed from its base)
 
     @property
     def pcm_sources(self) -> set[int]:
@@ -463,15 +569,34 @@ class MergePlan:
         for c in self.composites.values():
             if c.fm is None:
                 out.add(c.key[1])
-                out.update(k[1] for k in c.key[3])
+                out.update(k[1] for k in c.key[2])
         return out
 
     def instrument_at(self, source: str, tick: int, default: int) -> int:
         return self.ticks.get((source, tick), default)
 
+    def is_folded(self, source: str, tick: int) -> bool:
+        """True when the note-on of `source` at `tick` plays elsewhere (or nowhere), not on
+        the channel's own output."""
+        return (source, tick) in self.folded or (source, tick) in self.spliced
+
+    def away_patterns(self, source: str) -> frozenset:
+        """The patterns `source` plays nothing of its own in: a follower's, or dropped."""
+        out: set[int] = set()
+        for g in self.groups:
+            if source in g.followers and g.patterns is not None:
+                out |= g.patterns
+        out |= set(self.pattern_drop.get(source, ()))
+        return frozenset(out)
+
     def note_at(self, source: str, tick: int, default: int) -> int:
         """The MOD note the composite at (source, tick) is triggered at; `default` otherwise."""
         return self.notes.get((source, tick), default)
+
+    def region_at(self, source: str, tick: int) -> tuple[int, int] | None:
+        """(offset, sound bytes) when the note at (source, tick) plays a sound inside a bank:
+        the note starts with 9xx at the offset and is cut once the sound is over."""
+        return self.regions.get((source, tick))
 
     @property
     def fm_instruments(self) -> list[FmInstrument]:
@@ -491,8 +616,8 @@ def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale) -
     (every follower a layer) or mixed from samples (every follower at its MOD note)."""
     if chip:
         return ("fm", p.instrument, tuple(follower_key(p, f, 1.0) for f in followers))
-    return ("pcm", p.instrument, p.index,
-            tuple(("pcm", f.instrument, f.index, round(level_scale(f), 4)) for f in followers))
+    return ("pcm", p.instrument,
+            tuple(("pcm", f.instrument, f.index - p.index, round(level_scale(f), 4), _fill_ms(p, f)) for f in followers))
 
 
 def _free_slots(config, song) -> list[int]:
@@ -507,17 +632,36 @@ def _free_slots(config, song) -> list[int]:
 def build_merge_plan(song, config, *, pan_law_db: float,
                      baselines: dict[str, dict[int, float]] | None = None,
                      sample_secs: dict[int, float] | None = None, tick_secs=None,
-                     fill_min_ticks: int = 1) -> MergePlan:
+                     fill_min_ticks: int = 1, pattern_of=None, last_pattern: int | None = None) -> MergePlan:
     """Decide the composite instruments the merge groups need and where they play.
 
     `baselines` ({"FM": {inst: dB}, "PSG": {...}}, the converter's baked levels) turns a
     follower's level into the gain its sample is mixed with on the pcm path; `sample_secs` and
     `tick_secs` bound the drums' and noise notes' sounding spans (channel_notes);
     `fill_min_ticks` is the least of a pool note that must play for it to be placed (a row).
+    `pattern_of(tick)` is the MOD pattern (of the reference build, after its pattern breaks)
+    a note-on at that tick lands in: a `merge_patterns:` group folds only the notes that start
+    in its patterns, so any group with patterns needs it; `last_pattern` is the MOD's last (the
+    patterns up to it that no `merge_patterns:` block names are reported).
     Sets `config.merge_plan` and appends the composites' sample_list entries.
     """
     assert config.merge_plan is None
-    plan = MergePlan(config.merge)
+    plan = MergePlan(config.merge, pattern_drop={k: set(v) for k, v in config.merge_pattern_drop.items()})
+    if pattern_of is None and (any(g.patterns is not None for g in plan.groups) or config.merge_pattern_drop):
+        raise ValueError("merge_patterns: groups need pattern_of(tick) to know which notes they fold")
+
+    def pat(t: int) -> int:
+        assert pattern_of is not None
+        return pattern_of(t)
+
+    def in_patterns(patterns, t: int) -> bool:
+        return patterns is None or pat(t) in patterns
+
+    def restrict(patterns, notes: dict[int, NoteOn], rests: list[int]):
+        if patterns is None:
+            return notes, rests
+        return ({t: n for t, n in notes.items() if in_patterns(patterns, t)},
+                [r for r in rests if in_patterns(patterns, r)])
     baselines = baselines or {}
     cat = fm_catalogue(song, config)
     vol_of = {e[0]: (e[2] if len(e) > 2 else 64, e[3] if len(e) > 3 else 0)
@@ -538,18 +682,50 @@ def build_merge_plan(song, config, *, pan_law_db: float,
     tol = max(0, int(getattr(config, "merge_tolerance", 0)))
     # Phase 1: every channel's notes and how each follower lines up with its primary
     groups_data = []
+    all_notes: dict[str, tuple[dict[int, NoteOn], list[int]]] = {}
+
+    def notes_of(src: str):
+        if src not in all_notes:
+            all_notes[src] = channel_notes(song, config, src, pan_law_db, sample_secs, tick_secs, tol)
+        return all_notes[src]
     for g in plan.groups:
-        p_notes, p_rests = channel_notes(song, config, g.primary, pan_law_db, sample_secs, tick_secs, tol)
-        followers = [(f, *channel_notes(song, config, f, pan_law_db, sample_secs, tick_secs, tol))
-                     for f in g.followers]
+        p_notes, p_rests = restrict(g.patterns, *notes_of(g.primary))
+        followers = [(f, *restrict(g.patterns, *notes_of(f))) for f in g.followers]
         groups_data.append((g, p_notes, p_rests, followers))
+        for f, f_notes, _ in followers:          # a folded note leaves the follower's own channel
+            plan.folded.update((f, tt) for n in f_notes.values() for tt in (n.ticks or [n.tick]))
+    # Notes in a pattern their channel is dropped in, and a departed channel's notes in the
+    # patterns no group folds: lost outright, reported per channel
+    for src, pats in config.merge_pattern_drop.items():
+        notes, _ = notes_of(src)
+        gone_ticks = [t for t in notes if pat(t) in pats]
+        plan.folded.update((src, tt) for t in gone_ticks for tt in (notes[t].ticks or [t]))
+        if gone_ticks:
+            plan.dropped_notes[src] = {'notes': len(gone_ticks),
+                                       'patterns': {pat(t) for t in gone_ticks}}
+    if pattern_of is not None:
+        for c in config.channels:
+            if c.enabled or c.source in config.merge_drop or c.source in config.merge_fill:
+                continue
+            notes, _ = notes_of(c.source)
+            lost = [t for t in notes if (c.source, t) not in plan.folded
+                    and (last_pattern is None or pat(t) <= last_pattern)]   # past the loop: unreachable
+            if lost:
+                d = plan.dropped_notes.setdefault(c.source, {'notes': 0, 'patterns': set()})
+                d['notes'] += len(lost)
+                d['patterns'] |= {pat(t) for t in lost}
+        named = set(config.merge_patterns_named)
+        if named and last_pattern is not None:
+            plan.unspecified = set(range(last_pattern + 1)) - named
 
     def pair_all():
         plan.stats = []
         for g, p_notes, p_rests, followers in groups_data:
             for f, f_notes, f_rests in followers:
-                plan.stats.append(pair_channels(p_notes, p_rests, f_notes, f_rests, g.primary, f, level_scale,
-                                                cut_primary=g.cut_primary, tolerance=tol))
+                st = pair_channels(p_notes, p_rests, f_notes, f_rests, g.primary, f, level_scale,
+                                   cut_primary=g.cut_primary, tolerance=tol)
+                st.group = g
+                plan.stats.append(st)
     pair_all()
     # Phase 2: the fill pool, before anything folds - a pooled follower note leaves its group
     if _pool_notes(plan, song, config, pan_law_db, sample_secs, tick_secs, tol, fill_min_ticks, groups_data):
@@ -559,20 +735,24 @@ def build_merge_plan(song, config, *, pan_law_db: float,
         matched = {f: match_onsets(p_notes, f_notes, tol) for f, f_notes, _ in followers}
         for t in sorted(p_notes):
             p = p_notes[t]
-            present = [(f, f_notes[matched[f][t]]) for f, f_notes, _ in followers
-                       if t in matched[f] and (f_notes[matched[f][t]].duration >= p.duration
-                                               or not chip_pair(p, f_notes[matched[f][t]]))]
+            present = [(f, f_notes[matched[f][t]]) for f, f_notes, _ in followers if t in matched[f]]
             if not present:
                 continue
             spec = cat.instruments.get(p.instrument)
             chip = spec is not None and all(chip_pair(p, fn) for _, fn in present)
             key = composite_key(p, [fn for _, fn in present], chip, level_scale)
             comp = plan.composites.get(key)
+            if comp is not None and not chip and not 0 <= trigger_note(comp, p.index) <= 35:
+                # The same shape, but transposed off the MOD's three octaves from where the
+                # mix was made: a mix of its own, made at this pitch
+                key = (*key, ("base", p.index))
+                comp = plan.composites.get(key)
             if comp is None:
                 provisional -= 1
                 inst = provisional
                 vol, ft = vol_of.get(p.instrument, (64, 0))
-                comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft])
+                comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft],
+                                 banked=g.bank and not chip)
                 if chip:
                     assert spec is not None and p.voice is not None
                     layers = [FmLayer(p.voice)] + [fm_layer(p, fn) for _, fn in present]
@@ -582,28 +762,40 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                     # Mixed at, and triggered from, the note of the layer that plays fastest: a
                     # hi-hat at A3 mixed onto a kick at C2 would otherwise be resampled down to
                     # the kick's 8 kHz and lose everything above 4 kHz.
+                    comp.base = p.index
                     best = min([p.index] + [fn.index for _, fn in present], key=lambda i: PERIOD_TABLE[i])
+                    if g.mix_note is not None and PERIOD_TABLE[best] < PERIOD_TABLE[g.mix_note]:
+                        best = g.mix_note        # the group's cap: fewer bytes, less treble
                     if best != p.index:
                         comp.note = best
                 config.sample_list.append(comp.entry)
                 plan.composites[key] = comp
             comp.notes += 1
+            label = g.label + g.where
+            comp.uses[label] = comp.uses.get(label, 0) + 1
             for tt in (p.ticks or [t]):           # the grace note and the note it bends into alike
                 plan.ticks[(g.primary, tt)] = comp.inst
-                if comp.note is not None:
-                    plan.notes[(g.primary, tt)] = comp.note
+                if not chip:
+                    plan.bases[(g.primary, tt)] = p.index
+                    trig = trigger_note(comp, p.index)
+                    if trig != p.index:
+                        plan.notes[(g.primary, tt)] = trig
         _splice_solo_notes(plan, song, g, p_notes, p_rests)
     config.merge_plan = plan
     # The group budgets first (max_composites): a composite over budget hands its notes back to
     # the primary's own instrument, which the unused scan must then count as played.
     _cap_composites(plan, config)
     plan.slots_wanted = len(plan.composites)
-    # A mix source's slot can be reused too when the source is a PSG instrument: its sample is
-    # rendered anyway and handed to the mixer directly.  An FM source shares the FM catalogue's
-    # one entry per slot with the composite, and a drum comes off disk into its slot, so those
-    # stay pinned.
-    pinned = plan.pcm_sources & (set(cat.instruments) | {d.mod_instrument for d in config.dac_samples})
-    unused = _fit_composites(plan, song, config, free, pinned)
+    # A mix source's slot can be reused too: its sample is rendered anyway and handed to the
+    # mixer directly (`mix_only`).  A drum comes off disk into its slot, so it stays pinned; an
+    # FM source's slot can hold a pcm composite only, since the FM catalogue keeps one entry per
+    # slot and a chip composite there would displace the source before it was rendered.
+    unused = _fit_composites(plan, song, config, free,
+                             drums={d.mod_instrument for d in config.dac_samples},
+                             fm_slots=set(cat.instruments),
+                             reserve=(int(getattr(config, "merge_bank_slots", 0))
+                                      if any(c.banked for c in plan.composites.values()) else 0))
+    stand_in(plan)
     taken = plan.instruments
     plan.mix_only = unused & plan.pcm_sources
     plan.blank_after_mix = plan.mix_only - taken
@@ -613,36 +805,115 @@ def build_merge_plan(song, config, *, pan_law_db: float,
 
 
 def _fit_composites(plan: MergePlan, song, config, free: list[int],
-                    pinned: frozenset[int] | set[int] = frozenset()) -> set[int]:
+                    drums: set[int] = frozenset(), fm_slots: set[int] = frozenset(),  # type: ignore[assignment]
+                    reserve: int = 0) -> set[int]:
     """Give every composite a MOD instrument slot - a never-named slot, or one of an instrument
     the merged build no longer plays - dropping composites while they do not all fit.
 
     Dropping a composite hands its notes back to the primary's own instrument, which may be one
-    of the slots on offer, so the fit is redone until it is stable; the composites dropped first
-    are those whose primary instrument is played anyway (no new slot needed), then the least
-    played.  Returns the instruments left unused by the final plan."""
+    of the slots on offer, and takes its mix sources out of the pinned set, so the fit is redone
+    until it is stable; the composites dropped first are those whose primary instrument is
+    played anyway (no new slot needed), then the least played.  A drum's slot (`drums`) is never
+    reused; an FM mix source's (`fm_slots`) only by a pcm composite.  A banked composite takes
+    no slot here (`core.banks` packs them once mixed); `reserve` slots are held back for the
+    banks, and whatever the fit leaves free is theirs too (`plan.spare_slots`).  Returns the
+    instruments left unused by the final plan."""
     while True:
         unused = _unused_instruments(plan, song, config)
-        slots = free + sorted(unused - pinned)
-        comps = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst))
-        over = len(comps) - len(slots)
-        if over <= 0:
+        sources = plan.pcm_sources                          # of the composites still in the plan
+        slots = free + sorted(unused - (sources & drums))
+        pcm_only = (unused & sources & fm_slots) - drums
+        usable = slots[:max(0, len(slots) - reserve)]
+        comps = sorted((c for c in plan.composites.values() if not c.banked), key=lambda c: (-c.notes, c.inst))
+        chosen, left = _plan_slots(comps, usable, pcm_only)
+        if not left:
             plan.slots_free = len(slots)
-            _assign_slots(plan, config, slots)
+            plan.spare_slots = [s for s in slots if s not in chosen.values()]
+            _assign_slots(plan, config, chosen)
             return unused
         cheap = {c.key[1] for c in comps} - unused          # primaries whose instrument stays anyway
-        for c in sorted(comps, key=lambda c: (c.key[1] not in cheap, c.notes, -c.inst))[:over]:
-            _drop_composite(plan, config, c, 'no free instrument slot')
+        for c in sorted(comps, key=lambda c: (c.key[1] not in cheap, c.notes, -c.inst))[:len(left)]:
+            drop_composite(plan, config, c, 'no free instrument slot')
 
 
-def _drop_composite(plan: MergePlan, config, c: Composite, reason: str) -> None:
-    """Take a composite out of the plan: its notes play the primary alone, and it is reported."""
-    plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': reason})
+def _plan_slots(comps: list[Composite], slots: list[int], pcm_only: set[int]
+                ) -> tuple[dict[int, int], list[Composite]]:
+    """Slots for the composites in order (the most played first): each takes the first slot it
+    may hold — a chip-rendered one never a `pcm_only` slot.  ({composite id: slot}, the ones
+    left without)."""
+    pool = list(slots)
+    chosen: dict[int, int] = {}
+    left: list[Composite] = []
+    for c in comps:
+        pick = next((s for s in pool if c.fm is None or s not in pcm_only), None)
+        if pick is None:
+            left.append(c)
+            continue
+        pool.remove(pick)
+        chosen[c.inst] = pick
+    return chosen, left
+
+
+def trigger_note(comp: Composite, primary_index: int) -> int:
+    """The MOD note a pcm composite is triggered at for a primary note at `primary_index`:
+    its own trigger note (the fastest layer's, or the primary's) moved by how far this note
+    is from the pitch the mix was made at."""
+    return (comp.note if comp.note is not None else comp.base) + (primary_index - comp.base)
+
+
+def _shape(key: tuple) -> tuple:
+    """What a composite sounds like apart from its followers' fills and levels: a dropped one
+    may stand in for another of the same shape (a kick+bass mix with or without the bass's
+    67 ms pluck) rather than lose the follower's note."""
+    if key[0] == "fm":
+        return ("fm", key[1], tuple((v, st, det) for _k, v, st, det, _tl, _fill in key[2]))
+    return ("pcm", key[1], tuple((i, itv) for _k, i, itv, _sc, _fill in key[2]))
+
+
+def drop_composite(plan: MergePlan, config, c: Composite, reason: str) -> None:
+    """Take a composite out of the plan: its notes play the primary alone (unless a composite
+    of the same shape stands in for it, `stand_in`), and it is reported."""
+    plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': reason,
+                             'shape': _shape(c.key), 'group_label': c.group.label + c.group.where,
+                             'ticks': [k for k, v in plan.ticks.items() if v == c.inst]})
     if c.entry in config.sample_list:
         config.sample_list.remove(c.entry)
     del plan.composites[c.key]
     plan.ticks = {k: v for k, v in plan.ticks.items() if v != c.inst}
     plan.notes = {k: n for k, n in plan.notes.items() if k in plan.ticks}
+
+
+def stand_in(plan: MergePlan) -> None:
+    """Every dropped composite whose shape a surviving one has plays that one instead: the
+    follower's note is kept, with the other's fill and level.  Safe to call again after a
+    later drop (core.banks): an entry already settled is left alone."""
+    by_shape: dict[tuple, Composite] = {}
+    for c in sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst)):
+        by_shape.setdefault(_shape(c.key), c)
+    for u in plan.unsupported:
+        if u.get('settled'):
+            continue
+        u['settled'] = True
+        c = by_shape.get(u['shape'])
+        if c is None or not u['ticks']:
+            continue
+        taken = 0
+        for k in u['ticks']:
+            if c.fm is None:
+                base = plan.bases.get(k, c.base)
+                trig = trigger_note(c, base)
+                if not 0 <= trig <= 35:
+                    continue                    # transposed off the MOD's range: stays lost
+                if trig != base:
+                    plan.notes[k] = trig
+                else:
+                    plan.notes.pop(k, None)
+            plan.ticks[k] = c.inst
+            taken += 1
+        if taken:
+            c.notes += taken
+            c.uses[u['group_label']] = c.uses.get(u['group_label'], 0) + taken
+            u['stand_in'] = c.inst
 
 
 def _cap_composites(plan: MergePlan, config) -> None:
@@ -651,23 +922,24 @@ def _cap_composites(plan: MergePlan, config) -> None:
     for c in sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst)):
         cap = c.group.max_composites
         if cap is not None and kept.get(c.group.primary, 0) >= cap:
-            _drop_composite(plan, config, c, f"over the group's max_composites: {cap}")
+            drop_composite(plan, config, c, f"over the group's max_composites: {cap}")
         else:
             kept[c.group.primary] = kept.get(c.group.primary, 0) + 1
 
 
-def _assign_slots(plan: MergePlan, config, slots: list[int]) -> None:
-    """Give the composites their MOD instruments: the never-named slots first, then those the
-    merged build frees, the most-played composites first.  A composite left without a slot is
-    dropped (its notes play the primary alone) and reported."""
+def _assign_slots(plan: MergePlan, config, chosen: dict[int, int]) -> None:
+    """Give the composites their MOD instruments (`chosen`: {provisional id: slot}, from
+    _plan_slots).  A composite left without a slot is dropped (its notes play the primary
+    alone) and reported."""
     order = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst))
-    remap: dict[int, int | None] = {}
-    for c in order:
-        remap[c.inst] = slots.pop(0) if slots else None
+    # A banked composite keeps its provisional id until core.banks packs it into a slot
+    remap: dict[int, int | None] = {c.inst: (c.inst if c.banked else chosen.get(c.inst)) for c in order}
     for c in list(order):
+        if c.banked:
+            continue
         real = remap[c.inst]
         if real is None:                      # _fit_composites makes this impossible; kept safe
-            _drop_composite(plan, config, c, 'no free instrument slot')
+            drop_composite(plan, config, c, 'no free instrument slot')
             continue
         if c.entry is not None:
             c.entry[0] = real
@@ -686,7 +958,7 @@ def _splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, 
     p_ticks = sorted(p_notes)
     events = channel.events
     for st in plan.stats:
-        if st.primary != g.primary:
+        if st.group is not g:
             continue
         for t, n in sorted(st.solo_notes.items()):
             if (g.primary, t) in plan.solo:
@@ -730,7 +1002,7 @@ def _occupancy(plan: MergePlan, song, config, source: str, pan_law_db: float, sa
             end = min(end, t + over)
         return t, end
     notes, _rests = channel_notes(song, config, source, pan_law_db, sample_secs, tick_secs, grace)
-    spans = [span(n.tick, n) for n in notes.values()]
+    spans = [span(n.tick, n) for n in notes.values() if (source, n.tick) not in plan.folded]
     spans += [span(t, n) for (src, t), (_f, n) in plan.solo.items() if src == source]
     return sorted(spans)
 
@@ -759,7 +1031,7 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
         order += 1
     for g in plan.groups:
         for st in plan.stats:
-            if st.primary != g.primary:
+            if st.group is not g:
                 continue
             if g.fill_lost:
                 pool += [(t, order, st.follower, n, False) for t, n in st.lost_notes.items()]
@@ -829,6 +1101,8 @@ def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
         if not chan_cfg.enabled or channel is None:
             continue
         for event, _st, res in walk_channel(channel, config, chan_cfg):
+            if event.is_note and getattr(event, "merged", None) is None and plan.is_folded(chan_cfg.source, event.tick_position):
+                continue                     # played on another channel (or dropped) in this pattern
             if res is not None:
                 used.add(res.instrument)
             elif event.is_note and event.note.is_dac and event.note.dac_name in dac_map:
@@ -842,13 +1116,30 @@ def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
 
 
 def _signed(data: bytes) -> list[float]:
-    return [(b - 256 if b > 127 else b) for b in data]
+    return list(signed8(data))
+
+
+def _cut_layer(sig: list[float], keep: int, rate: float, release_db_s: float | None) -> list[float]:
+    """A follower layer keyed off `keep` samples in: what follows decays at the voice's release
+    rate (dB/s, from core.loops) to -60 dB, or is cut over 2 ms where the voice has no release
+    to speak of (a PSG note ends the instant its attenuation is set to 15)."""
+    if keep >= len(sig):
+        return sig
+    if release_db_s is None or not math.isfinite(release_db_s) or release_db_s <= 0:
+        fade = max(1, int(rate * 0.002))
+        tail = [v * (1 - i / fade) for i, v in enumerate(sig[keep:keep + fade])]
+        return sig[:keep] + tail
+    n = int(rate * 60.0 / release_db_s)                  # samples to -60 dB
+    tail = [v * 10 ** (-release_db_s * (i / rate) / 20.0) for i, v in enumerate(sig[keep:keep + n])]
+    return sig[:keep] + tail
 
 
 def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        max_bytes: int = MAX_MOD_SAMPLE_BYTES,
                        hold_secs: dict[int, float] | None = None,
-                       sources: dict[int, ModSample] | None = None) -> list[dict]:
+                       sources: dict[int, ModSample] | None = None,
+                       release_db_s: dict[int, float | None] | None = None,
+                       bank_out: dict[int, ModSample] | None = None) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -866,11 +1157,15 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     body, so any later repeat of it is the same seamless loop, and the composite is the
     followers' length plus one loop.  Mixed at another rate (resampled) the loop points would
     not land on samples, so the primary is unrolled for `hold_secs` ({instrument: seconds},
-    its longest note) instead and the mix plays straight through.
+    its longest note) instead and the mix plays straight through.  A follower the driver keyed
+    off with smpsNoteFill (the key's fill) is cut there and decays at its instrument's release
+    rate (`release_db_s`, {instrument: dB/s}; a bass pluck under a kick).  A banked composite's
+    sample goes to `bank_out` ({provisional id: sample}) for core.banks to pack, not into a slot.
     """
     problems: list[dict] = []
     hold_secs = hold_secs or {}
     sources = sources or {}
+    release_db_s = release_db_s or {}
 
     def sample_of(inst: int) -> ModSample:
         return sources.get(inst) or mod.samples[inst - 1]
@@ -880,7 +1175,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     for comp in plan.composites.values():
         if comp.fm is not None:
             continue
-        _, p_inst, p_idx, subs = comp.key
+        p_inst, subs = comp.key[1], comp.key[2]
+        p_idx = comp.base
         base = sample_of(p_inst)
         if not base.data:
             problems.append({'instrument': comp.inst, 'missing': p_inst})
@@ -890,7 +1186,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         same_rate = round(r_base) == round(r_p)
         # The followers first: how long the mix has to run before a loop may start
         layers: list[list[float]] = []
-        for _, f_inst, f_idx, scale in subs:
+        for _, f_inst, interval, scale, fill_ms in subs:
+            f_idx = p_idx + interval
             fs = sample_of(f_inst)
             if not fs.data:
                 problems.append({'instrument': comp.inst, 'missing': f_inst})
@@ -899,9 +1196,15 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
             r_f = amiga_clock / PERIOD_TABLE[f_idx]
             f_data = fs.data
             f_loop = loop_of(fs)
-            if f_loop is not None:            # unrolled for as long as the primary's longest note
-                f_data = unroll(f_data, f_loop, int(hold_secs.get(p_inst, 0.0) * r_f) + 2)
+            if f_loop is not None:
+                # Unrolled for the longer of the two instruments' longest notes (a drum primary
+                # has no hold: until 2026-09-28 a looped bass under a kick was unrolled to two
+                # bytes and vanished from every drum+bass mix), never shorter than the sample
+                hold = max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0))
+                f_data = unroll(f_data, f_loop, max(len(f_data), int(hold * r_f) + 2))
             sig = [v * gain for v in _signed(f_data)]
+            if fill_ms is not None:           # keyed off by its note fill while the primary plays on
+                sig = _cut_layer(sig, int(r_f * fill_ms / 1000.0), r_f, release_db_s.get(f_inst))
             if round(r_f) != round(r_p):
                 sig = resample(sig, round(r_f), round(r_p))
             layers.append(sig)
@@ -916,7 +1219,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 b_data = unroll(b_data, b_loop, s0 + (k + 1) * ln)
                 keep_loop = (s0 + k * ln, ln)
             else:
-                b_data = unroll(b_data, b_loop, int(hold_secs.get(p_inst, 0.0) * r_base) + 2)
+                b_data = unroll(b_data, b_loop, max(len(b_data), int(hold_secs.get(p_inst, 0.0) * r_base) + 2))
         total = [v * base._volume / 64.0 for v in _signed(b_data)]
         if not same_rate:
             total = resample(total, round(r_base), round(r_p))
@@ -945,9 +1248,12 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         sample._finetune = base._finetune
         if keep_loop is not None and keep_loop[0] + keep_loop[1] <= len(pcm):
             sample.repeat, sample.repeat_length = keep_loop[0] // 2, keep_loop[1] // 2
-        mod.samples[comp.inst - 1] = sample
         if comp.entry is not None:
             comp.entry[2] = vol
+        if comp.banked and bank_out is not None:
+            bank_out[comp.inst] = sample
+        else:
+            mod.samples[comp.inst - 1] = sample
     for inst in plan.blank_after_mix:            # a source no note plays once its composites exist
         mod.samples[inst - 1] = ModSample("")
     return problems

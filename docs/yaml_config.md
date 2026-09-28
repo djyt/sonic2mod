@@ -589,7 +589,9 @@ baselines and audits stay the ground truth.
   almost every time, so the pool places 30 of 188; they fold onto the bass as bass+chime mixes
   instead.
 - Composites share the 31 instrument slots with the instruments the merged build still plays;
-  the converter prints how many slots were free and how many the groups asked for. Over
+  the converter prints how many slots were free and how many the groups asked for. A PSG
+  instrument that only survives as a source of the mixes gives up its slot as well (its sample
+  is rendered for the mixer and kept out of the table). Over
   budget, the least-played composites go (those whose primary instrument stays anyway first);
   set each group's `max_composites` so the groups' budgets fit the free slots.
 - With `sustain_loops` on in `settings.yaml` (the default for `--merged`), every looped sample

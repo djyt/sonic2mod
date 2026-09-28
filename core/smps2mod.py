@@ -32,6 +32,7 @@ from .levels import (
     modal_level,
     psg_att_to_mod,
 )
+from .loops import SustainLoop
 from .merge import build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
@@ -82,6 +83,12 @@ class SmpsToModConverter:
         self._seen_warnings: set = set()
         self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see _place_leading_rests
         self._vib_rate_limited: set = set()
+        # Sustain loops (core.loops, settings.yaml `sustain_loops`): the loop each synthesised
+        # sample was cut to, and how fast each FM instrument's level falls after key-off.
+        self._loops: dict[int, SustainLoop] = {}
+        self._release: dict[int, float | None] = {}
+        self._release_slides = False       # end FM notes with a volume slide instead of C00
+        self._pending_sustain_short: dict[tuple[str, int], dict] = {}
 
     def _add_warning(self, w: dict):
         """Append a warning, deduplicating by (type, channel, extra_ctx, key)."""
@@ -353,6 +360,10 @@ class SmpsToModConverter:
             sample.data = pcm_data
             sample.length = len(pcm_data) // 2
             sample.set_volume(64)
+            loop = self._loops.get(inst_num)
+            if loop is not None and loop.end <= len(pcm_data) and loop.length >= 4:
+                sample.repeat = loop.start // 2
+                sample.repeat_length = loop.length // 2
             self.mod.samples[inst_num - 1] = sample
         if sample_list:
             for entry in sample_list:
@@ -475,10 +486,33 @@ class SmpsToModConverter:
             limit = ('mod' if fits < want
                      else 'cap' if auto and need > self._AUTO_SUSTAIN_CAP_SECS
                      else 'setting')
-            self._add_warning({'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',
-                               'kind': kind, 'instrument': inst, 'need': need, 'have': have,
-                               'rate': rate, 'limit': limit, 'max_kb': settings.max_sample_kb})
+            # Held back: a sample cut to a sustain loop holds any note (_flush_sustain_warnings)
+            self._pending_sustain_short[(kind, inst)] = {
+                'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',
+                'kind': kind, 'instrument': inst, 'need': need, 'have': have,
+                'rate': rate, 'limit': limit, 'max_kb': settings.max_sample_kb}
         return settings
+
+    def _flush_sustain_warnings(self, kind: str, samples: dict) -> None:
+        """Report the held-back sustain_short warnings of `kind`'s instruments, except for the
+        ones whose sample now loops, and record the loops and releases found."""
+        looped = []
+        for inst in sorted(samples):
+            loop = self._loops.get(inst)
+            if loop is not None:
+                pcm, rate = samples[inst]
+                looped.append({'instrument': inst, 'bytes': len(pcm), 'start_ms': 1000.0 * loop.start / rate,
+                               'loop_ms': 1000.0 * loop.length / rate, 'error': loop.error})
+        for (k, inst), w in list(self._pending_sustain_short.items()):
+            if k != kind:
+                continue
+            del self._pending_sustain_short[(k, inst)]
+            if inst not in self._loops:
+                self._add_warning(w)
+        if looped:
+            self.infos.append({'type': 'sustain_loops', 'kind': kind, 'looped': looped,
+                               'of': len(samples), 'bytes': sum(len(p) for p, _ in samples.values()),
+                               'releases': {i: r for i, r in self._release.items() if i in samples}})
 
     def convert(self):
         """Main entry point. Returns a ModFile."""
@@ -558,10 +592,15 @@ class SmpsToModConverter:
             self._fm_render_levels = (self._plan_fm_render_levels()
                                       if self._fm_volume_mode == "baked" else {})
             fm_peaks: dict[int, tuple[int, int]] = {}
+            # Sustain loops (settings.yaml `sustain_loops`): a settled voice's sample is cut to a
+            # loop and its notes end with a release slide (_write_release) instead of a C00.
+            fm_loops = synth.loops_for(self.config.merge_active)
+            self._release_slides = fm_loops
             fm_samples = generate_fm_samples(
                 self.song, self.config, synth,
                 tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()},
-                peaks_out=fm_peaks)
+                peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release)
+            self._flush_sustain_warnings('FM', fm_samples)
             if self._merge is not None:
                 # A chip composite is normalised like any sample, so its volume is the primary's
                 # times the composite's peak over its primary layer's alone: the primary plays as
@@ -621,17 +660,32 @@ class SmpsToModConverter:
                                        'envelope': d['envelope'], 'others': others})
             psg_samples = generate_psg_samples(
                 self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
-                noise_envelopes={i: d['envelope'] for i, d in noise_env.items()})
+                noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
+                loops=psg_synth.loops_for(self.config.merge_active), loops_out=self._loops)
+            self._flush_sustain_warnings('PSG', psg_samples)
             self._install_synthesized_samples(psg_samples, self.config.sample_list, "psg",
                                               psg_synth.max_sample_bytes)
             self.infos.append({'type': 'psg_synthesized', 'count': len(psg_samples)})
+
+        for w in self._pending_sustain_short.values():      # kinds that were not synthesised
+            self._add_warning(w)
+        self._pending_sustain_short.clear()
 
         # The composites mixed from finished samples (DAC + hi-hat), now that every sample is in
         if self._merge is not None:
             clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
             max_bytes = self.synth.max_sample_bytes if self.synth else MAX_MOD_SAMPLE_BYTES
-            for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes):
+            loops = {i: (lp.start, lp.length) for i, lp in self._loops.items()}
+            hold = {}
+            for s in (synth, psg_synth):
+                if s is not None:
+                    hold.update({i: n + s.release_padding for i, n in s.sustain_by_instrument.items()})
+            for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, loops=loops, hold_secs=hold):
                 self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
+            # A mixed composite ends the way its primary does (the release slide's rate)
+            for c in self._merge.composites.values():
+                if c.fm is None and c.key[1] in self._release:
+                    self._release.setdefault(c.inst, self._release[c.key[1]])
             for c in self._merge.composites.values():
                 if c.headroom_db > 0:
                     self._add_warning({'type': 'merge_headroom', 'channel': 'merge',
@@ -763,7 +817,8 @@ class SmpsToModConverter:
             self._merge_baselines["PSG"] = self._plan_levels("PSG")
         plan = build_merge_plan(self.song, self.config, pan_law_db=self._merge_pan_law,
                                 baselines=self._merge_baselines, sample_secs=self._sample_secs(),
-                                tick_secs=lambda t: self._tick_span_secs(t, t + 1))
+                                tick_secs=lambda t: self._tick_span_secs(t, t + 1),
+                                fill_min_ticks=math.ceil(self._effective_tpr))
         for g in plan.groups:
             comps = [c for c in plan.composites.values() if c.group is g]
             stats = [s for s in plan.stats if s.primary == g.primary]
@@ -772,8 +827,14 @@ class SmpsToModConverter:
                                'solo': sum(s.solo for s in stats),
                                'alone': stats[0].alone if stats else 0,
                                'composites': [(c.inst, c.notes, c.detail) for c in comps]})
+        for f in plan.fill:
+            self.infos.append({'type': 'merge_fill', **f})
+            if f['lost']:
+                self._add_warning({'type': 'merge_fill_lost', 'channel': f['source'], **f})
         if plan.unused:
             self.infos.append({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
+        self.infos.append({'type': 'merge_slots', 'free': plan.slots_free, 'wanted': plan.slots_wanted,
+                           'used': len(plan.composites)})
         for s in plan.stats:
             if s.lost or s.vibrato or s.cuts:
                 self._add_warning({'type': 'merge_lost', 'channel': f"{s.primary}+{s.follower}", 'primary': s.primary,
@@ -999,7 +1060,9 @@ class SmpsToModConverter:
         # the other two carry current_volume, a MOD volume in its own right.
         _fm_mode = self._fm_volume_mode
         _fm_vol_scaling = _fm_mode == "absolute"
-        _fm_baked = _fm_mode == "baked" and not is_psg and not is_dac
+        # The FM law applies to every FM note on this channel, its own or one spliced in from
+        # another channel (core.merge: a solo or pool note on the drum channel keeps its level)
+        _fm_baked = _fm_mode == "baked"
         _psg_baked = is_psg and self._psg_volume_mode == "baked"
         _pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
         if is_dac or (not is_psg and _fm_mode == "off"):
@@ -1036,6 +1099,36 @@ class SmpsToModConverter:
                     _note_on_positions.add(divmod(int(_ev.tick_position // self._effective_tpr), 64))
 
         last_note_cell: tuple[int, int] | None = None   # where this channel's previous note-on went
+        last_inst: int | None = None                    # the instrument the previous note-on played ...
+        last_vol = 64                                   # ... and the MOD volume it played at
+        last_idx = 0                                    # ... its MOD note ...
+        last_chip: int | None = None                    # ... and the chip pitch that note sounds
+        last_voice: int | None = None                   # ... and the FM voice it was played with
+        # Every note-on tick of this channel (spliced notes included): a release slide runs up to
+        # the row before the next one, so it never lands in a note-on's cell
+        _note_on_ticks = sorted(ev.tick_position for ev in channel.events
+                                if ev.is_note and not ev.note.is_rest)
+
+        def _next_note_row(tick: int) -> int:
+            """The first row (over the whole song) the next note-on after `tick` can land on."""
+            i = bisect.bisect_right(_note_on_ticks, tick)
+            if i >= len(_note_on_ticks):
+                return self.config.max_patterns * 64
+            return int(_note_on_ticks[i] // self._effective_tpr)
+
+        def _release_rows(inst: int | None, tick: int) -> float | None:
+            """How the instrument's release reaches the MOD at `tick`: None for a cut (C00 /
+            ECx, as the hardware's instant release or a sample that has nothing to release),
+            else its rate in dB per second for _write_release."""
+            if not self._release_slides or inst is None:
+                return None
+            rate = self._release.get(inst)
+            if rate is None or rate == math.inf:
+                return None
+            row_secs = self.config.target_speed * 2.5 / self._bpm_for(self._segment_at(tick)[1])
+            if self.config.target_speed < 2 or (rate > 0 and 30.0 / rate < row_secs):
+                return None                 # over within a row: a cut is closer than a slide
+            return rate
 
         def _note_cell(tick: int, slot_free: bool, cut_tick: float | None) -> tuple[int, int, int]:
             """(pattern, row, EDx delay in MOD ticks) for a note-on at `tick`.
@@ -1141,6 +1234,13 @@ class SmpsToModConverter:
                         # placed after every channel is converted (_place_leading_rests).
                         self._leading_rest_channels[mod_chan] = chan_cfg.source
                         continue
+                    rate = _release_rows(last_inst, tick)
+                    if rate is not None:
+                        # Key-off: the note fades at the voice's release rate (the sample loops,
+                        # or would be cut short of the chip's release either way)
+                        self._write_release(mod_chan, pattern * 64 + row, last_vol, rate, tick,
+                                            _next_note_row(tick))
+                        continue
                     self._set_cursor(pattern, mod_chan, row)
                     self.mod.set_effect(0xC, 0)  # C00: mute channel
                     continue
@@ -1166,6 +1266,7 @@ class SmpsToModConverter:
                     if pattern >= self.config.max_patterns:
                         break
                     self._set_cursor(pattern, mod_chan, row)
+                    self._clear_stale_cut(pattern, row, mod_chan)
                     last_note_cell = (pattern, row)
                     # DAC: look up instrument and note from dac_samples config
                     dac_cfg = dac_map.get(note.dac_name)
@@ -1176,9 +1277,11 @@ class SmpsToModConverter:
                             dac_inst = self._merge.instrument_at(chan_cfg.source, tick, dac_inst)
                             dac_note = ModNote(self._merge.note_at(chan_cfg.source, tick, dac_note.value))
                         self.mod.set_note(dac_note, dac_inst)
+                        last_inst, last_vol = dac_inst, _sample_vol_map.get(dac_inst, 64)
                     else:
                         # Fallback: use default instrument and C3
                         self.mod.set_note(ModNote.C3, st.instrument)
+                        last_inst, last_vol = st.instrument, 64
                     if note_delay:
                         self.mod.set_effect(0xE, 0xD0 | note_delay)
                 else:
@@ -1217,16 +1320,45 @@ class SmpsToModConverter:
                     # portamento at full speed instead (3FF: the period slides in a tick, no
                     # re-trigger; the instrument number only resets the volume).  It needs the
                     # effect slot, so no EDx, and a Cxx due moves to the next row.
-                    legato = note.is_no_attack and res.path != "merged"
+                    legato_mode = self.synth.legato if self.synth else "strict"
+                    legato = note.is_no_attack and res.path != "merged" and legato_mode != "retrigger"
+                    strict = legato_mode == "strict"
+                    if strict and legato and last_inst is None:
+                        # Nothing has sounded on this channel yet: a portamento would never
+                        # trigger a sample (Drowning's FM3 trill is no-attack from its first
+                        # note; the hardware plays it).
+                        legato = False
+                    if strict and legato and last_voice is not None and st.voice != last_voice:
+                        # smpsSetvoice between the notes: the hardware rewrites the operators
+                        # under the running envelope, so the note sounds with the new voice.  A
+                        # portamento would keep the old voice's sample; re-trigger on the new one
+                        # (Green Hill's FM4/FM5 at the loop label: voice $08 -> $05).
+                        legato = False
+                    if strict and legato and last_inst is not None and last_chip is not None and last_inst != final_instrument:
+                        # The target lies in another range of the voice (another instrument, its
+                        # sample rendered for another octave).  A portamento never changes the
+                        # sample, so the slide is written on the one that is sounding: the same
+                        # chip pitch, as many semitones from the previous MOD note as it is from
+                        # the previous chip pitch (Green Hill's FM3 grace C6 -> B5 crosses voice
+                        # $08's C6 range boundary and landed an octave up).  Off the MOD's three
+                        # octaves, the note is re-triggered on its own instrument instead.
+                        shifted = last_idx + (res.chip - last_chip)
+                        if 0 <= shifted <= 35:
+                            final_instrument, final_note = last_inst, ModNote(shifted)
+                        else:
+                            legato = False
                     pattern, row, note_delay = _note_cell(
                         tick, not legato and (not _needs_cxx or note.duration >= 2 * self._effective_tpr),
                         _cut_tick)
                     if pattern >= self.config.max_patterns:
                         break
                     self._set_cursor(pattern, mod_chan, row)
+                    self._clear_stale_cut(pattern, row, mod_chan)
                     last_note_cell = (pattern, row)
 
                     self.mod.set_note(final_note, final_instrument)
+                    last_inst, last_vol = final_instrument, _emit_volume(final_instrument)
+                    last_idx, last_chip, last_voice = final_note.value, res.chip, st.voice
 
                     # Note fill: silence the channel when the driver fires
                     # PSGNoteOff/FMNoteOff.  The fill byte counts V-int FRAMES (it is
@@ -1236,6 +1368,7 @@ class SmpsToModConverter:
                     fill_placed = False
                     effect_slot_used = False   # True only when ECx occupies the current row's slot
                     fill_pat = fill_row = -1
+                    slide_coords: set[tuple[int, int]] = set()   # rows a release slide took
                     fill_ticks = note_fill * self._tpf_at(tick)
                     if note_fill > 0 and fill_ticks < note.duration:
                         # Work in absolute MOD ticks (rows × speed) so the cut keeps its
@@ -1256,16 +1389,27 @@ class SmpsToModConverter:
                         # At or past the row of the next event, the next note / rest takes over.
                         if fill_abs < next_abs and fill_row_total // 64 < self.config.max_patterns:
                             fill_pat, fill_row = fill_row_total // 64, fill_row_total % 64
-                            self._set_cursor(fill_pat, mod_chan, fill_row)
-                            if fill_sub:
-                                self.mod.set_effect(0xE, 0xC0 | fill_sub)
+                            rel_rate = _release_rows(final_instrument, tick)
+                            if rel_rate is not None and not (
+                                    (fill_pat, fill_row) == (pattern, row) and (note_delay or legato)):
+                                # The fill is a key-off: the voice releases from that row on
+                                # (the sub-row position is given up for the slide's slot)
+                                slide_coords.update(self._write_release(
+                                    mod_chan, fill_row_total, _emit_volume(final_instrument), rel_rate,
+                                    tick, min(_next_note_row(tick), next_pat * 64 + next_row)))
                             else:
-                                self.mod.set_effect(0xC, 0)
+                                self._set_cursor(fill_pat, mod_chan, fill_row)
+                                if fill_sub:
+                                    self.mod.set_effect(0xE, 0xC0 | fill_sub)
+                                else:
+                                    self.mod.set_effect(0xC, 0)
                             # Restore cursor to the current note's cell.
                             self._set_cursor(pattern, mod_chan, row)
                             fill_placed = True
-                            # ECx on the attack row leaves no room for Cxx / 4xy there.
-                            effect_slot_used = (fill_pat, fill_row) == (pattern, row)
+                            # ECx (or the slide's first A0y) on the attack row leaves no room
+                            # for Cxx / 4xy there.
+                            effect_slot_used = ((pattern, row) in slide_coords
+                                                or ((fill_pat, fill_row) == (pattern, row) and rel_rate is None))
 
                     # PSG auto note-cut: emit silence at the note's natural end if no
                     # explicit smpsNoteFill was placed.  Mirrors hardware PSGDoNext
@@ -1372,6 +1516,8 @@ class SmpsToModConverter:
                                 cont_pat, cont_row = self._tick_to_pattern_row(cont_tick)
                                 if cont_pat >= self.config.max_patterns:
                                     break
+                                if slide_coords and (cont_pat, cont_row) >= min(slide_coords):
+                                    break                   # released: nothing to modulate
                                 if (cont_pat, cont_row) not in (fill_coord, cxx_coord):
                                     if cont_pat >= len(self.mod.patterns):
                                         break
@@ -1381,6 +1527,55 @@ class SmpsToModConverter:
                             cont_tick += tpr
                         # Restore cursor to the attack row
                         self._set_cursor(pattern, mod_chan, row)
+
+    _MAX_RELEASE_ROWS = 64
+
+    def _write_release(self, mod_chan: int, row_total: int, volume: int, rate_db_s: float,
+                       tick: int, stop_row_total: int) -> set[tuple[int, int]]:
+        """End a note the way the chip does: a volume slide from `volume` at the voice's release
+        rate, one `A0y` per row from `row_total` on, stopping before `stop_row_total` (the next
+        note-on's row) or once the volume is gone.
+
+        The YM2612 release is linear in dB, so the target volume falls by the same ratio every
+        row; each row's y is what takes the volume from where the last row left it to where
+        the curve is at the row's end (rows whose share rounds to nothing are skipped, so a slow
+        release keeps its pace).  A row whose effect slot is taken is skipped.  If the volume
+        is still up after _MAX_RELEASE_ROWS (a release rate of 0, which rings on the hardware),
+        a C00 ends it.  Returns the (pattern, row) cells written.
+        """
+        speed = self.config.target_speed
+        row_secs = speed * 2.5 / self._bpm_for(self._segment_at(tick)[1])
+        per_tick = speed - 1
+        written: set[tuple[int, int]] = set()
+        v = float(volume)
+        target = float(volume)
+        r = row_total
+        while v > 0 and r < stop_row_total and r // 64 < self.config.max_patterns:
+            if r - row_total >= self._MAX_RELEASE_ROWS:
+                self._set_cursor(r // 64, mod_chan, r % 64)
+                if self.mod.effect_slot_free(r // 64, r % 64, mod_chan):
+                    self.mod.set_effect(0xC, 0)
+                    written.add((r // 64, r % 64))
+                break
+            target *= 10 ** (-rate_db_s * row_secs / 20.0)
+            y = round((v - target) / per_tick)
+            if y > 0:
+                y = min(15, y)
+                self.mod.ensure_pattern(r // 64)
+                if self.mod.effect_slot_free(r // 64, r % 64, mod_chan):
+                    self._set_cursor(r // 64, mod_chan, r % 64)
+                    self.mod.set_effect(0xA, y)
+                    written.add((r // 64, r % 64))
+                    v = max(0.0, v - y * per_tick)
+            r += 1
+        return written
+
+    def _clear_stale_cut(self, pattern: int, row: int, mod_chan: int) -> None:
+        """Drop a C00 left in this cell by an earlier rest whose row rounds onto this note-on's:
+        set_note keeps the effect bytes, and a note-on with C00 is a silent note."""
+        if not self.mod.note_at(pattern, row, mod_chan) and self.mod.effect_at(pattern, row, mod_chan) == (0xC, 0):
+            self._set_cursor(pattern, mod_chan, row)
+            self.mod.set_effect(0, 0)
 
     def _warn_resolution(self, res: ResolvedNote, st: DriverState, chan_cfg: ChannelConfig, note) -> None:
         """Warn where a note was clamped to the MOD's three octaves, or fell outside every range

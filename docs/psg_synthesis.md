@@ -64,6 +64,7 @@ File > Import > Raw Data
 | `clock_rate` | int | `3579545` | NTSC Mega Drive SN76489 clock (Hz) |
 | `amiga_clock` | int | `3546895` | PAL Amiga clock used for `target_rate` calc |
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = each PSG instrument its own longest ring at its playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
+| `sustain_loops` / `loop_drift_db` | top level | `merged` / `1` | Cut a tone whose envelope settles to a sustain loop (`core/loops.py`, `generate_psg_samples(loops=True)`); noise never loops. `docs/pipeline.md` § Sustain loops |
 | `release_padding` | float | `0.2` | Seconds captured after key-off |
 
 The envelope tables are not a setting; see § Envelope Tables.  A `psg_envelope_tables` block left
@@ -194,7 +195,13 @@ transcribed once, in `core/driver_tables.py`:
 
 - Each value is an **attenuation delta** added to `base_volume` per VBlank frame (60 Hz NTSC / 50 Hz PAL).
 - `0` = no attenuation above base; higher = quieter.
-- Last entry is held indefinitely (driver uses `$80` terminator; synthesizer clamps index at `len - 1`).
+- After the last entry the synthesiser ramps the attenuation up one step per frame to 15
+  (`_render_with_envelope`), for tones and noise alike.  The driver does not: its `$80`
+  terminator holds the last value (`VolEnvHold` rewinds the index), so a held `fTone_01` note
+  stays at attenuation 7 on the hardware and fades out here after ~0.5 s.  Noise wants the
+  ramp (a hat's tail); for a tone it is a deviation that has not been corrected because every
+  `sample_list` volume was measured with it.  It is also why a PSG tone never gets a sustain
+  loop (`sustain_loops`): the level never settles.
 - `configs/settings.yaml` used to carry a second copy of these tables (`psg_envelope_tables`); its
   `fTone_07` had lost a leading zero.  No config or Sonic 1 song uses `fTone_07`, so removing the
   copy changed no MOD.

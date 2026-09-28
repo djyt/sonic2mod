@@ -28,6 +28,7 @@ if str(_HERE.parent) not in sys.path:
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
 from core.driver_tables import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from core.instruments import psg_catalogue
+from core.loops import PROBE_SECS, SustainLoop, apply_loop, find_sustain_loop
 from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
@@ -61,8 +62,13 @@ def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[
 
 
 def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
-                      rate3_dividers: dict | None = None):
-    """Render one PsgInstrumentEntry (a catalogue instrument's) into raw_data."""
+                      rate3_dividers: dict | None = None, loops: bool = False,
+                      loops_out: dict | None = None):
+    """Render one PsgInstrumentEntry (a catalogue instrument's) into raw_data.
+
+    With `loops`, a tone whose envelope holds is rendered for PROBE_SECS, cut at a sustain
+    loop (core.loops) and the loop put in `loops_out`; noise is never looped.
+    """
     inst_num = entry.mod_instrument
 
     # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
@@ -92,24 +98,42 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
         # sustain can only be so long (the converter warns where a note needs more).
         # This instrument's own longest ring when `auto` resolved one, else the setting
         want = psg_synth.sustain_by_instrument.get(inst_num, psg_synth.sustain_duration)
-        tone_sustain = min(want, max_sustain_secs(target_rate, psg_synth.release_padding,
-                                                  psg_synth.max_sample_bytes))
+        fits = max_sustain_secs(target_rate, psg_synth.release_padding, psg_synth.max_sample_bytes)
+        tone_sustain = min(want, fits)
         if verbose and tone_sustain < want:
             print(f"  [psg synth] inst={inst_num} sustain capped at {tone_sustain:.2f}s "
                   f"({psg_synth.max_sample_kb} KiB sample limit at {target_rate}Hz)")
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            mono, rate = render_psg_tone_raw(
-                synth_note_idx,
-                sustain_secs=tone_sustain,
-                release_secs=psg_synth.release_padding,
-                clock_rate=psg_synth.clock_rate,
-                target_rate=target_rate,
-                envelope=resolved_env,
-                base_volume=entry.base_volume,
-                fps=fps,
-            )
-        _check_warnings(caught, inst_num, verbose=verbose)
+        probe = min(max(tone_sustain, PROBE_SECS), fits) if loops else tone_sustain
+
+        def _render_tone(secs):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                out = render_psg_tone_raw(
+                    synth_note_idx,
+                    sustain_secs=secs,
+                    release_secs=psg_synth.release_padding,
+                    clock_rate=psg_synth.clock_rate,
+                    target_rate=target_rate,
+                    envelope=resolved_env,
+                    base_volume=entry.base_volume,
+                    fps=fps,
+                )
+            _check_warnings(caught, inst_num, verbose=verbose)
+            return out
+
+        mono, rate = _render_tone(probe)
+        loop = None
+        if loops:
+            period = rate * 32.0 * n_val / psg_synth.clock_rate
+            plain_n = int(rate * (tone_sustain + psg_synth.release_padding))
+            loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * tone_sustain),
+                                     max_end=min(plain_n, int(rate * probe)), flat_db=psg_synth.loop_drift_db)
+            if loop is not None:
+                mono = apply_loop(mono, loop)
+                if loops_out is not None:
+                    loops_out[inst_num] = loop
+            elif probe > tone_sustain:
+                mono, rate = _render_tone(tone_sustain)
 
     elif entry_type in ("white_noise", "periodic_noise"):
         # target_rate = amiga_clock / PERIOD_TABLE[root] is both the synthesis rate and the
@@ -189,6 +213,8 @@ def generate_psg_samples(
     verbose: bool = False,
     rate3_dividers: dict | None = None,
     noise_envelopes: dict | None = None,
+    loops: bool = False,
+    loops_out: dict[int, SustainLoop] | None = None,
 ) -> dict:
     """Render a PSG sample for every instrument in the config's catalogue.
 
@@ -199,6 +225,8 @@ def generate_psg_samples(
         noise_envelopes: {instrument: envelope label} the converter derived for the noise
                          instruments (SmpsToModConverter._derive_noise_envelopes) — a psg_map
                          entry's own instrument and each of its `envelopes:` variants.
+        loops:     cut each tone whose envelope holds at a sustain loop (core.loops), reported
+                   in `loops_out` ({instrument: SustainLoop}); noise is never looped.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -215,7 +243,7 @@ def generate_psg_samples(
     # envelope variants, then the psg_voice_map tone entries (core.instruments.psg_catalogue).
     for spec in psg_catalogue(config, noise_envelopes).values():
         _synthesize_entry(spec.entry, psg_synth, fps, raw_data, verbose=verbose,
-                          rate3_dividers=rate3_dividers)
+                          rate3_dividers=rate3_dividers, loops=loops, loops_out=loops_out)
 
     # --- Quantise, each instrument to its own full 8 bits ---
     # The level is the sample_list volume's job (measured against the VGZ); the noise channel

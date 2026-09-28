@@ -321,6 +321,28 @@ def main():
                 + (f", {info['solo']} follower notes placed on their own" if info.get('solo') else ""))
             for inst, notes, detail in info['composites']:
                 detail_lines.append(f"  [dim]inst {inst:2d}  {notes:3d} notes  {_escape(detail)}[/dim]")
+        elif info['type'] == 'sustain_loops':
+            kb = info['bytes'] / 1024
+            parts = []
+            for lp in info['looped']:
+                rel = info['releases'].get(lp['instrument'])
+                rel_s = ("" if rel is None or rel == float('inf') else f", release {rel:.0f} dB/s")
+                parts.append(f"inst {lp['instrument']} ({lp['bytes'] / 1024:.1f} KB, loop {lp['loop_ms']:.0f} ms"
+                             f" from {lp['start_ms']:.0f} ms{rel_s})")
+            detail_lines.append(
+                f"sustain loops ({info['kind']}): [bold]{len(info['looped'])}[/bold] of {info['of']} instruments "
+                f"looped, {kb:.0f} KB of samples[dim] — " + "; ".join(parts) + "[/dim]")
+        elif info['type'] == 'merge_fill':
+            where = ", ".join(f"{n} on {ch}" for ch, n in sorted(info['targets'].items(), key=lambda kv: -kv[1]))
+            cut = f" ({info['cut']} cut short by the channel's next note)" if info['cut'] else ""
+            detail_lines.append(
+                f"fill pool [bold]{info['source']}[/bold]: {info['placed']} of {info['notes']} notes placed "
+                f"on silent channels[dim] — {where}{cut}; {info['lost']} lost[/dim]")
+        elif info['type'] == 'merge_slots':
+            short = (f" — [yellow]{info['wanted'] - info['used']} dropped: lower a group's max_composites "
+                     f"or free a slot[/yellow]" if info['wanted'] > info['used'] else "")
+            detail_lines.append(f"composite slots: {info['used']} used of {info['free']} free "
+                                f"({info['wanted']} asked for by the groups' budgets){short}")
         elif info['type'] == 'merge_unused':
             detail_lines.append(
                 f"[dim]not rendered: instrument{'s' if len(info['instruments']) != 1 else ''} "
@@ -572,6 +594,12 @@ def _warn_merge_unsupported(w: dict, ctx_str: str) -> None:
     )
 
 
+def _warn_merge_fill_lost(w: dict, ctx_str: str) -> None:
+    console.print(
+        f"[yellow]fill pool {w['source']}: {w['lost']} of {w['notes']} notes found no silent channel "
+        f"and are lost[/yellow]")
+
+
 def _warn_merge_missing(w: dict, ctx_str: str) -> None:
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
@@ -637,6 +665,7 @@ _WARNING_RENDERERS = {
     'merge_headroom': _warn_merge_headroom,
     'merge_unsupported': _warn_merge_unsupported,
     'merge_missing_sample': _warn_merge_missing,
+    'merge_fill_lost': _warn_merge_fill_lost,
 }
 
 

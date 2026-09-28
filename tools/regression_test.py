@@ -16,6 +16,11 @@ Usage:
   python tools/regression_test.py --jobs 4
       Conversions run as parallel subprocesses (default: one per CPU); --jobs 1
       runs them one at a time.  Results are always printed in _SONGS order.
+
+Besides the cell-by-cell diff, every case runs tools/mod_lint.py on its output: a note a
+ProTracker player cannot sound (a tone portamento with no sample playing, a note on an empty
+instrument slot) fails the case unless the baseline has the same issue, so a change that
+silences a note is caught without anyone listening.  Generating a baseline prints its count.
 """
 
 import argparse
@@ -32,6 +37,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from tools.mod_compare import compare_mods
+from tools.mod_lint import lint_mod
 
 BASELINES_DIR = _HERE.parent / "tests" / "baselines"
 
@@ -130,6 +136,16 @@ def run_conversion(config: str, root: Path, output_override: Path | None = None,
     return True, ""
 
 
+def _new_lint_issues(baseline_path: Path, tmp_path: Path, ignore_channels: list[int]) -> list[dict]:
+    """Playback issues (tools/mod_lint.py) in the new MOD that the baseline does not have,
+    matched by kind and cell."""
+    def key(i: dict):
+        return (i["type"], i["pattern"], i["row"], i["channel"])
+    ignore = set(ignore_channels)
+    known = {key(i) for i in lint_mod(str(baseline_path))}
+    return [i for i in lint_mod(str(tmp_path)) if i["channel"] not in ignore and key(i) not in known]
+
+
 def _ensure_native_libs(root: Path) -> None:
     """Build ym3438.dll / sn76489.dll once, before parallel conversions could race to."""
     subprocess.run(
@@ -188,6 +204,9 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
         shutil.copy2(tmp_path, baseline_path)
         tmp_path.unlink(missing_ok=True)
         print(f"  Saved baseline: {baseline_path}")
+        issues = lint_mod(str(baseline_path))
+        if issues:
+            print(f"  NOTE: {len(issues)} note(s) a player cannot sound (tools/mod_lint.py) — accepted into the baseline")
     print("\nBaselines generated.")
 
 
@@ -226,6 +245,7 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
                 baseline_path, tmp_path,
                 ignore_channels=tc.get("ignore_channels", []),
             )
+            new_issues = _new_lint_issues(baseline_path, tmp_path, tc.get("ignore_channels", []))
             if diffs:
                 print(f"  FAIL — {len(diffs)} difference(s):")
                 for d in diffs[:20]:
@@ -233,7 +253,14 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
                 if len(diffs) > 20:
                     print(f"    ... and {len(diffs) - 20} more")
                 all_passed = False
-            else:
+            if new_issues:
+                print(f"  FAIL — {len(new_issues)} note(s) the player cannot sound that the baseline sounds:")
+                for i in new_issues[:20]:
+                    print(f"    {i['type']} pat={i['pattern']} row={i['row']:02d} ch={i['channel']}: {i['detail']}")
+                if len(new_issues) > 20:
+                    print(f"    ... and {len(new_issues) - 20} more")
+                all_passed = False
+            if not diffs and not new_issues:
                 print("  PASS")
         finally:
             tmp_path.unlink(missing_ok=True)

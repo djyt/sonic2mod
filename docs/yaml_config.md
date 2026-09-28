@@ -112,6 +112,7 @@ samples_dir: "./samples/"       # Base path for sample files
 # merge:                 Channel folding for the Amiga build (convert.py --merged), see below
 #   - primary: FM1
 #     followers: [FM5]
+# merge_drop / merge_fill / merge_fill_cut_after: channels left out, or pooled onto silent channels
 # merge_output_file:     Where --merged writes (default: output_file stem + "_merged.mod")
 ```
 
@@ -517,8 +518,13 @@ merge:
   - primary: FM5
     followers: [FM4]
     max_composites: 4     # optional memory budget: the 4 most-played chords; the rest play FM5 alone
+    fill_lost: true       # optional: the follower notes this group cannot fold go to the fill pool
 merge_output_file: output/01_title_screen_4ch.mod   # optional
 merge_drop: [FM3, PSG1]                              # optional: left out of the merged build altogether
+merge_fill: [PSG2]                                   # optional: the fill pool — each note on whichever output
+                                                     #   channel is silent when it starts; lost where none is
+merge_fill_cut_after: {DAC: 2, FM2: 4}               # optional: a pool note may cut these channels' notes after
+                                                     #   that many ticks (a kick's decay, a bass note's second half)
 merge_max_synth_shift: 0                             # optional: render no sample above its root's pitch (half the bytes)
 merge_tolerance: 1                                   # ticks a follower note-on may be off the primary's (default 1)
 ```
@@ -566,6 +572,24 @@ baselines and audits stay the ground truth.
   well: those channels are left out of the merged build (they still vote for their
   instruments' levels, so the measured volumes hold). Which parts to drop is a musical
   decision the survey cannot make; Green Hill Zone keeps drums, bass, lead and one harmony.
+- `merge_fill:` is the middle way: the **fill pool**. Each note of a pooled channel is placed
+  on whichever output channel is silent when it starts — the one that stays silent longest,
+  or one whose next note-on cuts it, never for less than a row — with its own instrument,
+  pitch and level; a note with no silent channel is lost, and the converter reports per
+  channel how many were placed where. A group's `fill_lost: true` sends the follower notes it
+  cannot fold (orphans, shorter ones) to the pool too. `merge_fill_cut_after: {channel:
+  ticks}` lets a channel's notes count as silent after that many ticks, so a chime may cut a
+  kick's decay or a bass note's second half, as a hand-made 4-channel cover would; a channel
+  absent there is never cut. Green Hill's chime lines start on the bass and drum note-ons
+  almost every time, so the pool places 30 of 188; they fold onto the bass as bass+chime mixes
+  instead.
+- Composites share the 31 instrument slots with the instruments the merged build still plays;
+  the converter prints how many slots were free and how many the groups asked for. Over
+  budget, the least-played composites go (those whose primary instrument stays anyway first);
+  set each group's `max_composites` so the groups' budgets fit the free slots.
+- With `sustain_loops` on in `settings.yaml` (the default for `--merged`), every looped sample
+  is cut to its loop and every FM note ends with a release slide; see `docs/pipeline.md`
+  § Sustain loops.
 
 What folds cleanly is a property of the song. `python tools/merge_survey.py configs/<song>.yaml`
 lines up every pair of channels and prints, per pair, how many follower notes fold, how many play

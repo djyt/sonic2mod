@@ -243,5 +243,13 @@ merge:
     cut_primary: true
   - primary: FM5
     followers: [FM4, FM3]
-    max_composites: 8     # the 8 most-played chord shapes (139 KB); 15 rarer chords play FM5 alone
-merge_drop: [PSG1, PSG2]
+    max_composites: 8     # the 8 most-played chord shapes; 15 rarer chords play FM5 alone
+  # The chime lines double the bass rhythm: PSG2 starts with a bass note on 107 of its 113
+  # notes, PSG1 on 72 of 75 (tools/merge_survey.py --all), so they ride the bass channel as
+  # bass+chime mixes (the 12 most-played combinations; the rest play the bass alone).  A fill
+  # pool cannot place them: with merge_fill: [PSG1, PSG2] and merge_fill_cut_after {DAC: 2, FM2: 4}
+  # only 30 of 188 found a silent channel, because every one of the others starts exactly on a
+  # drum and a bass note-on.
+  - primary: FM2
+    followers: [PSG2, PSG1]
+    max_composites: 9     # 19 slots are free for composites: 2 drum mixes, 8 chords, 9 of these

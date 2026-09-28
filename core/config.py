@@ -105,6 +105,8 @@ class MergeGroup:
                                 # (a hi-hat over a drum's tail) instead of being lost
     max_composites: int | None = None   # keep only the N most-played composites (the rest of the
                                         # chords play the primary alone): a memory budget
+    fill_lost: bool = False     # a follower note the group cannot fold (an orphan, a shorter one)
+                                # goes to the fill pool: any output channel silent at that moment
 
     @property
     def label(self) -> str:
@@ -252,6 +254,40 @@ def _max_sample_kb(data: dict, filepath: str) -> int:
     return kb
 
 
+SUSTAIN_LOOP_MODES = ("off", "merged", "all")
+
+
+def _sustain_loops(data: dict, filepath: str) -> str:
+    """Top-level `sustain_loops` of settings.yaml: off | merged (default) | all."""
+    v = str(data.get("sustain_loops", "merged")).lower()
+    if v not in SUSTAIN_LOOP_MODES:
+        raise ValueError(f"{filepath}: sustain_loops must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
+    return v
+
+
+LEGATO_MODES = ("strict", "loose", "retrigger")
+
+
+def _legato(data: dict, filepath: str) -> str:
+    """Top-level `legato` of settings.yaml: retrigger (default) | strict | loose."""
+    v = str(data.get("legato", "retrigger")).lower()
+    if v not in LEGATO_MODES:
+        raise ValueError(f"{filepath}: legato must be one of {', '.join(LEGATO_MODES)} (got '{v}')")
+    return v
+
+
+def _loop_drift_db(data: dict, filepath: str) -> float:
+    """Top-level `loop_drift_db` of settings.yaml (1.0 default): how far a looped sample's level
+    may sit above where the instrument's longest note would have decayed to."""
+    try:
+        v = float(data.get("loop_drift_db", 1.0))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: loop_drift_db must be a number of dB") from e
+    if v < 0:
+        raise ValueError(f"{filepath}: loop_drift_db must not be negative (got {v})")
+    return v
+
+
 @dataclass
 class PsgSynthesisSettings:
     enabled: bool = False
@@ -269,11 +305,20 @@ class PsgSynthesisSettings:
     # volume = 64 × 10^(−2·att/20) × sample volume / 64, so a Cxx on nearly every PSG note.
     psg_volume_scaling: str = "baked"
     max_sample_kb: int = 128         # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
+    # settings.yaml sustain_loops (top level): which builds cut each settled sample to a loop and
+    # end its notes with a release slide (core.loops) - "off", "merged" (--merged only), "all".
+    sustain_loops: str = "merged"
+    loop_drift_db: float = 1.0       # settings.yaml loop_drift_db: dB a loop may freeze above the
+                                     # level the longest note would have decayed to (core.loops)
 
     @property
     def max_sample_bytes(self) -> int:
         """Bytes one synthesised sample may hold (core.pcm.sample_limit_bytes)."""
         return sample_limit_bytes(self.max_sample_kb)
+
+    def loops_for(self, merged: bool) -> bool:
+        """True when this build (the merged one or the reference) gets sustain loops."""
+        return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
 
     @classmethod
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
@@ -306,6 +351,8 @@ class PsgSynthesisSettings:
             release_padding=s.get("release_padding", 0.2),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
             max_sample_kb=_max_sample_kb(data, filepath),
+            sustain_loops=_sustain_loops(data, filepath),
+            loop_drift_db=_loop_drift_db(data, filepath),
         )
 
 
@@ -323,11 +370,23 @@ class SynthesisSettings:
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
     max_sample_kb: int = 128          # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
+    sustain_loops: str = "merged"     # settings.yaml sustain_loops (top level), as PsgSynthesisSettings
+    loop_drift_db: float = 1.0        # settings.yaml loop_drift_db (top level), as PsgSynthesisSettings
+    # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
+    # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
+    # chip-pitch delta; after smpsSetvoice or with nothing sounding: a re-trigger; what FT2 clone and
+    # ProTracker need), "loose" (always 3FF on the target's own instrument, as written before) or
+    # "retrigger" (every no-attack note a plain note-on, as before 030ca81; the default).
+    legato: str = "retrigger"
 
     @property
     def max_sample_bytes(self) -> int:
         """Bytes one synthesised sample may hold (core.pcm.sample_limit_bytes)."""
         return sample_limit_bytes(self.max_sample_kb)
+
+    def loops_for(self, merged: bool) -> bool:
+        """True when this build (the merged one or the reference) gets sustain loops."""
+        return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
 
     @property
     def fm_volume_mode(self) -> str:
@@ -409,6 +468,9 @@ class SynthesisSettings:
             max_sample_kb=_max_sample_kb(data, filepath),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
             fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
+            sustain_loops=_sustain_loops(data, filepath),
+            loop_drift_db=_loop_drift_db(data, filepath),
+            legato=_legato(data, filepath),
         )
 
 
@@ -531,6 +593,13 @@ class ConversionConfig:
     # each group's followers are dropped and their notes rendered into the primary's instruments.
     merge: list = field(default_factory=list)              # list[MergeGroup]
     merge_drop: list = field(default_factory=list)         # channels left out of the merged build altogether
+    # Channels whose notes go to the fill pool: each note is placed on whichever output channel is
+    # silent at that moment (core/merge.py _pool_notes), or lost where none is
+    merge_fill: list = field(default_factory=list)
+    # {output channel: ticks}: after that many ticks of one of its notes the channel counts as silent
+    # for the fill pool, so a pool note cuts the note's tail (a chime over a kick's decay, over a bass
+    # note's second half); a channel absent here is never cut.  Least 1.
+    merge_fill_cut_after: dict = field(default_factory=dict)
     # Ticks a follower's note-on may be from the primary's and still fold (Green Hill's FM3 starts
     # its chord one tick after FM4/FM5); a note that short before a legato note is a grace note,
     # folded to the note it bends into.
@@ -770,9 +839,16 @@ class ConversionConfig:
             _mc = g.get('max_composites')
             config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers],
                                            bool(g.get('cut_primary', False)),
-                                           int(_mc) if _mc is not None else None))
+                                           int(_mc) if _mc is not None else None,
+                                           bool(g.get('fill_lost', False))))
         drop = data.get('merge_drop', []) or []
         config.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
+        fill = data.get('merge_fill', []) or []
+        config.merge_fill = [str(d) for d in ([fill] if isinstance(fill, str) else fill)]
+        cut_after = data.get('merge_fill_cut_after', {}) or {}
+        if not isinstance(cut_after, dict):
+            raise ValueError("merge_fill_cut_after must be a mapping of channel to ticks")
+        config.merge_fill_cut_after = {str(k): max(1, int(v)) for k, v in cut_after.items()}
         config.merge_output_file = data.get('merge_output_file')
         config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
         config.merge_tolerance = int(data.get('merge_tolerance', 1))

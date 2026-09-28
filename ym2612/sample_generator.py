@@ -18,6 +18,7 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import math
 import sys
 import threading
 import warnings
@@ -32,11 +33,12 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
 from core.instruments import FmInstrument, fm_catalogue
+from core.loops import PROBE_SECS, SustainLoop, apply_loop, find_sustain_loop, release_rate_db_s
 from core.mod import ModSample
 from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
-from ym2612.renderer import note_to_fnum_block, note_to_freq, render_layers
+from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
@@ -83,6 +85,9 @@ def generate_fm_samples(
     verbose: bool = False,
     tl_offsets: dict[int, int] | None = None,
     peaks_out: dict[int, tuple[int, int]] | None = None,
+    loops: bool = False,
+    loops_out: dict[int, SustainLoop] | None = None,
+    release_out: dict[int, float | None] | None = None,
 ) -> dict:
     """Render an FM sample for every instrument in the song's catalogue.
 
@@ -96,6 +101,13 @@ def generate_fm_samples(
         peaks_out:  filled with {instrument: (peak of the render, peak of its first layer alone)}
                     before normalisation - a composite's volume is its primary's times that ratio,
                     so the primary layer plays as loud as it did on its own (core.merge).
+        loops:      look for a sustain loop in every instrument (core.loops): a voice whose
+                    envelope settles is rendered for PROBE_SECS, cut at the loop's end and its
+                    loop reported in `loops_out` ({instrument: SustainLoop}, sample units); one
+                    that never settles is rendered for its own sustain as before.
+        release_out: filled with {instrument: dB per second the level falls after key-off}
+                    (None where nothing releases), measured on the render's tail - what the
+                    converter's release slides are set from.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
@@ -139,19 +151,9 @@ def generate_fm_samples(
     sustain_secs = synth.sustain_duration
     assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
 
-    def _render(job: _RenderJob) -> tuple[Sequence[int], int, int]:
-        # This instrument's own longest ring when `auto` resolved one (sustain_by_instrument),
-        # else the setting; and a MOD sample holds at most max_sample_kb (settings.yaml), so
-        # at this instrument's rate the sustain can only be so long (the converter warns
-        # where a note needs more).
-        want = synth.sustain_by_instrument.get(job.inst, sustain_secs)
-        sustain = min(want, max_sustain_secs(job.target_rate, synth.release_padding,
-                                             synth.max_sample_bytes))
-        if verbose and sustain < want:
-            print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
-                  f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
-        mono, rate = render_layers(
-            job.layers,
+    def _render_at(job: _RenderJob, sustain: float, layers=None):
+        return render_layers(
+            layers if layers is not None else job.layers,
             job.spec.synth_idx,
             sustain_secs=sustain,
             release_secs=synth.release_padding,
@@ -159,16 +161,45 @@ def generate_fm_samples(
             opn2=_thread_opn2(synth.mode),
             clock_rate=synth.clock_rate,
         )
+
+    def _render(job: _RenderJob) -> tuple[Sequence[float], int, int, SustainLoop | None, float | None]:
+        # This instrument's own longest ring when `auto` resolved one (sustain_by_instrument),
+        # else the setting; and a MOD sample holds at most max_sample_kb (settings.yaml), so
+        # at this instrument's rate the sustain can only be so long (the converter warns
+        # where a note needs more).
+        want = synth.sustain_by_instrument.get(job.inst, sustain_secs)
+        fits = max_sustain_secs(job.target_rate, synth.release_padding, synth.max_sample_bytes)
+        sustain = min(want, fits)
+        if verbose and sustain < want:
+            print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
+                  f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
+        # With loops wanted, render long enough to see the envelope settle; a voice that never
+        # does is rendered again for its own sustain (the probe would only cost bytes).
+        probe = min(max(sustain, PROBE_SECS), fits) if loops else sustain
+        mono, rate = _render_at(job, probe)
+        fnum, block = note_to_fnum_block(job.spec.synth_idx, synth.clock_rate)
+        period = rate / fnum_block_to_freq(fnum, block, synth.clock_rate)
+        sustain_n = math.ceil(rate * probe)
+        release = release_rate_db_s(mono, rate, sustain_n, period)
+        loop = None
+        if loops:
+            # Flat relative to the longest note's end (loop_drift_db), and only where the loop
+            # ends before the plain render would (its sustain plus the release tail)
+            plain_n = math.ceil(rate * (sustain + synth.release_padding))
+            loop = find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
+                                     max_end=min(plain_n, sustain_n), flat_db=synth.loop_drift_db)
+        if loop is not None:
+            mono = apply_loop(mono, loop)
+        elif probe > sustain:
+            mono, rate = _render_at(job, sustain)
         first_peak = peak(mono)
         if len(job.layers) > 1:
             # The primary layer alone, at the same level: what the composite's volume is scaled from
-            alone, _ = render_layers(job.layers[:1], job.spec.synth_idx, sustain_secs=sustain,
-                                     release_secs=synth.release_padding, target_rate=job.target_rate,
-                                     opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate)
-            first_peak = peak(alone)
-        return _trim_trailing_silence(mono), rate, first_peak
+            alone, _ = _render_at(job, sustain if loop is None else probe, job.layers[:1])
+            first_peak = peak(alone[:len(mono)])
+        return _trim_trailing_silence(mono), rate, first_peak, loop, release
 
-    raw_data: dict[int, tuple[Sequence[int], int]] = {}   # inst_num -> (mono, rate)
+    raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     if jobs:
         workers = min(len(jobs), synth.worker_threads())
         with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -176,10 +207,14 @@ def generate_fm_samples(
     else:
         rendered = []
 
-    for job, (mono, rate, first_peak) in zip(jobs, rendered, strict=True):
+    for job, (mono, rate, first_peak, loop, release) in zip(jobs, rendered, strict=True):
         spec, entry = job.spec, job.spec.entry
         if peaks_out is not None:
             peaks_out[job.inst] = (peak(mono), first_peak)
+        if release_out is not None:
+            release_out[job.inst] = release
+        if loops_out is not None and loop is not None and loop.end <= len(mono):
+            loops_out[job.inst] = loop
         label = f" [{spec.source_label}]" if spec.source_label else ""
         voices_str = "+".join(str(lay.voice_idx) for lay in spec.layers)
         if not mono:
@@ -196,9 +231,10 @@ def generate_fm_samples(
                     root_str += " [synth_root override]"
             else:
                 root_str = f"synth_idx={spec.synth_idx}"
+            loop_str = (f", loop {loop.start}+{loop.length} (err {loop.error:.2f})" if loop else "")
             print(f"  Instrument {job.inst:2d}: voice={voices_str}{label}, "
                   f"{root_str}, "
-                  f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}")
+                  f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}{loop_str}")
 
         raw_data[job.inst] = (mono, rate)
 

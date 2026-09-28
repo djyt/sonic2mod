@@ -134,6 +134,15 @@ Stage Clear's PSG instrument 9 is the known case: its PSG2 range plays the PSG1 
 octaves up, so a 2.55 s note needs 13 s of it.  At `max_sample_kb: 64`, 17 instruments in
 six songs (Marble Zone, Spring Yard, Scrap Brain, Robotnik, Final Zone, Credits) warn as well.
 
+**Sustain loops** (`sustain_loops` and `loop_drift_db` in `settings.yaml`, `core/loops.py`) make
+the length independent of the notes: an instrument whose envelope settles is rendered for a 4 s
+probe, cut where it settles plus one best-matching loop of the waveform (crossfaded closed, at
+most 1.2 s), and its notes end with a release slide at the voice's measured release rate instead
+of a `C00`.  `generate_fm_samples(loops=True, loops_out=, release_out=)` reports the loop and the
+release per instrument; the converter writes the loop into the sample header and drops the
+`sustain_short` warning for a looped instrument.  On by default for the `--merged` build only.
+Rules and the fidelity knob: `docs/pipeline.md` § Sustain loops.
+
 ---
 
 ## Pitch: root, synth_root, and target_rate

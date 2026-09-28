@@ -476,6 +476,7 @@ def enabled_channels(song, config, kinds=("FM", "PSG")):
     """
     smap = source_map(song)
     followers = ({f for g in config.merge for f in g.followers} | set(config.merge_drop)
+                 | set(getattr(config, "merge_fill", ()))
                  if getattr(config, "merge_active", False) else set())
     for chan_cfg in config.channels:
         channel = smap.get(chan_cfg.source)

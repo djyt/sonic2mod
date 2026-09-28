@@ -46,7 +46,7 @@ def to_mono(samples: list) -> list:
     return [(left + right) // 2 for left, right in samples]
 
 
-def trim_trailing_silence(mono: Sequence[int]) -> Sequence[int]:
+def trim_trailing_silence(mono: Sequence[float]) -> Sequence[float]:
     """Remove trailing zero samples (chip-silent) from a raw mono sequence (same type back)."""
     i = len(mono)
     while i > 0 and mono[i - 1] == 0:

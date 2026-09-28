@@ -237,22 +237,75 @@ mod_pattern_breaks:
 #   as on any 4-channel Amiga.
 # tools/merge_survey.py has every pair's counts.
 # -------------------------------------------------------------------------------------------------
-merge:
-  - primary: DAC
-    followers: [PSG3]
-    cut_primary: true
-  - primary: FM5
-    followers: [FM4, FM3]
-    max_composites: 8     # the 8 most-played chord shapes; 15 rarer chords play FM5 alone
-  # The chime lines double the bass rhythm: PSG2 starts with a bass note on 107 of its 113
-  # notes, PSG1 on 72 of 75 (tools/merge_survey.py --all), so they ride the bass channel as
-  # bass+chime mixes (the 12 most-played combinations; the rest play the bass alone).  A fill
-  # pool cannot place them: with merge_fill: [PSG1, PSG2] and merge_fill_cut_after {DAC: 2, FM2: 4}
-  # only 30 of 188 found a silent channel, because every one of the others starts exactly on a
-  # drum and a bass note-on.
-  - primary: FM2
-    followers: [PSG2, PSG1]
-    max_composites: 8     # 18 slots are free for composites: 2 drum mixes, 8 chords, 8 of these
-    fill_cut: true        # PSG1's 24-tick chime rings are cut by the next bass note when folded; wherever
-                          # a channel is silent for the whole ring (the lead's, which rests through
-                          # patterns 2-4) the chime plays there in full instead
+# The song-wide groups below are superseded by the per-pattern `merge_patterns:` section at
+# the end of this file (written by tools/fold_csv.py from input/02_ghz_fold.csv) and are kept
+# commented out as the record of the first 4-channel fold.
+# merge:
+#   - primary: DAC
+#     followers: [PSG3]
+#     cut_primary: true
+#   - primary: FM5
+#     followers: [FM4, FM3]
+#     max_composites: 8     # the 8 most-played chord shapes; 15 rarer chords play FM5 alone
+#   # The chime lines double the bass rhythm: PSG2 starts with a bass note on 107 of its 113
+#   # notes, PSG1 on 72 of 75 (tools/merge_survey.py --all), so they ride the bass channel as
+#   # bass+chime mixes (the 12 most-played combinations; the rest play the bass alone).  A fill
+#   # pool cannot place them: with merge_fill: [PSG1, PSG2] and merge_fill_cut_after {DAC: 2, FM2: 4}
+#   # only 30 of 188 found a silent channel, because every one of the others starts exactly on a
+#   # drum and a bass note-on.
+#   - primary: FM2
+#     followers: [PSG2, PSG1]
+#     max_composites: 8     # 18 slots are free for composites: 2 drum mixes, 8 chords, 8 of these
+#     fill_cut: true        # PSG1's 24-tick chime rings are cut by the next bass note when folded; wherever
+#                           # a channel is silent for the whole ring (the lead's, which rests through
+#                           # patterns 2-4) the chime plays there in full instead
+
+
+# Slots the composite fit leaves free for the drum groups' sample banks (bank: true below): the
+# kick/snare + bass + hat mixes need three 64 KB banks; a member dropped for lack of a bank slot
+# is reported ("no slot left for another bank").
+merge_bank_slots: 3
+
+# >>> merge_patterns - written by tools/fold_csv.py from input/02_ghz_fold.csv; the config is the source of truth: edit it here, or re-run --write to replace the block from the table
+# DAC = DAC Drums, FM1 = Lead, FM2 = Bass, PSG3 = Hi-Hat
+merge_patterns:
+  - patterns: "0"          # keep FM1, FM2, FM3
+    drop: [FM4, FM5, PSG1, PSG2]
+    groups:
+      - primary: DAC
+        followers: [PSG3]
+        cut_primary: true
+        bank: true
+        mix_note: C3
+  - patterns: "1-4"          # keep FM1, PSG2
+    groups:
+      - primary: DAC
+        followers: [FM2, PSG3]
+        cut_primary: true
+        bank: true
+        mix_note: C3
+      - primary: FM5
+        followers: [FM3, FM4, PSG1]
+  - patterns: "5-c"          # keep FM1, FM3
+    groups:
+      - primary: DAC
+        followers: [FM2, PSG3]
+        cut_primary: true
+        bank: true
+        mix_note: C3
+      - primary: FM4
+        followers: [FM5]
+      - primary: PSG1
+        followers: [PSG2]
+  - patterns: "d-10"          # keep FM1, FM2, FM5
+    groups:
+      - primary: DAC
+        followers: [PSG3]
+        cut_primary: true
+        bank: true
+        mix_note: C3
+      - primary: FM4
+        followers: [FM3]
+      - primary: PSG2
+        followers: [PSG1]
+# <<< merge_patterns

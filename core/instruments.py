@@ -39,6 +39,8 @@ class FmLayer:
     semitones: int = 0       # this layer's pitch above the instrument's rendering pitch
     fnum_offset: int = 0     # raw FNUM detune added to the frequency word (smpsAlterNote)
     tl_offset: int = 0       # carrier TL relative to the instrument's render level
+    keyoff_secs: float | None = None   # key this layer off that long after key-on (a follower's
+                                       # smpsNoteFill in a composite); None: with the instrument
 
 
 @dataclass(slots=True)

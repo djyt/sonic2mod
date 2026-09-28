@@ -49,7 +49,7 @@ from ym2612.wrapper import OPN2
 class _RenderJob:
     """One MOD instrument to synthesise: its catalogue entry, resolved for this render."""
     spec: FmInstrument
-    layers: list[tuple[SmpsVoice, int, int, int]]   # (voice, semitones, FNUM detune, carrier TL)
+    layers: list[tuple]   # (voice, semitones, FNUM detune, carrier TL, key-off secs or None)
     target_rate: int
 
     @property
@@ -134,7 +134,8 @@ def generate_fm_samples(
                 stacklevel=1,
             )
         base_tl = (tl_offsets or {}).get(spec.inst, 0)
-        layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset)
+        layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
+                   lay.keyoff_secs)
                   for lay in spec.layers]
         target_rate = spec.target_rate(synth.amiga_clock)
         if verbose:

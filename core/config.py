@@ -7,7 +7,7 @@ from typing import Any
 
 from .mod import ModFile
 from .pcm import sample_limit_bytes
-from .tables import ModNote, parse_smps_note, parse_synth_note, synth_note_name
+from .tables import MOD_NOTE_MAP, ModNote, parse_smps_note, parse_synth_note, synth_note_name
 
 
 @dataclass
@@ -110,10 +110,101 @@ class MergeGroup:
     fill_cut: bool = False      # a follower note whose ring the fold would cut (the primary's next
                                 # note-on or rest falls inside it) plays whole on a channel silent
                                 # for all of it when there is one; else it folds as before
+    bank: bool = False          # this group's mixed composites share MOD instruments as sample banks,
+                                # each sound chosen with 9xx (core/banks.py); drum primaries only,
+                                # whose notes carry no other command
+    mix_note: int | None = None # highest MOD note (index, C1 = 0) a mixed composite of this group is
+                                # made at: a mix is made at its fastest layer's note (a hat's A3, 28 kHz)
+                                # unless that is above this; F2 halves the drum mixes' bytes and more
+    patterns: frozenset | None = None   # the MOD patterns (of the reference build) this group folds in;
+                                        # None = the whole song.  A `merge_patterns:` group has one.
 
     @property
     def label(self) -> str:
         return f"{self.primary}+{'+'.join(self.followers)}"
+
+    @property
+    def where(self) -> str:
+        """The group's pattern ranges as the config writes them (" [1-4, d-10]"), "" song-wide."""
+        return f" [{format_patterns(self.patterns)}]" if self.patterns is not None else ""
+
+    def covers(self, pattern: int) -> bool:
+        return self.patterns is None or pattern in self.patterns
+
+
+def parse_patterns(spec, ctx: str) -> frozenset:
+    """The MOD pattern numbers a `merge_patterns:` block names.
+
+    A string is hex, as Fast Tracker and the fold table write pattern numbers: "0", "d", a
+    range "1-4" / "d-10", or several separated by commas ("0, 5-c").  A YAML integer is taken
+    as decimal.  A list is the union of its items.
+    """
+    if isinstance(spec, bool):
+        raise ValueError(f"{ctx}: patterns must be pattern numbers, not {spec!r}")
+    if isinstance(spec, int):
+        if spec < 0:
+            raise ValueError(f"{ctx}: pattern {spec} is negative")
+        return frozenset({spec})
+    if isinstance(spec, (list, tuple)):
+        out: set = set()
+        for item in spec:
+            out |= parse_patterns(item, ctx)
+        return frozenset(out)
+    if not isinstance(spec, str):
+        raise ValueError(f"{ctx}: patterns must be a string, a number or a list (got {spec!r})")
+    out = set()
+    for raw_token in spec.split(","):
+        token = raw_token.strip().lower()
+        if not token:
+            continue
+        lo, dash, hi = token.partition("-")
+        try:
+            a = int(lo.strip(), 16)
+            b = int(hi.strip(), 16) if dash else a
+        except ValueError:
+            raise ValueError(f"{ctx}: '{token}' is not a hex pattern number or range (like 0, a, d-10)") from None
+        if b < a:
+            raise ValueError(f"{ctx}: pattern range '{token}' runs backwards")
+        out.update(range(a, b + 1))
+    if not out:
+        raise ValueError(f"{ctx}: no patterns in {spec!r}")
+    return frozenset(out)
+
+
+def format_patterns(patterns) -> str:
+    """Pattern numbers as hex ranges: {1,2,3,4,13,14,15,16} -> "1-4, d-10"."""
+    nums = sorted(patterns)
+    parts: list[str] = []
+    i = 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        parts.append(f"{nums[i]:x}" if i == j else f"{nums[i]:x}-{nums[j]:x}")
+        i = j + 1
+    return ", ".join(parts)
+
+
+def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
+    if not isinstance(g, dict):
+        raise ValueError(f"{ctx}: a merge group is a mapping with primary: and followers:")
+    followers = g.get('followers', [])
+    if isinstance(followers, str):
+        followers = [followers]
+    _mc = g.get('max_composites')
+    mix_note = None
+    if g.get('mix_note') is not None:
+        note = MOD_NOTE_MAP.get(str(g['mix_note']))
+        if note is None:
+            raise ValueError(f"{ctx}: mix_note {g['mix_note']!r} is not a MOD note (C1 .. B3, like F2 or Fs2)")
+        mix_note = note.value
+    return MergeGroup(str(_require(g, 'primary', ctx)), [str(f) for f in followers],
+                      bool(g.get('cut_primary', False)),
+                      int(_mc) if _mc is not None else None,
+                      bool(g.get('fill_lost', False)),
+                      bool(g.get('fill_cut', False)),
+                      bool(g.get('bank', False)),
+                      mix_note=mix_note, patterns=patterns)
 
 
 @dataclass
@@ -594,8 +685,13 @@ class ConversionConfig:
     mod_pattern_breaks: list = field(default_factory=list)  # [(pattern_slot, row), ...] — insert Bxx + split pattern
     # Channel folding for the reduced (Amiga) build, used with `convert.py --merged` (core/merge.py):
     # each group's followers are dropped and their notes rendered into the primary's instruments.
-    merge: list = field(default_factory=list)              # list[MergeGroup]
+    merge: list = field(default_factory=list)              # list[MergeGroup]; a `merge_patterns:` group
+                                                           # carries its patterns, a `merge:` one is song-wide
     merge_drop: list = field(default_factory=list)         # channels left out of the merged build altogether
+    # `merge_patterns:` (folds that differ per pattern, tools/fold_csv.py writes it from a fold table):
+    # every pattern number the blocks name, and {channel: patterns} its notes are dropped in
+    merge_patterns_named: set = field(default_factory=set)
+    merge_pattern_drop: dict = field(default_factory=dict)
     # Channels whose notes go to the fill pool: each note is placed on whichever output channel is
     # silent at that moment (core/merge.py _pool_notes), or lost where none is
     merge_fill: list = field(default_factory=list)
@@ -607,6 +703,9 @@ class ConversionConfig:
     # its chord one tick after FM4/FM5); a note that short before a legato note is a grace note,
     # folded to the note it bends into.
     merge_tolerance: int = 1
+    # Instrument slots the composite fit leaves free for the sample banks of the `bank: true`
+    # groups (core/banks.py); the banks take any other slot still free after the fit as well
+    merge_bank_slots: int = 2
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -835,16 +934,19 @@ class ConversionConfig:
 
         # Parse merge groups: [{primary: FM1, followers: [FM5]}, ...]
         for i, g in enumerate(data.get('merge', []) or []):
-            _ctx = f"merge[{i}]"
-            followers = g.get('followers', [])
-            if isinstance(followers, str):
-                followers = [followers]
-            _mc = g.get('max_composites')
-            config.merge.append(MergeGroup(str(_require(g, 'primary', _ctx)), [str(f) for f in followers],
-                                           bool(g.get('cut_primary', False)),
-                                           int(_mc) if _mc is not None else None,
-                                           bool(g.get('fill_lost', False)),
-                                           bool(g.get('fill_cut', False))))
+            config.merge.append(_parse_merge_group(g, f"merge[{i}]"))
+        # Per-pattern folds: [{patterns: "1-4", groups: [...], drop: [...]}, ...]
+        for i, blk in enumerate(data.get('merge_patterns', []) or []):
+            _ctx = f"merge_patterns[{i}]"
+            if not isinstance(blk, dict):
+                raise ValueError(f"{_ctx}: a block is a mapping with patterns: and groups:")
+            pats = parse_patterns(_require(blk, 'patterns', _ctx), _ctx)
+            config.merge_patterns_named |= pats
+            pdrop = blk.get('drop', []) or []
+            for src in ([pdrop] if isinstance(pdrop, str) else pdrop):
+                config.merge_pattern_drop.setdefault(str(src), set()).update(pats)
+            for j, g in enumerate(blk.get('groups', []) or []):
+                config.merge.append(_parse_merge_group(g, f"{_ctx}.groups[{j}]", pats))
         drop = data.get('merge_drop', []) or []
         config.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
         fill = data.get('merge_fill', []) or []
@@ -856,6 +958,7 @@ class ConversionConfig:
         config.merge_output_file = data.get('merge_output_file')
         config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
         config.merge_tolerance = int(data.get('merge_tolerance', 1))
+        config.merge_bank_slots = max(0, int(data.get('merge_bank_slots', 2)))
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])

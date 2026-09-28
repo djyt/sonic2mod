@@ -54,6 +54,11 @@ def trim_trailing_silence(mono: Sequence[float]) -> Sequence[float]:
     return mono[:i]
 
 
+def signed8(data: bytes) -> list[int]:
+    """The sample values of signed 8-bit PCM bytes."""
+    return [(b - 256 if b > 127 else b) for b in data]
+
+
 def peak(mono: Sequence[float]) -> int:
     """Largest absolute sample value; 0 for an empty or silent list."""
     return int(max((abs(v) for v in mono), default=0))

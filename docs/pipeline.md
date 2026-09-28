@@ -965,9 +965,16 @@ Instruments no note of the merged build plays are dropped from the catalogue bef
 kept until the mix is done and blanked after.
 
 **The fill pool** (`merge_fill: [PSG1, PSG2]`; a group's `fill_lost: true` for the follower
-notes it cannot fold — its orphans and shorter notes, `PairStats.lost_notes`) places notes on
-ANY output channel that is silent when they start, not only their group's primary
-(`_pool_notes`, after the groups are spliced).  Each live channel's occupancy is its own notes'
+notes it cannot fold — its orphans and shorter notes, `PairStats.lost_notes`; a group's
+`fill_cut: true` for the follower notes whose ring the fold would cut, `PairStats.cut_notes`:
+a note longer than the primary's with the primary's next note-on or rest inside it) places
+notes on ANY output channel that is silent when they start, not only their group's primary
+(`_pool_notes`).  It runs before anything folds: a pooled follower note leaves its group's
+notes and the groups are paired again, so a cut note that found a channel silent for all of
+it plays whole there instead of as a truncated composite; one that found none folds as before
+(reported as "stay folded").  Green Hill's lead rests through patterns 2–4, and PSG1's
+24-tick chime rings, cut at 8 ticks inside the bass mixes, play whole on its channel there
+(11 of 17).  The channels' occupancy counts the solo notes the groups will splice.    Each live channel's occupancy is its own notes'
 sounding spans plus everything spliced onto it; a pool note takes the channel that stays silent
 longest — the whole note where one can, else the channel whose next note-on cuts it
 (`cut`), and never for less than a row (`fill_min_ticks`); a note with no silent channel is
@@ -992,7 +999,12 @@ the primary's own instrument, which may be one of the slots on offer.  It used t
 once, before the budgets: a chord over budget fell back to FM5's instrument 11, which the unused
 scan had already given away, and eight of Green Hill's notes played an empty slot.  The
 converter prints `composite slots: N used of M free (K asked for)`; a dropped composite's notes
-play the primary alone and `merge_unsupported` says which.
+play the primary alone and `merge_unsupported` says which.  A composite owns the slot it is
+given: both catalogues drop the instrument that used to be named there (`fm_catalogue` puts
+the composite in over it, `psg_catalogue` pops every composite slot as well as `plan.unused`).
+Until 2026-09-28 the FM catalogue kept the old owner and the PSG generator rendered its tone
+into the slot regardless, so Green Hill's F+A+C chord (slot 18, once `psg_tone03`) played a
+PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
 
 - two FM voices → `("fm", primary instrument, (follower voice, interval, detune, TL delta)...)`:
   an `FmInstrument` with one `FmLayer` per voice, added to the instrument catalogue and rendered

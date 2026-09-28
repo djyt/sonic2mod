@@ -85,11 +85,12 @@ TEST_CASES = [
 
 
 def _has_merge(stem: str) -> bool:
-    """True when the config has a `merge:` section (the reduced build is a test case too)."""
+    """True when the config has a `merge:` / `merge_patterns:` section (the reduced build is a
+    test case too)."""
     path = _HERE.parent / "configs" / f"{stem}.yaml"
     try:
         with open(path, encoding="utf-8") as f:
-            return any(line.startswith("merge:") for line in f)
+            return any(line.startswith(("merge:", "merge_patterns:")) for line in f)
     except OSError:
         return False
 

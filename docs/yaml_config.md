@@ -112,6 +112,7 @@ samples_dir: "./samples/"       # Base path for sample files
 # merge:                 Channel folding for the Amiga build (convert.py --merged), see below
 #   - primary: FM1
 #     followers: [FM5]
+# merge_patterns:        The same per block of patterns (verse folds ≠ bridge folds), see below
 # merge_drop / merge_fill / merge_fill_cut_after: channels left out, or pooled onto silent channels
 # merge_output_file:     Where --merged writes (default: output_file stem + "_merged.mod")
 ```
@@ -579,7 +580,7 @@ baselines and audits stay the ground truth.
   or one whose next note-on cuts it, never for less than a row — with its own instrument,
   pitch and level; a note with no silent channel is lost, and the converter reports per
   channel how many were placed where. A group's `fill_lost: true` sends the follower notes it
-  cannot fold (orphans, shorter ones) to the pool too. `merge_fill_cut_after: {channel:
+  cannot fold (orphans) to the pool too. `merge_fill_cut_after: {channel:
   ticks}` lets a channel's notes count as silent after that many ticks, so a chime may cut a
   kick's decay or a bass note's second half, as a hand-made 4-channel cover would; a channel
   absent there is never cut. A group's `fill_cut: true` sends the follower notes the fold
@@ -597,6 +598,55 @@ baselines and audits stay the ground truth.
 - With `sustain_loops` on in `settings.yaml` (the default for `--merged`), every looped sample
   is cut to its loop and every FM note ends with a release slide; see `docs/pipeline.md`
   § Sustain loops.
+
+## merge_patterns — folds that differ per pattern
+
+When the arrangement wants one fold in the verse and another in the bridge (Green Hill: the
+bass rides the drum channel through patterns 1–c and has its own channel in 0 and d–10), the
+groups are given per block of patterns instead:
+
+```yaml
+merge_patterns:
+  - patterns: "0"                 # hex, as Fast Tracker shows them: "0", "1-4", "d-10", "0, 5-c"
+    drop: [FM4, FM5, PSG1, PSG2]  # optional: their notes in these patterns are left out
+    groups:
+      - primary: DAC              # a group as in merge:, holding in these patterns only
+        followers: [PSG3]
+        cut_primary: true
+  - patterns: "1-4"
+    groups:
+      - primary: DAC
+        followers: [FM2, PSG3]
+        cut_primary: true
+      - primary: PSG1
+        followers: [FM3, FM4, FM5]
+```
+
+A channel not named in a block keeps its own channel there.  A channel leaves the output only
+when it is a follower or dropped in every pattern the blocks name; otherwise it stays, its
+column empty in the patterns it folds in (its notes play on the primary's column) and its own
+elsewhere.  The output therefore has one channel per source that is live anywhere — Green
+Hill's table gives 8 — which is what a hand-finish in a tracker wants: every column keeps its
+meaning.  A fold lands on its primary's column.  Patterns the blocks do not name fold nothing
+and are reported; a channel in two groups of one pattern is an error; `merge:` groups may sit
+beside `merge_patterns:` (they hold in every pattern).  A YAML integer is a decimal pattern
+number; write strings for hex.
+
+A drum-primary group may add `bank: true`: its mixed composites (kick+bass+hat and the like)
+share instrument slots as **sample banks**, every note starting with `9xx` at its sound's
+offset and cut where the sound ends, so eighteen drum mixes cost three slots instead of
+eighteen. `merge_bank_slots: 3` (song level, default 2) is how many slots the composite fit
+holds back for them; the converter says when a sound found no bank slot. A group's
+`mix_note: F2` caps the note its mixes are made at: a mix is made at its fastest layer's note
+(the hat's A3, 28 kHz) unless that is above the cap, so F2 (11 kHz) makes the drum mixes 2.5
+times smaller at the cost of the hat's treble above 5.5 kHz. Details:
+`docs/pipeline.md` § Sample banks.
+
+`python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write`
+(`--bank` adds `bank: true` to every drum-primary group) writes the section from a fold table (`Pattern,Ch 1,...` header; cells `fold N` / `keep` /
+`drop` / blank; `fold N*` names that channel the fold's primary), choosing each fold's primary by measurement (drums first, then the fewest
+lost follower notes) and printing the counts per candidate; see `docs/pipeline.md` § Per-pattern
+folds.
 
 What folds cleanly is a property of the song. `python tools/merge_survey.py configs/<song>.yaml`
 lines up every pair of channels and prints, per pair, how many follower notes fold, how many play

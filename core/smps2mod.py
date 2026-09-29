@@ -462,6 +462,8 @@ class SmpsToModConverter:
             self._add_warning({'type': 'sample_truncated', 'channel': prefix,
                                'extra_ctx': f'instrument {inst_num}', 'instrument': inst_num,
                                'bytes': len(pcm_orig), 'max_bytes': max_bytes})
+        if len(pcm_data) % 2:                   # a MOD sample is whole words: evened with a zero
+            pcm_data += b"\0"
         sample = ModSample(entry[1] if entry else f"{prefix}_inst{inst_num}")
         sample.data = pcm_data
         sample.length = len(pcm_data) // 2

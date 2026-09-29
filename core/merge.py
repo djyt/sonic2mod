@@ -80,6 +80,7 @@ from dataclasses import dataclass, field
 from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
+from .levels import TL_STEP_DB
 from .loops import unroll_values
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
@@ -612,6 +613,9 @@ class MergePlan:
                                                     #   (offset bytes, sound bytes) of a banked note
     bases: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> the primary's
                                                     #   MOD note there (a pcm composite is transposed from its base)
+    gains: dict[tuple[str, int], float] = field(default_factory=dict)  # (primary, tick) -> dB a unison
+                                                    #   chord adds to the primary's own instrument (unison_gain_db)
+    unisons: dict[str, dict] = field(default_factory=dict)   # {group label: {'notes', 'gains': {dB: notes}}}
 
     @property
     def pcm_sources(self) -> set[int]:
@@ -664,6 +668,11 @@ class MergePlan:
         out |= set(self.pattern_drop.get(source, ()))
         return frozenset(out)
 
+    def gain_at(self, source: str, tick: int) -> float:
+        """dB the note at (source, tick) plays above its own level: a unison chord folded into
+        its primary's own instrument (unison_gain_db); 0 elsewhere."""
+        return self.gains.get((source, tick), 0.0)
+
     def note_at(self, source: str, tick: int, default: int) -> int:
         """The MOD note the composite at (source, tick) is triggered at; `default` otherwise."""
         return self.notes.get((source, tick), default)
@@ -694,6 +703,29 @@ def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale, t
     return ("pcm", p.instrument,
             tuple(("pcm", f.instrument, f.index - p.index, round(level_scale(f), 4), _fill_ms(p, f, tolerance))
                   for f in followers))
+
+
+def unison_gain_db(p: NoteOn, followers: list[NoteOn], chip: bool, tolerance: int = 1) -> float | None:
+    """The dB a chord of nothing but the primary's own sound adds to the primary: every follower
+    the primary's voice at the same pitch, no detune, keyed off with it (chip), or the primary's
+    instrument at its MOD note with no cut (mix).  Such a composite is the primary's sample at a
+    higher level (Green Hill's FM4+FM5 unison of voice $05 was slot 11 at twice the volume), so
+    the note plays the primary's own instrument, louder.  None when any follower differs."""
+    amp = 1.0
+    for f in followers:
+        if chip:
+            lay = fm_layer(p, f, tolerance)
+            if (lay.voice_idx != p.voice or lay.semitones or lay.fnum_offset
+                    or lay.keyoff_secs is not None):
+                return None
+            amp += 10 ** (-lay.tl_offset * TL_STEP_DB / 20.0)
+        else:
+            if (f.instrument != p.instrument or f.index != p.index
+                    or _fill_ms(p, f, tolerance) is not None):
+                return None
+            rel = (f.level_db - p.level_db) if (f.level_db is not None and p.level_db is not None) else 0.0
+            amp += 10 ** (rel / 20.0)
+    return 20.0 * math.log10(amp)
 
 
 def _free_slots(config, song) -> list[int]:
@@ -817,6 +849,15 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                 continue
             spec = cat.instruments.get(p.instrument)
             chip = spec is not None and all(chip_pair(p, fn) for _, fn in present)
+            gain = unison_gain_db(p, [fn for _, fn in present], chip, tol)
+            if gain is not None:
+                # The primary's own sound, louder: no composite, no slot
+                for tt in (p.ticks or [t]):
+                    plan.gains[(g.primary, tt)] = gain
+                u = plan.unisons.setdefault(g.label + g.where, {'notes': 0, 'gains': {}, 'chip': chip})
+                u['notes'] += 1
+                u['gains'][round(gain, 2)] = u['gains'].get(round(gain, 2), 0) + 1
+                continue
             key = composite_key(p, [fn for _, fn in present], chip, level_scale, tol)
             comp = plan.composites.get(key)
             if comp is not None and not chip and not 0 <= trigger_note(comp, p.index) <= 35:
@@ -912,8 +953,16 @@ def _fit_composites(plan: MergePlan, song, config, free: list[int],
             _assign_slots(plan, config, chosen)
             return unused
         cheap = {c.key[1] for c in comps} - unused          # primaries whose instrument stays anyway
-        for c in sorted(comps, key=lambda c: (c.key[1] not in cheap, c.notes, -c.inst))[:len(left)]:
-            drop_composite(plan, config, c, 'no free instrument slot')
+        # A composite whose shape another has loses nothing when dropped (its twin stands in for
+        # it), so the twins go first: Green Hill's lead chord in slots 25 and 31 differed only by
+        # where PSG1's layer was cut, while five chords with no twin lost their followers.
+        twins = _twins(plan, comps)
+        for c in sorted(comps, key=lambda c: (c.inst not in twins, c.key[1] not in cheap, c.notes, -c.inst))[:len(left)]:
+            drop_composite(plan, config, c, 'no free instrument slot', prefer=twins.get(c.inst))
+        # Its notes move to a same-shape survivor now, not after the fit: counted as the
+        # primary's own they kept its instrument's slot from the next fit (Green Hill's voice
+        # $08 sample stayed installed with no note playing it)
+        stand_in(plan)
 
 
 def _plan_slots(comps: list[Composite], slots: list[int], pcm_only: set[int]
@@ -950,12 +999,49 @@ def _shape(key: tuple) -> tuple:
     return ("pcm", key[1], tuple((i, itv) for _k, i, itv, _sc, _fill in key[2]))
 
 
-def drop_composite(plan: MergePlan, config, c: Composite, reason: str) -> None:
+def _reach(key: tuple) -> tuple[int, int]:
+    """How far a composite's followers ring: how many are never cut, then the sum of the cuts
+    (ms).  Of two composites of one shape, the one that reaches further holds the other's notes
+    best: a layer ringing on under a short note is heard less than one cut from a long note."""
+    fills = [k[-1] for k in key[2]]
+    return (sum(f is None for f in fills), sum(f for f in fills if f is not None))
+
+
+def _twins(plan: MergePlan, comps: list[Composite]) -> dict[int, tuple]:
+    """{composite id: the key of the one that would stand in for it} for every composite whose
+    shape (_shape: its followers' fills and levels aside) another in `comps` has, and which
+    that other can play every note of.  Of each shape the one that reaches furthest (_reach),
+    then the most played, is the one kept."""
+    by_shape: dict[tuple, list[Composite]] = {}
+    for c in comps:
+        by_shape.setdefault(_shape(c.key), []).append(c)
+    out: dict[int, tuple] = {}
+    for same in by_shape.values():
+        if len(same) < 2:
+            continue
+        keep = max(same, key=lambda c: (_reach(c.key), c.notes, -c.inst))
+        for c in same:
+            if c is not keep and _takes_all(plan, keep, c):
+                out[c.inst] = keep.key
+    return out
+
+
+def _takes_all(plan: MergePlan, keep: Composite, c: Composite) -> bool:
+    """True when `keep` can play every note of `c`: a mix is transposed to each note, and a
+    trigger off the MOD's three octaves would lose it."""
+    if keep.fm is not None:
+        return True
+    return all(0 <= trigger_note(keep, plan.bases.get(k, c.base)) <= 35
+               for k, v in plan.ticks.items() if v == c.inst)
+
+
+def drop_composite(plan: MergePlan, config, c: Composite, reason: str, prefer: tuple | None = None) -> None:
     """Take a composite out of the plan: its notes play the primary alone (unless a composite
-    of the same shape stands in for it, `stand_in`), and it is reported."""
+    of the same shape stands in for it, `stand_in`; `prefer` is the key of the one to take
+    them when it survives), and it is reported."""
     plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': reason,
                              'shape': _shape(c.key), 'group_label': c.group.label + c.group.where,
-                             'longest': c.longest,
+                             'longest': c.longest, 'prefer': prefer,
                              'ticks': [k for k, v in plan.ticks.items() if v == c.inst]})
     if c.entry in config.sample_list:
         config.sample_list.remove(c.entry)
@@ -975,7 +1061,9 @@ def stand_in(plan: MergePlan) -> None:
         if u.get('settled'):
             continue
         u['settled'] = True
-        c = by_shape.get(u['shape'])
+        c = plan.composites.get(u['prefer']) if u.get('prefer') is not None else None
+        if c is None:
+            c = by_shape.get(u['shape'])
         if c is None or not u['ticks']:
             continue
         taken = 0

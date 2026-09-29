@@ -6,12 +6,15 @@ Each test builds its objects by hand (no song, no chip render), so it runs in mi
 and pins one rule: a looped follower is unrolled under a short primary, a key-off a tick
 before the primary's end is no key-off, a transposed chord shares its composite, a bank
 member is 256-byte aligned and cut where its sound ends, a MOD narrows only when the
-columns beyond are empty, a YAML key given twice is refused.
+columns beyond are empty, a YAML key given twice is refused, a unison chord is its primary
+louder (no composite), a composite with a same-shape twin gives up its slot to the twin that
+rings furthest.
 """
 
 from __future__ import annotations
 
 import io
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -29,10 +32,14 @@ from core.merge import (
     NoteOn,
     _cut_layer,
     _plan_slots,
+    _twins,
     composite_key,
+    drop_composite,
     keyoff_secs,
     mix_pcm_composites,
+    stand_in,
     trigger_note,
+    unison_gain_db,
 )
 from core.mod import ModFile, ModSample
 from core.tables import PERIOD_TABLE
@@ -84,6 +91,71 @@ class CompositeKeys(unittest.TestCase):
         c = Composite(-1, ("pcm", 4, ()), MergeGroup("FM5", ["FM3"]), base=16, note=23)
         self.assertEqual(trigger_note(c, 16), 23)
         self.assertEqual(trigger_note(c, 14), 21)
+
+
+def _gain(p, fs, chip) -> float:
+    g = unison_gain_db(p, fs, chip=chip)
+    assert g is not None
+    return g
+
+
+class Unison(unittest.TestCase):
+    def test_same_voice_same_pitch_is_the_primary_louder(self):
+        p, f = _note(voice=5), _note(voice=5)
+        self.assertAlmostEqual(_gain(p, [f], True), 20 * math.log10(2))
+        quieter = _note(voice=5, tl=4)                      # 4 TL steps = 3 dB down
+        self.assertAlmostEqual(_gain(p, [quieter], True), 20 * math.log10(1 + 10 ** (-3 / 20)))
+
+    def test_anything_else_is_a_composite(self):
+        p = _note(voice=5)
+        self.assertIsNone(unison_gain_db(p, [_note(voice=5, detune=2)], chip=True))       # chorus
+        self.assertIsNone(unison_gain_db(p, [_note(voice=5, index=27)], chip=True))       # a third
+        self.assertIsNone(unison_gain_db(p, [_note(voice=4)], chip=True))                 # another voice
+        self.assertIsNone(unison_gain_db(p, [_note(voice=5, fill=4, fill_secs=4 / 60)], chip=True))
+        self.assertIsNone(unison_gain_db(p, [_note(voice=5), _note(voice=5, index=31)], chip=True))
+
+    def test_mixed_unison_uses_the_note_levels(self):
+        p, f = _note(kind="PSG", inst=17, level_db=-2.0), _note(kind="PSG", inst=17, level_db=-8.0)
+        self.assertAlmostEqual(_gain(p, [f], False), 20 * math.log10(1 + 10 ** (-6 / 20)))
+        self.assertIsNone(unison_gain_db(p, [_note(kind="PSG", inst=18)], chip=False))
+
+
+class Twins(unittest.TestCase):
+    def _plan(self):
+        g = MergeGroup("FM5", ["FM3", "PSG1"])
+        cut = Composite(-1, ("pcm", 14, (("pcm", 14, 7, 1.0, None), ("pcm", 19, 0, 1.0, 267))), g,
+                        base=16, note=23, notes=11, entry=[-1, "cut", 64, 0])
+        held = Composite(-2, ("pcm", 14, (("pcm", 14, 7, 1.0, None), ("pcm", 19, 0, 1.0, None))), g,
+                         base=14, note=21, notes=2, entry=[-2, "held", 64, 0])
+        other = Composite(-3, ("pcm", 14, (("pcm", 14, 4, 1.0, None),)), g, base=14, notes=1,
+                          entry=[-3, "other", 64, 0])
+        plan = MergePlan([g], composites={c.key: c for c in (cut, held, other)})
+        plan.ticks = {("FM5", 0): -1, ("FM5", 8): -2, ("FM5", 16): -3}
+        plan.bases = {("FM5", 0): 16, ("FM5", 8): 14, ("FM5", 16): 14}
+        return plan, cut, held, other
+
+    def test_the_twin_that_rings_further_is_kept(self):
+        plan, cut, held, other = self._plan()
+        twins = _twins(plan, [cut, held, other])
+        self.assertEqual(twins, {-1: held.key})                # the PSG cut goes, however played
+        self.assertNotIn(-3, twins)                            # another shape: no twin
+
+    def test_a_twin_off_the_mod_range_is_not_one(self):
+        plan, cut, held, other = self._plan()
+        plan.bases[("FM5", 0)] = 30                            # 30 + 7 is past B3 on the kept mix
+        self.assertEqual(_twins(plan, [cut, held, other]), {})
+
+    def test_a_dropped_twin_plays_the_preferred_survivor(self):
+        plan, cut, held, other = self._plan()
+
+        class Cfg:
+            sample_list: ClassVar[list] = [cut.entry, held.entry, other.entry]
+        drop_composite(plan, Cfg, cut, "no free instrument slot", prefer=held.key)
+        stand_in(plan)
+        self.assertEqual(plan.ticks[("FM5", 0)], -2)
+        self.assertEqual(plan.notes[("FM5", 0)], 23)           # held's trigger, moved to this note
+        self.assertEqual(held.notes, 3)                        # one note-on handed over
+        self.assertEqual(plan.unsupported[0]['stand_in'], -2)
 
 
 class Mixer(unittest.TestCase):

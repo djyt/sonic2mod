@@ -381,6 +381,9 @@ class ResolvedNote:
     chip: int                # the real pitch the chip plays (chip_pitch)
     total_transpose: int     # driver transpose + the channel config's transpose
     detune: int = 0          # the track's smpsDetune in force (raw FNUM / divider units)
+    gain_db: float = 0.0     # merged build: dB a unison chord folded into this note adds to its
+                             #   level (core.merge.unison_gain_db); the note's level is the
+                             #   track's plus this
 
     @property
     def clamped(self) -> bool:
@@ -463,6 +466,7 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
                     res = None          # this note now plays on its primary's channel (a solo note)
                 else:
                     res.instrument = plan.instrument_at(chan_cfg.source, event.tick_position, res.instrument)
+                    res.gain_db = plan.gain_at(chan_cfg.source, event.tick_position)
         yield event, st, res
 
 

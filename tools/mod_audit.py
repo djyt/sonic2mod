@@ -11,6 +11,11 @@ it is played at most, its loop, how many notes play it on which channels, the lo
     oversize      an unlooped sample far longer than its longest note (the tail is never heard);
                   a looped one whose loop starts far past the longest note
     empty slot    a note plays an instrument with no sample: silence
+    same as N     its waveform matches slot N's over the first 100 ms (correlation >= 0.98, the
+                  level difference shown; "for X ms" where the two part later, "all of the
+                  shorter" where one is the other's start): one sound in two slots - a composite
+                  that is its primary louder, or two of one chord shape
+    finetune variant of N   the same, at another finetune (a chorus detune: intended)
 
     python tools/mod_audit.py output/02_green_hill_zone_merged.mod
     python tools/mod_audit.py output/02_green_hill_zone_merged.mod --slack 1.5   # oversize = 1.5 s past the longest note
@@ -53,6 +58,7 @@ def read_mod(path: str) -> dict:
         samples.append({
             "name": d[o:o + 22].rstrip(b"\0").decode("latin1"),
             "bytes": struct.unpack(">H", d[o + 22:o + 24])[0] * 2,
+            "finetune": ((d[o + 24] & 0x0F) ^ 8) - 8,
             "volume": d[o + 25],
             "loop_start": struct.unpack(">H", d[o + 26:o + 28])[0] * 2,
             "loop_len": struct.unpack(">H", d[o + 28:o + 30])[0] * 2,
@@ -72,7 +78,70 @@ def read_mod(path: str) -> dict:
                 off += 4
             rows.append(cells)
         patterns.append(rows)
+    for s in samples:
+        s["data"] = d[off:off + s["bytes"]]
+        off += s["bytes"]
     return {"tag": tag, "channels": channels, "samples": samples, "order": order, "patterns": patterns}
+
+
+DUP_WINDOW_SECS = 0.1      # how much of the attack two samples must share to be one sound
+DUP_CORRELATION = 0.98
+
+
+def _signed(data: bytes) -> list[int]:
+    return [b - 256 if b > 127 else b for b in data]
+
+
+def _corr(x: list[int], y: list[int]) -> tuple[float, float]:
+    """(correlation, rms(x) / rms(y)) of two equal-length signals; (0, 0) for silence."""
+    n = len(x)
+    mx, my = sum(x) / n, sum(y) / n
+    sxy = sum((a - mx) * (b - my) for a, b in zip(x, y, strict=True))
+    sxx = sum((a - mx) ** 2 for a in x)
+    syy = sum((b - my) ** 2 for b in y)
+    if sxx <= n or syy <= n:          # an rms under 1 LSB: nothing to compare
+        return 0.0, 0.0
+    return sxy / (sxx * syy) ** 0.5, (sxx / syy) ** 0.5
+
+
+def duplicates(samples: list[dict], rates: dict[int, float], skip: set[int]) -> dict[int, str]:
+    """{slot: flag} for every sample whose attack is another slot's waveform (DUP_WINDOW_SECS
+    at the rate it plays at, correlation >= DUP_CORRELATION).  The bytes are compared as they
+    are: a mix made the same distance below its trigger note as another holds the same
+    waveform, whatever pitch each is played at.  The flag names the earlier slot, the level
+    difference (sample volume and bytes together) and, where they part within the shorter
+    sample, how long they agree."""
+    out: dict[int, str] = {}
+    sig = {i: _signed(s["data"]) for i, s in enumerate(samples, 1) if i not in skip and s["bytes"] > 256}
+    for b in sorted(sig):
+        for a in sorted(sig):
+            if a >= b:
+                break
+            rate = rates.get(a) or rates.get(b) or 8363.0
+            n = min(len(sig[a]), len(sig[b]), max(256, round(rate * DUP_WINDOW_SECS)))
+            c, ratio = _corr(sig[b][:n], sig[a][:n])
+            if c < DUP_CORRELATION:
+                continue
+            va, vb = samples[a - 1]["volume"], samples[b - 1]["volume"]
+            db = 20 * __import__("math").log10(max(1e-9, ratio * vb / max(va, 1)))
+            # Where they part: the first 50 ms window whose correlation drops under 0.9
+            w = max(64, round(rate * 0.05))
+            short = min(len(sig[a]), len(sig[b]))
+            part = next((k for k in range(0, short - w + 1, w)
+                         if _corr(sig[b][k:k + w], sig[a][k:k + w])[0] < 0.9), None)
+            if part is not None:
+                span = f" for {part / rate * 1000:.0f} ms"
+            elif abs(len(sig[a]) - len(sig[b])) > w:
+                span = f" for all {short / rate * 1000:.0f} ms of the shorter"
+            else:
+                span = ""
+            fa, fb = samples[a - 1]["finetune"], samples[b - 1]["finetune"]
+            if fa != fb:
+                out[b] = f"finetune variant of {a} ({fb - fa:+d}{span}, {db:+.1f} dB)"
+            else:
+                out[b] = f"same as {a}{span} ({db:+.1f} dB)"
+            break
+    return out
 
 
 def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
@@ -119,6 +188,11 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
             plays[i].append((c, p, (flat - start) * row_secs))
     rows_out: list[dict] = []
     notes_out: list[str] = []
+    rates = {}
+    for i in plays:
+        periods = Counter(p for _c, p, _s in plays[i])
+        rates[i] = AMIGA_CLOCK / periods.most_common(1)[0][0]
+    dups = duplicates(mod["samples"], rates, banked)
     for i, s in enumerate(mod["samples"], 1):
         notes = plays.get(i, [])
         if not notes and not s["bytes"]:
@@ -143,6 +217,8 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
                 flags.append(f"oversize by {secs - longest:.1f} s")
             if looped and (s["loop_start"] / rate) > longest + slack:
                 flags.append(f"loop starts {s['loop_start'] / rate - longest:.1f} s past the longest note")
+        if i in dups:
+            flags.append(dups[i])
         rows_out.append({
             "inst": i, "name": s["name"], "bytes": s["bytes"], "volume": s["volume"],
             "secs": secs, "note": note_name(top) if top else "-", "loop": (s["loop_start"], s["loop_len"]) if looped else None,

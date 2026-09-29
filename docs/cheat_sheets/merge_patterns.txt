@@ -37,3 +37,4 @@ Tools
   python tools/fold_csv.py <config> <table.csv> --write --bank --mix-note C3   draft the section from a fold table
   python tools/merge_survey.py <config> --all                                   every channel pair's fold counts
   python convert.py <config> --merged                                           build; read "composite slots" and the warnings
+  python tools/mod_audit.py output/<song>_merged.mod                            samples vs the notes that play them (waste, silence)

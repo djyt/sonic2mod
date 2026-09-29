@@ -26,7 +26,7 @@ from core.config import (
 )
 from core.driver_state import source_names
 from core.merge import prepare_merged_config
-from core.mod import apply_pattern_breaks
+from core.mod import ModFile, apply_pattern_breaks
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
 
@@ -233,6 +233,16 @@ def main():
     if _loop_info:
         mod.trim_to_pattern(_loop_info['pattern'])
 
+    # ── The merged build: as many channels as its columns need ──────────────
+    # Channels that play on another column in every pattern (mod_channel, fill) leave their home
+    # columns empty; a build whose every pattern fits four columns is a 4-channel MOD.
+    if config.merge_active:
+        _need = ModFile.round_up_channels(max(1, mod.used_channels()))
+        if _need < mod.CHANNELS:
+            _was = mod.CHANNELS
+            mod.narrow_to(_need)
+            converter.infos.append({'type': 'narrowed', 'from': _was, 'to': _need})
+
     # ── Branding in sample slots ──────────────────────────────────────────────
     _tag_mod_branding(mod, version)
 
@@ -364,6 +374,11 @@ def main():
                 f"sample bank notes: {info['notes']} play from a bank (9xx at the sound's offset), "
                 f"{info['cuts']} are cut where their sound ends (the rest are ended by the channel's next "
                 f"note){delays}")
+        elif info['type'] == 'narrowed':
+            detail_lines.append(f"[bold]{info['to']}-channel MOD[/bold]: columns {info['to'] + 1}-{info['from']} "
+                                f"were empty in every pattern and are gone")
+        elif info['type'] == 'merge_folds':
+            detail_lines.append(f"[dim]{_escape(info['pair'])}: {_escape(info['what'])}[/dim]")
         elif info['type'] == 'merge_slots':
             banked = info.get('banked', 0)
             gone = info['wanted'] - info['used'] - banked
@@ -600,32 +615,31 @@ def _warn_merge_lost(w: dict, ctx_str: str) -> None:
     )
     if w['vibrato']:
         console.print(f"     [dim]{w['vibrato']} pairs modulate differently; the primary's vibrato applies[/dim]")
-    console.print(
-        "     [green]Fix:[/green] tools/merge_survey.py lists every pair's counts; a follower with "
-        "orphans needs its own channel."
-    )
 
 
 def _warn_merge_headroom(w: dict, ctx_str: str) -> None:
+    worst: dict[int, float] = {}
+    for inst, db in w['instruments']:
+        worst[inst] = max(worst.get(inst, 0.0), db)
+    parts = ", ".join(f"{inst} ({db:.1f} dB)" for inst, db in sorted(worst.items()))
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
-        f"[yellow]merge {w['group']}: composite instrument {w['instrument']} sums {w['db']:.1f} dB past "
-        f"full scale — played at volume 64, {w['db']:.1f} dB quieter than the two channels were[/yellow]"
+        f"[yellow]{len(w['instruments'])} composite instruments sum past full scale and play at volume 64, "
+        f"that much quieter than their channels were: {parts}[/yellow]"
     )
 
 
 def _warn_merge_unsupported(w: dict, ctx_str: str) -> None:
-    what = (f"composite for {w['notes']} notes ({_escape(w['detail'])})" if 'notes' in w
-            else f"at tick {w.get('tick')}")
-    if w.get('stand_in'):
-        console.print(
-            f"\n  [dim]merge {w['primary']}: {what}: {w['reason']} — composite instrument "
-            f"{w['stand_in']} stands in (same voices and notes; its fill / level differ)[/dim]")
-        return
     console.print(
         f"\n  [bold yellow]![/bold yellow]  "
-        f"[yellow]merge {w['primary']}: {what}: {w['reason']} — the primary plays alone there[/yellow]"
+        f"[yellow]merge {w['primary']}: {w['count']} composites for {w['notes']} notes have no instrument slot "
+        f"({w['reason']}) — the primary plays alone there"
+        + (f"; {w['stand_ins']} more play a same-shape stand-in" if w.get('stand_ins') else "") + "[/yellow]"
     )
+    for d in w['details'][:6]:
+        console.print(f"     [dim]{_escape(d)}[/dim]")
+    if len(w['details']) > 6:
+        console.print(f"     [dim]... and {len(w['details']) - 6} more[/dim]")
 
 
 def _warn_merge_fill_lost(w: dict, ctx_str: str) -> None:

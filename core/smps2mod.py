@@ -38,7 +38,7 @@ from .levels import (
     modal_level,
     psg_att_to_mod,
 )
-from .loops import SustainLoop
+from .loops import FLAT_DB, SustainLoop
 from .merge import NO_SLOT, build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
@@ -1285,7 +1285,8 @@ class SmpsToModConverter:
         for p in mix_pcm_composites(plan, self.mod, clock, max_bytes, hold_secs=hold,
                                     sources=self._mix_sources, release_db_s=self._release,
                                     bank_out=banked, raw=self._raw_renders, raw_out=mix_raw,
-                                    padding_secs=(synth.release_padding if synth else 0.0)):
+                                    padding_secs=(synth.release_padding if synth else 0.0),
+                                    loop_drift_db=(synth.loop_drift_db if synth else FLAT_DB)):
             self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
         if banked:
             self._pack_merge_banks(banked, mix_raw, clock, max_bytes)

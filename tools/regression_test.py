@@ -48,7 +48,7 @@ BASELINES_DIR = _HERE.parent / "tests" / "baselines"
 _SONGS = [
     ("01_title_screen",      "title_screen",      "title_screen",      "Title Screen"),
     ("02_green_hill_zone",   "green_hill_zone",   "ghz",               "Green Hill Zone"),
-    ("02_ghz_lofi",          "ghz_lofi",          "ghz_lofi",          "Green Hill Zone lofi — mix_at: primary, F2 banks, loop_drift_db 12, root-pitch samples, merge_twins: always"),
+    ("02_ghz_lofi",          "ghz_lofi",          "ghz_lofi",          "Green Hill Zone lofi — mix_at: primary, A2 banks, loop_drift_db 12, root-pitch samples, merge_twins: always"),
     ("03_marble_zone",       "marble_zone",       "marble_zone",       "Marble Zone — pitched rate-3 noise"),
     ("04_spring_yard_zone",  "spring_yard_zone",  "spring_yard_zone",  "Spring Yard Zone — notes below the PSG table"),
     ("05_lab_zone",          "lab_zone",          "lab_zone",          "Labyrinth Zone — rootless PSG entry + channel transpose"),

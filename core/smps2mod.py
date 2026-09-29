@@ -181,6 +181,7 @@ class SmpsToModConverter:
         self._bank_delays_dropped = 0      # banked drum notes whose EDx gave way to the 9xx offset
         self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
         self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
+        self._rings_out: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments a channel's last note rings out on}
         self._idle_bank_slots: list[int] = []    # merge_bank_slots reserve the banks left empty while
                                                  #   composites went without a slot (convert re-runs)
         self._bank_retry: dict | None = None     # set on that second pass: what it was run for
@@ -521,6 +522,10 @@ class SmpsToModConverter:
                 continue            # a follower: its notes play as composites (credited above) or
                                     # spliced onto a live channel (counted there), or not at all
             rings: list = []        # [start tick, ring ticks, instrument, out idx] or None
+            # A smpsNoAttack note is a 3FF (the sample rings on) unless `legato: retrigger`
+            # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
+            # ring for notes of a second
+            portamento = (self.synth.legato if self.synth else "strict") != "retrigger"
             for event, _st, res in walk_channel(channel, self.config, chan_cfg):
                 if not event.is_note:
                     continue
@@ -537,11 +542,17 @@ class SmpsToModConverter:
                     continue
                 if res is None:
                     continue
-                if note.is_no_attack and rings and rings[-1] is not None:
+                if note.is_no_attack and portamento and rings and rings[-1] is not None:
                     rings[-1][1] += note.duration           # legato: a portamento, the sample rings on
                     continue
                 rings.append([event.tick_position, note.duration, res.instrument, res.index])
 
+            # A channel's last note, with no rest or note after it, rings out into its sample's
+            # release (a jingle's final chord): that instrument keeps its release padding
+            if rings and rings[-1] is not None:
+                comp = comps.get(rings[-1][2])
+                self._rings_out.setdefault(kind, set()).update(
+                    [rings[-1][2]] + ([i for i, _ in comp.mix_notes(0)] if comp is not None else []))
             for ring in rings:
                 if ring is None:
                     continue
@@ -596,6 +607,7 @@ class SmpsToModConverter:
         if not settings.enabled:
             return settings
         sustain = float(settings.sustain_duration)
+        exact: set[int] = set()     # auto sustain holds every note: the sample ends where they do
         for inst, (need, root) in sorted(needs.items()):
             if root is None:
                 continue
@@ -605,6 +617,8 @@ class SmpsToModConverter:
             want = per_inst.get(inst, sustain)
             have = min(want, fits)
             if need <= have + 0.005:
+                if inst in per_inst and inst not in self._rings_out.get(kind, ()):
+                    exact.add(inst)
                 continue
             limit = ('mod' if fits < want
                      else 'cap' if auto and need > self._AUTO_SUSTAIN_CAP_SECS
@@ -614,7 +628,7 @@ class SmpsToModConverter:
                 'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',
                 'kind': kind, 'instrument': inst, 'need': need, 'have': have,
                 'rate': rate, 'limit': limit, 'max_kb': settings.max_sample_kb}
-        return settings
+        return dataclasses.replace(settings, exact_sustain=frozenset(exact))
 
     def _flush_sustain_warnings(self, kind: str, samples: dict) -> None:
         """Report the held-back sustain_short warnings of `kind`'s instruments, except for the

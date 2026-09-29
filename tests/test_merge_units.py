@@ -294,6 +294,19 @@ class Slots(unittest.TestCase):
         self.assertEqual(left, [chip])
 
 
+class HeardPadding(unittest.TestCase):
+    def test_what_a_note_can_still_hear_past_its_sustain(self):
+        from core.loops import RELEASE_FLOOR_DB, fade_end, heard_padding
+        self.assertEqual(heard_padding(0.5, 300.0, slides=False), 0.0)          # cut with C00
+        self.assertAlmostEqual(heard_padding(0.5, 300.0, slides=True), RELEASE_FLOOR_DB / 300.0)
+        self.assertEqual(heard_padding(0.5, 50.0, slides=True), 0.5)            # a slow release: the padding
+        self.assertEqual(heard_padding(0.5, None, slides=True), 0.0)            # no release: a cut
+        out = fade_end([1.0] * 100, 60, 10000)
+        self.assertEqual(len(out), 60)
+        self.assertEqual(out[0], 1.0)
+        self.assertEqual(out[-1], 0.0)
+
+
 class ModWriter(unittest.TestCase):
     def test_every_sample_takes_exactly_the_bytes_its_header_declares(self):
         mod = ModFile(4)

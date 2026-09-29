@@ -93,7 +93,7 @@ from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .levels import TL_STEP_DB, clamp_mod_volume
-from .loops import unroll_values
+from .loops import RELEASE_FLOOR_DB, unroll_values
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
 from .resample import resample
@@ -1493,7 +1493,6 @@ def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
 # --- mixing the pcm composites -------------------------------------------------------------
 
 
-RELEASE_FLOOR_DB = 48.0    # a released layer is cut where it falls this far: the 8-bit floor (~49 dB)
 UPSAMPLE_TAPS = 12         # a layer resampled UP into a mix (a kick at 8 kHz under a hat at 28) gets a short
                            # kernel: a 32-tap sinc rings 2 ms before every transient, and the hat, at the
                            # mix's own rate, does not - so the drum's attack sat late behind the hat's

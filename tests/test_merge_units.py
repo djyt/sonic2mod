@@ -235,6 +235,52 @@ class Banks(unittest.TestCase):
         self.assertNotIn(("DAC", 16), plan.ticks)
 
 
+class BankAlignment(unittest.TestCase):
+    def test_a_short_raw_member_keeps_the_next_sound_on_its_boundary(self):
+        g = MergeGroup("DAC", ["PSG3"], bank=True)
+        c1 = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, banked=True, notes=2,
+                       entry=[-1, "a", 64, 0])
+        c2 = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(2, 3, 1.0, None),)), g, base=12, banked=True, notes=1,
+                       entry=[-2, "b", 64, 0])
+        plan = MergePlan([g], composites={c1.key: c1, c2.key: c2})
+        plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
+
+        class Cfg:
+            sample_list: ClassVar[list] = [c1.entry, c2.entry]
+        mod = ModFile(4)
+        # An odd sum is evened with a zero byte: its raw values are one short of the sample
+        samples = {-1: _sample(bytes([40] * 1001)), -2: _sample(bytes([90] * 300))}
+        raw = {-1: [40.0] * 1000, -2: [90.0] * 300}
+        pack_banks(plan, Cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
+        self.assertEqual(c2.offset % ALIGN, 0)
+        self.assertEqual(mod.samples[6].data[c2.offset], 90)           # 9xx lands on the sound, not silence
+
+
+class Heard(unittest.TestCase):
+    def _mix(self, heard: list) -> int:
+        g = MergeGroup("DAC", ["FM2"])
+        c = Composite(5, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, longest=1.0,
+                      entry=[5, "merge", 64, 0], heard=heard)
+        plan = MergePlan([g], composites={c.key: c})
+        mod = ModFile(4)
+        mod.samples[0] = _sample(bytes([100] * 20000))                     # the drum: long, unlooped
+        mod.samples[1] = _sample(bytes([60] * 20000))
+        mix_pcm_composites(plan, mod, CLOCK, hold_secs={}, padding_secs=0.0)
+        return len(mod.samples[4].data)
+
+    def test_the_mix_ends_where_the_next_note_on_cuts_every_note(self):
+        rate = CLOCK / PERIOD_TABLE[12]
+        whole = self._mix([])
+        cut = self._mix([(0.5, 0.2, 1.0), (0.5, 0.3, 1.0)])                # next note-ons 0.2 / 0.3 s in
+        self.assertLess(cut, whole)
+        self.assertAlmostEqual(cut, 0.3 * rate, delta=0.003 * rate)        # the later one, plus a 2 ms fade
+
+    def test_a_transposed_note_needs_more_of_the_mix(self):
+        rate = CLOCK / PERIOD_TABLE[12]
+        cut = self._mix([(0.5, 0.2, 2.0)])                                 # an octave up: twice the bytes
+        self.assertAlmostEqual(cut, 0.4 * rate, delta=0.003 * rate)
+
+
 class Slots(unittest.TestCase):
     def test_chip_composite_never_takes_an_fm_source_slot(self):
         g = MergeGroup("FM5", ["FM4"])

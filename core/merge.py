@@ -617,6 +617,10 @@ class Composite:
     region: int = 0                    # banked: bytes of its sound (the note is cut after them)
     longest: float = 0.0               # seconds of the longest note that plays it: a looped layer is
                                        #   unrolled for at least this (the mix cannot loop at another rate)
+    heard: list = field(default_factory=list)   # mix: per note (end, next note-on, speed): where it
+                                       #   ends and where the column's next note-on cuts it (seconds, a
+                                       #   row of margin), and how much faster than the mix's own trigger
+                                       #   note it plays (a chord shape transposed up): _Planner._measure_heard
 
     @property
     def primary(self) -> int:
@@ -682,6 +686,7 @@ class MergePlan:
                                                     #   (offset bytes, sound bytes) of a banked note
     bases: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> the primary's
                                                     #   MOD note there (a pcm composite is transposed from its base)
+    ends: dict[tuple[str, int], int] = field(default_factory=dict)    # (primary, tick) -> the tick its note ends
     gains: dict[tuple[str, int], float] = field(default_factory=dict)  # (primary, tick) -> dB a unison
                                                     #   chord adds to the primary's own instrument (unison_gain_db)
     unisons: dict[str, dict] = field(default_factory=dict)   # {group label: {'notes', 'gains': {dB: notes}}}
@@ -1018,6 +1023,7 @@ class _Planner:
         comp.uses[label] = comp.uses.get(label, 0) + 1
         for tt in p.all_ticks:
             plan.ticks[(g.primary, tt)] = comp.inst
+            plan.ends[(g.primary, tt)] = p.tick + p.duration
             if chip:
                 continue
             plan.bases[(g.primary, tt)] = p.index
@@ -1026,6 +1032,39 @@ class _Planner:
                 plan.notes[(g.primary, tt)] = trig
 
     # --- slots ------------------------------------------------------------------------------------
+
+    def _measure_heard(self) -> None:
+        """Composite.heard: for every note of a mix, where it ends and where the next note-on in
+        its primary's stream (own, spliced and pooled notes) retriggers the column.  The mixer
+        trims what no note reaches: a drum hit 0.2 s before the next never needs the 0.4 s its
+        bass's release rings on.
+
+            note ═════════╗ end ─ release slide ─ ─ ┐
+                          ║                          next note-on
+            |<─ end ─────>|        |<──── next ─────>|  + a row each (placed up to half a row late)
+        """
+        if self.tick_secs is None:
+            return
+        plan, smap = self.plan, source_map(self.song)
+        margin = int(getattr(self.config, "ticks_per_row", 1)) or 1
+        mixes = {c.inst: c for c in plan.composites.values() if c.fm is None}
+        onsets: dict[str, list[int]] = {}
+        for (src, tick), inst in plan.ticks.items():
+            c = mixes.get(inst)
+            if c is None:
+                continue
+            if src not in onsets:
+                onsets[src] = _note_on_ticks(smap[src].events)
+            ticks = onsets[src]
+            i = bisect.bisect_right(ticks, tick)
+            secs = self.tick_secs(tick)
+            end = (plan.ends.get((src, tick), tick) - tick + margin) * secs
+            nxt = (ticks[i] - tick + margin) * secs if i < len(ticks) else math.inf
+
+            # A note triggered above the mix's own note plays its bytes that much faster
+            own = c.note if c.note is not None else c.base
+            speed = PERIOD_TABLE[own] / PERIOD_TABLE[plan.notes.get((src, tick), plan.bases.get((src, tick), c.base))]
+            c.heard.append((end, nxt, speed))
 
     def settle(self) -> None:
         """Budgets, then slots, then stand-ins; which instruments the build still renders."""
@@ -1046,12 +1085,20 @@ class _Planner:
                                  drums={d.mod_instrument for d in config.dac_samples},
                                  fm_slots=set(self.cat.instruments), reserve=reserve)
         stand_in(plan)
+        self._measure_heard()
 
         taken = plan.instruments
         plan.mix_only = unused & plan.pcm_sources
         plan.blank_after_mix = plan.mix_only - taken
         plan.dropped = unused - plan.pcm_sources
         plan.unused = plan.dropped - taken
+
+
+def _note_on_ticks(events) -> list[int]:
+    """Ticks of the note-ons that retrigger a channel's column: not rests, not smpsNoAttack
+    notes (a portamento under a strict legato keeps the sample playing)."""
+    return sorted({e.tick_position for e in events
+                   if e.is_note and not e.note.is_rest and not e.note.is_no_attack})
 
 
 def _mix_note(g: MergeGroup, p: NoteOn, present: list[NoteOn]) -> int:
@@ -1572,7 +1619,8 @@ class _Mixer:
         # chord mix used to be unrolled for its voice's 4 s song-wide need to play 0.35 s notes.
         # The release padding is for an FM primary, whose note ends in a release slide the sample
         # must still carry; a PSG or drum primary's note is cut at its end (or ends by itself)
-        pad = self._padding if comp.group.primary.startswith("FM") else min(self._padding, _CUT_NOTE_PAD_SECS)
+        fm_primary = comp.group.primary.startswith("FM")
+        pad = self._padding if fm_primary else min(self._padding, _CUT_NOTE_PAD_SECS)
         need = comp.longest + pad if comp.longest else 0.0
 
         # The followers first: how long the mix has to run before a loop may start
@@ -1584,6 +1632,14 @@ class _Mixer:
                 total.extend([0.0] * (len(sig) - len(total)))
             for i, v in enumerate(sig):
                 total[i] += v
+
+        # Past what any note reaches, nothing is heard (the layers' release tails ran on there): a
+        # note is heard to the earlier of its end plus the release slide (an FM primary's lasts
+        # until the voice has fallen to the floor) and the column's next note-on
+        if keep_loop is None and comp.heard:
+            slide = min(self._padding, self._tail_secs(p_inst)) if fm_primary else pad
+            heard = max(min(end + slide, nxt) * speed for end, nxt, speed in comp.heard)
+            total = _cut_layer(total, math.ceil(heard * r_p), r_p, None)
         return total, keep_loop, base._finetune
 
     def _follower_layers(self, comp: Composite, r_p: float, need: float, problems: list[dict]) -> list[list[float]]:

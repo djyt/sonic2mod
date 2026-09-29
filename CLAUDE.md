@@ -99,9 +99,12 @@ sonic2mod/
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
     regression_test.py  #   Before/after regression test runner (cells + playback lint)
     mod_lint.py         #   Notes a ProTracker player cannot sound: silent 3xx, empty instrument slots
-    mod_audit.py        #   A MOD's samples against the notes that play them: bytes, seconds, loop, longest note,
-                        #   unused / too short / oversize / empty slot / same as N (one sound in two slots)
+    mod_audit.py        #   A MOD's samples against the notes that play them: bytes, share of the file (KB%),
+                        #   share of the song it sounds (play%), note range and lowest rate, loop, longest note,
+                        #   unused / too short / oversize / empty slot / same as N / low rate; --banks: per 9xx sound
                         #   (run it on every merged build)
+    mod_render_diff.py  #   Do two MODs sound the same?  libopenmpt renders per channel, worst 20 ms difference in dB
+                        #   (a size cut meant to be inaudible; hold the dither seed fixed to see past its noise)
     measure_volumes.py  #   All songs: convert, vgm_compare --write-volumes, re-convert, verify — cores-1 songs at once
     make_credits_config.py  # Regenerates configs/13_credits.yaml from the song (chip-pitch ranges, 31-instrument fold)
     config_to_chip_space.py # Converts a config's source-byte ranges to chip pitches (range_space: chip); warns where a range needs its own instrument

@@ -102,6 +102,7 @@ from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
 
 PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL steps (0.75 dB each)
 _LAST_MOD_NOTE = 35   # B3: a mix transposed past the MOD's three octaves cannot play the note
+NO_SLOT = "no free instrument slot"   # why a composite the fit could not place was dropped
 
 
 # --- config -----------------------------------------------------------------------------------
@@ -1156,7 +1157,7 @@ def _fit_composites(plan: MergePlan, song, config, free: list[int],
         # where PSG1's layer was cut, while five chords with no twin lost their followers.
         twins = _twins(plan, comps)
         for c in sorted(comps, key=lambda c: (c.inst not in twins, c.primary not in cheap, c.notes, -c.inst))[:len(left)]:
-            drop_composite(plan, config, c, 'no free instrument slot', prefer=twins.get(c.inst))
+            drop_composite(plan, config, c, NO_SLOT, prefer=twins.get(c.inst))
         # Its notes move to a same-shape survivor now, not after the fit: counted as the
         # primary's own they kept its instrument's slot from the next fit (Green Hill's voice
         # $08 sample stayed installed with no note playing it)

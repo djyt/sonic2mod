@@ -76,6 +76,7 @@ import bisect
 import copy
 import math
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
@@ -443,20 +444,64 @@ def _fill_ms(p: NoteOn, f: NoteOn, tolerance: int = 1) -> int | None:
     return None if k is None else round(k * 1000)
 
 
-def follower_key(p: NoteOn, f: NoteOn, level_scale: float, tolerance: int = 1) -> tuple:
-    """The part of a composite key one follower contributes.
+# --- composite keys: equal keys, one composite -----------------------------------------------
+#
+#   CompositeKey(kind, primary, layers, base)
+#                 │     │        │       └ mix only: the primary note of a mix made for a
+#                 │     │        │         transposition the shared one cannot reach
+#                 │     │        └ one ChipLayerKey / MixLayerKey per follower
+#                 │     └ the primary's MOD instrument
+#                 └ CHIP (rendered on the YM2612) | MIX (summed from finished samples)
 
-    Two FM voices are rendered together on the chip: the key is the follower's layer (voice,
-    interval, detune, level relative to the primary, and when it is keyed off — its
-    smpsNoteFill).  Anything else is mixed from finished samples: the key is the follower's
-    instrument and interval above the primary's MOD note (a chord shape: the same shape at
-    another pitch plays the same mix transposed), its level relative to its sample's baked
-    level, and its fill.
-    """
-    if chip_pair(p, f):
+CHIP = "fm"
+MIX = "pcm"
+
+
+class ChipLayerKey(NamedTuple):
+    """A follower rendered on the chip with the primary."""
+    voice: int
+    semitones: int              # above the primary
+    detune: int                 # FNUM, relative to the primary's
+    tl: int                     # carrier TL steps, relative to the primary's
+    fill_ms: int | None         # keyed off this long in; None: with the primary
+
+    @property
+    def shape(self) -> tuple:
+        return (self.voice, self.semitones, self.detune)
+
+
+class MixLayerKey(NamedTuple):
+    """A follower's sample summed into the primary's."""
+    instrument: int
+    interval: int               # MOD semitones above the primary's note
+    scale: float                # level against the sample's baked level
+    fill_ms: int | None         # cut this long in; None: plays out
+
+    @property
+    def shape(self) -> tuple:
+        return (self.instrument, self.interval)
+
+
+class CompositeKey(NamedTuple):
+    kind: str
+    primary: int
+    layers: tuple
+    base: int | None = None
+
+
+def follower_key(p: NoteOn, f: NoteOn, level_scale: float, tolerance: int = 1) -> ChipLayerKey | MixLayerKey:
+    """The part of a composite key one follower contributes: a chip layer where the pair is two
+    FM voices, else a mix layer (the interval, not the note: the same chord shape at another
+    pitch plays the same mix transposed)."""
+    return _layer_key(p, f, chip_pair(p, f), level_scale, tolerance)
+
+
+def _layer_key(p: NoteOn, f: NoteOn, chip: bool, level_scale: float, tolerance: int) -> ChipLayerKey | MixLayerKey:
+    fill = _fill_ms(p, f, tolerance)
+    if chip:
         lay = fm_layer(p, f, tolerance)
-        return ("fm", lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, _fill_ms(p, f, tolerance))
-    return ("pcm", f.instrument, f.index - p.index, round(level_scale, 4), _fill_ms(p, f, tolerance))
+        return ChipLayerKey(lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, fill)
+    return MixLayerKey(f.instrument, f.index - p.index, round(level_scale, 4), fill)
 
 
 def match_onsets(p_notes: dict[int, NoteOn], f_notes: dict[int, NoteOn], tolerance: int) -> dict[int, int]:
@@ -541,7 +586,7 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
 @dataclass(slots=True)
 class Composite:
     inst: int
-    key: tuple                # ("fm", primary inst, (follower keys...)) | ("pcm", primary inst, primary idx, (...))
+    key: CompositeKey
     group: MergeGroup
     notes: int = 0
     fm: FmInstrument | None = None     # chip-rendered: an entry for the instrument catalogue
@@ -560,22 +605,32 @@ class Composite:
                                        #   unrolled for at least this (the mix cannot loop at another rate)
 
     @property
+    def primary(self) -> int:
+        """The primary's own MOD instrument."""
+        return self.key.primary
+
+    def mix_notes(self, index: int) -> list[tuple[int, int]]:
+        """[(instrument, MOD note)] the sources play inside this mix, triggered for a primary
+        note at `index`."""
+        return [(self.primary, index)] + [(lay.instrument, index + lay.interval) for lay in self.key.layers]
+
+    @property
     def detail(self) -> str:
-        if self.key[0] == "fm":
+        if self.key.kind == CHIP:
             parts = []
-            for _k, voice, interval, detune, tl, fill in self.key[2]:
-                s = f"voice ${voice:02X} {interval:+d} st"
-                if detune:
-                    s += f", detune {detune:+d}"
-                if tl:
-                    s += f", TL {tl:+d}"
-                if fill is not None:
-                    s += f", off at {fill} ms"
+            for lay in self.key.layers:
+                s = f"voice ${lay.voice:02X} {lay.semitones:+d} st"
+                if lay.detune:
+                    s += f", detune {lay.detune:+d}"
+                if lay.tl:
+                    s += f", TL {lay.tl:+d}"
+                if lay.fill_ms is not None:
+                    s += f", off at {lay.fill_ms} ms"
                 parts.append(s)
             return "chip: " + "; ".join(parts)
-        parts = [f"inst {inst} {itv:+d} st" + (f" ×{scale:g}" if scale != 1 else "")
-                 + (f", cut at {fill} ms" if fill is not None else "")
-                 for _k, inst, itv, scale, fill in self.key[2]]
+        parts = [f"inst {lay.instrument} {lay.interval:+d} st" + (f" ×{lay.scale:g}" if lay.scale != 1 else "")
+                 + (f", cut at {lay.fill_ms} ms" if lay.fill_ms is not None else "")
+                 for lay in self.key.layers]
         at = f"mix at note {self.base}" + (f", triggered at {self.note}" if self.note is not None else "")
         return f"{at}: " + "; ".join(parts)
 
@@ -583,7 +638,7 @@ class Composite:
 @dataclass
 class MergePlan:
     groups: list[MergeGroup]
-    composites: dict[tuple, Composite] = field(default_factory=dict)
+    composites: dict[CompositeKey, Composite] = field(default_factory=dict)
     ticks: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> composite
     notes: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> its trigger note
     stats: list[PairStats] = field(default_factory=list)
@@ -623,8 +678,8 @@ class MergePlan:
         out: set[int] = set()
         for c in self.composites.values():
             if c.fm is None:
-                out.add(c.key[1])
-                out.update(k[1] for k in c.key[2])
+                out.add(c.primary)
+                out.update(lay.instrument for lay in c.key.layers)
         return out
 
     def instrument_at(self, source: str, tick: int, default: int) -> int:
@@ -695,14 +750,11 @@ class MergePlan:
         return next((g for g in self.groups if g.primary == source), None)
 
 
-def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale, tolerance: int = 1) -> tuple:
+def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale, tolerance: int = 1) -> CompositeKey:
     """The composite a primary note with these followers plays: rendered on the chip
     (every follower a layer) or mixed from samples (every follower at its MOD note)."""
-    if chip:
-        return ("fm", p.instrument, tuple(follower_key(p, f, 1.0, tolerance) for f in followers))
-    return ("pcm", p.instrument,
-            tuple(("pcm", f.instrument, f.index - p.index, round(level_scale(f), 4), _fill_ms(p, f, tolerance))
-                  for f in followers))
+    layers = tuple(_layer_key(p, f, chip, 1.0 if chip else level_scale(f), tolerance) for f in followers)
+    return CompositeKey(CHIP if chip else MIX, p.instrument, layers)
 
 
 def unison_gain_db(p: NoteOn, followers: list[NoteOn], chip: bool, tolerance: int = 1) -> float | None:
@@ -863,7 +915,7 @@ def build_merge_plan(song, config, *, pan_law_db: float,
             if comp is not None and not chip and not 0 <= trigger_note(comp, p.index) <= 35:
                 # The same shape, but transposed off the MOD's three octaves from where the
                 # mix was made: a mix of its own, made at this pitch
-                key = (*key, ("base", p.index))
+                key = key._replace(base=p.index)
                 comp = plan.composites.get(key)
             if comp is None:
                 provisional -= 1
@@ -952,12 +1004,12 @@ def _fit_composites(plan: MergePlan, song, config, free: list[int],
             plan.spare_slots = [s for s in slots if s not in chosen.values()]
             _assign_slots(plan, config, chosen)
             return unused
-        cheap = {c.key[1] for c in comps} - unused          # primaries whose instrument stays anyway
+        cheap = {c.primary for c in comps} - unused          # primaries whose instrument stays anyway
         # A composite whose shape another has loses nothing when dropped (its twin stands in for
         # it), so the twins go first: Green Hill's lead chord in slots 25 and 31 differed only by
         # where PSG1's layer was cut, while five chords with no twin lost their followers.
         twins = _twins(plan, comps)
-        for c in sorted(comps, key=lambda c: (c.inst not in twins, c.key[1] not in cheap, c.notes, -c.inst))[:len(left)]:
+        for c in sorted(comps, key=lambda c: (c.inst not in twins, c.primary not in cheap, c.notes, -c.inst))[:len(left)]:
             drop_composite(plan, config, c, 'no free instrument slot', prefer=twins.get(c.inst))
         # Its notes move to a same-shape survivor now, not after the fit: counted as the
         # primary's own they kept its instrument's slot from the next fit (Green Hill's voice
@@ -990,24 +1042,22 @@ def trigger_note(comp: Composite, primary_index: int) -> int:
     return (comp.note if comp.note is not None else comp.base) + (primary_index - comp.base)
 
 
-def _shape(key: tuple) -> tuple:
+def _shape(key: CompositeKey) -> tuple:
     """What a composite sounds like apart from its followers' fills and levels: a dropped one
     may stand in for another of the same shape (a kick+bass mix with or without the bass's
     67 ms pluck) rather than lose the follower's note."""
-    if key[0] == "fm":
-        return ("fm", key[1], tuple((v, st, det) for _k, v, st, det, _tl, _fill in key[2]))
-    return ("pcm", key[1], tuple((i, itv) for _k, i, itv, _sc, _fill in key[2]))
+    return (key.kind, key.primary, tuple(lay.shape for lay in key.layers))
 
 
-def _reach(key: tuple) -> tuple[int, int]:
+def _reach(key: CompositeKey) -> tuple[int, int]:
     """How far a composite's followers ring: how many are never cut, then the sum of the cuts
     (ms).  Of two composites of one shape, the one that reaches further holds the other's notes
     best: a layer ringing on under a short note is heard less than one cut from a long note."""
-    fills = [k[-1] for k in key[2]]
+    fills = [lay.fill_ms for lay in key.layers]
     return (sum(f is None for f in fills), sum(f for f in fills if f is not None))
 
 
-def _twins(plan: MergePlan, comps: list[Composite]) -> dict[int, tuple]:
+def _twins(plan: MergePlan, comps: list[Composite]) -> dict[int, CompositeKey]:
     """{composite id: the key of the one that would stand in for it} for every composite whose
     shape (_shape: its followers' fills and levels aside) another in `comps` has, and which
     that other can play every note of.  Of each shape the one that reaches furthest (_reach),
@@ -1015,7 +1065,7 @@ def _twins(plan: MergePlan, comps: list[Composite]) -> dict[int, tuple]:
     by_shape: dict[tuple, list[Composite]] = {}
     for c in comps:
         by_shape.setdefault(_shape(c.key), []).append(c)
-    out: dict[int, tuple] = {}
+    out: dict[int, CompositeKey] = {}
     for same in by_shape.values():
         if len(same) < 2:
             continue
@@ -1035,7 +1085,7 @@ def _takes_all(plan: MergePlan, keep: Composite, c: Composite) -> bool:
                for k, v in plan.ticks.items() if v == c.inst)
 
 
-def drop_composite(plan: MergePlan, config, c: Composite, reason: str, prefer: tuple | None = None) -> None:
+def drop_composite(plan: MergePlan, config, c: Composite, reason: str, prefer: CompositeKey | None = None) -> None:
     """Take a composite out of the plan: its notes play the primary alone (unless a composite
     of the same shape stands in for it, `stand_in`; `prefer` is the key of the one to take
     them when it survives), and it is reported."""
@@ -1401,7 +1451,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     for comp in plan.composites.values():
         if comp.fm is not None:
             continue
-        p_inst, subs = comp.key[1], comp.key[2]
+        p_inst = comp.primary
         p_idx = comp.base
         base = sample_of(p_inst)
         if not base.data:
@@ -1420,8 +1470,9 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         need = comp.longest + pad if comp.longest else 0.0
         # The followers first: how long the mix has to run before a loop may start
         layers: list[list[float]] = []
-        for _, f_inst, interval, scale, fill_ms in subs:
-            f_idx = p_idx + interval
+        for lay in comp.key.layers:
+            f_inst, scale, fill_ms = lay.instrument, lay.scale, lay.fill_ms
+            f_idx = p_idx + lay.interval
             fs = sample_of(f_inst)
             if not fs.data:
                 problems.append({'instrument': comp.inst, 'missing': f_inst})

@@ -17,6 +17,7 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import math
 import sys
 import warnings
 from pathlib import Path
@@ -128,6 +129,10 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
             plain_n = int(rate * (tone_sustain + psg_synth.release_padding))
             loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * tone_sustain),
                                      max_end=min(plain_n, int(rate * probe)), flat_db=psg_synth.loop_drift_db)
+            # A PSG note is cut at its end: where the sustain holds every note, a loop ending
+            # past it is longer than the plain render, and less faithful
+            if loop is not None and inst_num in psg_synth.exact_sustain and loop.end > math.ceil(rate * tone_sustain):
+                loop = None
             if loop is not None:
                 mono = apply_loop(mono, loop)
                 if loops_out is not None:
@@ -165,6 +170,8 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
         # Include ramp-to-silence frames so _render_with_envelope can fade to attenuation 15.
         env_frames = noise_envelope_frames(resolved_env, entry.base_volume)
         noise_sustain = env_frames / fps if env_frames is not None else min(psg_synth.sustain_duration, 0.5)
+        if inst_num in psg_synth.exact_sustain:       # the notes are cut sooner than it decays
+            noise_sustain = min(noise_sustain, psg_synth.sustain_by_instrument[inst_num])
         if verbose:
             print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
                   f"rate={entry.noise_rate}  tone2_n={tone2_n}  root={entry.root.name}  "

@@ -33,7 +33,15 @@ if str(_HERE.parent) not in sys.path:
 
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
 from core.instruments import FmInstrument, fm_catalogue
-from core.loops import PROBE_SECS, SustainLoop, apply_loop, find_sustain_loop, release_rate_db_s
+from core.loops import (
+    PROBE_SECS,
+    SustainLoop,
+    apply_loop,
+    fade_end,
+    find_sustain_loop,
+    heard_padding,
+    release_rate_db_s,
+)
 from core.mod import ModSample
 from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
@@ -194,10 +202,21 @@ def generate_fm_samples(
                                      flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
                                      **({"min_loop_secs": spec.min_loop_ms / 1000.0}
                                         if spec.min_loop_ms is not None else {}))
+        # A sample whose sustain holds every note ends where they stop being heard: at its
+        # sustain where notes are cut, or once a release slide has fallen to the floor.  A loop
+        # ending later is longer than that plain render, and less faithful: none
+        heard_n = None
+        if job.inst in synth.exact_sustain:
+            heard_n = math.ceil(rate * (sustain + heard_padding(synth.release_padding, release, loops)))
+            if loop is not None and loop.end > heard_n:
+                loop = None
         if loop is not None:
             mono = apply_loop(mono, loop)
-        elif probe > sustain:
-            mono, rate = _render_at(job, sustain)
+        else:
+            if probe > sustain:
+                mono, rate = _render_at(job, sustain)
+            if heard_n is not None and heard_n < len(mono):
+                mono = fade_end(mono, heard_n, rate)
         first_peak = peak(mono)
         if len(job.layers) > 1:
             # The primary layer alone, at the same level: what the composite's volume is scaled from

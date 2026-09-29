@@ -105,6 +105,12 @@ conversion and measures, per MOD instrument, the longest **ring** any of its not
 
 - A ring is a note plus the `smpsNoAttack` continuations after it (no `C00` is written for
   those, so the sample keeps advancing).  A plain rest or the next note restarts the sample.
+  An `smpsNoAttack` *note* continues the ring only where `legato` (settings.yaml) writes it
+  as a `3FF`; under `legato: retrigger` it is a note-on and starts a ring of its own, on its
+  own instrument (until 2026-09-30 it did not: Drowning's FM3 trill, 240 legato notes,
+  measured one 10 s ring, an 83 KB sample for notes of a second; Green Hill's grace notes
+  gave the chord's whole ring to the grace note's instrument, and the chord's own sample was
+  keyed off partway through its notes).
   One row is added for the row grid (`EDx` delays, cut placement).
 - Its length is measured in the MOD's own time, summed over the tempo segments
   (`smpsSetTempoMod` changes the BPM), after `smpsSetTempoDiv` re-timing.
@@ -130,6 +136,20 @@ four-hex-digit length field).  Where a note still outlasts its sample, `convert.
 `sustain_short` warning naming the instrument, the seconds needed and the limit that applies
 (the setting, the 10 s cap, or the sample limit; the fix for the last is a lower `root`, which
 halves the bytes per second per octave).  PSG works the same way (`docs/psg_synthesis.md`).
+
+**The release padding is only what a note can reach** (`exact_sustain` on the resolved
+settings, `core.loops.heard_padding`).  An instrument whose `auto` sustain holds every one of
+its notes, and plays no channel's last note (that one rings out into the release, a
+jingle's final chord), is cut where its notes stop being heard: at the sustain where the
+converter cuts notes (`C00`, the reference builds), or once a release slide has fallen
+48 dB (the merged build's `A0y` slides, at the voice's measured release rate), never past
+`release_padding`.  A sustain loop ending later is longer than that plain render and less
+faithful, so it is dropped (PSG: a loop past the sustain; noise: its envelope's length is
+bounded by the notes' own).  A stated `sustain_duration`, or a sample capped by the 10 s cap
+or `max_sample_kb`, keeps the whole padding: a note can outlast it.  All builds: 4.89 MB of
+MODs to 4.61 MB; rendered with the dither seed fixed, the reference builds are unchanged
+except where the legato fix corrects them, the merged ones play their plain renders where a
+loop used to freeze past the notes.
 Stage Clear's PSG instrument 9 is the known case: its PSG2 range plays the PSG1 sample two
 octaves up, so a 2.55 s note needs 13 s of it.  At `max_sample_kb: 64`, 17 instruments in
 six songs (Marble Zone, Spring Yard, Scrap Brain, Robotnik, Final Zone, Credits) warn as well.

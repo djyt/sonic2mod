@@ -488,6 +488,10 @@ class PsgSynthesisSettings:
     # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
     # _resolve_sustain); an instrument absent here gets sustain_duration.  Empty when a number is stated.
     sustain_by_instrument: dict = field(default_factory=dict)
+    exact_sustain: frozenset = frozenset()   # instruments whose auto sustain holds every note that
+                                             # plays them: the sample ends where those notes stop
+                                             # being heard (the release padding only a cut-short
+                                             # note could reach is left off)
     # Envelope tables are not a setting: the driver's own live in core.driver_tables.PSG_ENVELOPES_BY_NAME.
     # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
     # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
@@ -555,6 +559,7 @@ class SynthesisSettings:
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
     sustain_by_instrument: dict = field(default_factory=dict)   # as PsgSynthesisSettings
+    exact_sustain: frozenset = frozenset()                      # as PsgSynthesisSettings
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"

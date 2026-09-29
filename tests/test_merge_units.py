@@ -294,6 +294,23 @@ class Slots(unittest.TestCase):
         self.assertEqual(left, [chip])
 
 
+class ModWriter(unittest.TestCase):
+    def test_every_sample_takes_exactly_the_bytes_its_header_declares(self):
+        mod = ModFile(4)
+        odd = ModSample("odd")
+        odd.data = bytes([7] * 5)
+        odd.length = 3                                   # 5 bytes, evened to 3 words
+        mod.samples[0] = odd
+        nxt = ModSample("next")
+        nxt.data = bytes([9] * 4)
+        nxt.length = 2
+        mod.samples[1] = nxt
+        data = mod.get_bytes()
+        end = len(data)
+        self.assertEqual(data[end - 4:], bytes([9] * 4))   # the next sample starts on its own word
+        self.assertEqual(data[end - 10:end - 4], bytes([7] * 5) + bytes(1))
+
+
 class Narrowing(unittest.TestCase):
     def test_narrow_only_when_the_columns_beyond_are_empty(self):
         mod = ModFile(8)

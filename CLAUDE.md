@@ -205,7 +205,14 @@ python tools/measure_volumes.py --only green_hill special_stage --no-write
 
 Baselines live in `tests/baselines/`.  All 19 song configs are test cases — a converter change
 is only safe once every one of them still produces a byte-identical MOD — and every config with
-a `merge:` section is a second case, `<name>_merged` (`convert.py --merged`).  The conversions
+a `merge:` section is a second case, `<name>_merged` (`convert.py --merged`).  The comparison
+covers the cells **and the sample table and data** (length, volume, finetune, loop, an MD5 of the
+bytes): a mix that lost a layer, a loop that moved into the attack and a composite's volume
+all changed nothing in the cells and were caught by ear before this was added (2026-09-29).
+`tests/test_merge_units.py` pins the merge rules with hand-built objects, no song or chip render
+(`python -m pytest tests -q`, a second): looped follower unrolled under a short primary, key-off
+tolerance, transposed chord shares its composite, bank alignment and cuts, slot rules,
+narrowing, the duplicate-key guard.  The conversions
 run as parallel subprocesses (one per CPU by default; the whole suite takes a few seconds).
 
 ```bash
@@ -220,6 +227,9 @@ python tools/regression_test.py --generate-baselines --only title_screen
 
 # Limit parallelism (e.g. when reading a failing conversion's output); -j 1 runs them one at a time
 python tools/regression_test.py --jobs 4
+
+# The merge primitives, in isolation (fast)
+python -m pytest tests -q
 ```
 
 **Workflow for any converter change:**

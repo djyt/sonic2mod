@@ -34,7 +34,10 @@ def parse_mod(path) -> dict:
         length = struct.unpack_from(">H", data, off + 22)[0] * 2  # words → bytes
         finetune = data[off + 24] & 0x0F
         volume = data[off + 25]
-        samples.append({"name": name, "length": length, "finetune": finetune, "volume": volume})
+        loop_start = struct.unpack_from(">H", data, off + 26)[0] * 2
+        loop_len = struct.unpack_from(">H", data, off + 28)[0] * 2
+        samples.append({"name": name, "length": length, "finetune": finetune, "volume": volume,
+                        "loop_start": loop_start, "loop_len": loop_len})
 
     song_length = data[950]
     position_list = list(data[952:952 + song_length])
@@ -65,6 +68,13 @@ def parse_mod(path) -> dict:
             rows.append(cells)
         patterns.append(rows)
 
+    # Sample data follows the patterns, each sample's bytes in slot order
+    import hashlib
+    off = pat_offset + num_patterns * pattern_size
+    for smp in samples:
+        smp["digest"] = hashlib.md5(data[off:off + smp["length"]]).hexdigest() if smp["length"] else ""
+        off += smp["length"]
+
     return {
         "format": format_id,
         "num_channels": num_channels,
@@ -86,6 +96,16 @@ def compare_mods(path_a, path_b, ignore_channels=None) -> list:
     b = parse_mod(path_b)
 
     diffs = []
+
+    # The sample table and data: a mix that lost a layer, a loop that moved into the attack, a
+    # composite's volume - none of it shows in the cells (2026-09-29: all three happened)
+    for i, (sa, sb) in enumerate(zip(a["samples"], b["samples"], strict=True), 1):
+        for key, label in (("length", "length"), ("volume", "volume"), ("finetune", "finetune"),
+                           ("loop_start", "loop start"), ("loop_len", "loop length")):
+            if sa[key] != sb[key]:
+                diffs.append(f"Sample {i}: {label} {sa[key]} vs {sb[key]}")
+        if sa["length"] == sb["length"] and sa.get("digest") != sb.get("digest"):
+            diffs.append(f"Sample {i}: data differs ({sa['length']} bytes)")
 
     if a["format"] != b["format"]:
         diffs.append(f"Format: {a['format']} vs {b['format']}")

@@ -123,8 +123,10 @@ def prepare_merged_config(config) -> None:
     claims: dict[str, list[tuple[frozenset | None, str]]] = {}
     for i, g in enumerate(config.merge):
         ctx = f"merge[{i}]" if g.patterns is None else f"merge_patterns {g.label}{g.where}"
-        if not g.followers:
-            raise ValueError(f"{ctx}: no followers for primary {g.primary}")
+        if not g.followers and g.mod_channel is None and not g.fill:
+            raise ValueError(f"{ctx}: no followers for primary {g.primary} (a group without followers "
+                             f"needs a mod_channel, which moves the channel to another column, or "
+                             f"fill: true, which sprinkles its notes over the silent columns)")
         if g.primary in g.followers:
             raise ValueError(f"{ctx}: {g.primary} follows itself")
         if g.bank and g.primary != "DAC":
@@ -160,18 +162,60 @@ def prepare_merged_config(config) -> None:
             return True
         away: set[int] = set()
         for g in config.merge:
-            if src in g.followers:
+            if src in g.followers or (g.fill and g.primary == src):
                 if g.patterns is None:
                     return True
                 away |= g.patterns
         away |= set(config.merge_pattern_drop.get(src, ()))
         return bool(named) and named <= away
+    def away_in(src: str) -> frozenset | None:
+        """The patterns `src` plays nothing of its own in; None = every pattern."""
+        if src in config.merge_drop or src in config.merge_fill:
+            return None
+        out: set[int] = set(config.merge_pattern_drop.get(src, ()))
+        for g in config.merge:
+            if src in g.followers or (g.fill and g.primary == src):
+                if g.patterns is None:
+                    return None
+                out |= g.patterns
+        return frozenset(out)
     for c in config.channels:
         if gone(c.source):
             c.enabled = False
+    numbered = {c.mod_channel: c.source for c in config.channels}      # the config's numbering
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
     for i, c in enumerate(live):
         c.mod_channel = i
+    # A group's mod_channel: its primary takes another column in the group's patterns.  Resolve
+    # every route, then check each named pattern's columns: a live source sits on its route
+    # there, or on its own column where it plays its own notes; no two on one column.
+    packed = {c.source: c.mod_channel for c in live}
+    for g in config.merge:
+        if g.mod_channel is None:
+            continue
+        ctx = f"merge_patterns {g.label}{g.where}"
+        target = g.mod_channel if isinstance(g.mod_channel, str) else numbered.get(g.mod_channel)
+        if target is None or target not in sources:
+            raise ValueError(f"{ctx}: mod_channel {g.mod_channel!r} names no channel of the channels section")
+        if target not in packed:
+            raise ValueError(f"{ctx}: mod_channel {g.mod_channel!r} ({target}) has no column in the merged build")
+        g.route = packed[target]
+    for p in sorted(config.merge_patterns_named):
+        taken: dict[int, str] = {}
+        for src, home in packed.items():
+            routed = [g for g in config.merge if g.primary == src and g.route is not None and g.covers(p)]
+            if routed:
+                col, what = routed[0].route, f"{routed[0].label} (mod_channel)"
+            else:
+                away = away_in(src)
+                if away is None or p in away:
+                    continue                            # folded or dropped here: no column of its own
+                col, what = home, f"{src} (its own column)"
+            assert col is not None
+            if col in taken:
+                raise ValueError(f"pattern {p:x}: channel {col + 1} is taken twice — {taken[col]} and {what}; "
+                                 f"move one with mod_channel, or fold / drop it there")
+            taken[col] = what
     if config.num_mod_channels is not None and config.num_mod_channels < len(live):
         config.num_mod_channels = None
     config.validate_mod_channels()
@@ -456,10 +500,12 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
         if f.vibrato != p.vibrato:
             st.vibrato += 1
         if f.duration > p.duration:
-            end = f.tick + f.sounding
+            # Its tail is lost to the primary's next event - by more than the onset tolerance
+            # (a grace note's tick puts a follower a tick past the primary's rest: no loss)
+            end = f.tick + f.sounding - tolerance
             nxt = bisect.bisect_right(p_sorted, t)
             if (nxt < len(p_sorted) and p_sorted[nxt] < end) or any(t < r < end for r in p_rests):
-                st.cut_notes[f.tick] = f    # its tail is lost to the primary's next event
+                st.cut_notes[f.tick] = f
         # A composite is one per (primary instrument, follower shape): the interval is in
         # the key, not the MOD note, for chip layers and mixes alike.
         fk = follower_key(p, f, level_scale(f))
@@ -481,7 +527,8 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
         nxt = bisect.bisect_right(p_ticks, t)
         if nxt < len(p_ticks) and p_ticks[nxt] < t + f_notes[t].sounding:
             st.solo_cut += 1
-    st.truncated = sum(1 for r in p_rests if _sounding_at(f_ticks, f_notes, r) is not None)
+    st.truncated = sum(1 for r in p_rests
+                       if (n := _sounding_at(f_ticks, f_notes, r)) is not None and n.tick + n.sounding - r > tolerance)
     return st
 
 
@@ -506,6 +553,8 @@ class Composite:
                                        # (core/banks.py), chosen with 9xx; takes no slot in the fit
     offset: int = 0                    # banked: where its sound starts in the bank (bytes, ×256)
     region: int = 0                    # banked: bytes of its sound (the note is cut after them)
+    longest: float = 0.0               # seconds of the longest note that plays it: a looped layer is
+                                       #   unrolled for at least this (the mix cannot loop at another rate)
 
     @property
     def detail(self) -> str:
@@ -580,11 +629,35 @@ class MergePlan:
         the channel's own output."""
         return (source, tick) in self.folded or (source, tick) in self.spliced
 
+    def route_at(self, source: str, pattern: int) -> int | None:
+        """The output channel `source`'s notes take at `pattern` when a group of its routes
+        them to another column there (`mod_channel`); None: its own."""
+        for g in self.groups:
+            if g.primary == source and g.route is not None and g.covers(pattern):
+                return g.route
+        return None
+
+    def routed_into(self, channel: int, pattern: int) -> str | None:
+        """The primary whose notes take output `channel` at `pattern`, if any group routes there."""
+        for g in self.groups:
+            if g.route == channel and g.covers(pattern):
+                return g.primary
+        return None
+
+    def cut_after_at(self, config, source: str, pattern: int | None) -> int:
+        """Ticks after which a pooled note may take `source`'s column at `pattern`: the group's
+        `cut_after` holding there, else the song-wide `merge_fill_cut_after`; 0 = never."""
+        if pattern is not None:
+            for g in self.groups:
+                if g.primary == source and g.cut_after is not None and g.covers(pattern):
+                    return g.cut_after
+        return int(getattr(config, "merge_fill_cut_after", {}).get(source, 0))
+
     def away_patterns(self, source: str) -> frozenset:
         """The patterns `source` plays nothing of its own in: a follower's, or dropped."""
         out: set[int] = set()
         for g in self.groups:
-            if source in g.followers and g.patterns is not None:
+            if (source in g.followers or (g.fill and g.primary == source)) and g.patterns is not None:
                 out |= g.patterns
         out |= set(self.pattern_drop.get(source, ()))
         return frozenset(out)
@@ -728,7 +801,8 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                 plan.stats.append(st)
     pair_all()
     # Phase 2: the fill pool, before anything folds - a pooled follower note leaves its group
-    if _pool_notes(plan, song, config, pan_law_db, sample_secs, tick_secs, tol, fill_min_ticks, groups_data):
+    if _pool_notes(plan, song, config, pan_law_db, sample_secs, tick_secs, tol, fill_min_ticks, groups_data,
+                   pattern_of=pattern_of):
         pair_all()                      # the counts and solo notes of what is left to fold
     # Phase 3: composites and solo notes per group
     for g, p_notes, p_rests, followers in groups_data:
@@ -771,6 +845,7 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                 config.sample_list.append(comp.entry)
                 plan.composites[key] = comp
             comp.notes += 1
+            comp.longest = max(comp.longest, p.secs or 0.0)
             label = g.label + g.where
             comp.uses[label] = comp.uses.get(label, 0) + 1
             for tt in (p.ticks or [t]):           # the grace note and the note it bends into alike
@@ -875,6 +950,7 @@ def drop_composite(plan: MergePlan, config, c: Composite, reason: str) -> None:
     of the same shape stands in for it, `stand_in`), and it is reported."""
     plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': reason,
                              'shape': _shape(c.key), 'group_label': c.group.label + c.group.where,
+                             'longest': c.longest,
                              'ticks': [k for k, v in plan.ticks.items() if v == c.inst]})
     if c.entry in config.sample_list:
         config.sample_list.remove(c.entry)
@@ -912,6 +988,7 @@ def stand_in(plan: MergePlan) -> None:
             taken += 1
         if taken:
             c.notes += taken
+            c.longest = max(c.longest, u.get('longest', 0.0))
             c.uses[u['group_label']] = c.uses.get(u['group_label'], 0) + taken
             u['stand_in'] = c.inst
 
@@ -990,14 +1067,13 @@ def _splice_note(plan: MergePlan, events: list, target: str, source: str, t: int
 
 
 def _occupancy(plan: MergePlan, song, config, source: str, pan_law_db: float, sample_secs, tick_secs,
-               grace: int) -> list[tuple[int, int]]:
+               grace: int, pattern_of=None) -> list[tuple[int, int]]:
     """[(start, end)] ticks a live channel sounds: its own notes and every note spliced onto it.
-    A channel in `merge_fill_cut_after` counts each note for that many ticks only: the pool may
-    cut its tail."""
-    over = getattr(config, "merge_fill_cut_after", {}).get(source, 0)
-
+    Where a group's `cut_after` (or the song-wide `merge_fill_cut_after`) holds, a note counts
+    for that many ticks only: the pool may cut its tail."""
     def span(t: int, n: NoteOn) -> tuple[int, int]:
         end = t + n.sounding
+        over = plan.cut_after_at(config, source, pattern_of(t) if pattern_of is not None else None)
         if over:
             end = min(end, t + over)
         return t, end
@@ -1016,13 +1092,17 @@ def _free_span(spans: list[tuple[int, int]], t: int) -> int:
 
 
 def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, tick_secs,
-                grace: int, min_ticks: int, groups_data: list) -> bool:
+                grace: int, min_ticks: int, groups_data: list, pattern_of=None) -> bool:
     """The fill pool: every note of a `merge_fill` channel, every lost follower note of a
     `fill_lost` group, and every follower note of a `fill_cut` group whose ring the fold would
     cut, onto whichever output channel is silent when it starts (the module docstring).  A
     cut note is only moved where a channel is silent for all of it - folded, it at least keeps
-    its onset.  A pooled follower note leaves its group's notes (the caller re-pairs).  Records
-    per-source counts in plan.fill; returns True when any follower note was pooled."""
+    its onset.  A `fill: true` group pools its primary's notes in the group's patterns (an
+    arpeggio sprinkled over the bridge's four columns); those that find no column are lost and
+    leave the channel's own column too (`plan.folded`).  A note never goes to a column nobody
+    plays on in its pattern (a folded, dropped, moved-away or pooled channel's own column).  A
+    pooled follower note leaves its group's notes (the caller re-pairs).  Records per-source
+    counts in plan.fill; returns True when any follower note was pooled."""
     pool: list[tuple[int, int, str, NoteOn, bool]] = []      # (tick, order, source, note, whole note only)
     order = 0
     for src in config.merge_fill:
@@ -1039,11 +1119,21 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
                 pool += [(t, order, st.follower, n, True) for t, n in st.cut_notes.items()
                          if t not in st.lost_notes]
             order += 1
+    filled: set[tuple[str, int]] = set()          # (source, tick) of every fill-group note
+    for g in plan.groups:
+        if g.fill and pattern_of is not None:
+            notes, _ = channel_notes(song, config, g.primary, pan_law_db, sample_secs, tick_secs, grace)
+            for t, n in notes.items():
+                if g.covers(pattern_of(t)):
+                    pool.append((t, order, g.primary, n, False))
+                    filled.add((g.primary, t))
+            order += 1
     if not pool:
         return False
     smap = source_map(song)
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
-    spans = {c.source: _occupancy(plan, song, config, c.source, pan_law_db, sample_secs, tick_secs, grace)
+    spans = {c.source: _occupancy(plan, song, config, c.source, pan_law_db, sample_secs, tick_secs, grace,
+                                  pattern_of)
              for c in live}
     # The solo notes the groups will splice onto their primaries occupy those channels too
     for st in plan.stats:
@@ -1052,14 +1142,16 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
                 bisect.insort(spans[st.primary], (t, t + n.sounding))
     follower_notes = {f: f_notes for _g, _p, _r, followers in groups_data for f, f_notes, _ in followers}
     stats: dict[str, dict] = {}
-    cut_after = getattr(config, "merge_fill_cut_after", {})
     pooled = False
     for t, _o, src, n, whole in sorted(pool, key=lambda x: (x[0], x[1])):
         st = stats.setdefault(src, {'source': src, 'notes': 0, 'placed': 0, 'cut': 0, 'lost': 0,
                                     'folded': 0, 'targets': {}})
         st['notes'] += 1
         best = None
+        here = pattern_of(t) if pattern_of is not None else None
         for c in live:
+            if c.source == src or (here is not None and here in plan.away_patterns(c.source)):
+                continue                        # its own column, or one nobody plays on here
             free = _free_span(spans[c.source], t)
             need = n.sounding if whole else max(1, min(min_ticks, n.sounding))
             if free < need:
@@ -1069,10 +1161,12 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
                 best = (fit, c.source, free)
         if best is None:
             st['folded' if whole else 'lost'] += 1     # a cut note without a channel folds as before
+            if (src, t) in filled:                       # a pooled channel's note: not on its own column either
+                plan.folded.update((src, tt) for tt in (n.ticks or [t]))
             continue
         fit, target, free = best
         _splice_note(plan, smap[target].events, target, src, t, n, free)
-        over = cut_after.get(target, 0)          # a pool note on that channel is cuttable likewise
+        over = plan.cut_after_at(config, target, here)   # a pool note on that column is cuttable likewise
         bisect.insort(spans[target], (t, min(t + fit, t + over) if over else t + fit))
         st['placed'] += 1
         st['cut'] += fit < n.sounding
@@ -1141,7 +1235,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        release_db_s: dict[int, float | None] | None = None,
                        bank_out: dict[int, ModSample] | None = None,
                        raw: dict[int, tuple] | None = None,
-                       raw_out: dict[int, list[float]] | None = None) -> list[dict]:
+                       raw_out: dict[int, list[float]] | None = None,
+                       padding_secs: float = 0.0) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -1159,7 +1254,10 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     body, so any later repeat of it is the same seamless loop, and the composite is the
     followers' length plus one loop.  Mixed at another rate (resampled) the loop points would
     not land on samples, so the primary is unrolled for `hold_secs` ({instrument: seconds},
-    its longest note) instead and the mix plays straight through.  A follower the driver keyed
+    its longest note) instead — never less than the composite's own longest note plus
+    `padding_secs` (Green Hill's bridge lead holds 2.8 s notes under a chime a twelfth up;
+    the instrument-wide figure was 1.6 s and the mix stopped there) — and the mix plays
+    straight through.  A follower the driver keyed
     off with smpsNoteFill (the key's fill) is cut there and decays at its instrument's release
     rate (`release_db_s`, {instrument: dB/s}; a bass pluck under a kick).  A banked composite's
     sample goes to `bank_out` ({provisional id: sample}) for core.banks to pack, not into a slot.
@@ -1206,6 +1304,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         r_p = amiga_clock / PERIOD_TABLE[comp.note if comp.note is not None else p_idx]
         r_base = amiga_clock / PERIOD_TABLE[p_idx]
         same_rate = round(r_base) == round(r_p)
+        need = comp.longest + padding_secs if comp.longest else 0.0   # this composite's own notes
         # The followers first: how long the mix has to run before a loop may start
         layers: list[list[float]] = []
         for _, f_inst, interval, scale, fill_ms in subs:
@@ -1222,7 +1321,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 # Unrolled for the longer of the two instruments' longest notes (a drum primary
                 # has no hold: until 2026-09-28 a looped bass under a kick was unrolled to two
                 # bytes and vanished from every drum+bass mix), never shorter than the sample
-                hold = max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0))
+                hold = max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0), need)
                 f_data = unroll_values(f_data, f_loop, max(len(f_data), int(hold * r_f) + 2))
             sig = [v * gain for v in f_data]
             if fill_ms is not None:           # keyed off by its note fill while the primary plays on
@@ -1241,7 +1340,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 b_data = unroll_values(b_data, b_loop, s0 + (k + 1) * ln)
                 keep_loop = (s0 + k * ln, ln)
             else:
-                b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold_secs.get(p_inst, 0.0) * r_base) + 2))
+                hold = max(hold_secs.get(p_inst, 0.0), need)
+                b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold * r_base) + 2))
         total = [v * base._volume / 64.0 for v in b_data]
         if not same_rate:
             total = resample(total, round(r_base), round(r_p))

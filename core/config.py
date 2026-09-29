@@ -96,6 +96,32 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
     )
 
 
+
+def load_yaml(stream):
+    """yaml.safe_load that refuses a mapping with a key given twice.
+
+    PyYAML keeps the last value silently, so a merge group written without its leading `- `
+    ("primary: FM5" under the group above) rewrote that group's primary and column and the
+    chords came out as an FM5 mix on the arp column; now it is an error at the line.
+    """
+    import yaml
+
+    class _Strict(yaml.SafeLoader):
+        pass
+
+    def _mapping(loader, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = loader.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise ValueError(f"line {key_node.start_mark.line + 1}: key {key!r} is given twice in one mapping "
+                                 f"(a list item missing its leading '- ' merges into the item above)")
+            seen.add(key)
+        return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
+    _Strict.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
+    return yaml.load(stream, Loader=_Strict)
+
+
 @dataclass
 class MergeGroup:
     """One `merge:` group: the followers fold onto the primary's MOD channel (core/merge.py)."""
@@ -113,6 +139,19 @@ class MergeGroup:
     bank: bool = False          # this group's mixed composites share MOD instruments as sample banks,
                                 # each sound chosen with 9xx (core/banks.py); drum primaries only,
                                 # whose notes carry no other command
+    mod_channel: int | str | None = None   # merge_patterns only: the column the primary's notes take
+                                # in the group's patterns — a channels: mod_channel number, or a source
+                                # name (FM2: that channel's column), which must be folded or dropped
+                                # there; resolved to `route`, the merged output channel.  A group with
+                                # no followers and a mod_channel only moves the channel there
+    route: int | None = None    # set by core.merge.prepare_merged_config
+    cut_after: int | None = None   # merge_patterns only: in the block's patterns a pooled note may take
+                                # this group's column once its note is that many ticks old, cutting the
+                                # tail (the block's own merge_fill_cut_after for the primary's column)
+    fill: bool = False          # merge_patterns only, no followers: the primary's notes in the block's
+                                # patterns go to the fill pool - each on whichever column in use there is
+                                # silent when it starts (sprinkled between the others' notes), lost where
+                                # none is; the channel has no column of its own in those patterns
     mix_note: int | None = None # highest MOD note (index, C1 = 0) a mixed composite of this group is
                                 # made at: a mix is made at its fastest layer's note (a hat's A3, 28 kHz)
                                 # unless that is above this; F2 halves the drum mixes' bytes and more
@@ -121,7 +160,7 @@ class MergeGroup:
 
     @property
     def label(self) -> str:
-        return f"{self.primary}+{'+'.join(self.followers)}"
+        return f"{self.primary}+{'+'.join(self.followers)}" if self.followers else self.primary
 
     @property
     def where(self) -> str:
@@ -198,13 +237,28 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
         if note is None:
             raise ValueError(f"{ctx}: mix_note {g['mix_note']!r} is not a MOD note (C1 .. B3, like F2 or Fs2)")
         mix_note = note.value
+    cut_after = g.get('cut_after')
+    if cut_after is not None:
+        if patterns is None:
+            raise ValueError(f"{ctx}: cut_after is a merge_patterns option (song-wide: merge_fill_cut_after)")
+        cut_after = max(1, int(cut_after))
+    fill = bool(g.get('fill', False))
+    if fill and (followers or g.get('mod_channel') is not None or patterns is None):
+        raise ValueError(f"{ctx}: fill: true is for a merge_patterns group with no followers and no mod_channel "
+                         f"(the channel's notes go wherever a column is silent)")
+    target = g.get('mod_channel')
+    if target is not None and not isinstance(target, (int, str)):
+        raise ValueError(f"{ctx}: mod_channel is a channels: mod_channel number or a source name (got {target!r})")
+    if target is not None and patterns is None:
+        raise ValueError(f"{ctx}: mod_channel needs a merge_patterns block — a song-wide group has no column to borrow")
     return MergeGroup(str(_require(g, 'primary', ctx)), [str(f) for f in followers],
                       bool(g.get('cut_primary', False)),
                       int(_mc) if _mc is not None else None,
                       bool(g.get('fill_lost', False)),
                       bool(g.get('fill_cut', False)),
                       bool(g.get('bank', False)),
-                      mix_note=mix_note, patterns=patterns)
+                      mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
+                      cut_after=cut_after)
 
 
 @dataclass
@@ -419,7 +473,7 @@ class PsgSynthesisSettings:
         import yaml
         try:
             with open(filepath) as f:
-                data = yaml.safe_load(f)
+                data = load_yaml(f)
         except yaml.YAMLError as e:
             raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
         s = data.get("psg_synthesis", {})
@@ -532,7 +586,7 @@ class SynthesisSettings:
         import yaml
         try:
             with open(filepath) as f:
-                data = yaml.safe_load(f)
+                data = load_yaml(f)
         except yaml.YAMLError as e:
             raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
         s = data.get("fm_synthesis", {})
@@ -773,7 +827,7 @@ class ConversionConfig:
 
         try:
             with open(filepath) as f:
-                data = yaml.safe_load(f)
+                data = load_yaml(f)
         except yaml.YAMLError as e:
             raise ValueError(f"YAML syntax error in '{filepath}': {e}") from e
 

@@ -622,6 +622,20 @@ merge_patterns:
         followers: [FM3, FM4, FM5]
 ```
 
+A group may add `mod_channel: 2` (a `channels:` number) or `mod_channel: FM2` (a source): its
+primary's notes take that column in the block's patterns, which must be free there: its owner
+folded, dropped or itself moved to another column (a group with no followers is a plain move) (Green Hill's chords ride the bass column while the bass rides the
+drums), so the finished MOD needs no more columns than the busiest pattern.  A note left ringing
+on the borrowed column when the block ends is cut there.
+
+A group with no followers and `fill: true` pools its channel's notes in the block's patterns:
+each goes to whichever column in use there is silent when it starts (a group's `cut_after: 8`
+lets a pooled note take that group's column once its note is 8 ticks old, cutting the tail;
+`merge_fill_cut_after` is the song-wide fallback), and is lost where none is; the channel has no
+column of its own in those patterns.  Green Hill's bridge arpeggio, 64 eighth notes, has no
+column of its own in a four-column bridge, so it is sprinkled between the drums, lead, bass
+and chords instead.
+
 A channel not named in a block keeps its own channel there.  A channel leaves the output only
 when it is a follower or dropped in every pattern the blocks name; otherwise it stays, its
 column empty in the patterns it folds in (its notes play on the primary's column) and its own

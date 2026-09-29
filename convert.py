@@ -312,9 +312,14 @@ def main():
                     f"[bold]{info['shortest']}[/bold]–[bold]{info['secs']}[/bold] s over {info['instruments']}")
             else:
                 detail_lines.append(f"auto sustain {kind} [bold]{info['secs']}[/bold] s")
+        elif info['type'] == 'merge_group' and not info.get('followers'):
+            detail_lines.append(
+                f"moved [bold]{_escape(info['label'])}[/bold] to channel {info['route'] + 1}")
         elif info['type'] == 'merge_group':
             detail_lines.append(
-                f"merged [bold]{_escape(info['label'])}[/bold]: {info['paired']} follower notes folded into "
+                f"merged [bold]{_escape(info['label'])}[/bold]"
+                + (f" on channel {info['route'] + 1}" if info.get('route') is not None else "")
+                + f": {info['paired']} follower notes folded into "
                 f"[bold]{len(info['composites'])}[/bold] composite instrument"
                 f"{'s' if len(info['composites']) != 1 else ''}, "
                 f"{info['alone']} notes the primary plays alone"

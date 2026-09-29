@@ -415,32 +415,34 @@ def chip_pair(p: NoteOn, f: NoteOn) -> bool:
             and p.voice is not None and f.voice is not None)
 
 
-def fm_layer(p: NoteOn, f: NoteOn) -> FmLayer:
+def fm_layer(p: NoteOn, f: NoteOn, tolerance: int = 1) -> FmLayer:
     """The follower as a layer of the primary's composite: its voice at its interval above the
     primary, its detune and carrier level relative to the primary's (a hard pan as TL steps)."""
     assert f.voice is not None and p.chip is not None and f.chip is not None
     tl_delta = (f.tl - p.tl) + PAN_TL_STEPS * (int(f.hard_panned) - int(p.hard_panned))
-    return FmLayer(f.voice, f.chip - p.chip, f.detune - p.detune, tl_delta, keyoff_secs=keyoff_secs(p, f))
+    return FmLayer(f.voice, f.chip - p.chip, f.detune - p.detune, tl_delta,
+                   keyoff_secs=keyoff_secs(p, f, tolerance))
 
 
-def keyoff_secs(p: NoteOn, f: NoteOn) -> float | None:
+def keyoff_secs(p: NoteOn, f: NoteOn, tolerance: int = 1) -> float | None:
     """When a follower is keyed off inside its primary's composite: at its note fill, or at
-    its duration when that ends before the primary's (the driver keys it off there while the
-    primary plays on); None when it lasts the composite out (the primary's next event ends
-    both)."""
+    its duration when that ends before the primary's by more than `tolerance` ticks (the
+    driver keys it off there while the primary plays on); None when it lasts the composite
+    out (the primary's next event ends both) - a key-off a tick before that end would only
+    split identical chords into two instruments."""
     ends = [f.fill_secs] if f.fill_secs is not None else []
-    if f.secs is not None and p.secs is not None and f.duration < p.duration:
+    if f.secs is not None and p.secs is not None and f.duration < p.duration - tolerance:
         ends.append(f.secs)
     return min(ends) if ends else None
 
 
-def _fill_ms(p: NoteOn, f: NoteOn) -> int | None:
+def _fill_ms(p: NoteOn, f: NoteOn, tolerance: int = 1) -> int | None:
     """The follower's key-off as the composite key carries it (whole milliseconds)."""
-    k = keyoff_secs(p, f)
+    k = keyoff_secs(p, f, tolerance)
     return None if k is None else round(k * 1000)
 
 
-def follower_key(p: NoteOn, f: NoteOn, level_scale: float) -> tuple:
+def follower_key(p: NoteOn, f: NoteOn, level_scale: float, tolerance: int = 1) -> tuple:
     """The part of a composite key one follower contributes.
 
     Two FM voices are rendered together on the chip: the key is the follower's layer (voice,
@@ -451,9 +453,9 @@ def follower_key(p: NoteOn, f: NoteOn, level_scale: float) -> tuple:
     level, and its fill.
     """
     if chip_pair(p, f):
-        lay = fm_layer(p, f)
-        return ("fm", lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, _fill_ms(p, f))
-    return ("pcm", f.instrument, f.index - p.index, round(level_scale, 4), _fill_ms(p, f))
+        lay = fm_layer(p, f, tolerance)
+        return ("fm", lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, _fill_ms(p, f, tolerance))
+    return ("pcm", f.instrument, f.index - p.index, round(level_scale, 4), _fill_ms(p, f, tolerance))
 
 
 def match_onsets(p_notes: dict[int, NoteOn], f_notes: dict[int, NoteOn], tolerance: int) -> dict[int, int]:
@@ -508,7 +510,7 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
                 st.cut_notes[f.tick] = f
         # A composite is one per (primary instrument, follower shape): the interval is in
         # the key, not the MOD note, for chip layers and mixes alike.
-        fk = follower_key(p, f, level_scale(f))
+        fk = follower_key(p, f, level_scale(f), tolerance)
         st.keys.add((p.instrument, fk))
     p_ticks = sorted(p_notes)
     taken = set(matched.values())
@@ -684,13 +686,14 @@ class MergePlan:
         return next((g for g in self.groups if g.primary == source), None)
 
 
-def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale) -> tuple:
+def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale, tolerance: int = 1) -> tuple:
     """The composite a primary note with these followers plays: rendered on the chip
     (every follower a layer) or mixed from samples (every follower at its MOD note)."""
     if chip:
-        return ("fm", p.instrument, tuple(follower_key(p, f, 1.0) for f in followers))
+        return ("fm", p.instrument, tuple(follower_key(p, f, 1.0, tolerance) for f in followers))
     return ("pcm", p.instrument,
-            tuple(("pcm", f.instrument, f.index - p.index, round(level_scale(f), 4), _fill_ms(p, f)) for f in followers))
+            tuple(("pcm", f.instrument, f.index - p.index, round(level_scale(f), 4), _fill_ms(p, f, tolerance))
+                  for f in followers))
 
 
 def _free_slots(config, song) -> list[int]:
@@ -814,7 +817,7 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                 continue
             spec = cat.instruments.get(p.instrument)
             chip = spec is not None and all(chip_pair(p, fn) for _, fn in present)
-            key = composite_key(p, [fn for _, fn in present], chip, level_scale)
+            key = composite_key(p, [fn for _, fn in present], chip, level_scale, tol)
             comp = plan.composites.get(key)
             if comp is not None and not chip and not 0 <= trigger_note(comp, p.index) <= 35:
                 # The same shape, but transposed off the MOD's three octaves from where the
@@ -829,7 +832,7 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                                  banked=g.bank and not chip)
                 if chip:
                     assert spec is not None and p.voice is not None
-                    layers = [FmLayer(p.voice)] + [fm_layer(p, fn) for _, fn in present]
+                    layers = [FmLayer(p.voice)] + [fm_layer(p, fn, tol) for _, fn in present]
                     comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]",
                                            source_label=g.label)
                 else:
@@ -1253,11 +1256,11 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     rate keeps its loop, moved past the followers' tails: the unrolled data repeats the loop
     body, so any later repeat of it is the same seamless loop, and the composite is the
     followers' length plus one loop.  Mixed at another rate (resampled) the loop points would
-    not land on samples, so the primary is unrolled for `hold_secs` ({instrument: seconds},
-    its longest note) instead — never less than the composite's own longest note plus
-    `padding_secs` (Green Hill's bridge lead holds 2.8 s notes under a chime a twelfth up;
-    the instrument-wide figure was 1.6 s and the mix stopped there) — and the mix plays
-    straight through.  A follower the driver keyed
+    not land on samples, so the primary is unrolled for the composite's own longest note plus
+    `padding_secs` instead (`Composite.longest`; `hold_secs`, {instrument: seconds}, the
+    instrument-wide figure, only when the plan had no clock) and the mix plays straight
+    through.  Green Hill's bridge lead holds 2.8 s notes under a chime a twelfth up, and its
+    verse chords play 0.35 s ones under a chime; one figure per instrument served neither.  A follower the driver keyed
     off with smpsNoteFill (the key's fill) is cut there and decays at its instrument's release
     rate (`release_db_s`, {instrument: dB/s}; a bass pluck under a kick).  A banked composite's
     sample goes to `bank_out` ({provisional id: sample}) for core.banks to pack, not into a slot.
@@ -1304,7 +1307,10 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         r_p = amiga_clock / PERIOD_TABLE[comp.note if comp.note is not None else p_idx]
         r_base = amiga_clock / PERIOD_TABLE[p_idx]
         same_rate = round(r_base) == round(r_p)
-        need = comp.longest + padding_secs if comp.longest else 0.0   # this composite's own notes
+        # How long a looped layer is unrolled: this composite's own longest note plus the release
+        # padding.  The instrument-wide sustain is the fallback when the plan had no clock: a
+        # chord mix used to be unrolled for its voice's 4 s song-wide need to play 0.35 s notes.
+        need = comp.longest + padding_secs if comp.longest else 0.0
         # The followers first: how long the mix has to run before a loop may start
         layers: list[list[float]] = []
         for _, f_inst, interval, scale, fill_ms in subs:
@@ -1321,8 +1327,10 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 # Unrolled for the longer of the two instruments' longest notes (a drum primary
                 # has no hold: until 2026-09-28 a looped bass under a kick was unrolled to two
                 # bytes and vanished from every drum+bass mix), never shorter than the sample
-                hold = max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0), need)
+                hold = need if need else max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0))
                 f_data = unroll_values(f_data, f_loop, max(len(f_data), int(hold * r_f) + 2))
+            if need:                          # no layer outlasts the composite's own notes
+                f_data = f_data[:max(2, int(need * r_f) + 2)]
             sig = [v * gain for v in f_data]
             if fill_ms is not None:           # keyed off by its note fill while the primary plays on
                 sig = _cut_layer(sig, int(r_f * fill_ms / 1000.0), r_f, release_db_s.get(f_inst))
@@ -1340,8 +1348,10 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 b_data = unroll_values(b_data, b_loop, s0 + (k + 1) * ln)
                 keep_loop = (s0 + k * ln, ln)
             else:
-                hold = max(hold_secs.get(p_inst, 0.0), need)
+                hold = need if need else hold_secs.get(p_inst, 0.0)
                 b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold * r_base) + 2))
+        if need and keep_loop is None:
+            b_data = b_data[:max(2, int(need * r_base) + 2)]
         total = [v * base._volume / 64.0 for v in b_data]
         if not same_rate:
             total = resample(total, round(r_base), round(r_p))

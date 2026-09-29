@@ -426,9 +426,16 @@ class SmpsToModConverter:
                  if self._merge is not None else {})
         needs: dict[int, tuple[float, tuple[int, int] | None]] = {}
         for chan_cfg, channel in enabled_channels(self.song, self.config, (kind,)):
+            if self._merge is not None and not chan_cfg.enabled:
+                continue            # a follower: its notes play as composites (credited above) or
+                                    # spliced onto a live channel (counted there), or not at all
             rings: list = []        # [start tick, ring ticks, instrument, out idx] or None
             for event, _st, res in walk_channel(channel, self.config, chan_cfg):
                 if not event.is_note:
+                    continue
+                if (self._merge is not None and getattr(event, "merged", None) is None
+                        and self._merge.is_folded(chan_cfg.source, event.tick_position)):
+                    rings.append(None)          # folded away here: nothing of its own sounds
                     continue
                 note = event.note
                 if note.is_rest:
@@ -746,11 +753,9 @@ class SmpsToModConverter:
             for c in self._merge.composites.values():
                 if c.fm is None and c.key[1] in self._release:
                     self._release.setdefault(c.inst, self._release[c.key[1]])
-            for c in self._merge.composites.values():
-                if c.headroom_db > 0:
-                    self._add_warning({'type': 'merge_headroom', 'channel': 'merge',
-                                       'instrument': c.inst, 'db': c.headroom_db, 'group': c.group.label,
-                                       'source': c.inst})   # one warning per composite (the dedup key)
+            over = sorted((c.inst, c.headroom_db) for c in self._merge.composites.values() if c.headroom_db > 0.05)
+            if over:
+                self._add_warning({'type': 'merge_headroom', 'channel': 'merge', 'instruments': over})
 
 
         # Convert channels
@@ -962,16 +967,40 @@ class SmpsToModConverter:
                            'used': sum(1 for c in plan.composites.values() if not c.banked),
                            'banked': sum(1 for c in plan.composites.values() if c.banked)})
         for s in plan.stats:
-            if s.lost or s.vibrato or s.cuts:
-                where = s.group.where if s.group is not None else ""
+            where = s.group.where if s.group is not None else ""
+            if s.lost or s.vibrato:
                 self._add_warning({'type': 'merge_lost', 'channel': f"{s.primary}+{s.follower}{where}",
                                    'primary': s.primary, 'where': where,
-                                   'follower': s.follower, 'held': s.held, 'shorter': s.shorter,
+                                   'follower': s.follower, 'held': s.held, 'shorter': 0,
                                    'truncated': s.truncated, 'orphans': s.orphans, 'solo_cut': s.solo_cut,
-                                   'cuts': s.cuts, 'vibrato': s.vibrato, 'notes': s.follower_notes})
+                                   'cuts': 0, 'vibrato': s.vibrato, 'notes': s.follower_notes})
+            # Working as configured, not a loss: a note keyed off early inside its composite, a
+            # note that cuts the primary's tail (cut_primary) - one dim line, not a warning
+            parts = []
+            if s.shorter:
+                parts.append(f"{s.shorter} keyed off early inside the composite")
+            if s.cuts:
+                parts.append(f"{s.cuts} cut the primary's tail (cut_primary)")
+            if parts:
+                self.infos.append({'type': 'merge_folds', 'pair': f"{s.primary}+{s.follower}{where}",
+                                   'what': f"of {s.follower}'s {s.follower_notes} notes: " + "; ".join(parts)})
+        # Composites without a slot, one warning per primary (a stand-in is no loss)
+        by_primary: dict[str, dict] = {}
         for u in plan.unsupported:
-            self._add_warning({'type': 'merge_unsupported', 'channel': u['primary'],
-                               'extra_ctx': u.get('detail', str(u.get('tick'))), **u})
+            d = by_primary.setdefault(u['primary'], {'count': 0, 'notes': 0, 'stand_ins': 0, 'details': [],
+                                                     'reasons': set()})
+            if u.get('stand_in'):
+                d['stand_ins'] += 1
+                continue
+            d['count'] += 1
+            d['notes'] += u['notes']
+            d['reasons'].add(u['reason'])
+            d['details'].append(f"{u['notes']} notes: {u['detail']}")
+        for primary, d in by_primary.items():
+            if d['count']:
+                self._add_warning({'type': 'merge_unsupported', 'channel': primary, 'primary': primary,
+                                   'count': d['count'], 'notes': d['notes'], 'stand_ins': d['stand_ins'],
+                                   'reason': " / ".join(sorted(d['reasons'])), 'details': d['details']})
         return plan
 
     def _derive_noise_envelopes(self) -> dict[int, dict]:

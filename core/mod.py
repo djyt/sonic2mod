@@ -303,6 +303,43 @@ class ModFile:
         """
         self.set_effect(0xB, position & 0x7f)
 
+    def used_channels(self) -> int:
+        """The columns the patterns use: one past the highest with any note, instrument or
+        effect in it (0 for an empty MOD)."""
+        stride = self.CHANNELS * _BYTES_PER_CELL
+        highest = -1
+        for pat in self.patterns:
+            data = pat.get_bytes()
+            for c in range(self.CHANNELS - 1, highest, -1):
+                if any(data[r * stride + c * 4: r * stride + c * 4 + 4] != b"\0\0\0\0"
+                       for r in range(_ROWS_PER_PATTERN)):
+                    highest = c
+                    break
+        return highest + 1
+
+    def narrow_to(self, channels: int) -> None:
+        """Rewrite the patterns with `channels` columns (a valid count), dropping the columns
+        past it, which must be empty — the merged build's home columns of channels that play
+        elsewhere in every pattern.  The format tag follows."""
+        if channels not in self.FORMAT_TABLE:
+            raise ValueError(f"MOD channel count must be one of {list(self.FORMAT_TABLE)} (got {channels})")
+        if channels >= self.CHANNELS:
+            return
+        if self.used_channels() > channels:
+            raise ValueError(f"cannot narrow to {channels} channels: column {self.used_channels()} is in use")
+        old_stride, new_stride = self.CHANNELS * _BYTES_PER_CELL, channels * _BYTES_PER_CELL
+        new_patterns = []
+        for pat in self.patterns:
+            data = pat.get_bytes()
+            np_ = ModPattern(channels)
+            out = np_.get_bytes()
+            for r in range(_ROWS_PER_PATTERN):
+                out[r * new_stride: r * new_stride + new_stride] = data[r * old_stride: r * old_stride + new_stride]
+            new_patterns.append(np_)
+        self.patterns = new_patterns
+        self.CHANNELS = channels
+        self.MOD_FORMAT = self.FORMAT_TABLE[channels].encode("utf-8")
+
     def trim_to_pattern(self, last_pattern: int) -> None:
         """Remove patterns after last_pattern (unreachable once the loop-point Bxx is set).
 

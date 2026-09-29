@@ -945,7 +945,7 @@ equal durations: each sample plays out as it is.
 |---|---|---|
 | note-on, same duration | composite | `paired` |
 | note-on, longer | composite; its tail is cut by the primary's next rest (`truncated`, when it outlasts the rest by more than `merge_tolerance`: a grace note's tick is no loss) or re-attacked by the primary's next note (`held` there) | `paired` |
-| note-on, shorter | composite; the follower is keyed off at its duration inside it (`keyoff_secs`: a chip layer's YM2612 key-off, a mix layer cut with its release) | `shorter` |
+| note-on, shorter | composite; the follower is keyed off at its duration inside it (`keyoff_secs`: a chip layer's YM2612 key-off, a mix layer cut with its release) — unless it ends within `merge_tolerance` ticks of the primary's own end, which is no key-off (two identical chords once differed by a key-off 20 ms before the note was cut, and cost a slot each) | `shorter` |
 | none, resting | the primary alone (right) | `alone` |
 | none, still sounding | the primary alone; the follower's ring is lost | `held` |
 | note-on while the primary sounds, no primary note-on | lost; with the group's `cut_primary: true` it plays as a solo note and cuts the primary's tail | `orphan` / `cuts` |
@@ -1061,12 +1061,20 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   is unrolled for its longest note instead and the mix plays straight through — for the
   longer of the instrument's sustain figure and the composite's own longest note plus the
   release padding (`Composite.longest`; the bridge lead's 2.8 s notes under a chime a twelfth up
-  got a 1.6 s mix from the instrument figure and stopped dead).  The source instruments' own
+  got a 1.6 s mix from the instrument figure and stopped dead; the verse chords, 0.35 s notes, got 4.5 s
+  mixes from the same figure, so a mix is now the composite's own longest note plus the release
+  padding and every layer, looped or not, is cut to that).  The source instruments' own
   sustain needs count those notes too (`_sustain_needs` credits a mixed composite's ring to its
   primary's and followers' instruments at the notes they play inside it): once the bridge lead
   was a group primary its long notes were the composites', its own longest note fell to a second,
   and the loop search cut its sample 0.09 s in, at the attack's level — 4 dB louder wherever it
-  played on its own.
+  played on its own.  Conversely `_sustain_needs` skips followers' own walks and a live channel's
+  folded notes: those notes are composites (credited to their sources) or spliced onto a live
+  channel (counted there), or not played at all, so a dropped channel's long notes no longer size
+  a sample.  `tools/mod_audit.py` reads any MOD back and reports each sample's bytes and seconds
+  against the longest note that plays it (unused, too short, oversize, empty slot, sample bank);
+  Green Hill's merged samples went from 771 KB to 526 KB under these rules, and convert.py
+  narrows a merged build whose columns all fit four to a 4-channel M.K. file (`ModFile.narrow_to`).
 
 **When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`
 and `_extend_looping_channels`, which now runs before anything counts notes) and before the

@@ -111,6 +111,9 @@ conversion and measures, per MOD instrument, the longest **ring** any of its not
   measured one 10 s ring, an 83 KB sample for notes of a second; Green Hill's grace notes
   gave the chord's whole ring to the grace note's instrument, and the chord's own sample was
   keyed off partway through its notes).
+  In the merged build a ring also ends at the next note-on in the column's stream, a pooled or
+  spliced note included (Green Hill lofi's FM3 chords, 24 ticks in the song, are cut by the
+  FM5 arp after 8: `cut_after`), and at a note-on of the channel's that is folded elsewhere.
   One row is added for the row grid (`EDx` delays, cut placement).
 - Its length is measured in the MOD's own time, summed over the tempo segments
   (`smpsSetTempoMod` changes the BPM), after `smpsSetTempoDiv` re-timing.
@@ -144,7 +147,9 @@ final chord) and is no mix's source (a PSG chime under an FM lead rings as long 
 which only the FM pass measures), is cut where its notes stop being heard: at the sustain where the
 converter cuts notes (`C00`, the reference builds), or once a release slide has fallen
 48 dB (the merged build's `A0y` slides, at the voice's measured release rate), never past
-`release_padding`.  A sustain loop ending later is longer than that plain render and less
+`release_padding` — and only for an instrument one of whose notes ends in a rest the converter
+writes as a slide (`slide_ends`): a note cut by a note-on has none, and on a column a merge
+group routes onto, a rest is a `C00`.  A sustain loop ending later is longer than that plain render and less
 faithful, so it is dropped (PSG: a loop past the sustain; noise: its envelope's length is
 bounded by the notes' own).  A stated `sustain_duration`, or a sample capped by the 10 s cap
 or `max_sample_kb`, keeps the whole padding: a note can outlast it.  All builds: 4.89 MB of

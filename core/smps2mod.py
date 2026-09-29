@@ -76,6 +76,13 @@ def _shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> in
 _HEADROOM_REPORT_DB = 0.05     # a composite clamped by less is not reported
 
 
+def _cut_ring(rings: list, tick: int) -> None:
+    """The ring still sounding ends at `tick`: a note-on retriggers the column (in the merged
+    build a pooled note can take it before the ring's own duration is up: cut_after)."""
+    if rings and rings[-1] is not None:
+        rings[-1][1] = min(rings[-1][1], tick - rings[-1][0])
+
+
 class _ColumnRouter:
     """Where one channel's notes go in the merged build (core.merge.MergePlan): its own column,
     or the one a merge_patterns group routes it to in the note's pattern; which of its notes
@@ -182,6 +189,7 @@ class SmpsToModConverter:
         self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
         self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
         self._rings_out: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments a channel's last note rings out on}
+        self._slide_ends: dict[str, set[int]] = {}  # {"FM"/"PSG": instruments a note of ends in a release slide}
         self._idle_bank_slots: list[int] = []    # merge_bank_slots reserve the banks left empty while
                                                  #   composites went without a slot (convert re-runs)
         self._bank_retry: dict | None = None     # set on that second pass: what it was run for
@@ -490,6 +498,17 @@ class SmpsToModConverter:
         return {i.inst: (i.root_idx, i.entry.synth_shift)
                 for i in psg_catalogue(self.config).values()}
 
+    def _slides_after(self, chan_cfg, start: int, rest: int) -> bool:
+        """Whether the rest at `rest` ending a note that started at `start` is written as a
+        release slide, as _convert_channel writes it: in the merged build, not on a column a
+        merge group routes notes onto there (a C00 then; a slide would sit on their notes)."""
+        plan = self._merge
+        if plan is None:
+            return True
+        col = plan.route_at(chan_cfg.source, self._pattern_of_tick(start))
+        col = chan_cfg.mod_channel if col is None else col
+        return plan.routed_into(col, self._pattern_of_tick(rest)) is None
+
     def _sustain_needs(self, kind: str) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
         over the enabled channels of `kind` ("FM" / "PSG").
@@ -521,7 +540,7 @@ class SmpsToModConverter:
             if self._merge is not None and not chan_cfg.enabled:
                 continue            # a follower: its notes play as composites (credited above) or
                                     # spliced onto a live channel (counted there), or not at all
-            rings: list = []        # [start tick, ring ticks, instrument, out idx] or None
+            rings: list = []        # [start tick, ring ticks, instrument, out idx, ends in a slide] or None
             # A smpsNoAttack note is a 3FF (the sample rings on) unless `legato: retrigger`
             # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
             # ring for notes of a second
@@ -531,6 +550,8 @@ class SmpsToModConverter:
                     continue
                 if (self._merge is not None and getattr(event, "merged", None) is None
                         and self._merge.is_folded(chan_cfg.source, event.tick_position)):
+                    if not event.note.is_rest:
+                        _cut_ring(rings, event.tick_position)   # the converter ends what rings here at it
                     rings.append(None)          # folded away here: nothing of its own sounds
                     continue
                 note = event.note
@@ -538,14 +559,17 @@ class SmpsToModConverter:
                     if note.is_no_attack and rings and rings[-1] is not None:
                         rings[-1][1] += note.duration       # continuation: no C00, keeps advancing
                     else:
-                        rings.append(None)                  # C00 ends the ring
+                        if rings and rings[-1] is not None:
+                            rings[-1][4] = self._slides_after(chan_cfg, rings[-1][0], event.tick_position)
+                        rings.append(None)                  # C00 (or a slide) ends the ring
                     continue
                 if res is None:
                     continue
                 if note.is_no_attack and portamento and rings and rings[-1] is not None:
                     rings[-1][1] += note.duration           # legato: a portamento, the sample rings on
                     continue
-                rings.append([event.tick_position, note.duration, res.instrument, res.index])
+                _cut_ring(rings, event.tick_position)
+                rings.append([event.tick_position, note.duration, res.instrument, res.index, False])
 
             # A channel's last note, with no rest or note after it, rings out into its sample's
             # release (a jingle's final chord): that instrument keeps its release padding
@@ -556,7 +580,9 @@ class SmpsToModConverter:
             for ring in rings:
                 if ring is None:
                     continue
-                start, ticks, inst, out_idx = ring
+                start, ticks, inst, out_idx, slides = ring
+                if slides:
+                    self._slide_ends.setdefault(kind, set()).add(inst)
                 wall = self._tick_span_secs(start, start + ticks + self._effective_tpr)
                 comp = comps.get(inst)
                 plays = [(inst, out_idx)]
@@ -631,7 +657,8 @@ class SmpsToModConverter:
                 'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',
                 'kind': kind, 'instrument': inst, 'need': need, 'have': have,
                 'rate': rate, 'limit': limit, 'max_kb': settings.max_sample_kb}
-        return dataclasses.replace(settings, exact_sustain=frozenset(exact))
+        return dataclasses.replace(settings, exact_sustain=frozenset(exact),
+                                   slide_ends=frozenset(self._slide_ends.get(kind, ())))
 
     def _flush_sustain_warnings(self, kind: str, samples: dict) -> None:
         """Report the held-back sustain_short warnings of `kind`'s instruments, except for the

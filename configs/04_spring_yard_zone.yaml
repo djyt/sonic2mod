@@ -49,7 +49,7 @@ sample_list:
   # --- PSG noise (form $E7) ---
   - [12, "psg_noise.raw",  2, 0] # baked: 16 at PSG attenuation 5 (−10 dB); VGZ: +7.1 dB at 4
   # --- PSG tone fTone_06 ---
-  - [10, "psg_fTone_06_lo.raw",  5, 0] # baked: 32 at PSG attenuation 6 (−12 dB); VGZ: +4.8 dB at 9
+  - [10, "psg_fTone_06_lo.raw",  4, 0] # baked: 32 at PSG attenuation 6 (−12 dB); VGZ: +4.8 dB at 9; 5 -> 4: rendered for its own rings (2026-09-30) it peaks 2 dB lower
   - [11, "psg_fTone_06_hi.raw",  4, 0] # baked: 32 at PSG attenuation 6 (−12 dB); VGZ: +3.0 dB at 5
 
 dac_samples:

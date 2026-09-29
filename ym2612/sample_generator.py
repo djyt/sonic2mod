@@ -85,6 +85,7 @@ def generate_fm_samples(
     verbose: bool = False,
     tl_offsets: dict[int, int] | None = None,
     peaks_out: dict[int, tuple[int, int]] | None = None,
+    raw_out: dict[int, tuple] | None = None,
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
     release_out: dict[int, float | None] | None = None,
@@ -245,6 +246,8 @@ def generate_fm_samples(
     for inst_num, (mono, rate) in raw_data.items():
         pk = peak(mono)
         result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
+    if raw_out is not None:                  # the unquantised renders, for the composite mixer
+        raw_out.update(raw_data)
 
     return result
 

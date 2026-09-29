@@ -420,6 +420,7 @@ def _sustain_loops(data: dict, filepath: str) -> str:
 
 
 LEGATO_MODES = ("strict", "loose", "retrigger")
+TWIN_MODES = ("short", "always")    # merge_twins: when a same-shape twin gives up its slot
 
 
 def _legato(data: dict, filepath: str) -> str:
@@ -766,6 +767,9 @@ class ConversionConfig:
     # Instrument slots the composite fit leaves free for the sample banks of the `bank: true`
     # groups (core/banks.py); the banks take any other slot still free after the fit as well
     merge_bank_slots: int = 2
+    # When a composite whose shape a surviving one has gives up its slot (core.merge._twins):
+    # "short" only while the composites do not all fit; "always" in any case, for the bytes
+    merge_twins: str = "short"
     # Song-level override of settings.yaml loop_drift_db (dB a loop may freeze above the settled
     # level): a lofi build lets loops freeze early for shorter samples
     loop_drift_db: float | None = None
@@ -1022,6 +1026,9 @@ class ConversionConfig:
         config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
         config.merge_tolerance = int(data.get('merge_tolerance', 1))
         config.merge_bank_slots = max(0, int(data.get('merge_bank_slots', 2)))
+        config.merge_twins = str(data.get('merge_twins', 'short'))
+        if config.merge_twins not in TWIN_MODES:
+            raise ValueError(f"merge_twins: {config.merge_twins!r} is not one of {', '.join(TWIN_MODES)}")
         if data.get('loop_drift_db') is not None:
             config.loop_drift_db = max(0.0, float(data['loop_drift_db']))
 

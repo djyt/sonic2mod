@@ -1290,6 +1290,10 @@ Hill merged slots $19 and $1F sounded the same).
   stayed installed with nothing playing it).  Green Hill: the lead chord of patterns 1–4 in
   slots 25 and 31 (the same four voices, PSG1 cut at 267 ms in one) is one slot.  The report's
   `composite slots` line counts these apart ("N more play a same-shape stand-in").
+- *Twins always* (`merge_twins: always`, song level): the twins give up their slots whether or
+  not the composites fit, for the bytes.  Green Hill lofi: the lead chord's short-note twin
+  (22 notes, PSG1 cut at 267 ms) plays its long-note twin, 7 KB saved, nothing above −40 dB
+  in the render diff.
 - *An idle bank reserve goes back to the composites* (`SmpsToModConverter.convert`).  How many
   banks the mixes need is known only once they are mixed, so when the banks leave a
   `merge_bank_slots` slot empty while composites were dropped the whole conversion runs again,

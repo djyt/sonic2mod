@@ -1,9 +1,11 @@
 # -------------------------------------------------------------------------------------------------
 # GREEN HILL ZONE Conversion Script - LOFI VARIANT
-# The 4-channel merged build squeezed towards 200 KB: mixes made at the primary's note so looped
-# leads, bass and chords keep their loops (mix_at: primary), drum banks at F2, chime mixes capped,
-# loops allowed to freeze 6 dB early, samples rendered at their root pitch.  Same folds as
-# 02_green_hill_zone.yaml; compare with tools/mod_audit.py.
+# The 4-channel merged build squeezed to ~200 KB (203.5 KB): mixes made at the primary's note so
+# looped leads, bass and chords keep their loops (mix_at: primary), drum banks and chime mixes at
+# F2, loops allowed to freeze 12 dB early, samples rendered at their root pitch, one mix per chord
+# shape (merge_twins), and the composites that play one note each left out (max_composites: eight
+# chime notes of the song play without their chime).  Same folds as 02_green_hill_zone.yaml.
+# Where the bytes go: python tools/mod_audit.py output/02_ghz_lofi_merged.mod --banks
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone lofi"
 input_file: "input/Mus81 - GHZ.asm"
@@ -235,6 +237,7 @@ mod_pattern_breaks:
 
 
 merge_bank_slots: 2             # Sample slots to reserve for the DAC drum banking (2 banks at F2)
+merge_twins: always             # one mix per chord shape, even with slots to spare (the lead chord's twins: 7 KB)
 loop_drift_db: 12               # loops may freeze 12 dB above the settled level: shorter samples
 merge_max_synth_shift: 0        # render every sample at its root pitch: half the bytes of an octave up
 
@@ -303,6 +306,7 @@ merge_patterns:
         cut_primary: true
         mod_channel: 3
         mix_note: F2         # chime mixes at 11 kHz instead of 21
+        max_composites: 3    # two more chords are one note each (0.4 % of the song, 5.6 KB)
         
         
     # --- Pattern $0D-$0F ---------------------------------------------------------------------------      
@@ -320,12 +324,14 @@ merge_patterns:
         followers: [PSG2]
         mod_channel: 1
         mix_at: primary      # the lead keeps its loop under the chime
+        max_composites: 1    # a second lead+chime mix is one note (0.4 % of the song, 6 KB)
         
         # Channel 2: Bass + PSG1
       - primary: FM2
         followers: [PSG1]
         mod_channel: 2
         mix_note: F2         # bass+chime mixes at 11 kHz (the bass notes here are short)
+        max_composites: 2    # the 18 notes of the two common chords; five more are one note each (23 KB)
 
         # Channel 3: Chords
       - primary: FM3

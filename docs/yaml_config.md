@@ -655,7 +655,11 @@ primary's own note, so a looped primary keeps its loop and a lead under a chime 
 instead of its whole note unrolled (the chime is resampled down into it).  A group's
 `mix_note: F2` caps the note its mixes are made at: a mix is made at its fastest layer's note
 (the hat's A3, 28 kHz) unless that is above the cap, so F2 (11 kHz) makes the drum mixes 2.5
-times smaller at the cost of the hat's treble above 5.5 kHz. Details:
+times smaller at the cost of the hat's treble above 5.5 kHz. `merge_twins: always` (song
+level; default `short`) gives every chord shape one mix even when slots are to spare: a
+composite whose shape (voices and intervals) another has plays that one, the one whose
+followers ring furthest, instead of a mix of its own that differs only in where a follower is
+cut (by default that happens only while the composites do not all fit). Details:
 `docs/pipeline.md` § Sample banks.
 
 `python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write`

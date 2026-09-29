@@ -139,8 +139,9 @@ halves the bytes per second per octave).  PSG works the same way (`docs/psg_synt
 
 **The release padding is only what a note can reach** (`exact_sustain` on the resolved
 settings, `core.loops.heard_padding`).  An instrument whose `auto` sustain holds every one of
-its notes, and plays no channel's last note (that one rings out into the release, a
-jingle's final chord), is cut where its notes stop being heard: at the sustain where the
+its notes, plays no channel's last note (that one rings out into the release, a jingle's
+final chord) and is no mix's source (a PSG chime under an FM lead rings as long as the lead,
+which only the FM pass measures), is cut where its notes stop being heard: at the sustain where the
 converter cuts notes (`C00`, the reference builds), or once a release slide has fallen
 48 dB (the merged build's `A0y` slides, at the voice's measured release rate), never past
 `release_padding`.  A sustain loop ending later is longer than that plain render and less

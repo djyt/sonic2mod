@@ -608,6 +608,9 @@ class SmpsToModConverter:
             return settings
         sustain = float(settings.sustain_duration)
         exact: set[int] = set()     # auto sustain holds every note: the sample ends where they do
+        # A mix source plays inside composites too, whose rings the other chip's pass measures
+        # (a PSG chime under an FM lead): its sample keeps its padding and loop
+        mixed = self._merge.pcm_sources if self._merge is not None else set()
         for inst, (need, root) in sorted(needs.items()):
             if root is None:
                 continue
@@ -617,7 +620,7 @@ class SmpsToModConverter:
             want = per_inst.get(inst, sustain)
             have = min(want, fits)
             if need <= have + 0.005:
-                if inst in per_inst and inst not in self._rings_out.get(kind, ()):
+                if inst in per_inst and inst not in self._rings_out.get(kind, ()) and inst not in mixed:
                     exact.add(inst)
                 continue
             limit = ('mod' if fits < want

@@ -188,8 +188,12 @@ def generate_fm_samples(
             # Flat relative to the longest note's end (loop_drift_db), and only where the loop
             # ends before the plain render would (its sustain plus the release tail)
             plain_n = math.ceil(rate * (sustain + synth.release_padding))
+            spec = job.spec
             loop = find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
-                                     max_end=min(plain_n, sustain_n), flat_db=synth.loop_drift_db)
+                                     max_end=min(plain_n, sustain_n),
+                                     flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
+                                     **({"min_loop_secs": spec.min_loop_ms / 1000.0}
+                                        if spec.min_loop_ms is not None else {}))
         if loop is not None:
             mono = apply_loop(mono, loop)
         elif probe > sustain:

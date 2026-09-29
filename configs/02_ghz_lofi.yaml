@@ -1,10 +1,11 @@
 # -------------------------------------------------------------------------------------------------
 # GREEN HILL ZONE Conversion Script - LOFI VARIANT
-# The 4-channel merged build squeezed to ~200 KB (212.5 KB): mixes made at the primary's note so
+# The 4-channel merged build squeezed to ~200 KB (221.7 KB): mixes made at the primary's note so
 # looped leads, bass and chords keep their loops (mix_at: primary), drum banks at A2 (they sound
 # 61 % of the song: 9 KB buys the hat treble to 7 kHz), chime mixes at F2, loops allowed to freeze 12 dB early, samples rendered at their root pitch, one mix per chord
 # shape (merge_twins), and the composites that play one note each left out (max_composites: eight
-# chime notes of the song play without their chime).  Same folds as 02_green_hill_zone.yaml.
+# chime notes of the song play without their chime), and two loops made generous by ear ($B, $16).
+# Same folds as 02_green_hill_zone.yaml.
 # Where the bytes go: python tools/mod_audit.py output/02_ghz_lofi_merged.mod --banks
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone lofi"
@@ -150,6 +151,8 @@ voice_map:
       high: B5
       mod_instrument: 11
       root: C2
+      loop_drift_db: 1      # at 12 dB it looped 27 ms from 13 ms in, a buzz on every note; at 1 dB the
+                            # loop sits past what its notes reach (0.73 s): they play as rendered (+6.7 KB)
     - low:  C6
       high: B7
       mod_instrument: 10
@@ -337,6 +340,7 @@ merge_patterns:
       - primary: FM3
         followers: [FM4]
         mod_channel: 3
+        loop_min_ms: 400        # the chords' 0.9 s release rings through the loop: 87 ms froze into a buzz (+2.4 KB)
         cut_after: 8            # Allow filled notes (FM5 below) to cut FM3 after 8 ticks
         
         # Channel 4: arp

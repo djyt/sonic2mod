@@ -313,6 +313,18 @@ class Narrowing(unittest.TestCase):
 
 
 class ConfigLoading(unittest.TestCase):
+    def test_loop_overrides_on_an_entry_and_a_group(self):
+        from core.config import _parse_instrument_range, _parse_merge_group
+        e = _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 11, "root": "C2",
+                                     "loop_drift_db": 1, "loop_min_ms": 250})
+        self.assertEqual((e.loop_drift_db, e.loop_min_ms), (1.0, 250.0))
+        g = _parse_merge_group({"primary": "FM3", "followers": ["FM4"], "loop_min_ms": 400}, "t")
+        self.assertEqual(g.loop_min_ms, 400.0)
+        with self.assertRaises(ValueError):
+            _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 11, "loop_drift_db": -1})
+        with self.assertRaises(ValueError):
+            _parse_merge_group({"primary": "FM3", "followers": ["FM4"], "loop_min_ms": 0}, "t")
+
     def test_duplicate_key_is_refused(self):
         text = "merge_patterns:\n  - patterns: '1'\n    groups:\n      - primary: FM3\n        followers: [FM4]\n        primary: FM5\n"
         with self.assertRaises(ValueError) as cm:

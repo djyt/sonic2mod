@@ -229,6 +229,38 @@ voice_map:
 
 YAML accepts integer (`vibrato: 12` → speed=1, depth=2), hex integer (`vibrato: 0x12`), or string (`vibrato: "1A"` → speed=1, depth=10). Also supported on `psg_map` and `psg_voice_map` entries with the same semantics.
 
+### loop_drift_db / loop_min_ms — per-instrument sustain loops
+
+Where sustain loops are on (`sustain_loops` in settings.yaml; the merged build by default), an
+FM sample is cut where its envelope settles plus one loop.  Two entry keys override how, for
+that instrument alone:
+
+- `loop_drift_db` — how far above the settled level the loop may freeze (the song's
+  `loop_drift_db`, else settings.yaml's).  Lower loops later: past more of the attack, or past
+  every note the instrument plays, which then sound as rendered.
+- `loop_min_ms` — the shortest loop (30 ms otherwise).  A short loop freezes a detuned voice's
+  shimmer into a buzz wherever a note, or its release slide, rings through it.
+
+A merge group takes both too, for its chip composites.  Green Hill lofi:
+
+```yaml
+voice_map:
+  5:
+    - low: C4
+      high: B5
+      mod_instrument: 11
+      root: C2
+      loop_drift_db: 1      # at the song's 12 dB it looped 27 ms from 13 ms in
+merge_patterns:
+  - patterns: "d-10"
+    groups:
+      - primary: FM3
+        followers: [FM4]
+        loop_min_ms: 400    # the chords' slow release rang through an 87 ms loop
+```
+
+Each costs bytes: `tools/mod_audit.py` shows every sample's loop and size.
+
 ### Choosing root
 
 `root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).

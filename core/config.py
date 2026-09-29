@@ -28,6 +28,12 @@ class InstrumentRange:
     vibrato: int | None = None     # per-entry 4xy override; None = use channel smpsModSet
                                       # stored as raw byte: high nibble=speed, low nibble=depth
                                       # 0x00 = suppress; e.g. 0x12 = speed=1, depth=2
+    loop_drift_db: float | None = None   # this instrument's sustain loop may freeze this far above the
+                                      # settled level (the song's / settings.yaml's otherwise): lower
+                                      # loops later, past more of the attack, for more bytes
+    loop_min_ms: float | None = None     # its sustain loop is at least this long (core.loops' 30 ms
+                                      # otherwise): a longer loop keeps a detuned voice's shimmer
+                                      # moving where a short one freezes it into a buzz
 
 
 def _parse_vibrato(v) -> int:
@@ -89,11 +95,35 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
     root       = _opt(entry, 'root',       lambda v: _mod_note(v, f"{context}.root"))
     synth_root = _opt(entry, 'synth_root', parse_synth_note)
     vibrato    = _opt(entry, 'vibrato',    _parse_vibrato)
+    drift      = _opt(entry, 'loop_drift_db', lambda v: _drift_db(v, context))
+    min_ms     = _opt(entry, 'loop_min_ms', lambda v: _loop_min_ms(v, context))
 
     return InstrumentRange(
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
-        vibrato=vibrato,
+        vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms,
     )
+
+
+def _loop_min_ms(v, context: str) -> float:
+    """A `loop_min_ms` override: milliseconds, positive."""
+    try:
+        ms = float(v)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{context}: loop_min_ms must be a number of milliseconds (got {v!r})") from e
+    if ms <= 0:
+        raise ValueError(f"{context}: loop_min_ms must be positive (got {ms})")
+    return ms
+
+
+def _drift_db(v, context: str) -> float:
+    """A `loop_drift_db` override: dB, not negative."""
+    try:
+        db = float(v)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{context}: loop_drift_db must be a number of dB (got {v!r})") from e
+    if db < 0:
+        raise ValueError(f"{context}: loop_drift_db must not be negative (got {db})")
+    return db
 
 
 
@@ -158,6 +188,9 @@ class MergeGroup:
     mix_note: int | None = None # highest MOD note (index, C1 = 0) a mixed composite of this group is
                                 # made at: a mix is made at its fastest layer's note (a hat's A3, 28 kHz)
                                 # unless that is above this; F2 halves the drum mixes' bytes and more
+    loop_drift_db: float | None = None  # the sustain loop drift of this group's chip composites (the
+                                # primary's entry's, then the song's, otherwise)
+    loop_min_ms: float | None = None    # the shortest sustain loop of this group's chip composites
     patterns: frozenset | None = None   # the MOD patterns (of the reference build) this group folds in;
                                         # None = the whole song.  A `merge_patterns:` group has one.
 
@@ -264,7 +297,9 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       bool(g.get('fill_cut', False)),
                       bool(g.get('bank', False)),
                       mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
-                      cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None))
+                      cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None),
+                      loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
+                      loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)))
 
 
 @dataclass

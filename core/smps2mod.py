@@ -748,6 +748,12 @@ class SmpsToModConverter:
                 for b in self._merge.banks:
                     self.infos.append({'type': 'merge_bank', 'slot': b.slot, 'bytes': b.bytes, 'volume': b.volume,
                                        'members': [(c.offset, c.region, c.notes, c.detail) for c in b.members]})
+                idle = [s for s in self._merge.spare_slots if s not in {b.slot for b in self._merge.banks}]
+                dropped = sum(1 for u in self._merge.unsupported if not u.get('stand_in'))
+                if idle and dropped:
+                    self._add_warning({'type': 'merge_bank_idle', 'channel': 'merge', 'slots': idle,
+                                       'reserve': self.config.merge_bank_slots, 'banks': len(self._merge.banks),
+                                       'dropped': dropped})
             self._report_merge_groups()
             # A mixed composite ends the way its primary does (the release slide's rate)
             for c in self._merge.composites.values():
@@ -1153,7 +1159,11 @@ class SmpsToModConverter:
             for c in self._merge.composites.values():
                 if c.fm is None or c.entry is None:
                     continue
-                base_p = self._fm_baseline_db.get(c.key[1])
+                # The primary's sample_list volume was measured for its level in the REFERENCE
+                # build (the baselines the plan was built with), not for whatever its few own notes
+                # in the merged build average: Green Hill's bell arp dropped 13.5 dB once its voice
+                # kept only a handful of fallback notes at another level
+                base_p = self._merge_baselines.get("FM", {}).get(c.key[1])
                 base_c = self._fm_baseline_db.get(c.inst)
                 if base_p is None or base_c is None:
                     continue

@@ -222,54 +222,13 @@ mod_pattern_breaks:
   - pattern: 0
     row: 31
 
-
-# -------------------------------------------------------------------------------------------------
-# Amiga build (convert.py --merged): 9 channels -> 4.
-#   FM5+FM4: FM4 sounds with FM5 on every one of its 132 notes - the early chords (bars 0-46) are
-#   unison, unison-detuned, a third and a fourth (4 composites, 108 chords); from bar 47 FM4 drops
-#   below FM5 at seven rarer intervals (7 composites, 24 chords).  32 FM5 re-attacks under a held
-#   FM4 note re-attack the chord.  FM3 is the chord's top note (B over E+G): it starts its grace
-#   note one tick after FM4/FM5, which merge_tolerance folds; its other notes play alone where
-#   FM5 rests and are lost where it sounds.  PSG1/PSG2 are a pair of their own (59 of 75
-#   together) that a fifth channel could carry.
-#   DAC+PSG3: the hi-hat (262 hits, its 4-event loop replayed) rides the drums: 169 on a hit as
-#   kick+hat / snare+hat, 29 over silence, 64 over a drum's decay, which they cut (cut_primary)
-#   as on any 4-channel Amiga.
-# tools/merge_survey.py has every pair's counts.
-# -------------------------------------------------------------------------------------------------
-# The song-wide groups below are superseded by the per-pattern `merge_patterns:` section at
-# the end of this file (written by tools/fold_csv.py from input/02_ghz_fold.csv) and are kept
-# commented out as the record of the first 4-channel fold.
-# merge:
-#   - primary: DAC
-#     followers: [PSG3]
-#     cut_primary: true
-#   - primary: FM5
-#     followers: [FM4, FM3]
-#     max_composites: 8     # the 8 most-played chord shapes; 15 rarer chords play FM5 alone
-#   # The chime lines double the bass rhythm: PSG2 starts with a bass note on 107 of its 113
-#   # notes, PSG1 on 72 of 75 (tools/merge_survey.py --all), so they ride the bass channel as
-#   # bass+chime mixes (the 12 most-played combinations; the rest play the bass alone).  A fill
-#   # pool cannot place them: with merge_fill: [PSG1, PSG2] and merge_fill_cut_after {DAC: 2, FM2: 4}
-#   # only 30 of 188 found a silent channel, because every one of the others starts exactly on a
-#   # drum and a bass note-on.
-#   - primary: FM2
-#     followers: [PSG2, PSG1]
-#     max_composites: 8     # 18 slots are free for composites: 2 drum mixes, 8 chords, 8 of these
-#     fill_cut: true        # PSG1's 24-tick chime rings are cut by the next bass note when folded; wherever
-#                           # a channel is silent for the whole ring (the lead's, which rests through
-#                           # patterns 2-4) the chime plays there in full instead
-
-
 # -------------------------------------------------------------------------------------------------
 # Merge Channels
 # 
 # DAC = DAC Drums, FM1 = Lead, FM2 = Bass, PSG3 = Hi-Hat
 # -------------------------------------------------------------------------------------------------
 
-
-merge_bank_slots: 3             # Sample slots to reserve for the DAC drum banking
-
+merge_bank_slots: 2             # Sample slots to reserve for the DAC drum banking
 
 merge_patterns:
 

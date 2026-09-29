@@ -5,6 +5,7 @@ timing, and effects.
 """
 
 import bisect
+import copy
 import dataclasses
 import math
 
@@ -95,6 +96,10 @@ class SmpsToModConverter:
                                                        #   quantisation: what the composite mixer mixes from
         self._bank_delays_dropped = 0      # banked drum notes whose EDx gave way to the 9xx offset
         self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
+        self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
+        self._idle_bank_slots: list[int] = []    # merge_bank_slots reserve the banks left empty while
+                                                 #   composites went without a slot (convert re-runs)
+        self._bank_retry: dict | None = None     # set on that second pass: what it was run for
 
     def _add_warning(self, w: dict):
         """Append a warning, deduplicating by (type, channel, extra_ctx, key)."""
@@ -547,7 +552,30 @@ class SmpsToModConverter:
                                'releases': {i: r for i, r in self._release.items() if i in samples}})
 
     def convert(self):
-        """Main entry point. Returns a ModFile."""
+        """Main entry point. Returns a ModFile.
+
+        A merged build whose sample banks left a `merge_bank_slots` slot empty while composites
+        went without one is converted again with the reserve cut to the banks it filled: how
+        many banks the mixes need is known only once they are made, and the slot is the
+        composites' (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with five chords
+        lost)."""
+        snapshot = (copy.deepcopy((self.song, self.config))
+                    if self.config.merge_active and self._bank_retry is None else None)
+        mod = self._convert_once()
+        if snapshot is None or not self._idle_bank_slots:
+            return mod
+        song, config = snapshot
+        was, need = config.merge_bank_slots, len(self._merge.banks) if self._merge is not None else 0
+        config.merge_bank_slots = need
+        again = SmpsToModConverter(song, config, synth=self.synth, psg_synth=self.psg_synth)
+        again._bank_retry = {'slots': list(self._idle_bank_slots), 'reserve': was, 'banks': need}
+        again.convert()
+        self.__dict__.update(again.__dict__)
+        self.infos.append({'type': 'merge_bank_retry', **again._bank_retry})
+        return self.mod
+
+    def _convert_once(self):
+        """One conversion pass (convert)."""
         self.mod.set_name(self.config.name)
 
         for issue in rate3_synth_root_issues(self.config):
@@ -751,6 +779,8 @@ class SmpsToModConverter:
                 idle = [s for s in self._merge.spare_slots if s not in {b.slot for b in self._merge.banks}]
                 dropped = sum(1 for u in self._merge.unsupported if not u.get('stand_in'))
                 if idle and dropped:
+                    self._idle_bank_slots = idle
+                if idle and dropped and self._bank_retry is not None:
                     self._add_warning({'type': 'merge_bank_idle', 'channel': 'merge', 'slots': idle,
                                        'reserve': self.config.merge_bank_slots, 'banks': len(self._merge.banks),
                                        'dropped': dropped})
@@ -905,6 +935,7 @@ class SmpsToModConverter:
                                'paired': sum(s.paired for s in stats),
                                'solo': sum(s.solo for s in stats),
                                'alone': stats[0].alone if stats else 0,
+                               'unison': plan.unisons.get(label),
                                'composites': comps})
 
     def _cut_after(self, mod_chan: int, tick: int, secs: float, next_row: int) -> bool:
@@ -971,7 +1002,9 @@ class SmpsToModConverter:
             self.infos.append({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
         self.infos.append({'type': 'merge_slots', 'free': plan.slots_free, 'wanted': plan.slots_wanted,
                            'used': sum(1 for c in plan.composites.values() if not c.banked),
-                           'banked': sum(1 for c in plan.composites.values() if c.banked)})
+                           'banked': sum(1 for c in plan.composites.values() if c.banked),
+                           'stand_ins': sum(1 for u in plan.unsupported
+                                            if u.get('stand_in') and u['reason'] == 'no free instrument slot')})
         for s in plan.stats:
             where = s.group.where if s.group is not None else ""
             if s.lost or s.vibrato:
@@ -1088,9 +1121,10 @@ class SmpsToModConverter:
         return out
 
     def _count_levels(self, kind: str, level_of) -> dict[int, dict]:
-        """{MOD instrument: {level_of(state): notes}} over every enabled channel of `kind` ("FM" or
-        "PSG"), walked with the same DriverState the conversion uses.  A PSG note at
-        attenuation 15 is silent and does not vote.
+        """{MOD instrument: {level_of(state, resolved): notes}} over every enabled channel of
+        `kind` ("FM" or "PSG"), walked with the same DriverState the conversion uses.  A PSG
+        note at attenuation 15 is silent and does not vote.  The instruments a merged build's
+        unison chords play louder (ResolvedNote.gain_db) are noted in `_gained`.
         """
         counts: dict[int, dict] = {}
         for chan_cfg, channel in enabled_channels(self.song, self.config, (kind,)):
@@ -1098,8 +1132,10 @@ class SmpsToModConverter:
                 if res is None or (st.is_psg and st.is_silent):
                     continue
                 per = counts.setdefault(res.instrument, {})
-                k = level_of(st)
+                k = level_of(st, res)
                 per[k] = per.get(k, 0) + 1
+                if res.gain_db:
+                    self._gained.setdefault(kind, set()).add(res.instrument)
         return counts
 
     def _plan_levels(self, kind: str) -> dict[int, float]:
@@ -1112,7 +1148,7 @@ class SmpsToModConverter:
         PSG levels from the attenuation (smpsHeaderPSG volume + smpsPSGAlterVol).
         """
         pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
-        counts = self._count_levels(kind, lambda st: st.level_db(pan_law))
+        counts = self._count_levels(kind, lambda st, res: st.level_db(pan_law) + res.gain_db)
         return {inst: modal_level(levels) for inst, levels in counts.items()}
 
     def _plan_fm_render_levels(self) -> dict[int, tuple[int, bool]]:
@@ -1126,7 +1162,7 @@ class SmpsToModConverter:
         its samples where the hardware, at the channel's +18 TL, clips none.
         """
         pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
-        counts = self._count_levels("FM", lambda st: (st.tl, st.hard_panned))
+        counts = self._count_levels("FM", lambda st, _res: (st.tl, st.hard_panned))
         return {inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
                 for inst, per in counts.items()}
 
@@ -1144,6 +1180,8 @@ class SmpsToModConverter:
             pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
             for inst, (tl, pan) in getattr(self, '_fm_render_levels', {}).items():
                 base = self._fm_baseline_db.get(inst)
+                if inst in self._gained.get("FM", ()):
+                    continue            # a unison chord's gain is in the baseline, not in the render
                 if base is not None and abs(fm_level_db(tl, pan, pan_law) - base) > 1e-9:
                     print(f"Warning: instrument {inst} was rendered at TL +{tl}"
                           f"{' panned' if pan else ''} ({fm_level_db(tl, pan, pan_law):+.2f} dB) but its "
@@ -1170,6 +1208,36 @@ class SmpsToModConverter:
                 vol = max(0, min(64, round(c.entry[2] * 10 ** ((base_c - base_p) / 20.0))))
                 c.entry[2] = vol
                 self.mod.samples[c.inst - 1].set_volume(vol)
+
+        # An instrument a unison chord plays louder (core.merge.unison_gain_db) is baked at the
+        # level most of its notes now play, gain included; its sample_list volume was measured
+        # for the reference build's baseline, so it moves by the difference (the chords need no
+        # Cxx: every Green Hill FM4+FM5 note starts between rows, and a Cxx there lands a row
+        # late, after an attack at the old level).
+        if self._merge is not None:
+            over = []
+            for kind, baseline in (("FM", self._fm_baseline_db), ("PSG", self._psg_baseline_db)):
+                ref = self._merge_baselines.get(kind, {})
+                for inst in sorted(self._gained.get(kind, ())):
+                    if inst in self._merge.instruments or inst not in ref or inst not in baseline:
+                        continue
+                    for e in self.config.sample_list or []:
+                        if e[0] != inst:
+                            continue
+                        want = (e[2] if len(e) > 2 else 64) * 10 ** ((baseline[inst] - ref[inst]) / 20.0)
+                        if want > 64:
+                            over.append((inst, 20 * math.log10(want / 64)))
+                        vol = max(0, min(64, round(want)))
+                        if len(e) > 2:
+                            e[2] = vol
+                        else:
+                            e.append(vol)
+                        if self.mod.samples[inst - 1] is not None:
+                            self.mod.samples[inst - 1].set_volume(vol)
+                        self.infos.append({'type': 'merge_unison_volume', 'instrument': inst,
+                                           'volume': vol, 'db': baseline[inst] - ref[inst]})
+            if over:
+                self._add_warning({'type': 'merge_headroom', 'channel': 'merge unison', 'instruments': over})
 
         # Convert each configured channel
         for chan_cfg in self.config.channels:
@@ -1264,6 +1332,8 @@ class SmpsToModConverter:
 
         _psg_mode_baked = self._psg_volume_mode == "baked"
 
+        _note_gain = [0.0]      # dB a unison chord adds to the sounding note (ResolvedNote.gain_db)
+
         def _emit_volume(inst: int) -> int:
             """MOD volume for a note on `inst` right now (equals the sample volume → no Cxx).
 
@@ -1276,7 +1346,7 @@ class SmpsToModConverter:
                 return round(current_volume * sv / 64)
             if st.is_psg and st.is_silent:
                 return 0
-            level = st.level_db(_pan_law)
+            level = st.level_db(_pan_law) + _note_gain[0]
             baseline = self._psg_baseline_db if st.is_psg else self._fm_baseline_db
             rel_db = level - baseline.get(inst, level)
             return max(0, min(64, round(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)))
@@ -1539,6 +1609,7 @@ class SmpsToModConverter:
                     # walk_channel: the range lookup in the config's range_space, root +
                     # (key - low) for an anchored entry, the channel transpose otherwise).
                     assert res is not None
+                    _note_gain[0] = res.gain_db
                     source_semitone = res.source
                     final_instrument = res.instrument
                     final_note = ModNote(res.index if self._merge is None

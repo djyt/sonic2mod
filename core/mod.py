@@ -141,8 +141,11 @@ class ModFile:
         output += self.MOD_FORMAT
         for pattern in self.patterns:
             output += pattern.get_bytes()
+        # Exactly the bytes each header declares (its length is in words): an odd sample used to
+        # be written whole, so every later one was read a byte early by players, its loop too
         for sample in self.samples:
-            output += sample.data
+            size = 2 * sample.length
+            output += sample.data[:size].ljust(size, b"\0")
         return output
 
     def get_index(self):
@@ -390,7 +393,7 @@ class ModFile:
                 sample = ModSample(filename)
                 sample.data = data
                 sample.set_volume(vol)
-                sample.length = int(len(data) / 2)
+                sample.length = (len(data) + 1) // 2      # whole words: an odd file's last byte kept
                 sample.set_finetune(finetune)
                 self.samples[sample_index - 1] = sample
 

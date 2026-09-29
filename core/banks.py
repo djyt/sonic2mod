@@ -52,13 +52,17 @@ class Bank:
 
 
 def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slots: list[int],
-               max_bytes: int, pad_secs: float, amiga_clock: float) -> list[dict]:
+               max_bytes: int, pad_secs: float, amiga_clock: float,
+               raw: dict[int, list[float]] | None = None) -> list[dict]:
     """Lay the banked composites' samples (`samples`, by provisional id, from the mixer) into
     banks in `slots`, install the banks in `mod`, and point the plan at them: the members'
     ids become their bank's slot and `plan.regions` says where each note's sound starts and
     how long it is.  `pad_secs` (one MOD tick) of silence follows every sound, so the cut the
     converter places, up to half a tick off, never reaches the next sound.  The most-played
-    composites are packed first.  Returns one dict per member dropped."""
+    composites are packed first.  A member whose normalised sum the mixer kept (`raw`) is
+    quantised here, once, with the bank's volume scaling in; the others' bytes are scaled.
+    Returns one dict per member dropped."""
+    raw = raw or {}
     members = sorted((c for c in plan.composites.values() if c.banked and c.inst in samples),
                      key=lambda c: (-c.notes, c.inst))
     if not members:
@@ -91,8 +95,12 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             continue
         assert bank is not None
         c.offset, c.region = bank.bytes, sound
-        data = s.data if s._volume == volume else to_int8(
-            [v * s._volume / volume for v in signed8(s.data)], 1.0)
+        if c.inst in raw:
+            data = to_int8(raw[c.inst], s._volume / volume)
+        elif s._volume == volume:
+            data = s.data
+        else:
+            data = to_int8([v * s._volume / volume for v in signed8(s.data)], 1.0)
         bank.data += data + bytes(region - sound)
         bank.members.append(c)
     stand_in(plan)                                       # a dropped member's notes, if a shape survives

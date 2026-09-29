@@ -271,6 +271,18 @@ def release_rate_db_s(mono: Sequence[float], rate: int, keyoff_n: int, period: f
     return max(0.0, -slope)
 
 
+def unroll_values(values, loop: tuple[int, int], length: int) -> list:
+    """`unroll` for a render's values (floats or ints) instead of its bytes."""
+    start, ln = loop
+    if ln <= 0 or start + ln > len(values):
+        return list(values[:length])
+    body = list(values[start:start + ln])
+    out = list(values[:start + ln])
+    while len(out) < length:
+        out += body
+    return out[:length]
+
+
 def unroll(pcm: bytes, loop: tuple[int, int], length: int) -> bytes:
     """A looped 8-bit sample played straight through for `length` bytes: the part before the
     loop, then the loop repeated (what a mix of finished samples needs from a looped one)."""

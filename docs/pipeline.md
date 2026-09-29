@@ -1027,7 +1027,14 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   volume is clamped and `merge_headroom` says by how much.
 - anything else → `("pcm", primary instrument, (follower instrument, interval above the
   primary's MOD note, level gain, fill)...)`: mixed by `mix_pcm_composites` once every sample
-  is in, at the primary MOD note it was first met at (`Composite.base`).  The key is a
+  is in, at the primary MOD note it was first met at (`Composite.base`).  The sources are the
+  generators' **unquantised renders** (`raw_out` of both generators, `SmpsToModConverter._raw_renders`,
+  peak-scaled as their samples were and cut where their samples were), a drum its bytes off disk,
+  so a mix passes one sinc resample per layer (from the sample's own rate, itself one sinc from the
+  chip's) and one dithered quantisation — the mixer's, or for a banked composite the bank's, which
+  scales the normalised sum (`raw_out` of the mixer) by the member's volume before quantising.
+  Until 2026-09-29 the mixer read the 8-bit samples back, so every mix was quantised twice and a
+  quieter bank member three times (about 3 dB of noise floor; the measured change is dither-level).  The key is a
   **shape**, as a chip composite's is: the same chord two semitones down is the same mix
   triggered two semitones lower (`trigger_note`; `plan.notes` holds each note's trigger, and
   `plan.bases` the primary's note there), so Green Hill's F+A+C and Eb+G+Bb chime chords are

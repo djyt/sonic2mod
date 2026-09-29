@@ -215,6 +215,7 @@ def generate_psg_samples(
     noise_envelopes: dict | None = None,
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
+    raw_out: dict[int, tuple] | None = None,
 ) -> dict:
     """Render a PSG sample for every instrument in the config's catalogue.
 
@@ -252,6 +253,8 @@ def generate_psg_samples(
     for inst_num, (mono, rate) in raw_data.items():
         pk = peak(mono)
         result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
+    if raw_out is not None:                  # the unquantised renders, for the composite mixer
+        raw_out.update(raw_data)
     return result
 
 

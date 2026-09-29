@@ -1244,7 +1244,9 @@ plus the release slide (an FM primary's lasts until the voice has fallen 48 dB) 
 note-on — with a 2 ms fade; the layer cuts inside the mix stay where they were, so what plays
 before the cut is the same audio.  Checked with `tools/mod_render_diff.py`, with the dither
 seed held fixed: the lofi build renders identically, Green Hill differs at −46 dB in the last
-row of one release slide.  Green Hill merged: 530 → 431 KB; lofi 328 → 270 KB.
+row of one release slide.  A loop the mix kept (a looped primary at its own rate) that no note
+reaches is dropped and the mix cut the same way.  Green Hill merged: 530 → 419 KB; lofi 328 →
+232 KB.
 
 **Slots, again.** Two rules wasted slots: the pinned set was computed once, before any
 composite was dropped, so a source of a dropped mix stayed reserved; and every FM mix source

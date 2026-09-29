@@ -650,7 +650,9 @@ A drum-primary group may add `bank: true`: its mixed composites (kick+bass+hat a
 share instrument slots as **sample banks**, every note starting with `9xx` at its sound's
 offset and cut where the sound ends, so eighteen drum mixes cost three slots instead of
 eighteen. `merge_bank_slots: 3` (song level, default 2) is how many slots the composite fit
-holds back for them; the converter says when a sound found no bank slot. A group's
+holds back for them; the converter says when a sound found no bank slot. A group's `mix_at: primary` makes its mixes at the
+primary's own note, so a looped primary keeps its loop and a lead under a chime costs a few KB
+instead of its whole note unrolled (the chime is resampled down into it).  A group's
 `mix_note: F2` caps the note its mixes are made at: a mix is made at its fastest layer's note
 (the hat's A3, 28 kHz) unless that is above the cap, so F2 (11 kHz) makes the drum mixes 2.5
 times smaller at the cost of the hat's treble above 5.5 kHz. Details:

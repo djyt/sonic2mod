@@ -841,7 +841,9 @@ def build_merge_plan(song, config, *, pan_law_db: float,
                     # the kick's 8 kHz and lose everything above 4 kHz.
                     comp.base = p.index
                     best = min([p.index] + [fn.index for _, fn in present], key=lambda i: PERIOD_TABLE[i])
-                    if g.mix_note is not None and PERIOD_TABLE[best] < PERIOD_TABLE[g.mix_note]:
+                    if g.mix_at == "primary":
+                        best = p.index           # a looped primary keeps its loop (the same rate)
+                    elif g.mix_note is not None and PERIOD_TABLE[best] < PERIOD_TABLE[g.mix_note]:
                         best = g.mix_note        # the group's cap: fewer bytes, less treble
                     if best != p.index:
                         comp.note = best
@@ -1216,17 +1218,24 @@ def _signed(data: bytes) -> list[float]:
     return list(signed8(data))
 
 
+RELEASE_FLOOR_DB = 48.0    # a released layer is cut where it falls this far: the 8-bit floor (~49 dB)
+UPSAMPLE_TAPS = 12         # a layer resampled UP into a mix (a kick at 8 kHz under a hat at 28) gets a short
+                           # kernel: a 32-tap sinc rings 2 ms before every transient, and the hat, at the
+                           # mix's own rate, does not - so the drum's attack sat late behind the hat's
+
+
 def _cut_layer(sig: list[float], keep: int, rate: float, release_db_s: float | None) -> list[float]:
     """A follower layer keyed off `keep` samples in: what follows decays at the voice's release
-    rate (dB/s, from core.loops) to -60 dB, or is cut over 2 ms where the voice has no release
-    to speak of (a PSG note ends the instant its attenuation is set to 15)."""
+    rate (dB/s, from core.loops) to the 8-bit floor (RELEASE_FLOOR_DB: past it the tail is
+    quantisation noise), or is cut over 2 ms where the voice has no release to speak of (a PSG
+    note ends the instant its attenuation is set to 15)."""
     if keep >= len(sig):
         return sig
     if release_db_s is None or not math.isfinite(release_db_s) or release_db_s <= 0:
         fade = max(1, int(rate * 0.002))
         tail = [v * (1 - i / fade) for i, v in enumerate(sig[keep:keep + fade])]
         return sig[:keep] + tail
-    n = int(rate * 60.0 / release_db_s)                  # samples to -60 dB
+    n = int(rate * RELEASE_FLOOR_DB / release_db_s)      # samples to the floor
     tail = [v * 10 ** (-release_db_s * (i / rate) / 20.0) for i, v in enumerate(sig[keep:keep + n])]
     return sig[:keep] + tail
 
@@ -1280,6 +1289,12 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     def sample_of(inst: int) -> ModSample:
         return sources.get(inst) or mod.samples[inst - 1]
 
+    def tail_secs(inst: int) -> float:
+        """How long a layer keyed off at the composite's end still sounds: its release to the
+        floor, or the 2 ms fade of a voice with none."""
+        r = release_db_s.get(inst)
+        return RELEASE_FLOOR_DB / r if r is not None and math.isfinite(r) and r > 0 else 0.002
+
     def values_of(inst: int, s: ModSample) -> list[float]:
         """The sample's values at the scale of its bytes: the unquantised render where the
         generator kept one (peak-normalised as the sample was, cut where the sample was), else
@@ -1310,7 +1325,11 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         # How long a looped layer is unrolled: this composite's own longest note plus the release
         # padding.  The instrument-wide sustain is the fallback when the plan had no clock: a
         # chord mix used to be unrolled for its voice's 4 s song-wide need to play 0.35 s notes.
-        need = comp.longest + padding_secs if comp.longest else 0.0
+        # The release padding is for an FM primary, whose note ends in a release slide the sample
+        # must still carry; a PSG or drum primary's note is cut at its end (or ends by itself), so
+        # only a row's worth of the followers' tails is kept
+        pad = padding_secs if comp.group.primary.startswith("FM") else min(padding_secs, 0.05)
+        need = comp.longest + pad if comp.longest else 0.0
         # The followers first: how long the mix has to run before a loop may start
         layers: list[list[float]] = []
         for _, f_inst, interval, scale, fill_ms in subs:
@@ -1327,15 +1346,19 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 # Unrolled for the longer of the two instruments' longest notes (a drum primary
                 # has no hold: until 2026-09-28 a looped bass under a kick was unrolled to two
                 # bytes and vanished from every drum+bass mix), never shorter than the sample
-                hold = need if need else max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0))
+                # ... plus the release it gets when keyed off at the composite's end (below)
+                hold = (need + tail_secs(f_inst)) if need else max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0))
                 f_data = unroll_values(f_data, f_loop, max(len(f_data), int(hold * r_f) + 2))
-            if need:                          # no layer outlasts the composite's own notes
-                f_data = f_data[:max(2, int(need * r_f) + 2)]
             sig = [v * gain for v in f_data]
             if fill_ms is not None:           # keyed off by its note fill while the primary plays on
                 sig = _cut_layer(sig, int(r_f * fill_ms / 1000.0), r_f, release_db_s.get(f_inst))
+            if need and len(sig) > int(need * r_f) + 2:
+                # No layer outlasts the composite's own notes: keyed off there, with its release
+                # (a hard cut left a click on every kick whose bass rang the whole note)
+                sig = _cut_layer(sig, int(need * r_f), r_f, release_db_s.get(f_inst))
             if round(r_f) != round(r_p):
-                sig = resample(sig, round(r_f), round(r_p))
+                sig = resample(sig, round(r_f), round(r_p),
+                               **({"taps": UPSAMPLE_TAPS} if r_f < r_p else {}))
             layers.append(sig)
         tail = max((len(sig) for sig in layers), default=0)
         b_data = values_of(p_inst, base)
@@ -1343,18 +1366,24 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         b_loop = loop_of(base)
         if b_loop is not None:
             s0, ln = b_loop
-            if same_rate and ln >= 4:
+            if need and int(need * r_base) < s0:
+                # Its longest note ends before the loop would start: no loop, just the notes'
+                # length plus its release (Green Hill's 0.35 s chords on a voice that settles
+                # 2.4 s in)
+                b_data = b_data[:int((need + tail_secs(p_inst)) * r_base) + 2]
+            elif same_rate and ln >= 4:
                 k = max(0, -(-(tail - s0) // ln))          # repeats of the loop body before the tail ends
                 b_data = unroll_values(b_data, b_loop, s0 + (k + 1) * ln)
                 keep_loop = (s0 + k * ln, ln)
             else:
-                hold = need if need else hold_secs.get(p_inst, 0.0)
+                hold = (need + tail_secs(p_inst)) if need else hold_secs.get(p_inst, 0.0)
                 b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold * r_base) + 2))
-        if need and keep_loop is None:
-            b_data = b_data[:max(2, int(need * r_base) + 2)]
         total = [v * base._volume / 64.0 for v in b_data]
+        if need and keep_loop is None and len(total) > int(need * r_base) + 2:
+            total = _cut_layer(total, int(need * r_base), r_base, release_db_s.get(p_inst))
         if not same_rate:
-            total = resample(total, round(r_base), round(r_p))
+            total = resample(total, round(r_base), round(r_p),
+                             **({"taps": UPSAMPLE_TAPS} if r_base < r_p else {}))
         for sig in layers:
             if len(sig) > len(total):
                 total.extend([0.0] * (len(sig) - len(total)))

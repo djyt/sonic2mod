@@ -152,6 +152,9 @@ class MergeGroup:
                                 # patterns go to the fill pool - each on whichever column in use there is
                                 # silent when it starts (sprinkled between the others' notes), lost where
                                 # none is; the channel has no column of its own in those patterns
+    mix_at: str | None = None   # "primary": a mixed composite is made at the primary's own note, so a
+                                # looped primary keeps its loop (a lead under a chime: a few KB instead
+                                # of the whole note unrolled); the followers are resampled down into it
     mix_note: int | None = None # highest MOD note (index, C1 = 0) a mixed composite of this group is
                                 # made at: a mix is made at its fastest layer's note (a hat's A3, 28 kHz)
                                 # unless that is above this; F2 halves the drum mixes' bytes and more
@@ -231,6 +234,9 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
     if isinstance(followers, str):
         followers = [followers]
     _mc = g.get('max_composites')
+    mix_at = g.get('mix_at')
+    if mix_at is not None and str(mix_at).lower() != "primary":
+        raise ValueError(f"{ctx}: mix_at must be 'primary' (got {mix_at!r})")
     mix_note = None
     if g.get('mix_note') is not None:
         note = MOD_NOTE_MAP.get(str(g['mix_note']))
@@ -258,7 +264,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       bool(g.get('fill_cut', False)),
                       bool(g.get('bank', False)),
                       mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
-                      cut_after=cut_after)
+                      cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None))
 
 
 @dataclass
@@ -760,6 +766,9 @@ class ConversionConfig:
     # Instrument slots the composite fit leaves free for the sample banks of the `bank: true`
     # groups (core/banks.py); the banks take any other slot still free after the fit as well
     merge_bank_slots: int = 2
+    # Song-level override of settings.yaml loop_drift_db (dB a loop may freeze above the settled
+    # level): a lofi build lets loops freeze early for shorter samples
+    loop_drift_db: float | None = None
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -1013,6 +1022,8 @@ class ConversionConfig:
         config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
         config.merge_tolerance = int(data.get('merge_tolerance', 1))
         config.merge_bank_slots = max(0, int(data.get('merge_bank_slots', 2)))
+        if data.get('loop_drift_db') is not None:
+            config.loop_drift_db = max(0.0, float(data['loop_drift_db']))
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])

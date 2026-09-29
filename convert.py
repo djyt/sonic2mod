@@ -195,6 +195,10 @@ def main():
         SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
     synth     = SynthesisSettings.from_yaml(SETTINGS_FILE)     if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
     psg_synth = PsgSynthesisSettings.from_yaml(SETTINGS_FILE)  if os.path.exists(SETTINGS_FILE) else PsgSynthesisSettings()
+    if config.loop_drift_db is not None:            # the song's own loop_drift_db over settings.yaml's
+        import dataclasses as _dc
+        synth = _dc.replace(synth, loop_drift_db=config.loop_drift_db)
+        psg_synth = _dc.replace(psg_synth, loop_drift_db=config.loop_drift_db)
 
     fm_synth_str  = (f"[green]enabled[/green] [dim]({synth.mode})[/dim]"
                      if synth.enabled else "[dim]disabled[/dim]")

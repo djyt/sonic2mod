@@ -52,6 +52,18 @@ class FmInstrument:
     context: str             # "voice_map[0][1]", "channel_instrument_map[FM5][0][0]", ...
     source_label: str = ""   # the channel_instrument_map channel, "" for voice_map
     legacy: bool = False     # from the deprecated legacy_voice_map form
+    loop_drift_db: float | None = None   # a merge group's overrides for its composite; else the entry's
+    loop_min_ms: float | None = None
+
+    @property
+    def drift_db(self) -> float | None:
+        """This instrument's sustain loop drift override (None: the song's)."""
+        return self.loop_drift_db if self.loop_drift_db is not None else self.entry.loop_drift_db
+
+    @property
+    def min_loop_ms(self) -> float | None:
+        """This instrument's shortest sustain loop override (None: core.loops' default)."""
+        return self.loop_min_ms if self.loop_min_ms is not None else self.entry.loop_min_ms
 
     @property
     def root_idx(self) -> int | None:

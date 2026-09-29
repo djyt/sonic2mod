@@ -1005,7 +1005,8 @@ class _Planner:
         if chip:
             assert spec is not None and p.voice is not None
             layers = [FmLayer(p.voice)] + [fm_layer(p, fn, self.tol) for fn in present]
-            comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label)
+            comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
+                                   loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms)
         else:
             comp.base = p.index
             best = _mix_note(g, p, present)

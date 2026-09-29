@@ -7,6 +7,8 @@ into a MOD volume.  They used to each carry their own copy of the constants.
 
 from __future__ import annotations
 
+import math
+
 TL_STEP_DB = 0.75          # YM2612 total level: dB per step
 PSG_STEP_DB = 2.0          # SN76489 attenuation: dB per step
 DEFAULT_FM_PAN_LAW_DB = 3.0    # a hard-panned FM note vs a centred one
@@ -34,6 +36,16 @@ def db_to_mod_volume(base: int, db: float, minimum: int = 0) -> int:
     analyser's YAML skeleton, where a volume of 0 would be a useless suggestion.
     """
     return max(minimum, min(MOD_MAX_VOLUME, round(base * 10 ** (db / 20.0))))
+
+
+def clamp_mod_volume(volume: float) -> int:
+    """A wanted volume as a MOD volume: rounded, 0..64."""
+    return max(0, min(MOD_MAX_VOLUME, round(volume)))
+
+
+def headroom_db(volume: float) -> float:
+    """dB a wanted volume lies past 64: what clamping it costs (0 when it fits)."""
+    return 20 * math.log10(volume / MOD_MAX_VOLUME) if volume > MOD_MAX_VOLUME else 0.0
 
 
 def fm_tl_to_mod(tl_offset: int) -> int:

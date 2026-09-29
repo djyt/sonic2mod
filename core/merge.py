@@ -81,7 +81,7 @@ from typing import NamedTuple
 from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
-from .levels import TL_STEP_DB
+from .levels import TL_STEP_DB, clamp_mod_volume
 from .loops import unroll_values
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
@@ -1535,7 +1535,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         else:
             pcm = to_int8(total, 127.0 / pk)
             level = 64.0 * pk / 127.0
-            vol = min(64, round(level))
+            vol = clamp_mod_volume(level)
             if level > 64:
                 comp.headroom_db = 20 * math.log10(pk / 127.0)
         pcm = pcm[:max_bytes]

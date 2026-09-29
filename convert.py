@@ -656,6 +656,16 @@ def _warn_merge_bank_dropped(w: dict, ctx_str: str) -> None:
     )
 
 
+def _warn_merge_bank_idle(w: dict, ctx_str: str) -> None:
+    slots = ", ".join(str(s) for s in w['slots'])
+    console.print(
+        f"\n  [bold yellow]![/bold yellow]  "
+        f"[yellow]slot{'s' if len(w['slots']) > 1 else ''} {slots} held back for sample banks went unused "
+        f"(merge_bank_slots: {w['reserve']}, {w['banks']} bank{'s' if w['banks'] != 1 else ''} needed) while "
+        f"{w['dropped']} composites had no slot — lower merge_bank_slots to {w['banks']}[/yellow]"
+    )
+
+
 def _warn_merge_dropped(w: dict, ctx_str: str) -> None:
     pats = ", ".join(f"{p:x}" for p in w['patterns'])
     console.print(
@@ -743,6 +753,7 @@ _WARNING_RENDERERS = {
     'merge_fill_lost': _warn_merge_fill_lost,
     'merge_dropped': _warn_merge_dropped,
     'merge_bank_dropped': _warn_merge_bank_dropped,
+    'merge_bank_idle': _warn_merge_bank_idle,
     'merge_unspecified': _warn_merge_unspecified,
 }
 

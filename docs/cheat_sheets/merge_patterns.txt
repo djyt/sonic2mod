@@ -22,7 +22,8 @@ Group keys
   cut_after: 8                 a pooled note may take this group's column once its note is N ticks old (cuts the tail)
 
 Song level (beside the blocks)
-  merge_bank_slots: 3          instrument slots held back for the banks
+  merge_bank_slots: 3          instrument slots held back for the banks; the converter says when one went unused
+                               while composites had no slot (lower it), and when a sound found no bank (raise it)
   merge_tolerance: 1           ticks a follower note-on may be off the primary's and still fold
   merge_fill: [PSG1]           pooled channels: each note on whichever output column is silent
   merge_fill_cut_after: {DAC: 2}   song-wide fallback for cut_after, by the column's owner

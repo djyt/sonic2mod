@@ -1636,10 +1636,15 @@ class _Mixer:
         # Past what any note reaches, nothing is heard (the layers' release tails ran on there): a
         # note is heard to the earlier of its end plus the release slide (an FM primary's lasts
         # until the voice has fallen to the floor) and the column's next note-on
-        if keep_loop is None and comp.heard:
+        # A kept loop no note reaches goes too (Green Hill lofi: 25 KB kept a lead's loop 0.8 s in
+        # for one 0.2 s note)
+        if comp.heard:
             slide = min(self._padding, self._tail_secs(p_inst)) if fm_primary else pad
-            heard = max(min(end + slide, nxt) * speed for end, nxt, speed in comp.heard)
-            total = _cut_layer(total, math.ceil(heard * r_p), r_p, None)
+            keep = math.ceil(max(min(end + slide, nxt) * speed for end, nxt, speed in comp.heard) * r_p)
+            if keep_loop is not None and keep <= keep_loop[0]:
+                keep_loop = None
+            if keep_loop is None:
+                total = _cut_layer(total, keep, r_p, None)
         return total, keep_loop, base._finetune
 
     def _follower_layers(self, comp: Composite, r_p: float, need: float, problems: list[dict]) -> list[list[float]]:

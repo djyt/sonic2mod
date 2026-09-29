@@ -464,7 +464,7 @@ class SmpsToModConverter:
                 comp = comps.get(inst)
                 plays = [(inst, out_idx)]
                 if comp is not None:
-                    plays += [(comp.key[1], out_idx)] + [(fi, out_idx + itv) for _k, fi, itv, _sc, _fill in comp.key[2]]
+                    plays += comp.mix_notes(out_idx)
                 for inst_i, raw_idx in plays:
                     if inst_i != inst and inst_i not in roots:
                         continue                # a source of the other chip: its own pass counts it
@@ -787,8 +787,8 @@ class SmpsToModConverter:
             self._report_merge_groups()
             # A mixed composite ends the way its primary does (the release slide's rate)
             for c in self._merge.composites.values():
-                if c.fm is None and c.key[1] in self._release:
-                    self._release.setdefault(c.inst, self._release[c.key[1]])
+                if c.fm is None and c.primary in self._release:
+                    self._release.setdefault(c.inst, self._release[c.primary])
             over = sorted((c.inst, c.headroom_db) for c in self._merge.composites.values() if c.headroom_db > 0.05)
             if over:
                 self._add_warning({'type': 'merge_headroom', 'channel': 'merge', 'instruments': over})
@@ -1201,7 +1201,7 @@ class SmpsToModConverter:
                 # build (the baselines the plan was built with), not for whatever its few own notes
                 # in the merged build average: Green Hill's bell arp dropped 13.5 dB once its voice
                 # kept only a handful of fallback notes at another level
-                base_p = self._merge_baselines.get("FM", {}).get(c.key[1])
+                base_p = self._merge_baselines.get("FM", {}).get(c.primary)
                 base_c = self._fm_baseline_db.get(c.inst)
                 if base_p is None or base_c is None:
                     continue

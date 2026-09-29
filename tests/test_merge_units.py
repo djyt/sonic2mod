@@ -26,9 +26,13 @@ sys.path.insert(0, str(_HERE.parent))
 from core.banks import ALIGN, pack_banks
 from core.config import MergeGroup, format_patterns, load_yaml, parse_patterns
 from core.merge import (
+    CHIP,
+    MIX,
     RELEASE_FLOOR_DB,
     Composite,
+    CompositeKey,
     MergePlan,
+    MixLayerKey,
     NoteOn,
     _cut_layer,
     _plan_slots,
@@ -85,10 +89,10 @@ class CompositeKeys(unittest.TestCase):
         k1 = composite_key(p1, [f1], False, lambda n: 1.0)
         k2 = composite_key(p2, [f2], False, lambda n: 1.0)
         self.assertEqual(k1, k2)
-        self.assertEqual(k1[2][0][2], 7)          # the follower's interval, not its note
+        self.assertEqual(k1.layers[0].interval, 7)   # the follower's interval, not its note
 
     def test_trigger_note_follows_the_transposition(self):
-        c = Composite(-1, ("pcm", 4, ()), MergeGroup("FM5", ["FM3"]), base=16, note=23)
+        c = Composite(-1, CompositeKey(MIX, 4, ()), MergeGroup("FM5", ["FM3"]), base=16, note=23)
         self.assertEqual(trigger_note(c, 16), 23)
         self.assertEqual(trigger_note(c, 14), 21)
 
@@ -123,11 +127,11 @@ class Unison(unittest.TestCase):
 class Twins(unittest.TestCase):
     def _plan(self):
         g = MergeGroup("FM5", ["FM3", "PSG1"])
-        cut = Composite(-1, ("pcm", 14, (("pcm", 14, 7, 1.0, None), ("pcm", 19, 0, 1.0, 267))), g,
+        cut = Composite(-1, CompositeKey(MIX, 14, (MixLayerKey(14, 7, 1.0, None), MixLayerKey(19, 0, 1.0, 267))), g,
                         base=16, note=23, notes=11, entry=[-1, "cut", 64, 0])
-        held = Composite(-2, ("pcm", 14, (("pcm", 14, 7, 1.0, None), ("pcm", 19, 0, 1.0, None))), g,
+        held = Composite(-2, CompositeKey(MIX, 14, (MixLayerKey(14, 7, 1.0, None), MixLayerKey(19, 0, 1.0, None))), g,
                          base=14, note=21, notes=2, entry=[-2, "held", 64, 0])
-        other = Composite(-3, ("pcm", 14, (("pcm", 14, 4, 1.0, None),)), g, base=14, notes=1,
+        other = Composite(-3, CompositeKey(MIX, 14, (MixLayerKey(14, 4, 1.0, None),)), g, base=14, notes=1,
                           entry=[-3, "other", 64, 0])
         plan = MergePlan([g], composites={c.key: c for c in (cut, held, other)})
         plan.ticks = {("FM5", 0): -1, ("FM5", 8): -2, ("FM5", 16): -3}
@@ -161,7 +165,7 @@ class Twins(unittest.TestCase):
 class Mixer(unittest.TestCase):
     def _plan(self, longest: float) -> tuple[MergePlan, ModFile, Composite]:
         g = MergeGroup("DAC", ["FM2"])
-        c = Composite(-1, ("pcm", 1, (("pcm", 2, 0, 1.0, None),)), g, base=12, note=None, longest=longest,
+        c = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, note=None, longest=longest,
                       entry=[-1, "merge", 64, 0])
         plan = MergePlan([g], composites={c.key: c})
         mod = ModFile(4)
@@ -198,9 +202,9 @@ class Mixer(unittest.TestCase):
 class Banks(unittest.TestCase):
     def test_pack_aligns_cuts_and_drops(self):
         g = MergeGroup("DAC", ["FM2"], bank=True)
-        c1 = Composite(-1, ("pcm", 1, (("pcm", 2, 0, 1.0, None),)), g, base=12, note=None, banked=True, notes=5,
+        c1 = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, note=None, banked=True, notes=5,
                        entry=[-1, "a", 64, 0])
-        c2 = Composite(-2, ("pcm", 1, (("pcm", 2, 3, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
+        c2 = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(2, 3, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
                        entry=[-2, "b", 32, 0])
         plan = MergePlan([g], composites={c1.key: c1, c2.key: c2})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
@@ -220,7 +224,7 @@ class Banks(unittest.TestCase):
         self.assertEqual(mod.samples[6]._volume, 64)                # the loudest member's
         self.assertEqual(len(mod.samples[6].data) % ALIGN, 0)
         # a member that fits no bank is dropped and reported
-        c3 = Composite(-3, ("pcm", 1, (("pcm", 2, 5, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
+        c3 = Composite(-3, CompositeKey(MIX, 1, (MixLayerKey(2, 5, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
                        entry=[-3, "c", 64, 0])
         plan.composites[c3.key] = c3
         plan.ticks[("DAC", 16)] = -3
@@ -234,9 +238,9 @@ class Banks(unittest.TestCase):
 class Slots(unittest.TestCase):
     def test_chip_composite_never_takes_an_fm_source_slot(self):
         g = MergeGroup("FM5", ["FM4"])
-        chip = Composite(-1, ("fm", 4, ()), g, notes=9)
+        chip = Composite(-1, CompositeKey(CHIP, 4, ()), g, notes=9)
         chip.fm = object()
-        pcm = Composite(-2, ("pcm", 4, ()), g, notes=1)
+        pcm = Composite(-2, CompositeKey(MIX, 4, ()), g, notes=1)
         chosen, left = _plan_slots([chip, pcm], [14, 20], pcm_only={14})
         self.assertEqual(chosen, {-1: 20, -2: 14})
         self.assertEqual(left, [])

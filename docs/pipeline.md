@@ -1227,6 +1227,25 @@ between rows gives up its `EDx` to the offset (counted).  The converter prints e
 slot, size and sounds (`9xx`, bytes, notes) and how many notes were cut.  Green Hill: 18 drum
 sounds (170 KB) in three banks instead of 18 slots (`merge_bank_slots: 3`).
 
+Every sound starts on its 256-byte boundary: a member quantised from its raw sum can be a
+byte shorter than its sample (an odd length evened with a zero), and until 2026-09-29 every
+later sound in the bank started a byte early, its `9xx` rounding down onto up to 255 bytes of
+the previous sound's silence: most of Green Hill's merged drum hits were up to 23 ms late.
+
+**Mixes end where no note reaches** (`_Planner._measure_heard`, `Composite.heard`).  A mix
+used to run for its longest note plus the release padding plus every layer's release tail,
+though the column's next note-on retriggers the channel first: Green Hill's drum+bass sounds
+were 0.39 s for hits 0.2 s apart.  Per note the plan records where it ends and where the next
+note-on of its primary's stream (own, spliced and pooled notes; not smpsNoAttack notes, which
+a strict legato writes as `3FF`) cuts it, a row of margin each, and how much faster than the
+mix's own trigger note it plays (a chord shape transposed an octave up needs twice the bytes).
+The mixer cuts the finished sum at the latest point any note reaches — the earlier of its end
+plus the release slide (an FM primary's lasts until the voice has fallen 48 dB) and its next
+note-on — with a 2 ms fade; the layer cuts inside the mix stay where they were, so what plays
+before the cut is the same audio.  Checked with `tools/mod_render_diff.py`, with the dither
+seed held fixed: the lofi build renders identically, Green Hill differs at −46 dB in the last
+row of one release slide.  Green Hill merged: 530 → 431 KB; lofi 328 → 270 KB.
+
 **Slots, again.** Two rules wasted slots: the pinned set was computed once, before any
 composite was dropped, so a source of a dropped mix stayed reserved; and every FM mix source
 was pinned because the FM catalogue renders by slot.  Now `_fit_composites` recomputes the

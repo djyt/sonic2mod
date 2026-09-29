@@ -101,7 +101,10 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             data = s.data
         else:
             data = to_int8([v * s._volume / volume for v in signed8(s.data)], 1.0)
-        bank.data += data + bytes(region - sound)
+        # Padded to its region from what was quantised: a raw sum can be a byte shorter than the
+        # sample (an odd length evened with a zero), and every later sound then started before its
+        # 256-byte boundary, the 9xx rounding down onto up to 255 bytes of silence (23 ms at 11 kHz)
+        bank.data += data + bytes(region - len(data))
         bank.members.append(c)
     stand_in(plan)                                       # a dropped member's notes, if a shape survives
     sample_list = config.sample_list if config.sample_list is not None else []

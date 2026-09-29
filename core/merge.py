@@ -93,7 +93,7 @@ from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .levels import TL_STEP_DB, clamp_mod_volume
-from .loops import RELEASE_FLOOR_DB, unroll_values
+from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
 from .resample import resample
@@ -618,6 +618,7 @@ class Composite:
     region: int = 0                    # banked: bytes of its sound (the note is cut after them)
     longest: float = 0.0               # seconds of the longest note that plays it: a looped layer is
                                        #   unrolled for at least this (the mix cannot loop at another rate)
+    pitch_hz: float | None = None      # mix: the primary's pitch at `base` (a looped mix's period)
     heard: list = field(default_factory=list)   # mix: per note (end, next note-on, speed): where it
                                        #   ends and where the column's next note-on cuts it (seconds, a
                                        #   row of margin), and how much faster than the mix's own trigger
@@ -1001,7 +1002,8 @@ class _Planner:
         self.provisional -= 1
         inst = self.provisional
         vol, ft = self.vol_of.get(p.instrument, (64, 0))
-        comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft], banked=g.bank and not chip)
+        comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft], banked=g.bank and not chip,
+                         pitch_hz=_pitch_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None
             layers = [FmLayer(p.voice)] + [fm_layer(p, fn, self.tol) for fn in present]
@@ -1110,6 +1112,14 @@ def _note_on_ticks(events) -> list[int]:
     notes (a portamento under a strict legato keeps the sample playing)."""
     return sorted({e.tick_position for e in events
                    if e.is_note and not e.note.is_rest and not e.note.is_no_attack})
+
+
+_A4 = 57                # SMPS semitone (C0 = 0) of A4, 440 Hz
+
+
+def _pitch_hz(semitone: int) -> float:
+    """The frequency of a chip pitch (SMPS semitone, C0 = 0)."""
+    return 440.0 * 2.0 ** ((semitone - _A4) / 12.0)
 
 
 def _mix_note(g: MergeGroup, p: NoteOn, present: list[NoteOn]) -> int:
@@ -1493,6 +1503,9 @@ def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
 # --- mixing the pcm composites -------------------------------------------------------------
 
 
+_FADE_SECS = 0.002         # a cut with no release to speak of fades over this (a click otherwise)
+_MIX_CROSS_SECS = 0.08     # a looped mix's crossfade: its layers beat, so the join lands on another
+                           # phase of the beat, which 15 ms would step across and 80 ms blends
 UPSAMPLE_TAPS = 12         # a layer resampled UP into a mix (a kick at 8 kHz under a hat at 28) gets a short
                            # kernel: a 32-tap sinc rings 2 ms before every transient, and the hat, at the
                            # mix's own rate, does not - so the drum's attack sat late behind the hat's
@@ -1506,7 +1519,7 @@ def _cut_layer(sig: list[float], keep: int, rate: float, release_db_s: float | N
     if keep >= len(sig):
         return sig
     if release_db_s is None or not math.isfinite(release_db_s) or release_db_s <= 0:
-        fade = max(1, int(rate * 0.002))
+        fade = max(1, int(rate * _FADE_SECS))
         tail = [v * (1 - i / fade) for i, v in enumerate(sig[keep:keep + fade])]
         return sig[:keep] + tail
     n = int(rate * RELEASE_FLOOR_DB / release_db_s)      # samples to the floor
@@ -1522,7 +1535,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        bank_out: dict[int, ModSample] | None = None,
                        raw: dict[int, tuple] | None = None,
                        raw_out: dict[int, list[float]] | None = None,
-                       padding_secs: float = 0.0) -> list[dict]:
+                       padding_secs: float = 0.0, loop_drift_db: float = FLAT_DB) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -1554,7 +1567,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     once in core.banks: its normalised sum goes to `raw_out` ({provisional id: values}) and the
     bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes.
     """
-    mixer = _Mixer(mod, amiga_clock, hold_secs or {}, sources or {}, release_db_s or {}, raw or {}, padding_secs)
+    mixer = _Mixer(mod, amiga_clock, hold_secs or {}, sources or {}, release_db_s or {}, raw or {}, padding_secs,
+                   loop_drift_db)
     problems: list[dict] = []
     for comp in plan.composites.values():
         if comp.fm is not None:
@@ -1584,10 +1598,12 @@ class _Mixer:
     """mix_pcm_composites' sources and settings; mix() sums one composite."""
 
     def __init__(self, mod, amiga_clock: float, hold_secs: dict[int, float], sources: dict[int, ModSample],
-                 release_db_s: dict[int, float | None], raw: dict[int, tuple], padding_secs: float):
+                 release_db_s: dict[int, float | None], raw: dict[int, tuple], padding_secs: float,
+                 loop_drift_db: float = FLAT_DB):
         self._mod, self._clock = mod, amiga_clock
         self._hold_secs, self._sources = hold_secs, sources
         self._release, self._raw, self._padding = release_db_s, raw, padding_secs
+        self._drift = loop_drift_db
 
     def _sample_of(self, inst: int) -> ModSample:
         return self._sources.get(inst) or self._mod.samples[inst - 1]
@@ -1655,7 +1671,34 @@ class _Mixer:
                 keep_loop = None
             if keep_loop is None:
                 total = _cut_layer(total, keep, r_p, None)
+
+        # loop_mix: a long unlooped mix loops where its sum settles (lossy)
+        if comp.group.loop_mix and keep_loop is None:
+            loop = self._mix_loop(comp, total, r_p)
+            if loop is not None:
+                total = apply_loop(total, loop)
+                keep_loop = (loop.start, loop.length)
         return total, keep_loop, base._finetune
+
+    def _mix_loop(self, comp: Composite, total: list[float], r_p: float):
+        """A sustain loop in the finished mix, found as a single voice's is (core.loops): flat
+        within the group's (or the song's) loop_drift_db of where its longest note ends, at least
+        the group's loop_min_ms long, and ending before the mix does, else None (a mix that never
+        settles, or no shorter for a loop).  The chord's layers beat, so a loop may need to span a
+        beat: the finder tries up to MAX_LOOP_SECS.
+
+            attack ─── settles ═══ loop ═══╗   the MOD repeats [start, end) until the note ends
+                                 start ◄───╝
+        """
+        if comp.pitch_hz is None or not total:
+            return None
+        g = comp.group
+        end = len(total) - max(1, int(r_p * _FADE_SECS)) - 1          # before the trim's fade
+        ref = min(end, math.ceil(comp.longest * r_p)) if comp.longest else end
+        return find_sustain_loop(total, round(r_p), r_p / comp.pitch_hz, end, ref_n=ref, max_end=end,
+                                 flat_db=g.loop_drift_db if g.loop_drift_db is not None else self._drift,
+                                 cross_secs=_MIX_CROSS_SECS,
+                                 **({"min_loop_secs": g.loop_min_ms / 1000.0} if g.loop_min_ms else {}))
 
     def _follower_layers(self, comp: Composite, r_p: float, need: float, problems: list[dict]) -> list[list[float]]:
         """Every follower's signal at its level, cut where it is keyed off, at the mix's rate."""

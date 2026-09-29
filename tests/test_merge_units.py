@@ -294,6 +294,27 @@ class Slots(unittest.TestCase):
         self.assertEqual(left, [chip])
 
 
+class MixLoop(unittest.TestCase):
+    def _mix(self, loop_mix: bool) -> ModSample:
+        rate = CLOCK / PERIOD_TABLE[12]
+        period = 64                                             # a steady tone, 64 samples a cycle
+        tone = bytes(int(90 * math.sin(2 * math.pi * i / period)) & 0xFF for i in range(int(3 * rate)))
+        g = MergeGroup("FM1", ["PSG2"], loop_mix=loop_mix, loop_drift_db=1.0, loop_min_ms=300)
+        c = Composite(5, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 0.5, None),)), g, base=12, longest=2.5,
+                      entry=[5, "merge", 64, 0], pitch_hz=rate / period)
+        mod = ModFile(4)
+        mod.samples[0] = _sample(tone)
+        mod.samples[1] = _sample(tone)
+        mix_pcm_composites(MergePlan([g], composites={c.key: c}), mod, CLOCK, hold_secs={}, padding_secs=0.0)
+        return mod.samples[4]
+
+    def test_a_settled_mix_loops_and_is_shorter(self):
+        plain, looped = self._mix(False), self._mix(True)
+        self.assertLessEqual(plain.repeat_length, 1)
+        self.assertGreater(looped.repeat_length * 2, 0.3 * CLOCK / PERIOD_TABLE[12] - 4)   # loop_min_ms
+        self.assertLess(len(looped.data), len(plain.data))
+
+
 class HeardPadding(unittest.TestCase):
     def test_what_a_note_can_still_hear_past_its_sustain(self):
         from core.loops import RELEASE_FLOOR_DB, fade_end, heard_padding

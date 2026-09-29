@@ -29,8 +29,12 @@ from .driver_tables import PSG_ENVELOPES_BY_NAME, PSG_FREQUENCIES_EXTENDED, nois
 from .instruments import fm_catalogue, psg_catalogue
 from .levels import (
     DEFAULT_FM_PAN_LAW_DB,
+    MOD_MAX_VOLUME,
+    clamp_mod_volume,
+    db_to_mod_volume,
     fm_level_db,
     fm_tl_to_mod,
+    headroom_db,
     modal_level,
     psg_att_to_mod,
 )
@@ -663,18 +667,7 @@ class SmpsToModConverter:
                 raw_out=self._raw_renders)
             self._flush_sustain_warnings('FM', fm_samples)
             if self._merge is not None:
-                # A chip composite is normalised like any sample, so its volume is the primary's
-                # times the composite's peak over its primary layer's alone: the primary plays as
-                # loud as it did, the follower adds to it as the hardware sum did.
-                for c in self._merge.composites.values():
-                    if c.fm is None or c.entry is None or c.inst not in fm_peaks:
-                        continue
-                    pk_all, pk_first = fm_peaks[c.inst]
-                    if pk_first:
-                        vol = c.entry[2] * pk_all / pk_first
-                        if vol > 64:
-                            c.headroom_db = 20 * math.log10(vol / 64)
-                        c.entry[2] = max(0, min(64, round(vol)))
+                self._scale_chip_composite_volumes(fm_peaks)
             self.infos.append({'type': 'fm_synthesized', 'count': len(fm_samples)})
             # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer
             # (as a PSG one is below); the slot's loop entry is the composite's
@@ -1190,54 +1183,10 @@ class SmpsToModConverter:
         if self._psg_volume_mode == "baked":
             self._psg_baseline_db = self._plan_levels("PSG")
 
-        # A chip-rendered composite's sample_list volume is its primary's, which stands for the
-        # primary instrument's baked level; the composite is rendered at (and its Cxx measured
-        # from) the level ITS notes play most.  Move the volume by the difference.
+        # Merged build: volumes measured for the reference build, moved to the merged build's levels
         if self._merge is not None:
-            for c in self._merge.composites.values():
-                if c.fm is None or c.entry is None:
-                    continue
-                # The primary's sample_list volume was measured for its level in the REFERENCE
-                # build (the baselines the plan was built with), not for whatever its few own notes
-                # in the merged build average: Green Hill's bell arp dropped 13.5 dB once its voice
-                # kept only a handful of fallback notes at another level
-                base_p = self._merge_baselines.get("FM", {}).get(c.primary)
-                base_c = self._fm_baseline_db.get(c.inst)
-                if base_p is None or base_c is None:
-                    continue
-                vol = max(0, min(64, round(c.entry[2] * 10 ** ((base_c - base_p) / 20.0))))
-                c.entry[2] = vol
-                self.mod.samples[c.inst - 1].set_volume(vol)
-
-        # An instrument a unison chord plays louder (core.merge.unison_gain_db) is baked at the
-        # level most of its notes now play, gain included; its sample_list volume was measured
-        # for the reference build's baseline, so it moves by the difference (the chords need no
-        # Cxx: every Green Hill FM4+FM5 note starts between rows, and a Cxx there lands a row
-        # late, after an attack at the old level).
-        if self._merge is not None:
-            over = []
-            for kind, baseline in (("FM", self._fm_baseline_db), ("PSG", self._psg_baseline_db)):
-                ref = self._merge_baselines.get(kind, {})
-                for inst in sorted(self._gained.get(kind, ())):
-                    if inst in self._merge.instruments or inst not in ref or inst not in baseline:
-                        continue
-                    for e in self.config.sample_list or []:
-                        if e[0] != inst:
-                            continue
-                        want = (e[2] if len(e) > 2 else 64) * 10 ** ((baseline[inst] - ref[inst]) / 20.0)
-                        if want > 64:
-                            over.append((inst, 20 * math.log10(want / 64)))
-                        vol = max(0, min(64, round(want)))
-                        if len(e) > 2:
-                            e[2] = vol
-                        else:
-                            e.append(vol)
-                        if self.mod.samples[inst - 1] is not None:
-                            self.mod.samples[inst - 1].set_volume(vol)
-                        self.infos.append({'type': 'merge_unison_volume', 'instrument': inst,
-                                           'volume': vol, 'db': baseline[inst] - ref[inst]})
-            if over:
-                self._add_warning({'type': 'merge_headroom', 'channel': 'merge unison', 'instruments': over})
+            self._bake_chip_composite_volumes()
+            self._bake_unison_volumes()
 
         # Convert each configured channel
         for chan_cfg in self.config.channels:
@@ -1253,6 +1202,85 @@ class SmpsToModConverter:
             is_dac = (source == "DAC")
 
             self._convert_channel(smps_channel, chan_cfg, is_dac)
+
+    # --- merged build: sample volumes ----------------------------------------------------------
+    #
+    # A composite's volume (its sample_list entry), in pipeline order:
+    #
+    #   plan    the primary's own volume                          core.merge.build_merge_plan
+    #   chip    x peak(all layers) / peak(primary layer)          _scale_chip_composite_volumes
+    #   chip    moved to the level its own notes play most        _bake_chip_composite_volumes
+    #   mix     the normalised sum's level                        core.merge.mix_pcm_composites
+    #   bank    the loudest member's; the others scaled in bytes  core.banks.pack_banks
+    #
+    # A unison chord's primary instrument moves too (_bake_unison_volumes).
+
+    def _set_sample_volume(self, entry: list, volume: int) -> None:
+        """A sample's volume, in both places it is kept: its sample_list entry and the MOD."""
+        if len(entry) > 2:
+            entry[2] = volume
+        else:
+            entry.append(volume)
+        sample = self.mod.samples[entry[0] - 1]
+        if sample is not None:
+            sample.set_volume(volume)
+
+    def _scale_chip_composite_volumes(self, fm_peaks: dict[int, tuple[int, int]]) -> None:
+        """A chip composite is normalised like any sample: its volume is the primary's times the
+        composite's peak over its primary layer's, so the primary plays as loud as it did and the
+        followers add to it as the hardware sum did.  Set before the samples are installed."""
+        assert self._merge is not None
+        for c in self._merge.composites.values():
+            if c.fm is None or c.entry is None or c.inst not in fm_peaks:
+                continue
+            pk_all, pk_first = fm_peaks[c.inst]
+            if not pk_first:
+                continue
+            vol = c.entry[2] * pk_all / pk_first
+            if vol > MOD_MAX_VOLUME:
+                c.headroom_db = headroom_db(vol)
+            c.entry[2] = clamp_mod_volume(vol)
+
+    def _bake_chip_composite_volumes(self) -> None:
+        """A chip composite's volume stands for its primary's baked level in the REFERENCE build
+        (what the volume was measured for); its notes play most at their own.  Move it by the
+        difference.  The merged build's own baseline for the primary would not do: Green Hill's
+        bell arp dropped 13.5 dB once its voice kept a few fallback notes at another level."""
+        assert self._merge is not None
+        for c in self._merge.composites.values():
+            if c.fm is None or c.entry is None:
+                continue
+            base_p = self._merge_baselines.get("FM", {}).get(c.primary)
+            base_c = self._fm_baseline_db.get(c.inst)
+            if base_p is None or base_c is None:
+                continue
+            self._set_sample_volume(c.entry, db_to_mod_volume(c.entry[2], base_c - base_p))
+
+    def _bake_unison_volumes(self) -> None:
+        """An instrument unison chords play louder (core.merge.unison_gain_db) is baked at the
+        level most of its notes now play, gain included; its volume moves from the reference
+        build's by the difference.  No Cxx: every Green Hill FM4+FM5 unison starts between rows,
+        and a Cxx there lands a row late, after an attack at the old level."""
+        assert self._merge is not None
+        over = []
+        for kind, baseline in (("FM", self._fm_baseline_db), ("PSG", self._psg_baseline_db)):
+            ref = self._merge_baselines.get(kind, {})
+            for inst in sorted(self._gained.get(kind, ())):
+                if inst in self._merge.instruments or inst not in ref or inst not in baseline:
+                    continue
+                db = baseline[inst] - ref[inst]
+                for e in self.config.sample_list or []:
+                    if e[0] != inst:
+                        continue
+                    was = e[2] if len(e) > 2 else MOD_MAX_VOLUME
+                    want = was * 10 ** (db / 20.0)
+                    if want > MOD_MAX_VOLUME:
+                        over.append((inst, headroom_db(want)))
+                    vol = db_to_mod_volume(was, db)
+                    self._set_sample_volume(e, vol)
+                    self.infos.append({'type': 'merge_unison_volume', 'instrument': inst, 'volume': vol, 'db': db})
+        if over:
+            self._add_warning({'type': 'merge_headroom', 'channel': 'merge unison', 'instruments': over})
 
     def _convert_channel(self, channel: SmpsChannel, chan_cfg: ChannelConfig, is_dac: bool):
         """Convert a single SMPS channel to MOD data."""
@@ -1349,7 +1377,7 @@ class SmpsToModConverter:
             level = st.level_db(_pan_law) + _note_gain[0]
             baseline = self._psg_baseline_db if st.is_psg else self._fm_baseline_db
             rel_db = level - baseline.get(inst, level)
-            return max(0, min(64, round(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)))
+            return clamp_mod_volume(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)
 
         def _plays_here(ev) -> bool:
             """A note-on this channel's output sounds: not one folded onto another channel (or

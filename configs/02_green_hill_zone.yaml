@@ -54,8 +54,8 @@ channels:
 
 
 # -------------------------------------------------------------------------------------------------
-# Samples. FM samples auto-generated if fm_synthesis: true in settings.yaml
-#          Format: mod_instrument, filename, default volume, finetuning
+# Auto-generated Samples
+# Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 #
 # Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements (L/R power) against
@@ -261,51 +261,104 @@ mod_pattern_breaks:
 #                           # patterns 2-4) the chime plays there in full instead
 
 
-# Slots the composite fit leaves free for the drum groups' sample banks (bank: true below): the
-# kick/snare + bass + hat mixes need three 64 KB banks; a member dropped for lack of a bank slot
-# is reported ("no slot left for another bank").
-merge_bank_slots: 3
-
-# >>> merge_patterns - written by tools/fold_csv.py from input/02_ghz_fold.csv; the config is the source of truth: edit it here, or re-run --write to replace the block from the table
+# -------------------------------------------------------------------------------------------------
+# Merge Channels
+# 
 # DAC = DAC Drums, FM1 = Lead, FM2 = Bass, PSG3 = Hi-Hat
+# -------------------------------------------------------------------------------------------------
+
+
+merge_bank_slots: 3             # Sample slots to reserve for the DAC drum banking
+
+
 merge_patterns:
-  - patterns: "0"          # keep FM1, FM2, FM3
+
+    # --- Pattern $00 ------------------------------------------------------------------------------
+  - patterns: "0"
     drop: [FM4, FM5, PSG1, PSG2]
     groups:
+        # Channel 0: Combine Drums
       - primary: DAC
         followers: [PSG3]
-        cut_primary: true
-        bank: true
-        mix_note: C3
-  - patterns: "1-4"          # keep FM1, PSG2
+        cut_primary: true    # Allow a secondary channel to take priority over the primary
+        bank: true           # Group multiple sounds in a single sample
+        mix_note: C3         # Mixed Render Target
+        
+        
+   # --- Pattern $01-$04 ---------------------------------------------------------------------------
+  - patterns: "1-4"
     groups:
+        # Channel 0: Combine Drums & Bass
       - primary: DAC
         followers: [FM2, PSG3]
         cut_primary: true
         bank: true
         mix_note: C3
+        
+        # Channel 1: Combine 4 Lead Channels
       - primary: FM5
         followers: [FM3, FM4, PSG1]
-  - patterns: "5-c"          # keep FM1, FM3
+        mod_channel: 1
+        
+        # Channel 2: Move Arps
+      - primary: PSG2
+        mod_channel: 2
+        
+         # Channel 3: Move FM1 Fade Out to less important channel
+      - primary: FM1
+        mod_channel: 3
+        
+        
+    # --- Pattern $05-$0C ---------------------------------------------------------------------------     
+  - patterns: "5-c"
     groups:
+        # Channel 0: Combine Drums & Bass
       - primary: DAC
         followers: [FM2, PSG3]
         cut_primary: true
         bank: true
         mix_note: C3
+        
+        # Channel 1: Remains as-is (Lead)
+        
+        # Channel 2: Sub-Melody (Combined)
       - primary: FM4
         followers: [FM5]
+        mod_channel: 2
+        
+        # Channel 3: PSG Bleeps and Response Melody
       - primary: PSG1
-        followers: [PSG2]
-  - patterns: "d-10"          # keep FM1, FM2, FM5
+        followers: [PSG2, FM3]
+        cut_primary: true
+        mod_channel: 3
+        
+        
+    # --- Pattern $0D-$0F ---------------------------------------------------------------------------      
+  - patterns: "d-10"
     groups:
+        # Channel 0: Combine Drums
       - primary: DAC
         followers: [PSG3]
         cut_primary: true
         bank: true
         mix_note: C3
-      - primary: FM4
-        followers: [FM3]
-      - primary: PSG2
+        
+        # Channel 1: Lead + PSG2
+      - primary: FM1
+        followers: [PSG2]
+        mod_channel: 1
+        
+        # Channel 2: Bass + PSG1
+      - primary: FM2
         followers: [PSG1]
-# <<< merge_patterns
+        mod_channel: 2
+
+        # Channel 3: Chords
+      - primary: FM3
+        followers: [FM4]
+        mod_channel: 3
+        cut_after: 8            # Allow filled notes (FM5 below) to cut FM3 after 8 ticks
+        
+        # Channel 4: arp
+      - primary: FM5
+        fill: true

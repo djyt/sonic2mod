@@ -944,7 +944,7 @@ equal durations: each sample plays out as it is.
 | Follower at t | Result | Counted as |
 |---|---|---|
 | note-on, same duration | composite | `paired` |
-| note-on, longer | composite; its tail is cut by the primary's next rest (`truncated`) or re-attacked by the primary's next note (`held` there) | `paired` |
+| note-on, longer | composite; its tail is cut by the primary's next rest (`truncated`, when it outlasts the rest by more than `merge_tolerance`: a grace note's tick is no loss) or re-attacked by the primary's next note (`held` there) | `paired` |
 | note-on, shorter | composite; the follower is keyed off at its duration inside it (`keyoff_secs`: a chip layer's YM2612 key-off, a mix layer cut with its release) | `shorter` |
 | none, resting | the primary alone (right) | `alone` |
 | none, still sounding | the primary alone; the follower's ring is lost | `held` |
@@ -1058,7 +1058,15 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   past the followers' tails (the unrolled data repeats the loop body, so any later repeat of it
   is the same seamless loop): Green Hill's bass+chime mixes are the chime's length plus one
   bass loop.  Mixed at another rate the loop points would not land on samples, so the primary
-  is unrolled for its longest note instead and the mix plays straight through.
+  is unrolled for its longest note instead and the mix plays straight through — for the
+  longer of the instrument's sustain figure and the composite's own longest note plus the
+  release padding (`Composite.longest`; the bridge lead's 2.8 s notes under a chime a twelfth up
+  got a 1.6 s mix from the instrument figure and stopped dead).  The source instruments' own
+  sustain needs count those notes too (`_sustain_needs` credits a mixed composite's ring to its
+  primary's and followers' instruments at the notes they play inside it): once the bridge lead
+  was a group primary its long notes were the composites', its own longest note fell to a second,
+  and the loop search cut its sample 0.09 s in, at the attack's level — 4 dB louder wherever it
+  played on its own.
 
 **When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`
 and `_extend_looping_channels`, which now runs before anything counts notes) and before the
@@ -1102,7 +1110,26 @@ on the primary's channel — and its rests in those patterns write nothing, so t
 empty for the tracker.  The same set drives `_unused_instruments`, the fill pool's occupancy
 and the PSG note-cut positions.  A fold lands on its **primary's** column, so the output has
 one MOD channel per source that is live somewhere (Green Hill: 8 of 9, PSG3 never is), and a
-primary that changes between blocks moves the fold to another column.  Two groups may share a
+primary that changes between blocks moves the fold to another column — unless the group says
+`mod_channel:` (a `channels:` number or a source name): then the primary's notes take that
+column in the group's patterns (`MergeGroup.route`, resolved by `prepare_merged_config`, which
+then checks every named pattern's columns: a live source sits on its route there, or on its own
+column where it plays its own notes, and two on one column is an error naming the pattern —
+so a column is free when its owner is folded, dropped or moved elsewhere; `MergePlan.route_at`).
+A group with no followers and a `mod_channel` is a plain move; one with `fill: true` instead
+sends its primary's notes in the block's patterns to the fill pool (`_pool_notes`, which now
+refuses a target column nobody plays on in that pattern — a folded, dropped, moved-away or
+pooled channel's own — and marks an unplaced pooled note `folded`, so it leaves the channel's own
+column as well).  How soon a pooled note may cut a column's note is the column owner's group's
+`cut_after` in that block (`MergePlan.cut_after_at`), the song-wide `merge_fill_cut_after` being the
+fallback: Green Hill's bridge chords give way to the arp after 8 of their 24 ticks, 40 of 64 arp
+notes placed.  `_convert_channel` picks the column per note-on from the tick's
+reference pattern (`chan_for`, `take_column`), rests and cuts follow the note to the column it
+went to (`last_chan`), a note still ringing on another column when the block changes is cut
+there, and a channel's own end-of-ring cut in a borrowed column is a plain `C00` (a release
+slide would sit on the borrower's notes) or nothing where the borrower's note-on already is.
+Green Hill's chords take the bass column in patterns 1–4, where the bass rides the drums, so
+the verse needs four columns.  Two groups may share a
 primary in different patterns; `PairStats.group` keeps their stats apart, and composites are
 keyed as before, so identical chords in two blocks share one instrument (`Composite.uses`
 counts each group's notes on it; the report lists a shared composite under every group that

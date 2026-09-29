@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------------------------
 # GREEN HILL ZONE Conversion Script - LOFI VARIANT
-# The 4-channel merged build squeezed to ~200 KB (215.7 KB): mixes made at the primary's note so
+# The 4-channel merged build squeezed to ~200 KB (214.7 KB): mixes made at the primary's note so
 # looped leads, bass and chords keep their loops (mix_at: primary), drum banks at A2 (they sound
 # 61 % of the song: 9 KB buys the hat treble to 7 kHz), chime mixes at F2, loops allowed to freeze 12 dB early, samples rendered at their root pitch, one mix per chord
 # shape (merge_twins), and the composites that play one note each left out (max_composites: eight

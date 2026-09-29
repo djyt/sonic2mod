@@ -1,0 +1,39 @@
+merge_patterns cheat sheet (convert.py --merged)
+=================================================
+
+Block keys
+  patterns: "1-4"              reference MOD patterns in hex; ranges and commas ("0, 5-c"); a bare YAML number is decimal
+  drop: [FM4, PSG1]            these channels' notes are left out in the block's patterns
+  groups:                      the folds and moves that hold in those patterns
+
+Group keys
+  primary: FM5                 the channel that carries the fold: its column, its fill, its vibrato
+  followers: [FM3, FM4, PSG1]  folded onto the primary as composites or solo notes
+  mod_channel: 2  |  FM2       the column the primary's notes take here (a channels: number or a source);
+                               free there = its owner folded, dropped or moved away; with no followers = a plain move
+  cut_primary: true            a follower note over the primary's tail plays and cuts it (the drum rule)
+  bank: true                   the group's mixes share slots as sample banks with 9xx; drum primaries only
+  mix_note: C3                 cap on the note a mix is made at (bytes vs the hat's treble)
+  max_composites: 8            keep the N most-played composites; the rest use a stand-in or the primary alone
+  fill_lost: true              follower notes the fold cannot place go to the fill pool (any silent column)
+  fill_cut: true               follower notes the fold would cut short go to the pool, whole notes only
+  fill: true                   (no followers) the channel's notes in these patterns are sprinkled over whichever
+                               column in use is silent when each starts; lost where none is
+  cut_after: 8                 a pooled note may take this group's column once its note is N ticks old (cuts the tail)
+
+Song level (beside the blocks)
+  merge_bank_slots: 3          instrument slots held back for the banks
+  merge_tolerance: 1           ticks a follower note-on may be off the primary's and still fold
+  merge_fill: [PSG1]           pooled channels: each note on whichever output column is silent
+  merge_fill_cut_after: {DAC: 2}   song-wide fallback for cut_after, by the column's owner
+  merge_drop: [FM3]            channels left out of the merged build everywhere
+  merge_max_synth_shift: 0     cap on how far above its root a sample is rendered (bytes)
+  merge_output_file: output/x.mod   where --merged writes
+
+Gotcha
+  every group starts with "- " — without it its keys merge into the group above (the loader now refuses the duplicate key)
+
+Tools
+  python tools/fold_csv.py <config> <table.csv> --write --bank --mix-note C3   draft the section from a fold table
+  python tools/merge_survey.py <config> --all                                   every channel pair's fold counts
+  python convert.py <config> --merged                                           build; read "composite slots" and the warnings

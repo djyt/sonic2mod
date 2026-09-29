@@ -417,6 +417,13 @@ class SmpsToModConverter:
         """
         finetunes = {e[0]: e[3] for e in (self.config.sample_list or []) if len(e) > 3}
         roots = self._synthesis_roots(kind)
+        # A note that plays a mixed composite (core.merge) plays its source samples inside it:
+        # the primary's at the note, each follower's at its interval.  They need the ring as much
+        # as if the note were their own - the loop search and the sustain are theirs (Green Hill's
+        # bridge lead lost its 2.8 s notes to the lead+chime mixes, and its sample was cut to a
+        # loop 0.09 s in, at the attack's level).
+        comps = ({c.inst: c for c in self._merge.composites.values() if c.fm is None}
+                 if self._merge is not None else {})
         needs: dict[int, tuple[float, tuple[int, int] | None]] = {}
         for chan_cfg, channel in enabled_channels(self.song, self.config, (kind,)):
             rings: list = []        # [start tick, ring ticks, instrument, out idx] or None
@@ -441,16 +448,25 @@ class SmpsToModConverter:
                 if ring is None:
                     continue
                 start, ticks, inst, out_idx = ring
-                secs = self._tick_span_secs(start, start + ticks + self._effective_tpr)
-                root = roots.get(inst)
-                if root is not None:
-                    root_idx, shift = root
-                    secs *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[out_idx] / 2.0 ** (shift / 12.0)
-                if finetunes.get(inst, 0) > 0:
-                    secs *= 2.0 ** (finetunes[inst] / 96.0)
-                prev = needs.get(inst)
-                if prev is None or secs > prev[0]:
-                    needs[inst] = (secs, root)
+                wall = self._tick_span_secs(start, start + ticks + self._effective_tpr)
+                comp = comps.get(inst)
+                plays = [(inst, out_idx)]
+                if comp is not None:
+                    plays += [(comp.key[1], out_idx)] + [(fi, out_idx + itv) for _k, fi, itv, _sc, _fill in comp.key[2]]
+                for inst_i, raw_idx in plays:
+                    if inst_i != inst and inst_i not in roots:
+                        continue                # a source of the other chip: its own pass counts it
+                    idx_i = max(0, min(35, raw_idx))
+                    secs = wall
+                    root = roots.get(inst_i)
+                    if root is not None:
+                        root_idx, shift = root
+                        secs *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[idx_i] / 2.0 ** (shift / 12.0)
+                    if finetunes.get(inst_i, 0) > 0:
+                        secs *= 2.0 ** (finetunes[inst_i] / 96.0)
+                    prev = needs.get(inst_i)
+                    if prev is None or secs > prev[0]:
+                        needs[inst_i] = (secs, root)
         return needs
 
     _AUTO_SUSTAIN_CAP_SECS = 10.0
@@ -711,7 +727,8 @@ class SmpsToModConverter:
             mix_raw: dict[int, list[float]] = {}
             for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, hold_secs=hold,
                                         sources=self._mix_sources, release_db_s=self._release,
-                                        bank_out=banked, raw=self._raw_renders, raw_out=mix_raw):
+                                        bank_out=banked, raw=self._raw_renders, raw_out=mix_raw,
+                                        padding_secs=(synth.release_padding if synth else 0.0)):
                 self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
             if banked:
                 # The banks' silence after each sound covers the cut's rounding: one MOD tick,
@@ -860,6 +877,8 @@ class SmpsToModConverter:
         plan = self._merge
         assert plan is not None
         for g in plan.groups:
+            if g.fill:
+                continue                        # the fill pool reports it
             label = g.label + g.where
             stats = [s for s in plan.stats if s.group is g]
             comps = []
@@ -870,7 +889,8 @@ class SmpsToModConverter:
                 slot = f"{c.inst} 9{c.offset >> 8:02X}" if c.banked else str(c.inst)
                 others = [lab for lab in c.uses if lab != label]
                 comps.append((slot, n, c.detail, None if c.group is g else c.group.label + c.group.where, others))
-            self.infos.append({'type': 'merge_group', 'label': label, 'primary': g.primary,
+            self.infos.append({'type': 'merge_group', 'label': label, 'primary': g.primary, 'route': g.route,
+                               'followers': list(g.followers),
                                'paired': sum(s.paired for s in stats),
                                'solo': sum(s.solo for s in stats),
                                'alone': stats[0].alone if stats else 0,
@@ -1129,7 +1149,30 @@ class SmpsToModConverter:
 
     def _convert_channel(self, channel: SmpsChannel, chan_cfg: ChannelConfig, is_dac: bool):
         """Convert a single SMPS channel to MOD data."""
-        mod_chan = chan_cfg.mod_channel
+        home = chan_cfg.mod_channel
+        mod_chan = home
+        last_chan: int | None = None       # the column the previous note-on went to
+
+        def chan_for(tick: int) -> int:
+            """The column a note-on at `tick` takes: another channel's when a merge group of
+            this primary borrows it in the tick's pattern (mod_channel; the reference build's
+            pattern, as the groups count them), else this channel's own."""
+            if self._merge is None:
+                return home
+            r = self._merge.route_at(chan_cfg.source, self._pattern_of_tick(tick))
+            return home if r is None else r
+
+        def take_column(pattern: int, row: int, tick: int, sounding: bool) -> int:
+            """The column a note-on at `tick` goes to; a note still ringing on another column
+            (`sounding`, the previous block's) is cut there, as the re-key ended it."""
+            nonlocal last_chan
+            chan = chan_for(tick)
+            if (last_chan is not None and last_chan != chan and sounding
+                    and not self.mod.note_at(pattern, row, last_chan)):
+                self._set_cursor(pattern, last_chan, row)
+                self.mod.set_effect(0xC, 0)
+            last_chan = chan
+            return chan
 
         # Driver state: level, pan, transpose, FM voice and the active PSG entry — including
         # the smpsHeaderPSG voice.  Shared with the level pre-passes and the rate-3 derivation
@@ -1346,8 +1389,14 @@ class SmpsToModConverter:
                     pattern, row = self._tick_to_pattern_row(tick)
                     if pattern >= self.config.max_patterns:
                         continue
+                    mod_chan = last_chan if last_chan is not None else chan_for(tick)
+                    if self.mod.note_at(pattern, row, mod_chan):
+                        last_inst = None
+                        continue            # a note-on already takes the column here
                     rate = _release_rows(last_inst, tick)
-                    if rate is not None:
+                    borrowed = (self._merge is not None
+                                and self._merge.routed_into(mod_chan, self._pattern_of_tick(tick)) is not None)
+                    if rate is not None and not borrowed:     # a slide would sit on the borrower's notes
                         self._write_release(mod_chan, pattern * 64 + row, last_vol, rate, tick,
                                             _next_note_row(tick))
                     else:
@@ -1367,13 +1416,20 @@ class SmpsToModConverter:
                     if (last_inst is None and _away_patterns and getattr(event, "merged", None) is None
                             and self._pattern_of_tick(tick) in _away_patterns):
                         continue            # nothing of this channel's sounds here: no C00 clutter
+                    mod_chan = last_chan if last_chan is not None else chan_for(tick)
                     if (pattern, row) == (0, 0):
                         # A leading rest.  Its C00 matters once the song loops back to
                         # position 0, and the cell may hold a tempo command, so it is
                         # placed after every channel is converted (_place_leading_rests).
                         self._leading_rest_channels[mod_chan] = chan_cfg.source
                         continue
-                    rate = _release_rows(last_inst, tick)
+                    # Another channel's notes take this column here (mod_channel): its note-on
+                    # ends this ring by itself, and a slide would sit on its notes
+                    borrowed = (self._merge is not None
+                                and self._merge.routed_into(mod_chan, self._pattern_of_tick(tick)) is not None)
+                    if borrowed and self.mod.note_at(pattern, row, mod_chan):
+                        continue
+                    rate = None if borrowed else _release_rows(last_inst, tick)
                     if rate is not None:
                         # Key-off: the note fades at the voice's release rate (the sample loops,
                         # or would be cut short of the chip's release either way)
@@ -1404,6 +1460,7 @@ class SmpsToModConverter:
                     pattern, row, note_delay = _note_cell(tick, True, None)
                     if pattern >= self.config.max_patterns:
                         break
+                    mod_chan = take_column(pattern, row, tick, last_inst is not None)
                     self._set_cursor(pattern, mod_chan, row)
                     self._clear_stale_cut(pattern, row, mod_chan)
                     last_note_cell = (pattern, row)
@@ -1511,6 +1568,7 @@ class SmpsToModConverter:
                         _cut_tick)
                     if pattern >= self.config.max_patterns:
                         break
+                    mod_chan = take_column(pattern, row, tick, last_inst is not None)
                     self._set_cursor(pattern, mod_chan, row)
                     self._clear_stale_cut(pattern, row, mod_chan)
                     last_note_cell = (pattern, row)

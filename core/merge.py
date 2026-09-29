@@ -80,7 +80,7 @@ from dataclasses import dataclass, field
 from .config import MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
-from .loops import unroll
+from .loops import unroll_values
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
 from .resample import resample
@@ -1139,7 +1139,9 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        hold_secs: dict[int, float] | None = None,
                        sources: dict[int, ModSample] | None = None,
                        release_db_s: dict[int, float | None] | None = None,
-                       bank_out: dict[int, ModSample] | None = None) -> list[dict]:
+                       bank_out: dict[int, ModSample] | None = None,
+                       raw: dict[int, tuple] | None = None,
+                       raw_out: dict[int, list[float]] | None = None) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -1161,14 +1163,34 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     off with smpsNoteFill (the key's fill) is cut there and decays at its instrument's release
     rate (`release_db_s`, {instrument: dB/s}; a bass pluck under a kick).  A banked composite's
     sample goes to `bank_out` ({provisional id: sample}) for core.banks to pack, not into a slot.
+
+    A synthesised source is taken from `raw` ({instrument: (render values, rate)}, the
+    generators' output before it was quantised to 8 bits, scaled as its sample was) rather than
+    from the bytes in its slot, so a mix is quantised once, here — or, for a banked composite,
+    once in core.banks: its normalised sum goes to `raw_out` ({provisional id: values}) and the
+    bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes.
     """
     problems: list[dict] = []
     hold_secs = hold_secs or {}
     sources = sources or {}
     release_db_s = release_db_s or {}
+    raw = raw or {}
 
     def sample_of(inst: int) -> ModSample:
         return sources.get(inst) or mod.samples[inst - 1]
+
+    def values_of(inst: int, s: ModSample) -> list[float]:
+        """The sample's values at the scale of its bytes: the unquantised render where the
+        generator kept one (peak-normalised as the sample was, cut where the sample was), else
+        its bytes."""
+        r = raw.get(inst)
+        if r is not None:
+            mono, _rate = r
+            pk = peak(mono)
+            if pk:
+                k = 127.0 / pk
+                return [v * k for v in mono[:len(s.data)]]
+        return _signed(s.data)
 
     def loop_of(s: ModSample) -> tuple[int, int] | None:
         return (s.repeat * 2, s.repeat_length * 2) if s.repeat_length > 1 else None
@@ -1194,33 +1216,33 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                 continue
             gain = fs._volume / 64.0 * scale
             r_f = amiga_clock / PERIOD_TABLE[f_idx]
-            f_data = fs.data
+            f_data = values_of(f_inst, fs)
             f_loop = loop_of(fs)
             if f_loop is not None:
                 # Unrolled for the longer of the two instruments' longest notes (a drum primary
                 # has no hold: until 2026-09-28 a looped bass under a kick was unrolled to two
                 # bytes and vanished from every drum+bass mix), never shorter than the sample
                 hold = max(hold_secs.get(p_inst, 0.0), hold_secs.get(f_inst, 0.0))
-                f_data = unroll(f_data, f_loop, max(len(f_data), int(hold * r_f) + 2))
-            sig = [v * gain for v in _signed(f_data)]
+                f_data = unroll_values(f_data, f_loop, max(len(f_data), int(hold * r_f) + 2))
+            sig = [v * gain for v in f_data]
             if fill_ms is not None:           # keyed off by its note fill while the primary plays on
                 sig = _cut_layer(sig, int(r_f * fill_ms / 1000.0), r_f, release_db_s.get(f_inst))
             if round(r_f) != round(r_p):
                 sig = resample(sig, round(r_f), round(r_p))
             layers.append(sig)
         tail = max((len(sig) for sig in layers), default=0)
-        b_data = base.data
+        b_data = values_of(p_inst, base)
         keep_loop = None
         b_loop = loop_of(base)
         if b_loop is not None:
             s0, ln = b_loop
             if same_rate and ln >= 4:
                 k = max(0, -(-(tail - s0) // ln))          # repeats of the loop body before the tail ends
-                b_data = unroll(b_data, b_loop, s0 + (k + 1) * ln)
+                b_data = unroll_values(b_data, b_loop, s0 + (k + 1) * ln)
                 keep_loop = (s0 + k * ln, ln)
             else:
-                b_data = unroll(b_data, b_loop, max(len(b_data), int(hold_secs.get(p_inst, 0.0) * r_base) + 2))
-        total = [v * base._volume / 64.0 for v in _signed(b_data)]
+                b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold_secs.get(p_inst, 0.0) * r_base) + 2))
+        total = [v * base._volume / 64.0 for v in b_data]
         if not same_rate:
             total = resample(total, round(r_base), round(r_p))
         for sig in layers:
@@ -1252,6 +1274,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
             comp.entry[2] = vol
         if comp.banked and bank_out is not None:
             bank_out[comp.inst] = sample
+            if raw_out is not None and pk:                  # the bank quantises it, once
+                raw_out[comp.inst] = [v * 127.0 / pk for v in total[:len(pcm)]]
         else:
             mod.samples[comp.inst - 1] = sample
     for inst in plan.blank_after_mix:            # a source no note plays once its composites exist

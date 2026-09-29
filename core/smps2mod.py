@@ -91,6 +91,8 @@ class SmpsToModConverter:
         self._release_slides = False       # end FM notes with a volume slide instead of C00
         self._pending_sustain_short: dict[tuple[str, int], dict] = {}
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
+        self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
+                                                       #   quantisation: what the composite mixer mixes from
         self._bank_delays_dropped = 0      # banked drum notes whose EDx gave way to the 9xx offset
         self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
 
@@ -606,7 +608,8 @@ class SmpsToModConverter:
             fm_samples = generate_fm_samples(
                 self.song, self.config, synth,
                 tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()},
-                peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release)
+                peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release,
+                raw_out=self._raw_renders)
             self._flush_sustain_warnings('FM', fm_samples)
             if self._merge is not None:
                 # A chip composite is normalised like any sample, so its volume is the primary's
@@ -676,7 +679,8 @@ class SmpsToModConverter:
             psg_samples = generate_psg_samples(
                 self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
                 noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
-                loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops)
+                loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops,
+                raw_out=self._raw_renders)
             # A mix-only source whose slot a composite holds is kept aside for the mixer; the
             # slot's loop entry stays the composite's
             aside = ({i for i in psg_samples if i in self._merge.mix_only and i in self._merge.instruments}
@@ -704,16 +708,17 @@ class SmpsToModConverter:
                 if s is not None:
                     hold.update({i: n + s.release_padding for i, n in s.sustain_by_instrument.items()})
             banked: dict[int, ModSample] = {}
+            mix_raw: dict[int, list[float]] = {}
             for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, hold_secs=hold,
                                         sources=self._mix_sources, release_db_s=self._release,
-                                        bank_out=banked):
+                                        bank_out=banked, raw=self._raw_renders, raw_out=mix_raw):
                 self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
             if banked:
                 # The banks' silence after each sound covers the cut's rounding: one MOD tick,
                 # at the slowest tempo the song plays
                 tick_secs = max(2.5 / self._bpm_for(m) for _, m in (self._tempo_segments or [(0, self.song.header.tempo_modifier)]))
                 for p in pack_banks(self._merge, self.config, self.mod, banked, self._merge.spare_slots,
-                                    max_bytes, tick_secs, clock):
+                                    max_bytes, tick_secs, clock, raw=mix_raw):
                     self._add_warning({'type': 'merge_bank_dropped', 'channel': p['primary'],
                                        'extra_ctx': p['detail'], **p})
                 for b in self._merge.banks:

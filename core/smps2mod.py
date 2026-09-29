@@ -73,10 +73,18 @@ def _shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> in
     return flat_row
 
 
+_HEADROOM_REPORT_DB = 0.05     # a composite clamped by less is not reported
+
+
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
                  psg_synth: PsgSynthesisSettings | None = None):
+        self._start(song, config, synth, psg_synth)
+
+    def _start(self, song: SmpsSong, config: ConversionConfig,
+               synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None) -> None:
+        """A fresh conversion's state (convert() starts over with it)."""
         self.song = song
         self.config = config
         self.synth = synth
@@ -563,19 +571,23 @@ class SmpsToModConverter:
         many banks the mixes need is known only once they are made, and the slot is the
         composites' (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with five chords
         lost)."""
-        snapshot = (copy.deepcopy((self.song, self.config))
-                    if self.config.merge_active and self._bank_retry is None else None)
+        # The conversion edits the song and config (loop extension, spliced notes, composite
+        # entries): a second pass needs them as they were
+        snapshot = copy.deepcopy((self.song, self.config)) if self.config.merge_active else None
         mod = self._convert_once()
         if snapshot is None or not self._idle_bank_slots:
             return mod
+
+        # Start over with the reserve the banks filled
+        assert self._merge is not None
         song, config = snapshot
-        was, need = config.merge_bank_slots, len(self._merge.banks) if self._merge is not None else 0
-        config.merge_bank_slots = need
-        again = SmpsToModConverter(song, config, synth=self.synth, psg_synth=self.psg_synth)
-        again._bank_retry = {'slots': list(self._idle_bank_slots), 'reserve': was, 'banks': need}
-        again.convert()
-        self.__dict__.update(again.__dict__)
-        self.infos.append({'type': 'merge_bank_retry', **again._bank_retry})
+        retry = {'slots': list(self._idle_bank_slots), 'reserve': config.merge_bank_slots,
+                 'banks': len(self._merge.banks)}
+        config.merge_bank_slots = retry['banks']
+        self._start(song, config, self.synth, self.psg_synth)
+        self._bank_retry = retry
+        self._convert_once()
+        self.infos.append({'type': 'merge_bank_retry', **retry})
         return self.mod
 
     def _convert_once(self):
@@ -745,47 +757,7 @@ class SmpsToModConverter:
 
         # The composites mixed from finished samples (DAC + hi-hat), now that every sample is in
         if self._merge is not None:
-            clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
-            max_bytes = self.synth.max_sample_bytes if self.synth else MAX_MOD_SAMPLE_BYTES
-            hold = {}
-            for s in (synth, psg_synth):
-                if s is not None:
-                    hold.update({i: n + s.release_padding for i, n in s.sustain_by_instrument.items()})
-            banked: dict[int, ModSample] = {}
-            mix_raw: dict[int, list[float]] = {}
-            for p in mix_pcm_composites(self._merge, self.mod, clock, max_bytes, hold_secs=hold,
-                                        sources=self._mix_sources, release_db_s=self._release,
-                                        bank_out=banked, raw=self._raw_renders, raw_out=mix_raw,
-                                        padding_secs=(synth.release_padding if synth else 0.0)):
-                self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
-            if banked:
-                # The banks' silence after each sound covers the cut's rounding: one MOD tick,
-                # at the slowest tempo the song plays
-                tick_secs = max(2.5 / self._bpm_for(m) for _, m in (self._tempo_segments or [(0, self.song.header.tempo_modifier)]))
-                for p in pack_banks(self._merge, self.config, self.mod, banked, self._merge.spare_slots,
-                                    max_bytes, tick_secs, clock, raw=mix_raw):
-                    self._add_warning({'type': 'merge_bank_dropped', 'channel': p['primary'],
-                                       'extra_ctx': p['detail'], **p})
-                for b in self._merge.banks:
-                    self.infos.append({'type': 'merge_bank', 'slot': b.slot, 'bytes': b.bytes, 'volume': b.volume,
-                                       'members': [(c.offset, c.region, c.notes, c.detail) for c in b.members]})
-                idle = [s for s in self._merge.spare_slots if s not in {b.slot for b in self._merge.banks}]
-                dropped = sum(1 for u in self._merge.unsupported if not u.get('stand_in'))
-                if idle and dropped:
-                    self._idle_bank_slots = idle
-                if idle and dropped and self._bank_retry is not None:
-                    self._add_warning({'type': 'merge_bank_idle', 'channel': 'merge', 'slots': idle,
-                                       'reserve': self.config.merge_bank_slots, 'banks': len(self._merge.banks),
-                                       'dropped': dropped})
-            self._report_merge_groups()
-            # A mixed composite ends the way its primary does (the release slide's rate)
-            for c in self._merge.composites.values():
-                if c.fm is None and c.primary in self._release:
-                    self._release.setdefault(c.inst, self._release[c.primary])
-            over = sorted((c.inst, c.headroom_db) for c in self._merge.composites.values() if c.headroom_db > 0.05)
-            if over:
-                self._add_warning({'type': 'merge_headroom', 'channel': 'merge', 'instruments': over})
-
+            self._mix_merge_composites(synth, psg_synth)
 
         # Convert channels
         self._convert_all_channels()
@@ -1202,6 +1174,68 @@ class SmpsToModConverter:
             is_dac = (source == "DAC")
 
             self._convert_channel(smps_channel, chan_cfg, is_dac)
+
+    # --- merged build: mixes and banks ---------------------------------------------------------
+
+    def _mix_merge_composites(self, synth, psg_synth) -> None:
+        """The pcm composites mixed, the banked ones packed, the groups reported.  `synth` /
+        `psg_synth` are the settings with their sustain resolved."""
+        plan = self._merge
+        assert plan is not None
+        clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
+        max_bytes = self.synth.max_sample_bytes if self.synth else MAX_MOD_SAMPLE_BYTES
+        hold = {}
+        for s in (synth, psg_synth):
+            if s is not None:
+                hold.update({i: n + s.release_padding for i, n in s.sustain_by_instrument.items()})
+
+        banked: dict[int, ModSample] = {}
+        mix_raw: dict[int, list[float]] = {}
+        for p in mix_pcm_composites(plan, self.mod, clock, max_bytes, hold_secs=hold,
+                                    sources=self._mix_sources, release_db_s=self._release,
+                                    bank_out=banked, raw=self._raw_renders, raw_out=mix_raw,
+                                    padding_secs=(synth.release_padding if synth else 0.0)):
+            self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
+        if banked:
+            self._pack_merge_banks(banked, mix_raw, clock, max_bytes)
+        self._report_merge_groups()
+
+        # A mixed composite ends the way its primary does (the release slide's rate)
+        for c in plan.composites.values():
+            if c.fm is None and c.primary in self._release:
+                self._release.setdefault(c.inst, self._release[c.primary])
+
+        over = sorted((c.inst, c.headroom_db) for c in plan.composites.values() if c.headroom_db > _HEADROOM_REPORT_DB)
+        if over:
+            self._add_warning({'type': 'merge_headroom', 'channel': 'merge', 'instruments': over})
+
+    def _pack_merge_banks(self, banked: dict[int, ModSample], mix_raw: dict[int, list[float]],
+                          clock: float, max_bytes: int) -> None:
+        """core.banks packs the banked mixes; a reserved slot left empty while composites lost
+        theirs is noted for convert()'s second pass."""
+        plan = self._merge
+        assert plan is not None
+
+        # The banks' silence after each sound covers the cut's rounding: one MOD tick, at the
+        # slowest tempo the song plays
+        segments = self._tempo_segments or [(0, self.song.header.tempo_modifier)]
+        tick_secs = max(2.5 / self._bpm_for(m) for _, m in segments)
+        for p in pack_banks(plan, self.config, self.mod, banked, plan.spare_slots, max_bytes, tick_secs, clock,
+                            raw=mix_raw):
+            self._add_warning({'type': 'merge_bank_dropped', 'channel': p['primary'], 'extra_ctx': p['detail'], **p})
+        for b in plan.banks:
+            self.infos.append({'type': 'merge_bank', 'slot': b.slot, 'bytes': b.bytes, 'volume': b.volume,
+                               'members': [(c.offset, c.region, c.notes, c.detail) for c in b.members]})
+
+        idle = [s for s in plan.spare_slots if s not in {b.slot for b in plan.banks}]
+        dropped = sum(1 for u in plan.unsupported if not u.get('stand_in'))
+        if not (idle and dropped):
+            return
+        self._idle_bank_slots = idle
+        if self._bank_retry is not None:            # the second pass left one idle too
+            self._add_warning({'type': 'merge_bank_idle', 'channel': 'merge', 'slots': idle,
+                               'reserve': self.config.merge_bank_slots, 'banks': len(plan.banks),
+                               'dropped': dropped})
 
     # --- merged build: sample volumes ----------------------------------------------------------
     #

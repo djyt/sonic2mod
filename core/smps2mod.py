@@ -39,7 +39,7 @@ from .levels import (
     psg_att_to_mod,
 )
 from .loops import SustainLoop
-from .merge import build_merge_plan, mix_pcm_composites
+from .merge import NO_SLOT, build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
 from .smps_parser import SmpsChannel, SmpsSong
@@ -1041,7 +1041,7 @@ class SmpsToModConverter:
                            'used': sum(1 for c in plan.composites.values() if not c.banked),
                            'banked': sum(1 for c in plan.composites.values() if c.banked),
                            'stand_ins': sum(1 for u in plan.unsupported
-                                            if u.get('stand_in') and u['reason'] == 'no free instrument slot')})
+                                            if u.get('stand_in') and u['reason'] == NO_SLOT)})
         for s in plan.stats:
             where = s.group.where if s.group is not None else ""
             if s.lost or s.vibrato:
@@ -1300,7 +1300,9 @@ class SmpsToModConverter:
                                'members': [(c.offset, c.region, c.notes, c.detail) for c in b.members]})
 
         idle = [s for s in plan.spare_slots if s not in {b.slot for b in plan.banks}]
-        dropped = sum(1 for u in plan.unsupported if not u.get('stand_in'))
+        # Only a composite the fit had no slot for could have used one: a budget's or a twin's
+        # drop (max_composites, merge_twins) is the config's choice
+        dropped = sum(1 for u in plan.unsupported if not u.get('stand_in') and u['reason'] == NO_SLOT)
         if not (idle and dropped):
             return
         self._idle_bank_slots = idle

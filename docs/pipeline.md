@@ -1146,8 +1146,8 @@ column as well).  How soon a pooled note may cut a column's note is the column o
 `cut_after` in that block (`MergePlan.cut_after_at`), the song-wide `merge_fill_cut_after` being the
 fallback: Green Hill's bridge chords give way to the arp after 8 of their 24 ticks, 40 of 64 arp
 notes placed.  `_convert_channel` picks the column per note-on from the tick's
-reference pattern (`chan_for`, `take_column`), rests and cuts follow the note to the column it
-went to (`last_chan`), a note still ringing on another column when the block changes is cut
+reference pattern (`_ColumnRouter`), rests and cuts follow the note to the column it
+went to, a note still ringing on another column when the block changes is cut
 there, and a channel's own end-of-ring cut in a borrowed column is a plain `C00` (a release
 slide would sit on the borrower's notes) or nothing where the borrower's note-on already is.
 Green Hill's chords take the bass column in patterns 1–4, where the bass rides the drums, so

@@ -68,6 +68,17 @@ loop extension), before the samples are rendered — the FM composites are entri
 instrument catalogue (`core.instruments`).
 `walk_channel` reads the plan from `config.merge_plan`, so every pass (levels, sustain,
 conversion) sees the composite instruments the same way.
+
+Per-pattern folds, sample banks, unison chords and same-shape twins: docs/pipeline.md
+§ Channel merging.  The parts, in the order a merged build runs them:
+
+    prepare_merged_config   the config's channels → the merged build's columns
+    channel_notes           a channel's notes as the converter places them (NoteOn)
+    pair_channels           a follower against its primary (PairStats)
+    build_merge_plan        → MergePlan: composites, unisons, solo notes, slots
+      _Planner                collect → pair → fill pool → fold → settle
+      _fit_composites         slots; a twin gives its slot up first, stand-ins take its notes
+    mix_pcm_composites      the mixed composites' samples (_Mixer); core.banks packs the banked
 """
 
 from __future__ import annotations
@@ -90,6 +101,7 @@ from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
 
 PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL steps (0.75 dB each)
+_LAST_MOD_NOTE = 35   # B3: a mix transposed past the MOD's three octaves cannot play the note
 
 
 # --- config -----------------------------------------------------------------------------------
@@ -745,8 +757,9 @@ class MergePlan:
         """Every composite's MOD instrument (none of them is a file on disk)."""
         return {c.inst for c in self.composites.values()}
 
-    def group_of(self, source: str) -> MergeGroup | None:
-        return next((g for g in self.groups if g.primary == source), None)
+    def stats_of(self, g: MergeGroup) -> list[PairStats]:
+        """The pairings of one group's followers."""
+        return [st for st in self.stats if st.group is g]
 
 
 def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale, tolerance: int = 1) -> CompositeKey:
@@ -971,7 +984,7 @@ class _Planner:
         plan = self.plan
         key = composite_key(p, present, chip, self.level_scale, self.tol)
         comp = plan.composites.get(key)
-        if comp is not None and not chip and not 0 <= trigger_note(comp, p.index) <= 35:
+        if comp is not None and not chip and not 0 <= trigger_note(comp, p.index) <= _LAST_MOD_NOTE:
             # The same shape, transposed off the MOD's three octaves from where the mix was
             # made: a mix of its own, made at this pitch
             key = key._replace(base=p.index)
@@ -1079,7 +1092,7 @@ def _fit_composites(plan: MergePlan, song, config, free: list[int],
         if not left:
             plan.slots_free = len(slots)
             plan.spare_slots = [s for s in slots if s not in chosen.values()]
-            _assign_slots(plan, config, chosen)
+            _assign_slots(plan, chosen)
             return unused
         cheap = {c.primary for c in comps} - unused          # primaries whose instrument stays anyway
         # A composite whose shape another has loses nothing when dropped (its twin stands in for
@@ -1158,7 +1171,7 @@ def _takes_all(plan: MergePlan, keep: Composite, c: Composite) -> bool:
     trigger off the MOD's three octaves would lose it."""
     if keep.fm is not None:
         return True
-    return all(0 <= trigger_note(keep, plan.bases.get(k, c.base)) <= 35
+    return all(0 <= trigger_note(keep, plan.bases.get(k, c.base)) <= _LAST_MOD_NOTE
                for k, v in plan.ticks.items() if v == c.inst)
 
 
@@ -1198,7 +1211,7 @@ def stand_in(plan: MergePlan) -> None:
             if c.fm is None:
                 base = plan.bases.get(k, c.base)
                 trig = trigger_note(c, base)
-                if not 0 <= trig <= 35:
+                if not 0 <= trig <= _LAST_MOD_NOTE:
                     continue                    # transposed off the MOD's range: stays lost
                 if trig != base:
                     plan.notes[k] = trig
@@ -1224,10 +1237,9 @@ def _cap_composites(plan: MergePlan, config) -> None:
             kept[c.group.primary] = kept.get(c.group.primary, 0) + 1
 
 
-def _assign_slots(plan: MergePlan, config, chosen: dict[int, int]) -> None:
+def _assign_slots(plan: MergePlan, chosen: dict[int, int]) -> None:
     """Give the composites their MOD instruments (`chosen`: {provisional id: slot}, from
-    _plan_slots).  A composite left without a slot is dropped (its notes play the primary
-    alone) and reported."""
+    _plan_slots, which has one for each)."""
     order = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst))
     # A banked composite keeps its provisional id until core.banks packs it into a slot
     remap: dict[int, int | None] = {c.inst: (c.inst if c.banked else chosen.get(c.inst)) for c in order}
@@ -1235,9 +1247,7 @@ def _assign_slots(plan: MergePlan, config, chosen: dict[int, int]) -> None:
         if c.banked:
             continue
         real = remap[c.inst]
-        if real is None:                      # _fit_composites makes this impossible; kept safe
-            drop_composite(plan, config, c, 'no free instrument slot')
-            continue
+        assert real is not None, "_fit_composites gives every composite it keeps a slot"
         if c.entry is not None:
             c.entry[0] = real
         if c.fm is not None:
@@ -1254,9 +1264,7 @@ def _splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, 
     channel = source_map(song)[g.primary]
     p_ticks = sorted(p_notes)
     events = channel.events
-    for st in plan.stats:
-        if st.group is not g:
-            continue
+    for st in plan.stats_of(g):
         for t, n in sorted(st.solo_notes.items()):
             if (g.primary, t) in plan.solo:
                 continue                                    # an earlier follower already took this tick
@@ -1312,7 +1320,7 @@ def _free_span(spans: list[tuple[int, int]], t: int) -> int:
 
 
 def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, tick_secs,
-                grace: int, min_ticks: int, groups_data: list, pattern_of=None) -> bool:
+                grace: int, min_ticks: int, groups: list[_GroupNotes], pattern_of=None) -> bool:
     """The fill pool: every note of a `merge_fill` channel, every lost follower note of a
     `fill_lost` group, and every follower note of a `fill_cut` group whose ring the fold would
     cut, onto whichever output channel is silent when it starts (the module docstring).  A
@@ -1330,9 +1338,7 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
         pool += [(t, order, src, n, False) for t, n in notes.items()]
         order += 1
     for g in plan.groups:
-        for st in plan.stats:
-            if st.group is not g:
-                continue
+        for st in plan.stats_of(g):
             if g.fill_lost:
                 pool += [(t, order, st.follower, n, False) for t, n in st.lost_notes.items()]
             if g.fill_cut:
@@ -1360,7 +1366,7 @@ def _pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, t
         if st.primary in spans:
             for t, n in st.solo_notes.items():
                 bisect.insort(spans[st.primary], (t, t + n.sounding))
-    follower_notes = {f: f_notes for _g, _p, _r, followers in groups_data for f, f_notes, _ in followers}
+    follower_notes = {f: f_notes for gn in groups for f, f_notes, _ in gn.followers}
     stats: dict[str, dict] = {}
     pooled = False
     for t, _o, src, n, whole in sorted(pool, key=lambda x: (x[0], x[1])):
@@ -1427,10 +1433,6 @@ def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
 
 
 # --- mixing the pcm composites -------------------------------------------------------------
-
-
-def _signed(data: bytes) -> list[float]:
-    return list(signed8(data))
 
 
 RELEASE_FLOOR_DB = 48.0    # a released layer is cut where it falls this far: the 8-bit floor (~49 dB)
@@ -1553,7 +1555,7 @@ class _Mixer:
             if pk:
                 k = 127.0 / pk
                 return [v * k for v in mono[:len(s.data)]]
-        return _signed(s.data)
+        return list(signed8(s.data))
 
     def mix(self, comp: Composite, problems: list[dict]) -> tuple[list[float], tuple[int, int] | None, int] | None:
         """(sum, loop to keep, finetune) of one composite, at its trigger note's rate; None when

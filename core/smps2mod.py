@@ -958,7 +958,7 @@ class SmpsToModConverter:
             if g.fill:
                 continue                        # the fill pool reports it
             label = g.label + g.where
-            stats = [s for s in plan.stats if s.group is g]
+            stats = plan.stats_of(g)
             comps = []
             for c in sorted(plan.composites.values(), key=lambda c: (-c.uses.get(label, 0), c.inst, c.offset)):
                 n = c.uses.get(label, 0)

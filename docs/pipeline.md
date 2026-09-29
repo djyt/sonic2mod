@@ -1066,7 +1066,17 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   release padding (`Composite.longest`; the bridge lead's 2.8 s notes under a chime a twelfth up
   got a 1.6 s mix from the instrument figure and stopped dead; the verse chords, 0.35 s notes, got 4.5 s
   mixes from the same figure, so a mix is now the composite's own longest note plus the release
-  padding and every layer, looped or not, is cut to that).  The source instruments' own
+  padding and every layer, looped or not, is cut to that; the padding is the release padding
+  for an FM primary, whose note ends in a release slide the sample must carry, and 50 ms for a
+  PSG or drum primary, whose note is cut at its end — a layer that outlasts that length is keyed
+  off there with its release, never chopped (a hard cut at 0.25 s clicked on every kick whose bass
+  rang the whole note), so a looped layer is unrolled one release tail past it; a looped primary
+  whose composite's longest note ends before its loop starts gets no loop, just the notes' length; a released layer is cut
+  where it falls to the 8-bit floor, `RELEASE_FLOOR_DB` 48 dB, not 60; a group's `mix_at: primary`
+  mixes at the primary's own note so its loop survives, and a song's `loop_drift_db` overrides
+  settings.yaml's).  A layer resampled *up* into a mix uses a 12-tap kernel (`UPSAMPLE_TAPS`): the
+  32-tap sinc rings 2 ms ahead of every transient, and a kick upsampled under a hat that sits at
+  the mix's own rate came in late behind the hat, which the ear hears as the hat triggering early.  The source instruments' own
   sustain needs count those notes too (`_sustain_needs` credits a mixed composite's ring to its
   primary's and followers' instruments at the notes they play inside it): once the bridge lead
   was a group primary its long notes were the composites', its own longest note fell to a second,

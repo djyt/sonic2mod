@@ -13,7 +13,9 @@ Group keys
                                free there = its owner folded, dropped or moved away; with no followers = a plain move
   cut_primary: true            a follower note over the primary's tail plays and cuts it (the drum rule)
   bank: true                   the group's mixes share slots as sample banks with 9xx; drum primaries only
-  mix_note: C3                 cap on the note a mix is made at (bytes vs the hat's treble)
+  mix_note: C3                 cap on the note a mix is made at (bytes vs the hat's treble; C2 loses the hat, F2 keeps it to 5.5 kHz)
+  mix_at: primary              a mix is made at the primary's own note, so a looped lead/bass/chord keeps its loop
+                               (a few KB instead of the whole note unrolled); the chime is resampled down into it
   max_composites: 8            keep the N most-played composites; the rest use a stand-in or the primary alone
   fill_lost: true              follower notes the fold cannot place go to the fill pool (any silent column)
   fill_cut: true               follower notes the fold would cut short go to the pool, whole notes only
@@ -29,6 +31,8 @@ Song level (beside the blocks)
   merge_fill_cut_after: {DAC: 2}   song-wide fallback for cut_after, by the column's owner
   merge_drop: [FM3]            channels left out of the merged build everywhere
   merge_max_synth_shift: 0     cap on how far above its root a sample is rendered (bytes)
+  loop_drift_db: 6             this song's loop_drift_db over settings.yaml's (1): loops may freeze that far above
+                               the settled level, so looped samples end sooner (bytes vs a slowly moving sustain)
   merge_output_file: output/x.mod   where --merged writes
 
 Gotcha

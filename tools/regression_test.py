@@ -48,6 +48,7 @@ BASELINES_DIR = _HERE.parent / "tests" / "baselines"
 _SONGS = [
     ("01_title_screen",      "title_screen",      "title_screen",      "Title Screen"),
     ("02_green_hill_zone",   "green_hill_zone",   "ghz",               "Green Hill Zone"),
+    ("02_ghz_lofi",          "ghz_lofi",          "ghz_lofi",          "Green Hill Zone lofi — mix_at: primary, F2 banks, loop_drift_db 6, root-pitch samples"),
     ("03_marble_zone",       "marble_zone",       "marble_zone",       "Marble Zone — pitched rate-3 noise"),
     ("04_spring_yard_zone",  "spring_yard_zone",  "spring_yard_zone",  "Spring Yard Zone — notes below the PSG table"),
     ("05_lab_zone",          "lab_zone",          "lab_zone",          "Labyrinth Zone — rootless PSG entry + channel transpose"),
@@ -120,15 +121,20 @@ def run_conversion(config: str, root: Path, output_override: Path | None = None,
     cmd = [sys.executable, "convert.py", config, *(extra_args or [])]
     if output_override is not None:
         cmd += ["--output", str(output_override)]
-    result = subprocess.run(
-        cmd,
-        cwd=str(root),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
+    result = None
+    for _attempt in range(2):          # a parallel first run can trip over the chip DLL builds: once more
+        result = subprocess.run(
+            cmd,
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if result.returncode == 0:
+            break
+    assert result is not None
     if result.returncode != 0:
         text = f"  convert.py failed (exit {result.returncode}):\n"
         text += (result.stdout[-2000:] if result.stdout else "") + "\n"

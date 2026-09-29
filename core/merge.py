@@ -1073,6 +1073,15 @@ class _Planner:
         # The group budgets first (max_composites): a composite over budget hands its notes back
         # to the primary's own instrument, which the unused scan must then count as played
         _cap_composites(plan, config)
+
+        # merge_twins: always: every same-shape twin gives its notes to the one kept, slots or no
+        if getattr(config, "merge_twins", "short") == "always":
+            mixes = [c for c in plan.composites.values() if not c.banked]
+            twins = _twins(plan, mixes)
+            for c in mixes:
+                if c.inst in twins:
+                    drop_composite(plan, config, c, 'a same-shape twin (merge_twins: always)', prefer=twins[c.inst])
+            stand_in(plan)
         plan.slots_wanted = len(plan.composites)
 
         # A mix source's slot can be reused too: its sample is rendered anyway and handed to the

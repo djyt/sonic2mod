@@ -61,8 +61,8 @@ def compare(a: np.ndarray, b: np.ndarray) -> tuple[float, float, int]:
     b = np.pad(b, (0, n - len(b)))
     diff = _windows(a - b)
     ref = max(float(_windows(a).max(initial=0.0)), SILENCE)
-    if not len(diff):
-        return -np.inf, 0.0, 0
+    if not len(diff) or float(diff.max()) <= SILENCE:          # identical (a channel silent in both, too)
+        return -np.inf, 0.0, len(diff)
     worst = int(np.argmax(diff))
     return 20 * np.log10(max(float(diff[worst]), SILENCE) / ref), worst * WINDOW_SECS, len(diff)
 

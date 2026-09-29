@@ -1,10 +1,11 @@
 # -------------------------------------------------------------------------------------------------
 # GREEN HILL ZONE Conversion Script - LOFI VARIANT
-# The 4-channel merged build squeezed to ~200 KB (218.9 KB): mixes made at the primary's note so
+# The 4-channel merged build squeezed to ~200 KB (215.7 KB): mixes made at the primary's note so
 # looped leads, bass and chords keep their loops (mix_at: primary), drum banks at A2 (they sound
 # 61 % of the song: 9 KB buys the hat treble to 7 kHz), chime mixes at F2, loops allowed to freeze 12 dB early, samples rendered at their root pitch, one mix per chord
 # shape (merge_twins), and the composites that play one note each left out (max_composites: eight
-# chime notes of the song play without their chime), and two loops made generous by ear ($B, $16).
+# chime notes of the song play without their chime), two loops made generous by ear ($B, $16), the two
+# long chord mixes looped where they settle (loop_mix: 20 KB), spent on $C, the lead fills, 7 semitones up.
 # Same folds as 02_green_hill_zone.yaml.
 # Where the bytes go: python tools/mod_audit.py output/02_ghz_lofi_merged.mod --banks
 # -------------------------------------------------------------------------------------------------
@@ -163,7 +164,8 @@ voice_map:
     - low:  C6
       high: B7
       mod_instrument: 12
-      root: C2
+      root: G2              # it sounds 47 % of the song: 7 semitones up puts its lowest notes at 12.5 kHz
+                            # (8.3 at C2); its highest, E7, lands on B3, the top of the MOD's range
 
   # $07 → bridge
   7:
@@ -275,6 +277,9 @@ merge_patterns:
         followers: [FM3, FM4, PSG1]
         mod_channel: 1
         mix_at: primary      # the chord keeps its loop; the chime is resampled down into it
+        loop_mix: true       # its 3.35 s chords loop where the mix settles
+        loop_drift_db: 1     # past the attack: at the song's 12 dB it looped 40-50 ms from 20 ms in
+        loop_min_ms: 300
         
         # Channel 2: Move Arps
       - primary: PSG2
@@ -327,6 +332,9 @@ merge_patterns:
         followers: [PSG2]
         mod_channel: 1
         mix_at: primary      # the lead keeps its loop under the chime
+        loop_mix: true       # its 2.8 s notes loop where lead + chime settle
+        loop_drift_db: 1     # past the attack: at the song's 12 dB it looped 40-50 ms from 20 ms in
+        loop_min_ms: 300
         max_composites: 1    # a second lead+chime mix is one note (0.4 % of the song, 6 KB)
         
         # Channel 2: Bass + PSG1

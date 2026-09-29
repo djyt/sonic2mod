@@ -691,7 +691,12 @@ times smaller at the cost of the hat's treble above 5.5 kHz. `merge_twins: alway
 level; default `short`) gives every chord shape one mix even when slots are to spare: a
 composite whose shape (voices and intervals) another has plays that one, the one whose
 followers ring furthest, instead of a mix of its own that differs only in where a follower is
-cut (by default that happens only while the composites do not all fit). Details:
+cut (by default that happens only while the composites do not all fit). A group's
+`loop_mix: true` loops its long mixes where the sum settles, found in the finished mix as a
+single voice's sustain loop is, with an 80 ms crossfade (the layers beat, so the join lands on
+another phase of the beat); the group's `loop_drift_db` / `loop_min_ms` steer it.  Lossy: the
+chord's slow movement freezes in the loop.  Green Hill lofi: its two long chords, 30 KB each,
+loop from 1.35 and 1.4 s (drift 1 dB, loops of at least 300 ms). Details:
 `docs/pipeline.md` § Sample banks.
 
 `python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write`

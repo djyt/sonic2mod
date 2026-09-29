@@ -191,6 +191,10 @@ class MergeGroup:
     loop_drift_db: float | None = None  # the sustain loop drift of this group's chip composites (the
                                 # primary's entry's, then the song's, otherwise)
     loop_min_ms: float | None = None    # the shortest sustain loop of this group's chip composites
+                                # (and of its looped mixes, loop_mix)
+    loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
+                                # finished mix as a single voice's loop is (lossy: the chord's slow
+                                # movement freezes there); for a pitched primary
     patterns: frozenset | None = None   # the MOD patterns (of the reference build) this group folds in;
                                         # None = the whole song.  A `merge_patterns:` group has one.
 
@@ -299,7 +303,8 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
                       cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None),
                       loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
-                      loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)))
+                      loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
+                      loop_mix=bool(g.get('loop_mix', False)))
 
 
 @dataclass

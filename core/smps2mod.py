@@ -76,6 +76,78 @@ def _shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> in
 _HEADROOM_REPORT_DB = 0.05     # a composite clamped by less is not reported
 
 
+class _ColumnRouter:
+    """Where one channel's notes go in the merged build (core.merge.MergePlan): its own column,
+    or the one a merge_patterns group routes it to in the note's pattern; which of its notes
+    play on another channel; what a drum hit plays there.  Without a plan: its own column,
+    every note, as written.
+
+        pattern:   1-4        5-c        d-10
+        FM5     →  col 1      (folded)   col 4    ← mod_channel / fill routes
+    """
+
+    def __init__(self, conv: "SmpsToModConverter", source: str, home: int):
+        self._conv, self._plan = conv, conv._merge
+        self._source, self._home = source, home
+        self._last: int | None = None      # the column the previous note-on went to
+        self._away = self._plan.away_patterns(source) if self._plan is not None else frozenset()
+
+    def _pattern(self, tick: int) -> int:
+        return self._conv._pattern_of_tick(tick)
+
+    def column_for(self, tick: int) -> int:
+        """The column a note-on at `tick` takes (the reference build's pattern, as the groups
+        count them)."""
+        if self._plan is None:
+            return self._home
+        r = self._plan.route_at(self._source, self._pattern(tick))
+        return self._home if r is None else r
+
+    def current(self, tick: int) -> int:
+        """The column this channel's ring is on: the last note-on's."""
+        return self._last if self._last is not None else self.column_for(tick)
+
+    def take(self, pattern: int, row: int, tick: int, sounding: bool) -> int:
+        """The column a note-on at `tick` goes to; a note still ringing on another column
+        (`sounding`, the previous block's) is cut there, as the re-key ended it."""
+        chan = self.column_for(tick)
+        last = self._last
+        if last is not None and last != chan and sounding and not self._conv.mod.note_at(pattern, row, last):
+            self._conv._set_cursor(pattern, last, row)
+            self._conv.mod.set_effect(0xC, 0)
+        self._last = chan
+        return chan
+
+    def plays_here(self, ev) -> bool:
+        """A note-on this channel's output sounds: not one folded onto another channel (or
+        dropped) in its pattern."""
+        return (self._plan is None or getattr(ev, "merged", None) is not None
+                or not self._plan.is_folded(self._source, ev.tick_position))
+
+    def away(self, ev) -> bool:
+        """An own event in a pattern this channel plays nothing of its own in (a follower's, or
+        dropped there)."""
+        return (bool(self._away) and getattr(ev, "merged", None) is None
+                and self._pattern(ev.tick_position) in self._away)
+
+    def borrowed(self, column: int, tick: int) -> bool:
+        """Another channel's notes take `column` at `tick` (mod_channel)."""
+        return self._plan is not None and self._plan.routed_into(column, self._pattern(tick)) is not None
+
+    def note(self, tick: int, index: int) -> int:
+        """The MOD note a primary note at `tick` is triggered at: a transposed mix's own."""
+        return index if self._plan is None else self._plan.note_at(self._source, tick, index)
+
+    def drum(self, tick: int, inst: int, note: ModNote) -> tuple[int, ModNote, tuple[int, int] | None]:
+        """(instrument, note, bank region) a drum hit plays: a composite with its hi-hat folded
+        in, and where its sound starts in a sample bank."""
+        if self._plan is None:
+            return inst, note, None
+        return (self._plan.instrument_at(self._source, tick, inst),
+                ModNote(self._plan.note_at(self._source, tick, note.value)),
+                self._plan.region_at(self._source, tick))
+
+
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
@@ -1318,30 +1390,8 @@ class SmpsToModConverter:
 
     def _convert_channel(self, channel: SmpsChannel, chan_cfg: ChannelConfig, is_dac: bool):
         """Convert a single SMPS channel to MOD data."""
-        home = chan_cfg.mod_channel
-        mod_chan = home
-        last_chan: int | None = None       # the column the previous note-on went to
-
-        def chan_for(tick: int) -> int:
-            """The column a note-on at `tick` takes: another channel's when a merge group of
-            this primary borrows it in the tick's pattern (mod_channel; the reference build's
-            pattern, as the groups count them), else this channel's own."""
-            if self._merge is None:
-                return home
-            r = self._merge.route_at(chan_cfg.source, self._pattern_of_tick(tick))
-            return home if r is None else r
-
-        def take_column(pattern: int, row: int, tick: int, sounding: bool) -> int:
-            """The column a note-on at `tick` goes to; a note still ringing on another column
-            (`sounding`, the previous block's) is cut there, as the re-key ended it."""
-            nonlocal last_chan
-            chan = chan_for(tick)
-            if (last_chan is not None and last_chan != chan and sounding
-                    and not self.mod.note_at(pattern, row, last_chan)):
-                self._set_cursor(pattern, last_chan, row)
-                self.mod.set_effect(0xC, 0)
-            last_chan = chan
-            return chan
+        mod_chan = chan_cfg.mod_channel
+        router = _ColumnRouter(self, chan_cfg.source, mod_chan)
 
         # Driver state: level, pan, transpose, FM voice and the active PSG entry — including
         # the smpsHeaderPSG voice.  Shared with the level pre-passes and the rate-3 derivation
@@ -1413,16 +1463,10 @@ class SmpsToModConverter:
             rel_db = level - baseline.get(inst, level)
             return clamp_mod_volume(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)
 
-        def _plays_here(ev) -> bool:
-            """A note-on this channel's output sounds: not one folded onto another channel (or
-            dropped) in its pattern by a merge_patterns group (core.merge)."""
-            return (self._merge is None or getattr(ev, "merged", None) is not None
-                    or not self._merge.is_folded(chan_cfg.source, ev.tick_position))
-
         _note_on_positions: set[tuple[int, int]] = set()
         if is_psg:
             for _ev in channel.events:
-                if _ev.is_note and not _ev.note.is_rest and _plays_here(_ev):
+                if _ev.is_note and not _ev.note.is_rest and router.plays_here(_ev):
                     _note_on_positions.add(self._tick_to_pattern_row(_ev.tick_position))
                     _note_on_positions.add(divmod(int(_ev.tick_position // self._effective_tpr), 64))
 
@@ -1435,9 +1479,7 @@ class SmpsToModConverter:
         # Every note-on tick of this channel (spliced notes included): a release slide runs up to
         # the row before the next one, so it never lands in a note-on's cell
         _note_on_ticks = sorted(ev.tick_position for ev in channel.events
-                                if ev.is_note and not ev.note.is_rest and _plays_here(ev))
-        # Patterns this channel plays nothing of its own in (a merge_patterns follower / drop)
-        _away_patterns = self._merge.away_patterns(chan_cfg.source) if self._merge is not None else frozenset()
+                                if ev.is_note and not ev.note.is_rest and router.plays_here(ev))
 
         def _next_note_row(tick: int) -> int:
             """The first row (over the whole song) the next note-on after `tick` can land on."""
@@ -1550,7 +1592,7 @@ class SmpsToModConverter:
                 note = event.note
                 tick = event.tick_position
 
-                if not note.is_rest and not _plays_here(event):
+                if not note.is_rest and not router.plays_here(event):
                     # This note plays on its group's primary channel in this pattern
                     # (merge_patterns), or nowhere (dropped).  What still rings here from a
                     # pattern the channel was live in ends now, as the re-key ended it on the
@@ -1560,14 +1602,12 @@ class SmpsToModConverter:
                     pattern, row = self._tick_to_pattern_row(tick)
                     if pattern >= self.config.max_patterns:
                         continue
-                    mod_chan = last_chan if last_chan is not None else chan_for(tick)
+                    mod_chan = router.current(tick)
                     if self.mod.note_at(pattern, row, mod_chan):
                         last_inst = None
                         continue            # a note-on already takes the column here
                     rate = _release_rows(last_inst, tick)
-                    borrowed = (self._merge is not None
-                                and self._merge.routed_into(mod_chan, self._pattern_of_tick(tick)) is not None)
-                    if rate is not None and not borrowed:     # a slide would sit on the borrower's notes
+                    if rate is not None and not router.borrowed(mod_chan, tick):   # a slide would sit on its notes
                         self._write_release(mod_chan, pattern * 64 + row, last_vol, rate, tick,
                                             _next_note_row(tick))
                     else:
@@ -1584,10 +1624,9 @@ class SmpsToModConverter:
                     pattern, row = self._tick_to_pattern_row(tick)
                     if pattern >= self.config.max_patterns:
                         continue
-                    if (last_inst is None and _away_patterns and getattr(event, "merged", None) is None
-                            and self._pattern_of_tick(tick) in _away_patterns):
+                    if last_inst is None and router.away(event):
                         continue            # nothing of this channel's sounds here: no C00 clutter
-                    mod_chan = last_chan if last_chan is not None else chan_for(tick)
+                    mod_chan = router.current(tick)
                     if (pattern, row) == (0, 0):
                         # A leading rest.  Its C00 matters once the song loops back to
                         # position 0, and the cell may hold a tempo command, so it is
@@ -1596,8 +1635,7 @@ class SmpsToModConverter:
                         continue
                     # Another channel's notes take this column here (mod_channel): its note-on
                     # ends this ring by itself, and a slide would sit on its notes
-                    borrowed = (self._merge is not None
-                                and self._merge.routed_into(mod_chan, self._pattern_of_tick(tick)) is not None)
+                    borrowed = router.borrowed(mod_chan, tick)
                     if borrowed and self.mod.note_at(pattern, row, mod_chan):
                         continue
                     rate = None if borrowed else _release_rows(last_inst, tick)
@@ -1631,20 +1669,15 @@ class SmpsToModConverter:
                     pattern, row, note_delay = _note_cell(tick, True, None)
                     if pattern >= self.config.max_patterns:
                         break
-                    mod_chan = take_column(pattern, row, tick, last_inst is not None)
+                    mod_chan = router.take(pattern, row, tick, last_inst is not None)
                     self._set_cursor(pattern, mod_chan, row)
                     self._clear_stale_cut(pattern, row, mod_chan)
                     last_note_cell = (pattern, row)
                     # DAC: look up instrument and note from dac_samples config
                     dac_cfg = dac_map.get(note.dac_name)
                     if dac_cfg:
-                        dac_inst = dac_cfg.mod_instrument
-                        dac_note = _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3)
-                        region = None
-                        if self._merge is not None:          # a drum with its hi-hat folded in
-                            dac_inst = self._merge.instrument_at(chan_cfg.source, tick, dac_inst)
-                            dac_note = ModNote(self._merge.note_at(chan_cfg.source, tick, dac_note.value))
-                            region = self._merge.region_at(chan_cfg.source, tick)
+                        dac_inst, dac_note, region = router.drum(
+                            tick, dac_cfg.mod_instrument, _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3))
                         self.mod.set_note(dac_note, dac_inst)
                         last_inst, last_vol = dac_inst, _sample_vol_map.get(dac_inst, 64)
                         if region is not None:
@@ -1674,8 +1707,7 @@ class SmpsToModConverter:
                     _note_gain[0] = res.gain_db
                     source_semitone = res.source
                     final_instrument = res.instrument
-                    final_note = ModNote(res.index if self._merge is None
-                                         else self._merge.note_at(chan_cfg.source, tick, res.index))
+                    final_note = ModNote(router.note(tick, res.index))
                     active_range_entry = None if is_psg else res.entry
                     self._warn_resolution(res, st, chan_cfg, note)
                     # A solo note carries none of this channel's modulation, but its own note
@@ -1740,7 +1772,7 @@ class SmpsToModConverter:
                         _cut_tick)
                     if pattern >= self.config.max_patterns:
                         break
-                    mod_chan = take_column(pattern, row, tick, last_inst is not None)
+                    mod_chan = router.take(pattern, row, tick, last_inst is not None)
                     self._set_cursor(pattern, mod_chan, row)
                     self._clear_stale_cut(pattern, row, mod_chan)
                     last_note_cell = (pattern, row)

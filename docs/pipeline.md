@@ -1022,8 +1022,11 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   rendered at the level the composite's own notes play most (`_plan_fm_render_levels` counts it
   like any instrument) and its `sample_list` volume is the primary's times the composite's
   peak over its primary layer's alone (the generator renders that layer by itself too), moved by
-  the difference between the composite's and the primary instrument's baked levels: the primary
-  plays as loud as it did and the follower adds to it as the hardware sum did.  Past 64 the
+  the difference between the composite's baked level and the primary instrument's **in the
+  reference build** (`_merge_baselines`, the levels the plan was built with — the sample_list
+  volume was measured for those; in the merged build the primary instrument may keep only a few
+  fallback notes at another level, and Green Hill's bell arp once dropped 13.5 dB that way): the
+  primary plays as loud as it did and the follower adds to it as the hardware sum did.  Past 64 the
   volume is clamped and `merge_headroom` says by how much.
 - anything else → `("pcm", primary instrument, (follower instrument, interval above the
   primary's MOD note, level gain, fill)...)`: mixed by `mix_pcm_composites` once every sample

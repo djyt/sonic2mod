@@ -338,6 +338,11 @@ def main():
                 f"{'s' if len(info['composites']) != 1 else ''}, "
                 f"{info['alone']} notes the primary plays alone"
                 + (f", {info['solo']} follower notes placed on their own" if info.get('solo') else ""))
+            if info.get('unison'):
+                u = info['unison']
+                gains = ", ".join(f"{db:+.1f} dB × {n}" for db, n in sorted(u['gains'].items()))
+                detail_lines.append(f"  [dim]unison   {u['notes']:3d} notes  the primary's own instrument, "
+                                    f"louder ({gains}): no composite[/dim]")
             for inst, notes, detail, created_for, others in info['composites']:
                 share = ""
                 if created_for:
@@ -386,11 +391,24 @@ def main():
         elif info['type'] == 'merge_slots':
             banked = info.get('banked', 0)
             gone = info['wanted'] - info['used'] - banked
-            short = (f" — [yellow]{gone} dropped: lower a group's max_composites or free a slot[/yellow]"
-                     if gone > 0 else "")
+            twins = info.get('stand_ins', 0)
+            short = (f" — [yellow]{gone - twins} dropped: lower a group's max_composites or free a slot[/yellow]"
+                     if gone - twins > 0 else "")
+            if twins:
+                short += f" — {twins} more play a same-shape stand-in"
             in_banks = f", {banked} more in sample banks" if banked else ""
             detail_lines.append(f"composite slots: {info['used']} used of {info['free']} free "
                                 f"({info['wanted']} asked for by the groups' budgets{in_banks}){short}")
+        elif info['type'] == 'merge_bank_retry':
+            slots = ", ".join(str(x) for x in info['slots'])
+            detail_lines.append(
+                f"sample banks: slot{'s' if len(info['slots']) != 1 else ''} {slots} of merge_bank_slots: "
+                f"{info['reserve']} went unused ({info['banks']} bank{'s' if info['banks'] != 1 else ''} filled), "
+                f"so the build was made again with {info['banks']} reserved and the composites given the rest")
+        elif info['type'] == 'merge_unison_volume':
+            detail_lines.append(
+                f"[dim]unison: instrument {info['instrument']} baked {info['db']:+.1f} dB from its measured level "
+                f"(volume {info['volume']}): most of its notes are unison chords now[/dim]")
         elif info['type'] == 'merge_unused':
             detail_lines.append(
                 f"[dim]not rendered: instrument{'s' if len(info['instruments']) != 1 else ''} "

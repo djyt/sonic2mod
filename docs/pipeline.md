@@ -1085,7 +1085,8 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   folded notes: those notes are composites (credited to their sources) or spliced onto a live
   channel (counted there), or not played at all, so a dropped channel's long notes no longer size
   a sample.  `tools/mod_audit.py` reads any MOD back and reports each sample's bytes and seconds
-  against the longest note that plays it (unused, too short, oversize, empty slot, sample bank);
+  against the longest note that plays it (unused, too short, oversize, empty slot, sample bank,
+  and a slot whose waveform another slot already holds: `same as N`);
   Green Hill's merged samples went from 771 KB to 526 KB under these rules, and convert.py
   narrows a merged build whose columns all fit four to a 4-channel M.K. file (`ModFile.narrow_to`).
 
@@ -1214,7 +1215,8 @@ exist, most-played first, installs the banks, points `plan.ticks` at the bank sl
 records each note's `(offset, sound bytes)` in `plan.regions`.  A member that fits nowhere is
 dropped like any composite over budget (a same-shape stand-in, else the primary alone) and
 reported with its reason (`merge_bank_dropped`: "no slot left for another bank" means raise
-`merge_bank_slots`).
+`merge_bank_slots`).  A reserve slot no bank filled is not lost: the conversion is run again
+with the reserve cut to the banks it needs (see *Three rules against one sound in two slots*).
 
 In the output every banked note starts with `9xx` at its offset (none at offset 0) and,
 because the sample would run on into the next sound, is cut once its sound is over:
@@ -1238,6 +1240,51 @@ Green Hill recovered its two empty slots.  A composite dropped for lack of a slo
 verse bass: 119 notes mixed, 69 alone between drum hits, 4 lost (pattern 2, pitches no drum
 mix exists for); 26 follower notes over all groups still play the primary alone
 (`merge_unsupported` lists each).
+
+**Three rules against one sound in two slots** (2026-09-29, found by ear in FT2 clone: Green
+Hill merged slots $19 and $1F sounded the same).
+
+- *A unison is the primary, louder* (`unison_gain_db`).  A chord whose every follower is the
+  primary's own voice at the same chip pitch, no detune and keyed off with it (chip), or the
+  primary's instrument at its MOD note with no cut (mix), makes no composite: the note plays
+  the primary's own instrument, and `MergePlan.gains` carries the dB the followers add (their
+  amplitudes summed: +6.02 dB for an equal pair; each chip channel is clamped on its own before
+  the DAC sums them, so the sum is linear).  `walk_channel` puts it on `ResolvedNote.gain_db`,
+  so `_plan_levels` bakes the instrument at the level most of its notes now play, gain
+  included, and the instrument's `sample_list` volume moves from its reference-build level by
+  the difference (the chip composites' volume move, `merge_unison_volume` in the report).  A
+  `Cxx` instead would have been wrong: every one of Green Hill's 58 FM4+FM5 unison notes starts
+  between rows, and a `Cxx` due on an `EDx` row moves to the next row, after an attack 6 dB
+  quiet.  Green Hill's slot 7 (voice $05 doubled, 11 KB) was slot 11's bytes at volume 20; now
+  slot 11 is baked at 20 and its 20 own notes carry the `Cxx` they carried before.  A detuned
+  unison (Title Screen FM4+FM3, `smpsDetune` +3) stays a composite: it beats.
+- *Twins give up their slot first* (`_twins`, `_reach`).  While the composites do not all fit,
+  one whose shape (`_shape`) another has is dropped before any that would lose its notes; of
+  each shape the one whose followers ring furthest is kept (fewest cut, then the latest cuts,
+  then the most played), since a layer ringing on under a short note is heard less than one
+  cut from a long one, and only where it can play every note of the other (a mix transposed
+  past B3 loses the note).  `drop_composite(..., prefer=key)` names it for `stand_in`, which
+  now runs after every drop inside the fit: counted as the primary's own until the fit ended,
+  a twin's notes kept its primary's slot out of the next pass (Green Hill's voice $08 sample
+  stayed installed with nothing playing it).  Green Hill: the lead chord of patterns 1–4 in
+  slots 25 and 31 (the same four voices, PSG1 cut at 267 ms in one) is one slot.  The report's
+  `composite slots` line counts these apart ("N more play a same-shape stand-in").
+- *An idle bank reserve goes back to the composites* (`SmpsToModConverter.convert`).  How many
+  banks the mixes need is known only once they are mixed, so when the banks leave a
+  `merge_bank_slots` slot empty while composites were dropped the whole conversion runs again,
+  from a copy of the song and config taken before the first pass, with the reserve set to the
+  banks filled (`merge_bank_retry` in the report).  Green Hill at `merge_bank_slots: 3` and
+  at 2 now write the same bytes.
+
+`tools/mod_audit.py` checks the result from the file alone: `same as N` where a slot's first
+100 ms is slot N's waveform (correlation >= 0.98, with the level difference and how long the
+two agree), `finetune variant of N` for the intended chorus copies (Title Screen 3/4, Spring
+Yard 5/6, Ending 8/11).  The bytes are compared as they are, so two mixes made the same
+distance below their trigger notes match whatever pitch each plays at; a transposed copy
+rendered at another rate does not.  What it still flags on purpose: Title Screen's detuned
+unison (18 vs 5, the loop freezes the beat) and its hat mixes 15–17 against 10/11 (the hat
+is cut at 50 or 250 ms under a kick loud enough to hide it; there are slots to spare, so no
+twin is dropped).
 
 ## SMPS Note Range to MOD Range
 

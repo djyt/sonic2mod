@@ -207,7 +207,8 @@ def generate_fm_samples(
         # ending later is longer than that plain render, and less faithful: none
         heard_n = None
         if job.inst in synth.exact_sustain:
-            heard_n = math.ceil(rate * (sustain + heard_padding(synth.release_padding, release, loops)))
+            slides = loops and job.inst in synth.slide_ends
+            heard_n = math.ceil(rate * (sustain + heard_padding(synth.release_padding, release, slides)))
             if loop is not None and loop.end > heard_n:
                 loop = None
         if loop is not None:

@@ -493,6 +493,8 @@ class PsgSynthesisSettings:
     # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
     # _resolve_sustain); an instrument absent here gets sustain_duration.  Empty when a number is stated.
     sustain_by_instrument: dict = field(default_factory=dict)
+    slide_ends: frozenset = frozenset()      # instruments a note of ends in a release slide (merged
+                                             # build): only they are heard past their sustain
     exact_sustain: frozenset = frozenset()   # instruments whose auto sustain holds every note that
                                              # plays them: the sample ends where those notes stop
                                              # being heard (the release padding only a cut-short
@@ -565,6 +567,7 @@ class SynthesisSettings:
     release_padding: float = 0.5
     sustain_by_instrument: dict = field(default_factory=dict)   # as PsgSynthesisSettings
     exact_sustain: frozenset = frozenset()                      # as PsgSynthesisSettings
+    slide_ends: frozenset = frozenset()                         # as PsgSynthesisSettings
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"

@@ -95,6 +95,19 @@ PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL s
 # --- config -----------------------------------------------------------------------------------
 
 
+def _away_in(groups, pattern_drop: dict, src: str) -> frozenset | None:
+    """The patterns `src` plays nothing of its own in: a follower's (or a `fill: true` group's
+    primary's), or dropped there.  None: every pattern (a song-wide group)."""
+    out: set[int] = set(pattern_drop.get(src, ()))
+    for g in groups:
+        if src not in g.followers and not (g.fill and g.primary == src):
+            continue
+        if g.patterns is None:
+            return None
+        out |= g.patterns
+    return frozenset(out)
+
+
 def prepare_merged_config(config) -> None:
     """Make `config` the merged build: followers disabled, the enabled channels packed onto
     MOD channels 0..n-1 in their configured order, the output file the merged one.
@@ -159,30 +172,14 @@ def prepare_merged_config(config) -> None:
     # and in the patterns it follows in, its notes go to its primary's channel instead.
     named = frozenset(config.merge_patterns_named)
 
-    def gone(src: str) -> bool:
-        if src in config.merge_drop or src in config.merge_fill:
-            return True
-        away: set[int] = set()
-        for g in config.merge:
-            if src in g.followers or (g.fill and g.primary == src):
-                if g.patterns is None:
-                    return True
-                away |= g.patterns
-        away |= set(config.merge_pattern_drop.get(src, ()))
-        return bool(named) and named <= away
     def away_in(src: str) -> frozenset | None:
-        """The patterns `src` plays nothing of its own in; None = every pattern."""
         if src in config.merge_drop or src in config.merge_fill:
             return None
-        out: set[int] = set(config.merge_pattern_drop.get(src, ()))
-        for g in config.merge:
-            if src in g.followers or (g.fill and g.primary == src):
-                if g.patterns is None:
-                    return None
-                out |= g.patterns
-        return frozenset(out)
+        return _away_in(config.merge, config.merge_pattern_drop, src)
+
     for c in config.channels:
-        if gone(c.source):
+        away = away_in(c.source)
+        if away is None or (named and named <= away):
             c.enabled = False
     numbered = {c.mod_channel: c.source for c in config.channels}      # the config's numbering
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
@@ -720,13 +717,10 @@ class MergePlan:
         return int(getattr(config, "merge_fill_cut_after", {}).get(source, 0))
 
     def away_patterns(self, source: str) -> frozenset:
-        """The patterns `source` plays nothing of its own in: a follower's, or dropped."""
-        out: set[int] = set()
-        for g in self.groups:
-            if (source in g.followers or (g.fill and g.primary == source)) and g.patterns is not None:
-                out |= g.patterns
-        out |= set(self.pattern_drop.get(source, ()))
-        return frozenset(out)
+        """The patterns live channel `source` plays nothing of its own in: a follower's, or dropped."""
+        away = _away_in(self.groups, self.pattern_drop, source)
+        assert away is not None, f"{source} is a follower everywhere: it has no channel"
+        return away
 
     def gain_at(self, source: str, tick: int) -> float:
         """dB the note at (source, tick) plays above its own level: a unison chord folded into

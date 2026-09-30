@@ -97,7 +97,6 @@ sample_list:
   - [16, "psg_noise.raw",    4, 0] # VGZ: +6.0 dB at 7
   # --- PSG Voices ---
   - [17, "psg_tone01.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
-  - [18, "psg_tone03.raw",  16, 0]
   - [19, "psg_tone05.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
   - [20, "psg_tone06.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
 
@@ -164,9 +163,7 @@ voice_map:
     - low:  C6
       high: B7
       mod_instrument: 12
-      root: G2              # it sounds 47 % of the song: 7 semitones up puts its lowest notes at 12.5 kHz
-                            # (8.3 at C2); its highest, E7, lands on B3, the top of the MOD's range
-
+      root: C2
   # $07 → bridge
   7:
     - low:  C5
@@ -196,9 +193,6 @@ psg_map:
 psg_voice_map:
   fTone_01:
     mod_instrument: 17
-    root: A2
-  fTone_03:
-    mod_instrument: 18
     root: A2
   fTone_05:
     mod_instrument: 19
@@ -269,7 +263,7 @@ merge_patterns:
         followers: [FM2, PSG3]
         cut_primary: true
         bank: true
-        max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
+        #max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
         
         # Channel 1: Combine 4 Lead Channels
@@ -298,7 +292,7 @@ merge_patterns:
         followers: [FM2, PSG3]
         cut_primary: true
         bank: true
-        max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
+        #max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
         
         # Channel 1: Remains as-is (Lead)

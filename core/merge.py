@@ -95,7 +95,7 @@ from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .levels import TL_STEP_DB, clamp_mod_volume
 from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
-from .pcm import MAX_MOD_SAMPLE_BYTES, high_shelf, peak, signed8, to_int8
+from .pcm import INT8_PEAK, MAX_MOD_SAMPLE_BYTES, high_shelf, limit_peaks, peak, signed8, to_int8
 from .resample import DEFAULT_TAPS, resample
 from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
@@ -603,6 +603,7 @@ class Composite:
     fm: FmInstrument | None = None     # chip-rendered: an entry for the instrument catalogue
     entry: list | None = None          # its sample_list entry [inst, name, volume, finetune]
     headroom_db: float = 0.0           # pcm mix: dB the sum exceeded full scale by (volume clamped)
+    limited_db: float = 0.0            # pcm mix: the most its group's limit_db limiter took off a peak
     note: int | None = None            # pcm mix: the MOD note it is triggered at, when not the
                                        # primary's (the layer with the highest rate sets it)
     base: int = 0                      # pcm mix: the primary's MOD note it is mixed at; a note of the
@@ -1670,6 +1671,11 @@ class _Mixer:
         g = comp.group
         if g.treble_shelf_db:
             total = high_shelf(total, round(r_p), g.treble_shelf_hz or self._shelf_hz, g.treble_shelf_db)
+
+        # The group's limiter: peaks past full scale at volume 64 (INT8_PEAK in the sum's units)
+        # come down to it, so the sound keeps its level instead of all of it playing quieter
+        if g.limit_db:
+            total, comp.limited_db = limit_peaks(total, round(r_p), INT8_PEAK, g.limit_db)
 
         # Past what any note reaches, nothing is heard (the layers' release tails ran on there): a
         # note is heard to the earlier of its end plus the release slide (an FM primary's lasts

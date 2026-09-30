@@ -197,6 +197,9 @@ class MergeGroup:
                                 # sum, drums off disk included; a chip composite's render), on top of
                                 # any song shelf; treble_shelf_hz its corner (None: the settings')
     treble_shelf_hz: float | None = None
+    limit_db: float | None = None   # a mix of this group whose sum is past full scale has its peaks
+                                # limited, by up to this many dB, instead of the whole sound turned
+                                # down (core.pcm.limit_peaks); denser, a little transient distortion
     loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
                                 # finished mix as a single voice's loop is (lossy: the chord's slow
                                 # movement freezes there); for a pitched primary
@@ -311,7 +314,8 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
                       loop_mix=bool(g.get('loop_mix', False)),
                       treble_shelf_db=_opt(g, 'treble_shelf_db', float),
-                      treble_shelf_hz=_opt(g, 'treble_shelf_hz', float))
+                      treble_shelf_hz=_opt(g, 'treble_shelf_hz', float),
+                      limit_db=_opt(g, 'limit_db', lambda v: max(0.0, float(v))))
 
 
 @dataclass

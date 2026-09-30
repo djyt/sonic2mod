@@ -52,6 +52,60 @@ def high_shelf(samples: Sequence[float], rate: int, freq_hz: float, gain_db: flo
     return out
 
 
+# Peak limiter (limit_peaks): the gain falls over this lookahead before a peak, recovers over the release
+LIMIT_ATTACK_MS = 1.5
+LIMIT_RELEASE_MS = 60.0
+
+
+def limit_peaks(samples: Sequence[float], rate: int, ceiling: float, max_db: float) -> tuple[list[float], float]:
+    r"""(`samples` with every peak above `ceiling` brought down to it, the largest gain reduction in dB).
+
+    A lookahead limiter: the gain a sample needs (ceiling / |x|, never below -`max_db`) is the
+    minimum over the next LIMIT_ATTACK_MS, smoothed over the same span so it ramps down in time,
+    then released exponentially over LIMIT_RELEASE_MS.  Only the few ms around a peak (a kick and
+    a bass attack landing together) are turned down; a peak needing more than `max_db` keeps the
+    excess.
+
+        |x|  ______/\____        gain  ‾‾‾‾‾\_/‾‾‾‾‾   (falls before the peak, recovers after)
+    """
+    n = len(samples)
+    if n == 0 or max_db <= 0:
+        return list(samples), 0.0
+    floor = 10 ** (-max_db / 20)
+    need = [max(floor, ceiling / abs(v)) if abs(v) > ceiling else 1.0 for v in samples]
+    if min(need) >= 1.0:
+        return list(samples), 0.0
+
+    # The least gain needed over the next `la` samples (a sliding-window minimum)
+    la = max(1, round(rate * LIMIT_ATTACK_MS / 1000))
+    ahead = [1.0] * n
+    window: list[int] = []                      # indices, their need increasing
+    head = 0
+    for i in range(n - 1, -1, -1):
+        while len(window) > head and need[window[-1]] >= need[i]:
+            window.pop()
+        window.append(i)
+        while window[head] > i + la:
+            head += 1
+        ahead[i] = need[window[head]]
+
+    # Smoothed over the lookahead (a ramp that reaches each peak's gain at the peak), then released
+    # Before the first sample the gain is already the first samples' own: a drum's loudest peak is
+    # its first millisecond, and a window padded with unity gain could not ramp down in time for it
+    start = ahead[0]
+    total = start * la
+    rel = math.exp(-1.0 / (rate * LIMIT_RELEASE_MS / 1000))
+    g = 1.0
+    out = [0.0] * n
+    least = 1.0
+    for i in range(n):
+        total += ahead[i] - (ahead[i - la] if i >= la else start)
+        g = min(total / la, 1.0 - (1.0 - g) * rel)
+        least = min(least, g)
+        out[i] = samples[i] * g
+    return out, -20 * math.log10(least)
+
+
 def sample_limit_bytes(kb: int) -> int:
     """Bytes one sample may hold for a `max_sample_kb` setting: 128 is the format's own limit
     (131070 bytes), 64 is the original ProTracker editor's (65534 bytes, its four-hex-digit

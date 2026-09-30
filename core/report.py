@@ -652,6 +652,8 @@ def print_merge(console: Console, rep: Report) -> None:
     notes += [f"{i['cxx_moved']} banked notes' Cxx moved a row later (the attack row holds the 9xx)"
               for i in _infos(rep, 'merge_bank_notes') if i.get('cxx_moved')]
     notes += [f"{i['to']}-channel MOD: columns {i['to'] + 1}–{i['from']} were empty" for i in _infos(rep, 'narrowed')]
+    notes += [f"limit_db: {i['composites']} mixes' peaks limited, up to {i['max_db']:.1f} dB"
+              for i in _infos(rep, 'merge_limited')]
     for n in notes:
         console.print(Padding(Text(n, style="dim"), (0, 0, 0, 2), expand=False))
 

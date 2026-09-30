@@ -272,6 +272,12 @@ A merge group takes its own `treble_shelf_db` (and `treble_shelf_hz`), on top of
 on its composites only: a mix's whole sum (the drums off disk too), a chip composite's render.
 The instruments' own samples elsewhere in the song keep the song's shelf.
 
+A merge group's `limit_db: 4` limits a mix whose sum is past full scale: its peaks (a kick and a
+bass attack landing together) come down to full scale by up to 4 dB, with a 1.5 ms lookahead and
+a 60 ms release (`core.pcm.limit_peaks`), instead of the whole sound playing that much quieter
+at volume 64.  Denser, a little transient distortion.  Green Hill's drum groups: 20 mixes, up to
+3.2 dB taken off a peak, none turned down any more.
+
 ### Choosing root
 
 `root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).

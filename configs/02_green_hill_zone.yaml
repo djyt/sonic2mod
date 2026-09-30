@@ -236,6 +236,8 @@ merge_patterns:
         cut_primary: true    # Allow a secondary channel to take priority over the primary
         bank: true           # Group multiple sounds in a single sample
         mix_note: C3         # Mixed Render Target
+        limit_db: 4          # Peaks past full scale limited, not the sound turned down
+        treble_shelf_db: 2
         
         
    # --- Pattern $01-$04 ---------------------------------------------------------------------------
@@ -247,12 +249,15 @@ merge_patterns:
         cut_primary: true
         bank: true
         mix_note: C3
+        limit_db: 4
+        treble_shelf_db: 2
         
         # Channel 1: Combine 4 Lead Channels
       - primary: FM5
         followers: [FM3, FM4, PSG1]
-        mod_channel: 1
         mix_at: primary
+        treble_shelf_db: 4
+        mod_channel: 1
         
         # Channel 2: Move Arps
       - primary: PSG2
@@ -272,6 +277,8 @@ merge_patterns:
         cut_primary: true
         bank: true
         mix_note: C3
+        limit_db: 4
+        treble_shelf_db: 2
         
         # Channel 1: Remains as-is (Lead)
         
@@ -296,6 +303,8 @@ merge_patterns:
         cut_primary: true
         bank: true
         mix_note: C3
+        limit_db: 4
+        treble_shelf_db: 2
         
         # Channel 1: Lead + PSG2
       - primary: FM1

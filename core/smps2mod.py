@@ -184,6 +184,7 @@ class SmpsToModConverter:
         self._pending_sustain_short: dict[tuple[str, int], dict] = {}
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
         self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
+        self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
                                                        #   quantisation: what the composite mixer mixes from
         self._bank_delays_dropped = 0      # banked drum notes whose EDx gave way to the 9xx offset
         self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
@@ -452,7 +453,8 @@ class SmpsToModConverter:
                                      max_bytes: int = MAX_MOD_SAMPLE_BYTES) -> None:
         """Install synthesized PCM samples into mod.samples and apply sample_list overrides.
         `max_bytes` is the settings' sample limit (max_sample_kb); a longer sample is cut."""
-        for inst_num, (pcm_orig, _) in samples_dict.items():
+        for inst_num, (pcm_orig, rate) in samples_dict.items():
+            self._sample_rates[inst_num] = rate
             self.mod.samples[inst_num - 1] = self._make_sample(inst_num, pcm_orig, prefix,
                                                                self._loops.get(inst_num), max_bytes)
 
@@ -483,6 +485,50 @@ class SmpsToModConverter:
             sample.repeat = loop.start // 2
             sample.repeat_length = loop.length // 2
         return sample
+
+    def sample_sources(self) -> dict[int, dict]:
+        """{instrument: what its slot holds} for the report (core/report.py), once converted:
+        `kind` (FM, PSG, noise, DAC, chip, mix, bank), `source` (the voice and range, the envelope,
+        the DAC sample, the group a composite folds), `rate` (Hz it was rendered at, where it was
+        synthesised) and `release` (dB/s its notes' release slides fall at).  The loop is the
+        MOD header's."""
+        out: dict[int, dict] = {}
+        for d in self.config.dac_samples:
+            out[d.mod_instrument] = {'kind': 'DAC', 'source': d.name}
+        if self.synth is not None and self.synth.enabled:
+            for inst in fm_catalogue(self.song, self.config).instruments.values():
+                e = inst.entry
+                src = f"${inst.layers[0].voice_idx:02X} {_semitone_to_name(e.low)}–{_semitone_to_name(e.high)}"
+                if inst.source_label:
+                    src += f" {inst.source_label}"
+                out[inst.inst] = {'kind': 'FM', 'source': src}
+        if self.psg_synth is not None and self.psg_synth.enabled:
+            for inst in psg_catalogue(self.config, {i: d['envelope'] for i, d in
+                                                     self._derive_noise_envelopes().items()}).values():
+                e = inst.entry
+                env = e.envelope if isinstance(e.envelope, str) else ("inline" if e.envelope else "")
+                if e.type == "tone":
+                    label = inst.context.split("[")[1].rstrip("]") if "[" in inst.context else ""
+                    out[inst.inst] = {'kind': 'PSG', 'source': label or env}
+                else:
+                    form = inst.context.split("[")[1].split("]")[0] if "[" in inst.context else ""
+                    form = f"${int(form, 0):02X}" if form.startswith("0x") else form
+                    white = "white" if e.type == "white_noise" else "periodic"
+                    out[inst.inst] = {'kind': 'noise', 'source': f"{white} {form} {env}".strip()}
+        if self._merge is not None:
+            for c in self._merge.composites.values():
+                if not c.banked:
+                    out[c.inst] = {'kind': 'chip' if c.fm is not None else 'mix',
+                                   'source': c.group.label + c.group.where}
+            for b in self._merge.banks:
+                groups = sorted({m.group.label for m in b.members})
+                out[b.slot] = {'kind': 'bank', 'source': f"{len(b.members)} sounds · {', '.join(groups)}"}
+        for inst, d in out.items():
+            if inst in self._sample_rates and d['kind'] in ('FM', 'PSG', 'noise', 'chip'):
+                d['rate'] = self._sample_rates[inst]     # a mix or a bank took its slot's number over
+            if inst in self._release and self._release[inst] != float('inf'):
+                d['release'] = self._release[inst]
+        return out
 
     def _synthesis_roots(self, kind: str) -> dict[int, tuple[int, int]]:
         """{MOD instrument: (MOD note index its sample is synthesised for, synth_shift)}.

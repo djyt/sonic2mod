@@ -268,6 +268,10 @@ Each costs bytes: `tools/mod_audit.py` shows every sample's loop and size.
 choice: the renders match the hardware, hand-made Amiga covers are brighter.  The DAC samples
 come off disk and are not shelved.
 
+A merge group takes its own `treble_shelf_db` (and `treble_shelf_hz`), on top of the song's,
+on its composites only: a mix's whole sum (the drums off disk too), a chip composite's render.
+The instruments' own samples elsewhere in the song keep the song's shelf.
+
 ### Choosing root
 
 `root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).

@@ -38,6 +38,23 @@ sustain_loops: all
 # 3-12  = Increasingly aggressive looping of slowly decaying voices    [Lower file size]
 loop_drift_db: 1
 
+# Treble shelf (core.pcm.high_shelf): every synthesised render raised treble_shelf_db above
+# treble_shelf_hz (at the sample's own pitch), before loops, levels and quantisation.
+# 0 = off: the renders match the hardware.  +4 brings the GHZ lead to Ric's hand-made cover.
+# A song may set its own treble_shelf_db.  Volumes were measured without it.
+treble_shelf_db: 0
+treble_shelf_hz: 2500
+
+# Conversion time vs quality
+#   resample_taps   filter width (samples of the lower rate) of every resample: FM renders, PSG
+#                   tones, mixes.  32: flat to 85 % of Nyquist, aliases 78 dB down.  16: 2/3 the
+#                   time (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.
+#   psg_oversample  PSG tones render at this multiple of the sample's rate, then are resampled
+#                   down.  8: flat.  4: half the PSG time, within 0.2 dB.  1: the core's box
+#                   filter (-1.7 dB at 70-85 % of Nyquist).
+resample_taps: 32
+psg_oversample: 8
+
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)
 # -------------------------------------------------------------------------------------------------

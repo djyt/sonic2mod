@@ -217,6 +217,15 @@ envelope: [0, 0, 2, 4, 6, 10, 15]
 
 ---
 
+## Oversampling
+
+A tone renders at 8x the sample's rate (`renderer._OVERSAMPLE`) and `core.resample` brings it
+down.  At the sample's own rate the core's anti-aliasing (`IntermediatePos`) is a box average:
+-1.9 dB at 70 % of Nyquist, -3.9 dB at Nyquist, aliases folding back.  Oversampled, a square
+tone's upper band is 1.2-1.7 dB up and the aliases gone.  Noise renders at the sample's rate:
+white either way, and band-limited its crest factor rose, 7 dB of level lost (measured
+2026-09-30).
+
 ## Quantisation
 
 Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and

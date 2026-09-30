@@ -42,6 +42,7 @@ from .loops import FLAT_DB, SustainLoop
 from .merge import NO_SLOT, Composite, build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, apply_pattern_breaks, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
+from .resample import DEFAULT_TAPS
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import (
     MOD_NOTE_MAP as _MOD_NOTE_MAP,
@@ -1455,7 +1456,8 @@ class SmpsToModConverter:
                                     sources=self._mix_sources, release_db_s=self._release,
                                     bank_out=banked, raw=self._raw_renders, raw_out=mix_raw,
                                     padding_secs=(synth.release_padding if synth else 0.0),
-                                    loop_drift_db=(synth.loop_drift_db if synth else FLAT_DB)):
+                                    loop_drift_db=(synth.loop_drift_db if synth else FLAT_DB),
+                                    taps=(synth.resample_taps if synth else DEFAULT_TAPS)):
             self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
         if banked:
             self._pack_merge_banks(banked, mix_raw, clock, max_bytes)

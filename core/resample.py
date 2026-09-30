@@ -23,6 +23,7 @@ DEFAULT_PHASES = 512
 DEFAULT_BETA = 7.0                      # Kaiser beta; ~7.0 gives >70 dB stopband
 
 _kernel_cache: dict[tuple, tuple] = {}
+_window_cache: dict[tuple, tuple] = {}
 
 
 def _bessel_i0(x: float) -> float:
@@ -46,6 +47,28 @@ def _sinc(x: float) -> float:
     return math.sin(pix) / pix
 
 
+def _window(taps: int, phases: int, beta: float) -> tuple:
+    """Kaiser window rows (phase x tap) with each tap's distance `u` from the output position:
+    the same for every rate pair, so built once per shape.  None where the tap is outside."""
+    key = (taps, phases, beta)
+    cached = _window_cache.get(key)
+    if cached is not None:
+        return cached
+    half = taps // 2
+    i0_beta = _bessel_i0(beta)
+    rows = []
+    for p in range(phases):
+        frac = p / phases
+        row = []
+        for t in range(taps):
+            u = frac + half - 1 - t
+            ratio = u / half
+            row.append(None if abs(ratio) >= 1.0 else (u, _bessel_i0(beta * math.sqrt(1.0 - ratio * ratio)) / i0_beta))
+        rows.append(tuple(row))
+    _window_cache[key] = result = tuple(rows)
+    return result
+
+
 def build_kernel(from_rate: int, to_rate: int, taps: int = DEFAULT_TAPS,
                  phases: int = DEFAULT_PHASES, beta: float = DEFAULT_BETA) -> tuple:
     """Build (and cache) the polyphase filter bank.
@@ -61,22 +84,11 @@ def build_kernel(from_rate: int, to_rate: int, taps: int = DEFAULT_TAPS,
     # Cutoff in cycles per INPUT sample: half the output Nyquist when
     # downsampling, half the input Nyquist otherwise.
     fc = 0.5 * min(1.0, to_rate / from_rate)
-    half = taps // 2
-    i0_beta = _bessel_i0(beta)
 
     bank = []
-    for p in range(phases):
-        frac = p / phases
-        row = []
-        for t in range(taps):
-            # Distance from the output position to input tap t.
-            u = frac + half - 1 - t
-            ratio = u / half
-            if abs(ratio) >= 1.0:
-                row.append(0.0)
-                continue
-            window = _bessel_i0(beta * math.sqrt(1.0 - ratio * ratio)) / i0_beta
-            row.append(2.0 * fc * _sinc(2.0 * fc * u) * window)
+    for wrow in _window(taps, phases, beta):
+        # Each tap: its distance u from the output position, and the window there
+        row = [0.0 if w is None else 2.0 * fc * _sinc(2.0 * fc * w[0]) * w[1] for w in wrow]
         total = sum(row)
         if total:
             row = [v / total for v in row]
@@ -90,10 +102,16 @@ def build_kernel(from_rate: int, to_rate: int, taps: int = DEFAULT_TAPS,
 def resample(samples: list[float], from_rate: int, to_rate: int,
              taps: int = DEFAULT_TAPS, phases: int = DEFAULT_PHASES,
              beta: float = DEFAULT_BETA) -> list[float]:
-    """Resample one channel.  Returns a new list at `to_rate`."""
+    """Resample one channel.  Returns a new list at `to_rate`.
+
+    `taps` is the kernel's width in samples of the LOWER rate, so the filter keeps its shape
+    whatever the ratio.  Counted in input samples, 32 taps at 53267 -> 11062 Hz spanned under
+    seven output samples: -2.9 dB at 85 % of Nyquist, aliases only 19 dB down.
+    """
     if from_rate == to_rate or not samples:
         return list(samples)
 
+    taps *= max(1, math.ceil(from_rate / to_rate))
     bank = build_kernel(from_rate, to_rate, taps, phases, beta)
     half = taps // 2
     ratio = from_rate / to_rate

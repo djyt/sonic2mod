@@ -43,7 +43,7 @@ from core.loops import (
     release_rate_db_s,
 )
 from core.mod import ModSample
-from core.pcm import int8_to_raw16, max_sustain_secs, peak, to_int8
+from core.pcm import high_shelf, int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
 from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
@@ -162,7 +162,7 @@ def generate_fm_samples(
     assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
 
     def _render_at(job: _RenderJob, sustain: float, layers=None):
-        return render_layers(
+        mono, rate = render_layers(
             layers if layers is not None else job.layers,
             job.spec.synth_idx,
             sustain_secs=sustain,
@@ -170,7 +170,11 @@ def generate_fm_samples(
             target_rate=job.target_rate,
             opn2=_thread_opn2(synth.mode),
             clock_rate=synth.clock_rate,
+            taps=synth.resample_taps,
         )
+        if synth.treble_shelf_db:
+            mono = high_shelf(mono, rate, synth.treble_shelf_hz, synth.treble_shelf_db)
+        return mono, rate
 
     def _render(job: _RenderJob) -> tuple[Sequence[float], int, int, SustainLoop | None, float | None]:
         # This instrument's own longest ring when `auto` resolved one (sustain_by_instrument),

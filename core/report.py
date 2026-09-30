@@ -533,7 +533,7 @@ def print_samples(console: Console, rep: Report, rows: list[dict], sources: dict
     for r in rows:
         src = sources.get(r['inst'], {})
         kind = src.get('kind', "file")
-        rate = src.get('rate') or (r['range'] and None) or None
+        rate = src.get('rate')
         if rate is None and r.get('secs'):
             rate = r['bytes'] / r['secs']
         total += r['bytes']

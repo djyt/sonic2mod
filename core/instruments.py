@@ -157,6 +157,7 @@ class PsgInstrument:
     inst: int
     entry: PsgInstrumentEntry
     context: str
+    source: str = ""         # the smpsPSGvoice label (tone) or the smpsPSGform byte, "$E7" (noise)
 
     @property
     def root_idx(self) -> int:
@@ -176,9 +177,9 @@ def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None)
     noise_envelopes = noise_envelopes or {}
     out: dict[int, PsgInstrument] = {}
 
-    def add(entry: PsgInstrumentEntry, context: str) -> None:
+    def add(entry: PsgInstrumentEntry, context: str, source: str) -> None:
         if entry.root is not None and entry.mod_instrument not in out:
-            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, context)
+            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, context, source)
 
     for form, entry in config.psg_map.items():
         variants = [(entry.mod_instrument, noise_envelopes.get(entry.mod_instrument, entry.envelope), "")]
@@ -186,10 +187,10 @@ def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None)
                      for label, inst in entry.envelopes.items()]
         for inst, envelope, suffix in variants:
             add(dataclasses.replace(entry, mod_instrument=inst, envelope=envelope),
-                f"psg_map[{form:#04x}]{suffix}")
+                f"psg_map[{form:#04x}]{suffix}", f"${form:02X}")
     for label, entries in config.psg_voice_map.items():
         for i, entry in enumerate(entries):
-            add(entry, f"psg_voice_map[{label}][{i}]")
+            add(entry, f"psg_voice_map[{label}][{i}]", label)
     plan = getattr(config, "merge_plan", None)
     if plan is not None:
         # core.merge: nothing the merged build plays or mixes, and no slot a composite took over -

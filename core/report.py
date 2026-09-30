@@ -714,6 +714,8 @@ def detail_lines(infos: list[dict]) -> list[str]:
                 out.append(f"  [dim]9{offset >> 8:02X} {size:6d} bytes {notes:3d} notes  {escape(detail)}[/dim]")
         elif t == 'merge_folds':
             out.append(f"[dim]{escape(info['pair'])}: {escape(info['what'])}[/dim]")
+        elif t == 'dac_saturated':
+            out.append(f"{info['name']} (inst {info['instrument']}): soft-clipped, body {info['db']:+g} dB at the same peak")
         elif t == 'merge_unison_volume':
             out.append(f"[dim]unison: inst {info['instrument']} baked {info['db']:+.1f} dB (volume {info['volume']})[/dim]")
     return out

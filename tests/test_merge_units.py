@@ -46,7 +46,7 @@ from core.merge import (
     unison_gain_db,
 )
 from core.mod import ModFile, ModSample
-from core.pcm import limit_peaks
+from core.pcm import limit_peaks, saturate
 from core.smps2mod import SmpsToModConverter
 from core.tables import PERIOD_TABLE
 
@@ -327,6 +327,21 @@ class Limiter(unittest.TestCase):
         y, gr = limit_peaks(x, 16574, 127.0, 1.0)
         self.assertAlmostEqual(gr, 1.0, places=6)
         self.assertGreater(max(map(abs, y)), 127.0)
+
+
+class Saturate(unittest.TestCase):
+    """saturate: the RMS rises the dB asked at the same peak; 0 dB is the identity."""
+
+    def test_the_body_rises_the_gain_asked(self):
+        rate = 8287
+        x = [127 * math.exp(-i / (0.03 * rate)) * math.sin(2 * math.pi * 55 * i / rate) for i in range(rate // 4)]
+        y = saturate(x, 2.0)
+
+        def rms(v):
+            return math.sqrt(sum(s * s for s in v) / len(v))
+        self.assertAlmostEqual(20 * math.log10(rms(y) / rms(x)), 2.0, places=2)
+        self.assertAlmostEqual(max(map(abs, y)), max(map(abs, x)), places=6)
+        self.assertEqual(saturate(x, 0.0), x)
 
 
 class BankReserve(unittest.TestCase):

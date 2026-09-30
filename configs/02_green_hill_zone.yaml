@@ -95,14 +95,20 @@ sample_list:
 
 # -------------------------------------------------------------------------------------------------
 # DAC Mappings: Kick & Snare for GHZ only
+#
+# For the merged 4-channel build, we soft-clip the drums at +2dB to give them more punch in the mix
 # -------------------------------------------------------------------------------------------------
 dac_samples:
+
   - name: dKick
     mod_instrument: 1
     mod_note: C2
+    merge_saturate_db: 2    # Merged build only: soft-clipped, body +2 dB at the same peak
+    
   - name: dSnare
     mod_instrument: 2
     mod_note: Fs3
+    merge_saturate_db: 2
 
 
 # -------------------------------------------------------------------------------------------------

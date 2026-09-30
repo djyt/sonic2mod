@@ -52,6 +52,46 @@ def high_shelf(samples: Sequence[float], rate: int, freq_hz: float, gain_db: flo
     return out
 
 
+# saturate: the most drive tried (tanh(40 x) is all but a square wave), and the bisection's steps
+SATURATE_MAX_DRIVE = 40.0
+SATURATE_STEPS = 40
+
+
+def saturate(samples: Sequence[float], gain_db: float) -> list[float]:
+    r"""`samples` soft-clipped (tanh) at the drive that raises their RMS `gain_db` at the same peak.
+
+    A drum is nearly all peak: compressing its envelope turns the body down with the peak (the
+    Green Hill kick gained 0.4 dB for 3 dB of reduction).  A soft clip flattens each cycle
+    instead, so the whole body comes up; the price is added harmonics (kick +1.8 dB at drive 1.5,
+    the difference 10.6 dB under it).  A gain past what a square wave reaches stops there.
+
+        x  /\  /\        out  _/‾\_/‾\_   same peak, fuller cycles
+    """
+    pk = max((abs(v) for v in samples), default=0.0)
+    if not pk or gain_db <= 0:
+        return list(samples)
+
+    def shaped(drive: float) -> list[float]:
+        k = pk / math.tanh(drive)
+        return [k * math.tanh(drive * v / pk) for v in samples]
+
+    def rms(v: Sequence[float]) -> float:
+        return math.sqrt(sum(x * x for x in v) / len(v))
+
+    # RMS rises with the drive: bisect for the one that gives the gain asked
+    want = rms(samples) * 10 ** (gain_db / 20)
+    lo, hi = 1e-3, SATURATE_MAX_DRIVE
+    if rms(shaped(hi)) <= want:
+        return shaped(hi)
+    for _ in range(SATURATE_STEPS):
+        mid = (lo + hi) / 2
+        if rms(shaped(mid)) < want:
+            lo = mid
+        else:
+            hi = mid
+    return shaped(hi)
+
+
 # Peak limiter (limit_peaks): the gain falls over this lookahead before a peak, recovers over the release
 LIMIT_ATTACK_MS = 1.5
 LIMIT_RELEASE_MS = 60.0

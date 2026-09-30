@@ -31,6 +31,7 @@ from rich.table import Table
 from rich.text import Text
 
 from .driver_state import source_names
+from .pcm import MAX_MOD_SAMPLE_BYTES
 from .sample_audit import audit
 from .tables import synth_note_name
 
@@ -44,6 +45,14 @@ _KIND_STYLE = {
 }
 
 _CHECK_ORDER = ("tempo", "pitch", "samples", "merge", "levels", "patterns")
+
+# A tempo whose whole-number BPM is this many percent off the driver's is flagged
+_BPM_ERROR_PCT = 0.1
+
+# Size bar: cells, and the share of the sample limit where it turns yellow / red
+_BAR_CELLS = 8
+_BAR_YELLOW = 0.5
+_BAR_RED = 0.85
 
 
 @dataclass
@@ -288,14 +297,14 @@ def _kb(n: float) -> str:
     return f"{n / 1024:.1f}K" if n < 100 * 1024 else f"{n / 1024:.0f}K"
 
 
-def _bar(frac: float, width: int = 8) -> Text:
-    """A block bar of `frac` (0..1) of `width` cells: green under half the limit, yellow under
-    85 %, red above."""
+def _bar(frac: float, width: int = _BAR_CELLS) -> Text:
+    """A block bar of `frac` (0..1) of `width` cells: green, yellow from _BAR_YELLOW of the
+    limit, red from _BAR_RED."""
     frac = max(0.0, min(1.0, frac))
     eighths = round(frac * width * 8)
     full, part = divmod(eighths, 8)
     s = "█" * full + ("" if not part else " ▏▎▍▌▋▊▉"[part])
-    style = "green" if frac < 0.5 else "yellow" if frac < 0.85 else "red"
+    style = "green" if frac < _BAR_YELLOW else "yellow" if frac < _BAR_RED else "red"
     t = Text(s, style=style)
     t.append("·" * (width - len(s)), style="bright_black")
     return t
@@ -343,7 +352,7 @@ def print_header(console: Console, rep: Report) -> None:
     tempo = (f"div {song.header.tempo_divider} · mod {song.header.tempo_modifier} · {cfg.region.upper()}  [dim]→[/dim]  "
              f"[bold]{cfg.target_bpm}[/bold] BPM · speed [bold]{cfg.target_speed}[/bold] · "
              f"{cfg.ticks_per_row} ticks/row")
-    if b.get('exact') and abs(b.get('error_pct', 0.0)) >= 0.1:
+    if b.get('exact') and abs(b.get('error_pct', 0.0)) >= _BPM_ERROR_PCT:
         tempo += f"  {WARN} [yellow]{b['error_pct']:+.2f} %[/yellow]"
     elif b.get('exact'):
         tempo += f"  {OK}"
@@ -375,7 +384,7 @@ def _check_summaries(rep: Report, rows: list[dict], sources: dict[int, dict]) ->
     b = rep.bpm
     changes = len(_infos(rep, 'tempo_change'))
     extra = f" · {changes} tempo change{'s' if changes != 1 else ''} (Fxx)" if changes else ""
-    if b.get('exact') and abs(b.get('error_pct', 0.0)) >= 0.1:
+    if b.get('exact') and abs(b.get('error_pct', 0.0)) >= _BPM_ERROR_PCT:
         better = b.get('better')
         hint = (f" [dim]→ target_speed: {better['speed']} gives {better['bpm']} ({better['error_pct']:+.2f} %)[/dim]"
                 if better else "")
@@ -388,7 +397,7 @@ def _check_summaries(rep: Report, rows: list[dict], sources: dict[int, dict]) ->
     synth = [r for r in rows if sources.get(r['inst'], {}).get('kind') in ('FM', 'PSG', 'noise', 'chip', 'mix')]
     looped = sum(1 for r in synth if r['loop'])
     biggest = max(rows, key=lambda r: r['bytes'], default=None)
-    limit = (rep.synth or rep.psg_synth).max_sample_bytes if (rep.synth or rep.psg_synth) else 131070
+    limit = (rep.synth or rep.psg_synth).max_sample_bytes if (rep.synth or rep.psg_synth) else MAX_MOD_SAMPLE_BYTES
     msg = f"every note fits its sample · {looped} of {len(synth)} synthesised looped"
     if biggest is not None:
         msg += f" · largest {biggest['bytes'] / 1024:.0f} K of {limit / 1024:.0f} K (inst {biggest['inst']})"
@@ -501,7 +510,7 @@ def sample_flags(rows: list[dict], warnings: list[dict]) -> dict[int, list[tuple
 def print_samples(console: Console, rep: Report, rows: list[dict], sources: dict[int, dict],
                   flags: dict[int, list[tuple[str, str]]]) -> None:
     s = rep.synth or rep.psg_synth
-    limit = s.max_sample_bytes if s is not None else 131070
+    limit = s.max_sample_bytes if s is not None else MAX_MOD_SAMPLE_BYTES
     t = Table(box=box.SIMPLE_HEAD, show_edge=False, pad_edge=False, header_style="bold dim", padding=(0, 1, 0, 0))
     t.add_column("#", justify="right", style="bold")
     t.add_column("Kind", no_wrap=True)

@@ -39,8 +39,8 @@ from .levels import (
     psg_att_to_mod,
 )
 from .loops import FLAT_DB, SustainLoop
-from .merge import NO_SLOT, build_merge_plan, mix_pcm_composites
-from .mod import ModFile, ModSample, row_to_bcd
+from .merge import NO_SLOT, Composite, build_merge_plan, mix_pcm_composites
+from .mod import ModFile, ModSample, apply_pattern_breaks, row_to_bcd
 from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import (
@@ -153,6 +153,10 @@ class _ColumnRouter:
         return (self._plan.instrument_at(self._source, tick, inst),
                 ModNote(self._plan.note_at(self._source, tick, note.value)),
                 self._plan.region_at(self._source, tick))
+
+
+# merge_bank_slots: auto builds at most this often (each build renders every mix again)
+_MAX_BANK_BUILDS = 4
 
 
 class SmpsToModConverter:
@@ -728,8 +732,33 @@ class SmpsToModConverter:
                                'of': len(samples), 'bytes': sum(len(p) for p, _ in samples.values()),
                                'releases': {i: r for i, r in self._release.items() if i in samples}})
 
-    def convert(self):
-        """Main entry point. Returns a ModFile.
+    def convert(self) -> ModFile:
+        """The finished MOD: the song converted, then laid out.
+
+            passes -> pattern breaks -> loop Bxx -> trailing patterns trimmed -> (merged) narrowed
+
+        The loop's Bxx needs the post-break layout, so the order is fixed."""
+        mod = self._convert_passes()
+        breaks = self.config.mod_pattern_breaks or []
+        if breaks:
+            apply_pattern_breaks(mod, breaks)
+        self._set_loop_point(breaks)
+
+        # A break may append a blank pattern nothing reaches once the Bxx is in
+        loop = next((i for i in self.infos if i['type'] == 'loop_set'), None)
+        if loop:
+            mod.trim_to_pattern(loop['pattern'])
+
+        # Merged: columns every pattern leaves empty go (4 in use -> an M.K. file)
+        if self.config.merge_active:
+            need = ModFile.round_up_channels(max(1, mod.used_channels()))
+            if need < mod.CHANNELS:
+                self.infos.append({'type': 'narrowed', 'from': mod.CHANNELS, 'to': need})
+                mod.narrow_to(need)
+        return mod
+
+    def _convert_passes(self) -> ModFile:
+        """The song converted, as many times as the bank reserve takes (convert).
 
         How many instrument slots a merged build holds back for its sample banks
         (`merge_bank_slots`) is known only once the mixes are made, after the composites took
@@ -764,7 +793,7 @@ class SmpsToModConverter:
         tried = [self.config.merge_bank_slots]
         while True:
             want = self._bank_reserve_wanted()
-            if want is None or want in tried or len(tried) >= 4:
+            if want is None or want in tried or len(tried) >= _MAX_BANK_BUILDS:
                 break
             song, config = copy.deepcopy(snapshot)
             config.merge_bank_slots = want
@@ -1434,7 +1463,7 @@ class SmpsToModConverter:
 
         # A mixed composite ends the way its primary does (the release slide's rate).  A banked
         # one shares its slot with sounds of other primaries (a drum hit, a bass note): its notes
-        # look their primary's rate up themselves (_convert_channel, `_bank_note`)
+        # look their primary's rate up themselves (_convert_channel, `bank_member`)
         for c in plan.composites.values():
             if c.fm is None and not c.banked and c.primary in self._release:
                 self._release.setdefault(c.inst, self._release[c.primary])
@@ -1608,10 +1637,11 @@ class SmpsToModConverter:
 
         _psg_mode_baked = self._psg_volume_mode == "baked"
 
-        _note_gain = [0.0]      # dB a unison chord adds to the sounding note (ResolvedNote.gain_db)
-        # The banked composite (core.banks) the sounding note plays, else None: its level is
-        # measured under its own id and its release is its primary's, not the bank slot's
-        _bank_note: list = [None]
+        # The sounding note, as the closures below read it (set per note in the loop):
+        # dB a unison chord adds to it (ResolvedNote.gain_db), and the banked composite it plays
+        # (core.banks, else None) - measured under its own id, released at its primary's rate
+        note_gain = 0.0
+        bank_member: Composite | None = None
 
         def _emit_volume(inst: int) -> int:
             """MOD volume for a note on `inst` right now (equals the sample volume → no Cxx).
@@ -1625,10 +1655,9 @@ class SmpsToModConverter:
                 return round(current_volume * sv / 64)
             if st.is_psg and st.is_silent:
                 return 0
-            level = st.level_db(_pan_law) + _note_gain[0]
+            level = st.level_db(_pan_law) + note_gain
             baseline = self._psg_baseline_db if st.is_psg else self._fm_baseline_db
-            member = _bank_note[0]
-            key = member.bank_id if member is not None and member.inst == inst else inst
+            key = bank_member.bank_id if bank_member is not None and bank_member.inst == inst else inst
             rel_db = level - baseline.get(key, level)
             # A banked sound's bytes carry its own volume against the bank's (sv): at its own
             # level it needs no Cxx either
@@ -1665,9 +1694,8 @@ class SmpsToModConverter:
             else its rate in dB per second for _write_release."""
             if not self._release_slides or inst is None:
                 return None
-            member = _bank_note[0]
-            if member is not None and member.inst == inst:
-                rate = self._release.get(member.primary)    # its own sound's, not the bank slot's
+            if bank_member is not None and bank_member.inst == inst:
+                rate = self._release.get(bank_member.primary)   # its own sound's, not the bank slot's
             else:
                 rate = self._release.get(inst)
             if rate is None or rate == math.inf:
@@ -1855,8 +1883,8 @@ class SmpsToModConverter:
                             tick, dac_cfg.mod_instrument, _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3))
                         self.mod.set_note(dac_note, dac_inst)
                         last_inst, last_vol = dac_inst, _sample_vol_map.get(dac_inst, 64)
-                        _bank_note[0] = (self._merge.bank_members.get((chan_cfg.source, tick))
-                                         if self._merge is not None else None)
+                        bank_member = (self._merge.bank_members.get((chan_cfg.source, tick))
+                                       if self._merge is not None else None)
                         if region is not None:
                             # A sound inside a sample bank (core.banks): start at its offset and
                             # cut the note once it is over, before the next sound in the slot
@@ -1881,7 +1909,7 @@ class SmpsToModConverter:
                     # walk_channel: the range lookup in the config's range_space, root +
                     # (key - low) for an anchored entry, the channel transpose otherwise).
                     assert res is not None
-                    _note_gain[0] = res.gain_db
+                    note_gain = res.gain_db
                     source_semitone = res.source
                     final_instrument = res.instrument
                     final_note = ModNote(router.note(tick, res.index))
@@ -1912,10 +1940,10 @@ class SmpsToModConverter:
                     # them start a tick off the grid.
                     # A sound inside a sample bank (core.banks): the note starts with 9xx at its
                     # offset, so the attack row's effect slot is the offset's
-                    _bank_note[0] = (self._merge.bank_members.get((chan_cfg.source, tick))
-                                     if self._merge is not None and _solo is None else None)
+                    bank_member = (self._merge.bank_members.get((chan_cfg.source, tick))
+                                   if self._merge is not None and _solo is None else None)
                     _region = (self._merge.region_at(chan_cfg.source, tick)
-                               if _bank_note[0] is not None and self._merge is not None else None)
+                               if bank_member is not None and self._merge is not None else None)
                     _bank9 = _region is not None and _region[0] > 0
                     _needs_cxx = _emit_volume(final_instrument) != _sample_vol_map.get(final_instrument, 64)
                     # smpsNoAttack before a note byte: the driver writes the new frequency and
@@ -2150,7 +2178,7 @@ class SmpsToModConverter:
                     # A banked sound would run on into the next one in its bank: cut once it is
                     # over, unless the channel's next note comes first (a looped sound is its
                     # bank's last and needs none)
-                    if _region is not None and _bank_note[0] is not None and not _bank_note[0].looped:
+                    if _region is not None and bank_member is not None and not bank_member.looped:
                         clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
                         self._bank_cuts += self._cut_after(mod_chan, tick,
                                                            _region[1] / (clock / PERIOD_TABLE[final_note.value]),

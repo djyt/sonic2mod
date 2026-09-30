@@ -46,6 +46,7 @@ from core.merge import (
     unison_gain_db,
 )
 from core.mod import ModFile, ModSample
+from core.pcm import limit_peaks
 from core.smps2mod import SmpsToModConverter
 from core.tables import PERIOD_TABLE
 
@@ -299,6 +300,33 @@ class MelodicBanks(unittest.TestCase):
         dropped = pack_banks(plan, cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK)
         self.assertEqual(len(dropped), 2)
         self.assertEqual(plan.bank_overflow, [2, 1])                    # notes of each bank left out
+
+
+class Limiter(unittest.TestCase):
+    """limit_peaks: peaks past the ceiling come down to it, within max_db; the rest is untouched."""
+
+    def test_a_burst_comes_down_to_the_ceiling(self):
+        x = [60 * math.sin(2 * math.pi * 110 * i / 16574) for i in range(16574)]
+        for k in range(4000, 4100):
+            x[k] *= 2.6
+        y, gr = limit_peaks(x, 16574, 127.0, 3.0)
+        self.assertLessEqual(max(map(abs, y)), 127.0 + 1e-6)
+        self.assertEqual(y[:3000], x[:3000])                      # before the lookahead: untouched
+        self.assertGreater(gr, 1.5)
+
+    def test_a_peak_in_the_first_millisecond(self):
+        # a drum's loudest peak is its attack: the gain must already be down at sample 0
+        x = [180.0 * math.exp(-i / 200) * math.sin(2 * math.pi * 60 * i / 16574) for i in range(4000)]
+        x[3] = 160.0
+        y, _gr = limit_peaks(x, 16574, 127.0, 4.0)
+        self.assertLessEqual(max(map(abs, y)), 127.0 + 1e-6)
+
+    def test_max_db_keeps_the_excess(self):
+        x = [0.0] * 1000
+        x[500] = 200.0
+        y, gr = limit_peaks(x, 16574, 127.0, 1.0)
+        self.assertAlmostEqual(gr, 1.0, places=6)
+        self.assertGreater(max(map(abs, y)), 127.0)
 
 
 class BankReserve(unittest.TestCase):

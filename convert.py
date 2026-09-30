@@ -19,7 +19,6 @@ from core.config import (
     exact_bpm,
 )
 from core.merge import prepare_merged_config
-from core.mod import ModFile, apply_pattern_breaks
 from core.report import Report, print_report
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
@@ -124,37 +123,8 @@ def main():
         psg_synth = _dc.replace(psg_synth, loop_drift_db=config.loop_drift_db)
 
     converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)
-    needs_synthesis = (synth.enabled or psg_synth.enabled)
-    if needs_synthesis:
-        with console.status("[dim]Synthesizing samples…[/dim]", spinner="dots"):
-            mod = converter.convert()
-    else:
+    with console.status("[dim]Converting…[/dim]", spinner="dots"):
         mod = converter.convert()
-
-    # ── Pattern breaks ────────────────────────────────────────────────────────
-    if config.mod_pattern_breaks:
-        apply_pattern_breaks(mod, config.mod_pattern_breaks)
-
-    # ── Loop point (post-break so positions reflect final layout) ─────────────
-    converter._set_loop_point(config.mod_pattern_breaks or [])
-
-    # ── Trim unreachable trailing patterns ────────────────────────────────────
-    # apply_pattern_breaks may append an extra pattern when the body doesn't
-    # divide evenly into 64-row chunks; those trailing rows are blank and
-    # unreachable once the loop-point Bxx is in place.
-    _loop_info = next((i for i in converter.infos if i['type'] == 'loop_set'), None)
-    if _loop_info:
-        mod.trim_to_pattern(_loop_info['pattern'])
-
-    # ── The merged build: as many channels as its columns need ──────────────
-    # Channels that play on another column in every pattern (mod_channel, fill) leave their home
-    # columns empty; a build whose every pattern fits four columns is a 4-channel MOD.
-    if config.merge_active:
-        _need = ModFile.round_up_channels(max(1, mod.used_channels()))
-        if _need < mod.CHANNELS:
-            _was = mod.CHANNELS
-            mod.narrow_to(_need)
-            converter.infos.append({'type': 'narrowed', 'from': _was, 'to': _need})
 
     # ── Branding in sample slots ──────────────────────────────────────────────
     _tag_mod_branding(mod, version)

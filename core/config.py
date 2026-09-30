@@ -475,8 +475,11 @@ def _legato(data: dict, filepath: str) -> str:
 # The treble shelf's corner (settings.yaml treble_shelf_hz), at the sample's own pitch
 DEFAULT_SHELF_HZ = 2500.0
 
-# PSG tones render at this multiple of the sample's rate (settings.yaml psg_oversample)
+# PSG tones render at this multiple of the sample's rate (settings.yaml psg_synthesis.oversample)
 DEFAULT_PSG_OVERSAMPLE = 8
+
+# PAL Amiga Paula clock (settings.yaml amiga_clock): a MOD note's rate is this / its period
+DEFAULT_AMIGA_CLOCK = 3_546_895
 
 
 def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool = False) -> int:
@@ -488,6 +491,20 @@ def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool 
     if v < 1 or (even and v % 2):
         raise ValueError(f"{filepath}: {key} must be {'an even' if even else 'a'} whole number >= 1 (got {v})")
     return v
+
+
+def _amiga_clock(data: dict, section: dict) -> int:
+    """Top-level `amiga_clock` of settings.yaml (the Paula clock every sample rate follows); a
+    synthesis section's own key, where the file still has one, is the fallback."""
+    return int(data.get("amiga_clock", section.get("amiga_clock", DEFAULT_AMIGA_CLOCK)))
+
+
+def _psg_oversample(data: dict, section: dict, filepath: str) -> int:
+    """`psg_synthesis.oversample`; the top-level `psg_oversample` it replaced still counts, with a warning."""
+    if "oversample" not in section and "psg_oversample" in data:
+        warnings.warn(f"{filepath}: psg_oversample moved to psg_synthesis.oversample", stacklevel=3)
+        return _positive_int(data, "psg_oversample", DEFAULT_PSG_OVERSAMPLE, filepath)
+    return _positive_int(section, "oversample", DEFAULT_PSG_OVERSAMPLE, filepath)
 
 
 def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
@@ -515,7 +532,7 @@ def _loop_drift_db(data: dict, filepath: str) -> float:
 class PsgSynthesisSettings:
     enabled: bool = False
     clock_rate: int = 3_579_545      # SN76489 NTSC MD clock (Hz)
-    amiga_clock: int = 3_546_895     # PAL Amiga clock for target_rate calculation
+    amiga_clock: int = DEFAULT_AMIGA_CLOCK   # settings.yaml amiga_clock (top level)
     sustain_duration: float | str = 1.0
     release_padding: float = 0.2
     # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
@@ -541,7 +558,7 @@ class PsgSynthesisSettings:
                                      # level the longest note would have decayed to (core.loops)
     treble_shelf_db: float = 0.0     # settings.yaml treble_shelf_db: brightness shelf, 0 = off
     resample_taps: int = DEFAULT_TAPS  # settings.yaml resample_taps: filter width, at the lower rate
-    psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_oversample
+    psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_synthesis.oversample
     treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml treble_shelf_hz: its corner
 
     @property
@@ -579,7 +596,7 @@ class PsgSynthesisSettings:
         return cls(
             enabled=s.get("enabled", False),
             clock_rate=s.get("clock_rate", 3_579_545),
-            amiga_clock=s.get("amiga_clock", 3_546_895),
+            amiga_clock=_amiga_clock(data, s),
             sustain_duration=_psg_sd if _psg_sd == "auto" else float(_psg_sd),
             release_padding=s.get("release_padding", 0.2),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
@@ -589,7 +606,7 @@ class PsgSynthesisSettings:
             treble_shelf_db=_treble_shelf(data, filepath)[0],
             treble_shelf_hz=_treble_shelf(data, filepath)[1],
             resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
-            psg_oversample=_positive_int(data, "psg_oversample", DEFAULT_PSG_OVERSAMPLE, filepath),
+            psg_oversample=_psg_oversample(data, s, filepath),
         )
 
 
@@ -598,7 +615,7 @@ class SynthesisSettings:
     enabled: bool = False
     mode: str = "ym2612"
     clock_rate: int = 7_670_454       # YM2612 master clock
-    amiga_clock: int = 3_546_895      # PAL Amiga clock for target_rate calc
+    amiga_clock: int = DEFAULT_AMIGA_CLOCK   # settings.yaml amiga_clock (top level)
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
     sustain_by_instrument: dict = field(default_factory=dict)   # as PsgSynthesisSettings
@@ -703,7 +720,7 @@ class SynthesisSettings:
             enabled=s.get("enabled", False),
             mode=s.get("mode", "ym2612"),
             clock_rate=s.get("clock_rate", 7_670_454),
-            amiga_clock=s.get("amiga_clock", 3_546_895),
+            amiga_clock=_amiga_clock(data, s),
             sustain_duration=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
             release_padding=s.get("release_padding", 0.5),
             threads=s.get("threads", "normal"),

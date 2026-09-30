@@ -76,7 +76,6 @@ fm_synthesis:
   enabled: true             # Master switch; false = samples loaded from samples_dir instead
   mode: ym2612              # "ym2612" (MD1/MD2 VA2) or "ym3438" (YM3438 accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
-  amiga_clock: 3546895      # PAL Amiga clock for MOD target_rate calculation
   sustain_duration: auto    # Seconds note held on before key-off, or auto (see § sustain_duration: auto)
   release_padding: 0.5      # Seconds captured after key-off (release tail)
   threads: normal           # Instruments rendered at once: normal (cores − 1), max (all cores), or a number
@@ -87,7 +86,7 @@ fm_synthesis:
 | `enabled` | bool | `false` | Set `true` to generate samples; requires gcc/MSVC |
 | `mode` | str | `"ym2612"` | `"ym2612"` = MD1/MD2 VA2 DAC behaviour (sign bias, ×3 level); `"ym3438"` = discrete YM3438. The renderer keeps the instance's mode across its per-note resets, and the batch helpers subtract the mode's own DC (72 / 0) so silence is 0 in both |
 | `clock_rate` | int | `7670454` | Do not change for Sonic 1 |
-| `amiga_clock` | int | `3546895` | PAL Amiga; use 3579545 for NTSC Amiga (rare) |
+| `amiga_clock` | int | `3546895` | **Top level** (shared with PSG; a section's own key is the fallback). PAL Amiga; 3579545 for NTSC (rare) |
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = each instrument its own longest ring, see below |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
 | `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |

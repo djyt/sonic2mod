@@ -258,6 +258,7 @@ merge_patterns:
       - primary: FM5
         followers: [FM3, FM4, PSG1]
         mod_channel: 1
+        mix_at: primary
         
         # Channel 2: Move Arps
       - primary: PSG2
@@ -318,6 +319,6 @@ merge_patterns:
         mod_channel: 3
         cut_after: 8            # Allow filled notes (FM5 below) to cut FM3 after 8 ticks
         
-        # Channel 4: arp
+        # Channel 4: Arp 
       - primary: FM5
-        fill: true
+        fill: true              # Sprinkle these notes elsewhere, if they fit.

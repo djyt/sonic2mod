@@ -132,7 +132,8 @@ def lint_mod(path: str) -> list[dict]:
                 elif eff == 0xB:
                     jump = (par, 0)
                 elif eff == 0xD:
-                    jump = (pos_index + 1, (par >> 4) * 10 + (par & 0xF))
+                    # after a Bxx in the row, its position (ProTracker reads the row left to right)
+                    jump = (jump[0] if jump is not None else pos_index + 1, (par >> 4) * 10 + (par & 0xF))
             for ch in range(nch):
                 if remaining[ch] != float("inf"):
                     remaining[ch] = max(0.0, remaining[ch] - row_secs)

@@ -250,7 +250,8 @@ def _play_order(mod: dict):
             if eff == 0xB:
                 jump = (par, 0)
             elif eff == 0xD:
-                jump = (pos + 1, (par >> 4) * 10 + (par & 0xF))
+                # after a Bxx in the row, its position (ProTracker reads the row left to right)
+                jump = (jump[0] if jump is not None else pos + 1, (par >> 4) * 10 + (par & 0xF))
         if jump is not None:
             pos, row = jump
         elif row == 63:

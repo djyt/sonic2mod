@@ -1249,16 +1249,32 @@ class SmpsToModConverter:
                          'used': e.tone2_n is None and e.synth_root is None}
         return out
 
-    def _count_levels(self, kind: str, level_of) -> dict[int, dict]:
+    def _count_levels(self, kind: str, level_of, sources_keep_votes: bool = False) -> dict[int, dict]:
         """{MOD instrument: {level_of(state, resolved): notes}} over every enabled channel of
         `kind` ("FM" or "PSG"), walked with the same DriverState the conversion uses.  A PSG
         note at attenuation 15 is silent and does not vote.  The instruments a merged build's
         unison chords play louder (ResolvedNote.gain_db) are noted in `_gained`.
+
+        In a merged build a composite's slot counts only the notes that play the composite.
+        `sources_keep_votes`: except where the slot's former instrument is a mix source kept
+        aside under that number (MergePlan.mix_only) - it is still rendered, at its own notes'
+        level, for the mixer (the render levels ask for that).
         """
         counts: dict[int, dict] = {}
+        plan = self._merge
+        owned = set(plan.instruments) if plan is not None else set()
+        if plan is not None and sources_keep_votes:
+            owned -= plan.mix_only
         for chan_cfg, channel in enabled_channels(self.song, self.config, (kind,)):
-            for _event, st, res in walk_channel(channel, self.config, chan_cfg):
+            for event, st, res in walk_channel(channel, self.config, chan_cfg):
                 if res is None or (st.is_psg and st.is_silent):
+                    continue
+                # A composite owns its slot: a note that resolves to the slot's former instrument
+                # (a follower's folded note, a dropped channel's) does not vote for the composite's
+                # level.  Green Hill's FM4 voice $07 notes set the level of the FM2+PSG1 chord that
+                # had taken slot 13, and its one note got a C40.
+                if (plan is not None and res.instrument in owned
+                        and (chan_cfg.source, event.tick_position) not in plan.ticks):
                     continue
                 per = counts.setdefault(res.instrument, {})
                 k = level_of(st, res)
@@ -1291,7 +1307,7 @@ class SmpsToModConverter:
         its samples where the hardware, at the channel's +18 TL, clips none.
         """
         pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
-        counts = self._count_levels("FM", lambda st, _res: (st.tl, st.hard_panned))
+        counts = self._count_levels("FM", lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
         return {inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
                 for inst, per in counts.items()}
 
@@ -1311,6 +1327,8 @@ class SmpsToModConverter:
                 base = self._fm_baseline_db.get(inst)
                 if inst in self._gained.get("FM", ()):
                     continue            # a unison chord's gain is in the baseline, not in the render
+                if self._merge is not None and inst in self._merge.mix_only and inst in self._merge.instruments:
+                    continue            # rendered for the mixer; the slot's baseline is its composite's
                 if base is not None and abs(fm_level_db(tl, pan, pan_law) - base) > 1e-9:
                     print(f"Warning: instrument {inst} was rendered at TL +{tl}"
                           f"{' panned' if pan else ''} ({fm_level_db(tl, pan, pan_law):+.2f} dB) but its "
@@ -2253,7 +2271,19 @@ class SmpsToModConverter:
         flat_row = _shift_for_breaks(round(loop_target_tick / tpr), breaks)
         target_pattern, target_row = divmod(flat_row, 64)
 
-        self._set_cursor(last_pattern, 0, last_row)
+        # The Bxx takes a free effect slot on the last row (channel 0 held a note cut there -
+        # Green Hill's EC1 - and the jump overwrote it), among the columns already in use so a
+        # merged build is not widened for it.  A Dxx must sit to its right: ProTracker reads a
+        # row's effects left to right and a Bxx after a Dxx resets the break row to 0.
+        cols = range(max(1, self.mod.used_channels()))
+        need = 2 if target_row != 0 else 1
+        free = [c for c in cols if self.mod.effect_slot_free(last_pattern, last_row, c)]
+        b_chan = free[0] if len(free) >= need else 0
+        if len(free) < need:
+            eff = self.mod.effect_at(last_pattern, last_row, 0)
+            self._add_warning({'type': 'loop_no_slot', 'channel': 'all', 'pattern': last_pattern,
+                               'row': last_row, 'overwrote': eff})
+        self._set_cursor(last_pattern, b_chan, last_row)
         self.mod.set_position_jump(target_pattern)
 
         # A song that loops back into a different tempo segment needs its BPM set again there
@@ -2272,7 +2302,7 @@ class SmpsToModConverter:
 
         # If the target lands mid-pattern, write a Dxx companion on a free channel
         if target_row != 0:
-            ch = self.mod.free_effect_channel(last_pattern, last_row, range(1, self.mod.CHANNELS))
+            ch = self.mod.free_effect_channel(last_pattern, last_row, range(b_chan + 1, self.mod.CHANNELS))
             if ch is not None:
                 self.mod.set_channel(ch)
                 self.mod.set_effect(0xD, row_to_bcd(target_row))

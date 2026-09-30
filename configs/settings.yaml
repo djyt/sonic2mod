@@ -7,7 +7,6 @@ fm_synthesis:
   enabled: true             # Set true to auto-generate FM samples via YM2612 emulation
   mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
-  amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   threads: normal           # FM instruments render in parallel, one per thread: 
@@ -18,10 +17,13 @@ fm_synthesis:
 psg_synthesis:
   enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation
   clock_rate: 3579545       # SN76489 NTSC Mega Drive clock (Hz)
-  amiga_clock: 3546895      # PAL Amiga clock for MOD target-rate calculation
   sustain_duration: auto    # Seconds of tone held before key-off; or 'auto': per instrument, as FM
   release_padding: 0.2      # Seconds of silence/release after key-off
+  oversample: 8             # Tones render at this multiple of the sample's rate, then are resampled
+                            # down.  8: flat.  4: half the PSG time, within 0.2 dB.  1: the core's
+                            # box filter (-1.7 dB at 70-85 % of Nyquist).  Noise is never oversampled.
 
+amiga_clock: 3546895        # PAL Amiga (Paula) clock: a MOD note's rate is this / its period
 max_sample_kb: 64           # Maximum Sample Length: 64: Amiga ProTracker | 128: Modern Trackers
 
 
@@ -45,15 +47,10 @@ loop_drift_db: 1
 treble_shelf_db: 0
 treble_shelf_hz: 2500
 
-# Conversion time vs quality
-#   resample_taps   filter width (samples of the lower rate) of every resample: FM renders, PSG
-#                   tones, mixes.  32: flat to 85 % of Nyquist, aliases 78 dB down.  16: 2/3 the
-#                   time (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.
-#   psg_oversample  PSG tones render at this multiple of the sample's rate, then are resampled
-#                   down.  8: flat.  4: half the PSG time, within 0.2 dB.  1: the core's box
-#                   filter (-1.7 dB at 70-85 % of Nyquist).
+# Conversion time vs quality: filter width (samples of the lower rate) of every resample - FM
+# renders, PSG tones, mixes.  32: flat to 85 % of Nyquist, aliases 78 dB down.  16: 2/3 the time
+# (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.  (PSG: psg_synthesis.oversample)
 resample_taps: 32
-psg_oversample: 8
 
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)
@@ -72,6 +69,13 @@ fm_volume_scaling: baked
 # A centred YM2612 channel drives both speakers, every Amiga channel drives one.  0 disables.
 fm_pan_law_db: 3
 
+# PSG counterpart of fm_volume_scaling (SN76489 attenuation: smpsHeaderPSG volume + smpsPSGAlterVol, 2 dB/step):
+#   baked     For each PSG instrument the attenuation most of its notes play at needs no command and is
+#             what its sample_list volume stands for; other notes get Cxx on the 2 dB/step law.  Frees
+#             the effect column on most PSG notes for vibrato / note cut.  (default)
+#   absolute  Legacy: volume = 64 x 10^(-2 x att / 20) x sample volume / 64, a Cxx on nearly every PSG note.
+psg_volume_scaling: baked
+
 # How a legato note (smpsNoAttack: the driver changes the frequency without a key-on) is written when its
 # target cannot ride the sample that is sounding.  A MOD tone portamento (3FF) never re-triggers and, in FT2
 # clone and ProTracker, never changes the playing sample either.
@@ -87,11 +91,3 @@ fm_pan_law_db: 3
 #            sounding for seconds is not left riding the sample's decayed tail (Green Hill FM1, pattern 14 row 52:
 #            the hardware plays that C at the level of a fresh note, a 3FF there is 26 dB down).  (default)
 legato: retrigger
-
-
-# PSG counterpart of fm_volume_scaling (SN76489 attenuation: smpsHeaderPSG volume + smpsPSGAlterVol, 2 dB/step):
-#   baked     For each PSG instrument the attenuation most of its notes play at needs no command and is
-#             what its sample_list volume stands for; other notes get Cxx on the 2 dB/step law.  Frees
-#             the effect column on most PSG notes for vibrato / note cut.  (default)
-#   absolute  Legacy: volume = 64 x 10^(-2 x att / 20) x sample volume / 64, a Cxx on nearly every PSG note.
-psg_volume_scaling: baked

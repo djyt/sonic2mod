@@ -1203,20 +1203,43 @@ column rang its whole (looped) sample where the reference had `EC1`.
 The drum column's mixes are the slot budget's biggest consumer (one per drum, bass note and
 hat, with and without the bass's pluck) and its notes carry no other command, so their effect
 slot is free for `9xx`, the sample offset (xx × 256 bytes, up to $FF00).  A group with
-`bank: true` (a DAC primary only; `prepare_merged_config` refuses a melodic one, whose notes
-need the slot for `Cxx` / `4xy` / `EDx` / `3FF`) has its mixed composites laid end to end
-in as few instruments as they fit: each sound aligned to 256 bytes and followed by one MOD
-tick of silence (at the song's slowest tempo), the bank at the loudest member's volume with
-the quieter members scaled into their bytes, one finetune per bank, never a looped sample.
-A banked composite takes no slot in the fit (`Composite.banked`; `_assign_slots` leaves its
-provisional id), the fit holds `merge_bank_slots` slots back (default 2) and whatever else it
+`bank: true` has its mixed composites laid end to end in as few instruments as they fit: each
+sound aligned to 256 bytes and followed by one MOD tick of silence (at the song's slowest
+tempo), each bank at its loudest member's volume with the quieter members scaled into their
+bytes, one finetune per bank.  A looped mix goes last in its bank (nothing may follow a loop;
+the bank's loop header is its loop) and its notes need no cut.  Chip composites are never
+banked.  A banked composite takes no slot in the fit (`Composite.banked`; `_assign_slots`
+leaves its provisional id), the fit holds `merge_bank_slots` slots back and whatever else it
 leaves free is the banks' too (`MergePlan.spare_slots`); `pack_banks` runs after the mixes
 exist, most-played first, installs the banks, points `plan.ticks` at the bank slots and
-records each note's `(offset, sound bytes)` in `plan.regions`.  A member that fits nowhere is
-dropped like any composite over budget (a same-shape stand-in, else the primary alone) and
-reported with its reason (`merge_bank_dropped`: "no slot left for another bank" means raise
-`merge_bank_slots`).  A reserve slot no bank filled is not lost: the conversion is run again
-with the reserve cut to the banks it needs (see *Three rules against one sound in two slots*).
+records each note's `(offset, sound bytes)` in `plan.regions` and its composite in
+`plan.bank_members`.  A member that fits nowhere is dropped like any composite over budget (a
+same-shape stand-in, else the primary alone) and reported with its reason
+(`merge_bank_dropped`); the banks the slots could not hold are counted
+(`MergePlan.bank_overflow`, notes per bank).
+
+**`merge_bank_slots: auto`** (the default; a number pins it).  How many banks the mixes need is
+known only once they are made, after the composites took their slots, so `convert()` builds
+again with the reserve the banks turned out to need (`_bank_reserve_wanted`, up to four
+builds): the banks they filled, where a held-back slot sat empty while composites went
+without one; more, where banks found no slot and their notes outnumber those of the
+least-played composites that would give theirs up.  A pinned number keeps the old rule (an
+empty reserve slot goes back to the composites, once).  Both Green Hill configs came out
+identical at auto and at their old `merge_bank_slots: 2`.
+
+**A melodic primary banks too** (Green Hill's FM2+PSG1 in patterns d–10, 2026-09-30).  Its
+notes may need their attack row's slot for something else, and the `9xx` wins (a note at
+offset 0 needs none): a `Cxx` due there moves to the note's next free row (the delayed-note
+rule; counted in the report), an `EDx` delay is given up (the note is rounded to its row), a
+note fill or PSG cut inside the attack row moves to the next row, and a no-attack note is
+re-triggered (`3FF` would keep the previous sound).  A banked sound's level is measured under
+its own id (`Composite.bank_id`, `_count_levels`), not the bank slot's, which also holds a drum
+or another chord, and its release slide takes its primary's rate (`_bank_note` in
+`_convert_channel`; a bank's slot has no rate of its own).  On Green Hill none of its 23 notes
+needed another command, the seven mixes (81 KB, seven slots) joined the drum banks (three
+slots in all, the looped one last in the third), and the four slots freed gave FM1+PSG2 the
+three composites it had been denied.  The cost: a member quieter than its bank's loudest (the
+bass mixes at 45 beside drums at 64) is scaled down in its bytes, about 3 dB of 8-bit range.
 
 In the output every banked note starts with `9xx` at its offset (none at offset 0) and,
 because the sample would run on into the next sound, is cut once its sound is over:
@@ -1225,7 +1248,7 @@ writes `C00` on the row (`ECx` inside it), unless the channel's next note-on is 
 The tick of silence after each sound absorbs the cut's rounding.  A banked note that starts
 between rows gives up its `EDx` to the offset (counted).  The converter prints each bank's
 slot, size and sounds (`9xx`, bytes, notes) and how many notes were cut.  Green Hill: 18 drum
-sounds (170 KB) in three banks instead of 18 slots (`merge_bank_slots: 3`).
+sounds (170 KB) in three banks instead of 18 slots.
 
 Every sound starts on its 256-byte boundary: a member quantised from its raw sum can be a
 byte shorter than its sample (an odd length evened with a zero), and until 2026-09-29 every

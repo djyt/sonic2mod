@@ -187,7 +187,8 @@ class SmpsToModConverter:
         self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
                                                        #   quantisation: what the composite mixer mixes from
         self._bank_delays_dropped = 0      # banked drum notes whose EDx gave way to the 9xx offset
-        self._bank_cuts = 0                # banked drum notes cut before the next sound in their slot
+        self._bank_cuts = 0                # banked notes cut before the next sound in their slot
+        self._bank_cxx_moved = 0           # banked melodic notes whose attack-row Cxx went to the next row
         self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
         self._rings_out: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments a channel's last note rings out on}
         self._slide_ends: dict[str, set[int]] = {}  # {"FM"/"PSG": instruments a note of ends in a release slide}
@@ -730,29 +731,71 @@ class SmpsToModConverter:
     def convert(self):
         """Main entry point. Returns a ModFile.
 
-        A merged build whose sample banks left a `merge_bank_slots` slot empty while composites
-        went without one is converted again with the reserve cut to the banks it filled: how
-        many banks the mixes need is known only once they are made, and the slot is the
-        composites' (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with five chords
-        lost)."""
+        How many instrument slots a merged build holds back for its sample banks
+        (`merge_bank_slots`) is known only once the mixes are made, after the composites took
+        their slots.  With `merge_bank_slots: auto` (the default) the build is made again with
+        the reserve its banks turned out to need: the banks they filled, where a held-back slot
+        sat empty while composites went without one; more, where bank sounds found no slot and
+        they carry more notes than the least-played composites that would give theirs up.  A
+        stated number is kept, except that a slot it holds back for nothing goes back to the
+        composites the same way (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with
+        five chords lost)."""
         # The conversion edits the song and config (loop extension, spliced notes, composite
-        # entries): a second pass needs them as they were
+        # entries): another pass needs them as they were
         snapshot = copy.deepcopy((self.song, self.config)) if self.config.merge_active else None
         mod = self._convert_once()
-        if snapshot is None or not self._idle_bank_slots:
+        if snapshot is None or self._merge is None:
             return mod
+        auto = getattr(snapshot[1], "merge_bank_slots_auto", False)
+        if not auto:
+            if not self._idle_bank_slots:
+                return mod
+            # Start over with the reserve the banks filled
+            song, config = copy.deepcopy(snapshot)
+            retry = {'slots': list(self._idle_bank_slots), 'reserve': config.merge_bank_slots,
+                     'banks': len(self._merge.banks)}
+            config.merge_bank_slots = retry['banks']
+            self._start(song, config, self.synth, self.psg_synth)
+            self._bank_retry = retry
+            self._convert_once()
+            self.infos.append({'type': 'merge_bank_retry', **retry})
+            return self.mod
 
-        # Start over with the reserve the banks filled
-        assert self._merge is not None
-        song, config = snapshot
-        retry = {'slots': list(self._idle_bank_slots), 'reserve': config.merge_bank_slots,
-                 'banks': len(self._merge.banks)}
-        config.merge_bank_slots = retry['banks']
-        self._start(song, config, self.synth, self.psg_synth)
-        self._bank_retry = retry
-        self._convert_once()
-        self.infos.append({'type': 'merge_bank_retry', **retry})
+        tried = [self.config.merge_bank_slots]
+        while True:
+            want = self._bank_reserve_wanted()
+            if want is None or want in tried or len(tried) >= 4:
+                break
+            song, config = copy.deepcopy(snapshot)
+            config.merge_bank_slots = want
+            self._start(song, config, self.synth, self.psg_synth)
+            self._convert_once()
+            tried.append(want)
+        if any(c.banked for c in self._merge.composites.values()) or self._merge.banks:
+            self.infos.append({'type': 'merge_bank_slots', 'reserve': self.config.merge_bank_slots,
+                               'banks': len(self._merge.banks), 'passes': len(tried)})
         return self.mod
+
+    def _bank_reserve_wanted(self) -> int | None:
+        """The bank reserve this pass's banks ask for (convert, merge_bank_slots: auto), or None
+        where it is right: fewer, when a held-back slot sat empty while composites went without
+        one; more, when banks found no slot and their notes outnumber those of the least-played
+        composites that would give up theirs."""
+        plan = self._merge
+        if plan is None or not (plan.banks or plan.bank_overflow):
+            return None
+        banks = len(plan.banks)
+        if self._idle_bank_slots:
+            return banks
+        if not plan.bank_overflow:
+            return None
+        slotted = sorted(c.notes for c in plan.composites.values() if not c.banked)
+        best, gain = 0, 0
+        for k in range(1, len(plan.bank_overflow) + 1):
+            g = sum(plan.bank_overflow[:k]) - sum(slotted[:k])
+            if g > gain:
+                best, gain = k, g
+        return banks + best if best else None
 
     def _convert_once(self):
         """One conversion pass (convert)."""
@@ -927,7 +970,8 @@ class SmpsToModConverter:
         self._convert_all_channels()
         if self._merge is not None and self._merge.banks:
             self.infos.append({'type': 'merge_bank_notes', 'notes': len(self._merge.regions),
-                               'cuts': self._bank_cuts, 'delays_dropped': self._bank_delays_dropped})
+                               'cuts': self._bank_cuts, 'delays_dropped': self._bank_delays_dropped,
+                               'cxx_moved': self._bank_cxx_moved})
         self._place_leading_rests()
         self._place_tempo_commands()
         if len(self._tempo_segments) > 1:
@@ -1276,11 +1320,16 @@ class SmpsToModConverter:
                 if (plan is not None and res.instrument in owned
                         and (chan_cfg.source, event.tick_position) not in plan.ticks):
                     continue
-                per = counts.setdefault(res.instrument, {})
+                inst = res.instrument
+                if plan is not None:
+                    member = plan.bank_members.get((chan_cfg.source, event.tick_position))
+                    if member is not None:
+                        inst = member.bank_id       # the bank's slot holds other sounds' levels too
+                per = counts.setdefault(inst, {})
                 k = level_of(st, res)
                 per[k] = per.get(k, 0) + 1
                 if res.gain_db:
-                    self._gained.setdefault(kind, set()).add(res.instrument)
+                    self._gained.setdefault(kind, set()).add(inst)
         return counts
 
     def _plan_levels(self, kind: str) -> dict[int, float]:
@@ -1383,9 +1432,11 @@ class SmpsToModConverter:
             self._pack_merge_banks(banked, mix_raw, clock, max_bytes)
         self._report_merge_groups()
 
-        # A mixed composite ends the way its primary does (the release slide's rate)
+        # A mixed composite ends the way its primary does (the release slide's rate).  A banked
+        # one shares its slot with sounds of other primaries (a drum hit, a bass note): its notes
+        # look their primary's rate up themselves (_convert_channel, `_bank_note`)
         for c in plan.composites.values():
-            if c.fm is None and c.primary in self._release:
+            if c.fm is None and not c.banked and c.primary in self._release:
                 self._release.setdefault(c.inst, self._release[c.primary])
 
         over = sorted((c.inst, c.headroom_db) for c in plan.composites.values() if c.headroom_db > _HEADROOM_REPORT_DB)
@@ -1558,6 +1609,9 @@ class SmpsToModConverter:
         _psg_mode_baked = self._psg_volume_mode == "baked"
 
         _note_gain = [0.0]      # dB a unison chord adds to the sounding note (ResolvedNote.gain_db)
+        # The banked composite (core.banks) the sounding note plays, else None: its level is
+        # measured under its own id and its release is its primary's, not the bank slot's
+        _bank_note: list = [None]
 
         def _emit_volume(inst: int) -> int:
             """MOD volume for a note on `inst` right now (equals the sample volume → no Cxx).
@@ -1573,7 +1627,11 @@ class SmpsToModConverter:
                 return 0
             level = st.level_db(_pan_law) + _note_gain[0]
             baseline = self._psg_baseline_db if st.is_psg else self._fm_baseline_db
-            rel_db = level - baseline.get(inst, level)
+            member = _bank_note[0]
+            key = member.bank_id if member is not None and member.inst == inst else inst
+            rel_db = level - baseline.get(key, level)
+            # A banked sound's bytes carry its own volume against the bank's (sv): at its own
+            # level it needs no Cxx either
             return clamp_mod_volume(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)
 
         _note_on_positions: set[tuple[int, int]] = set()
@@ -1607,7 +1665,11 @@ class SmpsToModConverter:
             else its rate in dB per second for _write_release."""
             if not self._release_slides or inst is None:
                 return None
-            rate = self._release.get(inst)
+            member = _bank_note[0]
+            if member is not None and member.inst == inst:
+                rate = self._release.get(member.primary)    # its own sound's, not the bank slot's
+            else:
+                rate = self._release.get(inst)
             if rate is None or rate == math.inf:
                 return None
             row_secs = self.config.target_speed * 2.5 / self._bpm_for(self._segment_at(tick)[1])
@@ -1793,6 +1855,8 @@ class SmpsToModConverter:
                             tick, dac_cfg.mod_instrument, _MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3))
                         self.mod.set_note(dac_note, dac_inst)
                         last_inst, last_vol = dac_inst, _sample_vol_map.get(dac_inst, 64)
+                        _bank_note[0] = (self._merge.bank_members.get((chan_cfg.source, tick))
+                                         if self._merge is not None else None)
                         if region is not None:
                             # A sound inside a sample bank (core.banks): start at its offset and
                             # cut the note once it is over, before the next sound in the slot
@@ -1846,6 +1910,13 @@ class SmpsToModConverter:
                     # next row: the volume is then set there (see cxx_coord below).  Drowning FM4
                     # pans every other note hard, so half its notes carry a -3 dB Cxx, and all of
                     # them start a tick off the grid.
+                    # A sound inside a sample bank (core.banks): the note starts with 9xx at its
+                    # offset, so the attack row's effect slot is the offset's
+                    _bank_note[0] = (self._merge.bank_members.get((chan_cfg.source, tick))
+                                     if self._merge is not None and _solo is None else None)
+                    _region = (self._merge.region_at(chan_cfg.source, tick)
+                               if _bank_note[0] is not None and self._merge is not None else None)
+                    _bank9 = _region is not None and _region[0] > 0
                     _needs_cxx = _emit_volume(final_instrument) != _sample_vol_map.get(final_instrument, 64)
                     # smpsNoAttack before a note byte: the driver writes the new frequency and
                     # skips the key-on (a grace note bending into the chord, Drowning's slides).
@@ -1855,6 +1926,8 @@ class SmpsToModConverter:
                     # effect slot, so no EDx, and a Cxx due moves to the next row.
                     legato_mode = self.synth.legato if self.synth else "strict"
                     legato = note.is_no_attack and res.path != "merged" and legato_mode != "retrigger"
+                    if _region is not None:
+                        legato = False          # a banked sound starts at its offset: a note-on
                     strict = legato_mode == "strict"
                     if strict and legato and last_inst is None:
                         # Nothing has sounded on this channel yet: a portamento would never
@@ -1881,7 +1954,7 @@ class SmpsToModConverter:
                         else:
                             legato = False
                     pattern, row, note_delay = _note_cell(
-                        tick, not legato and (not _needs_cxx or note.duration >= 2 * self._effective_tpr),
+                        tick, not legato and not _bank9 and (not _needs_cxx or note.duration >= 2 * self._effective_tpr),
                         _cut_tick)
                     if pattern >= self.config.max_patterns:
                         break
@@ -1917,8 +1990,8 @@ class SmpsToModConverter:
                         # Effect priority: volume beats note cut.  If the attack row needs its
                         # slot for Cxx, the cut moves to the start of the next row instead.
                         _sv = _sample_vol_map.get(final_instrument, 64)
-                        if fill_abs < row_abs + speed and _emit_volume(final_instrument) != _sv:
-                            fill_abs = row_abs + speed
+                        if fill_abs < row_abs + speed and (_emit_volume(final_instrument) != _sv or _bank9):
+                            fill_abs = row_abs + speed      # the attack row's slot holds Cxx / 9xx
                         fill_row_total, fill_sub = divmod(fill_abs, speed)
                         # At or past the row of the next event, the next note / rest takes over.
                         if fill_abs < next_abs and fill_row_total // 64 < self.config.max_patterns:
@@ -1951,7 +2024,15 @@ class SmpsToModConverter:
                     if _psg_note and not fill_placed:
                         cut_tick = tick + note.duration
                         cut_pat, cut_row = self._tick_to_pattern_row(cut_tick)
-                        if cut_pat == pattern and cut_row == row:
+                        if cut_pat == pattern and cut_row == row and _bank9:
+                            # The attack row's slot holds the 9xx: the cut waits for the next row
+                            nxt = pattern * 64 + row + 1
+                            if divmod(nxt, 64) not in _note_on_positions and nxt // 64 < self.config.max_patterns:
+                                self.mod.ensure_pattern(nxt // 64)
+                                self._set_cursor(nxt // 64, mod_chan, nxt % 64)
+                                self.mod.set_effect(0xC, 0)
+                                self._set_cursor(pattern, mod_chan, row)
+                        elif cut_pat == pattern and cut_row == row:
                             # Sub-row cut: note ends within the same MOD row → ECx
                             ec_val = round(
                                 note.duration * self.config.target_speed
@@ -1980,7 +2061,11 @@ class SmpsToModConverter:
                     if legato and not effect_slot_used:
                         self.mod.set_effect(0x3, 0xFF)
                         effect_slot_used = True
-                    if (note_delay or legato) and _needs_cxx:
+                    if _bank9:
+                        self.mod.set_effect(0x9, _region[0] >> 8)   # type: ignore[index]
+                        effect_slot_used = True
+                        self._bank_cxx_moved += _needs_cxx
+                    if (note_delay or legato or _bank9) and _needs_cxx:
                         # The Cxx moves to the first later row of the note whose slot is free
                         # (a cut placed above keeps its row).  One row at the instrument's own
                         # level, then the right one; a lost row of level beats 33 ms of timing.
@@ -2060,6 +2145,16 @@ class SmpsToModConverter:
                                     self.mod.set_effect(0x4, vib_param)
                             cont_tick += tpr
                         # Restore cursor to the attack row
+                        self._set_cursor(pattern, mod_chan, row)
+
+                    # A banked sound would run on into the next one in its bank: cut once it is
+                    # over, unless the channel's next note comes first (a looped sound is its
+                    # bank's last and needs none)
+                    if _region is not None and _bank_note[0] is not None and not _bank_note[0].looped:
+                        clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
+                        self._bank_cuts += self._cut_after(mod_chan, tick,
+                                                           _region[1] / (clock / PERIOD_TABLE[final_note.value]),
+                                                           _next_note_row(tick))
                         self._set_cursor(pattern, mod_chan, row)
 
     _MAX_RELEASE_ROWS = 64

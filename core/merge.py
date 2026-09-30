@@ -157,10 +157,6 @@ def prepare_merged_config(config) -> None:
                              f"fill: true, which sprinkles its notes over the silent columns)")
         if g.primary in g.followers:
             raise ValueError(f"{ctx}: {g.primary} follows itself")
-        if g.bank and g.primary != "DAC":
-            raise ValueError(f"{ctx}: bank: true needs the DAC channel as primary — a sample bank's "
-                             f"notes carry 9xx in their effect slot, which a melodic primary's Cxx / "
-                             f"4xy / EDx / 3FF would need")
         for src in (g.primary, *g.followers):
             if src not in sources:
                 raise ValueError(f"{ctx}: channel {src} is not in the channels section")
@@ -616,6 +612,10 @@ class Composite:
                                        # (core/banks.py), chosen with 9xx; takes no slot in the fit
     offset: int = 0                    # banked: where its sound starts in the bank (bytes, ×256)
     region: int = 0                    # banked: bytes of its sound (the note is cut after them)
+    looped: bool = False               # banked: its sound loops, the last in its bank (no cut)
+    bank_id: int = 0                   # banked: its provisional id, the key its own notes' levels are
+                                       #   measured under (its slot, `inst`, is the bank's)
+    member_volume: int = 64            # banked: its own volume; the bank plays at its loudest member's
     longest: float = 0.0               # seconds of the longest note that plays it: a looped layer is
                                        #   unrolled for at least this (the mix cannot loop at another rate)
     pitch_hz: float | None = None      # mix: the primary's pitch at `base` (a looped mix's period)
@@ -686,6 +686,9 @@ class MergePlan:
     banks: list = field(default_factory=list)       # core.banks.Bank, once the mixes are packed
     regions: dict[tuple[str, int], tuple[int, int]] = field(default_factory=dict)   # (primary, tick) ->
                                                     #   (offset bytes, sound bytes) of a banked note
+    bank_members: dict[tuple[str, int], Composite] = field(default_factory=dict)   # (primary, tick) ->
+                                                    #   the banked composite the note plays
+    bank_overflow: list[int] = field(default_factory=list)   # notes of each bank the slots could not hold
     bases: dict[tuple[str, int], int] = field(default_factory=dict)   # (primary, tick) -> the primary's
                                                     #   MOD note there (a pcm composite is transposed from its base)
     ends: dict[tuple[str, int], int] = field(default_factory=dict)    # (primary, tick) -> the tick its note ends

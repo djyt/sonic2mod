@@ -235,7 +235,6 @@ mod_pattern_breaks:
 # -------------------------------------------------------------------------------------------------
 
 
-merge_bank_slots: 2             # Sample slots to reserve for the DAC drum banking (1 bank at A2)
 merge_twins: always             # one mix per chord shape, even with slots to spare (the lead chord's twins: 7 KB)
 loop_drift_db: 12               # loops may freeze 12 dB above the settled level: shorter samples
 merge_max_synth_shift: 0        # render every sample at its root pitch: half the bytes of an octave up

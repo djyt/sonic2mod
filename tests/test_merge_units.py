@@ -46,6 +46,7 @@ from core.merge import (
     unison_gain_db,
 )
 from core.mod import ModFile, ModSample
+from core.smps2mod import SmpsToModConverter
 from core.tables import PERIOD_TABLE
 
 CLOCK = 3546895.0
@@ -233,6 +234,89 @@ class Banks(unittest.TestCase):
                              pad_secs=0.0, amiga_clock=CLOCK)
         self.assertEqual(len(dropped), 1)
         self.assertNotIn(("DAC", 16), plan.ticks)
+
+
+class MelodicBanks(unittest.TestCase):
+    """A melodic primary's mixes bank too: a looped member goes last, each bank plays at its
+    own loudest member's volume, and the banks the slots cannot hold are counted."""
+
+    def _plan(self, specs):
+        g = MergeGroup("FM2", ["PSG1"], bank=True)
+        comps, ticks, samples, entries = {}, {}, {}, []
+        for i, (size, vol, loop, notes) in enumerate(specs, 1):
+            c = Composite(-i, CompositeKey(MIX, 3, (MixLayerKey(16, i, 1.0, None),)), g, base=12, banked=True,
+                          notes=notes, entry=[-i, f"m{i}", vol, 0])
+            comps[c.key] = c
+            ticks[("FM2", 8 * i)] = -i
+            samples[-i] = _sample(bytes([40] * size), volume=vol, loop=loop)
+            entries.append(c.entry)
+
+        class Cfg:
+            sample_list: ClassVar[list] = entries
+        plan = MergePlan([g], composites=comps)
+        plan.ticks = ticks
+        return plan, Cfg, samples
+
+    def test_a_looped_member_goes_last_with_the_bank_loop(self):
+        # the looped one is the most played, yet it is packed after the other
+        plan, cfg, samples = self._plan([(1024, 64, (512, 256), 9), (512, 64, None, 1)])
+        mod = ModFile(4)
+        self.assertEqual(pack_banks(plan, cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0,
+                                    amiga_clock=CLOCK), [])
+        looped = next(c for c in plan.composites.values() if c.looped)
+        plain = next(c for c in plan.composites.values() if not c.looped)
+        self.assertLess(plain.offset, looped.offset)
+        bank = mod.samples[6]
+        self.assertEqual(bank.repeat * 2, looped.offset + 512)           # the member's loop, in the bank
+        self.assertEqual(bank.repeat_length * 2, 256)
+        self.assertEqual(len(bank.data), looped.offset + 1024)          # nothing follows it
+        self.assertIs(plan.bank_members[("FM2", 8)], looped)
+        self.assertEqual(looped.bank_id, -1)                            # its notes' level key
+
+    def test_a_bank_plays_at_its_own_loudest_member(self):
+        # two banks (each sound fills one); the second holds only the quiet sound
+        plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 32, None, 1)])
+        mod = ModFile(4)
+        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK)
+        self.assertEqual(mod.samples[6]._volume, 64)
+        self.assertEqual(mod.samples[7]._volume, 32)                    # not scaled down to the drums' 64
+        self.assertEqual(mod.samples[7].data[0], 40)                    # its bytes as they were
+
+    def test_banks_the_slots_cannot_hold_are_counted(self):
+        plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 64, None, 2), (3000, 64, None, 1)])
+        mod = ModFile(4)
+        dropped = pack_banks(plan, cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK)
+        self.assertEqual(len(dropped), 2)
+        self.assertEqual(plan.bank_overflow, [2, 1])                    # notes of each bank left out
+
+
+class BankReserve(unittest.TestCase):
+    """merge_bank_slots: auto - how many slots the next build should hold back for banks."""
+
+    def _want(self, banks, overflow, slotted, idle=()):
+        g = MergeGroup("FM1", ["PSG2"])
+        plan = MergePlan([g])
+        plan.banks = [object()] * banks
+        plan.bank_overflow = list(overflow)
+        for i, n in enumerate(slotted, 1):
+            c = Composite(20 + i, CompositeKey(MIX, 1, (MixLayerKey(2, i, 1.0, None),)), g, notes=n)
+            plan.composites[c.key] = c
+
+        class Stub:
+            _merge = plan
+            _idle_bank_slots: ClassVar[list] = list(idle)
+        return SmpsToModConverter._bank_reserve_wanted(Stub())  # type: ignore[arg-type]
+
+    def test_an_idle_slot_goes_back(self):
+        self.assertEqual(self._want(2, [], [5, 1], idle=[19]), 2)
+
+    def test_a_bank_that_carries_more_notes_than_the_composites_it_displaces(self):
+        self.assertEqual(self._want(2, [12], [1, 3, 9]), 3)             # 12 bank notes > 1
+        self.assertIsNone(self._want(2, [1], [4, 9]))                   # 1 bank note < 4: keep the slot
+        self.assertEqual(self._want(2, [12, 1], [1, 3]), 3)             # the second bank does not pay
+
+    def test_nothing_to_change(self):
+        self.assertIsNone(self._want(2, [], [4]))
 
 
 class BankAlignment(unittest.TestCase):

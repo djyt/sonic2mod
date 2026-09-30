@@ -167,8 +167,8 @@ class MergeGroup:
                                 # note-on or rest falls inside it) plays whole on a channel silent
                                 # for all of it when there is one; else it folds as before
     bank: bool = False          # this group's mixed composites share MOD instruments as sample banks,
-                                # each sound chosen with 9xx (core/banks.py); drum primaries only,
-                                # whose notes carry no other command
+                                # each sound chosen with 9xx (core/banks.py), which takes the note's
+                                # effect slot (a melodic note's attack-row Cxx moves a row later)
     mod_channel: int | str | None = None   # merge_patterns only: the column the primary's notes take
                                 # in the group's patterns — a channels: mod_channel number, or a source
                                 # name (FM2: that channel's column), which must be folded or dropped
@@ -813,8 +813,11 @@ class ConversionConfig:
     # folded to the note it bends into.
     merge_tolerance: int = 1
     # Instrument slots the composite fit leaves free for the sample banks of the `bank: true`
-    # groups (core/banks.py); the banks take any other slot still free after the fit as well
+    # groups (core/banks.py); the banks take any other slot still free after the fit as well.
+    # "auto" (the default): the converter chooses, rebuilding once the banks' sizes are known
+    # (SmpsToModConverter.convert); a number pins it.  `merge_bank_slots` is the count in use.
     merge_bank_slots: int = 2
+    merge_bank_slots_auto: bool = True
     # When a composite whose shape a surviving one has gives up its slot (core.merge._twins):
     # "short" only while the composites do not all fit; "always" in any case, for the bytes
     merge_twins: str = "short"
@@ -1073,7 +1076,10 @@ class ConversionConfig:
         config.merge_output_file = data.get('merge_output_file')
         config.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
         config.merge_tolerance = int(data.get('merge_tolerance', 1))
-        config.merge_bank_slots = max(0, int(data.get('merge_bank_slots', 2)))
+        bank_slots = data.get('merge_bank_slots', 'auto')
+        config.merge_bank_slots_auto = str(bank_slots).lower() == 'auto'
+        if not config.merge_bank_slots_auto:
+            config.merge_bank_slots = max(0, int(bank_slots))
         config.merge_twins = str(data.get('merge_twins', 'short'))
         if config.merge_twins not in TWIN_MODES:
             raise ValueError(f"merge_twins: {config.merge_twins!r} is not one of {', '.join(TWIN_MODES)}")

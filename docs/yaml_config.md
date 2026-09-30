@@ -678,11 +678,14 @@ and are reported; a channel in two groups of one pattern is an error; `merge:` g
 beside `merge_patterns:` (they hold in every pattern).  A YAML integer is a decimal pattern
 number; write strings for hex.
 
-A drum-primary group may add `bank: true`: its mixed composites (kick+bass+hat and the like)
+A group may add `bank: true`: its mixed composites (kick+bass+hat, bass+chime and the like)
 share instrument slots as **sample banks**, every note starting with `9xx` at its sound's
 offset and cut where the sound ends, so eighteen drum mixes cost three slots instead of
-eighteen. `merge_bank_slots: 3` (song level, default 2) is how many slots the composite fit
-holds back for them; the converter says when a sound found no bank slot. A group's `mix_at: primary` makes its mixes at the
+eighteen.  A melodic primary's notes give the attack row's slot to the `9xx` (a `Cxx` there
+moves a row later, an `EDx` is dropped); a looped mix goes last in its bank.
+`merge_bank_slots` (song level) is how many slots the composite fit holds back for them:
+leave it out (`auto`, the default) and the converter works it out, building again once the
+banks' sizes are known; a number pins it. A group's `mix_at: primary` makes its mixes at the
 primary's own note, so a looped primary keeps its loop and a lead under a chime costs a few KB
 instead of its whole note unrolled (the chime is resampled down into it).  A group's
 `mix_note: F2` caps the note its mixes are made at: a mix is made at its fastest layer's note

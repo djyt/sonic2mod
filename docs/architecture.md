@@ -319,8 +319,8 @@ Conversion engine that walks the IR and writes MOD data.
 6. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
 7. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
 
-`_set_loop_point()` is called by `convert.py` afterwards - after `apply_pattern_breaks`, so the
-`Bxx` lands at the right post-break position (see the call-order gotcha in `CLAUDE.md`).
+`convert()` then lays the MOD out: `apply_pattern_breaks`, `_set_loop_point()` (so the `Bxx`
+lands at its post-break position), trailing patterns trimmed, a merged build narrowed.
 
 #### Channel Conversion
 

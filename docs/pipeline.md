@@ -37,7 +37,7 @@ Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (a
       │  4. Load sample files from sample_list (or placeholders)
       │  5. _extend_looping_channels() — extend short PSG loops to match song length
       │  6. For each configured channel: walk SmpsEvent list → write MOD rows
-      │  NOTE: _set_loop_point() is NOT called here — see post-processing below
+      │  (_convert_passes; then convert() lays the MOD out, in this order:)
       │
       ▼
   apply_pattern_breaks(mod, breaks)   mod.py   [optional — only if mod_pattern_breaks set]
@@ -50,6 +50,9 @@ Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (a
       │  • Scans post-break MOD backward for last row with non-zero period
       │  • Maps loop_target_tick → post-break (pattern, row) using break formula
       │  • Writes Bxx (+ optional Dxx companion) at the last data row
+      │
+      ▼
+  trim_to_pattern / narrow_to        mod.py   [merged build: empty columns go]
       │
       ▼
   ModFile → mod.get_bytes()        mod.py
@@ -600,11 +603,11 @@ itself are gotcha 4.
 
 **Cause:** `_set_loop_point()` uses post-break MOD coordinates. If called inside `convert()` (before `apply_pattern_breaks`), the Bxx is placed at a pre-break row number that gets displaced during repacking. The target tick-to-pattern conversion also ignores the row offset that the break introduces.
 
-**Fix:** Call order must be:
+**Fix:** `convert()` keeps the order (since 2026-09-30; the CLI used to):
 ```
-converter.convert()                                  # writes all note data; does NOT call _set_loop_point
+self._convert_passes()                               # all note data; no Bxx
 apply_pattern_breaks(mod, config.mod_pattern_breaks) # repacks stream
-converter._set_loop_point(config.mod_pattern_breaks) # writes Bxx in final layout
+self._set_loop_point(config.mod_pattern_breaks)      # Bxx in final layout
 ```
 `_set_loop_point(breaks)` accepts the breaks list so it can apply the coordinate-remapping formula (see §Pattern Breaks).
 

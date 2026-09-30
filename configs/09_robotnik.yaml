@@ -39,7 +39,7 @@ sample_list:
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM3 ---
   - [5, "fm_v01.raw", 14, 0] # VGZ: -3.1 dB at 10
   # --- voice $02: alg 5: 1→(2+3+4), fb 7 — FM1, FM4 ---
-  - [6, "fm_v02.raw", 22, 0] # VGZ: -3.3 dB at 15
+  - [6, "fm_v02.raw", 19, 0] # VGZ: +1.0 dB at 22
   # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
   - [7, "fm_v05.raw", 21, 0] # VGZ: +3.7 dB at 32
   # --- PSG tone fTone_05 ---

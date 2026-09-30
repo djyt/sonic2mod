@@ -36,8 +36,8 @@ sample_list:
   - [2, "kick.raw", 57, 0] # VGZ: +1.0 dB at 64
   - [3, "timpani.raw", 57, 0] # VGZ: +1.0 dB at 64
   # --- voice $00: Alg 5, FB 7 — FM1 ---
-  - [4, "fm_v00_lo.raw", 31, 0] # VGZ: +6.3 dB at 64
-  - [5, "fm_v00_hi.raw", 31, 0] # VGZ: +1.5 dB at 37
+  - [4, "fm_v00_lo.raw", 27, 0] # VGZ: +1.0 dB at 31
+  - [5, "fm_v00_hi.raw", 26, 0] # VGZ: +1.7 dB at 31
   # --- voice $01: Alg 2, FB 7 — FM2 ---
   - [6, "fm_v01.raw", 25, 0] # VGZ: -0.0 dB at 32
   # --- voice $02: Alg 5, FB 7 — FM3, FM4 ---
@@ -45,7 +45,7 @@ sample_list:
   # --- voice $03: Alg 5, FB 7 — FM5 ---
   - [8, "fm_v03.raw", 20, 0] # VGZ: -2.6 dB at 15
   # --- PSG tone fTone_05 ---
-  - [9, "psg_fTone_05_lo.raw",  4, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +1.1 dB at 5
+  - [9, "psg_fTone_05_lo.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: -1.4 dB at 4
   - [10, "psg_fTone_05_hi.raw",  3, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +4.0 dB at 5
 
 dac_samples:

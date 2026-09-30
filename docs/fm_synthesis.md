@@ -389,7 +389,9 @@ if target_rate != native_rate:
 ```
 
 `_resample` is the polyphase Kaiser-windowed sinc the SFX renderer uses (`core/resample.py`;
-32 taps, 512 phases, >70 dB stopband), rounded back to ints.  It replaced a box average, which
+32 taps of the lower rate, 512 phases, >70 dB stopband), rounded back to ints.  Until
+2026-09-30 the 32 taps were input samples whatever the ratio: at 53267 -> 11062 Hz the kernel
+spanned under seven output samples, -2.9 dB at 85 % of Nyquist and aliases only 19 dB down.  It replaced a box average, which
 rolled off 3.9 dB at the target's Nyquist and left aliases only ~6 dB down, with window-length
 jitter on non-integer ratios.
 

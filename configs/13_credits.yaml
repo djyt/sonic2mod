@@ -64,20 +64,20 @@ sample_list:
   - [6, "fm_v02_lo.raw", 20, 0]   # $01, $02, $04, $16  D2-B4; VGZ: -3.1 dB at 14
   - [7, "fm_v03.raw", 44, 0]   # $03  C4-E5; VGZ: +1.4 dB at 51
   - [8, "fm_v05.raw", 21, 0]   # $05  E4-Es5; VGZ: +1.4 dB at 25
-  - [9, "fm_v07.raw", 20, 0]   # $07  G4-A5; VGZ: -3.8 dB at 13
-  - [10, "fm_v08.raw", 10, 0]   # $08  A3-B4   # VGZ: +1.0 dB at 12
+  - [9, "fm_v07.raw", 17, 0]   # $07  G4-A5; VGZ: +1.2 dB at 20
+  - [10, "fm_v08.raw", 12, 0]   # $08  A3-B4; VGZ: -1.6 dB at 10
   - [11, "fm_v09.raw", 17, 0]   # $09  G1-B2   # VGZ: +2.8 dB at 23
   - [12, "fm_v0a_lo.raw", 27, 0]   # $0A, $1C  D4-C6   # VGZ: -0.4 dB at 25
   - [13, "fm_v0b_lo.raw", 23, 0]   # $0B  G3-E5; VGZ: +8.7 dB at 64
-  - [14, "fm_v0c.raw",  10, 0]   # $0C  Cs3-B3; VGZ: -3.5 dB at 7
+  - [14, "fm_v0c.raw",   8, 0]   # $0C  Cs3-B3; VGZ: +1.8 dB at 10
   - [15, "fm_v0d.raw",  9, 0]   # $0D  G4-As5; VGZ: +4.2 dB at 15
   - [16, "fm_v0e.raw", 29, 0]   # $0E  Fs7-Fs7; VGZ: +6.9 dB at 64
   - [17, "fm_v0f.raw", 22, 0]   # $0F  C5-C6   # VGZ: +2.1 dB at 29
-  - [18, "fm_v10.raw", 20, 0]   # $10, $1D  G2-B3   # VGZ: +2.0 dB at 25
+  - [18, "fm_v10.raw", 24, 0]   # $10, $1D  G2-B3; VGZ: -1.6 dB at 20
   - [19, "fm_v12_lo.raw", 11, 0]   # $12  A4-G6; VGZ: +2.3 dB at 14
-  - [20, "fm_v14.raw", 20, 0]   # $06, $14  C2-E3   # VGZ: +3.6 dB at 29
-  - [21, "fm_v15.raw", 10, 0]   # $15  C4-A5   # VGZ: +2.2 dB at 14
-  - [22, "fm_v17.raw", 19, 0]   # $17  A4-Es5; VGZ: +3.2 dB at 27
+  - [20, "fm_v14.raw", 16, 0]   # $06, $14  C2-E3; VGZ: +1.8 dB at 20
+  - [21, "fm_v15.raw", 12, 0]   # $15  C4-A5; VGZ: -1.3 dB at 10
+  - [22, "fm_v17.raw", 14, 0]   # $17  A4-Es5; VGZ: +2.6 dB at 19
   - [23, "fm_v18.raw", 26, 0]   # $11, $18  G4-A6; VGZ: -3.3 dB at 18
   - [24, "fm_v1a_lo.raw", 17, 0]   # $1A  A2-E5   # VGZ: +2.0 dB at 23
   - [25, "fm_v1a_lo.raw", 57, 0]   # $1A  B5-B5
@@ -86,7 +86,7 @@ sample_list:
   - [28, "fm_v20.raw", 17, 0]   # $20  D4-B4; VGZ: +1.4 dB at 20
   # --- PSG ---
   - [29, "psg_tone1.raw", 6, 0]   # fTone_06  A2-G5; VGZ: -1.3 dB at 5
-  - [30, "psg_tone2.raw", 12, 0]   # $00, fTone_01, fTone_05, fTone_06, fTone_08, fTone_09  Cs4-G6; VGZ: -3.3 dB at 8
+  - [30, "psg_tone2.raw", 14, 0]   # $00, fTone_01, fTone_05, fTone_06, fTone_08, fTone_09  Cs4-G6; VGZ: -1.2 dB at 12
   - [31, "psg_noise.raw", 3, 0] # VGZ: +5.9 dB at 6
 
 dac_samples:

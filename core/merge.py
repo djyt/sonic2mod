@@ -96,7 +96,7 @@ from .levels import TL_STEP_DB, clamp_mod_volume
 from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
 from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
-from .resample import resample
+from .resample import DEFAULT_TAPS, resample
 from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
 
@@ -1538,7 +1538,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        bank_out: dict[int, ModSample] | None = None,
                        raw: dict[int, tuple] | None = None,
                        raw_out: dict[int, list[float]] | None = None,
-                       padding_secs: float = 0.0, loop_drift_db: float = FLAT_DB) -> list[dict]:
+                       padding_secs: float = 0.0, loop_drift_db: float = FLAT_DB,
+                       taps: int = DEFAULT_TAPS) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -1571,7 +1572,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes.
     """
     mixer = _Mixer(mod, amiga_clock, hold_secs or {}, sources or {}, release_db_s or {}, raw or {}, padding_secs,
-                   loop_drift_db)
+                   loop_drift_db, taps)
     problems: list[dict] = []
     for comp in plan.composites.values():
         if comp.fm is not None:
@@ -1602,8 +1603,9 @@ class _Mixer:
 
     def __init__(self, mod, amiga_clock: float, hold_secs: dict[int, float], sources: dict[int, ModSample],
                  release_db_s: dict[int, float | None], raw: dict[int, tuple], padding_secs: float,
-                 loop_drift_db: float = FLAT_DB):
+                 loop_drift_db: float = FLAT_DB, taps: int = DEFAULT_TAPS):
         self._mod, self._clock = mod, amiga_clock
+        self._taps = taps
         self._hold_secs, self._sources = hold_secs, sources
         self._release, self._raw, self._padding = release_db_s, raw, padding_secs
         self._drift = loop_drift_db
@@ -1737,7 +1739,7 @@ class _Mixer:
                 sig = _cut_layer(sig, int(need * r_f), r_f, self._release.get(f_inst))
 
             if round(r_f) != round(r_p):
-                sig = resample(sig, round(r_f), round(r_p), **({"taps": UPSAMPLE_TAPS} if r_f < r_p else {}))
+                sig = resample(sig, round(r_f), round(r_p), taps=UPSAMPLE_TAPS if r_f < r_p else self._taps)
             layers.append(sig)
         return layers
 
@@ -1772,7 +1774,7 @@ class _Mixer:
         if need and keep_loop is None and len(total) > int(need * r_base) + 2:
             total = _cut_layer(total, int(need * r_base), r_base, self._release.get(p_inst))
         if not same_rate:
-            total = resample(total, round(r_base), round(r_p), **({"taps": UPSAMPLE_TAPS} if r_base < r_p else {}))
+            total = resample(total, round(r_base), round(r_p), taps=UPSAMPLE_TAPS if r_base < r_p else self._taps)
         return total, keep_loop
 
 

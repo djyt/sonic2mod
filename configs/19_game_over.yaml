@@ -35,7 +35,7 @@ sample_list:
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM4 ---
   - [4, "fm_v02.raw", 20, 0] # VGZ: +1.2 dB at 23
   # --- voice $03: alg 7: 1+2+3+4, fb 3 — FM5 ---
-  - [5, "fm_v03.raw", 12, 0] # VGZ: +9.9 dB at 39
+  - [5, "fm_v03.raw", 10, 0] # VGZ: +2.0 dB at 12
 
 dac_samples:
   # dKick: ×4 — native ~8250 Hz → note C2

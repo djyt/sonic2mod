@@ -272,6 +272,13 @@ A merge group takes its own `treble_shelf_db` (and `treble_shelf_hz`), on top of
 on its composites only: a mix's whole sum (the drums off disk too), a chip composite's render.
 The instruments' own samples elsewhere in the song keep the song's shelf.
 
+A `dac_samples` entry's `saturate_db: 2` (or `merge_saturate_db: 2`, the merged build only,
+over `saturate_db` there) soft-clips that drum when it is loaded (tanh, the drive
+solved so its RMS rises 2 dB at the same peak) and requantises it to 8 bits: the same peak and
+volume, a louder body, some added harmonics.  The drum mixes are built from it.  A compressor
+was tried first and dropped: these drums are nearly all peak, so it turned the body down with
+the peak (the kick gained 0.4 dB for 3 dB of reduction).  Artistic: the hardware's waveform changes.
+
 A merge group's `limit_db: 4` limits a mix whose sum is past full scale: its peaks (a kick and a
 bass attack landing together) come down to full scale by up to 4 dB, with a 1.5 ms lookahead and
 a 60 ms release (`core.pcm.limit_peaks`), instead of the whole sound playing that much quieter

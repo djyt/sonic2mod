@@ -333,6 +333,13 @@ class DacSampleConfig:
     name: str            # e.g. "dKick"
     mod_instrument: int  # MOD instrument number
     mod_note: str = "C3" # Note to trigger in MOD
+    saturate_db: float = 0.0   # the drum soft-clipped until its body is this much louder at the same
+                               # peak (core.pcm.saturate): presence, some added harmonics
+    merge_saturate_db: float | None = None   # the same for the merged build only (over saturate_db there)
+
+    def saturation_db(self, merged: bool) -> float:
+        """The saturate_db this build uses: merge_saturate_db in the merged one, where given."""
+        return self.merge_saturate_db if merged and self.merge_saturate_db is not None else self.saturate_db
 
 
 @dataclass
@@ -1011,6 +1018,8 @@ class ConversionConfig:
                 name=_require(dac_data, 'name', _ctx),
                 mod_instrument=_require(dac_data, 'mod_instrument', _ctx),
                 mod_note=dac_data.get('mod_note', 'C3'),
+                saturate_db=max(0.0, float(dac_data.get('saturate_db', 0.0))),
+                merge_saturate_db=_opt(dac_data, 'merge_saturate_db', lambda v: max(0.0, float(v))),
             ))
 
         # ---------------------------------------------------------------------------

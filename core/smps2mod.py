@@ -42,7 +42,7 @@ from .levels import (
 from .loops import FLAT_DB, SustainLoop
 from .merge import NO_SLOT, Composite, build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, apply_pattern_breaks, row_to_bcd
-from .pcm import MAX_MOD_SAMPLE_BYTES, max_sustain_secs
+from .pcm import INT8_PEAK, MAX_MOD_SAMPLE_BYTES, max_sustain_secs, peak, saturate, signed8, to_int8
 from .resample import DEFAULT_TAPS
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import (
@@ -537,6 +537,19 @@ class SmpsToModConverter:
                 d['release'] = self._release[inst]
         return out
 
+    def _saturate_dac_samples(self) -> None:
+        """Each `dac_samples` drum with a saturate_db (merge_saturate_db in the merged build)
+        soft-clipped (core.pcm.saturate) and requantised to its full 8 bits: the same peak and
+        volume, a louder body.  Before the mixes, which are built from it."""
+        for d in self.config.dac_samples:
+            db = d.saturation_db(self.config.merge_active)
+            sample = self.mod.samples[d.mod_instrument - 1]
+            if not db or sample is None or not sample.data:
+                continue
+            shaped = saturate(signed8(sample.data), db)
+            sample.data = to_int8(shaped, INT8_PEAK / peak(shaped))
+            self.infos.append({'type': 'dac_saturated', 'instrument': d.mod_instrument, 'name': d.name, 'db': db})
+
     def _synthesis_roots(self, kind: str) -> dict[int, tuple[int, int]]:
         """{MOD instrument: (MOD note index its sample is synthesised for, synth_shift)}.
 
@@ -950,6 +963,8 @@ class SmpsToModConverter:
             for dac in self.config.dac_samples:
                 max_inst = max(max_inst, dac.mod_instrument)
             self.mod.create_placeholder_samples(max_inst)
+
+        self._saturate_dac_samples()
 
         # PSG synthesis block
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):

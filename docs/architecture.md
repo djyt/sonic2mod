@@ -390,6 +390,8 @@ CLI entry point using `argparse`.
 |----------|-------|---------|-------------|
 | `config` | — | — | YAML config file (positional, required) |
 | `--output` | `-o` | auto | Output .mod path |
+| `--merged` | — | off | The merged build (`merge:` / `merge_patterns:`) |
+| `--verbose` | `-v` | off | Also every composite, bank sound, loop extension, synthesis pitch; each sample's release rate and share of the song |
 
 YAML config is the required positional argument. `--output` overrides `output_file` from YAML.
 
@@ -399,9 +401,15 @@ Console chrome (branding panel, label column, error printer) comes from `core/cl
 `analyze.py` and `sonic2wav.py`.
 
 The converter reports through two public lists, `SmpsToModConverter.warnings` and `.infos`, each
-holding dicts with a `type` key. `convert.py` renders the informational ones inline and dispatches
-warnings through `_WARNING_RENDERERS`, a `{type: function}` table - a new warning type is one
-function and one entry, and an unrecognised type prints nothing.
+holding dicts with a `type` key, plus `sample_sources()` (what each slot holds: kind, source, the
+rate it was rendered at, the release rate).  `core/report.py` turns them into the report: a header
+(source, tempo, settings, output), **Checks** (tempo, pitch, samples, merge, levels, patterns: a tick
+or each warning with its fix), **Channels** (or, merged, the MOD **Columns**), **Samples** (every
+slot against the sample limit, its loop and the notes that play it, read back from the written file
+by `core/sample_audit.py`), **Merge** (merged build: each fold's composites, folded / solo / lost /
+cut notes) and, with `--verbose`, **Details**.  Warnings go through `_WARNINGS`, a `{type:
+function}` table returning `(check, headline, fix)` - a new warning type is one function and one
+entry; an unrecognised type is shown raw under `other`.
 
 ---
 

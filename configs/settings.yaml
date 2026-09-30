@@ -22,7 +22,7 @@ psg_synthesis:
   sustain_duration: auto    # Seconds of tone held before key-off; or 'auto': per instrument, as FM
   release_padding: 0.2      # Seconds of silence/release after key-off
 
-max_sample_kb: 128          # Maximum Sample Length: 64 = Amiga ProTracker | 128 = Modern Trackers
+max_sample_kb: 64           # Maximum Sample Length: 64 = Amiga ProTracker | 128 = Modern Trackers
 
 # Sustain loops (core/loops.py).  A synthesised sample otherwise holds the longest note its instrument
 # plays.  With loops, an instrument whose envelope settles (the YM2612 voice at its sustain level, a PSG

@@ -11,10 +11,11 @@ a note fill writes).  The offset takes the note's effect slot: a drum note carri
 else; a melodic one gives way where it must (a `Cxx` moves to the note's next row, an `EDx` is
 dropped, a cut inside the attack row moves to the next one) and the converter counts them.
 
-A bank has one loop header, so a looped member goes last in its bank with the loop pointing at
-its own, and nothing follows it; its notes need no cut.  Sounds with different finetunes cannot
+A bank has one loop header, so it holds one looped member at most, laid out last with the loop
+pointing at its own; its notes need no cut.  Sounds with different finetunes cannot
 share a bank (one per slot).  A bank plays at the volume of its loudest member and the quieter
-members are scaled into their bytes; each keeps its own volume (`Composite.member_volume`) and
+members are scaled into their bytes (8-bit range lost), so sounds are grouped by volume where
+that takes no more banks than first fit (`_layout`); each keeps its own volume (`Composite.member_volume`) and
 its notes their own level (`Composite.bank_id`, the key the converter measures them under) and
 release rate.  A member that fits in no bank (the slots are gone, or it is longer than a sample
 may be) is dropped like any composite over budget: a surviving composite of the same shape
@@ -67,6 +68,57 @@ def _region(c: Composite, sound: int, looped: bool, pad_secs: float, amiga_clock
     return -(-(sound + math.ceil(rate * pad_secs)) // ALIGN) * ALIGN
 
 
+def _loss_db(banks: list[Bank], volume: dict[int, int]) -> float:
+    """dB of 8-bit range the layout costs, over every note: a member quieter than its bank's
+    loudest is scaled down into its bytes."""
+    return sum(c.notes * 20 * math.log10(max(volume[c.inst] for c in b.members) / volume[c.inst])
+               for b in banks for c in b.members)
+
+
+def _layout(members: list[Composite], sizes: dict[int, tuple[int, int, bool]], volume: dict[int, int],
+            max_bytes: int, budget: int | None) -> list[Bank]:
+    """Banks for `members` (sizes: {id: (region bytes, finetune, looped)}), at most one looped
+    member each (it is laid out last).  `budget` None: each into the first bank it fits, the
+    most-played first (loops last, as before).  Else
+    the loudest first, each into a bank of its own volume, a new one while fewer than `budget`
+    exist, or the fitting bank nearest its volume:
+
+        first fit   [kick kick bass] [kick bass bass]   bass scaled to the kicks' 64
+        by volume   [kick kick kick] [bass bass bass]   each bank at its members' volume
+    """
+    if budget is None:
+        order = sorted(members, key=lambda c: (sizes[c.inst][2], -c.notes, c.inst))
+    else:
+        order = sorted(members, key=lambda c: (-volume[c.inst], -c.notes, c.inst))
+    banks: list[Bank] = []
+    for c in order:
+        region, finetune, looped = sizes[c.inst]
+        fits = [b for b in banks if not (b.looped and (looped or budget is None))
+                and b.fits(region, finetune, max_bytes)]
+        v = volume[c.inst]
+
+        # First fit: the first bank with room
+        bank = fits[0] if fits and budget is None else None
+
+        # By volume: its own volume's bank, a new one within the budget, else the nearest
+        if budget is not None:
+            same = [b for b in fits if b.volume == v]
+            if same:
+                bank = same[0]
+            elif len(banks) >= budget and fits:
+                bank = min(fits, key=lambda b: abs(math.log(b.volume / v)))
+        if bank is None:
+            bank = Bank(0, 0, finetune)
+            banks.append(bank)
+        bank.data += bytes(region)              # its room; the bytes go in once the layout is chosen
+        bank.volume = max(bank.volume, v)
+        bank.looped = bank.looped or looped
+        bank.members.append(c)
+    for bank in banks:                          # a loop runs to the end of the sample: last
+        bank.members.sort(key=lambda c: sizes[c.inst][2])
+    return banks
+
+
 def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slots: list[int],
                max_bytes: int, pad_secs: float, amiga_clock: float,
                raw: dict[int, list[float]] | None = None) -> list[dict]:
@@ -75,10 +127,11 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
     ids become their bank's slot, `plan.regions` says where each note's sound starts and how
     long it is and `plan.bank_members` which member it plays.  `pad_secs` (one MOD tick) of
     silence follows every sound but a looped one, so the cut the converter places, up to half a
-    tick off, never reaches the next sound.  The most-played composites are packed first and the
-    looped ones last, each closing its bank.  A member whose normalised sum the mixer kept
-    (`raw`) is quantised here, once, with its bank's volume scaling in; the others' bytes are
-    scaled.  Returns one dict per member dropped."""
+    tick off, never reaches the next sound.  Sounds share a bank with sounds of their own volume
+    where that takes no more banks than first fit (_layout); the looped ones go last, each
+    closing its bank.  Short of slots, the banks with the fewest notes are left out.  A member
+    whose normalised sum the mixer kept (`raw`) is quantised here, once, with its bank's volume
+    scaling in; the others' bytes are scaled.  Returns one dict per member dropped."""
     raw = raw or {}
     members = sorted((c for c in plan.composites.values() if c.banked and c.inst in samples),
                      key=lambda c: (samples[c.inst].repeat_length > 1, -c.notes, c.inst))
@@ -90,30 +143,40 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
         dropped.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': why})
         drop_composite(plan, config, c, why)
 
-    # Every member into the first bank it fits, as many banks as that takes
-    banks: list[Bank] = []
-    for c in members:
+    # Each member's room in a bank; one too big for any sample is dropped
+    sizes: dict[int, tuple[int, int, bool]] = {}
+    volume = {c.inst: samples[c.inst]._volume for c in members}
+    for c in list(members):
         s = samples[c.inst]
         looped = s.repeat_length > 1
         region = _region(c, len(s.data), looped, pad_secs, amiga_clock)
         if region > max_bytes:
             drop(c, f"its {len(s.data)} bytes do not fit a sample")
+            members.remove(c)
             continue
-        bank = next((b for b in banks if not b.looped and b.fits(region, s._finetune, max_bytes)), None)
-        if bank is None:
-            bank = Bank(0, 0, s._finetune)
-            banks.append(bank)
-        c.offset, c.region, c.looped = bank.bytes, len(s.data), looped
-        bank.data += bytes(region)              # its room; the bytes go in once the volume is known
-        bank.looped = looped
-        bank.members.append(c)
+        sizes[c.inst] = (region, s._finetune, looped)
 
-    # The slots hold the first banks (the most-played sounds); the others' members are dropped
+    # By volume where it costs no bank more than first fit, and less range
+    first = _layout(members, sizes, volume, max_bytes, None)
+    by_volume = _layout(members, sizes, volume, max_bytes, len(first))
+    banks = (by_volume if len(by_volume) <= len(first) and _loss_db(by_volume, volume) < _loss_db(first, volume)
+             else first)
+
+    # The slots hold the banks with the most notes; the others' members are dropped
+    banks.sort(key=lambda b: -sum(c.notes for c in b.members))
     kept = banks[:len(slots)]
     plan.bank_overflow = [sum(c.notes for c in b.members) for b in banks[len(slots):]]
     for bank in banks[len(slots):]:
         for c in bank.members:
             drop(c, "no slot left for another bank (merge_bank_slots)")
+
+    # Where each sound starts in its bank
+    for bank in kept:
+        at = 0
+        for c in bank.members:
+            region, _ft, looped = sizes[c.inst]
+            c.offset, c.region, c.looped = at, len(samples[c.inst].data), looped
+            at += region
 
     for slot, bank in zip(slots, kept, strict=False):
         bank.slot = slot

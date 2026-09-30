@@ -1241,8 +1241,11 @@ or another chord, and its release slide takes its primary's rate (`_bank_note` i
 `_convert_channel`; a bank's slot has no rate of its own).  On Green Hill none of its 23 notes
 needed another command, the seven mixes (81 KB, seven slots) joined the drum banks (three
 slots in all, the looped one last in the third), and the four slots freed gave FM1+PSG2 the
-three composites it had been denied.  The cost: a member quieter than its bank's loudest (the
-bass mixes at 45 beside drums at 64) is scaled down in its bytes, about 3 dB of 8-bit range.
+three composites it had been denied.  A member quieter than its bank's loudest is scaled down
+in its bytes (8-bit range lost), so `_layout` groups sounds by volume where that takes no more
+banks than first fit: loudest first, into a bank of its own volume, a new bank while under
+first fit's count, else the nearest volume; a loop is placed in turn and laid out last.  Green
+Hill: 23 bass notes 3 dB down → 4 one-note mixes (mean over banked notes 0.38 → 0.04 dB).
 
 In the output every banked note starts with `9xx` at its offset (none at offset 0) and,
 because the sample would run on into the next sound, is cut once its sound is over:

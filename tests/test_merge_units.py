@@ -282,6 +282,17 @@ class MelodicBanks(unittest.TestCase):
         self.assertEqual(mod.samples[7]._volume, 32)                    # not scaled down to the drums' 64
         self.assertEqual(mod.samples[7].data[0], 40)                    # its bytes as they were
 
+    def test_sounds_share_a_bank_with_their_own_volume(self):
+        # first fit would pair each loud sound with a quiet one: [64 32] [64 32]
+        plan, cfg, samples = self._plan([(1500, 64, None, 9), (1500, 32, None, 8), (1500, 64, None, 7),
+                                         (1500, 32, None, 6)])
+        mod = ModFile(4)
+        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=3200, pad_secs=0.0, amiga_clock=CLOCK)
+        by_slot = {}
+        for c in plan.composites.values():
+            by_slot.setdefault(c.inst, set()).add(c.member_volume)
+        self.assertEqual(sorted(map(sorted, by_slot.values())), [[32], [64]])   # still two banks
+
     def test_banks_the_slots_cannot_hold_are_counted(self):
         plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 64, None, 2), (3000, 64, None, 1)])
         mod = ModFile(4)

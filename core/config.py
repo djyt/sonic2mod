@@ -610,6 +610,7 @@ class PsgSynthesisSettings:
                     stacklevel=2,
                 )
         _psg_sd = s.get("sustain_duration", 1.0)
+        shelf_db, shelf_hz = _treble_shelf(data, filepath)
         return cls(
             enabled=s.get("enabled", False),
             clock_rate=s.get("clock_rate", 3_579_545),
@@ -620,8 +621,8 @@ class PsgSynthesisSettings:
             max_sample_kb=_max_sample_kb(data, filepath),
             sustain_loops=_sustain_loops(data, filepath),
             loop_drift_db=_loop_drift_db(data, filepath),
-            treble_shelf_db=_treble_shelf(data, filepath)[0],
-            treble_shelf_hz=_treble_shelf(data, filepath)[1],
+            treble_shelf_db=shelf_db,
+            treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
             psg_oversample=_psg_oversample(data, s, filepath),
         )
@@ -733,6 +734,7 @@ class SynthesisSettings:
                 stacklevel=2,
             )
         _fm_sd = s.get("sustain_duration", 1.5)
+        shelf_db, shelf_hz = _treble_shelf(data, filepath)
         return cls(
             enabled=s.get("enabled", False),
             mode=s.get("mode", "ym2612"),
@@ -747,8 +749,8 @@ class SynthesisSettings:
             sustain_loops=_sustain_loops(data, filepath),
             loop_drift_db=_loop_drift_db(data, filepath),
             legato=_legato(data, filepath),
-            treble_shelf_db=_treble_shelf(data, filepath)[0],
-            treble_shelf_hz=_treble_shelf(data, filepath)[1],
+            treble_shelf_db=shelf_db,
+            treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
         )
 

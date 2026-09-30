@@ -17,6 +17,7 @@ from core.config import (
     bpm_rounding_options,
     derive_bpm,
     exact_bpm,
+    with_song_overrides,
 )
 from core.merge import prepare_merged_config
 from core.report import Report, print_report
@@ -117,10 +118,7 @@ def main():
         SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
     synth     = SynthesisSettings.from_yaml(SETTINGS_FILE)     if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
     psg_synth = PsgSynthesisSettings.from_yaml(SETTINGS_FILE)  if os.path.exists(SETTINGS_FILE) else PsgSynthesisSettings()
-    if config.loop_drift_db is not None:            # the song's own loop_drift_db over settings.yaml's
-        import dataclasses as _dc
-        synth = _dc.replace(synth, loop_drift_db=config.loop_drift_db)
-        psg_synth = _dc.replace(psg_synth, loop_drift_db=config.loop_drift_db)
+    synth, psg_synth = with_song_overrides(synth, config), with_song_overrides(psg_synth, config)
 
     converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)
     with console.status("[dim]Converting…[/dim]", spinner="dots"):

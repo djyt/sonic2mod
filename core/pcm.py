@@ -23,6 +23,35 @@ INT16_PEAK = 32767.0
 MAX_MOD_SAMPLE_BYTES = 65535 * 2
 
 
+def high_shelf(samples: Sequence[float], rate: int, freq_hz: float, gain_db: float) -> list[float]:
+    """`samples` with everything above `freq_hz` raised `gain_db` (RBJ high shelf, slope 1).
+
+    A brightness option (settings.yaml treble_shelf_db), not accuracy: the renders already
+    match the hardware's spectrum.  0 dB returns the input.
+    """
+    if not gain_db or freq_hz >= rate / 2:
+        return list(samples)
+    a = 10 ** (gain_db / 40)
+    w0 = 2 * math.pi * freq_hz / rate
+    cos_w, alpha = math.cos(w0), math.sin(w0) / 2 * math.sqrt(2)
+    root = 2 * math.sqrt(a) * alpha
+    b0 = a * ((a + 1) + (a - 1) * cos_w + root)
+    b1 = -2 * a * ((a - 1) + (a + 1) * cos_w)
+    b2 = a * ((a + 1) + (a - 1) * cos_w - root)
+    a0 = (a + 1) - (a - 1) * cos_w + root
+    a1 = 2 * ((a - 1) - (a + 1) * cos_w)
+    a2 = (a + 1) - (a - 1) * cos_w - root
+    b0, b1, b2, a1, a2 = b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0
+
+    out = [0.0] * len(samples)
+    x1 = x2 = y1 = y2 = 0.0
+    for i, x in enumerate(samples):
+        y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+        out[i] = y
+        x2, x1, y2, y1 = x1, x, y1, y
+    return out
+
+
 def sample_limit_bytes(kb: int) -> int:
     """Bytes one sample may hold for a `max_sample_kb` setting: 128 is the format's own limit
     (131070 bytes), 64 is the original ProTracker editor's (65534 bytes, its four-hex-digit

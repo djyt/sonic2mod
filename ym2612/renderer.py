@@ -34,7 +34,7 @@ if str(_HERE.parent) not in sys.path:
 from core.driver_tables import FM_FREQUENCIES
 from core.pcm import normalize_int8
 from core.pcm import to_mono as _to_mono
-from core.resample import resample
+from core.resample import DEFAULT_TAPS, resample
 from core.smps_parser import SmpsVoice
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2
@@ -179,14 +179,14 @@ def _normalize_int8(mono: Sequence[int]) -> bytes:
 
 
 
-def _resample(mono, from_rate: int, to_rate: int) -> array.array:
+def _resample(mono, from_rate: int, to_rate: int, taps: int = DEFAULT_TAPS) -> array.array:
     """Polyphase windowed-sinc resample (core.resample, the SFX renderer's), back to ints.
 
     A box average, which this used to be, rolls off 3.9 dB at the target's Nyquist and
-    leaves aliases only ~6 dB down; the Kaiser-windowed sinc keeps the band flat and the
-    stopband >70 dB down.
+    leaves aliases only ~6 dB down; the Kaiser-windowed sinc keeps the band flat to 85 % of
+    Nyquist and the stopband >70 dB down.
     """
-    out = resample(mono, from_rate, to_rate)
+    out = resample(mono, from_rate, to_rate, taps=taps)
     return array.array('i', (math.floor(v + 0.5) for v in out))
 
 
@@ -203,6 +203,7 @@ def render_layers(
     opn2: OPN2 | None = None,
     channel: int = 0,
     clock_rate: int = _CLOCK_RATE,
+    taps: int = DEFAULT_TAPS,
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -242,7 +243,7 @@ def render_layers(
     mono      = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
 
     if target_rate is not None and target_rate != native_rate:
-        mono     = _resample(mono, native_rate, target_rate)
+        mono     = _resample(mono, native_rate, target_rate, taps)
         out_rate = target_rate
     else:
         out_rate = native_rate

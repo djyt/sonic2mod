@@ -362,6 +362,8 @@ def print_header(console: Console, rep: Report) -> None:
     settings = f"{fm} · {psg}"
     if s is not None:
         settings += f" · {s.max_sample_kb} KB per sample · loops {s.sustain_loops}"
+        if s.treble_shelf_db:
+            settings += f" · treble {s.treble_shelf_db:+g} dB above {s.treble_shelf_hz:g} Hz"
     if rep.synth is not None:
         settings += f" · legato {rep.synth.legato}"
     loop = next((i for i in rep.converter.infos if i['type'] == 'loop_set'), None)

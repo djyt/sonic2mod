@@ -28,9 +28,11 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.config import DEFAULT_PSG_OVERSAMPLE
 from core.driver_tables import PSG_FREQUENCIES
 from core.pcm import normalize_int8, write_raw16
 from core.pcm import to_mono as _to_mono
+from core.resample import DEFAULT_TAPS, resample
 from sn76489.wrapper import SN76489
 
 # ---------------------------------------------------------------------------
@@ -46,6 +48,13 @@ _AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 # ---------------------------------------------------------------------------
 # Public helper
 # ---------------------------------------------------------------------------
+
+# A tone is rendered at this multiple of the sample's rate (settings.yaml psg_oversample), then
+# resampled down.  At the sample's own rate the core's anti-aliasing is a box average: -1.9 dB
+# at 70 % of Nyquist, -3.9 dB at Nyquist, and aliases folding back.  8x: flat, the upper band
+# 1.2-1.7 dB up.  Noise is not: white either way, and band-limited its crest rises, 7 dB lost.
+DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
+
 
 def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
     """MOD note index → the SN76489 10-bit divider N the Sonic 1 driver writes for that note.
@@ -150,6 +159,8 @@ def render_psg_tone_raw(
     envelope: list | None = None,
     base_volume: int = 0,
     fps: float = 60.0,
+    oversample: int = DEFAULT_OVERSAMPLE,
+    taps: int = DEFAULT_TAPS,
 ) -> tuple[list, int]:
     """Render a PSG square-wave tone.  Returns (mono_list, rate) before int8 packing.
 
@@ -167,21 +178,21 @@ def render_psg_tone_raw(
         (mono_list, sample_rate_hz)
     """
     rate = target_rate if target_rate is not None else 44100
-    sn = SN76489(clock_rate=clock_rate, sample_rate=rate)
+    chip_rate = rate * oversample
+    sn = SN76489(clock_rate=clock_rate, sample_rate=chip_rate)
 
     n = note_to_psg_n(mod_note_index, clock_rate)
     sn.write_tone_freq(0, n)
 
-    sustain_n = int(rate * sustain_secs)
-    release_n = int(rate * release_secs)
+    sustain_n = int(chip_rate * sustain_secs)
+    release_n = int(chip_rate * release_secs)
 
-    raw_on  = _render_with_envelope(sn, 0, sustain_n, rate, envelope, base_volume, fps)
+    raw_on  = _render_with_envelope(sn, 0, sustain_n, chip_rate, envelope, base_volume, fps)
     sn.write_volume(0, 15)  # silence
     raw_off = sn.render_samples(release_n)
     sn.shutdown()
 
-    mono = _to_mono(raw_on + raw_off)
-    return mono, rate
+    return resample(_to_mono(raw_on + raw_off), chip_rate, rate, taps=taps), rate
 
 
 def render_psg_tone(

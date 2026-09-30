@@ -261,6 +261,13 @@ merge_patterns:
 
 Each costs bytes: `tools/mod_audit.py` shows every sample's loop and size.
 
+### treble_shelf_db — brightness (song level)
+
+`treble_shelf_db: 4` raises every synthesised render 4 dB above settings.yaml's
+`treble_shelf_hz` (2500), over the settings' own `treble_shelf_db` (0: off).  An artistic
+choice: the renders match the hardware, hand-made Amiga covers are brighter.  The DAC samples
+come off disk and are not shelved.
+
 ### Choosing root
 
 `root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).

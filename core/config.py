@@ -7,6 +7,7 @@ from typing import Any
 
 from .mod import ModFile
 from .pcm import sample_limit_bytes
+from .resample import DEFAULT_TAPS
 from .tables import MOD_NOTE_MAP, ModNote, parse_smps_note, parse_synth_note, synth_note_name
 
 
@@ -471,6 +472,33 @@ def _legato(data: dict, filepath: str) -> str:
     return v
 
 
+# The treble shelf's corner (settings.yaml treble_shelf_hz), at the sample's own pitch
+DEFAULT_SHELF_HZ = 2500.0
+
+# PSG tones render at this multiple of the sample's rate (settings.yaml psg_oversample)
+DEFAULT_PSG_OVERSAMPLE = 8
+
+
+def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool = False) -> int:
+    """A top-level settings.yaml count: an integer >= 1 (even when `even`)."""
+    try:
+        v = int(data.get(key, default))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: {key} must be an integer") from e
+    if v < 1 or (even and v % 2):
+        raise ValueError(f"{filepath}: {key} must be {'an even' if even else 'a'} whole number >= 1 (got {v})")
+    return v
+
+
+def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
+    """Top-level `treble_shelf_db` / `treble_shelf_hz` of settings.yaml: (gain, corner) of the
+    optional high shelf on every synthesised render (core.pcm.high_shelf); 0 dB = off."""
+    try:
+        return float(data.get("treble_shelf_db", 0.0)), float(data.get("treble_shelf_hz", DEFAULT_SHELF_HZ))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: treble_shelf_db / treble_shelf_hz must be numbers") from e
+
+
 def _loop_drift_db(data: dict, filepath: str) -> float:
     """Top-level `loop_drift_db` of settings.yaml (1.0 default): how far a looped sample's level
     may sit above where the instrument's longest note would have decayed to."""
@@ -511,6 +539,10 @@ class PsgSynthesisSettings:
     sustain_loops: str = "merged"
     loop_drift_db: float = 1.0       # settings.yaml loop_drift_db: dB a loop may freeze above the
                                      # level the longest note would have decayed to (core.loops)
+    treble_shelf_db: float = 0.0     # settings.yaml treble_shelf_db: brightness shelf, 0 = off
+    resample_taps: int = DEFAULT_TAPS  # settings.yaml resample_taps: filter width, at the lower rate
+    psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_oversample
+    treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml treble_shelf_hz: its corner
 
     @property
     def max_sample_bytes(self) -> int:
@@ -554,6 +586,10 @@ class PsgSynthesisSettings:
             max_sample_kb=_max_sample_kb(data, filepath),
             sustain_loops=_sustain_loops(data, filepath),
             loop_drift_db=_loop_drift_db(data, filepath),
+            treble_shelf_db=_treble_shelf(data, filepath)[0],
+            treble_shelf_hz=_treble_shelf(data, filepath)[1],
+            resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
+            psg_oversample=_positive_int(data, "psg_oversample", DEFAULT_PSG_OVERSAMPLE, filepath),
         )
 
 
@@ -575,6 +611,9 @@ class SynthesisSettings:
     max_sample_kb: int = 128          # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
     sustain_loops: str = "merged"     # settings.yaml sustain_loops (top level), as PsgSynthesisSettings
     loop_drift_db: float = 1.0        # settings.yaml loop_drift_db (top level), as PsgSynthesisSettings
+    treble_shelf_db: float = 0.0      # settings.yaml treble_shelf_db / _hz, as PsgSynthesisSettings
+    resample_taps: int = DEFAULT_TAPS  # settings.yaml resample_taps, as PsgSynthesisSettings
+    treble_shelf_hz: float = DEFAULT_SHELF_HZ
     # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
     # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
     # chip-pitch delta; after smpsSetvoice or with nothing sounding: a re-trigger; what FT2 clone and
@@ -674,7 +713,21 @@ class SynthesisSettings:
             sustain_loops=_sustain_loops(data, filepath),
             loop_drift_db=_loop_drift_db(data, filepath),
             legato=_legato(data, filepath),
+            treble_shelf_db=_treble_shelf(data, filepath)[0],
+            treble_shelf_hz=_treble_shelf(data, filepath)[1],
+            resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
         )
+
+
+def with_song_overrides(settings, config: "ConversionConfig"):
+    """`settings` (Synthesis- or PsgSynthesisSettings) with the song's own overrides applied:
+    loop_drift_db, treble_shelf_db."""
+    import dataclasses
+    if config.loop_drift_db is not None:
+        settings = dataclasses.replace(settings, loop_drift_db=config.loop_drift_db)
+    if config.treble_shelf_db is not None:
+        settings = dataclasses.replace(settings, treble_shelf_db=config.treble_shelf_db)
+    return settings
 
 
 def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps=60):
@@ -824,6 +877,8 @@ class ConversionConfig:
     # Song-level override of settings.yaml loop_drift_db (dB a loop may freeze above the settled
     # level): a lofi build lets loops freeze early for shorter samples
     loop_drift_db: float | None = None
+    # Song-level override of settings.yaml treble_shelf_db (a brightness shelf; None: the settings')
+    treble_shelf_db: float | None = None
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -1085,6 +1140,8 @@ class ConversionConfig:
             raise ValueError(f"merge_twins: {config.merge_twins!r} is not one of {', '.join(TWIN_MODES)}")
         if data.get('loop_drift_db') is not None:
             config.loop_drift_db = max(0.0, float(data['loop_drift_db']))
+        if data.get('treble_shelf_db') is not None:
+            config.treble_shelf_db = float(data['treble_shelf_db'])
 
         # Parse mod_pattern_breaks: list of {pattern: N, pos: R} dicts
         breaks_raw = data.get('mod_pattern_breaks', [])

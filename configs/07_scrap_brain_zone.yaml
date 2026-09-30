@@ -54,11 +54,11 @@ sample_list:
   # --- PSG noise (form $E7, envelope fTone_04 from the song) ---
   - [17, "psg_noise.raw",  2, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +1.9 dB at 3
   # --- PSG tone $00 ---
-  - [13, "psg_$00.raw",  6, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: +2.9 dB at 9
+  - [13, "psg_$00.raw",  7, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: -1.8 dB at 6
   # --- PSG tone fTone_06 ---
   - [14, "psg_fTone_06.raw", 10, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +2.5 dB at 13
   # --- PSG tone fTone_05 ---
-  - [15, "psg_fTone_05.raw",  5, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +2.7 dB at 7
+  - [15, "psg_fTone_05.raw",  6, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: -1.4 dB at 5
   # --- PSG noise, fTone_08 envelope variant (psg_map 0xE7 envelopes) ---
   - [18, "psg_noise.raw",  1, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +3.5 dB at 2
   

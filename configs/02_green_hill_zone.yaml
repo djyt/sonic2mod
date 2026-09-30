@@ -89,7 +89,6 @@ sample_list:
   - [16, "psg_noise.raw",    4, 0] # VGZ: +6.0 dB at 7
   # --- PSG Voices ---
   - [17, "psg_tone01.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
-  - [18, "psg_tone03.raw",  16, 0]
   - [19, "psg_tone05.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
   - [20, "psg_tone06.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
 
@@ -185,9 +184,6 @@ psg_map:
 psg_voice_map:
   fTone_01:
     mod_instrument: 17
-    root: A2
-  fTone_03:
-    mod_instrument: 18
     root: A2
   fTone_05:
     mod_instrument: 19

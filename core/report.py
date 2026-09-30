@@ -136,6 +136,14 @@ def _w_rest_no_slot(w: dict):
             "[cyan]num_mod_channels:[/cyan] one step up gives the tempo commands a channel")
 
 
+def _w_loop_no_slot(w: dict):
+    eff, par = w['overwrote']
+    what = f" (it replaced {eff:X}{par:02X})" if (eff, par) != (0, 0) else ""
+    return ("patterns", f"the loop's Bxx at {w['pattern']:02X}:{w['row']:02d} found no free effect slot and "
+                        f"went on channel 1{what}",
+            "[cyan]num_mod_channels:[/cyan] one step up gives it a channel")
+
+
 def _w_sustain_short(w: dict):
     limit = {'mod': f"{w['max_kb']} KB at {w['rate'] / 1000:.1f} kHz", 'cap': "the 10 s auto cap",
              'setting': "sustain_duration"}[w['limit']]
@@ -233,7 +241,7 @@ _WARNINGS: dict[str, Callable[[dict], tuple[str, str, str | None]]] = {
     'clamp_high': _w_clamp, 'clamp_low': _w_clamp, 'map_gap': _w_map_gap,
     'missing_source': _w_missing_source, 'rate3_synth_root': _w_rate3,
     'tempo_no_slot': _w_tempo_no_slot, 'tempo_bpm_range': _w_tempo_bpm_range,
-    'pattern_overflow': _w_pattern_overflow, 'rest_no_slot': _w_rest_no_slot,
+    'pattern_overflow': _w_pattern_overflow, 'rest_no_slot': _w_rest_no_slot, 'loop_no_slot': _w_loop_no_slot,
     'sustain_short': _w_sustain_short, 'sample_truncated': _w_truncated,
     'noise_envelopes': _w_noise_envelopes, 'synth_root_ambiguous': _w_synth_root_ambiguous,
     'merge_lost': _w_merge_lost, 'merge_headroom': _w_merge_headroom,

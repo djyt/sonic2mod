@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------------------------------
-# Global sonic2mod settings
-# These apply across all songs unless overridden.
+# Sonic2MOD Global Settings
+#
+# - These settings apply globally, but some can be overriden on a per-song, or even per-sample
+#   basis.
 # -------------------------------------------------------------------------------------------------
 
 fm_synthesis:
@@ -19,16 +21,19 @@ psg_synthesis:
   clock_rate: 3579545       # SN76489 NTSC Mega Drive clock (Hz)
   sustain_duration: auto    # Seconds of tone held before key-off; or 'auto': per instrument, as FM
   release_padding: 0.2      # Seconds of silence/release after key-off
-  oversample: 8             # Tones render at this multiple of the sample's rate, then are resampled
-                            # down.  8: flat.  4: half the PSG time, within 0.2 dB.  1: the core's
-                            # box filter (-1.7 dB at 70-85 % of Nyquist).  Noise is never oversampled.
+  oversample: 8             # Render tones at this multiple of the sample rate, then sample down.
+                            # 1 : Core's Box Filter [Faster, Lower Quality]
+                            # 4 : Half the PSG time
+                            # 8 : Flat              [Slower, Higher Quality]
+
+# -------------------------------------------------------------------------------------------------
 
 amiga_clock: 3546895        # PAL Amiga (Paula) clock: a MOD note's rate is this / its period
-max_sample_kb: 64           # Maximum Sample Length: 64: Amiga ProTracker | 128: Modern Trackers
+max_sample_kb: 64           # Maximum Sample Length: 64 - Amiga ProTracker | 128 -  Modern Trackers
 
 
 # Attempt to automatically loop sustained samples when their envelope settles.
-# Also ends these samples with a volume slide (A0y), rather than a C00.
+# Will also end affected samples with a volume slide (A0y), rather than a C00.
 #   off      : never
 #   merged   : the --merged reduced channel version only
 #   all      : every build
@@ -36,14 +41,19 @@ sustain_loops: all
 
 
 # dB change whereby the loop is created
-# 1     = Loop voices that truly settle                                [Higher file size]
-# 3-12  = Increasingly aggressive looping of slowly decaying voices    [Lower file size]
+# 1     : Loop voices that truly settle                                [Higher file size]
+# 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]
 loop_drift_db: 1
+
+
+# -------------------------------------------------------------------------------------------------
+# EQ Settings
+# -------------------------------------------------------------------------------------------------
 
 # Treble shelf (core.pcm.high_shelf): every synthesised render raised treble_shelf_db above
 # treble_shelf_hz (at the sample's own pitch), before loops, levels and quantisation.
-# 0 = off: the renders match the hardware.  +4 brings the GHZ lead to Ric's hand-made cover.
-# A song may set its own treble_shelf_db.  Volumes were measured without it.
+# 0 : Disable. Match Hardware.
+# 4 : +4db (Example)
 treble_shelf_db: 0
 treble_shelf_hz: 2500
 

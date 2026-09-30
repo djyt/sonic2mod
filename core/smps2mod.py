@@ -1472,6 +1472,10 @@ class SmpsToModConverter:
             if c.fm is None and not c.banked and c.primary in self._release:
                 self._release.setdefault(c.inst, self._release[c.primary])
 
+        limited = [c for c in plan.composites.values() if c.limited_db > 0]
+        if limited:
+            self.infos.append({'type': 'merge_limited', 'composites': len(limited),
+                               'max_db': max(c.limited_db for c in limited)})
         over = sorted((c.inst, c.headroom_db) for c in plan.composites.values() if c.headroom_db > _HEADROOM_REPORT_DB)
         if over:
             self._add_warning({'type': 'merge_headroom', 'channel': 'merge', 'instruments': over})

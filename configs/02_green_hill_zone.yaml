@@ -74,23 +74,23 @@ sample_list:
   - [5,  "ghz_v02.raw",     26, 0] # VGZ: -1.9 dB at 21
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
   - [6,  "ghz_v04.raw",      13, 0] # VGZ: -3.1 dB at 9
-  - [8,  "ghz_v04.raw",     20, 1] # Same sample, finetune +1 (~+12.5 cents).; VGZ: -2.5 dB at 15
+  - [7,  "ghz_v04.raw",     20, 1] # Same sample, finetune +1 (~+12.5 cents).; VGZ: -2.5 dB at 15
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
-  - [10, "ghz_v05.raw",     29, 0] # VGZ: -2.8 dB at 21
-  - [11, "ghz_v05_lo.raw",   10, 0] # VGZ: -2.8 dB at 7
+  - [8,  "ghz_v05.raw",     29, 0] # VGZ: -2.8 dB at 21
+  - [9,  "ghz_v05_lo.raw",   10, 0] # VGZ: -2.8 dB at 7
   # --- voice $06: FM1 melodic fills (smpsAlterPitch sections) ---
-  - [12, "ghz_v06.raw",     54, 0] # VGZ: -2.3 dB at 41
+  - [10, "ghz_v06.raw",     54, 0] # VGZ: -2.3 dB at 41
   # --- voice $07: bridge voice (FM1/FM3/FM4) ---
-  - [13, "ghz_v07.raw",     24, 0] # VGZ: -4.2 dB at 15
+  - [11, "ghz_v07.raw",     24, 0] # VGZ: -4.2 dB at 15
   # --- voice $08: bright synth (FM3/FM4/FM5 main) ---
-  - [14, "ghz_v08.raw",     21, 0] # VGZ: -2.3 dB at 16
-  - [15, "ghz_v08_hi.raw",  32, 0] # VGZ: -2.4 dB at 24
+  - [12, "ghz_v08.raw",     21, 0] # VGZ: -2.3 dB at 16
+  - [13, "ghz_v08_hi.raw",  32, 0] # VGZ: -2.4 dB at 24
   # --- PSG White Noise ---
-  - [16, "psg_noise.raw",    4, 0] # VGZ: +6.0 dB at 7
+  - [14, "psg_noise.raw",    4, 0] # VGZ: +6.0 dB at 7
   # --- PSG Voices ---
-  - [17, "psg_tone01.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
-  - [19, "psg_tone05.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
-  - [20, "psg_tone06.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
+  - [15, "psg_tone01.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
+  - [16, "psg_tone05.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
+  - [17, "psg_tone06.raw",  13, 0] # baked: 16 at PSG attenuation 1 (−2 dB)
 
 
 # -------------------------------------------------------------------------------------------------
@@ -141,35 +141,35 @@ voice_map:
   5:
     - low:  C4
       high: B5
-      mod_instrument: 11
+      mod_instrument: 9
       root: C2
     - low:  C6
       high: B7
-      mod_instrument: 10
+      mod_instrument: 8
       root: C2
 
   # $06 → FM1 fills
   6:
     - low:  C6
       high: B7
-      mod_instrument: 12
+      mod_instrument: 10
       root: C2
 
   # $07 → bridge
   7:
     - low:  C5
       high: B5
-      mod_instrument: 13
+      mod_instrument: 11
       root: C2
   # $08 → bright synth
   8:
     - low:  C5
       high: B5
-      mod_instrument: 14
+      mod_instrument: 12
       root: C2
     - low:  C6
       high: B6
-      mod_instrument: 15
+      mod_instrument: 13
       root: C2
 
 
@@ -178,18 +178,18 @@ voice_map:
 # -------------------------------------------------------------------------------------------------
 psg_map:
   0xE7:                    # form $E7 — white noise, LFSR follows PSG3's own tone register $C0 (rate 3)
-    mod_instrument: 16
+    mod_instrument: 14
     root: A3               # target_rate ≈ 27928 Hz
 
 psg_voice_map:
   fTone_01:
-    mod_instrument: 17
+    mod_instrument: 15
     root: A2
   fTone_05:
-    mod_instrument: 19
+    mod_instrument: 16
     root: A2
   fTone_06:
-    mod_instrument: 20
+    mod_instrument: 17
     low: A6
     root: A2
 
@@ -199,7 +199,7 @@ psg_voice_map:
 #
 # FM5 applies smpsAlterNote $02 (FNUM offset ≈ +10 cents) during voice $04
 # bell-arp sections to create the chorus detune effect vs FM4.  The same
-# source notes route to inst 8/9 (identical audio to inst 6/7, finetune +1).
+# source notes route to inst 7 (identical audio to inst 6, finetune +1).
 # -------------------------------------------------------------------------------------------------
 channel_instrument_map:
   FM5:
@@ -207,7 +207,7 @@ channel_instrument_map:
       - low:  C6              # bottom of FM5 arp range
         high: B7              # top
         root: C2
-        mod_instrument: 8    # same audio as inst 6, finetune +1
+        mod_instrument: 7    # same audio as inst 6, finetune +1
 
 
 # -------------------------------------------------------------------------------------------------

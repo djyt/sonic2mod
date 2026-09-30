@@ -49,7 +49,7 @@ _AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 # Public helper
 # ---------------------------------------------------------------------------
 
-# A tone is rendered at this multiple of the sample's rate (settings.yaml psg_oversample), then
+# A tone is rendered at this multiple of the sample's rate (psg_synthesis.oversample), then
 # resampled down.  At the sample's own rate the core's anti-aliasing is a box average: -1.9 dB
 # at 70 % of Nyquist, -3.9 dB at Nyquist, and aliases folding back.  8x: flat, the upper band
 # 1.2-1.7 dB up.  Noise is not: white either way, and band-limited its crest rises, 7 dB lost.

@@ -635,6 +635,11 @@ def print_merge(console: Console, rep: Report) -> None:
               for i in _infos(rep, 'merge_unused')]
     notes += [f"rebuilt with merge_bank_slots {i['banks']} (slot {', '.join(map(str, i['slots']))} was idle)"
               for i in _infos(rep, 'merge_bank_retry')]
+    notes += [f"merge_bank_slots: auto → {i['reserve']} held back for {i['banks']} bank{'s' if i['banks'] != 1 else ''}"
+              + (f" (built {i['passes']} times)" if i['passes'] > 1 else "")
+              for i in _infos(rep, 'merge_bank_slots')]
+    notes += [f"{i['cxx_moved']} banked notes' Cxx moved a row later (the attack row holds the 9xx)"
+              for i in _infos(rep, 'merge_bank_notes') if i.get('cxx_moved')]
     notes += [f"{i['to']}-channel MOD: columns {i['to'] + 1}–{i['from']} were empty" for i in _infos(rep, 'narrowed')]
     for n in notes:
         console.print(Padding(Text(n, style="dim"), (0, 0, 0, 2), expand=False))

@@ -224,8 +224,6 @@ mod_pattern_breaks:
 # DAC = DAC Drums, FM1 = Lead, FM2 = Bass, PSG3 = Hi-Hat
 # -------------------------------------------------------------------------------------------------
 
-merge_bank_slots: 2             # Sample slots to reserve for the DAC drum banking
-
 merge_patterns:
 
     # --- Pattern $00 ------------------------------------------------------------------------------
@@ -308,6 +306,7 @@ merge_patterns:
       - primary: FM2
         followers: [PSG1]
         mod_channel: 2
+        bank: true
 
         # Channel 3: Chords
       - primary: FM3

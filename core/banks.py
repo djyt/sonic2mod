@@ -90,11 +90,15 @@ def _layout(members: list[Composite], sizes: dict[int, tuple[int, int, bool]], v
         order = sorted(members, key=lambda c: (sizes[c.inst][2], -c.notes, c.inst))
     else:
         order = sorted(members, key=lambda c: (-volume[c.inst], -c.notes, c.inst))
+    def open_to(bank: Bank, looped: bool) -> bool:
+        # A bank holds one loop.  First fit places loops last, so nothing joins a looped bank; by
+        # volume, a plain member still may (it is laid out before the loop), a second loop never
+        return not bank.looped or (budget is not None and not looped)
+
     banks: list[Bank] = []
     for c in order:
         region, finetune, looped = sizes[c.inst]
-        fits = [b for b in banks if not (b.looped and (looped or budget is None))
-                and b.fits(region, finetune, max_bytes)]
+        fits = [b for b in banks if open_to(b, looped) and b.fits(region, finetune, max_bytes)]
         v = volume[c.inst]
 
         # First fit: the first bank with room

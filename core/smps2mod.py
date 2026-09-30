@@ -515,13 +515,10 @@ class SmpsToModConverter:
                 e = inst.entry
                 env = e.envelope if isinstance(e.envelope, str) else ("inline" if e.envelope else "")
                 if e.type == "tone":
-                    label = inst.context.split("[")[1].rstrip("]") if "[" in inst.context else ""
-                    out[inst.inst] = {'kind': 'PSG', 'source': label or env}
-                else:
-                    form = inst.context.split("[")[1].split("]")[0] if "[" in inst.context else ""
-                    form = f"${int(form, 0):02X}" if form.startswith("0x") else form
-                    white = "white" if e.type == "white_noise" else "periodic"
-                    out[inst.inst] = {'kind': 'noise', 'source': f"{white} {form} {env}".strip()}
+                    out[inst.inst] = {'kind': 'PSG', 'source': inst.source or env}
+                    continue
+                white = "white" if e.type == "white_noise" else "periodic"
+                out[inst.inst] = {'kind': 'noise', 'source': f"{white} {inst.source} {env}".strip()}
         if self._merge is not None:
             for c in self._merge.composites.values():
                 if not c.banked:

@@ -108,9 +108,11 @@ dac_samples:
   - name: dKick
     mod_instrument: 1
     mod_note: C2
+    merge_saturate_db: 2    # Merged build only: soft-clipped, body +2 dB at the same peak
   - name: dSnare
     mod_instrument: 2
     mod_note: Fs3
+    merge_saturate_db: 2
 
 
 # -------------------------------------------------------------------------------------------------
@@ -252,6 +254,8 @@ merge_patterns:
         cut_primary: true    # Allow a secondary channel to take priority over the primary
         bank: true           # Group multiple sounds in a single sample
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
+        limit_db: 4          # Peaks past full scale limited, not the sound turned down
+        treble_shelf_db: 2
         
         
    # --- Pattern $01-$04 ---------------------------------------------------------------------------
@@ -264,10 +268,13 @@ merge_patterns:
         bank: true
         #max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
+        limit_db: 4
+        treble_shelf_db: 2
         
         # Channel 1: Combine 4 Lead Channels
       - primary: FM5
         followers: [FM3, FM4, PSG1]
+        treble_shelf_db: 4
         mod_channel: 1
         mix_at: primary      # the chord keeps its loop; the chime is resampled down into it
         loop_mix: true       # its 3.35 s chords loop where the mix settles
@@ -293,6 +300,8 @@ merge_patterns:
         bank: true
         #max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
+        limit_db: 4
+        treble_shelf_db: 2
         
         # Channel 1: Remains as-is (Lead)
         
@@ -319,6 +328,8 @@ merge_patterns:
         cut_primary: true
         bank: true
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
+        limit_db: 4
+        treble_shelf_db: 2
         
         # Channel 1: Lead + PSG2
       - primary: FM1

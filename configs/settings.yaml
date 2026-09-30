@@ -11,9 +11,9 @@ fm_synthesis:
   sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   threads: normal           # FM instruments render in parallel, one per thread: 
-                            # "normal" = CPU cores - 1
-                            # "max"    = every core, 
-                            # 1        = one at a time, or a number.  
+                            # "normal" : CPU cores - 1
+                            # "max"    : every core, 
+                            # 1        : one at a time, or a number.  
 
 psg_synthesis:
   enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation
@@ -22,22 +22,20 @@ psg_synthesis:
   sustain_duration: auto    # Seconds of tone held before key-off; or 'auto': per instrument, as FM
   release_padding: 0.2      # Seconds of silence/release after key-off
 
-max_sample_kb: 64           # Maximum Sample Length: 64 = Amiga ProTracker | 128 = Modern Trackers
+max_sample_kb: 64           # Maximum Sample Length: 64: Amiga ProTracker | 128: Modern Trackers
 
-# Sustain loops (core/loops.py).  A synthesised sample otherwise holds the longest note its instrument
-# plays.  With loops, an instrument whose envelope settles (the YM2612 voice at its sustain level, a PSG
-# envelope holding) is cut where it settles plus one loop of the waveform (the best-matching length up to
-# 1.2 s, crossfaded closed), so its size no longer depends on the notes, and every FM note ends with a
-# volume slide at the voice's release rate (A0y per row) instead of a C00 - the chip's release phase.
-# A voice that keeps decaying keeps its plain render.
-#   off      never
-#   merged   the --merged (Amiga) build only; the reference MOD stays as it was   (default)
-#   all      every build
-sustain_loops: merged
-# How far (dB) a loop may freeze the level above where the instrument's longest note would have decayed
-# to: 1 loops only voices that truly settle; 3-6 also loops slowly decaying voices, which then hold their
-# level through long notes (Green Hill merged without its chime mixes: 1 dB = 184 KB of samples,
-# 6 dB = 178 KB, 12 dB = 140 KB; unlooped 253 KB).
+
+# Attempt to automatically loop sustained samples when their envelope settles.
+# Also ends these samples with a volume slide (A0y), rather than a C00.
+#   off      : never
+#   merged   : the --merged reduced channel version only
+#   all      : every build
+sustain_loops: all
+
+
+# dB change whereby the loop is created
+# 1     = Loop voices that truly settle                                [Higher file size]
+# 3-12  = Increasingly aggressive looping of slowly decaying voices    [Lower file size]
 loop_drift_db: 1
 
 # -------------------------------------------------------------------------------------------------

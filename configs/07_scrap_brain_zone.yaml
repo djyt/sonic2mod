@@ -49,7 +49,6 @@ sample_list:
   - [9, "fm_v04_hi.raw", 15, 0] # VGZ: +1.9 dB at 18
   # --- voice $05: Alg 0, FB 6 — FM1, FM4 ---
   - [10, "fm_v05_lo.raw",  8, 0] # VGZ: +2.0 dB at 10
-  - [11, "fm_v05_hi.raw", 32, 0]
   # --- voice $06: Alg 5, FB 7 — FM5 ---
   - [12, "fm_v06.raw", 10, 0] # VGZ: +3.2 dB at 14
   # --- PSG noise (form $E7, envelope fTone_04 from the song) ---
@@ -131,11 +130,6 @@ voice_map:
       high: B5
       mod_instrument: 10
       root: G2
-
-    - low:  C6
-      high: Gs6
-      mod_instrument: 11
-      root: C2
 
   # $06 — Alg 5, FB 7 — used by FM5
   6:

@@ -11,6 +11,7 @@ import math
 
 from .banks import pack_banks
 from .config import (
+    DEFAULT_SHELF_HZ,
     ChannelConfig,
     ConversionConfig,
     PsgSynthesisSettings,
@@ -1457,7 +1458,8 @@ class SmpsToModConverter:
                                     bank_out=banked, raw=self._raw_renders, raw_out=mix_raw,
                                     padding_secs=(synth.release_padding if synth else 0.0),
                                     loop_drift_db=(synth.loop_drift_db if synth else FLAT_DB),
-                                    taps=(synth.resample_taps if synth else DEFAULT_TAPS)):
+                                    taps=(synth.resample_taps if synth else DEFAULT_TAPS),
+                                    shelf_hz=(synth.treble_shelf_hz if synth else DEFAULT_SHELF_HZ)):
             self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
         if banked:
             self._pack_merge_banks(banked, mix_raw, clock, max_bytes)

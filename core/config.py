@@ -193,6 +193,10 @@ class MergeGroup:
                                 # primary's entry's, then the song's, otherwise)
     loop_min_ms: float | None = None    # the shortest sustain loop of this group's chip composites
                                 # (and of its looped mixes, loop_mix)
+    treble_shelf_db: float | None = None   # a brightness shelf on this group's composites (the mixed
+                                # sum, drums off disk included; a chip composite's render), on top of
+                                # any song shelf; treble_shelf_hz its corner (None: the settings')
+    treble_shelf_hz: float | None = None
     loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
                                 # finished mix as a single voice's loop is (lossy: the chord's slow
                                 # movement freezes there); for a pitched primary
@@ -305,7 +309,9 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None),
                       loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
-                      loop_mix=bool(g.get('loop_mix', False)))
+                      loop_mix=bool(g.get('loop_mix', False)),
+                      treble_shelf_db=_opt(g, 'treble_shelf_db', float),
+                      treble_shelf_hz=_opt(g, 'treble_shelf_hz', float))
 
 
 @dataclass

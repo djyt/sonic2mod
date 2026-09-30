@@ -89,13 +89,13 @@ import math
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from .config import MergeGroup, format_patterns
+from .config import DEFAULT_SHELF_HZ, MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .levels import TL_STEP_DB, clamp_mod_volume
 from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
-from .pcm import MAX_MOD_SAMPLE_BYTES, peak, signed8, to_int8
+from .pcm import MAX_MOD_SAMPLE_BYTES, high_shelf, peak, signed8, to_int8
 from .resample import DEFAULT_TAPS, resample
 from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
@@ -1011,7 +1011,8 @@ class _Planner:
             assert spec is not None and p.voice is not None
             layers = [FmLayer(p.voice)] + [fm_layer(p, fn, self.tol) for fn in present]
             comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
-                                   loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms)
+                                   loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms,
+                                   treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz)
         else:
             comp.base = p.index
             best = _mix_note(g, p, present)
@@ -1539,7 +1540,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        raw: dict[int, tuple] | None = None,
                        raw_out: dict[int, list[float]] | None = None,
                        padding_secs: float = 0.0, loop_drift_db: float = FLAT_DB,
-                       taps: int = DEFAULT_TAPS) -> list[dict]:
+                       taps: int = DEFAULT_TAPS, shelf_hz: float = DEFAULT_SHELF_HZ) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -1572,7 +1573,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes.
     """
     mixer = _Mixer(mod, amiga_clock, hold_secs or {}, sources or {}, release_db_s or {}, raw or {}, padding_secs,
-                   loop_drift_db, taps)
+                   loop_drift_db, taps, shelf_hz)
     problems: list[dict] = []
     for comp in plan.composites.values():
         if comp.fm is not None:
@@ -1603,9 +1604,10 @@ class _Mixer:
 
     def __init__(self, mod, amiga_clock: float, hold_secs: dict[int, float], sources: dict[int, ModSample],
                  release_db_s: dict[int, float | None], raw: dict[int, tuple], padding_secs: float,
-                 loop_drift_db: float = FLAT_DB, taps: int = DEFAULT_TAPS):
+                 loop_drift_db: float = FLAT_DB, taps: int = DEFAULT_TAPS,
+                 shelf_hz: float = DEFAULT_SHELF_HZ):
         self._mod, self._clock = mod, amiga_clock
-        self._taps = taps
+        self._taps, self._shelf_hz = taps, shelf_hz
         self._hold_secs, self._sources = hold_secs, sources
         self._release, self._raw, self._padding = release_db_s, raw, padding_secs
         self._drift = loop_drift_db
@@ -1663,6 +1665,11 @@ class _Mixer:
                 total.extend([0.0] * (len(sig) - len(total)))
             for i, v in enumerate(sig):
                 total[i] += v
+
+        # The group's brightness shelf, on the whole sum (a drum off disk too)
+        g = comp.group
+        if g.treble_shelf_db:
+            total = high_shelf(total, round(r_p), g.treble_shelf_hz or self._shelf_hz, g.treble_shelf_db)
 
         # Past what any note reaches, nothing is heard (the layers' release tails ran on there): a
         # note is heard to the earlier of its end plus the release slide (an FM primary's lasts

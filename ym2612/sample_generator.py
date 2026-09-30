@@ -174,6 +174,9 @@ def generate_fm_samples(
         )
         if synth.treble_shelf_db:
             mono = high_shelf(mono, rate, synth.treble_shelf_hz, synth.treble_shelf_db)
+        spec = job.spec
+        if spec.treble_shelf_db:                # a merge group's own, on top
+            mono = high_shelf(mono, rate, spec.treble_shelf_hz or synth.treble_shelf_hz, spec.treble_shelf_db)
         return mono, rate
 
     def _render(job: _RenderJob) -> tuple[Sequence[float], int, int, SustainLoop | None, float | None]:

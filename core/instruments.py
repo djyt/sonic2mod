@@ -54,6 +54,8 @@ class FmInstrument:
     legacy: bool = False     # from the deprecated legacy_voice_map form
     loop_drift_db: float | None = None   # a merge group's overrides for its composite; else the entry's
     loop_min_ms: float | None = None
+    treble_shelf_db: float | None = None   # a merge group's shelf on this composite's render
+    treble_shelf_hz: float | None = None
 
     @property
     def drift_db(self) -> float | None:

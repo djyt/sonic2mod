@@ -534,6 +534,16 @@ class Dither(unittest.TestCase):
         with self.assertRaises(ValueError):
             to_int8(x, 1.0, "noisy")
 
+    def test_dc_block_centres_a_lopsided_wave_and_keeps_silence_at_zero(self):
+        from core.pcm import dc_block
+        rate = 16574
+        wave = [0.0] * 100 + [40 + 60 * math.sin(2 * math.pi * 220 * i / rate) for i in range(rate)]
+        out = dc_block(wave, rate)
+        self.assertEqual(out[:100], [0.0] * 100)                     # leading silence untouched
+        tail = out[-rate // 4:]
+        self.assertLess(abs(sum(tail) / len(tail)), 0.5)             # the +40 offset gone
+        self.assertGreater(max(tail), 55)                            # the 220 Hz wave kept
+
     def test_a_mix_falls_back_to_its_primary_entry(self):
         from core.merge import composite_dither
         key = CompositeKey(MIX, 10, (MixLayerKey(15, 0, 1.0, None),))

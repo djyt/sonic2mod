@@ -480,7 +480,7 @@ def _psg_volume_mode(value) -> str:
 
 
 # settings.yaml `samples:` keys; each was top level before it
-SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "sustain_loops", "loop_drift_db",
+SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps")
 
 
@@ -509,11 +509,11 @@ def _max_sample_kb(data: dict, filepath: str) -> int:
     return kb
 
 
-def _pt_zero_bytes(data: dict, filepath: str) -> bool:
-    """`samples.pt_zero_bytes` of settings.yaml: true (default) or false."""
-    v = data.get("pt_zero_bytes", True)
+def _sample_flag(data: dict, key: str, default: bool, filepath: str) -> bool:
+    """A true / false key of settings.yaml `samples:`."""
+    v = data.get(key, default)
     if not isinstance(v, bool):
-        raise ValueError(f"{filepath}: pt_zero_bytes must be true or false (got {v!r})")
+        raise ValueError(f"{filepath}: {key} must be true or false (got {v!r})")
     return v
 
 
@@ -628,6 +628,7 @@ class PsgSynthesisSettings:
     resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps: filter width, at the lower rate
     psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_synthesis.oversample
     dither: str = DEFAULT_DITHER     # settings.yaml samples.dither (core.pcm.DITHER_MODES)
+    dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.pcm.dc_block)
     treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml samples.treble_shelf_hz: its corner
 
     @property
@@ -678,6 +679,7 @@ class PsgSynthesisSettings:
             treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
             psg_oversample=_psg_oversample(data, s, filepath),
+            dc_block=_sample_flag(smp, "dc_block", False, filepath),
             dither=_dither(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
         )
 
@@ -704,6 +706,7 @@ class SynthesisSettings:
     resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps, as PsgSynthesisSettings
     treble_shelf_hz: float = DEFAULT_SHELF_HZ
     dither: str = DEFAULT_DITHER      # settings.yaml samples.dither, as PsgSynthesisSettings
+    dc_block: bool = False            # settings.yaml samples.dc_block, as PsgSynthesisSettings
     # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
     # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
     # chip-pitch delta; after smpsSetvoice or with nothing sounding: a re-trigger; what FT2 clone and
@@ -811,7 +814,8 @@ class SynthesisSettings:
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
-            pt_zero_bytes=_pt_zero_bytes(smp, filepath),
+            pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", True, filepath),
+            dc_block=_sample_flag(smp, "dc_block", False, filepath),
             dither=_dither(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
         )
 

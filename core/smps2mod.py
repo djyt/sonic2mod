@@ -140,8 +140,12 @@ class _ColumnRouter:
                 and self._pattern(ev.tick_position) in self._away)
 
     def borrowed(self, column: int, tick: int) -> bool:
-        """Another channel's notes take `column` at `tick` (mod_channel)."""
-        return self._plan is not None and self._plan.routed_into(column, self._pattern(tick)) is not None
+        """Another channel's notes take `column` at `tick` (mod_channel).  A group routing this
+        channel's own notes there is not a borrow: its rests release on their own column."""
+        if self._plan is None:
+            return False
+        owner = self._plan.routed_into(column, self._pattern(tick))
+        return owner is not None and owner != self._source
 
     def note(self, tick: int, index: int) -> int:
         """The MOD note a primary note at `tick` is triggered at: a transposed mix's own."""
@@ -1957,11 +1961,12 @@ class SmpsToModConverter:
                     self._warn_resolution(res, st, chan_cfg, note)
                     # A solo note carries none of this channel's modulation, but its own note
                     # fill (the follower's smpsNoteFill, on the NoteOn core.merge spliced it
-                    # from), and a PSG note ends at its duration wherever it plays
+                    # from), and a PSG note ends at its duration wherever it plays (an FM one on
+                    # a PSG channel does not: it rings into its rest's release)
                     _solo = getattr(event, "merged", None)
                     _vib_on = vibrato_active and res.path != "merged"
                     _nf = note_fill if _solo is None else _solo.fill
-                    _psg_note = is_psg or (_solo is not None and _solo.kind == "PSG")
+                    _psg_note = is_psg if _solo is None else _solo.kind == "PSG"
 
                     # Where the note goes (see _note_cell): on its own row with an EDx delay when
                     # it starts between rows and the effect slot is free.  The slot is needed

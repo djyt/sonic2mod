@@ -1153,6 +1153,12 @@ reference pattern (`_ColumnRouter`), rests and cuts follow the note to the colum
 went to, a note still ringing on another column when the block changes is cut
 there, and a channel's own end-of-ring cut in a borrowed column is a plain `C00` (a release
 slide would sit on the borrower's notes) or nothing where the borrower's note-on already is.
+A column is borrowed only by *another* channel's notes: a group's `mod_channel:` routing its
+own primary there (Green Hill's FM5 chords on column 1 in patterns 1–4) ends its notes with the
+release slide as on its home column — until 2026-10-01 those were `C00` as well.  A solo note
+spliced onto the primary ends the way its own chip does: an FM note on a PSG primary rings into
+its rest's release instead of taking the PSG duration cut, and the zero-length rest that ends
+one solo note gives way to a solo note starting on the same tick.
 Green Hill's chords take the bass column in patterns 1–4, where the bass rides the drums, so
 the verse needs four columns.  Two groups may share a
 primary in different patterns; `PairStats.group` keeps their stats apart, and composites are

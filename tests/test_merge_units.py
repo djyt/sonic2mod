@@ -518,6 +518,41 @@ class ModWriter(unittest.TestCase):
         self.assertEqual(looped.data, bytes([0x82, 0x7E, 5, 6]))
 
 
+class Dither(unittest.TestCase):
+    """to_int8's modes: off rounds, flat and shaped add noise, shaped spends it at the top."""
+
+    def test_modes(self):
+        from core.pcm import DITHER_FLAT, DITHER_OFF, DITHER_SHAPED, signed8, to_int8
+        x = [60 * math.sin(2 * math.pi * 200 * i / 16574) for i in range(8192)]
+        self.assertEqual(signed8(to_int8(x, 1.0, DITHER_OFF)), [math.floor(v + 0.5) for v in x])
+
+        def hf(mode: str) -> float:
+            # error power in the second difference: noise near Nyquist
+            e = [q - v for q, v in zip(signed8(to_int8(x, 1.0, mode)), x, strict=True)]
+            return sum((e[i] - e[i - 1]) ** 2 for i in range(1, len(e)))
+        self.assertLess(hf(DITHER_FLAT), hf(DITHER_SHAPED))
+        with self.assertRaises(ValueError):
+            to_int8(x, 1.0, "noisy")
+
+    def test_a_mix_falls_back_to_its_primary_entry(self):
+        from core.merge import composite_dither
+        key = CompositeKey(MIX, 10, (MixLayerKey(15, 0, 1.0, None),))
+        plain = Composite(23, key, MergeGroup("FM1", ["PSG2"]))
+        self.assertEqual(composite_dither(plain, {10: "off"}, "shaped"), "off")      # the primary's entry
+        self.assertEqual(composite_dither(plain, {15: "off"}, "shaped"), "shaped")   # a follower's is not
+        own = Composite(23, key, MergeGroup("FM1", ["PSG2"], dither="flat"))
+        self.assertEqual(composite_dither(own, {10: "off"}, "shaped"), "flat")       # the group's wins
+
+    def test_an_entry_and_a_group_may_override(self):
+        from core.config import _parse_instrument_range, _parse_merge_group
+        e = _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 9, "dither": "Flat"})
+        self.assertEqual(e.dither, "flat")
+        g = _parse_merge_group({"primary": "FM3", "followers": ["FM4"], "dither": False}, "t")
+        self.assertEqual(g.dither, "off")                    # YAML reads a bare `off` as false
+        with self.assertRaises(ValueError):
+            _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 9, "dither": "noisy"})
+
+
 class Narrowing(unittest.TestCase):
     def test_narrow_only_when_the_columns_beyond_are_empty(self):
         mod = ModFile(8)

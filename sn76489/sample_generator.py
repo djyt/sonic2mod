@@ -255,7 +255,8 @@ def generate_psg_samples(
 
     # One render per catalogue instrument: each psg_map entry's own instrument, then its
     # envelope variants, then the psg_voice_map tone entries (core.instruments.psg_catalogue).
-    for spec in psg_catalogue(config, noise_envelopes).values():
+    catalogue = psg_catalogue(config, noise_envelopes)
+    for spec in catalogue.values():
         _synthesize_entry(spec.entry, psg_synth, fps, raw_data, verbose=verbose,
                           rate3_dividers=rate3_dividers, loops=loops, loops_out=loops_out)
 
@@ -265,7 +266,8 @@ def generate_psg_samples(
     result: dict[int, tuple[bytes, int]] = {}
     for inst_num, (mono, rate) in raw_data.items():
         pk = peak(mono)
-        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
+        dither = catalogue[inst_num].entry.dither or psg_synth.dither
+        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk, dither)), rate)
     if raw_out is not None:                  # the unquantised renders, for the composite mixer
         raw_out.update(raw_data)
     return result

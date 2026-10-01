@@ -95,7 +95,7 @@ from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
 from .levels import TL_STEP_DB, clamp_mod_volume
 from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
-from .pcm import INT8_PEAK, MAX_MOD_SAMPLE_BYTES, high_shelf, limit_peaks, peak, signed8, to_int8
+from .pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, high_shelf, limit_peaks, peak, signed8, to_int8
 from .resample import DEFAULT_TAPS, resample
 from .smps_parser import SmpsEvent, SmpsNote
 from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
@@ -1013,7 +1013,8 @@ class _Planner:
             layers = [FmLayer(p.voice)] + [fm_layer(p, fn, self.tol) for fn in present]
             comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
                                    loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms,
-                                   treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz)
+                                   treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz,
+                                   dither=g.dither)
         else:
             comp.base = p.index
             best = _mix_note(g, p, present)
@@ -1541,7 +1542,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
                        raw: dict[int, tuple] | None = None,
                        raw_out: dict[int, list[float]] | None = None,
                        padding_secs: float = 0.0, loop_drift_db: float = FLAT_DB,
-                       taps: int = DEFAULT_TAPS, shelf_hz: float = DEFAULT_SHELF_HZ) -> list[dict]:
+                       taps: int = DEFAULT_TAPS, shelf_hz: float = DEFAULT_SHELF_HZ,
+                       dither: str = DEFAULT_DITHER, entry_dithers: dict[int, str] | None = None) -> list[dict]:
     """Build every mixed composite from the samples now in `mod`.
 
     A MOD sample triggered at note n plays at amiga_clock / PERIOD[n] whatever rate it was
@@ -1584,7 +1586,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
             continue
 
         # Into its slot, or to core.banks, which packs (and quantises) it
-        sample, total, pk = _to_sample(comp, *mixed, max_bytes)
+        sample, total, pk = _to_sample(comp, *mixed, max_bytes, composite_dither(comp, entry_dithers or {}, dither))
         if comp.banked and bank_out is not None:
             bank_out[comp.inst] = sample
             if raw_out is not None and pk:
@@ -1796,8 +1798,14 @@ def _loop_of(s: ModSample) -> tuple[int, int] | None:
     return (s.repeat * 2, s.repeat_length * 2) if s.repeat_length > 1 else None
 
 
+def composite_dither(comp: Composite, entry_dithers: dict[int, str], default: str) -> str:
+    """A mix's quantisation: its group's `dither:`, else its primary's entry's (as a chip
+    composite's, FmInstrument.dither_mode), else settings.yaml's."""
+    return comp.group.dither or entry_dithers.get(comp.key.primary) or default
+
+
 def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] | None, finetune: int,
-               max_bytes: int) -> tuple[ModSample, list[float], float]:
+               max_bytes: int, dither: str) -> tuple[ModSample, list[float], float]:
     """(sample, sum, peak): the sum peak-normalised to 8 bits at the volume that plays it at its
     level (64 and `comp.headroom_db` past full scale), cut to `max_bytes`, its loop kept."""
     pk = peak(total)
@@ -1805,7 +1813,7 @@ def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] |
         pcm = bytes(len(total))
         vol = 0
     else:
-        pcm = to_int8(total, 127.0 / pk)
+        pcm = to_int8(total, 127.0 / pk, dither)
         level = 64.0 * pk / 127.0
         vol = clamp_mod_volume(level)
         if level > 64:

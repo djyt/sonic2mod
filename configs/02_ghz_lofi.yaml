@@ -239,7 +239,7 @@ mod_pattern_breaks:
 
 
 merge_twins: always             # one mix per chord shape, even with slots to spare (the lead chord's twins: 7 KB)
-loop_drift_db: 20               # loops may freeze 12 dB above the settled level: shorter samples
+loop_drift_db: 20               # loops may freeze 20 dB above the settled level: shorter samples
 merge_max_synth_shift: 0        # render every sample at its root pitch: half the bytes of an octave up
 
 
@@ -299,7 +299,6 @@ merge_patterns:
         followers: [FM2, PSG3]
         cut_primary: true
         bank: true
-        #max_composites: 12   # the 12 most-played drum+bass sounds; rarer ones use a same-shape stand-in or the drum alone
         mix_note: A2         # drum mixes at 14 kHz: the hat keeps up to 7 kHz (F2: 5.5, C2 lost it altogether)
         limit_db: 4
         treble_shelf_db: 2
@@ -317,7 +316,6 @@ merge_patterns:
         cut_primary: true
         mod_channel: 3
         mix_note: F2         # chime mixes at 11 kHz instead of 21
-        #max_composites: 3    # two more chords are one note each (0.4 % of the song, 5.6 KB)
         
         
     # --- Pattern $0D-$0F ---------------------------------------------------------------------------      
@@ -340,15 +338,16 @@ merge_patterns:
         loop_mix: true       # its 2.8 s notes loop where lead + chime settle
         loop_drift_db: 1     # past the attack: at the song's 12 dB it looped 40-50 ms from 20 ms in
         loop_min_ms: 300
-        max_composites: 1    # a second lead+chime mix is one note (0.4 % of the song, 6 KB)
+        #max_composites: 1    # a second lead+chime mix is one note (0.4 % of the song, 6 KB)
         
         # Channel 2: Bass + PSG1
       - primary: FM2
         followers: [PSG1]
         mod_channel: 2
-        #mix_note: F2         # bass+chime mixes at 11 kHz (the bass notes here are short)
-        mix_note: C2         # bass+chime mixes at 11 kHz (the bass notes here are short)
+        mix_note: F2         # bass+chime mixes at 11 kHz (the bass notes here are short)
+        #mix_note: C2         # bass+chime mixes at 11 kHz (the bass notes here are short)
         max_composites: 2    # the 18 notes of the two common chords; five more are one note each (23 KB)
+        bank: true
 
         # Channel 3: Chords
       - primary: FM3

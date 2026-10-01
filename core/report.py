@@ -365,7 +365,7 @@ def print_header(console: Console, rep: Report) -> None:
         if s.treble_shelf_db:
             settings += f" · treble {s.treble_shelf_db:+g} dB above {s.treble_shelf_hz:g} Hz"
     if rep.synth is not None:
-        settings += f" · legato {rep.synth.legato}"
+        settings += f" · legato {rep.synth.legato} · player {rep.synth.player}"
     loop = next((i for i in rep.converter.infos if i['type'] == 'loop_set'), None)
     sample_bytes = sum(len(sm.data) for sm in rep.converter.mod.samples if sm is not None)
     out = (f"[cyan]{escape(rep.output_path)}[/cyan]  [bold]{rep.output_bytes / 1024:.0f} KB[/bold]  "

@@ -689,7 +689,11 @@ note's end when the note is shorter than the span, never the attack); the envelo
 from the first window after which every window stays within `loop_drift_db` of the level at the
 span's end, widened by the span's swing around its trend (detrended: a decaying voice's span
 must not pass its whole decay, and its attack, as flat).  A band, not a level, so a chorus pair
-that beats is flat once the beating is steady.
+that beats is flat once the beating is steady.  The span's own windows are checked too: until
+2026-10-01 the scan started before the span, so a decaying voice was "flat" from the span's
+first window whatever its level there - the Title Screen's voice $01 looped at 0.2 s, 7 dB above
+where its longest note ends, and the closing chord held level for 2 s where the hardware falls
+6 dB (the merged FM4+FM3 column read +2.1 dB against the VGZ, ±0.9 dB after).
 Loop candidates start at the flat point and run every even length (a MOD loop is measured in
 words) from 30 ms to `MAX_LOOP_SECS` (1.2 s: a detuned pair beating at 1 Hz needs a whole
 beat), scored by the discontinuity the loop would introduce — the RMS difference between the
@@ -709,9 +713,13 @@ discontinuity is over `MAX_ERROR` (−2.5 dB, i.e. uncorrelated).  `loop_drift_d
 is the fidelity knob: a slowly decaying voice (Green Hill's $00, $06, $08: carriers with a
 sustain rate of 3–7) loops only where its last second is within that of the loop point, so at 1 dB
 its long notes keep their decay and its sample stays long; at 3–6 dB it loops earlier and its
-longest notes end that much louder than the hardware's.  Green Hill merged without its chime
-mixes: 1 dB → 184 KB of samples, 6 dB → 178 KB, 12 dB → 140 KB (unlooped 253 KB; the size is
-not monotonic in the drift, because an earlier flat point changes which loop scores best).  PSG tones are looped
+longest notes end that much louder than the hardware's.  Green Hill merged (2026-10-01):
+1 dB → 411 KB of samples, 3 dB → 414 KB, 6 dB → 404 KB, 12 dB → 388 KB (unlooped 479 KB; the
+size is not monotonic in the drift, because an earlier flat point changes which loop scores
+best).  Honouring the drift for the span's own windows (above) cost the reference builds 15 %
+of their samples at 1 dB (Extra Life 19 → 51 KB, Title Screen 35 → 49 KB) and the merged ones
+nothing (Green Hill 414 → 411 KB, lofi 167 → 165 KB: a PSG chime no longer froze at its note's
+end and rang under the whole lead note).  PSG tones are looped
 the same way (`sn76489/sample_generator.py`); noise never is.
 
 **The release.** A looped sample rings until something stops it, and a plain sample is cut

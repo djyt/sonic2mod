@@ -105,12 +105,12 @@ star_light_zone:
   date: '2026-10-01'
   settings: e98a8df32f44
 title_screen:
-  commit: 52a1055-dirty
-  config: 50e66d82b004
+  commit: 57f1945-dirty
+  config: a71bea557025
   date: '2026-10-01'
   settings: e98a8df32f44
 title_screen_merged:
-  commit: 52a1055-dirty
-  config: 50e66d82b004
+  commit: 57f1945-dirty
+  config: a71bea557025
   date: '2026-10-01'
   settings: e98a8df32f44

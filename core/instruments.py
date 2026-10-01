@@ -56,11 +56,17 @@ class FmInstrument:
     loop_min_ms: float | None = None
     treble_shelf_db: float | None = None   # a merge group's shelf on this composite's render
     treble_shelf_hz: float | None = None
+    dither: str | None = None              # a merge group's quantisation for this composite
 
     @property
     def drift_db(self) -> float | None:
         """This instrument's sustain loop drift override (None: the song's)."""
         return self.loop_drift_db if self.loop_drift_db is not None else self.entry.loop_drift_db
+
+    @property
+    def dither_mode(self) -> str | None:
+        """This sample's quantisation override (None: the settings')."""
+        return self.dither if self.dither is not None else self.entry.dither
 
     @property
     def min_loop_ms(self) -> float | None:

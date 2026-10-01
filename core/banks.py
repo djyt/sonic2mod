@@ -31,9 +31,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from .merge import Composite, MergePlan, drop_composite, stand_in
+from .merge import Composite, MergePlan, composite_dither, drop_composite, stand_in
 from .mod import ModSample
-from .pcm import to_int8
+from .pcm import DEFAULT_DITHER, to_int8
 from .tables import PERIOD_TABLE
 
 MAX_OFFSET = 0xFF00      # the last sound start 9xx can name (xx × 256)
@@ -123,14 +123,14 @@ def _layout(members: list[Composite], sizes: dict[int, tuple[int, int, bool]], v
     return banks
 
 
-def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[float]]) -> bytes:
+def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[float]], dither: str) -> bytes:
     """A member's bytes at its bank's `volume`, quantised once.
 
     The mixer's unquantised sum (`raw`) is scaled and quantised here; without one, the bytes are
     used as they are, which only holds at the bank's own volume (or for silence).  Scaling the
     8-bit bytes would dither them a second time and lose bits."""
     if inst in raw:
-        return to_int8(raw[inst], s._volume / volume)
+        return to_int8(raw[inst], s._volume / volume, dither)
     if s._volume in (volume, 0):
         return s.data
     raise ValueError(f"bank member {inst}: no unquantised sum to bring volume {s._volume} to its bank's {volume}")
@@ -138,7 +138,8 @@ def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[floa
 
 def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slots: list[int],
                max_bytes: int, pad_secs: float, amiga_clock: float,
-               raw: dict[int, list[float]]) -> list[dict]:
+               raw: dict[int, list[float]], dither: str = DEFAULT_DITHER,
+               entry_dithers: dict[int, str] | None = None) -> list[dict]:
     """Lay the banked composites' samples (`samples`, by provisional id, from the mixer) into
     banks in `slots`, install the banks in `mod`, and point the plan at them: the members'
     ids become their bank's slot, `plan.regions` says where each note's sound starts and how
@@ -201,7 +202,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
         for c in bank.members:
             s = samples[c.inst]
             c.member_volume = s._volume
-            data = _member_bytes(c.inst, s, bank.volume, raw)
+            data = _member_bytes(c.inst, s, bank.volume, raw, composite_dither(c, entry_dithers or {}, dither))
             if c.looped:
                 bank.loop = (c.offset + s.repeat * 2, s.repeat_length * 2)
                 bank.data += data

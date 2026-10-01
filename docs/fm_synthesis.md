@@ -98,6 +98,7 @@ still at the top level counts, with a warning; an unknown key is an error):
 |-------|---------|-------|
 | `max_sample_kb` | `128` | Bytes one sample may hold: 128 = the format's 131070, 64 = original ProTracker's 65534 |
 | `pt_zero_bytes` | `true` | A one-shot sample's first word zeroed (`ModFile.zero_idle_words`, last step of `convert()`): ProTracker replays it once the sample ends, and (-126, 126) there buzzes until the next note. A looped sample replays its loop instead |
+| `dither` | `shaped` | How the 8-bit rounding error is spread (`core.pcm.to_int8`): `shaped` (TPDF, first-order shaping, the noise toward Nyquist), `flat` (TPDF, even), `off` (rounding). A `voice_map` / `psg_map` / `psg_voice_map` entry or a merge group may say its own `dither:`; a composite without one takes its primary's entry's (`core.merge.composite_dither`, `FmInstrument.dither_mode`). Shaped noise suits a bright voice; a mellow one has no treble to hide it under (Green Hill $05 C4–B5, $06: 2–7 dB signal-to-noise above 6 kHz shaped, 8–14 flat, 12–19 off). `off` only on a sound that stays loud: a fading tail steps |
 | `sustain_loops` / `loop_drift_db` | `merged` / `1` | § Sustain loops |
 | `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | Brightness shelf (`core.pcm.high_shelf`); 0 = off |
 | `resample_taps` | `32` | Resampler filter width (`core/resample.py`) |
@@ -292,7 +293,7 @@ Choose the highest `root` whose full range `root + (high − low)` stays within 
 ## Quantisation
 
 Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and
-first-order noise shaping (`core.pcm.to_int8`, the same treatment `sfx/amiga.py` gives the SFX
+first-order noise shaping, unless `dither:` says otherwise (`samples.dither`, § Settings) (`core.pcm.to_int8`, the same treatment `sfx/amiga.py` gives the SFX
 exports; the dither sequence is seeded from the sample's length, so a render is byte-identical
 from run to run).  A decaying tail fades into a faint hiss instead of stepping through its last
 few levels.

@@ -274,9 +274,10 @@ def generate_fm_samples(
     # --- Pass 2: quantise, each instrument to its own full 8 bits ---
     # The level is the sample_list volume's job (measured against the VGZ), so nothing is
     # gained by leaving a quiet instrument quiet in the sample — it only loses bits.
+    dither = {job.inst: job.spec.dither_mode or synth.dither for job in jobs}
     for inst_num, (mono, rate) in raw_data.items():
         pk = peak(mono)
-        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk)), rate)
+        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk, dither[inst_num])), rate)
     if raw_out is not None:                  # the unquantised renders, for the composite mixer
         raw_out.update(raw_data)
 

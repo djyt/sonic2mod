@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 
 from .merge import Composite, MergePlan, drop_composite, stand_in
 from .mod import ModSample
-from .pcm import signed8, to_int8
+from .pcm import to_int8
 from .tables import PERIOD_TABLE
 
 MAX_OFFSET = 0xFF00      # the last sound start 9xx can name (xx × 256)
@@ -123,9 +123,22 @@ def _layout(members: list[Composite], sizes: dict[int, tuple[int, int, bool]], v
     return banks
 
 
+def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[float]]) -> bytes:
+    """A member's bytes at its bank's `volume`, quantised once.
+
+    The mixer's unquantised sum (`raw`) is scaled and quantised here; without one, the bytes are
+    used as they are, which only holds at the bank's own volume (or for silence).  Scaling the
+    8-bit bytes would dither them a second time and lose bits."""
+    if inst in raw:
+        return to_int8(raw[inst], s._volume / volume)
+    if s._volume in (volume, 0):
+        return s.data
+    raise ValueError(f"bank member {inst}: no unquantised sum to bring volume {s._volume} to its bank's {volume}")
+
+
 def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slots: list[int],
                max_bytes: int, pad_secs: float, amiga_clock: float,
-               raw: dict[int, list[float]] | None = None) -> list[dict]:
+               raw: dict[int, list[float]]) -> list[dict]:
     """Lay the banked composites' samples (`samples`, by provisional id, from the mixer) into
     banks in `slots`, install the banks in `mod`, and point the plan at them: the members'
     ids become their bank's slot, `plan.regions` says where each note's sound starts and how
@@ -135,8 +148,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
     where that takes no more banks than first fit (_layout); the looped ones go last, each
     closing its bank.  Short of slots, the banks with the fewest notes are left out.  A member
     whose normalised sum the mixer kept (`raw`) is quantised here, once, with its bank's volume
-    scaling in; the others' bytes are scaled.  Returns one dict per member dropped."""
-    raw = raw or {}
+    scaling in (_member_bytes).  Returns one dict per member dropped."""
     members = sorted((c for c in plan.composites.values() if c.banked and c.inst in samples),
                      key=lambda c: (samples[c.inst].repeat_length > 1, -c.notes, c.inst))
     if not members:
@@ -189,12 +201,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
         for c in bank.members:
             s = samples[c.inst]
             c.member_volume = s._volume
-            if c.inst in raw:
-                data = to_int8(raw[c.inst], s._volume / bank.volume)
-            elif s._volume == bank.volume:
-                data = s.data
-            else:
-                data = to_int8([v * s._volume / bank.volume for v in signed8(s.data)], 1.0)
+            data = _member_bytes(c.inst, s, bank.volume, raw)
             if c.looped:
                 bank.loop = (c.offset + s.repeat * 2, s.repeat_length * 2)
                 bank.data += data

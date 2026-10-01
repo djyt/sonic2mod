@@ -44,6 +44,19 @@ def _tag_mod_branding(mod, version: str) -> None:
 _error = error_printer(console)
 
 
+def _settings_path(config: str, stated: str | None) -> str:
+    """The global settings file: `--settings` when given (it must exist), else settings.yaml
+    beside the config (both live in configs/), else the one beside this script."""
+    if stated:
+        if not os.path.exists(stated):
+            _error(f"settings file not found: {stated}")
+        return stated
+    beside = os.path.join(os.path.dirname(os.path.abspath(config)), "settings.yaml")
+    if os.path.exists(beside):
+        return beside
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
+
+
 def main():
     version = _get_version()
     branding(console, "SONIC2MOD", version)
@@ -56,6 +69,9 @@ def main():
     parser.add_argument('--merged', action='store_true',
                         help="The reduced build: fold the config's `merge:` followers onto their "
                              "primaries (composite instruments) and write merge_output_file")
+    parser.add_argument('--settings', metavar='PATH',
+                        help="Global settings file (default: settings.yaml beside the config, "
+                             "else configs/settings.yaml)")
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Also list every composite, bank sound, loop extension and synthesis "
                              "pitch, and each sample's release rate and share of the song")
@@ -110,12 +126,7 @@ def main():
             bpm = {'exact': exact, 'error_pct': err, 'better': better[0] if better else None}
 
     # ── Convert ───────────────────────────────────────────────────────────────
-    # Resolve settings.yaml relative to the config file (both live in configs/).
-    # Falls back to __file__-relative for editable installs / direct invocation.
-    _config_dir   = os.path.dirname(os.path.abspath(args.config))
-    SETTINGS_FILE = os.path.join(_config_dir, "settings.yaml")
-    if not os.path.exists(SETTINGS_FILE):
-        SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
+    SETTINGS_FILE = _settings_path(args.config, args.settings)
     synth     = SynthesisSettings.from_yaml(SETTINGS_FILE)     if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
     psg_synth = PsgSynthesisSettings.from_yaml(SETTINGS_FILE)  if os.path.exists(SETTINGS_FILE) else PsgSynthesisSettings()
     synth, psg_synth = with_song_overrides(synth, config), with_song_overrides(psg_synth, config)

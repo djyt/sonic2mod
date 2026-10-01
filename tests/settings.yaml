@@ -1,0 +1,112 @@
+# -------------------------------------------------------------------------------------------------
+# Regression baseline settings
+#
+# - tests/regression.py converts every case with this file, never configs/settings.yaml, so
+#   tuning a song by ear does not move the baselines.  tests/baselines/manifest.yaml records the
+#   hash of this file each baseline was made with.
+# - State every key configs/settings.yaml has (the test refuses to run otherwise): a key left to
+#   the code's default is not recorded here.
+# - Values are chosen for coverage, not taste: every code path on.
+# -------------------------------------------------------------------------------------------------
+
+fm_synthesis:
+  enabled: true             # Set true to auto-generate FM samples via YM2612 emulation
+  mode: ym2612              # Chip mode: "ym2612" (MD1/MD2 VA2) or "ym3438" (accurate)
+  clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
+  sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
+  release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
+  threads: normal           # FM instruments render in parallel, one per thread: 
+                            # "normal" : CPU cores - 1
+                            # "max"    : every core, 
+                            # 1        : one at a time, or a number.  
+
+psg_synthesis:
+  enabled: true             # Set true to auto-generate PSG samples via SN76489 emulation
+  clock_rate: 3579545       # SN76489 NTSC Mega Drive clock (Hz)
+  sustain_duration: auto    # Seconds of tone held before key-off; or 'auto': per instrument, as FM
+  release_padding: 0.2      # Seconds of silence/release after key-off
+  oversample: 8             # Render tones at this multiple of the sample rate, then sample down.
+                            # 1 : Core's Box Filter [Faster, Lower Quality]
+                            # 4 : Half the PSG time
+                            # 8 : Flat              [Slower, Higher Quality]
+
+# -------------------------------------------------------------------------------------------------
+
+amiga_clock: 3546895        # PAL Amiga (Paula) clock: a MOD note's rate is this / its period
+
+
+# -------------------------------------------------------------------------------------------------
+# Samples
+# -------------------------------------------------------------------------------------------------
+
+samples:
+  max_sample_kb: 128        # 128: no song is cut by the limit, so a change in sample length shows
+
+  # Zero a one-shot sample's first two bytes.  ProTracker replays them once the sample ends.
+  # true  : silent after the sample ends
+  # false : the first word repeats until the next note (a buzz or DC step)
+  pt_zero_bytes: true
+
+  # Attempt to automatically loop sustained samples when their envelope settles.
+  # Will also end affected samples with a volume slide (A0y), rather than a C00.
+  #   off      : never
+  #   merged   : the --merged reduced channel version only
+  #   all      : every build
+  sustain_loops: all
+
+  # dB change whereby the loop is created
+  # 1     : Loop voices that truly settle                                [Higher file size]
+  # 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]
+  loop_drift_db: 1
+
+  # Treble shelf (core.pcm.high_shelf): every synthesised render raised treble_shelf_db above
+  # treble_shelf_hz (at the sample's own pitch), before loops, levels and quantisation.
+  # 0 : Disable. Match Hardware.
+  # 4 : +4db (Example)
+  treble_shelf_db: 0
+  treble_shelf_hz: 2500
+
+  # Conversion time vs quality: filter width (samples of the lower rate) of every resample - FM
+  # renders, PSG tones, mixes.  32: flat to 85 % of Nyquist, aliases 78 dB down.  16: 2/3 the time
+  # (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.  (PSG: psg_synthesis.oversample)
+  resample_taps: 32
+
+# -------------------------------------------------------------------------------------------------
+# Conversion flags (applied regardless of synthesis settings)
+# -------------------------------------------------------------------------------------------------
+
+# How FM channel levels (smpsHeaderFM volume, smpsAlterVol, smpsPan) reach the MOD:
+#   baked  For each instrument, the level most of its notes play at needs no command: that is what
+#          its sample_list volume stands for.  Notes at any other level get Cxx = volume x 10^(dB/20)
+#          using the chip's 0.75 dB per TL step, so Cxx appears only on the minority channel of a
+#          shared instrument and where smpsAlterVol moves a channel.  No extra samples.  (default)
+#   true   Legacy: header TL + log law as an absolute volume, Cxx on every FM note.
+#   false  Legacy: header TL ignored, one smpsAlterVol step = one linear volume unit (not accurate).
+fm_volume_scaling: baked
+
+# baked mode only: a hard-panned (smpsPan left/right) note is this many dB quieter than a centred one.
+# A centred YM2612 channel drives both speakers, every Amiga channel drives one.  0 disables.
+fm_pan_law_db: 3
+
+# PSG counterpart of fm_volume_scaling (SN76489 attenuation: smpsHeaderPSG volume + smpsPSGAlterVol, 2 dB/step):
+#   baked     For each PSG instrument the attenuation most of its notes play at needs no command and is
+#             what its sample_list volume stands for; other notes get Cxx on the 2 dB/step law.  Frees
+#             the effect column on most PSG notes for vibrato / note cut.  (default)
+#   absolute  Legacy: volume = 64 x 10^(-2 x att / 20) x sample volume / 64, a Cxx on nearly every PSG note.
+psg_volume_scaling: baked
+
+# How a legato note (smpsNoAttack: the driver changes the frequency without a key-on) is written when its
+# target cannot ride the sample that is sounding.  A MOD tone portamento (3FF) never re-triggers and, in FT2
+# clone and ProTracker, never changes the playing sample either.
+#   strict   A target in another range of the voice (another instrument, its sample rendered for another
+#            octave) is written on the sounding instrument, its MOD note moved by the chip-pitch delta; after
+#            an smpsSetvoice, or with nothing sounding on the channel yet, the note is re-triggered.
+#   loose    Always a 3FF on the target's own instrument, as the conversion wrote it before 2026-09-28.  Right
+#            only in a player that swaps the sample on an instrument number (OpenMPT); in FT2 clone Green Hill's
+#            FM3 grace note came out an octave up, its loop label rode a decayed note, and Drowning's FM3 trill
+#            (no-attack from its first note) never started.
+#   retrigger  Every no-attack note is a plain note-on, as the conversion wrote it before commit 030ca81: a
+#            grace note bending into a chord is heard as two attacks, but a legato onto a note that has been
+#            sounding for seconds is not left riding the sample's decayed tail (Green Hill FM1, pattern 14 row 52:
+#            the hardware plays that C at the level of a fresh note, a 3FF there is 26 dB down).  (default)
+legato: retrigger

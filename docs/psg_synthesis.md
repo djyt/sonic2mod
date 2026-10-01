@@ -64,8 +64,8 @@ File > Import > Raw Data
 | `clock_rate` | int | `3579545` | NTSC Mega Drive SN76489 clock (Hz) |
 | `amiga_clock` | top level | `3546895` | PAL Amiga clock used for `target_rate` calc (shared with FM) |
 | `oversample` | int | `8` | Tones render at this multiple of the sample's rate, then are resampled down (§ Oversampling); 4 is within 0.2 dB and half the PSG time |
-| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = each PSG instrument its own longest ring at its playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
-| `sustain_loops` / `loop_drift_db` | top level | `merged` / `1` | Cut a tone whose envelope settles to a sustain loop (`core/loops.py`, `generate_psg_samples(loops=True)`); noise never loops. `docs/pipeline.md` § Sustain loops |
+| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = each PSG instrument its own longest ring at its playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `samples.max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
+| `sustain_loops` / `loop_drift_db` | `samples:` | `merged` / `1` | Cut a tone whose envelope settles to a sustain loop (`core/loops.py`, `generate_psg_samples(loops=True)`); noise never loops. `docs/pipeline.md` § Sustain loops |
 | `release_padding` | float | `0.2` | Seconds captured after key-off |
 
 The envelope tables are not a setting; see § Envelope Tables.  A `psg_envelope_tables` block left

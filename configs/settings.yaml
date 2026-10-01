@@ -29,38 +29,43 @@ psg_synthesis:
 # -------------------------------------------------------------------------------------------------
 
 amiga_clock: 3546895        # PAL Amiga (Paula) clock: a MOD note's rate is this / its period
-max_sample_kb: 64           # Maximum Sample Length: 64 - Amiga ProTracker | 128 -  Modern Trackers
-
-
-# Attempt to automatically loop sustained samples when their envelope settles.
-# Will also end affected samples with a volume slide (A0y), rather than a C00.
-#   off      : never
-#   merged   : the --merged reduced channel version only
-#   all      : every build
-sustain_loops: all
-
-
-# dB change whereby the loop is created
-# 1     : Loop voices that truly settle                                [Higher file size]
-# 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]
-loop_drift_db: 1
 
 
 # -------------------------------------------------------------------------------------------------
-# EQ Settings
+# Samples
 # -------------------------------------------------------------------------------------------------
 
-# Treble shelf (core.pcm.high_shelf): every synthesised render raised treble_shelf_db above
-# treble_shelf_hz (at the sample's own pitch), before loops, levels and quantisation.
-# 0 : Disable. Match Hardware.
-# 4 : +4db (Example)
-treble_shelf_db: 0
-treble_shelf_hz: 2500
+samples:
+  max_sample_kb: 64         # Maximum Sample Length: 64 - Amiga ProTracker | 128 -  Modern Trackers
 
-# Conversion time vs quality: filter width (samples of the lower rate) of every resample - FM
-# renders, PSG tones, mixes.  32: flat to 85 % of Nyquist, aliases 78 dB down.  16: 2/3 the time
-# (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.  (PSG: psg_synthesis.oversample)
-resample_taps: 32
+  # Zero a one-shot sample's first two bytes.  ProTracker replays them once the sample ends.
+  # true  : silent after the sample ends
+  # false : the first word repeats until the next note (a buzz or DC step)
+  pt_zero_bytes: true
+
+  # Attempt to automatically loop sustained samples when their envelope settles.
+  # Will also end affected samples with a volume slide (A0y), rather than a C00.
+  #   off      : never
+  #   merged   : the --merged reduced channel version only
+  #   all      : every build
+  sustain_loops: all
+
+  # dB change whereby the loop is created
+  # 1     : Loop voices that truly settle                                [Higher file size]
+  # 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]
+  loop_drift_db: 1
+
+  # Treble shelf (core.pcm.high_shelf): every synthesised render raised treble_shelf_db above
+  # treble_shelf_hz (at the sample's own pitch), before loops, levels and quantisation.
+  # 0 : Disable. Match Hardware.
+  # 4 : +4db (Example)
+  treble_shelf_db: 0
+  treble_shelf_hz: 2500
+
+  # Conversion time vs quality: filter width (samples of the lower rate) of every resample - FM
+  # renders, PSG tones, mixes.  32: flat to 85 % of Nyquist, aliases 78 dB down.  16: 2/3 the time
+  # (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.  (PSG: psg_synthesis.oversample)
+  resample_taps: 32
 
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)

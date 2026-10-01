@@ -376,7 +376,7 @@ Instrument is 1-based (1–31); 0 = no instrument (continue previous).
 | Patterns | 127 |
 | Rows per pattern | 64 |
 | Channels | 4, 8, 10, 12, 14, or 16 (format tag required) |
-| Sample size | 131070 bytes (65535 words × 2) in the format; original ProTracker's editor takes 65534. `max_sample_kb` (settings.yaml, 128 or 64) is what the generators cap each instrument's sustain to, and `sample_truncated` warns if one is cut anyway |
+| Sample size | 131070 bytes (65535 words × 2) in the format; original ProTracker's editor takes 65534. `samples.max_sample_kb` (settings.yaml, 128 or 64) is what the generators cap each instrument's sustain to, and `sample_truncated` warns if one is cut anyway |
 | Note range | C1–B3 (36 semitones) |
 
 ---
@@ -669,7 +669,7 @@ time (tempo segments, after `smpsSetTempoDiv` re-timing), at the sample's playba
 period / note period against the **first** entry's root, the one the sample is rendered for),
 with a positive finetune and one row of margin.  The auto sustain is the largest need, capped
 at 10 s; each generator also caps every instrument to the sample limit at its rate
-(`max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original
+(`samples.max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original
 ProTracker's 65534).  `sustain_short` warnings name what is left.  Full rules: `docs/fm_synthesis.md`
 § `sustain_duration: auto`.  With sustain loops on (below) a looped instrument holds any
 note and warns nothing.
@@ -678,7 +678,7 @@ note and warns nothing.
 
 ## Sustain loops and release slides (`sustain_loops`, `core/loops.py`)
 
-`sustain_loops` in `settings.yaml` (`off` | `merged` — the default: the `--merged` build only |
+`samples.sustain_loops` in `settings.yaml` (`off` | `merged` — the default: the `--merged` build only |
 `all`) makes a sample's length independent of the notes it plays, the one structural thing a
 hand-made Amiga MOD does that a plain render cannot.
 

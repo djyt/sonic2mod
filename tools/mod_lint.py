@@ -26,7 +26,7 @@ loop's first pattern once more with the end-of-song state, which is what a playe
     python tools/mod_lint.py a.mod b.mod        # every file; exit 1 if any issue
 
 As a library: `lint_mod(path) -> list[dict]` (each with 'type', 'pattern', 'row', 'channel',
-'instrument', 'detail'), used by tools/regression_test.py: a case fails when the new MOD has
+'instrument', 'detail'), used by tests/regression.py: a case fails when the new MOD has
 an issue its baseline does not.
 """
 

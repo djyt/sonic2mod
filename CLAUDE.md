@@ -65,7 +65,7 @@ sonic2mod/
                      #   high_shelf: the optional treble_shelf_db brightness shelf)
     resample.py      #   Polyphase windowed-sinc resampler shared by sfx/, FM and PSG (kernel = taps at the lower rate)
     loops.py         #   Sustain loops: where a render's envelope settles, the best loop (crossfaded), the
-                     #   release rate its notes' volume slides follow (settings.yaml sustain_loops)
+                     #   release rate its notes' volume slides follow (settings.yaml samples.sustain_loops)
     version.py       #   get_version(): pyproject.toml is the one place the version is written (installed metadata is only a fallback)
   configs/           # YAML config files per song
   configs/settings.yaml  # Global synthesis settings
@@ -101,7 +101,6 @@ sonic2mod/
     vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
     mod_compare.py      #   MOD binary parser + channel-by-channel comparator
-    regression_test.py  #   Before/after regression test runner (cells + playback lint)
     mod_lint.py         #   Notes a ProTracker player cannot sound: silent 3xx, empty instrument slots
     mod_audit.py        #   A MOD's samples against the notes that play them: bytes, share of the file (KB%),
                         #   share of the song it sounds (play%), note range and lowest rate, loop, longest note,
@@ -116,6 +115,11 @@ sonic2mod/
     fold_csv.py         #   A per-pattern fold table (input/02_ghz_fold.csv: fold N / keep / drop per pattern and
                         #   channel) → the config's merge_patterns: section, each fold's primary chosen by measurement
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
+  tests/             # Regression suite + unit tests
+    regression.py       #   Before/after regression runner: every config converted, cells + samples + playback lint
+    settings.yaml       #   The settings every baseline is made with (convert.py --settings)
+    baselines/          #   Baseline MODs + manifest.yaml (commit, date, settings / config hashes)
+    test_merge_units.py #   The merge primitives with hand-built objects (python -m pytest tests -q)
 ```
 
 ## Setup
@@ -227,18 +231,26 @@ tolerance, transposed chord shares its composite, bank alignment and cuts, slot 
 narrowing, the duplicate-key guard.  The conversions
 run as parallel subprocesses (one per CPU by default; the whole suite takes a few seconds).
 
+Every case converts with **`tests/settings.yaml`** (`convert.py --settings`), never
+`configs/settings.yaml`: tuning a song by ear does not move the baselines.  It states every key
+the live file has (the runner exits 2 otherwise; add a new setting to both), with values chosen
+for coverage (`max_sample_kb: 128`, so no sample is cut by the limit).  `tests/baselines/manifest.yaml`
+records each baseline's commit, date and the content hashes of the settings and its song config:
+a baseline made with other settings fails without a diff, a config changed since its baseline
+is named above the diff.
+
 ```bash
 # BEFORE implementing a fix — save current output as baseline:
-python tools/regression_test.py --generate-baselines
+python tests/regression.py --generate-baselines
 
 # AFTER implementing a fix — diff all channels that should remain same against baseline
-python tools/regression_test.py
+python tests/regression.py
 
 # Accept an intended change in ONE song without rewriting the other baselines
-python tools/regression_test.py --generate-baselines --only title_screen
+python tests/regression.py --generate-baselines --only title_screen
 
 # Limit parallelism (e.g. when reading a failing conversion's output); -j 1 runs them one at a time
-python tools/regression_test.py --jobs 4
+python tests/regression.py --jobs 4
 
 # The merge primitives, in isolation (fast)
 python -m pytest tests -q
@@ -254,7 +266,7 @@ python -m pytest tests -q
    that song's baseline — a `3FF` written where the sounding sample cannot reach the pitch, or
    a note on a slot the merged build stopped rendering, diffs like any intended change.
 
-**Adding a new test case:** append a row to `_SONGS` in `tools/regression_test.py`
+**Adding a new test case:** append a row to `_SONGS` in `tests/regression.py`
 (`TEST_CASES` is built from it):
 ```python
 ("20_my_song", "my_song", "my_song", "My Song — what makes it worth testing"),
@@ -369,9 +381,9 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. Nothing about the noise is configured: the `psg_map` key is the SN76489 register byte, so white/periodic and the rate are read from it (a stated `type`/`noise_rate` that disagrees warns), and `_derive_noise_envelopes` reads the envelope from the song — the label most of the instrument's notes play under (the header voice for every PSG3 track: `fTone_04`, Marble Zone `fTone_09`), `envelope:` being an override. A label that needs its own sample is named in the entry's `envelopes: {label: inst}` (Scrap Brain's `fTone_08`); `psg_voice_map` is never consulted in noise mode, and a noise type there is an error. One sample standing in for several envelopes warns (`noise_envelopes`: Credits' PSG3, which has no free slot). A note transposed past the PSG table's ends plays whatever ROM follows the table; indices 125–127 are measured from the Spring Yard and Credits recordings (0 = inaudible, 922 = B2, 540 = G#3) and sit at the end of `PSG_FREQUENCIES_EXTENDED`, so `core.driver_tables.psg_index_semitone` gives the hardware's pitch there (`range_space: chip` reproduces it).
 
-7e. **Samples do not loop by default, so `sustain_duration: auto` (settings.yaml) must cover the longest ring** — `_sustain_needs` measures it per instrument in MOD time (tempo segments, after `smpsSetTempoDiv` re-timing) at the sample's playback rate: root period / note period against the **first** entry's root (`_synthesis_roots`, the entry the sample is rendered for; Credits folds several ranges onto one sample), plus finetune and one row of margin, with the same `DriverState` walk and `range_space` as the conversion. Auto = each instrument its own need (`sustain_by_instrument`), 10 s cap — one song-wide length cost the Title Screen's stabs six times the sample they play; a stated number is song-wide; each generator also caps every instrument to the sample limit at its rate (`max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original ProTracker's 65534; `core.pcm.max_sustain_secs`). `sustain_short` warns per instrument where a note still outlasts its sample (a lower `root` halves bytes per second per octave).  A smpsNoAttack note continues a ring only where `legato` writes it as `3FF` (under `retrigger` it is a note-on of its own).  An instrument whose auto sustain holds every note (`exact_sustain`) and plays no channel's last note is cut where its notes stop being heard: at the sustain where notes are cut (`C00`), after the release slide's 48 dB fall in the merged build (`core.loops.heard_padding`); a loop ending past that is dropped. Leading rests get their `C00` at pattern 0 row 0 (`_place_leading_rests`, moving an `Fxx` aside): a song that loops to position 0 otherwise rang its last note through them. Details: `docs/fm_synthesis.md` § `sustain_duration: auto`, `docs/pipeline.md` gotchas 11–12.
+7e. **Samples do not loop by default, so `sustain_duration: auto` (settings.yaml) must cover the longest ring** — `_sustain_needs` measures it per instrument in MOD time (tempo segments, after `smpsSetTempoDiv` re-timing) at the sample's playback rate: root period / note period against the **first** entry's root (`_synthesis_roots`, the entry the sample is rendered for; Credits folds several ranges onto one sample), plus finetune and one row of margin, with the same `DriverState` walk and `range_space` as the conversion. Auto = each instrument its own need (`sustain_by_instrument`), 10 s cap — one song-wide length cost the Title Screen's stabs six times the sample they play; a stated number is song-wide; each generator also caps every instrument to the sample limit at its rate (`samples.max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original ProTracker's 65534; `core.pcm.max_sustain_secs`). `sustain_short` warns per instrument where a note still outlasts its sample (a lower `root` halves bytes per second per octave).  A smpsNoAttack note continues a ring only where `legato` writes it as `3FF` (under `retrigger` it is a note-on of its own).  An instrument whose auto sustain holds every note (`exact_sustain`) and plays no channel's last note is cut where its notes stop being heard: at the sustain where notes are cut (`C00`), after the release slide's 48 dB fall in the merged build (`core.loops.heard_padding`); a loop ending past that is dropped. Leading rests get their `C00` at pattern 0 row 0 (`_place_leading_rests`, moving an `Fxx` aside): a song that loops to position 0 otherwise rang its last note through them. Details: `docs/fm_synthesis.md` § `sustain_duration: auto`, `docs/pipeline.md` gotchas 11–12.
 
-7g. **Sustain loops (`sustain_loops: all` in settings.yaml since 2026-09-30, `core/loops.py`)** — in every build (only the `--merged` one with `merged`, the code's default) an instrument whose envelope settles is cut where it settles plus one loop of the waveform: the reference span is the last second of its longest note (`loop_drift_db` = how far above that a loop may freeze, 1 dB default; a slowly decaying voice loops only near the end, or not at all where the loop would end later than the plain render), the loop is the even length (30 ms – 1.2 s) with the smallest jump at the join plus a length penalty — never a whole number of cycles, every Sonic voice detunes its operators (DT1) — crossfaded closed over 15 ms.  Every FM note then ends with `A0y` rows at the voice's measured release rate (`release_rate_db_s`, `_write_release`: exponential, one target per row, `C00` after 64 rows) instead of `C00`; a release over within a row (RR $0F) stays a cut, PSG cuts stay cuts.  A looped instrument warns no `sustain_short`.  `_clear_stale_cut` removes a rest's `C00` from a cell a later note-on rounds onto (a silent note otherwise).  Green Hill merged (chimes dropped): 253 KB of samples → 184 KB at 1 dB drift, 140 at 12.  Details: `docs/pipeline.md` § Sustain loops.
+7g. **Sustain loops (`samples.sustain_loops: all` in settings.yaml since 2026-09-30, `core/loops.py`)** — in every build (only the `--merged` one with `merged`, the code's default) an instrument whose envelope settles is cut where it settles plus one loop of the waveform: the reference span is the last second of its longest note (`loop_drift_db` = how far above that a loop may freeze, 1 dB default; a slowly decaying voice loops only near the end, or not at all where the loop would end later than the plain render), the loop is the even length (30 ms – 1.2 s) with the smallest jump at the join plus a length penalty — never a whole number of cycles, every Sonic voice detunes its operators (DT1) — crossfaded closed over 15 ms.  Every FM note then ends with `A0y` rows at the voice's measured release rate (`release_rate_db_s`, `_write_release`: exponential, one target per row, `C00` after 64 rows) instead of `C00`; a release over within a row (RR $0F) stays a cut, PSG cuts stay cuts.  A looped instrument warns no `sustain_short`.  `_clear_stale_cut` removes a rest's `C00` from a cell a later note-on rounds onto (a silent note otherwise).  Green Hill merged (chimes dropped): 253 KB of samples → 184 KB at 1 dB drift, 140 at 12.  Details: `docs/pipeline.md` § Sustain loops.
 
 7c. **A MOD BPM is a whole number** — `auto_bpm` rounds; choose `target_speed` so the exact BPM is (nearly) integer (speed changes MOD ticks per row, not the row grid). `convert.py` prints the rounding error and the better speed; Special Stage at speed 3 ran 0.44 % slow. Details: `docs/pipeline.md` §BPM and speed setup.
 
@@ -384,6 +396,8 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 7i. **Sample banks (`bank: true`, `core/banks.py`)** — the group's mixed composites are packed end to end into as few slots as they fit (256-byte aligned, one MOD tick of silence after each sound, each bank at its loudest member's volume — sounds grouped by volume where that costs no bank over first fit (`_layout`) — one finetune per bank; a looped mix goes last in its bank, the bank's loop header its loop, no cut) and every note starts with `9xx` at its sound's offset and is cut where the sound ends (`_cut_after`, unless the channel's next note-on comes first) so it never runs into the next sound.  A banked composite takes no slot in the fit; `merge_bank_slots` are held back for the banks plus whatever the fit leaves free — `auto` (the default: leave it out) lets `convert()` build again with the reserve the banks need, fewer where one sat empty, more where bank sounds carry more notes than the composites they displace; a number pins it.  Any primary: a drum note carries nothing else; a melodic one gives the attack row to `9xx` (a `Cxx` moves a row later, counted; an `EDx` is dropped; an attack-row cut moves a row; no `3FF`).  A banked sound's level is measured under its own id (`Composite.bank_id`) and its release is its primary's (`_bank_note`), not the bank slot's.  Green Hill's FM2+PSG1 [d-10] bass+chime mixes bank with the drums: 7 slots → 0, FM1+PSG2 got its three missing composites.  The mixer mixes from the generators' unquantised renders (`_raw_renders`) and a banked mix is quantised once by the bank, so a mix is quantised once wherever it lands; a mix is as long as the composite's own longest note plus the release padding (`Composite.longest`), every layer cut to that, and the finished sum is cut where no note reaches — each note's end plus its release slide, or the column's next note-on (`Composite.heard`, speed-scaled for transposed notes), and `_sustain_needs` counts only notes the merged output plays (composites credit their source samples).  A merged build whose columns all fit four is written as a 4-channel M.K. file (`ModFile.narrow_to`); `tools/mod_audit.py` audits any MOD's samples against the notes that play them.  A group's `mix_note: F2` caps the note its mixes are made at (default: the fastest layer's, the hat's A3 at 28 kHz; F2 is 11 kHz, 2.5× fewer bytes, treble above 5.5 kHz gone).  Green Hill: 18 drum sounds in 3 slots.  Details: `docs/pipeline.md` § Sample banks.
 
 8. **smpsModSet → `4xy`** — only the FIRST half-swing uses the halved step count (`lsr.b #1`); the counter reloads from the original byte, so the steady cycle is `2·speed·(steps+1)` frames and the swing is `delta·steps/2` units of the note's own FNUM (644 C … 1216 B) or PSG divider. `_vibrato_speed` / `_vibrato_depth` turn that into x and a per-note y; verified against six songs' VGZs. No config needs a `vibrato:` override any more. Details: `docs/pipeline.md` gotcha 4.
+
+7j. **One-shot samples start with a silent word (`samples.pt_zero_bytes: true`)** — ProTracker replays a one-shot's first two bytes once it ends; nearly every sample started non-zero ((-126, 126) in five songs: a full-scale buzz until the next note on PT2 / an A500, FT2 clone stops instead).  `ModFile.zero_idle_words` zeroes them as `convert()`'s last step: no offset, `9xx` or loop moves.  The sample settings live under `samples:` (`core.config.SAMPLE_KEYS`); a top-level one warns.
 
 8a. **Row-0 tempo commands are placed last** (`_place_tempo_commands`): the BPM and speed `Fxx` go into free effect cells after every channel is converted; written first on channels 0/1 they were overwritten by a note's own row-0 `Cxx`/`3FF` (the merged Green Hill lost its speed and ran at half tempo).  A missing speed shows as a MOD that plays at speed 6.
 
@@ -450,7 +464,7 @@ Smoke tests: `python sn76489/validate.py` / `renderer.py` / `sample_generator.py
 ## Testing
 
 Regression baselines: `tests/baselines/title_screen_baseline.mod` and `tests/baselines/ghz_baseline.mod`.
-Both are active test cases in `tools/regression_test.py` (Title Screen + GHZ Act 1).
+Both are active test cases in `tests/regression.py` (Title Screen + GHZ Act 1).
 
 Verified channel coverage:
 - All 9 channels parsed (1 DAC, 5 FM, 3 PSG)

@@ -70,18 +70,24 @@ def _sample(data: bytes, volume=64, loop=None) -> ModSample:
 
 
 class KeyOffRules(unittest.TestCase):
+    def _keyoff(self, p: NoteOn, f: NoteOn, tolerance: int = 1) -> float:
+        """keyoff_secs where the test expects a key-off."""
+        secs = keyoff_secs(p, f, tolerance=tolerance)
+        assert secs is not None
+        return secs
+
     def test_fill_keys_the_follower_off(self):
         p, f = _note(secs=0.4, duration=16), _note(secs=0.4, duration=16, fill=4, fill_secs=4 / 60)
-        self.assertAlmostEqual(keyoff_secs(p, f), 4 / 60)
+        self.assertAlmostEqual(self._keyoff(p, f), 4 / 60)
 
     def test_shorter_follower_keys_off_at_its_duration(self):
         p, f = _note(secs=0.4, duration=16), _note(secs=0.2, duration=8)
-        self.assertAlmostEqual(keyoff_secs(p, f), 0.2)
+        self.assertAlmostEqual(self._keyoff(p, f), 0.2)
 
     def test_a_tick_short_of_the_primary_is_no_key_off(self):
         p, f = _note(secs=0.4, duration=16), _note(secs=0.375, duration=15)
         self.assertIsNone(keyoff_secs(p, f, tolerance=1))
-        self.assertAlmostEqual(keyoff_secs(p, f, tolerance=0), 0.375)
+        self.assertAlmostEqual(self._keyoff(p, f, tolerance=0), 0.375)
 
 
 class CompositeKeys(unittest.TestCase):
@@ -216,7 +222,8 @@ class Banks(unittest.TestCase):
             sample_list: ClassVar[list] = [c1.entry, c2.entry]
         mod = ModFile(4)
         samples = {-1: _sample(bytes([50] * 1000)), -2: _sample(bytes([50] * 300), volume=32)}
-        dropped = pack_banks(plan, Cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK)
+        raw = {-1: [50.0] * 1000, -2: [50.0] * 300}
+        dropped = pack_banks(plan, Cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         self.assertEqual(dropped, [])
         self.assertEqual(c1.inst, 7)
         self.assertEqual(c1.offset % ALIGN, 0)
@@ -232,9 +239,26 @@ class Banks(unittest.TestCase):
         plan.ticks[("DAC", 16)] = -3
         Cfg.sample_list.append(c3.entry)
         dropped = pack_banks(plan, Cfg, mod, {-3: _sample(bytes([50] * 5000))}, [], max_bytes=4096,
-                             pad_secs=0.0, amiga_clock=CLOCK)
+                             pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(len(dropped), 1)
         self.assertNotIn(("DAC", 16), plan.ticks)
+
+
+    def test_a_quieter_member_is_quantised_once_from_its_sum(self):
+        # scaling its 8-bit bytes would dither them twice: without the sum it is refused
+        g = MergeGroup("DAC", ["FM2"], bank=True)
+        loud = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, banked=True, notes=2,
+                         entry=[-1, "a", 64, 0])
+        quiet = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(2, 3, 1.0, None),)), g, base=12, banked=True, notes=1,
+                          entry=[-2, "b", 32, 0])
+        plan = MergePlan([g], composites={loud.key: loud, quiet.key: quiet})
+        plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
+
+        class Cfg:
+            sample_list: ClassVar[list] = [loud.entry, quiet.entry]
+        samples = {-1: _sample(bytes([100] * 512)), -2: _sample(bytes([100] * 512), volume=32)}
+        with self.assertRaises(ValueError):
+            pack_banks(plan, Cfg, ModFile(4), samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
 
 
 class MelodicBanks(unittest.TestCase):
@@ -263,7 +287,7 @@ class MelodicBanks(unittest.TestCase):
         plan, cfg, samples = self._plan([(1024, 64, (512, 256), 9), (512, 64, None, 1)])
         mod = ModFile(4)
         self.assertEqual(pack_banks(plan, cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0,
-                                    amiga_clock=CLOCK), [])
+                                    amiga_clock=CLOCK, raw={}), [])
         looped = next(c for c in plan.composites.values() if c.looped)
         plain = next(c for c in plan.composites.values() if not c.looped)
         self.assertLess(plain.offset, looped.offset)
@@ -278,7 +302,7 @@ class MelodicBanks(unittest.TestCase):
         # two banks (each sound fills one); the second holds only the quiet sound
         plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 32, None, 1)])
         mod = ModFile(4)
-        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK)
+        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(mod.samples[6]._volume, 64)
         self.assertEqual(mod.samples[7]._volume, 32)                    # not scaled down to the drums' 64
         self.assertEqual(mod.samples[7].data[0], 40)                    # its bytes as they were
@@ -288,7 +312,8 @@ class MelodicBanks(unittest.TestCase):
         plan, cfg, samples = self._plan([(1500, 64, None, 9), (1500, 32, None, 8), (1500, 64, None, 7),
                                          (1500, 32, None, 6)])
         mod = ModFile(4)
-        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=3200, pad_secs=0.0, amiga_clock=CLOCK)
+        raw = {i: [40.0] * len(smp.data) for i, smp in samples.items()}
+        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=3200, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         by_slot = {}
         for c in plan.composites.values():
             by_slot.setdefault(c.inst, set()).add(c.member_volume)
@@ -297,7 +322,7 @@ class MelodicBanks(unittest.TestCase):
     def test_banks_the_slots_cannot_hold_are_counted(self):
         plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 64, None, 2), (3000, 64, None, 1)])
         mod = ModFile(4)
-        dropped = pack_banks(plan, cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK)
+        dropped = pack_banks(plan, cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(len(dropped), 2)
         self.assertEqual(plan.bank_overflow, [2, 1])                    # notes of each bank left out
 
@@ -483,6 +508,16 @@ class ModWriter(unittest.TestCase):
         self.assertEqual(data[end - 10:end - 4], bytes([7] * 5) + bytes(1))
 
 
+    def test_a_one_shot_starts_with_a_silent_word(self):
+        # ProTracker replays a one-shot's first word after it ends; a looped sample replays its loop
+        mod = ModFile(4)
+        one_shot, looped = _sample(bytes([0x82, 0x7E, 5, 6])), _sample(bytes([0x82, 0x7E, 5, 6]), loop=(0, 4))
+        mod.samples[0], mod.samples[1] = one_shot, looped
+        mod.zero_idle_words()
+        self.assertEqual(one_shot.data, bytes([0, 0, 5, 6]))
+        self.assertEqual(looped.data, bytes([0x82, 0x7E, 5, 6]))
+
+
 class Narrowing(unittest.TestCase):
     def test_narrow_only_when_the_columns_beyond_are_empty(self):
         mod = ModFile(8)
@@ -513,6 +548,29 @@ class ConfigLoading(unittest.TestCase):
             _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 11, "loop_drift_db": -1})
         with self.assertRaises(ValueError):
             _parse_merge_group({"primary": "FM3", "followers": ["FM4"], "loop_min_ms": 0}, "t")
+
+    def test_sample_settings_read_from_samples(self):
+        import tempfile
+        import warnings
+
+        from core.config import SynthesisSettings
+
+        def load(text: str) -> SynthesisSettings:
+            with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+                f.write(text)
+            try:
+                return SynthesisSettings.from_yaml(f.name)
+            finally:
+                Path(f.name).unlink()
+
+        s = load("samples:\n  max_sample_kb: 64\n  pt_zero_bytes: false\n")
+        self.assertEqual((s.max_sample_kb, s.pt_zero_bytes), (64, False))
+        with warnings.catch_warnings(record=True) as w:          # the old top-level key still counts
+            warnings.simplefilter("always")
+            self.assertEqual(load("max_sample_kb: 64\n").max_sample_kb, 64)
+        self.assertIn("samples.max_sample_kb", str(w[0].message))
+        with self.assertRaises(ValueError):                         # a typo is not ignored
+            load("samples:\n  pt_zero_byte: false\n")
 
     def test_duplicate_key_is_refused(self):
         text = "merge_patterns:\n  - patterns: '1'\n    groups:\n      - primary: FM3\n        followers: [FM4]\n        primary: FM5\n"

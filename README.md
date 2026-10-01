@@ -109,8 +109,8 @@ pattern against a saved baseline, so any change to the converter has to prove it
 what it meant to:
 
 ```bash
-python tools/regression_test.py --generate-baselines   # before a change, while output is known-good
-python tools/regression_test.py                        # after — PASS means nothing else moved
+python tests/regression.py --generate-baselines   # before a change, while output is known-good
+python tests/regression.py                        # after — PASS means nothing else moved
 ```
 
 

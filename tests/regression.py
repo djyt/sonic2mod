@@ -1,19 +1,19 @@
 """Regression test suite for sonic2mod.
 
 Usage:
-  python tools/regression_test.py --generate-baselines
+  python tests/regression.py --generate-baselines
       Run convert.py for each test case and save output as baseline.
       Run BEFORE implementing any fix.
 
-  python tools/regression_test.py
+  python tests/regression.py
       Run conversions, then diff against saved baselines.
       Prints PASS/FAIL per test case.
 
-  python tools/regression_test.py --generate-baselines --only title_screen
+  python tests/regression.py --generate-baselines --only title_screen
       Restrict either mode to the named test case(s).  Use this to accept an
       intended change in one song without rewriting the other baselines.
 
-  python tools/regression_test.py --jobs 4
+  python tests/regression.py --jobs 4
       Conversions run as parallel subprocesses (default: one per CPU); --jobs 1
       runs them one at a time.  Results are always printed in _SONGS order.
 
@@ -21,10 +21,26 @@ Besides the cell-by-cell diff, every case runs tools/mod_lint.py on its output: 
 ProTracker player cannot sound (a tone portamento with no sample playing, a note on an empty
 instrument slot) fails the case unless the baseline has the same issue, so a change that
 silences a note is caught without anyone listening.  Generating a baseline prints its count.
+
+Every conversion reads tests/settings.yaml (convert.py --settings), never configs/settings.yaml,
+so tuning a song by ear does not move the baselines.  It must state every key the live file has.
+tests/baselines/manifest.yaml records what each baseline was made with:
+
+    title_screen:
+      commit: 844d0a5-dirty     # HEAD when generated; -dirty = uncommitted changes
+      config: 3f1c0e9a2b7d      # hash of the song config's content (comments aside)
+      date: '2026-10-01'
+      settings: 9b2e4f01c6aa    # hash of tests/settings.yaml's content
+
+A baseline made with other settings fails without a diff (regenerate it); a config changed since
+its baseline is named above the diff.
 """
 
 import argparse
 import contextlib
+import datetime
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -36,10 +52,19 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+import yaml
+
+from core.config import load_yaml
 from tools.mod_compare import compare_mods
 from tools.mod_lint import lint_mod
 
 BASELINES_DIR = _HERE.parent / "tests" / "baselines"
+MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
+SETTINGS_FILE = _HERE.parent / "tests" / "settings.yaml"         # what every conversion here reads
+LIVE_SETTINGS_FILE = _HERE.parent / "configs" / "settings.yaml"  # the keys SETTINGS_FILE must state
+
+_HASH_CHARS = 12
+_MANIFEST_HEADER = "# Written by tests/regression.py --generate-baselines: what each baseline was made with.\n"
 
 # (config stem, test name, baseline stem, description).  Every song config has an entry:
 # a refactor is only safe once all of them still produce byte-identical MODs.
@@ -110,6 +135,64 @@ TEST_CASES += [
 ]
 
 
+def _content_hash(path: Path) -> str:
+    """A YAML file's content hashed, comments and layout aside: reformatting is no change."""
+    with open(path, encoding="utf-8") as f:
+        data = load_yaml(f)
+    text = json.dumps(data, sort_keys=True, default=str)
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:_HASH_CHARS]
+
+
+def _key_paths(data: dict, prefix: str = "") -> set[str]:
+    """Every key of a settings mapping, nested ones dotted: {'samples.max_sample_kb', ...}."""
+    keys = set()
+    for k, v in data.items():
+        path = f"{prefix}{k}"
+        keys.add(path)
+        if isinstance(v, dict):
+            keys |= _key_paths(v, f"{path}.")
+    return keys
+
+
+def _check_settings_complete() -> None:
+    """Exit 2 unless SETTINGS_FILE states exactly the keys the live settings have: a missing key
+    would fall to the code's default and go unrecorded, a stale one is ignored."""
+    def keys(path: Path) -> set[str]:
+        with open(path, encoding="utf-8") as f:
+            return _key_paths(load_yaml(f) or {})
+
+    pinned, live = keys(SETTINGS_FILE), keys(LIVE_SETTINGS_FILE)
+    if pinned == live:
+        return
+    for label, diff in (("missing", live - pinned), ("not in configs/settings.yaml", pinned - live)):
+        if diff:
+            print(f"tests/settings.yaml: {label}: {', '.join(sorted(diff))}")
+    sys.exit(2)
+
+
+def _commit(root: Path) -> str:
+    """HEAD's short hash, with -dirty when tracked files have uncommitted changes."""
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=str(root), capture_output=True, text=True,
+                              check=False).stdout.strip()
+
+    head = git("rev-parse", "--short", "HEAD") or "unknown"
+    return f"{head}-dirty" if git("status", "--porcelain", "--untracked-files=no") else head
+
+
+def _load_manifest() -> dict:
+    """{case name: entry}; empty before the first generation."""
+    if not MANIFEST_FILE.exists():
+        return {}
+    with open(MANIFEST_FILE, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _write_manifest(manifest: dict) -> None:
+    text = yaml.safe_dump(manifest, sort_keys=True, default_flow_style=False)
+    MANIFEST_FILE.write_text(_MANIFEST_HEADER + text, encoding="utf-8", newline="\n")
+
+
 def _regression_output_path(root: Path, name: str) -> Path:
     """Return a temporary output path used exclusively by the regression tests."""
     return root / "output" / f"_regression_{name}.mod"
@@ -118,7 +201,7 @@ def _regression_output_path(root: Path, name: str) -> Path:
 def run_conversion(config: str, root: Path, output_override: Path | None = None,
                    extra_args: list[str] | None = None) -> tuple[bool, str]:
     """Run convert.py with the given config.  Returns (ok, failure_text)."""
-    cmd = [sys.executable, "convert.py", config, *(extra_args or [])]
+    cmd = [sys.executable, "convert.py", config, "--settings", str(SETTINGS_FILE), *(extra_args or [])]
     if output_override is not None:
         cmd += ["--output", str(output_override)]
     result = None
@@ -195,6 +278,9 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
     cases = _select_cases(only)
     print(f"Generating baselines ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
     results = convert_all(cases, root, jobs)
+    manifest = _load_manifest()
+    made = {"commit": _commit(root), "date": datetime.date.today().isoformat(),
+            "settings": _content_hash(SETTINGS_FILE)}
     for tc in cases:
         print(f"\n  [{tc['name']}] convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
         tmp_path = _regression_output_path(root, tc["name"])
@@ -210,10 +296,12 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
             continue
         shutil.copy2(tmp_path, baseline_path)
         tmp_path.unlink(missing_ok=True)
+        manifest[tc["name"]] = {**made, "config": _content_hash(root / tc["config"])}
         print(f"  Saved baseline: {baseline_path}")
         issues = lint_mod(str(baseline_path))
         if issues:
             print(f"  NOTE: {len(issues)} note(s) a player cannot sound (tools/mod_lint.py) — accepted into the baseline")
+    _write_manifest(manifest)
     print("\nBaselines generated.")
 
 
@@ -222,6 +310,8 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
     print(f"Running regression tests ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
     all_passed = True
     results = convert_all(cases, root, jobs)
+    manifest = _load_manifest()
+    settings = _content_hash(SETTINGS_FILE)
     for tc in cases:
         print(f"\n  [{tc['name']}] {tc['description']}")
         tmp_path = _regression_output_path(root, tc["name"])
@@ -234,6 +324,20 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
             continue
 
         print(f"  convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
+
+        # What the baseline was made with: under other settings every diff is noise
+        made = manifest.get(tc["name"])
+        if made is None:
+            print("  note: no manifest entry (the baseline predates it)")
+        elif made.get("settings") != settings:
+            print(f"  FAIL — baseline made with other settings ({made.get('commit')}, {made.get('date')}): "
+                  "tests/settings.yaml changed; regenerate it")
+            tmp_path.unlink(missing_ok=True)
+            all_passed = False
+            continue
+        elif made.get("config") != _content_hash(root / tc["config"]):
+            print(f"  note: {tc['config']} changed since the baseline ({made.get('commit')}, {made.get('date')})")
+
         ok, failure = results[tc["name"]]
         if not ok:
             print(failure)
@@ -308,6 +412,7 @@ def main():
         parser.error("--jobs must be at least 1")
 
     root = _HERE.parent  # project root
+    _check_settings_complete()
     if args.generate_baselines:
         generate_baselines(root, args.only, args.jobs)
     else:

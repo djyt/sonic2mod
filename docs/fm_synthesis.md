@@ -91,6 +91,17 @@ fm_synthesis:
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
 | `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
 
+`samples:` holds what every sample shares, FM and PSG (`core.config._samples_section`; a key
+still at the top level counts, with a warning; an unknown key is an error):
+
+| Field | Default | Notes |
+|-------|---------|-------|
+| `max_sample_kb` | `128` | Bytes one sample may hold: 128 = the format's 131070, 64 = original ProTracker's 65534 |
+| `pt_zero_bytes` | `true` | A one-shot sample's first word zeroed (`ModFile.zero_idle_words`, last step of `convert()`): ProTracker replays it once the sample ends, and (-126, 126) there buzzes until the next note. A looped sample replays its loop instead |
+| `sustain_loops` / `loop_drift_db` | `merged` / `1` | § Sustain loops |
+| `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | Brightness shelf (`core.pcm.high_shelf`); 0 = off |
+| `resample_taps` | `32` | Resampler filter width (`core/resample.py`) |
+
 **Clock rates explained:**
 - `clock_rate = 7670454` Hz → native synthesis rate = 7670454 / 6 / 24 ≈ **53,267 Hz**
 - `amiga_clock = 3546895` Hz → `target_rate = amiga_clock / period` where period is from PERIOD_TABLE
@@ -159,7 +170,7 @@ Stage Clear's PSG instrument 9 is the known case: its PSG2 range plays the PSG1 
 octaves up, so a 2.55 s note needs 13 s of it.  At `max_sample_kb: 64`, 17 instruments in
 six songs (Marble Zone, Spring Yard, Scrap Brain, Robotnik, Final Zone, Credits) warn as well.
 
-**Sustain loops** (`sustain_loops` and `loop_drift_db` in `settings.yaml`, `core/loops.py`) make
+**Sustain loops** (`samples.sustain_loops` and `samples.loop_drift_db` in `settings.yaml`, `core/loops.py`) make
 the length independent of the notes: an instrument whose envelope settles is rendered for a 4 s
 probe, cut where it settles plus one best-matching loop of the waveform (crossfaded closed, at
 most 1.2 s), and its notes end with a release slide at the voice's measured release rate instead

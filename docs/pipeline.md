@@ -1285,8 +1285,12 @@ used to run for its longest note plus the release padding plus every layer's rel
 though the column's next note-on retriggers the channel first: Green Hill's drum+bass sounds
 were 0.39 s for hits 0.2 s apart.  Per note the plan records where it ends and where the next
 note-on of its primary's stream (own, spliced and pooled notes; not smpsNoAttack notes, which
-a strict legato writes as `3FF`) cuts it, a row of margin each, and how much faster than the
-mix's own trigger note it plays (a chord shape transposed an octave up needs twice the bytes).
+a strict legato writes as `3FF`) cuts it, as the MOD places them: a note-on on a row boundary
+exactly, one between rows half a row either way, two in one row a row apart (a row of margin on
+every note, before 2026-10-01, made Green Hill's drum sounds 250 ms for hits 200 ms apart: the
+banks held 16 KB no note plays, and a slower BPM still never reached the next sound), and how
+much faster than the mix's own trigger note it plays (a chord shape transposed an octave up
+needs twice the bytes).
 The mixer cuts the finished sum at the latest point any note reaches — the earlier of its end
 plus the release slide (an FM primary's lasts until the voice has fallen 48 dB) and its next
 note-on — with a 2 ms fade; the layer cuts inside the mix stay where they were, so what plays

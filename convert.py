@@ -6,11 +6,13 @@ Usage:
 """
 
 import argparse
+import dataclasses
 import os
 import sys
 
 from core.cli import branding, cli_console, error_printer
 from core.config import (
+    PLAYERS,
     ConversionConfig,
     PsgSynthesisSettings,
     SynthesisSettings,
@@ -72,6 +74,8 @@ def main():
     parser.add_argument('--settings', metavar='PATH',
                         help="Global settings file (default: settings.yaml beside the config, "
                              "else configs/settings.yaml)")
+    parser.add_argument('--player', choices=PLAYERS,
+                        help="Tracker the MOD is made for (vibrato depths) — overrides settings.yaml player")
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Also list every composite, bank sound, loop extension and synthesis "
                              "pitch, and each sample's release rate and share of the song")
@@ -130,6 +134,8 @@ def main():
     synth     = SynthesisSettings.from_yaml(SETTINGS_FILE)     if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
     psg_synth = PsgSynthesisSettings.from_yaml(SETTINGS_FILE)  if os.path.exists(SETTINGS_FILE) else PsgSynthesisSettings()
     synth, psg_synth = with_song_overrides(synth, config), with_song_overrides(psg_synth, config)
+    if args.player:
+        synth = dataclasses.replace(synth, player=args.player)
 
     converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)
     with console.status("[dim]Converting…[/dim]", spinner="dots"):

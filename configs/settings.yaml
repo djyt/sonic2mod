@@ -118,3 +118,11 @@ psg_volume_scaling: baked
 #            sounding for seconds is not left riding the sample's decayed tail (Green Hill FM1, pattern 14 row 52:
 #            the hardware plays that C at the level of a fresh note, a 3FF there is 26 dB down).  (default)
 legato: retrigger
+
+# The tracker the MOD is made for.  FT2 clone and ProTracker 2 scale a vibrato (4xy) depth differently:
+# PT2 truncates the swing to whole periods, a period short of FT2's on every depth (y=1: 1 period against
+# 1.75), so each build picks the depth nearest the hardware's swing in its own player.  convert.py --player
+# overrides it.
+#   ft2   FT2 clone (default)
+#   pt2   ProTracker 2 / pt2-clone / an Amiga
+player: ft2

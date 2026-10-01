@@ -10,7 +10,7 @@ continue_screen:
   date: '2026-10-01'
   settings: e98a8df32f44
 credits:
-  commit: 52a1055-dirty
+  commit: 6db4dc0-dirty
   config: 73e5c8bc7af7
   date: '2026-10-01'
   settings: e98a8df32f44
@@ -40,22 +40,22 @@ game_over:
   date: '2026-10-01'
   settings: e98a8df32f44
 ghz_lofi:
-  commit: 52a1055-dirty
+  commit: 6db4dc0-dirty
   config: 53f618153613
   date: '2026-10-01'
   settings: e98a8df32f44
 ghz_lofi_merged:
-  commit: fd00c26-dirty
+  commit: 6db4dc0-dirty
   config: 53f618153613
   date: '2026-10-01'
   settings: e98a8df32f44
 green_hill_zone:
-  commit: 52a1055-dirty
+  commit: 6db4dc0-dirty
   config: 75f028a02e66
   date: '2026-10-01'
   settings: e98a8df32f44
 green_hill_zone_merged:
-  commit: fd00c26-dirty
+  commit: 6db4dc0-dirty
   config: 75f028a02e66
   date: '2026-10-01'
   settings: e98a8df32f44

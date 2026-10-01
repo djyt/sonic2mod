@@ -211,15 +211,11 @@ def prepare_merged_config(config) -> None:
     for p in sorted(config.merge_patterns_named):
         taken: dict[int, str] = {}
         for src, home in packed.items():
-            routed = [g for g in config.merge if g.primary == src and g.route is not None and g.covers(p)]
-            if routed:
-                col, what = routed[0].route, f"{routed[0].label} (mod_channel)"
-            else:
-                away = away_in(src)
-                if away is None or p in away:
-                    continue                            # folded or dropped here: no column of its own
-                col, what = home, f"{src} (its own column)"
-            assert col is not None
+            col = _column_of(config, src, home, p)
+            if col is None:
+                continue                                # folded or dropped here: no column of its own
+            routed = next((g for g in config.merge if g.primary == src and g.route is not None and g.covers(p)), None)
+            what = f"{routed.label} (mod_channel)" if routed else f"{src} (its own column)"
             if col in taken:
                 raise ValueError(f"pattern {p:x}: channel {col + 1} is taken twice — {taken[col]} and {what}; "
                                  f"move one with mod_channel, or fold / drop it there")
@@ -233,6 +229,39 @@ def prepare_merged_config(config) -> None:
         stem, dot, ext = config.output_file.rpartition(".")
         config.output_file = f"{stem}_merged.{ext}" if dot else f"{config.output_file}_merged"
     config.merge_active = True
+
+
+def _column_of(config, src: str, home: int, pattern: int) -> int | None:
+    """The output column live channel `src` plays its own notes on in `pattern`: a group's
+    mod_channel route, else its home column; None where it plays none of its own (folded,
+    dropped, pooled)."""
+    if src in config.merge_drop or src in config.merge_fill:
+        return None
+    routed = [g for g in config.merge if g.primary == src and g.route is not None and g.covers(pattern)]
+    if routed:
+        return routed[0].route
+    away = _away_in(config.merge, config.merge_pattern_drop, src)
+    return None if away is None or pattern in away else home
+
+
+def column_sources(config, patterns) -> dict[int, dict[int, list[str]]]:
+    """{output column: {pattern: [chip channels]}} of a merged build (after prepare_merged_config):
+    whose notes sound on each column - the channel playing its own notes there, then the
+    followers folded onto it.  Pooled notes (merge_fill, a group's fill: true) take whichever
+    column is silent, so they are under none.
+
+        pattern 1-4 of Green Hill:  {0: [DAC, FM2, PSG3], 1: [FM5, FM3, FM4, PSG1], 2: [PSG2], 3: [FM1]}
+    """
+    packed = {c.source: c.mod_channel for c in config.channels if c.enabled}
+    out: dict[int, dict[int, list[str]]] = {}
+    for p in patterns:
+        for src, home in packed.items():
+            col = _column_of(config, src, home, p)
+            if col is None:
+                continue
+            folded = [f for g in config.merge if g.primary == src and g.covers(p) for f in g.followers]
+            out.setdefault(col, {}).setdefault(p, []).extend([src, *folded])
+    return out
 
 
 # --- what each channel plays ---------------------------------------------------------------
@@ -252,6 +281,7 @@ class NoteOn:
     detune: int = 0
     tl: int = 0
     hard_panned: bool = False
+    pan: str = "C"            # the speaker: "L", "R", "C" (both; every PSG and DAC note)
     voice: int | None = None
     level_db: float | None = None
     vibrato: bool = False
@@ -359,6 +389,7 @@ def channel_notes(song, config, source: str, pan_law_db: float,
                            res.instrument, res.index, kind,
                            chip=None if res.path == "psg_fixed" else res.chip,
                            detune=res.detune, tl=st.tl, hard_panned=st.hard_panned,
+                           pan=getattr(st, "pan", "C"),
                            voice=st.voice, level_db=st.level_db(pan_law_db), vibrato=vib,
                            fill=fill, fill_secs=(fill / fps if fill else None),
                            secs=secs_of(tick, note.duration),
@@ -785,22 +816,35 @@ def unison_gain_db(p: NoteOn, followers: list[NoteOn], chip: bool, tolerance: in
     the primary's voice at the same pitch, no detune, keyed off with it (chip), or the primary's
     instrument at its MOD note with no cut (mix).  Such a composite is the primary's sample at a
     higher level (Green Hill's FM4+FM5 unison of voice $05 was slot 11 at twice the volume), so
-    the note plays the primary's own instrument, louder.  None when any follower differs."""
-    amp = 1.0
+    the note plays the primary's own instrument, louder.  None when any follower differs.
+
+    The copies add as amplitudes on each speaker they share, as powers across speakers (L/R
+    power, the level law's): FM4 left + FM5 right is +3 dB, not the +6 of two on one side."""
+    speakers = {"L": 0.0, "R": 0.0}
+
+    def add(pan: str, amp: float) -> None:
+        for side in speakers:
+            if pan in ("C", side):
+                speakers[side] += amp
+
+    add(p.pan, 1.0)
+    alone = sum(a * a for a in speakers.values())
     for f in followers:
         if chip:
             lay = fm_layer(p, f, tolerance)
             if (lay.voice_idx != p.voice or lay.semitones or lay.fnum_offset
                     or lay.keyoff_secs is not None):
                 return None
-            amp += 10 ** (-lay.tl_offset * TL_STEP_DB / 20.0)
+            add(f.pan, 10 ** (-(f.tl - p.tl) * TL_STEP_DB / 20.0))      # the pan is the speakers'
+
         else:
             if (f.instrument != p.instrument or f.index != p.index
                     or _fill_ms(p, f, tolerance) is not None):
                 return None
             rel = (f.level_db - p.level_db) if (f.level_db is not None and p.level_db is not None) else 0.0
-            amp += 10 ** (rel / 20.0)
-    return 20.0 * math.log10(amp)
+            rel += PAN_TL_STEPS * TL_STEP_DB * (int(f.hard_panned) - int(p.hard_panned))   # ditto
+            add(f.pan, 10 ** (rel / 20.0))
+    return 10.0 * math.log10(sum(a * a for a in speakers.values()) / alone)
 
 
 def _free_slots(config, song) -> list[int]:

@@ -1707,6 +1707,21 @@ class SmpsToModConverter:
             # level it needs no Cxx either
             return clamp_mod_volume(sv * 10 ** (rel_db / 20.0) * chan_cfg.volume / 64)
 
+        # How long each note-on rings before a PSG duration cut: its own duration plus the
+        # smpsNoAttack continuations after it (`nE5, $34, smpsNoAttack, $34` holds 104 ticks on
+        # the hardware; Green Hill's last verse chord cut its chime at 52)
+        _ring_ticks: dict[int, int] = {}
+        _ringing = None
+        for _ev in channel.events:
+            if not _ev.is_note:
+                continue
+            if _ev.note.is_rest and _ev.note.is_no_attack and _ringing is not None:
+                _ring_ticks[id(_ringing)] += _ev.note.duration
+                continue
+            _ringing = None if _ev.note.is_rest else _ev
+            if _ringing is not None:
+                _ring_ticks[id(_ev)] = _ev.note.duration
+
         _note_on_positions: set[tuple[int, int]] = set()
         if is_psg:
             for _ev in channel.events:
@@ -1978,7 +1993,7 @@ class SmpsToModConverter:
                     if _nf > 0 and _fill_t < note.duration:
                         _cut_tick = tick + _fill_t
                     elif _psg_note:
-                        _cut_tick = tick + note.duration
+                        _cut_tick = tick + _ring_ticks.get(id(event), note.duration)
                     # A Cxx due on the attack row gives way to EDx when the note lasts into the
                     # next row: the volume is then set there (see cxx_coord below).  Drowning FM4
                     # pans every other note hard, so half its notes carry a -3 dB Cxx, and all of
@@ -2093,9 +2108,10 @@ class SmpsToModConverter:
 
                     # PSG auto note-cut: emit silence at the note's natural end if no
                     # explicit smpsNoteFill was placed.  Mirrors hardware PSGDoNext
-                    # setting vol=15 when the duration timer expires.
+                    # setting vol=15 when the duration timer expires - after the
+                    # smpsNoAttack continuations, which do not re-key (_ring_ticks).
                     if _psg_note and not fill_placed:
-                        cut_tick = tick + note.duration
+                        cut_tick = tick + _ring_ticks.get(id(event), note.duration)
                         cut_pat, cut_row = self._tick_to_pattern_row(cut_tick)
                         if cut_pat == pattern and cut_row == row and _bank9:
                             # The attack row's slot holds the 9xx: the cut waits for the next row
@@ -2108,7 +2124,7 @@ class SmpsToModConverter:
                         elif cut_pat == pattern and cut_row == row:
                             # Sub-row cut: note ends within the same MOD row → ECx
                             ec_val = round(
-                                note.duration * self.config.target_speed
+                                (cut_tick - tick) * self.config.target_speed
                                 / self._effective_tpr
                             )
                             ec_val = min(ec_val, self.config.target_speed - 1)

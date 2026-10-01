@@ -1106,7 +1106,12 @@ regression case per song that has a `merge:` section (`<name>_merged`).
 combined mute mask, the sum of the chip channels folded onto it, and reports whole-song balance
 and audio onsets per channel (the per-note audit needs one note stream per channel, so it is
 the reference build's).  Title Screen after the volume rule above: every merged channel within
-1.2 dB of its chip sum.
+1.2 dB of its chip sum.  With `merge_patterns:` a column's sources change per pattern, so it
+renders every chip channel once and builds each column's reference per pattern from the
+channels that sound there (`core.merge.column_sources`, `report_merged_patterns`): a table of
+column x pattern block, whole-block level and the primary's key-on attacks (100 ms), against
+the song's anchor (the median block), flagged at 2 dB.  Pooled notes are in no reference.  Until
+2026-10-01 it labelled the columns by whole-song groups and reported four of Green Hill's silent.
 
 ### Per-pattern folds (`merge_patterns:`, `tools/fold_csv.py`)
 
@@ -1304,8 +1309,10 @@ Hill merged slots $19 and $1F sounded the same).
   primary's own voice at the same chip pitch, no detune and keyed off with it (chip), or the
   primary's instrument at its MOD note with no cut (mix), makes no composite: the note plays
   the primary's own instrument, and `MergePlan.gains` carries the dB the followers add (their
-  amplitudes summed: +6.02 dB for an equal pair; each chip channel is clamped on its own before
-  the DAC sums them, so the sum is linear).  `walk_channel` puts it on `ResolvedNote.gain_db`,
+  amplitudes summed on each speaker they share, powers across speakers - L/R power, as the level
+  law: +6.02 dB for an equal pair on one side, +3.01 for Green Hill's FM4 left + FM5 right, which
+  played 2.3 dB loud at +6 until 2026-10-01; each chip channel is clamped on its own before the
+  DAC sums them, so the sum is linear; `NoteOn.pan`, `DriverState.pan`).  `walk_channel` puts it on `ResolvedNote.gain_db`,
   so `_plan_levels` bakes the instrument at the level most of its notes now play, gain
   included, and the instrument's `sample_list` volume moves from its reference-build level by
   the difference (the chip composites' volume move, `merge_unison_volume` in the report).  A

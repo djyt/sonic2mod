@@ -67,7 +67,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
-from core.merge import prepare_merged_config
+from core.merge import column_sources, prepare_merged_config
 from tools import vgm_pitch_audit
 from tools.vgm_analyze import _parse_vgm
 
@@ -1210,6 +1210,195 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     return res
 
 
+_BLOCK_FLAG_DB = 2.0     # a column's block this far from the song's anchor is flagged
+_KEYON_SECS = 0.1        # the attack window a key-on's level is measured over
+
+
+def mod_pattern_spans(mod: bytes, speed: int = 6) -> list[tuple[int, float, float]]:
+    """[(pattern, start s, end s)] in play order on one pass (Bxx / Dxx followed, stopping at
+    the song loop), timed as mod_note_events times its notes."""
+    nch = _MOD_FORMAT_CHANNELS.get(mod[1080:1084].decode("ascii", "replace"), 4)
+    order = list(mod[952:952 + mod[950]])
+    spans: list[tuple[int, float, float]] = []
+    bpm, now, posi, row = 125, 0.0, 0, 0
+    seen: set[tuple[int, int]] = set()
+    while posi < len(order) and (posi, row) not in seen:
+        seen.add((posi, row))
+        if not spans or spans[-1][0] != order[posi] or row == 0:
+            spans.append((order[posi], now, now))
+        base = 1084 + (order[posi] * 64 + row) * nch * 4
+        jump = brk = None
+        for c in range(nch):
+            eff, par = mod[base + c * 4 + 2] & 15, mod[base + c * 4 + 3]
+            if eff == 0xF and par:
+                bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
+            elif eff == 0xB:
+                jump = par
+            elif eff == 0xD:
+                brk = (par >> 4) * 10 + (par & 15)
+        now += speed * 2.5 / bpm
+        spans[-1] = (spans[-1][0], spans[-1][1], now)
+        if jump is not None:
+            if jump <= posi:
+                break
+            posi, row = jump, brk or 0
+        elif brk is not None:
+            posi, row = posi + 1, brk
+        else:
+            row += 1
+            if row == 64:
+                posi, row = posi + 1, 0
+    return spans
+
+
+def _pattern_label(patterns: list[int]) -> str:
+    """Hex pattern numbers as runs: [1, 2, 3, 4, 13] -> '1-4 d'."""
+    runs: list[list[int]] = []
+    for q in patterns:
+        if runs and q == runs[-1][-1] + 1:
+            runs[-1].append(q)
+        else:
+            runs.append([q])
+    return " ".join(f"{r[0]:x}" if len(r) == 1 else f"{r[0]:x}-{r[-1]:x}" for r in runs)
+
+
+def _column_blocks(layout: dict[int, dict[int, list[str]]], spans: list[tuple[int, float, float]]) -> list[dict]:
+    """Each column's runs of consecutive patterns with the same sources."""
+    blocks: list[dict] = []
+    for c in sorted(layout):
+        for p, t0, t1 in spans:
+            srcs = layout[c].get(p, [])
+            last = blocks[-1] if blocks and blocks[-1]["column"] == c else None
+            if last is not None and last["sources"] == srcs and abs(last["t1"] - t0) < 1e-6:
+                last["patterns"].append(p)
+                last["t1"] = t1
+                continue
+            blocks.append({"column": c, "sources": srcs, "patterns": [p], "t0": t0, "t1": t1})
+    return blocks
+
+
+def _onset_match(ref: list[float], mod: list[float]) -> tuple[list[float], int]:
+    """(ms each matched reference onset is off by, unmatched count): within 40 ms."""
+    devs, missing = [], 0
+    for t in ref:
+        d = min(((m - t) * 1000 for m in mod), key=abs, default=float("inf"))
+        if abs(d) > 40:
+            missing += 1
+        else:
+            devs.append(d)
+    return devs, missing
+
+
+def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
+                           offset: float | None, chip_names: dict[str, str]) -> dict:
+    """The merged build of a merge_patterns: config, each MOD column against the hardware.
+
+    A column's sources change per pattern (core.merge.column_sources), so its reference is
+    built from one render per chip channel: in each pattern, the sum of the channels whose
+    notes sound on that column.  Levels are relative to the song's anchor (the median block),
+    which cancels the two renders' overall gain.  "key-ons" is the median over the primary's
+    key-ons of its attack: a fold that sums its layers too loud shows there first.
+
+        col  patterns   sources          block  key-ons
+          2  1-4        FM5+FM3+FM4+PSG1  +0.3     +2.1   <-- level
+
+    `chip_names`: {source: the chip channel its render is named after} (PSG3 -> NOISE).
+    Pooled notes (merge_fill, fill: true) sound on whatever column is silent: in no reference.
+    """
+    spans = mod_pattern_spans(mod_path.read_bytes())
+    layout = column_sources(cfg, sorted({p for p, _, _ in spans}))
+    columns = sorted(layout)
+    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *set(chip_names.values())]}
+    mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *(f"col{c}" for c in columns)]}
+    offset_auto = offset is None
+    if offset is None:
+        offset = auto_offset(vgm_st["FULL"].mean(axis=1), mod_st["FULL"].mean(axis=1), max_lag=0.75)
+        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
+    else:
+        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
+    print()
+    lag = round(offset * SR)
+
+    # Each column's reference, in MOD time: per pattern, the sum of its sources' chip renders
+    ref_col: dict[int, np.ndarray] = {}
+    for c in columns:
+        out = np.zeros_like(mod_st[f"col{c}"])
+        for p, t0, t1 in spans:
+            a, b = int(t0 * SR), min(int(t1 * SR), len(out))
+            for src in layout[c].get(p, []):
+                v = vgm_st[chip_names[src]]
+                lo, hi = max(a - lag, 0), min(b - lag, len(v))
+                if hi > lo:
+                    out[lo + lag:hi + lag] += v[lo:hi]
+        ref_col[c] = out
+
+    # Every block's level, whole and at its primary's key-ons
+    raw = vgz.read_bytes()
+    rows, _, _ = _parse_vgm(gzip.decompress(raw) if raw[:2] == b'\x1f\x8b' else raw, 7_670_454, 3_579_545, None, 'all')
+    blocks = _column_blocks(layout, spans)
+    for blk in blocks:
+        c, a, b = blk["column"], int(blk["t0"] * SR), int(blk["t1"] * SR)
+        mod_c = mod_st[f"col{c}"]
+        blk["vgm_db"], blk["mod_db"] = db(rms(ref_col[c][a:b])), db(rms(mod_c[a:b]))
+        primary = chip_names.get(blk["sources"][0]) if blk["sources"] else None
+        diffs = []
+        for r in rows:
+            t = r[0] / 1000.0 + offset
+            if r[1] != primary or not blk["t0"] <= t < blk["t1"] - _KEYON_SECS:
+                continue
+            lv, lm = db(rms(seg_at(ref_col[c], t, _KEYON_SECS))), db(rms(seg_at(mod_c, t, _KEYON_SECS)))
+            if lv > -70 and lm > -70:
+                diffs.append(lm - lv)
+        blk["keyons"] = len(diffs)
+        blk["keyon_raw_db"] = statistics.median(diffs) if diffs else float("nan")
+
+    audible = [blk["mod_db"] - blk["vgm_db"] for blk in blocks if blk["vgm_db"] > -70 and blk["mod_db"] > -70]
+    anchor = statistics.median(audible) if audible else 0.0
+    print("Per column and pattern block, against the sum of its chip channels there (dB, L/R power;")
+    print(f"MOD - VGM relative to the song's anchor {anchor:+.1f} dB; key-ons = {_KEYON_SECS * 1000:.0f} ms of the"
+          " primary's attacks)")
+    print(f"{'col':>4}  {'patterns':<10} {'sources':<24} {'VGM':>7} {'MOD':>7} {'block':>7} {'key-ons':>8} {'n':>4}")
+    for blk in blocks:
+        silent = blk["vgm_db"] <= -70 and blk["mod_db"] <= -70
+        blk["diff_db"] = float("nan") if silent else blk["mod_db"] - blk["vgm_db"] - anchor
+        blk["keyon_db"] = blk.pop("keyon_raw_db") - anchor
+        flag = "  <-- level" if any(abs(x) >= _BLOCK_FLAG_DB for x in (blk["diff_db"], blk["keyon_db"])
+                                    if not math.isnan(x)) else ""
+        print(f"{blk['column'] + 1:>4}  {_pattern_label(blk['patterns']):<10} {'+'.join(blk['sources']) or '-':<24} "
+              f"{blk['vgm_db']:>7.1f} {blk['mod_db']:>7.1f} {_fmt(blk['diff_db'], 7)} {_fmt(blk['keyon_db'], 8)} "
+              f"{blk['keyons']:>4}{flag}")
+    print()
+
+    res: dict = {"offset_ms": offset * 1000, "offset_auto": offset_auto, "merged": True, "per_pattern": True,
+                 "anchor_db": anchor, "notes": [], "channels": {},
+                 "blocks": [{**{k: v for k, v in blk.items() if k not in ("t0", "t1")}, "t_s": [blk["t0"], blk["t1"]]}
+                            for blk in blocks]}
+
+    # Whole song per column, and its audio onsets against the reference's
+    print("Per column, whole song (dB relative to the anchor) and audio onsets (matched within 40 ms)")
+    for c in columns:
+        name = f"col{c}"
+        rv, rm = db(rms(ref_col[c])), db(rms(mod_st[name]))
+        thr = -50 if any("PSG3" in v for v in layout[c].values()) else -40
+        devs, missing = _onset_match(onsets(ref_col[c].mean(axis=1), thresh_db=thr),
+                                     onsets(mod_st[name].mean(axis=1), thresh_db=thr))
+        diff = rm - rv - anchor
+        flag = "" if abs(diff) < _BLOCK_FLAG_DB else "  <-- rebalance"
+        med = f"median {statistics.median(devs):+.0f} ms" if devs else "none matched"
+        print(f"  column {c + 1}  {diff:+6.1f} dB{flag:<16}  {len(devs) + missing:4d} ref onsets: {med}, "
+              f"unmatched {missing}")
+        res["channels"][f"column {c + 1}"] = {
+            "balance_db": {"vgm": rv, "mod": rm, "diff": diff},
+            "onsets": {"ref": len(devs) + missing, "matched": len(devs), "unmatched": missing,
+                       "median_ms": statistics.median(devs) if devs else None},
+        }
+    pooled = sorted({g.primary for g in cfg.merge if g.fill} | set(cfg.merge_fill))
+    if pooled:
+        print(f"  (pooled notes of {', '.join(pooled)} sound on whichever column is silent: in no column's reference)")
+    print()
+    return res
+
+
 def evaluate_checks(res: dict, balance_db: float | None, pitch_cents: float | None,
                     unmatched: int | None) -> list[dict]:
     """Apply the --fail-* thresholds to a report() result.  One entry per enabled threshold."""
@@ -1317,7 +1506,18 @@ def main() -> None:
     noise_used = any(r[1] == "NOISE" for r in rows)
     masks = None
     labels: dict[str, list[str]] = {}
-    if args.merged:
+    per_pattern = args.merged and bool(cfg.merge_patterns_named)
+    chip_names: dict[str, str] = {}
+    if per_pattern:
+        # merge_patterns: a column's sources change per pattern - one render per chip channel,
+        # summed per pattern by report_merged_patterns; one MOD render per output column
+        chip_names = {c.source: "NOISE" if (c.source == "PSG3" and noise_used) else c.source for c in cfg.channels}
+        chip_names = {s: n for s, n in chip_names.items() if n in _VGM_CHANNELS}
+        vgm_names = sorted(set(chip_names.values()))
+        chan_map = {f"col{c}": c for c in sorted({c.mod_channel for c in cfg.channels if c.enabled})}
+        if cfg.merge_drop:
+            print(f"Dropped from the merged build (in the VGM mix, not the MOD): {', '.join(cfg.merge_drop)}")
+    elif args.merged:
         # One render per live MOD channel, named after the chip channels folded onto it
         followers_of = {g.primary: list(g.followers) for g in cfg.merge}
         chan_map = {}
@@ -1352,7 +1552,9 @@ def main() -> None:
     print(f"VGZ    : {vgz}")
     print(f"Renders: {workdir}")
     print()
-    if args.merged:
+    if per_pattern:
+        res = report_merged_patterns(cfg, vgz, mod_path, workdir, args.offset, chip_names)
+    elif args.merged:
         res = report_merged(vgz, mod_path, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
         res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,

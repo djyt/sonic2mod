@@ -61,6 +61,14 @@ from .tables import (
 # smpsModSet adds its swing to the note's own FNUM: see SmpsToModConverter._vibrato_depth.
 _S1_FNUM_BASE = 644
 
+# A 4xy's swing at its sine table's peak (255), in Amiga periods, per player (settings.yaml `player`):
+#   PT2  (255 * y) >> 7 whole periods             2y - 1      y=1: 1   y=2: 3     y=3: 5
+#   FT2  (255 * y) >> 5 quarter periods, i.e. /4  2y - 1/4    y=1: 1.75 y=2: 3.75 y=3: 5.75
+_VIBRATO_PEAK = {
+    "pt2": lambda y: (255 * y) >> 7,
+    "ft2": lambda y: ((255 * y) >> 5) / 4,
+}
+
 
 
 def _shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> int:
@@ -177,6 +185,7 @@ class SmpsToModConverter:
         self.song = song
         self.config = config
         self.synth = synth
+        self._player = synth.player if synth else "ft2"
         self.psg_synth = psg_synth
         self.mod = ModFile(channels=config.mod_channel_count)
         # Structured warnings and informational messages collected during conversion.
@@ -273,19 +282,23 @@ class SmpsToModConverter:
         return x
 
     @staticmethod
-    def _vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: bool) -> int:
-        """ProTracker 4xy depth nibble for one note; 0 = too shallow to play.
+    def _vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: bool,
+                       player: str = "ft2") -> int:
+        """4xy depth nibble for one note in `player`'s replayer; 0 = too shallow to play.
 
         Driver: the accumulator swings delta * steps / 2 either side of its centre (first
         half-swing steps/2 steps, every later one the full `steps`), and is added to the note's
         own frequency word: the YM2612 FNUM of its pitch class (644 for C ... 1216 for B, the
-        block is untouched) or the SN76489 divider of its PSGFrequencies entry.  ProTracker's
-        sine peaks at 2 * y period units.  An Amiga period and a PSG divider are both 1/f and a
-        small FNUM change is proportional to f, so in every case
+        block is untouched) or the SN76489 divider of its PSGFrequencies entry.  An Amiga period
+        and a PSG divider are both 1/f and a small FNUM change is proportional to f, so in every
+        case the swing in periods is
 
-            y = period * (delta * steps / 2) / frequency_word / 2
+            swing = period * (delta * steps / 2) / frequency_word
 
-        Below 0.35 the smallest depth would overshoot the hardware by 3x or more: no vibrato.
+        The depth is the y whose peak in that player (_VIBRATO_PEAK) is nearest the swing: PT2
+        truncates to whole periods, a round(swing / 2) depth there is a period short on every note
+        (Green Hill's y=1 notes half as deep).  Below 0.7 periods the smallest depth would
+        overshoot the hardware by 3x or more: no vibrato.
         """
         word = (PSG_FREQUENCIES_EXTENDED[chip_index & 0x7F] if is_psg
                 else _S1_FNUM_BASE * 2 ** ((chip_index % 12) / 12))
@@ -293,8 +306,12 @@ class SmpsToModConverter:
             return 0
         if delta >= 0x80:
             delta -= 0x100
-        exact = period * (abs(delta) * steps / 2) / word / 2
-        return 0 if exact < 0.35 else max(1, min(0xF, round(exact)))
+        swing = period * (abs(delta) * steps / 2) / word
+        if swing < 0.7:
+            return 0
+
+        peak = _VIBRATO_PEAK[player]
+        return min(range(1, 0x10), key=lambda y: abs(peak(y) - swing))
 
     # --- global duration divider (smpsSetTempoDiv, $EB) -------------------------------------
     def _apply_global_tempo_div(self) -> list[tuple[int, int]]:
@@ -2188,7 +2205,7 @@ class SmpsToModConverter:
                         # units, so its size in cents depends on the chip note it is added to.
                         eff_vib_depth = self._vibrato_depth(
                             vibrato_change, vibrato_steps, PERIOD_TABLE[final_note.value],
-                            source_semitone + st.transpose, is_psg)
+                            source_semitone + st.transpose, is_psg, self._player)
                         if eff_vib_depth == 0:
                             eff_vib_speed = 0
 

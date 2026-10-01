@@ -514,16 +514,20 @@ the halved count (`lsr.b #1` on `smpsModSet` / note start).  So:
   PSG1 note: divider 127 ± 16 = ±200 c at 6 Hz — real, it is in the register log).
 
 **ProTracker:** the vibrato position advances by `x` on each of a row's `speed − 1` processing
-ticks and wraps at 64; the sine peaks at about `2·y` period units.
+ticks and wraps at 64.  The sine's peak depends on the player (settings.yaml `player`,
+`convert.py --player`): PT2 truncates `(255·y) >> 7` to whole periods, **2y − 1**; FT2 works in
+quarter periods, `((255·y) >> 5) / 4` = **2y − ¼**.  A PT2 `y=1` is one period, a stepped wobble
+(0 or ±1) at half FT2's depth.
 
 **Conversion** (`SmpsToModConverter._vibrato_speed` / `_vibrato_depth`):
 
 ```
 x = 64 · _effective_tpr / ((target_speed − 1) · cycle_frames · _tpf_at(tick))
-y = period · (delta · steps / 2) / frequency_word / 2          (per note)
+swing = period · (delta · steps / 2) / frequency_word                (periods, per note)
+y = the depth whose peak in the player is nearest the swing (_VIBRATO_PEAK)
 ```
 
-Region-independent.  `y` below 0.35 means the smallest depth would overshoot the hardware
+Region-independent.  A swing below 0.7 periods means the smallest depth would overshoot the hardware
 threefold, so no vibrato is written (Spring Yard FM4/FM5: ±3 c on hardware).  When `x` would
 exceed 15 `convert.py` says so.  A per-entry `vibrato:` override still wins, but none is needed
 any more: the eight that existed were workarounds for the old formula and are gone.

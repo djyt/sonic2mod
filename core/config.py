@@ -540,6 +540,19 @@ def _legato(data: dict, filepath: str) -> str:
     return v
 
 
+# The tracker a build is made for (settings.yaml `player`): FT2 clone and ProTracker 2 scale a 4xy
+# depth differently, see SmpsToModConverter._vibrato_depth
+PLAYERS = ("ft2", "pt2")
+
+
+def _player(data: dict, filepath: str) -> str:
+    """Top-level `player` of settings.yaml: ft2 (default) | pt2."""
+    v = str(data.get("player", "ft2")).lower()
+    if v not in PLAYERS:
+        raise ValueError(f"{filepath}: player must be one of {', '.join(PLAYERS)} (got '{v}')")
+    return v
+
+
 # The treble shelf's corner (settings.yaml treble_shelf_hz), at the sample's own pitch
 DEFAULT_SHELF_HZ = 2500.0
 
@@ -713,6 +726,8 @@ class SynthesisSettings:
     # ProTracker need), "loose" (always 3FF on the target's own instrument, as written before) or
     # "retrigger" (every no-attack note a plain note-on, as before 030ca81; the default).
     legato: str = "retrigger"
+    # settings.yaml `player` (top level): the tracker the MOD is made for, "ft2" (default) or "pt2"
+    player: str = "ft2"
     # settings.yaml samples.pt_zero_bytes: a one-shot sample's first word zeroed, since ProTracker
     # replays it once the sample ends (core.mod.ModFile.zero_idle_words)
     pt_zero_bytes: bool = True
@@ -811,6 +826,7 @@ class SynthesisSettings:
             sustain_loops=_sustain_loops(smp, filepath),
             loop_drift_db=_loop_drift_db(smp, filepath),
             legato=_legato(data, filepath),
+            player=_player(data, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),

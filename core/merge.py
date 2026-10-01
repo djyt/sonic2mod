@@ -652,8 +652,8 @@ class Composite:
                                        #   unrolled for at least this (the mix cannot loop at another rate)
     pitch_hz: float | None = None      # mix: the primary's pitch at `base` (a looped mix's period)
     heard: list = field(default_factory=list)   # mix: per note (end, next note-on, speed): where it
-                                       #   ends and where the column's next note-on cuts it (seconds, a
-                                       #   row of margin), and how much faster than the mix's own trigger
+                                       #   ends and where the column's next note-on cuts it (seconds, as the
+                                       #   MOD places them), and how much faster than the mix's own trigger
                                        #   note it plays (a chord shape transposed up): _Planner._measure_heard
 
     @property
@@ -1095,12 +1095,21 @@ class _Planner:
 
             note ═════════╗ end ─ release slide ─ ─ ┐
                           ║                          next note-on
-            |<─ end ─────>|        |<──── next ─────>|  + a row each (placed up to half a row late)
+            |<─ end ─────>|        |<──── next ─────>|
+
+        Both are what the MOD plays, not the song: a note-on on a row boundary is written
+        there, one between rows lands up to half a row off it (rounded, or a frame-timed EDx),
+        and two in one row are pushed a row apart.  A row of margin on every note made each
+        Green Hill drum sound 50 ms longer than any note plays it (250 ms for 200 ms hits).
         """
         if self.tick_secs is None:
             return
         plan, smap = self.plan, source_map(self.song)
-        margin = int(getattr(self.config, "ticks_per_row", 1)) or 1
+        row = (int(getattr(self.config, "ticks_per_row", 1)) or 1) * self.song.header.tempo_divider
+
+        def off_grid(t: int) -> float:
+            return 0.0 if t % row == 0 else row / 2
+
         mixes = {c.inst: c for c in plan.composites.values() if c.fm is None}
         onsets: dict[str, list[int]] = {}
         for (src, tick), inst in plan.ticks.items():
@@ -1112,8 +1121,11 @@ class _Planner:
             ticks = onsets[src]
             i = bisect.bisect_right(ticks, tick)
             secs = self.tick_secs(tick)
-            end = (plan.ends.get((src, tick), tick) - tick + margin) * secs
-            nxt = (ticks[i] - tick + margin) * secs if i < len(ticks) else math.inf
+            end = (plan.ends.get((src, tick), tick) - tick + off_grid(tick)) * secs
+            nxt = math.inf
+            if i < len(ticks):
+                gap = ticks[i] - tick + off_grid(tick) + off_grid(ticks[i])
+                nxt = (max(gap, 2 * row) if ticks[i] // row == tick // row else gap) * secs
 
             # A note triggered above the mix's own note plays its bytes that much faster
             own = c.note if c.note is not None else c.base

@@ -187,8 +187,11 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     end_level = mean + slope * (n_ref - 1 - mt)
     residual = [v - (mean + slope * (i - mt)) for i, v in enumerate(ref)]
     lo, hi = end_level + min(residual) - flat_db, end_level + max(residual) + flat_db
+    # From the reference span's end back, the span's own windows included: a decaying voice's
+    # span sits above the band at its start, and a loop there froze that level (the Title
+    # Screen's voice $01 looped at 0.2 s, 7 dB above where its longest note ends)
     flat = 0
-    for i in range(ref_w - span_w - 1, -1, -1):
+    for i in range(ref_w - 1, -1, -1):
         if not lo <= env[i] <= hi:
             flat = i + 1
             break

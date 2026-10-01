@@ -99,6 +99,12 @@ voice_map:
       high: D4            # source 35
       mod_instrument: 5   # fm_voice1_lo.raw (root A1)
       root: A1
+      loop_drift_db: 6    # voice $01 decays the whole note (D2R): at 1 dB it holds the closing A1's
+                          # decay to 0.9 s (12 KB); at 6 it loops 0.2 s in (3 KB), the closing
+                          # chord's last 1.5 s held ~8 dB above the hardware, as before 2026-10-01.
+                          # The FM4+FM3 closing chord (merged slot 15) takes it too: 14 -> 6.6 KB.
+                          # Not on the FM4+FM3 group: at 9 dB there the $02 stab in slot $E looped
+                          # half as long, a buzz; above 6 here the bass loops 42 ms in, its attack
 
   # Voice $02 — harmony chord stabs (FM3/FM4 main melody only)
   2:

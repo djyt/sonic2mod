@@ -238,7 +238,7 @@ mod_pattern_breaks:
 
 
 merge_twins: always             # one mix per chord shape, even with slots to spare (the lead chord's twins: 7 KB)
-loop_drift_db: 12               # loops may freeze 12 dB above the settled level: shorter samples
+loop_drift_db: 20               # loops may freeze 12 dB above the settled level: shorter samples
 merge_max_synth_shift: 0        # render every sample at its root pitch: half the bytes of an octave up
 
 
@@ -316,7 +316,7 @@ merge_patterns:
         cut_primary: true
         mod_channel: 3
         mix_note: F2         # chime mixes at 11 kHz instead of 21
-        max_composites: 3    # two more chords are one note each (0.4 % of the song, 5.6 KB)
+        #max_composites: 3    # two more chords are one note each (0.4 % of the song, 5.6 KB)
         
         
     # --- Pattern $0D-$0F ---------------------------------------------------------------------------      
@@ -345,7 +345,8 @@ merge_patterns:
       - primary: FM2
         followers: [PSG1]
         mod_channel: 2
-        mix_note: F2         # bass+chime mixes at 11 kHz (the bass notes here are short)
+        #mix_note: F2         # bass+chime mixes at 11 kHz (the bass notes here are short)
+        mix_note: C2         # bass+chime mixes at 11 kHz (the bass notes here are short)
         max_composites: 2    # the 18 notes of the two common chords; five more are one note each (23 KB)
 
         # Channel 3: Chords

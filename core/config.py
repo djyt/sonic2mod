@@ -456,8 +456,28 @@ def _psg_volume_mode(value) -> str:
     return v
 
 
+# settings.yaml `samples:` keys; each was top level before it
+SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "sustain_loops", "loop_drift_db",
+               "treble_shelf_db", "treble_shelf_hz", "resample_taps")
+
+
+def _samples_section(data: dict, filepath: str) -> dict:
+    """settings.yaml `samples:`.  A key still at the top level counts, with a warning; an unknown
+    one is an error (a typo would be ignored silently)."""
+    section = dict(data.get("samples") or {})
+    unknown = sorted(set(section) - set(SAMPLE_KEYS))
+    if unknown:
+        raise ValueError(f"{filepath}: unknown samples key(s): {', '.join(unknown)}")
+
+    for key in SAMPLE_KEYS:
+        if key in data and key not in section:
+            warnings.warn(f"{filepath}: {key} moved to samples.{key}", stacklevel=3)
+            section[key] = data[key]
+    return section
+
+
 def _max_sample_kb(data: dict, filepath: str) -> int:
-    """Top-level `max_sample_kb` of settings.yaml, validated (128 default)."""
+    """`samples.max_sample_kb` of settings.yaml, validated (128 default)."""
     kb = data.get("max_sample_kb", 128)
     try:
         sample_limit_bytes(kb)
@@ -466,11 +486,19 @@ def _max_sample_kb(data: dict, filepath: str) -> int:
     return kb
 
 
+def _pt_zero_bytes(data: dict, filepath: str) -> bool:
+    """`samples.pt_zero_bytes` of settings.yaml: true (default) or false."""
+    v = data.get("pt_zero_bytes", True)
+    if not isinstance(v, bool):
+        raise ValueError(f"{filepath}: pt_zero_bytes must be true or false (got {v!r})")
+    return v
+
+
 SUSTAIN_LOOP_MODES = ("off", "merged", "all")
 
 
 def _sustain_loops(data: dict, filepath: str) -> str:
-    """Top-level `sustain_loops` of settings.yaml: off | merged (default) | all."""
+    """`samples.sustain_loops` of settings.yaml: off | merged (default) | all."""
     v = str(data.get("sustain_loops", "merged")).lower()
     if v not in SUSTAIN_LOOP_MODES:
         raise ValueError(f"{filepath}: sustain_loops must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
@@ -500,7 +528,7 @@ DEFAULT_AMIGA_CLOCK = 3_546_895
 
 
 def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool = False) -> int:
-    """A top-level settings.yaml count: an integer >= 1 (even when `even`)."""
+    """A settings.yaml count in `data`: an integer >= 1 (even when `even`)."""
     try:
         v = int(data.get(key, default))
     except (TypeError, ValueError) as e:
@@ -525,7 +553,7 @@ def _psg_oversample(data: dict, section: dict, filepath: str) -> int:
 
 
 def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
-    """Top-level `treble_shelf_db` / `treble_shelf_hz` of settings.yaml: (gain, corner) of the
+    """`samples.treble_shelf_db` / `treble_shelf_hz` of settings.yaml: (gain, corner) of the
     optional high shelf on every synthesised render (core.pcm.high_shelf); 0 dB = off."""
     try:
         return float(data.get("treble_shelf_db", 0.0)), float(data.get("treble_shelf_hz", DEFAULT_SHELF_HZ))
@@ -534,7 +562,7 @@ def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
 
 
 def _loop_drift_db(data: dict, filepath: str) -> float:
-    """Top-level `loop_drift_db` of settings.yaml (1.0 default): how far a looped sample's level
+    """`samples.loop_drift_db` of settings.yaml (1.0 default): how far a looped sample's level
     may sit above where the instrument's longest note would have decayed to."""
     try:
         v = float(data.get("loop_drift_db", 1.0))
@@ -567,16 +595,16 @@ class PsgSynthesisSettings:
     # 2 dB/step law (same scheme as SynthesisSettings.fm_volume_mode).  "absolute": legacy —
     # volume = 64 × 10^(−2·att/20) × sample volume / 64, so a Cxx on nearly every PSG note.
     psg_volume_scaling: str = "baked"
-    max_sample_kb: int = 128         # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
-    # settings.yaml sustain_loops (top level): which builds cut each settled sample to a loop and
+    max_sample_kb: int = 128         # settings.yaml samples.max_sample_kb: 128 = the format's limit, 64 = ProTracker's
+    # settings.yaml samples.sustain_loops: which builds cut each settled sample to a loop and
     # end its notes with a release slide (core.loops) - "off", "merged" (--merged only), "all".
     sustain_loops: str = "merged"
-    loop_drift_db: float = 1.0       # settings.yaml loop_drift_db: dB a loop may freeze above the
+    loop_drift_db: float = 1.0       # settings.yaml samples.loop_drift_db: dB a loop may freeze above the
                                      # level the longest note would have decayed to (core.loops)
-    treble_shelf_db: float = 0.0     # settings.yaml treble_shelf_db: brightness shelf, 0 = off
-    resample_taps: int = DEFAULT_TAPS  # settings.yaml resample_taps: filter width, at the lower rate
+    treble_shelf_db: float = 0.0     # settings.yaml samples.treble_shelf_db: brightness shelf, 0 = off
+    resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps: filter width, at the lower rate
     psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_synthesis.oversample
-    treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml treble_shelf_hz: its corner
+    treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml samples.treble_shelf_hz: its corner
 
     @property
     def max_sample_bytes(self) -> int:
@@ -610,7 +638,8 @@ class PsgSynthesisSettings:
                     stacklevel=2,
                 )
         _psg_sd = s.get("sustain_duration", 1.0)
-        shelf_db, shelf_hz = _treble_shelf(data, filepath)
+        smp = _samples_section(data, filepath)
+        shelf_db, shelf_hz = _treble_shelf(smp, filepath)
         return cls(
             enabled=s.get("enabled", False),
             clock_rate=s.get("clock_rate", 3_579_545),
@@ -618,12 +647,12 @@ class PsgSynthesisSettings:
             sustain_duration=_psg_sd if _psg_sd == "auto" else float(_psg_sd),
             release_padding=s.get("release_padding", 0.2),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
-            max_sample_kb=_max_sample_kb(data, filepath),
-            sustain_loops=_sustain_loops(data, filepath),
-            loop_drift_db=_loop_drift_db(data, filepath),
+            max_sample_kb=_max_sample_kb(smp, filepath),
+            sustain_loops=_sustain_loops(smp, filepath),
+            loop_drift_db=_loop_drift_db(smp, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,
-            resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
+            resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
             psg_oversample=_psg_oversample(data, s, filepath),
         )
 
@@ -643,11 +672,11 @@ class SynthesisSettings:
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
-    max_sample_kb: int = 128          # settings.yaml max_sample_kb (top level): 128 = the format's limit, 64 = ProTracker's
-    sustain_loops: str = "merged"     # settings.yaml sustain_loops (top level), as PsgSynthesisSettings
-    loop_drift_db: float = 1.0        # settings.yaml loop_drift_db (top level), as PsgSynthesisSettings
-    treble_shelf_db: float = 0.0      # settings.yaml treble_shelf_db / _hz, as PsgSynthesisSettings
-    resample_taps: int = DEFAULT_TAPS  # settings.yaml resample_taps, as PsgSynthesisSettings
+    max_sample_kb: int = 128          # settings.yaml samples.max_sample_kb: 128 = the format's limit, 64 = ProTracker's
+    sustain_loops: str = "merged"     # settings.yaml samples.sustain_loops, as PsgSynthesisSettings
+    loop_drift_db: float = 1.0        # settings.yaml samples.loop_drift_db, as PsgSynthesisSettings
+    treble_shelf_db: float = 0.0      # settings.yaml samples.treble_shelf_db / _hz, as PsgSynthesisSettings
+    resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps, as PsgSynthesisSettings
     treble_shelf_hz: float = DEFAULT_SHELF_HZ
     # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
     # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
@@ -655,6 +684,9 @@ class SynthesisSettings:
     # ProTracker need), "loose" (always 3FF on the target's own instrument, as written before) or
     # "retrigger" (every no-attack note a plain note-on, as before 030ca81; the default).
     legato: str = "retrigger"
+    # settings.yaml samples.pt_zero_bytes: a one-shot sample's first word zeroed, since ProTracker
+    # replays it once the sample ends (core.mod.ModFile.zero_idle_words)
+    pt_zero_bytes: bool = True
 
     @property
     def max_sample_bytes(self) -> int:
@@ -734,7 +766,8 @@ class SynthesisSettings:
                 stacklevel=2,
             )
         _fm_sd = s.get("sustain_duration", 1.5)
-        shelf_db, shelf_hz = _treble_shelf(data, filepath)
+        smp = _samples_section(data, filepath)
+        shelf_db, shelf_hz = _treble_shelf(smp, filepath)
         return cls(
             enabled=s.get("enabled", False),
             mode=s.get("mode", "ym2612"),
@@ -743,15 +776,16 @@ class SynthesisSettings:
             sustain_duration=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
             release_padding=s.get("release_padding", 0.5),
             threads=s.get("threads", "normal"),
-            max_sample_kb=_max_sample_kb(data, filepath),
+            max_sample_kb=_max_sample_kb(smp, filepath),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
             fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
-            sustain_loops=_sustain_loops(data, filepath),
-            loop_drift_db=_loop_drift_db(data, filepath),
+            sustain_loops=_sustain_loops(smp, filepath),
+            loop_drift_db=_loop_drift_db(smp, filepath),
             legato=_legato(data, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,
-            resample_taps=_positive_int(data, "resample_taps", DEFAULT_TAPS, filepath, even=True),
+            resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
+            pt_zero_bytes=_pt_zero_bytes(smp, filepath),
         )
 
 

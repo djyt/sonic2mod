@@ -12,6 +12,10 @@ def row_to_bcd(row: int) -> int:
     return ((row // 10) << 4) | (row % 10)
 
 
+# The word ProTracker replays after a one-shot sample ends: its first two bytes
+_IDLE_WORD_BYTES = 2
+
+
 class ModSample:
     _name: str
     length: int
@@ -41,6 +45,13 @@ class ModSample:
             print(f"Warning: Volume {v} is invalid.")
             return
         self._volume = int(v)
+
+    def zero_idle_word(self) -> None:
+        """A one-shot's first word silenced.  ProTracker replays it once the sample ends, so
+        (-126, 126) there buzzes until the next note.  A looped sample replays its loop instead."""
+        if self.repeat_length > 1 or len(self.data) < _IDLE_WORD_BYTES:
+            return
+        self.data = bytes(_IDLE_WORD_BYTES) + self.data[_IDLE_WORD_BYTES:]
 
     def set_name(self, name: str) -> None: self._name = name[:21]
     def get_name(self): return self._name.ljust(21, ' ')
@@ -147,6 +158,11 @@ class ModFile:
             size = 2 * sample.length
             output += sample.data[:size].ljust(size, b"\0")
         return output
+
+    def zero_idle_words(self) -> None:
+        """Every one-shot sample's first word silenced (ModSample.zero_idle_word)."""
+        for sample in self.samples:
+            sample.zero_idle_word()
 
     def get_index(self):
         return self.cell_index(self._row, self._chan)

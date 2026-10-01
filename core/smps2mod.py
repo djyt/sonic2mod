@@ -748,6 +748,7 @@ class SmpsToModConverter:
         """The finished MOD: the song converted, then laid out.
 
             passes -> pattern breaks -> loop Bxx -> trailing patterns trimmed -> (merged) narrowed
+                   -> one-shots' first words zeroed (pt_zero_bytes)
 
         The loop's Bxx needs the post-break layout, so the order is fixed."""
         mod = self._convert_passes()
@@ -767,6 +768,11 @@ class SmpsToModConverter:
             if need < mod.CHANNELS:
                 self.infos.append({'type': 'narrowed', 'from': mod.CHANNELS, 'to': need})
                 mod.narrow_to(need)
+
+        # Silent once a one-shot ends: ProTracker replays its first word
+        zero_idle = self.synth.pt_zero_bytes if self.synth else True
+        if zero_idle:
+            mod.zero_idle_words()
         return mod
 
     def _convert_passes(self) -> ModFile:

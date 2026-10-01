@@ -231,7 +231,7 @@ YAML accepts integer (`vibrato: 12` → speed=1, depth=2), hex integer (`vibrato
 
 ### loop_drift_db / loop_min_ms — per-instrument sustain loops
 
-Where sustain loops are on (`sustain_loops` in settings.yaml; the merged build by default), an
+Where sustain loops are on (`samples.sustain_loops` in settings.yaml; the merged build by default), an
 FM sample is cut where its envelope settles plus one loop.  Two entry keys override how, for
 that instrument alone:
 
@@ -651,7 +651,7 @@ baselines and audits stay the ground truth.
   is rendered for the mixer and kept out of the table). Over
   budget, the least-played composites go (those whose primary instrument stays anyway first);
   set each group's `max_composites` so the groups' budgets fit the free slots.
-- With `sustain_loops` on in `settings.yaml` (the default for `--merged`), every looped sample
+- With `samples.sustain_loops` on in `settings.yaml` (the default for `--merged`), every looped sample
   is cut to its loop and every FM note ends with a release slide; see `docs/pipeline.md`
   § Sustain loops.
 

@@ -1,8 +1,12 @@
 # -------------------------------------------------------------------------------------------------
-# Sonic2MOD Global Settings
+# Regression baseline settings
 #
-# - These settings apply globally, but some can be overriden on a per-song, or even per-sample
-#   basis.
+# - tests/regression.py converts every case with this file, never configs/settings.yaml, so
+#   tuning a song by ear does not move the baselines.  tests/baselines/manifest.yaml records the
+#   hash of this file each baseline was made with.
+# - State every key configs/settings.yaml has (the test refuses to run otherwise): a key left to
+#   the code's default is not recorded here.
+# - Values are chosen for coverage, not taste: every code path on.
 # -------------------------------------------------------------------------------------------------
 
 fm_synthesis:
@@ -36,7 +40,7 @@ amiga_clock: 3546895        # PAL Amiga (Paula) clock: a MOD note's rate is this
 # -------------------------------------------------------------------------------------------------
 
 samples:
-  max_sample_kb: 64         # Maximum Sample Length: 64 - Amiga ProTracker | 128 -  Modern Trackers
+  max_sample_kb: 128        # 128: no song is cut by the limit, so a change in sample length shows
 
   # Zero a one-shot sample's first two bytes.  ProTracker replays them once the sample ends.
   # true  : silent after the sample ends

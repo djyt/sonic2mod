@@ -66,10 +66,16 @@ def chip_pitch(source_semitone: int, transpose: int, is_psg: bool) -> int:
             else source_semitone + transpose)
 
 
-def pan_is_hard(params: list) -> bool:
-    """True for smpsPan panLeft / panRight (params arrive as one 'panLeft, $00' string)."""
+def pan_side(params: list) -> str:
+    """The speaker an smpsPan sends the channel to: "L", "R", or "C" for both (params arrive
+    as one 'panLeft, $00' string)."""
     direction = str(params[0]).split(',')[0].strip().lower() if params else ''
-    return direction in ('panleft', 'panright')
+    return {'panleft': "L", 'panright': "R"}.get(direction, "C")
+
+
+def pan_is_hard(params: list) -> bool:
+    """True for smpsPan panLeft / panRight."""
+    return pan_side(params) != "C"
 
 
 def psg_range_entry(entries, key: int):
@@ -206,7 +212,7 @@ class DriverState:
     """Mutable SMPS track state, advanced one coordination flag at a time."""
 
     __slots__ = ("att", "config", "detune", "envelope", "hard_panned", "instrument", "is_psg",
-                 "noise_form", "psg_entries", "psg_entry", "psg_label", "tl", "transpose", "voice")
+                 "noise_form", "pan", "psg_entries", "psg_entry", "psg_label", "tl", "transpose", "voice")
 
     def __init__(self, config, *, is_psg: bool, transpose: int = 0,
                  volume: int = 0, instrument: int = 0):
@@ -216,6 +222,7 @@ class DriverState:
         self.tl = 0 if is_psg else volume   # YM2612 TL offset, 0-127
         self.att = volume if is_psg else 0  # SN76489 attenuation, 0-15
         self.hard_panned = False
+        self.pan = "C"                      # smpsPan: "L", "R" or "C"
         self.detune = 0                     # smpsDetune / smpsAlterNote: raw FNUM (PSG: divider) offset
         self.voice: int | None = None       # smpsSetvoice index
         self.instrument = instrument        # MOD instrument slot currently routed to
@@ -262,7 +269,8 @@ class DriverState:
                 self.tl = max(0, min(FM_TL_SILENT, self.tl + delta))
 
         elif kind == 'smpsPan':
-            self.hard_panned = pan_is_hard(effect.params)
+            self.pan = pan_side(effect.params)
+            self.hard_panned = self.pan != "C"
 
         elif kind == 'smpsAlterNote':
             # SMPS_Track.Detune: added to the frequency word the driver writes (about 10 cents

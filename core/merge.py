@@ -1125,8 +1125,11 @@ class _Planner:
         plan, config = self.plan, self.config
 
         # The group budgets first (max_composites): a composite over budget hands its notes back
-        # to the primary's own instrument, which the unused scan must then count as played
+        # to the primary's own instrument, which the unused scan must then count as played -
+        # unless a same-shape survivor takes them now, before that scan (the Title Screen's kick
+        # sample stayed installed with no note playing it once its one-note mix went)
         _cap_composites(plan, config)
+        stand_in(plan)
 
         # merge_twins: always: every same-shape twin gives its notes to the one kept, slots or no
         if getattr(config, "merge_twins", "short") == "always":

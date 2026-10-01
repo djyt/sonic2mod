@@ -158,3 +158,10 @@ merge:
     followers: [FM3]
   - primary: DAC
     followers: [PSG3]
+    # Kicks carry the short hat (fill 3, 50 ms), snares the long one (fill 12, 200 ms): two mixes.
+    # The other three were one note each, 18 KB, differing only in where the hat is cut; they play
+    # the same-shape mix instead, all under the closing chord: pattern 2 row 18 hat 200 ms for 233,
+    # row 24 200 ms for 50, row 28 (the last kick) 50 for 250.  Raise the cap to keep one by ear.
+    # merge_twins: always would give every kick the long hat.
+    max_composites: 2
+    limit_db: 4             # the kick / snare + hat peaks limited (0.8 dB), not each mix turned down

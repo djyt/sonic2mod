@@ -40,7 +40,7 @@ from .levels import (
     psg_att_to_mod,
 )
 from .loops import FLAT_DB, SustainLoop
-from .merge import NO_SLOT, Composite, build_merge_plan, mix_pcm_composites
+from .merge import NO_SLOT, Composite, MergePlan, build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, apply_pattern_breaks, row_to_bcd
 from .pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, max_sustain_secs, peak, saturate, signed8, to_int8
 from .resample import DEFAULT_TAPS
@@ -192,6 +192,7 @@ class SmpsToModConverter:
         self._release: dict[int, float | None] = {}
         self._release_slides = False       # end FM notes with a volume slide instead of C00
         self._pending_sustain_short: dict[tuple[str, int], dict] = {}
+        self._merge: MergePlan | None = None   # the merged build's plan; set by convert() (_build_merge_plan)
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
         self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
         self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
@@ -2395,12 +2396,15 @@ class SmpsToModConverter:
             slot = self.mod.free_effect_channel(0, 0, order)
             if slot is None:
                 # Take a leading rest's C00 (a cell with no note); a sample restart (EDx)
-                # or a note's own command stays.
+                # or a note's own command stays.  Worth a warning only where the song loops
+                # to row 0, as in _place_leading_rests: a song that ends (smpsStop, no jump)
+                # has keyed every track off before the player wraps (the Title Screen).
                 for ch in order:
                     if not self.mod.note_at(0, 0, ch) and self.mod.effect_at(0, 0, ch) == (0xC, 0):
                         slot = ch
-                        self._add_warning({'type': 'rest_no_slot', 'mod_channel': ch,
-                                           'channel': self._leading_rest_channels.get(ch, f'MOD channel {ch}')})
+                        if self._loop_target_tick() == 0:
+                            self._add_warning({'type': 'rest_no_slot', 'mod_channel': ch,
+                                               'channel': self._leading_rest_channels.get(ch, f'MOD channel {ch}')})
                         break
             if slot is None:
                 self._add_warning({'type': 'tempo_no_slot', 'pattern': 0, 'row': 0,

@@ -50,6 +50,11 @@ samples:
   #   off    : plain rounding; least noise on a sound that stays loud, a quiet tail steps
   dither: shaped
 
+  # Remove each synthesised render's DC offset (a 5 Hz high-pass), as the Mega Drive's AC-coupled
+  # output does.  Lopsided FM waveforms otherwise sit off zero: a click on every note-on and cut,
+  # and up to 1.5 dB of the sample's 8 bits.  Drums loaded from disk are left alone.
+  dc_block: true
+
   # Attempt to automatically loop sustained samples when their envelope settles.
   # Will also end affected samples with a volume slide (A0y), rather than a C00.
   #   off      : never

@@ -149,6 +149,7 @@ voice_map:
       high: B5
       mod_instrument: 9
       root: C2
+      #dither: flat          # Dither added noise/hiss
     - low:  C6
       high: B7
       mod_instrument: 8
@@ -160,6 +161,7 @@ voice_map:
       high: B7
       mod_instrument: 10
       root: C2
+      dither: off           # Dither added noise/hiss
 
   # $07 → bridge
   7:

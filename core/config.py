@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .mod import ModFile
-from .pcm import sample_limit_bytes
+from .pcm import DEFAULT_DITHER, DITHER_MODES, sample_limit_bytes
 from .resample import DEFAULT_TAPS
 from .tables import MOD_NOTE_MAP, ModNote, parse_smps_note, parse_synth_note, synth_note_name
 
@@ -35,6 +35,8 @@ class InstrumentRange:
     loop_min_ms: float | None = None     # its sustain loop is at least this long (core.loops' 30 ms
                                       # otherwise): a longer loop keeps a detuned voice's shimmer
                                       # moving where a short one freezes it into a buzz
+    dither: str | None = None            # this sample's quantisation (core.pcm.DITHER_MODES); None:
+                                      # settings.yaml samples.dither
 
 
 def _parse_vibrato(v) -> int:
@@ -49,6 +51,21 @@ def _parse_vibrato(v) -> int:
     if len(s) > 2:
         raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
     return (int(s[0], 16) << 4) | int(s[1], 16)
+
+
+def _mode_word(v) -> str:
+    """A mode setting's value as written: YAML 1.1 reads a bare `off` as false (and `on` as true)."""
+    if isinstance(v, bool):
+        return "on" if v else "off"
+    return str(v).lower()
+
+
+def _dither(v, context: str) -> str:
+    """A `dither` value: one of core.pcm.DITHER_MODES."""
+    mode = _mode_word(v)
+    if mode not in DITHER_MODES:
+        raise ValueError(f"{context}: dither must be one of {', '.join(DITHER_MODES)} (got {v!r})")
+    return mode
 
 
 def _opt(d: dict, key: str, parse_fn):
@@ -98,10 +115,11 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
     vibrato    = _opt(entry, 'vibrato',    _parse_vibrato)
     drift      = _opt(entry, 'loop_drift_db', lambda v: _drift_db(v, context))
     min_ms     = _opt(entry, 'loop_min_ms', lambda v: _loop_min_ms(v, context))
+    dither     = _opt(entry, 'dither', lambda v: _dither(v, context))
 
     return InstrumentRange(
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
-        vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms,
+        vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms, dither=dither,
     )
 
 
@@ -200,6 +218,8 @@ class MergeGroup:
     limit_db: float | None = None   # a mix of this group whose sum is past full scale has its peaks
                                 # limited, by up to this many dB, instead of the whole sound turned
                                 # down (core.pcm.limit_peaks); denser, a little transient distortion
+    dither: str | None = None   # this group's composites' quantisation (core.pcm.DITHER_MODES);
+                                # None: settings.yaml samples.dither
     loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
                                 # finished mix as a single voice's loop is (lossy: the chord's slow
                                 # movement freezes there); for a pitched primary
@@ -315,7 +335,8 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       loop_mix=bool(g.get('loop_mix', False)),
                       treble_shelf_db=_opt(g, 'treble_shelf_db', float),
                       treble_shelf_hz=_opt(g, 'treble_shelf_hz', float),
-                      limit_db=_opt(g, 'limit_db', lambda v: max(0.0, float(v))))
+                      limit_db=_opt(g, 'limit_db', lambda v: max(0.0, float(v))),
+                      dither=_opt(g, 'dither', lambda v: _dither(v, ctx)))
 
 
 @dataclass
@@ -368,6 +389,7 @@ class PsgInstrumentEntry:
     envelopes: dict[str, int] = field(default_factory=dict)   # psg_map only: {smpsPSGvoice label: MOD
                                              # instrument} — a noise-mode envelope that gets its own sample
                                              # (Scrap Brain's fTone_08); other labels play mod_instrument
+    dither: str | None = None                # as InstrumentRange.dither
 
 
 def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_voice_map entry") -> 'PsgInstrumentEntry':
@@ -398,6 +420,7 @@ def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_v
         envelope=v.get('envelope', default_envelope),
         base_volume=v.get('base_volume', 0),
         vibrato=pvm_vibrato,
+        dither=_opt(v, 'dither', lambda d: _dither(d, context)),
     )
 
 
@@ -457,7 +480,7 @@ def _psg_volume_mode(value) -> str:
 
 
 # settings.yaml `samples:` keys; each was top level before it
-SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "sustain_loops", "loop_drift_db",
+SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps")
 
 
@@ -499,7 +522,7 @@ SUSTAIN_LOOP_MODES = ("off", "merged", "all")
 
 def _sustain_loops(data: dict, filepath: str) -> str:
     """`samples.sustain_loops` of settings.yaml: off | merged (default) | all."""
-    v = str(data.get("sustain_loops", "merged")).lower()
+    v = _mode_word(data.get("sustain_loops", "merged"))
     if v not in SUSTAIN_LOOP_MODES:
         raise ValueError(f"{filepath}: sustain_loops must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
     return v
@@ -604,6 +627,7 @@ class PsgSynthesisSettings:
     treble_shelf_db: float = 0.0     # settings.yaml samples.treble_shelf_db: brightness shelf, 0 = off
     resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps: filter width, at the lower rate
     psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_synthesis.oversample
+    dither: str = DEFAULT_DITHER     # settings.yaml samples.dither (core.pcm.DITHER_MODES)
     treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml samples.treble_shelf_hz: its corner
 
     @property
@@ -654,6 +678,7 @@ class PsgSynthesisSettings:
             treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
             psg_oversample=_psg_oversample(data, s, filepath),
+            dither=_dither(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
         )
 
 
@@ -678,6 +703,7 @@ class SynthesisSettings:
     treble_shelf_db: float = 0.0      # settings.yaml samples.treble_shelf_db / _hz, as PsgSynthesisSettings
     resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps, as PsgSynthesisSettings
     treble_shelf_hz: float = DEFAULT_SHELF_HZ
+    dither: str = DEFAULT_DITHER      # settings.yaml samples.dither, as PsgSynthesisSettings
     # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
     # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
     # chip-pitch delta; after smpsSetvoice or with nothing sounding: a re-trigger; what FT2 clone and
@@ -786,6 +812,7 @@ class SynthesisSettings:
             treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
             pt_zero_bytes=_pt_zero_bytes(smp, filepath),
+            dither=_dither(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
         )
 
 
@@ -1150,6 +1177,7 @@ class ConversionConfig:
                 base_volume=psg_entry.get('base_volume', 0),
                 vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),
                 envelopes={str(label): inst for label, inst in raw_envs.items()},
+                dither=_dither(psg_entry['dither'], _ctx) if 'dither' in psg_entry else None,
             )
 
         # psg_form_map is deprecated — psg_map now serves this role

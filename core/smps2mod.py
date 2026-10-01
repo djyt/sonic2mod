@@ -42,7 +42,7 @@ from .levels import (
 from .loops import FLAT_DB, SustainLoop
 from .merge import NO_SLOT, Composite, build_merge_plan, mix_pcm_composites
 from .mod import ModFile, ModSample, apply_pattern_breaks, row_to_bcd
-from .pcm import INT8_PEAK, MAX_MOD_SAMPLE_BYTES, max_sustain_secs, peak, saturate, signed8, to_int8
+from .pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, max_sustain_secs, peak, saturate, signed8, to_int8
 from .resample import DEFAULT_TAPS
 from .smps_parser import SmpsChannel, SmpsSong
 from .tables import (
@@ -534,6 +534,19 @@ class SmpsToModConverter:
                 d['release'] = self._release[inst]
         return out
 
+    @property
+    def _dither(self) -> str:
+        """settings.yaml samples.dither: the quantisation of samples no entry or group overrides."""
+        return self.synth.dither if self.synth else DEFAULT_DITHER
+
+    def _entry_dithers(self) -> dict[int, str]:
+        """{instrument: dither} for every synthesised instrument whose entry says `dither:` (the
+        catalogues: what the generators render from); a mix falls back to its primary's."""
+        out = {i.inst: i.dither_mode for i in fm_catalogue(self.song, self.config).instruments.values()
+               if i.dither_mode}
+        out.update({i.inst: i.entry.dither for i in psg_catalogue(self.config).values() if i.entry.dither})
+        return out
+
     def _saturate_dac_samples(self) -> None:
         """Each `dac_samples` drum with a saturate_db (merge_saturate_db in the merged build)
         soft-clipped (core.pcm.saturate) and requantised to its full 8 bits: the same peak and
@@ -544,7 +557,7 @@ class SmpsToModConverter:
             if not db or sample is None or not sample.data:
                 continue
             shaped = saturate(signed8(sample.data), db)
-            sample.data = to_int8(shaped, INT8_PEAK / peak(shaped))
+            sample.data = to_int8(shaped, INT8_PEAK / peak(shaped), self._dither)
             self.infos.append({'type': 'dac_saturated', 'instrument': d.mod_instrument, 'name': d.name, 'db': db})
 
     def _synthesis_roots(self, kind: str) -> dict[int, tuple[int, int]]:
@@ -1477,7 +1490,8 @@ class SmpsToModConverter:
                                     padding_secs=(synth.release_padding if synth else 0.0),
                                     loop_drift_db=(synth.loop_drift_db if synth else FLAT_DB),
                                     taps=(synth.resample_taps if synth else DEFAULT_TAPS),
-                                    shelf_hz=(synth.treble_shelf_hz if synth else DEFAULT_SHELF_HZ)):
+                                    shelf_hz=(synth.treble_shelf_hz if synth else DEFAULT_SHELF_HZ),
+                                    dither=self._dither, entry_dithers=self._entry_dithers()):
             self._add_warning({'type': 'merge_missing_sample', 'channel': 'merge', **p})
         if banked:
             self._pack_merge_banks(banked, mix_raw, clock, max_bytes)
@@ -1510,7 +1524,7 @@ class SmpsToModConverter:
         segments = self._tempo_segments or [(0, self.song.header.tempo_modifier)]
         tick_secs = max(2.5 / self._bpm_for(m) for _, m in segments)
         for p in pack_banks(plan, self.config, self.mod, banked, plan.spare_slots, max_bytes, tick_secs, clock,
-                            raw=mix_raw):
+                            raw=mix_raw, dither=self._dither, entry_dithers=self._entry_dithers()):
             self._add_warning({'type': 'merge_bank_dropped', 'channel': p['primary'], 'extra_ctx': p['detail'], **p})
         for b in plan.banks:
             self.infos.append({'type': 'merge_bank', 'slot': b.slot, 'bytes': b.bytes, 'volume': b.volume,

@@ -1,116 +1,116 @@
 # Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 446aaedcd17e
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 continue_screen:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 7f81fa13c212
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 credits:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 73e5c8bc7af7
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 drowning:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: cf114edea1d7
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 ending_theme:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 93b1ada179f6
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 extra_life:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 75cf8d8fde34
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 final_zone:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 5e0891bc29c8
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 game_over:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: bcbd4475362c
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 ghz_lofi:
-  commit: 844d0a5-dirty
-  config: 9ee50e80b071
+  commit: b1643f4-dirty
+  config: 53f618153613
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 ghz_lofi_merged:
-  commit: 844d0a5-dirty
-  config: 9ee50e80b071
+  commit: b1643f4-dirty
+  config: 53f618153613
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 green_hill_zone:
-  commit: 844d0a5-dirty
-  config: 549ff3602d59
+  commit: b1643f4-dirty
+  config: 75f028a02e66
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 green_hill_zone_merged:
-  commit: 844d0a5-dirty
-  config: 549ff3602d59
+  commit: b1643f4-dirty
+  config: 75f028a02e66
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 invincibility:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 1060625605a3
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 lab_zone:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 41e940ca3268
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 marble_zone:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: d482e5ec44ee
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 robotnik:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: ba9cf65b557e
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 scrap_brain_zone:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 8ad5828e37e3
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 special_stage:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 6fb5f55ad7eb
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 spring_yard_zone:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 4cda745373c4
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 stage_clear:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: fe11ac4cc1d0
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 star_light_zone:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: be13041c56f5
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 title_screen:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 50e66d82b004
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450
 title_screen_merged:
-  commit: 844d0a5-dirty
+  commit: b1643f4-dirty
   config: 50e66d82b004
   date: '2026-10-01'
-  settings: 04f3881a69f1
+  settings: 6858be50a450

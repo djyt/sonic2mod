@@ -18,6 +18,16 @@ from pathlib import Path
 INT8_PEAK = 127.0
 INT16_PEAK = 32767.0
 
+# How a sample's 8-bit rounding error is spread (settings.yaml samples.dither, a `dither:` override)
+#   shaped  TPDF dither, first-order noise shaping: the noise pushed toward Nyquist, under a bright
+#           sound's treble.  A fading tail turns to faint hiss instead of stepping.  (default)
+#   flat    TPDF dither, unshaped: the noise even across the band.  A mellow sound has no treble to
+#           hide shaped noise behind (Green Hill voices $05 / $06: 6 dB less hiss above 4 kHz)
+#   off     Plain rounding: the least noise on a sound that stays loud; a quiet tail steps
+DITHER_SHAPED, DITHER_FLAT, DITHER_OFF = "shaped", "flat", "off"
+DITHER_MODES = (DITHER_SHAPED, DITHER_FLAT, DITHER_OFF)
+DEFAULT_DITHER = DITHER_SHAPED
+
 # A MOD sample header holds its length in 16-bit words, so one sample is at most this long
 # (128 KiB less one word).  Paula's length register is a word count too.
 MAX_MOD_SAMPLE_BYTES = 65535 * 2
@@ -187,20 +197,24 @@ def peak(mono: Sequence[float]) -> int:
     return int(max((abs(v) for v in mono), default=0))
 
 
-def to_int8(mono: Sequence[float], scale: float, dither: bool = True) -> bytes:
+def to_int8(mono: Sequence[float], scale: float, dither: str = DEFAULT_DITHER) -> bytes:
     """Scale and quantise a raw mono list into signed 8-bit PCM (2's complement via & 0xFF).
 
-    The quantiser adds TPDF dither with first-order noise shaping, the same treatment
-    sfx/amiga.py gives the SFX exports, so a decaying tail fades into a faint hiss instead
-    of stepping through the last few levels.  The dither sequence is seeded from the
-    sample's length, so a render is byte-identical from run to run.
+    `dither` is one of DITHER_MODES.  The default (shaped TPDF) is the treatment sfx/amiga.py
+    gives the SFX exports.  The dither sequence is seeded from the sample's length, so a
+    render is byte-identical from run to run.
     """
+    if dither not in DITHER_MODES:
+        raise ValueError(f"dither must be one of {', '.join(DITHER_MODES)} (got {dither!r})")
+    shaped, dithered = dither == DITHER_SHAPED, dither != DITHER_OFF
+
     rng = random.Random(len(mono))
     out = bytearray(len(mono))
     err = 0.0
     for i, v in enumerate(mono):
-        x = v * scale - err
-        d = x + (rng.random() - rng.random()) if dither else x
+        # Shaped: last sample's error fed back, so the noise rises with frequency
+        x = v * scale - err if shaped else v * scale
+        d = x + (rng.random() - rng.random()) if dithered else x
         q = math.floor(d + 0.5)
         if q > 127:
             q = 127

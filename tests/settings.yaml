@@ -47,6 +47,13 @@ samples:
   # false : the first word repeats until the next note (a buzz or DC step)
   pt_zero_bytes: true
 
+  # How each sample's 8-bit rounding error is spread.  A voice_map / psg_map / psg_voice_map entry
+  # or a merge group may override it with its own `dither:`.
+  #   shaped : noise pushed to the top of the band, under a bright sound's treble   [default]
+  #   flat   : noise even across the band; less hiss on a mellow sound
+  #   off    : plain rounding; least noise on a sound that stays loud, a quiet tail steps
+  dither: shaped
+
   # Attempt to automatically loop sustained samples when their envelope settles.
   # Will also end affected samples with a volume slide (A0y), rather than a C00.
   #   off      : never

@@ -33,6 +33,39 @@ DEFAULT_DITHER = DITHER_SHAPED
 MAX_MOD_SAMPLE_BYTES = 65535 * 2
 
 
+# The DC blocker's corner.  The Mega Drive's output is AC-coupled: a lopsided FM waveform (feedback)
+# reaches the speaker centred, but a render keeps its offset (GHZ lofi: up to -24 of 127, a click on
+# every note-on and cut, 1.5 dB of the sample's 8 bits).  5 Hz leaves the bass alone: at 20 Hz bass
+# voices read 1-2 dB low against the VGZs (Robotnik, Drowning, Lab Zone); at 5 Hz an offset is down
+# to a third in 50 ms
+DC_BLOCK_HZ = 5.0
+
+
+def dc_block(samples: Sequence[float], rate: int, cutoff: float = DC_BLOCK_HZ,
+             keep_silent_tail: bool = False) -> list[float]:
+    """`samples` with DC and sub-audio drift removed: a one-pole high-pass at `cutoff`.
+
+    Preferred over subtracting the mean: a render starting in silence stays at zero, where a
+    mean subtraction would push it off zero and click.  `keep_silent_tail`: past the input's
+    last sound the output is zero too.  The filter's correction only decays toward zero there,
+    which kept a render's padding from being trimmed (Green Hill's hat: 8.4 KB -> 14.9 KB).
+    """
+    if not samples:
+        return []
+    r = 1.0 - (2.0 * math.pi * cutoff / rate)
+    out = [0.0] * len(samples)
+    x1 = y1 = 0.0
+    for i, x in enumerate(samples):
+        y = x - x1 + r * y1
+        out[i] = y
+        x1, y1 = x, y
+
+    if keep_silent_tail:
+        end = len(trim_trailing_silence(samples))
+        out[end:] = [0.0] * (len(out) - end)
+    return out
+
+
 def high_shelf(samples: Sequence[float], rate: int, freq_hz: float, gain_db: float) -> list[float]:
     """`samples` with everything above `freq_hz` raised `gain_db` (RBJ high shelf, slope 1).
 

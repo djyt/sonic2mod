@@ -30,7 +30,7 @@ from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettin
 from core.driver_tables import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from core.instruments import psg_catalogue
 from core.loops import PROBE_SECS, SustainLoop, apply_loop, find_sustain_loop
-from core.pcm import high_shelf, int8_to_raw16, max_sustain_secs, peak, to_int8
+from core.pcm import dc_block, high_shelf, int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.tables import PERIOD_TABLE, ModNote
 from sn76489.renderer import (
@@ -124,6 +124,9 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
             _check_warnings(caught, inst_num, verbose=verbose)
             if psg_synth.treble_shelf_db:
                 out = (high_shelf(out[0], out[1], psg_synth.treble_shelf_hz, psg_synth.treble_shelf_db), out[1])
+            # Centred (core.pcm.dc_block), before any loop is found in it
+            if psg_synth.dc_block:
+                out = (dc_block(out[0], out[1], keep_silent_tail=True), out[1])
             return out
 
         mono, rate = _render_tone(probe)
@@ -197,6 +200,8 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
         _check_warnings(caught, inst_num, verbose=verbose)
         if psg_synth.treble_shelf_db:
             mono = high_shelf(mono, rate, psg_synth.treble_shelf_hz, psg_synth.treble_shelf_db)
+        if psg_synth.dc_block:
+            mono = dc_block(mono, rate, keep_silent_tail=True)
 
     else:
         if verbose:

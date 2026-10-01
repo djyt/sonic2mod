@@ -166,7 +166,7 @@ voice_map:
       high: B7
       mod_instrument: 10
       root: C2
-      dither: off           # a mellow voice: shaped dither's noise sat above 6 kHz, 2 dB under it
+      dither: off           # Dither added noise/hiss
   # $07 → bridge
   7:
     - low:  C5

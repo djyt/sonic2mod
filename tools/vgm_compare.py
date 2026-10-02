@@ -335,24 +335,17 @@ def auto_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float = 3.0
 # Per-instrument levels
 # ---------------------------------------------------------------------------
 
-def mod_note_events(mod: ModImage, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]], float]:
-    """({channel: [(time s, instrument, Cxx value or None)]}, {instrument: (name, volume)}, length s).
-
-    Follows Bxx / Dxx and stops at the song loop, like the player does on one pass.
-    """
+def mod_note_events(mod: ModImage, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]]]:
+    """({channel: [(time s, instrument, Cxx value or None)]}, {instrument: (name, volume)}) over the
+    pass vgm_pitch_audit.mod_pass walks, so its notes and the pitch timeline share one clock."""
     samples = {i: (s.name, s.volume) for i, s in enumerate(mod.samples, 1) if s.length}
     events: dict[int, list[tuple]] = {c: [] for c in range(mod.channels)}
-    bpm, now = 125, 0.0
-    for _pattern, _row, cells in mod.play_rows():
+    rows, _end = vgm_pitch_audit.mod_pass(mod, speed)
+    for now, bpm, cells in rows:
         for c, (period, ins, eff, par) in enumerate(cells):
-            if eff == 0xF and par:
-                bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
             if period and ins:
-                # EDx: the note starts x MOD ticks into the row
-                late = (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
-                events[c].append((now + late, ins, par if eff == 0xC else None))
-        now += speed * 2.5 / bpm
-    return events, samples, now
+                events[c].append((now + vgm_pitch_audit.edx_delay(eff, par, bpm), ins, par if eff == 0xC else None))
+    return events, samples
 
 
 _LEVEL_SPAN = 0.6            # seconds of a note that count towards its level
@@ -923,14 +916,14 @@ def _note_times(per_ch: dict[str, list], names: list[str], rows: list[tuple], rd
     return note_times
 
 
-def _mod_events(cfg: ConversionConfig, mod_path: Path) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]], float]:
+def _mod_events(cfg: ConversionConfig, mod: ModImage) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]]]:
     """mod_note_events, a detune variant (core.plan.detune) played as its base: its sample a few cents
     off, at its volume."""
-    events_by_chan, samples, mod_end = mod_note_events(read_mod(mod_path), cfg.target_speed)
+    events_by_chan, samples = mod_note_events(mod, cfg.target_speed)
     if cfg.detune_plan is not None:
         base_of = cfg.detune_plan.base_of
         events_by_chan = {c: [(t, base_of(ins), cxx) for t, ins, cxx in evs] for c, evs in events_by_chan.items()}
-    return events_by_chan, samples, mod_end
+    return events_by_chan, samples
 
 
 def _print_instrument_levels(lev: dict) -> None:
@@ -1131,7 +1124,8 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     offset_auto = offset is None
     chip_tl, chip_end = vgm_pitch_audit.chip_timeline(raw)
-    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(read_mod(mod_path), cfg)
+    mod = read_mod(mod_path)
+    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod, cfg)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
     print()
     res: dict = {
@@ -1160,12 +1154,12 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     # Per-instrument levels and onsets, against the MOD's notes as one pass plays them
     note_times = _note_times(per_ch, names, rows, rd)
-    events_by_chan, samples, pass_end = _mod_events(cfg, mod_path)
+    events_by_chan, samples = _mod_events(cfg, mod)
     lev = instrument_levels(note_times, {n: chan_of[n] for n in note_times}, events_by_chan, samples,
-                            pass_end, rd.vgm_st, rd.mod_st, offset)
+                            mod_end, rd.vgm_st, rd.mod_st, offset)
     res["instrument_levels"] = lev
     _print_instrument_levels(lev)
-    _report_onsets(names, note_times, events_by_chan, chan_of, offset, pass_end, rd, res)
+    _report_onsets(names, note_times, events_by_chan, chan_of, offset, mod_end, rd, res)
 
     if "NOISE" in names:
         _report_noise(rd, offset, res)

@@ -68,6 +68,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
+from core.mod import ModImage, isolate_channel, read_mod
 from tools import vgm_pitch_audit
 from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, parse_vgm
 
@@ -84,9 +85,6 @@ _VGM_CHANNELS = {
     "PSG1": (_YM_ALL, _SN_ALL & ~0x1), "PSG2": (_YM_ALL, _SN_ALL & ~0x2),
     "PSG3": (_YM_ALL, _SN_ALL & ~0x4), "NOISE": (_YM_ALL, _SN_ALL & ~0x8),
 }
-_MOD_FORMAT_CHANNELS = {"M.K.": 4, "M!K!": 4, "6CHN": 6, "8CHN": 8, "10CH": 10, "12CH": 12, "16CH": 16}
-
-
 # ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
@@ -166,32 +164,6 @@ def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path
         print(f"  rendered VGM {name}")
 
 
-def isolate_mod(data: bytes, keep_ch: int | None) -> bytes:
-    """Return a copy of the MOD with every channel except keep_ch stripped of notes.
-
-    Global flow effects (Fxx speed/tempo, Bxx jump, Dxx break) are kept on all
-    channels so timing and song structure are unchanged.
-    """
-    if keep_ch is None:
-        return data
-    b = bytearray(data)
-    nch = _MOD_FORMAT_CHANNELS.get(data[1080:1084].decode("ascii", "replace"), 4)
-    positions = data[952:952 + data[950]]
-    npat = (max(positions) + 1) if positions else 0
-    for p in range(npat):
-        for r in range(64):
-            for c in range(nch):
-                if c == keep_ch:
-                    continue
-                off = 1084 + (p * 64 + r) * nch * 4 + c * 4
-                eff = b[off + 2] & 0x0F
-                if eff in (0xF, 0xB, 0xD):
-                    b[off], b[off + 1], b[off + 2] = 0, 0, eff
-                else:
-                    b[off:off + 4] = b"\0\0\0\0"
-    return bytes(b)
-
-
 def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) -> None:
     if shutil.which("ffmpeg") is None:
         raise SystemExit("ERROR: ffmpeg not found on PATH")
@@ -205,7 +177,7 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
     def render(item: tuple[str, int | None]) -> tuple[str, str | None]:
         name, ch = item
         iso = outdir / f"_mod_{name}.mod"
-        iso.write_bytes(isolate_mod(data, ch))
+        iso.write_bytes(isolate_channel(data, ch))
         wav = outdir / f"mod_{name}.wav"
         r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "libopenmpt",
                             "-sample_rate", str(SR), "-i", str(iso), "-ar", str(SR), "-ac", "2", str(wav)],
@@ -361,49 +333,23 @@ def auto_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float = 3.0
 # Per-instrument levels
 # ---------------------------------------------------------------------------
 
-def mod_note_events(mod: bytes, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]], float]:
+def mod_note_events(mod: ModImage, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]], float]:
     """({channel: [(time s, instrument, Cxx value or None)]}, {instrument: (name, volume)}, length s).
 
     Follows Bxx / Dxx and stops at the song loop, like the player does on one pass.
     """
-    nch = _MOD_FORMAT_CHANNELS.get(mod[1080:1084].decode("ascii", "replace"), 4)
-    order = list(mod[952:952 + mod[950]])
-    samples = {}
-    for i in range(31):
-        h = mod[20 + 30 * i:50 + 30 * i]
-        if int.from_bytes(h[22:24], "big"):
-            samples[i + 1] = (h[:22].split(b"\0")[0].decode("ascii", "replace"), h[25])
-    events: dict[int, list[tuple]] = {c: [] for c in range(nch)}
-    bpm, now, posi, row = 125, 0.0, 0, 0
-    seen: set[tuple[int, int]] = set()
-    while posi < len(order) and (posi, row) not in seen:
-        seen.add((posi, row))
-        base = 1084 + (order[posi] * 64 + row) * nch * 4
-        jump = brk = None
-        for c in range(nch):
-            b = mod[base + c * 4:base + c * 4 + 4]
-            period, ins, eff, par = ((b[0] & 15) << 8) | b[1], (b[0] & 0xF0) | (b[2] >> 4), b[2] & 15, b[3]
+    samples = {i: (s.name, s.volume) for i, s in enumerate(mod.samples, 1) if s.length}
+    events: dict[int, list[tuple]] = {c: [] for c in range(mod.channels)}
+    bpm, now = 125, 0.0
+    for _pattern, _row, cells in mod.play_rows():
+        for c, (period, ins, eff, par) in enumerate(cells):
             if eff == 0xF and par:
                 bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
-            elif eff == 0xB:
-                jump = par
-            elif eff == 0xD:
-                brk = (par >> 4) * 10 + (par & 15)
             if period and ins:
                 # EDx: the note starts x MOD ticks into the row
                 late = (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
                 events[c].append((now + late, ins, par if eff == 0xC else None))
         now += speed * 2.5 / bpm
-        if jump is not None:
-            if jump <= posi:
-                break
-            posi, row = jump, brk or 0
-        elif brk is not None:
-            posi, row = posi + 1, brk
-        else:
-            row += 1
-            if row == 64:
-                posi, row = posi + 1, 0
     return events, samples, now
 
 
@@ -754,7 +700,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     offset_auto = offset is None
     chip_tl, chip_end = vgm_pitch_audit.chip_timeline(raw)
-    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod_path.read_bytes(), cfg)
+    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(read_mod(mod_path), cfg)
     if offset is None:
         # Note starts from the register log against the MOD's note rows: exact, and immune to the
         # envelope method's failure on sparse or tempo-drifting songs (Chaos Emerald +920 ms,
@@ -923,7 +869,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     if "DAC" in names:
         note_times["DAC"] = onsets(vgm["DAC"], thresh_db=-40, hold=0.08)
     src_of = dict(zip(names, chan_map, strict=True))
-    events_by_chan, samples, mod_end = mod_note_events(mod_path.read_bytes(), cfg.target_speed)
+    events_by_chan, samples, mod_end = mod_note_events(read_mod(mod_path), cfg.target_speed)
     if cfg.detune_plan is not None:
         # A detune variant (core.detune) is its base's sample a few cents off, at its volume
         base_of = cfg.detune_plan.base_of
@@ -1218,40 +1164,19 @@ _BLOCK_FLAG_DB = 2.0     # a column's block this far from the song's anchor is f
 _KEYON_SECS = 0.1        # the attack window a key-on's level is measured over
 
 
-def mod_pattern_spans(mod: bytes, speed: int = 6) -> list[tuple[int, float, float]]:
+def mod_pattern_spans(mod: ModImage, speed: int = 6) -> list[tuple[int, float, float]]:
     """[(pattern, start s, end s)] in play order on one pass (Bxx / Dxx followed, stopping at
     the song loop), timed as mod_note_events times its notes."""
-    nch = _MOD_FORMAT_CHANNELS.get(mod[1080:1084].decode("ascii", "replace"), 4)
-    order = list(mod[952:952 + mod[950]])
     spans: list[tuple[int, float, float]] = []
-    bpm, now, posi, row = 125, 0.0, 0, 0
-    seen: set[tuple[int, int]] = set()
-    while posi < len(order) and (posi, row) not in seen:
-        seen.add((posi, row))
-        if not spans or spans[-1][0] != order[posi] or row == 0:
-            spans.append((order[posi], now, now))
-        base = 1084 + (order[posi] * 64 + row) * nch * 4
-        jump = brk = None
-        for c in range(nch):
-            eff, par = mod[base + c * 4 + 2] & 15, mod[base + c * 4 + 3]
+    bpm, now = 125, 0.0
+    for pattern, row, cells in mod.play_rows():
+        if not spans or spans[-1][0] != pattern or row == 0:
+            spans.append((pattern, now, now))
+        for _period, _ins, eff, par in cells:
             if eff == 0xF and par:
                 bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
-            elif eff == 0xB:
-                jump = par
-            elif eff == 0xD:
-                brk = (par >> 4) * 10 + (par & 15)
         now += speed * 2.5 / bpm
         spans[-1] = (spans[-1][0], spans[-1][1], now)
-        if jump is not None:
-            if jump <= posi:
-                break
-            posi, row = jump, brk or 0
-        elif brk is not None:
-            posi, row = posi + 1, brk
-        else:
-            row += 1
-            if row == 64:
-                posi, row = posi + 1, 0
     return spans
 
 
@@ -1309,7 +1234,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
     `chip_names`: {source: the chip channel its render is named after} (PSG3 -> NOISE).
     Pooled notes (merge_fill, fill: true) sound on whatever column is silent: in no reference.
     """
-    spans = mod_pattern_spans(mod_path.read_bytes())
+    spans = mod_pattern_spans(read_mod(mod_path))
     layout = column_sources(cfg, sorted({p for p, _, _ in spans}))
     columns = sorted(layout)
     vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *set(chip_names.values())]}

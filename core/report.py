@@ -30,6 +30,7 @@ from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
+from .diagnostics import InfoKind, WarningKind
 from .driver_state import source_names
 from .pcm import MAX_MOD_SAMPLE_BYTES
 from .sample_audit import audit
@@ -84,7 +85,7 @@ def _ctx(w: dict) -> str:
 
 
 def _w_clamp(w: dict):
-    high = w['type'] == 'clamp_high'
+    high = w['type'] == WarningKind.CLAMP_HIGH
     src = w['src_name']
     ctx = w.get('extra_ctx', '') or ''
     if ctx and not ctx.startswith('form '):
@@ -252,26 +253,26 @@ def _w_merge_unspecified(w: dict):
                      f"nothing folds there", None)
 
 
-_WARNINGS: dict[str, Callable[[dict], tuple[str, str, str | None]]] = {
-    'clamp_high': _w_clamp, 'clamp_low': _w_clamp, 'map_gap': _w_map_gap,
-    'missing_source': _w_missing_source, 'rate3_synth_root': _w_rate3,
-    'tempo_no_slot': _w_tempo_no_slot, 'tempo_bpm_range': _w_tempo_bpm_range,
-    'pattern_overflow': _w_pattern_overflow, 'rest_no_slot': _w_rest_no_slot, 'loop_no_slot': _w_loop_no_slot,
-    'sustain_short': _w_sustain_short, 'sample_truncated': _w_truncated,
-    'noise_envelopes': _w_noise_envelopes, 'synth_root_ambiguous': _w_synth_root_ambiguous,
-    'detune_no_slot': _w_detune_no_slot,
-    'merge_lost': _w_merge_lost, 'merge_headroom': _w_merge_headroom,
-    'merge_unsupported': _w_merge_unsupported, 'merge_missing_sample': _w_merge_missing,
-    'merge_fill_lost': _w_merge_fill_lost, 'merge_dropped': _w_merge_dropped,
-    'merge_bank_dropped': _w_merge_bank_dropped, 'merge_bank_idle': _w_merge_bank_idle,
-    'merge_unspecified': _w_merge_unspecified,
+_WARNINGS: dict[WarningKind, Callable[[dict], tuple[str, str, str | None]]] = {
+    WarningKind.CLAMP_HIGH: _w_clamp, WarningKind.CLAMP_LOW: _w_clamp, WarningKind.MAP_GAP: _w_map_gap,
+    WarningKind.MISSING_SOURCE: _w_missing_source, WarningKind.RATE3_SYNTH_ROOT: _w_rate3,
+    WarningKind.TEMPO_NO_SLOT: _w_tempo_no_slot, WarningKind.TEMPO_BPM_RANGE: _w_tempo_bpm_range,
+    WarningKind.PATTERN_OVERFLOW: _w_pattern_overflow, WarningKind.REST_NO_SLOT: _w_rest_no_slot, WarningKind.LOOP_NO_SLOT: _w_loop_no_slot,
+    WarningKind.SUSTAIN_SHORT: _w_sustain_short, WarningKind.SAMPLE_TRUNCATED: _w_truncated,
+    WarningKind.NOISE_ENVELOPES: _w_noise_envelopes, WarningKind.SYNTH_ROOT_AMBIGUOUS: _w_synth_root_ambiguous,
+    WarningKind.DETUNE_NO_SLOT: _w_detune_no_slot,
+    WarningKind.MERGE_LOST: _w_merge_lost, WarningKind.MERGE_HEADROOM: _w_merge_headroom,
+    WarningKind.MERGE_UNSUPPORTED: _w_merge_unsupported, WarningKind.MERGE_MISSING_SAMPLE: _w_merge_missing,
+    WarningKind.MERGE_FILL_LOST: _w_merge_fill_lost, WarningKind.MERGE_DROPPED: _w_merge_dropped,
+    WarningKind.MERGE_BANK_DROPPED: _w_merge_bank_dropped, WarningKind.MERGE_BANK_IDLE: _w_merge_bank_idle,
+    WarningKind.MERGE_UNSPECIFIED: _w_merge_unspecified,
 }
 
 
 def warning_lines(warnings: list[dict]) -> dict[str, list[tuple[str, str | None]]]:
     """{check: [(headline, fix)]} for the converter's warnings; an unknown type is shown raw."""
     out: dict[str, list[tuple[str, str | None]]] = defaultdict(list)
-    folds = [w for w in warnings if w['type'] == 'merge_lost']
+    folds = [w for w in warnings if w['type'] == WarningKind.MERGE_LOST]
     if folds:
         parts = []
         for w in folds:
@@ -282,7 +283,7 @@ def warning_lines(warnings: list[dict]) -> dict[str, list[tuple[str, str | None]
                          + (nums or "[dim]vibrato differs[/dim]"))
         out['merge'].append((" · ".join(parts), None))
     for w in warnings:
-        if w['type'] == 'merge_lost':
+        if w['type'] == WarningKind.MERGE_LOST:
             continue
         fn = _WARNINGS.get(w['type'])
         if fn is None:
@@ -296,7 +297,7 @@ def warning_lines(warnings: list[dict]) -> dict[str, list[tuple[str, str | None]
 # ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 
-def _infos(rep: Report, kind: str) -> list[dict]:
+def _infos(rep: Report, kind: InfoKind) -> list[dict]:
     return [i for i in rep.converter.infos if i['type'] == kind]
 
 
@@ -373,7 +374,7 @@ def print_header(console: Console, rep: Report) -> None:
             settings += f" · treble {s.treble_shelf_db:+g} dB above {s.treble_shelf_hz:g} Hz"
     if rep.synth is not None:
         settings += f" · legato {rep.synth.legato} · player {rep.synth.player}"
-    loop = next((i for i in rep.converter.infos if i['type'] == 'loop_set'), None)
+    loop = next((i for i in rep.converter.infos if i['type'] == InfoKind.LOOP_SET), None)
     sample_bytes = sum(len(sm.data) for sm in rep.converter.mod.samples if sm is not None)
     out = (f"[cyan]{escape(rep.output_path)}[/cyan]  [bold]{rep.output_bytes / 1024:.0f} KB[/bold]  "
            f"[dim]samples {sample_bytes / 1024:.0f} K · patterns {(rep.output_bytes - sample_bytes) / 1024:.0f} K · "
@@ -391,7 +392,7 @@ def _check_summaries(rep: Report, rows: list[dict], sources: dict[int, dict]) ->
     """{check: (status markup, summary)} for the areas that are clean or carry only notes."""
     out: dict[str, tuple[str, str]] = {}
     b = rep.bpm
-    changes = len(_infos(rep, 'tempo_change'))
+    changes = len(_infos(rep, InfoKind.TEMPO_CHANGE))
     extra = f" · {changes} tempo change{'s' if changes != 1 else ''} (Fxx)" if changes else ""
     if b.get('exact') and abs(b.get('error_pct', 0.0)) >= _BPM_ERROR_PCT:
         better = b.get('better')
@@ -499,9 +500,9 @@ def sample_flags(rows: list[dict], warnings: list[dict]) -> dict[int, list[tuple
     (its "too short" left out: it cannot see note fills or a drum's own length)."""
     out: dict[int, list[tuple[str, str]]] = defaultdict(list)
     for w in warnings:
-        if w['type'] == 'sustain_short':
+        if w['type'] == WarningKind.SUSTAIN_SHORT:
             out[w['instrument']].append(("warn", f"short {w['need'] - w['have']:.2f} s"))
-        elif w['type'] == 'sample_truncated':
+        elif w['type'] == WarningKind.SAMPLE_TRUNCATED:
             out[w['instrument']].append(("warn", "cut at the limit"))
     for r in rows:
         for f in r['flags']:
@@ -597,12 +598,12 @@ def print_merge(console: Console, rep: Report) -> None:
     home = {c.source: c.mod_channel + 1 for c in cfg.channels}
     lost: dict[tuple[str, str], dict] = defaultdict(lambda: defaultdict(int))
     for w in rep.converter.warnings:
-        if w['type'] == 'merge_lost':
+        if w['type'] == WarningKind.MERGE_LOST:
             d = lost[(w['primary'], w.get('where', '').strip(" []"))]
             d['lost'] += w.get('orphans', 0)
             d['cut'] += w.get('held', 0) + w.get('truncated', 0) + w.get('solo_cut', 0)
     rows = []
-    for g in _infos(rep, 'merge_group'):
+    for g in _infos(rep, InfoKind.MERGE_GROUP):
         _name, pats = _where(g['label'])
         col = g['route'] + 1 if g.get('route') is not None else home.get(g['primary'])
         if not g.get('followers'):
@@ -616,7 +617,7 @@ def print_merge(console: Console, rep: Report) -> None:
         rows.append((pats, col, fold, comps, str(g['paired']), str(g.get('solo') or ""),
                      f"[red]{d['lost']}[/red]" if d.get('lost') else "[dim]—[/dim]",
                      f"[yellow]{d['cut']}[/yellow]" if d.get('cut') else "[dim]—[/dim]"))
-    for f in _infos(rep, 'merge_fill'):
+    for f in _infos(rep, InfoKind.MERGE_FILL):
         where = ", ".join(f"{n}→{ch}" for ch, n in sorted(f['targets'].items(), key=lambda kv: -kv[1]))
         rows.append(("", "", f"[bold]{f['source']}[/bold] [dim]fill: {where}[/dim]", "", str(f['placed']), "",
                      f"[red]{f['lost']}[/red]" if f['lost'] else "[dim]—[/dim]",
@@ -634,7 +635,7 @@ def print_merge(console: Console, rep: Report) -> None:
     t.add_column("Cut", justify="right")
     for r in sorted(rows, key=lambda r: (_pat_key(r[0]) if r[0] else (999, ""), r[1] or 99)):
         t.add_row(*((r[0],) if blocks else ()), str(r[1] or ""), *r[2:])
-    slots = next(iter(_infos(rep, 'merge_slots')), None)
+    slots = next(iter(_infos(rep, InfoKind.MERGE_SLOTS)), None)
     sub = ""
     if slots:
         gone = slots['wanted'] - slots['used'] - slots.get('banked', 0) - slots.get('stand_ins', 0)
@@ -647,20 +648,20 @@ def print_merge(console: Console, rep: Report) -> None:
     _section(console, "Merge", sub)
     console.print(Padding(t, (0, 0, 0, 2), expand=False))
     notes = [f"{i['notes']} notes play from a bank ({i['cuts']} cut where their sound ends)"
-             for i in _infos(rep, 'merge_bank_notes')]
+             for i in _infos(rep, InfoKind.MERGE_BANK_NOTES)]
     notes += [f"instrument{'s' if len(i['instruments']) != 1 else ''} {', '.join(str(x) for x in i['instruments'])} "
               f"not rendered (no note of this build plays {'them' if len(i['instruments']) != 1 else 'it'})"
-              for i in _infos(rep, 'merge_unused')]
+              for i in _infos(rep, InfoKind.MERGE_UNUSED)]
     notes += [f"rebuilt with merge_bank_slots {i['banks']} (slot {', '.join(map(str, i['slots']))} was idle)"
-              for i in _infos(rep, 'merge_bank_retry')]
+              for i in _infos(rep, InfoKind.MERGE_BANK_RETRY)]
     notes += [f"merge_bank_slots: auto → {i['reserve']} held back for {i['banks']} bank{'s' if i['banks'] != 1 else ''}"
               + (f" (built {i['passes']} times)" if i['passes'] > 1 else "")
-              for i in _infos(rep, 'merge_bank_slots')]
+              for i in _infos(rep, InfoKind.MERGE_BANK_SLOTS)]
     notes += [f"{i['cxx_moved']} banked notes' Cxx moved a row later (the attack row holds the 9xx)"
-              for i in _infos(rep, 'merge_bank_notes') if i.get('cxx_moved')]
-    notes += [f"{i['to']}-channel MOD: columns {i['to'] + 1}–{i['from']} were empty" for i in _infos(rep, 'narrowed')]
+              for i in _infos(rep, InfoKind.MERGE_BANK_NOTES) if i.get('cxx_moved')]
+    notes += [f"{i['after']}-channel MOD: columns {i['after'] + 1}–{i['before']} were empty" for i in _infos(rep, InfoKind.NARROWED)]
     notes += [f"limit_db: {i['composites']} mixes' peaks limited, up to {i['max_db']:.1f} dB"
-              for i in _infos(rep, 'merge_limited')]
+              for i in _infos(rep, InfoKind.MERGE_LIMITED)]
     for n in notes:
         console.print(Padding(Text(n, style="dim"), (0, 0, 0, 2), expand=False))
 
@@ -680,40 +681,40 @@ def detail_lines(infos: list[dict]) -> list[str]:
     out: list[str] = []
     for info in infos:
         t = info['type']
-        if t == 'loop_extended':
-            out.append(f"[dim]{info['label']}[/dim] loop extended {info['from']} → {info['to']} events")
-        elif t == 'rate3_divider':
+        if t == InfoKind.LOOP_EXTENDED:
+            out.append(f"[dim]{info['label']}[/dim] loop extended {info['before']} → {info['after']} events")
+        elif t == InfoKind.RATE3_DIVIDER:
             out.append(f"rate-3 noise inst {info['instrument']}: tone-2 divider {info['n']} "
                        f"[dim](n{info['note']} {info['transpose']:+d} in the driver's PSG table)[/dim]")
-        elif t == 'tempo_change':
+        elif t == InfoKind.TEMPO_CHANGE:
             out.append(f"tempo change at {info['pattern']:02X}:{info['row']:02d}: modifier {info['modifier']} → "
                        f"BPM {info['bpm']} [dim](exact {info['exact_bpm']:.2f})[/dim]")
-        elif t == 'tempo_div_change':
+        elif t == InfoKind.TEMPO_DIV_CHANGE:
             out.append(f"duration divider {info['divider']} for every track from row {info['row']}")
-        elif t == 'vibrato_rate_limit':
+        elif t == InfoKind.VIBRATO_RATE_LIMIT:
             out.append(f"vibrato {info['channel']}: {info['wanted_cycle_frames']}-frame cycle is faster than 4xy "
                        f"plays ({info['played_cycle_frames']:.1f})")
-        elif t == 'synth_roots':
+        elif t == InfoKind.SYNTH_ROOTS:
             out.append(f"synthesis pitches: {info['derived']} derived, {info['stated']} stated")
-        elif t == 'detune_variants':
+        elif t == InfoKind.DETUNE_VARIANTS:
             own = ", ".join(f"inst {i} {d:+d}" for i, d in sorted(info['own'].items()))
             if own:
                 out.append(f"detune rendered into the sample: {own}")
             for inst, base, d, n in info['variants']:
                 out.append(f"detune variant inst {inst}: inst {base} at {d:+d} FNUM [dim]({n} notes)[/dim]")
-        elif t == 'detune_ties':
+        elif t == InfoKind.DETUNE_TIES:
             out.append(f"ties retuned to their new detune: {info['placed']} E1x / E2x"
                        + (f" [dim]({info['skipped']} rows had no free effect slot)[/dim]" if info['skipped'] else ""))
-        elif t == 'synth_shift':
+        elif t == InfoKind.SYNTH_SHIFT:
             out.append(f"{escape(info['context'])}: rendered at {synth_note_name(info['synth_root'])}, "
                        f"{info['shift']:+d} semitones from its root (the rate carries it)")
-        elif t == 'noise_envelope':
+        elif t == InfoKind.NOISE_ENVELOPE:
             out.append(f"noise inst {info['instrument']}: envelope {info['envelope']} "
                        f"[dim]({'derived' if info['derived'] else 'stated'}, {info['notes']} notes)[/dim]")
-        elif t in ('auto_sustain_fm', 'auto_sustain_psg'):
-            kind = 'FM' if t == 'auto_sustain_fm' else 'PSG'
+        elif t in (InfoKind.AUTO_SUSTAIN_FM, InfoKind.AUTO_SUSTAIN_PSG):
+            kind = 'FM' if t == InfoKind.AUTO_SUSTAIN_FM else 'PSG'
             out.append(f"auto sustain {kind}: {info['shortest']}–{info['secs']} s over {info.get('instruments', 0)}")
-        elif t == 'merge_group' and info.get('followers'):
+        elif t == InfoKind.MERGE_GROUP and info.get('followers'):
             out.append(f"[bold]{escape(info['label'])}[/bold]: {info['paired']} folded into "
                        f"{len(info['composites'])} composites, {info['alone']} alone, {info.get('solo', 0)} solo")
             if info.get('unison'):
@@ -723,16 +724,16 @@ def detail_lines(infos: list[dict]) -> list[str]:
             for inst, notes, detail, made_for, others in info['composites']:
                 share = f" (made for {made_for})" if made_for else f" (also {', '.join(others)})" if others else ""
                 out.append(f"  [dim]inst {escape(str(inst)):>7} {notes:3d} notes  {escape(detail)}{escape(share)}[/dim]")
-        elif t == 'merge_bank':
+        elif t == InfoKind.MERGE_BANK:
             out.append(f"bank slot {info['slot']}: {len(info['members'])} sounds, {info['bytes'] / 1024:.1f} K "
                        f"at volume {info['volume']}")
             for offset, size, notes, detail in info['members']:
                 out.append(f"  [dim]9{offset >> 8:02X} {size:6d} bytes {notes:3d} notes  {escape(detail)}[/dim]")
-        elif t == 'merge_folds':
+        elif t == InfoKind.MERGE_FOLDS:
             out.append(f"[dim]{escape(info['pair'])}: {escape(info['what'])}[/dim]")
-        elif t == 'dac_saturated':
+        elif t == InfoKind.DAC_SATURATED:
             out.append(f"{info['name']} (inst {info['instrument']}): soft-clipped, body {info['db']:+g} dB at the same peak")
-        elif t == 'merge_unison_volume':
+        elif t == InfoKind.MERGE_UNISON_VOLUME:
             out.append(f"[dim]unison: inst {info['instrument']} baked {info['db']:+.1f} dB (volume {info['volume']})[/dim]")
     return out
 

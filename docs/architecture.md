@@ -63,7 +63,6 @@ Foundation module with no dependencies.
 - **`ModNote` enum**: Maps note names (C1–B3) to indices 0–35 into PERIOD_TABLE.
 - **`SMPS_NOTE_NAMES` dict**: Maps all SMPS note name strings to their byte values. Built from the `_smps2asm_inc.asm` enumeration: `nRst=$80`, `nC0=$81`, 12 semitones per octave through octave 7. Includes enharmonic aliases (`nDb0`=`nCs0`, `nF0`=`nEs0`, etc.) and `nMaxPSG`=`nA5` ($C6).
 - **`SMPS_DAC_NAMES` dict**: Sonic 1 DAC sample names to byte values: `dKick=$81`, `dSnare=$82`, `dTimpani=$83`, `dHiTimpani=$88`, `dMidTimpani=$89`, `dLowTimpani=$8A`, `dVLowTimpani=$8B`.
-- **`smps_note_to_mod_note(note_value, transpose)`**: Computes `semitone = (note_value - 0x81) + transpose`, clamps to 0–35, returns `ModNote`.
 - **`semitone_to_note_name(semitone)`** / **`synth_note_name(semitone)`**: the two note spellings. The first is the driver's (index 5 is `Es`), used for SMPS labels; the second is the one YAML configs use (`F`) and is the inverse of `parse_synth_note`. Anything writing a config must emit the second — keeping them apart matters, because `Es` is a valid SMPS label and not a valid config note.
 
 ### core/driver_tables.py
@@ -333,7 +332,9 @@ Per-song conversion configuration with YAML loading.
 
 Conversion engine: `SmpsToModConverter` orchestrates one conversion; each step lives in its own
 module and reports through one `Diagnostics` (core/diagnostics.py: warnings, de-duplicated, and
-infos, which core/report.py prints).
+infos, which core/report.py prints).  A record's kind is a `WarningKind` / `InfoKind` member
+(`diag.warn(WarningKind.CLAMP_HIGH, channel=..., ...)`); every `WarningKind` has its line and fix in
+core/report.py's `_WARNINGS` (tests/test_diagnostics_units.py checks it).
 
 ```
 SmpsToModConverter.convert()

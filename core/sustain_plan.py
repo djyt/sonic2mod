@@ -12,9 +12,9 @@ from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, psg_catalogue
 from .loops import SustainLoop
 from .merge import MergePlan
-from .pcm import max_sustain_secs
-from .smps_parser import SmpsSong
-from .tables import PERIOD_TABLE
+from .mod_limits import max_sustain_secs
+from .mod_notes import PERIOD_TABLE
+from .smps_song import SmpsSong
 from .timeline import Timeline
 
 _AUTO_SUSTAIN_CAP_SECS = 10.0

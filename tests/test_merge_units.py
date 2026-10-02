@@ -23,11 +23,11 @@ from typing import ClassVar
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.banks import ALIGN, pack_banks
 from core.config import MergeGroup, format_patterns, load_yaml, parse_patterns
 from core.config.entries import _parse_instrument_range, _parse_merge_group
 from core.loops import RELEASE_FLOOR_DB
 from core.merge import (
+    ALIGN,
     CHIP,
     MIX,
     Composite,
@@ -35,20 +35,21 @@ from core.merge import (
     MergePlan,
     MixLayerKey,
     NoteOn,
+    bank_reserve_wanted,
     composite_key,
     drop_composite,
     keyoff_secs,
     mix_pcm_composites,
+    pack_banks,
     stand_in,
     trigger_note,
     unison_gain_db,
 )
-from core.merge.build import bank_reserve_wanted
 from core.merge.mix import _cut_layer
 from core.merge.slots import _plan_slots, same_shape_twins
 from core.mod import ModFile, ModSample
+from core.mod_notes import PERIOD_TABLE
 from core.pcm import limit_peaks, saturate
-from core.tables import PERIOD_TABLE
 
 CLOCK = 3546895.0
 
@@ -563,7 +564,7 @@ class Narrowing(unittest.TestCase):
     def test_narrow_only_when_the_columns_beyond_are_empty(self):
         mod = ModFile(8)
         mod.set_channel(1)
-        from core.tables import ModNote
+        from core.mod_notes import ModNote
         mod.set_note(ModNote.C2, 1)
         self.assertEqual(mod.used_channels(), 2)
         mod.narrow_to(4)

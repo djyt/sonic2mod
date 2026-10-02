@@ -24,9 +24,9 @@ import yaml
 
 sys.path.insert(0, ".")
 from core.config import ChannelConfig, ConversionConfig
-from core.driver_state import source_map, walk_channel
+from core.driver_state import walk_channel
 from core.smps_parser import SmpsParser
-from core.tables import semitone_to_note_name, synth_note_name
+from core.tables import semitone_to_note_name, source_map, synth_note_name
 
 SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/credits_skeleton.yaml"
 OUT = "configs/13_credits.yaml"

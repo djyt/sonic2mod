@@ -31,11 +31,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from .levels import gain_to_db
-from .merge import Composite, MergePlan, composite_dither, drop_composite, stand_in
-from .mod import ModSample
-from .pcm import DEFAULT_DITHER, to_int8
-from .tables import PERIOD_TABLE
+from ..gain import gain_to_db
+from ..mod import ModSample
+from ..mod_notes import PERIOD_TABLE
+from ..pcm import DEFAULT_DITHER, to_int8
+from .mix import composite_dither
+from .model import Composite, MergePlan
+from .slots import drop_composite, stand_in
 
 MAX_OFFSET = 0xFF00      # the last sound start 9xx can name (xx × 256)
 ALIGN = 256              # a sound starts on a 9xx boundary

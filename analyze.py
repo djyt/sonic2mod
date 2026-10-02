@@ -34,15 +34,17 @@ from core.analysis import (
 from core.cli import branding, cli_console
 from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
 from core.driver_tables import carrier_names, psg_tone2_divider
-from core.levels import PSG_STEP_DB, TL_STEP_DB, db_to_mod_volume, fm_level_db
+from core.levels import PSG_STEP_DB, TL_STEP_DB, fm_level_db
 from core.mod import ModFile
+from core.mod_notes import PERIOD_TABLE, ModNote
+from core.mod_volume import db_to_mod_volume
 from core.smps_parser import SmpsParser
-from core.tables import PERIOD_TABLE, ModNote, synth_note_name
+from core.tables import synth_note_name
 
 console = cli_console(highlight=True)
 
 
-from core.levels import db_to_gain
+from core.gain import db_to_gain
 from core.version import get_version as _get_version
 
 _ALG_TOPOLOGY = {

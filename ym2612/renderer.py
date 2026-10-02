@@ -35,7 +35,7 @@ from core.driver_tables import FM_FREQUENCIES
 from core.pcm import normalize_int8
 from core.pcm import to_mono as _to_mono
 from core.resample import DEFAULT_TAPS, resample
-from core.smps_parser import SmpsVoice
+from core.smps_song import SmpsVoice
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2
 

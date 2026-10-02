@@ -30,9 +30,10 @@ from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettin
 from core.driver_tables import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from core.instruments import psg_catalogue
 from core.loops import PROBE_SECS, SustainLoop, apply_loop, find_sustain_loop
-from core.pcm import dc_block, high_shelf, int8_to_raw16, max_sustain_secs, peak, to_int8
+from core.mod_limits import max_sustain_secs
+from core.mod_notes import PERIOD_TABLE, ModNote
+from core.pcm import dc_block, high_shelf, int8_to_raw16, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
-from core.tables import PERIOD_TABLE, ModNote
 from sn76489.renderer import (
     note_to_psg_n,
     render_psg_noise_raw,

@@ -21,12 +21,14 @@ from .config import ChannelConfig, ConversionConfig, SynthesisSettings
 from .detune import DetunePlan, detune_cents
 from .diagnostics import Diagnostics, WarningKind
 from .driver_state import DriverState, ResolvedNote, walk_channel
+from .gain import db_to_gain
 from .instruments import fm_catalogue
-from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, fm_tl_to_mod, psg_att_to_mod
+from .level_plan import fm_tl_to_mod, psg_att_to_mod
 from .merge import Composite, MergePlan
 from .mod import ModFile
-from .smps_parser import SmpsChannel, SmpsSong
-from .tables import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
+from .mod_notes import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
+from .mod_volume import MOD_MAX_VOLUME, clamp_mod_volume
+from .smps_song import SmpsChannel, SmpsSong
 from .tables import semitone_to_note_name as _semitone_to_name
 from .timeline import Timeline
 from .vibrato import VibratoSpeed, vibrato_depth
@@ -245,7 +247,7 @@ class ChannelWriter:
             self._current_volume = round(fm_tl_to_mod(self._st.tl) * chan_cfg.volume / 64)
 
         # The sounding note, as _emit_volume and _release_rate read it: dB a unison chord adds
-        # to it (ResolvedNote.gain_db), and the banked composite it plays (core.banks, else
+        # to it (ResolvedNote.gain_db), and the banked composite it plays (core.merge.banks, else
         # None) - measured under its own id, released at its primary's rate
         self._note_gain = 0.0
         self._bank_member: Composite | None = None
@@ -451,7 +453,7 @@ class ChannelWriter:
         self._last_inst, self._last_vol = dac_inst, self._sample_volume(dac_inst)
         self._bank_member = plan.bank_members.get((self._cfg.source, tick)) if plan is not None else None
         if region is not None:
-            # A sound inside a sample bank (core.banks): start at its offset and cut the note
+            # A sound inside a sample bank (core.merge.banks): start at its offset and cut the note
             # once it is over, before the next sound in the slot
             offset, sound = region
             if offset:
@@ -535,7 +537,7 @@ class ChannelWriter:
         # A Cxx due on the attack row gives way to EDx when the note lasts into the next row:
         # the volume is then set there (_attack_commands).  Drowning FM4 pans every other note
         # hard, so half its notes carry a -3 dB Cxx, and all of them start a tick off the grid.
-        # A sound inside a sample bank (core.banks): the note starts with 9xx at its offset, so
+        # A sound inside a sample bank (core.merge.banks): the note starts with 9xx at its offset, so
         # the attack row's effect slot is the offset's
         self._bank_member = (plan.bank_members.get((self._cfg.source, tick))
                              if plan is not None and solo is None else None)

@@ -29,7 +29,7 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.driver_tables import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
-from core.smps_parser import SmpsVoice
+from core.smps_song import SmpsVoice
 from ym2612.wrapper import OPN2
 
 # The SMPS operator order comes from core.driver_tables, transcribed from

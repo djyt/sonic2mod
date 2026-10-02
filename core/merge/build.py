@@ -5,21 +5,22 @@ A composite's volume (its sample_list entry), in pipeline order:
     plan    the primary's own volume                          core.merge.build_merge_plan
     chip    x peak(all layers) / peak(primary layer)          MergedBuild.scale_chip_volumes
     mix     the normalised sum's level                        core.merge.mix_pcm_composites
-    bank    the loudest member's; the others scaled in bytes  core.banks.pack_banks
+    bank    the loudest member's; the others scaled in bytes  core.merge.banks.pack_banks
     chip    moved to the level its own notes play most        MergedBuild.bake_volumes
 
 A unison chord's primary instrument moves too (bake_volumes).
 """
 
-from ..banks import pack_banks
 from ..config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
-from ..levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, db_to_mod_volume, headroom_db
+from ..gain import db_to_gain
 from ..loops import FLAT_DB
 from ..mod import ModFile, ModSample
-from ..pcm import MAX_MOD_SAMPLE_BYTES
+from ..mod_limits import MAX_MOD_SAMPLE_BYTES
+from ..mod_volume import MOD_MAX_VOLUME, clamp_mod_volume, db_to_mod_volume, headroom_db
 from ..resample import DEFAULT_TAPS
 from ..timeline import Timeline
+from .banks import pack_banks
 from .mix import mix_pcm_composites
 from .model import NO_SLOT, MergePlan
 
@@ -165,7 +166,7 @@ class MergedBuild:
 
     def _pack_banks(self, banked: dict[int, ModSample], mix_raw: dict[int, list[float]], clock: float,
                     max_bytes: int, dither: str, entry_dithers: dict[int, str]) -> None:
-        """core.banks packs the banked mixes; a reserved slot left empty while composites lost
+        """core.merge.banks packs the banked mixes; a reserved slot left empty while composites lost
         theirs is noted for convert()'s second pass."""
         plan = self._plan
 

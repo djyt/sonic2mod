@@ -198,7 +198,7 @@ a sample at another volume costs its full size.
 
 `LevelPlanner.levels(source_map, "FM")` therefore walks the FM channels first — with
 the same `DriverState` the conversion uses — and, for every MOD instrument, counts notes per level
-`−0.75 × TL − pan`.  The laws themselves live in `core/levels.py`.  The level with the most notes is that
+`−0.75 × TL − pan`.  The laws themselves live in `core/levels.py` (dB → MOD volume: `core/mod_volume.py`).  The level with the most notes is that
 instrument's **baked level**: it is what the `sample_list` volume stands for, and those notes get
 no command.  A note at any other level gets `Cxx = volume × 10^(ΔdB / 20)` (clamped to 64).  So:
 
@@ -1254,7 +1254,7 @@ fill and decays at the voice's measured release rate (`_cut_layer`, `release_db_
 whatever channel it lands (`_psg_note`) — until 2026-09-28 a bass note alone on the drum
 column rang its whole (looped) sample where the reference had `EC1`.
 
-### Sample banks (`bank: true`, `9xx`, `core/banks.py`)
+### Sample banks (`bank: true`, `9xx`, `core/merge/banks.py`)
 
 The drum column's mixes are the slot budget's biggest consumer (one per drum, bass note and
 hat, with and without the bass's pluck) and its notes carry no other command, so their effect

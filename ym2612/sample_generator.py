@@ -42,9 +42,10 @@ from core.loops import (
     heard_padding,
     release_rate_db_s,
 )
-from core.pcm import dc_block, high_shelf, int8_to_raw16, max_sustain_secs, peak, to_int8
+from core.mod_limits import max_sustain_secs
+from core.pcm import dc_block, high_shelf, int8_to_raw16, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
-from core.smps_parser import SmpsSong, SmpsVoice
+from core.smps_song import SmpsSong, SmpsVoice
 from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
 
@@ -318,14 +319,14 @@ def _smoke_test() -> None:
     )
 
     # Minimal fake SmpsSong
-    from core.smps_parser import SmpsSong, SmpsSongHeader
+    from core.smps_song import SmpsSong, SmpsSongHeader
     fake_song = SmpsSong(
         header=SmpsSongHeader(voice_label="test"),
         voices=[voice1],
     )
 
     # Minimal ConversionConfig with voice_map for voice 1
-    from core.tables import ModNote
+    from core.mod_notes import ModNote
     fake_config = ConversionConfig()
     fake_config.voice_map = {
         1: [

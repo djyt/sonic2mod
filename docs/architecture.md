@@ -15,7 +15,7 @@ Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.m
  SmpsParser.parse_file()      ← core/smps_parser.py
      │
      ▼
-  SmpsSong (IR)               ← dataclasses in core/smps_parser.py
+  SmpsSong (IR)               ← dataclasses in core/smps_song.py
      │
      ▼
  SmpsToModConverter.convert() ← core/smps2mod.py   (walks channels with core/driver_state.py)
@@ -57,13 +57,12 @@ if asked to synthesise.
 
 ### core/tables.py
 
-Foundation module with no dependencies.
+No dependencies.
 
-- **`PERIOD_TABLE`**: 37-entry ProTracker period table (C-1 through B-3 plus a trailing 0). Periods are the Amiga Paula chip timer values that determine playback pitch.
-- **`ModNote` enum**: Maps note names (C1–B3) to indices 0–35 into PERIOD_TABLE.
 - **`SMPS_NOTE_NAMES` dict**: Maps all SMPS note name strings to their byte values. Built from the `_smps2asm_inc.asm` enumeration: `nRst=$80`, `nC0=$81`, 12 semitones per octave through octave 7. Includes enharmonic aliases (`nDb0`=`nCs0`, `nF0`=`nEs0`, etc.) and `nMaxPSG`=`nA5` ($C6).
 - **`SMPS_DAC_NAMES` dict**: Sonic 1 DAC sample names to byte values: `dKick=$81`, `dSnare=$82`, `dTimpani=$83`, `dHiTimpani=$88`, `dMidTimpani=$89`, `dLowTimpani=$8A`, `dVLowTimpani=$8B`.
 - **`semitone_to_note_name(semitone)`** / **`synth_note_name(semitone)`**: the two note spellings. The first is the driver's (index 5 is `Es`), used for SMPS labels; the second is the one YAML configs use (`F`) and is the inverse of `parse_synth_note`. Anything writing a config must emit the second — keeping them apart matters, because `Es` is a valid SMPS label and not a valid config note.
+- **`source_names(song)` / `source_map(song)`**: `"DAC"`, `"FM1"…`, `"PSG1"…` in header order.
 
 ### core/driver_tables.py
 
@@ -74,166 +73,27 @@ Self-checks against known-good assembled values run at import.
 - **`FM_FREQUENCIES`** (96 entries) / **`PSG_FREQUENCIES`** (70) / **`PSG_FREQUENCIES_EXTENDED`** (128).
 - **`fm_note_index` / `psg_note_index`**: note byte + transpose → table index, wrapping mod 128 as the driver does.
 - **`psg_index_semitone(index)`**: the real pitch a PSG table index sounds at, including past the table's end.
+- **`chip_pitch(semitone, transpose, is_psg)`**: the real pitch the chip plays — PSG through the driver table, so notes past its ends sound as the hardware does. What `range_space: chip` matches on.
 - **`psg_tone2_divider(note_value, transpose)`**: the tone-2 divider a note writes — what clocks a rate-3 noise LFSR.
 - **`SMPS_OP_TO_REG_OFFSET`**, **`FM_SLOT_MASK`**, **`CARRIER_OFFSETS_BY_ALG`**: the FM register layout. Read by both `ym2612/voice.py` (sample synthesis) and `sfx/chips.py` (driver emulation).
 - **`PSG_ENVELOPES`** (with `$80` terminators, for the SFX driver) and **`PSG_ENVELOPES_BY_NAME`**
   (`fTone_01` … `fTone_09` without them, what a config's `envelope:` resolves to), **`PAN_VALUES`**,
   **`HW_FM_CHANNEL`**, **`PSG_CHANNEL`**.
 
-### core/driver_state.py
-
-The SMPS track state that decides an event's pitch, level and instrument. Four passes over a
-channel's events used to each re-implement it — the two level pre-passes, the rate-3 divider
-derivation and `ChannelWriter` — and they had drifted.
-
-- **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
-- **`resolve_note(st, source_semitone, chan_transpose, source)` → `ResolvedNote`**: the one place that says which MOD instrument a pitched note is routed to and which MOD note it triggers (`instrument`, `index`, `raw_index` before clamping, `path` = `fm_root` / `psg_root` / `psg_fixed` / `transpose`, the `entry` that routed it, `chip` pitch, `detune`).
-- **`walk_channel(channel, config, chan_cfg, st=None)`**: yields `(event, state, resolved)` for every event, the state advanced past each flag before it is yielded and every pitched note resolved. With a merge plan on the config (`convert.py --merged`) the resolved instrument is the composite where one plays. **`enabled_channels(song, config, kinds)`** yields `(chan_cfg, channel)` for the per-kind loops. The conversion, its level and sustain pre-passes, the noise / rate-3 derivations, `resolve_synth_roots` and `core/merge/` all walk this way.
-- **`source_names(song)` / `source_map(song)`**: `"DAC"`, `"FM1"…`, `"PSG1"…` in header order.
-- **`chip_pitch(semitone, transpose, is_psg)`**: the real pitch the chip plays — PSG through the driver table, so notes past its ends sound as the hardware does. What `range_space: chip` matches on.
-- **`pan_is_hard(params)`**, **`psg_range_entry(entries, key)`**.
-
-State that only matters while emitting MOD data (note fill, vibrato, cursor) stays in the
-converter. `core/analysis.py` keeps its own loop on purpose: it describes the song with no config
-in hand, tracks volume unclamped, and names PSG tones no `psg_voice_map` mentions.
-
-### core/instruments.py
-
-The instrument catalogue: `{MOD instrument: FmInstrument | PsgInstrument}` in render order, the
-first map entry to name an instrument deciding what its sample is rendered for (Credits folds
-voices onto 31 slots; Stage Clear's PSG2 plays two octaves up its PSG1 sample).
-`fm_catalogue(song, config)` walks voice_map (voices the song defines), channel_instrument_map
-(rooted), legacy_voice_map, channel_instrument_map (rootless, played at C1), then the merge plan's
-composites; `psg_catalogue(config, noise_envelopes)` walks psg_map (each entry, then its
-`envelopes:` variants) and psg_voice_map. An `FmInstrument` is a list of **`FmLayer`**s (voice,
-semitone offset, FNUM detune, carrier TL offset relative to the instrument's render level); a
-plain instrument has one layer, a composite one per folded channel; a detune variant
-(core/detune.py) is its base with the layer's FNUM detune set. `generate_fm_samples`,
-`generate_psg_samples` and the converter's `SustainPlanner._synthesis_roots` / `SustainPlanner._needs` all read it.
-`free_slots(config, song)`: the slots nothing names (detune variants, then composites, take them).
-
-### core/detune.py
-
-Detune variants: `plan_detune_variants(song, config)` counts every FM note's (instrument,
-`smpsAlterNote` detune), renders each instrument at its majority detune and gives every other
-a free slot (`DetunePlan`, on `config.detune_plan`): `resolve_note` routes to it, the catalogue
-renders it, the level plans share the base's.  `detune_cents(semitone, offset)` is the interval
-an offset makes on the driver's frequency table.
-
-### core/merge/
-
-```
-notes.py   NoteOn, channel_notes, pair_channels, layer and composite keys   (merge_survey, fold_csv)
-model.py   MergePlan, Composite                                              <- notes
-slots.py   fit_composites, same_shape_twins, stand_in, drop_composite        <- model, notes
-pool.py    the fill pool, solo-note splicing                                 <- model, notes
-plan.py    prepare_merged_config, build_merge_plan (_Planner)                <- all of the above
-mix.py     mix_pcm_composites (_Mixer)                                       <- model
-build.py   MergedBuild: inside one conversion (core/smps2mod.py)             <- mix, model, core.banks
-```
-
-The package exports what other modules import (`core.merge.MergePlan`, ...); `build` is imported
-from its module (`core.merge.build`), since it needs core.banks, which imports the package.
-
-Folding SMPS channels onto one MOD channel for the Amiga build (`merge:` groups,
-`convert.py --merged`). `prepare_merged_config` disables the followers, packs the remaining
-channels onto MOD channels 0..n-1 and picks the output file; `build_merge_plan` lines every
-follower's note-ons up with its primary's (`channel_notes`, `pair_channels` → `PairStats`) and
-allocates one composite instrument per distinct (primary instrument, follower layers) key — two
-FM voices as chip layers in the catalogue, anything else mixed from the finished samples by
-`mix_pcm_composites`, the follower resampled by the period ratio of the two notes. The plan sits on
-`config.merge_plan`, read by `walk_channel`; `refresh_ticks` rebuilds its tick map after the loop
-bodies are extended. A follower note that starts while the primary is silent is spliced into
-the primary's event stream as the follower's own note (`splice_solo_notes`; `walk_channel`
-yields it with the follower's state), and instruments no note of the merged build plays are
-dropped from the catalogue (`MergePlan.unused`). `tools/merge_survey.py` runs the same pairing
-over every channel pair of a song. Full rules: `docs/pipeline.md` § Channel merging.
-
 ### core/levels.py
 
-The chip level laws, in one place: `TL_STEP_DB` (0.75), `PSG_STEP_DB` (2.0),
-`DEFAULT_FM_PAN_LAW_DB` (3.0), `fm_level_db`, `psg_level_db`, `db_to_mod_volume`, `fm_tl_to_mod`,
-`psg_att_to_mod`, and `modal_level` (the most common level, ties to the louder one — what a
-"baked" `sample_list` volume stands for). Used by the converter and by `analyze.py`'s YAML
-skeleton, which therefore predict the same numbers.  `db_to_gain`, `gain_to_db` and
-`power_to_db` are the dB conversions every module and tool uses (`vgm_analyze` reads its chip
-levels through `fm_level_db` / `psg_level_db` too).
-
-### core/cli.py
-
-Shared Rich chrome for `convert.py`, `analyze.py` and `sonic2wav.py`: `cli_console()` (with the
-Windows UTF-8 stdout fix, idempotent), `branding(console, product, version)`, `row_printer`,
-`error_printer`, and the `LABEL_W` label column width.
-
-### core/cbuild.py
-
-**`CLibrary`** — a spec (`name`, `out_dir`, `sources`, `include`, `defines`, `gcc_libs`) plus
-`get_lib_path()`, which rebuilds when a source is newer than the cached `.dll` / `.so` and
-compiles with gcc or MSVC. `ym2612/build.py` and `sn76489/build.py` are each ~30 lines of spec
-over it.
-
-### core/resample.py
-
-Polyphase Kaiser-windowed sinc resampler (32 taps, 512 phases, >70 dB stopband), standard
-library only.  The SFX renderer takes 53267 Hz to 44100 Hz through it and the FM sample
-pipeline takes 53267 Hz to each instrument's MOD target rate; `sfx/resample.py` re-exports it
-under the name the SFX driver uses.
-
-### core/pcm.py
-
-Helpers shared by the two synthesis pipelines: `to_mono`, `trim_trailing_silence`, `peak`,
-`to_int8(mono, scale)`, `normalize_int8(mono, context)`, and `write_raw16` / `int8_to_raw16`
-for the smoke tests' Audacity dumps.  They take any int sequence — the PSG path hands them
-lists, the FM path the `array('i')` its C batch helper returns.
-
-### core/mod.py
-
-MOD file writer adapted from [mml2mod-master](../mml2mod-master/mod.py), and the one reader:
-`read_mod(bytes | path)` → `ModImage` (tag, channels, `SampleInfo` headers with their data, the
-order, every stored pattern's cells), `ModImage.play_rows()` (one pass in play order, `Bxx` /
-`Dxx` followed left to right), `format_channels(tag)` (every tag the writer emits, `14CH`
-included) and `isolate_channel` (one channel's notes, the flow commands kept: what the render
-audits play).  `core/sample_audit.py`, `tools/mod_compare.py`, `tools/mod_lint.py`,
-`tools/vgm_compare.py`, `tools/vgm_pitch_audit.py` and `tools/mod_render_diff.py` read with it.
-
-Key changes from original:
-- `CHANNELS`, `samples`, `position_list`, `patterns` moved from class variables to instance variables in `__init__(self, channels=10)`.
-- `MOD_FORMAT` set dynamically from `FORMAT_TABLE` based on channel count.
-- Added `set_effect(effect, param)` for writing arbitrary effects to the current channel/row.
-- Added `set_position_jump(position)` for Bxx song loop effect.
-- Added `create_placeholder_samples(count)` for generating silent 2-byte placeholder samples.
-- `add_samples()` uses `continue` instead of `exit()` on errors (non-fatal).
-- Added the cell-addressing helpers `cell_index(row, channel)`, `ensure_pattern(index)`,
-  `effect_at(pattern, row, channel)`, `note_at(...)`, `effect_slot_free(...)` and
-  `free_effect_channel(pattern, row, order=None)`, plus the module-level `row_to_bcd(row)`.
-  These are the only place that knows a cell is 4 bytes at `channel*4 + row*CHANNELS*4`; the
-  converter used to compute that stride itself in four places and `apply_pattern_breaks` in two.
-  Note that `set_active_pattern` already grows the pattern list, so callers need no
-  `add_patterns` loop before it.
-
-Classes:
-- **`ModSample`**: 30-byte sample header + raw PCM data. Fields: name (22 bytes), length (words), finetune, volume, repeat offset, repeat length.
-- **`ModPattern`**: Raw bytearray of `channels * 4 * 64` bytes. Each note entry is 4 bytes encoding period, instrument, effect, and effect parameter.
-- **`ModFile`**: Assembles the complete MOD binary. Manages active pattern/channel/row state for note placement.
-
-MOD binary layout:
-```
-Offset  Size   Content
-0       20     Song name (null-terminated ASCII)
-20      930    31 sample headers (30 bytes each)
-950     1      Number of positions used
-951     1      Song length (127)
-952     128    Position list (pattern indices)
-1080    4      Format tag ("M.K.", "10CH", etc.)
-1084    N*P    Pattern data (N=channels*4*64 per pattern, P patterns)
-...            Sample PCM data (concatenated)
-```
+The chip level laws, in one place: `TL_STEP_DB` (0.75), `PSG_STEP_DB` (2.0), `DEFAULT_FM_PAN_LAW_DB` (3.0),
+`fm_level_db`, `psg_level_db`.  Used by the converter and by `analyze.py`'s YAML skeleton, which therefore
+predict the same numbers (`vgm_analyze` reads its chip levels through them too).  dB → MOD volume is
+`core/mod_volume.py` (`db_to_mod_volume`, `clamp_mod_volume`, `headroom_db`); the two together, the absolute
+volume modes' `fm_tl_to_mod` / `psg_att_to_mod` and `modal_level` (the most common level, ties to the louder
+one — what a "baked" `sample_list` volume stands for), are `core/level_plan.py`'s.
 
 ### core/smps_parser.py
 
 The core parser. Converts SMPS assembly text into an intermediate representation.
 
-#### IR Data Classes
+#### IR Data Classes (core/smps_song.py)
 
 | Class | Purpose |
 |-------|---------|
@@ -294,6 +154,76 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | `smpsPSGvoice` | `smpsPSGvoice` | voice name |
 | `smpsChangeTransposition` | `smpsChangeTransposition` | signed semitones |
 
+### core/mod_notes.py
+
+No dependencies.
+
+- **`PERIOD_TABLE`**: 37-entry ProTracker period table (C-1 through B-3 plus a trailing 0). Periods are the Amiga Paula chip timer values that determine playback pitch.
+- **`ModNote` enum**: Maps note names (C1–B3) to indices 0–35 into PERIOD_TABLE.
+- **`MOD_NOTE_MAP`**: a config's MOD note spellings (`C2`, `Fs3`, `F#3`, `Gb3`) → `ModNote`.
+
+### core/mod.py
+
+MOD file writer adapted from [mml2mod-master](../mml2mod-master/mod.py), and the one reader:
+`read_mod(bytes | path)` → `ModImage` (tag, channels, `SampleInfo` headers with their data, the
+order, every stored pattern's cells), `ModImage.play_rows()` (one pass in play order, `Bxx` /
+`Dxx` followed left to right), `format_channels(tag)` (every tag the writer emits, `14CH`
+included) and `isolate_channel` (one channel's notes, the flow commands kept: what the render
+audits play).  `core/sample_audit.py`, `tools/mod_compare.py`, `tools/mod_lint.py`,
+`tools/vgm_compare.py`, `tools/vgm_pitch_audit.py` and `tools/mod_render_diff.py` read with it.
+
+Key changes from original:
+- `CHANNELS`, `samples`, `position_list`, `patterns` moved from class variables to instance variables in `__init__(self, channels=10)`.
+- `MOD_FORMAT` set dynamically from `FORMAT_TABLE` based on channel count.
+- Added `set_effect(effect, param)` for writing arbitrary effects to the current channel/row.
+- Added `set_position_jump(position)` for Bxx song loop effect.
+- Added `create_placeholder_samples(count)` for generating silent 2-byte placeholder samples.
+- `add_samples()` uses `continue` instead of `exit()` on errors (non-fatal).
+- Added the cell-addressing helpers `cell_index(row, channel)`, `ensure_pattern(index)`,
+  `effect_at(pattern, row, channel)`, `note_at(...)`, `effect_slot_free(...)` and
+  `free_effect_channel(pattern, row, order=None)`, plus the module-level `row_to_bcd(row)`.
+  These are the only place that knows a cell is 4 bytes at `channel*4 + row*CHANNELS*4`; the
+  converter used to compute that stride itself in four places and `apply_pattern_breaks` in two.
+  Note that `set_active_pattern` already grows the pattern list, so callers need no
+  `add_patterns` loop before it.
+
+Classes:
+- **`ModSample`**: 30-byte sample header + raw PCM data. Fields: name (22 bytes), length (words), finetune, volume, repeat offset, repeat length.
+- **`ModPattern`**: Raw bytearray of `channels * 4 * 64` bytes. Each note entry is 4 bytes encoding period, instrument, effect, and effect parameter.
+- **`ModFile`**: Assembles the complete MOD binary. Manages active pattern/channel/row state for note placement.
+
+MOD binary layout:
+```
+Offset  Size   Content
+0       20     Song name (null-terminated ASCII)
+20      930    31 sample headers (30 bytes each)
+950     1      Number of positions used
+951     1      Song length (127)
+952     128    Position list (pattern indices)
+1080    4      Format tag ("M.K.", "10CH", etc.)
+1084    N*P    Pattern data (N=channels*4*64 per pattern, P patterns)
+...            Sample PCM data (concatenated)
+```
+
+### core/gain.py
+
+`db_to_gain`, `gain_to_db`, `power_to_db`: the dB conversions every module and tool uses.
+
+### core/pcm.py
+
+Helpers shared by the two synthesis pipelines: `to_mono`, `trim_trailing_silence`, `peak`,
+`to_int8(mono, scale)`, `normalize_int8(mono, context)`, and `write_raw16` / `int8_to_raw16`
+for the smoke tests' Audacity dumps.  What a MOD sample may hold (`MAX_MOD_SAMPLE_BYTES`,
+`sample_limit_bytes`, `max_sustain_secs`) is `core/mod_limits.py`.  They take any int sequence — the PSG path hands them
+lists, the FM path the `array('i')` its C batch helper returns.
+
+### core/resample.py
+
+Polyphase Kaiser-windowed sinc resampler (32 taps, 512 phases, >70 dB stopband), standard
+library only.  The SFX renderer takes 53267 Hz to 44100 Hz through it and the FM sample
+pipeline takes 53267 Hz to each instrument's MOD target rate; `sfx/resample.py` re-exports it
+under the name the SFX driver uses.
+
 ### core/config/
 
 Per-song conversion configuration and the global synthesis settings; the package exports every
@@ -345,6 +275,79 @@ bpm.py       derive_bpm, exact_bpm, bpm_rounding_options
 | `mod_instrument` | int | — | MOD instrument to trigger |
 | `mod_note` | str | "C3" | Note to write in MOD pattern |
 
+### core/driver_state.py
+
+The SMPS track state that decides an event's pitch, level and instrument. Four passes over a
+channel's events used to each re-implement it — the two level pre-passes, the rate-3 divider
+derivation and `ChannelWriter` — and they had drifted.
+
+- **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
+- **`resolve_note(st, source_semitone, chan_transpose, source)` → `ResolvedNote`**: the one place that says which MOD instrument a pitched note is routed to and which MOD note it triggers (`instrument`, `index`, `raw_index` before clamping, `path` = `fm_root` / `psg_root` / `psg_fixed` / `transpose`, the `entry` that routed it, `chip` pitch, `detune`).
+- **`walk_channel(channel, config, chan_cfg, st=None)`**: yields `(event, state, resolved)` for every event, the state advanced past each flag before it is yielded and every pitched note resolved. With a merge plan on the config (`convert.py --merged`) the resolved instrument is the composite where one plays. **`enabled_channels(song, config, kinds)`** yields `(chan_cfg, channel)` for the per-kind loops. The conversion, its level and sustain pre-passes, the noise / rate-3 derivations, `resolve_synth_roots` (synth_roots.py) and `core/merge/` all walk this way.
+- **`psg_range_entry(entries, key)`**: the entry of a multi-range `psg_voice_map` list covering a note.
+
+State that only matters while emitting MOD data (note fill, vibrato, cursor) stays in the
+converter. `core/analysis.py` keeps its own loop on purpose: it describes the song with no config
+in hand, tracks volume unclamped, and names PSG tones no `psg_voice_map` mentions.
+
+### core/instruments.py
+
+The instrument catalogue: `{MOD instrument: FmInstrument | PsgInstrument}` in render order, the
+first map entry to name an instrument deciding what its sample is rendered for (Credits folds
+voices onto 31 slots; Stage Clear's PSG2 plays two octaves up its PSG1 sample).
+`fm_catalogue(song, config)` walks voice_map (voices the song defines), channel_instrument_map
+(rooted), legacy_voice_map, channel_instrument_map (rootless, played at C1), then the merge plan's
+composites; `psg_catalogue(config, noise_envelopes)` walks psg_map (each entry, then its
+`envelopes:` variants) and psg_voice_map. An `FmInstrument` is a list of **`FmLayer`**s (voice,
+semitone offset, FNUM detune, carrier TL offset relative to the instrument's render level); a
+plain instrument has one layer, a composite one per folded channel; a detune variant
+(core/detune.py) is its base with the layer's FNUM detune set. `generate_fm_samples`,
+`generate_psg_samples` and the converter's `SustainPlanner._synthesis_roots` / `SustainPlanner._needs` all read it.
+`free_slots(config, song)`: the slots nothing names (detune variants, then composites, take them).
+
+### core/detune.py
+
+Detune variants: `plan_detune_variants(song, config)` counts every FM note's (instrument,
+`smpsAlterNote` detune), renders each instrument at its majority detune and gives every other
+a free slot (`DetunePlan`, on `config.detune_plan`): `resolve_note` routes to it, the catalogue
+renders it, the level plans share the base's.  `detune_cents(semitone, offset)` is the interval
+an offset makes on the driver's frequency table.
+
+### core/synth_roots.py
+
+**`resolve_synth_roots(song, config)`**: every rooted map entry's `synth_root` (the chip pitch its notes play
+most often, at most an octave above `low`'s) and `synth_shift`, from a `walk_channel` over the song.  One pitch
+per instrument where several entries share it.  Details: `docs/fm_synthesis.md` § synth_root.
+
+### core/merge/
+
+```
+notes.py   NoteOn, channel_notes, pair_channels, layer and composite keys   (merge_survey, fold_csv)
+model.py   MergePlan, Composite                                              <- notes
+slots.py   fit_composites, same_shape_twins, stand_in, drop_composite        <- model, notes
+pool.py    the fill pool, solo-note splicing                                 <- model, notes
+plan.py    prepare_merged_config, build_merge_plan (_Planner)                <- all of the above
+mix.py     mix_pcm_composites (_Mixer)                                       <- model
+banks.py   pack_banks: the banked mixes in one slot each (9xx)                   <- mix, model, slots
+build.py   MergedBuild: inside one conversion (core/smps2mod.py)        <- banks, mix, model
+```
+
+The package exports what other modules import (`core.merge.MergePlan`, `core.merge.MergedBuild`, ...).
+
+Folding SMPS channels onto one MOD channel for the Amiga build (`merge:` groups,
+`convert.py --merged`). `prepare_merged_config` disables the followers, packs the remaining
+channels onto MOD channels 0..n-1 and picks the output file; `build_merge_plan` lines every
+follower's note-ons up with its primary's (`channel_notes`, `pair_channels` → `PairStats`) and
+allocates one composite instrument per distinct (primary instrument, follower layers) key — two
+FM voices as chip layers in the catalogue, anything else mixed from the finished samples by
+`mix_pcm_composites`, the follower resampled by the period ratio of the two notes. The plan sits on
+`config.merge_plan`, read by `walk_channel`; `refresh_ticks` rebuilds its tick map after the loop
+bodies are extended. A follower note that starts while the primary is silent is spliced into
+the primary's event stream as the follower's own note (`splice_solo_notes`; `walk_channel`
+yields it with the follower's state), and instruments no note of the merged build plays are
+dropped from the catalogue (`MergePlan.unused`). `tools/merge_survey.py` runs the same pairing
+over every channel pair of a song. Full rules: `docs/pipeline.md` § Channel merging.
+
 ### core/smps2mod.py
 
 Conversion engine: `SmpsToModConverter` orchestrates one conversion; each step lives in its own
@@ -355,14 +358,14 @@ core/report.py's `_WARNINGS` (tests/test_diagnostics_units.py checks it).
 
 ```
 SmpsToModConverter.convert()
-  ├─ core/song_prep.py      apply_global_tempo_div, extend_looping_channels: the song as played
-  ├─ core/timeline.py       Timeline: tempo segments, ticks per frame, BPM, tick → row / pattern, seconds
-  ├─ core/level_plan.py     LevelPlanner: the baked levels, the FM render levels
-  ├─ core/noise_derive.py   derive_noise_envelopes, derive_rate3_dividers
-  ├─ core/sustain_plan.py   SustainPlanner: auto sustain per instrument, sustain_short warnings
-  ├─ core/merge/build.py    MergedBuild: composite volumes, pcm mixes and banks; the plan's report
-  ├─ core/channel_writer.py ChannelWriter: one channel's cells (vibrato speed and depth from core/vibrato.py)
-  └─ core/layout.py         ModLayout: leading rests, tempo commands, the loop's Bxx
+  ├─ core/song_prep.py            apply_global_tempo_div, extend_looping_channels: the song as played
+  ├─ core/timeline.py             Timeline: tempo segments, ticks per frame, BPM, tick → row / pattern, seconds
+  ├─ core/level_plan.py        LevelPlanner: the baked levels, the FM render levels
+  ├─ core/noise_derive.py         derive_noise_envelopes, derive_rate3_dividers
+  ├─ core/sustain_plan.py      SustainPlanner: auto sustain per instrument, sustain_short warnings
+  ├─ core/merge/build.py               MergedBuild: composite volumes, pcm mixes and banks; the plan's report
+  ├─ core/channel_writer.py    ChannelWriter: one channel's cells (vibrato speed and depth from core/vibrato.py)
+  └─ core/layout.py            ModLayout: leading rests, tempo commands, the loop's Bxx
 ```
 
 #### `SmpsToModConverter.convert()` Flow
@@ -449,6 +452,19 @@ displaces an attack-row `4xy`; a displaced `Cxx` moves to the note's next free r
 #### DAC Handling
 
 DAC notes look up their `DacSampleConfig` by name. Each DAC sound maps to a specific MOD instrument number and trigger note, allowing different drum samples to be assigned to different MOD instruments.
+
+### core/cli.py
+
+Shared Rich chrome for `convert.py`, `analyze.py` and `sonic2wav.py`: `cli_console()` (with the
+Windows UTF-8 stdout fix, idempotent), `branding(console, product, version)`, `row_printer`,
+`error_printer`, and the `LABEL_W` label column width.
+
+### core/cbuild.py
+
+**`CLibrary`** — a spec (`name`, `out_dir`, `sources`, `include`, `defines`, `gcc_libs`) plus
+`get_lib_path()`, which rebuilds when a source is newer than the cached `.dll` / `.so` and
+compiles with gcc or MSVC. `ym2612/build.py` and `sn76489/build.py` are each ~30 lines of spec
+over it.
 
 ### convert.py
 

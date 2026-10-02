@@ -50,7 +50,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .levels import gain_to_db
+from .gain import gain_to_db
 
 # --- defaults ---------------------------------------------------------------------------------
 

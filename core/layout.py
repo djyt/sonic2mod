@@ -9,7 +9,7 @@ Each command takes a free effect slot; one that finds none is reported, not forc
 from .config import ConversionConfig
 from .diagnostics import Diagnostics, InfoKind, WarningKind
 from .mod import ModFile, row_to_bcd, shift_for_breaks
-from .smps_parser import SmpsSong
+from .smps_song import SmpsSong
 from .timeline import Timeline
 
 # ProTracker's default speed: no Fxx needed for it

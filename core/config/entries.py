@@ -5,7 +5,8 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..tables import MOD_NOTE_MAP, ModNote, parse_smps_note, parse_synth_note, synth_note_name
+from ..mod_notes import MOD_NOTE_MAP, ModNote
+from ..tables import parse_smps_note, parse_synth_note, synth_note_name
 from .loader import dither_mode
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ class InstrumentRange:
                                     # out_note = root + (source_semitone - low)
                                     # if None: fall back to channel transpose for note
     synth_root: int | None = None  # SMPS semitone the sample is rendered at.  None in a config:
-                                      # core.driver_state.resolve_synth_roots fills in the chip
+                                      # core.synth_roots.resolve_synth_roots fills in the chip
                                       # pitch the entry's notes play most often (the song decides).
                                       # Stated: the rendering pitch, anywhere in the range.  Either
                                       # way `root` is where the pitch of `low` sounds (synth_shift)
@@ -148,7 +149,7 @@ class MergeGroup:
                                 # note-on or rest falls inside it) plays whole on a channel silent
                                 # for all of it when there is one; else it folds as before
     bank: bool = False          # this group's mixed composites share MOD instruments as sample banks,
-                                # each sound chosen with 9xx (core/banks.py), which takes the note's
+                                # each sound chosen with 9xx (core/merge/banks.py), which takes the note's
                                 # effect slot (a melodic note's attack-row Cxx moves a row later)
     mod_channel: int | str | None = None   # merge_patterns only: the column the primary's notes take
                                 # in the group's patterns — a channels: mod_channel number, or a source

@@ -182,7 +182,7 @@ Without `root`, the entry still selects the correct `mod_instrument` but pitch f
 
 Every rooted entry is rendered at the pitch the chip really plays for its `low` note — `low`
 plus the pitch offset and every `smpsChangeTransposition`, PSG through the driver's table —
-which `core.driver_state.resolve_synth_roots` reads from the song before synthesis.  No shipped
+which `core.synth_roots.resolve_synth_roots` reads from the song before synthesis.  No shipped
 config states `synth_root`; `convert.py` counts the derived entries and warns
 (`synth_root_ambiguous`) where an entry's `low` is played at several chip pitches, which is the
 cue for `range_space: chip` or a split entry.

@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from ..mod import PAL_AMIGA_CLOCK
-from ..pcm import DEFAULT_DITHER, sample_limit_bytes
+from ..mod_limits import sample_limit_bytes
+from ..pcm import DEFAULT_DITHER
 from ..resample import DEFAULT_TAPS
 from .loader import dither_mode, mode_word, read_yaml_file
 
@@ -188,7 +189,7 @@ class SampleSettings:
 
     @property
     def max_sample_bytes(self) -> int:
-        """Bytes one synthesised sample may hold (core.pcm.sample_limit_bytes)."""
+        """Bytes one synthesised sample may hold (core.mod_limits.sample_limit_bytes)."""
         return sample_limit_bytes(self.max_sample_kb)
 
     def loops_for(self, merged: bool) -> bool:

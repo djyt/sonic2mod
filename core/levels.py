@@ -1,13 +1,9 @@
-"""The chip level laws, in one place.
+"""The chip level laws: a YM2612 total-level offset or an SN76489 attenuation in dB.
 
-The converter, the analyser and the config-generating tools all have to turn a
-YM2612 total-level offset or an SN76489 attenuation into decibels, and decibels
-into a MOD volume.  They used to each carry their own copy of the constants.
+dB arithmetic is core/gain.py; dB -> MOD volume is core/mod_volume.py.
 """
 
 from __future__ import annotations
-
-import math
 
 TL_STEP_DB = 0.75          # YM2612 total level: dB per step
 PSG_STEP_DB = 2.0          # SN76489 attenuation: dB per step
@@ -15,22 +11,6 @@ DEFAULT_FM_PAN_LAW_DB = 3.0    # a hard-panned FM note vs a centred one
 
 FM_TL_SILENT = 127         # TL offset at or above which nothing is heard
 PSG_ATT_SILENT = 15        # attenuation at or above which nothing is heard
-MOD_MAX_VOLUME = 64
-
-
-def db_to_gain(db: float) -> float:
-    """Amplitude ratio of a level in dB: -6.02 -> 0.5."""
-    return 10 ** (db / 20.0)
-
-
-def gain_to_db(gain: float) -> float:
-    """dB of an amplitude ratio: 0.5 -> -6.02."""
-    return 20 * math.log10(gain)
-
-
-def power_to_db(power: float) -> float:
-    """dB of a power (energy) ratio: 0.5 -> -3.01."""
-    return 10.0 * math.log10(power)
 
 
 def fm_level_db(tl_offset: int, hard_panned: bool = False,
@@ -44,43 +24,3 @@ def psg_level_db(attenuation: int) -> float:
     return -PSG_STEP_DB * attenuation
 
 
-def db_to_mod_volume(base: int, db: float, minimum: int = 0) -> int:
-    """Scale a MOD volume by a dB offset, clamped to `minimum`..64.
-
-    `minimum` is 0 for the converter (a note really can be silenced) and 1 for the
-    analyser's YAML skeleton, where a volume of 0 would be a useless suggestion.
-    """
-    return max(minimum, min(MOD_MAX_VOLUME, round(base * db_to_gain(db))))
-
-
-def clamp_mod_volume(volume: float) -> int:
-    """A wanted volume as a MOD volume: rounded, 0..64."""
-    return max(0, min(MOD_MAX_VOLUME, round(volume)))
-
-
-def headroom_db(volume: float) -> float:
-    """dB a wanted volume lies past 64: what clamping it costs (0 when it fits)."""
-    return gain_to_db(volume / MOD_MAX_VOLUME) if volume > MOD_MAX_VOLUME else 0.0
-
-
-def fm_tl_to_mod(tl_offset: int) -> int:
-    """YM2612 TL offset -> absolute MOD volume 0-64 (smpsHeaderFM volume, smpsAlterVol)."""
-    if tl_offset >= FM_TL_SILENT:
-        return 0
-    return round(MOD_MAX_VOLUME * db_to_gain(fm_level_db(tl_offset)))
-
-
-def psg_att_to_mod(attenuation: int) -> int:
-    """SN76489 attenuation -> absolute MOD volume 0-64 (0 = max, 15 = silent)."""
-    if attenuation >= PSG_ATT_SILENT:
-        return 0
-    return round(MOD_MAX_VOLUME * db_to_gain(psg_level_db(attenuation)))
-
-
-def modal_level(counts: dict[float, int]) -> float:
-    """The level most notes play at — what a "baked" sample_list volume stands for.
-
-    Ties go to the louder level, so the others are attenuated by Cxx rather than
-    boosted past 64.
-    """
-    return max(counts, key=lambda level: (counts[level], level))

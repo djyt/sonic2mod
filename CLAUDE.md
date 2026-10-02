@@ -153,7 +153,7 @@ sonic2mod/
 
 ```bash
 pip install pyyaml rich   # external dependencies
-pip install ruff pyright  # lint/type checking (optional)
+pip install ruff pyright vulture  # lint / type checking / dead code (optional; or pip install -e .[dev])
 ```
 
 ## Linting
@@ -161,6 +161,7 @@ pip install ruff pyright  # lint/type checking (optional)
 ```bash
 ruff check .   # style + lint
 pyright        # type checking
+python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
 ```
 
 ## Quick Usage

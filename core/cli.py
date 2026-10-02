@@ -27,8 +27,6 @@ from rich.panel import Panel
 from rich.text import Text
 
 LABEL_W = 9                        # right-aligned label column width
-INDENT = " " * (LABEL_W + 4)       # indentation for continuation lines
-
 def _force_utf8_stdout() -> None:
     """Re-wrap stdout as UTF-8 on Windows so Rich can render Unicode symbols.
 

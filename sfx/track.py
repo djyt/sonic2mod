@@ -10,10 +10,8 @@ from dataclasses import dataclass, field
 
 from core.driver_tables import HW_FM_CHANNEL, PSG_CHANNEL
 
+
 # SMPS_Track.Freq is a signed word; -1 marks "no valid note" (PSGSetFreq .restpsg).
-FREQ_INVALID = -1
-
-
 @dataclass
 class SfxTrack:
     """One SFX channel.

@@ -241,22 +241,6 @@ class ModFile:
         else:
             self._row = row
 
-    def inc_row(self, rows: int):
-        pattern_len = len(self.patterns)
-        for _ in range(rows):
-            self._row += 1
-            if self._row > 63:
-                self._row = 0
-                if self._active_pattern + 1 >= pattern_len:
-                    self.add_patterns(1)
-                self.set_active_pattern(self._active_pattern + 1)
-
-    def set_inst(self, i: int):
-        if i < 0 or i > 0x1f:
-            print(f"Error: Instrument {i} is invalid.")
-            return
-        self._inst = i
-
     def set_note(self, n: ModNote, inst: int | None = None):
         if inst is None:
             inst = self._inst
@@ -275,9 +259,6 @@ class ModFile:
         # Retain effect parameter
         index_2 = pattern.get_entry(index + 2) & 0xf
         pattern.set_entry(index + 2, index_2 + ((value >> 8) & 0xff))
-
-    def get_active_pattern(self):
-        return self._active_pattern
 
     def set_active_pattern(self, pattern: int):
         if pattern < 0 or pattern > self.MAX_POSITIONS:
@@ -299,24 +280,6 @@ class ModFile:
             self.patterns.append(ModPattern(self.CHANNELS))
             self.position_list[length + i] = length + i
         self.positions += number_to_add
-
-    def set_bpm(self, bpm: int):
-        if bpm < 32 or bpm > 255:
-            print(f"Warning: BPM out of range (32-255) {bpm}")
-            return
-        pattern = self.patterns[0]
-        pattern.set_entry(2, 0xf + (pattern.get_entry(2) & 0xf0))
-        pattern.set_entry(3, bpm)
-
-    def set_speed(self, speed: int):
-        if speed < 0 or speed > 31:
-            print(f"Warning: Speed out of range (0-31) {speed}")
-            return
-        # Set speed on channel 1, row 0
-        index = 1 * 4
-        pattern = self.patterns[0]
-        pattern.set_entry(index + 2, (pattern.get_entry(index + 2) & 0xf0) | 0xf)
-        pattern.set_entry(index + 3, speed)
 
     def set_volume(self, vol: int):
         if vol < 0 or vol > 0x40:

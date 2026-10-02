@@ -65,7 +65,7 @@ def lint_mod(path: str) -> list[dict]:
     volume = [0] * nch
     period = [0] * nch
 
-    def walk_position(pos_index: int, stop_at_jump: bool) -> tuple[int, int] | None:
+    def walk_position(pos_index: int) -> tuple[int, int] | None:
         """Play one position; returns (target position, row) of a Bxx/Dxx, or None."""
         nonlocal speed, bpm
         pat = pats[order[pos_index]]
@@ -132,7 +132,7 @@ def lint_mod(path: str) -> list[dict]:
     loop_to = None
     while pos < len(order):
         seen.add(pos)
-        target = walk_position(pos, True)
+        target = walk_position(pos)
         if target is None:
             pos += 1
             continue
@@ -142,7 +142,7 @@ def lint_mod(path: str) -> list[dict]:
         pos = target[0]                          # a forward jump (a pattern break): follow it
     if loop_to is not None and loop_to < len(order):
         # The loop's first position once more, with the state the song's end leaves
-        walk_position(loop_to, False)
+        walk_position(loop_to)
     return issues
 
 

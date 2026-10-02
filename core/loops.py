@@ -306,15 +306,3 @@ def unroll_values(values, loop: tuple[int, int], length: int) -> list:
         out += body
     return out[:length]
 
-
-def unroll(pcm: bytes, loop: tuple[int, int], length: int) -> bytes:
-    """A looped 8-bit sample played straight through for `length` bytes: the part before the
-    loop, then the loop repeated (what a mix of finished samples needs from a looped one)."""
-    start, ln = loop
-    if ln <= 0 or start + ln > len(pcm):
-        return pcm[:length]
-    body = pcm[start:start + ln]
-    out = bytearray(pcm[:start + ln])
-    while len(out) < length:
-        out += body
-    return bytes(out[:length])

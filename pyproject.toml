@@ -12,6 +12,9 @@ dependencies = [
     "rich",
 ]
 
+[project.optional-dependencies]
+dev = ["ruff", "pyright", "vulture", "pytest"]
+
 [project.scripts]
 sonic2mod = "convert:main"
 sonic2mod-analyze = "analyze:main"
@@ -86,6 +89,15 @@ known-first-party = ["core", "ym2612", "sn76489", "sfx"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
+
+[tool.vulture]
+# Code nothing uses: `python -m vulture`.  vulture_whitelist.py lists what is used in ways it
+# cannot see (unittest classes, ModNote members); each other finding is dead code, or a name
+# reached through getattr / YAML that belongs in the whitelist too
+paths = ["core", "ym2612", "sn76489", "sfx", "tools", "tests", "convert.py", "analyze.py", "sonic2wav.py",
+         "vulture_whitelist.py"]
+exclude = ["reference/"]
+min_confidence = 60
 
 [tool.pyright]
 pythonVersion = "3.11"

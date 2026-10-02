@@ -85,7 +85,7 @@ Self-checks against known-good assembled values run at import.
 
 The SMPS track state that decides an event's pitch, level and instrument. Four passes over a
 channel's events used to each re-implement it — the two level pre-passes, the rate-3 divider
-derivation and `_convert_channel` — and they had drifted.
+derivation and `ChannelWriter` — and they had drifted.
 
 - **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `psg_ranged_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
 - **`resolve_note(st, source_semitone, chan_transpose, source)` → `ResolvedNote`**: the one place that says which MOD instrument a pitched note is routed to and which MOD note it triggers (`instrument`, `index`, `raw_index` before clamping, `path` = `fm_root` / `psg_root` / `psg_fixed` / `transpose`, the `entry` that routed it, `chip` pitch, `detune`).
@@ -110,7 +110,7 @@ composites; `psg_catalogue(config, noise_envelopes)` walks psg_map (each entry, 
 semitone offset, FNUM detune, carrier TL offset relative to the instrument's render level); a
 plain instrument has one layer, a composite one per folded channel; a detune variant
 (core/detune.py) is its base with the layer's FNUM detune set. `generate_fm_samples`,
-`generate_psg_samples` and the converter's `_synthesis_roots` / `_sustain_needs` all read it.
+`generate_psg_samples` and the converter's `SustainPlanner._synthesis_roots` / `SustainPlanner._needs` all read it.
 `free_slots(config, song)`: the slots nothing names (detune variants, then composites, take them).
 
 ### core/detune.py
@@ -323,19 +323,33 @@ Per-song conversion configuration with YAML loading.
 
 ### core/smps2mod.py
 
-Conversion engine that walks the IR and writes MOD data.
+Conversion engine: `SmpsToModConverter` orchestrates one conversion; each step lives in its own
+module and reports through one `Diagnostics` (core/diagnostics.py: warnings, de-duplicated, and
+infos, which core/report.py prints).
+
+```
+SmpsToModConverter.convert()
+  ├─ core/song_prep.py      apply_global_tempo_div, extend_looping_channels: the song as played
+  ├─ core/timeline.py       Timeline: tempo segments, ticks per frame, BPM, tick → row / pattern, seconds
+  ├─ core/level_plan.py     LevelPlanner: the baked levels, the FM render levels
+  ├─ core/noise_derive.py   derive_noise_envelopes, derive_rate3_dividers
+  ├─ core/sustain_plan.py   SustainPlanner: auto sustain per instrument, sustain_short warnings
+  ├─ core/merge_build.py    MergedBuild: composite volumes, pcm mixes and banks; the plan's report
+  ├─ core/channel_writer.py ChannelWriter: one channel's cells (vibrato speed and depth from core/vibrato.py)
+  └─ core/layout.py         ModLayout: leading rests, tempo commands, the loop's Bxx
+```
 
 #### `SmpsToModConverter.convert()` Flow
 
 1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch; `_plan_detune` (core/detune.py) the detune variants
-2. `prepare_song()`: re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`) and extend short loop bodies (`_extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
-3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`_sustain_needs`)
+2. `prepare_song()`: re-time every channel for `smpsSetTempoDiv` (`apply_global_tempo_div()`) and extend short loop bodies (`extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
+3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`SustainPlanner._needs`)
 4. Run the injected `SampleGenerators` (`generate_fm_samples()` from ym2612/, `generate_psg_samples()` from sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
 5. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
 6. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
-7. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)
+7. Write mid-song `smpsSetTempoMod` changes (`ModLayout.tempo_changes()`)
 
-`convert()` then lays the MOD out: `apply_pattern_breaks`, `_set_loop_point()` (so the `Bxx`
+`convert()` then lays the MOD out: `apply_pattern_breaks`, `ModLayout.loop_point()` (so the `Bxx`
 lands at its post-break position), trailing patterns trimmed, a merged build narrowed.
 
 #### Public API
@@ -354,10 +368,10 @@ What the config tools (`merge_survey`, `fold_csv`, `config_to_chip_space`) see o
 
 #### Channel Conversion
 
-Every pass over a channel's events - `_convert_channel`, the `_plan_levels` level pre-passes,
-`_sustain_needs`, `_derive_noise_envelopes` and `_derive_rate3_dividers` - is a `walk_channel`
+Every pass over a channel's events - `ChannelWriter`, the `LevelPlanner.levels` level pre-passes,
+`SustainPlanner._needs`, `derive_noise_envelopes` and `derive_rate3_dividers` - is a `walk_channel`
 (`core/driver_state.py`): the same `DriverState`, and every pitched note's instrument and MOD note
-from the same `resolve_note`, so they cannot disagree about what a note plays. `_convert_channel`
+from the same `resolve_note`, so they cannot disagree about what a note plays. `ChannelWriter`
 keeps only the MOD-emission state (note fill, vibrato, cursor, `EDx`); its clamp / `map_gap`
 warnings come from `_warn_resolution`.
 
@@ -370,7 +384,7 @@ warnings come from `_warn_resolution`.
 | `psg_entry` / `psg_entries` / `psg_label` | `smpsPSGform` to `psg_map`, `smpsPSGvoice` to `psg_voice_map`, and the `smpsHeaderPSG` voice | PSG instrument, root anchoring, warning context |
 | `instrument` | all of the above | the MOD instrument a note lands on |
 
-`_convert_channel` keeps only the state the driver knows nothing about:
+`ChannelWriter` keeps only the state the driver knows nothing about:
 
 | State Variable | Updated By | Used For |
 |----------------|------------|----------|

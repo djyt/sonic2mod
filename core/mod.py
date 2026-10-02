@@ -217,6 +217,12 @@ class ModFile:
                 return ch
         return None
 
+    def set_cursor(self, pattern: int, channel: int, row: int) -> None:
+        """Where the next set_note / set_effect writes: (pattern, channel, row)."""
+        self.set_active_pattern(pattern)
+        self.set_channel(channel)
+        self.set_row(row)
+
     def set_channel(self, chan: int):
         if chan < 0 or chan > self.CHANNELS - 1:
             print(f"Error: Channel {chan} is invalid.")
@@ -375,7 +381,7 @@ class ModFile:
     def trim_to_pattern(self, last_pattern: int) -> None:
         """Remove patterns after last_pattern (unreachable once the loop-point Bxx is set).
 
-        Called after _set_loop_point to discard any trailing blank patterns that
+        Called after ModLayout.loop_point to discard any trailing blank patterns that
         apply_pattern_breaks may create when the body doesn't divide evenly into
         64-row chunks.
         """
@@ -437,6 +443,18 @@ class ModFile:
             sample.length = 1  # 1 word = 2 bytes
             sample.set_volume(64)
             self.samples[i - 1] = sample
+
+
+def shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> int:
+    """Move a pre-break flat row index to where apply_pattern_breaks put it.
+
+    Each break at (pattern P, row R) pushes everything from flat row P*64+R+1 onward
+    to the start of pattern P+1, i.e. forward by the 63-R rows it blanked out.
+    """
+    for P, break_row in sorted(breaks or []):
+        if flat_row >= P * 64 + break_row + 1:
+            flat_row += 63 - break_row
+    return flat_row
 
 
 def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:

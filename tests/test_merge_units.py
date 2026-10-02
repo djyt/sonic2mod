@@ -45,9 +45,9 @@ from core.merge import (
     trigger_note,
     unison_gain_db,
 )
+from core.merge_build import bank_reserve_wanted
 from core.mod import ModFile, ModSample
 from core.pcm import limit_peaks, saturate
-from core.smps2mod import SmpsToModConverter
 from core.tables import PERIOD_TABLE
 
 CLOCK = 3546895.0
@@ -381,10 +381,7 @@ class BankReserve(unittest.TestCase):
             c = Composite(20 + i, CompositeKey(MIX, 1, (MixLayerKey(2, i, 1.0, None),)), g, notes=n)
             plan.composites[c.key] = c
 
-        class Stub:
-            _merge = plan
-            _idle_bank_slots: ClassVar[list] = list(idle)
-        return SmpsToModConverter._bank_reserve_wanted(Stub())  # type: ignore[arg-type]
+        return bank_reserve_wanted(plan, list(idle))
 
     def test_an_idle_slot_goes_back(self):
         self.assertEqual(self._want(2, [], [5, 1], idle=[19]), 2)

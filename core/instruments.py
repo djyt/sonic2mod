@@ -203,7 +203,7 @@ class PsgInstrument:
 def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None) -> dict[int, PsgInstrument]:
     """Every PSG instrument the config has synthesised, in render order.
 
-    `noise_envelopes` ({instrument: label} from the converter's _derive_noise_envelopes)
+    `noise_envelopes` ({instrument: label} from the converter's derive_noise_envelopes)
     supplies the envelope of each psg_map instrument and variant; without it the entry's own
     `envelope:` stands.
     """

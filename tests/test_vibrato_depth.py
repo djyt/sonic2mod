@@ -13,15 +13,15 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.smps2mod import _S1_FNUM_BASE, SmpsToModConverter
+from core.vibrato import S1_FNUM_BASE, vibrato_depth
 
-_depth = SmpsToModConverter._vibrato_depth
+_depth = vibrato_depth
 
 
 def _for_swing(swing: float, player: str) -> int:
     """Depth for an FM note on C (FNUM 644) whose swing is `swing` periods at period 644."""
     # period == frequency word, so swing = delta * steps / 2: steps 2 makes it delta
-    return _depth(round(swing), 2, _S1_FNUM_BASE, 0, False, player)
+    return _depth(round(swing), 2, S1_FNUM_BASE, 0, False, player)
 
 
 class VibratoDepth(unittest.TestCase):
@@ -41,14 +41,14 @@ class VibratoDepth(unittest.TestCase):
 
     def test_too_shallow_is_none(self):
         for player in ("ft2", "pt2"):
-            self.assertEqual(_depth(1, 1, _S1_FNUM_BASE, 0, False, player), 0)    # 0.5 periods
+            self.assertEqual(_depth(1, 1, S1_FNUM_BASE, 0, False, player), 0)    # 0.5 periods
 
     def test_capped_at_15(self):
         for player in ("ft2", "pt2"):
             self.assertEqual(_for_swing(60, player), 0xF)
 
     def test_ft2_is_the_default(self):
-        self.assertEqual(_depth(5, 2, _S1_FNUM_BASE, 0, False), _for_swing(5, "ft2"))
+        self.assertEqual(_depth(5, 2, S1_FNUM_BASE, 0, False), _for_swing(5, "ft2"))
 
 
 if __name__ == "__main__":

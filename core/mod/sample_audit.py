@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
-from .gain import gain_to_db
-from .mod import PAL_AMIGA_CLOCK, SampleInfo, read_mod
-from .mod_notes import PERIOD_TABLE
+from ..audio import gain_to_db
+from .file import PAL_AMIGA_CLOCK, SampleInfo, read_mod
+from .notes import PERIOD_TABLE
 
 AMIGA_CLOCK = float(PAL_AMIGA_CLOCK)
 LOW_RATE_HZ = 5000.0        # below this a sample has under 2.5 kHz of bandwidth

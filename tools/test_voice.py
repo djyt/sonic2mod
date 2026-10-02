@@ -27,7 +27,7 @@ _ROOT = _HERE.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from core.smps_parser import SmpsParser
+from core.smps import SmpsParser
 from ym2612.renderer import note_to_fnum_block, note_to_freq, render_note_raw
 
 # ---------------------------------------------------------------------------

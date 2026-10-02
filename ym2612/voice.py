@@ -28,11 +28,10 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.driver_tables import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
-from core.smps_song import SmpsVoice
+from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET, SmpsVoice
 from ym2612.wrapper import OPN2
 
-# The SMPS operator order comes from core.driver_tables, transcribed from
+# The SMPS operator order comes from core.smps.driver_tables, transcribed from
 # s1.sounddriver.asm — one source of truth shared with the SFX driver emulation in
 # sfx/chips.py.  Getting the operator order backwards puts the OP1 carrier in the
 # self-feedback slot (severe distortion).

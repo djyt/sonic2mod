@@ -26,14 +26,22 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.audio import (
+    PROBE_SECS,
+    SustainLoop,
+    apply_loop,
+    dc_block,
+    find_sustain_loop,
+    high_shelf,
+    int8_to_raw16,
+    peak,
+    to_int8,
+)
+from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
-from core.driver_tables import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
-from core.instruments import psg_catalogue
-from core.loops import PROBE_SECS, SustainLoop, apply_loop, find_sustain_loop
-from core.mod_limits import max_sustain_secs
-from core.mod_notes import PERIOD_TABLE, ModNote
-from core.pcm import dc_block, high_shelf, int8_to_raw16, peak, to_int8
-from core.pcm import trim_trailing_silence as _trim_trailing_silence
+from core.mod import PERIOD_TABLE, ModNote, max_sustain_secs
+from core.plan import psg_catalogue
+from core.smps import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from sn76489.renderer import (
     note_to_psg_n,
     render_psg_noise_raw,
@@ -48,7 +56,7 @@ def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[
     """Return the entry's envelope as a list, or None for constant volume.
 
     A name (``fTone_01`` … ``fTone_09``) is the driver's table from
-    core.driver_tables.PSG_ENVELOPES_BY_NAME; an inline list is used as written.
+    core.smps.driver_tables.PSG_ENVELOPES_BY_NAME; an inline list is used as written.
     """
     e = entry.envelope
     if e is None:
@@ -69,7 +77,7 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
     """Render one PsgInstrumentEntry (a catalogue instrument's) into raw_data.
 
     With `loops`, a tone whose envelope holds is rendered for PROBE_SECS, cut at a sustain
-    loop (core.loops) and the loop put in `loops_out`; noise is never looped.
+    loop (core.audio.loops) and the loop put in `loops_out`; noise is never looped.
     """
     inst_num = entry.mod_instrument
 
@@ -125,7 +133,7 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
             _check_warnings(caught, inst_num, verbose=verbose)
             if psg_synth.treble_shelf_db:
                 out = (high_shelf(out[0], out[1], psg_synth.treble_shelf_hz, psg_synth.treble_shelf_db), out[1])
-            # Centred (core.pcm.dc_block), before any loop is found in it
+            # Centred (core.audio.pcm.dc_block), before any loop is found in it
             if psg_synth.dc_block:
                 out = (dc_block(out[0], out[1], keep_silent_tail=True), out[1])
             return out
@@ -245,7 +253,7 @@ def generate_psg_samples(
         noise_envelopes: {instrument: envelope label} the converter derived for the noise
                          instruments (derive_noise_envelopes) — a psg_map
                          entry's own instrument and each of its `envelopes:` variants.
-        loops:     cut each tone whose envelope holds at a sustain loop (core.loops), reported
+        loops:     cut each tone whose envelope holds at a sustain loop (core.audio.loops), reported
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.
 
     Returns:
@@ -260,7 +268,7 @@ def generate_psg_samples(
     raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
 
     # One render per catalogue instrument: each psg_map entry's own instrument, then its
-    # envelope variants, then the psg_voice_map tone entries (core.instruments.psg_catalogue).
+    # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
     catalogue = psg_catalogue(config, noise_envelopes)
     for spec in catalogue.values():
         _synthesize_entry(spec.entry, psg_synth, fps, raw_data, verbose=verbose,

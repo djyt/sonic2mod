@@ -65,7 +65,7 @@ File > Import > Raw Data
 | `amiga_clock` | top level | `3546895` | PAL Amiga clock used for `target_rate` calc (shared with FM) |
 | `oversample` | int | `8` | Tones render at this multiple of the sample's rate, then are resampled down (§ Oversampling); 4 is within 0.2 dB and half the PSG time |
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = each PSG instrument its own longest ring at its playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `samples.max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
-| `sustain_loops` / `loop_drift_db` | `samples:` | `merged` / `1` | Cut a tone whose envelope settles to a sustain loop (`core/loops.py`, `generate_psg_samples(loops=True)`); noise never loops. `docs/pipeline.md` § Sustain loops |
+| `sustain_loops` / `loop_drift_db` | `samples:` | `merged` / `1` | Cut a tone whose envelope settles to a sustain loop (`core/audio/loops.py`, `generate_psg_samples(loops=True)`); noise never loops. `docs/pipeline.md` § Sustain loops |
 | `release_padding` | float | `0.2` | Seconds captured after key-off |
 
 The envelope tables are not a setting; see § Envelope Tables.  A `psg_envelope_tables` block left
@@ -137,7 +137,7 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
   This controls how fast the Amiga plays back the sample. It does NOT change because of `synth_root`.
 
 - **`synth_root`** is the frequency rendered via the SN76489 emulator.  It is derived from the
-  song (`core.synth_roots.resolve_synth_roots`: the chip pitch the instrument's notes play most
+  song (`core.plan.synth_roots.resolve_synth_roots`: the chip pitch the instrument's notes play most
   often, through the driver's table, at most an octave above the pitch `root` sounds); the
   sample's rate is raised by 2^(`synth_shift`/12) so no note moves.  No config states it.  A
   stated value is a rendering pitch elsewhere in the range, handled the same way
@@ -151,7 +151,7 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
 ### PSG frequency divider
 
 `note_to_psg_n` writes the divider the Sonic 1 driver writes for the note: its entry in
-`core.driver_tables.PSG_FREQUENCIES` (index 0 = nC0 = 130.98 Hz = C3, so MOD index i is table
+`core.smps.driver_tables.PSG_FREQUENCIES` (index 0 = nC0 = 130.98 Hz = C3, so MOD index i is table
 index i − 24).  The table differs from the rounded equal-temperament divider on 29 of its 70
 entries — a few cents in the usual range, up to 85 cents at the top — and the table is what the
 hardware plays.  Off the table, or at another clock, the formula stands in:
@@ -180,7 +180,7 @@ entry or use `range_space: chip`.
 ## Envelope Tables
 
 The nine Sonic 1 driver envelopes (`PSG1`–`PSG9`, `s1.sounddriver.asm` lines 43–60) are
-transcribed once, in `core/driver_tables.py`:
+transcribed once, in `core/smps/driver_tables.py`:
 
 - `PSG_ENVELOPES` — the driver's tables with their `$80` terminators, indexed by
   `VoiceIndex − 1`; what the SFX driver (`sfx/driver.py`) steps.
@@ -189,7 +189,7 @@ transcribed once, in `core/driver_tables.py`:
   (`sn76489/sample_generator.py::_resolve_envelope`).
 
 ```python
->>> from core.driver_tables import PSG_ENVELOPES_BY_NAME
+>>> from core.smps.driver_tables import PSG_ENVELOPES_BY_NAME
 >>> PSG_ENVELOPES_BY_NAME["fTone_04"]
 (0, 0, 2, 3, 4, 4, 5, 5, 5, 6)
 ```
@@ -220,7 +220,7 @@ envelope: [0, 0, 2, 4, 6, 10, 15]
 
 ## Oversampling
 
-A tone renders at 8x the sample's rate (`psg_synthesis.oversample`) and `core.resample` brings it
+A tone renders at 8x the sample's rate (`psg_synthesis.oversample`) and `core.audio.resample` brings it
 down.  At the sample's own rate the core's anti-aliasing (`IntermediatePos`) is a box average:
 -1.9 dB at 70 % of Nyquist, -3.9 dB at Nyquist, aliases folding back.  Oversampled, a square
 tone's upper band is 1.2-1.7 dB up and the aliases gone.  Noise renders at the sample's rate:
@@ -230,7 +230,7 @@ white either way, and band-limited its crest factor rose, 7 dB of level lost (me
 ## Quantisation
 
 Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and
-first-order noise shaping (`core.pcm.to_int8`, shared with the FM pipeline and `sfx/amiga.py`).
+first-order noise shaping (`core.audio.pcm.to_int8`, shared with the FM pipeline and `sfx/amiga.py`).
 The tone:noise balance, like every other level, is the `sample_list` volume's job, measured
 against the VGZ (`tools/vgm_compare.py --write-volumes`).  The old fixed scale
 (`psg_output_max`, removed 2026-09-27; the key warns and is ignored) left the noise channel at
@@ -380,7 +380,7 @@ converter will derive, and `low:` when the channel plays pitched noise.
 **The divider is derived from the song — leave `tone2_n` and `synth_root` out.**
 
 PSG3 keeps writing its own note's divider to tone channel 2, looked up in the driver's
-`PSGFrequencies` table (`core/driver_tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
+`PSGFrequencies` table (`core/smps/driver_tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
 table's degenerate last entry (index 69, `nMaxPSG`) counting as 1.  The table is *not* chromatic, so
 this cannot be reproduced by a note-name formula.  `derive_rate3_dividers`
 does the lookup for every rate-3 noise instrument:

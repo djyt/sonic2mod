@@ -229,7 +229,7 @@ Each operator block (6 parameter bytes) uses this per-register order:
 ### YM2612 register mapping (sonic2mod)
 
 ```python
-# core/driver_tables.py — read by ym2612/voice.py and sfx/chips.py
+# core/smps/driver_tables.py — read by ym2612/voice.py and sfx/chips.py
 SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
 # SMPS OP1 → YM offset 0x0C
 # SMPS OP2 → YM offset 0x04

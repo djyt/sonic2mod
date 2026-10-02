@@ -37,9 +37,8 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ChannelConfig, ConversionConfig
-from core.driver_state import walk_channel
-from core.smps_parser import SmpsParser
-from core.tables import parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
+from core.plan import walk_channel
+from core.smps import SmpsParser, parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
 
 mod_name = synth_note_name   # YAML config note name for a semitone
 
@@ -54,7 +53,7 @@ def chip_notes(cfg: ConversionConfig):
     # The converter's view of the song: loops extended (a smpsChangeTransposition inside the loop
     # body accumulates on every replay - Continue's later notes sit lower than the first pass).
     from core.config import PsgSynthesisSettings, SynthesisSettings
-    from core.smps2mod import SmpsToModConverter
+    from core.convert import SmpsToModConverter
     song = SmpsParser().parse_file(cfg.input_file)
     fm_off, psg_off = SynthesisSettings(), PsgSynthesisSettings()
     fm_off.enabled = psg_off.enabled = False
@@ -171,7 +170,7 @@ def main() -> None:
     data = yaml.safe_load(text)
     notes = chip_notes(cfg)
     # The rendering pitch of every entry that does not state synth_root, from the song
-    from core.synth_roots import resolve_synth_roots
+    from core.plan import resolve_synth_roots
     resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
 
     def defaults(entries) -> list:

@@ -66,8 +66,8 @@ except ImportError:  # pragma: no cover
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.audio import db_to_gain, gain_to_db, power_to_db
 from core.config import ConversionConfig
-from core.gain import db_to_gain, gain_to_db, power_to_db
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, isolate_channel, read_mod
 from tools import vgm_pitch_audit
@@ -873,7 +873,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     src_of = dict(zip(names, chan_map, strict=True))
     events_by_chan, samples, mod_end = mod_note_events(read_mod(mod_path), cfg.target_speed)
     if cfg.detune_plan is not None:
-        # A detune variant (core.detune) is its base's sample a few cents off, at its volume
+        # A detune variant (core.plan.detune) is its base's sample a few cents off, at its volume
         base_of = cfg.detune_plan.base_of
         events_by_chan = {c: [(t, base_of(ins), cxx) for t, ins, cxx in evs] for c, evs in events_by_chan.items()}
     lev = instrument_levels(note_times, {n: chan_map[src_of[n]] for n in note_times}, events_by_chan, samples,

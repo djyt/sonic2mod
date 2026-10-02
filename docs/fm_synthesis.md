@@ -90,7 +90,7 @@ fm_synthesis:
 | `amiga_clock` | int | `3546895` | **Top level** (shared with PSG; a section's own key is the fallback). PAL Amiga; 3579545 for NTSC (rare) |
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = each instrument its own longest ring, see below |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
-| `detune_variants` | bool | `true` | Each `smpsAlterNote` detune an instrument plays is rendered on the chip with the offset: its majority detune in its own slot, every other in a free slot (`core/detune.py`, docs/pipeline.md § Detune variants). `false`: every note plays the undetuned sample |
+| `detune_variants` | bool | `true` | Each `smpsAlterNote` detune an instrument plays is rendered on the chip with the offset: its majority detune in its own slot, every other in a free slot (`core/plan/detune.py`, docs/pipeline.md § Detune variants). `false`: every note plays the undetuned sample |
 | `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
 
 `samples:` holds what every sample shares, FM and PSG (`core.config._samples_section`; a key
@@ -100,11 +100,11 @@ still at the top level counts, with a warning; an unknown key is an error):
 |-------|---------|-------|
 | `max_sample_kb` | `128` | Bytes one sample may hold: 128 = the format's 131070, 64 = original ProTracker's 65534 |
 | `pt_zero_bytes` | `true` | A one-shot sample's first word zeroed (`ModFile.zero_idle_words`, last step of `convert()`): ProTracker replays it once the sample ends, and (-126, 126) there buzzes until the next note. A looped sample replays its loop instead |
-| `dither` | `shaped` | How the 8-bit rounding error is spread (`core.pcm.to_int8`): `shaped` (TPDF, first-order shaping, the noise toward Nyquist), `flat` (TPDF, even), `off` (rounding). A `voice_map` / `psg_map` / `psg_voice_map` entry or a merge group may say its own `dither:`; a composite without one takes its primary's entry's (`core.merge.composite_dither`, `FmInstrument.dither_mode`). Shaped noise suits a bright voice; a mellow one has no treble to hide it under (Green Hill $05 C4–B5, $06: 2–7 dB signal-to-noise above 6 kHz shaped, 8–14 flat, 12–19 off). `off` only on a sound that stays loud: a fading tail steps |
-| `dc_block` | `false` (`true` in the shipped settings) | Every FM / PSG render centred by a 5 Hz one-pole high-pass (`core.pcm.dc_block`), before loops and quantising: the hardware's output is AC-coupled. Lopsided FM voices sat up to 24 of 127 off zero (a click at each note-on and cut, 1.5 dB of bits). 20 Hz read the bass voices 1-2 dB low against the VGZs. Drums off disk are left alone |
+| `dither` | `shaped` | How the 8-bit rounding error is spread (`core.audio.pcm.to_int8`): `shaped` (TPDF, first-order shaping, the noise toward Nyquist), `flat` (TPDF, even), `off` (rounding). A `voice_map` / `psg_map` / `psg_voice_map` entry or a merge group may say its own `dither:`; a composite without one takes its primary's entry's (`core.merge.composite_dither`, `FmInstrument.dither_mode`). Shaped noise suits a bright voice; a mellow one has no treble to hide it under (Green Hill $05 C4–B5, $06: 2–7 dB signal-to-noise above 6 kHz shaped, 8–14 flat, 12–19 off). `off` only on a sound that stays loud: a fading tail steps |
+| `dc_block` | `false` (`true` in the shipped settings) | Every FM / PSG render centred by a 5 Hz one-pole high-pass (`core.audio.pcm.dc_block`), before loops and quantising: the hardware's output is AC-coupled. Lopsided FM voices sat up to 24 of 127 off zero (a click at each note-on and cut, 1.5 dB of bits). 20 Hz read the bass voices 1-2 dB low against the VGZs. Drums off disk are left alone |
 | `sustain_loops` / `loop_drift_db` | `merged` / `1` | § Sustain loops |
-| `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | Brightness shelf (`core.pcm.high_shelf`); 0 = off |
-| `resample_taps` | `32` | Resampler filter width (`core/resample.py`) |
+| `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | Brightness shelf (`core.audio.pcm.high_shelf`); 0 = off |
+| `resample_taps` | `32` | Resampler filter width (`core/audio/resample.py`) |
 
 **Clock rates explained:**
 - `clock_rate = 7670454` Hz → native synthesis rate = 7670454 / 6 / 24 ≈ **53,267 Hz**
@@ -145,7 +145,7 @@ stab instruments six times the sample they play, and the ending unison note's va
 the length of every other sample.  A stated number still renders every instrument that
 long.  In the merged build an instrument the plan does not render sets nothing.  Independently,
 `generate_fm_samples` caps each instrument's sustain to what a sample may hold at its rate
-(`core.mod_limits.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
+(`core.mod.limits.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
 is a top-level key of `settings.yaml`: `128` is the format's own limit (131070 bytes, a
 16-bit word count, which Paula's length register shares and OpenMPT, the FT2 clone and
 ProTracker 2.3E+/3.x play), `64` is the original ProTracker editor's (65534 bytes, its
@@ -155,7 +155,7 @@ four-hex-digit length field).  Where a note still outlasts its sample, `convert.
 halves the bytes per second per octave).  PSG works the same way (`docs/psg_synthesis.md`).
 
 **The release padding is only what a note can reach** (`exact_sustain` on the resolved
-settings, `core.loops.heard_padding`).  An instrument whose `auto` sustain holds every one of
+settings, `core.audio.loops.heard_padding`).  An instrument whose `auto` sustain holds every one of
 its notes, plays no channel's last note (that one rings out into the release, a jingle's
 final chord) and is no mix's source (a PSG chime under an FM lead rings as long as the lead,
 which only the FM pass measures), is cut where its notes stop being heard: at the sustain where the
@@ -174,7 +174,7 @@ Stage Clear's PSG instrument 9 is the known case: its PSG2 range plays the PSG1 
 octaves up, so a 2.55 s note needs 13 s of it.  At `max_sample_kb: 64`, 17 instruments in
 six songs (Marble Zone, Spring Yard, Scrap Brain, Robotnik, Final Zone, Credits) warn as well.
 
-**Sustain loops** (`samples.sustain_loops` and `samples.loop_drift_db` in `settings.yaml`, `core/loops.py`) make
+**Sustain loops** (`samples.sustain_loops` and `samples.loop_drift_db` in `settings.yaml`, `core/audio/loops.py`) make
 the length independent of the notes: an instrument whose envelope settles is rendered for a 4 s
 probe, cut where it settles plus one best-matching loop of the waveform (crossfaded closed, at
 most 1.2 s), and its notes end with a release slide at the voice's measured release rate instead
@@ -206,7 +206,7 @@ target_rate = round(amiga_clock / PERIOD_TABLE[root.value])
 `synth_root` does NOT affect `target_rate`.  A sample rendered at `synth_root` and played at
 MOD note `m` therefore sounds at `synth_root + (m − root)` semitones.
 
-**synth_root is derived.**  Before anything is rendered, `core.synth_roots.resolve_synth_roots`
+**synth_root is derived.**  Before anything is rendered, `core.plan.synth_roots.resolve_synth_roots`
 walks every channel with the `DriverState` and, for each rooted entry, finds D, the pitch the
 chip really plays for the entry's `low` note (`low` plus the pitch offset and every
 `smpsChangeTransposition`; for PSG through the driver's frequency table): with the sample at D
@@ -296,7 +296,7 @@ Choose the highest `root` whose full range `root + (high − low)` stays within 
 ## Quantisation
 
 Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and
-first-order noise shaping, unless `dither:` says otherwise (`samples.dither`, § Settings) (`core.pcm.to_int8`, the same treatment `sfx/amiga.py` gives the SFX
+first-order noise shaping, unless `dither:` says otherwise (`samples.dither`, § Settings) (`core.audio.pcm.to_int8`, the same treatment `sfx/amiga.py` gives the SFX
 exports; the dither sequence is seeded from the sample's length, so a render is byte-identical
 from run to run).  A decaying tail fades into a faint hiss instead of stepping through its last
 few levels.
@@ -371,7 +371,7 @@ opn2.write_reg(0xA4 + ch, fnum_hi, bank)  # write high byte first (latches block
 opn2.write_reg(0xA0 + ch, fnum_lo, bank)  # write low byte (triggers frequency load)
 ```
 
-The registers are the ones the Sonic 1 driver writes for that note (`core.driver_tables.
+The registers are the ones the Sonic 1 driver writes for that note (`core.smps.driver_tables.
 FM_FREQUENCIES`, index 1 = nC0, so MOD index i is table index i + 13): fnum 644–1216 with the
 block from the octave.  That matters beyond pitch — rate scaling and detune read the key code
 (block and the fnum's top bits), so A# and B written as fnum 574 one block up, as the old
@@ -399,10 +399,10 @@ in `ym3438_batch.c`) and returns an `array('i')`.  The note renderer uses `rende
 
 ```python
 if target_rate != native_rate:
-    mono = _resample(mono, native_rate, target_rate)   # core.resample (polyphase windowed sinc)
+    mono = _resample(mono, native_rate, target_rate)   # core.audio.resample (polyphase windowed sinc)
 ```
 
-`_resample` is the polyphase Kaiser-windowed sinc the SFX renderer uses (`core/resample.py`;
+`_resample` is the polyphase Kaiser-windowed sinc the SFX renderer uses (`core/audio/resample.py`;
 32 taps of the lower rate, 512 phases, >70 dB stopband), rounded back to ints.  Until
 2026-09-30 the 32 taps were input samples whatever the ratio: at 53267 -> 11062 Hz the kernel
 spanned under seven output samples, -2.9 dB at 85 % of Nyquist and aliases only 19 dB down.  It replaced a box average, which
@@ -427,7 +427,7 @@ reset writes with the same value.  Results are consumed in job order, so the MOD
 byte-identical whatever the thread count.  GHZ (11 instruments) converts in about 1 s instead
 of 4.5 s; Credits (25 instruments, 10 s sustain) in about 2 s instead of 12.5 s.
 
-Final encoding: `core.pcm.to_int8` — TPDF dither, first-order noise shaping, clamp, int8 stored as uint8.
+Final encoding: `core.audio.pcm.to_int8` — TPDF dither, first-order noise shaping, clamp, int8 stored as uint8.
 
 ---
 
@@ -569,9 +569,9 @@ the actual chip pitch. FM sideband frequencies fall outside the audible range.
 
 ### Distorted "overdriven guitar" sound
 
-**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` in `core/driver_tables.py` — OP1 (TL≈$01, near max volume)
+**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` in `core/smps/driver_tables.py` — OP1 (TL≈$01, near max volume)
 placed in the self-feedback slot.
-→ Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/driver_tables.py`. Do NOT change it.
+→ Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/smps/driver_tables.py`. Do NOT change it.
 
 ### Thin/bright sound on bass voices
 

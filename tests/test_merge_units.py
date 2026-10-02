@@ -23,9 +23,9 @@ from typing import ClassVar
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.audio import RELEASE_FLOOR_DB, limit_peaks, saturate
 from core.config import MergeGroup, format_patterns, load_yaml, parse_patterns
 from core.config.entries import _parse_instrument_range, _parse_merge_group
-from core.loops import RELEASE_FLOOR_DB
 from core.merge import (
     ALIGN,
     CHIP,
@@ -47,9 +47,7 @@ from core.merge import (
 )
 from core.merge.mix import _cut_layer
 from core.merge.slots import _plan_slots, same_shape_twins
-from core.mod import ModFile, ModSample
-from core.mod_notes import PERIOD_TABLE
-from core.pcm import limit_peaks, saturate
+from core.mod import PERIOD_TABLE, ModFile, ModSample
 
 CLOCK = 3546895.0
 
@@ -478,7 +476,7 @@ class MixLoop(unittest.TestCase):
 
 class HeardPadding(unittest.TestCase):
     def test_what_a_note_can_still_hear_past_its_sustain(self):
-        from core.loops import RELEASE_FLOOR_DB, fade_end, heard_padding
+        from core.audio import RELEASE_FLOOR_DB, fade_end, heard_padding
         self.assertEqual(heard_padding(0.5, 300.0, slides=False), 0.0)          # cut with C00
         self.assertAlmostEqual(heard_padding(0.5, 300.0, slides=True), RELEASE_FLOOR_DB / 300.0)
         self.assertEqual(heard_padding(0.5, 50.0, slides=True), 0.5)            # a slow release: the padding
@@ -520,7 +518,7 @@ class Dither(unittest.TestCase):
     """to_int8's modes: off rounds, flat and shaped add noise, shaped spends it at the top."""
 
     def test_modes(self):
-        from core.pcm import DITHER_FLAT, DITHER_OFF, DITHER_SHAPED, signed8, to_int8
+        from core.audio import DITHER_FLAT, DITHER_OFF, DITHER_SHAPED, signed8, to_int8
         x = [60 * math.sin(2 * math.pi * 200 * i / 16574) for i in range(8192)]
         self.assertEqual(signed8(to_int8(x, 1.0, DITHER_OFF)), [math.floor(v + 0.5) for v in x])
 
@@ -533,7 +531,7 @@ class Dither(unittest.TestCase):
             to_int8(x, 1.0, "noisy")
 
     def test_dc_block_centres_a_lopsided_wave_and_keeps_silence_at_zero(self):
-        from core.pcm import dc_block
+        from core.audio import dc_block
         rate = 16574
         wave = [0.0] * 100 + [40 + 60 * math.sin(2 * math.pi * 220 * i / rate) for i in range(rate)]
         out = dc_block(wave, rate)
@@ -564,7 +562,7 @@ class Narrowing(unittest.TestCase):
     def test_narrow_only_when_the_columns_beyond_are_empty(self):
         mod = ModFile(8)
         mod.set_channel(1)
-        from core.mod_notes import ModNote
+        from core.mod import ModNote
         mod.set_note(ModNote.C2, 1)
         self.assertEqual(mod.used_channels(), 2)
         mod.narrow_to(4)

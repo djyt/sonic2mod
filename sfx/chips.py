@@ -16,7 +16,7 @@ Line references are to `sonic_1/s1.sounddriver.asm`.
 
 from __future__ import annotations
 
-from core.driver_tables import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
+from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
 
 # YM2612 key-on/off register (global, always port 0 — not bank-switched)
 _REG_KEY_ON = 0x28

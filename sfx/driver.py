@@ -13,7 +13,7 @@ frequency, which is the only case where the caller writes the frequency register
 
 from __future__ import annotations
 
-from core.driver_tables import (
+from core.smps import (
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,
     PAN_VALUES,

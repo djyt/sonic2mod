@@ -1,4 +1,4 @@
-"""What a conversion reports: warnings (problems, each with its fix in core/report.py) and infos
+"""What a conversion reports: warnings (problems, each with its fix in core/ui/report.py) and infos
 (what was decided).  Every part of the converter writes here; convert.py's report reads it.
 
     diag.warn(WarningKind.CLAMP_HIGH, channel='FM1', ...)   ->  {'type': WarningKind.CLAMP_HIGH, 'channel': 'FM1', ...}

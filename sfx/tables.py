@@ -1,13 +1,13 @@
-"""Sonic 1 sound driver lookup tables — re-exported from :mod:`core.driver_tables`.
+"""Sonic 1 sound driver lookup tables — re-exported from :mod:`core.smps.driver_tables`.
 
 The tables moved to ``core/`` so the converter can reach them without importing the
 SFX driver: ``core`` must not depend on ``sfx``.  This module
 stays as the name the SFX driver and its tests have always used.
 
-New code should import from ``core.driver_tables`` directly.
+New code should import from ``core.smps.driver_tables`` directly.
 """
 
-from core.driver_tables import (  # noqa: F401
+from core.smps import (  # noqa: F401
     CARRIER_OFFSETS_BY_ALG,
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,

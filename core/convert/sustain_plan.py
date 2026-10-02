@@ -210,27 +210,15 @@ class SustainPlanner:
         return dataclasses.replace(settings, exact_sustain=frozenset(exact),
                                    slide_ends=frozenset(self._slide_ends.get(kind, ())))
 
-    def flush(self, kind: str, samples: dict, loops: dict[int, SustainLoop],
-              release: dict[int, float | None]) -> None:
+    def flush(self, kind: str, loops: dict[int, SustainLoop]) -> None:
         """Report the held-back sustain_short warnings of `kind`'s instruments, except for the
-        ones whose sample now loops, and record the loops and releases found."""
-        looped = []
-        for inst in sorted(samples):
-            loop = loops.get(inst)
-            if loop is not None:
-                pcm, rate = samples[inst]
-                looped.append({'instrument': inst, 'bytes': len(pcm), 'start_ms': 1000.0 * loop.start / rate,
-                               'loop_ms': 1000.0 * loop.length / rate, 'error': loop.error})
+        ones whose sample now loops."""
         for (k, inst), w in list(self._pending.items()):
             if k != kind:
                 continue
             del self._pending[(k, inst)]
             if inst not in loops:
                 self._diag.warn(WarningKind.SUSTAIN_SHORT, **w)
-        if looped:
-            self._diag.info(InfoKind.SUSTAIN_LOOPS, kind=kind, looped=looped, of=len(samples),
-                            bytes=sum(len(p) for p, _ in samples.values()),
-                            releases={i: r for i, r in release.items() if i in samples})
 
     def flush_pending(self) -> None:
         """The held-back warnings of kinds that were not synthesised."""

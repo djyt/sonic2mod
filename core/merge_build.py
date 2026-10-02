@@ -14,7 +14,7 @@ A unison chord's primary instrument moves too (bake_volumes).
 from .banks import pack_banks
 from .config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
 from .diagnostics import Diagnostics
-from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_mod_volume, headroom_db
+from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, db_to_mod_volume, headroom_db
 from .loops import FLAT_DB
 from .merge import NO_SLOT, MergePlan, mix_pcm_composites
 from .mod import ModFile, ModSample
@@ -247,7 +247,7 @@ class MergedBuild:
                     if e[0] != inst:
                         continue
                     was = e[2] if len(e) > 2 else MOD_MAX_VOLUME
-                    want = was * 10 ** (db / 20.0)
+                    want = was * db_to_gain(db)
                     if want > MOD_MAX_VOLUME:
                         over.append((inst, headroom_db(want)))
                     vol = db_to_mod_volume(was, db)

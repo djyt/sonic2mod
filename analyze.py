@@ -42,6 +42,7 @@ from core.tables import PERIOD_TABLE, ModNote, synth_note_name
 console = cli_console(highlight=True)
 
 
+from core.levels import db_to_gain
 from core.version import get_version as _get_version
 
 _ALG_TOPOLOGY = {
@@ -607,7 +608,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
     _PAN_LAW_DB = _synth_settings().fm_pan_law_db   # a hard-panned note vs a centred one
 
     def _fm_volume(vi: int, lv: tuple[int, bool]) -> int:
-        return max(1, min(64, round(_FM_K * 10 ** (fm_level_db(lv[0], lv[1], _PAN_LAW_DB) / 20))))
+        return max(1, min(64, round(_FM_K * db_to_gain(fm_level_db(lv[0], lv[1], _PAN_LAW_DB)))))
     fm_volume: dict[int, int] = {}
     fm_volume_note: dict[int, str] = {}
 

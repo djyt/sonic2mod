@@ -20,6 +20,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.levels import gain_to_db
 from core.smps_parser import SmpsParser
 from sfx import tables
 from sfx.batch import render_one
@@ -80,7 +81,7 @@ def check_resampler() -> None:
     ref = [math.sin(2 * math.pi * f0 * i / ft) for i in range(len(out))]
     span = range(200, len(out) - 200)
     err = max(abs(out[i] - ref[i]) for i in span)
-    db = 20 * math.log10(err) if err else -999
+    db = gain_to_db(err) if err else -999
     check("1 kHz sine reconstructs below -60 dB error", db < -60.0, f"{db:.1f} dB")
     check("output length matches the rate ratio",
           abs(len(out) - n * ft / fs) <= 1, f"{len(out)} samples")
@@ -113,7 +114,7 @@ def check_render(sfx_dir: Path) -> None:
             energy_l = sum(abs(v) for v in r.left)
             energy_r = sum(abs(v) for v in r.right)
             check(f"{r.name} is not silent", r.peak > 0.0, f"peak {r.peak:.3f}")
-            pans[r.name] = 20 * math.log10((energy_l + 1e-9) / (energy_r + 1e-9))
+            pans[r.name] = gain_to_db((energy_l + 1e-9) / (energy_r + 1e-9))
 
         if "B5_Ring" in pans:
             check("B5_Ring is panned right", pans["B5_Ring"] < -6.0,

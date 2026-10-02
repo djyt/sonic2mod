@@ -54,7 +54,8 @@ sonic2mod/
     driver_state.py  #   DriverState — the SMPS track state machine (level, pan, transpose, FM voice,
                      #   PSG entry) shared by the converter, its pre-passes and the config tools;
                      #   also source_names/source_map, chip_pitch, pan_is_hard, psg_range_entry
-    levels.py        #   Chip level laws: TL 0.75 dB/step, attenuation 2 dB/step, pan law, dB→volume
+    levels.py        #   Chip level laws: TL 0.75 dB/step, attenuation 2 dB/step, pan law, dB→volume;
+                     #   db_to_gain / gain_to_db / power_to_db (the only place a dB is converted by hand)
     mod.py           #   MOD file writer (adapted from mml2mod-master) + cell/effect-slot helpers; the one
                      #   reader (read_mod → ModImage, play_rows: one pass in play order), isolate_channel
     smps_parser.py   #   SMPS assembly parser → intermediate representation

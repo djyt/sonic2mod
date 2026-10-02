@@ -143,7 +143,9 @@ The chip level laws, in one place: `TL_STEP_DB` (0.75), `PSG_STEP_DB` (2.0),
 `DEFAULT_FM_PAN_LAW_DB` (3.0), `fm_level_db`, `psg_level_db`, `db_to_mod_volume`, `fm_tl_to_mod`,
 `psg_att_to_mod`, and `modal_level` (the most common level, ties to the louder one — what a
 "baked" `sample_list` volume stands for). Used by the converter and by `analyze.py`'s YAML
-skeleton, which therefore predict the same numbers.
+skeleton, which therefore predict the same numbers.  `db_to_gain`, `gain_to_db` and
+`power_to_db` are the dB conversions every module and tool uses (`vgm_analyze` reads its chip
+levels through `fm_level_db` / `psg_level_db` too).
 
 ### core/cli.py
 

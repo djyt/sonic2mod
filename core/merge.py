@@ -93,7 +93,7 @@ from typing import NamedTuple
 from .config import DEFAULT_SHELF_HZ, MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
 from .instruments import FmInstrument, FmLayer, fm_catalogue, free_slots, psg_catalogue
-from .levels import TL_STEP_DB, clamp_mod_volume
+from .levels import TL_STEP_DB, clamp_mod_volume, db_to_gain, gain_to_db, power_to_db
 from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
 from .pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, high_shelf, limit_peaks, peak, signed8, to_int8
@@ -836,7 +836,7 @@ def unison_gain_db(p: NoteOn, followers: list[NoteOn], chip: bool, tolerance: in
             if (lay.voice_idx != p.voice or lay.semitones or lay.fnum_offset
                     or lay.keyoff_secs is not None):
                 return None
-            add(f.pan, 10 ** (-(f.tl - p.tl) * TL_STEP_DB / 20.0))      # the pan is the speakers'
+            add(f.pan, db_to_gain(-(f.tl - p.tl) * TL_STEP_DB))      # the pan is the speakers'
 
         else:
             if (f.instrument != p.instrument or f.index != p.index
@@ -844,8 +844,8 @@ def unison_gain_db(p: NoteOn, followers: list[NoteOn], chip: bool, tolerance: in
                 return None
             rel = (f.level_db - p.level_db) if (f.level_db is not None and p.level_db is not None) else 0.0
             rel += PAN_TL_STEPS * TL_STEP_DB * (int(f.hard_panned) - int(p.hard_panned))   # ditto
-            add(f.pan, 10 ** (rel / 20.0))
-    return 10.0 * math.log10(sum(a * a for a in speakers.values()) / alone)
+            add(f.pan, db_to_gain(rel))
+    return power_to_db(sum(a * a for a in speakers.values()) / alone)
 
 
 def build_merge_plan(song, config, *, pan_law_db: float,
@@ -948,7 +948,7 @@ class _Planner:
         base = self.baselines.get(n.kind, {}).get(n.instrument)
         if base is None or n.level_db is None:
             return 1.0
-        return 10 ** ((n.level_db - base) / 20.0)
+        return db_to_gain(n.level_db - base)
 
     def collect_notes(self) -> None:
         """Every group's notes in its patterns; a follower's leave its own channel."""
@@ -1583,7 +1583,7 @@ def _cut_layer(sig: list[float], keep: int, rate: float, release_db_s: float | N
         tail = [v * (1 - i / fade) for i, v in enumerate(sig[keep:keep + fade])]
         return sig[:keep] + tail
     n = int(rate * RELEASE_FLOOR_DB / release_db_s)      # samples to the floor
-    tail = [v * 10 ** (-release_db_s * (i / rate) / 20.0) for i, v in enumerate(sig[keep:keep + n])]
+    tail = [v * db_to_gain(-release_db_s * (i / rate)) for i, v in enumerate(sig[keep:keep + n])]
     return sig[:keep] + tail
 
 
@@ -1871,7 +1871,7 @@ def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] |
         level = 64.0 * pk / 127.0
         vol = clamp_mod_volume(level)
         if level > 64:
-            comp.headroom_db = 20 * math.log10(pk / 127.0)
+            comp.headroom_db = gain_to_db(pk / 127.0)
     pcm = pcm[:max_bytes]
     if len(pcm) % 2:
         pcm += b"\x00"

@@ -906,7 +906,16 @@ class _Skeleton:
 
         # The envelope is not a key: the converter derives it from the song (the header
         # voice or the last smpsPSGvoice); `envelopes: {label: inst}` gives a label its own sample.
-        lines.append(f"    # envelope derived from the song: {_first_envelope(n.channel) or 'header voice'}")
+        first = _first_envelope(n.channel)
+        lines.append(f"    # envelope derived from the song: {first or 'header voice'}")
+        # A label the noise also plays under keeps the derived envelope's sample (the converter
+        # warns noise_envelopes); Scrap Brain's fTone_08 hats got their own this way
+        for label, label_stats in n.channel.psg_tone_stats.items():
+            if label.startswith(_FORM_PREFIX) or label == first or not label_stats.note_count:
+                continue
+            notes = f"{label_stats.note_count} note" + ("s" if label_stats.note_count != 1 else "")
+            lines.append(f"    # also plays under {label} ({notes}): give it its own "
+                         f"sample with envelopes: {{{label}: <instrument>}}")
         return lines
 
     def _psg_voice_map(self) -> list[str]:
@@ -922,7 +931,7 @@ class _Skeleton:
     def _tone_ranges(self, t: _PsgTone) -> list[str]:
         ts = t.stats
         if ts.note_count == 0:
-            return [f"    mod_instrument: {t.inst}", "    # (no notes — placeholder only)"]
+            return ["    # (no notes played — label switched to but never triggered)"]
 
         if t.split is not None:
             return (_range_entry(ts.min_semitone, t.split, t.inst, _note_in_octave2(ts.min_semitone))

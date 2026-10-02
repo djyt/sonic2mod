@@ -1,4 +1,4 @@
-"""The merged build's steps inside one conversion (core/merge.py plans it; this makes its samples).
+"""The merged build's steps inside one conversion (core/merge/ plans it; this makes its samples).
 
 A composite's volume (its sample_list entry), in pipeline order:
 
@@ -11,16 +11,17 @@ A composite's volume (its sample_list entry), in pipeline order:
 A unison chord's primary instrument moves too (bake_volumes).
 """
 
-from .banks import pack_banks
-from .config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
-from .diagnostics import Diagnostics, InfoKind, WarningKind
-from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, db_to_mod_volume, headroom_db
-from .loops import FLAT_DB
-from .merge import NO_SLOT, MergePlan, mix_pcm_composites
-from .mod import ModFile, ModSample
-from .pcm import MAX_MOD_SAMPLE_BYTES
-from .resample import DEFAULT_TAPS
-from .timeline import Timeline
+from ..banks import pack_banks
+from ..config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
+from ..diagnostics import Diagnostics, InfoKind, WarningKind
+from ..levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, db_to_mod_volume, headroom_db
+from ..loops import FLAT_DB
+from ..mod import ModFile, ModSample
+from ..pcm import MAX_MOD_SAMPLE_BYTES
+from ..resample import DEFAULT_TAPS
+from ..timeline import Timeline
+from .mix import mix_pcm_composites
+from .model import NO_SLOT, MergePlan
 
 _HEADROOM_REPORT_DB = 0.05     # a composite clamped by less is not reported
 

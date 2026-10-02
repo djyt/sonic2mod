@@ -21,10 +21,13 @@ from core.config import (
     exact_bpm,
     with_song_overrides,
 )
+from core.generators import SampleGenerators
 from core.merge import prepare_merged_config
 from core.report import Report, print_report
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
+from sn76489.sample_generator import generate_psg_samples
+from ym2612.sample_generator import generate_fm_samples
 
 console = cli_console()
 
@@ -137,7 +140,9 @@ def main():
     if args.player:
         synth = dataclasses.replace(synth, player=args.player)
 
-    converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)
+    # The chips render core's samples: core cannot import them, so they are handed in here
+    generators = SampleGenerators(fm=generate_fm_samples, psg=generate_psg_samples)
+    converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth, generators=generators)
     with console.status("[dim]Converting…[/dim]", spinner="dots"):
         mod = converter.convert()
 

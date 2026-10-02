@@ -28,6 +28,7 @@ from .driver_state import (
 )
 from .driver_state import source_map as source_map_for
 from .driver_tables import PSG_ENVELOPES_BY_NAME, PSG_FREQUENCIES_EXTENDED, noise_envelope_frames, psg_tone2_divider
+from .generators import SampleGenerators
 from .instruments import fm_catalogue, psg_catalogue
 from .levels import (
     DEFAULT_FM_PAN_LAW_DB,
@@ -178,7 +179,11 @@ _MAX_BANK_BUILDS = 4
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
-                 psg_synth: PsgSynthesisSettings | None = None):
+                 psg_synth: PsgSynthesisSettings | None = None,
+                 generators: SampleGenerators | None = None):
+        # The chip packages' renderers, handed down from the layer above (core/generators.py);
+        # needed only where synthesis is enabled.  Kept across convert()'s rebuilds.
+        self._generators = generators or SampleGenerators()
         self._start(song, config, synth, psg_synth)
 
     def _start(self, song: SmpsSong, config: ConversionConfig,
@@ -955,7 +960,10 @@ class SmpsToModConverter:
         # Load or synthesize samples (a merge composite is rendered or mixed, never loaded)
         merge_insts = (self._merge.instruments | self._merge.unused) if self._merge is not None else set()
         if synth and synth.enabled and synth.mode == "ym2612":
-            from ym2612.sample_generator import generate_fm_samples
+            generate_fm_samples = self._generators.fm
+            if generate_fm_samples is None:
+                raise ValueError("FM synthesis is enabled but no FM generator was given (SampleGenerators.fm)")
+
             # Warn about map entries whose voice index doesn't exist in the song, and
             # collect their instruments to suppress spurious "file not found" warnings.
             fm_skipped_insts: set = set()
@@ -1018,7 +1026,10 @@ class SmpsToModConverter:
 
         # PSG synthesis block
         if psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map):
-            from sn76489.sample_generator import generate_psg_samples
+            generate_psg_samples = self._generators.psg
+            if generate_psg_samples is None:
+                raise ValueError("PSG synthesis is enabled but no PSG generator was given (SampleGenerators.psg)")
+
             rate3 = self._derive_rate3_dividers()
             for inst, d in sorted(rate3.items()):
                 if d['used']:

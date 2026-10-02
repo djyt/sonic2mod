@@ -79,25 +79,13 @@ def _mod_note(v: str, context: str) -> 'ModNote':
 
 
 def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "InstrumentRange":
-    """Parse a single InstrumentRange dict from YAML.
-
-    Accepts both new key ``mod_instrument`` and deprecated ``instrument``
-    (emits DeprecationWarning for the latter).
-    """
+    """Parse a single InstrumentRange dict from YAML."""
     low  = parse_smps_note(_require(entry, 'low',  context))
     high = parse_smps_note(_require(entry, 'high', context))
 
-    if 'mod_instrument' in entry:
-        inst = entry['mod_instrument']
-    elif 'instrument' in entry:
-        warnings.warn(
-            "YAML key 'instrument' in a range entry is deprecated; use 'mod_instrument'.",
-            DeprecationWarning,
-            stacklevel=5,
-        )
-        inst = entry['instrument']
-    else:
+    if 'mod_instrument' not in entry:
         raise ValueError(f"Config error: 'mod_instrument' is required in {context}")
+    inst = entry['mod_instrument']
 
     root       = _opt(entry, 'root',       lambda v: _mod_note(v, f"{context}.root"))
     synth_root = _opt(entry, 'synth_root', parse_synth_note)
@@ -474,55 +462,18 @@ def parse_dac_samples(data: dict) -> list[DacSampleConfig]:
     return out
 
 
-def parse_voice_maps(data: dict, filepath) -> tuple[dict, dict]:
-    """(voice_map, legacy_voice_map): `voice_map:` as {voice: [InstrumentRange]}.
-
-        New format:    voice_map: {0: [{low: G5, high: G6, mod_instrument: 4, root: Fs2}]}
-        Legacy format: voice_map: {0: 4, 1: 5}  (simple int values — deprecated)
-        Old key name:  voice_instrument_map (deprecated — warned, parsed as the new voice_map)
-    """
+def parse_voice_maps(data: dict) -> dict:
+    """`voice_map:` as {voice: [InstrumentRange]}: {0: [{low: G5, high: G6, mod_instrument: 4, root: Fs2}]}.
+    A voice with nothing under it (analyze.py's skeleton, for a voice no note plays) has no ranges."""
     voice_map: dict = {}
-    legacy: dict = {}
-
-    # The deprecated key voice_instrument_map (old name for new-format data)
-    raw_vim_deprecated = data.get('voice_instrument_map')
-    if raw_vim_deprecated is not None:
-        warnings.warn(
-            f"YAML key 'voice_instrument_map' in '{filepath}' is deprecated; "
-            "rename it to 'voice_map'.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        for voice_key, range_list in raw_vim_deprecated.items():
-            voice_map[int(str(voice_key), 0)] = [
-                _parse_instrument_range(e, f"voice_instrument_map[{voice_key}][{j}]")
-                for j, e in enumerate(range_list)
-            ]
-
-    # voice_map: the format told by its first value
-    raw_vm = data.get('voice_map', {})
-    if not raw_vm:
-        return voice_map, legacy
-    first_val = next(iter(raw_vm.values()))
-    if isinstance(first_val, int):
-        # Legacy simple format: {0: 4, 1: 5}
-        warnings.warn(
-            f"YAML 'voice_map' with integer values in '{filepath}' is deprecated. "
-            "Use the list-of-ranges format (or remove it if voice_map covers all notes).",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        for k, v in raw_vm.items():
-            legacy[int(str(k), 0)] = v
-        return voice_map, legacy
-
-    # List-of-ranges format; an entry voice_instrument_map set already is kept, in case both keys are present
-    for voice_key, range_list in raw_vm.items():
-        vk = int(str(voice_key), 0)
-        if vk not in voice_map:
-            voice_map[vk] = [_parse_instrument_range(e, f"voice_map[{voice_key}][{j}]")
-                             for j, e in enumerate(range_list)]
-    return voice_map, legacy
+    for voice_key, range_list in (data.get('voice_map') or {}).items():
+        if range_list is None:
+            continue
+        if not isinstance(range_list, list):
+            raise ValueError(f"voice_map[{voice_key}] must be a list of ranges (low, high, mod_instrument, ...)")
+        voice_map[int(str(voice_key), 0)] = [_parse_instrument_range(e, f"voice_map[{voice_key}][{j}]")
+                                            for j, e in enumerate(range_list)]
+    return voice_map
 
 
 def parse_channel_instrument_map(data: dict) -> dict:
@@ -574,15 +525,6 @@ def parse_psg_map(data: dict, filepath) -> dict:
             vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),
             envelopes={str(label): inst for label, inst in raw_envs.items()},
             dither=dither_mode(psg_entry['dither'], ctx) if 'dither' in psg_entry else None,
-        )
-
-    # psg_form_map is deprecated — psg_map now serves this role
-    if 'psg_form_map' in data:
-        warnings.warn(
-            f"YAML key 'psg_form_map' in '{filepath}' is deprecated; "
-            "merge entries into 'psg_map' (dict keyed by form byte).",
-            DeprecationWarning,
-            stacklevel=3,
         )
     return out
 

@@ -312,7 +312,7 @@ The instrument catalogue: `{MOD instrument: FmInstrument | PsgInstrument}` in re
 first map entry to name an instrument deciding what its sample is rendered for (Credits folds
 voices onto 31 slots; Stage Clear's PSG2 plays two octaves up its PSG1 sample).
 `fm_catalogue(song, config)` walks voice_map (voices the song defines), channel_instrument_map
-(rooted), legacy_voice_map, channel_instrument_map (rootless, played at C1), then the merge plan's
+(rooted), channel_instrument_map (rootless, played at C1), then the merge plan's
 composites; `psg_catalogue(config, noise_envelopes)` walks psg_map (each entry, then its
 `envelopes:` variants) and psg_voice_map. An `FmInstrument` is a list of **`FmLayer`**s (voice,
 semitone offset, FNUM detune, carrier TL offset relative to the instrument's render level); a

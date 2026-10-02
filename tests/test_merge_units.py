@@ -590,7 +590,6 @@ class ConfigLoading(unittest.TestCase):
 
     def test_sample_settings_read_from_samples(self):
         import tempfile
-        import warnings
 
         from core.config import SynthesisSettings
 
@@ -604,12 +603,11 @@ class ConfigLoading(unittest.TestCase):
 
         s = load("samples:\n  max_sample_kb: 64\n  pt_zero_bytes: false\n")
         self.assertEqual((s.max_sample_kb, s.pt_zero_bytes), (64, False))
-        with warnings.catch_warnings(record=True) as w:          # the old top-level key still counts
-            warnings.simplefilter("always")
-            self.assertEqual(load("max_sample_kb: 64\n").max_sample_kb, 64)
-        self.assertIn("samples.max_sample_kb", str(w[0].message))
-        with self.assertRaises(ValueError):                         # a typo is not ignored
-            load("samples:\n  pt_zero_byte: false\n")
+        for text in ("samples:\n  pt_zero_byte: false\n",       # a typo is not ignored
+                     "max_sample_kb: 64\n",                      # nor a key outside its section
+                     "fm_synthesis:\n  headroom_db: 3\n"):      # nor a retired one
+            with self.assertRaises(ValueError):
+                load(text)
 
     def test_duplicate_key_is_refused(self):
         text = "merge_patterns:\n  - patterns: '1'\n    groups:\n      - primary: FM3\n        followers: [FM4]\n        primary: FM5\n"

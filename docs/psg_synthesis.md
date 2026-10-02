@@ -417,11 +417,6 @@ speeds.
 The timbre approximation is acceptable for Marble Zone: the noise bursts are short (fTone_09
 = 16 frames) and the pitch range is modest (G3–E4 ≈ 9 semitones = up to ~1.7× playback speed).
 
-### Using deprecated psg_form_map key
-
-YAML key `psg_form_map` is deprecated. Use `psg_map` instead. The old key still works but
-produces a `DeprecationWarning`.
-
 ### Noise too loud or too quiet against the tones
 
 Every sample is peak-normalised, so the noise:tone balance is the `sample_list` volumes' —

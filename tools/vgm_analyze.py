@@ -155,6 +155,237 @@ def _smps_note(freq: float, chan_type: str) -> str:
 # VGM parser
 # ---------------------------------------------------------------------------
 
+# VGM commands (VGM spec 1.71)
+_CMD_PSG       = 0x50
+_CMD_FM        = (0x52, 0x53)   # port 0 (FM1-3), port 1 (FM4-6)
+_CMD_WAIT      = 0x61        # 16-bit sample count follows
+_CMD_END       = 0x66
+_CMD_DATA      = 0x67        # data block: 0x66, type, 32-bit size, data
+_CMD_PCM_SEEK  = 0xE0        # marks the start of a DAC sample (kick/snare/...)
+
+# Commands that only wait: samples each one waits.  0x8n writes a DAC byte from the PCM bank first.
+_WAITS = {
+    0x62: 735,               # 1 NTSC frame
+    0x63: 882,               # 1 PAL frame
+    **{cmd: (cmd & 0x0F) + 1 for cmd in range(0x70, 0x80)},
+    **{cmd: cmd & 0x0F for cmd in range(0x80, 0x90)},
+}
+
+# DAC stream control commands: parameter bytes
+_DAC_STREAM_LENGTHS = {0x90: 4, 0x91: 4, 0x92: 5, 0x93: 10, 0x94: 1, 0x95: 4}
+
+_PSG_SILENT = 0xF            # 4-bit attenuation
+_NOISE = 3                   # the SN76489's noise channel
+_KEY_REG = 0x28              # YM2612 key-on/off, always via port 0
+_HEADER_CLOCK_FLAGS = 0x3FFF_FFFF
+
+
+def _data_start(data: bytes) -> int:
+    """Offset of the first command: version >= 1.50 gives it relative to 0x34."""
+    version = struct.unpack_from('<I', data, 0x08)[0]
+    if version < 0x150:
+        return 0x40
+    rel = struct.unpack_from('<I', data, 0x34)[0]
+    return (0x34 + rel) if rel else 0x40
+
+
+def _header_clock(data: bytes, offset: int, default: int) -> int:
+    """A chip clock from the header (FM 0x2C, PSG 0x0C), its flag bits stripped; 0 = not given."""
+    clock = struct.unpack_from('<I', data, offset)[0]
+    return clock & _HEADER_CLOCK_FLAGS if clock else default
+
+
+def _psg_data_byte_next(data: bytes, pos: int) -> bool:
+    """The next command is a PSG write of a data byte (not a latch)."""
+    return pos + 1 < len(data) and data[pos] == _CMD_PSG and not data[pos + 1] & 0x80
+
+
+class _ChipLog:
+    """YM2612 + SN76489 register state while a VGM log plays, and the key-on rows it yields.
+
+    `samples` is the VGM sample clock, advanced by the caller.
+    """
+
+    def __init__(self, fm_clock: int, psg_clock: int, channel_filter: set[str] | None,
+                 psg_mod_cents: float) -> None:
+        self._fm_clock = fm_clock
+        self._psg_clock = psg_clock
+        self._filter = channel_filter
+        self._psg_mod_cents = psg_mod_cents
+        self.samples = 0
+        self.rows: list[tuple] = []
+        self.fm_amp: dict[str, list[float]] = {}    # chan_name -> linear amplitudes at key-on
+        self.psg_amp: dict[str, list[float]] = {}   # "PSG1".."PSG3","NOISE" -> the same
+
+        # FM per [bank][channel]: bank 0 = FM1-3, bank 1 = FM4-6
+        self._fnum_lo = [[0, 0, 0], [0, 0, 0]]
+        self._fnum_hi = [[0, 0, 0], [0, 0, 0]]
+        # Key state, and the frequency the sounding note was keyed on with.  The Sonic 1 driver's
+        # FMNoteOn writes key-on unconditionally; under smpsNoAttack only the key-OFF is skipped, so a
+        # tie (`nA5, $10, smpsNoAttack, $3B`) logs a second key-on that the chip ignores.
+        self._fm_keyed = [[False] * 3, [False] * 3]
+        self._fm_keyed_hz = [[0.0] * 3, [0.0] * 3]
+        # Amplitude: TL per slot and algorithm per channel
+        self._fm_tl: list[list[dict[int, int]]] = [[{0x00: 0, 0x04: 0, 0x08: 0, 0x0C: 0} for _ in range(3)]
+                                                   for _ in range(2)]
+        self._fm_algo = [[0] * 3 for _ in range(2)]
+
+        # PSG
+        self._psg_vol = [_PSG_SILENT] * 4
+        self._psg_freq = [0, 0, 0]          # 10-bit tone period
+        self._psg_prev_freq = [0, 0, 0]     # period at the last key-on
+        self._psg_noise = 0                 # 3-bit noise register
+        self._latch_ch: int | None = None   # last latched channel (0-3)
+        self._latch_type: int | None = None  # 0 = freq, 1 = vol
+
+    def _now_ms(self) -> float:
+        return self.samples * 1000.0 / _VGM_SAMPLE_RATE
+
+    def _wanted(self, ch_name: str) -> bool:
+        return not self._filter or ch_name in self._filter
+
+    # ---- YM2612 ----
+
+    def fm_write(self, bank: int, reg: int, val: int) -> None:
+        """A register write to port `bank`."""
+        if 0x40 <= reg <= 0x4E and (reg & 0x03) != 0x03:
+            # TL: bits[3:2] = slot offset (0x00/0x04/0x08/0x0C), bits[1:0] = channel
+            self._fm_tl[bank][reg & 0x03][reg & 0x0C] = val & 0x7F
+        elif 0xB0 <= reg <= 0xB2:
+            self._fm_algo[bank][reg - 0xB0] = val & 0x07         # feedback + algorithm
+        elif 0xA0 <= reg <= 0xA2:
+            self._fnum_lo[bank][reg - 0xA0] = val                # F-number low byte
+        elif 0xA4 <= reg <= 0xA6:
+            self._fnum_hi[bank][reg - 0xA4] = val                # block + F-number high bits
+        elif reg == _KEY_REG and bank == 0:
+            self._fm_key(val)
+
+    def _fnum_block(self, bank: int, ch: int) -> tuple[int, int]:
+        hi = self._fnum_hi[bank][ch]
+        return ((hi & 0x7) << 8) | self._fnum_lo[bank][ch], (hi >> 3) & 0x7
+
+    def _fm_key(self, val: int) -> None:
+        """Key-on/off: a row where a key-on starts a note."""
+        ch_raw = val & 0x07
+        if ch_raw == 3:
+            return   # unused slot
+        bank, ch = (1, ch_raw - 4) if ch_raw >= 4 else (0, ch_raw)
+        if not (val >> 4) & 0x0F:
+            self._fm_keyed[bank][ch] = False
+            return
+
+        # A key-on while already keyed on re-attacks nothing.  It is still a note when the pitch moved
+        # to another note (a legato slide); within psg_mod_cents of where the note was keyed on it is a
+        # tie, or a tie with a new smpsDetune (Scrap Brain FM4 scoops every phrase start up by 36 cents).
+        hz = fnum_to_hz(*self._fnum_block(bank, ch), self._fm_clock)
+        was = self._fm_keyed_hz[bank][ch]
+        if (self._fm_keyed[bank][ch] and hz > 0 and was > 0
+                and abs(1200.0 * math.log2(hz / was)) <= max(self._psg_mod_cents, 1e-9)):
+            return
+        self._fm_keyed[bank][ch], self._fm_keyed_hz[bank][ch] = True, hz
+        self._emit_fm_keyon(bank, ch)
+
+    def _emit_fm_keyon(self, bank: int, ch: int) -> None:
+        fnum, block = self._fnum_block(bank, ch)
+        if fnum == 0:
+            return
+        ch_name = f"FM{bank * 3 + ch + 1}"
+        freq = fnum_to_hz(fnum, block, self._fm_clock)
+        if self._wanted(ch_name):
+            self.rows.append((self._now_ms(), ch_name, fnum, block, freq, _nearest_note(freq), _smps_note(freq, "fm")))
+
+        # Amplitude, whatever the filter: the carriers' linear levels summed
+        tl = self._fm_tl[bank][ch]
+        linear = sum(db_to_gain(fm_level_db(tl[s])) for s in sorted(CARRIER_OFFSETS_BY_ALG[self._fm_algo[bank][ch]]))
+        self.fm_amp.setdefault(ch_name, []).append(linear)
+
+    # ---- SN76489 ----
+
+    def psg_write(self, b: int, data_byte_next: bool) -> None:
+        """One byte written; `data_byte_next`: the next command writes a data byte."""
+        if b & 0x80:
+            self._psg_latch(b, data_byte_next)
+            return
+        ch = self._latch_ch
+        if ch is None or self._latch_type != 0 or ch >= _NOISE:
+            return
+
+        # Data byte: high 6 bits of the tone period.  An audible channel's period moving is a note.
+        self._psg_freq[ch] = (b & 0x3F) << 4 | (self._psg_freq[ch] & 0xF)
+        if self._psg_new_note(ch):
+            self._emit_psg_keyon(ch)
+
+    def _psg_latch(self, b: int, data_byte_next: bool) -> None:
+        """Latch byte: channel, type and the low nibble."""
+        ch, typ, nib = (b >> 5) & 3, (b >> 4) & 1, b & 0xF
+        self._latch_ch, self._latch_type = ch, typ
+
+        # Volume: silent -> audible is a key-on
+        if typ == 1:
+            old = self._psg_vol[ch]
+            self._psg_vol[ch] = nib
+            if old == _PSG_SILENT and nib < _PSG_SILENT:
+                self._emit_psg_keyon(ch)
+            return
+
+        if ch == _NOISE:
+            self._psg_noise = nib & 0x7
+            return
+
+        # Tone period, low nibble.  The driver always follows the latch with the high-bits byte;
+        # judging the half-written period would report a note that never sounds, so wait for it.
+        self._psg_freq[ch] = (self._psg_freq[ch] & 0x3F0) | nib
+        if not data_byte_next and self._psg_new_note(ch):
+            self._emit_psg_keyon(ch)
+
+    def _psg_new_note(self, ch: int) -> bool:
+        """Audible, and the period has left the current note (see psg_mod_cents)."""
+        new, old = self._psg_freq[ch], self._psg_prev_freq[ch]
+        if self._psg_vol[ch] >= _PSG_SILENT or new == old:
+            return False
+        if new <= 0 or old <= 0 or self._psg_mod_cents <= 0:
+            return True
+        return abs(1200.0 * math.log2(new / old)) > self._psg_mod_cents
+
+    def _emit_psg_keyon(self, ch: int) -> None:
+        """A key-on: the volume going audible, or the period moving while audible (portamento /
+        arpeggio without intervening silence)."""
+        if ch == _NOISE:
+            self._emit_noise_keyon()
+            return
+        ch_name = f"PSG{ch + 1}"
+        period = self._psg_freq[ch]
+        freq = _psg_period_to_hz(period, self._psg_clock)
+        self._psg_prev_freq[ch] = period   # so the same period does not emit twice
+        if self._wanted(ch_name):
+            self.rows.append((self._now_ms(), ch_name, period, 0, freq, _nearest_note(freq), _smps_note(freq, "psg")))
+        self.psg_amp.setdefault(ch_name, []).append(db_to_gain(psg_level_db(self._psg_vol[ch])))
+
+    def _emit_noise_keyon(self) -> None:
+        shift_hz, desc = self._noise_shift()
+        if self._wanted("NOISE"):
+            self.rows.append((self._now_ms(), "NOISE", self._psg_noise, 0, shift_hz, desc, "—"))
+        self.psg_amp.setdefault("NOISE", []).append(db_to_gain(psg_level_db(self._psg_vol[_NOISE])))
+
+    def _noise_shift(self) -> tuple[float, str]:
+        """(LFSR shift rate Hz, description) of the noise register: 'white/N/512', 'white/tone2 N=0'."""
+        noise_type = "white" if (self._psg_noise >> 2) & 1 else "periodic"
+        rate = self._psg_noise & 0x3
+        if rate != 3:
+            return self._psg_clock / float(512 << rate), f"{noise_type}/{('N/512', 'N/1024', 'N/2048')[rate]}"
+
+        # Clocked by tone ch2.  The Sonic 1 driver writes PSG3's own note divider there ($C0); nMaxPSG
+        # maps to N=0, which the Sega VDP PSG treats as N=1 (maximum shift rate, near-white hiss).
+        n2 = self._psg_freq[2]
+        return self._psg_clock / (32.0 * (n2 if n2 > 0 else 1)), f"{noise_type}/tone2 N={n2}"
+
+    # ---- DAC ----
+
+    def dac_seek(self, offset: int) -> None:
+        if self._wanted("DAC"):
+            self.rows.append((self._now_ms(), "DAC", offset, 0, 0.0, f"seek {offset}", "—"))
+
+
 def parse_vgm(
     data: bytes,
     fm_clock: int,
@@ -180,275 +411,65 @@ def parse_vgm(
 
     Returns (rows, fm_amp_samples, psg_amp_samples).
     """
-    # Version at 0x08
-    version = struct.unpack_from('<I', data, 0x08)[0]
+    fm_on, psg_on, dac_on = chip in ('fm', 'all'), chip in ('psg', 'all'), chip in ('dac', 'all')
+    if fm_on:
+        fm_clock = _header_clock(data, 0x2C, fm_clock)
+    if psg_on:
+        psg_clock = _header_clock(data, 0x0C, psg_clock)
+    log = _ChipLog(fm_clock, psg_clock, channel_filter, psg_mod_cents)
 
-    # Data start: version >= 1.50 uses a relative offset at 0x34
-    if version >= 0x150:
-        rel = struct.unpack_from('<I', data, 0x34)[0]
-        pos = (0x34 + rel) if rel else 0x40
-    else:
-        pos = 0x40
-
-    # Override FM clock from file header (offset 0x2C); strip T6/bit-30 flags
-    if chip in ('fm', 'all'):
-        file_fm_clock = struct.unpack_from('<I', data, 0x2C)[0]
-        if file_fm_clock:
-            fm_clock = file_fm_clock & 0x3FFF_FFFF
-
-    # Override PSG clock from file header (offset 0x0C); strip flags
-    if chip in ('psg', 'all'):
-        file_psg_clock = struct.unpack_from('<I', data, 0x0C)[0]
-        if file_psg_clock:
-            psg_clock = file_psg_clock & 0x3FFF_FFFF
-
-    # Per-channel FM state: bank 0 = FM1-3, bank 1 = FM4-6
-    fnum_lo: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
-    fnum_hi: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
-    # Key state, and the frequency word the sounding note was keyed on with.  The Sonic 1 driver's
-    # FMNoteOn writes key-on unconditionally; under smpsNoAttack only the key-OFF is skipped, so a
-    # tie (`nA5, $10, smpsNoAttack, $3B`) logs a second key-on that the chip ignores.
-    fm_keyed: list[list[bool]] = [[False] * 3, [False] * 3]
-    fm_keyed_hz: list[list[float]] = [[0.0] * 3, [0.0] * 3]
-
-    # Per-channel PSG state
-    psg_vol       = [0xF, 0xF, 0xF, 0xF]  # 4-bit attenuation; 0xF = silent
-    psg_freq      = [0, 0, 0]              # 10-bit tone period (channels 0-2)
-    psg_prev_freq = [0, 0, 0]              # period at last key-on (period-change detection)
-    psg_noise     = 0                      # 3-bit noise register
-    psg_latch_ch   = None                # last latched channel (0-3)
-    psg_latch_type = None                # 0 = freq, 1 = vol
-
-    # FM amplitude tracking: TL per (bank, ch, slot) and algorithm per (bank, ch)
-    fm_tl:   list[list[dict[int, int]]] = [[{0x00: 0, 0x04: 0, 0x08: 0, 0x0C: 0} for _ in range(3)] for _ in range(2)]
-    fm_algo: list[list[int]]            = [[0] * 3 for _ in range(2)]
-    fm_amp_samples:  dict[str, list[float]] = {}   # chan_name → list of linear amplitudes at key-on
-    psg_amp_samples: dict[str, list[float]] = {}   # "PSG1".."PSG3","NOISE" → list
-
-    sample_count = 0
-    rows: list[tuple] = []
-
-    def _emit_fm_keyon(bank: int, ch_idx: int) -> None:
-        ch_name = f"FM{bank * 3 + ch_idx + 1}"
-        lo    = fnum_lo[bank][ch_idx]
-        hi    = fnum_hi[bank][ch_idx]
-        block = (hi >> 3) & 0x7
-        fnum  = ((hi & 0x7) << 8) | lo
-        if fnum == 0:
-            return
-        freq    = fnum_to_hz(fnum, block, fm_clock)
-        note    = _nearest_note(freq)
-        smps    = _smps_note(freq, "fm")
-        time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
-        if not channel_filter or ch_name in channel_filter:
-            rows.append((time_ms, ch_name, fnum, block, freq, note, smps))
-        # Amplitude: sum linear levels of carrier operators regardless of channel filter
-        alg = fm_algo[bank][ch_idx]
-        tl_dict = fm_tl[bank][ch_idx]
-        # TL register layout: slot offset = reg & 0x0C (0x00=OP1, 0x04=OP3, 0x08=OP2, 0x0C=OP4)
-        linear_sum = sum(db_to_gain(fm_level_db(tl_dict[s])) for s in sorted(CARRIER_OFFSETS_BY_ALG[alg]))
-        fm_amp_samples.setdefault(ch_name, []).append(linear_sum)
-
-    def _psg_new_note(ch: int) -> bool:
-        """Audible, and the period has left the current note (see psg_mod_cents)."""
-        new, old = psg_freq[ch], psg_prev_freq[ch]
-        if psg_vol[ch] >= 0xF or new == old:
-            return False
-        if new <= 0 or old <= 0 or psg_mod_cents <= 0:
-            return True
-        return abs(1200.0 * math.log2(new / old)) > psg_mod_cents
-
-    def _emit_psg_keyon(ch: int) -> None:
-        """Emit a PSG key-on event.
-
-        Triggered either by a volume transition (0xF → audible) or by a tone
-        period change while the channel is already audible (portamento / arpeggio
-        without intervening silence).
-        """
-        time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
-        if ch < 3:
-            ch_name = f"PSG{ch + 1}"
-            period  = psg_freq[ch]
-            freq    = _psg_period_to_hz(period, psg_clock)
-            note    = _nearest_note(freq)
-            smps    = _smps_note(freq, "psg")
-            psg_prev_freq[ch] = period   # remember period so we don't double-emit
-            if not channel_filter or ch_name in channel_filter:
-                rows.append((time_ms, ch_name, period, 0, freq, note, smps))
-            # Amplitude: capture regardless of channel filter
-            linear = db_to_gain(psg_level_db(psg_vol[ch]))
-            psg_amp_samples.setdefault(ch_name, []).append(linear)
-        else:
-            noise_type = "white" if (psg_noise >> 2) & 1 else "periodic"
-            rate_idx   = psg_noise & 0x3
-            if rate_idx == 3:
-                # LFSR clocked by tone ch2.  The Sonic 1 driver writes PSG3's own
-                # note divider to tone ch2 ($C0); nMaxPSG maps to N=0, which the
-                # Sega VDP PSG treats as N=1 (maximum shift rate, near-white hiss).
-                n2       = psg_freq[2]
-                n_eff    = n2 if n2 > 0 else 1
-                shift_hz = psg_clock / (32.0 * n_eff)
-                noise_desc = f"{noise_type}/tone2 N={n2}"
-            else:
-                rate_str   = ("N/512", "N/1024", "N/2048")[rate_idx]
-                shift_hz   = psg_clock / float(512 << rate_idx)
-                noise_desc = f"{noise_type}/{rate_str}"
-            if not channel_filter or "NOISE" in channel_filter:
-                rows.append((time_ms, "NOISE", psg_noise, 0, shift_hz, noise_desc, "—"))
-            linear = db_to_gain(psg_level_db(psg_vol[3]))
-            psg_amp_samples.setdefault("NOISE", []).append(linear)
-
-    end = len(data)
+    pos, end = _data_start(data), len(data)
     while pos < end:
         cmd = data[pos]
         pos += 1
 
-        if cmd in (0x52, 0x53) and chip in ('fm', 'all'):
-            # YM2612 port 0 (FM1-3) or port 1 (FM4-6) write
+        # Chip writes; the chips not analysed are skipped
+        if cmd in _CMD_FM:
+            if not fm_on:
+                pos += 2
+                continue
             if pos + 1 >= end:
                 break
-            bank = cmd - 0x52
-            reg  = data[pos]
-            val  = data[pos + 1]
+            log.fm_write(cmd - _CMD_FM[0], data[pos], data[pos + 1])
             pos += 2
-
-            if 0x40 <= reg <= 0x4E and (reg & 0x03) != 0x03:
-                # TL register: bits[3:2]=slot offset, bits[1:0]=channel
-                slot = reg & 0x0C   # 0x00/0x04/0x08/0x0C
-                ch   = reg & 0x03   # 0..2
-                fm_tl[bank][ch][slot] = val & 0x7F
-            elif 0xB0 <= reg <= 0xB2:
-                # Algorithm + feedback: bits[2:0] = algorithm
-                fm_algo[bank][reg - 0xB0] = val & 0x07
-            elif 0xA0 <= reg <= 0xA2:
-                # F-number low byte, ch 0-2
-                fnum_lo[bank][reg - 0xA0] = val
-            elif 0xA4 <= reg <= 0xA6:
-                # Block + F-number high bits, ch 0-2
-                fnum_hi[bank][reg - 0xA4] = val
-            elif reg == 0x28 and bank == 0:
-                # Key-on/off — reg 0x28 is always via port 0
-                ch_raw  = val & 0x07
-                op_mask = (val >> 4) & 0x0F
-                if ch_raw == 3:
-                    continue   # unused slot
-                # Map raw ch field → (bank, ch_idx)
-                kb, kc = (1, ch_raw - 4) if ch_raw >= 4 else (0, ch_raw)
-                if op_mask == 0:
-                    fm_keyed[kb][kc] = False
-                    continue   # key-off, not key-on
-                # A key-on while already keyed on re-attacks nothing.  It is still a note when
-                # the pitch moved to another note (a legato slide); within psg_mod_cents of where
-                # the note was keyed on it is a tie, or a tie with a new smpsDetune (Scrap Brain
-                # FM4 scoops every phrase start up by 36 cents that way).
-                hz = fnum_to_hz(((fnum_hi[kb][kc] & 7) << 8) | fnum_lo[kb][kc], (fnum_hi[kb][kc] >> 3) & 7, fm_clock)
-                was = fm_keyed_hz[kb][kc]
-                if (fm_keyed[kb][kc] and hz > 0 and was > 0
-                        and abs(1200.0 * math.log2(hz / was)) <= max(psg_mod_cents, 1e-9)):
-                    continue
-                fm_keyed[kb][kc], fm_keyed_hz[kb][kc] = True, hz
-                _emit_fm_keyon(kb, kc)
-
-        elif cmd == 0x52 and chip not in ('fm', 'all'):
-            # Skip FM write (2 bytes) when not analyzing FM
-            pos += 2
-
-        elif cmd == 0x53 and chip not in ('fm', 'all'):
-            pos += 2
-
-        elif cmd == 0x50 and chip in ('psg', 'all'):
-            # SN76489 write
+        elif cmd == _CMD_PSG:
+            if not psg_on:
+                pos += 1
+                continue
             if pos >= end:
                 break
-            b = data[pos]; pos += 1
-            if b & 0x80:
-                # Latch byte: identifies channel and type
-                ch  = (b >> 5) & 3
-                typ = (b >> 4) & 1
-                nib = b & 0xF
-                psg_latch_ch   = ch
-                psg_latch_type = typ
-                if typ == 1:
-                    # Volume latch
-                    old = psg_vol[ch]
-                    psg_vol[ch] = nib
-                    if old == 0xF and nib < 0xF:
-                        # Transition from silent → audible = key-on
-                        _emit_psg_keyon(ch)
-                elif ch == 3:
-                    # Noise frequency latch
-                    psg_noise = nib & 0x7
-                else:
-                    # Tone frequency low nibble
-                    psg_freq[ch] = (psg_freq[ch] & 0x3F0) | nib
-                    # Secondary key-on: period changed while channel is audible.  The driver always
-                    # follows the latch with the high-bits byte; judging the half-written period
-                    # would report a note that never sounds, so wait for that byte when it is next.
-                    two_byte = pos + 1 < end and data[pos] == 0x50 and not data[pos + 1] & 0x80
-                    if not two_byte and _psg_new_note(ch):
-                        _emit_psg_keyon(ch)
-            elif psg_latch_ch is not None and psg_latch_type == 0 and psg_latch_ch < 3:
-                # Data byte: high 6 bits of tone period
-                psg_freq[psg_latch_ch] = (b & 0x3F) << 4 | (psg_freq[psg_latch_ch] & 0xF)
-                # Secondary key-on: period changed while channel is audible
-                ch = psg_latch_ch
-                if _psg_new_note(ch):
-                    _emit_psg_keyon(ch)
-
-        elif cmd == 0x50 and chip not in ('psg', 'all'):
-            # Skip PSG write when not analyzing PSG
             pos += 1
+            log.psg_write(data[pos - 1], _psg_data_byte_next(data, pos))
 
-        elif cmd == 0x61:
-            # Wait N samples
+        # Time
+        elif cmd in _WAITS:
+            log.samples += _WAITS[cmd]
+        elif cmd == _CMD_WAIT:
             if pos + 1 >= end:
                 break
-            n = struct.unpack_from('<H', data, pos)[0]
+            log.samples += struct.unpack_from('<H', data, pos)[0]
             pos += 2
-            sample_count += n
+        elif cmd == _CMD_END:
+            break
 
-        elif cmd == 0x62:
-            sample_count += 735    # 1 NTSC frame
-
-        elif cmd == 0x63:
-            sample_count += 882    # 1 PAL frame
-
-        elif cmd == 0x66:
-            break   # end of data
-
-        elif cmd == 0x67:
-            # Data block: 0x66 (compat byte) + 1-byte type + 4-byte size + data
+        # Data blocks and the DAC stream
+        elif cmd == _CMD_DATA:
             if pos + 5 >= end:
                 break
-            pos += 2   # skip compat byte (always 0x66) and type byte
-            size = struct.unpack_from('<I', data, pos)[0]
-            pos += 4 + size
-
-        elif 0x70 <= cmd <= 0x7F:
-            sample_count += (cmd & 0x0F) + 1
-
-        elif 0x80 <= cmd <= 0x8F:
-            # YM2612 DAC write from PCM bank, then wait
-            sample_count += cmd & 0x0F
-
-        elif cmd == 0xE0:
-            # PCM seek — marks the start of a DAC sample (kick/snare/…)
+            pos += 2   # compat byte (always 0x66) and type byte
+            pos += 4 + struct.unpack_from('<I', data, pos)[0]
+        elif cmd == _CMD_PCM_SEEK:
             if pos + 4 > end:
                 break
-            seek_off = struct.unpack_from('<I', data, pos)[0]
+            if dac_on:
+                log.dac_seek(struct.unpack_from('<I', data, pos)[0])
             pos += 4
-            if chip in ('dac', 'all') and (not channel_filter or "DAC" in channel_filter):
-                time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
-                rows.append((time_ms, "DAC", seek_off, 0, 0.0, f"seek {seek_off}", "—"))
-
-        elif 0x90 <= cmd <= 0x95:
-            # DAC stream control commands (various fixed lengths)
-            _DAC_LENGTHS = {0x90: 4, 0x91: 4, 0x92: 5, 0x93: 10, 0x94: 1, 0x95: 4}
-            pos += _DAC_LENGTHS.get(cmd, 1)
+        elif cmd in _DAC_STREAM_LENGTHS:
+            pos += _DAC_STREAM_LENGTHS[cmd]
 
         # Unknown commands: skip 1 byte and continue (best-effort)
 
-    return rows, fm_amp_samples, psg_amp_samples
+    return log.rows, log.fm_amp, log.psg_amp
 
 
 # ---------------------------------------------------------------------------

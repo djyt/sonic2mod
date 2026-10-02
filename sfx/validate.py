@@ -20,7 +20,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.levels import gain_to_db
+from core.gain import gain_to_db
 from core.smps_parser import SmpsParser
 from sfx import tables
 from sfx.batch import render_one

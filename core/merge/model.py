@@ -50,7 +50,7 @@ class Composite:
                                        #   same shape at another pitch triggers it transposed
     uses: dict = field(default_factory=dict)   # {group label: notes} - the groups whose notes play it
     banked: bool = False               # pcm mix of a `bank: true` group: shares a slot with others
-                                       # (core/banks.py), chosen with 9xx; takes no slot in the fit
+                                       # (core/merge/banks.py), chosen with 9xx; takes no slot in the fit
     offset: int = 0                    # banked: where its sound starts in the bank (bytes, ×256)
     region: int = 0                    # banked: bytes of its sound (the note is cut after them)
     looped: bool = False               # banked: its sound loops, the last in its bank (no cut)
@@ -124,7 +124,7 @@ class MergePlan:
     slots_free: int = 0                             # instrument slots the composites could take
     slots_wanted: int = 0                           # composites the groups asked for (after max_composites)
     spare_slots: list[int] = field(default_factory=list)   # slots the fit left free (the banks take them)
-    banks: list = field(default_factory=list)       # core.banks.Bank, once the mixes are packed
+    banks: list = field(default_factory=list)       # core.merge.banks.Bank, once the mixes are packed
     regions: dict[tuple[str, int], tuple[int, int]] = field(default_factory=dict)   # (primary, tick) ->
                                                     #   (offset bytes, sound bytes) of a banked note
     bank_members: dict[tuple[str, int], Composite] = field(default_factory=dict)   # (primary, tick) ->

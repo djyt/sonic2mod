@@ -6,8 +6,8 @@ from __future__ import annotations
 import bisect
 
 from ..config import MergeGroup
-from ..driver_state import source_map
-from ..smps_parser import SmpsEvent, SmpsNote
+from ..smps_song import SmpsEvent, SmpsNote
+from ..tables import source_map
 from .model import GroupNotes, MergePlan
 from .notes import NoteOn, channel_notes
 

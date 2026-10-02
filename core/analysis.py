@@ -10,9 +10,8 @@ from dataclasses import dataclass, field
 from typing import cast
 
 from .config import ConversionConfig
-from .driver_state import pan_is_hard, source_names
-from .smps_parser import SmpsChannel, SmpsSong
-from .tables import semitone_to_note_name  # noqa: F401 — re-exported for analyze.py
+from .smps_song import SmpsChannel, SmpsSong, pan_is_hard
+from .tables import semitone_to_note_name, source_names  # noqa: F401 — re-exported for analyze.py
 
 # ---------------------------------------------------------------------------
 # Effect classification

@@ -9,9 +9,34 @@ with the same DriverState the conversion does.
 from .config import ConversionConfig
 from .detune import DetunePlan
 from .driver_state import enabled_channels, walk_channel
-from .levels import fm_level_db, modal_level
+from .gain import db_to_gain
+from .levels import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
 from .merge import MergePlan
-from .smps_parser import SmpsSong
+from .mod_volume import MOD_MAX_VOLUME
+from .smps_song import SmpsSong
+
+
+def fm_tl_to_mod(tl_offset: int) -> int:
+    """YM2612 TL offset -> absolute MOD volume 0-64 (smpsHeaderFM volume, smpsAlterVol)."""
+    if tl_offset >= FM_TL_SILENT:
+        return 0
+    return round(MOD_MAX_VOLUME * db_to_gain(fm_level_db(tl_offset)))
+
+
+def psg_att_to_mod(attenuation: int) -> int:
+    """SN76489 attenuation -> absolute MOD volume 0-64 (0 = max, 15 = silent)."""
+    if attenuation >= PSG_ATT_SILENT:
+        return 0
+    return round(MOD_MAX_VOLUME * db_to_gain(psg_level_db(attenuation)))
+
+
+def modal_level(counts: dict[float, int]) -> float:
+    """The level most notes play at — what a "baked" sample_list volume stands for.
+
+    Ties go to the louder level, so the others are attenuated by Cxx rather than
+    boosted past 64.
+    """
+    return max(counts, key=lambda level: (counts[level], level))
 
 
 class LevelPlanner:

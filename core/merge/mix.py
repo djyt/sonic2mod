@@ -6,12 +6,14 @@ from __future__ import annotations
 import math
 
 from ..config import DEFAULT_SHELF_HZ
-from ..levels import clamp_mod_volume, db_to_gain, gain_to_db
+from ..gain import db_to_gain, gain_to_db
 from ..loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from ..mod import ModSample
-from ..pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, high_shelf, limit_peaks, peak, signed8, to_int8
+from ..mod_limits import MAX_MOD_SAMPLE_BYTES
+from ..mod_notes import PERIOD_TABLE
+from ..mod_volume import clamp_mod_volume
+from ..pcm import DEFAULT_DITHER, INT8_PEAK, high_shelf, limit_peaks, peak, signed8, to_int8
 from ..resample import DEFAULT_TAPS, resample
-from ..tables import PERIOD_TABLE
 from .model import Composite, MergePlan
 
 # --- mixing the pcm composites -------------------------------------------------------------
@@ -81,12 +83,12 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     verse chords play 0.35 s ones under a chime; one figure per instrument served neither.  A follower the driver keyed
     off with smpsNoteFill (the key's fill) is cut there and decays at its instrument's release
     rate (`release_db_s`, {instrument: dB/s}; a bass pluck under a kick).  A banked composite's
-    sample goes to `bank_out` ({provisional id: sample}) for core.banks to pack, not into a slot.
+    sample goes to `bank_out` ({provisional id: sample}) for core.merge.banks to pack, not into a slot.
 
     A synthesised source is taken from `raw` ({instrument: (render values, rate)}, the
     generators' output before it was quantised to 8 bits, scaled as its sample was) rather than
     from the bytes in its slot, so a mix is quantised once, here — or, for a banked composite,
-    once in core.banks: its normalised sum goes to `raw_out` ({provisional id: values}) and the
+    once in core.merge.banks: its normalised sum goes to `raw_out` ({provisional id: values}) and the
     bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes.
     """
     mixer = _Mixer(mod, amiga_clock, hold_secs or {}, sources or {}, release_db_s or {}, raw or {}, padding_secs,
@@ -99,7 +101,7 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
         if mixed is None:
             continue
 
-        # Into its slot, or to core.banks, which packs (and quantises) it
+        # Into its slot, or to core.merge.banks, which packs (and quantises) it
         sample, total, pk = _to_sample(comp, *mixed, max_bytes, composite_dither(comp, entry_dithers or {}, dither))
         if comp.banked and bank_out is not None:
             bank_out[comp.inst] = sample

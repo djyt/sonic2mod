@@ -6,7 +6,7 @@ driver writes from PSG3's own notes.
 from .config import ConversionConfig
 from .driver_state import enabled_channels, walk_channel
 from .driver_tables import psg_tone2_divider
-from .smps_parser import SmpsSong
+from .smps_song import SmpsSong
 from .tables import semitone_to_note_name as _semitone_to_name
 
 

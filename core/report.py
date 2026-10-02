@@ -31,10 +31,9 @@ from rich.table import Table
 from rich.text import Text
 
 from .diagnostics import InfoKind, WarningKind
-from .driver_state import source_names
-from .pcm import MAX_MOD_SAMPLE_BYTES
+from .mod_limits import MAX_MOD_SAMPLE_BYTES
 from .sample_audit import audit
-from .tables import synth_note_name
+from .tables import source_names, synth_note_name
 
 OK = "[green]✓[/green]"
 WARN = "[yellow]⚠[/yellow]"

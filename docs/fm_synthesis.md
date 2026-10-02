@@ -145,7 +145,7 @@ stab instruments six times the sample they play, and the ending unison note's va
 the length of every other sample.  A stated number still renders every instrument that
 long.  In the merged build an instrument the plan does not render sets nothing.  Independently,
 `generate_fm_samples` caps each instrument's sustain to what a sample may hold at its rate
-(`core.pcm.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
+(`core.mod_limits.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
 is a top-level key of `settings.yaml`: `128` is the format's own limit (131070 bytes, a
 16-bit word count, which Paula's length register shares and OpenMPT, the FT2 clone and
 ProTracker 2.3E+/3.x play), `64` is the original ProTracker editor's (65534 bytes, its
@@ -206,7 +206,7 @@ target_rate = round(amiga_clock / PERIOD_TABLE[root.value])
 `synth_root` does NOT affect `target_rate`.  A sample rendered at `synth_root` and played at
 MOD note `m` therefore sounds at `synth_root + (m − root)` semitones.
 
-**synth_root is derived.**  Before anything is rendered, `core.driver_state.resolve_synth_roots`
+**synth_root is derived.**  Before anything is rendered, `core.synth_roots.resolve_synth_roots`
 walks every channel with the `DriverState` and, for each rooted entry, finds D, the pitch the
 chip really plays for the entry's `low` note (`low` plus the pitch offset and every
 `smpsChangeTransposition`; for PSG through the driver's frequency table): with the sample at D

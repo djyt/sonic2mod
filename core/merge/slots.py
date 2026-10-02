@@ -3,8 +3,9 @@ their slot up first, stand-ins taking a dropped composite's notes."""
 
 from __future__ import annotations
 
-from ..driver_state import source_map, walk_channel
+from ..driver_state import walk_channel
 from ..instruments import fm_catalogue, psg_catalogue
+from ..tables import source_map
 from .model import LAST_MOD_NOTE, NO_SLOT, Composite, MergePlan
 from .notes import CompositeKey
 
@@ -20,7 +21,7 @@ def fit_composites(plan: MergePlan, song, config, free: list[int],
     until it is stable; the composites dropped first are those whose primary instrument is
     played anyway (no new slot needed), then the least played.  A drum's slot (`drums`) is never
     reused; an FM mix source's (`fm_slots`) only by a pcm composite.  A banked composite takes
-    no slot here (`core.banks` packs them once mixed); `reserve` slots are held back for the
+    no slot here (`core.merge.banks` packs them once mixed); `reserve` slots are held back for the
     banks, and whatever the fit leaves free is theirs too (`plan.spare_slots`).  Returns the
     instruments left unused by the final plan."""
     while True:
@@ -135,7 +136,7 @@ def drop_composite(plan: MergePlan, config, c: Composite, reason: str, prefer: C
 def stand_in(plan: MergePlan) -> None:
     """Every dropped composite whose shape a surviving one has plays that one instead: the
     follower's note is kept, with the other's fill and level.  Safe to call again after a
-    later drop (core.banks): an entry already settled is left alone."""
+    later drop (core.merge.banks): an entry already settled is left alone."""
     by_shape: dict[tuple, Composite] = {}
     for c in sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst)):
         by_shape.setdefault(_shape(c.key), c)
@@ -183,7 +184,7 @@ def _assign_slots(plan: MergePlan, chosen: dict[int, int]) -> None:
     """Give the composites their MOD instruments (`chosen`: {provisional id: slot}, from
     _plan_slots, which has one for each)."""
     order = sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst))
-    # A banked composite keeps its provisional id until core.banks packs it into a slot
+    # A banked composite keeps its provisional id until core.merge.banks packs it into a slot
     remap: dict[int, int | None] = {c.inst: (c.inst if c.banked else chosen.get(c.inst)) for c in order}
     for c in list(order):
         if c.banked:

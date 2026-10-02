@@ -72,7 +72,7 @@ class ConversionConfig:
     # folded to the note it bends into.
     merge_tolerance: int = 1
     # Instrument slots the composite fit leaves free for the sample banks of the `bank: true`
-    # groups (core/banks.py); the banks take any other slot still free after the fit as well.
+    # groups (core/merge/banks.py); the banks take any other slot still free after the fit as well.
     # "auto" (the default): the converter chooses, rebuilding once the banks' sizes are known
     # (SmpsToModConverter.convert); a number pins it.  `merge_bank_slots` is the count in use.
     merge_bank_slots: int = 2

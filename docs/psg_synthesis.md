@@ -137,7 +137,7 @@ The relationship between these three values is identical to YM2612 (see `docs/fm
   This controls how fast the Amiga plays back the sample. It does NOT change because of `synth_root`.
 
 - **`synth_root`** is the frequency rendered via the SN76489 emulator.  It is derived from the
-  song (`core.driver_state.resolve_synth_roots`: the chip pitch the instrument's notes play most
+  song (`core.synth_roots.resolve_synth_roots`: the chip pitch the instrument's notes play most
   often, through the driver's table, at most an octave above the pitch `root` sounds); the
   sample's rate is raised by 2^(`synth_shift`/12) so no note moves.  No config states it.  A
   stated value is a rendering pitch elsewhere in the range, handled the same way

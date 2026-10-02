@@ -58,6 +58,7 @@ class InfoKind(StrEnum):
     AUTO_SUSTAIN_PSG = 'auto_sustain_psg'
     SUSTAIN_LOOPS = 'sustain_loops'
     FM_SYNTHESIZED = 'fm_synthesized'
+    RENDER_CACHE = 'render_cache'
     PSG_SYNTHESIZED = 'psg_synthesized'
     RATE3_DIVIDER = 'rate3_divider'
     NOISE_ENVELOPE = 'noise_envelope'

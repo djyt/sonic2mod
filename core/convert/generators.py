@@ -29,7 +29,8 @@ class FmGenerator(Protocol):
                  raw_out: dict[int, tuple] | None = ...,
                  loops: bool = ...,
                  loops_out: dict[int, SustainLoop] | None = ...,
-                 release_out: dict[int, float | None] | None = ...) -> dict: ...
+                 release_out: dict[int, float | None] | None = ...,
+                 cache_out: dict[str, int] | None = ...) -> dict: ...
 
 
 class PsgGenerator(Protocol):
@@ -40,7 +41,8 @@ class PsgGenerator(Protocol):
                  noise_envelopes: dict | None = ...,
                  loops: bool = ...,
                  loops_out: dict[int, SustainLoop] | None = ...,
-                 raw_out: dict[int, tuple] | None = ...) -> dict: ...
+                 raw_out: dict[int, tuple] | None = ...,
+                 cache_out: dict[str, int] | None = ...) -> dict: ...
 
 
 @dataclass(frozen=True)

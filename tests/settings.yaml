@@ -86,6 +86,11 @@ samples:
   # (GHZ merged 5.6 -> 3.6 s), -0.6 dB at 85 %, aliases 73 dB down.  (PSG: psg_synthesis.oversample)
   resample_taps: 32
 
+  # Keep every chip render on disk, under a hash of its inputs and of the emulator code
+  # (core/render_cache.py): a later conversion that renders the same note reads it back.  Output
+  # is identical either way.  A path (relative to the project), or off.
+  render_cache: output/cache
+
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)
 # -------------------------------------------------------------------------------------------------

@@ -477,11 +477,14 @@ class SmpsToModConverter:
         # and its notes end with a release slide (core.convert.channel_writer) instead of a C00.
         fm_loops = synth.loops_for(self.config.merge_active)
         self._release_slides = fm_loops
+        fm_cache: dict[str, int] = {}
         fm_samples = generate_fm_samples(
             self.song, self.config, synth,
             tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()},
             peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release,
-            raw_out=self._raw_renders)
+            raw_out=self._raw_renders, cache_out=fm_cache)
+        if fm_cache:
+            self._diag.info(InfoKind.RENDER_CACHE, chip="FM", **fm_cache)
         self._sustain.flush('FM', fm_samples, self._loops, self._release)
         if self._merged is not None:
             self._merged.scale_chip_volumes(fm_peaks)
@@ -510,11 +513,14 @@ class SmpsToModConverter:
         noise_env = derive_noise_envelopes(self.song, self.config)
         self._report_noise(rate3, noise_env)
         psg_loops: dict[int, SustainLoop] = {}
+        psg_cache: dict[str, int] = {}
         psg_samples = generate_psg_samples(
             self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
             noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
             loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops,
-            raw_out=self._raw_renders)
+            raw_out=self._raw_renders, cache_out=psg_cache)
+        if psg_cache:
+            self._diag.info(InfoKind.RENDER_CACHE, chip="PSG", **psg_cache)
 
         # A mix-only source whose slot a composite holds is kept aside for the mixer; the slot's
         # loop entry stays the composite's

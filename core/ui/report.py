@@ -372,6 +372,10 @@ def print_header(console: Console, rep: Report) -> None:
             settings += f" · treble {s.treble_shelf_db:+g} dB above {s.treble_shelf_hz:g} Hz"
     if rep.synth is not None:
         settings += f" · legato {rep.synth.legato} · player {rep.synth.player}"
+    cached = _infos(rep, InfoKind.RENDER_CACHE)
+    if cached:
+        hits = sum(i['hits'] for i in cached)
+        settings += f" · renders cached {hits} of {hits + sum(i['misses'] for i in cached)}"
     loop = next((i for i in rep.converter.infos if i['type'] == InfoKind.LOOP_SET), None)
     sample_bytes = sum(len(sm.data) for sm in rep.converter.mod.samples if sm is not None)
     out = (f"[cyan]{escape(rep.output_path)}[/cyan]  [bold]{rep.output_bytes / 1024:.0f} KB[/bold]  "

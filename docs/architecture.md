@@ -47,6 +47,12 @@ driver tables used to live in `sfx/tables.py`, which forced the converter to imp
 (by function-level imports, to dodge the cycle); they are now `core/driver_tables.py` and
 `sfx/tables.py` re-exports them under the name the SFX driver has always used.
 
+The converter renders its samples through the chip packages without importing them:
+`core/generators.py` states the two generators it calls (`FmGenerator`, `PsgGenerator`) and
+`convert.py` hands the implementations in as `SampleGenerators(fm=generate_fm_samples,
+psg=generate_psg_samples)`.  A converter given none (the tools that only walk the song) raises
+if asked to synthesise.
+
 ## Module Descriptions
 
 ### core/tables.py
@@ -324,7 +330,7 @@ Conversion engine that walks the IR and writes MOD data.
 1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch; `_plan_detune` (core/detune.py) the detune variants
 2. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`) and extend short loop bodies (`_extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
 3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`_sustain_needs`)
-4. Run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
+4. Run the injected `SampleGenerators` (`generate_fm_samples()` from ym2612/, `generate_psg_samples()` from sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
 5. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
 6. Convert all channels via `_convert_all_channels()`, which first plans the baked levels
 7. Write mid-song `smpsSetTempoMod` changes (`_write_tempo_changes()`)

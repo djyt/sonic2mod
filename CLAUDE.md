@@ -43,6 +43,8 @@ sonic2mod/
     driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices,
                      #   PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
                      #   (sfx/tables.py re-exports this; it used to live there)
+    generators.py    #   SampleGenerators: the FM / PSG generator interface core calls; convert.py hands in
+                     #   ym2612's and sn76489's (core cannot import them)
     instruments.py   #   The instrument catalogue: what each synthesised MOD instrument is rendered for
                      #   (first entry to name it wins; FM instruments are layers) — both generators read it
     detune.py        #   Detune variants: each smpsAlterNote detune an instrument plays rendered at its FNUM offset

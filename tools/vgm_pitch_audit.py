@@ -14,7 +14,7 @@ and the two pitches are compared.  Use this for "is every note right"; use vgm_c
 levels, timing, timbre and vibrato.  Its per-note pitch column measures audio windows and is
 unreliable on legato runs and 1-tick grace notes (GHZ FM3-FM5), which this tool is immune to.
 
-Both sides are in real Hz: FM frequencies come from tools/vgm_analyze._fnum_to_hz and a
+Both sides are in real Hz: FM frequencies come from tools/vgm_analyze.fnum_to_hz and a
 ``synth_root`` name is the pitch the synthesiser actually renders (freq_to_fnum_block).
 
 Usage::
@@ -42,7 +42,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
 from core.tables import PERIOD_TABLE
-from tools.vgm_analyze import _fnum_to_hz
+from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, fnum_to_hz
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 _MOD_FORMAT_CHANNELS = {"M.K.": 4, "M!K!": 4, "6CHN": 6, "8CHN": 8, "10CH": 10, "12CH": 12, "16CH": 16}
@@ -63,8 +63,8 @@ def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
     ver = struct.unpack_from("<I", data, 0x08)[0]
     rel = struct.unpack_from("<I", data, 0x34)[0] if ver >= 0x150 else 0
     pos = 0x34 + rel if rel else 0x40
-    fm_clock = (struct.unpack_from("<I", data, 0x2C)[0] & 0x3FFF_FFFF) or 7_670_454
-    psg_clock = (struct.unpack_from("<I", data, 0x0C)[0] & 0x3FFF_FFFF) or 3_579_545
+    fm_clock = (struct.unpack_from("<I", data, 0x2C)[0] & 0x3FFF_FFFF) or DEFAULT_FM_CLOCK
+    psg_clock = (struct.unpack_from("<I", data, 0x0C)[0] & 0x3FFF_FFFF) or DEFAULT_PSG_CLOCK
 
     t = 0
     hi, freq, keyon = [0] * 6, [0.0] * 6, [False] * 6
@@ -102,7 +102,7 @@ def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
             elif 0xA0 <= reg <= 0xA2:                 # low byte latches the pair
                 ch = base + reg - 0xA0
                 fnum = ((hi[ch] & 7) << 8) | val
-                freq[ch] = _fnum_to_hz(fnum, (hi[ch] >> 3) & 7, fm_clock) if fnum else 0.0
+                freq[ch] = fnum_to_hz(fnum, (hi[ch] >> 3) & 7, fm_clock) if fnum else 0.0
                 fm_mark(ch)
             pos += 3
         elif c == 0x50:

@@ -230,7 +230,7 @@ class Banks(unittest.TestCase):
         self.assertEqual(c2.offset % ALIGN, 0)
         self.assertEqual(plan.regions[("DAC", 0)], (c1.offset, 1000))
         self.assertEqual(plan.regions[("DAC", 8)], (c2.offset, 300))
-        self.assertEqual(mod.samples[6]._volume, 64)                # the loudest member's
+        self.assertEqual(mod.samples[6].volume, 64)                # the loudest member's
         self.assertEqual(len(mod.samples[6].data) % ALIGN, 0)
         # a member that fits no bank is dropped and reported
         c3 = Composite(-3, CompositeKey(MIX, 1, (MixLayerKey(2, 5, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
@@ -303,8 +303,8 @@ class MelodicBanks(unittest.TestCase):
         plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 32, None, 1)])
         mod = ModFile(4)
         pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
-        self.assertEqual(mod.samples[6]._volume, 64)
-        self.assertEqual(mod.samples[7]._volume, 32)                    # not scaled down to the drums' 64
+        self.assertEqual(mod.samples[6].volume, 64)
+        self.assertEqual(mod.samples[7].volume, 32)                    # not scaled down to the drums' 64
         self.assertEqual(mod.samples[7].data[0], 40)                    # its bytes as they were
 
     def test_sounds_share_a_bank_with_their_own_volume(self):

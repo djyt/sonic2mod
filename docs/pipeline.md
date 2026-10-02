@@ -928,7 +928,7 @@ periodically too, but they also swing its level at the same rate (≥ 15 % → `
 measures ~3 %).  A beat's rate follows sample playback speed, so a `BEAT RATE` flag points at
 `synth_root` / multi-sampling, never at `4xy` — GHZ FM4/FM5 C6 (4.46 Hz on hardware, 6.5 Hz in the
 MOD) have no `smpsModSet` at all.  PSG notes are covered: the SN76489 has no key-on, so
-`vgm_analyze._parse_vgm` starts a PSG note when the channel becomes audible or its period moves more
+`vgm_analyze.parse_vgm` starts a PSG note when the channel becomes audible or its period moves more
 than 70 cents from where the note started — smaller moves are the driver's modulation and stay
 inside the note (GHZ PSG1 `smpsModSet $0E,$01,$01,$03`: 7.35 Hz ±7 c on hardware, theory 7.5 Hz;
 MOD 4.98 Hz).
@@ -1135,8 +1135,8 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   Green Hill's merged samples went from 771 KB to 526 KB under these rules, and convert.py
   narrows a merged build whose columns all fit four to a 4-channel M.K. file (`ModFile.narrow_to`).
 
-**When it runs.** The plan is built once the ticks are final (after `_apply_global_tempo_div`
-and `_extend_looping_channels`, which now runs before anything counts notes) and before the
+**When it runs.** The plan is built once the ticks are final (after `prepare_song`:
+`_apply_global_tempo_div` and `_extend_looping_channels`, before anything counts notes) and before the
 samples render, so the FM composites are catalogue entries like any other; it is stored on
 `config.merge_plan`, which `walk_channel` reads, so the level pre-passes, the sustain scan and
 `_convert_channel` all see the composite instruments the same way (the DAC branch asks the plan
@@ -1165,7 +1165,7 @@ by hand in a tracker wants each section folded as the arranger chose, on channel
 their meaning.  That is what `merge_patterns:` is: a list of blocks, each naming the patterns
 it covers and the groups (and `drop:` channels) that hold there.  The pattern numbers are the
 **reference build's**, after its `mod_pattern_breaks`, in hex as Fast Tracker shows them; a
-note belongs to the pattern its note-on lands in (`SmpsToModConverter._pattern_of_tick`: the
+note belongs to the pattern its note-on lands in (`SmpsToModConverter.pattern_of_tick`: the
 row `int(tick // tpr)` shifted past the breaks).
 
 The groups are ordinary `MergeGroup`s with a `patterns` set (`None` = song-wide, the `merge:`

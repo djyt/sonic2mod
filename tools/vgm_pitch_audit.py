@@ -194,12 +194,31 @@ def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int, float
     return inst
 
 
+def mod_pass(mod: ModImage, speed: int) -> tuple[list[tuple[float, int, list]], float]:
+    """Each row one pass plays (Bxx / Dxx followed, stopping at the song loop) as (start s, BPM,
+    cells), and the pass's length.  A row's Fxx set the speed and BPM of the whole row, as in
+    ProTracker: a note EDx-delayed left of the row's Fxx is timed at the new BPM."""
+    rows: list[tuple[float, int, list]] = []
+    bpm, now = 125, 0.0
+    for _pattern, _row, cells in mod.play_rows():
+        for _period, _ins, eff, par in cells:
+            if eff == 0xF and par:
+                bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
+        rows.append((now, bpm, cells))
+        now += speed * 2.5 / bpm
+    return rows, now
+
+
+def edx_delay(eff: int, par: int, bpm: int) -> float:
+    """Seconds an EDx note starts into its row (x MOD ticks); 0 for any other effect."""
+    return (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
+
+
 def mod_timeline(mod: ModImage, cfg: ConversionConfig) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument); follows Bxx/Dxx and stops at the loop."""
     inst = instrument_pitches(cfg)
     finetune = {e[0]: (e[3] if len(e) > 3 else 0) for e in (cfg.sample_list or [])}
     known = set(PERIOD_TABLE)
-    speed, bpm = cfg.target_speed, 125
     out: dict[int, list[tuple]] = defaultdict(list)
     sounding: dict[int, tuple[int, int]] = {}         # channel -> (period, instrument) of its note
 
@@ -208,27 +227,19 @@ def mod_timeline(mod: ModImage, cfg: ConversionConfig) -> tuple[dict[int, list[t
         return (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
                 * 2 ** (finetune.get(ins, 0) / 96 + cents / 1200))
 
-    now = 0.0
-    for _pattern, _row, cells in mod.play_rows():
+    rows, end = mod_pass(mod, cfg.target_speed)
+    for now, bpm, cells in rows:
         for c, (period, ins, eff, par) in enumerate(cells):
-            if eff == 0xF:
-                if par >= 0x20:
-                    bpm = par
-                elif par:
-                    speed = par
             if period in known and ins in inst:
                 sounding[c] = (period, ins)
-                # EDx: the note starts x MOD ticks into the row
-                late = (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
-                out[c].append((now + late, pitch(period, ins), ins))
+                out[c].append((now + edx_delay(eff, par, bpm), pitch(period, ins), ins))
             elif eff == 0xE and par >> 4 in (1, 2) and c in sounding:
                 # E1x / E2x: the sounding note's period moved (a tie retuned to a new detune)
                 p, ins_s = sounding[c]
                 p = p - (par & 15) if par >> 4 == 1 else p + (par & 15)
                 sounding[c] = (p, ins_s)
                 out[c].append((now, pitch(p, ins_s), ins_s))
-        now += speed * 2.5 / bpm
-    return out, now
+    return out, end
 
 
 def auto_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]], chan_map: dict[str, int],

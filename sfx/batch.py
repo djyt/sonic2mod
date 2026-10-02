@@ -7,6 +7,7 @@ import math
 import os
 import re
 
+from core.levels import gain_to_db
 from core.smps_parser import SmpsParser
 from sn76489.wrapper import SN76489
 from ym2612.wrapper import OPN2
@@ -178,7 +179,7 @@ def peak_dbfs(render, scale: float) -> float:
     value = render.peak * scale
     if value <= 0.0:
         return -math.inf
-    return 20.0 * math.log10(min(value, 32767.0) / 32767.0)
+    return gain_to_db(min(value, 32767.0) / 32767.0)
 
 
 # ---------------------------------------------------------------------------

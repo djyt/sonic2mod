@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
+from .levels import gain_to_db
 from .mod import PAL_AMIGA_CLOCK, SampleInfo, read_mod
 from .tables import PERIOD_TABLE
 
@@ -65,7 +66,7 @@ def duplicates(samples: list[SampleInfo], rates: dict[int, float], skip: set[int
             if c < DUP_CORRELATION:
                 continue
             va, vb = samples[a - 1].volume, samples[b - 1].volume
-            db = 20 * __import__("math").log10(max(1e-9, ratio * vb / max(va, 1)))
+            db = gain_to_db(max(1e-9, ratio * vb / max(va, 1)))
             # Where they part: the first 50 ms window whose correlation drops under 0.9
             w = max(64, round(rate * 0.05))
             short = min(len(sig[a]), len(sig[b]))

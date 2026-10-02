@@ -67,6 +67,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
+from core.levels import db_to_gain, gain_to_db, power_to_db
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, isolate_channel, read_mod
 from tools import vgm_pitch_audit
@@ -218,7 +219,7 @@ def load_wav(path: Path, stereo: bool = False) -> np.ndarray:
 
 
 def db(x: float) -> float:
-    return 20 * math.log10(max(x, 1e-9))
+    return gain_to_db(max(x, 1e-9))
 
 
 def rms(seg: np.ndarray) -> float:
@@ -285,7 +286,7 @@ def band_profile(seg: np.ndarray, bands: list[tuple[int, int]], fmax: float = 22
     freqs, mag = spectrum(seg, 8192)
     p = mag ** 2
     tot = p[freqs < fmax].sum() + 1e-12
-    return [10 * math.log10(p[(freqs >= a) & (freqs < b)].sum() / tot + 1e-12) for a, b in bands]
+    return [power_to_db(p[(freqs >= a) & (freqs < b)].sum() / tot + 1e-12) for a, b in bands]
 
 
 def envelope_db(a: np.ndarray, frame: float = 0.005) -> np.ndarray:
@@ -433,11 +434,11 @@ def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, in
         instruments.append({
             "instrument": ins, "name": name, "volume": vol, "notes": notes, "err_db": err, "spread_db": spread,
             "channels": sorted({g["channel"] for g in plain}),
-            "wanted": vol * 10 ** (-err / 20) if ok else None,
+            "wanted": vol * db_to_gain(-err) if ok else None,
         })
     scale = suggest_volumes(instruments)
     return {"anchor": anchor_name, "anchor_db": anchor, "groups": out_groups, "instruments": instruments,
-            "scaled_db": 20 * math.log10(scale)}
+            "scaled_db": gain_to_db(scale)}
 
 
 def suggest_volumes(instruments: list[dict]) -> float:
@@ -453,7 +454,7 @@ def suggest_volumes(instruments: list[dict]) -> float:
     # tones at volume 1-4.  A few-note instrument that wants more than 64 is clamped instead.
     wanted = [it["wanted"] for it in instruments
               if it.get("wanted") is not None and it.get("notes", 0) >= _LEVEL_SCALE_MIN_NOTES]
-    ceiling = 64.0 * 10 ** (_LEVEL_DAC_SLACK / 20)
+    ceiling = 64.0 * db_to_gain(_LEVEL_DAC_SLACK)
     scale = min(1.0, ceiling / max(wanted)) if wanted else 1.0
     for it in instruments:
         it["suggested"] = None if it.get("wanted") is None else max(1, min(64, round(it["wanted"] * scale)))
@@ -466,7 +467,7 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
     changes = []
     for it in instruments:
         new = it["suggested"]
-        if new is None or new == it["volume"] or abs(20 * math.log10(new / it["volume"])) < min_db:
+        if new is None or new == it["volume"] or abs(gain_to_db(new / it["volume"])) < min_db:
             continue
         pat = re.compile(r'^(\s*-\s*\[\s*' + str(it["instrument"])
                          + r'\s*,\s*"[^"]*"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
@@ -494,6 +495,7 @@ _VIB_BAND = (2.5, 14.0)      # plausible vibrato rates, Hz
 _VIB_MIN_DEPTH = 3.0         # cents; below this it is period-table / FNUM quantisation wobble
 _VIB_MIN_R2 = 0.35           # share of pitch-track variance a sinusoid at the rate must explain
 _VIB_BEAT_AM = 0.15          # level swing (fraction of mean) at the same rate that marks beating
+_PEAK_FLOOR_DB = -25         # dB under the strongest spectral peak below which _pick_partial counts none
 
 
 def _pick_partial(seg: np.ndarray) -> tuple[float, float]:
@@ -509,7 +511,7 @@ def _pick_partial(seg: np.ndarray) -> tuple[float, float]:
     freqs, mag = freqs[keep], mag[keep].copy()
     if not len(mag) or mag.max() <= 0:
         return 0.0, 0.0
-    floor = mag.max() * 10 ** (-25 / 20)
+    floor = mag.max() * db_to_gain(_PEAK_FLOOR_DB)
     peaks: list[tuple[float, float]] = []            # (Hz, magnitude), strongest first
     work = mag.copy()
     while len(peaks) < 24:

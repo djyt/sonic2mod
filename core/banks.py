@@ -31,6 +31,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from .levels import gain_to_db
 from .merge import Composite, MergePlan, composite_dither, drop_composite, stand_in
 from .mod import ModSample
 from .pcm import DEFAULT_DITHER, to_int8
@@ -71,7 +72,7 @@ def _region(c: Composite, sound: int, looped: bool, pad_secs: float, amiga_clock
 def _loss_db(banks: list[Bank], volume: dict[int, int]) -> float:
     """dB of 8-bit range the layout costs, over every note: a member quieter than its bank's
     loudest is scaled down into its bytes."""
-    return sum(c.notes * 20 * math.log10(max(volume[c.inst] for c in b.members) / volume[c.inst])
+    return sum(c.notes * gain_to_db(max(volume[c.inst] for c in b.members) / volume[c.inst])
                for b in banks for c in b.members)
 
 

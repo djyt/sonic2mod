@@ -22,7 +22,7 @@ from .detune import DetunePlan, detune_cents
 from .diagnostics import Diagnostics
 from .driver_state import DriverState, ResolvedNote, walk_channel
 from .instruments import fm_catalogue
-from .levels import MOD_MAX_VOLUME, clamp_mod_volume, fm_tl_to_mod, psg_att_to_mod
+from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, fm_tl_to_mod, psg_att_to_mod
 from .merge import Composite, MergePlan
 from .mod import ModFile
 from .smps_parser import SmpsChannel, SmpsSong
@@ -803,7 +803,7 @@ class ChannelWriter:
         rel_db = level - baseline.get(key, level)
         # A banked sound's bytes carry its own volume against the bank's (sv): at its own level
         # it needs no Cxx either
-        return clamp_mod_volume(sv * 10 ** (rel_db / 20.0) * self._cfg.volume / 64)
+        return clamp_mod_volume(sv * db_to_gain(rel_db) * self._cfg.volume / 64)
 
     # --- rows -----------------------------------------------------------------------------------
     def _next_note_row(self, tick: int) -> int:
@@ -900,7 +900,7 @@ class ChannelWriter:
                     self._mod.set_effect(0xC, 0)
                     written.add((r // 64, r % 64))
                 break
-            target *= 10 ** (-rate_db_s * row_secs / 20.0)
+            target *= db_to_gain(-rate_db_s * row_secs)
             y = round((v - target) / per_tick)
             if y > 0:
                 y = min(15, y)

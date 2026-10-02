@@ -15,6 +15,8 @@ import warnings
 from collections.abc import Sequence
 from pathlib import Path
 
+from .levels import db_to_gain, gain_to_db
+
 INT8_PEAK = 127.0
 INT16_PEAK = 32767.0
 
@@ -74,7 +76,7 @@ def high_shelf(samples: Sequence[float], rate: int, freq_hz: float, gain_db: flo
     """
     if not gain_db or freq_hz >= rate / 2:
         return list(samples)
-    a = 10 ** (gain_db / 40)
+    a = 10 ** (gain_db / 40)          # the RBJ cookbook's A: the shelf gain, square-rooted
     w0 = 2 * math.pi * freq_hz / rate
     cos_w, alpha = math.cos(w0), math.sin(w0) / 2 * math.sqrt(2)
     root = 2 * math.sqrt(a) * alpha
@@ -122,7 +124,7 @@ def saturate(samples: Sequence[float], gain_db: float) -> list[float]:
         return math.sqrt(sum(x * x for x in v) / len(v))
 
     # RMS rises with the drive: bisect for the one that gives the gain asked
-    want = rms(samples) * 10 ** (gain_db / 20)
+    want = rms(samples) * db_to_gain(gain_db)
     lo, hi = 1e-3, SATURATE_MAX_DRIVE
     if rms(shaped(hi)) <= want:
         return shaped(hi)
@@ -154,7 +156,7 @@ def limit_peaks(samples: Sequence[float], rate: int, ceiling: float, max_db: flo
     n = len(samples)
     if n == 0 or max_db <= 0:
         return list(samples), 0.0
-    floor = 10 ** (-max_db / 20)
+    floor = db_to_gain(-max_db)
     need = [max(floor, ceiling / abs(v)) if abs(v) > ceiling else 1.0 for v in samples]
     if min(need) >= 1.0:
         return list(samples), 0.0
@@ -186,7 +188,7 @@ def limit_peaks(samples: Sequence[float], rate: int, ceiling: float, max_db: flo
         g = min(total / la, 1.0 - (1.0 - g) * rel)
         least = min(least, g)
         out[i] = samples[i] * g
-    return out, -20 * math.log10(least)
+    return out, -gain_to_db(least)
 
 
 def sample_limit_bytes(kb: int) -> int:

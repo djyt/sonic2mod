@@ -18,7 +18,7 @@ from typing import Protocol
 
 from .config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from .loops import SustainLoop
-from .smps_parser import SmpsSong
+from .smps_song import SmpsSong
 
 
 class FmGenerator(Protocol):

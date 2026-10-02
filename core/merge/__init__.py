@@ -78,9 +78,12 @@ Per-pattern folds, sample banks, unison chords and same-shape twins: docs/pipeli
     build_merge_plan        → MergePlan: composites, unisons, solo notes, slots
       _Planner                collect → pair → fill pool → fold → settle
       fit_composites         slots; a twin gives its slot up first, stand-ins take its notes
-    mix_pcm_composites      the mixed composites' samples (_Mixer); core.banks packs the banked
+    mix_pcm_composites      the mixed composites' samples (_Mixer); pack_banks (banks.py) packs the banked
+    MergedBuild             inside one conversion: composite volumes, mixes, banks (build.py)
 """
 
+from .banks import ALIGN, pack_banks
+from .build import MergedBuild, bank_reserve_wanted, report_plan
 from .mix import composite_dither, mix_pcm_composites
 from .model import NO_SLOT, Composite, MergePlan
 from .notes import (
@@ -100,8 +103,8 @@ from .plan import build_merge_plan, column_sources, prepare_merged_config
 from .slots import drop_composite, stand_in, trigger_note
 
 __all__ = [
-    "CHIP", "MIX", "NO_SLOT", "Composite", "CompositeKey", "MergePlan", "MixLayerKey", "NoteOn", "PairStats",
-    "build_merge_plan", "channel_notes", "column_sources", "composite_dither", "composite_key", "drop_composite",
-    "keyoff_secs", "mix_pcm_composites", "pair_channels", "prepare_merged_config", "stand_in", "trigger_note",
-    "unison_gain_db",
+    "ALIGN", "CHIP", "MIX", "NO_SLOT", "Composite", "CompositeKey", "MergePlan", "MergedBuild", "MixLayerKey",
+    "NoteOn", "PairStats", "bank_reserve_wanted", "build_merge_plan", "channel_notes", "column_sources",
+    "composite_dither", "composite_key", "drop_composite", "keyoff_secs", "mix_pcm_composites", "pack_banks",
+    "pair_channels", "prepare_merged_config", "report_plan", "stand_in", "trigger_note", "unison_gain_db"
 ]

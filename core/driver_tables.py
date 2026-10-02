@@ -307,3 +307,14 @@ def noise_envelope_frames(envelope: list[int] | None, base_volume: int = 0) -> i
         return None
     held_att = min(15, base_volume + envelope[-1])
     return len(envelope) + max(0, 15 - held_att) + 1
+
+
+def chip_pitch(source_semitone: int, transpose: int, is_psg: bool) -> int:
+    """The real pitch (SMPS semitone, C0 = 0) the chip plays for a note byte and transpose.
+
+    `transpose` is the driver's: the header pitch_offset plus every smpsChangeTransposition.
+    A PSG note goes through the driver's frequency table, so one transposed past either end
+    of it lands on whatever the hardware reads there.
+    """
+    return (psg_index_semitone(source_semitone + transpose) if is_psg
+            else source_semitone + transpose)

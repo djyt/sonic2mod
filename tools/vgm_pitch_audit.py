@@ -42,7 +42,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
 from core.mod import ModImage, read_mod
-from core.tables import PERIOD_TABLE
+from core.mod_notes import PERIOD_TABLE
 from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, fnum_to_hz
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -147,8 +147,8 @@ def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, conf
     Returns the parsed song."""
     from core.config import SynthesisSettings
     from core.detune import detune_variants_wanted, plan_detune_variants
-    from core.driver_state import resolve_synth_roots
     from core.smps_parser import SmpsParser
+    from core.synth_roots import resolve_synth_roots
     song = SmpsParser().parse_file(cfg.input_file)
     resolve_synth_roots(song, cfg)
     if settings_path is None:

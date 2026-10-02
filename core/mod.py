@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Literal
 
-from .tables import PERIOD_TABLE, ModNote
+from .mod_notes import PERIOD_TABLE, ModNote
 
 # File format information: https://www.exotica.org.uk/wiki/Protracker
 BYTE_ORDER: Literal["little", "big"] = "big"

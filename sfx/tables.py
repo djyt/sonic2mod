@@ -1,7 +1,7 @@
 """Sonic 1 sound driver lookup tables — re-exported from :mod:`core.driver_tables`.
 
 The tables moved to ``core/`` so the converter can reach them without importing the
-SFX driver: ``core`` is the bottom layer and must not depend on ``sfx``.  This module
+SFX driver: ``core`` must not depend on ``sfx``.  This module
 stays as the name the SFX driver and its tests have always used.
 
 New code should import from ``core.driver_tables`` directly.

@@ -25,7 +25,7 @@ import dataclasses
 from dataclasses import dataclass, field
 
 from .config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
-from .tables import PERIOD_TABLE, ModNote
+from .mod_notes import PERIOD_TABLE, ModNote
 
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
 # rate, what an SMPS nC5 sounds like on a channel with the usual $F4 (-12) pitch offset.

@@ -38,11 +38,11 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
-from core.driver_state import resolve_synth_roots
-from core.levels import db_to_gain
+from core.gain import db_to_gain
 from core.merge import NoteOn, PairStats, channel_notes, pair_channels
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
+from core.synth_roots import resolve_synth_roots
 
 
 @dataclass

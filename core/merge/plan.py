@@ -8,10 +8,10 @@ import dataclasses
 import math
 
 from ..config import MergeGroup, format_patterns
-from ..driver_state import source_map
+from ..gain import db_to_gain
 from ..instruments import FmInstrument, FmLayer, fm_catalogue, free_slots
-from ..levels import db_to_gain
-from ..tables import PERIOD_TABLE
+from ..mod_notes import PERIOD_TABLE
+from ..tables import source_map
 from .model import LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
     NoteOn,

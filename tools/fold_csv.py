@@ -28,7 +28,7 @@ choice can be overruled by hand in the YAML.  A drum primary gets `cut_primary: 
 follower's note over a drum's decay cuts it, as on any 4-channel Amiga).
 
 Rows with the same cells are joined into one block ("1-4", "d-10").  `--bank` marks every drum-primary group `bank: true`, so
-its mixes share instrument slots as sample banks (core/banks.py).  The output is the YAML
+its mixes share instrument slots as sample banks (core/merge/banks.py).  The output is the YAML
 to paste into the config; `--write` puts it there, between marker comments, replacing the
 block it wrote last time.  The config is the source of truth: the table is the quick way to
 draft the folds, and the block can be edited by hand afterwards (a re-run with `--write`

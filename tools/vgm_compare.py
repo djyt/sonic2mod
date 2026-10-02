@@ -67,7 +67,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
-from core.levels import db_to_gain, gain_to_db, power_to_db
+from core.gain import db_to_gain, gain_to_db, power_to_db
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, isolate_channel, read_mod
 from tools import vgm_pitch_audit

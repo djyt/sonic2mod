@@ -8,45 +8,29 @@ import copy
 import math
 
 from .channel_writer import ChannelWriter, EmissionStats, WriterContext
-from .config import (
-    ConversionConfig,
-    PsgSynthesisSettings,
-    SynthesisSettings,
-    rate3_synth_root_issues,
-)
+from .config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, rate3_synth_root_issues
 from .detune import DetunePlan, detune_variants_wanted, plan_detune_variants
 from .diagnostics import Diagnostics, InfoKind, WarningKind
-from .driver_state import (
-    resolve_synth_roots,
-)
-from .driver_state import source_map as source_map_for
 from .driver_tables import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from .generators import SampleGenerators
 from .instruments import fm_catalogue, psg_catalogue
 from .layout import ModLayout
 from .level_plan import LevelPlanner
-from .levels import (
-    DEFAULT_FM_PAN_LAW_DB,
-    fm_level_db,
-)
+from .levels import DEFAULT_FM_PAN_LAW_DB, fm_level_db
 from .loops import SustainLoop
-from .merge import MergePlan, build_merge_plan
-from .merge.build import MergedBuild, bank_reserve_wanted, report_plan
+from .merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
 from .mod import ModFile, ModSample, apply_pattern_breaks
+from .mod_limits import MAX_MOD_SAMPLE_BYTES
+from .mod_notes import MOD_NOTE_MAP as _MOD_NOTE_MAP
+from .mod_notes import PERIOD_TABLE
 from .noise_derive import derive_noise_envelopes, derive_rate3_dividers
-from .pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, peak, saturate, signed8, to_int8
-from .smps_parser import SmpsSong
+from .pcm import DEFAULT_DITHER, INT8_PEAK, peak, saturate, signed8, to_int8
+from .smps_song import SmpsSong
 from .song_prep import apply_global_tempo_div, extend_looping_channels
 from .sustain_plan import SustainPlanner
-from .tables import (
-    MOD_NOTE_MAP as _MOD_NOTE_MAP,
-)
-from .tables import (
-    PERIOD_TABLE,
-)
-from .tables import (
-    semitone_to_note_name as _semitone_to_name,
-)
+from .synth_roots import resolve_synth_roots
+from .tables import semitone_to_note_name as _semitone_to_name
+from .tables import source_map as source_map_for
 from .timeline import Timeline
 from .vibrato import VibratoSpeed
 
@@ -405,7 +389,7 @@ class SmpsToModConverter:
         return self.mod
 
     def _plan_pitches(self) -> None:
-        """Every rooted entry's rendering pitch from the song (core.driver_state.resolve_synth_roots):
+        """Every rooted entry's rendering pitch from the song (core.synth_roots.resolve_synth_roots):
         the chip pitch its notes play most often, or, when stated, wherever the config put it; the
         sample's rate carries the difference from the pitch `root` sounds (synth_shift), so no note
         moves.  Before anything reads synth_root / synth_shift."""

@@ -41,11 +41,11 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
+from core.mod import ModImage, read_mod
 from core.tables import PERIOD_TABLE
 from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, fnum_to_hz
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-_MOD_FORMAT_CHANNELS = {"M.K.": 4, "M!K!": 4, "6CHN": 6, "8CHN": 8, "10CH": 10, "12CH": 12, "16CH": 16}
 _VGM_RATE = 44100
 # VGM command -> total length in bytes, for the commands that carry no timing or pitch.
 _SKIP = {0x4F: 2, 0xE0: 5, 0x90: 5, 0x91: 5, 0x92: 6, 0x93: 11, 0x94: 2, 0x95: 5}
@@ -198,12 +198,10 @@ def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int, float
     return inst
 
 
-def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tuple]], float]:
+def mod_timeline(mod: ModImage, cfg: ConversionConfig) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument); follows Bxx/Dxx and stops at the loop."""
     inst = instrument_pitches(cfg)
     finetune = {e[0]: (e[3] if len(e) > 3 else 0) for e in (cfg.sample_list or [])}
-    nch = _MOD_FORMAT_CHANNELS.get(mod[1080:1084].decode("ascii", "replace"), 4)
-    order = list(mod[952:952 + mod[950]])
     known = set(PERIOD_TABLE)
     speed, bpm = cfg.target_speed, 125
     out: dict[int, list[tuple]] = defaultdict(list)
@@ -214,25 +212,14 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
         return (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
                 * 2 ** (finetune.get(ins, 0) / 96 + cents / 1200))
 
-    now, posi, row = 0.0, 0, 0
-    seen: set[tuple[int, int]] = set()
-    while posi < len(order) and (posi, row) not in seen:
-        seen.add((posi, row))
-        base = 1084 + (order[posi] * 64 + row) * nch * 4
-        jump = brk = None
-        for c in range(nch):
-            b = mod[base + c * 4:base + c * 4 + 4]
-            period, ins = ((b[0] & 15) << 8) | b[1], (b[0] & 0xF0) | (b[2] >> 4)
-            eff, par = b[2] & 15, b[3]
+    now = 0.0
+    for _pattern, _row, cells in mod.play_rows():
+        for c, (period, ins, eff, par) in enumerate(cells):
             if eff == 0xF:
                 if par >= 0x20:
                     bpm = par
                 elif par:
                     speed = par
-            elif eff == 0xB:
-                jump = par
-            elif eff == 0xD:
-                brk = (par >> 4) * 10 + (par & 15)
             if period in known and ins in inst:
                 sounding[c] = (period, ins)
                 # EDx: the note starts x MOD ticks into the row
@@ -245,16 +232,6 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
                 sounding[c] = (p, ins_s)
                 out[c].append((now, pitch(p, ins_s), ins_s))
         now += speed * 2.5 / bpm
-        if jump is not None:
-            if jump <= posi:                          # the song loop
-                break
-            posi, row = jump, brk or 0
-        elif brk is not None:
-            posi, row = posi + 1, brk
-        else:
-            row += 1
-            if row == 64:
-                posi, row = posi + 1, 0
     return out, now
 
 
@@ -485,7 +462,7 @@ def main() -> None:
     mod_path = Path(args.mod or cfg.output_file)
     raw = Path(args.vgz).read_bytes()
     chip, vgm_end = chip_timeline(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
-    mod, mod_end = mod_timeline(mod_path.read_bytes(), cfg)
+    mod, mod_end = mod_timeline(read_mod(mod_path), cfg)
     chan_map = {c.source: c.mod_channel for c in cfg.channels}
     if args.offset is None:
         args.offset = auto_offset(chip, mod, chan_map)

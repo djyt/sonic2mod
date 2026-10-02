@@ -1,10 +1,16 @@
 import os
+from collections.abc import Iterator
+from dataclasses import dataclass
+from pathlib import Path
 from typing import ClassVar, Literal
 
 from .tables import PERIOD_TABLE, ModNote
 
 # File format information: https://www.exotica.org.uk/wiki/Protracker
 BYTE_ORDER: Literal["little", "big"] = "big"
+
+# Paula's clock on a PAL Amiga: a sample plays at PAL_AMIGA_CLOCK / period bytes a second
+PAL_AMIGA_CLOCK = 3_546_895
 
 
 def row_to_bcd(row: int) -> int:
@@ -571,3 +577,146 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
         mod.set_channel(bxx_chan)
         mod.set_row(row)
         mod.set_position_jump(P + 1)
+
+
+# ---------------------------------------------------------------------------
+# Reading a MOD back: the one parser the audits, the lint and the comparisons share.
+#
+#     0     title (20)
+#     20    31 sample headers x 30: name (22), length (words), finetune, volume, loop start, loop length
+#     950   song length, 951 restart byte, 952 order (128 pattern numbers)
+#     1080  format tag ("M.K.", "8CHN", "10CH" ...)
+#     1084  patterns (64 rows x channels x 4 bytes, every pattern the order holds), then the sample data
+# ---------------------------------------------------------------------------
+
+_SAMPLE_SLOTS = 31
+_SAMPLE_HEADERS, _SAMPLE_HEADER_BYTES, _SAMPLE_NAME_BYTES = 20, 30, 22
+_SONG_LENGTH_AT, _ORDER_AT, _ORDER_SLOTS = 950, 952, 128
+_TAG_AT, _PATTERNS_AT = 1080, 1084
+_LOOP_WORDS_NONE = 1           # a loop length of one word: no loop
+
+# Tags with a fixed channel count; any other "nCHN" / "nnCH" names its own
+_FIXED_TAGS = {"M.K.": 4, "M!K!": 4, "FLT4": 4, "FLT8": 8, "OCTA": 8}
+
+Cell = tuple[int, int, int, int]    # (period, instrument, effect, parameter)
+
+
+def format_channels(tag: str) -> int | None:
+    """Channels a format tag stands for: "M.K." 4, "6CHN" 6, "14CH" 14; None for an unknown tag."""
+    if tag in _FIXED_TAGS:
+        return _FIXED_TAGS[tag]
+    if tag[1:] == "CHN" and tag[0].isdigit():
+        return int(tag[0])
+    if tag[2:] == "CH" and tag[:2].isdigit():
+        return int(tag[:2])
+    return None
+
+
+@dataclass(frozen=True)
+class SampleInfo:
+    """One sample slot as the file holds it; lengths in bytes."""
+    name: str
+    length: int
+    finetune: int          # -8..+7
+    volume: int
+    loop_start: int
+    loop_len: int
+    data: bytes
+
+    @property
+    def looped(self) -> bool:
+        return self.loop_len > 2 * _LOOP_WORDS_NONE
+
+
+@dataclass(frozen=True)
+class ModImage:
+    """A MOD file read back: header, samples, order, every stored pattern's cells."""
+    tag: str
+    channels: int
+    samples: list[SampleInfo]
+    order: list[int]                        # the song's positions (song length long)
+    patterns: list[list[list[Cell]]]        # patterns[p][row][channel]
+
+    def play_rows(self) -> Iterator[tuple[int, int, list[Cell]]]:
+        """(pattern, row, cells) of each row one pass plays: Bxx and Dxx followed (read left to
+        right, as ProTracker does: a Bxx after a Dxx resets the row to 0), stopping where the
+        song loops back to a row already played."""
+        seen: set[tuple[int, int]] = set()
+        pos, row = 0, 0
+        while pos < len(self.order) and (pos, row) not in seen:
+            seen.add((pos, row))
+            cells = self.patterns[self.order[pos]][row]
+            yield self.order[pos], row, cells
+            jump = None
+            for _p, _i, eff, par in cells:
+                if eff == 0xB:
+                    jump = (par, 0)
+                elif eff == 0xD:
+                    jump = (jump[0] if jump is not None else pos + 1, (par >> 4) * 10 + (par & 0xF))
+            if jump is not None:
+                pos, row = jump
+            elif row == _ROWS_PER_PATTERN - 1:
+                pos, row = pos + 1, 0
+            else:
+                row += 1
+
+
+def read_mod(source: bytes | str | os.PathLike) -> ModImage:
+    """Parse a MOD (its bytes or its path).  Raises ValueError on a tag no reader knows."""
+    d = source if isinstance(source, bytes) else Path(source).read_bytes()
+    tag = d[_TAG_AT:_PATTERNS_AT].decode("latin1")
+    channels = format_channels(tag)
+    if channels is None:
+        raise ValueError(f"unknown MOD format tag {tag!r}")
+
+    headers = []
+    for i in range(_SAMPLE_SLOTS):
+        o = _SAMPLE_HEADERS + i * _SAMPLE_HEADER_BYTES
+        h = d[o:o + _SAMPLE_HEADER_BYTES]
+        headers.append((h[:_SAMPLE_NAME_BYTES].split(b"\0")[0].decode("latin1"),
+                        int.from_bytes(h[22:24], BYTE_ORDER) * 2, ((h[24] & 0x0F) ^ 8) - 8, h[25],
+                        int.from_bytes(h[26:28], BYTE_ORDER) * 2, int.from_bytes(h[28:30], BYTE_ORDER) * 2))
+
+    order = list(d[_ORDER_AT:_ORDER_AT + d[_SONG_LENGTH_AT]])
+    stored = max(d[_ORDER_AT:_ORDER_AT + _ORDER_SLOTS]) + 1
+    off = _PATTERNS_AT
+    patterns = []
+    for _ in range(stored):
+        rows = []
+        for _r in range(_ROWS_PER_PATTERN):
+            cells = []
+            for _c in range(channels):
+                b0, b1, b2, b3 = d[off:off + _BYTES_PER_CELL]
+                cells.append((((b0 & 0x0F) << 8) | b1, (b0 & 0xF0) | (b2 >> 4), b2 & 0x0F, b3))
+                off += _BYTES_PER_CELL
+            rows.append(cells)
+        patterns.append(rows)
+
+    samples = []
+    for name, length, finetune, volume, loop_start, loop_len in headers:
+        samples.append(SampleInfo(name, length, finetune, volume, loop_start, loop_len, d[off:off + length]))
+        off += length
+    return ModImage(tag, channels, samples, order, patterns)
+
+
+def isolate_channel(data: bytes, keep: int | None) -> bytes:
+    """A copy of the MOD with every channel but `keep` stripped of its notes (None: unchanged).
+    The flow commands (Fxx speed / tempo, Bxx jump, Dxx break) stay on every channel, so the
+    timing and the song's structure are the same."""
+    if keep is None:
+        return data
+    channels = format_channels(data[_TAG_AT:_PATTERNS_AT].decode("latin1")) or 4
+    order = data[_ORDER_AT:_ORDER_AT + data[_SONG_LENGTH_AT]]
+    b = bytearray(data)
+    for p in range((max(order) + 1) if order else 0):
+        for r in range(_ROWS_PER_PATTERN):
+            for c in range(channels):
+                if c == keep:
+                    continue
+                off = _PATTERNS_AT + ((p * _ROWS_PER_PATTERN + r) * channels + c) * _BYTES_PER_CELL
+                eff = b[off + 2] & 0x0F
+                if eff in (0xF, 0xB, 0xD):
+                    b[off], b[off + 1], b[off + 2] = 0, 0, eff
+                else:
+                    b[off:off + _BYTES_PER_CELL] = bytes(_BYTES_PER_CELL)
+    return bytes(b)

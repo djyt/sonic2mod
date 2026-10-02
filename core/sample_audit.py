@@ -8,13 +8,12 @@ its command line; `convert.py` reads it for the sample table of its report.
 
 from __future__ import annotations
 
-import struct
 from collections import Counter, defaultdict
-from pathlib import Path
 
+from .mod import PAL_AMIGA_CLOCK, SampleInfo, read_mod
 from .tables import PERIOD_TABLE
 
-AMIGA_CLOCK = 3546895.0
+AMIGA_CLOCK = float(PAL_AMIGA_CLOCK)
 LOW_RATE_HZ = 5000.0        # below this a sample has under 2.5 kHz of bandwidth
 NOTE_NAMES = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"]
 
@@ -25,44 +24,6 @@ def note_name(period: int) -> str:
         i = PERIOD_TABLE.index(period)
         return f"{NOTE_NAMES[i % 12]}{i // 12 + 2}"
     return f"p{period}"
-
-
-def read_mod(path: str) -> dict:
-    d = Path(path).read_bytes()
-    tag = d[1080:1084].decode("latin1")
-    channels = {"M.K.": 4, "M!K!": 4, "4CHN": 4, "6CHN": 6, "8CHN": 8, "10CH": 10, "12CH": 12, "16CH": 16}.get(tag)
-    if channels is None:
-        raise ValueError(f"{path}: unknown format tag {tag!r}")
-    samples = []
-    for i in range(31):
-        o = 20 + i * 30
-        samples.append({
-            "name": d[o:o + 22].rstrip(b"\0").decode("latin1"),
-            "bytes": struct.unpack(">H", d[o + 22:o + 24])[0] * 2,
-            "finetune": ((d[o + 24] & 0x0F) ^ 8) - 8,
-            "volume": d[o + 25],
-            "loop_start": struct.unpack(">H", d[o + 26:o + 28])[0] * 2,
-            "loop_len": struct.unpack(">H", d[o + 28:o + 30])[0] * 2,
-        })
-    n_pos = d[950]
-    order = list(d[952:952 + n_pos])
-    n_pat = max(d[952:952 + 128]) + 1
-    off = 1084
-    patterns = []
-    for _ in range(n_pat):
-        rows = []
-        for _r in range(64):
-            cells = []
-            for _c in range(channels):
-                b0, b1, b2, b3 = d[off:off + 4]
-                cells.append((((b0 & 0x0F) << 8) | b1, (b0 & 0xF0) | (b2 >> 4), b2 & 0x0F, b3))
-                off += 4
-            rows.append(cells)
-        patterns.append(rows)
-    for s in samples:
-        s["data"] = d[off:off + s["bytes"]]
-        off += s["bytes"]
-    return {"tag": tag, "channels": channels, "samples": samples, "order": order, "patterns": patterns}
 
 
 DUP_WINDOW_SECS = 0.1      # how much of the attack two samples must share to be one sound
@@ -85,7 +46,7 @@ def _corr(x: list[int], y: list[int]) -> tuple[float, float]:
     return sxy / (sxx * syy) ** 0.5, (sxx / syy) ** 0.5
 
 
-def duplicates(samples: list[dict], rates: dict[int, float], skip: set[int]) -> dict[int, str]:
+def duplicates(samples: list[SampleInfo], rates: dict[int, float], skip: set[int]) -> dict[int, str]:
     """{slot: flag} for every sample whose attack is another slot's waveform (DUP_WINDOW_SECS
     at the rate it plays at, correlation >= DUP_CORRELATION).  The bytes are compared as they
     are: a mix made the same distance below its trigger note as another holds the same
@@ -93,7 +54,7 @@ def duplicates(samples: list[dict], rates: dict[int, float], skip: set[int]) -> 
     difference (sample volume and bytes together) and, where they part within the shorter
     sample, how long they agree."""
     out: dict[int, str] = {}
-    sig = {i: _signed(s["data"]) for i, s in enumerate(samples, 1) if i not in skip and s["bytes"] > 256}
+    sig = {i: _signed(s.data) for i, s in enumerate(samples, 1) if i not in skip and s.length > 256}
     for b in sorted(sig):
         for a in sorted(sig):
             if a >= b:
@@ -103,7 +64,7 @@ def duplicates(samples: list[dict], rates: dict[int, float], skip: set[int]) -> 
             c, ratio = _corr(sig[b][:n], sig[a][:n])
             if c < DUP_CORRELATION:
                 continue
-            va, vb = samples[a - 1]["volume"], samples[b - 1]["volume"]
+            va, vb = samples[a - 1].volume, samples[b - 1].volume
             db = 20 * __import__("math").log10(max(1e-9, ratio * vb / max(va, 1)))
             # Where they part: the first 50 ms window whose correlation drops under 0.9
             w = max(64, round(rate * 0.05))
@@ -116,7 +77,7 @@ def duplicates(samples: list[dict], rates: dict[int, float], skip: set[int]) -> 
                 span = f" for all {short / rate * 1000:.0f} ms of the shorter"
             else:
                 span = ""
-            fa, fb = samples[a - 1]["finetune"], samples[b - 1]["finetune"]
+            fa, fb = samples[a - 1].finetune, samples[b - 1].finetune
             if fa != fb:
                 out[b] = f"finetune variant of {a} ({fb - fa:+d}{span}, {db:+.1f} dB)"
             else:
@@ -127,10 +88,10 @@ def duplicates(samples: list[dict], rates: dict[int, float], skip: set[int]) -> 
 
 def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
     mod = read_mod(path)
-    pats, chans = mod["patterns"], mod["channels"]
+    pats, chans = mod.patterns, mod.channels
     # Tempo: speed and BPM from F commands as they occur in play order (row 0 defaults)
     speed, bpm = 6, 125
-    for cell in pats[mod["order"][0]][0] if mod["order"] else []:
+    for cell in pats[mod.order[0]][0] if mod.order else []:
         if cell[2] == 0xF:
             if cell[3] < 32:
                 speed = cell[3] or speed
@@ -145,7 +106,7 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
     banked: set[int] = set()                                             # instruments started with 9xx
     per_chan_last: dict[int, tuple[int, int, float, int] | None] = {c: None for c in range(chans)}
     flat = 0
-    for _pat, cells in _play_order(mod):
+    for _pat, _row, cells in mod.play_rows():
         for c, (period, inst, eff, par) in enumerate(cells):
             sounding = per_chan_last[c]
             ends = None
@@ -174,28 +135,28 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
             if off >= 0:
                 offsets[i].append((off, p, (flat - start) * row_secs))
     song_secs = flat * row_secs
-    sample_bytes = sum(s["bytes"] for s in mod["samples"]) or 1
+    sample_bytes = sum(s.length for s in mod.samples) or 1
     rows_out: list[dict] = []
     notes_out: list[str] = []
     rates = {}
     for i in plays:
         periods = Counter(p for _c, p, _s in plays[i])
         rates[i] = AMIGA_CLOCK / periods.most_common(1)[0][0]
-    dups = duplicates(mod["samples"], rates, banked)
-    for i, s in enumerate(mod["samples"], 1):
+    dups = duplicates(mod.samples, rates, banked)
+    for i, s in enumerate(mod.samples, 1):
         notes = plays.get(i, [])
-        if not notes and not s["bytes"]:
+        if not notes and not s.length:
             continue
         periods = Counter(p for _c, p, _s in notes)
         top = periods.most_common(1)[0][0] if periods else None
         rate = AMIGA_CLOCK / top if top else None
-        secs = s["bytes"] / rate if rate else None
-        looped = s["loop_len"] > 2
+        secs = s.length / rate if rate else None
+        looped = s.looped
         longest = max((sec for _c, _p, sec in notes), default=0.0)
         flags = []
         if not notes:
             flags.append("unused")
-        elif not s["bytes"]:
+        elif not s.length:
             flags.append("empty slot")
         elif i in banked:
             flags.append("sample bank (9xx offsets)")
@@ -204,60 +165,35 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
                 flags.append(f"too short by {longest - secs:.2f} s")
             if not looped and secs is not None and secs > longest + slack:
                 flags.append(f"oversize by {secs - longest:.1f} s")
-            if looped and (s["loop_start"] / rate) > longest + slack:
-                flags.append(f"loop starts {s['loop_start'] / rate - longest:.1f} s past the longest note")
+            if looped and (s.loop_start / rate) > longest + slack:
+                flags.append(f"loop starts {s.loop_start / rate - longest:.1f} s past the longest note")
         if i in dups:
             flags.append(dups[i])
 
         # Time it sounds: each note until its bytes run out (a looped sample: the whole note)
-        heard = sum(sec if looped or not s["bytes"] else min(sec, s["bytes"] * p / AMIGA_CLOCK)
+        heard = sum(sec if looped or not s.length else min(sec, s.length * p / AMIGA_CLOCK)
                     for _c, p, sec in notes) if i not in banked else sum(sec for _c, _p, sec in notes)
         lo = max((p for _c, p, _s in notes), default=None)      # the longest period: the lowest note
         hi = min((p for _c, p, _s in notes), default=None)
         if lo is not None and AMIGA_CLOCK / lo < LOW_RATE_HZ:
             flags.append(f"low rate ({AMIGA_CLOCK / lo:.0f} Hz at {note_name(lo)})")
         rows_out.append({
-            "inst": i, "name": s["name"], "bytes": s["bytes"], "volume": s["volume"],
-            "secs": secs, "note": note_name(top) if top else "-", "loop": (s["loop_start"], s["loop_len"]) if looped else None,
+            "inst": i, "name": s.name, "bytes": s.length, "volume": s.volume,
+            "secs": secs, "note": note_name(top) if top else "-", "loop": (s.loop_start, s.loop_len) if looped else None,
             "notes": len(notes), "channels": sorted({c + 1 for c, _p, _s in notes}),
             "channel_notes": dict(Counter(c + 1 for c, _p, _s in notes)), "longest": longest, "flags": flags,
-            "kb_share": s["bytes"] / sample_bytes, "play_share": heard / song_secs if song_secs else 0.0,
+            "kb_share": s.length / sample_bytes, "play_share": heard / song_secs if song_secs else 0.0,
             "range": (note_name(lo), note_name(hi), AMIGA_CLOCK / lo) if lo is not None and hi is not None else None,
-            "sounds": _bank_sounds(offsets.get(i, []), s["bytes"]) if i in banked else [],
+            "sounds": _bank_sounds(offsets.get(i, []), s.length) if i in banked else [],
         })
-    used_cols = sorted({c for pos in mod["order"] for row in pats[pos] for c, cell in enumerate(row) if any(cell)})
-    notes_out.append(f"{mod['tag']} ({chans} channels), columns with anything in them: {[c + 1 for c in used_cols]}")
-    total = sum(s["bytes"] for s in mod["samples"])
+    used_cols = sorted({c for pos in mod.order for row in pats[pos] for c, cell in enumerate(row) if any(cell)})
+    notes_out.append(f"{mod.tag} ({chans} channels), columns with anything in them: {[c + 1 for c in used_cols]}")
+    total = sum(s.length for s in mod.samples)
     dead = sum(r["bytes"] for r in rows_out if "unused" in r["flags"])
-    notes_out.append(f"samples: {total / 1024:.0f} KB in {sum(1 for s in mod['samples'] if s['bytes'])} slots; "
+    notes_out.append(f"samples: {total / 1024:.0f} KB in {sum(1 for s in mod.samples if s.length)} slots; "
                      f"{dead / 1024:.0f} KB unused; speed {speed}, {bpm} BPM ({row_secs * 1000:.0f} ms a row); "
                      f"{song_secs:.1f} s to the loop")
     return rows_out, notes_out
-
-
-def _play_order(mod: dict):
-    """(pattern, cells) of every row in play order, once: Bxx and Dxx followed, stopping where
-    the song loops back to a row already played."""
-    order, pats = mod["order"], mod["patterns"]
-    seen: set[tuple[int, int]] = set()
-    pos, row = 0, 0
-    while pos < len(order) and (pos, row) not in seen:
-        seen.add((pos, row))
-        cells = pats[order[pos]][row]
-        yield order[pos], cells
-        jump = None
-        for _p, _i, eff, par in cells:
-            if eff == 0xB:
-                jump = (par, 0)
-            elif eff == 0xD:
-                # after a Bxx in the row, its position (ProTracker reads the row left to right)
-                jump = (jump[0] if jump is not None else pos + 1, (par >> 4) * 10 + (par & 0xF))
-        if jump is not None:
-            pos, row = jump
-        elif row == 63:
-            pos, row = pos + 1, 0
-        else:
-            row += 1
 
 
 def _bank_sounds(hits: list[tuple[int, int, float]], size: int) -> list[dict]:

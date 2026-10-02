@@ -5,7 +5,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import Any
 
-from .mod import ModFile
+from .mod import PAL_AMIGA_CLOCK, ModFile
 from .pcm import DEFAULT_DITHER, DITHER_MODES, sample_limit_bytes
 from .resample import DEFAULT_TAPS
 from .tables import MOD_NOTE_MAP, ModNote, parse_smps_note, parse_synth_note, synth_note_name
@@ -560,7 +560,7 @@ DEFAULT_SHELF_HZ = 2500.0
 DEFAULT_PSG_OVERSAMPLE = 8
 
 # PAL Amiga Paula clock (settings.yaml amiga_clock): a MOD note's rate is this / its period
-DEFAULT_AMIGA_CLOCK = 3_546_895
+DEFAULT_AMIGA_CLOCK = PAL_AMIGA_CLOCK
 
 
 def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool = False) -> int:

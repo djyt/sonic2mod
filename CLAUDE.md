@@ -55,7 +55,8 @@ sonic2mod/
                      #   PSG entry) shared by the converter, its pre-passes and the config tools;
                      #   also source_names/source_map, chip_pitch, pan_is_hard, psg_range_entry
     levels.py        #   Chip level laws: TL 0.75 dB/step, attenuation 2 dB/step, pan law, dB→volume
-    mod.py           #   MOD file writer (adapted from mml2mod-master) + cell/effect-slot helpers
+    mod.py           #   MOD file writer (adapted from mml2mod-master) + cell/effect-slot helpers; the one
+                     #   reader (read_mod → ModImage, play_rows: one pass in play order), isolate_channel
     smps_parser.py   #   SMPS assembly parser → intermediate representation
     config.py        #   Per-song conversion config, YAML loading
     smps2mod.py      #   Conversion engine (IR → MOD): SmpsToModConverter orchestrates the modules below
@@ -114,7 +115,7 @@ sonic2mod/
     vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files (+ rate-3 noise divider, DAC seeks)
     vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
-    mod_compare.py      #   MOD binary parser + channel-by-channel comparator
+    mod_compare.py      #   Channel-by-channel MOD comparator (core.mod.read_mod)
     mod_lint.py         #   Notes a ProTracker player cannot sound: silent 3xx, empty instrument slots
     mod_audit.py        #   A MOD's samples against the notes that play them: bytes, share of the file (KB%),
                         #   share of the song it sounds (play%), note range and lowest rate, loop, longest note,
@@ -293,7 +294,7 @@ To ignore a channel while deliberately changing it, add `"my_song": [8]` to `_CA
 
 **`tools/mod_compare.py`** can be used standalone to diff any two MOD files:
 ```python
-from tools.mod_compare import compare_mods, parse_mod
+from tools.mod_compare import compare_mods
 diffs = compare_mods("output/a.mod", "output/b.mod", ignore_channels=[8])
 ```
 

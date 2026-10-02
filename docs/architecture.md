@@ -174,7 +174,13 @@ lists, the FM path the `array('i')` its C batch helper returns.
 
 ### core/mod.py
 
-MOD file writer adapted from [mml2mod-master](../mml2mod-master/mod.py).
+MOD file writer adapted from [mml2mod-master](../mml2mod-master/mod.py), and the one reader:
+`read_mod(bytes | path)` → `ModImage` (tag, channels, `SampleInfo` headers with their data, the
+order, every stored pattern's cells), `ModImage.play_rows()` (one pass in play order, `Bxx` /
+`Dxx` followed left to right), `format_channels(tag)` (every tag the writer emits, `14CH`
+included) and `isolate_channel` (one channel's notes, the flow commands kept: what the render
+audits play).  `core/sample_audit.py`, `tools/mod_compare.py`, `tools/mod_lint.py`,
+`tools/vgm_compare.py`, `tools/vgm_pitch_audit.py` and `tools/mod_render_diff.py` read with it.
 
 Key changes from original:
 - `CHANNELS`, `samples`, `position_list`, `patterns` moved from class variables to instance variables in `__init__(self, channels=10)`.

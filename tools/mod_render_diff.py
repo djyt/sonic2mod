@@ -29,7 +29,7 @@ import numpy as np
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from tools.vgm_compare import _MOD_FORMAT_CHANNELS, isolate_mod
+from core.mod import isolate_channel, read_mod
 
 SR = 44100
 WINDOW_SECS = 0.02
@@ -41,7 +41,7 @@ def _render(data: bytes, channel: int | None, tmp: Path, name: str) -> np.ndarra
     """One channel of a MOD (None: all) as mono float samples."""
     mod = tmp / f"{name}.mod"
     raw = tmp / f"{name}.f32"
-    mod.write_bytes(isolate_mod(data, channel))
+    mod.write_bytes(isolate_channel(data, channel))
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "libopenmpt",
                     "-sample_rate", str(SR), "-i", str(mod), "-ac", "1", "-f", "f32le", str(raw)], check=True)
     return np.fromfile(raw, dtype="<f4")
@@ -75,8 +75,8 @@ def main() -> None:
                     help=f"dB below the loudest window a difference may reach unreported (default {DEFAULT_FLOOR_DB:g})")
     args = ap.parse_args()
     da, db = Path(args.a).read_bytes(), Path(args.b).read_bytes()
-    nch = _MOD_FORMAT_CHANNELS.get(da[1080:1084].decode("ascii", "replace"), 4)
-    if nch != _MOD_FORMAT_CHANNELS.get(db[1080:1084].decode("ascii", "replace"), 4):
+    nch = read_mod(da).channels
+    if nch != read_mod(db).channels:
         raise SystemExit("the two MODs have different channel counts")
 
     worst_all = -np.inf

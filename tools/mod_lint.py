@@ -38,38 +38,24 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from tools.mod_compare import parse_mod
+from core.mod import PAL_AMIGA_CLOCK, read_mod
 
-AMIGA_CLOCK = 3_546_895
-
-
-def _sample_headers(path: str) -> list[dict]:
-    """[{length, loop_start, loop_len} in bytes] for the 31 slots, from the raw header."""
-    data = Path(path).read_bytes()
-    out = []
-    off = 20
-    for _ in range(31):
-        length = int.from_bytes(data[off + 22:off + 24], "big") * 2
-        loop_start = int.from_bytes(data[off + 26:off + 28], "big") * 2
-        loop_len = int.from_bytes(data[off + 28:off + 30], "big") * 2
-        out.append({"length": length, "loop_start": loop_start, "loop_len": loop_len})
-        off += 30
-    return out
+AMIGA_CLOCK = PAL_AMIGA_CLOCK
 
 
 def lint_mod(path: str) -> list[dict]:
-    mod = parse_mod(path)
-    headers = _sample_headers(path)
-    pats = mod["patterns"]
-    nch = mod["num_channels"]
-    order = mod["position_list"][:mod["song_length"]]
+    mod = read_mod(path)
+    headers = mod.samples
+    pats = mod.patterns
+    nch = mod.channels
+    order = mod.order
 
     def sample_secs(inst: int, period: int) -> float | None:
         """Seconds the sample of `inst` plays at `period`; None = loops (plays on)."""
         h = headers[inst - 1]
-        if h["loop_len"] > 2:
+        if h.looped:
             return None
-        return h["length"] / (AMIGA_CLOCK / period) if period else 0.0
+        return h.length / (AMIGA_CLOCK / period) if period else 0.0
 
     issues: list[dict] = []
     speed, bpm = 6, 125
@@ -98,7 +84,7 @@ def lint_mod(path: str) -> list[dict]:
             for ch in range(nch):
                 per, ins, eff, par = row[ch]
                 where = {"pattern": order[pos_index], "row": r, "channel": ch, "instrument": ins}
-                if ins and headers[ins - 1]["length"] < 4:
+                if ins and headers[ins - 1].length < 4:
                     issues.append({"type": "empty_instrument" if not per else "no_sample",
                                    "detail": f"instrument {ins} has no sample", **where})
                 if per and eff == 0x3:

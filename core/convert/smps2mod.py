@@ -485,10 +485,9 @@ class SmpsToModConverter:
             raw_out=self._raw_renders, cache_out=fm_cache)
         if fm_cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="FM", **fm_cache)
-        self._sustain.flush('FM', fm_samples, self._loops, self._release)
+        self._sustain.flush('FM', self._loops)
         if self._merged is not None:
             self._merged.scale_chip_volumes(fm_peaks)
-        self._diag.info(InfoKind.FM_SYNTHESIZED, count=len(fm_samples))
 
         # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer (as a
         # PSG one is in _synthesize_psg); the slot's loop entry is the composite's
@@ -526,13 +525,12 @@ class SmpsToModConverter:
         # loop entry stays the composite's
         aside = self._mix_only_aside(psg_samples)
         self._loops.update({i: lp for i, lp in psg_loops.items() if i not in aside})
-        self._sustain.flush('PSG', psg_samples, self._loops, self._release)
+        self._sustain.flush('PSG', self._loops)
         direct = {i: v for i, v in psg_samples.items() if i not in aside}
         self._install_synthesized_samples(direct, self.config.sample_list, "psg", psg_synth.max_sample_bytes)
         for i in aside:
             self._mix_sources[i] = self._make_sample(i, psg_samples[i][0], "psg", psg_loops.get(i),
                                                      psg_synth.max_sample_bytes, original=True)
-        self._diag.info(InfoKind.PSG_SYNTHESIZED, count=len(psg_samples))
 
     def _mix_only_aside(self, samples: dict) -> set[int]:
         """The rendered instruments that are only a mix's source, whose slot a composite holds."""

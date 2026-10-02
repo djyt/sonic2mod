@@ -13,11 +13,11 @@ import sys
 from core.config import (
     PLAYERS,
     ConversionConfig,
-    PsgSynthesisSettings,
-    SynthesisSettings,
     bpm_rounding_options,
     derive_bpm,
     exact_bpm,
+    find_settings,
+    load_settings,
     with_song_overrides,
 )
 from core.convert import SampleGenerators, SmpsToModConverter
@@ -47,17 +47,13 @@ def _tag_mod_branding(mod, version: str) -> None:
 _error = error_printer(console)
 
 
-def _settings_path(config: str, stated: str | None) -> str:
-    """The global settings file: `--settings` when given (it must exist), else settings.yaml
-    beside the config (both live in configs/), else the one beside this script."""
+def _settings_path(config: str, stated: str | None) -> str | None:
+    """The global settings file: `--settings` when given (it must exist), else core.config.find_settings."""
     if stated:
         if not os.path.exists(stated):
             _error(f"settings file not found: {stated}")
         return stated
-    beside = os.path.join(os.path.dirname(os.path.abspath(config)), "settings.yaml")
-    if os.path.exists(beside):
-        return beside
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
+    return find_settings(config)
 
 
 def main():
@@ -132,8 +128,7 @@ def main():
 
     # ── Convert ───────────────────────────────────────────────────────────────
     SETTINGS_FILE = _settings_path(args.config, args.settings)
-    synth     = SynthesisSettings.from_yaml(SETTINGS_FILE)     if os.path.exists(SETTINGS_FILE) else SynthesisSettings()
-    psg_synth = PsgSynthesisSettings.from_yaml(SETTINGS_FILE)  if os.path.exists(SETTINGS_FILE) else PsgSynthesisSettings()
+    synth, psg_synth = load_settings(SETTINGS_FILE)
     synth, psg_synth = with_song_overrides(synth, config), with_song_overrides(psg_synth, config)
     if args.player:
         synth = dataclasses.replace(synth, player=args.player)

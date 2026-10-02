@@ -8,13 +8,13 @@ import os
 import re
 
 from core.audio import gain_to_db
-from core.smps import SmpsParser
+from core.mod import PAL_AMIGA_CLOCK
+from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK, SmpsParser
 from sn76489.wrapper import SN76489
-from ym2612.wrapper import OPN2
+from ym2612.wrapper import OPN2, output_rate
 
 from .amiga import (
     DEFAULT_MAX_RATE,
-    PAL_CLOCK,
     choose_rate,
     dc_block,
     nearest_candidate,
@@ -22,12 +22,9 @@ from .amiga import (
     pad_for_paula,
     quantise_8bit,
 )
-from .render import NATIVE_RATE, render_sfx
+from .render import render_sfx
 from .resample import DEFAULT_TAPS, resample, resample_stereo
 from .wav import write_wav
-
-# Mega Drive SN76489 clock (NTSC).
-PSG_CLOCK = 3_579_545
 
 _NAME_RE = re.compile(r'^Snd([0-9A-Fa-f]{2})\s*(?:-\s*(.*))?$')
 
@@ -97,7 +94,7 @@ def output_name(path: str) -> str:
 
 def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
                psg_gain=1.0, psg_oob="extend", target_rate: int | None = 44100,
-               taps=DEFAULT_TAPS) -> SfxRender:
+               taps=DEFAULT_TAPS, native_rate: int = OPN2.NATIVE_RATE) -> SfxRender:
     """Parse, render and resample a single SFX file."""
     song = SmpsParser().parse_file(path)
     warnings: list[str] = []
@@ -108,7 +105,7 @@ def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
         raise ValueError(f"{os.path.basename(path)}: no channels found")
 
     result = render_sfx(song, opn2, sn, fps=fps, tail_secs=tail_secs,
-                        max_secs=max_secs, psg_gain=psg_gain, psg_oob=psg_oob)
+                        max_secs=max_secs, psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate)
     warnings.extend(result.warnings)
     if result.truncated:
         warnings.append(f"hit the {max_secs:g}s cap — output truncated")
@@ -134,10 +131,12 @@ def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
 
 def render_all(paths, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
                psg_oob="extend", target_rate: int | None = 44100, taps=DEFAULT_TAPS,
-               progress=None) -> list[SfxRender]:
-    """Render every path with a single shared pair of chip instances."""
+               fm_clock=MD_FM_CLOCK, psg_clock=MD_PSG_CLOCK, progress=None) -> list[SfxRender]:
+    """Render every path with a single shared pair of chip instances, clocked at `fm_clock` /
+    `psg_clock` (settings.yaml fm_synthesis / psg_synthesis clock_rate)."""
+    native_rate = output_rate(fm_clock)
     opn2 = OPN2(mode="ym2612")
-    sn = SN76489(clock_rate=PSG_CLOCK, sample_rate=NATIVE_RATE)
+    sn = SN76489(clock_rate=psg_clock, sample_rate=native_rate)
     try:
         renders = []
         for path in paths:
@@ -146,6 +145,7 @@ def render_all(paths, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
             renders.append(render_one(
                 path, opn2, sn, fps=fps, tail_secs=tail_secs, max_secs=max_secs,
                 psg_gain=psg_gain, psg_oob=psg_oob, target_rate=target_rate, taps=taps,
+                native_rate=native_rate,
             ))
         return renders
     finally:
@@ -226,7 +226,7 @@ class AmigaSample:
 
 def prepare_8bit(render, *, max_rate=DEFAULT_MAX_RATE, flat_rate=None,
                  shape=1, dither=True, taps=DEFAULT_TAPS,
-                 clock=PAL_CLOCK, energy_frac=0.99) -> AmigaSample:
+                 clock=PAL_AMIGA_CLOCK, energy_frac=0.99) -> AmigaSample:
     """Mono-fold, DC-block, resample once, normalise, dither and quantise.
 
     `render` must be at the chip's native rate — resampling through 44.1 kHz
@@ -288,7 +288,7 @@ def assign_volumes(samples) -> None:
         s.volume = max(1, min(64, round(64.0 * s.level / loudest)))
 
 
-def write_8bit(samples, out_dir: str, *, clock=PAL_CLOCK) -> list[str]:
+def write_8bit(samples, out_dir: str, *, clock=PAL_AMIGA_CLOCK) -> list[str]:
     """Write .raw files plus a manifest carrying what raw files cannot."""
     import yaml
 

@@ -249,7 +249,9 @@ entries.py   InstrumentRange, PsgInstrumentEntry, ChannelConfig, DacSampleConfig
              their parsers, one per song-config section (parse_channels, parse_psg_map, ...)
 song.py      ConversionConfig; from_yaml reads each section with its entries.py parser
 settings.py  SampleSettings (amiga_clock, samples:, the resolved sustain) and its two chips:
-             SynthesisSettings (YM2612, legato, player), PsgSynthesisSettings (SN76489)
+             SynthesisSettings (YM2612, legato, player), PsgSynthesisSettings (SN76489);
+             find_settings / load_settings: the file every CLI and tool reads (beside the config, else
+             configs/settings.yaml) - a value it states is used everywhere, a constant only when it is missing
 bpm.py       derive_bpm, exact_bpm, bpm_rounding_options
 ```
 

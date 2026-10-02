@@ -43,7 +43,7 @@ from core.smps import SmpsParser, parse_smps_note, parse_synth_note, semitone_to
 mod_name = synth_note_name   # YAML config note name for a semitone
 
 
-def chip_notes(cfg: ConversionConfig):
+def chip_notes(cfg: ConversionConfig, config_path: Path):
     """{(kind, key, channel): [(source semitone, chip pitch), ...]} for FM voices and PSG labels.
 
     kind "fm": key = voice index; kind "psg": key = psg_voice_map label (as written).  The PSG
@@ -52,10 +52,10 @@ def chip_notes(cfg: ConversionConfig):
     """
     # The converter's view of the song: loops extended (a smpsChangeTransposition inside the loop
     # body accumulates on every replay - Continue's later notes sit lower than the first pass).
-    from core.config import PsgSynthesisSettings, SynthesisSettings
+    from core.config import find_settings, load_settings
     from core.convert import SmpsToModConverter
     song = SmpsParser().parse_file(cfg.input_file)
-    fm_off, psg_off = SynthesisSettings(), PsgSynthesisSettings()
+    fm_off, psg_off = load_settings(find_settings(str(config_path)))
     fm_off.enabled = psg_off.enabled = False
     conv = SmpsToModConverter(song, cfg, synth=fm_off, psg_synth=psg_off)
     conv.prepare_song()
@@ -168,7 +168,7 @@ def main() -> None:
         sys.exit(f"{path} is already in chip space")
     text = path.read_text(encoding="utf-8")
     data = yaml.safe_load(text)
-    notes = chip_notes(cfg)
+    notes = chip_notes(cfg, path)
     # The rendering pitch of every entry that does not state synth_root, from the song
     from core.plan import resolve_synth_roots
     resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)

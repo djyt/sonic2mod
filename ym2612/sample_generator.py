@@ -18,6 +18,7 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import sys
 import threading
@@ -46,7 +47,7 @@ from core.audio import (
     to_int8,
 )
 from core.audio import trim_trailing_silence as _trim_trailing_silence
-from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
+from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, find_settings, load_settings
 from core.mod import max_sustain_secs
 from core.plan import FmInstrument, fm_catalogue
 from core.smps import SmpsSong, SmpsVoice
@@ -338,7 +339,7 @@ def _smoke_test() -> None:
         ]
     }
 
-    synth = SynthesisSettings()
+    synth = dataclasses.replace(load_settings(find_settings())[0], sustain_duration=1.5)   # a fixed hold, not auto
 
     print("Smoke test — generate_fm_samples(voice=1/FM2-bass, root=A3)...")
     print(f"  amiga_clock = {synth.amiga_clock}")

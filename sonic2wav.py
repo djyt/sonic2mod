@@ -18,6 +18,7 @@ from rich import box
 from rich.padding import Padding
 from rich.table import Table
 
+from core.config import find_settings, load_settings
 from core.ui import LABEL_W as _LABEL_W
 from core.ui import branding, cli_console, error_printer, row_printer
 from sfx.amiga import DEFAULT_MAX_RATE
@@ -31,8 +32,8 @@ from sfx.batch import (
     write_8bit,
     write_all,
 )
-from sfx.render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS, NATIVE_RATE
-from sfx.resample import DEFAULT_TAPS
+from sfx.render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS
+from ym2612.wrapper import output_rate
 
 console = cli_console()
 
@@ -94,6 +95,10 @@ def _amiga_table(samples):
 
 
 def main():
+    # settings.yaml: the chip clocks, the Amiga clock the 8-bit rates follow, the resampler width
+    synth, psg_synth = load_settings(find_settings())
+    native_rate = output_rate(synth.clock_rate)
+
     parser = argparse.ArgumentParser(
         description="Render Sonic 1 SMPS sound effects to 16-bit stereo WAV"
     )
@@ -107,7 +112,7 @@ def main():
                         help=f"Output directory (default: {DEFAULT_OUT_DIR}, "
                              f"or {DEFAULT_OUT_DIR_8BIT} with --8bit)")
     parser.add_argument('--rate', default='44100',
-                        help=f"Output sample rate, or 'native' for {NATIVE_RATE} Hz "
+                        help=f"Output sample rate, or 'native' for {native_rate} Hz "
                              "(skips resampling entirely)")
     parser.add_argument('--fps', type=float, default=60.0,
                         help="V-int rate: 60 for NTSC (default), 50 for PAL")
@@ -124,8 +129,8 @@ def main():
                         help="Skip global normalisation, write raw chip levels")
     parser.add_argument('--strict', action='store_true',
                         help="Clamp out-of-range PSG notes instead of extrapolating")
-    parser.add_argument('--taps', type=int, default=DEFAULT_TAPS,
-                        help=f"Resampler filter length (default: {DEFAULT_TAPS})")
+    parser.add_argument('--taps', type=int, default=synth.resample_taps,
+                        help=f"Resampler filter length (default: settings.yaml samples.resample_taps, {synth.resample_taps})")
     parser.add_argument('--dry-run', action='store_true',
                         help="Render and report, but write no files")
     parser.add_argument('--version', action='version', version=f"sonic2wav {_get_version()}")
@@ -197,7 +202,7 @@ def main():
         _row("Render", f"{args.fps:g} Hz tick · {rate_label} · signed 8-bit mono",
              f"per-sample normalise · DC removed · {dither_label}")
     else:
-        rate_label = f"{NATIVE_RATE} Hz (native)" if target_rate is None else f"{target_rate} Hz"
+        rate_label = f"{native_rate} Hz (native)" if target_rate is None else f"{target_rate} Hz"
         _row("Render", f"{args.fps:g} Hz tick · {rate_label} · 16-bit stereo")
 
     renders = []
@@ -212,6 +217,8 @@ def main():
                 psg_oob="clamp" if args.strict else "extend",
                 target_rate=target_rate,
                 taps=args.taps,
+                fm_clock=synth.clock_rate,
+                psg_clock=psg_synth.clock_rate,
             )
         except (ValueError, FileNotFoundError) as e:
             _error(str(e))
@@ -226,6 +233,7 @@ def main():
                     shape=args.shape,
                     dither=not args.no_dither,
                     taps=args.taps,
+                    clock=synth.amiga_clock,
                 )
                 for r in renders
             ]
@@ -240,7 +248,7 @@ def main():
             _row("Output", "[yellow]dry run — nothing written[/yellow]",
                  f"would write {len(samples)} samples · {total_bytes / 1024:.0f} KB")
         else:
-            written = write_8bit(samples, out_dir)
+            written = write_8bit(samples, out_dir, clock=synth.amiga_clock)
             _row("Output", out_dir,
                  f"{len(samples)} samples · {total_bytes / 1024:.0f} KB · manifest.yaml")
     else:

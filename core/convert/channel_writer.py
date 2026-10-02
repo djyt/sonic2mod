@@ -184,8 +184,8 @@ class _Note:
     cut_tick: float | None              # where a fill / duration cut falls
     region: tuple[int, int] | None      # (offset, bytes) of its sound inside a sample bank
     bank9: bool                         # starts with 9xx at that offset
-    needs_cxx: bool                     # its level differs from its instrument's
     legato: bool = False                # written as a 3FF portamento, not a note-on
+    needs_cxx: bool = False             # its level differs from its instrument's (once legato chose it)
     pattern: int = 0
     row: int = 0
     delay: int = 0                      # EDx, MOD ticks
@@ -484,6 +484,8 @@ class ChannelWriter:
         transpose otherwise), then the note-on and the commands on its rows."""
         n = self._melodic_note(event, res)
         self._resolve_legato(n)
+        # After legato: a strict legato plays the sounding instrument, whose level is what counts
+        n.needs_cxx = self._emit_volume(n.instrument) != self._sample_volume(n.instrument)
 
         # Where the note goes (see _note_cell): on its own row with an EDx delay when it starts
         # between rows and the effect slot is free
@@ -515,7 +517,7 @@ class ChannelWriter:
 
     def _melodic_note(self, event, res: ResolvedNote) -> _Note:
         """The note as resolved, with what its placement depends on: its fill or duration cut,
-        its sound inside a sample bank, whether its level needs a Cxx."""
+        its sound inside a sample bank."""
         note, tick = event.note, event.tick_position
         plan = self._ctx.merge
         self._note_gain = res.gain_db
@@ -539,13 +541,11 @@ class ChannelWriter:
                              if plan is not None and solo is None else None)
         region = (plan.region_at(self._cfg.source, tick)
                   if self._bank_member is not None and plan is not None else None)
-        instrument = res.instrument
-        return _Note(event=event, res=res, tick=tick, duration=note.duration, instrument=instrument,
+        return _Note(event=event, res=res, tick=tick, duration=note.duration, instrument=res.instrument,
                      mod_note=ModNote(self._router.note(tick, res.index)), solo=solo,
                      vib_on=self._vibrato_active and res.path != "merged", fill=fill, psg=psg,
                      cut_tick=self._cut_tick(event, fill, psg), region=region,
-                     bank9=region is not None and region[0] > 0,
-                     needs_cxx=self._emit_volume(instrument) != self._sample_volume(instrument))
+                     bank9=region is not None and region[0] > 0)
 
     def _cut_tick(self, event, fill: int, psg: bool) -> float | None:
         """Where the note is cut, as the attack row's slot needs to know (ECx when inside it): its

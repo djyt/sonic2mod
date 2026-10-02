@@ -32,8 +32,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from ..smps import FM_FREQUENCIES
 from .driver_state import enabled_channels, walk_channel
-from .driver_tables import FM_FREQUENCIES
 from .instruments import fm_catalogue, free_slots
 
 _FNUM_BITS = 11
@@ -54,7 +54,7 @@ class DetuneVariant:
 @dataclass
 class DetunePlan:
     """Which sample each (instrument, detune) note plays.  Set on `config.detune_plan` by the
-    converter; read by core.driver_state.resolve_note and core.instruments.fm_catalogue."""
+    converter; read by core.plan.driver_state.resolve_note and core.plan.instruments.fm_catalogue."""
     own: dict[int, int] = field(default_factory=dict)        # {instrument: its sample's detune}, nonzero only
     variants: dict[tuple[int, int], DetuneVariant] = field(default_factory=dict)   # (base, detune) ->
     unplaced: dict[tuple[int, int], int] = field(default_factory=dict)  # (base, detune) -> notes with no slot

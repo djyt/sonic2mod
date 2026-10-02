@@ -5,8 +5,8 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..mod_notes import MOD_NOTE_MAP, ModNote
-from ..tables import parse_smps_note, parse_synth_note, synth_note_name
+from ..mod import MOD_NOTE_MAP, ModNote
+from ..smps import parse_smps_note, parse_synth_note, synth_note_name
 from .loader import dither_mode
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ class InstrumentRange:
                                     # out_note = root + (source_semitone - low)
                                     # if None: fall back to channel transpose for note
     synth_root: int | None = None  # SMPS semitone the sample is rendered at.  None in a config:
-                                      # core.synth_roots.resolve_synth_roots fills in the chip
+                                      # core.plan.synth_roots.resolve_synth_roots fills in the chip
                                       # pitch the entry's notes play most often (the song decides).
                                       # Stated: the rendering pitch, anywhere in the range.  Either
                                       # way `root` is where the pitch of `low` sounds (synth_shift)
@@ -34,10 +34,10 @@ class InstrumentRange:
     loop_drift_db: float | None = None   # this instrument's sustain loop may freeze this far above the
                                       # settled level (the song's / settings.yaml's otherwise): lower
                                       # loops later, past more of the attack, for more bytes
-    loop_min_ms: float | None = None     # its sustain loop is at least this long (core.loops' 30 ms
+    loop_min_ms: float | None = None     # its sustain loop is at least this long (core.audio.loops' 30 ms
                                       # otherwise): a longer loop keeps a detuned voice's shimmer
                                       # moving where a short one freezes it into a buzz
-    dither: str | None = None            # this sample's quantisation (core.pcm.DITHER_MODES); None:
+    dither: str | None = None            # this sample's quantisation (core.audio.pcm.DITHER_MODES); None:
 
 
                                       # settings.yaml samples.dither
@@ -180,8 +180,8 @@ class MergeGroup:
     treble_shelf_hz: float | None = None
     limit_db: float | None = None   # a mix of this group whose sum is past full scale has its peaks
                                 # limited, by up to this many dB, instead of the whole sound turned
-                                # down (core.pcm.limit_peaks); denser, a little transient distortion
-    dither: str | None = None   # this group's composites' quantisation (core.pcm.DITHER_MODES);
+                                # down (core.audio.pcm.limit_peaks); denser, a little transient distortion
+    dither: str | None = None   # this group's composites' quantisation (core.audio.pcm.DITHER_MODES);
                                 # None: settings.yaml samples.dither
     loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
                                 # finished mix as a single voice's loop is (lossy: the chord's slow
@@ -318,7 +318,7 @@ class DacSampleConfig:
     mod_instrument: int  # MOD instrument number
     mod_note: str = "C3" # Note to trigger in MOD
     saturate_db: float = 0.0   # the drum soft-clipped until its body is this much louder at the same
-                               # peak (core.pcm.saturate): presence, some added harmonics
+                               # peak (core.audio.pcm.saturate): presence, some added harmonics
     merge_saturate_db: float | None = None   # the same for the merged build only (over saturate_db there)
 
     def saturation_db(self, merged: bool) -> float:

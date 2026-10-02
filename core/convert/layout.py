@@ -6,11 +6,11 @@
 Each command takes a free effect slot; one that finds none is reported, not forced.
 """
 
-from .config import ConversionConfig
-from .diagnostics import Diagnostics, InfoKind, WarningKind
-from .mod import ModFile, row_to_bcd, shift_for_breaks
-from .smps_song import SmpsSong
-from .timeline import Timeline
+from ..config import ConversionConfig
+from ..diagnostics import Diagnostics, InfoKind, WarningKind
+from ..mod import ModFile, row_to_bcd, shift_for_breaks
+from ..plan import Timeline
+from ..smps import SmpsSong
 
 # ProTracker's default speed: no Fxx needed for it
 _DEFAULT_SPEED = 6

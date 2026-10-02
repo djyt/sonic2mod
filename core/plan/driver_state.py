@@ -27,10 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .driver_tables import chip_pitch
-from .levels import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
-from .smps_song import pan_side
-from .tables import source_map
+from ..smps import FM_TL_SILENT, PSG_ATT_SILENT, chip_pitch, fm_level_db, pan_side, psg_level_db, source_map
 
 
 def psg_range_entry(entries, key: int):
@@ -243,7 +240,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     `low` places a tone, `root` alone places noise, and a rooted tone without `low` falls
     to the transpose path.  Noise mode's instrument is the state's own (the envelope
     variant smpsPSGform / smpsPSGvoice chose).  An FM note at a detune its instrument's sample
-    is not rendered at plays that detune's variant (core.detune).
+    is not rendered at plays that detune's variant (core.plan.detune).
     """
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
@@ -255,7 +252,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
             inst = entry.mod_instrument
             if entry.root is not None:
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
-        detune = getattr(st.config, "detune_plan", None)     # core.detune: the sample at this detune
+        detune = getattr(st.config, "detune_plan", None)     # core.plan.detune: the sample at this detune
         if detune is not None:
             inst = detune.instrument_for(inst, st.detune)
     else:

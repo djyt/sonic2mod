@@ -7,11 +7,11 @@ import bisect
 import dataclasses
 import math
 
+from ..audio import db_to_gain
 from ..config import MergeGroup, format_patterns
-from ..gain import db_to_gain
-from ..instruments import FmInstrument, FmLayer, fm_catalogue, free_slots
-from ..mod_notes import PERIOD_TABLE
-from ..tables import source_map
+from ..mod import PERIOD_TABLE
+from ..plan import FmInstrument, FmLayer, fm_catalogue, free_slots
+from ..smps import source_map
 from .model import LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
     NoteOn,
@@ -361,7 +361,7 @@ class _Planner:
         if chip:
             assert spec is not None and p.voice is not None
             # Each layer at its own track's detune: the key's are relative (the shape), the chip's
-            # are what the driver writes (the primary's own detune is its sample's, core.detune)
+            # are what the driver writes (the primary's own detune is its sample's, core.plan.detune)
             layers = [FmLayer(p.voice, fnum_offset=p.detune)]
             layers += [dataclasses.replace(fm_layer(p, fn, self.tol), fnum_offset=fn.detune) for fn in present]
             comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,

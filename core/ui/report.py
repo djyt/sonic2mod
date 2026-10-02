@@ -12,7 +12,7 @@ Sections, in order:
     Details   (--verbose) the converter's full notes: composites, bank sounds, loop extensions
 
 The converter's `infos` and `warnings` are structured dicts; this module is the only place
-they are turned into text.  The sample table reads the written file (core.sample_audit) for
+they are turned into text.  The sample table reads the written file (core.mod.sample_audit) for
 the notes each sample plays, so it reports what the MOD does, not what was planned.
 """
 
@@ -30,10 +30,9 @@ from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
-from .diagnostics import InfoKind, WarningKind
-from .mod_limits import MAX_MOD_SAMPLE_BYTES
-from .sample_audit import audit
-from .tables import source_names, synth_note_name
+from ..diagnostics import InfoKind, WarningKind
+from ..mod import MAX_MOD_SAMPLE_BYTES, audit
+from ..smps import source_names, synth_note_name
 
 OK = "[green]✓[/green]"
 WARN = "[yellow]⚠[/yellow]"

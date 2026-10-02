@@ -31,11 +31,9 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.driver_tables import FM_FREQUENCIES
-from core.pcm import normalize_int8
-from core.pcm import to_mono as _to_mono
-from core.resample import DEFAULT_TAPS, resample
-from core.smps_song import SmpsVoice
+from core.audio import DEFAULT_TAPS, normalize_int8, resample
+from core.audio import to_mono as _to_mono
+from core.smps import FM_FREQUENCIES, SmpsVoice
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2
 
@@ -62,7 +60,7 @@ def note_to_freq(mod_note_index: int) -> float:
 def note_to_fnum_block(mod_note_index: int, clock_rate: int = _CLOCK_RATE) -> tuple[int, int]:
     """(fnum, block) the Sonic 1 driver writes for this note.
 
-    Its FM frequency table (core.driver_tables.FM_FREQUENCIES: index 1 = nC0, so MOD index
+    Its FM frequency table (core.smps.driver_tables.FM_FREQUENCIES: index 1 = nC0, so MOD index
     i, C1 = 0, is table index i + 13) runs fnum 644–1216 with the block from the octave.
     Using the same registers as the hardware matters beyond pitch: rate scaling and detune
     read the key code (block and the fnum's top bits), so a note written as fnum 1148 in one
@@ -174,13 +172,13 @@ def detuned_fnum_block(fnum: int, block: int, fnum_offset: int) -> tuple[int, in
 
 
 def _normalize_int8(mono: Sequence[int]) -> bytes:
-    """Peak-normalise to +-127 and quantise to int8 (see core.pcm.normalize_int8)."""
+    """Peak-normalise to +-127 and quantise to int8 (see core.audio.pcm.normalize_int8)."""
     return normalize_int8(mono, "render_note")
 
 
 
 def _resample(mono, from_rate: int, to_rate: int, taps: int = DEFAULT_TAPS) -> array.array:
-    """Polyphase windowed-sinc resample (core.resample, the SFX renderer's), back to ints.
+    """Polyphase windowed-sinc resample (core.audio.resample, the SFX renderer's), back to ints.
 
     A box average, which this used to be, rolls off 3.9 dB at the target's Nyquist and
     leaves aliases only ~6 dB down; the Kaiser-windowed sinc keeps the band flat to 85 % of

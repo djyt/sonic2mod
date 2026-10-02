@@ -26,7 +26,7 @@ import cmath
 import math
 import random
 
-from core.pcm import dc_block as _dc_block
+from core.audio import dc_block as _dc_block
 
 # PAL Paula clock.  Playback rate for a given period is PAL_CLOCK / period.
 PAL_CLOCK = 3_546_895
@@ -66,7 +66,7 @@ def candidate_rates(clock: int = PAL_CLOCK) -> list[tuple[float, int, str]]:
 # ---------------------------------------------------------------------------
 
 def dc_block(samples: list[float], rate: int, cutoff: float = 30.0) -> list[float]:
-    """core.pcm.dc_block at the SFX corner (30 Hz): many SFX open with a rest, which a mean
+    """core.audio.pcm.dc_block at the SFX corner (30 Hz): many SFX open with a rest, which a mean
     subtraction would push off zero."""
     return _dc_block(samples, rate, cutoff)
 

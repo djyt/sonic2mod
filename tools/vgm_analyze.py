@@ -70,9 +70,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.driver_tables import CARRIER_OFFSETS_BY_ALG
-from core.gain import db_to_gain
-from core.levels import fm_level_db, psg_level_db
+from core.audio import db_to_gain
+from core.smps import CARRIER_OFFSETS_BY_ALG, fm_level_db, psg_level_db
 
 # ---------------------------------------------------------------------------
 # Frequency math

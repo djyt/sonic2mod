@@ -6,16 +6,13 @@ whether it loops: a looped sample holds any note).
 
 import dataclasses
 
-from .config import ConversionConfig, SynthesisSettings
-from .diagnostics import Diagnostics, InfoKind, WarningKind
-from .driver_state import enabled_channels, walk_channel
-from .instruments import fm_catalogue, psg_catalogue
-from .loops import SustainLoop
-from .merge import MergePlan
-from .mod_limits import max_sustain_secs
-from .mod_notes import PERIOD_TABLE
-from .smps_song import SmpsSong
-from .timeline import Timeline
+from ..audio import SustainLoop
+from ..config import ConversionConfig, SynthesisSettings
+from ..diagnostics import Diagnostics, InfoKind, WarningKind
+from ..merge import MergePlan
+from ..mod import PERIOD_TABLE, max_sustain_secs
+from ..plan import Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
+from ..smps import SmpsSong
 
 _AUTO_SUSTAIN_CAP_SECS = 10.0
 
@@ -44,7 +41,7 @@ class SustainPlanner:
 
         The sample's own rate is `root`'s playback rate times 2^(synth_shift / 12) (the
         generators render synth_shift semitones above the pitch `root` sounds).  Read from the
-        instrument catalogue (core.instruments), which is what the generators render from; an
+        instrument catalogue (core.plan.instruments), which is what the generators render from; an
         instrument absent here is not synthesised (loaded from disk).
         """
         if kind == "FM":
@@ -55,7 +52,7 @@ class SustainPlanner:
 
     def _slides_after(self, chan_cfg, start: int, rest: int, merge: MergePlan | None) -> bool:
         """Whether the rest at `rest` ending a note that started at `start` is written as a
-        release slide, as core.channel_writer writes it: in the merged build, not on a column a
+        release slide, as core.convert.channel_writer writes it: in the merged build, not on a column a
         merge group routes notes onto there (a C00 then; a slide would sit on their notes)."""
         plan = merge
         if plan is None:
@@ -78,7 +75,7 @@ class SustainPlanner:
         and a sample rendered synth_shift semitones above the root's pitch runs 2^(shift/12)
         slower at every note; a positive sample_list finetune adds 2^(finetune / 96).
 
-        The MOD note and instrument are the ones core.channel_writer will trigger: the same
+        The MOD note and instrument are the ones core.convert.channel_writer will trigger: the same
         walk_channel / resolve_note.
         """
         finetunes = {e[0]: e[3] for e in (self._config.sample_list or []) if len(e) > 3}

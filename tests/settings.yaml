@@ -16,7 +16,7 @@ fm_synthesis:
   sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
   detune_variants: true     # An smpsAlterNote / smpsDetune note plays its instrument rendered at that
-                            # FNUM offset, in a free slot (core/detune.py).  false: the instrument's
+                            # FNUM offset, in a free slot (core/plan/detune.py).  false: the instrument's
                             # own sample, at its pitch
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" : CPU cores - 1
@@ -74,7 +74,7 @@ samples:
   # 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]
   loop_drift_db: 1
 
-  # Treble shelf (core.pcm.high_shelf): every synthesised render raised treble_shelf_db above
+  # Treble shelf (core.audio.pcm.high_shelf): every synthesised render raised treble_shelf_db above
   # treble_shelf_hz (at the sample's own pitch), before loops, levels and quantisation.
   # 0 : Disable. Match Hardware.
   # 4 : +4db (Example)

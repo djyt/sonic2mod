@@ -31,20 +31,23 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
-from core.cli import branding, cli_console
 from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
-from core.driver_tables import carrier_names, psg_tone2_divider
-from core.levels import PSG_STEP_DB, TL_STEP_DB, fm_level_db
-from core.mod import ModFile
-from core.mod_notes import PERIOD_TABLE, ModNote
-from core.mod_volume import db_to_mod_volume
-from core.smps_parser import SmpsParser
-from core.tables import synth_note_name
+from core.mod import PERIOD_TABLE, ModFile, ModNote, db_to_mod_volume
+from core.smps import (
+    PSG_STEP_DB,
+    TL_STEP_DB,
+    SmpsParser,
+    carrier_names,
+    fm_level_db,
+    psg_tone2_divider,
+    synth_note_name,
+)
+from core.ui import branding, cli_console
 
 console = cli_console(highlight=True)
 
 
-from core.gain import db_to_gain
+from core.audio import db_to_gain
 from core.version import get_version as _get_version
 
 _ALG_TOPOLOGY = {

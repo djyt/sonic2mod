@@ -10,7 +10,6 @@ import dataclasses
 import os
 import sys
 
-from core.cli import branding, cli_console, error_printer
 from core.config import (
     PLAYERS,
     ConversionConfig,
@@ -21,11 +20,10 @@ from core.config import (
     exact_bpm,
     with_song_overrides,
 )
-from core.generators import SampleGenerators
+from core.convert import SampleGenerators, SmpsToModConverter
 from core.merge import prepare_merged_config
-from core.report import Report, print_report
-from core.smps2mod import SmpsToModConverter
-from core.smps_parser import SmpsParser
+from core.smps import SmpsParser
+from core.ui import Report, branding, cli_console, error_printer, print_report
 from sn76489.sample_generator import generate_psg_samples
 from ym2612.sample_generator import generate_fm_samples
 

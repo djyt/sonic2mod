@@ -367,6 +367,11 @@ class Saturate(unittest.TestCase):
         self.assertAlmostEqual(max(map(abs, y)), max(map(abs, x)), places=6)
         self.assertEqual(saturate(x, 0.0), x)
 
+    def test_a_silent_drum_stays_silent(self):
+        # The requantise after saturate divides by the peak: a silent drum is zeros, not a crash
+        from core.audio import full_scale_int8
+        self.assertEqual(full_scale_int8(saturate([0.0] * 64, 2.0)), bytes(64))
+
 
 class BankReserve(unittest.TestCase):
     """merge_bank_slots: auto - how many slots the next build should hold back for banks."""

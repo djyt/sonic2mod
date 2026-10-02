@@ -18,7 +18,6 @@ Usage (smoke test)::
 from __future__ import annotations
 
 import functools
-import math
 import sys
 import warnings
 from collections.abc import Sequence
@@ -35,6 +34,7 @@ from core.audio import (
     find_sustain_loop,
     full_scale_int8,
     int8_to_raw16,
+    peak,
     probe_secs,
 )
 from core.audio import trim_trailing_silence as _trim_trailing_silence
@@ -155,7 +155,7 @@ class _PsgRenderer:
             return None
 
         if self._verbose:
-            print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={max(abs(v) for v in mono)}")
+            print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={peak(mono):.0f}")
         return mono, rate
 
     def _tone(self, entry: PsgInstrumentEntry, target_rate: int, envelope: list[int] | None,
@@ -221,7 +221,7 @@ class _PsgRenderer:
 
         # A PSG note is cut at its end: where the sustain holds every note, a loop ending
         # past it is longer than the plain render, and less faithful
-        if loop is not None and inst_num in synth.exact_sustain and loop.end > math.ceil(rate * sustain):
+        if loop is not None and inst_num in synth.exact_sustain and loop.end > int(rate * sustain):
             return None
         return loop
 

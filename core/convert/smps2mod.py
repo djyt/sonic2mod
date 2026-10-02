@@ -7,7 +7,7 @@ timing, and effects.
 import copy
 import math
 
-from ..audio import DEFAULT_DITHER, INT8_PEAK, SustainLoop, peak, saturate, signed8, to_int8
+from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
 from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, rate3_synth_root_issues
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
@@ -264,7 +264,7 @@ class SmpsToModConverter:
             if not db or sample is None or not sample.data:
                 continue
             shaped = saturate(signed8(sample.data), db)
-            sample.data = to_int8(shaped, INT8_PEAK / peak(shaped), self._dither)
+            sample.data = full_scale_int8(shaped, self._dither)   # a silent drum stays silent
             self._diag.info(InfoKind.DAC_SATURATED, instrument=d.mod_instrument, name=d.name, db=db)
 
     def convert(self) -> ModFile:

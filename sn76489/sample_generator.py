@@ -217,7 +217,8 @@ class _PsgRenderer:
         period = rate * 32.0 * n_val / synth.clock_rate
         plain_n = int(rate * (sustain + synth.release_padding))
         loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * sustain),
-                                 max_end=min(plain_n, int(rate * probe)), flat_db=synth.loop_drift_db)
+                                 max_end=min(plain_n, int(rate * probe)), flat_db=synth.loop_drift_db,
+                                 timbre=synth.loop_timbre)
 
         # A PSG note is cut at its end: where the sustain holds every note, a loop ending
         # past it is longer than the plain render, and less faithful

@@ -61,6 +61,16 @@ MIN_LOOP_SECS = 0.03      # the shortest loop (a frozen chorus phase sounds stat
 MAX_LOOP_SECS = 1.2       # the longest loop tried (a detuned pair beating at 1 Hz needs a whole beat)
 LENGTH_PENALTY = 0.05     # score = discontinuity + this per second of loop: a shorter loop wins a near tie
 CROSS_SECS = 0.015        # the crossfade that closes the loop
+# A loop may only start where the voice's harmonic profile holds until the longest note ends: the
+# profile (harmonics 1-8 at the note's own frequency, as fractions of their sum) of every later
+# window may differ from the start's by this much (sum of the fractions' differences, 0..2) per
+# dB of flat_db.  The level settling is not enough: Spring Yard's $05 (FM3) is flat within 1 dB
+# from 20 ms while its operators' detune swings its second harmonic from -23 to +6 dB over 300 ms,
+# and a loop at 32 ms froze its first instant
+PROFILE_PER_DB = 0.25
+PROFILE_HARMONICS = 8
+PROFILE_HOP_SECS = 0.010      # a profile every 10 ms
+PROFILE_SPAN_SECS = 1.0       # each start is checked this far ahead (or to the longest note's end)
 MAX_ERROR = 0.75          # the largest raw discontinuity a loop is still made from
 SILENT_DB = -50.0         # a sustain end this far below the peak has decayed: nothing to loop
 MAX_STARTS = 6            # loop starts tried, one fundamental period apart, from the flat point
@@ -137,11 +147,70 @@ def _errors(x: Sequence[float], s: int, min_len: int, max_len: int, check: int,
     return out
 
 
+def _band(ref: list[float], tol: float) -> tuple[float, float]:
+    """The band a window must sit in to count as flat: within `tol` of the reference span's value
+    at its END, widened by whatever the span swings around its trend (a beating pair).  Detrended,
+    so a decaying voice's span does not pass its whole decay - and its attack - as flat: the loop
+    may only freeze a level `tol` above where the longest note would have ended, which is what
+    loop_drift_db promises."""
+    n_ref = len(ref)
+    mt = (n_ref - 1) / 2.0
+    mean = sum(ref) / n_ref
+    sxx = sum((i - mt) ** 2 for i in range(n_ref))
+    slope = sum((i - mt) * (v - mean) for i, v in enumerate(ref)) / sxx if sxx else 0.0
+    end = mean + slope * (n_ref - 1 - mt)
+    residual = [v - (mean + slope * (i - mt)) for i, v in enumerate(ref)]
+    return end + min(residual) - tol, end + max(residual) + tol
+
+
+def _profile(window: Sequence[float], period: float) -> list[float]:
+    """Harmonics 1..PROFILE_HARMONICS of a window at the note's frequency (Goertzel), as fractions
+    of their sum: its timbre, whatever its level or phase."""
+    mags = []
+    for h in range(1, PROFILE_HARMONICS + 1):
+        w = 2 * math.pi * h / period
+        if w >= math.pi:
+            break
+        coeff, s1, s2 = 2 * math.cos(w), 0.0, 0.0
+        for v in window:
+            s1, s2 = v + coeff * s1 - s2, s1
+        mags.append(math.sqrt(max(0.0, s1 * s1 + s2 * s2 - coeff * s1 * s2)))
+    total = sum(mags)
+    return [m / total for m in mags] if total else mags
+
+
+def _profile_holds_from(mono: Sequence[float], rate: int, period: float, start: int, until: int,
+                        tol: float) -> int:
+    """The first sample from `start` (on a PROFILE_HOP_SECS grid) whose harmonic profile every
+    later one stays within `tol` of until `until` (the longest note's end), PROFILE_SPAN_SECS at
+    most ahead; `until` when none does (a loop then only plays under the release)."""
+    hop = max(1, round(PROFILE_HOP_SECS * rate))
+    size = max(16, round(2 * period))
+    span = round(PROFILE_SPAN_SECS * rate)
+    stop = min(until, len(mono) - size)
+    if start >= stop:
+        return start
+    profiles = {}
+
+    def at(i: int) -> list[float]:
+        if i not in profiles:
+            profiles[i] = _profile(mono[i:i + size], period)
+        return profiles[i]
+
+    for s in range(start, stop, hop):
+        ref = at(s)
+        if all(sum(abs(a - b) for a, b in zip(ref, at(c), strict=True)) <= tol
+               for c in range(s + hop, min(stop, s + span), hop)):
+            return s
+    return until
+
+
 def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n: int, *,
                       ref_n: int | None = None, max_end: int | None = None,
                       flat_db: float = FLAT_DB, span_secs: float = SPAN_SECS,
                       min_loop_secs: float = MIN_LOOP_SECS, max_loop_secs: float = MAX_LOOP_SECS,
-                      cross_secs: float = CROSS_SECS, max_error: float = MAX_ERROR) -> SustainLoop | None:
+                      cross_secs: float = CROSS_SECS, max_error: float = MAX_ERROR,
+                      timbre: bool = True) -> SustainLoop | None:
     """A sustain loop for a render of a note held for `sustain_n` samples at `rate` Hz whose
     fundamental period is `period` samples, or None where the envelope never settles (a
     decaying voice, one that has decayed to silence, or a sustain too short to judge).
@@ -152,6 +221,10 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     loop, frozen at a level at most `flat_db` above where that note would have ended - the
     settings' loop_drift_db.  `max_end` (default: MAX_END_FRACTION of the sustain) is the
     latest sample a loop may end at: later, it saves nothing over the plain render.
+
+    `timbre` also asks the voice's harmonic profile to hold from the loop's start to the longest
+    note's end (PROFILE_PER_DB); the merged build turns it off, as it costs bytes there
+    (SampleSettings.loop_timbre).
 
     The loop is not yet closed: apply_loop crossfades it and cuts the sample.
     """
@@ -173,22 +246,9 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     if peak <= 0:
         return None
     env = [_db(_rms(mono[i * win:(i + 1) * win]), peak) for i in range(nwin)]
-    ref = env[ref_w - span_w:ref_w]
-    if max(ref) < SILENT_DB:
+    if max(env[ref_w - span_w:ref_w]) < SILENT_DB:
         return None                                  # decayed away before the reference
-    # The band a window must sit in to count as flat: within flat_db of the level at the END
-    # of the reference span, widened by whatever the span swings around its trend (a beating
-    # pair).  Detrended, so a decaying voice's span does not pass its whole decay - and its
-    # attack - as flat: the loop may only freeze a level flat_db above where the longest note
-    # would have ended, which is what loop_drift_db promises.
-    n_ref = len(ref)
-    mt = (n_ref - 1) / 2.0
-    mean = sum(ref) / n_ref
-    sxx = sum((i - mt) ** 2 for i in range(n_ref))
-    slope = sum((i - mt) * (v - mean) for i, v in enumerate(ref)) / sxx if sxx else 0.0
-    end_level = mean + slope * (n_ref - 1 - mt)
-    residual = [v - (mean + slope * (i - mt)) for i, v in enumerate(ref)]
-    lo, hi = end_level + min(residual) - flat_db, end_level + max(residual) + flat_db
+    lo, hi = _band(env[ref_w - span_w:ref_w], flat_db)
     # From the reference span's end back, the span's own windows included: a decaying voice's
     # span sits above the band at its start, and a loop there froze that level (the Title
     # Screen's voice $01 looped at 0.2 s, 7 dB above where its longest note ends)
@@ -198,6 +258,9 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
             flat = i + 1
             break
     flat_at = _even(flat * win)
+    if timbre:
+        flat_at = _even(_profile_holds_from(mono, rate, period, flat_at, ref_n if ref_n is not None else n,
+                                            PROFILE_PER_DB * flat_db))
     end_limit = int(MAX_END_FRACTION * n) if max_end is None else min(max_end, n)
 
     check = max(32, math.ceil(2 * period))
@@ -213,7 +276,8 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
         if top < min_len:
             break
         for e, length in _errors(mono, s, min_len, top, check, period):
-            score = e + LENGTH_PENALTY * length / rate
+            # Bytes before the loop cost as much as bytes in it; the merged build keeps its old score
+            score = e + LENGTH_PENALTY * (length + (s - flat_at if timbre else 0)) / rate
             if score < best_score:
                 best_score = score
                 best = SustainLoop(s, length, e, flat_at, min(cross, length // 2))

@@ -219,7 +219,7 @@ class _FmRenderer:
         return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
                                  max_end=min(plain_n, sustain_n),
                                  flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
-                                 **min_loop)
+                                 timbre=synth.loop_timbre, **min_loop)
 
     def _heard_n(self, job: _RenderJob, rate: int, sustain: float, release: float | None) -> int | None:
         """Where a sample whose sustain holds every note stops being heard: at its sustain where

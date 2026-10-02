@@ -5,6 +5,7 @@ timing, and effects.
 """
 
 import copy
+import dataclasses
 import math
 
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
@@ -61,6 +62,12 @@ class SmpsToModConverter:
         """A fresh conversion's state (convert() starts over with it)."""
         self.song = song
         self.config = config
+        # A merged build keeps the level-only loop rule unless the song opts in (merge_loop_timbre):
+        # the timbre check grows the samples (Green Hill +56 KB, Title +16 KB, lofi +124 B), and
+        # the Amiga build is the one that must stay small
+        if config.merge_active and not config.merge_loop_timbre:
+            synth = dataclasses.replace(synth, loop_timbre=False) if synth else None
+            psg_synth = dataclasses.replace(psg_synth, loop_timbre=False) if psg_synth else None
         self.synth = synth
         self._player = synth.player if synth else "ft2"
         self.psg_synth = psg_synth

@@ -589,6 +589,7 @@ merge_fill: [PSG2]                                   # optional: the fill pool â
 merge_fill_cut_after: {DAC: 2, FM2: 4}               # optional: a pool note may cut these channels' notes after
                                                      #   that many ticks (a kick's decay, a bass note's second half)
 merge_max_synth_shift: 0                             # optional: render no sample above its root's pitch (half the bytes)
+merge_loop_timbre: true                              # optional: loops wait for the timbre to hold, as the reference build's do
 merge_tolerance: 1                                   # ticks a follower note-on may be off the primary's (default 1)
 ```
 

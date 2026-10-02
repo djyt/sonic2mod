@@ -1,0 +1,370 @@
+"""settings.yaml: how the samples are synthesised (SynthesisSettings for the YM2612,
+PsgSynthesisSettings for the SN76489) and the MOD-wide choices (legato, player)."""
+
+import os
+import warnings
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from ..mod import PAL_AMIGA_CLOCK
+from ..pcm import DEFAULT_DITHER, sample_limit_bytes
+from ..resample import DEFAULT_TAPS
+from .loader import dither_mode, mode_word, read_yaml_file
+
+if TYPE_CHECKING:
+    from .song import ConversionConfig
+
+
+def _psg_volume_mode(value) -> str:
+    v = str(value).strip().lower()
+    if v not in ("baked", "absolute"):
+        raise ValueError(f"psg_volume_scaling must be baked or absolute (got '{value}')")
+    return v
+
+
+# settings.yaml `samples:` keys; each was top level before it
+SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
+               "treble_shelf_db", "treble_shelf_hz", "resample_taps")
+
+
+def _samples_section(data: dict, filepath: str) -> dict:
+    """settings.yaml `samples:`.  A key still at the top level counts, with a warning; an unknown
+    one is an error (a typo would be ignored silently)."""
+    section = dict(data.get("samples") or {})
+    unknown = sorted(set(section) - set(SAMPLE_KEYS))
+    if unknown:
+        raise ValueError(f"{filepath}: unknown samples key(s): {', '.join(unknown)}")
+
+    for key in SAMPLE_KEYS:
+        if key in data and key not in section:
+            warnings.warn(f"{filepath}: {key} moved to samples.{key}", stacklevel=3)
+            section[key] = data[key]
+    return section
+
+
+def _max_sample_kb(data: dict, filepath: str) -> int:
+    """`samples.max_sample_kb` of settings.yaml, validated (128 default)."""
+    kb = data.get("max_sample_kb", 128)
+    try:
+        sample_limit_bytes(kb)
+    except ValueError as e:
+        raise ValueError(f"{filepath}: {e}") from e
+    return kb
+
+
+def _sample_flag(data: dict, key: str, default: bool, filepath: str) -> bool:
+    """A true / false key of settings.yaml `samples:`."""
+    v = data.get(key, default)
+    if not isinstance(v, bool):
+        raise ValueError(f"{filepath}: {key} must be true or false (got {v!r})")
+    return v
+
+
+SUSTAIN_LOOP_MODES = ("off", "merged", "all")
+
+
+def _sustain_loops(data: dict, filepath: str) -> str:
+    """`samples.sustain_loops` of settings.yaml: off | merged (default) | all."""
+    v = mode_word(data.get("sustain_loops", "merged"))
+    if v not in SUSTAIN_LOOP_MODES:
+        raise ValueError(f"{filepath}: sustain_loops must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
+    return v
+
+
+LEGATO_MODES = ("strict", "loose", "retrigger")
+
+
+def _legato(data: dict, filepath: str) -> str:
+    """Top-level `legato` of settings.yaml: retrigger (default) | strict | loose."""
+    v = str(data.get("legato", "retrigger")).lower()
+    if v not in LEGATO_MODES:
+        raise ValueError(f"{filepath}: legato must be one of {', '.join(LEGATO_MODES)} (got '{v}')")
+    return v
+
+
+# The tracker a build is made for (settings.yaml `player`): FT2 clone and ProTracker 2 scale a 4xy
+# depth differently, see vibrato_depth
+PLAYERS = ("ft2", "pt2")
+
+
+def _player(data: dict, filepath: str) -> str:
+    """Top-level `player` of settings.yaml: ft2 (default) | pt2."""
+    v = str(data.get("player", "ft2")).lower()
+    if v not in PLAYERS:
+        raise ValueError(f"{filepath}: player must be one of {', '.join(PLAYERS)} (got '{v}')")
+    return v
+
+
+# The treble shelf's corner (settings.yaml treble_shelf_hz), at the sample's own pitch
+DEFAULT_SHELF_HZ = 2500.0
+
+
+# PSG tones render at this multiple of the sample's rate (settings.yaml psg_synthesis.oversample)
+DEFAULT_PSG_OVERSAMPLE = 8
+
+
+# PAL Amiga Paula clock (settings.yaml amiga_clock): a MOD note's rate is this / its period
+DEFAULT_AMIGA_CLOCK = PAL_AMIGA_CLOCK
+
+
+def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool = False) -> int:
+    """A settings.yaml count in `data`: an integer >= 1 (even when `even`)."""
+    try:
+        v = int(data.get(key, default))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: {key} must be an integer") from e
+    if v < 1 or (even and v % 2):
+        raise ValueError(f"{filepath}: {key} must be {'an even' if even else 'a'} whole number >= 1 (got {v})")
+    return v
+
+
+def _amiga_clock(data: dict, section: dict) -> int:
+    """Top-level `amiga_clock` of settings.yaml (the Paula clock every sample rate follows); a
+    synthesis section's own key, where the file still has one, is the fallback."""
+    return int(data.get("amiga_clock", section.get("amiga_clock", DEFAULT_AMIGA_CLOCK)))
+
+
+def _psg_oversample(data: dict, section: dict, filepath: str) -> int:
+    """`psg_synthesis.oversample`; the top-level `psg_oversample` it replaced still counts, with a warning."""
+    if "oversample" not in section and "psg_oversample" in data:
+        warnings.warn(f"{filepath}: psg_oversample moved to psg_synthesis.oversample", stacklevel=3)
+        return _positive_int(data, "psg_oversample", DEFAULT_PSG_OVERSAMPLE, filepath)
+    return _positive_int(section, "oversample", DEFAULT_PSG_OVERSAMPLE, filepath)
+
+
+def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
+    """`samples.treble_shelf_db` / `treble_shelf_hz` of settings.yaml: (gain, corner) of the
+    optional high shelf on every synthesised render (core.pcm.high_shelf); 0 dB = off."""
+    try:
+        return float(data.get("treble_shelf_db", 0.0)), float(data.get("treble_shelf_hz", DEFAULT_SHELF_HZ))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: treble_shelf_db / treble_shelf_hz must be numbers") from e
+
+
+def _loop_drift_db(data: dict, filepath: str) -> float:
+    """`samples.loop_drift_db` of settings.yaml (1.0 default): how far a looped sample's level
+    may sit above where the instrument's longest note would have decayed to."""
+    try:
+        v = float(data.get("loop_drift_db", 1.0))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: loop_drift_db must be a number of dB") from e
+    if v < 0:
+        raise ValueError(f"{filepath}: loop_drift_db must not be negative (got {v})")
+    return v
+
+
+def _sustain_duration(section: dict, default: float) -> float | str:
+    """A synthesis section's sustain_duration: seconds, or "auto" (each instrument its longest ring)."""
+    sd = section.get("sustain_duration", default)
+    return sd if sd == "auto" else float(sd)
+
+
+@dataclass
+class SampleSettings:
+    """What both chips' samples share: settings.yaml `samples:` and `amiga_clock`, and the sustain
+    the converter resolves per instrument (core/sustain_plan.py)."""
+    enabled: bool = False
+    amiga_clock: int = DEFAULT_AMIGA_CLOCK   # settings.yaml amiga_clock (top level)
+    # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
+    # SustainPlanner.resolve); an instrument absent here gets sustain_duration.  Empty when a number is stated.
+    sustain_by_instrument: dict = field(default_factory=dict)
+    slide_ends: frozenset = frozenset()      # instruments a note of ends in a release slide (merged
+                                             # build): only they are heard past their sustain
+    exact_sustain: frozenset = frozenset()   # instruments whose auto sustain holds every note that
+                                             # plays them: the sample ends where those notes stop
+                                             # being heard (the release padding only a cut-short
+                                             # note could reach is left off)
+    max_sample_kb: int = 128         # settings.yaml samples.max_sample_kb: 128 = the format's limit, 64 = ProTracker's
+    # settings.yaml samples.sustain_loops: which builds cut each settled sample to a loop and
+    # end its notes with a release slide (core.loops) - "off", "merged" (--merged only), "all".
+    sustain_loops: str = "merged"
+    loop_drift_db: float = 1.0       # settings.yaml samples.loop_drift_db: dB a loop may freeze above the
+                                     # level the longest note would have decayed to (core.loops)
+    treble_shelf_db: float = 0.0     # settings.yaml samples.treble_shelf_db: brightness shelf, 0 = off
+    treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml samples.treble_shelf_hz: its corner
+    resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps: filter width, at the lower rate
+    dither: str = DEFAULT_DITHER     # settings.yaml samples.dither (core.pcm.DITHER_MODES)
+    dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.pcm.dc_block)
+
+    @property
+    def max_sample_bytes(self) -> int:
+        """Bytes one synthesised sample may hold (core.pcm.sample_limit_bytes)."""
+        return sample_limit_bytes(self.max_sample_kb)
+
+    def loops_for(self, merged: bool) -> bool:
+        """True when this build (the merged one or the reference) gets sustain loops."""
+        return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
+
+    @staticmethod
+    def _shared_fields(data: dict, section: dict, smp: dict, filepath: str) -> dict:
+        """The shared fields from settings.yaml: `data` the whole file, `section` the chip's
+        synthesis block, `smp` its `samples:` (_samples_section)."""
+        shelf_db, shelf_hz = _treble_shelf(smp, filepath)
+        return dict(
+            amiga_clock=_amiga_clock(data, section),
+            max_sample_kb=_max_sample_kb(smp, filepath),
+            sustain_loops=_sustain_loops(smp, filepath),
+            loop_drift_db=_loop_drift_db(smp, filepath),
+            treble_shelf_db=shelf_db,
+            treble_shelf_hz=shelf_hz,
+            resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
+            dc_block=_sample_flag(smp, "dc_block", False, filepath),
+            dither=dither_mode(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
+        )
+
+
+@dataclass
+class PsgSynthesisSettings(SampleSettings):
+    clock_rate: int = 3_579_545      # SN76489 NTSC MD clock (Hz)
+    sustain_duration: float | str = 1.0
+    release_padding: float = 0.2
+    # Envelope tables are not a setting: the driver's own live in core.driver_tables.PSG_ENVELOPES_BY_NAME.
+    # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
+    # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
+    # 2 dB/step law (same scheme as SynthesisSettings.fm_volume_mode).  "absolute": legacy —
+    # volume = 64 × 10^(−2·att/20) × sample volume / 64, so a Cxx on nearly every PSG note.
+    psg_volume_scaling: str = "baked"
+    psg_oversample: int = DEFAULT_PSG_OVERSAMPLE   # settings.yaml psg_synthesis.oversample
+
+    @classmethod
+    def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
+        data = read_yaml_file(filepath)
+        s = data.get("psg_synthesis", {})
+        if "psg_envelope_tables" in s:
+            warnings.warn(
+                f"{filepath}: psg_synthesis.psg_envelope_tables is ignored — the envelopes come from "
+                "the driver transcription in core/driver_tables.py (PSG_ENVELOPES_BY_NAME); delete the block",
+                stacklevel=2,
+            )
+        for key in ("normalize_samples", "psg_output_max"):
+            if key in s:
+                warnings.warn(
+                    f"{filepath}: psg_synthesis.{key} is ignored — every sample is peak-normalised "
+                    "to its full 8 bits and the sample_list volume carries its level; delete the line",
+                    stacklevel=2,
+                )
+        smp = _samples_section(data, filepath)
+        return cls(
+            enabled=s.get("enabled", False),
+            clock_rate=s.get("clock_rate", 3_579_545),
+            sustain_duration=_sustain_duration(s, 1.0),
+            release_padding=s.get("release_padding", 0.2),
+            psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
+            psg_oversample=_psg_oversample(data, s, filepath),
+            **cls._shared_fields(data, s, smp, filepath),
+        )
+
+
+@dataclass
+class SynthesisSettings(SampleSettings):
+    mode: str = "ym2612"
+    clock_rate: int = 7_670_454       # YM2612 master clock
+    sustain_duration: float | str = 1.5
+    release_padding: float = 0.5
+    threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
+    detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.detune)
+    # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
+    fm_volume_scaling: bool | str = "baked"
+    fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
+    # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
+    # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
+    # chip-pitch delta; after smpsSetvoice or with nothing sounding: a re-trigger; what FT2 clone and
+    # ProTracker need), "loose" (always 3FF on the target's own instrument, as written before) or
+    # "retrigger" (every no-attack note a plain note-on, as before 030ca81; the default).
+    legato: str = "retrigger"
+    # settings.yaml `player` (top level): the tracker the MOD is made for, "ft2" (default) or "pt2"
+    player: str = "ft2"
+    # settings.yaml samples.pt_zero_bytes: a one-shot sample's first word zeroed, since ProTracker
+    # replays it once the sample ends (core.mod.ModFile.zero_idle_words)
+    pt_zero_bytes: bool = True
+
+    @property
+    def fm_volume_mode(self) -> str:
+        """How FM channel levels (smpsHeaderFM volume, smpsAlterVol, smpsPan) reach the MOD.
+
+        "baked"    — per instrument, the level most of its notes play at needs no command (it is
+                     what the sample_list volume stands for); any other level gets
+                     Cxx = volume × 10^(ΔdB/20), ΔdB from the chip's 0.75 dB/TL step and the pan
+                     law.  Cxx only on the minority channel / after smpsAlterVol.  Default.
+        "absolute" — (legacy `true`) header TL + log law as an absolute volume: Cxx on every note.
+        "off"      — (legacy `false`) header TL ignored, one smpsAlterVol step = one linear MOD
+                     volume unit.  Wrong by up to several dB on faded notes; kept for comparison.
+        """
+        v = self.fm_volume_scaling
+        if isinstance(v, str):
+            v = v.strip().lower()
+            if v in ("baked", "absolute", "off"):
+                return v
+            raise ValueError(f"fm_volume_scaling must be baked, true or false (got '{self.fm_volume_scaling}')")
+        return "absolute" if v else "off"
+
+    def worker_threads(self) -> int:
+        """How many FM instruments render at once (see `threads` in settings.yaml).
+
+        "normal" — one thread per CPU core but one, so a conversion leaves a core for
+                   whatever else the machine is doing (never below 1).  Default.
+        "max"    — one thread per core.
+        n        — exactly n threads; 1 renders the instruments one after another.
+        The rendered samples do not depend on this: each thread owns its own chip and the
+        results are consumed in a fixed order.
+        """
+        cores = os.cpu_count() or 1
+        v = self.threads
+        if isinstance(v, str):
+            key = v.strip().lower()
+            if key == "normal":
+                return max(1, cores - 1)
+            if key == "max":
+                return cores
+            if key.isdigit():
+                v = int(key)
+        if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+            raise ValueError(
+                f"fm_synthesis.threads must be 'normal', 'max' or a positive integer (got {self.threads!r})")
+        return v
+
+    @classmethod
+    def from_yaml(cls, filepath: str) -> "SynthesisSettings":
+        data = read_yaml_file(filepath)
+        s = data.get("fm_synthesis", {})
+        for key in ("headroom_db", "carrier_balance"):
+            if key in s:
+                warnings.warn(
+                    f"{filepath}: fm_synthesis.{key} is ignored — carriers render at the voice's TL plus "
+                    "the channel's own volume, and the chip's 9-bit channel accumulator clips them "
+                    "exactly as the hardware does; delete the line",
+                    stacklevel=2,
+                )
+        if "normalize_samples" in s:
+            warnings.warn(
+                f"{filepath}: fm_synthesis.normalize_samples is ignored — every sample is peak-normalised "
+                "to its full 8 bits and the sample_list volume carries its level; delete the line",
+                stacklevel=2,
+            )
+        smp = _samples_section(data, filepath)
+        return cls(
+            enabled=s.get("enabled", False),
+            mode=s.get("mode", "ym2612"),
+            clock_rate=s.get("clock_rate", 7_670_454),
+            sustain_duration=_sustain_duration(s, 1.5),
+            release_padding=s.get("release_padding", 0.5),
+            threads=s.get("threads", "normal"),
+            detune_variants=bool(s.get("detune_variants", True)),
+            fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
+            fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
+            legato=_legato(data, filepath),
+            player=_player(data, filepath),
+            pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", True, filepath),
+            **cls._shared_fields(data, s, smp, filepath),
+        )
+
+
+def with_song_overrides(settings, config: "ConversionConfig"):
+    """`settings` (Synthesis- or PsgSynthesisSettings) with the song's own overrides applied:
+    loop_drift_db, treble_shelf_db."""
+    import dataclasses
+    if config.loop_drift_db is not None:
+        settings = dataclasses.replace(settings, loop_drift_db=config.loop_drift_db)
+    if config.treble_shelf_db is not None:
+        settings = dataclasses.replace(settings, treble_shelf_db=config.treble_shelf_db)
+    return settings

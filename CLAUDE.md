@@ -66,7 +66,9 @@ sonic2mod/
     mod.py           #   MOD file writer (adapted from mml2mod-master) + cell/effect-slot helpers; the one
                      #   reader (read_mod → ModImage, play_rows: one pass in play order), isolate_channel
     smps_parser.py   #   SMPS assembly parser → intermediate representation
-    config.py        #   Per-song conversion config, YAML loading
+    config/          #   Per-song conversion config (song.py ConversionConfig, entries.py its maps and section
+                     #   parsers) and settings.yaml (settings.py: SampleSettings → SynthesisSettings,
+                     #   PsgSynthesisSettings); loader.py YAML with no key given twice; bpm.py
     smps2mod.py      #   Conversion engine (IR → MOD): SmpsToModConverter orchestrates the modules below
     diagnostics.py   #   Diagnostics: the conversion's warnings (de-duplicated) and infos, read by report.py;
                      #   their kinds are the WarningKind / InfoKind enums (diag.warn(WarningKind.X, field=...))

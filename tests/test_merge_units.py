@@ -25,6 +25,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.banks import ALIGN, pack_banks
 from core.config import MergeGroup, format_patterns, load_yaml, parse_patterns
+from core.config.entries import _parse_instrument_range, _parse_merge_group
 from core.loops import RELEASE_FLOOR_DB
 from core.merge import (
     CHIP,
@@ -550,7 +551,6 @@ class Dither(unittest.TestCase):
         self.assertEqual(composite_dither(own, {10: "off"}, "shaped"), "flat")       # the group's wins
 
     def test_an_entry_and_a_group_may_override(self):
-        from core.config import _parse_instrument_range, _parse_merge_group
         e = _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 9, "dither": "Flat"})
         self.assertEqual(e.dither, "flat")
         g = _parse_merge_group({"primary": "FM3", "followers": ["FM4"], "dither": False}, "t")
@@ -579,7 +579,6 @@ class Narrowing(unittest.TestCase):
 
 class ConfigLoading(unittest.TestCase):
     def test_loop_overrides_on_an_entry_and_a_group(self):
-        from core.config import _parse_instrument_range, _parse_merge_group
         e = _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 11, "root": "C2",
                                      "loop_drift_db": 1, "loop_min_ms": 250})
         self.assertEqual((e.loop_drift_db, e.loop_min_ms), (1.0, 250.0))

@@ -6,7 +6,7 @@
 """
 
 from .config import ConversionConfig
-from .diagnostics import Diagnostics
+from .diagnostics import Diagnostics, InfoKind
 from .driver_tables import PSG_FREQUENCIES_EXTENDED
 from .timeline import Timeline
 
@@ -104,6 +104,6 @@ class VibratoSpeed:
         if key not in self._rate_limited:
             self._rate_limited.add(key)
             played = _POSITIONS * tpr / (rows_ticks * _MAX_NIBBLE * tpf)
-            self._diag.info({'type': 'vibrato_rate_limit', 'channel': channel,
-                             'wanted_cycle_frames': cycle_frames, 'played_cycle_frames': played})
+            self._diag.info(InfoKind.VIBRATO_RATE_LIMIT, channel=channel, wanted_cycle_frames=cycle_frames,
+                            played_cycle_frames=played)
         return x

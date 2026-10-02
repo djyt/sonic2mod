@@ -13,7 +13,7 @@ A unison chord's primary instrument moves too (bake_volumes).
 
 from .banks import pack_banks
 from .config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
-from .diagnostics import Diagnostics
+from .diagnostics import Diagnostics, InfoKind, WarningKind
 from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, db_to_mod_volume, headroom_db
 from .loops import FLAT_DB
 from .merge import NO_SLOT, MergePlan, mix_pcm_composites
@@ -29,28 +29,25 @@ def report_plan(plan: MergePlan, diag: Diagnostics) -> None:
     """The plan's findings: dropped and lost notes, the fill pool, the slots, the composites
     without one."""
     for src, d in sorted(plan.dropped_notes.items()):
-        diag.warn({'type': 'merge_dropped', 'channel': src, 'notes': d['notes'],
-                   'patterns': sorted(d['patterns'])})
+        diag.warn(WarningKind.MERGE_DROPPED, channel=src, notes=d['notes'], patterns=sorted(d['patterns']))
     if plan.unspecified:
-        diag.warn({'type': 'merge_unspecified', 'channel': 'merge', 'patterns': sorted(plan.unspecified)})
+        diag.warn(WarningKind.MERGE_UNSPECIFIED, channel='merge', patterns=sorted(plan.unspecified))
     for f in plan.fill:
-        diag.info({'type': 'merge_fill', **f})
+        diag.info(InfoKind.MERGE_FILL, **f)
         if f['lost']:
-            diag.warn({'type': 'merge_fill_lost', 'channel': f['source'], **f})
+            diag.warn(WarningKind.MERGE_FILL_LOST, channel=f['source'], **f)
     if plan.unused:
-        diag.info({'type': 'merge_unused', 'instruments': sorted(plan.unused)})
-    diag.info({'type': 'merge_slots', 'free': plan.slots_free, 'wanted': plan.slots_wanted,
-               'used': sum(1 for c in plan.composites.values() if not c.banked),
-               'banked': sum(1 for c in plan.composites.values() if c.banked),
-               'stand_ins': sum(1 for u in plan.unsupported if u.get('stand_in') and u['reason'] == NO_SLOT)})
+        diag.info(InfoKind.MERGE_UNUSED, instruments=sorted(plan.unused))
+    diag.info(InfoKind.MERGE_SLOTS, free=plan.slots_free, wanted=plan.slots_wanted,
+              used=sum(1 for c in plan.composites.values() if not c.banked),
+              banked=sum(1 for c in plan.composites.values() if c.banked),
+              stand_ins=sum(1 for u in plan.unsupported if u.get('stand_in') and u['reason'] == NO_SLOT))
     for s in plan.stats:
         where = s.group.where if s.group is not None else ""
         if s.lost or s.vibrato:
-            diag.warn({'type': 'merge_lost', 'channel': f"{s.primary}+{s.follower}{where}",
-                       'primary': s.primary, 'where': where,
-                       'follower': s.follower, 'held': s.held, 'shorter': 0,
-                       'truncated': s.truncated, 'orphans': s.orphans, 'solo_cut': s.solo_cut,
-                       'cuts': 0, 'vibrato': s.vibrato, 'notes': s.follower_notes})
+            diag.warn(WarningKind.MERGE_LOST, channel=f"{s.primary}+{s.follower}{where}", primary=s.primary,
+                      where=where, follower=s.follower, held=s.held, shorter=0, truncated=s.truncated,
+                      orphans=s.orphans, solo_cut=s.solo_cut, cuts=0, vibrato=s.vibrato, notes=s.follower_notes)
         # Working as configured, not a loss: a note keyed off early inside its composite, a note
         # that cuts the primary's tail (cut_primary) - one dim line, not a warning
         parts = []
@@ -59,8 +56,8 @@ def report_plan(plan: MergePlan, diag: Diagnostics) -> None:
         if s.cuts:
             parts.append(f"{s.cuts} cut the primary's tail (cut_primary)")
         if parts:
-            diag.info({'type': 'merge_folds', 'pair': f"{s.primary}+{s.follower}{where}",
-                       'what': f"of {s.follower}'s {s.follower_notes} notes: " + "; ".join(parts)})
+            diag.info(InfoKind.MERGE_FOLDS, pair=f"{s.primary}+{s.follower}{where}",
+                      what=f"of {s.follower}'s {s.follower_notes} notes: " + "; ".join(parts))
 
     # Composites without a slot, one warning per primary (a stand-in is no loss)
     by_primary: dict[str, dict] = {}
@@ -76,9 +73,9 @@ def report_plan(plan: MergePlan, diag: Diagnostics) -> None:
         d['details'].append(f"{u['notes']} notes: {u['detail']}")
     for primary, d in by_primary.items():
         if d['count']:
-            diag.warn({'type': 'merge_unsupported', 'channel': primary, 'primary': primary,
-                       'count': d['count'], 'notes': d['notes'], 'stand_ins': d['stand_ins'],
-                       'reason': " / ".join(sorted(d['reasons'])), 'details': d['details']})
+            diag.warn(WarningKind.MERGE_UNSUPPORTED, channel=primary, primary=primary, count=d['count'],
+                      notes=d['notes'], stand_ins=d['stand_ins'], reason=" / ".join(sorted(d['reasons'])),
+                      details=d['details'])
 
 
 def bank_reserve_wanted(plan: MergePlan | None, idle_slots: list[int]) -> int | None:
@@ -145,7 +142,7 @@ class MergedBuild:
                                     taps=(synth.resample_taps if synth else DEFAULT_TAPS),
                                     shelf_hz=(synth.treble_shelf_hz if synth else DEFAULT_SHELF_HZ),
                                     dither=dither, entry_dithers=entry_dithers):
-            self._diag.warn({'type': 'merge_missing_sample', 'channel': 'merge', **p})
+            self._diag.warn(WarningKind.MERGE_MISSING_SAMPLE, channel='merge', **p)
         if banked:
             self._pack_banks(banked, mix_raw, clock, max_bytes, dither, entry_dithers)
         report_groups(plan, self._diag)
@@ -159,11 +156,11 @@ class MergedBuild:
 
         limited = [c for c in plan.composites.values() if c.limited_db > 0]
         if limited:
-            self._diag.info({'type': 'merge_limited', 'composites': len(limited),
-                             'max_db': max(c.limited_db for c in limited)})
+            self._diag.info(InfoKind.MERGE_LIMITED, composites=len(limited),
+                            max_db=max(c.limited_db for c in limited))
         over = sorted((c.inst, c.headroom_db) for c in plan.composites.values() if c.headroom_db > _HEADROOM_REPORT_DB)
         if over:
-            self._diag.warn({'type': 'merge_headroom', 'channel': 'merge', 'instruments': over})
+            self._diag.warn(WarningKind.MERGE_HEADROOM, channel='merge', instruments=over)
 
     def _pack_banks(self, banked: dict[int, ModSample], mix_raw: dict[int, list[float]], clock: float,
                     max_bytes: int, dither: str, entry_dithers: dict[int, str]) -> None:
@@ -176,10 +173,10 @@ class MergedBuild:
         tick_secs = max(2.5 / self._timeline.bpm_for(m) for _, m in self._timeline.segments)
         for p in pack_banks(plan, self._config, self._mod, banked, plan.spare_slots, max_bytes, tick_secs, clock,
                             raw=mix_raw, dither=dither, entry_dithers=entry_dithers):
-            self._diag.warn({'type': 'merge_bank_dropped', 'channel': p['primary'], 'extra_ctx': p['detail'], **p})
+            self._diag.warn(WarningKind.MERGE_BANK_DROPPED, channel=p['primary'], extra_ctx=p['detail'], **p)
         for b in plan.banks:
-            self._diag.info({'type': 'merge_bank', 'slot': b.slot, 'bytes': b.bytes, 'volume': b.volume,
-                             'members': [(c.offset, c.region, c.notes, c.detail) for c in b.members]})
+            self._diag.info(InfoKind.MERGE_BANK, slot=b.slot, bytes=b.bytes, volume=b.volume,
+                            members=[(c.offset, c.region, c.notes, c.detail) for c in b.members])
 
         idle = [s for s in plan.spare_slots if s not in {b.slot for b in plan.banks}]
         # Only a composite the fit had no slot for could have used one: a budget's or a twin's
@@ -189,9 +186,8 @@ class MergedBuild:
             return
         self.idle_bank_slots = idle
         if self._retry is not None:            # the second pass left one idle too
-            self._diag.warn({'type': 'merge_bank_idle', 'channel': 'merge', 'slots': idle,
-                             'reserve': self._config.merge_bank_slots, 'banks': len(plan.banks),
-                             'dropped': dropped})
+            self._diag.warn(WarningKind.MERGE_BANK_IDLE, channel='merge', slots=idle,
+                            reserve=self._config.merge_bank_slots, banks=len(plan.banks), dropped=dropped)
 
     # --- volumes --------------------------------------------------------------------------------
     def scale_chip_volumes(self, fm_peaks: dict[int, tuple[int, int]]) -> None:
@@ -252,9 +248,9 @@ class MergedBuild:
                         over.append((inst, headroom_db(want)))
                     vol = db_to_mod_volume(was, db)
                     self._set_sample_volume(e, vol)
-                    self._diag.info({'type': 'merge_unison_volume', 'instrument': inst, 'volume': vol, 'db': db})
+                    self._diag.info(InfoKind.MERGE_UNISON_VOLUME, instrument=inst, volume=vol, db=db)
         if over:
-            self._diag.warn({'type': 'merge_headroom', 'channel': 'merge unison', 'instruments': over})
+            self._diag.warn(WarningKind.MERGE_HEADROOM, channel='merge unison', instruments=over)
 
     def _set_sample_volume(self, entry: list, volume: int) -> None:
         """A sample's volume, in both places it is kept: its sample_list entry and the MOD."""
@@ -284,10 +280,6 @@ def report_groups(plan: MergePlan, diag: Diagnostics) -> None:
             slot = f"{c.inst} 9{c.offset >> 8:02X}" if c.banked else str(c.inst)
             others = [lab for lab in c.uses if lab != label]
             comps.append((slot, n, c.detail, None if c.group is g else c.group.label + c.group.where, others))
-        diag.info({'type': 'merge_group', 'label': label, 'primary': g.primary, 'route': g.route,
-                   'followers': list(g.followers),
-                   'paired': sum(s.paired for s in stats),
-                   'solo': sum(s.solo for s in stats),
-                   'alone': stats[0].alone if stats else 0,
-                   'unison': plan.unisons.get(label),
-                   'composites': comps})
+        diag.info(InfoKind.MERGE_GROUP, label=label, primary=g.primary, route=g.route, followers=list(g.followers),
+                  paired=sum(s.paired for s in stats), solo=sum(s.solo for s in stats),
+                  alone=stats[0].alone if stats else 0, unison=plan.unisons.get(label), composites=comps)

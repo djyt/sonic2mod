@@ -7,7 +7,7 @@ Each command takes a free effect slot; one that finds none is reported, not forc
 """
 
 from .config import ConversionConfig
-from .diagnostics import Diagnostics
+from .diagnostics import Diagnostics, InfoKind, WarningKind
 from .mod import ModFile, row_to_bcd, shift_for_breaks
 from .smps_parser import SmpsSong
 from .timeline import Timeline
@@ -51,8 +51,7 @@ class ModLayout:
                 slot = self._mod.free_effect_channel(0, 0, order)
                 if slot is None:
                     if loops_to_row0:
-                        self._diag.warn({'type': 'rest_no_slot',
-                                           'channel': rests[ch], 'mod_channel': ch})
+                        self._diag.warn(WarningKind.REST_NO_SLOT, channel=rests[ch], mod_channel=ch)
                     continue
                 self._mod.set_cursor(0, slot, 0)
                 self._mod.set_effect(eff, par)
@@ -84,12 +83,12 @@ class ModLayout:
                     if not self._mod.note_at(0, 0, ch) and self._mod.effect_at(0, 0, ch) == (0xC, 0):
                         slot = ch
                         if self._song.loop_target_tick() == 0:
-                            self._diag.warn({'type': 'rest_no_slot', 'mod_channel': ch,
-                                               'channel': rests.get(ch, f'MOD channel {ch}')})
+                            self._diag.warn(WarningKind.REST_NO_SLOT, mod_channel=ch,
+                                            channel=rests.get(ch, f'MOD channel {ch}'))
                         break
             if slot is None:
-                self._diag.warn({'type': 'tempo_no_slot', 'pattern': 0, 'row': 0,
-                                   'modifier': self._song.header.tempo_modifier, 'bpm': par})
+                self._diag.warn(WarningKind.TEMPO_NO_SLOT, pattern=0, row=0,
+                                modifier=self._song.header.tempo_modifier, bpm=par)
                 continue
             self._mod.set_cursor(0, slot, 0)
             self._mod.set_effect(eff, par)
@@ -121,16 +120,16 @@ class ModLayout:
                         break
                 if slot is not None:
                     break
-            info = {'type': 'tempo_change', 'tick': start, 'pattern': pattern, 'row': row,
-                    'modifier': modifier, 'bpm': bpm, 'exact_bpm': exact}
+            change = {'tick': start, 'pattern': pattern, 'row': row, 'modifier': modifier, 'bpm': bpm,
+                      'exact_bpm': exact}
             if slot is None:
-                self._diag.warn({'type': 'tempo_no_slot', 'channel': 'all', **info})
+                self._diag.warn(WarningKind.TEMPO_NO_SLOT, channel='all', **change)
                 continue
             self._mod.set_cursor(pattern, slot, row)
             self._mod.set_effect(0xF, bpm)
-            self._diag.info(info)
+            self._diag.info(InfoKind.TEMPO_CHANGE, **change)
             if not 32 <= exact <= 255:
-                self._diag.warn({'type': 'tempo_bpm_range', 'channel': 'all', **info})
+                self._diag.warn(WarningKind.TEMPO_BPM_RANGE, channel='all', **change)
 
     def loop_point(self, breaks=None) -> None:
         """Set Bxx position jump for song looping based on smpsJump targets.
@@ -168,8 +167,8 @@ class ModLayout:
         b_chan = free[0] if len(free) >= need else 0
         if len(free) < need:
             eff = self._mod.effect_at(last_pattern, last_row, 0)
-            self._diag.warn({'type': 'loop_no_slot', 'channel': 'all', 'pattern': last_pattern,
-                               'row': last_row, 'overwrote': eff})
+            self._diag.warn(WarningKind.LOOP_NO_SLOT, channel='all', pattern=last_pattern, row=last_row,
+                            overwrote=eff)
         self._mod.set_cursor(last_pattern, b_chan, last_row)
         self._mod.set_position_jump(target_pattern)
 
@@ -183,9 +182,9 @@ class ModLayout:
                 self._mod.set_cursor(target_pattern, ch, target_row)
                 self._mod.set_effect(0xF, self._timeline.bpm_for(target_mod))
             else:
-                self._diag.warn({'type': 'tempo_no_slot', 'channel': 'all', 'tick': loop_target_tick,
-                                   'pattern': target_pattern, 'row': target_row, 'modifier': target_mod,
-                                   'bpm': self._timeline.bpm_for(target_mod), 'exact_bpm': float('nan')})
+                self._diag.warn(WarningKind.TEMPO_NO_SLOT, channel='all', tick=loop_target_tick,
+                                pattern=target_pattern, row=target_row, modifier=target_mod,
+                                bpm=self._timeline.bpm_for(target_mod), exact_bpm=float('nan'))
 
         # If the target lands mid-pattern, write a Dxx companion on a free channel
         if target_row != 0:
@@ -194,9 +193,4 @@ class ModLayout:
                 self._mod.set_channel(ch)
                 self._mod.set_effect(0xD, row_to_bcd(target_row))
 
-        self._diag.info({
-            'type': 'loop_set',
-            'pattern': last_pattern,
-            'row': last_row,
-            'target': target_pattern,
-        })
+        self._diag.info(InfoKind.LOOP_SET, pattern=last_pattern, row=last_row, target=target_pattern)

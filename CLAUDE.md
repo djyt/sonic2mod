@@ -61,7 +61,8 @@ sonic2mod/
     smps_parser.py   #   SMPS assembly parser → intermediate representation
     config.py        #   Per-song conversion config, YAML loading
     smps2mod.py      #   Conversion engine (IR → MOD): SmpsToModConverter orchestrates the modules below
-    diagnostics.py   #   Diagnostics: the conversion's warnings (de-duplicated) and infos, read by report.py
+    diagnostics.py   #   Diagnostics: the conversion's warnings (de-duplicated) and infos, read by report.py;
+                     #   their kinds are the WarningKind / InfoKind enums (diag.warn(WarningKind.X, field=...))
     song_prep.py     #   The song as the driver plays it: smpsSetTempoDiv re-timing, short loops replayed
     timeline.py      #   Timeline: tempo segments, ticks per frame, BPM, tick → (pattern, row), seconds
     vibrato.py       #   smpsModSet → 4xy: VibratoSpeed (cycle → x), vibrato_depth (swing → y per player)
@@ -137,6 +138,7 @@ sonic2mod/
     baselines/          #   Baseline MODs + manifest.yaml (commit, date, settings / config hashes)
     test_merge_units.py #   The merge primitives with hand-built objects (python -m pytest tests -q)
     test_detune_units.py #  Detune variants: FNUM → cents, routing, shared level, catalogue layers
+    test_diagnostics_units.py # Warning / info kinds: every WarningKind has a report line, de-duplication
 ```
 
 ## Setup

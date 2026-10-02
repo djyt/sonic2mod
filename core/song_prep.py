@@ -62,7 +62,7 @@ def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
 
 def extend_looping_channels(song: SmpsSong) -> list[dict]:
     """Extend channels whose event data ends early due to a compact smpsJump inner loop; one
-    `loop_extended` info per channel extended.
+    {label, before, after, span} per channel extended (events before and after, the body's ticks).
 
     If a channel has has_jump=True and its last event tick is less than the global
     last tick across all channels, repeat the loop body (events from
@@ -123,10 +123,9 @@ def extend_looping_channels(song: SmpsSong) -> list[dict]:
             offset += loop_span
 
         infos.append({
-            'type': 'loop_extended',
             'label': ch.header.label,
-            'from': original_count,
-            'to': len(ch.events),
+            'before': original_count,
+            'after': len(ch.events),
             'span': loop_span,
         })
     return infos

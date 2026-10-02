@@ -1,0 +1,627 @@
+"""A song config's entries: voice_map ranges, psg_map / psg_voice_map entries, channels, DAC
+samples, merge groups — the classes and their parsers."""
+
+import warnings
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from ..tables import MOD_NOTE_MAP, ModNote, parse_smps_note, parse_synth_note, synth_note_name
+from .loader import dither_mode
+
+if TYPE_CHECKING:
+    from .song import ConversionConfig
+
+
+@dataclass
+class InstrumentRange:
+    low: int            # inclusive lower bound — SMPS semitone from C0 (e.g. nA2 = 33)
+    high: int           # inclusive upper bound — SMPS semitone from C0
+    mod_instrument: int # MOD instrument number (1-31)
+    root: ModNote | None = None  # MOD note where `low` plays;
+                                    # out_note = root + (source_semitone - low)
+                                    # if None: fall back to channel transpose for note
+    synth_root: int | None = None  # SMPS semitone the sample is rendered at.  None in a config:
+                                      # core.driver_state.resolve_synth_roots fills in the chip
+                                      # pitch the entry's notes play most often (the song decides).
+                                      # Stated: the rendering pitch, anywhere in the range.  Either
+                                      # way `root` is where the pitch of `low` sounds (synth_shift)
+    synth_shift: int = 0           # synth_root − the pitch `root` sounds, set by resolve_synth_roots;
+                                      # the sample's rate is 2^(shift/12) times root's playback rate
+    vibrato: int | None = None     # per-entry 4xy override; None = use channel smpsModSet
+                                      # stored as raw byte: high nibble=speed, low nibble=depth
+                                      # 0x00 = suppress; e.g. 0x12 = speed=1, depth=2
+    loop_drift_db: float | None = None   # this instrument's sustain loop may freeze this far above the
+                                      # settled level (the song's / settings.yaml's otherwise): lower
+                                      # loops later, past more of the attack, for more bytes
+    loop_min_ms: float | None = None     # its sustain loop is at least this long (core.loops' 30 ms
+                                      # otherwise): a longer loop keeps a detuned voice's shimmer
+                                      # moving where a short one freezes it into a buzz
+    dither: str | None = None            # this sample's quantisation (core.pcm.DITHER_MODES); None:
+
+
+                                      # settings.yaml samples.dither
+
+
+def _parse_vibrato(v) -> int:
+    """Parse a vibrato value from YAML (int or str) → raw byte (high=speed, low=depth).
+
+    The value is treated as two ASCII hex digits (each nibble is a hex digit 0–F):
+      vibrato: 12   (YAML int 12)  → str(12)="12" → speed=1, depth=2 → 0x12
+      vibrato: "1A" (YAML string)  → upper="1A"   → speed=1, depth=10 → 0x1A
+      vibrato: 0    (suppress)     → "00" → speed=0, depth=0
+    """
+    s = str(v).upper().zfill(2)
+    if len(s) > 2:
+        raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
+    return (int(s[0], 16) << 4) | int(s[1], 16)
+
+
+def _opt(d: dict, key: str, parse_fn):
+    """Return parse_fn(d[key]) if key is present, otherwise None."""
+    return parse_fn(d[key]) if key in d else None
+
+
+def _require(d: dict, key: str, context: str):
+    """Return d[key], raising ValueError with location context if key is missing."""
+    if key not in d:
+        raise ValueError(f"Config error: '{key}' is required in {context}")
+    return d[key]
+
+
+def _mod_note(v: str, context: str) -> 'ModNote':
+    """Parse a ModNote by name, raising ValueError with context on failure."""
+    try:
+        return ModNote[v]
+    except KeyError:
+        valid = ', '.join(list(ModNote.__members__)[:8]) + ', ...'
+        raise ValueError(f"Unknown note name '{v}' in {context}; valid names: {valid}") from None
+
+
+def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "InstrumentRange":
+    """Parse a single InstrumentRange dict from YAML.
+
+    Accepts both new key ``mod_instrument`` and deprecated ``instrument``
+    (emits DeprecationWarning for the latter).
+    """
+    low  = parse_smps_note(_require(entry, 'low',  context))
+    high = parse_smps_note(_require(entry, 'high', context))
+
+    if 'mod_instrument' in entry:
+        inst = entry['mod_instrument']
+    elif 'instrument' in entry:
+        warnings.warn(
+            "YAML key 'instrument' in a range entry is deprecated; use 'mod_instrument'.",
+            DeprecationWarning,
+            stacklevel=5,
+        )
+        inst = entry['instrument']
+    else:
+        raise ValueError(f"Config error: 'mod_instrument' is required in {context}")
+
+    root       = _opt(entry, 'root',       lambda v: _mod_note(v, f"{context}.root"))
+    synth_root = _opt(entry, 'synth_root', parse_synth_note)
+    vibrato    = _opt(entry, 'vibrato',    _parse_vibrato)
+    drift      = _opt(entry, 'loop_drift_db', lambda v: _drift_db(v, context))
+    min_ms     = _opt(entry, 'loop_min_ms', lambda v: _loop_min_ms(v, context))
+    dither     = _opt(entry, 'dither', lambda v: dither_mode(v, context))
+
+    return InstrumentRange(
+        low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
+        vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms, dither=dither,
+    )
+
+
+def _loop_min_ms(v, context: str) -> float:
+    """A `loop_min_ms` override: milliseconds, positive."""
+    try:
+        ms = float(v)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{context}: loop_min_ms must be a number of milliseconds (got {v!r})") from e
+    if ms <= 0:
+        raise ValueError(f"{context}: loop_min_ms must be positive (got {ms})")
+    return ms
+
+
+def _drift_db(v, context: str) -> float:
+    """A `loop_drift_db` override: dB, not negative."""
+    try:
+        db = float(v)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{context}: loop_drift_db must be a number of dB (got {v!r})") from e
+    if db < 0:
+        raise ValueError(f"{context}: loop_drift_db must not be negative (got {db})")
+    return db
+
+
+@dataclass
+class MergeGroup:
+    """One `merge:` group: the followers fold onto the primary's MOD channel (core/merge/)."""
+    primary: str
+    followers: list[str]
+    cut_primary: bool = False   # a follower note that starts while the primary still sounds cuts it
+                                # (a hi-hat over a drum's tail) instead of being lost
+    max_composites: int | None = None   # keep only the N most-played composites (the rest of the
+                                        # chords play the primary alone): a memory budget
+    fill_lost: bool = False     # a follower note the group cannot fold (an orphan, a shorter one)
+                                # goes to the fill pool: any output channel silent at that moment
+    fill_cut: bool = False      # a follower note whose ring the fold would cut (the primary's next
+                                # note-on or rest falls inside it) plays whole on a channel silent
+                                # for all of it when there is one; else it folds as before
+    bank: bool = False          # this group's mixed composites share MOD instruments as sample banks,
+                                # each sound chosen with 9xx (core/banks.py), which takes the note's
+                                # effect slot (a melodic note's attack-row Cxx moves a row later)
+    mod_channel: int | str | None = None   # merge_patterns only: the column the primary's notes take
+                                # in the group's patterns — a channels: mod_channel number, or a source
+                                # name (FM2: that channel's column), which must be folded or dropped
+                                # there; resolved to `route`, the merged output channel.  A group with
+                                # no followers and a mod_channel only moves the channel there
+    route: int | None = None    # set by core.merge.prepare_merged_config
+    cut_after: int | None = None   # merge_patterns only: in the block's patterns a pooled note may take
+                                # this group's column once its note is that many ticks old, cutting the
+                                # tail (the block's own merge_fill_cut_after for the primary's column)
+    fill: bool = False          # merge_patterns only, no followers: the primary's notes in the block's
+                                # patterns go to the fill pool - each on whichever column in use there is
+                                # silent when it starts (sprinkled between the others' notes), lost where
+                                # none is; the channel has no column of its own in those patterns
+    mix_at: str | None = None   # "primary": a mixed composite is made at the primary's own note, so a
+                                # looped primary keeps its loop (a lead under a chime: a few KB instead
+                                # of the whole note unrolled); the followers are resampled down into it
+    mix_note: int | None = None # highest MOD note (index, C1 = 0) a mixed composite of this group is
+                                # made at: a mix is made at its fastest layer's note (a hat's A3, 28 kHz)
+                                # unless that is above this; F2 halves the drum mixes' bytes and more
+    loop_drift_db: float | None = None  # the sustain loop drift of this group's chip composites (the
+                                # primary's entry's, then the song's, otherwise)
+    loop_min_ms: float | None = None    # the shortest sustain loop of this group's chip composites
+                                # (and of its looped mixes, loop_mix)
+    treble_shelf_db: float | None = None   # a brightness shelf on this group's composites (the mixed
+                                # sum, drums off disk included; a chip composite's render), on top of
+                                # any song shelf; treble_shelf_hz its corner (None: the settings')
+    treble_shelf_hz: float | None = None
+    limit_db: float | None = None   # a mix of this group whose sum is past full scale has its peaks
+                                # limited, by up to this many dB, instead of the whole sound turned
+                                # down (core.pcm.limit_peaks); denser, a little transient distortion
+    dither: str | None = None   # this group's composites' quantisation (core.pcm.DITHER_MODES);
+                                # None: settings.yaml samples.dither
+    loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
+                                # finished mix as a single voice's loop is (lossy: the chord's slow
+                                # movement freezes there); for a pitched primary
+    patterns: frozenset | None = None   # the MOD patterns (of the reference build) this group folds in;
+                                        # None = the whole song.  A `merge_patterns:` group has one.
+
+    @property
+    def label(self) -> str:
+        return f"{self.primary}+{'+'.join(self.followers)}" if self.followers else self.primary
+
+    @property
+    def where(self) -> str:
+        """The group's pattern ranges as the config writes them (" [1-4, d-10]"), "" song-wide."""
+        return f" [{format_patterns(self.patterns)}]" if self.patterns is not None else ""
+
+    def covers(self, pattern: int) -> bool:
+        return self.patterns is None or pattern in self.patterns
+
+
+def parse_patterns(spec, ctx: str) -> frozenset:
+    """The MOD pattern numbers a `merge_patterns:` block names.
+
+    A string is hex, as Fast Tracker and the fold table write pattern numbers: "0", "d", a
+    range "1-4" / "d-10", or several separated by commas ("0, 5-c").  A YAML integer is taken
+    as decimal.  A list is the union of its items.
+    """
+    if isinstance(spec, bool):
+        raise ValueError(f"{ctx}: patterns must be pattern numbers, not {spec!r}")
+    if isinstance(spec, int):
+        if spec < 0:
+            raise ValueError(f"{ctx}: pattern {spec} is negative")
+        return frozenset({spec})
+    if isinstance(spec, (list, tuple)):
+        out: set = set()
+        for item in spec:
+            out |= parse_patterns(item, ctx)
+        return frozenset(out)
+    if not isinstance(spec, str):
+        raise ValueError(f"{ctx}: patterns must be a string, a number or a list (got {spec!r})")
+    out = set()
+    for raw_token in spec.split(","):
+        token = raw_token.strip().lower()
+        if not token:
+            continue
+        lo, dash, hi = token.partition("-")
+        try:
+            a = int(lo.strip(), 16)
+            b = int(hi.strip(), 16) if dash else a
+        except ValueError:
+            raise ValueError(f"{ctx}: '{token}' is not a hex pattern number or range (like 0, a, d-10)") from None
+        if b < a:
+            raise ValueError(f"{ctx}: pattern range '{token}' runs backwards")
+        out.update(range(a, b + 1))
+    if not out:
+        raise ValueError(f"{ctx}: no patterns in {spec!r}")
+    return frozenset(out)
+
+
+def format_patterns(patterns) -> str:
+    """Pattern numbers as hex ranges: {1,2,3,4,13,14,15,16} -> "1-4, d-10"."""
+    nums = sorted(patterns)
+    parts: list[str] = []
+    i = 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        parts.append(f"{nums[i]:x}" if i == j else f"{nums[i]:x}-{nums[j]:x}")
+        i = j + 1
+    return ", ".join(parts)
+
+
+def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
+    if not isinstance(g, dict):
+        raise ValueError(f"{ctx}: a merge group is a mapping with primary: and followers:")
+    followers = g.get('followers', [])
+    if isinstance(followers, str):
+        followers = [followers]
+    _mc = g.get('max_composites')
+    mix_at = g.get('mix_at')
+    if mix_at is not None and str(mix_at).lower() != "primary":
+        raise ValueError(f"{ctx}: mix_at must be 'primary' (got {mix_at!r})")
+    mix_note = None
+    if g.get('mix_note') is not None:
+        note = MOD_NOTE_MAP.get(str(g['mix_note']))
+        if note is None:
+            raise ValueError(f"{ctx}: mix_note {g['mix_note']!r} is not a MOD note (C1 .. B3, like F2 or Fs2)")
+        mix_note = note.value
+    cut_after = g.get('cut_after')
+    if cut_after is not None:
+        if patterns is None:
+            raise ValueError(f"{ctx}: cut_after is a merge_patterns option (song-wide: merge_fill_cut_after)")
+        cut_after = max(1, int(cut_after))
+    fill = bool(g.get('fill', False))
+    if fill and (followers or g.get('mod_channel') is not None or patterns is None):
+        raise ValueError(f"{ctx}: fill: true is for a merge_patterns group with no followers and no mod_channel "
+                         f"(the channel's notes go wherever a column is silent)")
+    target = g.get('mod_channel')
+    if target is not None and not isinstance(target, (int, str)):
+        raise ValueError(f"{ctx}: mod_channel is a channels: mod_channel number or a source name (got {target!r})")
+    if target is not None and patterns is None:
+        raise ValueError(f"{ctx}: mod_channel needs a merge_patterns block — a song-wide group has no column to borrow")
+    return MergeGroup(str(_require(g, 'primary', ctx)), [str(f) for f in followers],
+                      bool(g.get('cut_primary', False)),
+                      int(_mc) if _mc is not None else None,
+                      bool(g.get('fill_lost', False)),
+                      bool(g.get('fill_cut', False)),
+                      bool(g.get('bank', False)),
+                      mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
+                      cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None),
+                      loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
+                      loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
+                      loop_mix=bool(g.get('loop_mix', False)),
+                      treble_shelf_db=_opt(g, 'treble_shelf_db', float),
+                      treble_shelf_hz=_opt(g, 'treble_shelf_hz', float),
+                      limit_db=_opt(g, 'limit_db', lambda v: max(0.0, float(v))),
+                      dither=_opt(g, 'dither', lambda v: dither_mode(v, ctx)))
+
+
+@dataclass
+class ChannelConfig:
+    source: str          # "DAC", "FM1"-"FM5", "PSG1"-"PSG3"
+    mod_channel: int     # 0-based MOD channel index
+    transpose: int = 0   # Semitone offset
+    instrument: int = 1  # MOD instrument number (1-31)
+    volume: int = 64     # MOD volume (0-64)
+    enabled: bool = True
+
+
+@dataclass
+class DacSampleConfig:
+    name: str            # e.g. "dKick"
+    mod_instrument: int  # MOD instrument number
+    mod_note: str = "C3" # Note to trigger in MOD
+    saturate_db: float = 0.0   # the drum soft-clipped until its body is this much louder at the same
+                               # peak (core.pcm.saturate): presence, some added harmonics
+    merge_saturate_db: float | None = None   # the same for the merged build only (over saturate_db there)
+
+    def saturation_db(self, merged: bool) -> float:
+        """The saturate_db this build uses: merge_saturate_db in the merged one, where given."""
+        return self.merge_saturate_db if merged and self.merge_saturate_db is not None else self.saturate_db
+
+
+@dataclass
+class PsgInstrumentEntry:
+    mod_instrument: int                      # MOD slot (1-based)
+    type: str                                # "tone" | "white_noise" | "periodic_noise"
+    root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
+    synth_root: int | None = None        # SMPS semitone the tone is rendered at.  None in a config:
+                                         # resolve_synth_roots fills in the pitch the chip plays
+                                         # (see InstrumentRange.synth_root); a rate-3 noise entry
+                                         # keeps None (the LFSR divider is derived separately)
+    synth_shift: int = 0                 # synth_root − the pitch `root` sounds, set by resolve_synth_roots;
+                                         # the sample's rate is 2^(shift/12) times root's playback rate
+    low: int | None = None               # SMPS semitone lower bound for melodic root offset
+    high: int | None = None              # SMPS semitone upper bound (inclusive); used for list-entry range dispatch
+    noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers), 3 = follow tone ch2
+    tone2_n: int | None = None           # noise_rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR
+                                             # clock; overrides the value derived from synth_root/root.
+                                             # nMaxPSG in the Sonic 1 driver writes N=0, which the Sega
+                                             # VDP PSG treats as N=1 (maximum shift rate) — use tone2_n: 1.
+    envelope: str | list[int] | None = None  # Named table str ("fTone_04") or inline list[int].  A psg_map
+                                             # (noise) entry leaves it None: the converter derives it from
+                                             # the song (derive_noise_envelopes); stating it is an override
+    base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
+    vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
+    envelopes: dict[str, int] = field(default_factory=dict)   # psg_map only: {smpsPSGvoice label: MOD
+                                             # instrument} — a noise-mode envelope that gets its own sample
+                                             # (Scrap Brain's fTone_08); other labels play mod_instrument
+    dither: str | None = None                # as InstrumentRange.dither
+
+
+def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_voice_map entry") -> 'PsgInstrumentEntry':
+    """Parse a single psg_voice_map entry dict into a PsgInstrumentEntry (always a tone).
+
+    A noise channel never consults psg_voice_map: once smpsPSGform ran, smpsPSGvoice only
+    changes the envelope, and an envelope that needs its own sample is named under
+    psg_map[<form>].envelopes.  A noise type here is therefore a config error.
+    """
+    if v.get('type', 'tone') != 'tone' or 'noise_rate' in v:
+        raise ValueError(
+            f"{context}: psg_voice_map entries are tones; a noise-mode envelope variant goes under "
+            f"psg_map[<form byte>].envelopes: {{<label>: <mod_instrument>}}")
+    root_note   = _mod_note(_require(v, 'root', context), f"{context}.root")
+    synth_root  = _opt(v, 'synth_root', parse_synth_note)
+    low         = _opt(v, 'low',        parse_smps_note)
+    high        = _opt(v, 'high',       parse_smps_note)
+    pvm_vibrato = _opt(v, 'vibrato',    _parse_vibrato)
+    return PsgInstrumentEntry(
+        mod_instrument=_require(v, 'mod_instrument', context),
+        type=v.get('type', 'tone'),
+        root=root_note,
+        synth_root=synth_root,
+        low=low,
+        high=high,
+        noise_rate=v.get('noise_rate', 0),
+        tone2_n=_parse_tone2_n(v, context),
+        envelope=v.get('envelope', default_envelope),
+        base_volume=v.get('base_volume', 0),
+        vibrato=pvm_vibrato,
+        dither=_opt(v, 'dither', lambda d: dither_mode(d, context)),
+    )
+
+
+# The driver's PSGFrequencies table spans 130.98 Hz … 6580.02 Hz = synth_root C3 … Gs8 (indices
+# 0–68).  Its one remaining entry, index 69 (nMaxPSG), is not a pitch: the divider is 0, which
+# the Sega VDP PSG clocks as N=1.
+_RATE3_SYNTH_ROOT_MIN = 36     # C3
+
+
+_RATE3_SYNTH_ROOT_MAX = 104    # Gs8
+
+
+def rate3_synth_root_issues(config: 'ConversionConfig') -> list[dict]:
+    """Rate-3 noise entries whose ``synth_root`` is a frequency the driver can never write.
+
+    With ``noise_rate: 3`` the LFSR is clocked by tone channel 2, and ``synth_root`` is turned
+    into that channel's divider.  A value outside the driver's table (``A8`` is the usual one —
+    where index 69 would fall if the table were chromatic) gives a plausible-looking but wrong
+    LFSR clock: ~7 kHz instead of the ~112 kHz of nMaxPSG, a dull rattle instead of hiss.
+    Entries with an explicit ``tone2_n`` are exempt (it overrides ``synth_root``).
+
+    Returns one dict per offending entry: ``{'context', 'synth_root', 'above'}``.
+    """
+    entries: list[tuple[str, PsgInstrumentEntry]] = [
+        (f"psg_map[0x{form:02X}]", e) for form, e in config.psg_map.items()
+    ]
+    for label, lst in config.psg_voice_map.items():
+        entries.extend((f"psg_voice_map[{label}]", e) for e in lst)
+
+    issues = []
+    for context, e in entries:
+        if e.noise_rate != 3 or e.tone2_n is not None or e.synth_root is None:
+            continue
+        if _RATE3_SYNTH_ROOT_MIN <= e.synth_root <= _RATE3_SYNTH_ROOT_MAX:
+            continue
+        issues.append({
+            'context': context,
+            'synth_root': synth_note_name(e.synth_root),
+            'above': e.synth_root > _RATE3_SYNTH_ROOT_MAX,
+        })
+    return issues
+
+
+def _parse_tone2_n(entry: dict, context: str) -> int | None:
+    """Validate the optional ``tone2_n`` key (SN76489 tone-ch2 divider, 1–1023)."""
+    if 'tone2_n' not in entry or entry['tone2_n'] is None:
+        return None
+    n = int(entry['tone2_n'])
+    if not 1 <= n <= 1023:
+        raise ValueError(f"{context}.tone2_n must be 1–1023 (got {n})")
+    return n
+
+
+TWIN_MODES = ("short", "always")    # merge_twins: when a same-shape twin gives up its slot
+
+
+# --- the song config's sections, as ConversionConfig.from_yaml reads them -------------------------
+
+
+def parse_channels(data: dict) -> list[ChannelConfig]:
+    """`channels:` — which SMPS channel plays on which MOD channel."""
+    out = []
+    for i, ch_data in enumerate(data.get('channels', [])):
+        ctx = f"channels[{i}]"
+        out.append(ChannelConfig(
+            source=_require(ch_data, 'source', ctx),
+            mod_channel=_require(ch_data, 'mod_channel', ctx),
+            transpose=ch_data.get('transpose', 0),
+            instrument=ch_data.get('instrument', 1),
+            volume=ch_data.get('volume', 64),
+            enabled=ch_data.get('enabled', True),
+        ))
+    return out
+
+
+def parse_dac_samples(data: dict) -> list[DacSampleConfig]:
+    """`dac_samples:` — each drum's MOD instrument and note."""
+    out = []
+    for i, dac_data in enumerate(data.get('dac_samples', [])):
+        ctx = f"dac_samples[{i}]"
+        out.append(DacSampleConfig(
+            name=_require(dac_data, 'name', ctx),
+            mod_instrument=_require(dac_data, 'mod_instrument', ctx),
+            mod_note=dac_data.get('mod_note', 'C3'),
+            saturate_db=max(0.0, float(dac_data.get('saturate_db', 0.0))),
+            merge_saturate_db=_opt(dac_data, 'merge_saturate_db', lambda v: max(0.0, float(v))),
+        ))
+    return out
+
+
+def parse_voice_maps(data: dict, filepath) -> tuple[dict, dict]:
+    """(voice_map, legacy_voice_map): `voice_map:` as {voice: [InstrumentRange]}.
+
+        New format:    voice_map: {0: [{low: G5, high: G6, mod_instrument: 4, root: Fs2}]}
+        Legacy format: voice_map: {0: 4, 1: 5}  (simple int values — deprecated)
+        Old key name:  voice_instrument_map (deprecated — warned, parsed as the new voice_map)
+    """
+    voice_map: dict = {}
+    legacy: dict = {}
+
+    # The deprecated key voice_instrument_map (old name for new-format data)
+    raw_vim_deprecated = data.get('voice_instrument_map')
+    if raw_vim_deprecated is not None:
+        warnings.warn(
+            f"YAML key 'voice_instrument_map' in '{filepath}' is deprecated; "
+            "rename it to 'voice_map'.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        for voice_key, range_list in raw_vim_deprecated.items():
+            voice_map[int(str(voice_key), 0)] = [
+                _parse_instrument_range(e, f"voice_instrument_map[{voice_key}][{j}]")
+                for j, e in enumerate(range_list)
+            ]
+
+    # voice_map: the format told by its first value
+    raw_vm = data.get('voice_map', {})
+    if not raw_vm:
+        return voice_map, legacy
+    first_val = next(iter(raw_vm.values()))
+    if isinstance(first_val, int):
+        # Legacy simple format: {0: 4, 1: 5}
+        warnings.warn(
+            f"YAML 'voice_map' with integer values in '{filepath}' is deprecated. "
+            "Use the list-of-ranges format (or remove it if voice_map covers all notes).",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        for k, v in raw_vm.items():
+            legacy[int(str(k), 0)] = v
+        return voice_map, legacy
+
+    # List-of-ranges format; an entry voice_instrument_map set already is kept, in case both keys are present
+    for voice_key, range_list in raw_vm.items():
+        vk = int(str(voice_key), 0)
+        if vk not in voice_map:
+            voice_map[vk] = [_parse_instrument_range(e, f"voice_map[{voice_key}][{j}]")
+                             for j, e in enumerate(range_list)]
+    return voice_map, legacy
+
+
+def parse_channel_instrument_map(data: dict) -> dict:
+    """`channel_instrument_map:` — per-channel overrides for voice_map,
+    {source_channel_name: {voice_idx: [InstrumentRange, ...]}}."""
+    out: dict = {}
+    for ch_name, vim_data in data.get('channel_instrument_map', {}).items():
+        out[ch_name] = {}
+        for voice_key, range_list in vim_data.items():
+            out[ch_name][int(str(voice_key), 0)] = [
+                _parse_instrument_range(e, f"channel_instrument_map[{ch_name}][{voice_key}][{j}]")
+                for j, e in enumerate(range_list)
+            ]
+    return out
+
+
+def parse_psg_map(data: dict, filepath) -> dict:
+    """`psg_map:` keyed by smpsPSGform byte (hex or int YAML keys).  The key is the SN76489 noise
+    register byte, $E0 | white << 2 | rate, so the noise type and rate are read from it (a stated
+    `type` / `noise_rate` that disagrees is a config error and warns).  The envelope is derived
+    from the song by the converter unless stated."""
+    out: dict = {}
+    for k, psg_entry in data.get('psg_map', {}).items():
+        form_byte = int(str(k), 0)
+        ctx = f"psg_map[{k}]"
+        inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"
+        noise_rate = form_byte & 0x03
+        for key, derived in (('type', inferred_type), ('noise_rate', noise_rate)):
+            if key in psg_entry and psg_entry[key] != derived:
+                warnings.warn(
+                    f"{filepath}: {ctx}.{key}: {psg_entry[key]!r} contradicts the form byte "
+                    f"${form_byte:02X} ({derived!r}); the byte wins — delete the key",
+                    stacklevel=3,
+                )
+        raw_envs = psg_entry.get('envelopes', {}) or {}
+        if not isinstance(raw_envs, dict) or not all(isinstance(v, int) for v in raw_envs.values()):
+            raise ValueError(f"{ctx}.envelopes must map smpsPSGvoice labels to MOD instrument numbers")
+        out[form_byte] = PsgInstrumentEntry(
+            mod_instrument=_require(psg_entry, 'mod_instrument', ctx),
+            type=inferred_type,
+            root=_mod_note(_require(psg_entry, 'root', ctx), f"{ctx}.root"),
+            synth_root=_opt(psg_entry, 'synth_root', parse_synth_note),
+            low=_opt(psg_entry, 'low', parse_smps_note),
+            high=_opt(psg_entry, 'high', parse_smps_note),
+            noise_rate=noise_rate,
+            tone2_n=_parse_tone2_n(psg_entry, ctx),
+            envelope=psg_entry.get('envelope', None),
+            base_volume=psg_entry.get('base_volume', 0),
+            vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),
+            envelopes={str(label): inst for label, inst in raw_envs.items()},
+            dither=dither_mode(psg_entry['dither'], ctx) if 'dither' in psg_entry else None,
+        )
+
+    # psg_form_map is deprecated — psg_map now serves this role
+    if 'psg_form_map' in data:
+        warnings.warn(
+            f"YAML key 'psg_form_map' in '{filepath}' is deprecated; "
+            "merge entries into 'psg_map' (dict keyed by form byte).",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+    return out
+
+
+def parse_psg_voice_map(data: dict) -> dict:
+    """`psg_voice_map:` {"fTone_01": {mod_instrument, root, ...}} or a list of such dicts, always
+    stored as list[PsgInstrumentEntry] to support range-split entries."""
+    out: dict = {}
+    for k, v in data.get('psg_voice_map', {}).items():
+        label = str(k)
+        if isinstance(v, list):
+            out[label] = [_parse_psg_voice_entry(e, label, f"psg_voice_map[{label}][{j}]") for j, e in enumerate(v)]
+        else:
+            out[label] = [_parse_psg_voice_entry(v, label, f"psg_voice_map[{label}]")]
+    return out
+
+
+def parse_merge_groups(data: dict) -> tuple[list[MergeGroup], set, dict]:
+    """(groups, every pattern merge_patterns names, {channel: patterns its notes are dropped in}):
+    `merge:` [{primary: FM1, followers: [FM5]}, ...] and `merge_patterns:` [{patterns: "1-4",
+    groups: [...], drop: [...]}, ...]."""
+    groups = [_parse_merge_group(g, f"merge[{i}]") for i, g in enumerate(data.get('merge', []) or [])]
+    named: set = set()
+    pattern_drop: dict = {}
+    for i, blk in enumerate(data.get('merge_patterns', []) or []):
+        ctx = f"merge_patterns[{i}]"
+        if not isinstance(blk, dict):
+            raise ValueError(f"{ctx}: a block is a mapping with patterns: and groups:")
+        pats = parse_patterns(_require(blk, 'patterns', ctx), ctx)
+        named |= pats
+        pdrop = blk.get('drop', []) or []
+        for src in ([pdrop] if isinstance(pdrop, str) else pdrop):
+            pattern_drop.setdefault(str(src), set()).update(pats)
+        groups.extend(_parse_merge_group(g, f"{ctx}.groups[{j}]", pats)
+                      for j, g in enumerate(blk.get('groups', []) or []))
+    return groups, named, pattern_drop
+
+
+def parse_pattern_breaks(data: dict) -> list[tuple[int, int]]:
+    """`mod_pattern_breaks:` [{pattern: N, row: R}, ...] as (pattern, row)."""
+    return [(int(_require(b, 'pattern', f"mod_pattern_breaks[{i}]")),
+             int(_require(b, 'row', f"mod_pattern_breaks[{i}]")))
+            for i, b in enumerate(data.get('mod_pattern_breaks', []))]

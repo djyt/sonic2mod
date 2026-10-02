@@ -130,10 +130,10 @@ def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[floa
     used as they are, which only holds at the bank's own volume (or for silence).  Scaling the
     8-bit bytes would dither them a second time and lose bits."""
     if inst in raw:
-        return to_int8(raw[inst], s._volume / volume, dither)
-    if s._volume in (volume, 0):
+        return to_int8(raw[inst], s.volume / volume, dither)
+    if s.volume in (volume, 0):
         return s.data
-    raise ValueError(f"bank member {inst}: no unquantised sum to bring volume {s._volume} to its bank's {volume}")
+    raise ValueError(f"bank member {inst}: no unquantised sum to bring volume {s.volume} to its bank's {volume}")
 
 
 def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slots: list[int],
@@ -162,7 +162,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
 
     # Each member's room in a bank; one too big for any sample is dropped
     sizes: dict[int, tuple[int, int, bool]] = {}
-    volume = {c.inst: samples[c.inst]._volume for c in members}
+    volume = {c.inst: samples[c.inst].volume for c in members}
     for c in list(members):
         s = samples[c.inst]
         looped = s.repeat_length > 1
@@ -171,7 +171,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             drop(c, f"its {len(s.data)} bytes do not fit a sample")
             members.remove(c)
             continue
-        sizes[c.inst] = (region, s._finetune, looped)
+        sizes[c.inst] = (region, s.finetune, looped)
 
     # By volume where it costs no bank more than first fit, and less range
     first = _layout(members, sizes, volume, max_bytes, None)
@@ -197,11 +197,11 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
 
     for slot, bank in zip(slots, kept, strict=False):
         bank.slot = slot
-        bank.volume = max(samples[c.inst]._volume for c in bank.members)
+        bank.volume = max(samples[c.inst].volume for c in bank.members)
         bank.data = bytearray()
         for c in bank.members:
             s = samples[c.inst]
-            c.member_volume = s._volume
+            c.member_volume = s.volume
             data = _member_bytes(c.inst, s, bank.volume, raw, composite_dither(c, entry_dithers or {}, dither))
             if c.looped:
                 bank.loop = (c.offset + s.repeat * 2, s.repeat_length * 2)
@@ -220,7 +220,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
         sample.data = bytes(bank.data) + (b"\0" if len(bank.data) % 2 else b"")
         sample.length = len(sample.data) // 2
         sample.set_volume(bank.volume)
-        sample._finetune = bank.finetune
+        sample.set_finetune(bank.finetune)
         if bank.loop is not None:
             sample.repeat, sample.repeat_length = bank.loop[0] // 2, bank.loop[1] // 2
         mod.samples[bank.slot - 1] = sample
@@ -233,6 +233,6 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             if c.entry in sample_list:
                 sample_list.remove(c.entry)
             c.inst = bank.slot
-        sample_list.append([bank.slot, sample._name, bank.volume, bank.finetune])
+        sample_list.append([bank.slot, sample.name, bank.volume, bank.finetune])
     plan.banks = kept
     return dropped

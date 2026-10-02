@@ -113,7 +113,7 @@ class _ColumnRouter:
         self._away = self._plan.away_patterns(source) if self._plan is not None else frozenset()
 
     def _pattern(self, tick: int) -> int:
-        return self._conv._pattern_of_tick(tick)
+        return self._conv.pattern_of_tick(tick)
 
     def column_for(self, tick: int) -> int:
         """The column a note-on at `tick` takes (the reference build's pattern, as the groups
@@ -194,6 +194,7 @@ class SmpsToModConverter:
         self.synth = synth
         self._player = synth.player if synth else "ft2"
         self.psg_synth = psg_synth
+        self._song_prepared = False
         self.mod = ModFile(channels=config.mod_channel_count)
         # Structured warnings and informational messages collected during conversion.
         # Public: convert.py renders both after convert() returns.
@@ -257,6 +258,43 @@ class SmpsToModConverter:
     def _psg_volume_mode(self) -> str:
         """"baked" | "absolute" — see PsgSynthesisSettings.psg_volume_scaling."""
         return self.psg_synth.psg_volume_scaling if self.psg_synth else "baked"
+
+    # --- the song as the converter plays it (convert() and the config tools) ------------------
+    @property
+    def pan_law_db(self) -> float:
+        """How much quieter a hard-panned FM note is (settings.yaml fm_pan_law_db)."""
+        return self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+
+    def prepare_song(self) -> None:
+        """Re-time every channel for smpsSetTempoDiv and replay short loop bodies, so the song's
+        ticks are the ones the MOD plays.  Before anything counts notes or reads ticks; once.
+
+        A replayed body is as many notes as it plays (GHZ's PSG3 hi-hat: 4 events become 264)
+        and may carry a tempo change, so the tempo segments are collected after each step.
+        """
+        if self._song_prepared:
+            return
+        self._song_prepared = True
+
+        # smpsSetTempoDiv re-times every channel
+        for tick, div in self._apply_global_tempo_div():
+            self.infos.append({'type': 'tempo_div_change', 'tick': tick, 'divider': div,
+                               'row': int(tick // self._effective_tpr)})
+        self._tempo_segments = self._collect_tempo_segments()
+
+        # Loop bodies too short to cover the song are replayed to its end
+        self._extend_looping_channels()
+        self._tempo_segments = self._collect_tempo_segments()
+
+    def level_baselines(self) -> dict[str, dict[int, float]]:
+        """{"FM" | "PSG": {instrument: dB its sample_list volume stands for}}, for each kind
+        whose volume mode is baked (_plan_levels)."""
+        baselines = {}
+        if self._fm_volume_mode == "baked":
+            baselines["FM"] = self._plan_levels("FM")
+        if self._psg_volume_mode == "baked":
+            baselines["PSG"] = self._plan_levels("PSG")
+        return baselines
 
     def _vibrato_speed(self, mod_speed: int, steps: int, channel: str, tick=0) -> int:
         """ProTracker 4xy speed nibble for an smpsModSet (speed, steps) pair; 0 = cannot be played.
@@ -465,7 +503,7 @@ class SmpsToModConverter:
             if not 32 <= exact <= 255:
                 self._add_warning({'type': 'tempo_bpm_range', 'channel': 'all', **info})
 
-    def _tick_span_secs(self, start: float, end: float) -> float:
+    def tick_span_secs(self, start: float, end: float) -> float:
         """Seconds the MOD takes to play from tick `start` to tick `end`.
 
         A tick lasts target_speed x 2.5 / (BPM x ticks per row) seconds at the BPM in force,
@@ -615,9 +653,9 @@ class SmpsToModConverter:
         plan = self._merge
         if plan is None:
             return True
-        col = plan.route_at(chan_cfg.source, self._pattern_of_tick(start))
+        col = plan.route_at(chan_cfg.source, self.pattern_of_tick(start))
         col = chan_cfg.mod_channel if col is None else col
-        return plan.routed_into(col, self._pattern_of_tick(rest)) is None
+        return plan.routed_into(col, self.pattern_of_tick(rest)) is None
 
     def _sustain_needs(self, kind: str) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
@@ -628,7 +666,7 @@ class SmpsToModConverter:
         after it: no C00 is written for those, so the sample keeps advancing; a plain rest
         (C00) or the next note restarts it.  One row is added, the most the row grid moves
         a note's start (EDx) or its end.  Its wall-clock length follows the MOD's tempo
-        segments (_tick_span_secs).  Played above the synthesis root (_synthesis_roots) the
+        segments (tick_span_secs).  Played above the synthesis root (_synthesis_roots) the
         sample runs faster by root period / note period and needs proportionally more of it,
         and a sample rendered synth_shift semitones above the root's pitch runs 2^(shift/12)
         slower at every note; a positive sample_list finetune adds 2^(finetune / 96).
@@ -693,7 +731,7 @@ class SmpsToModConverter:
                 start, ticks, inst, out_idx, slides = ring
                 if slides:
                     self._slide_ends.setdefault(kind, set()).add(inst)
-                wall = self._tick_span_secs(start, start + ticks + self._effective_tpr)
+                wall = self.tick_span_secs(start, start + ticks + self._effective_tpr)
                 comp = comps.get(inst)
                 plays = [(inst, out_idx)]
                 if comp is not None:
@@ -932,19 +970,8 @@ class SmpsToModConverter:
                     for e in entries
                 )
 
-        # Global duration divider changes re-time every channel (before anything reads ticks).
-        # The tempo segments are collected now for the sustain scan, and again below once the
-        # loop bodies are extended (a replayed body may carry a tempo change).
-        for tick, div in self._apply_global_tempo_div():
-            self.infos.append({'type': 'tempo_div_change', 'tick': tick, 'divider': div,
-                               'row': int(tick // self._effective_tpr)})
-        self._tempo_segments = self._collect_tempo_segments()
-
-        # Extend channels whose loop body is too short to cover the full song, before anything
-        # counts notes: a replayed body is as many notes as it plays (GHZ's PSG3 hi-hat is 4
-        # events that become 264), and a replayed body may carry a tempo change.
-        self._extend_looping_channels()
-        self._tempo_segments = self._collect_tempo_segments()
+        # The song's ticks as the MOD plays them: tempo dividers applied, loops replayed
+        self.prepare_song()
 
         # The merged build: which composite instruments the groups need and where they play,
         # decided while the ticks are final and before anything renders (core/merge.py).
@@ -1170,7 +1197,7 @@ class SmpsToModConverter:
                 'span': loop_span,
             })
 
-    def _sample_secs(self) -> dict[int, float]:
+    def sample_secs(self) -> dict[int, float]:
         """{instrument: seconds its sample lasts} for the instruments whose sample, not the
         note's duration, says how long a note is heard: the drums (their file on disk, played
         at their mod_note) and the noise instruments (their envelope, then the ramp to
@@ -1241,12 +1268,12 @@ class SmpsToModConverter:
             self.mod.set_effect(0xC, 0)
         return True
 
-    def _pattern_of_tick(self, tick: int) -> int:
+    def pattern_of_tick(self, tick: int) -> int:
         """The pattern of the reference build (after its `mod_pattern_breaks`) a note-on at
         `tick` lands in — what a `merge_patterns:` group is matched on (core.merge)."""
         return _shift_for_breaks(int(tick // self._effective_tpr), self.config.mod_pattern_breaks or []) // 64
 
-    def _last_pattern(self) -> int:
+    def last_pattern(self) -> int:
         """The MOD's last pattern: the one the loop's `Bxx` row lands in (`_set_loop_point`);
         what convert.py trims the output to.  A loop extension may overshoot the song's end by a
         tick, and that note lands in a pattern nothing reaches."""
@@ -1259,17 +1286,12 @@ class SmpsToModConverter:
     def _build_merge_plan(self):
         """core.merge.build_merge_plan with this conversion's pan law and baked levels, its
         findings reported as infos / warnings."""
-        self._merge_pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
-        self._merge_baselines = {}
-        if self._fm_volume_mode == "baked":
-            self._merge_baselines["FM"] = self._plan_levels("FM")
-        if self._psg_volume_mode == "baked":
-            self._merge_baselines["PSG"] = self._plan_levels("PSG")
-        plan = build_merge_plan(self.song, self.config, pan_law_db=self._merge_pan_law,
-                                baselines=self._merge_baselines, sample_secs=self._sample_secs(),
-                                tick_secs=lambda t: self._tick_span_secs(t, t + 1),
+        self._merge_baselines = self.level_baselines()
+        plan = build_merge_plan(self.song, self.config, pan_law_db=self.pan_law_db,
+                                baselines=self._merge_baselines, sample_secs=self.sample_secs(),
+                                tick_secs=lambda t: self.tick_span_secs(t, t + 1),
                                 fill_min_ticks=math.ceil(self._effective_tpr),
-                                pattern_of=self._pattern_of_tick, last_pattern=self._last_pattern())
+                                pattern_of=self.pattern_of_tick, last_pattern=self.last_pattern())
         for src, d in sorted(plan.dropped_notes.items()):
             self._add_warning({'type': 'merge_dropped', 'channel': src, 'notes': d['notes'],
                                'patterns': sorted(d['patterns'])})
@@ -1487,7 +1509,7 @@ class SmpsToModConverter:
         FM levels come from the TL offset (smpsHeaderFM volume + smpsAlterVol) and the pan;
         PSG levels from the attenuation (smpsHeaderPSG volume + smpsPSGAlterVol).
         """
-        pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+        pan_law = self.pan_law_db
         counts = self._count_levels(kind, lambda st, res: st.level_db(pan_law) + res.gain_db)
         return self._with_variants({inst: modal_level(levels) for inst, levels in counts.items()})
 
@@ -1501,7 +1523,7 @@ class SmpsToModConverter:
         much as the hardware does at that level — at TL 0 every GHZ lead clipped a third of
         its samples where the hardware, at the channel's +18 TL, clips none.
         """
-        pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+        pan_law = self.pan_law_db
         counts = self._count_levels("FM", lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
         return self._with_variants({inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
                                     for inst, per in counts.items()})
@@ -1521,7 +1543,7 @@ class SmpsToModConverter:
             # The samples were rendered (before the loop bodies were extended) at what this
             # walk now says is each instrument's baseline; the two must agree or the Cxx law
             # would be measured from a level the sample does not carry.
-            pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+            pan_law = self.pan_law_db
             for inst, (tl, pan) in getattr(self, '_fm_render_levels', {}).items():
                 base = self._fm_baseline_db.get(inst)
                 if inst in self._gained.get("FM", ()):
@@ -1755,7 +1777,7 @@ class SmpsToModConverter:
         # another channel (core.merge: a solo or pool note on the drum channel keeps its level)
         _fm_baked = _fm_mode == "baked"
         _psg_baked = is_psg and self._psg_volume_mode == "baked"
-        _pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
+        _pan_law = self.pan_law_db
         if is_dac or (not is_psg and _fm_mode == "off"):
             st.tl = 0          # neither mode reads the smpsHeaderFM volume byte
         if is_psg:

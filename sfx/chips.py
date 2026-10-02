@@ -17,7 +17,6 @@ Line references are to `sonic_1/s1.sounddriver.asm`.
 from __future__ import annotations
 
 from core.driver_tables import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
-from ym2612.voice import _parse_op_vals
 
 # YM2612 key-on/off register (global, always port 0 — not bank-switched)
 _REG_KEY_ON = 0x28
@@ -41,21 +40,20 @@ def fm_send_voice(opn2, track, voice) -> None:
     why smpsPan survives a later smpsSetvoice.
     """
     bank, c = _bank_and_offset(track)
-    p = voice.params
 
     track.voice = voice
     opn2.write_reg(0xB0 + c, ((voice.feedback & 0x7) << 3) | (voice.algorithm & 0x7), bank=bank)
 
-    detune = _parse_op_vals(p.get('smpsVcDetune'))
-    mul    = _parse_op_vals(p.get('smpsVcCoarseFreq'))
-    ks     = _parse_op_vals(p.get('smpsVcRateScale'))
-    ar     = _parse_op_vals(p.get('smpsVcAttackRate'))
-    am     = _parse_op_vals(p.get('smpsVcAmpMod'))
-    dr     = _parse_op_vals(p.get('smpsVcDecayRate1'))
-    sr     = _parse_op_vals(p.get('smpsVcDecayRate2'))
-    sl     = _parse_op_vals(p.get('smpsVcDecayLevel'))
-    rr     = _parse_op_vals(p.get('smpsVcReleaseRate'))
-    tl     = _parse_op_vals(p.get('smpsVcTotalLevel'))
+    detune = voice.operator_values('smpsVcDetune')
+    mul    = voice.operator_values('smpsVcCoarseFreq')
+    ks     = voice.operator_values('smpsVcRateScale')
+    ar     = voice.operator_values('smpsVcAttackRate')
+    am     = voice.operator_values('smpsVcAmpMod')
+    dr     = voice.operator_values('smpsVcDecayRate1')
+    sr     = voice.operator_values('smpsVcDecayRate2')
+    sl     = voice.operator_values('smpsVcDecayLevel')
+    rr     = voice.operator_values('smpsVcReleaseRate')
+    tl     = voice.operator_values('smpsVcTotalLevel')
 
     for op in range(4):
         base = c + SMPS_OP_TO_REG_OFFSET[op]
@@ -91,7 +89,7 @@ def fm_send_tl(opn2, track) -> None:
         return
 
     bank, c = _bank_and_offset(track)
-    tl = _parse_op_vals(voice.params.get('smpsVcTotalLevel'))
+    tl = voice.operator_values('smpsVcTotalLevel')
     carriers = CARRIER_OFFSETS_BY_ALG[voice.algorithm & 0x7]
 
     for op in range(4):

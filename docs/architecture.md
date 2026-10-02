@@ -328,7 +328,7 @@ Conversion engine that walks the IR and writes MOD data.
 #### `SmpsToModConverter.convert()` Flow
 
 1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch; `_plan_detune` (core/detune.py) the detune variants
-2. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`) and extend short loop bodies (`_extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
+2. `prepare_song()`: re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`) and extend short loop bodies (`_extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
 3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`_sustain_needs`)
 4. Run the injected `SampleGenerators` (`generate_fm_samples()` from ym2612/, `generate_psg_samples()` from sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
 5. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)
@@ -337,6 +337,20 @@ Conversion engine that walks the IR and writes MOD data.
 
 `convert()` then lays the MOD out: `apply_pattern_breaks`, `_set_loop_point()` (so the `Bxx`
 lands at its post-break position), trailing patterns trimmed, a merged build narrowed.
+
+#### Public API
+
+What the config tools (`merge_survey`, `fold_csv`, `config_to_chip_space`) see of the song, as
+`convert()` sees it; nothing else on the converter is theirs to call:
+
+| Member | What |
+|---|---|
+| `prepare_song()` | Step 2 alone: tempo re-timing, loops replayed, tempo segments collected; once |
+| `level_baselines()` | `{"FM" \| "PSG": {instrument: dB}}` for the baked kinds |
+| `pan_law_db` | Hard-pan attenuation (settings.yaml `fm_pan_law_db`) |
+| `pattern_of_tick(tick)` / `last_pattern()` | The reference build's pattern, after its breaks |
+| `tick_span_secs(start, end)` | MOD seconds between two ticks, across tempo changes |
+| `sample_secs()` | Seconds a drum or noise sample sounds |
 
 #### Channel Conversion
 

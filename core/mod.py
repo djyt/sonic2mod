@@ -34,6 +34,19 @@ class ModSample:
         self.repeat_length = 1
         self.data = bytes(0)
 
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def volume(self) -> int:
+        return self._volume
+
+    @property
+    def finetune(self) -> int:
+        """-8..+7, as set_finetune takes it (the file stores the low nibble: -1 is $F)."""
+        return self._finetune - 16 if self._finetune > 7 else self._finetune
+
     def set_finetune(self, v: int):
         if v < -8 or v > 7:
             print(f"Warning: Fine Tune {v} is invalid.")

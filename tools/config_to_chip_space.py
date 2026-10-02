@@ -59,8 +59,7 @@ def chip_notes(cfg: ConversionConfig):
     fm_off, psg_off = SynthesisSettings(), PsgSynthesisSettings()
     fm_off.enabled = psg_off.enabled = False
     conv = SmpsToModConverter(song, cfg, synth=fm_off, psg_synth=psg_off)
-    conv._apply_global_tempo_div()
-    conv._extend_looping_channels()
+    conv.prepare_song()
     out: dict[tuple, list[tuple[int, int]]] = defaultdict(list)     # every (source, chip) pair
     labels = {str(k) for k in cfg.psg_voice_map}
     cfg_by_source = {c.source: c for c in cfg.channels}

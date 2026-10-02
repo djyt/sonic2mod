@@ -29,7 +29,7 @@ import numpy as np
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from tools.vgm_compare import _MOD_FORMAT_CHANNELS, _isolate_mod
+from tools.vgm_compare import _MOD_FORMAT_CHANNELS, isolate_mod
 
 SR = 44100
 WINDOW_SECS = 0.02
@@ -41,7 +41,7 @@ def _render(data: bytes, channel: int | None, tmp: Path, name: str) -> np.ndarra
     """One channel of a MOD (None: all) as mono float samples."""
     mod = tmp / f"{name}.mod"
     raw = tmp / f"{name}.f32"
-    mod.write_bytes(_isolate_mod(data, channel))
+    mod.write_bytes(isolate_mod(data, channel))
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "libopenmpt",
                     "-sample_rate", str(SR), "-i", str(mod), "-ac", "1", "-f", "f32le", str(raw)], check=True)
     return np.fromfile(raw, dtype="<f4")

@@ -69,7 +69,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
 from tools import vgm_pitch_audit
-from tools.vgm_analyze import _parse_vgm
+from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, parse_vgm
 
 SR = 44100
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -166,7 +166,7 @@ def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path
         print(f"  rendered VGM {name}")
 
 
-def _isolate_mod(data: bytes, keep_ch: int | None) -> bytes:
+def isolate_mod(data: bytes, keep_ch: int | None) -> bytes:
     """Return a copy of the MOD with every channel except keep_ch stripped of notes.
 
     Global flow effects (Fxx speed/tempo, Bxx jump, Dxx break) are kept on all
@@ -205,7 +205,7 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
     def render(item: tuple[str, int | None]) -> tuple[str, str | None]:
         name, ch = item
         iso = outdir / f"_mod_{name}.mod"
-        iso.write_bytes(_isolate_mod(data, ch))
+        iso.write_bytes(isolate_mod(data, ch))
         wav = outdir / f"mod_{name}.wav"
         r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "libopenmpt",
                             "-sample_rate", str(SR), "-i", str(iso), "-ar", str(SR), "-ac", "2", str(wav)],
@@ -731,7 +731,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
     """
     raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
-    rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
+    rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
     events = [r for r in rows if r[1] != "DAC"]
 
     chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in _VGM_CHANNELS or c.source == "PSG3"}
@@ -1094,7 +1094,7 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     """
     names = list(labels)
     raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
-    rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
+    rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
     vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
     mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]}
     vgm = {n: a.mean(axis=1) for n, a in vgm_st.items()}
@@ -1338,7 +1338,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
 
     # Every block's level, whole and at its primary's key-ons
     raw = vgz.read_bytes()
-    rows, _, _ = _parse_vgm(gzip.decompress(raw) if raw[:2] == b'\x1f\x8b' else raw, 7_670_454, 3_579_545, None, 'all')
+    rows, _, _ = parse_vgm(gzip.decompress(raw) if raw[:2] == b'\x1f\x8b' else raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
     blocks = _column_blocks(layout, spans)
     for blk in blocks:
         c, a, b = blk["column"], int(blk["t0"] * SR), int(blk["t1"] * SR)
@@ -1507,7 +1507,7 @@ def main() -> None:
     workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + ("_merged" if args.merged else "")))
 
     raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
-    rows, _, _ = _parse_vgm(raw, 7_670_454, 3_579_545, None, 'all')
+    rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
     noise_used = any(r[1] == "NOISE" for r in rows)
     masks = None
     labels: dict[str, list[str]] = {}

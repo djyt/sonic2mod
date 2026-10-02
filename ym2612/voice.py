@@ -47,14 +47,6 @@ from ym2612.wrapper import OPN2
 # A lone carrier at TL 0 fills the accumulator exactly and can never clip.
 
 
-def _parse_op_vals(raw: str | None, count: int = 4) -> list[int]:
-    """Parse '$00, $05, $00, $05' → [0, 5, 0, 5]. Missing values default to 0."""
-    if not raw:
-        return [0] * count
-    vals = [int(v.strip().lstrip('$'), 16) for v in raw.split(',')]
-    return (vals + [0] * count)[:count]
-
-
 def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0) -> None:
     """Program a SMPS voice onto a YM2612 channel.
 
@@ -70,7 +62,6 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0
     """
     bank       = channel // 3
     ch_in_bank = channel % 3
-    p          = voice.params
     carriers   = CARRIER_OFFSETS_BY_ALG[voice.algorithm & 0x7]
 
     # Channel-level registers
@@ -80,16 +71,16 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0
     opn2.write_reg(0xB4 + ch_in_bank, 0xC0, bank=bank)  # L=1, R=1, AMS=0, PMS=0
 
     # Per-operator parameters (lists of 4 ints, one per SMPS operator)
-    detune = _parse_op_vals(p.get('smpsVcDetune'))
-    mul    = _parse_op_vals(p.get('smpsVcCoarseFreq'))
-    tl     = _parse_op_vals(p.get('smpsVcTotalLevel'))
-    ks     = _parse_op_vals(p.get('smpsVcRateScale'))
-    ar     = _parse_op_vals(p.get('smpsVcAttackRate'))
-    am     = _parse_op_vals(p.get('smpsVcAmpMod'))
-    dr     = _parse_op_vals(p.get('smpsVcDecayRate1'))
-    sr     = _parse_op_vals(p.get('smpsVcDecayRate2'))
-    sl     = _parse_op_vals(p.get('smpsVcDecayLevel'))
-    rr     = _parse_op_vals(p.get('smpsVcReleaseRate'))
+    detune = voice.operator_values('smpsVcDetune')
+    mul    = voice.operator_values('smpsVcCoarseFreq')
+    tl     = voice.operator_values('smpsVcTotalLevel')
+    ks     = voice.operator_values('smpsVcRateScale')
+    ar     = voice.operator_values('smpsVcAttackRate')
+    am     = voice.operator_values('smpsVcAmpMod')
+    dr     = voice.operator_values('smpsVcDecayRate1')
+    sr     = voice.operator_values('smpsVcDecayRate2')
+    sl     = voice.operator_values('smpsVcDecayLevel')
+    rr     = voice.operator_values('smpsVcReleaseRate')
 
     for smps_op in range(4):
         off  = SMPS_OP_TO_REG_OFFSET[smps_op]
@@ -141,12 +132,11 @@ def _smoke_test() -> None:
         },
     )
 
-    p = voice.params
-    detune = _parse_op_vals(p.get('smpsVcDetune'))
-    mul    = _parse_op_vals(p.get('smpsVcCoarseFreq'))
-    tl     = _parse_op_vals(p.get('smpsVcTotalLevel'))
-    ar     = _parse_op_vals(p.get('smpsVcAttackRate'))
-    dr     = _parse_op_vals(p.get('smpsVcDecayRate1'))
+    detune = voice.operator_values('smpsVcDetune')
+    mul    = voice.operator_values('smpsVcCoarseFreq')
+    tl     = voice.operator_values('smpsVcTotalLevel')
+    ar     = voice.operator_values('smpsVcAttackRate')
+    dr     = voice.operator_values('smpsVcDecayRate1')
 
     print("Smoke test — programming Title Screen voice 0 onto channel 0...")
     print(f"  algorithm={voice.algorithm}  feedback={voice.feedback}")

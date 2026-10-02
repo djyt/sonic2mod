@@ -21,7 +21,6 @@ except ImportError:
     sys.exit(1)
 
 from core.analysis import (
-    _CARRIER_LABELS_BY_ALG,
     DAC_NATIVE_INFO,
     DAC_SAMPLE_GROUPS,
     PARTIAL_EFFECTS,
@@ -34,7 +33,7 @@ from core.analysis import (
 )
 from core.cli import branding, cli_console
 from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
-from core.driver_tables import psg_tone2_divider
+from core.driver_tables import carrier_names, psg_tone2_divider
 from core.levels import PSG_STEP_DB, TL_STEP_DB, db_to_mod_volume, fm_level_db
 from core.mod import ModFile
 from core.smps_parser import SmpsParser
@@ -366,7 +365,7 @@ def render_voices_table(analysis: SongAnalysis):
 
     for voice in song.voices:
         alg = voice.algorithm
-        carriers = "+".join(_CARRIER_LABELS_BY_ALG.get(alg, ["?"]))
+        carriers = "+".join(carrier_names(alg))
         used_by = ", ".join(voice_usage.get(voice.index, ["—"]))
         table.add_row(
             f"${voice.index:02X}",

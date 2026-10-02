@@ -169,7 +169,7 @@ def distorted(ctx: SurveyContext, primary: str, followers: list[str], patterns: 
             if p is None:
                 continue
             if p.fill_secs is not None:
-                secs = ctx.conv._tick_span_secs(t, t + min(fn.duration, fn.sounding))
+                secs = ctx.conv.tick_span_secs(t, t + min(fn.duration, fn.sounding))
                 own = fn.fill_secs if fn.fill_secs is not None else secs
                 if p.fill_secs < min(secs, own):
                     n += 1

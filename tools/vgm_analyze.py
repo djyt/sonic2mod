@@ -76,10 +76,10 @@ from pathlib import Path
 _VGM_SAMPLE_RATE = 44100
 
 # Sonic 1 NTSC YM2612 master clock (Hz).  Override with --clock if needed.
-_DEFAULT_FM_CLOCK = 7_670_454
+DEFAULT_FM_CLOCK = 7_670_454
 
 # Sonic 1 NTSC SN76489 clock (Hz).  Override with --psg-clock if needed.
-_DEFAULT_PSG_CLOCK = 3_579_545
+DEFAULT_PSG_CLOCK = 3_579_545
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -97,7 +97,7 @@ _CARRIER_SLOTS_BY_ALG = [
 ]
 
 
-def _fnum_to_hz(fnum: int, block: int, clock: int) -> float:
+def fnum_to_hz(fnum: int, block: int, clock: int) -> float:
     """Convert YM2612 fnum/block pair to frequency in Hz.
 
     Formula: freq = clock x fnum / (144 x 2^(21 - block))
@@ -166,7 +166,7 @@ def _smps_note(freq: float, chan_type: str) -> str:
 # VGM parser
 # ---------------------------------------------------------------------------
 
-def _parse_vgm(
+def parse_vgm(
     data: bytes,
     fm_clock: int,
     psg_clock: int,
@@ -247,7 +247,7 @@ def _parse_vgm(
         fnum  = ((hi & 0x7) << 8) | lo
         if fnum == 0:
             return
-        freq    = _fnum_to_hz(fnum, block, fm_clock)
+        freq    = fnum_to_hz(fnum, block, fm_clock)
         note    = _nearest_note(freq)
         smps    = _smps_note(freq, "fm")
         time_ms = sample_count * 1000.0 / _VGM_SAMPLE_RATE
@@ -351,7 +351,7 @@ def _parse_vgm(
                 # the pitch moved to another note (a legato slide); within psg_mod_cents of where
                 # the note was keyed on it is a tie, or a tie with a new smpsDetune (Scrap Brain
                 # FM4 scoops every phrase start up by 36 cents that way).
-                hz = _fnum_to_hz(((fnum_hi[kb][kc] & 7) << 8) | fnum_lo[kb][kc], (fnum_hi[kb][kc] >> 3) & 7, fm_clock)
+                hz = fnum_to_hz(((fnum_hi[kb][kc] & 7) << 8) | fnum_lo[kb][kc], (fnum_hi[kb][kc] >> 3) & 7, fm_clock)
                 was = fm_keyed_hz[kb][kc]
                 if (fm_keyed[kb][kc] and hz > 0 and was > 0
                         and abs(1200.0 * math.log2(hz / was)) <= max(psg_mod_cents, 1e-9)):
@@ -522,13 +522,13 @@ def main() -> None:
         help="Show only these channels (e.g. --channel FM3 FM4 / --channel PSG1 NOISE DAC)",
     )
     ap.add_argument(
-        "--clock", type=int, default=_DEFAULT_FM_CLOCK,
-        help=f"YM2612 clock in Hz (default {_DEFAULT_FM_CLOCK}; read from file if present)",
+        "--clock", type=int, default=DEFAULT_FM_CLOCK,
+        help=f"YM2612 clock in Hz (default {DEFAULT_FM_CLOCK}; read from file if present)",
     )
     ap.add_argument(
-        "--psg-clock", type=int, default=_DEFAULT_PSG_CLOCK,
+        "--psg-clock", type=int, default=DEFAULT_PSG_CLOCK,
         dest="psg_clock",
-        help=f"SN76489 clock in Hz (default {_DEFAULT_PSG_CLOCK}; read from file if present)",
+        help=f"SN76489 clock in Hz (default {DEFAULT_PSG_CLOCK}; read from file if present)",
     )
     ap.add_argument(
         "--psg-mod-cents", type=float, default=70.0, dest="psg_mod_cents", metavar="CENTS",
@@ -564,7 +564,7 @@ def main() -> None:
         sys.exit(1)
 
     channel_filter = set(args.channel) if args.channel else None
-    rows, fm_amp, psg_amp = _parse_vgm(
+    rows, fm_amp, psg_amp = parse_vgm(
         raw,
         fm_clock=args.clock,
         psg_clock=args.psg_clock,

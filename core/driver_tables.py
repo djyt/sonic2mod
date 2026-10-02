@@ -238,6 +238,14 @@ CARRIER_OFFSETS_BY_ALG: tuple[tuple[int, ...], ...] = tuple(
     for alg in range(8)
 )
 
+# The YM2612's operator registers sit in the order OP1, OP3, OP2, OP4
+_OPERATOR_NAME_BY_OFFSET = {0x00: 'OP1', 0x04: 'OP3', 0x08: 'OP2', 0x0C: 'OP4'}
+
+
+def carrier_names(algorithm: int) -> list[str]:
+    """An algorithm's carrier operators, OP1 first: algorithm 4 → ['OP2', 'OP4']."""
+    return sorted(_OPERATOR_NAME_BY_OFFSET[off] for off in CARRIER_OFFSETS_BY_ALG[algorithm & 0x7])
+
 
 # ---------------------------------------------------------------------------
 # Channel maps

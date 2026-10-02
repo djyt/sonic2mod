@@ -546,8 +546,7 @@ generate_fm_samples(song, config, synth, tl_offsets=None) → dict[int, tuple[by
 Processing order:
 1. `voice_map` entries with `root` (primary synthesis path)
 2. `channel_instrument_map` entries with `root`
-3. `legacy_voice_map` entries (deprecated; synthesized at C5/C1, emits DeprecationWarning)
-4. Rootless `channel_instrument_map` entries (synthesized at C5/C1)
+3. Rootless `channel_instrument_map` entries (synthesized at C5/C1)
 
 Already-synthesized instrument numbers (by `mod_instrument` value) are skipped to prevent
 overwriting. First entry wins if two ranges share `mod_instrument`.

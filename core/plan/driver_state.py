@@ -96,7 +96,6 @@ class DriverState:
 
         if kind == 'smpsSetvoice':
             self.voice = effect.params[0]
-            self.instrument = self.config.legacy_voice_map.get(self.voice, self.instrument)
 
         elif kind == 'smpsAlterVol':
             delta = effect.params[0]

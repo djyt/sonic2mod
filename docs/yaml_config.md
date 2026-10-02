@@ -10,6 +10,9 @@ python convert.py configs/my_song.yaml
 
 CLI `--output` overrides the YAML `output_file` if both are given.
 
+A key the converter does not know is an error, in a song config and in `settings.yaml` alike: a
+typo, or a key from an older version, would otherwise be ignored.
+
 ## Full Schema
 
 ```yaml
@@ -330,7 +333,7 @@ first; `voice_map[4]` is only consulted if no per-channel override exists for th
 ## PSG Instrument Mapping
 
 For full PSG synthesis details (SN76489 internals, normalization, envelope tables, API),
-see `docs/psg_synthesis.md`. Note: the older `psg_form_map` key is deprecated; use `psg_map`.
+see `docs/psg_synthesis.md`.
 
 ### psg_map
 

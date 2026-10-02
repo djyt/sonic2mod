@@ -843,7 +843,7 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
             lines.append(f"    root: {root_name}")
             if tone2_n is not None:
                 # Not emitted as a key: the converter derives the divider from the song itself
-                # (_derive_rate3_dividers); an explicit tone2_n here would only shadow that.
+                # (derive_rate3_dividers); an explicit tone2_n here would only shadow that.
                 note_desc = semitone_to_note_name(min_sem)
                 lines.append(f"    # LFSR divider is derived from the song: {tone2_n} for n{note_desc} "
                              f"{ch_init_trans:+d} → {shift_hz:,.0f} Hz")

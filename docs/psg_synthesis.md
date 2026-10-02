@@ -79,7 +79,7 @@ in `settings.yaml` is ignored with a warning.
 
 Keyed by `smpsPSGform` byte (hex or decimal). When `smpsPSGform $E7` appears in channel data, the PSG channel switches to this instrument, and stays a noise channel (nothing in Sonic 1 music turns it back).
 
-The key is the SN76489 noise register byte, `$E0 | white << 2 | rate`, so the noise **type** (bit 2: 0 = `periodic_noise`, 1 = `white_noise`) and **rate** (bits 0–1: 0 = N/512, 1 = N/1024, 2 = N/2048, 3 = follow tone channel 2) are read from it.  The **envelope** is read from the song: `smpsPSGform` does not change it, so the noise plays with the driver's VoiceIndex — the header voice or the last `smpsPSGvoice` — and `SmpsToModConverter._derive_noise_envelopes` picks the label most of the instrument's notes play under.  A config states only what is a conversion choice:
+The key is the SN76489 noise register byte, `$E0 | white << 2 | rate`, so the noise **type** (bit 2: 0 = `periodic_noise`, 1 = `white_noise`) and **rate** (bits 0–1: 0 = N/512, 1 = N/1024, 2 = N/2048, 3 = follow tone channel 2) are read from it.  The **envelope** is read from the song: `smpsPSGform` does not change it, so the noise plays with the driver's VoiceIndex — the header voice or the last `smpsPSGvoice` — and `derive_noise_envelopes` picks the label most of the instrument's notes play under.  A config states only what is a conversion choice:
 
 ```yaml
 psg_map:
@@ -382,7 +382,7 @@ converter will derive, and `low:` when the channel plays pitched noise.
 PSG3 keeps writing its own note's divider to tone channel 2, looked up in the driver's
 `PSGFrequencies` table (`core/driver_tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
 table's degenerate last entry (index 69, `nMaxPSG`) counting as 1.  The table is *not* chromatic, so
-this cannot be reproduced by a note-name formula.  `SmpsToModConverter._derive_rate3_dividers`
+this cannot be reproduced by a note-name formula.  `derive_rate3_dividers`
 does the lookup for every rate-3 noise instrument:
 
 - at the entry's `low` note when it has one (the sample plays at `root` for that note, and MOD

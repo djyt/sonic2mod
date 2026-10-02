@@ -113,8 +113,8 @@ still at the top level counts, with a warning; an unknown key is an error):
 ### `sustain_duration: auto`
 
 A synthesised sample does not loop: a note that outlasts its sample goes silent.  `auto`
-makes the sustain long enough for the song.  `SmpsToModConverter._resolve_sustain` calls
-`_sustain_needs`, which walks every enabled FM channel with the same `DriverState` as the
+makes the sustain long enough for the song.  `SustainPlanner.resolve` calls
+`SustainPlanner._needs`, which walks every enabled FM channel with the same `DriverState` as the
 conversion and measures, per MOD instrument, the longest **ring** any of its notes needs:
 
 - A ring is a note plus the `smpsNoAttack` continuations after it (no `C00` is written for
@@ -132,7 +132,7 @@ conversion and measures, per MOD instrument, the longest **ring** any of its not
 - Its length is measured in the MOD's own time, summed over the tempo segments
   (`smpsSetTempoMod` changes the BPM), after `smpsSetTempoDiv` re-timing.
 - It is measured at the sample's playback rate.  The sample is synthesised at the rate of
-  the **first** entry naming the instrument (`_synthesis_roots`, the order
+  the **first** entry naming the instrument (`SustainPlanner._synthesis_roots`, the order
   `generate_fm_samples` walks the maps); a note played above that root runs the sample
   faster by root period / note period.  A positive `sample_list` finetune adds
   2^(finetune / 96).  The MOD note is the one the conversion triggers (range lookup in the
@@ -313,8 +313,8 @@ nowhere to go once a louder neighbour raised the scale.
 ## Carrier levels and the channel accumulator
 
 Each instrument is rendered at the level most of its notes play at.  The converter's
-`_plan_fm_render_levels` walks the song with the `DriverState` and finds, per MOD instrument,
-the (TL offset, pan) most of its notes carry — the same choice `_plan_levels` makes for the
+`LevelPlanner.fm_render_levels` walks the song with the `DriverState` and finds, per MOD instrument,
+the (TL offset, pan) most of its notes carry — the same choice `LevelPlanner.levels` makes for the
 "baked" `sample_list` volume — and `program_voice` adds that TL offset to the carrier operators
 exactly as the driver's `SetVoice` does (`add.b`, modulo 256; the chip keeps 7 bits).  The
 sample therefore carries the level its `sample_list` volume stands for, and the `Cxx` law only
@@ -537,7 +537,7 @@ freq_to_fnum_block(freq, clock_rate=7670454) → (int, int)
 ```python
 generate_fm_samples(song, config, synth, tl_offsets=None) → dict[int, tuple[bytes, int]]
 # Returns {mod_instrument_number: (pcm_bytes, target_rate_hz)}, each peak-normalised
-# tl_offsets: {instrument: track volume} to render at (the converter's _plan_fm_render_levels)
+# tl_offsets: {instrument: track volume} to render at (the converter's LevelPlanner.fm_render_levels)
 # Only voice_map entries with entry.root set are included.
 # Renders on a thread pool, one instrument per thread, synth.worker_threads() at a time (the `threads` setting).
 ```

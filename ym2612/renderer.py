@@ -119,8 +119,8 @@ def _set_freq(opn2: OPN2, fnum: int, block: int, channel: int) -> None:
 def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> list:
     """Key-on → sustain → key-off → release → list of (L, R) int16 pairs.
 
-    Stereo reference path, kept for tools/test_voice.py and the smoke test; the
-    conversion pipeline renders through _render_raw_mono.
+    Stereo reference path, kept for the smoke test; the conversion pipeline renders
+    through _render_raw_mono.
     """
     opn2.key_on(channel)
     sustain_samples = opn2.render_samples(sustain_n)

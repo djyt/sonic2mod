@@ -531,10 +531,13 @@ def parse_psg_map(data: dict, filepath) -> dict:
 
 def parse_psg_voice_map(data: dict) -> dict:
     """`psg_voice_map:` {"fTone_01": {mod_instrument, root, ...}} or a list of such dicts, always
-    stored as list[PsgInstrumentEntry] to support range-split entries."""
+    stored as list[PsgInstrumentEntry] to support range-split entries.  A label with nothing under
+    it (analyze.py's skeleton, for a label no note plays) has no entries."""
     out: dict = {}
-    for k, v in data.get('psg_voice_map', {}).items():
+    for k, v in (data.get('psg_voice_map') or {}).items():
         label = str(k)
+        if v is None:
+            continue
         if isinstance(v, list):
             out[label] = [_parse_psg_voice_entry(e, label, f"psg_voice_map[{label}][{j}]") for j, e in enumerate(v)]
         else:

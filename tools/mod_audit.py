@@ -38,6 +38,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.config import find_settings, load_settings
 from core.mod import audit
 
 
@@ -47,7 +48,8 @@ def main() -> None:
     ap.add_argument("--slack", type=float, default=2.0, help="seconds past the longest note before a sample is oversize (default 2)")
     ap.add_argument("--banks", action="store_true", help="list each bank sound (9xx offset): bytes, notes, seconds heard")
     args = ap.parse_args()
-    rows, notes = audit(args.mod, args.slack)
+    synth, _psg = load_settings(find_settings())        # settings.yaml amiga_clock: the rate a period plays at
+    rows, notes = audit(args.mod, args.slack, synth.amiga_clock)
     for n in notes:
         print(n)
     print()

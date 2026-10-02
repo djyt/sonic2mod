@@ -318,7 +318,7 @@ def main() -> None:
     args = ap.parse_args()
     cfg = ConversionConfig.from_yaml(args.config)
     columns, table, names = read_table(args.csv, cfg)
-    ctx = survey_context(cfg, Path(args.config).resolve().parent)
+    ctx = survey_context(cfg, args.config)
     blocks, report = build(ctx, columns, table, bank=args.bank, mix_note=args.mix_note)
     print(f"{cfg.name}: {len(table)} patterns in the table, the song's last is {ctx.last_pattern:x}\n")
     print("\n".join(report))

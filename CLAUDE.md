@@ -67,7 +67,8 @@ sonic2mod/
                      #     source_names / source_map
     config/          #   Per-song conversion config (song.py ConversionConfig, entries.py its maps and section
                      #   parsers) and settings.yaml (settings.py: SampleSettings → SynthesisSettings,
-                     #   PsgSynthesisSettings); loader.py YAML with no key given twice; bpm.py
+                     #   PsgSynthesisSettings; find_settings / load_settings: every CLI and tool reads its values,
+                     #   constants are only the fallback); loader.py YAML with no key given twice; bpm.py
     plan/            #   The song read through its config: what each note plays, what each sample is rendered for
       driver_state.py #    DriverState — the SMPS track state machine (level, pan, transpose, FM voice,
                      #     PSG entry); resolve_note, walk_channel, enabled_channels, psg_range_entry

@@ -27,9 +27,8 @@ import math
 import random
 
 from core.audio import dc_block as _dc_block
+from core.mod import PAL_AMIGA_CLOCK
 
-# PAL Paula clock.  Playback rate for a given period is PAL_CLOCK / period.
-PAL_CLOCK = 3_546_895
 # ProTracker's period table is 856 / 2^(n/12) for n = 0..35, i.e. C-1 to B-3.
 # Building candidate rates from it means every rate we pick corresponds to a real
 # note, so the sample plays at true pitch with finetune 0.
@@ -54,7 +53,7 @@ PERIOD_GRID = _build_period_grid()
 DEFAULT_MAX_RATE = 28604
 
 
-def candidate_rates(clock: int = PAL_CLOCK) -> list[tuple[float, int, str]]:
+def candidate_rates(clock: int = PAL_AMIGA_CLOCK) -> list[tuple[float, int, str]]:
     """(rate, period, note) for every playable ProTracker period, low to high."""
     out = [(clock / p, p, name) for p, name in PERIOD_GRID]
     out.sort()
@@ -135,7 +134,7 @@ def power_spectrum(samples: list[float], n: int = _FFT_N,
 
 def choose_rate(samples: list[float], rate: int, *, energy_frac: float = 0.99,
                 max_rate: float = DEFAULT_MAX_RATE,
-                clock: int = PAL_CLOCK) -> tuple[float, int, str]:
+                clock: int = PAL_AMIGA_CLOCK) -> tuple[float, int, str]:
     """Lowest playable rate whose Nyquist still contains `energy_frac` of the energy.
 
     Returns (rate, period, note).  Falls back to the ceiling when the effect is
@@ -160,7 +159,7 @@ def choose_rate(samples: list[float], rate: int, *, energy_frac: float = 0.99,
     return usable[-1]
 
 
-def nearest_candidate(target: float, clock: int = PAL_CLOCK) -> tuple[float, int, str]:
+def nearest_candidate(target: float, clock: int = PAL_AMIGA_CLOCK) -> tuple[float, int, str]:
     """Snap an arbitrary rate onto the period grid."""
     return min(candidate_rates(clock), key=lambda c: abs(c[0] - target))
 

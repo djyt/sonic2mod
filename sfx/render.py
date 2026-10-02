@@ -63,7 +63,8 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
                tail_secs: float = DEFAULT_TAIL_SECS,
                max_secs: float = DEFAULT_MAX_SECS,
                psg_gain: float = 1.0,
-               psg_oob: str = "extend") -> RenderResult:
+               psg_oob: str = "extend",
+               native_rate: int = NATIVE_RATE) -> RenderResult:
     """Play one parsed SFX and return its mixed stereo output.
 
     Args:
@@ -76,6 +77,8 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
                    scaled by its own full scale.  1.0 means one full-scale PSG
                    channel matches one full-scale FM channel.
         psg_oob:   "extend" or "clamp" for PSG note indices past the driver table.
+        native_rate: the YM2612's output rate at its clock (ym2612.wrapper.output_rate), which
+                   `sn` must have been built at too.
     """
     opn2.reset("ym2612")
     sn.reset()
@@ -93,9 +96,9 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
     left: list[float] = []
     right: list[float] = []
 
-    samples_per_frame = NATIVE_RATE / fps
-    max_samples = int(max_secs * NATIVE_RATE)
-    tail_samples = int(tail_secs * NATIVE_RATE)
+    samples_per_frame = native_rate / fps
+    max_samples = int(max_secs * native_rate)
+    tail_samples = int(tail_secs * native_rate)
 
     rendered = 0
     frame = 0
@@ -145,7 +148,7 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
 
     opn2.end_capture()
     _trim_trailing_silence(left, right)
-    return RenderResult(left, right, NATIVE_RATE, ticks, list(driver.warnings), truncated)
+    return RenderResult(left, right, native_rate, ticks, list(driver.warnings), truncated)
 
 
 def _trim_trailing_silence(left: list[float], right: list[float]) -> None:

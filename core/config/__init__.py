@@ -29,6 +29,8 @@ from .settings import (
     PsgSynthesisSettings,
     SampleSettings,
     SynthesisSettings,
+    find_settings,
+    load_settings,
     with_song_overrides,
 )
 from .song import ConversionConfig
@@ -37,6 +39,6 @@ __all__ = [
     "DEFAULT_AMIGA_CLOCK", "DEFAULT_PSG_OVERSAMPLE", "DEFAULT_SHELF_HZ", "LEGATO_MODES", "PLAYERS", "SAMPLE_KEYS",
     "SUSTAIN_LOOP_MODES", "ChannelConfig", "ConversionConfig", "DacSampleConfig", "InstrumentRange", "MergeGroup",
     "PsgInstrumentEntry", "PsgSynthesisSettings", "SampleSettings", "SynthesisSettings", "bpm_rounding_options",
-    "derive_bpm", "exact_bpm", "format_patterns", "load_yaml", "parse_patterns", "rate3_synth_root_issues",
-    "with_song_overrides",
+    "derive_bpm", "exact_bpm", "find_settings", "format_patterns", "load_settings", "load_yaml", "parse_patterns",
+    "rate3_synth_root_issues", "with_song_overrides"
 ]

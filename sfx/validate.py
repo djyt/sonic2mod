@@ -21,7 +21,7 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import gain_to_db
-from core.smps import SmpsParser
+from core.smps import MD_PSG_CLOCK, SmpsParser
 from sfx import tables
 from sfx.batch import render_one
 from sfx.render import NATIVE_RATE
@@ -102,7 +102,7 @@ def check_parse(sfx_dir: Path) -> None:
 def check_render(sfx_dir: Path) -> None:
     print("\nRender")
     opn2 = OPN2(mode="ym2612")
-    sn = SN76489(clock_rate=3_579_545, sample_rate=NATIVE_RATE)
+    sn = SN76489(clock_rate=MD_PSG_CLOCK, sample_rate=NATIVE_RATE)
     try:
         pans = {}
         for stem in ("SndB5 - Ring", "SndCE - Ring Left Speaker", "SndAE - Fireball"):
@@ -128,8 +128,8 @@ def check_render(sfx_dir: Path) -> None:
 
 def check_amiga() -> None:
     print("\n8-bit Amiga export")
+    from core.mod import PAL_AMIGA_CLOCK
     from sfx.amiga import (
-        PAL_CLOCK,
         candidate_rates,
         dc_block,
         normalise,
@@ -143,8 +143,8 @@ def check_amiga() -> None:
           f"{by_note['C-2'][0]:.0f} Hz")
     check("C-3 maps to period 214", by_note["C-3"][1] == 214,
           f"{by_note['C-3'][0]:.0f} Hz")
-    check("every candidate rate is PAL_CLOCK/period",
-          all(abs(r - PAL_CLOCK / p) < 1e-6 for r, p, _ in grid))
+    check("every candidate rate is PAL_AMIGA_CLOCK/period",
+          all(abs(r - PAL_AMIGA_CLOCK / p) < 1e-6 for r, p, _ in grid))
 
     # DC blocker must remove a constant offset without disturbing leading silence
     signal = [0.0] * 100 + [0.5] * 4000

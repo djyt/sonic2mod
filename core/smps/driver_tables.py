@@ -16,11 +16,16 @@ import math
 # Frequency tables
 # ---------------------------------------------------------------------------
 
+# The NTSC Mega Drive's chip clocks: settings.yaml fm_synthesis / psg_synthesis clock_rate, which
+# every renderer reads; these are the fallback, and what the driver's tables were computed for
+MD_FM_CLOCK = 7_670_454
+MD_PSG_CLOCK = 3_579_545
+
 # The chip sample rates the driver's table-generation macros divide by.
-# FM  = YM2612 master clock / 144 = 7,670,454 / 144  (== OPN2.NATIVE_RATE)
-# PSG = SN76489 clock / 16        = 3,579,545 / 16
-FM_SAMPLE_RATE = 53267
-PSG_SAMPLE_RATE = 223721.5625
+# FM  = YM2612 master clock / 144 = 53267  (== OPN2.NATIVE_RATE)
+# PSG = SN76489 clock / 16        = 223721.5625
+FM_SAMPLE_RATE = MD_FM_CLOCK // 144
+PSG_SAMPLE_RATE = MD_PSG_CLOCK / 16
 
 
 def _round_half_up(x: float) -> int:
@@ -156,7 +161,7 @@ def psg_index_semitone(index: int) -> int:
         return 36 + index
     n = PSG_FREQUENCIES_EXTENDED[index & 0x7F]
     if n > 1:
-        return round(57 + 12 * math.log2((3_579_545 / (32.0 * n)) / 440.0))
+        return round(57 + 12 * math.log2((MD_PSG_CLOCK / (32.0 * n)) / 440.0))
     # The table is followed by code, not data; where the extrapolated table has nothing usable
     # the written pitch is the best guess (the audit will show what the hardware really did).
     return 36 + index

@@ -14,7 +14,6 @@ from ..audio import gain_to_db
 from .file import PAL_AMIGA_CLOCK, SampleInfo, read_mod
 from .notes import PERIOD_TABLE
 
-AMIGA_CLOCK = float(PAL_AMIGA_CLOCK)
 LOW_RATE_HZ = 5000.0        # below this a sample has under 2.5 kHz of bandwidth
 NOTE_NAMES = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"]
 
@@ -87,7 +86,9 @@ def duplicates(samples: list[SampleInfo], rates: dict[int, float], skip: set[int
     return out
 
 
-def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
+def audit(path: str, slack: float = 2.0, amiga_clock: float = PAL_AMIGA_CLOCK) -> tuple[list[dict], list[str]]:
+    """Each sample's row and the file's notes.  `amiga_clock`: settings.yaml amiga_clock, the rate a
+    period plays at."""
     mod = read_mod(path)
     pats, chans = mod.patterns, mod.channels
     # Tempo: speed and BPM from F commands as they occur in play order (row 0 defaults)
@@ -142,7 +143,7 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
     rates = {}
     for i in plays:
         periods = Counter(p for _c, p, _s in plays[i])
-        rates[i] = AMIGA_CLOCK / periods.most_common(1)[0][0]
+        rates[i] = amiga_clock / periods.most_common(1)[0][0]
     dups = duplicates(mod.samples, rates, banked)
     for i, s in enumerate(mod.samples, 1):
         notes = plays.get(i, [])
@@ -150,7 +151,7 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
             continue
         periods = Counter(p for _c, p, _s in notes)
         top = periods.most_common(1)[0][0] if periods else None
-        rate = AMIGA_CLOCK / top if top else None
+        rate = amiga_clock / top if top else None
         secs = s.length / rate if rate else None
         looped = s.looped
         longest = max((sec for _c, _p, sec in notes), default=0.0)
@@ -172,19 +173,19 @@ def audit(path: str, slack: float = 2.0) -> tuple[list[dict], list[str]]:
             flags.append(dups[i])
 
         # Time it sounds: each note until its bytes run out (a looped sample: the whole note)
-        heard = sum(sec if looped or not s.length else min(sec, s.length * p / AMIGA_CLOCK)
+        heard = sum(sec if looped or not s.length else min(sec, s.length * p / amiga_clock)
                     for _c, p, sec in notes) if i not in banked else sum(sec for _c, _p, sec in notes)
         lo = max((p for _c, p, _s in notes), default=None)      # the longest period: the lowest note
         hi = min((p for _c, p, _s in notes), default=None)
-        if lo is not None and AMIGA_CLOCK / lo < LOW_RATE_HZ:
-            flags.append(f"low rate ({AMIGA_CLOCK / lo:.0f} Hz at {note_name(lo)})")
+        if lo is not None and amiga_clock / lo < LOW_RATE_HZ:
+            flags.append(f"low rate ({amiga_clock / lo:.0f} Hz at {note_name(lo)})")
         rows_out.append({
             "inst": i, "name": s.name, "bytes": s.length, "volume": s.volume,
             "secs": secs, "note": note_name(top) if top else "-", "loop": (s.loop_start, s.loop_len) if looped else None,
             "notes": len(notes), "channels": sorted({c + 1 for c, _p, _s in notes}),
             "channel_notes": dict(Counter(c + 1 for c, _p, _s in notes)), "longest": longest, "flags": flags,
             "kb_share": s.length / sample_bytes, "play_share": heard / song_secs if song_secs else 0.0,
-            "range": (note_name(lo), note_name(hi), AMIGA_CLOCK / lo) if lo is not None and hi is not None else None,
+            "range": (note_name(lo), note_name(hi), amiga_clock / lo) if lo is not None and hi is not None else None,
             "sounds": _bank_sounds(offsets.get(i, []), s.length) if i in banked else [],
         })
     used_cols = sorted({c for pos in mod.order for row in pats[pos] for c, cell in enumerate(row) if any(cell)})

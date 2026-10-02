@@ -33,16 +33,14 @@ if str(_HERE.parent) not in sys.path:
 
 from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
-from core.smps import FM_FREQUENCIES, SmpsVoice
+from core.smps import FM_FREQUENCIES, MD_FM_CLOCK, SmpsVoice
 from ym2612.voice import program_voice
-from ym2612.wrapper import OPN2
+from ym2612.wrapper import OPN2, output_rate
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_CLOCK_RATE  = 7_670_454   # Mega Drive NTSC master clock (Hz)
-_NATIVE_RATE = OPN2.NATIVE_RATE  # clock_rate // 6 // 24 ≈ 53,267 Hz
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +55,7 @@ def note_to_freq(mod_note_index: int) -> float:
     return 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
 
 
-def note_to_fnum_block(mod_note_index: int, clock_rate: int = _CLOCK_RATE) -> tuple[int, int]:
+def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK) -> tuple[int, int]:
     """(fnum, block) the Sonic 1 driver writes for this note.
 
     Its FM frequency table (core.smps.driver_tables.FM_FREQUENCIES: index 1 = nC0, so MOD index
@@ -68,18 +66,18 @@ def note_to_fnum_block(mod_note_index: int, clock_rate: int = _CLOCK_RATE) -> tu
     Off the table, or at another clock, the formula in freq_to_fnum_block stands in.
     """
     i = mod_note_index + 13
-    if clock_rate == _CLOCK_RATE and 0 <= i < len(FM_FREQUENCIES):
+    if clock_rate == MD_FM_CLOCK and 0 <= i < len(FM_FREQUENCIES):
         word = FM_FREQUENCIES[i]
         return word & 0x7FF, (word >> 11) & 0x7
     return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
 
 
-def fnum_block_to_freq(fnum: int, block: int, clock_rate: int = _CLOCK_RATE) -> float:
+def fnum_block_to_freq(fnum: int, block: int, clock_rate: int = MD_FM_CLOCK) -> float:
     """The pitch (Hz) a (fnum, block) pair plays: f = fnum × (clock/144) × 2^block / 2^21."""
     return fnum * (clock_rate / 144.0) * (1 << block) / (1 << 21)
 
 
-def freq_to_fnum_block(freq: float, clock_rate: int = _CLOCK_RATE) -> tuple[int, int]:
+def freq_to_fnum_block(freq: float, clock_rate: int = MD_FM_CLOCK) -> tuple[int, int]:
     """Frequency (Hz) → (fnum, block) pair for YM2612 register writes.
 
     Targets the upper half of the fnum range [512, 1023] for best precision.
@@ -200,7 +198,7 @@ def render_layers(
     target_rate: int | None = None,
     opn2: OPN2 | None = None,
     channel: int = 0,
-    clock_rate: int = _CLOCK_RATE,
+    clock_rate: int = MD_FM_CLOCK,
     taps: int = DEFAULT_TAPS,
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
@@ -213,7 +211,7 @@ def render_layers(
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
     used to be, so the callers' trim / peak / int8 steps are unchanged.
     """
-    native_rate = clock_rate // 6 // 24  # ≈ 53,267 Hz
+    native_rate = output_rate(clock_rate)  # ≈ 53,267 Hz
     if not 1 <= len(layers) <= 6 - channel:
         raise ValueError(f"{len(layers)} layers do not fit on channels {channel}..5")
 
@@ -257,7 +255,7 @@ def _render_pipeline(
     target_rate: int | None = None,
     opn2: OPN2 | None = None,
     channel: int = 0,
-    clock_rate: int = _CLOCK_RATE,
+    clock_rate: int = MD_FM_CLOCK,
     tl_offset: int = 0,
 ) -> tuple[array.array, int]:
     """One voice → (mono, out_rate) before int8 packing: render_layers with a single layer."""
@@ -273,7 +271,7 @@ def render_note(
     target_rate: int | None = None,
     opn2: OPN2 | None = None,
     channel: int = 0,
-    clock_rate: int = _CLOCK_RATE,
+    clock_rate: int = MD_FM_CLOCK,
     tl_offset: int = 0,
 ) -> tuple[bytes, int]:
     """Render one FM note to 8-bit signed mono PCM, peak-normalized to ±127.
@@ -308,7 +306,7 @@ def render_note_raw(
     target_rate: int | None = None,
     opn2: OPN2 | None = None,
     channel: int = 0,
-    clock_rate: int = _CLOCK_RATE,
+    clock_rate: int = MD_FM_CLOCK,
     tl_offset: int = 0,
 ) -> tuple[array.array, int]:
     """Like render_note but returns (mono, out_rate) before int8 packing.
@@ -357,7 +355,7 @@ def _smoke_test() -> None:
     mod_note    = 33      # A3 = 220 Hz
     sustain     = 1.5
     release     = 0.5
-    native_rate = _NATIVE_RATE
+    native_rate = OPN2.NATIVE_RATE
     sustain_n   = int(native_rate * sustain)
     release_n   = int(native_rate * release)
 

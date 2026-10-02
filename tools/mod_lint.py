@@ -25,7 +25,7 @@ loop's first pattern once more with the end-of-song state, which is what a playe
     python tools/mod_lint.py output/02_green_hill_zone.mod
     python tools/mod_lint.py a.mod b.mod        # every file; exit 1 if any issue
 
-As a library: `lint_mod(path) -> list[dict]` (each with 'type', 'pattern', 'row', 'channel',
+As a library: `lint_mod(path, amiga_clock) -> list[dict]` (each with 'type', 'pattern', 'row', 'channel',
 'instrument', 'detail'), used by tests/regression.py: a case fails when the new MOD has
 an issue its baseline does not.
 """
@@ -38,12 +38,11 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.config import find_settings, load_settings
 from core.mod import PAL_AMIGA_CLOCK, read_mod
 
-AMIGA_CLOCK = PAL_AMIGA_CLOCK
 
-
-def lint_mod(path: str) -> list[dict]:
+def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
     mod = read_mod(path)
     headers = mod.samples
     pats = mod.patterns
@@ -55,7 +54,7 @@ def lint_mod(path: str) -> list[dict]:
         h = headers[inst - 1]
         if h.looped:
             return None
-        return h.length / (AMIGA_CLOCK / period) if period else 0.0
+        return h.length / (amiga_clock / period) if period else 0.0
 
     issues: list[dict] = []
     speed, bpm = 6, 125
@@ -150,9 +149,10 @@ def main() -> None:
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(2)
+    synth, _psg = load_settings(find_settings())        # settings.yaml amiga_clock
     total = 0
     for path in sys.argv[1:]:
-        issues = lint_mod(path)
+        issues = lint_mod(path, synth.amiga_clock)
         total += len(issues)
         print(f"{path}: {len(issues)} issue(s)")
         for i in issues[:40]:

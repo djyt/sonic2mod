@@ -50,6 +50,8 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from .levels import gain_to_db
+
 # --- defaults ---------------------------------------------------------------------------------
 
 FLAT_DB = 1.0             # a window is flat when within this of the reference span's range (the
@@ -87,7 +89,7 @@ def _rms(x: Sequence[float]) -> float:
 
 
 def _db(v: float, ref: float) -> float:
-    return 20.0 * math.log10(v / ref) if v > 0 and ref > 0 else -120.0
+    return gain_to_db(v / ref) if v > 0 and ref > 0 else -120.0
 
 
 def _even(n: float) -> int:

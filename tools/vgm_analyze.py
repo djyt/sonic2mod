@@ -68,6 +68,11 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from core.driver_tables import CARRIER_OFFSETS_BY_ALG
+from core.levels import db_to_gain, fm_level_db, psg_level_db
+
 # ---------------------------------------------------------------------------
 # Frequency math
 # ---------------------------------------------------------------------------
@@ -82,20 +87,6 @@ DEFAULT_FM_CLOCK = 7_670_454
 DEFAULT_PSG_CLOCK = 3_579_545
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-
-# OPN2 carrier operator register offsets by algorithm.
-# YM2612 TL register layout: slot offset = reg & 0x0C (0x00=OP1, 0x04=OP3, 0x08=OP2, 0x0C=OP4).
-_CARRIER_SLOTS_BY_ALG = [
-    [0x0C],                          # Alg 0: OP4 only
-    [0x0C],                          # Alg 1: OP4 only
-    [0x0C],                          # Alg 2: OP4 only
-    [0x0C],                          # Alg 3: OP4 only
-    [0x08, 0x0C],                    # Alg 4: OP2, OP4
-    [0x04, 0x08, 0x0C],              # Alg 5: OP3, OP2, OP4
-    [0x04, 0x08, 0x0C],              # Alg 6: OP3, OP2, OP4  (OP2 is output of OP1→OP2)
-    [0x00, 0x04, 0x08, 0x0C],        # Alg 7: all operators
-]
-
 
 def fnum_to_hz(fnum: int, block: int, clock: int) -> float:
     """Convert YM2612 fnum/block pair to frequency in Hz.
@@ -256,7 +247,8 @@ def parse_vgm(
         # Amplitude: sum linear levels of carrier operators regardless of channel filter
         alg = fm_algo[bank][ch_idx]
         tl_dict = fm_tl[bank][ch_idx]
-        linear_sum = sum(10 ** (-(tl_dict[s] * 0.75) / 20.0) for s in _CARRIER_SLOTS_BY_ALG[alg])
+        # TL register layout: slot offset = reg & 0x0C (0x00=OP1, 0x04=OP3, 0x08=OP2, 0x0C=OP4)
+        linear_sum = sum(db_to_gain(fm_level_db(tl_dict[s])) for s in sorted(CARRIER_OFFSETS_BY_ALG[alg]))
         fm_amp_samples.setdefault(ch_name, []).append(linear_sum)
 
     def _psg_new_note(ch: int) -> bool:
@@ -286,7 +278,7 @@ def parse_vgm(
             if not channel_filter or ch_name in channel_filter:
                 rows.append((time_ms, ch_name, period, 0, freq, note, smps))
             # Amplitude: capture regardless of channel filter
-            linear = 10 ** (-(psg_vol[ch] * 2.0) / 20.0)
+            linear = db_to_gain(psg_level_db(psg_vol[ch]))
             psg_amp_samples.setdefault(ch_name, []).append(linear)
         else:
             noise_type = "white" if (psg_noise >> 2) & 1 else "periodic"
@@ -305,7 +297,7 @@ def parse_vgm(
                 noise_desc = f"{noise_type}/{rate_str}"
             if not channel_filter or "NOISE" in channel_filter:
                 rows.append((time_ms, "NOISE", psg_noise, 0, shift_hz, noise_desc, "—"))
-            linear = 10 ** (-(psg_vol[3] * 2.0) / 20.0)
+            linear = db_to_gain(psg_level_db(psg_vol[3]))
             psg_amp_samples.setdefault("NOISE", []).append(linear)
 
     end = len(data)

@@ -39,6 +39,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from core.driver_state import resolve_synth_roots
+from core.levels import db_to_gain
 from core.merge import NoteOn, PairStats, channel_notes, pair_channels
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
@@ -98,7 +99,7 @@ def survey_context(cfg: ConversionConfig, settings_dir: Path) -> SurveyContext:
         base = baselines.get(n.kind, {}).get(n.instrument)
         if base is None or n.level_db is None:
             return 1.0
-        return 10 ** ((n.level_db - base) / 20.0)
+        return db_to_gain(n.level_db - base)
 
     sources = [c.source for c in cfg.channels if c.enabled]
     sample_secs = conv.sample_secs()

@@ -18,6 +18,21 @@ PSG_ATT_SILENT = 15        # attenuation at or above which nothing is heard
 MOD_MAX_VOLUME = 64
 
 
+def db_to_gain(db: float) -> float:
+    """Amplitude ratio of a level in dB: -6.02 -> 0.5."""
+    return 10 ** (db / 20.0)
+
+
+def gain_to_db(gain: float) -> float:
+    """dB of an amplitude ratio: 0.5 -> -6.02."""
+    return 20 * math.log10(gain)
+
+
+def power_to_db(power: float) -> float:
+    """dB of a power (energy) ratio: 0.5 -> -3.01."""
+    return 10.0 * math.log10(power)
+
+
 def fm_level_db(tl_offset: int, hard_panned: bool = False,
                 pan_law_db: float = DEFAULT_FM_PAN_LAW_DB) -> float:
     """Hardware level of an FM note relative to TL offset 0, centred."""
@@ -35,7 +50,7 @@ def db_to_mod_volume(base: int, db: float, minimum: int = 0) -> int:
     `minimum` is 0 for the converter (a note really can be silenced) and 1 for the
     analyser's YAML skeleton, where a volume of 0 would be a useless suggestion.
     """
-    return max(minimum, min(MOD_MAX_VOLUME, round(base * 10 ** (db / 20.0))))
+    return max(minimum, min(MOD_MAX_VOLUME, round(base * db_to_gain(db))))
 
 
 def clamp_mod_volume(volume: float) -> int:
@@ -45,21 +60,21 @@ def clamp_mod_volume(volume: float) -> int:
 
 def headroom_db(volume: float) -> float:
     """dB a wanted volume lies past 64: what clamping it costs (0 when it fits)."""
-    return 20 * math.log10(volume / MOD_MAX_VOLUME) if volume > MOD_MAX_VOLUME else 0.0
+    return gain_to_db(volume / MOD_MAX_VOLUME) if volume > MOD_MAX_VOLUME else 0.0
 
 
 def fm_tl_to_mod(tl_offset: int) -> int:
     """YM2612 TL offset -> absolute MOD volume 0-64 (smpsHeaderFM volume, smpsAlterVol)."""
     if tl_offset >= FM_TL_SILENT:
         return 0
-    return round(MOD_MAX_VOLUME * 10 ** (fm_level_db(tl_offset) / 20.0))
+    return round(MOD_MAX_VOLUME * db_to_gain(fm_level_db(tl_offset)))
 
 
 def psg_att_to_mod(attenuation: int) -> int:
     """SN76489 attenuation -> absolute MOD volume 0-64 (0 = max, 15 = silent)."""
     if attenuation >= PSG_ATT_SILENT:
         return 0
-    return round(MOD_MAX_VOLUME * 10 ** (psg_level_db(attenuation) / 20.0))
+    return round(MOD_MAX_VOLUME * db_to_gain(psg_level_db(attenuation)))
 
 
 def modal_level(counts: dict[float, int]) -> float:

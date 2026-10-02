@@ -180,6 +180,12 @@ def _w_synth_root_ambiguous(w: dict):
             "[cyan]range_space: chip[/cyan] (tools/config_to_chip_space.py) or split the entry")
 
 
+def _w_detune_no_slot(w: dict):
+    parts = ", ".join(f"inst {inst} {d:+d} ×{n}" for (inst, d), n in sorted(w['unplaced'].items(), key=lambda kv: -kv[1]))
+    return ("pitch", f"{len(w['unplaced'])} smpsAlterNote detunes have no free slot and play their "
+                     f"instrument's own sample: {parts}", "free an instrument slot")
+
+
 def _lost_parts(w: dict) -> list[str]:
     parts = []
     for key, what in (('orphans', "start under the primary"), ('held', "rings cut by a primary note"),
@@ -253,6 +259,7 @@ _WARNINGS: dict[str, Callable[[dict], tuple[str, str, str | None]]] = {
     'pattern_overflow': _w_pattern_overflow, 'rest_no_slot': _w_rest_no_slot, 'loop_no_slot': _w_loop_no_slot,
     'sustain_short': _w_sustain_short, 'sample_truncated': _w_truncated,
     'noise_envelopes': _w_noise_envelopes, 'synth_root_ambiguous': _w_synth_root_ambiguous,
+    'detune_no_slot': _w_detune_no_slot,
     'merge_lost': _w_merge_lost, 'merge_headroom': _w_merge_headroom,
     'merge_unsupported': _w_merge_unsupported, 'merge_missing_sample': _w_merge_missing,
     'merge_fill_lost': _w_merge_fill_lost, 'merge_dropped': _w_merge_dropped,
@@ -688,6 +695,15 @@ def detail_lines(infos: list[dict]) -> list[str]:
                        f"plays ({info['played_cycle_frames']:.1f})")
         elif t == 'synth_roots':
             out.append(f"synthesis pitches: {info['derived']} derived, {info['stated']} stated")
+        elif t == 'detune_variants':
+            own = ", ".join(f"inst {i} {d:+d}" for i, d in sorted(info['own'].items()))
+            if own:
+                out.append(f"detune rendered into the sample: {own}")
+            for inst, base, d, n in info['variants']:
+                out.append(f"detune variant inst {inst}: inst {base} at {d:+d} FNUM [dim]({n} notes)[/dim]")
+        elif t == 'detune_ties':
+            out.append(f"ties retuned to their new detune: {info['placed']} E1x / E2x"
+                       + (f" [dim]({info['skipped']} rows had no free effect slot)[/dim]" if info['skipped'] else ""))
         elif t == 'synth_shift':
             out.append(f"{escape(info['context'])}: rendered at {synth_note_name(info['synth_root'])}, "
                        f"{info['shift']:+d} semitones from its root (the rate carries it)")

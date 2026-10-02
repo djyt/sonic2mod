@@ -52,8 +52,8 @@ sample_list:
   # --- PSG tone fTone_09 ---
   - [8, "psg_fTone_09.raw", 10, 0] # baked: 16 at PSG attenuation 2 (−4 dB)
   
-  # Tuned version
-  - [10, "fm_v00.raw",  9, 1] # VGZ: -3.7 dB at 6
+  # Detuned version (smpsAlterNote rendered into the sample)
+  - [10, "fm_v00.raw",  9, 0] # VGZ: -3.7 dB at 6
 
 dac_samples:
   # dKick: ×55 — native ~8250 Hz → note C2

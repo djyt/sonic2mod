@@ -7,7 +7,7 @@
 
 | Check | Before | After |
 |-------|--------|-------|
-| Pitch (symbolic, 60 ms) | 1203 / 1213 — FM4's 10 are `smpsAlterNote` detune scoops (+44…+54 c), item 8 | same 10; every other note right |
+| Pitch (symbolic, 60 ms) | 1203 / 1213 — FM4's 10 are `smpsAlterNote` detune scoops (+44…+54 c), item 8 | same 10; every other note right (the 10: fixed 2026-10-02, § Detune variants) |
 | Pitch, PSG2 at 25 ms | **0 / 512**: instrument 15 (`fTone_05`) an octave high on every note | **516 / 516** |
 | Key-ons | 0 unmatched on every FM, PSG and noise channel (FM2 554 / 554, NOISE 416 / 416) | same |
 | Timing | median −3…+4 ms, no drift (180 BPM exact) | same |
@@ -41,7 +41,17 @@ Scrap Brain's output is byte-identical to its baseline from before the Credits c
 - 657 `<-- PITCH` flags in the per-note audio table are the same vibrato; the symbolic verdict is
   the one that counts.
 
+## Detune variants (2026-10-02, todo item 8)
+
+FM4's scoops (`smpsAlterNote $EC`, `nG5, $02`, `smpsAlterNote $00`, `smpsNoAttack, $06`) are
+−49 c for two ticks and rise to the note on the **tie**: the driver re-writes the frequency with
+the new detune.  With `core/detune.py` the scoop plays a variant rendered at −20 FNUM and the tie
+an `E2x`/`E1x` back to pitch: FM4 **92 / 92** at 60 ms (was 82 / 92), mean error 12.7 → 3.7 c.  Six
+variants (inst 11, 16, 21–24) take free slots; insts 10 and 20 carry their own detune.  Inst 19's
+`finetune: 1` (FM5, which has no `smpsAlterNote`) and inst 20's (FM3, `$03`, now rendered) were
+removed.  Levels unchanged (variants count under their base).
+
 ## Open
 
-- FM4 `smpsAlterNote` scoops (10 notes) and FM1 carrier beating — items 8 and 7.
+- FM1 carrier beating — item 7.
 - FM5 B3 at 0.865 s: hardware 4.46 Hz ±5.9 c, MOD 5.99 Hz ±13.1 c (its `4xy` is FM4's).  Not examined.

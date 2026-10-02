@@ -45,6 +45,8 @@ sonic2mod/
                      #   (sfx/tables.py re-exports this; it used to live there)
     instruments.py   #   The instrument catalogue: what each synthesised MOD instrument is rendered for
                      #   (first entry to name it wins; FM instruments are layers) — both generators read it
+    detune.py        #   Detune variants: each smpsAlterNote detune an instrument plays rendered at its FNUM offset
+                     #   (majority detune in its own slot, the rest in free slots); ties retuned with E1x / E2x
     merge.py         #   Channel folding for the Amiga build: merge: groups → composite instruments
     banks.py         #   Sample banks: a bank: true group's mixes packed into one slot each, chosen with 9xx
     driver_state.py  #   DriverState — the SMPS track state machine (level, pan, transpose, FM voice,
@@ -120,6 +122,7 @@ sonic2mod/
     settings.yaml       #   The settings every baseline is made with (convert.py --settings)
     baselines/          #   Baseline MODs + manifest.yaml (commit, date, settings / config hashes)
     test_merge_units.py #   The merge primitives with hand-built objects (python -m pytest tests -q)
+    test_detune_units.py #  Detune variants: FNUM → cents, routing, shared level, catalogue layers
 ```
 
 ## Setup
@@ -340,7 +343,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsJump` | $F6 | `Bxx` | Position jump; first occurrence only |
 | `smpsSetvoice` | $EF | (routing) | Updates voice_map instrument lookup |
 | `smpsChangeTransposition` | $E9 | (pitch) | Adds to total_transpose |
-| `smpsDetune`/`smpsAlterNote` | $E1 | **none** | FNUM offset (~10 cents); NOT semitones, NOT applied to pitch |
+| `smpsDetune`/`smpsAlterNote` | $E1 | (sample) / `E1x` `E2x` | FNUM offset (+3…8 c for $03); NOT semitones, no range lookup. The note plays a sample rendered at the offset: its instrument's own (the majority detune) or a variant in a free slot (`core/detune.py`); a tie after a detune change gets a fine slide |
 | `smpsPan` | $E0 | (level) | No MOD panning, but hard-panned FM notes count `fm_pan_law_db` (3 dB) quieter |
 | `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
 | `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
@@ -363,7 +366,7 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 **Full gotchas with causes and fixes in `docs/pipeline.md`.**
 
-1. **`smpsDetune`/`smpsAlterNote` ($E1) is NOT semitones** — it's a raw FNUM offset (~10 cents per unit). Does NOT affect `voice_map` range lookup or pitch placement. For chorus detune (FM5 vs FM4), use `channel_instrument_map` with a `finetune: 1` instrument variant.
+1. **`smpsDetune`/`smpsAlterNote` ($E1) is NOT semitones** — it's a raw FNUM offset added to the frequency word (+8 c on C, +4.5 c on A# for $03). Does NOT affect `voice_map` range lookup or pitch placement. It is rendered into the samples (`fm_synthesis.detune_variants`, `core/detune.py`): each instrument's sample at its majority detune, every other detune a variant in a free slot sharing the instrument's level and volume; a tie after a detune change (Scrap Brain FM4's scoops) gets `E1x`/`E2x`. Never stand in for it with `finetune: 1` (removed from 12 configs 2026-10-02: GHZ's FM5 was detuned on 16 of 80 bell notes, Scrap Brain's FM5 not at all). No free slot → `detune_no_slot` (Credits).
 
 2. **`root` is unconditional** — `smpsChangeTransposition` events do NOT affect the root path. Do NOT use `root` on channels that use `$E9` mid-song; use the `total_transpose` path instead (omit `root`, rely on YAML `transpose`).
 

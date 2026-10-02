@@ -78,6 +78,7 @@ fm_synthesis:
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   sustain_duration: auto    # Seconds note held on before key-off, or auto (see § sustain_duration: auto)
   release_padding: 0.5      # Seconds captured after key-off (release tail)
+  detune_variants: true     # smpsAlterNote notes play a sample rendered at their FNUM offset
   threads: normal           # Instruments rendered at once: normal (cores − 1), max (all cores), or a number
 ```
 
@@ -89,6 +90,7 @@ fm_synthesis:
 | `amiga_clock` | int | `3546895` | **Top level** (shared with PSG; a section's own key is the fallback). PAL Amiga; 3579545 for NTSC (rare) |
 | `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = each instrument its own longest ring, see below |
 | `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
+| `detune_variants` | bool | `true` | Each `smpsAlterNote` detune an instrument plays is rendered on the chip with the offset: its majority detune in its own slot, every other in a free slot (`core/detune.py`, docs/pipeline.md § Detune variants). `false`: every note plays the undetuned sample |
 | `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
 
 `samples:` holds what every sample shares, FM and PSG (`core.config._samples_section`; a key

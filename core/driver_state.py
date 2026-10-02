@@ -412,7 +412,8 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     stays active, as the driver keeps a voice), otherwise the active entry; `root` with
     `low` places a tone, `root` alone places noise, and a rooted tone without `low` falls
     to the transpose path.  Noise mode's instrument is the state's own (the envelope
-    variant smpsPSGform / smpsPSGvoice chose).
+    variant smpsPSGform / smpsPSGvoice chose).  An FM note at a detune its instrument's sample
+    is not rendered at plays that detune's variant (core.detune).
     """
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
@@ -424,6 +425,9 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
             inst = entry.mod_instrument
             if entry.root is not None:
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
+        detune = getattr(st.config, "detune_plan", None)     # core.detune: the sample at this detune
+        if detune is not None:
+            inst = detune.instrument_for(inst, st.detune)
     else:
         ranged = psg_range_entry(st.psg_entries, key)
         if ranged is not None:

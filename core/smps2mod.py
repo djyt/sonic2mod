@@ -18,6 +18,7 @@ from .config import (
     SynthesisSettings,
     rate3_synth_root_issues,
 )
+from .detune import DetunePlan, detune_cents, detune_variants_wanted, plan_detune_variants
 from .driver_state import (
     DriverState,
     ResolvedNote,
@@ -84,6 +85,7 @@ def _shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> in
 
 
 _HEADROOM_REPORT_DB = 0.05     # a composite clamped by less is not reported
+_FINE_SLIDE_MAX = 0xF          # E1x / E2x move the period by at most 15 units
 
 
 def _cut_ring(rings: list, tick: int) -> None:
@@ -202,6 +204,9 @@ class SmpsToModConverter:
         self._release_slides = False       # end FM notes with a volume slide instead of C00
         self._pending_sustain_short: dict[tuple[str, int], dict] = {}
         self._merge: MergePlan | None = None   # the merged build's plan; set by convert() (_build_merge_plan)
+        self._detune: DetunePlan | None = None   # the detune variants; set by convert() (_plan_detune)
+        self._sample_detunes: dict[int, float] | None = None   # {FM instrument: cents its sample is detuned}
+        self._tie_retunes = {'placed': 0, 'skipped': 0}   # E1x / E2x on ties that change the detune
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
         self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
         self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
@@ -530,6 +535,8 @@ class SmpsToModConverter:
                 src = f"${inst.layers[0].voice_idx:02X} {_semitone_to_name(e.low)}–{_semitone_to_name(e.high)}"
                 if inst.source_label:
                     src += f" {inst.source_label}"
+                if inst.layers[0].fnum_offset:
+                    src += f" detune {inst.layers[0].fnum_offset:+d}"
                 out[inst.inst] = {'kind': 'FM', 'source': src}
         if self.psg_synth is not None and self.psg_synth.enabled:
             for inst in psg_catalogue(self.config, {i: d['envelope'] for i, d in
@@ -902,6 +909,11 @@ class SmpsToModConverter:
         if derived or stated:
             self.infos.append({'type': 'synth_roots', 'derived': derived, 'stated': stated})
 
+        # Detune variants (core.detune): every smpsAlterNote detune an instrument plays gets its
+        # sample rendered at that offset.  Planned on the song as written, as the audit tools
+        # plan it, and before the merge plan takes the slots left free.
+        self._detune = self._plan_detune()
+
         # Collect PSG instrument numbers that will be synthesized so disk loading
         # can skip them (avoids spurious "file not found" warnings).
         psg_synth_insts: set = set()
@@ -1056,6 +1068,8 @@ class SmpsToModConverter:
             self.infos.append({'type': 'merge_bank_notes', 'notes': len(self._merge.regions),
                                'cuts': self._bank_cuts, 'delays_dropped': self._bank_delays_dropped,
                                'cxx_moved': self._bank_cxx_moved})
+        if any(self._tie_retunes.values()):
+            self.infos.append({'type': 'detune_ties', **self._tie_retunes})
         self._place_leading_rests()
         self._place_tempo_commands()
         if len(self._tempo_segments) > 1:
@@ -1377,6 +1391,42 @@ class SmpsToModConverter:
                          'used': e.tone2_n is None and e.synth_root is None}
         return out
 
+    def _plan_detune(self) -> DetunePlan | None:
+        """The detune variants (core.detune) where FM is synthesised and settings allow them."""
+        if not detune_variants_wanted(self.synth):
+            return None
+        plan = plan_detune_variants(self.song, self.config)
+        if plan.own or plan.variants:
+            self.infos.append({'type': 'detune_variants', 'own': dict(plan.own),
+                               'variants': [(v.inst, v.base, v.detune, v.notes) for v in plan.variants.values()]})
+        if plan.unplaced:
+            self._add_warning({'type': 'detune_no_slot', 'channel': 'FM', 'unplaced': dict(plan.unplaced)})
+        return plan
+
+    def _sample_cents(self, inst: int) -> float:
+        """Cents an FM instrument's sample is detuned by (core.detune): its FNUM offset at the
+        pitch it is rendered at."""
+        if self._sample_detunes is None:
+            self._sample_detunes = {i.inst: detune_cents(i.synth_idx + 12, i.layers[0].fnum_offset)
+                                    for i in fm_catalogue(self.song, self.config).instruments.values()
+                                    if len(i.layers) == 1}
+        return self._sample_detunes.get(inst, 0.0)
+
+    def _fine_slide(self, pattern: int, row: int, mod_chan: int, period: int, cents: float) -> int | None:
+        """E1x / E2x moving a sounding note `cents` (up: positive) from `period`, on a cell with
+        no note and a free effect slot → the period units it moved (up: positive), else None."""
+        units = round(period - period * 2.0 ** (-cents / 1200.0))
+        units = max(-_FINE_SLIDE_MAX, min(_FINE_SLIDE_MAX, units))
+        if not units:
+            return None
+        if self.mod.note_at(pattern, row, mod_chan) or not self.mod.effect_slot_free(pattern, row, mod_chan):
+            self._tie_retunes['skipped'] += 1
+            return None
+        self._set_cursor(pattern, mod_chan, row)
+        self.mod.set_effect(0xE, (0x10 if units > 0 else 0x20) | abs(units))
+        self._tie_retunes['placed'] += 1
+        return units
+
     def _count_levels(self, kind: str, level_of, sources_keep_votes: bool = False) -> dict[int, dict]:
         """{MOD instrument: {level_of(state, resolved): notes}} over every enabled channel of
         `kind` ("FM" or "PSG"), walked with the same DriverState the conversion uses.  A PSG
@@ -1386,7 +1436,8 @@ class SmpsToModConverter:
         In a merged build a composite's slot counts only the notes that play the composite.
         `sources_keep_votes`: except where the slot's former instrument is a mix source kept
         aside under that number (MergePlan.mix_only) - it is still rendered, at its own notes'
-        level, for the mixer (the render levels ask for that).
+        level, for the mixer (the render levels ask for that).  A detune variant (core.detune)
+        votes as its base instrument: it is that sample a few cents off.
         """
         counts: dict[int, dict] = {}
         plan = self._merge
@@ -1404,7 +1455,7 @@ class SmpsToModConverter:
                 if (plan is not None and res.instrument in owned
                         and (chan_cfg.source, event.tick_position) not in plan.ticks):
                     continue
-                inst = res.instrument
+                inst = self._detune.base_of(res.instrument) if self._detune else res.instrument
                 if plan is not None:
                     member = plan.bank_members.get((chan_cfg.source, event.tick_position))
                     if member is not None:
@@ -1427,7 +1478,7 @@ class SmpsToModConverter:
         """
         pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
         counts = self._count_levels(kind, lambda st, res: st.level_db(pan_law) + res.gain_db)
-        return {inst: modal_level(levels) for inst, levels in counts.items()}
+        return self._with_variants({inst: modal_level(levels) for inst, levels in counts.items()})
 
     def _plan_fm_render_levels(self) -> dict[int, tuple[int, bool]]:
         """{MOD instrument: (carrier TL offset, hard-panned)} its FM sample is rendered at.
@@ -1441,8 +1492,12 @@ class SmpsToModConverter:
         """
         pan_law = self.synth.fm_pan_law_db if self.synth else DEFAULT_FM_PAN_LAW_DB
         counts = self._count_levels("FM", lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
-        return {inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
-                for inst, per in counts.items()}
+        return self._with_variants({inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
+                                    for inst, per in counts.items()})
+
+    def _with_variants(self, per_inst: dict) -> dict:
+        """A per-instrument plan with every detune variant given its base's value."""
+        return self._detune.share_base(per_inst) if self._detune else per_inst
 
     def _convert_all_channels(self):
         """Convert all SMPS channels to MOD channels."""
@@ -1753,6 +1808,28 @@ class SmpsToModConverter:
         last_idx = 0                                    # ... its MOD note ...
         last_chip: int | None = None                    # ... and the chip pitch that note sounds
         last_voice: int | None = None                   # ... and the FM voice it was played with
+        # The detune a tie (smpsNoAttack + a duration) sounds at: the driver writes the frequency
+        # with the track's Detune on a tie too, so Scrap Brain FM4's scoop (`smpsAlterNote $EC`,
+        # `nG5, $02`, `smpsAlterNote $00`, `smpsNoAttack, $06`) rises 49 c on its tie.  The MOD
+        # note keeps its detune variant's sample there: an E1x / E2x moves its period instead.
+        sounding_cents: float | None = None             # cents the sounding FM note plays off its table pitch
+        sounding_period = 0                             # ... and its MOD period, slides included
+
+        def _retune_tie(tick: int) -> None:
+            nonlocal sounding_cents, sounding_period
+            assert sounding_cents is not None and last_chip is not None
+            pattern, row = self._tick_to_pattern_row(tick)
+            mod_chan = router.current(tick)
+            if pattern >= self.config.max_patterns:
+                return
+            if (pattern, row) == last_note_cell or router.borrowed(mod_chan, tick):
+                return                      # the attack row's slide would retune the attack too
+            self.mod.ensure_pattern(pattern)
+            want = detune_cents(last_chip, st.detune) - sounding_cents
+            moved = self._fine_slide(pattern, row, mod_chan, sounding_period, want)
+            if moved is not None:
+                sounding_period -= moved
+                sounding_cents += 1200.0 * math.log2((sounding_period + moved) / sounding_period)
         # Every note-on tick of this channel (spliced notes included): a release slide runs up to
         # the row before the next one, so it never lands in a note-on's cell
         _note_on_ticks = sorted(ev.tick_position for ev in channel.events
@@ -1900,6 +1977,8 @@ class SmpsToModConverter:
                     # is_no_attack=True marks an FM/DAC standalone-duration continuation —
                     # the YM2612 envelope sustains naturally; do not emit C00.
                     if note.is_no_attack:
+                        if sounding_cents is not None and last_inst is not None and not st.is_psg:
+                            _retune_tie(tick)
                         continue
                     pattern, row = self._tick_to_pattern_row(tick)
                     if pattern >= self.config.max_patterns:
@@ -2072,6 +2151,9 @@ class SmpsToModConverter:
                     self.mod.set_note(final_note, final_instrument)
                     last_inst, last_vol = final_instrument, _emit_volume(final_instrument)
                     last_idx, last_chip, last_voice = final_note.value, res.chip, st.voice
+                    if self._detune is not None and not _psg_note:
+                        sounding_cents = self._sample_cents(final_instrument)
+                        sounding_period = PERIOD_TABLE[final_note.value]
 
                     # Note fill: silence the channel when the driver fires
                     # PSGNoteOff/FMNoteOff.  The fill byte counts V-int FRAMES (it is

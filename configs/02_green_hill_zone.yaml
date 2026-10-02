@@ -37,7 +37,7 @@ channels:
     mod_channel: 4
 
   # FM5: detuned double of FM4 (smpsAlterNote $02 ≈ +10 cents FNUM offset).
-  # Routed via channel_instrument_map to finetune+1 variants.
+  # Its detuned notes play a variant rendered at the offset (core/detune.py).
   - source: FM5
     mod_channel: 5
 
@@ -74,7 +74,7 @@ sample_list:
   - [5,  "ghz_v02.raw",     22, 0] # VGZ: +1.3 dB at 26
   # --- voice $04: bell arp (FM4/FM5 ending section) ---
   - [6,  "ghz_v04.raw",      10, 0] # VGZ: +2.1 dB at 13
-  - [7,  "ghz_v04.raw",     16, 1] # Same sample, finetune +1 (~+12.5 cents).; VGZ: +1.8 dB at 20
+  - [7,  "ghz_v04.raw",     16, 0] # FM5's; its 16 smpsAlterNote $02 notes get a detune variant; VGZ: +1.8 dB at 20
   # --- voice $05: main melody (FM1/FM3/FM4/FM5) ---
   - [8,  "ghz_v05.raw",     24, 0] # VGZ: +1.7 dB at 29
   - [9,  "ghz_v05_lo.raw",    8, 0] # VGZ: +1.7 dB at 10
@@ -206,7 +206,7 @@ psg_voice_map:
 #
 # FM5 applies smpsAlterNote $02 (FNUM offset ≈ +10 cents) during voice $04
 # bell-arp sections to create the chorus detune effect vs FM4.  The same
-# source notes route to inst 7 (identical audio to inst 6, finetune +1).
+# source notes route to inst 7; the detuned ones play its detune variant.
 # -------------------------------------------------------------------------------------------------
 channel_instrument_map:
   FM5:
@@ -214,7 +214,7 @@ channel_instrument_map:
       - low:  C6              # bottom of FM5 arp range
         high: B7              # top
         root: C2
-        mod_instrument: 7    # same audio as inst 6, finetune +1
+        mod_instrument: 7    # same audio as inst 6
 
 
 # -------------------------------------------------------------------------------------------------

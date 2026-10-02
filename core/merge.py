@@ -85,13 +85,14 @@ from __future__ import annotations
 
 import bisect
 import copy
+import dataclasses
 import math
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from .config import DEFAULT_SHELF_HZ, MergeGroup, format_patterns
 from .driver_state import source_map, walk_channel
-from .instruments import FmInstrument, FmLayer, fm_catalogue, psg_catalogue
+from .instruments import FmInstrument, FmLayer, fm_catalogue, free_slots, psg_catalogue
 from .levels import TL_STEP_DB, clamp_mod_volume
 from .loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
 from .mod import ModSample
@@ -847,15 +848,6 @@ def unison_gain_db(p: NoteOn, followers: list[NoteOn], chip: bool, tolerance: in
     return 10.0 * math.log10(sum(a * a for a in speakers.values()) / alone)
 
 
-def _free_slots(config, song) -> list[int]:
-    """Instrument slots nothing in the config names."""
-    used = {e[0] for e in (config.sample_list or [])}
-    used |= set(fm_catalogue(song, config).instruments)
-    used |= set(psg_catalogue(config))
-    used |= {d.mod_instrument for d in config.dac_samples}
-    return [i for i in range(1, 32) if i not in used]
-
-
 def build_merge_plan(song, config, *, pan_law_db: float,
                      baselines: dict[str, dict[int, float]] | None = None,
                      sample_secs: dict[int, float] | None = None, tick_secs=None,
@@ -921,7 +913,7 @@ class _Planner:
         self.cat = fm_catalogue(song, config)
         self.vol_of = {e[0]: (e[2] if len(e) > 2 else 64, e[3] if len(e) > 3 else 0)
                        for e in (config.sample_list or [])}
-        self.free = _free_slots(config, song)
+        self.free = free_slots(config, song)
         if config.sample_list is None:
             config.sample_list = []
 
@@ -1054,7 +1046,10 @@ class _Planner:
                          pitch_hz=_pitch_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None
-            layers = [FmLayer(p.voice)] + [fm_layer(p, fn, self.tol) for fn in present]
+            # Each layer at its own track's detune: the key's are relative (the shape), the chip's
+            # are what the driver writes (the primary's own detune is its sample's, core.detune)
+            layers = [FmLayer(p.voice, fnum_offset=p.detune)]
+            layers += [dataclasses.replace(fm_layer(p, fn, self.tol), fnum_offset=fn.detune) for fn in present]
             comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
                                    loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms,
                                    treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz,

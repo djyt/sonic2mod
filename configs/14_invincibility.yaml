@@ -35,7 +35,7 @@ sample_list:
   - [2, "kick.raw", 64, 0]
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM3, FM4, FM5 ---
   - [3, "fm_v00.raw", 19, 0] # VGZ: +4.5 dB at 32
-  - [4, "fm_v00_fm5.raw", 32, 1]
+  - [4, "fm_v00_fm5.raw", 32, 0]
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
   - [5, "fm_v01.raw", 32, 0]
   # --- PSG noise (form $E7) ---
@@ -70,8 +70,8 @@ psg_map:
 # -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.
 #
-# FM5 shares FM1's data. smpsAlterNote $03 is a raw FNUM offset (~12.5 cents).
-# Approximate hardware effect by fine-tuning a version of the sample.
+# FM5 shares FM1's data. smpsAlterNote $03 is a raw FNUM offset (+5..8 cents).
+# Its own instrument is rendered at that offset (core/detune.py).
 # -------------------------------------------------------------------------------------------------
 channel_instrument_map:
   FM5:

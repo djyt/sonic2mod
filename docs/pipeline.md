@@ -79,7 +79,7 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 | `smpsCall` | $F8 | address | (none — inlined) | — | Subroutine events spliced into caller |
 | `smpsSetvoice` | $EF | voice index | (instrument routing) | — | Updates voice_map lookup; no direct MOD effect |
 | `smpsChangeTransposition` | $E9 | signed byte | (pitch shift) | — | Updates total_transpose; affects next note placement |
-| `smpsDetune` / `smpsAlterNote` | $E1 | signed byte | (none) | — | FNUM offset (~10 cents); not applied to MOD pitch |
+| `smpsDetune` / `smpsAlterNote` | $E1 | signed byte | (sample) / `E1x` `E2x` | — | FNUM offset (+3…8 c for $03): the note plays its instrument's sample rendered at that offset — a **detune variant** in a free slot (`core/detune.py`); a tie after a detune change gets a fine slide. Never a semitone, never a range lookup |
 | `smpsPan` | $E0 | direction | (level only) | — | MOD panning is channel-based, but a hard-panned note counts `fm_pan_law_db` (3 dB) quieter than a centred one — see §FM levels |
 | `smpsNoAttack` | $E7 | — | (flagged on note) | — | No MOD equivalent; note plays without re-attack in SMPS |
 | `smpsNop` | $E2 | byte | (none) | — | Game sync byte; ignored |
@@ -462,6 +462,36 @@ Example — source C5–B6 (span = 12 semitones):
 
 ---
 
+## Detune variants
+
+`smpsAlterNote` / `smpsDetune` ($E1) adds a raw offset to the frequency word the driver writes
+(`FMUpdateFreq`), so its interval depends on the note: `$03` is +8 c on C (fnum 644), +4.5 c on
+A# (1148).  A MOD retunes only a whole sample, in 12.5 c finetune steps, so `core/detune.py`
+gives every detune an instrument plays a sample of its own, rendered on the chip with the offset
+(settings.yaml `fm_synthesis.detune_variants`, on by default; FM only):
+
+- the detune most of an instrument's notes play at is its **own**: its slot's sample is rendered
+  with it (Title Screen's FM5 instrument, all `$03`, takes no slot more);
+- every other detune is a **variant** in a free slot (the most played first), sharing the
+  instrument's map entry, level plan and `sample_list` volume / finetune;
+- one that finds no slot plays the instrument's own sample (`detune_no_slot` warns: Credits,
+  31 instruments, 11 detunes);
+- `resolve_note` routes a note to its variant, so every pass sees it; the plan is made on the
+  song as parsed (before the loop extension) so `vgm_pitch_audit.py` / `vgm_compare.py` make the
+  same one (`prepare_config`), and the level table counts a variant's notes under its base;
+- a **tie** after a detune change (`smpsAlterNote $EC`, `nG5, $02`, `smpsAlterNote $00`,
+  `smpsNoAttack, $06`: Scrap Brain FM4's scoop) is re-written by the driver at the new detune;
+  the MOD note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference
+  (only on a row of its own with a free effect slot; `--verbose` counts them);
+- a merged chip composite renders every layer at its own track's detune (the key keeps them
+  relative: the chord's shape).
+
+Scrap Brain: FM4 10 wrong notes → 0 (60 ms), mean error 12.7 → 3.7 c.  Across the 13 songs
+with a detune, every detuned channel moved toward the hardware (GHZ FM5 80 notes off by more
+than 10 c → 8, Final Zone FM4 47 → 8, Marble Zone FM3 22 → 0) and none away.
+
+---
+
 ## Common Gotchas
 
 ### 1. smpsAlterNote / smpsDetune is NOT semitones
@@ -470,7 +500,7 @@ Example — source C5–B6 (span = 12 semitones):
 
 **Cause:** `$E1` adds a raw FNUM offset (~10 cents per unit). It is NOT a semitone shift and does NOT affect `source_semitone` used in range lookup.
 
-**Fix:** Ignore `smpsAlterNote` when writing `voice_map` ranges. For detuned-unison chorus channels (e.g. FM5 vs FM4), route to a `mod_instrument` with `finetune: 1` (≈ +12.5 cents) via `channel_instrument_map`.
+**Fix:** Ignore `smpsAlterNote` when writing `voice_map` ranges.  The detune itself needs no config: see § Detune variants.  Do not stand in for it with `finetune: 1` (+12.5 c, and on every note of the slot: GHZ's FM5 is detuned on 16 of its 80 bell notes).
 
 ---
 
@@ -623,7 +653,7 @@ self._set_loop_point(config.mod_pattern_breaks)      # Bxx in final layout
 
 **Cause:** In many Sonic 1 songs, FM5 contains only a `smpsAlterNote` or `smpsAlterPitch` command then implicitly falls through to FM1's label (no `smpsStop`). The parser does not stop at label boundaries — only `smpsStop` or `smpsJump` terminate a channel.
 
-**Fix:** This is correct behavior, not a parser bug. FM5 deliberately shares FM1's data with a pitch offset (chorus/detune effect). Configure FM5 with the same `voice_map` as FM1, possibly adding a `finetune+1` instrument variant for the FNUM detune.
+**Fix:** This is correct behavior, not a parser bug. FM5 deliberately shares FM1's data with a pitch offset (chorus/detune effect). Configure FM5 with the same `voice_map` as FM1; its FNUM detune is rendered into the samples it plays (§ Detune variants).
 
 ---
 

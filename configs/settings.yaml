@@ -11,6 +11,9 @@ fm_synthesis:
   clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
   sustain_duration: auto    # Seconds every note is held before key-off; or 'auto': each instrument
   release_padding: 0.5      # Seconds of audio captured after key-off (for release tail)
+  detune_variants: true     # An smpsAlterNote / smpsDetune note plays its instrument rendered at that
+                            # FNUM offset, in a free slot (core/detune.py).  false: the instrument's
+                            # own sample, at its pitch
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" : CPU cores - 1
                             # "max"    : every core, 

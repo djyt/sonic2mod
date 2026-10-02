@@ -709,6 +709,7 @@ class SynthesisSettings:
     exact_sustain: frozenset = frozenset()                      # as PsgSynthesisSettings
     slide_ends: frozenset = frozenset()                         # as PsgSynthesisSettings
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
+    detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.detune)
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
@@ -820,6 +821,7 @@ class SynthesisSettings:
             sustain_duration=_fm_sd if _fm_sd == "auto" else float(_fm_sd),
             release_padding=s.get("release_padding", 0.5),
             threads=s.get("threads", "normal"),
+            detune_variants=bool(s.get("detune_variants", True)),
             max_sample_kb=_max_sample_kb(smp, filepath),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
             fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
@@ -1002,6 +1004,7 @@ class ConversionConfig:
     merge_output_file: str | None = None                   # default: output_file stem + "_merged"
     merge_active: bool = False                             # set by core.merge.prepare_merged_config
     merge_plan: Any = field(default=None, repr=False)      # core.merge.MergePlan, set by the converter
+    detune_plan: Any = field(default=None, repr=False)     # core.detune.DetunePlan, set by the converter
 
     @classmethod
     def default_sonic1(cls, song_name="Untitled"):

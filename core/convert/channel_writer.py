@@ -33,6 +33,14 @@ _MAX_RELEASE_ROWS = 64         # a release still sounding this many rows on is c
 _HIGHEST_NOTE = 35             # B3, the last of the MOD's 36 notes
 
 
+def _rows_after(tick: float, end: float, tpr: float):
+    """The ticks one row apart after `tick`, before `end` (summed row by row, as the rows run)."""
+    t = tick + tpr
+    while t < end:
+        yield t
+        t += tpr
+
+
 @dataclass
 class EmissionStats:
     """What the channel writers counted, for the conversion's infos."""
@@ -236,10 +244,8 @@ class ChannelWriter:
         self._current_volume = chan_cfg.volume
         if is_dac or (not self._is_psg and fm_mode == "off"):
             self._st.tl = 0          # neither mode reads the smpsHeaderFM volume byte
-        if self._is_psg:
-            self._current_volume = round(psg_att_to_mod(self._st.att) * chan_cfg.volume / 64)
-        elif self._fm_absolute and not is_dac:
-            self._current_volume = round(fm_tl_to_mod(self._st.tl) * chan_cfg.volume / 64)
+        if self._is_psg or (self._fm_absolute and not is_dac):
+            self._current_volume = self._level_volume()
 
         # The sounding note, as _emit_volume and _release_rate read it: dB a unison chord adds
         # to it (ResolvedNote.gain_db), and the banked composite it plays (core.merge.banks, else
@@ -251,16 +257,10 @@ class ChannelWriter:
         # PSG auto note-cut: hardware PSGDoNext sets vol=15 when note duration expires.  The
         # note-on (pattern, row) positions, so no C00 is placed where a later set_note writes a
         # note (set_note retains effect bytes, so a pre-placed C00 would silence the trigger).
-        self._note_on_positions: set[tuple[int, int]] = set()
-        if self._is_psg:
-            for ev in channel.events:
-                if ev.is_note and not ev.note.is_rest and self._router.plays_here(ev):
-                    self._note_on_positions.add(self._timeline.pattern_row(ev.tick_position))
-                    self._note_on_positions.add(divmod(int(ev.tick_position // self._timeline.ticks_per_row), 64))
+        self._note_on_positions = self._note_on_cells() if self._is_psg else set()
         # Every note-on tick of this channel (spliced notes included): a release slide runs up to
         # the row before the next one, so it never lands in a note-on's cell
-        self._note_on_ticks = sorted(ev.tick_position for ev in channel.events
-                                     if ev.is_note and not ev.note.is_rest and self._router.plays_here(ev))
+        self._note_on_ticks = sorted(ev.tick_position for ev in self._note_ons())
 
         self._last_note_cell: tuple[int, int] | None = None   # where this channel's previous note-on went
         self._last_inst: int | None = None                    # the instrument the previous note-on played ...
@@ -274,6 +274,20 @@ class ChannelWriter:
         # note keeps its detune variant's sample there: an E1x / E2x moves its period instead.
         self._sounding_cents: float | None = None             # cents the sounding FM note plays off its table pitch
         self._sounding_period = 0                             # ... and its MOD period, slides included
+
+    def _note_ons(self):
+        """The note-on events this channel's output sounds (spliced ones included)."""
+        return (ev for ev in self._channel.events
+                if ev.is_note and not ev.note.is_rest and self._router.plays_here(ev))
+
+    def _note_on_cells(self) -> set[tuple[int, int]]:
+        """(pattern, row) of every note-on: the row it rounds to and the row it starts in."""
+        tpr = self._timeline.ticks_per_row
+        cells: set[tuple[int, int]] = set()
+        for ev in self._note_ons():
+            cells.add(self._timeline.pattern_row(ev.tick_position))
+            cells.add(divmod(int(ev.tick_position // tpr), 64))
+        return cells
 
     def _collect_ring_ticks(self) -> dict[int, int]:
         """How long each note-on rings before a PSG duration cut: its own duration plus the
@@ -322,14 +336,11 @@ class ChannelWriter:
         affect note pitch or voice_map lookup."""
         eff = event.effect
         kind = eff.effect_type
-        st = self._st
         if kind == 'smpsAlterVol':
             # st.apply moved the TL offset / attenuation; the non-baked modes keep their own
             # MOD-volume accumulator on top of it.
-            if self._is_psg:
-                self._current_volume = round(psg_att_to_mod(st.att) * self._cfg.volume / 64)
-            elif self._fm_absolute:
-                self._current_volume = round(fm_tl_to_mod(st.tl) * self._cfg.volume / 64)
+            if self._is_psg or self._fm_absolute:
+                self._current_volume = self._level_volume()
             elif not self._fm_baked:
                 self._current_volume = max(0, min(64, self._current_volume - eff.params[0]))
         elif kind == 'smpsNoteFill':
@@ -357,15 +368,8 @@ class ChannelWriter:
         if pattern >= self._config.max_patterns:
             return
         self._col = self._router.current(tick)
-        if self._mod.note_at(pattern, row, self._col):
-            self._last_inst = None
-            return                  # a note-on already takes the column here
-        rate = self._release_rate(self._last_inst, tick)
-        if rate is not None and not self._router.borrowed(self._col, tick):   # a slide would sit on its notes
-            self._write_release(self._col, pattern * 64 + row, self._last_vol, rate, tick, self._next_note_row(tick))
-        else:
-            self._mod.set_cursor(pattern, self._col, row)
-            self._mod.set_effect(0xC, 0)
+        if not self._mod.note_at(pattern, row, self._col):      # else a note-on already takes the column
+            self._key_off(pattern, row, tick)
         self._last_inst = None
 
     def _on_rest(self, event) -> None:
@@ -391,19 +395,21 @@ class ChannelWriter:
             self._ctx.leading_rests[self._col] = self._cfg.source
             return
 
-        # Another channel's notes take this column here (mod_channel): its note-on ends this
-        # ring by itself, and a slide would sit on its notes
-        borrowed = self._router.borrowed(self._col, tick)
-        if borrowed and self._mod.note_at(pattern, row, self._col):
+        # Another channel's notes take this column here (mod_channel): its note-on ends this ring
+        if self._router.borrowed(self._col, tick) and self._mod.note_at(pattern, row, self._col):
             return
-        rate = None if borrowed else self._release_rate(self._last_inst, tick)
+        self._key_off(pattern, row, tick)
+
+    def _key_off(self, pattern: int, row: int, tick: int) -> None:
+        """End what rings on the column: the note fades at the voice's release rate (the sample
+        loops, or would be cut short of the chip's release either way), else C00.  No slide on
+        a column another channel's notes take (mod_channel): it would sit on their notes."""
+        rate = None if self._router.borrowed(self._col, tick) else self._release_rate(self._last_inst, tick)
         if rate is not None:
-            # Key-off: the note fades at the voice's release rate (the sample loops, or would be
-            # cut short of the chip's release either way)
             self._write_release(self._col, pattern * 64 + row, self._last_vol, rate, tick, self._next_note_row(tick))
             return
         self._mod.set_cursor(pattern, self._col, row)
-        self._mod.set_effect(0xC, 0)  # C00: mute channel
+        self._mod.set_effect(0xC, 0)
 
     def _on_note(self, event, res: ResolvedNote | None) -> bool:
         """A note-on; False once the song runs past max_patterns (the channel stops)."""
@@ -419,6 +425,14 @@ class ChannelWriter:
         assert res is not None
         return self._on_melodic(event, res)
 
+    def _open_cell(self, pattern: int, row: int, tick: int) -> None:
+        """Take the column a note-on at `tick` goes to, the cursor on its cell, a stale C00 there
+        cleared."""
+        self._col = self._router.take(pattern, row, tick, self._last_inst is not None)
+        self._mod.set_cursor(pattern, self._col, row)
+        self._clear_stale_cut(pattern, row, self._col)
+        self._last_note_cell = (pattern, row)
+
     # --- DAC ------------------------------------------------------------------------------------
     def _on_dac(self, event) -> bool:
         """A drum hit: its dac_samples instrument and note.  DAC notes carry no other effect, so
@@ -427,41 +441,41 @@ class ChannelWriter:
         pattern, row, note_delay = self._note_cell(tick, True, None)
         if pattern >= self._config.max_patterns:
             return False
-        self._col = mod_chan = self._router.take(pattern, row, tick, self._last_inst is not None)
-        self._mod.set_cursor(pattern, mod_chan, row)
-        self._clear_stale_cut(pattern, row, mod_chan)
-        self._last_note_cell = (pattern, row)
+        self._open_cell(pattern, row, tick)
 
         dac_cfg = self._dac_map.get(note.dac_name)
-        if not dac_cfg:
+        if dac_cfg:
+            note_delay = self._play_drum(pattern, row, tick, dac_cfg, note_delay)
+        else:
             # Fallback: use default instrument and C3
             self._mod.set_note(ModNote.C3, self._st.instrument)
             self._last_inst, self._last_vol = self._st.instrument, MOD_MAX_VOLUME
-            if note_delay:
-                self._mod.set_effect(0xE, 0xD0 | note_delay)
-            return True
+        if note_delay:
+            self._mod.set_effect(0xE, 0xD0 | note_delay)
+        return True
 
+    def _play_drum(self, pattern: int, row: int, tick: int, dac_cfg, note_delay: int) -> int:
+        """The drum's instrument and note (a composite with its hi-hat folded in) on the cursor's
+        cell.  Returns the EDx delay left: a sound inside a sample bank starts with 9xx instead."""
         plan = self._ctx.merge
         dac_inst, dac_note, region = self._router.drum(
             tick, dac_cfg.mod_instrument, MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3))
         self._mod.set_note(dac_note, dac_inst)
         self._last_inst, self._last_vol = dac_inst, self._sample_volume(dac_inst)
         self._bank_member = plan.bank_members.get((self._cfg.source, tick)) if plan is not None else None
-        if region is not None:
-            # A sound inside a sample bank (core.merge.banks): start at its offset and cut the note
-            # once it is over, before the next sound in the slot
-            offset, sound = region
-            if offset:
-                self._mod.set_effect(0x9, offset >> 8)
-                if note_delay:
-                    note_delay = 0            # the slot holds the offset
-                    self._ctx.stats.bank_delays_dropped += 1
-            rate = self._ctx.amiga_clock / PERIOD_TABLE[dac_note.value]
-            self._ctx.stats.bank_cuts += self._cut_after(mod_chan, tick, sound / rate, self._next_note_row(tick))
-            self._mod.set_cursor(pattern, mod_chan, row)
-        if note_delay:
-            self._mod.set_effect(0xE, 0xD0 | note_delay)
-        return True
+        if region is None:
+            return note_delay
+
+        # A sound inside a sample bank (core.merge.banks): start at its offset and cut the note
+        # once it is over, before the next sound in the slot
+        offset, sound = region
+        if offset:
+            self._mod.set_effect(0x9, offset >> 8)
+            if note_delay:
+                note_delay = 0            # the slot holds the offset
+                self._ctx.stats.bank_delays_dropped += 1
+        self._cut_bank_sound(pattern, row, tick, dac_note.value, sound)
+        return note_delay
 
     # --- melodic --------------------------------------------------------------------------------
     def _on_melodic(self, event, res: ResolvedNote) -> bool:
@@ -478,10 +492,7 @@ class ChannelWriter:
         n.pattern, n.row, n.delay = self._note_cell(n.tick, slot_free, n.cut_tick)
         if n.pattern >= self._config.max_patterns:
             return False
-        self._col = mod_chan = self._router.take(n.pattern, n.row, n.tick, self._last_inst is not None)
-        self._mod.set_cursor(n.pattern, mod_chan, n.row)
-        self._clear_stale_cut(n.pattern, n.row, mod_chan)
-        self._last_note_cell = (n.pattern, n.row)
+        self._open_cell(n.pattern, n.row, n.tick)
 
         self._mod.set_note(n.mod_note, n.instrument)
         self._last_inst, self._last_vol = n.instrument, self._emit_volume(n.instrument)
@@ -519,16 +530,6 @@ class ChannelWriter:
         fill = self._note_fill if solo is None else solo.fill
         psg = self._is_psg if solo is None else solo.kind == "PSG"
 
-        # The slot is needed for Cxx when this note's level differs from the instrument's, and
-        # for ECx when the note is cut inside the attack row (note fill; PSG notes also end at
-        # their duration)
-        fill_t = fill * self._timeline.ticks_per_frame_at(tick)
-        cut_tick = None
-        if fill > 0 and fill_t < note.duration:
-            cut_tick = tick + fill_t
-        elif psg:
-            cut_tick = tick + self._ring_ticks.get(id(event), note.duration)
-
         # A Cxx due on the attack row gives way to EDx when the note lasts into the next row:
         # the volume is then set there (_attack_commands).  Drowning FM4 pans every other note
         # hard, so half its notes carry a -3 dB Cxx, and all of them start a tick off the grid.
@@ -542,8 +543,20 @@ class ChannelWriter:
         return _Note(event=event, res=res, tick=tick, duration=note.duration, instrument=instrument,
                      mod_note=ModNote(self._router.note(tick, res.index)), solo=solo,
                      vib_on=self._vibrato_active and res.path != "merged", fill=fill, psg=psg,
-                     cut_tick=cut_tick, region=region, bank9=region is not None and region[0] > 0,
+                     cut_tick=self._cut_tick(event, fill, psg), region=region,
+                     bank9=region is not None and region[0] > 0,
                      needs_cxx=self._emit_volume(instrument) != self._sample_volume(instrument))
+
+    def _cut_tick(self, event, fill: int, psg: bool) -> float | None:
+        """Where the note is cut, as the attack row's slot needs to know (ECx when inside it): its
+        note fill, else a PSG note's end of duration."""
+        note, tick = event.note, event.tick_position
+        fill_t = fill * self._timeline.ticks_per_frame_at(tick)
+        if fill > 0 and fill_t < note.duration:
+            return tick + fill_t
+        if psg:
+            return tick + self._ring_ticks.get(id(event), note.duration)
+        return None
 
     def _resolve_legato(self, n: _Note) -> None:
         """smpsNoAttack before a note byte: the driver writes the new frequency and skips the
@@ -551,35 +564,45 @@ class ChannelWriter:
         its sample, so the note is written with a tone portamento at full speed instead (3FF:
         the period slides in a tick, no re-trigger; the instrument number only resets the
         volume).  It needs the effect slot, so no EDx, and a Cxx due moves to the next row."""
+        n.legato = self._legato_allowed(n)
+        if not n.legato or self._ctx.legato_mode != "strict":
+            return
+        if self._last_inst is None or self._last_chip is None or self._last_inst == n.instrument:
+            return
+
+        # The target lies in another range of the voice (another instrument, its sample
+        # rendered for another octave).  A portamento never changes the sample, so the slide
+        # is written on the one that is sounding: the same chip pitch, as many semitones from
+        # the previous MOD note as it is from the previous chip pitch (Green Hill's FM3 grace
+        # C6 -> B5 crosses voice $08's C6 range boundary and landed an octave up).  Off the
+        # MOD's three octaves, the note is re-triggered on its own instrument instead.
+        shifted = self._last_idx + (n.res.chip - self._last_chip)
+        if 0 <= shifted <= _HIGHEST_NOTE:
+            n.instrument, n.mod_note = self._last_inst, ModNote(shifted)
+        else:
+            n.legato = False
+
+    def _legato_allowed(self, n: _Note) -> bool:
+        """Whether a no-attack note may slide (settings.yaml `legato`): never under `retrigger`
+        or into a banked sound; under `strict` only onto a sample of the same voice."""
         mode = self._ctx.legato_mode
-        legato = n.event.note.is_no_attack and n.res.path != "merged" and mode != "retrigger"
+        if not n.event.note.is_no_attack or n.res.path == "merged" or mode == "retrigger":
+            return False
         if n.region is not None:
-            legato = False          # a banked sound starts at its offset: a note-on
-        strict = mode == "strict"
-        if strict and legato and self._last_inst is None:
-            # Nothing has sounded on this channel yet: a portamento would never trigger a sample
-            # (Drowning's FM3 trill is no-attack from its first note; the hardware plays it).
-            legato = False
-        if strict and legato and self._last_voice is not None and self._st.voice != self._last_voice:
-            # smpsSetvoice between the notes: the hardware rewrites the operators under the
-            # running envelope, so the note sounds with the new voice.  A portamento would keep
-            # the old voice's sample; re-trigger on the new one (Green Hill's FM4/FM5 at the loop
-            # label: voice $08 -> $05).
-            legato = False
-        if (strict and legato and self._last_inst is not None and self._last_chip is not None
-                and self._last_inst != n.instrument):
-            # The target lies in another range of the voice (another instrument, its sample
-            # rendered for another octave).  A portamento never changes the sample, so the slide
-            # is written on the one that is sounding: the same chip pitch, as many semitones from
-            # the previous MOD note as it is from the previous chip pitch (Green Hill's FM3 grace
-            # C6 -> B5 crosses voice $08's C6 range boundary and landed an octave up).  Off the
-            # MOD's three octaves, the note is re-triggered on its own instrument instead.
-            shifted = self._last_idx + (n.res.chip - self._last_chip)
-            if 0 <= shifted <= _HIGHEST_NOTE:
-                n.instrument, n.mod_note = self._last_inst, ModNote(shifted)
-            else:
-                legato = False
-        n.legato = legato
+            return False            # a banked sound starts at its offset: a note-on
+        if mode != "strict":
+            return True
+
+        # Nothing has sounded on this channel yet: a portamento would never trigger a sample
+        # (Drowning's FM3 trill is no-attack from its first note; the hardware plays it).
+        if self._last_inst is None:
+            return False
+
+        # smpsSetvoice between the notes: the hardware rewrites the operators under the
+        # running envelope, so the note sounds with the new voice.  A portamento would keep
+        # the old voice's sample; re-trigger on the new one (Green Hill's FM4/FM5 at the loop
+        # label: voice $08 -> $05).
+        return self._last_voice is None or self._st.voice == self._last_voice
 
     def _place_fill(self, n: _Note) -> _Fill:
         """Note fill: silence the channel when the driver fires PSGNoteOff/FMNoteOff.  The fill
@@ -594,21 +617,12 @@ class ChannelWriter:
         # Work in absolute MOD ticks (rows × speed) so the cut keeps its sub-row position: a
         # whole row → C00 on that row, otherwise ECx.
         speed = self._config.target_speed
-        tpr = self._timeline.ticks_per_row
         mod_chan = self._col
-        row_abs = (n.pattern * 64 + n.row) * speed
-        note_abs = row_abs + n.delay
         next_pat, next_row = self._timeline.pattern_row(n.tick + n.duration)
-        next_abs = (next_pat * 64 + next_row) * speed
-        fill_abs = max(note_abs + 1, round((n.tick + fill_ticks) * speed / tpr))
-        # Effect priority: volume beats note cut.  If the attack row needs its slot for Cxx, the
-        # cut moves to the start of the next row instead.
-        if fill_abs < row_abs + speed and (self._emit_volume(n.instrument) != self._sample_volume(n.instrument)
-                                           or n.bank9):
-            fill_abs = row_abs + speed      # the attack row's slot holds Cxx / 9xx
+        fill_abs = self._fill_abs(n, fill_ticks)
         fill_row_total, fill_sub = divmod(fill_abs, speed)
         # At or past the row of the next event, the next note / rest takes over.
-        if not (fill_abs < next_abs and fill_row_total // 64 < self._config.max_patterns):
+        if not (fill_abs < (next_pat * 64 + next_row) * speed and fill_row_total // 64 < self._config.max_patterns):
             return out
 
         out.pattern, out.row = fill_row_total // 64, fill_row_total % 64
@@ -620,11 +634,7 @@ class ChannelWriter:
                 mod_chan, fill_row_total, self._emit_volume(n.instrument), rel_rate,
                 n.tick, min(self._next_note_row(n.tick), next_pat * 64 + next_row)))
         else:
-            self._mod.set_cursor(out.pattern, mod_chan, out.row)
-            if fill_sub:
-                self._mod.set_effect(0xE, 0xC0 | fill_sub)
-            else:
-                self._mod.set_effect(0xC, 0)
+            self._write_cut(mod_chan, fill_row_total, fill_sub)
         # Restore cursor to the current note's cell.
         self._mod.set_cursor(n.pattern, mod_chan, n.row)
         out.placed = True
@@ -633,41 +643,56 @@ class ChannelWriter:
                          or ((out.pattern, out.row) == (n.pattern, n.row) and rel_rate is None))
         return out
 
+    def _fill_abs(self, n: _Note, fill_ticks: float) -> int:
+        """The MOD tick (rows × speed) a fill cuts the note at: after its start, and past the
+        attack row when that row's slot holds a Cxx / 9xx (effect priority: volume beats note
+        cut)."""
+        speed = self._config.target_speed
+        row_abs = (n.pattern * 64 + n.row) * speed
+        fill_abs = max(row_abs + n.delay + 1, round((n.tick + fill_ticks) * speed / self._timeline.ticks_per_row))
+        if fill_abs < row_abs + speed and (self._emit_volume(n.instrument) != self._sample_volume(n.instrument)
+                                           or n.bank9):
+            fill_abs = row_abs + speed
+        return fill_abs
+
     def _place_duration_cut(self, n: _Note) -> None:
         """PSG auto note-cut: silence at the note's natural end when no smpsNoteFill was placed.
         Mirrors hardware PSGDoNext setting vol=15 when the duration timer expires - after the
         smpsNoAttack continuations, which do not re-key (_ring_ticks)."""
-        mod_chan = self._col
         cut_tick = n.tick + self._ring_ticks.get(id(n.event), n.duration)
         cut_pat, cut_row = self._timeline.pattern_row(cut_tick)
-        same_row = cut_pat == n.pattern and cut_row == n.row
-        if same_row and n.bank9:
-            # The attack row's slot holds the 9xx: the cut waits for the next row
-            nxt = n.pattern * 64 + n.row + 1
-            if divmod(nxt, 64) not in self._note_on_positions and nxt // 64 < self._config.max_patterns:
-                self._mod.ensure_pattern(nxt // 64)
-                self._mod.set_cursor(nxt // 64, mod_chan, nxt % 64)
-                self._mod.set_effect(0xC, 0)
-                self._mod.set_cursor(n.pattern, mod_chan, n.row)
-        elif same_row:
-            # Sub-row cut: note ends within the same MOD row → ECx
-            ec_val = round((cut_tick - n.tick) * self._config.target_speed / self._timeline.ticks_per_row)
-            ec_val = min(ec_val, self._config.target_speed - 1)
-            if ec_val > 0:
-                self._mod.set_effect(0xE, 0xC0 | ec_val)
-        elif (cut_pat, cut_row) not in self._note_on_positions and cut_pat < self._config.max_patterns:
+        if (cut_pat, cut_row) != (n.pattern, n.row):
             # Different row: write C00 only where no note-on fires (rest events also emit C00
             # there, which is idempotent)
-            self._mod.set_cursor(cut_pat, mod_chan, cut_row)
-            self._mod.set_effect(0xC, 0)
-            self._mod.set_cursor(n.pattern, mod_chan, n.row)
+            if (cut_pat, cut_row) not in self._note_on_positions and cut_pat < self._config.max_patterns:
+                self._cut_row(cut_pat, cut_row, n)
+            return
+
+        if n.bank9:
+            # The attack row's slot holds the 9xx: the cut waits for the next row
+            nxt_pat, nxt_row = divmod(n.pattern * 64 + n.row + 1, 64)
+            if (nxt_pat, nxt_row) not in self._note_on_positions and nxt_pat < self._config.max_patterns:
+                self._mod.ensure_pattern(nxt_pat)
+                self._cut_row(nxt_pat, nxt_row, n)
+            return
+
+        # Sub-row cut: note ends within the same MOD row → ECx
+        ec_val = round((cut_tick - n.tick) * self._config.target_speed / self._timeline.ticks_per_row)
+        ec_val = min(ec_val, self._config.target_speed - 1)
+        if ec_val > 0:
+            self._mod.set_effect(0xE, 0xC0 | ec_val)
+
+    def _cut_row(self, pattern: int, row: int, n: _Note) -> None:
+        """C00 on a later row of the note; the cursor goes back to its cell."""
+        self._mod.set_cursor(pattern, self._col, row)
+        self._mod.set_effect(0xC, 0)
+        self._mod.set_cursor(n.pattern, self._col, n.row)
 
     def _attack_commands(self, n: _Note, slot_used: bool) -> tuple[tuple[int, int] | None, bool]:
         """EDx, 3FF or 9xx on the attack row, and the Cxx they displace moved to the note's first
         later row with a free slot.  Returns (that Cxx's cell, whether the attack row's slot is
         taken).  A delayed note spends its slot on EDx (an in-row ECx was ruled out by
         _note_cell; an attack-row 4xy is given up — the later rows carry it)."""
-        cxx_coord = None
         if n.delay:
             if slot_used:          # cannot happen; keep the cut if it does
                 n.delay = 0
@@ -683,25 +708,26 @@ class ChannelWriter:
             slot_used = True
             self._ctx.stats.bank_cxx_moved += n.needs_cxx
         if not ((n.delay or n.legato or n.bank9) and n.needs_cxx):
-            return cxx_coord, slot_used
+            return None, slot_used
+        return self._move_cxx(n), slot_used
 
-        # The Cxx moves to the first later row of the note whose slot is free (a cut placed
-        # above keeps its row).  One row at the instrument's own level, then the right one; a
-        # lost row of level beats 33 ms of timing.
+    def _move_cxx(self, n: _Note) -> tuple[int, int] | None:
+        """The attack row's Cxx on the first later row of the note whose slot is free (a cut placed
+        before keeps its row) → that cell.  One row at the instrument's own level, then the right
+        one; a lost row of level beats 33 ms of timing."""
         mod_chan = self._col
         end_pat, end_row = self._timeline.pattern_row(n.tick + n.duration)
-        r_total = n.pattern * 64 + n.row + 1
-        while r_total < end_pat * 64 + end_row and r_total // 64 < self._config.max_patterns:
+        end_total = min(end_pat * 64 + end_row, self._config.max_patterns * 64)
+        for r_total in range(n.pattern * 64 + n.row + 1, end_total):
             p_, r_ = divmod(r_total, 64)
             self._mod.ensure_pattern(p_)
-            if self._mod.effect_slot_free(p_, r_, mod_chan):
-                self._mod.set_cursor(p_, mod_chan, r_)
-                self._mod.set_effect(0xC, self._emit_volume(n.instrument))
-                self._mod.set_cursor(n.pattern, mod_chan, n.row)
-                cxx_coord = (p_, r_)
-                break
-            r_total += 1
-        return cxx_coord, slot_used
+            if not self._mod.effect_slot_free(p_, r_, mod_chan):
+                continue
+            self._mod.set_cursor(p_, mod_chan, r_)
+            self._mod.set_effect(0xC, self._emit_volume(n.instrument))
+            self._mod.set_cursor(n.pattern, mod_chan, n.row)
+            return p_, r_
+        return None
 
     def _vibrato_of(self, n: _Note) -> tuple[int, int]:
         """(4xy speed, depth) for this note: a per-entry override first, else the smpsModSet's
@@ -741,23 +767,22 @@ class ChannelWriter:
         TempoWait frames too); a row carries 4xy when modulation runs for at least half of it."""
         mod_chan = self._col
         vib_start_tick = n.tick + self._vibrato_wait * self._timeline.ticks_per_frame_at(n.tick)
-        note_end_tick = n.tick + n.duration
         tpr = self._timeline.ticks_per_row
         fill_coord = (fill.pattern, fill.row) if fill.placed else None
-        cont_tick = n.tick + tpr   # start one row past the attack
-        while cont_tick < note_end_tick:
-            if cont_tick + tpr / 2 >= vib_start_tick:
-                cont_pat, cont_row = self._timeline.pattern_row(cont_tick)
-                if cont_pat >= self._config.max_patterns:
-                    break
-                if fill.slides and (cont_pat, cont_row) >= min(fill.slides):
-                    break                   # released: nothing to modulate
-                if (cont_pat, cont_row) not in (fill_coord, cxx_coord):
-                    if cont_pat >= len(self._mod.patterns):
-                        break
-                    self._mod.set_cursor(cont_pat, mod_chan, cont_row)
-                    self._mod.set_effect(0x4, (vib_speed << 4) | vib_depth)
-            cont_tick += tpr
+        for cont_tick in _rows_after(n.tick, n.tick + n.duration, tpr):
+            if cont_tick + tpr / 2 < vib_start_tick:
+                continue                    # still waiting
+            cont_pat, cont_row = self._timeline.pattern_row(cont_tick)
+            if cont_pat >= self._config.max_patterns:
+                break
+            if fill.slides and (cont_pat, cont_row) >= min(fill.slides):
+                break                       # released: nothing to modulate
+            if (cont_pat, cont_row) in (fill_coord, cxx_coord):
+                continue
+            if cont_pat >= len(self._mod.patterns):
+                break
+            self._mod.set_cursor(cont_pat, mod_chan, cont_row)
+            self._mod.set_effect(0x4, (vib_speed << 4) | vib_depth)
         # Restore cursor to the attack row
         self._mod.set_cursor(n.pattern, mod_chan, n.row)
 
@@ -767,14 +792,24 @@ class ChannelWriter:
         member = self._bank_member
         if n.region is None or member is None or member.looped:
             return
-        rate = self._ctx.amiga_clock / PERIOD_TABLE[n.mod_note.value]
-        self._ctx.stats.bank_cuts += self._cut_after(self._col, n.tick, n.region[1] / rate,
-                                                     self._next_note_row(n.tick))
-        self._mod.set_cursor(n.pattern, self._col, n.row)
+        self._cut_bank_sound(n.pattern, n.row, n.tick, n.mod_note.value, n.region[1])
+
+    def _cut_bank_sound(self, pattern: int, row: int, tick: int, note_value: int, sound_bytes: int) -> None:
+        """Cut a banked sound where its bytes run out at the note's rate, unless the channel's next
+        note comes first.  The cursor goes back to the note's cell."""
+        rate = self._ctx.amiga_clock / PERIOD_TABLE[note_value]
+        self._ctx.stats.bank_cuts += self._cut_after(self._col, tick, sound_bytes / rate, self._next_note_row(tick))
+        self._mod.set_cursor(pattern, self._col, row)
 
     # --- levels ---------------------------------------------------------------------------------
     def _sample_volume(self, inst: int) -> int:
         return self._sample_vols.get(inst, MOD_MAX_VOLUME)
+
+    def _level_volume(self) -> int:
+        """The MOD volume st's level stands for outside baked mode: the PSG attenuation, or the
+        FM TL offset (absolute mode)."""
+        level = psg_att_to_mod(self._st.att) if self._is_psg else fm_tl_to_mod(self._st.tl)
+        return round(level * self._cfg.volume / 64)
 
     def _emit_volume(self, inst: int) -> int:
         """MOD volume for a note on `inst` right now (equals the sample volume → no Cxx).
@@ -885,25 +920,29 @@ class ChannelWriter:
         written: set[tuple[int, int]] = set()
         v = float(volume)
         target = float(volume)
-        r = row_total
-        while v > 0 and r < stop_row_total and r // 64 < self._config.max_patterns:
-            if r - row_total >= _MAX_RELEASE_ROWS:
-                self._mod.set_cursor(r // 64, mod_chan, r % 64)
-                if self._mod.effect_slot_free(r // 64, r % 64, mod_chan):
-                    self._mod.set_effect(0xC, 0)
-                    written.add((r // 64, r % 64))
+        for r in range(row_total, min(stop_row_total, self._config.max_patterns * 64)):
+            if v <= 0:
                 break
+            pattern, row = divmod(r, 64)
+            if r - row_total >= _MAX_RELEASE_ROWS:
+                self._mod.set_cursor(pattern, mod_chan, row)
+                if self._mod.effect_slot_free(pattern, row, mod_chan):
+                    self._mod.set_effect(0xC, 0)
+                    written.add((pattern, row))
+                break
+
+            # This row's share of the fall
             target *= db_to_gain(-rate_db_s * row_secs)
-            y = round((v - target) / per_tick)
-            if y > 0:
-                y = min(15, y)
-                self._mod.ensure_pattern(r // 64)
-                if self._mod.effect_slot_free(r // 64, r % 64, mod_chan):
-                    self._mod.set_cursor(r // 64, mod_chan, r % 64)
-                    self._mod.set_effect(0xA, y)
-                    written.add((r // 64, r % 64))
-                    v = max(0.0, v - y * per_tick)
-            r += 1
+            y = min(15, round((v - target) / per_tick))
+            if y <= 0:
+                continue
+            self._mod.ensure_pattern(pattern)
+            if not self._mod.effect_slot_free(pattern, row, mod_chan):
+                continue
+            self._mod.set_cursor(pattern, mod_chan, row)
+            self._mod.set_effect(0xA, y)
+            written.add((pattern, row))
+            v = max(0.0, v - y * per_tick)
         return written
 
     def _cut_after(self, mod_chan: int, tick: int, secs: float, next_row: int) -> bool:
@@ -920,12 +959,17 @@ class ChannelWriter:
         row_total, sub = divmod(cut_abs, speed)
         if row_total >= next_row or row_total // 64 >= self._config.max_patterns:
             return False
+        self._write_cut(mod_chan, row_total, sub)
+        return True
+
+    def _write_cut(self, mod_chan: int, row_total: int, sub: int) -> None:
+        """C00 on the row (over the whole song), or ECx `sub` MOD ticks into it.  Leaves the
+        cursor there."""
         self._mod.set_cursor(row_total // 64, mod_chan, row_total % 64)
         if sub:
             self._mod.set_effect(0xE, 0xC0 | sub)
         else:
             self._mod.set_effect(0xC, 0)
-        return True
 
     def _clear_stale_cut(self, pattern: int, row: int, mod_chan: int) -> None:
         """Drop a C00 left in this cell by an earlier rest whose row rounds onto this note-on's:

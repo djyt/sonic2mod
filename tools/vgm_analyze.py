@@ -405,9 +405,10 @@ def parse_vgm(
     Smaller moves are the driver's modulation (smpsModSet rewrites the divider every few frames)
     and stay inside the note; pass 0 to get a row for every period write.
 
-    FM rows:       (time_ms, chan_name, fnum, block, freq_hz, note_name)
-    PSG tone rows: (time_ms, chan_name, period, 0, freq_hz, note_name)
-    PSG noise rows:(time_ms, "NOISE",  noise_reg, 0, 0.0, noise_desc)
+    FM rows:       (time_ms, chan_name, fnum, block, freq_hz, note_name, smps_note)
+    PSG tone rows: (time_ms, chan_name, period, 0, freq_hz, note_name, smps_note)
+    PSG noise rows:(time_ms, "NOISE",  noise_reg, 0, lfsr_shift_hz, noise_desc, "—")
+    DAC rows:      (time_ms, "DAC",    offset, 0, 0.0, "seek <offset>", "—")
 
     Returns (rows, fm_amp_samples, psg_amp_samples).
     """

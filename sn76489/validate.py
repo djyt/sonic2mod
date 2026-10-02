@@ -16,6 +16,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.smps import MD_PSG_CLOCK
 from sn76489.renderer import note_to_psg_n
 from sn76489.wrapper import SN76489
 
@@ -24,7 +25,7 @@ def main() -> None:
     print("SN76489 PSG validation")
     print("======================")
 
-    clock_rate  = 3_579_545   # NTSC MD
+    clock_rate  = MD_PSG_CLOCK   # NTSC MD: the checks below are its known values
     sample_rate = 44100
     sustain_n   = int(sample_rate * 0.5)
     release_n   = int(sample_rate * 0.1)

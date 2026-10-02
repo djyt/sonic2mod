@@ -144,15 +144,13 @@ def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, conf
     """What the converter decides before it renders, on `cfg`: every entry's synth_root /
     synth_shift (from the song) and the detune variants (core.plan.detune) the settings ask for.
     Returns the parsed song."""
-    from core.config import SynthesisSettings
+    from core.config import find_settings, load_settings
     from core.plan import detune_variants_wanted, plan_detune_variants, resolve_synth_roots
     from core.smps import SmpsParser
     song = SmpsParser().parse_file(cfg.input_file)
     resolve_synth_roots(song, cfg)
-    if settings_path is None:
-        beside = Path(config_path).parent / "settings.yaml"
-        settings_path = beside if beside.exists() else _HERE.parent / "configs" / "settings.yaml"
-    if detune_variants_wanted(SynthesisSettings.from_yaml(str(settings_path))):
+    synth, _psg = load_settings(str(settings_path) if settings_path else find_settings(str(config_path)))
+    if detune_variants_wanted(synth):
         plan_detune_variants(song, cfg)
     return song
 

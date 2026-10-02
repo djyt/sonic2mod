@@ -31,7 +31,7 @@ from rich.table import Table
 from rich.text import Text
 
 from ..diagnostics import InfoKind, WarningKind
-from ..mod import MAX_MOD_SAMPLE_BYTES, audit
+from ..mod import MAX_MOD_SAMPLE_BYTES, PAL_AMIGA_CLOCK, audit
 from ..smps import source_names, synth_note_name
 
 OK = "[green]✓[/green]"
@@ -740,7 +740,8 @@ def detail_lines(infos: list[dict]) -> list[str]:
 
 
 def print_report(console: Console, rep: Report) -> None:
-    rows, _notes = audit(rep.output_path)
+    s = rep.synth or rep.psg_synth
+    rows, _notes = audit(rep.output_path, amiga_clock=s.amiga_clock if s else PAL_AMIGA_CLOCK)
     sources = rep.converter.sample_sources()
     flags = sample_flags(rows, rep.converter.warnings)
     lines = warning_lines(rep.converter.warnings)

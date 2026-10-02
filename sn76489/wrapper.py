@@ -2,7 +2,7 @@
 
 Usage::
 
-    sn = SN76489(clock_rate=3_546_895, sample_rate=44100)
+    sn = SN76489(clock_rate=3_579_545, sample_rate=44100)
     sn.write_tone_freq(0, 253)   # channel 0, N=253
     sn.write_volume(0, 0)        # max volume
     samples = sn.render_samples(44100)   # 1 second — list of (L, R) int32 tuples
@@ -27,6 +27,8 @@ Mega Drive config: FB_SEGAVDP=0x0009, SRW_SEGAVDP=16, boost_noise=1.
 
 import ctypes
 from ctypes import POINTER, c_int32, cast
+
+from core.smps import MD_PSG_CLOCK
 
 from .build import get_lib_path
 
@@ -83,7 +85,7 @@ def _load_lib() -> ctypes.CDLL:
 class SN76489:
     """Python interface to the VGMPlay SN76489 emulator."""
 
-    def __init__(self, clock_rate: int = 3_546_895, sample_rate: int = 44100):
+    def __init__(self, clock_rate: int = MD_PSG_CLOCK, sample_rate: int = 44100):
         """Initialise the chip.
 
         Args:

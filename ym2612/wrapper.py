@@ -35,15 +35,24 @@ collects one (L, R) pair per batch, yielding exactly ``n`` samples.
 import array
 import ctypes
 
+from core.smps import MD_FM_CLOCK
+
 from .build import get_lib_path
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_CLOCK_RATE  = 7_670_454          # Mega Drive NTSC master clock (Hz)
 _CLOCKS_PER_SAMPLE = 24           # Internal clocks per audio sample
-_NATIVE_RATE = _CLOCK_RATE // 6 // _CLOCKS_PER_SAMPLE  # ≈ 53,267 Hz
+
+
+def output_rate(clock_rate: int) -> int:
+    """The chip's sample rate at master clock `clock_rate` (settings.yaml fm_synthesis.clock_rate):
+    one sample per 6 x 24 clocks, 53267 Hz at the NTSC Mega Drive's."""
+    return clock_rate // 6 // _CLOCKS_PER_SAMPLE
+
+
+_NATIVE_RATE = output_rate(MD_FM_CLOCK)  # ≈ 53,267 Hz
 
 # ym3438_t is a large struct (~2–3 KB). We allocate a conservatively sized
 # opaque buffer and let the C code use it directly via pointer cast.

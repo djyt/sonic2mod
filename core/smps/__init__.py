@@ -15,6 +15,8 @@ from .driver_tables import (
     FM_SAMPLE_RATE,
     FM_SLOT_MASK,
     HW_FM_CHANNEL,
+    MD_FM_CLOCK,
+    MD_PSG_CLOCK,
     PAN_VALUES,
     PSG_CHANNEL,
     PSG_ENVELOPES,
@@ -47,7 +49,7 @@ from .song_prep import apply_global_tempo_div, extend_looping_channels
 
 __all__ = [
     "CARRIER_OFFSETS_BY_ALG", "DEFAULT_FM_PAN_LAW_DB", "ENVELOPE_TERMINATOR", "FM_FREQUENCIES", "FM_SAMPLE_RATE",
-    "FM_SLOT_MASK", "FM_TL_SILENT", "HW_FM_CHANNEL", "PAN_VALUES", "PSG_ATT_SILENT", "PSG_CHANNEL", "PSG_ENVELOPES",
+    "FM_SLOT_MASK", "FM_TL_SILENT", "HW_FM_CHANNEL", "MD_FM_CLOCK", "MD_PSG_CLOCK", "PAN_VALUES", "PSG_ATT_SILENT", "PSG_CHANNEL", "PSG_ENVELOPES",
     "PSG_ENVELOPES_BY_NAME", "PSG_FREQUENCIES", "PSG_FREQUENCIES_EXTENDED", "PSG_SAMPLE_RATE", "PSG_STEP_DB",
     "SMPS_OP_TO_REG_OFFSET", "TL_STEP_DB", "SmpsChannel", "SmpsEvent", "SmpsNote", "SmpsParser", "SmpsSong",
     "SmpsSongHeader", "SmpsVoice", "apply_global_tempo_div", "carrier_names", "chip_pitch",

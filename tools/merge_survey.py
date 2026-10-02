@@ -38,7 +38,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import db_to_gain
-from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
+from core.config import ConversionConfig, find_settings, load_settings
 from core.convert import SmpsToModConverter
 from core.merge import NoteOn, PairStats, channel_notes, pair_channels
 from core.plan import resolve_synth_roots
@@ -83,13 +83,11 @@ class SurveyContext:
                 [r for r in rests if self.pattern_of(r) in patterns])
 
 
-def survey_context(cfg: ConversionConfig, settings_dir: Path) -> SurveyContext:
+def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
     """Parse and prepare the song the way `convert.py --merged` does before it builds the merge
     plan (tempo re-timing, loop extension, baked levels) and collect every channel's notes."""
     song = SmpsParser().parse_file(cfg.input_file)
-    settings = settings_dir / "settings.yaml"
-    synth = SynthesisSettings.from_yaml(str(settings)) if settings.exists() else SynthesisSettings()
-    psg = PsgSynthesisSettings.from_yaml(str(settings)) if settings.exists() else PsgSynthesisSettings()
+    synth, psg = load_settings(find_settings(config_path))
     conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
     resolve_synth_roots(song, cfg)
     conv.prepare_song()                      # a replayed loop body is as many notes as it plays
@@ -110,9 +108,9 @@ def survey_context(cfg: ConversionConfig, settings_dir: Path) -> SurveyContext:
     return SurveyContext(song, conv, sources, notes, level_scale, tol)
 
 
-def survey(cfg: ConversionConfig, settings_dir: Path) -> tuple[list[PairStats], dict[str, int]]:
+def survey(cfg: ConversionConfig, config_path: str) -> tuple[list[PairStats], dict[str, int]]:
     """PairStats for every ordered pair of enabled channels, and each channel's note count."""
-    ctx = survey_context(cfg, settings_dir)
+    ctx = survey_context(cfg, config_path)
     counts = ctx.counts
     stats = []
     for p in ctx.sources:
@@ -143,7 +141,7 @@ def main() -> None:
     ap.add_argument("--all", action="store_true", help="print every pair, not only the clean ones")
     args = ap.parse_args()
     cfg = ConversionConfig.from_yaml(args.config)
-    stats, counts = survey(cfg, Path(args.config).resolve().parent)
+    stats, counts = survey(cfg, args.config)
 
     print(f"{cfg.name}: " + ", ".join(f"{s} {n}" for s, n in counts.items()) + " notes\n")
     head = (f"{'primary':8} {'follower':8} {'notes':>5} {'paired':>6} {'solo':>4} {'cut':>3} {'alone':>5} "

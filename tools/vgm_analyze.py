@@ -71,7 +71,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.audio import db_to_gain
-from core.smps import CARRIER_OFFSETS_BY_ALG, fm_level_db, psg_level_db
+from core.smps import CARRIER_OFFSETS_BY_ALG, MD_FM_CLOCK, MD_PSG_CLOCK, fm_level_db, psg_level_db
 
 # ---------------------------------------------------------------------------
 # Frequency math
@@ -80,11 +80,9 @@ from core.smps import CARRIER_OFFSETS_BY_ALG, fm_level_db, psg_level_db
 # VGM files use 44100 Hz as the sample clock for wait commands.
 _VGM_SAMPLE_RATE = 44100
 
-# Sonic 1 NTSC YM2612 master clock (Hz).  Override with --clock if needed.
-DEFAULT_FM_CLOCK = 7_670_454
-
-# Sonic 1 NTSC SN76489 clock (Hz).  Override with --psg-clock if needed.
-DEFAULT_PSG_CLOCK = 3_579_545
+# The recording's chip clocks, Sonic 1 on an NTSC Mega Drive.  Override with --clock / --psg-clock.
+DEFAULT_FM_CLOCK = MD_FM_CLOCK
+DEFAULT_PSG_CLOCK = MD_PSG_CLOCK
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 

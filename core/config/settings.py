@@ -4,10 +4,12 @@ PsgSynthesisSettings for the SN76489) and the MOD-wide choices (legato, player).
 import os
 import warnings
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..audio import DEFAULT_DITHER, DEFAULT_TAPS
 from ..mod import PAL_AMIGA_CLOCK, sample_limit_bytes
+from ..smps import DEFAULT_FM_PAN_LAW_DB, MD_FM_CLOCK, MD_PSG_CLOCK
 from .loader import dither_mode, mode_word, read_yaml_file
 
 if TYPE_CHECKING:
@@ -104,6 +106,10 @@ DEFAULT_PSG_OVERSAMPLE = 8
 
 # PAL Amiga Paula clock (settings.yaml amiga_clock): a MOD note's rate is this / its period
 DEFAULT_AMIGA_CLOCK = PAL_AMIGA_CLOCK
+
+# The chip clocks (settings.yaml fm_synthesis / psg_synthesis clock_rate): the NTSC Mega Drive's
+DEFAULT_FM_CLOCK = MD_FM_CLOCK
+DEFAULT_PSG_CLOCK = MD_PSG_CLOCK
 
 
 def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool = False) -> int:
@@ -214,7 +220,7 @@ class SampleSettings:
 
 @dataclass
 class PsgSynthesisSettings(SampleSettings):
-    clock_rate: int = 3_579_545      # SN76489 NTSC MD clock (Hz)
+    clock_rate: int = DEFAULT_PSG_CLOCK   # SN76489 clock (Hz)
     sustain_duration: float | str = 1.0
     release_padding: float = 0.2
     # Envelope tables are not a setting: the driver's own live in core.smps.driver_tables.PSG_ENVELOPES_BY_NAME.
@@ -245,7 +251,7 @@ class PsgSynthesisSettings(SampleSettings):
         smp = _samples_section(data, filepath)
         return cls(
             enabled=s.get("enabled", False),
-            clock_rate=s.get("clock_rate", 3_579_545),
+            clock_rate=s.get("clock_rate", DEFAULT_PSG_CLOCK),
             sustain_duration=_sustain_duration(s, 1.0),
             release_padding=s.get("release_padding", 0.2),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
@@ -257,14 +263,14 @@ class PsgSynthesisSettings(SampleSettings):
 @dataclass
 class SynthesisSettings(SampleSettings):
     mode: str = "ym2612"
-    clock_rate: int = 7_670_454       # YM2612 master clock
+    clock_rate: int = DEFAULT_FM_CLOCK    # YM2612 master clock (Hz)
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.plan.detune)
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
-    fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one
+    fm_pan_law_db: float = DEFAULT_FM_PAN_LAW_DB   # "baked" mode: a hard-panned note is this many dB below a centred one
     # settings.yaml `legato` (top level): how an smpsNoAttack note is written when its target cannot
     # ride the sounding sample - "strict" (another range: the sounding sample, note moved by the
     # chip-pitch delta; after smpsSetvoice or with nothing sounding: a re-trigger; what FT2 clone and
@@ -344,13 +350,13 @@ class SynthesisSettings(SampleSettings):
         return cls(
             enabled=s.get("enabled", False),
             mode=s.get("mode", "ym2612"),
-            clock_rate=s.get("clock_rate", 7_670_454),
+            clock_rate=s.get("clock_rate", DEFAULT_FM_CLOCK),
             sustain_duration=_sustain_duration(s, 1.5),
             release_padding=s.get("release_padding", 0.5),
             threads=s.get("threads", "normal"),
             detune_variants=bool(s.get("detune_variants", True)),
             fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
-            fm_pan_law_db=float(data.get("fm_pan_law_db", 3.0)),
+            fm_pan_law_db=float(data.get("fm_pan_law_db", DEFAULT_FM_PAN_LAW_DB)),
             legato=_legato(data, filepath),
             player=_player(data, filepath),
             pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", True, filepath),
@@ -367,3 +373,24 @@ def with_song_overrides(settings, config: "ConversionConfig"):
     if config.treble_shelf_db is not None:
         settings = dataclasses.replace(settings, treble_shelf_db=config.treble_shelf_db)
     return settings
+
+
+# The settings file a tool reads when no song config sits beside one
+_REPO_SETTINGS = Path(__file__).resolve().parents[2] / "configs" / "settings.yaml"
+
+
+def find_settings(config_path: str | None = None) -> str | None:
+    """The global settings file: settings.yaml beside the song config (both live in configs/), else
+    configs/settings.yaml; None when neither exists."""
+    beside = [Path(config_path).resolve().parent / "settings.yaml"] if config_path else []
+    for path in [*beside, _REPO_SETTINGS]:
+        if path.exists():
+            return str(path)
+    return None
+
+
+def load_settings(path: str | None) -> tuple["SynthesisSettings", "PsgSynthesisSettings"]:
+    """Both chips' settings from `path`; the code's defaults when there is no file."""
+    if path is None or not os.path.exists(path):
+        return SynthesisSettings(), PsgSynthesisSettings()
+    return SynthesisSettings.from_yaml(path), PsgSynthesisSettings.from_yaml(path)

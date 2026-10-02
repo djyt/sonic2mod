@@ -31,15 +31,8 @@ if str(_HERE.parent) not in sys.path:
 from core.audio import DEFAULT_TAPS, normalize_int8, resample, write_raw16
 from core.audio import to_mono as _to_mono
 from core.config import DEFAULT_PSG_OVERSAMPLE
-from core.smps import PSG_FREQUENCIES
+from core.smps import MD_PSG_CLOCK, PSG_FREQUENCIES
 from sn76489.wrapper import SN76489
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-_NTSC_CLOCK  = 3_579_545   # SN76489 NTSC Mega Drive clock (Hz)
-_AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 
 # Import PERIOD_TABLE for target_rate calculation
 
@@ -55,7 +48,7 @@ _AMIGA_CLOCK = 3_546_895   # PAL Amiga clock
 DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
 
 
-def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
+def note_to_psg_n(mod_note_index: int, clock_rate: int = MD_PSG_CLOCK) -> int:
     """MOD note index → the SN76489 10-bit divider N the Sonic 1 driver writes for that note.
 
     The driver's PSG table (core.smps.driver_tables.PSG_FREQUENCIES, index 0 = nC0 = 130.98 Hz = C3,
@@ -65,7 +58,7 @@ def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
     Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
     i = mod_note_index - 24
-    if clock_rate == _NTSC_CLOCK and 0 <= i < len(PSG_FREQUENCIES) and PSG_FREQUENCIES[i]:
+    if clock_rate == MD_PSG_CLOCK and 0 <= i < len(PSG_FREQUENCIES) and PSG_FREQUENCIES[i]:
         return PSG_FREQUENCIES[i]
     freq = 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
     n = round(clock_rate / (2.0 * freq * 16.0))
@@ -153,7 +146,7 @@ def render_psg_tone_raw(
     mod_note_index: int,
     sustain_secs: float = 1.0,
     release_secs: float = 0.2,
-    clock_rate: int = _NTSC_CLOCK,
+    clock_rate: int = MD_PSG_CLOCK,
     target_rate: int | None = None,
     envelope: list | None = None,
     base_volume: int = 0,
@@ -198,7 +191,7 @@ def render_psg_tone(
     mod_note_index: int,
     sustain_secs: float = 1.0,
     release_secs: float = 0.2,
-    clock_rate: int = _NTSC_CLOCK,
+    clock_rate: int = MD_PSG_CLOCK,
     target_rate: int | None = None,
 ) -> tuple[bytes, int]:
     """Render a PSG square-wave tone to 8-bit signed mono PCM, peak-normalized.
@@ -221,7 +214,7 @@ def render_psg_noise_raw(
     noise_rate: int,
     sustain_secs: float = 0.4,
     release_secs: float = 0.1,
-    clock_rate: int = _NTSC_CLOCK,
+    clock_rate: int = MD_PSG_CLOCK,
     target_rate: int | None = None,
     envelope: list | None = None,
     base_volume: int = 0,
@@ -280,7 +273,7 @@ def render_psg_noise(
     noise_rate: int,
     sustain_secs: float = 0.4,
     release_secs: float = 0.1,
-    clock_rate: int = _NTSC_CLOCK,
+    clock_rate: int = MD_PSG_CLOCK,
     target_rate: int | None = None,
     tone2_n: int | None = None,
 ) -> tuple[bytes, int]:

@@ -31,7 +31,14 @@ from core.analysis import (
     semitone_to_note_name,
     suggest_transpose,
 )
-from core.config import ConversionConfig, SynthesisSettings, rate3_synth_root_issues
+from core.config import (
+    ConversionConfig,
+    PsgSynthesisSettings,
+    SynthesisSettings,
+    find_settings,
+    load_settings,
+    rate3_synth_root_issues,
+)
 from core.mod import PERIOD_TABLE, ModFile, ModNote, db_to_mod_volume
 from core.smps import (
     PSG_STEP_DB,
@@ -477,7 +484,7 @@ def _note_in_octave2(semitone: int) -> str:
     return ModNote(12 + semitone % 12).name
 
 
-def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int = 3546895) -> str:
+def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int) -> str:
     """Return the lowest MOD octave (≥ 2) where target_rate > 2*synth_freq, as a valid ModNote name.
 
     Ensures the synthesized LFSR frequency stays below Nyquist so there is no
@@ -503,13 +510,12 @@ _PSG_TONE_VOLUME = 16     # sample_list volume of a PSG tone at attenuation 0 (G
 _PSG_NOISE_VOLUME = 16    # ... of PSG noise at attenuation 0
 
 
-def _synth_settings() -> SynthesisSettings:
-    """configs/settings.yaml, so the skeleton models levels the way the converter will."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "settings.yaml")
+def _settings() -> tuple[SynthesisSettings, PsgSynthesisSettings]:
+    """configs/settings.yaml, so the skeleton models levels and rates the way the converter will."""
     try:
-        return SynthesisSettings.from_yaml(path) if os.path.exists(path) else SynthesisSettings()
+        return load_settings(find_settings())
     except ValueError:
-        return SynthesisSettings()
+        return SynthesisSettings(), PsgSynthesisSettings()
 
 
 def _db_volume(base: int, db: float) -> int:
@@ -605,7 +611,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         for vi, vs in ch_an.voice_stats.items():
             if vs.note_count > 0:
                 voice_tl.setdefault(vi, {})[ch_an.name] = (vs.modal_volume, vs.modal_hard_pan)
-    _PAN_LAW_DB = _synth_settings().fm_pan_law_db   # a hard-panned note vs a centred one
+    synth, psg_synth = _settings()
+    _PAN_LAW_DB = synth.fm_pan_law_db   # a hard-panned note vs a centred one
 
     def _fm_volume(vi: int, lv: tuple[int, bool]) -> int:
         return max(1, min(64, round(_FM_K * db_to_gain(fm_level_db(lv[0], lv[1], _PAN_LAW_DB)))))
@@ -829,10 +836,10 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
                 # PSGFrequencies from the channel's own note — not a chromatic extrapolation:
                 # nMaxPSG (index 69) is divider 0 → N=1, not the ~7 kHz an "A8" would give.
                 tone2_n: int | None = psg_tone2_divider(0x81 + min_sem, ch_init_trans)
-                shift_hz = 3_579_545 / (32.0 * tone2_n)
+                shift_hz = psg_synth.clock_rate / (32.0 * tone2_n)
                 # root must satisfy Nyquist for the LFSR shift rate where that is achievable;
                 # above it the highest-rate root is the best a MOD sample can do.
-                root_name = _noise_root_for_synth(min_sem % 12, shift_hz)
+                root_name = _noise_root_for_synth(min_sem % 12, shift_hz, synth.amiga_clock)
             else:
                 tone2_n = None
                 root_name = _note_in_octave2(min_sem)

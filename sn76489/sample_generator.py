@@ -300,13 +300,12 @@ def _check_warnings(caught, inst_num, verbose: bool = False):
 def _smoke_test() -> None:
     """Render one tone and one noise entry from a minimal fake config."""
 
-    from core.config import PsgInstrumentEntry, PsgSynthesisSettings
+    import dataclasses
 
-    psg_synth = PsgSynthesisSettings(
-        enabled=True,
-        sustain_duration=0.5,
-        release_padding=0.1,
-    )
+    from core.config import PsgInstrumentEntry, find_settings, load_settings
+
+    psg_synth = dataclasses.replace(load_settings(find_settings())[1],   # settings.yaml, a short fixed hold
+                                    enabled=True, sustain_duration=0.5, release_padding=0.1)
 
     fake_config = ConversionConfig()
     # psg_map is a dict keyed by form byte; type is auto-inferred in production,

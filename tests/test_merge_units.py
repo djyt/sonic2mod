@@ -47,9 +47,9 @@ from core.merge import (
 )
 from core.merge.mix import _cut_layer
 from core.merge.slots import _plan_slots, same_shape_twins
-from core.mod import PERIOD_TABLE, ModFile, ModSample
+from core.mod import PAL_AMIGA_CLOCK, PERIOD_TABLE, ModFile, ModSample
 
-CLOCK = 3546895.0
+CLOCK = float(PAL_AMIGA_CLOCK)
 
 
 def _note(tick=0, duration=8, inst=4, index=24, kind="FM", secs=0.2, fill=0, fill_secs=None, **kw) -> NoteOn:

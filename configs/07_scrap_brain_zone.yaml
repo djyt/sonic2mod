@@ -62,10 +62,10 @@ sample_list:
   # --- PSG noise, fTone_08 envelope variant (psg_map 0xE7 envelopes) ---
   - [18, "psg_noise.raw",  1, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +3.5 dB at 2
   
-  # Detuned Voice 2
-  - [19, "fm_v02.raw",  4, 1] # VGZ: +3.3 dB at 6
-  # Detuned Voice 1
-  - [20, "fm_v00.raw", 11, 1] # VGZ: +2.4 dB at 15
+  # Voice 2 on FM5 (no smpsAlterNote there)
+  - [19, "fm_v02.raw",  4, 0] # VGZ: +3.3 dB at 6
+  # Detuned Voice 1 (smpsAlterNote $03 rendered into the sample)
+  - [20, "fm_v00.raw", 11, 0] # VGZ: +2.4 dB at 15
 
 dac_samples:
   # dSnare: ×82 — native ~24000 Hz → note Fs3

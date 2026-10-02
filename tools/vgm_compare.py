@@ -924,6 +924,10 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
         note_times["DAC"] = onsets(vgm["DAC"], thresh_db=-40, hold=0.08)
     src_of = dict(zip(names, chan_map, strict=True))
     events_by_chan, samples, mod_end = mod_note_events(mod_path.read_bytes(), cfg.target_speed)
+    if cfg.detune_plan is not None:
+        # A detune variant (core.detune) is its base's sample a few cents off, at its volume
+        base_of = cfg.detune_plan.base_of
+        events_by_chan = {c: [(t, base_of(ins), cxx) for t, ins, cxx in evs] for c, evs in events_by_chan.items()}
     lev = instrument_levels(note_times, {n: chan_map[src_of[n]] for n in note_times}, events_by_chan, samples,
                             mod_end, vgm_st, mod_st, offset)
     res["instrument_levels"] = lev
@@ -1475,6 +1479,9 @@ def main() -> None:
                          "audit, as vgm_pitch_audit.py), missing, or silent in the MOD render")
     ap.add_argument("--fail-unmatched", type=int, metavar="N",
                     help="exit 1 if any channel has more than N reference onsets without a MOD onset")
+    ap.add_argument("--settings", metavar="PATH",
+                    help="settings the MOD was converted with (default: settings.yaml beside the config, "
+                         "else configs/settings.yaml): whether it has detune variants")
     ap.add_argument("--merged", action="store_true",
                     help="audit the merged build (convert.py --merged): each MOD channel against the sum of the "
                          "chip channels folded onto it (balance and onsets; no per-note audit)")
@@ -1489,11 +1496,9 @@ def main() -> None:
             prepare_merged_config(cfg)          # followers off, channels packed, merge_output_file
         except ValueError as e:
             raise SystemExit(f"ERROR: {e}") from e
-    # synth_root / synth_shift come from the song (what the converter does before rendering);
-    # without this the symbolic verdict reads every shifted entry as wrong
-    from core.driver_state import resolve_synth_roots
-    from core.smps_parser import SmpsParser
-    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
+    # synth_root / synth_shift come from the song (what the converter does before rendering), and
+    # so do the detune variants; without them the symbolic verdict reads every shifted entry as wrong
+    vgm_pitch_audit.prepare_config(cfg, args.settings, args.config)
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):

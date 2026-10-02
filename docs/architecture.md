@@ -102,8 +102,18 @@ voices onto 31 slots; Stage Clear's PSG2 plays two octaves up its PSG1 sample).
 composites; `psg_catalogue(config, noise_envelopes)` walks psg_map (each entry, then its
 `envelopes:` variants) and psg_voice_map. An `FmInstrument` is a list of **`FmLayer`**s (voice,
 semitone offset, FNUM detune, carrier TL offset relative to the instrument's render level); a
-plain instrument has one layer, a composite one per folded channel. `generate_fm_samples`,
+plain instrument has one layer, a composite one per folded channel; a detune variant
+(core/detune.py) is its base with the layer's FNUM detune set. `generate_fm_samples`,
 `generate_psg_samples` and the converter's `_synthesis_roots` / `_sustain_needs` all read it.
+`free_slots(config, song)`: the slots nothing names (detune variants, then composites, take them).
+
+### core/detune.py
+
+Detune variants: `plan_detune_variants(song, config)` counts every FM note's (instrument,
+`smpsAlterNote` detune), renders each instrument at its majority detune and gives every other
+a free slot (`DetunePlan`, on `config.detune_plan`): `resolve_note` routes to it, the catalogue
+renders it, the level plans share the base's.  `detune_cents(semitone, offset)` is the interval
+an offset makes on the driver's frequency table.
 
 ### core/merge.py
 
@@ -311,7 +321,7 @@ Conversion engine that walks the IR and writes MOD data.
 
 #### `SmpsToModConverter.convert()` Flow
 
-1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch
+1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch; `_plan_detune` (core/detune.py) the detune variants
 2. Re-time every channel for `smpsSetTempoDiv` (`_apply_global_tempo_div()`) and extend short loop bodies (`_extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
 3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`_sustain_needs`)
 4. Run `generate_fm_samples()` (ym2612/) and `generate_psg_samples()` (sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites

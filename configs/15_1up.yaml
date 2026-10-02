@@ -39,9 +39,9 @@ sample_list:
   - [4, "fm_v02.raw", 12, 0] # VGZ: +6.1 dB at 24
   # --- PSG tone fTone_05 ---
   - [5, "psg_fTone_05.raw",  4, 0] # baked: 16 at PSG attenuation 6 (−12 dB)
-  # Pitch Shifted Versions
-  - [6, "fm_v00.raw", 13, 1] # VGZ: +5.6 dB at 24
-  - [7, "fm_v02.raw", 12, 1] # VGZ: +6.1 dB at 24
+  # Detuned versions (smpsAlterNote rendered into the sample)
+  - [6, "fm_v00.raw", 13, 0] # VGZ: +5.6 dB at 24
+  - [7, "fm_v02.raw", 12, 0] # VGZ: +6.1 dB at 24
 
 dac_samples:
   # dHiTimpani: ×5 — native ~9588 Hz → note Ds2

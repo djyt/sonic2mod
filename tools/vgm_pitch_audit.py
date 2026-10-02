@@ -141,20 +141,48 @@ def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
     return out, t / _VGM_RATE
 
 
-def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int]]:
-    """MOD instrument -> (root MOD index, synthesis semitone) from every pitched map entry."""
-    inst: dict[int, tuple[int, int]] = {}
+def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
+    """What the converter decides before it renders, on `cfg`: every entry's synth_root /
+    synth_shift (from the song) and the detune variants (core.detune) the settings ask for.
+    Returns the parsed song."""
+    from core.config import SynthesisSettings
+    from core.detune import detune_variants_wanted, plan_detune_variants
+    from core.driver_state import resolve_synth_roots
+    from core.smps_parser import SmpsParser
+    song = SmpsParser().parse_file(cfg.input_file)
+    resolve_synth_roots(song, cfg)
+    if settings_path is None:
+        beside = Path(config_path).parent / "settings.yaml"
+        settings_path = beside if beside.exists() else _HERE.parent / "configs" / "settings.yaml"
+    if detune_variants_wanted(SynthesisSettings.from_yaml(str(settings_path))):
+        plan_detune_variants(song, cfg)
+    return song
+
+
+def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int, float]]:
+    """MOD instrument -> (root MOD index, synthesis semitone, cents its sample's smpsAlterNote
+    detune adds) from every pitched map entry and detune variant (core.detune)."""
+    from core.detune import detune_cents
+    inst: dict[int, tuple[int, int, float]] = {}
+    plan = cfg.detune_plan
 
     def add(e, default_low: bool) -> None:
         if e.mod_instrument in inst or e.root is None:
             return
         if e.synth_root is not None:
             s = e.synth_root - e.synth_shift          # the pitch `root` sounds: the sample's rate carries the rest
+            rendered = e.synth_root
         elif default_low and e.low is not None:       # FM: sample_generator falls back to `low`
-            s = e.low
+            s = rendered = e.low
         else:                                         # PSG tone: falls back to `root`
-            s = e.root.value + 12
-        inst[e.mod_instrument] = (e.root.value, s)
+            s = rendered = e.root.value + 12
+        own = plan.own.get(e.mod_instrument, 0) if plan is not None and default_low else 0
+        inst[e.mod_instrument] = (e.root.value, s, detune_cents(rendered, own) if own else 0.0)
+        if plan is None or not default_low:
+            return
+        for v in plan.variants.values():
+            if v.base == e.mod_instrument:
+                inst[v.inst] = (e.root.value, s, detune_cents(rendered, v.detune))
 
     for lst in cfg.voice_map.values():
         for e in lst:
@@ -179,6 +207,13 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
     known = set(PERIOD_TABLE)
     speed, bpm = cfg.target_speed, 125
     out: dict[int, list[tuple]] = defaultdict(list)
+    sounding: dict[int, tuple[int, int]] = {}         # channel -> (period, instrument) of its note
+
+    def pitch(period: int, ins: int) -> float:
+        root, synth, cents = inst[ins]
+        return (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
+                * 2 ** (finetune.get(ins, 0) / 96 + cents / 1200))
+
     now, posi, row = 0.0, 0, 0
     seen: set[tuple[int, int]] = set()
     while posi < len(order) and (posi, row) not in seen:
@@ -199,12 +234,16 @@ def mod_timeline(mod: bytes, cfg: ConversionConfig) -> tuple[dict[int, list[tupl
             elif eff == 0xD:
                 brk = (par >> 4) * 10 + (par & 15)
             if period in known and ins in inst:
-                root, synth = inst[ins]
-                f = (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
-                     * 2 ** (finetune.get(ins, 0) / 96))
+                sounding[c] = (period, ins)
                 # EDx: the note starts x MOD ticks into the row
                 late = (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
-                out[c].append((now + late, f, ins))
+                out[c].append((now + late, pitch(period, ins), ins))
+            elif eff == 0xE and par >> 4 in (1, 2) and c in sounding:
+                # E1x / E2x: the sounding note's period moved (a tie retuned to a new detune)
+                p, ins_s = sounding[c]
+                p = p - (par & 15) if par >> 4 == 1 else p + (par & 15)
+                sounding[c] = (p, ins_s)
+                out[c].append((now, pitch(p, ins_s), ins_s))
         now += speed * 2.5 / bpm
         if jump is not None:
             if jump <= posi:                          # the song loop
@@ -434,15 +473,15 @@ def main() -> None:
     ap.add_argument("--tolerance", type=float, default=35.0, help="cents before a note counts as wrong (default 35)")
     ap.add_argument("--list", action="store_true", help="print every wrong / missing segment with its time")
     ap.add_argument("--json", metavar="FILE", help="write the alignment and the per-instrument verdicts as JSON")
+    ap.add_argument("--settings", metavar="PATH",
+                    help="settings the MOD was converted with (default: settings.yaml beside the config, "
+                         "else configs/settings.yaml): whether it has detune variants")
     args = ap.parse_args()
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     cfg = ConversionConfig.from_yaml(args.config)
-    # synth_root / synth_shift come from the song (what the converter does before rendering)
-    from core.driver_state import resolve_synth_roots
-    from core.smps_parser import SmpsParser
-    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
+    prepare_config(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     raw = Path(args.vgz).read_bytes()
     chip, vgm_end = chip_timeline(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)

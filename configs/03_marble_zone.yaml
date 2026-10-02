@@ -53,7 +53,7 @@ sample_list:
   # while a line for the unused instrument 11 carried the intended volume; measured against the VGZ.
   - [10, "psg_noise.raw",  7, 0] # baked: 64 at PSG attenuation 3 (−6 dB); VGZ: +5.6 dB at 13
   # --- voice $00: tuned!
-  - [12, "fm_v00.raw",  8, 1] # VGZ: +0.6 dB at 9
+  - [12, "fm_v00.raw",  8, 0] # VGZ: +0.6 dB at 9
 
 dac_samples:
   # dKick: ×2 — native ~8250 Hz → note C2

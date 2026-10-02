@@ -294,9 +294,20 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | `smpsPSGvoice` | `smpsPSGvoice` | voice name |
 | `smpsChangeTransposition` | `smpsChangeTransposition` | signed semitones |
 
-### core/config.py
+### core/config/
 
-Per-song conversion configuration with YAML loading.
+Per-song conversion configuration and the global synthesis settings; the package exports every
+name other modules import (`from core.config import ConversionConfig, SynthesisSettings`).
+
+```
+loader.py    load_yaml (no key given twice), read_yaml_file, the value words (mode_word, dither_mode)
+entries.py   InstrumentRange, PsgInstrumentEntry, ChannelConfig, DacSampleConfig, MergeGroup and
+             their parsers, one per song-config section (parse_channels, parse_psg_map, ...)
+song.py      ConversionConfig; from_yaml reads each section with its entries.py parser
+settings.py  SampleSettings (amiga_clock, samples:, the resolved sustain) and its two chips:
+             SynthesisSettings (YM2612, legato, player), PsgSynthesisSettings (SN76489)
+bpm.py       derive_bpm, exact_bpm, bpm_rounding_options
+```
 
 #### `ConversionConfig` Fields
 
@@ -333,13 +344,6 @@ Per-song conversion configuration with YAML loading.
 | `name` | str | — | SMPS DAC name (e.g. `dKick`) |
 | `mod_instrument` | int | — | MOD instrument to trigger |
 | `mod_note` | str | "C3" | Note to write in MOD pattern |
-
-#### `default_sonic1()` Defaults
-
-- 10 channels: DAC→ch0, FM1–5→ch1–5, PSG1–3→ch6–8
-- FM transpose: -36 (maps SMPS octaves 3–5 to MOD C1–B3)
-- PSG transpose: -36
-- DAC samples: dKick→inst 1, dSnare→inst 7, dTimpani→inst 8, timpani variants→inst 9–12
 
 ### core/smps2mod.py
 

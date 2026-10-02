@@ -42,7 +42,6 @@ from core.loops import (
     heard_padding,
     release_rate_db_s,
 )
-from core.mod import ModSample
 from core.pcm import dc_block, high_shelf, int8_to_raw16, max_sustain_secs, peak, to_int8
 from core.pcm import trim_trailing_silence as _trim_trailing_silence
 from core.smps_parser import SmpsSong, SmpsVoice
@@ -291,24 +290,6 @@ def generate_fm_samples(
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
-
-def make_mod_sample(pcm_bytes: bytes, target_rate: int, volume: int = 64) -> ModSample:
-    """Wrap rendered PCM bytes in a ModSample ready for insertion into ModFile.
-
-    Args:
-        pcm_bytes:   8-bit signed mono PCM from render_note.
-        target_rate: Sample rate in Hz (informational; stored in result).
-        volume:      MOD volume 0–64 (default 64).
-
-    Returns:
-        Populated ModSample (name, length, volume, data).
-    """
-    sample = ModSample(f"ym2612@{target_rate}Hz")
-    sample.data = pcm_bytes
-    sample.length = len(pcm_bytes) // 2   # MOD length is in words
-    sample.set_volume(volume)
-    return sample
-
 
 # ---------------------------------------------------------------------------
 # Smoke test

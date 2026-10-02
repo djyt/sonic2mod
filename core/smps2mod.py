@@ -31,7 +31,7 @@ from .levels import (
 )
 from .loops import SustainLoop
 from .merge import MergePlan, build_merge_plan
-from .merge_build import MergedBuild, bank_reserve_wanted, report_plan
+from .merge.build import MergedBuild, bank_reserve_wanted, report_plan
 from .mod import ModFile, ModSample, apply_pattern_breaks
 from .noise_derive import derive_noise_envelopes, derive_rate3_dividers
 from .pcm import DEFAULT_DITHER, INT8_PEAK, MAX_MOD_SAMPLE_BYTES, peak, saturate, signed8, to_int8
@@ -373,7 +373,7 @@ class SmpsToModConverter:
         self.prepare_song()
 
         # The merged build: which composite instruments the groups need and where they play,
-        # decided while the ticks are final and before anything renders (core/merge.py).
+        # decided while the ticks are final and before anything renders (core/merge/).
         self._merge = self._merged = None
         if self.config.merge_active:
             self._merge = self._build_merge_plan()

@@ -173,7 +173,7 @@ def load_yaml(stream):
 
 @dataclass
 class MergeGroup:
-    """One `merge:` group: the followers fold onto the primary's MOD channel (core/merge.py)."""
+    """One `merge:` group: the followers fold onto the primary's MOD channel (core/merge/)."""
     primary: str
     followers: list[str]
     cut_primary: bool = False   # a follower note that starts while the primary still sounds cuts it
@@ -964,7 +964,7 @@ class ConversionConfig:
     psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
     psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": list[PsgInstrumentEntry], ...}
     mod_pattern_breaks: list = field(default_factory=list)  # [(pattern_slot, row), ...] — insert Bxx + split pattern
-    # Channel folding for the reduced (Amiga) build, used with `convert.py --merged` (core/merge.py):
+    # Channel folding for the reduced (Amiga) build, used with `convert.py --merged` (core/merge/):
     # each group's followers are dropped and their notes rendered into the primary's instruments.
     merge: list = field(default_factory=list)              # list[MergeGroup]; a `merge_patterns:` group
                                                            # carries its patterns, a `merge:` one is song-wide
@@ -974,7 +974,7 @@ class ConversionConfig:
     merge_patterns_named: set = field(default_factory=set)
     merge_pattern_drop: dict = field(default_factory=dict)
     # Channels whose notes go to the fill pool: each note is placed on whichever output channel is
-    # silent at that moment (core/merge.py _pool_notes), or lost where none is
+    # silent at that moment (core/merge/ pool_notes), or lost where none is
     merge_fill: list = field(default_factory=list)
     # {output channel: ticks}: after that many ticks of one of its notes the channel counts as silent
     # for the fill pool, so a pool note cuts the note's tail (a chime over a kick's decay, over a bass

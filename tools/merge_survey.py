@@ -2,7 +2,7 @@
 """Which of a song's channels can fold onto one MOD channel (the `merge:` groups)?
 
 For every ordered pair of enabled channels (primary, follower) this lines the follower's
-note-ons up with the primary's the way core/merge.py will, and prints the counts:
+note-ons up with the primary's the way core/merge/ will, and prints the counts:
 
     paired      follower notes that merge into a composite instrument (same tick, not shorter)
     solo        follower notes that start while the primary is silent — placed on the merged

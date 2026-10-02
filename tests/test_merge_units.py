@@ -25,18 +25,15 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.banks import ALIGN, pack_banks
 from core.config import MergeGroup, format_patterns, load_yaml, parse_patterns
+from core.loops import RELEASE_FLOOR_DB
 from core.merge import (
     CHIP,
     MIX,
-    RELEASE_FLOOR_DB,
     Composite,
     CompositeKey,
     MergePlan,
     MixLayerKey,
     NoteOn,
-    _cut_layer,
-    _plan_slots,
-    _twins,
     composite_key,
     drop_composite,
     keyoff_secs,
@@ -45,7 +42,9 @@ from core.merge import (
     trigger_note,
     unison_gain_db,
 )
-from core.merge_build import bank_reserve_wanted
+from core.merge.build import bank_reserve_wanted
+from core.merge.mix import _cut_layer
+from core.merge.slots import _plan_slots, same_shape_twins
 from core.mod import ModFile, ModSample
 from core.pcm import limit_peaks, saturate
 from core.tables import PERIOD_TABLE
@@ -148,14 +147,14 @@ class Twins(unittest.TestCase):
 
     def test_the_twin_that_rings_further_is_kept(self):
         plan, cut, held, other = self._plan()
-        twins = _twins(plan, [cut, held, other])
+        twins = same_shape_twins(plan, [cut, held, other])
         self.assertEqual(twins, {-1: held.key})                # the PSG cut goes, however played
         self.assertNotIn(-3, twins)                            # another shape: no twin
 
     def test_a_twin_off_the_mod_range_is_not_one(self):
         plan, cut, held, other = self._plan()
         plan.bases[("FM5", 0)] = 30                            # 30 + 7 is past B3 on the kept mix
-        self.assertEqual(_twins(plan, [cut, held, other]), {})
+        self.assertEqual(same_shape_twins(plan, [cut, held, other]), {})
 
     def test_a_dropped_twin_plays_the_preferred_survivor(self):
         plan, cut, held, other = self._plan()

@@ -345,10 +345,6 @@ class DriverState:
                 return entry
         return None
 
-    def psg_ranged_entry(self, key: int):
-        """The psg_voice_map list entry covering this note, or the active entry."""
-        return psg_range_entry(self.psg_entries, key) or self.psg_entry
-
     def level_db(self, pan_law_db: float) -> float:
         """Hardware level of a note played right now, relative to full scale."""
         if self.is_psg:
@@ -396,12 +392,6 @@ class ResolvedNote:
     @property
     def clamped(self) -> bool:
         return self.index != self.raw_index
-
-    @property
-    def anchored(self) -> bool:
-        """True when a `root` placed the note (the transpose path did not)."""
-        return self.path != "transpose"
-
 
 def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, source: str) -> ResolvedNote:
     """Which MOD instrument and MOD note a pitched note plays, given the track state.

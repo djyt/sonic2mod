@@ -274,28 +274,3 @@ class OPN2:
             buf, _ = out.buffer_info()
             self._lib.OPN2_RenderBatchMono(self._chip, n_samples, buf, self._dc)
         return out
-
-    def _render_samples_legacy(self, n_samples: int) -> list:
-        """Original Python-loop implementation — kept for reference only.
-
-        Replaced by render_samples() which calls OPN2_RenderBatch in C.
-        """
-        dc = self._dc
-
-        out = []
-        lib     = self._lib
-        chip    = self._chip
-        buf_ptr = self._out_ptr
-        buf     = self._out
-        clock   = lib.OPN2_Clock
-
-        for _ in range(n_samples):
-            l_sum = 0
-            r_sum = 0
-            for _ in range(_CLOCKS_PER_SAMPLE):
-                clock(chip, buf_ptr)
-                l_sum += buf[0]
-                r_sum += buf[1]
-            out.append((l_sum - dc, r_sum - dc))
-
-        return out

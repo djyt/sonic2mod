@@ -30,8 +30,6 @@ from core.pcm import dc_block as _dc_block
 
 # PAL Paula clock.  Playback rate for a given period is PAL_CLOCK / period.
 PAL_CLOCK = 3_546_895
-NTSC_CLOCK = 3_579_545
-
 # ProTracker's period table is 856 / 2^(n/12) for n = 0..35, i.e. C-1 to B-3.
 # Building candidate rates from it means every rate we pick corresponds to a real
 # note, so the sample plays at true pitch with finetune 0.
@@ -54,10 +52,6 @@ PERIOD_GRID = _build_period_grid()
 # Period 124 (~28.6 kHz) is the conventional safe ceiling; below it DMA bandwidth
 # contention starts to bite.
 DEFAULT_MAX_RATE = 28604
-
-
-def rate_for_period(period: int, clock: int = PAL_CLOCK) -> float:
-    return clock / period
 
 
 def candidate_rates(clock: int = PAL_CLOCK) -> list[tuple[float, int, str]]:

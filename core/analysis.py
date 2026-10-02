@@ -70,23 +70,14 @@ class VoiceRangeStats:
     modal_hard_pan: bool = False
     level_counts: dict = field(default_factory=dict)   # (tl, hard_pan) -> notes
 
-    def has_notes(self) -> bool:
-        return self.note_count > 0
-
-
 @dataclass
 class PsgToneStats:
-    tone_label: str        # e.g. "fTone_06", "form $E7"
     min_semitone: int      # raw SMPS (note_value - 0x81); _NO_NOTES_MIN if no notes
     max_semitone: int      # _NO_NOTES_MAX if no notes
     note_count: int
     switch_count: int
     modal_volume: int = 0     # most common SN76489 attenuation (header volume + smpsPSGAlterVol) of its notes
     level_counts: dict = field(default_factory=dict)   # attenuation -> notes
-
-    def has_notes(self) -> bool:
-        return self.note_count > 0
-
 
 @dataclass
 class TransposeEvent:
@@ -161,7 +152,7 @@ def _get_or_create_psg_tone(psg_tone_stats: dict, label: str) -> PsgToneStats:
     """Get or insert a PsgToneStats entry initialised with sentinel min/max."""
     ts = psg_tone_stats.get(label)
     if ts is None:
-        ts = PsgToneStats(label, _NO_NOTES_MIN, _NO_NOTES_MAX, 0, 0)
+        ts = PsgToneStats(_NO_NOTES_MIN, _NO_NOTES_MAX, 0, 0)
         psg_tone_stats[label] = ts
     return ts
 
@@ -178,15 +169,6 @@ def _is_semitone_covered(sem: int, voice_map_dict: dict) -> bool:
 # ---------------------------------------------------------------------------
 # Analysis function
 # ---------------------------------------------------------------------------
-
-def _source_name(ch_type: str, idx: int) -> str:
-    if ch_type == "DAC":
-        return "DAC"
-    elif ch_type == "FM":
-        return f"FM{idx}"
-    else:
-        return f"PSG{idx}"
-
 
 def analyze_song(song: SmpsSong, file_path: str,
                  config: ConversionConfig | None = None) -> SongAnalysis:
@@ -256,7 +238,6 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
         if initial_label:
             current_psg_label = initial_label
             psg_tone_stats[initial_label] = PsgToneStats(
-                tone_label=initial_label,
                 min_semitone=_NO_NOTES_MIN, max_semitone=_NO_NOTES_MAX,
                 note_count=0, switch_count=0,
             )

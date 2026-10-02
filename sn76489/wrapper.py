@@ -92,8 +92,6 @@ class SN76489:
                          to avoid the need for resampling.
         """
         self._lib = _load_lib()
-        self._clock_rate = clock_rate
-        self._sample_rate = sample_rate
         self._chip = self._lib.SN76489_Init(clock_rate, sample_rate)
         if not self._chip:
             raise RuntimeError("SN76489_Init returned NULL")

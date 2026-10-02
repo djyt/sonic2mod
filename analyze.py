@@ -70,11 +70,6 @@ def _note_range_str(ch: ChannelAnalysis) -> str:
     return f"{lo}–{hi} (semitones {ch.min_semitone}–{ch.max_semitone})"
 
 
-def _effect_summary(effect_counts: dict, label: str = "Effects") -> str:
-    parts = [f"{et} ×{n}" for et, n in sorted(effect_counts.items())]
-    return "  ".join(parts) if parts else "—"
-
-
 def _unsupported_summary(effect_counts: dict) -> str:
     parts = []
     for et, n in sorted(effect_counts.items()):

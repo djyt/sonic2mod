@@ -23,7 +23,6 @@ import functools
 import math
 import sys
 import threading
-import warnings
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -160,13 +159,6 @@ def generate_fm_samples(
             print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
     jobs: list[_RenderJob] = []
     for spec in cat.instruments.values():
-        if spec.legacy:
-            warnings.warn(
-                f"Synthesizing voice {spec.layers[0].voice_idx} via deprecated legacy_voice_map at C5/C1. "
-                "Add a voice_map range entry with an explicit root for correct pitch.",
-                DeprecationWarning,
-                stacklevel=1,
-            )
         base_tl = (tl_offsets or {}).get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
                    lay.keyoff_secs)

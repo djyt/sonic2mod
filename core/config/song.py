@@ -17,6 +17,16 @@ from .entries import (
 )
 from .loader import read_yaml_file
 
+# A song config's top-level keys
+_KEYS = frozenset({
+    "name", "input_file", "output_file", "target_bpm", "target_speed", "ticks_per_row", "num_mod_channels",
+    "auto_bpm", "region", "range_space", "samples_dir", "max_patterns", "channels", "dac_samples", "voice_map",
+    "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
+    "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_output_file",
+    "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "loop_drift_db",
+    "treble_shelf_db",
+})
+
 
 @dataclass
 class ConversionConfig:
@@ -46,7 +56,6 @@ class ConversionConfig:
     samples_dir: str = "./samples/"
     max_patterns: int = 127
     voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}
-    legacy_voice_map: dict = field(default_factory=dict)  # {voice_index: int} — deprecated simple form
     channel_instrument_map: dict = field(default_factory=dict)  # {source_channel: {voice_index: list[InstrumentRange]}}
     psg_map: dict = field(default_factory=dict)           # {form_byte_int: PsgInstrumentEntry}; type auto-inferred from bit 2
     psg_voice_map: dict = field(default_factory=dict)     # {"fTone_01": list[PsgInstrumentEntry], ...}
@@ -118,8 +127,12 @@ class ConversionConfig:
 
     @classmethod
     def from_yaml(cls, filepath):
-        """Load configuration from a YAML file."""
+        """Load configuration from a YAML file; a key it does not know is an error (a typo, or a
+        retired key, would otherwise be ignored)."""
         data = read_yaml_file(filepath)
+        unknown = sorted(set(data) - _KEYS)
+        if unknown:
+            raise ValueError(f"{filepath}: unknown key(s): {', '.join(unknown)}")
         config = cls(
             name=data.get('name', 'Untitled'),
             input_file=data.get('input_file', ''),
@@ -136,7 +149,7 @@ class ConversionConfig:
         )
         config.channels = parse_channels(data)
         config.dac_samples = parse_dac_samples(data)
-        config.voice_map, config.legacy_voice_map = parse_voice_maps(data, filepath)
+        config.voice_map = parse_voice_maps(data)
         config.channel_instrument_map = parse_channel_instrument_map(data)
         config.psg_map = parse_psg_map(data, filepath)
         config.psg_voice_map = parse_psg_voice_map(data)

@@ -5,7 +5,7 @@ slots, Stage Clear's PSG2 sits two octaves up its PSG1 sample).  The sample is r
 once, for the FIRST entry that names the instrument, in the order the maps are walked:
 
     FM:  voice_map (voices the song defines), channel_instrument_map (rooted entries),
-         legacy_voice_map, channel_instrument_map (rootless entries, played at C1)
+         channel_instrument_map (rootless entries, played at C1)
     PSG: psg_map (each entry's own instrument, then its `envelopes:` variants), psg_voice_map
 
 Everything that needs to know "what is instrument N rendered as" reads it from here: the
@@ -51,7 +51,6 @@ class FmInstrument:
     layers: list[FmLayer]
     context: str             # "voice_map[0][1]", "channel_instrument_map[FM5][0][0]", ...
     source_label: str = ""   # the channel_instrument_map channel, "" for voice_map
-    legacy: bool = False     # from the deprecated legacy_voice_map form
     loop_drift_db: float | None = None   # a merge group's overrides for its composite; else the entry's
     loop_min_ms: float | None = None
     treble_shelf_db: float | None = None   # a merge group's shelf on this composite's render
@@ -116,12 +115,11 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
     voices = {v.index for v in song.voices}
     cat = FmCatalogue()
 
-    def add(entry: InstrumentRange, voice_idx: int, context: str, source_label: str = "",
-            legacy: bool = False) -> None:
+    def add(entry: InstrumentRange, voice_idx: int, context: str, source_label: str = "") -> None:
         if entry.mod_instrument in cat.instruments:
             return
         cat.instruments[entry.mod_instrument] = FmInstrument(
-            entry.mod_instrument, entry, [FmLayer(voice_idx)], context, source_label, legacy)
+            entry.mod_instrument, entry, [FmLayer(voice_idx)], context, source_label)
 
     def rooted(voice_idx: int, ranges, context: str, source_label: str = "") -> None:
         if voice_idx not in voices:
@@ -136,10 +134,6 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
     for src, vim in config.channel_instrument_map.items():
         for voice_idx, ranges in vim.items():
             rooted(voice_idx, ranges, f"channel_instrument_map[{src}][{voice_idx}]", src)
-    for voice_idx, inst in config.legacy_voice_map.items():
-        if voice_idx in voices:
-            add(InstrumentRange(low=60, high=60, mod_instrument=inst), voice_idx,
-                f"legacy_voice_map[{voice_idx}]", "legacy_voice_map", legacy=True)
     for src, vim in config.channel_instrument_map.items():
         for voice_idx, ranges in vim.items():
             if voice_idx not in voices:

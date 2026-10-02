@@ -2,7 +2,6 @@
 PsgSynthesisSettings for the SN76489) and the MOD-wide choices (legato, player)."""
 
 import os
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,19 +27,31 @@ SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache")
 
 
-def _samples_section(data: dict, filepath: str) -> dict:
-    """settings.yaml `samples:`.  A key still at the top level counts, with a warning; an unknown
-    one is an error (a typo would be ignored silently)."""
-    section = dict(data.get("samples") or {})
-    unknown = sorted(set(section) - set(SAMPLE_KEYS))
-    if unknown:
-        raise ValueError(f"{filepath}: unknown samples key(s): {', '.join(unknown)}")
+# settings.yaml's keys, by section (None: the top level)
+_KEYS = {
+    None: {"fm_synthesis", "psg_synthesis", "samples", "amiga_clock", "fm_volume_scaling", "fm_pan_law_db",
+           "psg_volume_scaling", "legato", "player"},
+    "fm_synthesis": {"enabled", "mode", "clock_rate", "sustain_duration", "release_padding", "detune_variants",
+                     "threads"},
+    "psg_synthesis": {"enabled", "clock_rate", "sustain_duration", "release_padding", "oversample"},
+    "samples": set(SAMPLE_KEYS),
+}
 
-    for key in SAMPLE_KEYS:
-        if key in data and key not in section:
-            warnings.warn(f"{filepath}: {key} moved to samples.{key}", stacklevel=3)
-            section[key] = data[key]
-    return section
+
+def _check_keys(data: dict, filepath: str) -> None:
+    """A key settings.yaml does not know is an error: a typo, or a retired key, would be ignored."""
+    for section, known in _KEYS.items():
+        keys = data if section is None else (data.get(section) or {})
+        unknown = sorted(set(keys) - known)
+        if unknown:
+            where = "" if section is None else f"{section}."
+            raise ValueError(f"{filepath}: unknown key(s): {', '.join(where + k for k in unknown)}")
+
+
+def _samples_section(data: dict, filepath: str) -> dict:
+    """settings.yaml `samples:`, its keys checked."""
+    _check_keys(data, filepath)
+    return dict(data.get("samples") or {})
 
 
 def _max_sample_kb(data: dict, filepath: str) -> int:
@@ -123,18 +134,6 @@ def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool 
     return v
 
 
-def _amiga_clock(data: dict, section: dict) -> int:
-    """Top-level `amiga_clock` of settings.yaml (the Paula clock every sample rate follows); a
-    synthesis section's own key, where the file still has one, is the fallback."""
-    return int(data.get("amiga_clock", section.get("amiga_clock", DEFAULT_AMIGA_CLOCK)))
-
-
-def _psg_oversample(data: dict, section: dict, filepath: str) -> int:
-    """`psg_synthesis.oversample`; the top-level `psg_oversample` it replaced still counts, with a warning."""
-    if "oversample" not in section and "psg_oversample" in data:
-        warnings.warn(f"{filepath}: psg_oversample moved to psg_synthesis.oversample", stacklevel=3)
-        return _positive_int(data, "psg_oversample", DEFAULT_PSG_OVERSAMPLE, filepath)
-    return _positive_int(section, "oversample", DEFAULT_PSG_OVERSAMPLE, filepath)
 
 
 def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
@@ -216,12 +215,11 @@ class SampleSettings:
         return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
 
     @staticmethod
-    def _shared_fields(data: dict, section: dict, smp: dict, filepath: str) -> dict:
-        """The shared fields from settings.yaml: `data` the whole file, `section` the chip's
-        synthesis block, `smp` its `samples:` (_samples_section)."""
+    def _shared_fields(data: dict, smp: dict, filepath: str) -> dict:
+        """The shared fields from settings.yaml: `data` the whole file, `smp` its `samples:` (_samples_section)."""
         shelf_db, shelf_hz = _treble_shelf(smp, filepath)
         return dict(
-            amiga_clock=_amiga_clock(data, section),
+            amiga_clock=int(data.get("amiga_clock", DEFAULT_AMIGA_CLOCK)),
             max_sample_kb=_max_sample_kb(smp, filepath),
             sustain_loops=_sustain_loops(smp, filepath),
             loop_drift_db=_loop_drift_db(smp, filepath),
@@ -251,19 +249,6 @@ class PsgSynthesisSettings(SampleSettings):
     def from_yaml(cls, filepath: str) -> 'PsgSynthesisSettings':
         data = read_yaml_file(filepath)
         s = data.get("psg_synthesis", {})
-        if "psg_envelope_tables" in s:
-            warnings.warn(
-                f"{filepath}: psg_synthesis.psg_envelope_tables is ignored — the envelopes come from "
-                "the driver transcription in core/smps/driver_tables.py (PSG_ENVELOPES_BY_NAME); delete the block",
-                stacklevel=2,
-            )
-        for key in ("normalize_samples", "psg_output_max"):
-            if key in s:
-                warnings.warn(
-                    f"{filepath}: psg_synthesis.{key} is ignored — every sample is peak-normalised "
-                    "to its full 8 bits and the sample_list volume carries its level; delete the line",
-                    stacklevel=2,
-                )
         smp = _samples_section(data, filepath)
         return cls(
             enabled=s.get("enabled", False),
@@ -271,8 +256,8 @@ class PsgSynthesisSettings(SampleSettings):
             sustain_duration=_sustain_duration(s, 1.0),
             release_padding=s.get("release_padding", 0.2),
             psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
-            psg_oversample=_psg_oversample(data, s, filepath),
-            **cls._shared_fields(data, s, smp, filepath),
+            psg_oversample=_positive_int(s, "oversample", DEFAULT_PSG_OVERSAMPLE, filepath),
+            **cls._shared_fields(data, smp, filepath),
         )
 
 
@@ -348,20 +333,6 @@ class SynthesisSettings(SampleSettings):
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
         data = read_yaml_file(filepath)
         s = data.get("fm_synthesis", {})
-        for key in ("headroom_db", "carrier_balance"):
-            if key in s:
-                warnings.warn(
-                    f"{filepath}: fm_synthesis.{key} is ignored — carriers render at the voice's TL plus "
-                    "the channel's own volume, and the chip's 9-bit channel accumulator clips them "
-                    "exactly as the hardware does; delete the line",
-                    stacklevel=2,
-                )
-        if "normalize_samples" in s:
-            warnings.warn(
-                f"{filepath}: fm_synthesis.normalize_samples is ignored — every sample is peak-normalised "
-                "to its full 8 bits and the sample_list volume carries its level; delete the line",
-                stacklevel=2,
-            )
         smp = _samples_section(data, filepath)
         return cls(
             enabled=s.get("enabled", False),
@@ -376,7 +347,7 @@ class SynthesisSettings(SampleSettings):
             legato=_legato(data, filepath),
             player=_player(data, filepath),
             pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", True, filepath),
-            **cls._shared_fields(data, s, smp, filepath),
+            **cls._shared_fields(data, smp, filepath),
         )
 
 

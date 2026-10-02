@@ -15,7 +15,7 @@ from .config import (
     rate3_synth_root_issues,
 )
 from .detune import DetunePlan, detune_variants_wanted, plan_detune_variants
-from .diagnostics import Diagnostics
+from .diagnostics import Diagnostics, InfoKind, WarningKind
 from .driver_state import (
     resolve_synth_roots,
 )
@@ -128,13 +128,13 @@ class SmpsToModConverter:
 
         # smpsSetTempoDiv re-times every channel
         for tick, div in apply_global_tempo_div(self.song):
-            self._diag.info({'type': 'tempo_div_change', 'tick': tick, 'divider': div,
-                               'row': int(tick // self._timeline.ticks_per_row)})
+            self._diag.info(InfoKind.TEMPO_DIV_CHANGE, tick=tick, divider=div,
+                            row=int(tick // self._timeline.ticks_per_row))
         self._timeline.collect_segments()
 
         # Loop bodies too short to cover the song are replayed to its end
-        for info in extend_looping_channels(self.song):
-            self._diag.info(info)
+        for extended in extend_looping_channels(self.song):
+            self._diag.info(InfoKind.LOOP_EXTENDED, **extended)
         self._timeline.collect_segments()
 
     @property
@@ -191,9 +191,8 @@ class SmpsToModConverter:
         pcm_data = pcm_orig[:max_bytes]
         if len(pcm_orig) > max_bytes:
             # The generators cap the sustain to the limit; this is a last resort.
-            self._diag.warn({'type': 'sample_truncated', 'channel': prefix,
-                               'extra_ctx': f'instrument {inst_num}', 'instrument': inst_num,
-                               'bytes': len(pcm_orig), 'max_bytes': max_bytes})
+            self._diag.warn(WarningKind.SAMPLE_TRUNCATED, channel=prefix, extra_ctx=f'instrument {inst_num}',
+                            instrument=inst_num, bytes=len(pcm_orig), max_bytes=max_bytes)
         if len(pcm_data) % 2:                   # a MOD sample is whole words: evened with a zero
             pcm_data += b"\0"
         sample = ModSample(entry[1] if entry else f"{prefix}_inst{inst_num}")
@@ -274,7 +273,7 @@ class SmpsToModConverter:
                 continue
             shaped = saturate(signed8(sample.data), db)
             sample.data = to_int8(shaped, INT8_PEAK / peak(shaped), self._dither)
-            self._diag.info({'type': 'dac_saturated', 'instrument': d.mod_instrument, 'name': d.name, 'db': db})
+            self._diag.info(InfoKind.DAC_SATURATED, instrument=d.mod_instrument, name=d.name, db=db)
 
     def convert(self) -> ModFile:
         """The finished MOD: the song converted, then laid out.
@@ -290,7 +289,7 @@ class SmpsToModConverter:
         self._layout.loop_point(breaks)
 
         # A break may append a blank pattern nothing reaches once the Bxx is in
-        loop = next((i for i in self.infos if i['type'] == 'loop_set'), None)
+        loop = self._diag.first_info(InfoKind.LOOP_SET)
         if loop:
             mod.trim_to_pattern(loop['pattern'])
 
@@ -298,7 +297,7 @@ class SmpsToModConverter:
         if self.config.merge_active:
             need = ModFile.round_up_channels(max(1, mod.used_channels()))
             if need < mod.CHANNELS:
-                self._diag.info({'type': 'narrowed', 'from': mod.CHANNELS, 'to': need})
+                self._diag.info(InfoKind.NARROWED, before=mod.CHANNELS, after=need)
                 mod.narrow_to(need)
 
         # Silent once a one-shot ends: ProTracker replays its first word
@@ -337,7 +336,7 @@ class SmpsToModConverter:
             self._start(song, config, self.synth, self.psg_synth)
             self._bank_retry = retry
             self._convert_once()
-            self._diag.info({'type': 'merge_bank_retry', **retry})
+            self._diag.info(InfoKind.MERGE_BANK_RETRY, **retry)
             return self.mod
 
         tried = [self.config.merge_bank_slots]
@@ -351,8 +350,8 @@ class SmpsToModConverter:
             self._convert_once()
             tried.append(want)
         if any(c.banked for c in self._merge.composites.values()) or self._merge.banks:
-            self._diag.info({'type': 'merge_bank_slots', 'reserve': self.config.merge_bank_slots,
-                               'banks': len(self._merge.banks), 'passes': len(tried)})
+            self._diag.info(InfoKind.MERGE_BANK_SLOTS, reserve=self.config.merge_bank_slots,
+                            banks=len(self._merge.banks), passes=len(tried))
         return self.mod
 
     def _convert_once(self):
@@ -411,19 +410,18 @@ class SmpsToModConverter:
         sample's rate carries the difference from the pitch `root` sounds (synth_shift), so no note
         moves.  Before anything reads synth_root / synth_shift."""
         for issue in rate3_synth_root_issues(self.config):
-            self._diag.warn({'type': 'rate3_synth_root', 'extra_ctx': issue['context'], **issue})
+            self._diag.warn(WarningKind.RATE3_SYNTH_ROOT, extra_ctx=issue['context'], **issue)
 
         derived = stated = 0
         for r in resolve_synth_roots(self.song, self.config):
             derived += r['derived']
             stated += not r['derived']
             if r['shift'] and not r['derived']:
-                self._diag.info({'type': 'synth_shift', **r})
+                self._diag.info(InfoKind.SYNTH_SHIFT, **r)
             if len(r['votes']) > 1:
-                self._diag.warn({'type': 'synth_root_ambiguous', 'channel': 'map',
-                                 'extra_ctx': r['context'], **r})
+                self._diag.warn(WarningKind.SYNTH_ROOT_AMBIGUOUS, channel='map', extra_ctx=r['context'], **r)
         if derived or stated:
-            self._diag.info({'type': 'synth_roots', 'derived': derived, 'stated': stated})
+            self._diag.info(InfoKind.SYNTH_ROOTS, derived=derived, stated=stated)
 
     def _psg_synth_instruments(self) -> set[int]:
         """The PSG instruments that will be synthesized, so disk loading skips them (no spurious
@@ -495,7 +493,7 @@ class SmpsToModConverter:
         self._sustain.flush('FM', fm_samples, self._loops, self._release)
         if self._merged is not None:
             self._merged.scale_chip_volumes(fm_peaks)
-        self._diag.info({'type': 'fm_synthesized', 'count': len(fm_samples)})
+        self._diag.info(InfoKind.FM_SYNTHESIZED, count=len(fm_samples))
 
         # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer (as a
         # PSG one is in _synthesize_psg); the slot's loop entry is the composite's
@@ -536,7 +534,7 @@ class SmpsToModConverter:
         for i in aside:
             self._mix_sources[i] = self._make_sample(i, psg_samples[i][0], "psg", psg_loops.get(i),
                                                      psg_synth.max_sample_bytes, original=True)
-        self._diag.info({'type': 'psg_synthesized', 'count': len(psg_samples)})
+        self._diag.info(InfoKind.PSG_SYNTHESIZED, count=len(psg_samples))
 
     def _mix_only_aside(self, samples: dict) -> set[int]:
         """The rendered instruments that are only a mix's source, whose slot a composite holds."""
@@ -549,27 +547,24 @@ class SmpsToModConverter:
         several envelopes as a warning."""
         for inst, d in sorted(rate3.items()):
             if d['used']:
-                self._diag.info({'type': 'rate3_divider', 'instrument': inst, **d})
+                self._diag.info(InfoKind.RATE3_DIVIDER, instrument=inst, **d)
         for inst, d in sorted(noise_env.items()):
             if d['envelope'] is not None:
-                self._diag.info({'type': 'noise_envelope', 'instrument': inst,
-                                 'envelope': d['envelope'], 'derived': d['derived'],
-                                 'notes': d['counts'].get(d['envelope'], 0)})
+                self._diag.info(InfoKind.NOISE_ENVELOPE, instrument=inst, envelope=d['envelope'],
+                                derived=d['derived'], notes=d['counts'].get(d['envelope'], 0))
             others = {k: n for k, n in d['counts'].items() if k != d['envelope']}
             if others:
-                self._diag.warn({'type': 'noise_envelopes', 'channel': 'PSG',
-                                 'extra_ctx': f'instrument {inst}', 'instrument': inst,
-                                 'envelope': d['envelope'], 'others': others})
+                self._diag.warn(WarningKind.NOISE_ENVELOPES, channel='PSG', extra_ctx=f'instrument {inst}',
+                                instrument=inst, envelope=d['envelope'], others=others)
 
     def _report_emission(self) -> None:
         """What the channel writers counted: banked notes, tie retunes."""
         stats = self._emission
         if self._merge is not None and self._merge.banks:
-            self._diag.info({'type': 'merge_bank_notes', 'notes': len(self._merge.regions),
-                             'cuts': stats.bank_cuts, 'delays_dropped': stats.bank_delays_dropped,
-                             'cxx_moved': stats.bank_cxx_moved})
+            self._diag.info(InfoKind.MERGE_BANK_NOTES, notes=len(self._merge.regions), cuts=stats.bank_cuts,
+                            delays_dropped=stats.bank_delays_dropped, cxx_moved=stats.bank_cxx_moved)
         if any(stats.tie_retunes.values()):
-            self._diag.info({'type': 'detune_ties', **stats.tie_retunes})
+            self._diag.info(InfoKind.DETUNE_TIES, **stats.tie_retunes)
 
     def sample_secs(self) -> dict[int, float]:
         """{instrument: seconds its sample lasts} for the instruments whose sample, not the
@@ -612,10 +607,10 @@ class SmpsToModConverter:
             return None
         plan = plan_detune_variants(self.song, self.config)
         if plan.own or plan.variants:
-            self._diag.info({'type': 'detune_variants', 'own': dict(plan.own),
-                               'variants': [(v.inst, v.base, v.detune, v.notes) for v in plan.variants.values()]})
+            self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own),
+                            variants=[(v.inst, v.base, v.detune, v.notes) for v in plan.variants.values()])
         if plan.unplaced:
-            self._diag.warn({'type': 'detune_no_slot', 'channel': 'FM', 'unplaced': dict(plan.unplaced)})
+            self._diag.warn(WarningKind.DETUNE_NO_SLOT, channel='FM', unplaced=dict(plan.unplaced))
         return plan
 
     def _convert_all_channels(self):
@@ -662,7 +657,7 @@ class SmpsToModConverter:
 
             source = chan_cfg.source
             if source not in source_map:
-                self._diag.warn({'type': 'missing_source', 'source': source})
+                self._diag.warn(WarningKind.MISSING_SOURCE, source=source)
                 continue
 
             smps_channel = source_map[source]

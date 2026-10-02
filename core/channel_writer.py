@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from .config import ChannelConfig, ConversionConfig, SynthesisSettings
 from .detune import DetunePlan, detune_cents
-from .diagnostics import Diagnostics
+from .diagnostics import Diagnostics, WarningKind
 from .driver_state import DriverState, ResolvedNote, walk_channel
 from .instruments import fm_catalogue
 from .levels import MOD_MAX_VOLUME, clamp_mod_volume, db_to_gain, fm_tl_to_mod, psg_att_to_mod
@@ -412,12 +412,8 @@ class ChannelWriter:
         """A note-on; False once the song runs past max_patterns (the channel stops)."""
         pattern, row = self._timeline.pattern_row(event.tick_position)
         if pattern >= self._config.max_patterns:
-            self._ctx.diag.warn({
-                'type': 'pattern_overflow',
-                'channel': self._cfg.source,
-                'pattern': pattern,
-                'max': self._config.max_patterns,
-            })
+            self._ctx.diag.warn(WarningKind.PATTERN_OVERFLOW, channel=self._cfg.source, pattern=pattern,
+                                max=self._config.max_patterns)
             return False
 
         self._mod.set_cursor(pattern, self._col, row)
@@ -982,18 +978,15 @@ class ChannelWriter:
         src_name = _semitone_to_name(res.source)
         if res.path == "transpose" and st.fm_ranges(source) and st.voice is not None:
             ranges = st.fm_ranges(source)
-            self._ctx.diag.warn({
-                'type': 'map_gap', 'channel': source, 'voice_idx': st.voice,
-                'extra_ctx': st.psg_label, 'note_name': src_name, 'semitone': res.source,
-                'range_lo': _semitone_to_name(ranges[0].low),
-                'range_hi': _semitone_to_name(ranges[-1].high),
-            })
+            self._ctx.diag.warn(WarningKind.MAP_GAP, channel=source, voice_idx=st.voice, extra_ctx=st.psg_label,
+                                note_name=src_name, semitone=res.source, range_lo=_semitone_to_name(ranges[0].low),
+                                range_hi=_semitone_to_name(ranges[-1].high))
         if not res.clamped:
             return
         high = res.raw_index > _HIGHEST_NOTE
         entry = res.entry
-        w = {'type': 'clamp_high' if high else 'clamp_low', 'channel': source,
-             'src_name': src_name, 'note_value': note.note_value, 'transpose': 0}
+        kind = WarningKind.CLAMP_HIGH if high else WarningKind.CLAMP_LOW
+        w = {'channel': source, 'src_name': src_name, 'note_value': note.note_value, 'transpose': 0}
         if res.path == "fm_root":
             assert entry is not None
             w.update(voice_idx=st.voice,
@@ -1009,4 +1002,4 @@ class ChannelWriter:
                      boundary=_semitone_to_name((_HIGHEST_NOTE if high else 0) - tr))
             if source.startswith('PSG') and not st.psg_label and self._config.psg_voice_map:
                 w['psg_available_labels'] = list(self._config.psg_voice_map.keys())
-        self._ctx.diag.warn(w)
+        self._ctx.diag.warn(kind, **w)

@@ -7,7 +7,7 @@ whether it loops: a looped sample holds any note).
 import dataclasses
 
 from .config import ConversionConfig, SynthesisSettings
-from .diagnostics import Diagnostics
+from .diagnostics import Diagnostics, InfoKind, WarningKind
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, psg_catalogue
 from .loops import SustainLoop
@@ -35,7 +35,7 @@ class SustainPlanner:
         self._synth = synth
         self._timeline = timeline
         self._diag = diag
-        self._pending: dict[tuple[str, int], dict] = {}   # sustain_short warnings held back until flush
+        self._pending: dict[tuple[str, int], dict] = {}   # sustain_short warnings' fields, held back until flush
         self._rings_out: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments a channel's last note rings out on}
         self._slide_ends: dict[str, set[int]] = {}  # {"FM"/"PSG": instruments a note of ends in a release slide}
 
@@ -180,9 +180,9 @@ class SustainPlanner:
             per_inst = {i: min(n, _AUTO_SUSTAIN_CAP_SECS)
                         for i, (n, root) in needs.items() if root is not None and n > 0}
             settings = dataclasses.replace(settings, sustain_duration=secs, sustain_by_instrument=per_inst)
-            self._diag.info({'type': f'auto_sustain_{kind.lower()}', 'secs': round(secs, 3),
-                               'shortest': round(min(per_inst.values(), default=secs), 3),
-                               'instruments': len(per_inst)})
+            self._diag.info(InfoKind.AUTO_SUSTAIN_FM if kind == 'FM' else InfoKind.AUTO_SUSTAIN_PSG,
+                            secs=round(secs, 3), shortest=round(min(per_inst.values(), default=secs), 3),
+                            instruments=len(per_inst))
         if not settings.enabled:
             return settings
         sustain = float(settings.sustain_duration)
@@ -207,7 +207,7 @@ class SustainPlanner:
                      else 'setting')
             # Held back: a sample cut to a sustain loop holds any note (flush)
             self._pending[(kind, inst)] = {
-                'type': 'sustain_short', 'channel': kind, 'extra_ctx': f'instrument {inst}',
+                'channel': kind, 'extra_ctx': f'instrument {inst}',
                 'kind': kind, 'instrument': inst, 'need': need, 'have': have,
                 'rate': rate, 'limit': limit, 'max_kb': settings.max_sample_kb}
         return dataclasses.replace(settings, exact_sustain=frozenset(exact),
@@ -229,14 +229,14 @@ class SustainPlanner:
                 continue
             del self._pending[(k, inst)]
             if inst not in loops:
-                self._diag.warn(w)
+                self._diag.warn(WarningKind.SUSTAIN_SHORT, **w)
         if looped:
-            self._diag.info({'type': 'sustain_loops', 'kind': kind, 'looped': looped,
-                               'of': len(samples), 'bytes': sum(len(p) for p, _ in samples.values()),
-                               'releases': {i: r for i, r in release.items() if i in samples}})
+            self._diag.info(InfoKind.SUSTAIN_LOOPS, kind=kind, looped=looped, of=len(samples),
+                            bytes=sum(len(p) for p, _ in samples.values()),
+                            releases={i: r for i, r in release.items() if i in samples})
 
     def flush_pending(self) -> None:
         """The held-back warnings of kinds that were not synthesised."""
         for w in self._pending.values():
-            self._diag.warn(w)
+            self._diag.warn(WarningKind.SUSTAIN_SHORT, **w)
         self._pending.clear()

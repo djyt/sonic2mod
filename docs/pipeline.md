@@ -972,7 +972,7 @@ approximate (Title Screen 3, GHZ 60).
 
 ## Channel merging (`merge:`, `convert.py --merged`)
 
-The Amiga build folds SMPS channels onto one MOD channel (`core/merge.py`; config in
+The Amiga build folds SMPS channels onto one MOD channel (`core/merge/`; config in
 `docs/yaml_config.md` § merge). A group names a **primary** and its **followers**; the followers
 leave the output and the primary plays a composite instrument wherever a follower sounds with it.
 
@@ -1014,7 +1014,7 @@ notes it cannot fold — its orphans, `PairStats.lost_notes`; a group's
 `fill_cut: true` for the follower notes whose ring the fold would cut, `PairStats.cut_notes`:
 a note longer than the primary's with the primary's next note-on or rest inside it) places
 notes on ANY output channel that is silent when they start, not only their group's primary
-(`_pool_notes`).  It runs before anything folds: a pooled follower note leaves its group's
+(`pool_notes`).  It runs before anything folds: a pooled follower note leaves its group's
 notes and the groups are paired again, so a cut note that found a channel silent for all of
 it plays whole there instead of as a truncated composite; one that found none folds as before
 (reported as "stay folded").  Green Hill's lead rests through patterns 2–4, and PSG1's
@@ -1036,7 +1036,7 @@ instead (`FM2 + [PSG2, PSG1]`, the survey's "folds with losses" pair).
 
 **Composite instruments.** One per distinct key. Slots: the ones nothing in the config names,
 then the ones the merged build frees (instruments no note plays once the followers are gone),
-the most-played composites first (`_fit_composites`).  A freed instrument that a pcm mix is
+the most-played composites first (`fit_composites`).  A freed instrument that a pcm mix is
 made from (`MergePlan.mix_only`) gives up its slot too when it is a PSG instrument: the PSG
 generator still renders it, the converter keeps the sample aside (`_mix_sources`) instead of
 installing it, and `mix_pcm_composites` reads its sources from there before the slot table
@@ -1189,7 +1189,7 @@ then checks every named pattern's columns: a live source sits on its route there
 column where it plays its own notes, and two on one column is an error naming the pattern —
 so a column is free when its owner is folded, dropped or moved elsewhere; `MergePlan.route_at`).
 A group with no followers and a `mod_channel` is a plain move; one with `fill: true` instead
-sends its primary's notes in the block's patterns to the fill pool (`_pool_notes`, which now
+sends its primary's notes in the block's patterns to the fill pool (`pool_notes`, which now
 refuses a target column nobody plays on in that pattern — a folded, dropped, moved-away or
 pooled channel's own — and marks an unplaced pooled note `folded`, so it leaves the channel's own
 column as well).  How soon a pooled note may cut a column's note is the column owner's group's
@@ -1336,7 +1336,7 @@ reaches is dropped and the mix cut the same way.  Green Hill merged: 530 → 419
 
 **Slots, again.** Two rules wasted slots: the pinned set was computed once, before any
 composite was dropped, so a source of a dropped mix stayed reserved; and every FM mix source
-was pinned because the FM catalogue renders by slot.  Now `_fit_composites` recomputes the
+was pinned because the FM catalogue renders by slot.  Now `fit_composites` recomputes the
 sources on each pass, and an FM source's slot may hold a **pcm** composite (`_plan_slots`,
 `pcm_only`): only chip composites enter the FM catalogue, so the source is still rendered
 there and the converter keeps it aside for the mixer (`_mix_sources`, as a PSG source is).
@@ -1367,7 +1367,7 @@ Hill merged slots $19 and $1F sounded the same).
   quiet.  Green Hill's slot 7 (voice $05 doubled, 11 KB) was slot 11's bytes at volume 20; now
   slot 11 is baked at 20 and its 20 own notes carry the `Cxx` they carried before.  A detuned
   unison (Title Screen FM4+FM3, `smpsDetune` +3) stays a composite: it beats.
-- *Twins give up their slot first* (`_twins`, `_reach`).  While the composites do not all fit,
+- *Twins give up their slot first* (`same_shape_twins`, `_reach`).  While the composites do not all fit,
   one whose shape (`_shape`) another has is dropped before any that would lose its notes; of
   each shape the one whose followers ring furthest is kept (fewest cut, then the latest cuts,
   then the most played), since a layer ringing on under a short note is heard less than one

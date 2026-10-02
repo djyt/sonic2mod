@@ -88,7 +88,7 @@ derivation and `ChannelWriter` — and they had drifted.
 
 - **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `psg_ranged_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
 - **`resolve_note(st, source_semitone, chan_transpose, source)` → `ResolvedNote`**: the one place that says which MOD instrument a pitched note is routed to and which MOD note it triggers (`instrument`, `index`, `raw_index` before clamping, `path` = `fm_root` / `psg_root` / `psg_fixed` / `transpose`, the `entry` that routed it, `chip` pitch, `detune`).
-- **`walk_channel(channel, config, chan_cfg, st=None)`**: yields `(event, state, resolved)` for every event, the state advanced past each flag before it is yielded and every pitched note resolved. With a merge plan on the config (`convert.py --merged`) the resolved instrument is the composite where one plays. **`enabled_channels(song, config, kinds)`** yields `(chan_cfg, channel)` for the per-kind loops. The conversion, its level and sustain pre-passes, the noise / rate-3 derivations, `resolve_synth_roots` and `core/merge.py` all walk this way.
+- **`walk_channel(channel, config, chan_cfg, st=None)`**: yields `(event, state, resolved)` for every event, the state advanced past each flag before it is yielded and every pitched note resolved. With a merge plan on the config (`convert.py --merged`) the resolved instrument is the composite where one plays. **`enabled_channels(song, config, kinds)`** yields `(chan_cfg, channel)` for the per-kind loops. The conversion, its level and sustain pre-passes, the noise / rate-3 derivations, `resolve_synth_roots` and `core/merge/` all walk this way.
 - **`source_names(song)` / `source_map(song)`**: `"DAC"`, `"FM1"…`, `"PSG1"…` in header order.
 - **`chip_pitch(semitone, transpose, is_psg)`**: the real pitch the chip plays — PSG through the driver table, so notes past its ends sound as the hardware does. What `range_space: chip` matches on.
 - **`pan_is_hard(params)`**, **`psg_range_entry(entries, key)`**.
@@ -120,7 +120,20 @@ a free slot (`DetunePlan`, on `config.detune_plan`): `resolve_note` routes to it
 renders it, the level plans share the base's.  `detune_cents(semitone, offset)` is the interval
 an offset makes on the driver's frequency table.
 
-### core/merge.py
+### core/merge/
+
+```
+notes.py   NoteOn, channel_notes, pair_channels, layer and composite keys   (merge_survey, fold_csv)
+model.py   MergePlan, Composite                                              <- notes
+slots.py   fit_composites, same_shape_twins, stand_in, drop_composite        <- model, notes
+pool.py    the fill pool, solo-note splicing                                 <- model, notes
+plan.py    prepare_merged_config, build_merge_plan (_Planner)                <- all of the above
+mix.py     mix_pcm_composites (_Mixer)                                       <- model
+build.py   MergedBuild: inside one conversion (core/smps2mod.py)             <- mix, model, core.banks
+```
+
+The package exports what other modules import (`core.merge.MergePlan`, ...); `build` is imported
+from its module (`core.merge.build`), since it needs core.banks, which imports the package.
 
 Folding SMPS channels onto one MOD channel for the Amiga build (`merge:` groups,
 `convert.py --merged`). `prepare_merged_config` disables the followers, packs the remaining
@@ -131,7 +144,7 @@ FM voices as chip layers in the catalogue, anything else mixed from the finished
 `mix_pcm_composites`, the follower resampled by the period ratio of the two notes. The plan sits on
 `config.merge_plan`, read by `walk_channel`; `refresh_ticks` rebuilds its tick map after the loop
 bodies are extended. A follower note that starts while the primary is silent is spliced into
-the primary's event stream as the follower's own note (`_splice_solo_notes`; `walk_channel`
+the primary's event stream as the follower's own note (`splice_solo_notes`; `walk_channel`
 yields it with the follower's state), and instruments no note of the merged build plays are
 dropped from the catalogue (`MergePlan.unused`). `tools/merge_survey.py` runs the same pairing
 over every channel pair of a song. Full rules: `docs/pipeline.md` § Channel merging.
@@ -343,7 +356,7 @@ SmpsToModConverter.convert()
   ├─ core/level_plan.py     LevelPlanner: the baked levels, the FM render levels
   ├─ core/noise_derive.py   derive_noise_envelopes, derive_rate3_dividers
   ├─ core/sustain_plan.py   SustainPlanner: auto sustain per instrument, sustain_short warnings
-  ├─ core/merge_build.py    MergedBuild: composite volumes, pcm mixes and banks; the plan's report
+  ├─ core/merge/build.py    MergedBuild: composite volumes, pcm mixes and banks; the plan's report
   ├─ core/channel_writer.py ChannelWriter: one channel's cells (vibrato speed and depth from core/vibrato.py)
   └─ core/layout.py         ModLayout: leading rests, tempo commands, the loop's Bxx
 ```
@@ -351,7 +364,7 @@ SmpsToModConverter.convert()
 #### `SmpsToModConverter.convert()` Flow
 
 1. Set song name; `resolve_synth_roots` fills in every rooted entry's rendering pitch; `_plan_detune` (core/detune.py) the detune variants
-2. `prepare_song()`: re-time every channel for `smpsSetTempoDiv` (`apply_global_tempo_div()`) and extend short loop bodies (`extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge.py) then decides the composite instruments while the ticks are final
+2. `prepare_song()`: re-time every channel for `smpsSetTempoDiv` (`apply_global_tempo_div()`) and extend short loop bodies (`extend_looping_channels()`); in the merged build, `_build_merge_plan()` (core/merge/) then decides the composite instruments while the ticks are final
 3. Resolve `sustain_duration: auto` from the longest ring each instrument plays (`SustainPlanner._needs`)
 4. Run the injected `SampleGenerators` (`generate_fm_samples()` from ym2612/, `generate_psg_samples()` from sn76489/) over the instrument catalogue (core/instruments.py); load the DAC samples from disk; mix the merge plan's pcm composites
 5. Set BPM (Fxx on pattern 0, channel 0) and speed (Fxx on pattern 0, channel 1)

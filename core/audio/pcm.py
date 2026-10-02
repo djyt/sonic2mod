@@ -92,6 +92,16 @@ def high_shelf(samples: Sequence[float], rate: int, freq_hz: float, gain_db: flo
     return out
 
 
+def condition_render(mono: Sequence[float], rate: int, shelves: Sequence[tuple[float, float]] = (),
+                     centre: bool = False) -> Sequence[float]:
+    """A chip render made ready for a loop search and quantising: each (Hz, dB) treble shelf in
+    turn (0 dB skipped), then, with `centre`, its DC removed and its silent tail kept silent."""
+    for freq_hz, gain_db in shelves:
+        if gain_db:
+            mono = high_shelf(mono, rate, freq_hz, gain_db)
+    return dc_block(mono, rate, keep_silent_tail=True) if centre else mono
+
+
 # saturate: the most drive tried (tanh(40 x) is all but a square wave), and the bisection's steps
 SATURATE_MAX_DRIVE = 40.0
 SATURATE_STEPS = 40
@@ -239,6 +249,12 @@ def to_int8(mono: Sequence[float], scale: float, dither: str = DEFAULT_DITHER) -
     return bytes(out)
 
 
+def full_scale_int8(mono: Sequence[float], dither: str = DEFAULT_DITHER) -> bytes:
+    """Peak-normalised to +-127 and quantised to int8; silence stays zeros."""
+    pk = peak(mono)
+    return to_int8(mono, INT8_PEAK / pk, dither) if pk else bytes(len(mono))
+
+
 def normalize_int8(mono: Sequence[int], context: str = "render") -> bytes:
     """Peak-normalise to +-127 and quantise to int8.
 
@@ -247,11 +263,9 @@ def normalize_int8(mono: Sequence[int], context: str = "render") -> bytes:
     """
     if not mono:
         return b''
-    pk = peak(mono)
-    if pk == 0:
+    if peak(mono) == 0:
         warnings.warn(f"{context}: peak is 0 - rendered silence", stacklevel=2)
-        return bytes(len(mono))
-    return to_int8(mono, INT8_PEAK / pk)
+    return full_scale_int8(mono)
 
 
 def write_raw16(path: Path, mono: Sequence[int], normalize: bool = True) -> int:

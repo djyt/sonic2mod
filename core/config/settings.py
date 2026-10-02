@@ -202,6 +202,9 @@ class SampleSettings:
     dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.audio.pcm.dc_block)
     render_cache: str | None = None  # settings.yaml samples.render_cache: where chip renders are kept
                                      # (core/render_cache.py); None = off
+    loop_timbre: bool = True         # a sustain loop waits for the timbre to hold too
+                                     # (core.audio.loops.PROFILE_PER_DB); the converter clears it
+                                     # for a merged build unless the song sets merge_loop_timbre
 
     @property
     def max_sample_bytes(self) -> int:

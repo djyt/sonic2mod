@@ -11,3 +11,5 @@
 - Program to levels of abstraction. Lower-level mechanics must be encapsulated in a dedicated abstraction layer. Expose clean, high-level APIs to the rest of the application so calling code works with domain concepts, not raw implementation details.
 
 - Strictly adhere to the layered boundary hierarchy: each layer may only communicate with its immediate neighbor directly below it. Never "punch holes" through layers.
+
+- Do not repeat yourself. Check whether similar code already exists. Refactor code for reuse if it results in easier maintainability.

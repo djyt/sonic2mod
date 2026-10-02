@@ -103,7 +103,7 @@ samples_dir: "./samples/"       # Base path for sample files
 # Additional top-level keys (see dedicated sections below for full syntax):
 #
 # voice_map:             Routes SMPS voice index + note range → MOD instrument + pitch anchor
-# channel_instrument_map: Per-channel override for voice_map (e.g. FM5 detune variants)
+# channel_instrument_map: Per-channel override for voice_map (e.g. an FM5 double at its own level)
 # psg_map:               Maps smpsPSGform bytes → PSG instrument (noise type auto-inferred from key bit 2)
 # psg_voice_map:         Maps smpsPSGvoice label → PSG instrument
 # mod_pattern_breaks:    Insert Bxx jumps + repack patterns to eliminate blank loop rows
@@ -301,7 +301,8 @@ If `voice_map` entries cover the full note range of a channel, the base YAML `tr
 
 Overrides `voice_map` for a specific SMPS source channel. Useful when one channel needs
 different instrument routing than the global `voice_map` — e.g. FM5 shares FM1's note data
-but needs detuned instrument variants.
+but needs instruments of its own (its smpsAlterNote detune is rendered into whatever samples it
+plays, docs/pipeline.md § Detune variants).
 
 Format: `{source_channel: {voice_index: [InstrumentRange, ...]}}`
 
@@ -311,7 +312,7 @@ channel_instrument_map:
     4:                        # voice $04 on FM5 only (global voice_map[4] used for all other channels)
       - low:  C6
         high: B7
-        mod_instrument: 27    # finetune +1 variant for FM5 detune chorus
+        mod_instrument: 27    # FM5's own: its detune is rendered into the sample
         root: C2
         synth_root: C5
       - low:  B4

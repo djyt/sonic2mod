@@ -147,6 +147,7 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
             for i, entry in enumerate(ranges):
                 if entry.root is None:
                     add(entry, voice_idx, f"channel_instrument_map[{src}][{voice_idx}][{i}]", src)
+    _add_detune_variants(cat, getattr(config, "detune_plan", None))
     plan = getattr(config, "merge_plan", None)
     if plan is not None:                         # core.merge: the composites, rendered as layers
         for inst in plan.dropped:                # nothing the merged build plays or mixes ...
@@ -154,6 +155,32 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
         for spec in plan.fm_instruments:         # ... and a composite owns its slot (the plan never
             cat.instruments[spec.inst] = spec    # reuses an FM mix source's)
     return cat
+
+
+def _add_detune_variants(cat: FmCatalogue, plan) -> None:
+    """core.detune: each instrument's sample rendered at its own detune, and a copy of it in
+    every variant's slot at the variant's."""
+    if plan is None:
+        return
+    for v in plan.variants.values():
+        base = cat.instruments.get(v.base)
+        if base is not None:
+            cat.instruments[v.inst] = dataclasses.replace(
+                base, inst=v.inst, layers=[dataclasses.replace(base.layers[0], fnum_offset=v.detune)],
+                context=f"{base.context} detune {v.detune:+d}")
+    for inst, detune in plan.own.items():
+        base = cat.instruments.get(inst)
+        if base is not None:
+            base.layers = [dataclasses.replace(base.layers[0], fnum_offset=detune)]
+
+
+def free_slots(config, song) -> list[int]:
+    """Instrument slots nothing in the config names."""
+    used = {e[0] for e in (config.sample_list or [])}
+    used |= set(fm_catalogue(song, config).instruments)
+    used |= set(psg_catalogue(config))
+    used |= {d.mod_instrument for d in config.dac_samples}
+    return [i for i in range(1, 32) if i not in used]
 
 
 @dataclass(slots=True)

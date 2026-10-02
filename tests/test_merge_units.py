@@ -591,7 +591,7 @@ class ConfigLoading(unittest.TestCase):
     def test_sample_settings_read_from_samples(self):
         import tempfile
 
-        from core.config import SynthesisSettings
+        from core.config import PsgSynthesisSettings, SynthesisSettings
 
         def load(text: str) -> SynthesisSettings:
             with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
@@ -603,6 +603,14 @@ class ConfigLoading(unittest.TestCase):
 
         s = load("samples:\n  max_sample_kb: 64\n  pt_zero_bytes: false\n")
         self.assertEqual((s.max_sample_kb, s.pt_zero_bytes), (64, False))
+        # a key left out is the field's default
+        self.assertEqual(load("{}\n"), SynthesisSettings())
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            f.write("{}\n")
+        try:
+            self.assertEqual(PsgSynthesisSettings.from_yaml(f.name), PsgSynthesisSettings())
+        finally:
+            Path(f.name).unlink()
         for text in ("samples:\n  pt_zero_byte: false\n",       # a typo is not ignored
                      "max_sample_kb: 64\n",                      # nor a key outside its section
                      "fm_synthesis:\n  headroom_db: 3\n"):      # nor a retired one

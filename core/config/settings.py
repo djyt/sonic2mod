@@ -54,9 +54,9 @@ def _samples_section(data: dict, filepath: str) -> dict:
     return dict(data.get("samples") or {})
 
 
-def _max_sample_kb(data: dict, filepath: str) -> int:
-    """`samples.max_sample_kb` of settings.yaml, validated (128 default)."""
-    kb = data.get("max_sample_kb", 128)
+def _max_sample_kb(data: dict, default: int, filepath: str) -> int:
+    """`samples.max_sample_kb` of settings.yaml, validated."""
+    kb = data.get("max_sample_kb", default)
     try:
         sample_limit_bytes(kb)
     except ValueError as e:
@@ -75,9 +75,9 @@ def _sample_flag(data: dict, key: str, default: bool, filepath: str) -> bool:
 SUSTAIN_LOOP_MODES = ("off", "merged", "all")
 
 
-def _sustain_loops(data: dict, filepath: str) -> str:
-    """`samples.sustain_loops` of settings.yaml: off | merged (default) | all."""
-    v = mode_word(data.get("sustain_loops", "merged"))
+def _sustain_loops(data: dict, default: str, filepath: str) -> str:
+    """`samples.sustain_loops` of settings.yaml: off | merged | all."""
+    v = mode_word(data.get("sustain_loops", default))
     if v not in SUSTAIN_LOOP_MODES:
         raise ValueError(f"{filepath}: sustain_loops must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
     return v
@@ -86,9 +86,9 @@ def _sustain_loops(data: dict, filepath: str) -> str:
 LEGATO_MODES = ("strict", "loose", "retrigger")
 
 
-def _legato(data: dict, filepath: str) -> str:
-    """Top-level `legato` of settings.yaml: retrigger (default) | strict | loose."""
-    v = str(data.get("legato", "retrigger")).lower()
+def _legato(data: dict, default: str, filepath: str) -> str:
+    """Top-level `legato` of settings.yaml: retrigger | strict | loose."""
+    v = str(data.get("legato", default)).lower()
     if v not in LEGATO_MODES:
         raise ValueError(f"{filepath}: legato must be one of {', '.join(LEGATO_MODES)} (got '{v}')")
     return v
@@ -99,9 +99,9 @@ def _legato(data: dict, filepath: str) -> str:
 PLAYERS = ("ft2", "pt2")
 
 
-def _player(data: dict, filepath: str) -> str:
-    """Top-level `player` of settings.yaml: ft2 (default) | pt2."""
-    v = str(data.get("player", "ft2")).lower()
+def _player(data: dict, default: str, filepath: str) -> str:
+    """Top-level `player` of settings.yaml: ft2 | pt2."""
+    v = str(data.get("player", default)).lower()
     if v not in PLAYERS:
         raise ValueError(f"{filepath}: player must be one of {', '.join(PLAYERS)} (got '{v}')")
     return v
@@ -134,22 +134,20 @@ def _positive_int(data: dict, key: str, default: int, filepath: str, even: bool 
     return v
 
 
-
-
-def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
+def _treble_shelf(data: dict, defaults: tuple[float, float], filepath: str) -> tuple[float, float]:
     """`samples.treble_shelf_db` / `treble_shelf_hz` of settings.yaml: (gain, corner) of the
     optional high shelf on every synthesised render (core.audio.pcm.high_shelf); 0 dB = off."""
     try:
-        return float(data.get("treble_shelf_db", 0.0)), float(data.get("treble_shelf_hz", DEFAULT_SHELF_HZ))
+        return float(data.get("treble_shelf_db", defaults[0])), float(data.get("treble_shelf_hz", defaults[1]))
     except (TypeError, ValueError) as e:
         raise ValueError(f"{filepath}: treble_shelf_db / treble_shelf_hz must be numbers") from e
 
 
-def _loop_drift_db(data: dict, filepath: str) -> float:
-    """`samples.loop_drift_db` of settings.yaml (1.0 default): how far a looped sample's level
-    may sit above where the instrument's longest note would have decayed to."""
+def _loop_drift_db(data: dict, default: float, filepath: str) -> float:
+    """`samples.loop_drift_db` of settings.yaml: how far a looped sample's level may sit above
+    where the instrument's longest note would have decayed to."""
     try:
-        v = float(data.get("loop_drift_db", 1.0))
+        v = float(data.get("loop_drift_db", default))
     except (TypeError, ValueError) as e:
         raise ValueError(f"{filepath}: loop_drift_db must be a number of dB") from e
     if v < 0:
@@ -163,14 +161,14 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 def _render_cache(data: dict) -> str | None:
     """samples.render_cache: the directory chip renders are kept in (relative to the project), or off."""
-    value = data.get("render_cache", "off")
+    value = data.get("render_cache")
     if value is None or mode_word(value) == "off":
         return None
     path = Path(str(value))
     return str(path if path.is_absolute() else _ROOT / path)
 
 
-def _sustain_duration(section: dict, default: float) -> float | str:
+def _sustain_duration(section: dict, default: float | str) -> float | str:
     """A synthesis section's sustain_duration: seconds, or "auto" (each instrument its longest ring)."""
     sd = section.get("sustain_duration", default)
     return sd if sd == "auto" else float(sd)
@@ -214,20 +212,21 @@ class SampleSettings:
         """True when this build (the merged one or the reference) gets sustain loops."""
         return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
 
-    @staticmethod
-    def _shared_fields(data: dict, smp: dict, filepath: str) -> dict:
-        """The shared fields from settings.yaml: `data` the whole file, `smp` its `samples:` (_samples_section)."""
-        shelf_db, shelf_hz = _treble_shelf(smp, filepath)
+    @classmethod
+    def _shared_fields(cls, data: dict, smp: dict, filepath: str) -> dict:
+        """The shared fields from settings.yaml: `data` the whole file, `smp` its `samples:`
+        (_samples_section).  A key the file leaves out keeps the field's default."""
+        shelf_db, shelf_hz = _treble_shelf(smp, (cls.treble_shelf_db, cls.treble_shelf_hz), filepath)
         return dict(
-            amiga_clock=int(data.get("amiga_clock", DEFAULT_AMIGA_CLOCK)),
-            max_sample_kb=_max_sample_kb(smp, filepath),
-            sustain_loops=_sustain_loops(smp, filepath),
-            loop_drift_db=_loop_drift_db(smp, filepath),
+            amiga_clock=int(data.get("amiga_clock", cls.amiga_clock)),
+            max_sample_kb=_max_sample_kb(smp, cls.max_sample_kb, filepath),
+            sustain_loops=_sustain_loops(smp, cls.sustain_loops, filepath),
+            loop_drift_db=_loop_drift_db(smp, cls.loop_drift_db, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,
-            resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
-            dc_block=_sample_flag(smp, "dc_block", False, filepath),
-            dither=dither_mode(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
+            resample_taps=_positive_int(smp, "resample_taps", cls.resample_taps, filepath, even=True),
+            dc_block=_sample_flag(smp, "dc_block", cls.dc_block, filepath),
+            dither=dither_mode(smp.get("dither", cls.dither), f"{filepath}: samples"),
             render_cache=_render_cache(smp),
         )
 
@@ -251,12 +250,12 @@ class PsgSynthesisSettings(SampleSettings):
         s = data.get("psg_synthesis", {})
         smp = _samples_section(data, filepath)
         return cls(
-            enabled=s.get("enabled", False),
-            clock_rate=s.get("clock_rate", DEFAULT_PSG_CLOCK),
-            sustain_duration=_sustain_duration(s, 1.0),
-            release_padding=s.get("release_padding", 0.2),
-            psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", "baked")),
-            psg_oversample=_positive_int(s, "oversample", DEFAULT_PSG_OVERSAMPLE, filepath),
+            enabled=s.get("enabled", cls.enabled),
+            clock_rate=s.get("clock_rate", cls.clock_rate),
+            sustain_duration=_sustain_duration(s, cls.sustain_duration),
+            release_padding=s.get("release_padding", cls.release_padding),
+            psg_volume_scaling=_psg_volume_mode(data.get("psg_volume_scaling", cls.psg_volume_scaling)),
+            psg_oversample=_positive_int(s, "oversample", cls.psg_oversample, filepath),
             **cls._shared_fields(data, smp, filepath),
         )
 
@@ -335,18 +334,18 @@ class SynthesisSettings(SampleSettings):
         s = data.get("fm_synthesis", {})
         smp = _samples_section(data, filepath)
         return cls(
-            enabled=s.get("enabled", False),
-            mode=s.get("mode", "ym2612"),
-            clock_rate=s.get("clock_rate", DEFAULT_FM_CLOCK),
-            sustain_duration=_sustain_duration(s, 1.5),
-            release_padding=s.get("release_padding", 0.5),
-            threads=s.get("threads", "normal"),
-            detune_variants=bool(s.get("detune_variants", True)),
-            fm_volume_scaling=data.get("fm_volume_scaling", "baked"),
-            fm_pan_law_db=float(data.get("fm_pan_law_db", DEFAULT_FM_PAN_LAW_DB)),
-            legato=_legato(data, filepath),
-            player=_player(data, filepath),
-            pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", True, filepath),
+            enabled=s.get("enabled", cls.enabled),
+            mode=s.get("mode", cls.mode),
+            clock_rate=s.get("clock_rate", cls.clock_rate),
+            sustain_duration=_sustain_duration(s, cls.sustain_duration),
+            release_padding=s.get("release_padding", cls.release_padding),
+            threads=s.get("threads", cls.threads),
+            detune_variants=bool(s.get("detune_variants", cls.detune_variants)),
+            fm_volume_scaling=data.get("fm_volume_scaling", cls.fm_volume_scaling),
+            fm_pan_law_db=float(data.get("fm_pan_law_db", cls.fm_pan_law_db)),
+            legato=_legato(data, cls.legato, filepath),
+            player=_player(data, cls.player, filepath),
+            pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", cls.pt_zero_bytes, filepath),
             **cls._shared_fields(data, smp, filepath),
         )
 

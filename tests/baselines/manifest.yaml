@@ -40,14 +40,14 @@ game_over:
   date: '2026-10-01'
   settings: 8bfba354f42a
 ghz_lofi:
-  commit: 4ce7041-dirty
-  config: fac0a4b6502f
-  date: '2026-10-01'
+  commit: 1a0ffbb
+  config: c68fb48f1879
+  date: '2026-10-02'
   settings: 8bfba354f42a
 ghz_lofi_merged:
-  commit: 4ce7041-dirty
-  config: fac0a4b6502f
-  date: '2026-10-01'
+  commit: 1a0ffbb
+  config: c68fb48f1879
+  date: '2026-10-02'
   settings: 8bfba354f42a
 green_hill_zone:
   commit: 4ce7041-dirty

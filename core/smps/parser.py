@@ -5,6 +5,7 @@ intermediate representation suitable for conversion to MOD format.
 """
 
 import re
+from dataclasses import dataclass
 from typing import ClassVar
 
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
@@ -18,6 +19,45 @@ from .song import (
     SmpsSongHeader,
     SmpsVoice,
 )
+
+# dc.b bytes: durations below the rest, notes from it to nB7.
+_REST = 0x80          # nRst
+_LAST_NOTE = 0xDF     # nB7
+_NO_ATTACK = 0xE7     # smpsNoAttack
+
+
+@dataclass
+class _DcbCursor:
+    """A channel's note state as dc.b lines read and leave it."""
+    channel: SmpsChannel
+    is_dac: bool
+    tempo_div: int
+    tick: int
+    last_duration: int
+    no_attack: bool
+    pending: SmpsNote | None     # the note still waiting for its duration
+    last_note_value: int         # the last note sounded: what a standalone duration re-keys
+
+
+def _standalone_note(cur: _DcbCursor, duration: int) -> SmpsNote:
+    """What a duration byte with no note before it plays.
+
+    DAC: SavedDAC re-triggers; after a rest it stays silent.
+    FM / PSG: the last note re-keys at its frequency (1-Up: `$03,$03,$06,$06` after nE7, a
+    staccato arpeggio), unless smpsNoAttack precedes it: the note rings on (GHZ:
+    `smpsNoAttack,$3C` after nF5; PSG skips the volume write, the envelope continues).
+    """
+    held = SmpsNote(note_value=_REST, duration=duration, is_rest=True, is_no_attack=True)
+    if cur.is_dac:
+        last = next((e.note for e in reversed(cur.channel.events) if e.note is not None), None)
+        if last is None or not last.is_dac:
+            return held
+        return SmpsNote(note_value=last.note_value, duration=duration, is_dac=True, dac_name=last.dac_name)
+
+    if cur.no_attack or cur.last_note_value == 0:
+        return held
+    return SmpsNote(note_value=cur.last_note_value, duration=duration, is_retrigger=True)
+
 
 # ---------------------------------------------------------------------------
 # Parser
@@ -244,7 +284,7 @@ class SmpsParser:
             if not first.startswith('$'):
                 return False
             try:
-                return int(first[1:], 16) < 0x80
+                return int(first[1:], 16) < _REST
             except ValueError:
                 return False
         return False
@@ -284,11 +324,10 @@ class SmpsParser:
         # Track label tick positions
         self.label_tick_pos[start_label] = 0
 
-        is_psg = ch_header.channel_type == "PSG"
         _seen_labels: set[str] = {start_label}
         tick, _, _, _, _ = self._parse_channel_lines(
             channel, start_line, tick, last_duration, no_attack_pending,
-            ch_header.channel_type == "DAC", is_psg=is_psg,
+            ch_header.channel_type == "DAC",
             _seen_labels=_seen_labels, chan_tempo_div=tempo_divider,
         )
 
@@ -296,7 +335,7 @@ class SmpsParser:
 
     def _parse_channel_lines(self, channel, start_line, tick, last_duration,
                               no_attack_pending, is_dac, stop_line=None,
-                              pending_note=None, last_note_value=0, is_psg=False,
+                              pending_note=None, last_note_value=0,
                               _seen_labels=None, chan_tempo_div=1):
         """Parse lines from start_line, appending events to channel.
 
@@ -378,7 +417,7 @@ class SmpsParser:
                     channel, jump_line, tick, last_duration,
                     no_attack_pending, is_dac, stop_line=None,
                     pending_note=None, last_note_value=last_note_value,
-                    is_psg=is_psg, _seen_labels=_seen_labels,
+                    _seen_labels=_seen_labels,
                     chan_tempo_div=chan_tempo_div,
                 )
 
@@ -403,7 +442,7 @@ class SmpsParser:
                             channel, target_line, tick, last_duration,
                             no_attack_pending, is_dac, stop_line=i,
                             pending_note=None, last_note_value=last_note_value,
-                            is_psg=is_psg, _seen_labels=_seen_labels,
+                            _seen_labels=_seen_labels,
                             chan_tempo_div=chan_tempo_div,
                         )
                         # Finalize any note pending at the loop-body end before the next replay
@@ -424,7 +463,7 @@ class SmpsParser:
                     tick, last_duration, pending_note, last_note_value, chan_tempo_div = self._parse_call(
                         channel, target_line, tick, last_duration,
                         no_attack_pending, is_dac, pending_note,
-                        last_note_value=last_note_value, is_psg=is_psg,
+                        last_note_value=last_note_value,
                         chan_tempo_div=chan_tempo_div,
                     )
                 i += 1
@@ -466,7 +505,7 @@ class SmpsParser:
                 tick, last_duration, no_attack_pending, pending_note, last_note_value = \
                     self._parse_dcb_line(
                         channel, line, tick, last_duration, no_attack_pending, is_dac,
-                        pending_note, last_note_value=last_note_value, is_psg=is_psg,
+                        pending_note, last_note_value=last_note_value,
                         chan_tempo_div=chan_tempo_div,
                     )
                 i += 1
@@ -503,12 +542,12 @@ class SmpsParser:
 
     def _parse_call(self, channel, target_line, tick, last_duration,
                      no_attack_pending, is_dac, pending_note=None, last_note_value=0,
-                     is_psg=False, chan_tempo_div=1):
+                     chan_tempo_div=1):
         """Inline a smpsCall subroutine until smpsReturn."""
         return self._parse_channel_lines(
             channel, target_line, tick, last_duration,
             no_attack_pending, is_dac, stop_line=None,
-            pending_note=pending_note, last_note_value=last_note_value, is_psg=is_psg,
+            pending_note=pending_note, last_note_value=last_note_value,
             chan_tempo_div=chan_tempo_div,
         )
 
@@ -610,7 +649,7 @@ class SmpsParser:
         return None
 
     def _parse_dcb_line(self, channel, line, tick, last_duration, no_attack_pending, is_dac,
-                         pending_note=None, last_note_value=0, is_psg=False, chan_tempo_div=1):
+                         pending_note=None, last_note_value=0, chan_tempo_div=1):
         """Parse a dc.b line containing note/duration/effect data.
 
         Tokens are comma-separated. Each token is a note name, DAC name, hex value,
@@ -628,173 +667,77 @@ class SmpsParser:
         it appears on the next dc.b assembly line.  The caller is responsible for
         finalizing any pending_note that remains after the last dc.b in a channel.
         """
-        # Strip "dc.b" prefix and split on comma
-        data_part = line[4:].strip()
-        tokens = [t.strip() for t in data_part.split(',')]
+        cur = _DcbCursor(channel, is_dac, chan_tempo_div, tick, last_duration,
+                         no_attack_pending, pending_note, last_note_value)
+        for token in line[4:].strip().split(','):
+            self._parse_dcb_token(cur, token.strip())
 
-        # pending_note comes in from the caller (carries across dc.b lines)
+        # The pending note is not finalized: a duration on the next dc.b line is still its own.
+        return cur.tick, cur.last_duration, cur.no_attack, cur.pending, cur.last_note_value
 
-        for token in tokens:
-            if not token:
-                continue
+    def _parse_dcb_token(self, cur, token):
+        """One dc.b token: smpsNoAttack, a note or DAC name, a hex byte.  Anything else is ignored."""
+        if token == 'smpsNoAttack':
+            cur.no_attack = True
+            return
 
-            # Check for smpsNoAttack
-            if token == 'smpsNoAttack':
-                no_attack_pending = True
-                continue
+        if token in SMPS_NOTE_NAMES:
+            self._open_note(cur, SmpsNote(note_value=SMPS_NOTE_NAMES[token], duration=0,
+                                          is_rest=(token == 'nRst'), is_no_attack=cur.no_attack))
+            return
 
-            # Check for note names
-            if token in SMPS_NOTE_NAMES:
-                # Finalize any pending note with last_duration
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
+        if token in SMPS_DAC_NAMES:
+            self._open_note(cur, SmpsNote(note_value=SMPS_DAC_NAMES[token], duration=0, is_dac=True,
+                                          dac_name=token, is_no_attack=cur.no_attack))
+            return
 
-                note_val = SMPS_NOTE_NAMES[token]
-                pending_note = SmpsNote(
-                    note_value=note_val,
-                    duration=0,
-                    is_rest=(token == 'nRst'),
-                    is_no_attack=no_attack_pending
-                )
-                no_attack_pending = False
-                continue
+        m = re.match(r'\$([0-9A-Fa-f]+)', token)
+        if not m:
+            return
 
-            # Check for DAC names
-            if token in SMPS_DAC_NAMES:
-                # Finalize pending note
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
+        val = int(m.group(1), 16)
+        if val == _NO_ATTACK:
+            cur.no_attack = True
+        elif val < _REST:
+            self._parse_duration(cur, val * cur.tempo_div)
+        else:
+            self._parse_note_byte(cur, val)
 
-                dac_val = SMPS_DAC_NAMES[token]
-                pending_note = SmpsNote(
-                    note_value=dac_val,
-                    duration=0,
-                    is_dac=True,
-                    dac_name=token,
-                    is_no_attack=no_attack_pending
-                )
-                no_attack_pending = False
-                continue
+    def _parse_note_byte(self, cur, val):
+        """A byte from $80: rest, note or (DAC channel) sample.  Above the notes: skipped."""
+        if val == _REST:
+            note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
+        elif val > _LAST_NOTE:
+            note = None
+        elif cur.is_dac and val in SMPS_DAC_NAMES.values():
+            note = SmpsNote(note_value=val, duration=0, is_dac=True,
+                            dac_name=SMPS_DAC_NAMES_REVERSE.get(val, ''), is_no_attack=cur.no_attack)
+        else:
+            note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
+        self._open_note(cur, note)
 
-            # Check for hex values
-            m = re.match(r'\$([0-9A-Fa-f]+)', token)
-            if m:
-                val = int(m.group(1), 16)
+    def _parse_duration(self, cur, duration):
+        """A duration (already scaled by the tempo divider): the pending note's, or a note of its own."""
+        cur.last_duration = duration
+        if cur.pending is not None:
+            self._close_pending(cur)
+            return
 
-                if val == 0xE7:
-                    # smpsNoAttack inline
-                    no_attack_pending = True
-                    continue
+        cur.channel.events.append(SmpsEvent(note=_standalone_note(cur, duration), tick_position=cur.tick))
+        cur.tick += duration
 
-                if val < 0x80:
-                    # It's a duration value; scale by per-channel tempo divider.
-                    scaled = val * chan_tempo_div
-                    if pending_note is not None:
-                        # Assign to pending note
-                        if not pending_note.is_rest and not pending_note.is_dac:
-                            last_note_value = pending_note.note_value
-                        pending_note.duration = scaled
-                        last_duration = scaled
-                        channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
-                        tick += pending_note.duration
-                        pending_note = None
-                    else:
-                        # Standalone duration.
-                        # PSG: driver re-triggers (PSGDoNoteOn on each DurationTimeout expiry),
-                        #      UNLESS smpsNoAttack precedes it — SetPSGVolume then skips volume
-                        #      write (bit 4 set), so the envelope continues without restart.
-                        # DAC: driver re-triggers SavedDAC on each DurationTimeout expiry.
-                        # FM:  behavior depends on smpsNoAttack (see else branch below).
-                        last_duration = scaled
-                        if is_psg and not no_attack_pending and last_note_value != 0:
-                            cont_note = SmpsNote(
-                                note_value=last_note_value,
-                                duration=scaled,
-                                is_retrigger=True,
-                            )
-                        elif is_psg:
-                            cont_note = SmpsNote(
-                                note_value=0x80,
-                                duration=scaled,
-                                is_rest=True,
-                                is_no_attack=True,
-                            )
-                        elif is_dac:
-                            # Find the most recent note event. If it's a DAC sample, retrigger it.
-                            # If it's a rest (SavedDAC=$80), stay silent — driver skips trigger for rests.
-                            last_note_evt = next(
-                                (e.note for e in reversed(channel.events) if e.note is not None), None
-                            )
-                            if last_note_evt is not None and last_note_evt.is_dac:
-                                cont_note = SmpsNote(
-                                    note_value=last_note_evt.note_value,
-                                    duration=scaled,
-                                    is_dac=True,
-                                    dac_name=last_note_evt.dac_name,
-                                )
-                            else:
-                                cont_note = SmpsNote(
-                                    note_value=0x80,
-                                    duration=scaled,
-                                    is_rest=True,
-                                    is_no_attack=True,
-                                )
-                        else:
-                            # FM: behavior depends on whether smpsNoAttack preceded the
-                            # standalone duration.
-                            # Without smpsNoAttack: FMNoteOn fires → key-on → retrigger
-                            #   (e.g. 1-Up: $03,$03,$06,$06 after nE7 → staccato arpeggio).
-                            # With smpsNoAttack: FMNoteOn suppressed by no-attack flag →
-                            #   envelope sustains, no key-on
-                            #   (e.g. GHZ: smpsNoAttack,$3C after nF5 → held note).
-                            if not no_attack_pending and last_note_value != 0:
-                                cont_note = SmpsNote(
-                                    note_value=last_note_value,
-                                    duration=scaled,
-                                    is_retrigger=True,
-                                )
-                            else:
-                                cont_note = SmpsNote(
-                                    note_value=0x80,
-                                    duration=scaled,
-                                    is_rest=True,
-                                    is_no_attack=True,
-                                )
-                        channel.events.append(SmpsEvent(note=cont_note, tick_position=tick))
-                        tick += scaled
-                    continue
+    def _open_note(self, cur, note):
+        """Finalize the pending note; `note` (None: nothing) waits for its duration next."""
+        self._close_pending(cur)
+        cur.pending = note
+        cur.no_attack = False
 
-                else:  # val >= 0x80
-                    # Could be a note value (nRst=$80, nC0=$81, etc.)
-                    # Finalize pending note first
-                    tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-
-                    if val == 0x80:
-                        pending_note = SmpsNote(
-                            note_value=val, duration=0, is_rest=True,
-                            is_no_attack=no_attack_pending
-                        )
-                    elif 0x81 <= val <= 0xDF:
-                        # Check if it's a DAC value when in DAC channel
-                        if is_dac and val in SMPS_DAC_NAMES.values():
-                            dac_name = SMPS_DAC_NAMES_REVERSE.get(val, '')
-                            pending_note = SmpsNote(
-                                note_value=val, duration=0, is_dac=True,
-                                dac_name=dac_name, is_no_attack=no_attack_pending
-                            )
-                        else:
-                            pending_note = SmpsNote(
-                                note_value=val, duration=0,
-                                is_no_attack=no_attack_pending
-                            )
-                    else:
-                        pending_note = None  # Unknown high byte, skip
-                    no_attack_pending = False
-                    continue
-
-        # Do NOT finalize pending_note here — return it so the caller can carry it
-        # across to the next dc.b line.  A duration byte on the next dc.b line
-        # applies to this pending note (SMPS: duration always applies to the last
-        # defined note value, regardless of assembly dc.b line boundaries).
-        return tick, last_duration, no_attack_pending, pending_note, last_note_value
+    def _close_pending(self, cur):
+        """Emit the pending note with the last duration."""
+        cur.tick, cur.last_note_value = self._finalize_pending(
+            cur.channel, cur.pending, cur.tick, cur.last_duration, cur.last_note_value
+        )
+        cur.pending = None
 
     def _parse_voices(self, voice_label):
         """Parse voice definitions from smpsVc* macros."""

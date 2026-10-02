@@ -12,6 +12,8 @@ from typing import cast
 from .config import ConversionConfig
 from .smps import (
     SmpsChannel,
+    SmpsEvent,
+    SmpsNote,
     SmpsSong,
     pan_is_hard,
     semitone_to_note_name,  # noqa: F401 — re-exported for analyze.py
@@ -66,7 +68,6 @@ class VoiceRangeStats:
     max_semitone: int      # _NO_NOTES_MAX if no notes
     note_count: int
     switch_count: int      # how many smpsSetvoice events switched to this voice
-    modal_transpose: int = 0  # cumulative_transpose at time of first note for this voice
     # Most common (TL offset, hard-panned) level of this voice's notes on this channel — the level
     # fm_volume_scaling: baked treats as the instrument's own.  TL offset = smpsHeaderFM volume +
     # smpsAlterVol so far; hard-panned = smpsPan panLeft / panRight.
@@ -224,176 +225,183 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
                      config: ConversionConfig | None,
                      cfg_channels: dict) -> ChannelAnalysis:
     """Analyze a single SmpsChannel."""
-    note_count = 0
-    rest_count = 0
-    effect_count = 0
-    dac_counts: dict[str, int] = {}
-    effect_counts: dict[str, int] = {}
-    voice_stats: dict[int, VoiceRangeStats] = {}
-    transpose_events: list[TransposeEvent] = []
-    min_semitone: int | None = None
-    max_semitone: int | None = None
-
-    current_voice_idx: int | None = None
-    psg_tone_stats: dict[str, PsgToneStats] = {}
-    current_psg_label: str | None = None
-    if ch_type == "PSG":
-        initial_label = ch.header.psg_voice_label
-        if initial_label:
-            current_psg_label = initial_label
-            psg_tone_stats[initial_label] = PsgToneStats(
-                min_semitone=_NO_NOTES_MIN, max_semitone=_NO_NOTES_MAX,
-                note_count=0, switch_count=0,
-            )
-    # Initialise to header pitch_offset so cumulative reflects the true
-    # running total (smpsHeaderFM $F4 = -12 for FM1/FM3/FM4/FM5).
-    cumulative_transpose = ch.header.pitch_offset
-    # Same for the TL offset: smpsHeaderFM volume, then every smpsAlterVol adds to it.
-    cumulative_volume = ch.header.volume
-    hard_pan = False
-    total_ticks = 0
-
-    for event in ch.events:
-        if event.is_note:
-            note = event.note
-            total_ticks = event.tick_position + note.duration
-
-            if note.is_rest:
-                rest_count += 1
-            elif note.is_dac:
-                note_count += 1
-                name = note.dac_name or f"${note.note_value:02X}"
-                dac_counts[name] = dac_counts.get(name, 0) + 1
-            else:
-                note_count += 1
-                sem = note.note_value - 0x81
-
-                # Update global range
-                if min_semitone is None or sem < min_semitone:
-                    min_semitone = sem
-                if max_semitone is None or sem > max_semitone:
-                    max_semitone = sem
-
-                # Update per-tone stats (PSG channels only)
-                if ch_type == "PSG" and current_psg_label is not None:
-                    ts = _get_or_create_psg_tone(psg_tone_stats, current_psg_label)
-                    _att = max(0, min(15, cumulative_volume))
-                    ts.level_counts[_att] = ts.level_counts.get(_att, 0) + 1
-                    ts.note_count += 1
-                    if sem < ts.min_semitone:
-                        ts.min_semitone = sem
-                    if sem > ts.max_semitone:
-                        ts.max_semitone = sem
-
-                # Update per-voice stats (FM channels only)
-                if ch_type == "FM" and current_voice_idx is not None:
-                    vs = _get_or_create_voice(voice_stats, current_voice_idx)
-                    if vs.note_count == 0:
-                        # First note for this voice — record transpose and initial range
-                        vs.modal_transpose = cumulative_transpose
-                    _lv = (max(0, min(127, cumulative_volume)), hard_pan)
-                    vs.level_counts[_lv] = vs.level_counts.get(_lv, 0) + 1
-                    vs.note_count += 1
-                    if sem < vs.min_semitone:
-                        vs.min_semitone = sem
-                    if sem > vs.max_semitone:
-                        vs.max_semitone = sem
-
-        elif event.is_effect:
-            eff = event.effect
-            effect_count += 1
-            effect_counts[eff.effect_type] = effect_counts.get(eff.effect_type, 0) + 1
-
-            if eff.effect_type == 'smpsSetvoice':
-                new_voice = cast(int, eff.params[0])
-                if new_voice != current_voice_idx:
-                    current_voice_idx = new_voice
-                    vs = _get_or_create_voice(voice_stats, current_voice_idx)
-                    vs.switch_count += 1
-
-            elif eff.effect_type == 'smpsPSGvoice':
-                label = str(eff.params[0])
-                if label != current_psg_label:
-                    current_psg_label = label
-                    ts = _get_or_create_psg_tone(psg_tone_stats, label)
-                    ts.switch_count += 1
-
-            elif eff.effect_type == 'smpsPSGform':
-                label = f"form ${eff.params[0]:02X}"
-                if label != current_psg_label:
-                    current_psg_label = label
-                    ts = _get_or_create_psg_tone(psg_tone_stats, label)
-                    ts.switch_count += 1
-
-            elif eff.effect_type == 'smpsAlterVol':
-                cumulative_volume += cast(int, eff.params[0])
-
-            elif eff.effect_type == 'smpsPan':
-                hard_pan = pan_is_hard(eff.params)
-
-            elif eff.effect_type == 'smpsChangeTransposition':
-                delta = eff.params[0]
-                cumulative_transpose += delta
-                transpose_events.append(TransposeEvent(
-                    tick=event.tick_position,
-                    delta=delta,
-                    cumulative=cumulative_transpose,
-                ))
-
-    # Most common level per voice / PSG tone; ties go to the louder one, as in the converter.
-    for vs in voice_stats.values():
-        if vs.level_counts:
-            vs.modal_volume, vs.modal_hard_pan = max(
-                vs.level_counts, key=lambda lv: (vs.level_counts[lv], -lv[0], not lv[1]))
-    for ts in psg_tone_stats.values():
-        if ts.level_counts:
-            ts.modal_volume = max(ts.level_counts, key=lambda a: (ts.level_counts[a], -a))
-
-    has_transpose_change = len(transpose_events) > 0
+    walk = _ChannelWalk(ch, ch_type)
 
     # Config coverage
     config_enabled: bool | None = None
     uncovered_notes: list[int] = []
-
     if config is not None:
         ch_cfg = cfg_channels.get(source_name)
         config_enabled = ch_cfg.enabled if ch_cfg else False
-
-        # For FM channels with a voice_map, check which semitones are uncovered
-        if ch_type == "FM" and config.voice_map:
-            seen_semitones: set[int] = set()
-            for event in ch.events:
-                if event.is_note and not event.note.is_rest and not event.note.is_dac:
-                    seen_semitones.add(event.note.note_value - 0x81)
-
-            cim = config.channel_instrument_map.get(source_name, {})
-            uncovered_notes.extend(
-                sem for sem in sorted(seen_semitones)
-                if not _is_semitone_covered(sem, config.voice_map)
-                and not _is_semitone_covered(sem, cim)
-            )
+        uncovered_notes = _uncovered_notes(walk.semitones, source_name, ch_type, config)
 
     return ChannelAnalysis(
         name=source_name,
         channel_type=ch_type,
-        note_count=note_count,
-        rest_count=rest_count,
-        effect_count=effect_count,
-        total_ticks=total_ticks,
+        note_count=walk.note_count,
+        rest_count=walk.rest_count,
+        effect_count=walk.effect_count,
+        total_ticks=walk.total_ticks,
         has_loop=ch.has_jump,
         loop_target=ch.jump_target_label,
-        min_semitone=min_semitone,
-        max_semitone=max_semitone,
-        voice_stats=voice_stats,
-        psg_tone_stats=psg_tone_stats,
-        dac_counts=dac_counts,
-        effect_counts=effect_counts,
-        transpose_events=transpose_events,
-        has_transpose_change=has_transpose_change,
+        min_semitone=walk.min_semitone,
+        max_semitone=walk.max_semitone,
+        voice_stats=walk.voice_stats,
+        psg_tone_stats=walk.psg_tone_stats,
+        dac_counts=walk.dac_counts,
+        effect_counts=walk.effect_counts,
+        transpose_events=walk.transpose_events,
+        has_transpose_change=len(walk.transpose_events) > 0,
         initial_transpose=ch.header.pitch_offset,
         uncovered_notes=uncovered_notes,
         config_enabled=config_enabled,
     )
+
+
+class _ChannelWalk:
+    """One channel's events, tallied: counts, note ranges, per-voice / per-tone stats, transpositions."""
+
+    def __init__(self, ch: SmpsChannel, ch_type: str):
+        self._ch_type = ch_type
+        self.note_count = 0
+        self.rest_count = 0
+        self.effect_count = 0
+        self.total_ticks = 0
+        self.dac_counts: dict[str, int] = {}
+        self.effect_counts: dict[str, int] = {}
+        self.voice_stats: dict[int, VoiceRangeStats] = {}
+        self.psg_tone_stats: dict[str, PsgToneStats] = {}
+        self.transpose_events: list[TransposeEvent] = []
+        self.min_semitone: int | None = None
+        self.max_semitone: int | None = None
+        self.semitones: set[int] = set()   # every FM / PSG note played
+
+        # Running totals as the driver keeps them: header pitch_offset (smpsHeaderFM $F4 = -12 for
+        # FM1/FM3/FM4/FM5) plus every smpsChangeTransposition; header volume (TL offset) plus every
+        # smpsAlterVol.
+        self._transpose = ch.header.pitch_offset
+        self._volume = ch.header.volume
+        self._hard_pan = False
+        self._voice_idx: int | None = None
+        self._psg_label: str | None = None
+
+        # A PSG channel starts on its header voice
+        if ch_type == "PSG" and ch.header.psg_voice_label:
+            self._psg_label = ch.header.psg_voice_label
+            _get_or_create_psg_tone(self.psg_tone_stats, self._psg_label)
+
+        self._walk(ch.events)
+        self._settle_modal_levels()
+
+    def _walk(self, events: list[SmpsEvent]) -> None:
+        for event in events:
+            if event.note is not None:
+                self._note(event.note, event.tick_position)
+            elif event.effect is not None:
+                self._effect(event.effect.effect_type, event.effect.params, event.tick_position)
+
+    def _settle_modal_levels(self) -> None:
+        """Most common level per voice / PSG tone; ties go to the louder one, as in the converter."""
+        for vs in self.voice_stats.values():
+            if vs.level_counts:
+                vs.modal_volume, vs.modal_hard_pan = max(
+                    vs.level_counts, key=lambda lv: (vs.level_counts[lv], -lv[0], not lv[1]))
+        for ts in self.psg_tone_stats.values():
+            if ts.level_counts:
+                ts.modal_volume = max(ts.level_counts, key=lambda a: (ts.level_counts[a], -a))
+
+    def _note(self, note: SmpsNote, tick: int) -> None:
+        self.total_ticks = tick + note.duration
+        if note.is_rest:
+            self.rest_count += 1
+            return
+
+        self.note_count += 1
+        if note.is_dac:
+            name = note.dac_name or f"${note.note_value:02X}"
+            self.dac_counts[name] = self.dac_counts.get(name, 0) + 1
+            return
+
+        sem = note.note_value - 0x81
+        self.semitones.add(sem)
+        if self.min_semitone is None or sem < self.min_semitone:
+            self.min_semitone = sem
+        if self.max_semitone is None or sem > self.max_semitone:
+            self.max_semitone = sem
+
+        if self._ch_type == "PSG" and self._psg_label is not None:
+            self._psg_note(self._psg_label, sem)
+        if self._ch_type == "FM" and self._voice_idx is not None:
+            self._fm_note(self._voice_idx, sem)
+
+    def _psg_note(self, label: str, sem: int) -> None:
+        ts = _get_or_create_psg_tone(self.psg_tone_stats, label)
+        att = max(0, min(15, self._volume))
+        ts.level_counts[att] = ts.level_counts.get(att, 0) + 1
+        ts.note_count += 1
+        _widen_range(ts, sem)
+
+    def _fm_note(self, voice_idx: int, sem: int) -> None:
+        vs = _get_or_create_voice(self.voice_stats, voice_idx)
+        lv = (max(0, min(127, self._volume)), self._hard_pan)
+        vs.level_counts[lv] = vs.level_counts.get(lv, 0) + 1
+        vs.note_count += 1
+        _widen_range(vs, sem)
+
+    def _effect(self, kind: str, params: list, tick: int) -> None:
+        self.effect_count += 1
+        self.effect_counts[kind] = self.effect_counts.get(kind, 0) + 1
+
+        if kind == 'smpsSetvoice':
+            self._switch_voice(cast(int, params[0]))
+        elif kind == 'smpsPSGvoice':
+            self._switch_psg(str(params[0]))
+        elif kind == 'smpsPSGform':
+            self._switch_psg(f"form ${params[0]:02X}")
+        elif kind == 'smpsAlterVol':
+            self._volume += cast(int, params[0])
+        elif kind == 'smpsPan':
+            self._hard_pan = pan_is_hard(params)
+        elif kind == 'smpsChangeTransposition':
+            delta = params[0]
+            self._transpose += delta
+            self.transpose_events.append(TransposeEvent(
+                tick=tick,
+                delta=delta,
+                cumulative=self._transpose,
+            ))
+
+    def _switch_voice(self, voice_idx: int) -> None:
+        if voice_idx == self._voice_idx:
+            return
+        self._voice_idx = voice_idx
+        _get_or_create_voice(self.voice_stats, voice_idx).switch_count += 1
+
+    def _switch_psg(self, label: str) -> None:
+        """smpsPSGvoice (envelope label) or smpsPSGform ("form $E7")."""
+        if label == self._psg_label:
+            return
+        self._psg_label = label
+        _get_or_create_psg_tone(self.psg_tone_stats, label).switch_count += 1
+
+
+def _widen_range(stats: VoiceRangeStats | PsgToneStats, sem: int) -> None:
+    stats.min_semitone = min(stats.min_semitone, sem)
+    stats.max_semitone = max(stats.max_semitone, sem)
+
+
+def _uncovered_notes(semitones: set[int], source_name: str, ch_type: str,
+                     config: ConversionConfig) -> list[int]:
+    """An FM channel's semitones that neither the voice_map nor its channel's instrument map covers."""
+    if ch_type != "FM" or not config.voice_map:
+        return []
+
+    cim = config.channel_instrument_map.get(source_name, {})
+    return [
+        sem for sem in sorted(semitones)
+        if not _is_semitone_covered(sem, config.voice_map)
+        and not _is_semitone_covered(sem, cim)
+    ]
 
 
 def suggest_transpose(min_semitone: int, max_semitone: int) -> int:

@@ -21,6 +21,7 @@ import functools
 import math
 import sys
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
 
 _HERE = Path(__file__).parent
@@ -28,15 +29,13 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import (
-    PROBE_SECS,
     SustainLoop,
     apply_loop,
-    dc_block,
+    condition_render,
     find_sustain_loop,
-    high_shelf,
+    full_scale_int8,
     int8_to_raw16,
-    peak,
-    to_int8,
+    probe_secs,
 )
 from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
@@ -67,9 +66,14 @@ def _cached_render(cache: RenderCache, render, **kwargs) -> tuple[list, int]:
     mono, rate = cache.through(inputs, lambda: render(**kwargs))
     return list(mono), rate
 
+
 # ---------------------------------------------------------------------------
-# Public API
+# Rendering one catalogue entry
 # ---------------------------------------------------------------------------
+
+_TONE = "tone"
+_WHITE_NOISE, _PERIODIC_NOISE = "white_noise", "periodic_noise"
+
 
 def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[int] | None:
     """Return the entry's envelope as a list, or None for constant volume.
@@ -90,170 +94,200 @@ def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[
     return list(e)  # already a list
 
 
-def _synthesize_entry(entry, psg_synth, fps, raw_data, cache: RenderCache, verbose: bool = False,
-                      rate3_dividers: dict | None = None, loops: bool = False,
-                      loops_out: dict | None = None):
-    """Render one PsgInstrumentEntry (a catalogue instrument's) into raw_data.
+def _synth_note(entry: PsgInstrumentEntry) -> int:
+    """The renderer's note index the entry is rendered at: synth_root's (an SMPS semitone, C0 = 0,
+    C1 = 12; renderer index = semitone - 12), else root's."""
+    return entry.synth_root - 12 if entry.synth_root is not None else entry.root.value
 
-    With `loops`, a tone whose envelope holds is rendered for PROBE_SECS, cut at a sustain
-    loop (core.audio.loops) and the loop put in `loops_out`; noise is never looped.
-    """
-    inst_num = entry.mod_instrument
 
-    # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
-    # Noise and tone both use this. For noise, this is the only pitch-relevant parameter.
-    mod_root_idx = entry.root.value
-    # A tone rendered synth_shift semitones above the pitch `root` sounds (resolve_synth_roots)
-    # gets a rate raised by the same ratio, so MOD note root still sounds that pitch.
-    target_rate  = round(psg_synth.amiga_clock / PERIOD_TABLE[mod_root_idx]
-                         * 2.0 ** (getattr(entry, "synth_shift", 0) / 12.0))
+def _check_warnings(caught, inst_num, verbose: bool = False):
+    for w in caught:
+        if verbose and issubclass(w.category, UserWarning) and "silence" in str(w.message):
+            print(f"  Warning: instrument {inst_num} rendered silence")
 
-    resolved_env = _resolve_envelope(entry, verbose=verbose)
-    env_info = f" envelope={entry.envelope}({len(resolved_env)}fr)" if resolved_env else ""
 
-    entry_type = entry.type.lower()
+class _PsgRenderer:
+    """A catalogue entry's chip render (through the render cache), shelved and centred; a tone
+    whose envelope holds cut at a sustain loop (with loops), put in `loops_out`.  Noise never loops."""
 
-    if entry_type == "tone":
-        # synth_root overrides the synthesis pitch for tone entries only.
-        # synth_root is an SMPS semitone (C0=0, C1=12); renderer idx = semitone - 12.
-        synth_note_idx = entry.synth_root - 12 if entry.synth_root is not None else mod_root_idx
-        freq_hz = 440.0 * (2.0 ** ((synth_note_idx - 45) / 12.0))
-        n_val   = note_to_psg_n(synth_note_idx, psg_synth.clock_rate)
-        if verbose:
+    def __init__(self, synth: PsgSynthesisSettings, fps: float, cache: RenderCache, verbose: bool,
+                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None):
+        self._synth = synth
+        self._fps = fps
+        self._cache = cache
+        self._verbose = verbose
+        self._rate3_dividers = rate3_dividers
+        self._loops = loops
+        self._loops_out = loops_out
+
+    def render(self, entry: PsgInstrumentEntry) -> tuple[Sequence[float], int] | None:
+        """(mono, rate) of the entry, its silent tail trimmed; None where nothing is heard."""
+        inst_num = entry.mod_instrument
+
+        # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
+        # Noise and tone both use this. For noise, this is the only pitch-relevant parameter.
+        # A tone rendered synth_shift semitones above the pitch `root` sounds (resolve_synth_roots)
+        # gets a rate raised by the same ratio, so MOD note root still sounds that pitch.
+        target_rate = round(self._synth.amiga_clock / PERIOD_TABLE[entry.root.value]
+                            * 2.0 ** (getattr(entry, "synth_shift", 0) / 12.0))
+        envelope = _resolve_envelope(entry, verbose=self._verbose)
+        env_info = f" envelope={entry.envelope}({len(envelope)}fr)" if envelope else ""
+
+        entry_type = entry.type.lower()
+        if entry_type == _TONE:
+            mono, rate = self._tone(entry, target_rate, envelope, env_info)
+        elif entry_type in (_WHITE_NOISE, _PERIODIC_NOISE):
+            mono, rate = self._noise(entry, entry_type == _WHITE_NOISE, target_rate, envelope, env_info)
+        else:
+            if self._verbose:
+                print(f"  Warning: unknown psg entry type '{entry.type}' for inst {inst_num} — skipping")
+            return None
+
+        if not mono:
+            if self._verbose:
+                print(f"  Warning: instrument {inst_num} (PSG) rendered empty — skipping")
+            return None
+
+        mono = _trim_trailing_silence(mono)
+        if not mono:
+            if self._verbose:
+                print(f"  Warning: instrument {inst_num} (PSG) rendered all silence — skipping")
+            return None
+
+        if self._verbose:
+            print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={max(abs(v) for v in mono)}")
+        return mono, rate
+
+    def _tone(self, entry: PsgInstrumentEntry, target_rate: int, envelope: list[int] | None,
+              env_info: str) -> tuple[Sequence[float], int]:
+        synth, inst_num = self._synth, entry.mod_instrument
+        note = _synth_note(entry)          # synth_root overrides the synthesis pitch for tone entries only
+        n_val = note_to_psg_n(note, synth.clock_rate)
+        if self._verbose:
+            freq_hz = 440.0 * (2.0 ** ((note - 45) / 12.0))
             print(f"  [psg synth] inst={inst_num} tone  "
-                  f"synth_note={synth_note_idx} freq={freq_hz:.1f}Hz N={n_val}  "
+                  f"synth_note={note} freq={freq_hz:.1f}Hz N={n_val}  "
                   f"root={entry.root.name} rate={target_rate}Hz{env_info}")
+
         # A MOD sample holds at most max_sample_kb (settings.yaml), so at this rate the
         # sustain can only be so long (the converter warns where a note needs more).
         # This instrument's own longest ring when `auto` resolved one, else the setting
-        want = psg_synth.sustain_by_instrument.get(inst_num, psg_synth.sustain_duration)
-        fits = max_sustain_secs(target_rate, psg_synth.release_padding, psg_synth.max_sample_bytes)
-        tone_sustain = min(want, fits)
-        if verbose and tone_sustain < want:
-            print(f"  [psg synth] inst={inst_num} sustain capped at {tone_sustain:.2f}s "
-                  f"({psg_synth.max_sample_kb} KiB sample limit at {target_rate}Hz)")
-        probe = min(max(tone_sustain, PROBE_SECS), fits) if loops else tone_sustain
+        want = synth.sustain_by_instrument.get(inst_num, synth.sustain_duration)
+        fits = max_sustain_secs(target_rate, synth.release_padding, synth.max_sample_bytes)
+        sustain = min(want, fits)
+        if self._verbose and sustain < want:
+            print(f"  [psg synth] inst={inst_num} sustain capped at {sustain:.2f}s "
+                  f"({synth.max_sample_kb} KiB sample limit at {target_rate}Hz)")
+        if not self._loops:
+            return self._tone_render(entry, note, target_rate, envelope, sustain)
 
-        def _render_tone(secs):
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                out = _cached_render(
-                    cache, render_psg_tone_raw,
-                    mod_note_index=synth_note_idx,
-                    sustain_secs=secs,
-                    release_secs=psg_synth.release_padding,
-                    clock_rate=psg_synth.clock_rate,
-                    target_rate=target_rate,
-                    envelope=resolved_env,
-                    base_volume=entry.base_volume,
-                    fps=fps,
-                    oversample=psg_synth.psg_oversample,
-                    taps=psg_synth.resample_taps,
-                )
-            _check_warnings(caught, inst_num, verbose=verbose)
-            if psg_synth.treble_shelf_db:
-                out = (high_shelf(out[0], out[1], psg_synth.treble_shelf_hz, psg_synth.treble_shelf_db), out[1])
-            # Centred (core.audio.pcm.dc_block), before any loop is found in it
-            if psg_synth.dc_block:
-                out = (dc_block(out[0], out[1], keep_silent_tail=True), out[1])
-            return out
+        # Rendered long enough to see the envelope settle; again for its own sustain where no loop is
+        probe = probe_secs(sustain, fits)
+        mono, rate = self._tone_render(entry, note, target_rate, envelope, probe)
+        loop = self._loop(inst_num, mono, rate, n_val, sustain, probe)
+        if loop is not None:
+            if self._loops_out is not None:
+                self._loops_out[inst_num] = loop
+            return apply_loop(mono, loop), rate
+        if probe > sustain:
+            return self._tone_render(entry, note, target_rate, envelope, sustain)
+        return mono, rate
 
-        mono, rate = _render_tone(probe)
-        loop = None
-        if loops:
-            period = rate * 32.0 * n_val / psg_synth.clock_rate
-            plain_n = int(rate * (tone_sustain + psg_synth.release_padding))
-            loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * tone_sustain),
-                                     max_end=min(plain_n, int(rate * probe)), flat_db=psg_synth.loop_drift_db)
-            # A PSG note is cut at its end: where the sustain holds every note, a loop ending
-            # past it is longer than the plain render, and less faithful
-            if loop is not None and inst_num in psg_synth.exact_sustain and loop.end > math.ceil(rate * tone_sustain):
-                loop = None
-            if loop is not None:
-                mono = apply_loop(mono, loop)
-                if loops_out is not None:
-                    loops_out[inst_num] = loop
-            elif probe > tone_sustain:
-                mono, rate = _render_tone(tone_sustain)
+    def _tone_render(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: list[int] | None,
+                     secs: float) -> tuple[Sequence[float], int]:
+        synth = self._synth
+        return self._render(
+            render_psg_tone_raw, entry.mod_instrument,
+            mod_note_index=note,
+            sustain_secs=secs,
+            release_secs=synth.release_padding,
+            clock_rate=synth.clock_rate,
+            target_rate=target_rate,
+            envelope=envelope,
+            base_volume=entry.base_volume,
+            fps=self._fps,
+            oversample=synth.psg_oversample,
+            taps=synth.resample_taps,
+        )
 
-    elif entry_type in ("white_noise", "periodic_noise"):
+    def _loop(self, inst_num: int, mono: Sequence[float], rate: int, n_val: int, sustain: float,
+              probe: float) -> SustainLoop | None:
+        """The tone's sustain loop, where one ends before the plain render would."""
+        synth = self._synth
+        period = rate * 32.0 * n_val / synth.clock_rate
+        plain_n = int(rate * (sustain + synth.release_padding))
+        loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * sustain),
+                                 max_end=min(plain_n, int(rate * probe)), flat_db=synth.loop_drift_db)
+
+        # A PSG note is cut at its end: where the sustain holds every note, a loop ending
+        # past it is longer than the plain render, and less faithful
+        if loop is not None and inst_num in synth.exact_sustain and loop.end > math.ceil(rate * sustain):
+            return None
+        return loop
+
+    def _noise(self, entry: PsgInstrumentEntry, white: bool, target_rate: int, envelope: list[int] | None,
+               env_info: str) -> tuple[Sequence[float], int]:
         # target_rate = amiga_clock / PERIOD_TABLE[root] is both the synthesis rate and the
         # MOD playback rate when triggered at root. When triggered at other notes (via low/high
         # range anchoring), the MOD plays back faster/slower, approximating the LFSR frequency
         # change per note. root choice affects synthesis quality and the pitch anchor.
-        white = (entry_type == "white_noise")
-        noise_label = "white" if white else "periodic"
-        # Rate 3 = follow tone ch2. Derive tone2_n from synth_root (or root) so the LFSR
-        # clocks at the correct hardware frequency (e.g. ~220 Hz for A3) rather than the
-        # emulator reset default (N=1 → LFSR near sample_rate/2, wrong timbre).
-        tone2_n = None
-        if entry.noise_rate == 3:
-            if entry.tone2_n is not None:
-                # Explicit divider from the config (e.g. tone2_n: 1 for nMaxPSG, which the
-                # driver writes as N=0 and the Sega VDP PSG clocks as N=1).
-                tone2_n = entry.tone2_n
-            elif entry.synth_root is None and rate3_dividers and inst_num in rate3_dividers:
-                # Neither given: the divider the driver writes for this instrument's notes,
-                # worked out from the song by derive_rate3_dividers.
-                tone2_n = rate3_dividers[inst_num]
-            else:
-                synth_idx = (entry.synth_root - 12
-                             if entry.synth_root is not None
-                             else mod_root_idx)
-                tone2_n = note_to_psg_n(synth_idx, psg_synth.clock_rate)
+        synth, inst_num = self._synth, entry.mod_instrument
+        tone2_n = self._tone2_n(entry) if entry.noise_rate == 3 else None
+
         # Cap sustain to envelope length so the sample ends at the natural decay tail
         # rather than holding noise output for the full song-longest-note duration.
         # Include ramp-to-silence frames so _render_with_envelope can fade to attenuation 15.
-        env_frames = noise_envelope_frames(resolved_env, entry.base_volume)
-        noise_sustain = env_frames / fps if env_frames is not None else min(psg_synth.sustain_duration, 0.5)
-        if inst_num in psg_synth.exact_sustain:       # the notes are cut sooner than it decays
-            noise_sustain = min(noise_sustain, psg_synth.sustain_by_instrument[inst_num])
-        if verbose:
+        env_frames = noise_envelope_frames(envelope, entry.base_volume)
+        sustain = env_frames / self._fps if env_frames is not None else min(synth.sustain_duration, 0.5)
+        if inst_num in synth.exact_sustain:       # the notes are cut sooner than it decays
+            sustain = min(sustain, synth.sustain_by_instrument[inst_num])
+        if self._verbose:
+            noise_label = "white" if white else "periodic"
             print(f"  [psg synth] inst={inst_num} {noise_label}_noise  "
                   f"rate={entry.noise_rate}  tone2_n={tone2_n}  root={entry.root.name}  "
-                  f"target_rate={target_rate}Hz  sustain={noise_sustain:.3f}s{env_info}")
+                  f"target_rate={target_rate}Hz  sustain={sustain:.3f}s{env_info}")
+        return self._render(
+            render_psg_noise_raw, inst_num,
+            white=white,
+            noise_rate=entry.noise_rate,
+            sustain_secs=sustain,
+            release_secs=synth.release_padding,
+            clock_rate=synth.clock_rate,
+            target_rate=target_rate,
+            envelope=envelope,
+            base_volume=entry.base_volume,
+            fps=self._fps,
+            tone2_n=tone2_n,
+        )
+
+    def _tone2_n(self, entry: PsgInstrumentEntry) -> int:
+        """Rate 3 follows tone ch2: the divider that clocks the LFSR at the hardware's frequency
+        (~220 Hz for A3, not the emulator's reset N=1, near sample_rate/2: wrong timbre)."""
+        # Explicit divider from the config (e.g. tone2_n: 1 for nMaxPSG, which the
+        # driver writes as N=0 and the Sega VDP PSG clocks as N=1).
+        if entry.tone2_n is not None:
+            return entry.tone2_n
+
+        # Neither given: the divider the driver writes for this instrument's notes,
+        # worked out from the song by derive_rate3_dividers.
+        dividers = self._rate3_dividers
+        if entry.synth_root is None and dividers and entry.mod_instrument in dividers:
+            return dividers[entry.mod_instrument]
+        return note_to_psg_n(_synth_note(entry), self._synth.clock_rate)
+
+    def _render(self, render, inst_num: int, **kwargs) -> tuple[Sequence[float], int]:
+        """render(**kwargs) through the render cache, shelved and centred (before any loop is found in it)."""
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            mono, rate = _cached_render(
-                cache, render_psg_noise_raw,
-                white=white,
-                noise_rate=entry.noise_rate,
-                sustain_secs=noise_sustain,
-                release_secs=psg_synth.release_padding,
-                clock_rate=psg_synth.clock_rate,
-                target_rate=target_rate,
-                envelope=resolved_env,
-                base_volume=entry.base_volume,
-                fps=fps,
-                tone2_n=tone2_n,
-            )
-        _check_warnings(caught, inst_num, verbose=verbose)
-        if psg_synth.treble_shelf_db:
-            mono = high_shelf(mono, rate, psg_synth.treble_shelf_hz, psg_synth.treble_shelf_db)
-        if psg_synth.dc_block:
-            mono = dc_block(mono, rate, keep_silent_tail=True)
+            mono, rate = _cached_render(self._cache, render, **kwargs)
+        _check_warnings(caught, inst_num, verbose=self._verbose)
+        synth = self._synth
+        return condition_render(mono, rate, [(synth.treble_shelf_hz, synth.treble_shelf_db)], synth.dc_block), rate
 
-    else:
-        if verbose:
-            print(f"  Warning: unknown psg entry type '{entry.type}' for inst {inst_num} — skipping")
-        return
 
-    if not mono:
-        if verbose:
-            print(f"  Warning: instrument {inst_num} (PSG) rendered empty — skipping")
-        return
-
-    mono = _trim_trailing_silence(mono)
-    if not mono:
-        if verbose:
-            print(f"  Warning: instrument {inst_num} (PSG) rendered all silence — skipping")
-        return
-
-    pre_peak = max(abs(v) for v in mono)
-    if verbose:
-        print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={pre_peak}")
-    raw_data[inst_num] = (mono, rate)
-
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def generate_psg_samples(
     config: ConversionConfig,
@@ -287,37 +321,27 @@ def generate_psg_samples(
         return {}
 
     fps = 50.0 if config.region.lower() == 'pal' else 60.0
-    noise_envelopes = noise_envelopes or {}
-
-    raw_data: dict[int, tuple[list, int]] = {}   # inst_num -> (mono, rate)
 
     # One render per catalogue instrument: each psg_map entry's own instrument, then its
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
-    catalogue = psg_catalogue(config, noise_envelopes)
+    catalogue = psg_catalogue(config, noise_envelopes or {})
     cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
+    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out)
+    raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for spec in catalogue.values():
-        _synthesize_entry(spec.entry, psg_synth, fps, raw_data, cache, verbose=verbose,
-                          rate3_dividers=rate3_dividers, loops=loops, loops_out=loops_out)
+        rendered = renderer.render(spec.entry)
+        if rendered is not None:
+            raw_data[spec.entry.mod_instrument] = rendered
     if cache_out is not None and cache.enabled:
         cache_out.update(hits=cache.hits, misses=cache.misses)
+    if raw_out is not None:                  # the unquantised renders, for the composite mixer
+        raw_out.update(raw_data)
 
     # --- Quantise, each instrument to its own full 8 bits ---
     # The level is the sample_list volume's job (measured against the VGZ); the noise channel
     # used to sit at half scale (the emulator halves it), which only cost it a bit.
-    result: dict[int, tuple[bytes, int]] = {}
-    for inst_num, (mono, rate) in raw_data.items():
-        pk = peak(mono)
-        dither = catalogue[inst_num].entry.dither or psg_synth.dither
-        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk, dither)), rate)
-    if raw_out is not None:                  # the unquantised renders, for the composite mixer
-        raw_out.update(raw_data)
-    return result
-
-
-def _check_warnings(caught, inst_num, verbose: bool = False):
-    for w in caught:
-        if verbose and issubclass(w.category, UserWarning) and "silence" in str(w.message):
-            print(f"  Warning: instrument {inst_num} rendered silence")
+    return {inst: (full_scale_int8(mono, catalogue[inst].entry.dither or psg_synth.dither), rate)
+            for inst, (mono, rate) in raw_data.items()}
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 """Sample arithmetic, with no SMPS and no MOD in it: dB, PCM, resampling, sustain loops.
 
     gain.py      dB <-> gain
-    pcm.py       mono / int8 / raw16, DC block, treble shelf, dithered quantiser
+    pcm.py       mono / int8 / raw16, DC block, treble shelf, a render's conditioning, dithered quantiser
     resample.py  polyphase windowed-sinc resampler (FM renders, PSG tones, mixes, SFX)
     loops.py     where a render settles, its best crossfaded loop, its release rate
 """
@@ -16,6 +16,7 @@ from .loops import (
     fade_end,
     find_sustain_loop,
     heard_padding,
+    probe_secs,
     release_rate_db_s,
     unroll_values,
 )
@@ -26,7 +27,9 @@ from .pcm import (
     DITHER_OFF,
     DITHER_SHAPED,
     INT8_PEAK,
+    condition_render,
     dc_block,
+    full_scale_int8,
     high_shelf,
     int8_to_raw16,
     limit_peaks,
@@ -44,8 +47,9 @@ from .resample import DEFAULT_BETA, DEFAULT_PHASES, DEFAULT_TAPS, build_kernel, 
 __all__ = [
     "DEFAULT_BETA", "DEFAULT_DITHER", "DEFAULT_PHASES", "DEFAULT_TAPS", "DITHER_FLAT", "DITHER_MODES", "DITHER_OFF",
     "DITHER_SHAPED", "FLAT_DB", "INT8_PEAK", "PROBE_SECS", "RELEASE_FLOOR_DB", "SustainLoop", "apply_loop",
-    "build_kernel", "db_to_gain", "dc_block", "fade_end", "find_sustain_loop", "gain_to_db", "heard_padding",
-    "high_shelf", "int8_to_raw16", "limit_peaks", "normalize_int8", "peak", "power_to_db", "release_rate_db_s",
+    "build_kernel", "condition_render", "db_to_gain", "dc_block", "fade_end", "find_sustain_loop",
+    "full_scale_int8", "gain_to_db", "heard_padding", "high_shelf", "int8_to_raw16", "limit_peaks",
+    "normalize_int8", "peak", "power_to_db", "probe_secs", "release_rate_db_s",
     "resample", "resample_stereo", "saturate", "signed8", "to_int8", "to_mono", "trim_trailing_silence",
     "unroll_values", "write_raw16"
 ]

@@ -222,6 +222,12 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     return best
 
 
+def probe_secs(sustain: float, fits: float) -> float:
+    """The sustain to render to look for a loop in: PROBE_SECS (long enough to see an envelope
+    settle), no shorter than `sustain`, no longer than `fits` (the sample limit's)."""
+    return min(max(sustain, PROBE_SECS), fits)
+
+
 def apply_loop(mono: Sequence[float], loop: SustainLoop) -> list[float]:
     """The sample cut at the loop's end, with the last `loop.cross` samples of the loop faded
     into the samples before the loop's start so playback jumps back without a step."""

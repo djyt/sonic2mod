@@ -33,18 +33,17 @@ if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import (
-    PROBE_SECS,
     SustainLoop,
     apply_loop,
-    dc_block,
+    condition_render,
     fade_end,
     find_sustain_loop,
+    full_scale_int8,
     heard_padding,
-    high_shelf,
     int8_to_raw16,
     peak,
+    probe_secs,
     release_rate_db_s,
-    to_int8,
 )
 from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, find_settings, load_settings
@@ -70,6 +69,16 @@ class _RenderJob:
     @property
     def inst(self) -> int:
         return self.spec.inst
+
+
+@dataclass
+class _Rendered:
+    """A job's finished render, before quantising."""
+    mono: Sequence[float]
+    rate: int
+    first_peak: int            # its first layer's alone, at the same level
+    loop: SustainLoop | None
+    release: float | None      # dB per second after key-off
 
 
 _worker = threading.local()
@@ -101,6 +110,155 @@ def _thread_opn2(mode: str) -> OPN2:
     elif opn2.mode != mode:
         opn2.reset(mode)      # a later call with another fm_synthesis.mode re-uses the chip
     return opn2
+
+
+def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl_offsets: dict[int, int],
+          verbose: bool) -> list[_RenderJob]:
+    """One job per MOD instrument of the song's catalogue (core.plan.instruments)."""
+    voice_lookup = {v.index: v for v in song.voices}
+    cat = fm_catalogue(song, config)
+    if verbose:
+        for context, voice_idx, _insts in cat.missing_voices:
+            print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
+
+    jobs: list[_RenderJob] = []
+    for spec in cat.instruments.values():
+        base_tl = tl_offsets.get(spec.inst, 0)
+        layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
+                   lay.keyoff_secs)
+                  for lay in spec.layers]
+        if verbose:
+            _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate)
+            print(f"  [synth] inst={spec.inst} voice=${spec.layers[0].voice_idx:02X} "
+                  f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
+        jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock)))
+    return jobs
+
+
+class _FmRenderer:
+    """A job's chip render (through the render cache), shelved and centred, its sustain loop,
+    release rate and audible end.  Thread-safe: each thread renders on its own OPN2."""
+
+    def __init__(self, synth: SynthesisSettings, cache: RenderCache, loops: bool, verbose: bool):
+        assert isinstance(synth.sustain_duration, float), "sustain_duration must be resolved before synthesis"
+        self._synth = synth
+        self._sustain = synth.sustain_duration      # the setting, where `auto` resolved no instrument's own
+        self._cache = cache
+        self._loops = loops
+        self._verbose = verbose
+
+    def render(self, job: _RenderJob) -> _Rendered:
+        """The job's sample: looped where its envelope settles (with loops), else its plain sustain."""
+        synth = self._synth
+        sustain, probe = self._sustains(job)
+        mono, rate = self._render_at(job, probe)
+
+        # The release slides' rate, measured on the probe's tail
+        fnum, block = note_to_fnum_block(job.spec.synth_idx, synth.clock_rate)
+        period = rate / fnum_block_to_freq(fnum, block, synth.clock_rate)
+        sustain_n = math.ceil(rate * probe)
+        release = release_rate_db_s(mono, rate, sustain_n, period)
+
+        # A loop ending past where the notes stop being heard is longer than the plain render,
+        # and less faithful: none
+        loop = self._loop(job, mono, rate, period, sustain, sustain_n) if self._loops else None
+        heard_n = self._heard_n(job, rate, sustain, release)
+        if loop is not None and heard_n is not None and loop.end > heard_n:
+            loop = None
+
+        if loop is not None:
+            mono = apply_loop(mono, loop)
+        else:
+            if probe > sustain:
+                mono, rate = self._render_at(job, sustain)
+            if heard_n is not None and heard_n < len(mono):
+                mono = fade_end(mono, heard_n, rate)
+        first_peak = self._first_peak(job, mono, sustain if loop is None else probe)
+        return _Rendered(_trim_trailing_silence(mono), rate, first_peak, loop, release)
+
+    def _sustains(self, job: _RenderJob) -> tuple[float, float]:
+        """(sustain, probe): this instrument's own longest ring when `auto` resolved one
+        (sustain_by_instrument), else the setting, capped where a sample of max_sample_kb
+        (settings.yaml) ends at its rate (the converter warns where a note needs more); with
+        loops wanted, the probe is long enough to see the envelope settle in."""
+        synth = self._synth
+        want = synth.sustain_by_instrument.get(job.inst, self._sustain)
+        fits = max_sustain_secs(job.target_rate, synth.release_padding, synth.max_sample_bytes)
+        sustain = min(want, fits)
+        if self._verbose and sustain < want:
+            print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
+                  f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
+        return sustain, probe_secs(sustain, fits) if self._loops else sustain
+
+    def _render_at(self, job: _RenderJob, sustain: float, layers: list[tuple] | None = None):
+        """The job's layers (or `layers`) rendered for `sustain`: settings.yaml's shelf, a merge
+        group's own on top, centred as the hardware's AC-coupled output plays it."""
+        synth, spec = self._synth, job.spec
+        mono, rate = self._chip_render(layers if layers is not None else job.layers, spec.synth_idx, sustain,
+                                       job.target_rate)
+        shelves = [(synth.treble_shelf_hz, synth.treble_shelf_db),
+                   (spec.treble_shelf_hz or synth.treble_shelf_hz, spec.treble_shelf_db or 0.0)]
+        return condition_render(mono, rate, shelves, synth.dc_block), rate
+
+    def _chip_render(self, layers: list[tuple], synth_idx: int, sustain: float, target_rate: int):
+        """render_layers, or the render an earlier conversion cached (core/render_cache.py)."""
+        synth = self._synth
+        inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
+                  synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps)
+        return self._cache.through(inputs, lambda: render_layers(
+            layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
+            opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps))
+
+    def _loop(self, job: _RenderJob, mono: Sequence[float], rate: int, period: float, sustain: float,
+              sustain_n: int) -> SustainLoop | None:
+        """The sustain loop: flat relative to the longest note's end (loop_drift_db), and only where
+        it ends before the plain render would (its sustain plus the release tail)."""
+        synth, spec = self._synth, job.spec
+        plain_n = math.ceil(rate * (sustain + synth.release_padding))
+        min_loop = {"min_loop_secs": spec.min_loop_ms / 1000.0} if spec.min_loop_ms is not None else {}
+        return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
+                                 max_end=min(plain_n, sustain_n),
+                                 flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
+                                 **min_loop)
+
+    def _heard_n(self, job: _RenderJob, rate: int, sustain: float, release: float | None) -> int | None:
+        """Where a sample whose sustain holds every note stops being heard: at its sustain where
+        notes are cut, or once a release slide has fallen to the floor.  None for any other."""
+        synth = self._synth
+        if job.inst not in synth.exact_sustain:
+            return None
+        slides = self._loops and job.inst in synth.slide_ends
+        return math.ceil(rate * (sustain + heard_padding(synth.release_padding, release, slides)))
+
+    def _first_peak(self, job: _RenderJob, mono: Sequence[float], sustain: float) -> int:
+        """The primary layer's peak alone, at the same level: what a composite's volume is scaled from."""
+        if len(job.layers) == 1:
+            return peak(mono)
+        alone, _ = self._render_at(job, sustain, job.layers[:1])
+        return peak(alone[:len(mono)])
+
+
+def _report(job: _RenderJob, done: _Rendered) -> None:
+    """The verbose line of a rendered instrument."""
+    spec, entry, mono, loop = job.spec, job.spec.entry, done.mono, done.loop
+    label = f" [{spec.source_label}]" if spec.source_label else ""
+    voices_str = "+".join(str(lay.voice_idx) for lay in spec.layers)
+    if not mono:
+        root_str = entry.root.name if entry.root is not None else f"synth_idx={spec.synth_idx}"
+        print(f"  Warning: instrument {job.inst} (voice {voices_str}"
+              f"{label}, {root_str}) rendered silence — skipping")
+        return
+
+    if entry.root is not None:
+        root_str = f"root={entry.root.name} (idx={spec.root_idx}), synth_idx={spec.synth_idx}"
+        if entry.synth_root is not None:
+            root_str += " [synth_root override]"
+    else:
+        root_str = f"synth_idx={spec.synth_idx}"
+    loop_str = (f", loop {loop.start}+{loop.length} (err {loop.error:.2f})" if loop else "")
+    print(f"  Instrument {job.inst:2d}: voice={voices_str}{label}, "
+          f"{root_str}, "
+          f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}{loop_str}")
 
 
 # ---------------------------------------------------------------------------
@@ -149,169 +307,44 @@ def generate_fm_samples(
     Instruments render concurrently, one per thread, ``synth.worker_threads()`` at a time
     (the ``threads`` setting); the output does not depend on the thread count.
     """
-    voice_lookup = {v.index: v for v in song.voices}
-    result: dict[int, tuple[bytes, int]] = {}
-
-    # --- Pass 1: what to render (core.plan.instruments: one job per MOD instrument) ---
-    cat = fm_catalogue(song, config)
-    if verbose:
-        for context, voice_idx, _insts in cat.missing_voices:
-            print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
-    jobs: list[_RenderJob] = []
-    for spec in cat.instruments.values():
-        base_tl = (tl_offsets or {}).get(spec.inst, 0)
-        layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
-                   lay.keyoff_secs)
-                  for lay in spec.layers]
-        target_rate = spec.target_rate(synth.amiga_clock)
-        if verbose:
-            _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate)
-            print(f"  [synth] inst={spec.inst} voice=${spec.layers[0].voice_idx:02X} "
-                  f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
-        jobs.append(_RenderJob(spec, layers, target_rate))
+    jobs = _jobs(song, config, synth, tl_offsets or {}, verbose)
 
     # --- Render: every instrument on its own thread ---
     # Nuked-OPN2 keeps all chip state in the per-instance struct and ctypes releases the
     # GIL for the batch call, so the renders run truly in parallel; each worker thread
     # keeps its own OPN2 (see _thread_opn2).  The results are byte-identical to a serial
     # render and are consumed in job order, so the MOD does not depend on scheduling.
-    sustain_secs = synth.sustain_duration
-    assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
-
-    # Renders already made by an earlier conversion are read back (core/render_cache.py)
     cache = RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
-
-    def _chip_render(layers: list[tuple], synth_idx: int, sustain: float, target_rate: int):
-        inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
-                  synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps)
-        return cache.through(inputs, lambda: render_layers(
-            layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
-            opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps))
-
-    def _render_at(job: _RenderJob, sustain: float, layers=None):
-        mono, rate = _chip_render(layers if layers is not None else job.layers, job.spec.synth_idx, sustain,
-                                  job.target_rate)
-        if synth.treble_shelf_db:
-            mono = high_shelf(mono, rate, synth.treble_shelf_hz, synth.treble_shelf_db)
-        spec = job.spec
-        if spec.treble_shelf_db:                # a merge group's own, on top
-            mono = high_shelf(mono, rate, spec.treble_shelf_hz or synth.treble_shelf_hz, spec.treble_shelf_db)
-
-        # Centred, as the hardware's AC-coupled output plays it; before any loop is found in it
-        if synth.dc_block:
-            mono = dc_block(mono, rate, keep_silent_tail=True)
-        return mono, rate
-
-    def _render(job: _RenderJob) -> tuple[Sequence[float], int, int, SustainLoop | None, float | None]:
-        # This instrument's own longest ring when `auto` resolved one (sustain_by_instrument),
-        # else the setting; and a MOD sample holds at most max_sample_kb (settings.yaml), so
-        # at this instrument's rate the sustain can only be so long (the converter warns
-        # where a note needs more).
-        want = synth.sustain_by_instrument.get(job.inst, sustain_secs)
-        fits = max_sustain_secs(job.target_rate, synth.release_padding, synth.max_sample_bytes)
-        sustain = min(want, fits)
-        if verbose and sustain < want:
-            print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
-                  f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
-        # With loops wanted, render long enough to see the envelope settle; a voice that never
-        # does is rendered again for its own sustain (the probe would only cost bytes).
-        probe = min(max(sustain, PROBE_SECS), fits) if loops else sustain
-        mono, rate = _render_at(job, probe)
-        fnum, block = note_to_fnum_block(job.spec.synth_idx, synth.clock_rate)
-        period = rate / fnum_block_to_freq(fnum, block, synth.clock_rate)
-        sustain_n = math.ceil(rate * probe)
-        release = release_rate_db_s(mono, rate, sustain_n, period)
-        loop = None
-        if loops:
-            # Flat relative to the longest note's end (loop_drift_db), and only where the loop
-            # ends before the plain render would (its sustain plus the release tail)
-            plain_n = math.ceil(rate * (sustain + synth.release_padding))
-            spec = job.spec
-            loop = find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
-                                     max_end=min(plain_n, sustain_n),
-                                     flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
-                                     **({"min_loop_secs": spec.min_loop_ms / 1000.0}
-                                        if spec.min_loop_ms is not None else {}))
-        # A sample whose sustain holds every note ends where they stop being heard: at its
-        # sustain where notes are cut, or once a release slide has fallen to the floor.  A loop
-        # ending later is longer than that plain render, and less faithful: none
-        heard_n = None
-        if job.inst in synth.exact_sustain:
-            slides = loops and job.inst in synth.slide_ends
-            heard_n = math.ceil(rate * (sustain + heard_padding(synth.release_padding, release, slides)))
-            if loop is not None and loop.end > heard_n:
-                loop = None
-        if loop is not None:
-            mono = apply_loop(mono, loop)
-        else:
-            if probe > sustain:
-                mono, rate = _render_at(job, sustain)
-            if heard_n is not None and heard_n < len(mono):
-                mono = fade_end(mono, heard_n, rate)
-        first_peak = peak(mono)
-        if len(job.layers) > 1:
-            # The primary layer alone, at the same level: what the composite's volume is scaled from
-            alone, _ = _render_at(job, sustain if loop is None else probe, job.layers[:1])
-            first_peak = peak(alone[:len(mono)])
-        return _trim_trailing_silence(mono), rate, first_peak, loop, release
-
-    raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
+    renderer = _FmRenderer(synth, cache, loops, verbose)
+    rendered: list[_Rendered] = []
     if jobs:
-        workers = min(len(jobs), synth.worker_threads())
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            rendered = list(pool.map(_render, jobs))
-    else:
-        rendered = []
+        with ThreadPoolExecutor(max_workers=min(len(jobs), synth.worker_threads())) as pool:
+            rendered = list(pool.map(renderer.render, jobs))
     if cache_out is not None and cache.enabled:
         cache_out.update(hits=cache.hits, misses=cache.misses)
 
-    for job, (mono, rate, first_peak, loop, release) in zip(jobs, rendered, strict=True):
-        spec, entry = job.spec, job.spec.entry
+    # --- What the converter reads besides the samples ---
+    raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
+    for job, done in zip(jobs, rendered, strict=True):
         if peaks_out is not None:
-            peaks_out[job.inst] = (peak(mono), first_peak)
+            peaks_out[job.inst] = (peak(done.mono), done.first_peak)
         if release_out is not None:
-            release_out[job.inst] = release
-        if loops_out is not None and loop is not None and loop.end <= len(mono):
-            loops_out[job.inst] = loop
-        label = f" [{spec.source_label}]" if spec.source_label else ""
-        voices_str = "+".join(str(lay.voice_idx) for lay in spec.layers)
-        if not mono:
-            if verbose:
-                root_str = entry.root.name if entry.root is not None else f"synth_idx={spec.synth_idx}"
-                print(f"  Warning: instrument {job.inst} (voice {voices_str}"
-                      f"{label}, {root_str}) rendered silence — skipping")
-            continue
-
+            release_out[job.inst] = done.release
+        if loops_out is not None and done.loop is not None and done.loop.end <= len(done.mono):
+            loops_out[job.inst] = done.loop
         if verbose:
-            if entry.root is not None:
-                root_str = f"root={entry.root.name} (idx={spec.root_idx}), synth_idx={spec.synth_idx}"
-                if entry.synth_root is not None:
-                    root_str += " [synth_root override]"
-            else:
-                root_str = f"synth_idx={spec.synth_idx}"
-            loop_str = (f", loop {loop.start}+{loop.length} (err {loop.error:.2f})" if loop else "")
-            print(f"  Instrument {job.inst:2d}: voice={voices_str}{label}, "
-                  f"{root_str}, "
-                  f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}{loop_str}")
-
-        raw_data[job.inst] = (mono, rate)
-
-    # --- Pass 2: quantise, each instrument to its own full 8 bits ---
-    # The level is the sample_list volume's job (measured against the VGZ), so nothing is
-    # gained by leaving a quiet instrument quiet in the sample — it only loses bits.
-    dither = {job.inst: job.spec.dither_mode or synth.dither for job in jobs}
-    for inst_num, (mono, rate) in raw_data.items():
-        pk = peak(mono)
-        result[inst_num] = ((bytes(len(mono)) if pk == 0 else to_int8(mono, 127.0 / pk, dither[inst_num])), rate)
+            _report(job, done)
+        if done.mono:
+            raw_data[job.inst] = (done.mono, done.rate)
     if raw_out is not None:                  # the unquantised renders, for the composite mixer
         raw_out.update(raw_data)
 
-    return result
+    # --- Quantise, each instrument to its own full 8 bits ---
+    # The level is the sample_list volume's job (measured against the VGZ), so nothing is
+    # gained by leaving a quiet instrument quiet in the sample — it only loses bits.
+    dither = {job.inst: job.spec.dither_mode or synth.dither for job in jobs}
+    return {inst: (full_scale_int8(mono, dither[inst]), rate) for inst, (mono, rate) in raw_data.items()}
 
-
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Smoke test

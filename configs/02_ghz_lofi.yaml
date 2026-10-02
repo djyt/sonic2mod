@@ -167,6 +167,9 @@ voice_map:
       mod_instrument: 10
       root: C2
       dither: off           # Dither added noise/hiss
+      loop_min_ms: 300      # The automatic loop is too aggressive and tight
+      #loop_drift_db: 16    # Uncommenting results in a much better loop, but also +11K
+
   # $07 → bridge
   7:
     - low:  C5

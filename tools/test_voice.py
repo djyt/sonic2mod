@@ -28,9 +28,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.smps_parser import SmpsParser
-from ym2612.renderer import _render_raw, _set_freq, _to_mono, freq_to_fnum_block, note_to_freq
-from ym2612.voice import program_voice
-from ym2612.wrapper import OPN2
+from ym2612.renderer import note_to_fnum_block, note_to_freq, render_note_raw
 
 # ---------------------------------------------------------------------------
 # Config
@@ -46,8 +44,6 @@ _MOD_NOTE_INDEX = 90      # Fs8 (5924 Hz)
 
 _SUSTAIN_SECS   = 2.0     # longer than normal — let the full envelope breathe
 _RELEASE_SECS   = 0.5
-
-_CLOCK_RATE     = 7_670_454
 
 _OUT_PATH = _ROOT / "output" / "test_voice.raw"
 
@@ -67,24 +63,14 @@ def main() -> None:
     print(f"  Voice ${_VOICE_INDEX:02X}  alg={voice.algorithm}  fb={voice.feedback}")
 
     # --- synthesis parameters ---
-    native_rate  = _CLOCK_RATE // 6 // 24
-    freq         = note_to_freq(_MOD_NOTE_INDEX)   # Ds4 ≈ 311 Hz
-    fnum, block  = freq_to_fnum_block(freq, _CLOCK_RATE)
+    freq         = note_to_freq(_MOD_NOTE_INDEX)
+    fnum, block  = note_to_fnum_block(_MOD_NOTE_INDEX)
+    print(f"  Synthesis freq   = {freq:.2f} Hz  (fnum={fnum}, block={block}, the driver's table)")
 
-    print(f"  Synthesis freq   = {freq:.2f} Hz  (fnum={fnum}, block={block})")
+    # --- render at the chip's own rate (target_rate None: no resampling) ---
+    print(f"  Rendering {_SUSTAIN_SECS + _RELEASE_SECS:.1f}s ...")
+    mono, native_rate = render_note_raw(voice, _MOD_NOTE_INDEX, _SUSTAIN_SECS, _RELEASE_SECS)
     print(f"  Native rate      = {native_rate} Hz  (no downsampling)")
-
-    # --- render ---
-    sustain_n = int(native_rate * _SUSTAIN_SECS)
-    release_n = int(native_rate * _RELEASE_SECS)
-    print(f"  Rendering {sustain_n + release_n} samples "
-          f"({_SUSTAIN_SECS + _RELEASE_SECS:.1f}s) ...")
-
-    opn2 = OPN2(mode="ym2612")
-    program_voice(opn2, voice, 0)
-    _set_freq(opn2, fnum, block, 0)
-    raw  = _render_raw(opn2, sustain_n, release_n, 0)
-    mono = _to_mono(raw)
 
     pre_peak = max(abs(v) for v in mono) if mono else 0
     print(f"  Pre-normalise peak: {pre_peak}")

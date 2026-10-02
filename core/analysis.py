@@ -46,19 +46,6 @@ DAC_SAMPLE_GROUPS: dict[str, str] = {
     'dVLowTimpani': 'dTimpani',
 }
 
-# YM2612 carrier operator register offsets by algorithm (0–7).
-# Used to describe which operators carry audio output.
-_CARRIER_LABELS_BY_ALG = {
-    0: ['OP4'],
-    1: ['OP4'],
-    2: ['OP4'],
-    3: ['OP4'],
-    4: ['OP2', 'OP4'],
-    5: ['OP2', 'OP3', 'OP4'],
-    6: ['OP2', 'OP3', 'OP4'],
-    7: ['OP1', 'OP2', 'OP3', 'OP4'],
-}
-
 # Sentinel values for "no notes seen yet" in min/max semitone tracking.
 _NO_NOTES_MIN = 999
 _NO_NOTES_MAX = -1

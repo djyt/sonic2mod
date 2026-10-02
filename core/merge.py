@@ -1752,7 +1752,7 @@ class _Mixer:
             if loop is not None:
                 total = apply_loop(total, loop)
                 keep_loop = (loop.start, loop.length)
-        return total, keep_loop, base._finetune
+        return total, keep_loop, base.finetune
 
     def _mix_loop(self, comp: Composite, total: list[float], r_p: float):
         """A sustain loop in the finished mix, found as a single voice's is (core.loops): flat
@@ -1783,7 +1783,7 @@ class _Mixer:
             if not fs.data:
                 problems.append({'instrument': comp.inst, 'missing': f_inst})
                 continue
-            gain = fs._volume / 64.0 * scale
+            gain = fs.volume / 64.0 * scale
             r_f = self._rate(comp.base + lay.interval)
             f_data = self._values_of(f_inst, fs)
 
@@ -1839,7 +1839,7 @@ class _Mixer:
                 hold = (need + self._tail_secs(p_inst)) if need else self._hold_secs.get(p_inst, 0.0)
                 b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold * r_base) + 2))
 
-        total = [v * base._volume / 64.0 for v in b_data]
+        total = [v * base.volume / 64.0 for v in b_data]
         if need and keep_loop is None and len(total) > int(need * r_base) + 2:
             total = _cut_layer(total, int(need * r_base), r_base, self._release.get(p_inst))
         if not same_rate:
@@ -1880,7 +1880,7 @@ def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] |
     sample.data = pcm
     sample.length = len(pcm) // 2
     sample.set_volume(vol)
-    sample._finetune = finetune
+    sample.set_finetune(finetune)
     if keep_loop is not None and keep_loop[0] + keep_loop[1] <= len(pcm):
         sample.repeat, sample.repeat_length = keep_loop[0] // 2, keep_loop[1] // 2
     if comp.entry is not None:

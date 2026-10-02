@@ -39,7 +39,6 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from core.driver_state import resolve_synth_roots
-from core.levels import DEFAULT_FM_PAN_LAW_DB
 from core.merge import NoteOn, PairStats, channel_notes, pair_channels
 from core.smps2mod import SmpsToModConverter
 from core.smps_parser import SmpsParser
@@ -61,12 +60,12 @@ class SurveyContext:
 
     def pattern_of(self, tick: int) -> int:
         """The reference build's pattern a note-on at `tick` lands in (after its breaks)."""
-        return self.conv._pattern_of_tick(tick)
+        return self.conv.pattern_of_tick(tick)
 
     @property
     def last_pattern(self) -> int:
         """The reference MOD's last pattern (the loop's Bxx row; convert.py trims after it)."""
-        return self.conv._last_pattern()
+        return self.conv.last_pattern()
 
     def pair(self, primary: str, follower: str, patterns=None, cut_primary: bool = False) -> PairStats:
         """The follower lined up with the primary, over the whole song or in `patterns` only."""
@@ -92,14 +91,8 @@ def survey_context(cfg: ConversionConfig, settings_dir: Path) -> SurveyContext:
     psg = PsgSynthesisSettings.from_yaml(str(settings)) if settings.exists() else PsgSynthesisSettings()
     conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
     resolve_synth_roots(song, cfg)
-    conv._apply_global_tempo_div()
-    conv._extend_looping_channels()          # a replayed loop body is as many notes as it plays
-    pan_law = synth.fm_pan_law_db if synth else DEFAULT_FM_PAN_LAW_DB
-    baselines = {}
-    if conv._fm_volume_mode == "baked":
-        baselines["FM"] = conv._plan_levels("FM")
-    if conv._psg_volume_mode == "baked":
-        baselines["PSG"] = conv._plan_levels("PSG")
+    conv.prepare_song()                      # a replayed loop body is as many notes as it plays
+    baselines = conv.level_baselines()
 
     def level_scale(n: NoteOn) -> float:
         base = baselines.get(n.kind, {}).get(n.instrument)
@@ -108,9 +101,10 @@ def survey_context(cfg: ConversionConfig, settings_dir: Path) -> SurveyContext:
         return 10 ** ((n.level_db - base) / 20.0)
 
     sources = [c.source for c in cfg.channels if c.enabled]
-    sample_secs = conv._sample_secs()
+    sample_secs = conv.sample_secs()
     tol = max(0, int(cfg.merge_tolerance))
-    notes = {src: channel_notes(song, cfg, src, pan_law, sample_secs, lambda t: conv._tick_span_secs(t, t + 1), tol)
+    notes = {src: channel_notes(song, cfg, src, conv.pan_law_db, sample_secs, lambda t: conv.tick_span_secs(t, t + 1),
+                                tol)
              for src in sources}
     return SurveyContext(song, conv, sources, notes, level_scale, tol)
 

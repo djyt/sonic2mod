@@ -93,6 +93,10 @@ class SmpsChannel:
     label_event_index: dict = field(default_factory=dict)
 
 
+# A YM2612 channel's operator count: every smpsVc* macro but the algorithm one states four bytes
+_OPERATORS = 4
+
+
 @dataclass
 class SmpsVoice:
     index: int
@@ -100,6 +104,15 @@ class SmpsVoice:
     feedback: int = 0
     # Store raw params for informational purposes
     params: dict = field(default_factory=dict)
+
+    def operator_values(self, macro: str) -> list[int]:
+        """One smpsVc* macro's operator bytes as written: '$00, $05, $00, $05' → [0, 5, 0, 5].
+        A macro the voice leaves out, or a value it leaves out, reads as 0."""
+        raw = self.params.get(macro)
+        if not raw:
+            return [0] * _OPERATORS
+        vals = [int(v.strip().lstrip('$'), 16) for v in raw.split(',')]
+        return (vals + [0] * _OPERATORS)[:_OPERATORS]
 
 
 @dataclass

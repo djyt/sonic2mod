@@ -25,7 +25,7 @@ def _psg_volume_mode(value) -> str:
 
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
-               "treble_shelf_db", "treble_shelf_hz", "resample_taps")
+               "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache")
 
 
 def _samples_section(data: dict, filepath: str) -> dict:
@@ -158,6 +158,19 @@ def _loop_drift_db(data: dict, filepath: str) -> float:
     return v
 
 
+# The project root: configs/ and a relative samples.render_cache are read from it
+_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _render_cache(data: dict) -> str | None:
+    """samples.render_cache: the directory chip renders are kept in (relative to the project), or off."""
+    value = data.get("render_cache", "off")
+    if value is None or mode_word(value) == "off":
+        return None
+    path = Path(str(value))
+    return str(path if path.is_absolute() else _ROOT / path)
+
+
 def _sustain_duration(section: dict, default: float) -> float | str:
     """A synthesis section's sustain_duration: seconds, or "auto" (each instrument its longest ring)."""
     sd = section.get("sustain_duration", default)
@@ -190,6 +203,8 @@ class SampleSettings:
     resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps: filter width, at the lower rate
     dither: str = DEFAULT_DITHER     # settings.yaml samples.dither (core.audio.pcm.DITHER_MODES)
     dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.audio.pcm.dc_block)
+    render_cache: str | None = None  # settings.yaml samples.render_cache: where chip renders are kept
+                                     # (core/render_cache.py); None = off
 
     @property
     def max_sample_bytes(self) -> int:
@@ -215,6 +230,7 @@ class SampleSettings:
             resample_taps=_positive_int(smp, "resample_taps", DEFAULT_TAPS, filepath, even=True),
             dc_block=_sample_flag(smp, "dc_block", False, filepath),
             dither=dither_mode(smp.get("dither", DEFAULT_DITHER), f"{filepath}: samples"),
+            render_cache=_render_cache(smp),
         )
 
 
@@ -376,7 +392,7 @@ def with_song_overrides(settings, config: "ConversionConfig"):
 
 
 # The settings file a tool reads when no song config sits beside one
-_REPO_SETTINGS = Path(__file__).resolve().parents[2] / "configs" / "settings.yaml"
+_REPO_SETTINGS = _ROOT / "configs" / "settings.yaml"
 
 
 def find_settings(config_path: str | None = None) -> str | None:

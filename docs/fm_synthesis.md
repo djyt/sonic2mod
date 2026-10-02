@@ -105,6 +105,7 @@ still at the top level counts, with a warning; an unknown key is an error):
 | `sustain_loops` / `loop_drift_db` | `merged` / `1` | § Sustain loops |
 | `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | Brightness shelf (`core.audio.pcm.high_shelf`); 0 = off |
 | `resample_taps` | `32` | Resampler filter width (`core/audio/resample.py`) |
+| `render_cache` | `off` (`output/cache` in the shipped settings) | Every FM / PSG chip render kept on disk under a hash of its inputs, in a directory per hash of the emulator DLL and the Python a render runs through (`core/render_cache.py`); a conversion that renders the same note again reads it back. Output identical either way; renders other code made are removed. Credits 10.7 s → 1.7 s, the regression suite 14 s → 4 s |
 
 **Clock rates explained:**
 - `clock_rate = 7670454` Hz → native synthesis rate = 7670454 / 6 / 24 ≈ **53,267 Hz**

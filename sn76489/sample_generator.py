@@ -17,6 +17,7 @@ Usage (smoke test)::
 
 from __future__ import annotations
 
+import functools
 import math
 import sys
 import warnings
@@ -41,12 +42,30 @@ from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
 from core.mod import PERIOD_TABLE, ModNote, max_sustain_secs
 from core.plan import psg_catalogue
+from core.render_cache import RenderCache, code_salt
 from core.smps import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
+from sn76489.build import get_lib_path
 from sn76489.renderer import (
     note_to_psg_n,
     render_psg_noise_raw,
     render_psg_tone_raw,
 )
+
+
+@functools.cache
+def _render_salt() -> str:
+    """What a chip render depends on besides its inputs: the emulator and the Python it runs through
+    (this package, the resampler and PCM helpers, the driver's tables)."""
+    core = _HERE.parent / "core"
+    return code_salt([Path(get_lib_path()), *_HERE.glob("*.py"), core / "audio" / "resample.py",
+                      core / "audio" / "pcm.py", core / "smps" / "driver_tables.py"])
+
+
+def _cached_render(cache: RenderCache, render, **kwargs) -> tuple[list, int]:
+    """render(**kwargs) through the render cache (core/render_cache.py); a list, as the renderers return."""
+    inputs = (render.__name__, tuple(sorted((k, tuple(v) if isinstance(v, list) else v) for k, v in kwargs.items())))
+    mono, rate = cache.through(inputs, lambda: render(**kwargs))
+    return list(mono), rate
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -71,7 +90,7 @@ def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[
     return list(e)  # already a list
 
 
-def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
+def _synthesize_entry(entry, psg_synth, fps, raw_data, cache: RenderCache, verbose: bool = False,
                       rate3_dividers: dict | None = None, loops: bool = False,
                       loops_out: dict | None = None):
     """Render one PsgInstrumentEntry (a catalogue instrument's) into raw_data.
@@ -118,8 +137,9 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
         def _render_tone(secs):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                out = render_psg_tone_raw(
-                    synth_note_idx,
+                out = _cached_render(
+                    cache, render_psg_tone_raw,
+                    mod_note_index=synth_note_idx,
                     sustain_secs=secs,
                     release_secs=psg_synth.release_padding,
                     clock_rate=psg_synth.clock_rate,
@@ -194,7 +214,8 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
                   f"target_rate={target_rate}Hz  sustain={noise_sustain:.3f}s{env_info}")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            mono, rate = render_psg_noise_raw(
+            mono, rate = _cached_render(
+                cache, render_psg_noise_raw,
                 white=white,
                 noise_rate=entry.noise_rate,
                 sustain_secs=noise_sustain,
@@ -243,6 +264,7 @@ def generate_psg_samples(
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
     raw_out: dict[int, tuple] | None = None,
+    cache_out: dict[str, int] | None = None,
 ) -> dict:
     """Render a PSG sample for every instrument in the config's catalogue.
 
@@ -255,6 +277,8 @@ def generate_psg_samples(
                          entry's own instrument and each of its `envelopes:` variants.
         loops:     cut each tone whose envelope holds at a sustain loop (core.audio.loops), reported
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.
+        cache_out: filled with {"hits": n, "misses": n} of the render cache
+                   (settings.yaml samples.render_cache; nothing when it is off).
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -270,9 +294,12 @@ def generate_psg_samples(
     # One render per catalogue instrument: each psg_map entry's own instrument, then its
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
     catalogue = psg_catalogue(config, noise_envelopes)
+    cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
     for spec in catalogue.values():
-        _synthesize_entry(spec.entry, psg_synth, fps, raw_data, verbose=verbose,
+        _synthesize_entry(spec.entry, psg_synth, fps, raw_data, cache, verbose=verbose,
                           rate3_dividers=rate3_dividers, loops=loops, loops_out=loops_out)
+    if cache_out is not None and cache.enabled:
+        cache_out.update(hits=cache.hits, misses=cache.misses)
 
     # --- Quantise, each instrument to its own full 8 bits ---
     # The level is the sample_list volume's job (measured against the VGZ); the noise channel

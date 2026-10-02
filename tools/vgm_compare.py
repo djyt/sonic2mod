@@ -55,6 +55,7 @@ import subprocess
 import sys
 import wave
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 
 try:
@@ -664,6 +665,9 @@ def vibrato_estimate(seg: np.ndarray) -> dict | None:
 # Report
 # ---------------------------------------------------------------------------
 
+_GZIP_MAGIC = b'\x1f\x8b'
+
+
 def _fmt(x: float, w: int = 7, p: int = 1) -> str:
     return f"{x:>{w}.{p}f}" if not math.isnan(x) else f"{'nan':>{w}}"
 
@@ -672,135 +676,188 @@ def _hz(f: int) -> str:
     return f"{f // 1000}k" if f >= 1000 and f % 1000 == 0 else str(f)
 
 
-def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
-           offset: float | None, ref_chan: str, max_rows: int, pitch_tol: float = 35.0) -> dict:
-    """Print the comparison and return the same numbers as a JSON-serialisable dict.
-
-    `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
-    """
-    raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
+def _vgm_rows(vgz: Path) -> tuple[bytes, list[tuple]]:
+    """(the VGM bytes of a .vgz or .vgm, parse_vgm's rows for every chip)."""
+    raw = vgz.read_bytes()
+    if raw[:2] == _GZIP_MAGIC:
+        raw = gzip.decompress(raw)
     rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
-    events = [r for r in rows if r[1] != "DAC"]
+    return raw, rows
 
-    chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in _VGM_CHANNELS or c.source == "PSG3"}
-    # PSG3 in noise mode is the NOISE channel of the chip; tone mode is PSG3.  Detect from events.
-    noise_used = any(r[1] == "NOISE" for r in rows)
-    names = []
-    for src in chan_map:
-        if src == "PSG3" and noise_used:
-            names.append("NOISE")
-        else:
-            names.append(src)
-    # *_st: stereo arrays, used for every level figure (see load_wav); vgm / mod: mono mixes.
-    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
-    mod_st = {}
-    for src, n in zip(chan_map, names, strict=True):
-        mod_st[n] = load_wav(workdir / f"mod_{src}.wav", stereo=True)
-    mod_st["FULL"] = load_wav(workdir / "mod_FULL.wav", stereo=True)
-    vgm = {n: a.mean(axis=1) for n, a in vgm_st.items()}
-    mod = {n: a.mean(axis=1) for n, a in mod_st.items()}
 
-    offset_auto = offset is None
-    chip_tl, chip_end = vgm_pitch_audit.chip_timeline(raw)
-    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(read_mod(mod_path), cfg)
-    if offset is None:
-        # Note starts from the register log against the MOD's note rows: exact, and immune to the
-        # envelope method's failure on sparse or tempo-drifting songs (Chaos Emerald +920 ms,
-        # Drowning +1205 ms).  The envelope correlation is kept for songs with no pitched notes.
-        if any(mod_tl.values()):
-            offset = vgm_pitch_audit.auto_offset(chip_tl, mod_tl, {c.source: c.mod_channel for c in cfg.channels})
-            env = auto_offset(vgm["FULL"], mod["FULL"])
-            print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, note starts"
-                  + (f"; envelope correlation says {env * 1000:+.0f} ms — ignored)" if abs(env - offset) > 0.03 else ")"))
-        else:
-            offset = auto_offset(vgm["FULL"], mod["FULL"])
-            print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
-    else:
-        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
-    print()
-    res: dict = {
-        "offset_ms": offset * 1000, "offset_auto": offset_auto,
-        "channels": {n: {} for n in names}, "notes": [], "vibrato": [],
+def _chip_channel(source: str, noise_used: bool) -> str:
+    """The chip channel a source renders as: PSG3 in noise mode is the chip's NOISE channel."""
+    return "NOISE" if (source == "PSG3" and noise_used) else source
+
+
+def _say_alignment(offset: float, how: str) -> None:
+    print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms ({how})")
+
+
+@dataclass
+class _Renders:
+    """Both renders per channel name: stereo for every level figure (see load_wav), mono mixes for the rest."""
+
+    vgm_st: dict[str, np.ndarray]
+    mod_st: dict[str, np.ndarray]
+    vgm: dict[str, np.ndarray] = field(init=False)
+    mod: dict[str, np.ndarray] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.vgm = {n: a.mean(axis=1) for n, a in self.vgm_st.items()}
+        self.mod = {n: a.mean(axis=1) for n, a in self.mod_st.items()}
+
+
+@dataclass
+class _OnsetMatch:
+    """One channel's reference onsets against the MOD's."""
+
+    ref: int                          # reference onsets
+    mod: int                          # MOD onsets
+    devs: list[float]                 # ms each matched one is off by
+    missing: int                      # reference onsets with no MOD one
+    extra: int | None = None          # MOD notes the chip has no key-on for (key-on matching only)
+    lost: list[float] = field(default_factory=list)   # s of each missing one (key-on matching only)
+    drift_ms: float | None = None     # the deviation's change from the song's start to its end
+
+
+def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str, int], rd: _Renders) -> float:
+    """The MOD-minus-VGM offset (s), given or found; prints which."""
+    if offset is not None:
+        _say_alignment(offset, "given")
+        return offset
+
+    # Note starts from the register log against the MOD's note rows: exact, and immune to the
+    # envelope method's failure on sparse or tempo-drifting songs (Chaos Emerald +920 ms,
+    # Drowning +1205 ms).  The envelope correlation is kept for songs with no pitched notes.
+    if not any(mod_tl.values()):
+        offset = auto_offset(rd.vgm["FULL"], rd.mod["FULL"])
+        _say_alignment(offset, "auto, envelope cross-correlation")
+        return offset
+    offset = vgm_pitch_audit.auto_offset(chip_tl, mod_tl, sources)
+    env = auto_offset(rd.vgm["FULL"], rd.mod["FULL"])
+    _say_alignment(offset, "auto, note starts"
+                   + (f"; envelope correlation says {env * 1000:+.0f} ms — ignored" if abs(env - offset) > 0.03 else ""))
+    return offset
+
+
+def _note_result(ch: str, evs: list[tuple], i: int, rd: _Renders, offset: float) -> dict:
+    """Key-on `evs[i]` measured in both renders: pitch on its strongest partial, level."""
+    t, _, _, _, fref, note, _ = evs[i]
+    t /= 1000.0
+    t_end = evs[i + 1][0] / 1000.0 if i + 1 < len(evs) else t + 2.0
+    win = min(0.3 if fref < 200 else 0.1, max(0.04, t_end - t - 0.03))
+    harm, cv = harmonic_cents(seg_at(rd.vgm[ch], t + 0.025, win), fref)
+    _, cm = harmonic_cents(seg_at(rd.mod[ch], t + offset + 0.025, win), fref, harm)
+    lv = db(rms(seg_at(rd.vgm_st[ch], t + 0.025, win)))
+    lm = db(rms(seg_at(rd.mod_st[ch], t + offset + 0.025, win)))
+    # MOD against VGM, not against the key-on register value: on a grace note or a legato
+    # run the window holds the NEXT pitch in both renders, and that is not an error.
+    return {
+        "channel": ch, "t_s": t, "note": note, "ref_hz": fref, "vgm_cents": cv, "mod_cents": cm,
+        "pitch_diff_cents": cm - cv,
+        "vgm_db": lv, "mod_db": lm, "diff_db": lm - lv, "silent_in_mod": lm < -70,
     }
 
-    # ---- per-note pitch and level (FM + PSG tone) ----
-    per_ch: dict[str, list] = {}
-    # Notes the recording plays as the MOD's single pass ends or later (its second time round the
-    # loop) have nothing to be compared with; 150 ms keeps the measuring window inside the render.
-    for r in events:
-        if r[1] in vgm and r[1] != "NOISE" and r[4] > 0 and r[0] / 1000.0 + offset < mod_end - 0.15:
-            per_ch.setdefault(r[1], []).append(r)
+
+def _note_flag(n: dict) -> str:
+    if n["silent_in_mod"]:
+        return "  <-- SILENT in MOD"
+    cv, cm = n["vgm_cents"], n["mod_cents"]
+    return "  <-- PITCH" if (not math.isnan(cv) and (math.isnan(cm) or abs(n["pitch_diff_cents"]) > 25)) else ""
+
+
+def _report_notes(per_ch: dict[str, list], rd: _Renders, offset: float, max_rows: int, res: dict,
+                  width: int, intro: tuple[str, str], summary: str) -> None:
+    """Per-note pitch and level at every key-on of `per_ch`, then a summary per channel.
+
+    `width`: the channel column's; `intro`: the table's two title lines; `summary`: the summary's.
+    """
+    if not per_ch:
+        return
+    for line in intro:
+        print(line)
+    print(f"{'chan':<{width}}{'t_vgm':>7}  {'ref':<4}{'ref_hz':>8}  {'vgm_c':>6}  {'mod_c':>6}  {'vgm_dB':>7}  "
+          f"{'mod_dB':>7}  {'diff':>6}")
+    print("-" * (72 + width))
+
+    # Every note; the first max_rows and every flagged one printed
     level_diff: dict[str, list[float]] = {}
     cent_err: dict[str, list[float]] = {}
     printed = 0
-    if per_ch:
-        print("Per-note comparison (levels are dBFS of the isolated channel; diff = MOD - VGM; vgm_c / mod_c = cents")
-        print("from the chip's key-on pitch, measured in the audio - PITCH flags the two renders disagreeing)")
-        print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'ref_hz':>8}  {'vgm_c':>6}  {'mod_c':>6}  {'vgm_dB':>7}  {'mod_dB':>7}  {'diff':>6}")
-        print("-" * 78)
     for ch, evs in per_ch.items():
-        for i, r in enumerate(evs):
-            t, _, _, _, fref, note, _ = r
-            t /= 1000.0
-            t_end = evs[i + 1][0] / 1000.0 if i + 1 < len(evs) else t + 2.0
-            dur = t_end - t
-            win = min(0.3 if fref < 200 else 0.1, max(0.04, dur - 0.03))
-            sv = seg_at(vgm[ch], t + 0.025, win)
-            sm = seg_at(mod[ch], t + offset + 0.025, win)
-            harm, cv = harmonic_cents(sv, fref)
-            _, cm = harmonic_cents(sm, fref, harm)
-            lv = db(rms(seg_at(vgm_st[ch], t + 0.025, win)))
-            lm = db(rms(seg_at(mod_st[ch], t + offset + 0.025, win)))
-            level_diff.setdefault(ch, []).append(lm - lv)
-            if not math.isnan(cm):
-                cent_err.setdefault(ch, []).append(cm)
-            # MOD against VGM, not against the key-on register value: on a grace note or a legato
-            # run the window holds the NEXT pitch in both renders, and that is not an error.
-            pitch_diff = cm - cv
-            flag = "  <-- PITCH" if (not math.isnan(cv) and (math.isnan(cm) or abs(pitch_diff) > 25)) else ""
-            if lm < -70:
-                flag = "  <-- SILENT in MOD"
-            res["notes"].append({
-                "channel": ch, "t_s": t, "note": note, "ref_hz": fref, "vgm_cents": cv, "mod_cents": cm,
-                "pitch_diff_cents": pitch_diff,
-                "vgm_db": lv, "mod_db": lm, "diff_db": lm - lv, "silent_in_mod": lm < -70,
-            })
-            if max_rows <= 0 or printed < max_rows or flag:
-                print(f"{ch:<6}{t:>7.3f}  {note:<4}{fref:>8.1f}  {_fmt(cv, 6)}  {_fmt(cm, 6)}  "
-                      f"{lv:>7.1f}  {lm:>7.1f}  {lm - lv:>6.1f}{flag}")
-                printed += 1
-    if per_ch:
-        print()
-        print("Per-channel summary")
-        print(f"{'chan':<6}{'notes':>6}  {'pitch err cents (median/min/max)':<34}  {'level diff dB (median)':<22}")
-        for ch in per_ch:
-            ce = cent_err.get(ch, [float('nan')])
-            ld = level_diff.get(ch, [float('nan')])
-            print(f"{ch:<6}{len(per_ch[ch]):>6}  {statistics.median(ce):>8.1f} / {min(ce):>6.1f} / {max(ce):>6.1f}"
-                  f"{'':<8}  {statistics.median(ld):>+8.1f}")
-            res["channels"][ch].update({
-                "notes": len(per_ch[ch]),
-                "pitch_cents": {"median": statistics.median(ce), "min": min(ce), "max": max(ce)},
-                "level_diff_db_median": statistics.median(ld),
-            })
-        print()
+        for i in range(len(evs)):
+            n = _note_result(ch, evs, i, rd, offset)
+            res["notes"].append(n)
+            level_diff.setdefault(ch, []).append(n["diff_db"])
+            if not math.isnan(n["mod_cents"]):
+                cent_err.setdefault(ch, []).append(n["mod_cents"])
+            flag = _note_flag(n)
+            if max_rows > 0 and printed >= max_rows and not flag:
+                continue
+            print(f"{ch:<{width}}{n['t_s']:>7.3f}  {n['note']:<4}{n['ref_hz']:>8.1f}  {_fmt(n['vgm_cents'], 6)}  "
+                  f"{_fmt(n['mod_cents'], 6)}  {n['vgm_db']:>7.1f}  {n['mod_db']:>7.1f}  {n['diff_db']:>6.1f}{flag}")
+            printed += 1
 
-    # ---- pitch verdict: symbolic (vgm_pitch_audit), not the audio windows above ----
-    if any(mod_tl.values()):
-        pa = vgm_pitch_audit.audit(chip_tl, chip_end, mod_tl, mod_end, {c.source: c.mod_channel for c in cfg.channels},
-                                   offset, tolerance=pitch_tol)
-        res["pitch_audit"] = pa
-        n_ok = sum(c["ok"] for c in pa["channels"].values())
-        print(f"Pitch verdict (chip frequency registers vs the pitch each MOD note sounds at; wrong = over {pitch_tol:g} cents)")
-        print(f"  {n_ok} of {n_ok + pa['bad']} notes right" + ("" if pa["bad"] else " - every note is at the hardware's pitch"))
-        vgm_pitch_audit.print_audit(pa, 60.0, indent="  ")
-        if pa["bad"]:
-            print("  (times and every wrong note: python tools/vgm_pitch_audit.py <config> <vgz> --list)")
-        print()
+    # Per channel
+    print()
+    print(summary)
+    print(f"{'chan':<{width}}{'notes':>6}  {'pitch err cents (median/min/max)':<34}  {'level diff dB (median)':<22}")
+    for ch in per_ch:
+        ce = cent_err.get(ch, [float('nan')])
+        ld = level_diff.get(ch, [float('nan')])
+        print(f"{ch:<{width}}{len(per_ch[ch]):>6}  {statistics.median(ce):>8.1f} / {min(ce):>6.1f} / {max(ce):>6.1f}"
+              f"{'':<8}  {statistics.median(ld):>+8.1f}")
+        res["channels"][ch].update({
+            "notes": len(per_ch[ch]),
+            "pitch_cents": {"median": statistics.median(ce), "min": min(ce), "max": max(ce)},
+            "level_diff_db_median": statistics.median(ld),
+        })
+    print()
 
-    # ---- vibrato on long notes ----
-    # Key-off is not in the event list, so a note runs to the next key-on on its channel and
-    # pitch_track() drops the frames where it has already faded.
+
+def _report_pitch_verdict(chip_tl: dict, chip_end: float, mod_tl: dict, mod_end: float, sources: dict[str, int],
+                          offset: float, pitch_tol: float, res: dict) -> None:
+    """The symbolic verdict (vgm_pitch_audit), not the audio windows of the per-note table."""
+    if not any(mod_tl.values()):
+        return
+    pa = vgm_pitch_audit.audit(chip_tl, chip_end, mod_tl, mod_end, sources, offset, tolerance=pitch_tol)
+    res["pitch_audit"] = pa
+    n_ok = sum(c["ok"] for c in pa["channels"].values())
+    print(f"Pitch verdict (chip frequency registers vs the pitch each MOD note sounds at; wrong = over {pitch_tol:g} cents)")
+    print(f"  {n_ok} of {n_ok + pa['bad']} notes right" + ("" if pa["bad"] else " - every note is at the hardware's pitch"))
+    vgm_pitch_audit.print_audit(pa, 60.0, indent="  ")
+    if pa["bad"]:
+        print("  (times and every wrong note: python tools/vgm_pitch_audit.py <config> <vgz> --list)")
+    print()
+
+
+def _vibrato_flag(vv: dict | None, vm: dict | None) -> str:
+    """What is wrong with the MOD's vibrato (or beating) against the VGM's; both are not None-None."""
+    if vv is None or vm is None:
+        return "  <-- MISSING in MOD" if vm is None else "  <-- not in VGM"
+    if "beat" in (vv["kind"], vm["kind"]):
+        return "  <-- BEAT RATE" if abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15 else ""
+    if (abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15
+            or abs(vm["depth_cents"] - vv["depth_cents"]) > max(5.0, 0.3 * vv["depth_cents"])):
+        return "  <-- VIBRATO"
+    return ""
+
+
+def _vibrato_cell(v: dict | None) -> str:
+    if not v:
+        return f"{'none':>18}"
+    return f"{v['rate_hz']:>5.2f} Hz +/-{v['depth_cents']:>4.1f} c{'b' if v['kind'] == 'beat' else ' '}"
+
+
+def _report_vibrato(per_ch: dict[str, list], rd: _Renders, offset: float, res: dict) -> None:
+    """Vibrato on long notes, in both renders.
+
+    Key-off is not in the event list, so a note runs to the next key-on on its channel and
+    pitch_track() drops the frames where it has already faded.
+    """
+    if not per_ch:
+        return
     long_notes = 0
     vib_rows: list[str] = []
     for ch, evs in per_ch.items():
@@ -811,223 +868,309 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                 continue
             long_notes += 1
             span = min(dur, 4.0) - 0.02
-            vv = vibrato_estimate(seg_at(vgm[ch], t + 0.01, span))
-            vm = vibrato_estimate(seg_at(mod[ch], t + offset + 0.01, span))
+            vv = vibrato_estimate(seg_at(rd.vgm[ch], t + 0.01, span))
+            vm = vibrato_estimate(seg_at(rd.mod[ch], t + offset + 0.01, span))
             if vv is None and vm is None:
                 continue
-            if vv is None or vm is None:
-                flag = "  <-- MISSING in MOD" if vm is None else "  <-- not in VGM"
-            elif "beat" in (vv["kind"], vm["kind"]):
-                flag = "  <-- BEAT RATE" if abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15 else ""
-            elif (abs(vm["rate_hz"] / vv["rate_hz"] - 1) > 0.15
-                  or abs(vm["depth_cents"] - vv["depth_cents"]) > max(5.0, 0.3 * vv["depth_cents"])):
-                flag = "  <-- VIBRATO"
-            else:
-                flag = ""
-
-            def _vib(v: dict | None) -> str:
-                if not v:
-                    return f"{'none':>18}"
-                return f"{v['rate_hz']:>5.2f} Hz +/-{v['depth_cents']:>4.1f} c{'b' if v['kind'] == 'beat' else ' '}"
-            vib_rows.append(f"{ch:<6}{t:>7.3f}  {note:<4}{dur:>6.2f}   {_vib(vv)}   {_vib(vm)}{flag}")
+            flag = _vibrato_flag(vv, vm)
+            vib_rows.append(f"{ch:<6}{t:>7.3f}  {note:<4}{dur:>6.2f}   {_vibrato_cell(vv)}   {_vibrato_cell(vm)}{flag}")
             res["vibrato"].append({"channel": ch, "t_s": t, "note": note, "dur_s": dur,
                                    "vgm": vv, "mod": vm, "mismatch": bool(flag)})
-    if per_ch:
-        print(f"Vibrato ({long_notes} notes of {_VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
-        if vib_rows:
-            print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'dur':>6}   {'VGM rate / depth':>18}   {'MOD rate / depth':>18}")
-            print("-" * 68)
-            for row in vib_rows:
-                print(row)
-            print("  (4xy: rate = x*(speed-1)*BPM/(160*speed) Hz; depth grows with y and with the note's period)")
-            print("  (b = beating of detuned FM carriers, not smpsModSet: the level swings at the same rate."
-                  "  Its rate follows")
-            print("   sample playback speed, so a BEAT RATE mismatch points at synth_root / multi-sampling,"
-                  " not at 4xy)")
-        else:
-            print("  none found")
-        print()
 
-    # ---- channel balance relative to reference channel ----
-    ref = ref_chan if ref_chan in vgm else names[0]
-    print(f"Whole-song channel RMS relative to {ref} (dB, L/R power):   VGM     MOD    MOD-VGM")
-    rv_ref, rm_ref = db(rms(vgm_st[ref])), db(rms(mod_st[ref]))
-    for n in names:
-        rv, rm = db(rms(vgm_st[n])) - rv_ref, db(rms(mod_st[n])) - rm_ref
-        note = "" if abs(rm - rv) < 2 else "   <-- rebalance"
-        print(f"  {n:<6} {rv:>8.1f} {rm:>8.1f} {rm - rv:>+8.1f}{note}")
-        res["channels"][n]["balance_db"] = {"vgm": rv, "mod": rm, "diff": rm - rv}
-    res["ref_channel"] = ref
-    res["mix"] = {"vgm_rms_db": db(rms(vgm_st["FULL"])), "vgm_peak": float(np.abs(vgm_st["FULL"]).max()),
-                  "mod_rms_db": db(rms(mod_st["FULL"])), "mod_peak": float(np.abs(mod_st["FULL"]).max())}
-    print(f"  (absolute: VGM mix {db(rms(vgm_st['FULL'])):.1f} dBFS peak {np.abs(vgm_st['FULL']).max():.2f};"
-          f" MOD mix {db(rms(mod_st['FULL'])):.1f} dBFS peak {np.abs(mod_st['FULL']).max():.2f})")
+    print(f"Vibrato ({long_notes} notes of {_VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
+    if not vib_rows:
+        print("  none found")
+        print()
+        return
+    print(f"{'chan':<6}{'t_vgm':>7}  {'ref':<4}{'dur':>6}   {'VGM rate / depth':>18}   {'MOD rate / depth':>18}")
+    print("-" * 68)
+    for row in vib_rows:
+        print(row)
+    print("  (4xy: rate = x*(speed-1)*BPM/(160*speed) Hz; depth grows with y and with the note's period)")
+    print("  (b = beating of detuned FM carriers, not smpsModSet: the level swings at the same rate."
+          "  Its rate follows")
+    print("   sample playback speed, so a BEAT RATE mismatch points at synth_root / multi-sampling,"
+          " not at 4xy)")
     print()
 
-    # ---- per-instrument levels ----
+
+def _report_balance(names: list[str], ref: str, rd: _Renders, res: dict, width: int, title: str) -> None:
+    """Whole-song level of every channel relative to `ref`, in both renders, and the two mixes'."""
+    print(title)
+    rv_ref, rm_ref = db(rms(rd.vgm_st[ref])), db(rms(rd.mod_st[ref]))
+    for n in names:
+        rv, rm = db(rms(rd.vgm_st[n])) - rv_ref, db(rms(rd.mod_st[n])) - rm_ref
+        note = "" if abs(rm - rv) < 2 else "   <-- rebalance"
+        print(f"  {n:<{width}} {rv:>8.1f} {rm:>8.1f} {rm - rv:>+8.1f}{note}")
+        res["channels"][n]["balance_db"] = {"vgm": rv, "mod": rm, "diff": rm - rv}
+    res["ref_channel"] = ref
+
+    vgm_full, mod_full = rd.vgm_st["FULL"], rd.mod_st["FULL"]
+    res["mix"] = {"vgm_rms_db": db(rms(vgm_full)), "vgm_peak": float(np.abs(vgm_full).max()),
+                  "mod_rms_db": db(rms(mod_full)), "mod_peak": float(np.abs(mod_full).max())}
+    print(f"  (absolute: VGM mix {db(rms(vgm_full)):.1f} dBFS peak {np.abs(vgm_full).max():.2f};"
+          f" MOD mix {db(rms(mod_full)):.1f} dBFS peak {np.abs(mod_full).max():.2f})")
+    print()
+
+
+def _note_times(per_ch: dict[str, list], names: list[str], rows: list[tuple], rd: _Renders) -> dict[str, list[float]]:
+    """Reference note starts (s) per channel: key-ons, the DAC's detected audio onsets."""
     note_times = {ch: [r[0] / 1000.0 for r in evs] for ch, evs in per_ch.items()}
     if "NOISE" in names:
         note_times["NOISE"] = [r[0] / 1000.0 for r in rows if r[1] == "NOISE"]
     if "DAC" in names:
-        note_times["DAC"] = onsets(vgm["DAC"], thresh_db=-40, hold=0.08)
-    src_of = dict(zip(names, chan_map, strict=True))
+        note_times["DAC"] = onsets(rd.vgm["DAC"], thresh_db=-40, hold=0.08)
+    return note_times
+
+
+def _mod_events(cfg: ConversionConfig, mod_path: Path) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]], float]:
+    """mod_note_events, a detune variant (core.plan.detune) played as its base: its sample a few cents
+    off, at its volume."""
     events_by_chan, samples, mod_end = mod_note_events(read_mod(mod_path), cfg.target_speed)
     if cfg.detune_plan is not None:
-        # A detune variant (core.plan.detune) is its base's sample a few cents off, at its volume
         base_of = cfg.detune_plan.base_of
         events_by_chan = {c: [(t, base_of(ins), cxx) for t, ins, cxx in evs] for c, evs in events_by_chan.items()}
-    lev = instrument_levels(note_times, {n: chan_map[src_of[n]] for n in note_times}, events_by_chan, samples,
-                            mod_end, vgm_st, mod_st, offset)
-    res["instrument_levels"] = lev
-    if lev["instruments"]:
-        print(f"Per-instrument level error, MOD - VGM, relative to {lev['anchor']} (dB).  Notes without a Cxx set the volume;")
-        print("channels sharing an instrument should agree (spread) — if they do not, it is not a volume problem.")
-        print(f"{'inst':>4} {'sample':<22} {'vol':>3} {'notes':>5} {'err':>6} {'spread':>6} {'suggest':>7}   per channel (Cxx: err xnotes)")
-        for it in lev["instruments"]:
-            parts = []
-            for g in lev["groups"]:
-                if g["instrument"] == it["instrument"]:
-                    cxx = "" if g["cxx"] is None else f" C{g['cxx']:02X}"
-                    parts.append(f"{g['channel']}{cxx}: {g['err_db']:+.1f} x{g['notes']}")
-            detail = "  ".join(parts)
-            sug = "" if it["suggested"] is None else ("=" if it["suggested"] == it["volume"] else str(it["suggested"]))
-            flag = "  <-- channels disagree" if it["spread_db"] > _LEVEL_MAX_SPREAD else ""
-            if abs(it["err_db"]) > _LEVEL_MAX_ERR:
-                flag = "  <-- too far off to be a volume problem"
-            print(f"{it['instrument']:>4} {it['name']:<22} {it['volume']:>3} {it['notes']:>5} {it['err_db']:>+6.1f} "
-                  f"{it['spread_db']:>6.1f} {sug:>7}   {detail}{flag}")
-        if lev["scaled_db"] < -0.05:
-            print(f"  (suggestions are all {-lev['scaled_db']:.1f} dB lower than the errors alone imply, so that the "
-                  "loudest one fits in 64)")
-        print()
+    return events_by_chan, samples, mod_end
 
-    # ---- onset timing ----
-    # Channels with key-on events: the chip's key-ons against the MOD's note rows, one to one.  An
-    # audio onset detector cannot do this on sustained channels - a re-keyed note over a ringing
-    # one raises no envelope edge, and a MOD re-trigger where the hardware ties adds one (GHZ read
-    # 28-143 unmatched per channel with every note in place).  The DAC has no key-on (its rows are
-    # PCM seeks), so it keeps the detector, the same one on both sides so slow attacks cancel.
-    # The window follows the deviation of the notes matched so far: a MOD BPM is a whole number, so
-    # a song can run a fraction of a percent off the driver's tempo (Special Stage +150 ms in 33 s)
-    # and every late note would otherwise count as lost.  That drift is reported on its own.
+
+def _print_instrument_levels(lev: dict) -> None:
+    if not lev["instruments"]:
+        return
+    print(f"Per-instrument level error, MOD - VGM, relative to {lev['anchor']} (dB).  Notes without a Cxx set the volume;")
+    print("channels sharing an instrument should agree (spread) — if they do not, it is not a volume problem.")
+    print(f"{'inst':>4} {'sample':<22} {'vol':>3} {'notes':>5} {'err':>6} {'spread':>6} {'suggest':>7}   per channel (Cxx: err xnotes)")
+    for it in lev["instruments"]:
+        parts = []
+        for g in lev["groups"]:
+            if g["instrument"] == it["instrument"]:
+                cxx = "" if g["cxx"] is None else f" C{g['cxx']:02X}"
+                parts.append(f"{g['channel']}{cxx}: {g['err_db']:+.1f} x{g['notes']}")
+        detail = "  ".join(parts)
+        sug = "" if it["suggested"] is None else ("=" if it["suggested"] == it["volume"] else str(it["suggested"]))
+        flag = "  <-- channels disagree" if it["spread_db"] > _LEVEL_MAX_SPREAD else ""
+        if abs(it["err_db"]) > _LEVEL_MAX_ERR:
+            flag = "  <-- too far off to be a volume problem"
+        print(f"{it['instrument']:>4} {it['name']:<22} {it['volume']:>3} {it['notes']:>5} {it['err_db']:>+6.1f} "
+              f"{it['spread_db']:>6.1f} {sug:>7}   {detail}{flag}")
+    if lev["scaled_db"] < -0.05:
+        print(f"  (suggestions are all {-lev['scaled_db']:.1f} dB lower than the errors alone imply, so that the "
+              "loudest one fits in 64)")
+    print()
+
+
+def _keyon_onsets(vo: list[float], mo: list[float]) -> _OnsetMatch:
+    """Chip key-ons (s) against MOD note rows (s, in VGM time), one to one.
+
+    The window follows the deviation of the notes matched so far: a MOD BPM is a whole number, so
+    a song can run a fraction of a percent off the driver's tempo (Special Stage +150 ms in 33 s)
+    and every late note would otherwise count as lost.  That drift is reported on its own.
+    """
+    m = _OnsetMatch(len(vo), len(mo), [], 0)
+    extra = 0
+    # Start the running deviation where the song starts: on a drifting song the global
+    # alignment is a mid-song compromise, so the first notes sit well off zero.
+    run = statistics.median([min(((x - t) * 1000 for x in mo), key=abs) for t in vo[:5]]) if vo and mo else 0.0
+    i = j = 0
+    while i < len(vo):
+        d = (mo[j] - vo[i]) * 1000 if j < len(mo) else float("inf")
+        if abs(d - run) <= 40:
+            m.devs.append(d)
+            run = 0.5 * run + 0.5 * d
+            i, j = i + 1, j + 1
+        elif abs(d - run) <= 120 and all(
+                i + k < len(vo) and j + k < len(mo) and abs((mo[j + k] - vo[i + k]) * 1000 - d) <= 40
+                for k in (1, 2)):
+            # A step in the deviation that the next two notes confirm: a tempo change
+            # (the MOD falls up to two frames behind at each smpsSetTempoMod).
+            run = d
+        elif d < run:                     # a MOD note the chip has no key-on for
+            extra, j = extra + 1, j + 1
+        else:
+            m.lost.append(vo[i])
+            m.missing, i = m.missing + 1, i + 1
+    m.extra = extra + len(mo) - j
+    if len(m.devs) >= 10:
+        m.drift_ms = statistics.mean(m.devs[-5:]) - statistics.mean(m.devs[:5])
+    return m
+
+
+def _audio_onsets(vgm_a: np.ndarray, mod_a: np.ndarray, thresh_db: float, offset: float) -> _OnsetMatch:
+    """Detected audio onsets on both sides, matched within 40 ms."""
+    vo = onsets(vgm_a, thresh_db=thresh_db)
+    mo = [t - offset for t in onsets(mod_a, thresh_db=thresh_db)]
+    devs, missing = _onset_match(vo, mo)
+    return _OnsetMatch(len(vo), len(mo), devs, missing)
+
+
+def _print_onsets(name: str, m: _OnsetMatch, width: int) -> None:
+    if not m.devs:
+        print(f"  {name:<{width}} {m.ref:3d} ref onsets, {m.mod:3d} MOD onsets; none matched")
+    else:
+        print(f"  {name:<{width}} {m.ref:3d} ref onsets, {m.mod:3d} MOD onsets; matched {len(m.devs)}: "
+              f"median {statistics.median(m.devs):+.0f} ms, worst {max(m.devs, key=abs):+.0f} ms; "
+              f"unmatched {m.missing}" + (f", MOD-only {m.extra}" if m.extra else "")
+              + (f", drift {m.drift_ms:+.0f} ms" if m.drift_ms is not None and abs(m.drift_ms) >= 20 else ""))
+    if m.lost:
+        print(f"         no MOD note row at: {', '.join(f'{t:.2f}' for t in m.lost[:12])}"
+              + (f" ... (+{len(m.lost) - 12})" if len(m.lost) > 12 else "") + " s")
+
+
+def _report_onsets(names: list[str], note_times: dict[str, list[float]], events_by_chan: dict[int, list[tuple]],
+                   chan_of: dict[str, int], offset: float, mod_end: float, rd: _Renders, res: dict) -> None:
+    """Onset timing per channel.
+
+    Channels with key-on events: the chip's key-ons against the MOD's note rows, one to one.  An
+    audio onset detector cannot do this on sustained channels - a re-keyed note over a ringing
+    one raises no envelope edge, and a MOD re-trigger where the hardware ties adds one (GHZ read
+    28-143 unmatched per channel with every note in place).  The DAC has no key-on (its rows are
+    PCM seeks), so it keeps the detector, the same one on both sides so slow attacks cancel.
+    """
     print("Onset timing (chip key-on -> MOD note row, one to one within 40 ms of the running deviation;"
           " DAC: detected audio onsets)")
     for n in names:
         symbolic = n in note_times and n != "DAC"
-        extra = drift_ms = None
-        lost: list[float] = []
         if symbolic:
-            vo = [t for t in note_times[n] if t + offset < mod_end - 0.15]
-            mo = [e[0] - offset for e in events_by_chan.get(chan_map[src_of[n]], [])]
-            devs, missing, extra, i, j = [], 0, 0, 0, 0
-            # Start the running deviation where the song starts: on a drifting song the global
-            # alignment is a mid-song compromise, so the first notes sit well off zero.
-            run = statistics.median([min(((m - t) * 1000 for m in mo), key=abs) for t in vo[:5]]) if vo and mo else 0.0
-            while i < len(vo):
-                d = (mo[j] - vo[i]) * 1000 if j < len(mo) else float("inf")
-                if abs(d - run) <= 40:
-                    devs.append(d)
-                    run = 0.5 * run + 0.5 * d
-                    i, j = i + 1, j + 1
-                elif abs(d - run) <= 120 and all(
-                        i + n < len(vo) and j + n < len(mo) and abs((mo[j + n] - vo[i + n]) * 1000 - d) <= 40
-                        for n in (1, 2)):
-                    # A step in the deviation that the next two notes confirm: a tempo change
-                    # (the MOD falls up to two frames behind at each smpsSetTempoMod).
-                    run = d
-                elif d < run:                     # a MOD note the chip has no key-on for
-                    extra, j = extra + 1, j + 1
-                else:
-                    lost.append(vo[i])
-                    missing, i = missing + 1, i + 1
-            extra += len(mo) - j
-            if len(devs) >= 10:
-                drift_ms = statistics.mean(devs[-5:]) - statistics.mean(devs[:5])
+            m = _keyon_onsets([t for t in note_times[n] if t + offset < mod_end - 0.15],
+                              [e[0] - offset for e in events_by_chan.get(chan_of[n], [])])
         else:
-            thr = -50 if n == "NOISE" else -40
-            vo = onsets(vgm[n], thresh_db=thr)
-            mo = [t - offset for t in onsets(mod[n], thresh_db=thr)]
-            devs, missing = [], 0
-            for t in vo:
-                d = min(((m - t) * 1000 for m in mo), key=abs, default=float("inf"))
-                if abs(d) > 40:
-                    missing += 1
-                else:
-                    devs.append(d)
-        if devs:
-            print(f"  {n:<6} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; matched {len(devs)}: "
-                  f"median {statistics.median(devs):+.0f} ms, worst {max(devs, key=abs):+.0f} ms; "
-                  f"unmatched {missing}" + (f", MOD-only {extra}" if extra else "")
-                  + (f", drift {drift_ms:+.0f} ms" if drift_ms is not None and abs(drift_ms) >= 20 else ""))
-        else:
-            print(f"  {n:<6} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; none matched")
-        if lost:
-            print(f"         no MOD note row at: {', '.join(f'{t:.2f}' for t in lost[:12])}"
-                  + (f" ... (+{len(lost) - 12})" if len(lost) > 12 else "") + " s")
+            m = _audio_onsets(rd.vgm[n], rd.mod[n], -50 if n == "NOISE" else -40, offset)
+        _print_onsets(n, m, 6)
         res["channels"][n]["onsets"] = {
-            "method": "key-on" if symbolic else "audio", "mod_only": extra, "drift_ms": drift_ms,
-            "unmatched_s": lost,
-            "ref": len(vo), "mod": len(mo), "matched": len(devs), "unmatched": missing,
-            "median_ms": statistics.median(devs) if devs else None,
-            "worst_ms": max(devs, key=abs) if devs else None,
+            "method": "key-on" if symbolic else "audio", "mod_only": m.extra, "drift_ms": m.drift_ms,
+            "unmatched_s": m.lost,
+            "ref": m.ref, "mod": m.mod, "matched": len(m.devs), "unmatched": m.missing,
+            "median_ms": statistics.median(m.devs) if m.devs else None,
+            "worst_ms": max(m.devs, key=abs) if m.devs else None,
         }
     print()
 
-    # ---- noise ----
-    if "NOISE" in names:
-        vo = onsets(vgm["NOISE"], thresh_db=-50)
-        mo = onsets(mod["NOISE"], thresh_db=-50)
-        print(f"NOISE: {len(vo)} ref hits, {len(mo)} MOD hits")
-        noise_res: dict = {"ref_hits": len(vo), "mod_hits": len(mo)}
-        res["noise"] = noise_res
-        steps = [0.0, 0.017, 0.033, 0.05, 0.067, 0.083, 0.1, 0.133, 0.167, 0.2, 0.25]
-        print("  decay envelope (dB at ms after onset): " + ' '.join(f"{int(s * 1000):>5d}" for s in steps))
-        for k in sorted({0, 1, len(vo) - 1} & set(range(len(vo)))):
-            ev = [db(rms(seg_at(vgm["NOISE"], vo[k] + s, 0.02))) for s in steps]
-            em = [db(rms(seg_at(mod["NOISE"], vo[k] + offset + s, 0.02))) for s in steps]
-            print(f"  hit {k:2d} VGM  " + ' '.join(f"{x:>5.0f}" for x in ev))
-            print("         MOD  " + ' '.join(f"{x:>5.0f}" for x in em))
-        bands = [(0, 500), (500, 1000), (1000, 2000), (2000, 4000), (4000, 8000), (8000, 13000)]
-        # Spectrum of the first hit that sounds in BOTH renders: the MOD can lack the very first one
-        # (Star Light), and an all-silent window says nothing about the LFSR rate.
-        both = [t for t in vo if db(rms(seg_at(mod["NOISE"], t + offset + 0.005, 0.04))) > -70]
-        if both:
-            sv = seg_at(vgm["NOISE"], both[0] + 0.005, 0.04)
-            sm = seg_at(mod["NOISE"], both[0] + offset + 0.005, 0.04)
-            print(f"  band energy dB rel total <13 kHz (hit at {both[0]:.3f} s): "
-                  + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
-            bv, bm = band_profile(sv, bands, 13000), band_profile(sm, bands, 13000)
-            print("     VGM " + ' '.join(f"{x:>7.1f}" for x in bv))
-            print("     MOD " + ' '.join(f"{x:>7.1f}" for x in bm))
-            noise_res["bands_hz"] = [list(b) for b in bands]
-            noise_res["band_db"] = {"vgm": bv, "mod": bm}
-            print("  (a MOD profile that falls off above 4 kHz while VGM is flat means the LFSR"
-                  " clock (tone2_n / synth_root) is too low)")
-        print()
 
-    # ---- DAC ----
+def _report_noise(rd: _Renders, offset: float, res: dict) -> None:
+    """NOISE hits: decay envelope of a few, and the spectrum of one (the LFSR rate)."""
+    vgm_n, mod_n = rd.vgm["NOISE"], rd.mod["NOISE"]
+    vo = onsets(vgm_n, thresh_db=-50)
+    mo = onsets(mod_n, thresh_db=-50)
+    print(f"NOISE: {len(vo)} ref hits, {len(mo)} MOD hits")
+    noise_res: dict = {"ref_hits": len(vo), "mod_hits": len(mo)}
+    res["noise"] = noise_res
+
+    # Decay of the first, second and last hit
+    steps = [0.0, 0.017, 0.033, 0.05, 0.067, 0.083, 0.1, 0.133, 0.167, 0.2, 0.25]
+    print("  decay envelope (dB at ms after onset): " + ' '.join(f"{int(s * 1000):>5d}" for s in steps))
+    for k in sorted({0, 1, len(vo) - 1} & set(range(len(vo)))):
+        ev = [db(rms(seg_at(vgm_n, vo[k] + s, 0.02))) for s in steps]
+        em = [db(rms(seg_at(mod_n, vo[k] + offset + s, 0.02))) for s in steps]
+        print(f"  hit {k:2d} VGM  " + ' '.join(f"{x:>5.0f}" for x in ev))
+        print("         MOD  " + ' '.join(f"{x:>5.0f}" for x in em))
+
+    # Spectrum of the first hit that sounds in BOTH renders: the MOD can lack the very first one
+    # (Star Light), and an all-silent window says nothing about the LFSR rate.
+    bands = [(0, 500), (500, 1000), (1000, 2000), (2000, 4000), (4000, 8000), (8000, 13000)]
+    both = [t for t in vo if db(rms(seg_at(mod_n, t + offset + 0.005, 0.04))) > -70]
+    if not both:
+        print()
+        return
+    sv = seg_at(vgm_n, both[0] + 0.005, 0.04)
+    sm = seg_at(mod_n, both[0] + offset + 0.005, 0.04)
+    print(f"  band energy dB rel total <13 kHz (hit at {both[0]:.3f} s): "
+          + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
+    bv, bm = band_profile(sv, bands, 13000), band_profile(sm, bands, 13000)
+    print("     VGM " + ' '.join(f"{x:>7.1f}" for x in bv))
+    print("     MOD " + ' '.join(f"{x:>7.1f}" for x in bm))
+    noise_res["bands_hz"] = [list(b) for b in bands]
+    noise_res["band_db"] = {"vgm": bv, "mod": bm}
+    print("  (a MOD profile that falls off above 4 kHz while VGM is flat means the LFSR"
+          " clock (tone2_n / synth_root) is too low)")
+    print()
+
+
+def _report_dac(rd: _Renders, offset: float, res: dict) -> None:
+    """The first DAC hits: low-frequency peak (the playback rate) and band profile."""
+    vgm_d, mod_d = rd.vgm["DAC"], rd.mod["DAC"]
+    vo = onsets(vgm_d, thresh_db=-40, hold=0.08)
+    mo = onsets(mod_d, thresh_db=-40, hold=0.08)
+    print(f"DAC: {len(vo)} ref hits, {len(mo)} MOD hits (first {min(6, len(vo))} shown)")
+    res["dac"] = {"ref_hits": len(vo), "mod_hits": len(mo), "hits": []}
+    bands = [(0, 150), (150, 300), (300, 600), (600, 1200), (1200, 2400), (2400, 4800), (4800, 9600), (9600, 22050)]
+    print("  hit   t_vgm  lowpeak_vgm lowpeak_mod   band dB VGM / MOD: " + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
+    for k in range(min(6, len(vo))):
+        t = vo[k]
+        sv = seg_at(vgm_d, t + 0.005, 0.08)
+        sm = seg_at(mod_d, t + offset + 0.005, 0.08)
+        fv, mv = spectrum(sv, 32768)
+        fm_, mm = spectrum(sm, 32768)
+        lo = (fv > 40) & (fv < 400)
+        pv = fv[lo][np.argmax(mv[lo])]
+        pm = fm_[lo][np.argmax(mm[lo])]
+        res["dac"]["hits"].append({"t_s": t, "lowpeak_vgm_hz": float(pv), "lowpeak_mod_hz": float(pm)})
+        print(f"  {k:3d} {t:>7.3f} {pv:>11.1f} {pm:>11.1f}   "
+              + ' '.join(f"{x:.0f}" for x in band_profile(sv, bands)))
+        print(f"  {'':3} {'':7} {'':11} {'':11}   "
+              + ' '.join(f"{x:.0f}" for x in band_profile(sm, bands)))
+    print("  (lowpeak differing by more than ~3% means the DAC sample plays at the wrong rate)")
+
+
+def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
+           offset: float | None, ref_chan: str, max_rows: int, pitch_tol: float = 35.0) -> dict:
+    """Print the comparison and return the same numbers as a JSON-serialisable dict.
+
+    `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
+    """
+    raw, rows = _vgm_rows(vgz)
+    noise_used = any(r[1] == "NOISE" for r in rows)
+    chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in _VGM_CHANNELS or c.source == "PSG3"}
+    names = [_chip_channel(src, noise_used) for src in chan_map]
+    chan_of = {n: chan_map[src] for n, src in zip(names, chan_map, strict=True)}
+    sources = {c.source: c.mod_channel for c in cfg.channels}
+
+    # Renders: the MOD's are named after the source, the VGM's after the chip channel
+    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
+    mod_st = {n: load_wav(workdir / f"mod_{src}.wav", stereo=True) for src, n in zip(chan_map, names, strict=True)}
+    mod_st["FULL"] = load_wav(workdir / "mod_FULL.wav", stereo=True)
+    rd = _Renders(vgm_st, mod_st)
+
+    offset_auto = offset is None
+    chip_tl, chip_end = vgm_pitch_audit.chip_timeline(raw)
+    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(read_mod(mod_path), cfg)
+    offset = _align(offset, chip_tl, mod_tl, sources, rd)
+    print()
+    res: dict = {
+        "offset_ms": offset * 1000, "offset_auto": offset_auto,
+        "channels": {n: {} for n in names}, "notes": [], "vibrato": [],
+    }
+
+    # Pitched notes (FM + PSG tone).  Notes the recording plays as the MOD's single pass ends or later
+    # (its second time round the loop) have nothing to be compared with; 150 ms keeps the measuring
+    # window inside the render.
+    per_ch: dict[str, list] = {}
+    for r in rows:
+        if (r[1] in rd.vgm and r[1] not in ("DAC", "NOISE") and r[4] > 0
+                and r[0] / 1000.0 + offset < mod_end - 0.15):
+            per_ch.setdefault(r[1], []).append(r)
+    _report_notes(per_ch, rd, offset, max_rows, res, 6,
+                  ("Per-note comparison (levels are dBFS of the isolated channel; diff = MOD - VGM; vgm_c / mod_c = cents",
+                   "from the chip's key-on pitch, measured in the audio - PITCH flags the two renders disagreeing)"),
+                  "Per-channel summary")
+    _report_pitch_verdict(chip_tl, chip_end, mod_tl, mod_end, sources, offset, pitch_tol, res)
+    _report_vibrato(per_ch, rd, offset, res)
+
+    ref = ref_chan if ref_chan in rd.vgm else names[0]
+    _report_balance(names, ref, rd, res, 6,
+                    f"Whole-song channel RMS relative to {ref} (dB, L/R power):   VGM     MOD    MOD-VGM")
+
+    # Per-instrument levels and onsets, against the MOD's notes as one pass plays them
+    note_times = _note_times(per_ch, names, rows, rd)
+    events_by_chan, samples, pass_end = _mod_events(cfg, mod_path)
+    lev = instrument_levels(note_times, {n: chan_of[n] for n in note_times}, events_by_chan, samples,
+                            pass_end, rd.vgm_st, rd.mod_st, offset)
+    res["instrument_levels"] = lev
+    _print_instrument_levels(lev)
+    _report_onsets(names, note_times, events_by_chan, chan_of, offset, pass_end, rd, res)
+
+    if "NOISE" in names:
+        _report_noise(rd, offset, res)
     if "DAC" in names:
-        vo = onsets(vgm["DAC"], thresh_db=-40, hold=0.08)
-        mo = onsets(mod["DAC"], thresh_db=-40, hold=0.08)
-        print(f"DAC: {len(vo)} ref hits, {len(mo)} MOD hits (first {min(6, len(vo))} shown)")
-        res["dac"] = {"ref_hits": len(vo), "mod_hits": len(mo), "hits": []}
-        bands = [(0, 150), (150, 300), (300, 600), (600, 1200), (1200, 2400), (2400, 4800), (4800, 9600), (9600, 22050)]
-        print("  hit   t_vgm  lowpeak_vgm lowpeak_mod   band dB VGM / MOD: " + ' '.join(f"{_hz(a)}-{_hz(b)}" for a, b in bands))
-        for k in range(min(6, len(vo))):
-            t = vo[k]
-            sv = seg_at(vgm["DAC"], t + 0.005, 0.08)
-            sm = seg_at(mod["DAC"], t + offset + 0.005, 0.08)
-            fv, mv = spectrum(sv, 32768)
-            fm_, mm = spectrum(sm, 32768)
-            lo = (fv > 40) & (fv < 400)
-            pv = fv[lo][np.argmax(mv[lo])]
-            pm = fm_[lo][np.argmax(mm[lo])]
-            res["dac"]["hits"].append({"t_s": t, "lowpeak_vgm_hz": float(pv), "lowpeak_mod_hz": float(pm)})
-            print(f"  {k:3d} {t:>7.3f} {pv:>11.1f} {pm:>11.1f}   "
-                  + ' '.join(f"{x:.0f}" for x in band_profile(sv, bands)))
-            print(f"  {'':3} {'':7} {'':11} {'':11}   "
-                  + ' '.join(f"{x:.0f}" for x in band_profile(sm, bands)))
-        print("  (lowpeak differing by more than ~3% means the DAC sample plays at the wrong rate)")
+        _report_dac(rd, offset, res)
     return res
 
 
@@ -1041,122 +1184,48 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     error.  The symbolic verdict (one note stream per channel) does not apply.
     """
     names = list(labels)
-    raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
-    rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
-    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
-    mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]}
-    vgm = {n: a.mean(axis=1) for n, a in vgm_st.items()}
-    mod = {n: a.mean(axis=1) for n, a in mod_st.items()}
+    _, rows = _vgm_rows(vgz)
+    rd = _Renders({n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]},
+                  {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]})
     offset_auto = offset is None
     if offset is None:
         # Within three quarters of a second: a repetitive song correlates a whole bar off
-        offset = auto_offset(vgm["FULL"], mod["FULL"], max_lag=0.75)
-        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
+        offset = auto_offset(rd.vgm["FULL"], rd.mod["FULL"], max_lag=0.75)
+        _say_alignment(offset, "auto, envelope cross-correlation")
     else:
-        print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
+        _say_alignment(offset, "given")
     print()
     res: dict = {"offset_ms": offset * 1000, "offset_auto": offset_auto, "merged": True,
                  "channels": {n: {"sources": labels[n]} for n in names}, "notes": [], "vibrato": []}
-    mod_end = len(mod["FULL"]) / SR
+    mod_end = len(rd.mod["FULL"]) / SR
 
-    # ---- per-note pitch and level at the primary's key-ons ----
+    # Per-note pitch and level at the primary's key-ons
     per_ch: dict[str, list] = {}
     for n in names:
         primary = labels[n][0]
         if primary in ("DAC", "NOISE"):
             continue
         per_ch[n] = [r for r in rows if r[1] == primary and r[4] > 0 and r[0] / 1000.0 + offset < mod_end - 0.15]
-    printed = 0
-    cent_err: dict[str, list[float]] = {}
-    level_diff: dict[str, list[float]] = {}
-    if per_ch:
-        print("Per-note comparison at the primary's key-ons (levels are dBFS of the merged channel; diff = MOD - VGM;")
-        print("vgm_c / mod_c = cents from the chip's key-on pitch, measured in the audio - PITCH flags the two renders disagreeing)")
-        print(f"{'chan':<14}{'t_vgm':>7}  {'ref':<4}{'ref_hz':>8}  {'vgm_c':>6}  {'mod_c':>6}  {'vgm_dB':>7}  {'mod_dB':>7}  {'diff':>6}")
-        print("-" * 86)
-    for n, evs in per_ch.items():
-        for i, r in enumerate(evs):
-            t, _, _, _, fref, note, _ = r
-            t /= 1000.0
-            t_end = evs[i + 1][0] / 1000.0 if i + 1 < len(evs) else t + 2.0
-            dur = t_end - t
-            win = min(0.3 if fref < 200 else 0.1, max(0.04, dur - 0.03))
-            sv = seg_at(vgm[n], t + 0.025, win)
-            sm = seg_at(mod[n], t + offset + 0.025, win)
-            harm, cv = harmonic_cents(sv, fref)
-            _, cm = harmonic_cents(sm, fref, harm)
-            lv = db(rms(seg_at(vgm_st[n], t + 0.025, win)))
-            lm = db(rms(seg_at(mod_st[n], t + offset + 0.025, win)))
-            level_diff.setdefault(n, []).append(lm - lv)
-            if not math.isnan(cm):
-                cent_err.setdefault(n, []).append(cm)
-            pitch_diff = cm - cv
-            flag = "  <-- PITCH" if (not math.isnan(cv) and (math.isnan(cm) or abs(pitch_diff) > 25)) else ""
-            if lm < -70:
-                flag = "  <-- SILENT in MOD"
-            res["notes"].append({
-                "channel": n, "t_s": t, "note": note, "ref_hz": fref, "vgm_cents": cv, "mod_cents": cm,
-                "pitch_diff_cents": pitch_diff, "vgm_db": lv, "mod_db": lm, "diff_db": lm - lv,
-                "silent_in_mod": lm < -70,
-            })
-            if max_rows <= 0 or printed < max_rows or flag:
-                print(f"{n:<14}{t:>7.3f}  {note:<4}{fref:>8.1f}  {_fmt(cv, 6)}  {_fmt(cm, 6)}  "
-                      f"{lv:>7.1f}  {lm:>7.1f}  {lm - lv:>6.1f}{flag}")
-                printed += 1
-    if per_ch:
-        print()
-        print("Per-channel summary (at the primary's key-ons)")
-        print(f"{'chan':<14}{'notes':>6}  {'pitch err cents (median/min/max)':<34}  {'level diff dB (median)':<22}")
-        for n in per_ch:
-            ce = cent_err.get(n, [float('nan')])
-            ld = level_diff.get(n, [float('nan')])
-            print(f"{n:<14}{len(per_ch[n]):>6}  {statistics.median(ce):>8.1f} / {min(ce):>6.1f} / {max(ce):>6.1f}"
-                  f"{'':<8}  {statistics.median(ld):>+8.1f}")
-            res["channels"][n].update({
-                "notes": len(per_ch[n]),
-                "pitch_cents": {"median": statistics.median(ce), "min": min(ce), "max": max(ce)},
-                "level_diff_db_median": statistics.median(ld),
-            })
-        print()
+    _report_notes(per_ch, rd, offset, max_rows, res, 14,
+                  ("Per-note comparison at the primary's key-ons (levels are dBFS of the merged channel; diff = MOD - VGM;",
+                   "vgm_c / mod_c = cents from the chip's key-on pitch, measured in the audio - PITCH flags the two renders"
+                   " disagreeing)"),
+                  "Per-channel summary (at the primary's key-ons)")
 
     ref = next((n for n in names if ref_chan in labels[n]), names[0])
-    print(f"Whole-song channel RMS relative to {ref} (dB, L/R power); a merged channel against the sum of its"
-          " chip channels:   VGM     MOD    MOD-VGM")
-    rv_ref, rm_ref = db(rms(vgm_st[ref])), db(rms(mod_st[ref]))
-    for n in names:
-        rv, rm = db(rms(vgm_st[n])) - rv_ref, db(rms(mod_st[n])) - rm_ref
-        note = "" if abs(rm - rv) < 2 else "   <-- rebalance"
-        print(f"  {n:<14} {rv:>8.1f} {rm:>8.1f} {rm - rv:>+8.1f}{note}")
-        res["channels"][n]["balance_db"] = {"vgm": rv, "mod": rm, "diff": rm - rv}
-    res["ref_channel"] = ref
-    res["mix"] = {"vgm_rms_db": db(rms(vgm_st["FULL"])), "vgm_peak": float(np.abs(vgm_st["FULL"]).max()),
-                  "mod_rms_db": db(rms(mod_st["FULL"])), "mod_peak": float(np.abs(mod_st["FULL"]).max())}
-    print(f"  (absolute: VGM mix {db(rms(vgm_st['FULL'])):.1f} dBFS peak {np.abs(vgm_st['FULL']).max():.2f};"
-          f" MOD mix {db(rms(mod_st['FULL'])):.1f} dBFS peak {np.abs(mod_st['FULL']).max():.2f})")
-    print()
+    _report_balance(names, ref, rd, res, 14,
+                    f"Whole-song channel RMS relative to {ref} (dB, L/R power); a merged channel against the sum of its"
+                    " chip channels:   VGM     MOD    MOD-VGM")
 
     print("Onset timing (audio onsets on both sides, matched within 40 ms; a merged channel's onsets are"
           " every note-on of its sources)")
     for n in names:
-        thr = -50 if "NOISE" in labels[n] else -40
-        vo = onsets(vgm[n], thresh_db=thr)
-        mo = [t - offset for t in onsets(mod[n], thresh_db=thr)]
-        devs, missing = [], 0
-        for t in vo:
-            d = min(((m - t) * 1000 for m in mo), key=abs, default=float("inf"))
-            if abs(d) > 40:
-                missing += 1
-            else:
-                devs.append(d)
-        if devs:
-            print(f"  {n:<14} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; matched {len(devs)}: "
-                  f"median {statistics.median(devs):+.0f} ms, worst {max(devs, key=abs):+.0f} ms; unmatched {missing}")
-        else:
-            print(f"  {n:<14} {len(vo):3d} ref onsets, {len(mo):3d} MOD onsets; none matched")
+        m = _audio_onsets(rd.vgm[n], rd.mod[n], -50 if "NOISE" in labels[n] else -40, offset)
+        _print_onsets(n, m, 14)
         res["channels"][n]["onsets"] = {
-            "method": "audio", "ref": len(vo), "mod": len(mo), "matched": len(devs), "unmatched": missing,
-            "median_ms": statistics.median(devs) if devs else None,
-            "worst_ms": max(devs, key=abs) if devs else None,
+            "method": "audio", "ref": m.ref, "mod": m.mod, "matched": len(m.devs), "unmatched": m.missing,
+            "median_ms": statistics.median(m.devs) if m.devs else None,
+            "worst_ms": max(m.devs, key=abs) if m.devs else None,
         }
     print()
     return res
@@ -1264,8 +1333,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
         ref_col[c] = out
 
     # Every block's level, whole and at its primary's key-ons
-    raw = vgz.read_bytes()
-    rows, _, _ = parse_vgm(gzip.decompress(raw) if raw[:2] == b'\x1f\x8b' else raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
+    _, rows = _vgm_rows(vgz)
     blocks = _column_blocks(layout, spans)
     for blk in blocks:
         c, a, b = blk["column"], int(blk["t0"] * SR), int(blk["t1"] * SR)
@@ -1433,8 +1501,7 @@ def main() -> None:
             raise SystemExit(f"ERROR: file not found: {p}")
     workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + ("_merged" if args.merged else "")))
 
-    raw = gzip.decompress(vgz.read_bytes()) if vgz.read_bytes()[:2] == b'\x1f\x8b' else vgz.read_bytes()
-    rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
+    _, rows = _vgm_rows(vgz)
     noise_used = any(r[1] == "NOISE" for r in rows)
     masks = None
     labels: dict[str, list[str]] = {}
@@ -1443,7 +1510,7 @@ def main() -> None:
     if per_pattern:
         # merge_patterns: a column's sources change per pattern - one render per chip channel,
         # summed per pattern by report_merged_patterns; one MOD render per output column
-        chip_names = {c.source: "NOISE" if (c.source == "PSG3" and noise_used) else c.source for c in cfg.channels}
+        chip_names = {c.source: _chip_channel(c.source, noise_used) for c in cfg.channels}
         chip_names = {s: n for s, n in chip_names.items() if n in _VGM_CHANNELS}
         vgm_names = sorted(set(chip_names.values()))
         chan_map = {f"col{c}": c for c in sorted({c.mod_channel for c in cfg.channels if c.enabled})}
@@ -1454,7 +1521,7 @@ def main() -> None:
         followers_of = {g.primary: list(g.followers) for g in cfg.merge}
         chan_map = {}
         for c in sorted((c for c in cfg.channels if c.enabled), key=lambda c: c.mod_channel):
-            srcs = ["NOISE" if (s == "PSG3" and noise_used) else s for s in (c.source, *followers_of.get(c.source, []))]
+            srcs = [_chip_channel(s, noise_used) for s in (c.source, *followers_of.get(c.source, []))]
             srcs = [s for s in srcs if s in _VGM_CHANNELS]
             if srcs:
                 labels["+".join(srcs)] = srcs
@@ -1465,7 +1532,7 @@ def main() -> None:
             print(f"Dropped from the merged build (in the VGM mix, not the MOD): {', '.join(cfg.merge_drop)}")
     else:
         chan_map = {c.source: c.mod_channel for c in cfg.channels}
-        vgm_names = ["NOISE" if (s == "PSG3" and noise_used) else s for s in chan_map]
+        vgm_names = [_chip_channel(s, noise_used) for s in chan_map]
         vgm_names = [n for n in vgm_names if n in _VGM_CHANNELS]
 
     if not args.skip_render:

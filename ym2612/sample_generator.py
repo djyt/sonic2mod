@@ -19,6 +19,7 @@ Usage (smoke test)::
 from __future__ import annotations
 
 import dataclasses
+import functools
 import math
 import sys
 import threading
@@ -50,7 +51,9 @@ from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, find_settings, load_settings
 from core.mod import max_sustain_secs
 from core.plan import FmInstrument, fm_catalogue
+from core.render_cache import RenderCache, code_salt
 from core.smps import SmpsSong, SmpsVoice
+from ym2612.build import get_lib_path
 from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
 
@@ -71,6 +74,20 @@ class _RenderJob:
 
 
 _worker = threading.local()
+
+
+@functools.cache
+def _render_salt() -> str:
+    """What a chip render depends on besides its inputs: the emulator and the Python it runs through
+    (this package, the resampler and PCM helpers, the driver's tables, the voice's operator bytes)."""
+    core = _HERE.parent / "core"
+    return code_salt([Path(get_lib_path()), *_HERE.glob("*.py"), core / "audio" / "resample.py",
+                      core / "audio" / "pcm.py", core / "smps" / "driver_tables.py", core / "smps" / "song.py"])
+
+
+def _voice_key(voice: SmpsVoice) -> tuple:
+    """What of a voice program_voice writes: algorithm, feedback and the operator macros."""
+    return voice.algorithm, voice.feedback, tuple(sorted(voice.params.items()))
 
 
 def _thread_opn2(mode: str) -> OPN2:
@@ -102,6 +119,7 @@ def generate_fm_samples(
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
     release_out: dict[int, float | None] | None = None,
+    cache_out: dict[str, int] | None = None,
 ) -> dict:
     """Render an FM sample for every instrument in the song's catalogue.
 
@@ -122,6 +140,8 @@ def generate_fm_samples(
         release_out: filled with {instrument: dB per second the level falls after key-off}
                     (None where nothing releases), measured on the render's tail - what the
                     converter's release slides are set from.
+        cache_out:  filled with {"hits": n, "misses": n} of the render cache
+                    (settings.yaml samples.render_cache; nothing when it is off).
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
@@ -166,17 +186,19 @@ def generate_fm_samples(
     sustain_secs = synth.sustain_duration
     assert isinstance(sustain_secs, float), "sustain_duration must be resolved before synthesis"
 
+    # Renders already made by an earlier conversion are read back (core/render_cache.py)
+    cache = RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
+
+    def _chip_render(layers: list[tuple], synth_idx: int, sustain: float, target_rate: int):
+        inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
+                  synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps)
+        return cache.through(inputs, lambda: render_layers(
+            layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
+            opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps))
+
     def _render_at(job: _RenderJob, sustain: float, layers=None):
-        mono, rate = render_layers(
-            layers if layers is not None else job.layers,
-            job.spec.synth_idx,
-            sustain_secs=sustain,
-            release_secs=synth.release_padding,
-            target_rate=job.target_rate,
-            opn2=_thread_opn2(synth.mode),
-            clock_rate=synth.clock_rate,
-            taps=synth.resample_taps,
-        )
+        mono, rate = _chip_render(layers if layers is not None else job.layers, job.spec.synth_idx, sustain,
+                                  job.target_rate)
         if synth.treble_shelf_db:
             mono = high_shelf(mono, rate, synth.treble_shelf_hz, synth.treble_shelf_db)
         spec = job.spec
@@ -248,6 +270,8 @@ def generate_fm_samples(
             rendered = list(pool.map(_render, jobs))
     else:
         rendered = []
+    if cache_out is not None and cache.enabled:
+        cache_out.update(hits=cache.hits, misses=cache.misses)
 
     for job, (mono, rate, first_peak, loop, release) in zip(jobs, rendered, strict=True):
         spec, entry = job.spec, job.spec.entry

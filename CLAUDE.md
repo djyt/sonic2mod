@@ -106,6 +106,8 @@ sonic2mod/
                      #   their kinds are the WarningKind / InfoKind enums (diag.warn(WarningKind.X, field=...))
     analysis.py      #   Analysis data model + analyze_song() (analyze.py)
     cbuild.py        #   CLibrary — the gcc/MSVC compile + mtime cache both chip packages build with
+    render_cache.py  #   RenderCache: chip renders on disk by a hash of their inputs, per hash of the code
+                     #   (settings.yaml samples.render_cache); the shelf, loops and quantising still run
     version.py       #   get_version(): pyproject.toml is the one place the version is written (installed metadata is only a fallback)
   configs/           # YAML config files per song
   configs/settings.yaml  # Global synthesis settings
@@ -273,7 +275,9 @@ all changed nothing in the cells and were caught by ear before this was added (2
 (`python -m pytest tests -q`, a second): looped follower unrolled under a short primary, key-off
 tolerance, transposed chord shares its composite, bank alignment and cuts, slot rules,
 narrowing, the duplicate-key guard.  The conversions
-run as parallel subprocesses (one per CPU by default; the whole suite takes a few seconds).
+run as parallel subprocesses (one per CPU by default): about 14 s with an empty render cache, 4 s
+once `samples.render_cache` holds the renders (a change to ym2612/, sn76489/, the resampler or the
+driver tables starts it over).
 
 Every case converts with **`tests/settings.yaml`** (`convert.py --settings`), never
 `configs/settings.yaml`: tuning a song by ear does not move the baselines.  It states every key

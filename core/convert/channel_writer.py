@@ -17,20 +17,15 @@ import bisect
 import math
 from dataclasses import dataclass, field
 
-from .config import ChannelConfig, ConversionConfig, SynthesisSettings
-from .detune import DetunePlan, detune_cents
-from .diagnostics import Diagnostics, WarningKind
-from .driver_state import DriverState, ResolvedNote, walk_channel
-from .gain import db_to_gain
-from .instruments import fm_catalogue
+from ..audio import db_to_gain
+from ..config import ChannelConfig, ConversionConfig, SynthesisSettings
+from ..diagnostics import Diagnostics, WarningKind
+from ..merge import Composite, MergePlan
+from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume
+from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
+from ..smps import SmpsChannel, SmpsSong
+from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
-from .merge import Composite, MergePlan
-from .mod import ModFile
-from .mod_notes import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
-from .mod_volume import MOD_MAX_VOLUME, clamp_mod_volume
-from .smps_song import SmpsChannel, SmpsSong
-from .tables import semitone_to_note_name as _semitone_to_name
-from .timeline import Timeline
 from .vibrato import VibratoSpeed, vibrato_depth
 
 _FINE_SLIDE_MAX = 0xF          # E1x / E2x move the period by at most 15 units
@@ -80,7 +75,7 @@ class WriterContext:
         return self.synth.legato if self.synth else "strict"
 
     def sample_cents(self, inst: int) -> float:
-        """Cents an FM instrument's sample is detuned by (core.detune): its FNUM offset at the
+        """Cents an FM instrument's sample is detuned by (core.plan.detune): its FNUM offset at the
         pitch it is rendered at."""
         if self._sample_detunes is None:
             self._sample_detunes = {i.inst: detune_cents(i.synth_idx + 12, i.layers[0].fnum_offset)

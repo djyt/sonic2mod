@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .gain import db_to_gain, gain_to_db
+from ..audio import db_to_gain, gain_to_db
 
 MOD_MAX_VOLUME = 64
 

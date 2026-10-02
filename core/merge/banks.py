@@ -31,10 +31,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from ..gain import gain_to_db
-from ..mod import ModSample
-from ..mod_notes import PERIOD_TABLE
-from ..pcm import DEFAULT_DITHER, to_int8
+from ..audio import DEFAULT_DITHER, gain_to_db, to_int8
+from ..mod import PERIOD_TABLE, ModSample
 from .mix import composite_dither
 from .model import Composite, MergePlan
 from .slots import drop_composite, stand_in

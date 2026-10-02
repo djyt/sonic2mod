@@ -91,7 +91,7 @@ class ConversionConfig:
     merge_output_file: str | None = None                   # default: output_file stem + "_merged"
     merge_active: bool = False                             # set by core.merge.prepare_merged_config
     merge_plan: Any = field(default=None, repr=False)      # core.merge.MergePlan, set by the converter
-    detune_plan: Any = field(default=None, repr=False)     # core.detune.DetunePlan, set by the converter
+    detune_plan: Any = field(default=None, repr=False)     # core.plan.detune.DetunePlan, set by the converter
 
     @property
     def mod_channel_count(self) -> int:

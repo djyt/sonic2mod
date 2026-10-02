@@ -5,15 +5,26 @@ from __future__ import annotations
 
 import math
 
+from ..audio import (
+    DEFAULT_DITHER,
+    DEFAULT_TAPS,
+    FLAT_DB,
+    INT8_PEAK,
+    RELEASE_FLOOR_DB,
+    apply_loop,
+    db_to_gain,
+    find_sustain_loop,
+    gain_to_db,
+    high_shelf,
+    limit_peaks,
+    peak,
+    resample,
+    signed8,
+    to_int8,
+    unroll_values,
+)
 from ..config import DEFAULT_SHELF_HZ
-from ..gain import db_to_gain, gain_to_db
-from ..loops import FLAT_DB, RELEASE_FLOOR_DB, apply_loop, find_sustain_loop, unroll_values
-from ..mod import ModSample
-from ..mod_limits import MAX_MOD_SAMPLE_BYTES
-from ..mod_notes import PERIOD_TABLE
-from ..mod_volume import clamp_mod_volume
-from ..pcm import DEFAULT_DITHER, INT8_PEAK, high_shelf, limit_peaks, peak, signed8, to_int8
-from ..resample import DEFAULT_TAPS, resample
+from ..mod import MAX_MOD_SAMPLE_BYTES, PERIOD_TABLE, ModSample, clamp_mod_volume
 from .model import Composite, MergePlan
 
 # --- mixing the pcm composites -------------------------------------------------------------
@@ -35,7 +46,7 @@ UPSAMPLE_TAPS = 12         # a layer resampled UP into a mix (a kick at 8 kHz un
 
 def _cut_layer(sig: list[float], keep: int, rate: float, release_db_s: float | None) -> list[float]:
     """A follower layer keyed off `keep` samples in: what follows decays at the voice's release
-    rate (dB/s, from core.loops) to the 8-bit floor (RELEASE_FLOOR_DB: past it the tail is
+    rate (dB/s, from core.audio.loops) to the 8-bit floor (RELEASE_FLOOR_DB: past it the tail is
     quantisation noise), or is cut over 2 ms where the voice has no release to speak of (a PSG
     note ends the instant its attenuation is set to 15)."""
     if keep >= len(sig):
@@ -217,7 +228,7 @@ class _Mixer:
         return total, keep_loop, base.finetune
 
     def _mix_loop(self, comp: Composite, total: list[float], r_p: float):
-        """A sustain loop in the finished mix, found as a single voice's is (core.loops): flat
+        """A sustain loop in the finished mix, found as a single voice's is (core.audio.loops): flat
         within the group's (or the song's) loop_drift_db of where its longest note ends, at least
         the group's loop_min_ms long, and ending before the mix does, else None (a mix that never
         settles, or no shorter for a loop).  The chord's layers beat, so a loop may need to span a

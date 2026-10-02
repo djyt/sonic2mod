@@ -5,10 +5,10 @@
         swing = delta * steps / 2 FNUM / divider units  ──►  y  (per note: its own frequency word)
 """
 
-from .config import ConversionConfig
-from .diagnostics import Diagnostics, InfoKind
-from .driver_tables import PSG_FREQUENCIES_EXTENDED
-from .timeline import Timeline
+from ..config import ConversionConfig
+from ..diagnostics import Diagnostics, InfoKind
+from ..plan import Timeline
+from ..smps import PSG_FREQUENCIES_EXTENDED
 
 # Sonic 1 base FNUM for note C, from the MakeFMFrequency table (644 for C ... 1216 for B).
 # The 11-bit FNUM is the same across all octave blocks — block just shifts the register.

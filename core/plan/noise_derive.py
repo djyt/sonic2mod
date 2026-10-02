@@ -3,11 +3,10 @@ with (the header voice or the last smpsPSGvoice) and, for rate-3 noise, the tone
 driver writes from PSG3's own notes.
 """
 
-from .config import ConversionConfig
+from ..config import ConversionConfig
+from ..smps import SmpsSong, psg_tone2_divider
+from ..smps import semitone_to_note_name as _semitone_to_name
 from .driver_state import enabled_channels, walk_channel
-from .driver_tables import psg_tone2_divider
-from .smps_song import SmpsSong
-from .tables import semitone_to_note_name as _semitone_to_name
 
 
 def derive_noise_envelopes(song: SmpsSong, config: ConversionConfig) -> dict[int, dict]:

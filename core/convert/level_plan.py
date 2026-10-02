@@ -1,19 +1,17 @@
 """The baked levels: for each MOD instrument, the level most of its notes play at.
 
 Its sample_list volume stands for that level, so those notes need no Cxx; the rest get one by the
-chip's law (core/levels.py).  FM samples are also rendered at it (fm_render_levels), so the chip
+chip's law (core/smps/levels.py).  FM samples are also rendered at it (fm_render_levels), so the chip
 clips a multi-carrier voice as the hardware does at that level.  Every count walks the channels
 with the same DriverState the conversion does.
 """
 
-from .config import ConversionConfig
-from .detune import DetunePlan
-from .driver_state import enabled_channels, walk_channel
-from .gain import db_to_gain
-from .levels import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
-from .merge import MergePlan
-from .mod_volume import MOD_MAX_VOLUME
-from .smps_song import SmpsSong
+from ..audio import db_to_gain
+from ..config import ConversionConfig
+from ..merge import MergePlan
+from ..mod import MOD_MAX_VOLUME
+from ..plan import DetunePlan, enabled_channels, walk_channel
+from ..smps import FM_TL_SILENT, PSG_ATT_SILENT, SmpsSong, fm_level_db, psg_level_db
 
 
 def fm_tl_to_mod(tl_offset: int) -> int:
@@ -86,7 +84,7 @@ class LevelPlanner:
         In a merged build a composite's slot counts only the notes that play the composite.
         `sources_keep_votes`: except where the slot's former instrument is a mix source kept
         aside under that number (MergePlan.mix_only) - it is still rendered, at its own notes'
-        level, for the mixer (the render levels ask for that).  A detune variant (core.detune)
+        level, for the mixer (the render levels ask for that).  A detune variant (core.plan.detune)
         votes as its base instrument: it is that sample a few cents off.
         """
         counts: dict[int, dict] = {}

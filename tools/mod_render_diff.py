@@ -9,7 +9,7 @@ signal there (dB).  A trim past what any note plays leaves no window above the f
     python tools/mod_render_diff.py before.mod after.mod
     python tools/mod_render_diff.py before.mod after.mod --floor -60   # report windows above -60 dB
 
-Rebuilt samples carry fresh dither (core.pcm seeds it with the sample's length), so a sample
+Rebuilt samples carry fresh dither (core.audio.pcm seeds it with the sample's length), so a sample
 that only got shorter still differs by about -37 dB everywhere; hold the seed fixed in both
 builds to see past it.
 

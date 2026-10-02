@@ -6,10 +6,8 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from ..mod import PAL_AMIGA_CLOCK
-from ..mod_limits import sample_limit_bytes
-from ..pcm import DEFAULT_DITHER
-from ..resample import DEFAULT_TAPS
+from ..audio import DEFAULT_DITHER, DEFAULT_TAPS
+from ..mod import PAL_AMIGA_CLOCK, sample_limit_bytes
 from .loader import dither_mode, mode_word, read_yaml_file
 
 if TYPE_CHECKING:
@@ -135,7 +133,7 @@ def _psg_oversample(data: dict, section: dict, filepath: str) -> int:
 
 def _treble_shelf(data: dict, filepath: str) -> tuple[float, float]:
     """`samples.treble_shelf_db` / `treble_shelf_hz` of settings.yaml: (gain, corner) of the
-    optional high shelf on every synthesised render (core.pcm.high_shelf); 0 dB = off."""
+    optional high shelf on every synthesised render (core.audio.pcm.high_shelf); 0 dB = off."""
     try:
         return float(data.get("treble_shelf_db", 0.0)), float(data.get("treble_shelf_hz", DEFAULT_SHELF_HZ))
     except (TypeError, ValueError) as e:
@@ -163,7 +161,7 @@ def _sustain_duration(section: dict, default: float) -> float | str:
 @dataclass
 class SampleSettings:
     """What both chips' samples share: settings.yaml `samples:` and `amiga_clock`, and the sustain
-    the converter resolves per instrument (core/sustain_plan.py)."""
+    the converter resolves per instrument (core/convert/sustain_plan.py)."""
     enabled: bool = False
     amiga_clock: int = DEFAULT_AMIGA_CLOCK   # settings.yaml amiga_clock (top level)
     # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
@@ -177,19 +175,19 @@ class SampleSettings:
                                              # note could reach is left off)
     max_sample_kb: int = 128         # settings.yaml samples.max_sample_kb: 128 = the format's limit, 64 = ProTracker's
     # settings.yaml samples.sustain_loops: which builds cut each settled sample to a loop and
-    # end its notes with a release slide (core.loops) - "off", "merged" (--merged only), "all".
+    # end its notes with a release slide (core.audio.loops) - "off", "merged" (--merged only), "all".
     sustain_loops: str = "merged"
     loop_drift_db: float = 1.0       # settings.yaml samples.loop_drift_db: dB a loop may freeze above the
-                                     # level the longest note would have decayed to (core.loops)
+                                     # level the longest note would have decayed to (core.audio.loops)
     treble_shelf_db: float = 0.0     # settings.yaml samples.treble_shelf_db: brightness shelf, 0 = off
     treble_shelf_hz: float = DEFAULT_SHELF_HZ   # settings.yaml samples.treble_shelf_hz: its corner
     resample_taps: int = DEFAULT_TAPS  # settings.yaml samples.resample_taps: filter width, at the lower rate
-    dither: str = DEFAULT_DITHER     # settings.yaml samples.dither (core.pcm.DITHER_MODES)
-    dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.pcm.dc_block)
+    dither: str = DEFAULT_DITHER     # settings.yaml samples.dither (core.audio.pcm.DITHER_MODES)
+    dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.audio.pcm.dc_block)
 
     @property
     def max_sample_bytes(self) -> int:
-        """Bytes one synthesised sample may hold (core.mod_limits.sample_limit_bytes)."""
+        """Bytes one synthesised sample may hold (core.mod.limits.sample_limit_bytes)."""
         return sample_limit_bytes(self.max_sample_kb)
 
     def loops_for(self, merged: bool) -> bool:
@@ -219,7 +217,7 @@ class PsgSynthesisSettings(SampleSettings):
     clock_rate: int = 3_579_545      # SN76489 NTSC MD clock (Hz)
     sustain_duration: float | str = 1.0
     release_padding: float = 0.2
-    # Envelope tables are not a setting: the driver's own live in core.driver_tables.PSG_ENVELOPES_BY_NAME.
+    # Envelope tables are not a setting: the driver's own live in core.smps.driver_tables.PSG_ENVELOPES_BY_NAME.
     # PSG level model.  "baked": per instrument, the attenuation most of its notes play at needs no
     # command and is what the sample_list volume stands for; other notes get Cxx on the chip's
     # 2 dB/step law (same scheme as SynthesisSettings.fm_volume_mode).  "absolute": legacy —
@@ -234,7 +232,7 @@ class PsgSynthesisSettings(SampleSettings):
         if "psg_envelope_tables" in s:
             warnings.warn(
                 f"{filepath}: psg_synthesis.psg_envelope_tables is ignored — the envelopes come from "
-                "the driver transcription in core/driver_tables.py (PSG_ENVELOPES_BY_NAME); delete the block",
+                "the driver transcription in core/smps/driver_tables.py (PSG_ENVELOPES_BY_NAME); delete the block",
                 stacklevel=2,
             )
         for key in ("normalize_samples", "psg_output_max"):
@@ -263,7 +261,7 @@ class SynthesisSettings(SampleSettings):
     sustain_duration: float | str = 1.5
     release_padding: float = 0.5
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
-    detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.detune)
+    detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.plan.detune)
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = 3.0        # "baked" mode: a hard-panned note is this many dB below a centred one

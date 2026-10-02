@@ -22,7 +22,8 @@ sonic2wav = "sonic2wav:main"
 
 [tool.setuptools]
 py-modules = ["convert", "analyze", "sonic2wav"]
-packages = ["core", "core.config", "core.merge", "ym2612", "sn76489", "sfx"]
+packages = ["core", "core.audio", "core.config", "core.convert", "core.merge", "core.mod", "core.plan",
+            "core.smps", "core.ui", "ym2612", "sn76489", "sfx"]
 
 [tool.setuptools.package-data]
 ym2612 = ["*.dll", "*.so", "*.c"]

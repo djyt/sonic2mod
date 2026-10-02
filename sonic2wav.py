@@ -18,8 +18,8 @@ from rich import box
 from rich.padding import Padding
 from rich.table import Table
 
-from core.cli import LABEL_W as _LABEL_W
-from core.cli import branding, cli_console, error_printer, row_printer
+from core.ui import LABEL_W as _LABEL_W
+from core.ui import branding, cli_console, error_printer, row_printer
 from sfx.amiga import DEFAULT_MAX_RATE
 from sfx.batch import (
     assign_volumes,

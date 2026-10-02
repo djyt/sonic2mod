@@ -13,7 +13,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.vibrato import S1_FNUM_BASE, vibrato_depth
+from core.convert import S1_FNUM_BASE, vibrato_depth
 
 _depth = vibrato_depth
 

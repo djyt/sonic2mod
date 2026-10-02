@@ -1,6 +1,6 @@
 """YM2612 sample generator — Segment 4 of the YM2612 synthesis pipeline.
 
-Renders every FM instrument in the song's catalogue (core.instruments.fm_catalogue: the
+Renders every FM instrument in the song's catalogue (core.plan.instruments.fm_catalogue: the
 entry each MOD instrument is rendered for, and its layers) with render_layers, and returns
 {instrument_number: (pcm_bytes, sample_rate_hz)} pairs ready for MOD file assembly.
 
@@ -31,21 +31,25 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
-from core.instruments import FmInstrument, fm_catalogue
-from core.loops import (
+from core.audio import (
     PROBE_SECS,
     SustainLoop,
     apply_loop,
+    dc_block,
     fade_end,
     find_sustain_loop,
     heard_padding,
+    high_shelf,
+    int8_to_raw16,
+    peak,
     release_rate_db_s,
+    to_int8,
 )
-from core.mod_limits import max_sustain_secs
-from core.pcm import dc_block, high_shelf, int8_to_raw16, peak, to_int8
-from core.pcm import trim_trailing_silence as _trim_trailing_silence
-from core.smps_song import SmpsSong, SmpsVoice
+from core.audio import trim_trailing_silence as _trim_trailing_silence
+from core.config import ConversionConfig, InstrumentRange, SynthesisSettings
+from core.mod import max_sustain_secs
+from core.plan import FmInstrument, fm_catalogue
+from core.smps import SmpsSong, SmpsVoice
 from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
 
@@ -110,7 +114,7 @@ def generate_fm_samples(
         peaks_out:  filled with {instrument: (peak of the render, peak of its first layer alone)}
                     before normalisation - a composite's volume is its primary's times that ratio,
                     so the primary layer plays as loud as it did on its own (core.merge).
-        loops:      look for a sustain loop in every instrument (core.loops): a voice whose
+        loops:      look for a sustain loop in every instrument (core.audio.loops): a voice whose
                     envelope settles is rendered for PROBE_SECS, cut at the loop's end and its
                     loop reported in `loops_out` ({instrument: SustainLoop}, sample units); one
                     that never settles is rendered for its own sustain as before.
@@ -128,7 +132,7 @@ def generate_fm_samples(
     voice_lookup = {v.index: v for v in song.voices}
     result: dict[int, tuple[bytes, int]] = {}
 
-    # --- Pass 1: what to render (core.instruments: one job per MOD instrument) ---
+    # --- Pass 1: what to render (core.plan.instruments: one job per MOD instrument) ---
     cat = fm_catalogue(song, config)
     if verbose:
         for context, voice_idx, _insts in cat.missing_voices:
@@ -319,14 +323,14 @@ def _smoke_test() -> None:
     )
 
     # Minimal fake SmpsSong
-    from core.smps_song import SmpsSong, SmpsSongHeader
+    from core.smps import SmpsSong, SmpsSongHeader
     fake_song = SmpsSong(
         header=SmpsSongHeader(voice_label="test"),
         voices=[voice1],
     )
 
     # Minimal ConversionConfig with voice_map for voice 1
-    from core.mod_notes import ModNote
+    from core.mod import ModNote
     fake_config = ConversionConfig()
     fake_config.voice_map = {
         1: [

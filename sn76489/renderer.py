@@ -28,11 +28,10 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.audio import DEFAULT_TAPS, normalize_int8, resample, write_raw16
+from core.audio import to_mono as _to_mono
 from core.config import DEFAULT_PSG_OVERSAMPLE
-from core.driver_tables import PSG_FREQUENCIES
-from core.pcm import normalize_int8, write_raw16
-from core.pcm import to_mono as _to_mono
-from core.resample import DEFAULT_TAPS, resample
+from core.smps import PSG_FREQUENCIES
 from sn76489.wrapper import SN76489
 
 # ---------------------------------------------------------------------------
@@ -59,7 +58,7 @@ DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
 def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
     """MOD note index → the SN76489 10-bit divider N the Sonic 1 driver writes for that note.
 
-    The driver's PSG table (core.driver_tables.PSG_FREQUENCIES, index 0 = nC0 = 130.98 Hz = C3,
+    The driver's PSG table (core.smps.driver_tables.PSG_FREQUENCIES, index 0 = nC0 = 130.98 Hz = C3,
     so MOD index i, C1 = 0, is table index i − 24) is what the hardware plays; it differs from
     the rounded equal-temperament divider on 29 of its 70 entries, by up to 85 cents at the top.
     Off the table, or at another clock, the formula N = clock / (32 × freq) stands in.
@@ -78,7 +77,7 @@ def note_to_psg_n(mod_note_index: int, clock_rate: int = _NTSC_CLOCK) -> int:
 # ---------------------------------------------------------------------------
 
 def _normalize_int8(mono: list) -> bytes:
-    """Peak-normalise to +-127 and quantise to int8 (see core.pcm.normalize_int8)."""
+    """Peak-normalise to +-127 and quantise to int8 (see core.audio.pcm.normalize_int8)."""
     return normalize_int8(mono, "render_psg")
 
 

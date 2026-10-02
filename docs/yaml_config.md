@@ -182,7 +182,7 @@ Without `root`, the entry still selects the correct `mod_instrument` but pitch f
 
 Every rooted entry is rendered at the pitch the chip really plays for its `low` note — `low`
 plus the pitch offset and every `smpsChangeTransposition`, PSG through the driver's table —
-which `core.synth_roots.resolve_synth_roots` reads from the song before synthesis.  No shipped
+which `core.plan.synth_roots.resolve_synth_roots` reads from the song before synthesis.  No shipped
 config states `synth_root`; `convert.py` counts the derived entries and warns
 (`synth_root_ambiguous`) where an entry's `low` is played at several chip pitches, which is the
 cue for `range_space: chip` or a split entry.
@@ -281,7 +281,7 @@ the peak (the kick gained 0.4 dB for 3 dB of reduction).  Artistic: the hardware
 
 A merge group's `limit_db: 4` limits a mix whose sum is past full scale: its peaks (a kick and a
 bass attack landing together) come down to full scale by up to 4 dB, with a 1.5 ms lookahead and
-a 60 ms release (`core.pcm.limit_peaks`), instead of the whole sound playing that much quieter
+a 60 ms release (`core.audio.pcm.limit_peaks`), instead of the whole sound playing that much quieter
 at volume 64.  Denser, a little transient distortion.  Green Hill's drum groups: 20 mixes, up to
 3.2 dB taken off a peak, none turned down any more.
 
@@ -352,7 +352,7 @@ psg_map:
     tone2_n: 1             # optional override, rate 3 only: explicit tone-ch2 divider (1–1023)
     synth_root: A3         # optional override, weaker than tone2_n: LFSR rate as a note name
     envelope: fTone_04     # optional override of the derived envelope: a name (fTone_01–fTone_09,
-                           #   core/driver_tables.py) or an inline list
+                           #   core/smps/driver_tables.py) or an inline list
     base_volume: 0         # SN76489 base attenuation (0=max, 15=silent); the default
 ```
 

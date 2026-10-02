@@ -37,12 +37,12 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.audio import db_to_gain
 from core.config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
-from core.gain import db_to_gain
+from core.convert import SmpsToModConverter
 from core.merge import NoteOn, PairStats, channel_notes, pair_channels
-from core.smps2mod import SmpsToModConverter
-from core.smps_parser import SmpsParser
-from core.synth_roots import resolve_synth_roots
+from core.plan import resolve_synth_roots
+from core.smps import SmpsParser
 
 
 @dataclass

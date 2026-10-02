@@ -18,7 +18,7 @@ python sfx/validate.py                          # self-check
 
 | Module | Role |
 |---|---|
-| `sfx/tables.py` | Re-exports `core/driver_tables.py` — the driver frequency tables, PSG envelopes and register/channel maps, self-checking at import. They live in `core/` so the converter can reach them without importing the SFX driver |
+| `sfx/tables.py` | Re-exports `core/smps/driver_tables.py` — the driver frequency tables, PSG envelopes and register/channel maps, self-checking at import. They live in `core/` so the converter can reach them without importing the SFX driver |
 | `sfx/track.py` | `SfxTrack` — mirrors the `SMPS_Track` RAM struct field-for-field |
 | `sfx/chips.py` | Register writes mirroring `SetVoice`, `SendVoiceTL`, `FMUpdateFreq`, `PSGUpdateFreq` … |
 | `sfx/driver.py` | `SfxDriver` — the per-tick state machine |
@@ -188,7 +188,7 @@ already taken everything there is.
    are dropped until the note is representable, preserving the pitch class.
 4. **PSG3 noise is silenced at `smpsStop`** (the `FixBugs` behaviour). Vanilla leaves it ringing,
    which would poison the rest of the render.
-5. **One envelope transcription.** `core/driver_tables.py` holds the driver's `PSG1`–`PSG9`
+5. **One envelope transcription.** `core/smps/driver_tables.py` holds the driver's `PSG1`–`PSG9`
    tables; both this renderer and the music MOD path (`PSG_ENVELOPES_BY_NAME`) read them.
    `configs/settings.yaml` used to carry its own copy whose `fTone_07` was one leading zero
    short; it was removed (no song or config used it, so no MOD changed).

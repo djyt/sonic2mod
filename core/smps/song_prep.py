@@ -6,7 +6,7 @@
 
 import copy
 
-from .smps_song import SmpsSong
+from .song import SmpsSong
 
 
 def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:

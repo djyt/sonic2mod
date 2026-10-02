@@ -133,10 +133,10 @@ def check_c_helpers() -> None:
     """The C mono render must equal its Python definition exactly.
 
     The conversion pipeline renders through OPN2_RenderBatchMono (ym3438_batch.c);
-    core.pcm.to_mono is what it reproduces.  A mismatch here means every FM sample in
+    core.audio.pcm.to_mono is what it reproduces.  A mismatch here means every FM sample in
     every MOD would change.
     """
-    from core.pcm import to_mono
+    from core.audio import to_mono
 
     n = 20_000
     stereo = OPN2(mode="ym2612")

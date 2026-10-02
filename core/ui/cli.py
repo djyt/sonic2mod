@@ -4,7 +4,7 @@
 the same right-aligned label column.  They get it from here rather than each keeping
 its own copy.
 
-    from core.cli import LABEL_W, branding, cli_console, error_printer, row_printer
+    from core.ui.cli import LABEL_W, branding, cli_console, error_printer, row_printer
 
     console = cli_console()
     _row    = row_printer(console)

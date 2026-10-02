@@ -11,15 +11,19 @@ A composite's volume (its sample_list entry), in pipeline order:
 A unison chord's primary instrument moves too (bake_volumes).
 """
 
+from ..audio import DEFAULT_TAPS, FLAT_DB, db_to_gain
 from ..config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
-from ..gain import db_to_gain
-from ..loops import FLAT_DB
-from ..mod import ModFile, ModSample
-from ..mod_limits import MAX_MOD_SAMPLE_BYTES
-from ..mod_volume import MOD_MAX_VOLUME, clamp_mod_volume, db_to_mod_volume, headroom_db
-from ..resample import DEFAULT_TAPS
-from ..timeline import Timeline
+from ..mod import (
+    MAX_MOD_SAMPLE_BYTES,
+    MOD_MAX_VOLUME,
+    ModFile,
+    ModSample,
+    clamp_mod_volume,
+    db_to_mod_volume,
+    headroom_db,
+)
+from ..plan import Timeline
 from .banks import pack_banks
 from .mix import mix_pcm_composites
 from .model import NO_SLOT, MergePlan
@@ -151,7 +155,7 @@ class MergedBuild:
 
         # A mixed composite ends the way its primary does (the release slide's rate).  A banked
         # one shares its slot with sounds of other primaries (a drum hit, a bass note): its notes
-        # look their primary's rate up themselves (core.channel_writer, `bank_member`)
+        # look their primary's rate up themselves (core.convert.channel_writer, `bank_member`)
         for c in plan.composites.values():
             if c.fm is None and not c.banked and c.primary in release:
                 release.setdefault(c.inst, release[c.primary])

@@ -41,8 +41,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
-from core.mod import ModImage, read_mod
-from core.mod_notes import PERIOD_TABLE
+from core.mod import PERIOD_TABLE, ModImage, read_mod
 from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, fnum_to_hz
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -143,12 +142,11 @@ def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
 
 def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
     """What the converter decides before it renders, on `cfg`: every entry's synth_root /
-    synth_shift (from the song) and the detune variants (core.detune) the settings ask for.
+    synth_shift (from the song) and the detune variants (core.plan.detune) the settings ask for.
     Returns the parsed song."""
     from core.config import SynthesisSettings
-    from core.detune import detune_variants_wanted, plan_detune_variants
-    from core.smps_parser import SmpsParser
-    from core.synth_roots import resolve_synth_roots
+    from core.plan import detune_variants_wanted, plan_detune_variants, resolve_synth_roots
+    from core.smps import SmpsParser
     song = SmpsParser().parse_file(cfg.input_file)
     resolve_synth_roots(song, cfg)
     if settings_path is None:
@@ -161,8 +159,8 @@ def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, conf
 
 def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int, float]]:
     """MOD instrument -> (root MOD index, synthesis semitone, cents its sample's smpsAlterNote
-    detune adds) from every pitched map entry and detune variant (core.detune)."""
-    from core.detune import detune_cents
+    detune adds) from every pitched map entry and detune variant (core.plan.detune)."""
+    from core.plan import detune_cents
     inst: dict[int, tuple[int, int, float]] = {}
     plan = cfg.detune_plan
 

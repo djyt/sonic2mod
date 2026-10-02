@@ -1,7 +1,7 @@
 """Reading a config file: YAML with no key given twice, and the value words every section shares."""
 
 
-from ..pcm import DITHER_MODES
+from ..audio import DITHER_MODES
 
 
 def mode_word(v) -> str:
@@ -12,7 +12,7 @@ def mode_word(v) -> str:
 
 
 def dither_mode(v, context: str) -> str:
-    """A `dither` value: one of core.pcm.DITHER_MODES."""
+    """A `dither` value: one of core.audio.pcm.DITHER_MODES."""
     mode = mode_word(v)
     if mode not in DITHER_MODES:
         raise ValueError(f"{context}: dither must be one of {', '.join(DITHER_MODES)} (got {v!r})")

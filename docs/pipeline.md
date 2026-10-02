@@ -79,7 +79,7 @@ One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTr
 | `smpsCall` | $F8 | address | (none — inlined) | — | Subroutine events spliced into caller |
 | `smpsSetvoice` | $EF | voice index | (instrument routing) | — | Updates voice_map lookup; no direct MOD effect |
 | `smpsChangeTransposition` | $E9 | signed byte | (pitch shift) | — | Updates total_transpose; affects next note placement |
-| `smpsDetune` / `smpsAlterNote` | $E1 | signed byte | (sample) / `E1x` `E2x` | — | FNUM offset (+3…8 c for $03): the note plays its instrument's sample rendered at that offset — a **detune variant** in a free slot (`core/detune.py`); a tie after a detune change gets a fine slide. Never a semitone, never a range lookup |
+| `smpsDetune` / `smpsAlterNote` | $E1 | signed byte | (sample) / `E1x` `E2x` | — | FNUM offset (+3…8 c for $03): the note plays its instrument's sample rendered at that offset — a **detune variant** in a free slot (`core/plan/detune.py`); a tie after a detune change gets a fine slide. Never a semitone, never a range lookup |
 | `smpsPan` | $E0 | direction | (level only) | — | MOD panning is channel-based, but a hard-panned note counts `fm_pan_law_db` (3 dB) quieter than a centred one — see §FM levels |
 | `smpsNoAttack` | $E7 | — | (flagged on note) | — | No MOD equivalent; note plays without re-attack in SMPS |
 | `smpsNop` | $E2 | byte | (none) | — | Game sync byte; ignored |
@@ -198,7 +198,7 @@ a sample at another volume costs its full size.
 
 `LevelPlanner.levels(source_map, "FM")` therefore walks the FM channels first — with
 the same `DriverState` the conversion uses — and, for every MOD instrument, counts notes per level
-`−0.75 × TL − pan`.  The laws themselves live in `core/levels.py` (dB → MOD volume: `core/mod_volume.py`).  The level with the most notes is that
+`−0.75 × TL − pan`.  The laws themselves live in `core/smps/levels.py` (dB → MOD volume: `core/mod/volume.py`).  The level with the most notes is that
 instrument's **baked level**: it is what the `sample_list` volume stands for, and those notes get
 no command.  A note at any other level gets `Cxx = volume × 10^(ΔdB / 20)` (clamped to 64).  So:
 
@@ -389,7 +389,7 @@ keeping a voice breaks that model: the same byte must reach different MOD notes.
 does it twenty times, and the whole medley moves voices between octaves; matched on source bytes
 it audited at 8 % of notes right.  With `range_space: chip` (song-level) the key is the real pitch
 — byte + pitch_offset + accumulated `$E9`, PSG through the driver's frequency table
-(`core.driver_tables.psg_index_semitone`) — so `low`/`high` are chip pitches, `synth_root` is simply `low`,
+(`core.smps.driver_tables.psg_index_semitone`) — so `low`/`high` are chip pitches, `synth_root` is simply `low`,
 and a voice spanning more than three octaves gets one entry per window.  Two voices sharing one
 sample keep separate entries: `root_e = root_head + (low_e − low_head)`.  `configs/13_credits.yaml`
 is generated this way (1623 of 1635 notes right; the 12 left are detune scoops the converter does
@@ -466,7 +466,7 @@ Example — source C5–B6 (span = 12 semitones):
 
 `smpsAlterNote` / `smpsDetune` ($E1) adds a raw offset to the frequency word the driver writes
 (`FMUpdateFreq`), so its interval depends on the note: `$03` is +8 c on C (fnum 644), +4.5 c on
-A# (1148).  A MOD retunes only a whole sample, in 12.5 c finetune steps, so `core/detune.py`
+A# (1148).  A MOD retunes only a whole sample, in 12.5 c finetune steps, so `core/plan/detune.py`
 gives every detune an instrument plays a sample of its own, rendered on the chip with the offset
 (settings.yaml `fm_synthesis.detune_variants`, on by default; FM only):
 
@@ -615,9 +615,9 @@ itself are gotcha 4.
 
 **Problem:** Synthesized FM samples sound like an overdriven guitar / extreme distortion.
 
-**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` mapping (`core/driver_tables.py`). SMPS stores operators in reversed order (OP4,OP3,OP2,OP1); the correct mapping is `(0x0C, 0x04, 0x08, 0x00)`. The wrong mapping `(0x00, 0x08, 0x04, 0x0C)` puts OP1 (often TL≈$01, near max volume) into the self-feedback slot.
+**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` mapping (`core/smps/driver_tables.py`). SMPS stores operators in reversed order (OP4,OP3,OP2,OP1); the correct mapping is `(0x0C, 0x04, 0x08, 0x00)`. The wrong mapping `(0x00, 0x08, 0x04, 0x0C)` puts OP1 (often TL≈$01, near max volume) into the self-feedback slot.
 
-**Fix:** Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/driver_tables.py` — `ym2612/voice.py` and `sfx/chips.py` both read it from there. Do not change it.
+**Fix:** Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/smps/driver_tables.py` — `ym2612/voice.py` and `sfx/chips.py` both read it from there. Do not change it.
 
 ---
 
@@ -710,13 +710,13 @@ note and warns nothing.
 
 ---
 
-## Sustain loops and release slides (`sustain_loops`, `core/loops.py`)
+## Sustain loops and release slides (`sustain_loops`, `core/audio/loops.py`)
 
 `samples.sustain_loops` in `settings.yaml` (`off` | `merged` — the default: the `--merged` build only |
 `all`) makes a sample's length independent of the notes it plays, the one structural thing a
 hand-made Amiga MOD does that a plain render cannot.
 
-**The loop.** After rendering, `core.loops.find_sustain_loop` looks at the RMS envelope of the
+**The loop.** After rendering, `core.audio.loops.find_sustain_loop` looks at the RMS envelope of the
 sustain (windows of two fundamental periods, dB below the sample's peak).  The reference is the
 `SPAN_SECS` (1 s) before the end of the instrument's longest note (`ref_n`; the span after that
 note's end when the note is shorter than the span, never the attack); the envelope is *flat*
@@ -1248,7 +1248,7 @@ every kick), so `NoteOn.fill` / `fill_secs` (frames / the region's frame rate) a
 every follower key: a chip layer carries `FmLayer.keyoff_secs` and `render_layers` keys that
 YM2612 channel off early (`_render_raw_mono` renders in segments); a pcm layer is cut at the
 fill and decays at the voice's measured release rate (`_cut_layer`, `release_db_s` from
-`core.loops`; a 2 ms fade where there is none, a PSG note ends the instant its attenuation is
+`core.audio.loops`; a 2 ms fade where there is none, a PSG note ends the instant its attenuation is
 15).  A **solo** note keeps its own fill too: `ChannelWriter` reads it off the spliced
 `NoteOn` (`_nf`) instead of the channel's state, and a PSG solo note ends at its duration on
 whatever channel it lands (`_psg_note`) — until 2026-09-28 a bass note alone on the drum

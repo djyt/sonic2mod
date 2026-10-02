@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from ..config import MergeGroup
-from ..instruments import FmInstrument
+from ..plan import FmInstrument
 from .notes import CHIP, CompositeKey, NoteOn, PairStats
 
 LAST_MOD_NOTE = 35   # B3: a mix transposed past the MOD's three octaves cannot play the note

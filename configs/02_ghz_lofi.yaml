@@ -45,7 +45,7 @@ channels:
     mod_channel: 4
 
   # FM5: detuned double of FM4 (smpsAlterNote $02 ≈ +10 cents FNUM offset).
-  # Its detuned notes play a variant rendered at the offset (core/detune.py).
+  # Its detuned notes play a variant rendered at the offset (core/plan/detune.py).
   - source: FM5
     mod_channel: 5
 

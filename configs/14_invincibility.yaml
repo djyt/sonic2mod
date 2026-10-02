@@ -71,7 +71,7 @@ psg_map:
 # Per-channel instrument-map overrides.
 #
 # FM5 shares FM1's data. smpsAlterNote $03 is a raw FNUM offset (+5..8 cents).
-# Its own instrument is rendered at that offset (core/detune.py).
+# Its own instrument is rendered at that offset (core/plan/detune.py).
 # -------------------------------------------------------------------------------------------------
 channel_instrument_map:
   FM5:

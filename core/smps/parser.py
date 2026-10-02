@@ -7,7 +7,8 @@ intermediate representation suitable for conversion to MOD format.
 import re
 from typing import ClassVar
 
-from .smps_song import (
+from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
+from .song import (
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEffect,
@@ -17,7 +18,6 @@ from .smps_song import (
     SmpsSongHeader,
     SmpsVoice,
 )
-from .tables import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
 
 # ---------------------------------------------------------------------------
 # Parser

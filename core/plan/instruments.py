@@ -24,8 +24,8 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 
-from .config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
-from .mod_notes import PERIOD_TABLE, ModNote
+from ..config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
+from ..mod import PERIOD_TABLE, ModNote
 
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
 # rate, what an SMPS nC5 sounds like on a channel with the usual $F4 (-12) pitch offset.
@@ -70,7 +70,7 @@ class FmInstrument:
 
     @property
     def min_loop_ms(self) -> float | None:
-        """This instrument's shortest sustain loop override (None: core.loops' default)."""
+        """This instrument's shortest sustain loop override (None: core.audio.loops' default)."""
         return self.loop_min_ms if self.loop_min_ms is not None else self.entry.loop_min_ms
 
     @property
@@ -158,7 +158,7 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
 
 
 def _add_detune_variants(cat: FmCatalogue, plan) -> None:
-    """core.detune: each instrument's sample rendered at its own detune, and a copy of it in
+    """core.plan.detune: each instrument's sample rendered at its own detune, and a copy of it in
     every variant's slot at the variant's."""
     if plan is None:
         return

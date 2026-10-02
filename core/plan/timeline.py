@@ -11,9 +11,9 @@ mid-song: the song is a list of tempo segments, each with its own BPM.
 
 import bisect
 
-from .config import ConversionConfig
-from .mod import shift_for_breaks
-from .smps_song import SmpsSong
+from ..config import ConversionConfig
+from ..mod import shift_for_breaks
+from ..smps import SmpsSong
 
 # A MOD BPM: ProTracker's Fxx reaches 32..255
 _MIN_BPM, _MAX_BPM = 32, 255

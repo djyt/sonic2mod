@@ -1,14 +1,13 @@
 """The sample generators the converter calls, as core sees them.
 
-core is the bottom layer: it cannot import the chip packages that render its samples.  It
-states what it needs here; the layer above hands the implementations in.
+core cannot import the chip packages that render its samples: they import core (the config, the
+instrument catalogue, audio).  It states what it needs here; convert.py hands the implementations in.
 
-    convert.py ──── SampleGenerators(fm=ym2612..., psg=sn76489...) ───┐
-       │                                                              │
-       ▼                                                              ▼
-    ym2612/  sn76489/  ── implement ──►  core/generators.py  ◄── called by ── core/smps2mod.py
-       │                                                                          │
-       └──────────────────────────────── core/* ◄─────────────────────────────────┘
+    convert.py ── SampleGenerators(fm=ym2612..., psg=sn76489...) ──► SmpsToModConverter
+                                                                         │ calls
+    ym2612/  sn76489/ ── implement ──► FmGenerator / PsgGenerator ◄──────┘
+         │
+         └── import ──► core.plan, core.config, core.smps, core.audio
 
 Both return {MOD instrument: (int8 PCM bytes, sample rate)}.
 """
@@ -16,9 +15,9 @@ Both return {MOD instrument: (int8 PCM bytes, sample rate)}.
 from dataclasses import dataclass
 from typing import Protocol
 
-from .config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
-from .loops import SustainLoop
-from .smps_song import SmpsSong
+from ..audio import SustainLoop
+from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
+from ..smps import SmpsSong
 
 
 class FmGenerator(Protocol):

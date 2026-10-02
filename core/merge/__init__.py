@@ -65,7 +65,7 @@ level and pitch.
 
 The plan is built once the song's ticks are final (after the global duration divider and the
 loop extension), before the samples are rendered — the FM composites are entries in the
-instrument catalogue (`core.instruments`).
+instrument catalogue (`core.plan.instruments`).
 `walk_channel` reads the plan from `config.merge_plan`, so every pass (levels, sustain,
 conversion) sees the composite instruments the same way.
 

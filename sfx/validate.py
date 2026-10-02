@@ -20,8 +20,8 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.gain import gain_to_db
-from core.smps_parser import SmpsParser
+from core.audio import gain_to_db
+from core.smps import SmpsParser
 from sfx import tables
 from sfx.batch import render_one
 from sfx.render import NATIVE_RATE
@@ -66,7 +66,7 @@ def check_tables() -> None:
     check("PSG7 envelope has 6 leading zeros",
           tables.PSG_ENVELOPES[6][:7] == (0, 0, 0, 0, 0, 0, 1),
           "the driver's table; a copy in settings.yaml once had 5")
-    from core.driver_tables import PSG_ENVELOPES_BY_NAME
+    from core.smps import PSG_ENVELOPES_BY_NAME
     check("named envelopes are the driver tables minus the terminator",
           all(PSG_ENVELOPES_BY_NAME[f"fTone_{i + 1:02d}"] == t[:-1] and t[-1] == 0x80
               for i, t in enumerate(tables.PSG_ENVELOPES)))

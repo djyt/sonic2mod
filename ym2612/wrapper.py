@@ -267,7 +267,7 @@ class OPN2:
         ``array('i')`` rather than a list of tuples: the note renderer only ever wants
         mono, and building 400 000 tuples per sample used to cost a fifth of the
         emulation time itself.  Same chip time and same values as
-        ``core.pcm.to_mono(render_samples(n))``.
+        ``core.audio.pcm.to_mono(render_samples(n))``.
         """
         out = array.array('i', bytes(n_samples * 4))
         if n_samples:

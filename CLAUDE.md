@@ -16,7 +16,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/sfx_rendering.md` | **SFX→WAV offline driver** — tick loop, driver frequency tables, modulation halving, retrigger semantics, mix levels, hardware deviations |
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
 | `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
-| `docs/architecture.md` | **Module descriptions and layering** — `core/` is the bottom layer, `DriverState`, IR data classes, parser stages, ModFile layout |
+| `docs/architecture.md` | **Module descriptions and layering** — `core/`'s packages (audio / mod / smps → config → plan → merge → convert → ui), `DriverState`, IR data classes, parser stages, ModFile layout |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/audits/00_soundtrack_survey.md` | **All 18 configs vs their VGZs** (2026-09) — 10 samples found synthesised in the wrong octave (fixed), every `sample_list` volume set from measurement, what each song still needs |
 | `docs/audits/02_ghz_audit.md` | **GHZ accuracy audit vs VGZ** (2026-09) — 867/867 notes, parser flag-ordering bug, `smpsAlterVol` law / TL level errors per instrument, grace notes, FM octave-convention trap |
@@ -38,19 +38,46 @@ sonic2mod/
   convert.py         # CLI entry point — conversion
   analyze.py         # CLI entry point — Rich-formatted song analysis
   sonic2wav.py       # CLI entry point — SFX → WAV rendering
-  core/              # Library package — the bottom layer; imports nothing from sfx/ or the chip packages
-    tables.py        #   SMPS note labels, config pitch names (synth_note_name), DAC names, SFX channel ids,
-                     #   source_names / source_map
-    mod_notes.py     #   PERIOD_TABLE, ModNote (C1–B3), MOD_NOTE_MAP
-    driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices,
-                     #   chip_pitch, PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
-                     #   (sfx/tables.py re-exports this; it used to live there)
-    generators.py    #   SampleGenerators: the FM / PSG generator interface core calls; convert.py hands in
-                     #   ym2612's and sn76489's (core cannot import them)
-    instruments.py   #   The instrument catalogue: what each synthesised MOD instrument is rendered for
-                     #   (first entry to name it wins; FM instruments are layers) — both generators read it
-    detune.py        #   Detune variants: each smpsAlterNote detune an instrument plays rendered at its FNUM offset
-                     #   (majority detune in its own slot, the rest in free slots); ties retuned with E1x / E2x
+  core/              # Library package; imports nothing from sfx/ or the chip packages.  Layers, each importing
+                     # only those below it (a package's __init__ exports what other packages import):
+                     #   ui → convert → merge → plan → config → mod / smps / audio   (diagnostics: any)
+    audio/           #   Sample arithmetic, no SMPS, no MOD
+      gain.py        #     db_to_gain / gain_to_db / power_to_db (the only place a dB is converted by hand)
+      pcm.py         #     Mono/int8/raw16 helpers shared by the two synthesis pipelines (dithered quantiser,
+                     #     high_shelf: the optional treble_shelf_db brightness shelf)
+      resample.py    #     Polyphase windowed-sinc resampler shared by sfx/, FM and PSG (kernel = taps at the lower rate)
+      loops.py       #     Sustain loops: where a render's envelope settles, the best loop (crossfaded), the
+                     #     release rate its notes' volume slides follow (settings.yaml samples.sustain_loops)
+    mod/             #   The MOD format
+      file.py        #     MOD file writer (adapted from mml2mod-master) + cell/effect-slot helpers; the one
+                     #     reader (read_mod → ModImage, play_rows: one pass in play order), isolate_channel
+      notes.py       #     PERIOD_TABLE, ModNote (C1–B3), MOD_NOTE_MAP
+      volume.py      #     dB → MOD volume (db_to_mod_volume, clamp_mod_volume, headroom_db)
+      limits.py      #     MAX_MOD_SAMPLE_BYTES, sample_limit_bytes, max_sustain_secs
+      sample_audit.py #    A written MOD's samples against the notes that play them (tools/mod_audit.py is its CLI)
+    smps/            #   The source: songs and the driver that plays them
+      song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard
+      parser.py      #     SmpsParser: assembly → SmpsSong
+      song_prep.py   #     The song as the driver plays it: smpsSetTempoDiv re-timing, short loops replayed
+      driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices, chip_pitch,
+                     #     PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
+                     #     (sfx/tables.py re-exports this; it used to live there)
+      levels.py      #     Chip level laws: TL 0.75 dB/step, attenuation 2 dB/step, pan law
+      names.py       #     SMPS note labels, config pitch names (synth_note_name), DAC names, SFX channel ids,
+                     #     source_names / source_map
+    config/          #   Per-song conversion config (song.py ConversionConfig, entries.py its maps and section
+                     #   parsers) and settings.yaml (settings.py: SampleSettings → SynthesisSettings,
+                     #   PsgSynthesisSettings); loader.py YAML with no key given twice; bpm.py
+    plan/            #   The song read through its config: what each note plays, what each sample is rendered for
+      driver_state.py #    DriverState — the SMPS track state machine (level, pan, transpose, FM voice,
+                     #     PSG entry); resolve_note, walk_channel, enabled_channels, psg_range_entry
+      instruments.py #     The instrument catalogue: what each synthesised MOD instrument is rendered for
+                     #     (first entry to name it wins; FM instruments are layers) — both generators read it
+      detune.py      #     Detune variants: each smpsAlterNote detune an instrument plays rendered at its FNUM offset
+                     #     (majority detune in its own slot, the rest in free slots); ties retuned with E1x / E2x
+      synth_roots.py #     resolve_synth_roots: each rooted entry's rendering pitch, from the song
+      noise_derive.py #    Noise envelopes and rate-3 dividers read from the song
+      timeline.py    #     Timeline: tempo segments, ticks per frame, BPM, tick → (pattern, row), seconds
     merge/           #   Channel folding for the Amiga build: merge: groups → composite instruments
       notes.py       #     NoteOn, channel_notes, pair_channels (PairStats), layer / composite keys, unison gain
       model.py       #     MergePlan, Composite
@@ -60,44 +87,24 @@ sonic2mod/
       mix.py         #     mix_pcm_composites (_Mixer): the mixed composites' samples
       banks.py       #     Sample banks: a bank: true group's mixes packed into one slot each, chosen with 9xx
       build.py       #     MergedBuild: composite volumes, pcm mixes, banks; the merge plan's report
-    driver_state.py  #   DriverState — the SMPS track state machine (level, pan, transpose, FM voice,
-                     #   PSG entry) shared by the converter, its pre-passes and the config tools;
-                     #   resolve_note, walk_channel, enabled_channels, psg_range_entry
-    synth_roots.py   #   resolve_synth_roots: each rooted entry's rendering pitch, from the song
-    levels.py        #   Chip level laws: TL 0.75 dB/step, attenuation 2 dB/step, pan law
-    gain.py          #   db_to_gain / gain_to_db / power_to_db (the only place a dB is converted by hand)
-    mod_volume.py    #   dB → MOD volume (db_to_mod_volume, clamp_mod_volume, headroom_db)
-    mod_limits.py    #   MAX_MOD_SAMPLE_BYTES, sample_limit_bytes, max_sustain_secs
-    mod.py           #   MOD file writer (adapted from mml2mod-master) + cell/effect-slot helpers; the one
-                     #   reader (read_mod → ModImage, play_rows: one pass in play order), isolate_channel
-    smps_song.py     #   The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard
-    smps_parser.py   #   SMPS assembly parser → SmpsSong
-    config/          #   Per-song conversion config (song.py ConversionConfig, entries.py its maps and section
-                     #   parsers) and settings.yaml (settings.py: SampleSettings → SynthesisSettings,
-                     #   PsgSynthesisSettings); loader.py YAML with no key given twice; bpm.py
-    smps2mod.py      #   Conversion engine (IR → MOD): SmpsToModConverter orchestrates the modules below
+    convert/         #   The conversion
+      smps2mod.py    #     Conversion engine (IR → MOD): SmpsToModConverter orchestrates the modules below
+      generators.py  #     SampleGenerators: the FM / PSG generator interface core calls; convert.py hands in
+                     #     ym2612's and sn76489's (core cannot import them)
+      level_plan.py  #     LevelPlanner: baked levels and FM render levels, walked with DriverState;
+                     #     fm_tl_to_mod / psg_att_to_mod (the absolute volume modes), modal_level
+      sustain_plan.py #    SustainPlanner: sustain_duration auto per instrument, held-back sustain_short warnings
+      vibrato.py     #     smpsModSet → 4xy: VibratoSpeed (cycle → x), vibrato_depth (swing → y per player)
+      channel_writer.py #  ChannelWriter: one channel into MOD cells (note-ons, cuts, slides, EDx/3FF/9xx/Cxx/4xy)
+      layout.py      #     ModLayout: leading rests' C00, tempo Fxx, the loop's Bxx/Dxx
+    ui/              #   What the CLIs print
+      cli.py         #     Shared Rich chrome for the three CLIs (branding, label column, UTF-8 stdout)
+      report.py      #     convert.py's report: header, Checks (warnings by area, with fixes), Channels, Samples
+                     #     (every slot: source, rate, size vs the limit, loop, notes, status), Merge; --verbose Details
     diagnostics.py   #   Diagnostics: the conversion's warnings (de-duplicated) and infos, read by report.py;
                      #   their kinds are the WarningKind / InfoKind enums (diag.warn(WarningKind.X, field=...))
-    song_prep.py     #   The song as the driver plays it: smpsSetTempoDiv re-timing, short loops replayed
-    timeline.py      #   Timeline: tempo segments, ticks per frame, BPM, tick → (pattern, row), seconds
-    vibrato.py       #   smpsModSet → 4xy: VibratoSpeed (cycle → x), vibrato_depth (swing → y per player)
-    level_plan.py    #   LevelPlanner: baked levels and FM render levels, walked with DriverState;
-                     #   fm_tl_to_mod / psg_att_to_mod (the absolute volume modes), modal_level
-    noise_derive.py  #   Noise envelopes and rate-3 dividers read from the song
-    sustain_plan.py  #   SustainPlanner: sustain_duration auto per instrument, held-back sustain_short warnings
-    channel_writer.py #  ChannelWriter: one channel into MOD cells (note-ons, cuts, slides, EDx/3FF/9xx/Cxx/4xy)
-    layout.py        #   ModLayout: leading rests' C00, tempo Fxx, the loop's Bxx/Dxx
-    analysis.py      #   Analysis data model + analyze_song()
-    cli.py           #   Shared Rich chrome for the three CLIs (branding, label column, UTF-8 stdout)
-    report.py        #   convert.py's report: header, Checks (warnings by area, with fixes), Channels, Samples
-                     #   (every slot: source, rate, size vs the limit, loop, notes, status), Merge; --verbose Details
-    sample_audit.py  #   A written MOD's samples against the notes that play them (tools/mod_audit.py is its CLI)
+    analysis.py      #   Analysis data model + analyze_song() (analyze.py)
     cbuild.py        #   CLibrary — the gcc/MSVC compile + mtime cache both chip packages build with
-    pcm.py           #   Mono/int8/raw16 helpers shared by the two synthesis pipelines (dithered quantiser,
-                     #   high_shelf: the optional treble_shelf_db brightness shelf)
-    resample.py      #   Polyphase windowed-sinc resampler shared by sfx/, FM and PSG (kernel = taps at the lower rate)
-    loops.py         #   Sustain loops: where a render's envelope settles, the best loop (crossfaded), the
-                     #   release rate its notes' volume slides follow (settings.yaml samples.sustain_loops)
     version.py       #   get_version(): pyproject.toml is the one place the version is written (installed metadata is only a fallback)
   configs/           # YAML config files per song
   configs/settings.yaml  # Global synthesis settings
@@ -117,12 +124,12 @@ sonic2mod/
     sample_generator.py #  psg_map → {inst: (pcm, rate)} dict (generate_psg_samples)
     validate.py       #   Standalone test: python sn76489/validate.py
   sfx/                # Offline SMPS SFX driver → WAV (all segments complete)
-    tables.py         #   Re-exports core/driver_tables.py under the name the SFX driver uses
+    tables.py         #   Re-exports core/smps/driver_tables.py under the name the SFX driver uses
     track.py          #   SfxTrack — mirrors the SMPS_Track RAM struct
     chips.py          #   Register writes mirroring SetVoice/SendVoiceTL/FMUpdateFreq/PSGUpdateFreq
     driver.py         #   SfxDriver — per-tick state machine (60 Hz, one tick per V-int)
     render.py         #   Frame loop, FM+PSG mix at 53267 Hz, tail detection
-    resample.py       #   Re-exports core/resample.py under the name the SFX driver uses
+    resample.py       #   Re-exports core/audio/resample.py under the name the SFX driver uses
     wav.py            #   16-bit stereo WAV writer (stdlib wave)
     amiga.py          #   8-bit Paula export — period grid, DC blocker, FFT rate pick, dither
     batch.py          #   Discovery, naming, global normalisation, 8-bit export
@@ -342,14 +349,14 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - SFX headers (`smpsHeaderTempoSFX`/`ChanSFX`/`SFXChannel`) set `SmpsSongHeader.is_sfx` and
   `SmpsChannelHeader.hw_channel`; SFX run 1 tick per V-int with no tempo modifier
 - Standalone duration bytes in `dc.b` **retrigger the last note** by default — without preceding `smpsNoAttack`: `SmpsNote(note_value=last_note_value, is_rest=False)`; with `smpsNoAttack` pending: rest/sustain `(is_rest=True, is_no_attack=True)`
-- One function decides what a note plays: `core/driver_state.py`'s `resolve_note` (→ `ResolvedNote`:
+- One function decides what a note plays: `core/plan/driver_state.py`'s `resolve_note` (→ `ResolvedNote`:
   instrument, MOD note, path, entry, chip pitch, detune) and `walk_channel`, which advances a
   `DriverState` through a channel and yields every event with its resolution.  Every pass walks
   this way — the conversion, `LevelPlanner.levels`, `SustainPlanner._needs`, the noise / rate-3 derivations,
   `resolve_synth_roots`, `core/merge/`.  What each synthesised instrument is rendered for is
-  the catalogue in `core/instruments.py` (first entry wins; FM instruments are lists of layers),
+  the catalogue in `core/plan/instruments.py` (first entry wins; FM instruments are lists of layers),
   read by both sample generators and `SustainPlanner._synthesis_roots`
-- One state machine decides what a note plays: `core/driver_state.py`'s `DriverState` tracks the
+- One state machine decides what a note plays: `core/plan/driver_state.py`'s `DriverState` tracks the
   level, pan, driver transpose, FM voice and active PSG entry.  `ChannelWriter`, the
   `LevelPlanner.levels` pre-passes, `derive_rate3_dividers` and the two config tools all walk with it,
   so they cannot disagree.  Only MOD-emission state (note fill, vibrato, cursor) is the
@@ -375,7 +382,7 @@ Full table with gotchas in `docs/pipeline.md`. Quick reference:
 | `smpsJump` | $F6 | `Bxx` | Position jump; first occurrence only |
 | `smpsSetvoice` | $EF | (routing) | Updates voice_map instrument lookup |
 | `smpsChangeTransposition` | $E9 | (pitch) | Adds to total_transpose |
-| `smpsDetune`/`smpsAlterNote` | $E1 | (sample) / `E1x` `E2x` | FNUM offset (+3…8 c for $03); NOT semitones, no range lookup. The note plays a sample rendered at the offset: its instrument's own (the majority detune) or a variant in a free slot (`core/detune.py`); a tie after a detune change gets a fine slide |
+| `smpsDetune`/`smpsAlterNote` | $E1 | (sample) / `E1x` `E2x` | FNUM offset (+3…8 c for $03); NOT semitones, no range lookup. The note plays a sample rendered at the offset: its instrument's own (the majority detune) or a variant in a free slot (`core/plan/detune.py`); a tie after a detune change gets a fine slide |
 | `smpsPan` | $E0 | (level) | No MOD panning, but hard-panned FM notes count `fm_pan_law_db` (3 dB) quieter |
 | `smpsLoop` | $F7 | (unrolled) | Loop replayed at parse time |
 | `smpsCall` | $F8 | (inlined) | Subroutine events spliced inline |
@@ -398,13 +405,13 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 **Full gotchas with causes and fixes in `docs/pipeline.md`.**
 
-1. **`smpsDetune`/`smpsAlterNote` ($E1) is NOT semitones** — it's a raw FNUM offset added to the frequency word (+8 c on C, +4.5 c on A# for $03). Does NOT affect `voice_map` range lookup or pitch placement. It is rendered into the samples (`fm_synthesis.detune_variants`, `core/detune.py`): each instrument's sample at its majority detune, every other detune a variant in a free slot sharing the instrument's level and volume; a tie after a detune change (Scrap Brain FM4's scoops) gets `E1x`/`E2x`. Never stand in for it with `finetune: 1` (removed from 12 configs 2026-10-02: GHZ's FM5 was detuned on 16 of 80 bell notes, Scrap Brain's FM5 not at all). No free slot → `detune_no_slot` (Credits).
+1. **`smpsDetune`/`smpsAlterNote` ($E1) is NOT semitones** — it's a raw FNUM offset added to the frequency word (+8 c on C, +4.5 c on A# for $03). Does NOT affect `voice_map` range lookup or pitch placement. It is rendered into the samples (`fm_synthesis.detune_variants`, `core/plan/detune.py`): each instrument's sample at its majority detune, every other detune a variant in a free slot sharing the instrument's level and volume; a tie after a detune change (Scrap Brain FM4's scoops) gets `E1x`/`E2x`. Never stand in for it with `finetune: 1` (removed from 12 configs 2026-10-02: GHZ's FM5 was detuned on 16 of 80 bell notes, Scrap Brain's FM5 not at all). No free slot → `detune_no_slot` (Credits).
 
 2. **`root` is unconditional** — `smpsChangeTransposition` events do NOT affect the root path. Do NOT use `root` on channels that use `$E9` mid-song; use the `total_transpose` path instead (omit `root`, rely on YAML `transpose`).
 
 3. **`smpsChangeTransposition` ($E9) is cumulative semitones** — each call adds to `SMPS_Track.Transpose`. Affects all subsequent notes and is included in `total_transpose`. This IS what shifts channels between register ranges in GHZ.
 
-4. **Operator order** — SMPS binary stores OP4,OP3,OP2,OP1 (reversed). Correct mapping: `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/driver_tables.py`, shared by `ym2612/voice.py` and `sfx/chips.py` (one source of truth — it used to be written out in both). Wrong mapping → "overdriven guitar" distortion (OP1 carrier placed in self-feedback slot).
+4. **Operator order** — SMPS binary stores OP4,OP3,OP2,OP1 (reversed). Correct mapping: `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/smps/driver_tables.py`, shared by `ym2612/voice.py` and `sfx/chips.py` (one source of truth — it used to be written out in both). Wrong mapping → "overdriven guitar" distortion (OP1 carrier placed in self-feedback slot).
 
 5. **Synthesis enabled by default** — `fm_synthesis.enabled: true` / `psg_synthesis.enabled: true` in `configs/settings.yaml`. Requires gcc/MSVC for ym3438.c / sn76489.c. Set `false` to use pre-rendered samples from `samples/` instead.
 
@@ -414,13 +421,13 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 7a. **Driver ticks are unevenly spaced** — with tempo modifier *m*, `TempoWait` holds every *m*-th frame, so tick *k* falls on frame `k + k // (m−1)`. GHZ's odd ticks are 16.7 ms after the even ones, not 25 ms. `_note_cell` measures `EDx` delays in frames for that reason. Two note-ons never share a cell: a 1-tick grace note keeps its row and the note it slides into takes the next one. A `Cxx` due on a delayed note's attack row moves to the note's next row.
 
-7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. The sample is **rendered at that TL offset** (`LevelPlanner.fm_render_levels` → `program_voice(tl_offset=)`, the carriers plus the track volume as `SetVoice` writes it), so the chip's 9-bit accumulator clips a multi-carrier voice exactly as the hardware does at that level — never render at TL 0 and scale afterwards (GHZ's lead clipped a third of its samples that way where the hardware, at FM1's +18, clips none). TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). Both laws live in `core/levels.py` and the baselines are planned by `LevelPlanner.levels`, which walks the channels with the same `DriverState` the conversion does. When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
+7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. The sample is **rendered at that TL offset** (`LevelPlanner.fm_render_levels` → `program_voice(tl_offset=)`, the carriers plus the track volume as `SetVoice` writes it), so the chip's 9-bit accumulator clips a multi-carrier voice exactly as the hardware does at that level — never render at TL 0 and scale afterwards (GHZ's lead clipped a third of its samples that way where the hardware, at FM1's +18, clips none). TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). Both laws live in `core/smps/levels.py` and the baselines are planned by `LevelPlanner.levels`, which walks the channels with the same `DriverState` the conversion does. When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 
-7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. Nothing about the noise is configured: the `psg_map` key is the SN76489 register byte, so white/periodic and the rate are read from it (a stated `type`/`noise_rate` that disagrees warns), and `derive_noise_envelopes` reads the envelope from the song — the label most of the instrument's notes play under (the header voice for every PSG3 track: `fTone_04`, Marble Zone `fTone_09`), `envelope:` being an override. A label that needs its own sample is named in the entry's `envelopes: {label: inst}` (Scrap Brain's `fTone_08`); `psg_voice_map` is never consulted in noise mode, and a noise type there is an error. One sample standing in for several envelopes warns (`noise_envelopes`: Credits' PSG3, which has no free slot). A note transposed past the PSG table's ends plays whatever ROM follows the table; indices 125–127 are measured from the Spring Yard and Credits recordings (0 = inaudible, 922 = B2, 540 = G#3) and sit at the end of `PSG_FREQUENCIES_EXTENDED`, so `core.driver_tables.psg_index_semitone` gives the hardware's pitch there (`range_space: chip` reproduces it).
+7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. Nothing about the noise is configured: the `psg_map` key is the SN76489 register byte, so white/periodic and the rate are read from it (a stated `type`/`noise_rate` that disagrees warns), and `derive_noise_envelopes` reads the envelope from the song — the label most of the instrument's notes play under (the header voice for every PSG3 track: `fTone_04`, Marble Zone `fTone_09`), `envelope:` being an override. A label that needs its own sample is named in the entry's `envelopes: {label: inst}` (Scrap Brain's `fTone_08`); `psg_voice_map` is never consulted in noise mode, and a noise type there is an error. One sample standing in for several envelopes warns (`noise_envelopes`: Credits' PSG3, which has no free slot). A note transposed past the PSG table's ends plays whatever ROM follows the table; indices 125–127 are measured from the Spring Yard and Credits recordings (0 = inaudible, 922 = B2, 540 = G#3) and sit at the end of `PSG_FREQUENCIES_EXTENDED`, so `core.smps.driver_tables.psg_index_semitone` gives the hardware's pitch there (`range_space: chip` reproduces it).
 
-7e. **Samples do not loop by default, so `sustain_duration: auto` (settings.yaml) must cover the longest ring** — `SustainPlanner._needs` measures it per instrument in MOD time (tempo segments, after `smpsSetTempoDiv` re-timing) at the sample's playback rate: root period / note period against the **first** entry's root (`SustainPlanner._synthesis_roots`, the entry the sample is rendered for; Credits folds several ranges onto one sample), plus finetune and one row of margin, with the same `DriverState` walk and `range_space` as the conversion. Auto = each instrument its own need (`sustain_by_instrument`), 10 s cap — one song-wide length cost the Title Screen's stabs six times the sample they play; a stated number is song-wide; each generator also caps every instrument to the sample limit at its rate (`samples.max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original ProTracker's 65534; `core.mod_limits.max_sustain_secs`). `sustain_short` warns per instrument where a note still outlasts its sample (a lower `root` halves bytes per second per octave).  A smpsNoAttack note continues a ring only where `legato` writes it as `3FF` (under `retrigger` it is a note-on of its own).  An instrument whose auto sustain holds every note (`exact_sustain`) and plays no channel's last note is cut where its notes stop being heard: at the sustain where notes are cut (`C00`), after the release slide's 48 dB fall in the merged build (`core.loops.heard_padding`); a loop ending past that is dropped. Leading rests get their `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, moving an `Fxx` aside): a song that loops to position 0 otherwise rang its last note through them. Details: `docs/fm_synthesis.md` § `sustain_duration: auto`, `docs/pipeline.md` gotchas 11–12.
+7e. **Samples do not loop by default, so `sustain_duration: auto` (settings.yaml) must cover the longest ring** — `SustainPlanner._needs` measures it per instrument in MOD time (tempo segments, after `smpsSetTempoDiv` re-timing) at the sample's playback rate: root period / note period against the **first** entry's root (`SustainPlanner._synthesis_roots`, the entry the sample is rendered for; Credits folds several ranges onto one sample), plus finetune and one row of margin, with the same `DriverState` walk and `range_space` as the conversion. Auto = each instrument its own need (`sustain_by_instrument`), 10 s cap — one song-wide length cost the Title Screen's stabs six times the sample they play; a stated number is song-wide; each generator also caps every instrument to the sample limit at its rate (`samples.max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original ProTracker's 65534; `core.mod.limits.max_sustain_secs`). `sustain_short` warns per instrument where a note still outlasts its sample (a lower `root` halves bytes per second per octave).  A smpsNoAttack note continues a ring only where `legato` writes it as `3FF` (under `retrigger` it is a note-on of its own).  An instrument whose auto sustain holds every note (`exact_sustain`) and plays no channel's last note is cut where its notes stop being heard: at the sustain where notes are cut (`C00`), after the release slide's 48 dB fall in the merged build (`core.audio.loops.heard_padding`); a loop ending past that is dropped. Leading rests get their `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, moving an `Fxx` aside): a song that loops to position 0 otherwise rang its last note through them. Details: `docs/fm_synthesis.md` § `sustain_duration: auto`, `docs/pipeline.md` gotchas 11–12.
 
-7g. **Sustain loops (`samples.sustain_loops: all` in settings.yaml since 2026-09-30, `core/loops.py`)** — in every build (only the `--merged` one with `merged`, the code's default) an instrument whose envelope settles is cut where it settles plus one loop of the waveform: the reference span is the last second of its longest note (`loop_drift_db` = how far above that a loop may freeze, 1 dB default; a slowly decaying voice loops only near the end, or not at all where the loop would end later than the plain render), the loop is the even length (30 ms – 1.2 s) with the smallest jump at the join plus a length penalty — never a whole number of cycles, every Sonic voice detunes its operators (DT1) — crossfaded closed over 15 ms.  Every FM note then ends with `A0y` rows at the voice's measured release rate (`release_rate_db_s`, `_write_release`: exponential, one target per row, `C00` after 64 rows) instead of `C00`; a release over within a row (RR $0F) stays a cut, PSG cuts stay cuts.  A looped instrument warns no `sustain_short`.  `_clear_stale_cut` removes a rest's `C00` from a cell a later note-on rounds onto (a silent note otherwise).  The flat scan includes the reference span's own windows (before 2026-10-01 it did not: a decaying voice looped at the span's start, Title voice $01 7 dB loud).  Green Hill merged: 479 KB unlooped → 411 KB at 1 dB drift, 388 at 12.  Details: `docs/pipeline.md` § Sustain loops.
+7g. **Sustain loops (`samples.sustain_loops: all` in settings.yaml since 2026-09-30, `core/audio/loops.py`)** — in every build (only the `--merged` one with `merged`, the code's default) an instrument whose envelope settles is cut where it settles plus one loop of the waveform: the reference span is the last second of its longest note (`loop_drift_db` = how far above that a loop may freeze, 1 dB default; a slowly decaying voice loops only near the end, or not at all where the loop would end later than the plain render), the loop is the even length (30 ms – 1.2 s) with the smallest jump at the join plus a length penalty — never a whole number of cycles, every Sonic voice detunes its operators (DT1) — crossfaded closed over 15 ms.  Every FM note then ends with `A0y` rows at the voice's measured release rate (`release_rate_db_s`, `_write_release`: exponential, one target per row, `C00` after 64 rows) instead of `C00`; a release over within a row (RR $0F) stays a cut, PSG cuts stay cuts.  A looped instrument warns no `sustain_short`.  `_clear_stale_cut` removes a rest's `C00` from a cell a later note-on rounds onto (a silent note otherwise).  The flat scan includes the reference span's own windows (before 2026-10-01 it did not: a decaying voice looped at the span's start, Title voice $01 7 dB loud).  Green Hill merged: 479 KB unlooped → 411 KB at 1 dB drift, 388 at 12.  Details: `docs/pipeline.md` § Sustain loops.
 
 7c. **A MOD BPM is a whole number** — `auto_bpm` rounds; choose `target_speed` so the exact BPM is (nearly) integer (speed changes MOD ticks per row, not the row grid). `convert.py` prints the rounding error and the better speed; Special Stage at speed 3 ran 0.44 % slow. Details: `docs/pipeline.md` §BPM and speed setup.
 
@@ -449,7 +456,7 @@ and does NOT affect range lookup.
 - `low`/`high` — SMPS note names without `n` prefix (e.g. `G5`, `Gs6`, `C7`)
 - `mod_instrument` — MOD instrument slot (1-based)
 - `root` — **absolute** MOD note anchor; source `low` always plays here regardless of `smpsChangeTransposition` or pitch_offset
-- `synth_root` — **derived** (`core.synth_roots.resolve_synth_roots`): the chip pitch the instrument's notes play most often (envelopes stretch with playback rate in a MOD, so the busiest note keeps the hardware's timing), at most an octave above D (the chip pitch of `low`). `synth_shift = synth_root − D` goes into the **sample's rate** (`target_rate × 2^(shift/12)`), never into the placement: MOD note `root` still sounds D, every note keeps its place, playback rate and bandwidth, and the sample costs 2^(shift/12) times the bytes. An instrument several entries share is rendered once, for the first entry, with the pitch chosen over all of them. No config states it. Stated, it is the rendering pitch anywhere in the range, handled the same way. `synth_root_ambiguous` warns when `low` is played at several chip pitches (→ `range_space: chip` or split)
+- `synth_root` — **derived** (`core.plan.synth_roots.resolve_synth_roots`): the chip pitch the instrument's notes play most often (envelopes stretch with playback rate in a MOD, so the busiest note keeps the hardware's timing), at most an octave above D (the chip pitch of `low`). `synth_shift = synth_root − D` goes into the **sample's rate** (`target_rate × 2^(shift/12)`), never into the placement: MOD note `root` still sounds D, every note keeps its place, playback rate and bandwidth, and the sample costs 2^(shift/12) times the bytes. An instrument several entries share is rendered once, for the first entry, with the pitch chosen over all of them. No config states it. Stated, it is the rendering pitch anywhere in the range, handled the same way. `synth_root_ambiguous` warns when `low` is played at several chip pitches (→ `range_space: chip` or split)
 - `loop_drift_db` / `loop_min_ms` — per-entry sustain-loop overrides (a merge group takes them for its chip composites): freeze later / loop longer than the song's setting where a short early loop buzzes (Green Hill lofi $B, $16)
 - `dither: shaped | flat | off` — per-entry quantisation (also `psg_map` / `psg_voice_map` entries and merge
   groups; a composite without one takes its primary's entry's; `samples.dither` in settings.yaml otherwise).  Shaped noise sits at the top of the band: right under

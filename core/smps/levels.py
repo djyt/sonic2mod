@@ -1,6 +1,6 @@
 """The chip level laws: a YM2612 total-level offset or an SN76489 attenuation in dB.
 
-dB arithmetic is core/gain.py; dB -> MOD volume is core/mod_volume.py.
+dB arithmetic is core/audio/gain.py; dB -> MOD volume is core/mod/volume.py.
 """
 
 from __future__ import annotations

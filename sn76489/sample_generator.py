@@ -165,7 +165,7 @@ def _synthesize_entry(entry, psg_synth, fps, raw_data, verbose: bool = False,
                 tone2_n = entry.tone2_n
             elif entry.synth_root is None and rate3_dividers and inst_num in rate3_dividers:
                 # Neither given: the divider the driver writes for this instrument's notes,
-                # worked out from the song by SmpsToModConverter._derive_rate3_dividers.
+                # worked out from the song by derive_rate3_dividers.
                 tone2_n = rate3_dividers[inst_num]
             else:
                 synth_idx = (entry.synth_root - 12
@@ -242,7 +242,7 @@ def generate_psg_samples(
         psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release.
         rate3_dividers:  {instrument: tone-2 divider} the converter derived for rate-3 noise.
         noise_envelopes: {instrument: envelope label} the converter derived for the noise
-                         instruments (SmpsToModConverter._derive_noise_envelopes) — a psg_map
+                         instruments (derive_noise_envelopes) — a psg_map
                          entry's own instrument and each of its `envelopes:` variants.
         loops:     cut each tone whose envelope holds at a sustain loop (core.loops), reported
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.

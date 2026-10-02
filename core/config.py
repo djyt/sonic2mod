@@ -383,7 +383,7 @@ class PsgInstrumentEntry:
                                              # VDP PSG treats as N=1 (maximum shift rate) — use tone2_n: 1.
     envelope: str | list[int] | None = None  # Named table str ("fTone_04") or inline list[int].  A psg_map
                                              # (noise) entry leaves it None: the converter derives it from
-                                             # the song (_derive_noise_envelopes); stating it is an override
+                                             # the song (derive_noise_envelopes); stating it is an override
     base_volume: int = 0                     # SN76489 base attenuation (0=max, 15=silent)
     vibrato: int | None = None           # per-entry 4xy override; same semantics as InstrumentRange.vibrato
     envelopes: dict[str, int] = field(default_factory=dict)   # psg_map only: {smpsPSGvoice label: MOD
@@ -541,7 +541,7 @@ def _legato(data: dict, filepath: str) -> str:
 
 
 # The tracker a build is made for (settings.yaml `player`): FT2 clone and ProTracker 2 scale a 4xy
-# depth differently, see SmpsToModConverter._vibrato_depth
+# depth differently, see vibrato_depth
 PLAYERS = ("ft2", "pt2")
 
 
@@ -617,7 +617,7 @@ class PsgSynthesisSettings:
     sustain_duration: float | str = 1.0
     release_padding: float = 0.2
     # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
-    # _resolve_sustain); an instrument absent here gets sustain_duration.  Empty when a number is stated.
+    # SustainPlanner.resolve); an instrument absent here gets sustain_duration.  Empty when a number is stated.
     sustain_by_instrument: dict = field(default_factory=dict)
     slide_ends: frozenset = frozenset()      # instruments a note of ends in a release slide (merged
                                              # build): only they are heard past their sustain

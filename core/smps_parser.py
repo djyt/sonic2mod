@@ -122,6 +122,18 @@ class SmpsSong:
     voices: list = field(default_factory=list)     # list of SmpsVoice
     label_tick_pos: dict = field(default_factory=dict)  # label_name -> cumulative tick position
 
+    def end_tick(self) -> int:
+        """The tick the last event of any channel ends at (a note's duration included)."""
+        return max((ev.tick_position + (ev.note.duration if ev.note else 0)
+                    for ch in self.channels for ev in ch.events), default=0)
+
+    def loop_target_tick(self) -> int | None:
+        """The tick the song loops back to: the latest smpsJump target over the channels;
+        None when no channel jumps."""
+        ticks = [self.label_tick_pos.get(ch.jump_target_label) for ch in self.channels
+                 if ch.has_jump and ch.jump_target_label]
+        return max((t for t in ticks if t is not None), default=None)
+
 
 # ---------------------------------------------------------------------------
 # Parser
@@ -587,7 +599,7 @@ class SmpsParser:
 
         Duration-valued params must be in the same tick units as stored tick_position
         values (i.e., DurationTimeout = raw_byte * chan_tempo_div) so that the converter
-        can use _effective_tpr consistently for all time conversions.
+        can use Timeline.ticks_per_row consistently for all time conversions.
 
         Scaled params:
           smpsNoteFill params[0] — fill duration: NoteTimeout is decremented every raw

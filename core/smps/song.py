@@ -94,16 +94,14 @@ class SmpsVoice:
     index: int
     algorithm: int = 0
     feedback: int = 0
-    # Store raw params for informational purposes
-    params: dict = field(default_factory=dict)
+    # Each smpsVc* macro's bytes as written (`smpsVcDetune $00, $05, $00, $05` -> (0, 5, 0, 5)):
+    # what the parser reads, and what a lift builds from the chip's registers
+    operators: dict[str, tuple[int, ...]] = field(default_factory=dict)
 
     def operator_values(self, macro: str) -> list[int]:
-        """One smpsVc* macro's operator bytes as written: '$00, $05, $00, $05' → [0, 5, 0, 5].
-        A macro the voice leaves out, or a value it leaves out, reads as 0."""
-        raw = self.params.get(macro)
-        if not raw:
-            return [0] * _OPERATORS
-        vals = [int(v.strip().lstrip('$'), 16) for v in raw.split(',')]
+        """One smpsVc* macro's four operator bytes; a macro the voice leaves out, or a value it
+        leaves out, reads as 0."""
+        vals = list(self.operators.get(macro, ()))
         return (vals + [0] * _OPERATORS)[:_OPERATORS]
 
 

@@ -38,15 +38,11 @@ song = SmpsParser().parse_file("sonic_1/music/Mus91 - Credits.asm")
 voices = {v.index: v for v in song.voices}
 
 
-def nums(s):
-    return [int(x.strip().lstrip("$"), 16) for x in s.split(",")]
-
-
 def vec(v):
     out = []
     for k, w in (("smpsVcCoarseFreq", 6), ("smpsVcTotalLevel", 1), ("smpsVcDecayRate1", 1), ("smpsVcDecayLevel", 2),
                  ("smpsVcAttackRate", 1), ("smpsVcReleaseRate", 1), ("smpsVcDetune", 2)):
-        out += [x * w for x in nums(v.params[k])]
+        out += [x * w for x in v.operator_values(k)]
     return out
 
 

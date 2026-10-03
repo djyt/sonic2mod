@@ -41,65 +41,23 @@ sys.path.insert(0, str(_HERE.parent))
 from core.audio import pitch_name
 from core.config import ConversionConfig
 from core.mod import PERIOD_TABLE, ModImage, edx_delay, read_mod, timed_pass
+from core.plan import prepare_instruments, sounding_pitches
 from core.vgm import Segment, pitch_segments, read_vgm
 
 
 def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
-    """What the converter decides before it renders, on `cfg`: every entry's synth_root /
-    synth_shift (from the song) and the detune variants (core.plan.detune) the settings ask for.
-    Returns the parsed song."""
+    """What the converter decides before it renders, on `cfg` (core.plan.prepare_instruments: every
+    entry's synth_root / synth_shift, the detune variants the settings ask for).  Returns the song."""
     from core.config import find_settings, load_settings
-    from core.plan import detune_variants_wanted, plan_detune_variants, resolve_synth_roots
     song = cfg.read_song()
-    resolve_synth_roots(song, cfg)
     synth, _psg = load_settings(str(settings_path) if settings_path else find_settings(str(config_path)))
-    if detune_variants_wanted(synth):
-        plan_detune_variants(song, cfg)
+    prepare_instruments(song, cfg, synth)
     return song
 
 
-def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int, float]]:
-    """MOD instrument -> (root MOD index, synthesis semitone, cents its sample's smpsAlterNote
-    detune adds) from every pitched map entry and detune variant (core.plan.detune)."""
-    from core.plan import detune_cents
-    inst: dict[int, tuple[int, int, float]] = {}
-    plan = cfg.detune_plan
-
-    def add(e, default_low: bool) -> None:
-        if e.mod_instrument in inst or e.root is None:
-            return
-        if e.synth_root is not None:
-            s = e.synth_root - e.synth_shift          # the pitch `root` sounds: the sample's rate carries the rest
-            rendered = e.synth_root
-        elif default_low and e.low is not None:       # FM: sample_generator falls back to `low`
-            s = rendered = e.low
-        else:                                         # PSG tone: falls back to `root`
-            s = rendered = e.root.value + 12
-        own = plan.own.get(e.mod_instrument, 0) if plan is not None and default_low else 0
-        inst[e.mod_instrument] = (e.root.value, s, detune_cents(rendered, own) if own else 0.0)
-        if plan is None or not default_low:
-            return
-        for v in plan.variants.values():
-            if v.base == e.mod_instrument:
-                inst[v.inst] = (e.root.value, s, detune_cents(rendered, v.detune))
-
-    for lst in cfg.voice_map.values():
-        for e in lst:
-            add(e, True)
-    for per_voice in cfg.channel_instrument_map.values():
-        for lst in per_voice.values():
-            for e in lst:
-                add(e, True)
-    for lst in cfg.psg_voice_map.values():
-        for e in lst:
-            if e.type == "tone":
-                add(e, False)
-    return inst
-
-
-def mod_timeline(mod: ModImage, cfg: ConversionConfig) -> tuple[dict[int, list[tuple]], float]:
+def mod_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument); follows Bxx/Dxx and stops at the loop."""
-    inst = instrument_pitches(cfg)
+    inst = sounding_pitches(song, cfg)
     finetune = {e[0]: (e[3] if len(e) > 3 else 0) for e in (cfg.sample_list or [])}
     known = set(PERIOD_TABLE)
     out: dict[int, list[tuple]] = defaultdict(list)
@@ -348,10 +306,10 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     cfg = ConversionConfig.from_yaml(args.config)
-    prepare_config(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
+    song = prepare_config(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     chip, vgm_end = pitch_segments(read_vgm(args.vgz))
-    mod, mod_end = mod_timeline(read_mod(mod_path), cfg)
+    mod, mod_end = mod_timeline(read_mod(mod_path), cfg, song)
     chan_map = {c.source: c.mod_channel for c in cfg.channels}
     if args.offset is None:
         args.offset = auto_offset(chip, mod, chan_map)

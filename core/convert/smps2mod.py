@@ -19,11 +19,9 @@ from ..plan import (
     Timeline,
     derive_noise_envelopes,
     derive_rate3_dividers,
-    detune_variants_wanted,
     fm_catalogue,
-    plan_detune_variants,
+    prepare_instruments,
     psg_catalogue,
-    resolve_synth_roots,
 )
 from ..smps import (
     DEFAULT_FM_PAN_LAW_DB,
@@ -404,15 +402,16 @@ class SmpsToModConverter:
         return self.mod
 
     def _plan_pitches(self) -> None:
-        """Every rooted entry's rendering pitch from the song (core.plan.synth_roots.resolve_synth_roots):
-        the chip pitch its notes play most often, or, when stated, wherever the config put it; the
-        sample's rate carries the difference from the pitch `root` sounds (synth_shift), so no note
-        moves.  Before anything reads synth_root / synth_shift."""
+        """Every rooted entry's rendering pitch from the song, and the detune variants
+        (core.plan.prepare_instruments): the chip pitch an entry's notes play most often, or, when
+        stated, wherever the config put it; the sample's rate carries the difference from the pitch
+        `root` sounds (synth_shift), so no note moves.  Before anything reads synth_root / synth_shift."""
         for issue in rate3_synth_root_issues(self.config):
             self._diag.warn(WarningKind.RATE3_SYNTH_ROOT, extra_ctx=issue['context'], **issue)
 
+        self._instrument_plan = prepare_instruments(self.song, self.config, self.synth)
         derived = stated = 0
-        for r in resolve_synth_roots(self.song, self.config):
+        for r in self._instrument_plan.synth_roots:
             derived += r['derived']
             stated += not r['derived']
             if r['shift'] and not r['derived']:
@@ -605,10 +604,10 @@ class SmpsToModConverter:
         return plan
 
     def _plan_detune(self) -> DetunePlan | None:
-        """The detune variants (core.plan.detune) where FM is synthesised and settings allow them."""
-        if not detune_variants_wanted(self.synth):
+        """The detune variants (core.plan.detune) prepare_instruments planned, reported."""
+        plan = self._instrument_plan.detune
+        if plan is None:
             return None
-        plan = plan_detune_variants(self.song, self.config)
         if plan.own or plan.variants:
             self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own),
                             variants=[(v.inst, v.base, v.detune, v.notes) for v in plan.variants.values()])

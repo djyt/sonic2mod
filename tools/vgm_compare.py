@@ -1151,7 +1151,7 @@ def _report_dac(rd: _Renders, offset: float, res: dict) -> None:
     print("  (lowpeak differing by more than ~3% means the DAC sample plays at the wrong rate)")
 
 
-def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
+def report(cfg: ConversionConfig, song, vgz: Path, mod_path: Path, workdir: Path,
            offset: float | None, ref_chan: str, max_rows: int, pitch_tol: float = 35.0) -> dict:
     """Print the comparison and return the same numbers as a JSON-serialisable dict.
 
@@ -1173,7 +1173,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     offset_auto = offset is None
     chip_tl, chip_end = pitch_segments(log)
     mod = read_mod(mod_path)
-    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod, cfg)
+    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod, cfg, song)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
     print()
     res: dict = {
@@ -1531,7 +1531,7 @@ def main() -> None:
             raise SystemExit(f"ERROR: {e}") from e
     # synth_root / synth_shift come from the song (what the converter does before rendering), and
     # so do the detune variants; without them the symbolic verdict reads every shifted entry as wrong
-    vgm_pitch_audit.prepare_config(cfg, args.settings, args.config)
+    song = vgm_pitch_audit.prepare_config(cfg, args.settings, args.config)
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):
@@ -1594,7 +1594,7 @@ def main() -> None:
     elif args.merged:
         res = report_merged(vgz, mod_path, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
-        res = report(cfg, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
+        res = report(cfg, song, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
 
     if args.write_volumes and "instrument_levels" not in res:

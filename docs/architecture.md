@@ -380,6 +380,16 @@ a free slot (`DetunePlan`, on `config.detune_plan`): `resolve_note` routes to it
 renders it, the level plans share the base's.  `detune_cents(semitone, offset)` is the interval
 an offset makes on the driver's frequency table.
 
+### core/plan/instrument_plan.py
+
+`prepare_instruments(song, config, synth)`: `resolve_synth_roots`, then `plan_detune_variants` where the
+settings want variants — the converter's first steps (it reports what they return) and the whole
+preparation `vgm_pitch_audit` / `vgm_compare` make, so the audits see the instruments the converter
+rendered.  `sounding_pitches(song, config)`: per MOD instrument the note it is anchored at, the pitch
+that note sounds and its sample's detune, read from the catalogue (`FmInstrument` / `PsgInstrument`
+`synth_idx`, `root_semitone`); the PSG generator takes its rate and rendering pitch from the same
+records.
+
 ### core/plan/synth_roots.py
 
 **`resolve_synth_roots(song, config)`**: every rooted map entry's `synth_root` (the chip pitch its notes play

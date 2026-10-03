@@ -56,8 +56,9 @@ class PlayedNote:
     dac: str = ""
 
     def aspect(self, aspect: Aspect) -> object:
-        """This note's value for `aspect`."""
-        return tuple(getattr(self, name) for name in _ASPECT_FIELDS[aspect])
+        """This note's value for `aspect` (a tuple where the aspect is several fields: timing)."""
+        values = tuple(getattr(self, name) for name in _ASPECT_FIELDS[aspect])
+        return values[0] if len(values) == 1 else values
 
 
 _ASPECT_FIELDS = {

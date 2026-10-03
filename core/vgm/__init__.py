@@ -5,7 +5,7 @@
     frames.py     the log cut into V-int frames: each channel's state and writes per frame (FrameLog)
     notes.py      where notes start (NoteStart), each channel's pitch timeline (pitch_segments)
     cache.py      a rip's frame log kept on disk (load_frames)
-    lift.py       the log lifted back into the SmpsSong the driver played (lift_song)
+    lift/         the frame log lifted back into the SmpsSong the driver played (lift_song)
 """
 
 from .cache import load_frames

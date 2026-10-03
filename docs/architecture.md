@@ -106,7 +106,7 @@ The two sound chips' own facts, with no driver in them: `fm.py` (YM2612: `MD_FM_
 `DEFAULT_FM_PAN_LAW_DB` (3.0), `fm_level_db`) and `psg.py` (SN76489: `MD_PSG_CLOCK`, `PSG_SAMPLE_RATE`,
 `psg_frequency_hz`, `PSG_STEP_DB` (2.0), `psg_level_db`).  `smps/driver_tables.py` builds its tables on
 them and checks at import that the driver's `FMSlotMask` names the same carriers; `vgm/` reads the chips
-through them, so only `vgm/lift.py` imports `smps/` (the song it produces) - `tests/test_chips_units.py`
+through them, so only `vgm/lift/` imports `smps/` (the song it produces) - `tests/test_chips_units.py`
 pins both.  The level laws are used by the converter and by `analyze.py`'s YAML skeleton, which therefore
 predict the same numbers (`vgm_analyze` reads its chip levels through them too).  dB → MOD volume is
 `core/mod/volume.py` (`db_to_mod_volume`, `clamp_mod_volume`, `headroom_db`); the two together, the absolute
@@ -127,8 +127,19 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | `SmpsChannelHeader` | Channel metadata from header macros |
 | `SmpsSongHeader` | Voice label, channel counts, tempo |
 | `SmpsChannel` | Header + ordered event list + jump info |
-| `SmpsVoice` | FM voice: algorithm, feedback, and `operators` - each `VoiceField` (DT, MUL, KS, AR, AM, D1R, D2R, D1L, RR, TL) as four ints in the driver's operator order.  The `smpsVc*` spellings are `names.py`'s (`voice_field_from_macro`) |
+| `SmpsVoice` | FM voice: algorithm, feedback, and `operators` - each `VoiceField` (DT, MUL, KS, AR, AM, D1R, D2R, D1L, RR, TL) as four ints in the driver's operator order.  The `smpsVc*` spellings are `names.py`'s (`voice_field_from_macro`).  `registers(tl_offset)`: the operator registers as the driver writes them (what `program_voice` writes, what a frame log holds) |
 | `SmpsSong` | Top-level container for header, channels, voices |
+
+#### What a song plays (core/smps/track.py, playback.py, compare.py)
+
+`TrackState` is one track's driver state as its flags leave it (transpose, TL offset / attenuation,
+pan, detune, voice, envelope, noise form, note fill, modulation), config-free; `DriverState`
+(core/plan) adds the MOD routing to it.  `played_song(song)` walks every channel with it after
+`song_prep` and gives each note as the driver plays it (`PlayedNote`: ticks, attack, the frequency
+word written, the voice's registers but the carriers' TL, the carriers' TL, pan, modulation, fill,
+noise byte, DAC sample), consecutive rests merged.  `compare_songs(expected, got, aspects)` matches
+two songs' notes by start tick and reports per `Aspect`: the yardstick a VGM lift is accepted by
+(`tools/vgm_lift.py`), blind to how the asm spells a note.
 
 #### Parsing Stages
 
@@ -259,8 +270,13 @@ notes.py      note_starts(log): NoteStart per FM key-on (a re-key within mod_cen
               tie), PSG channel turning audible or leaving its note's pitch, noise turning audible, PCM
               seek; NoteTracker applies the rules change by change.  pitch_segments(log): each FM / PSG
               tone channel's sounding pitch as change points (vgm_pitch_audit's chip timeline)
-lift.py       lift_song(log, LiftOptions) -> SmpsSong.  Not implemented yet: raises VgmLiftError
+cache.py      load_frames(path, cache_dir): a rip's FrameLog kept in samples.render_cache under a hash
+              of the file and of the code that makes it (0.06 s for Green Hill instead of 0.65)
+lift/         lift_song(frames, LiftOptions) -> SmpsSong.  Not implemented yet: raises VgmLiftError
 ```
+
+`frames.py` counts the DAC's byte stream without replaying it (most of a log's writes): no state
+reads register 0x2A.
 
 `tools/vgm_analyze.py` (key-on rows, `--frames`), `tools/vgm_pitch_audit.py` (`chip_timeline`) and
 `tools/vgm_compare.py` read through it; before 2026-10-03 the first two each parsed the command
@@ -371,7 +387,7 @@ The SMPS track state that decides an event's pitch, level and instrument. Four p
 channel's events used to each re-implement it — the two level pre-passes, the rate-3 divider
 derivation and `ChannelWriter` — and they had drifted.
 
-- **`DriverState`**: `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
+- **`DriverState`** (a `core.smps.TrackState`): `tl` / `att`, `hard_panned`, `transpose` (header pitch offset + every `smpsChangeTransposition`), `detune` (`smpsDetune`), `voice`, `envelope`, `noise_form`, `fill`, `modulation`; its own: `instrument`, `psg_entry` / `psg_entries` / `psg_label`. Advanced one coordination flag at a time by **`apply(effect)`**; queried by `range_key`, `fm_ranges` / `fm_range_entry`, `level_db`, `in_noise_mode`, `is_silent`. Built for a parsed channel with **`DriverState.for_channel(channel, config, instrument)`**, which applies the header transpose, volume and `smpsHeaderPSG` voice.
 - **`resolve_note(st, source_semitone, chan_transpose, source)` → `ResolvedNote`**: the one place that says which MOD instrument a pitched note is routed to and which MOD note it triggers (`instrument`, `index`, `raw_index` before clamping, `path` = `fm_root` / `psg_root` / `psg_fixed` / `transpose`, the `entry` that routed it, `chip` pitch, `detune`).
 - **`walk_channel(channel, config, chan_cfg, st=None)`**: yields `(event, state, resolved)` for every event, the state advanced past each flag before it is yielded and every pitched note resolved. With a merge plan on the config (`convert.py --merged`) the resolved instrument is the composite where one plays. **`enabled_channels(song, config, kinds)`** yields `(chan_cfg, channel)` for the per-kind loops. The conversion, its level and sustain pre-passes, the noise / rate-3 derivations, `resolve_synth_roots` (synth_roots.py) and `core/merge/` all walk this way.
 - **`psg_range_entry(entries, key)`**: the entry of a multi-range `psg_voice_map` list covering a note.

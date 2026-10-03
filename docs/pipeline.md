@@ -254,7 +254,7 @@ and played at half tempo.  Mid-song `smpsSetTempoMod` changes are placed the sam
 
 A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) is extended by
 replaying the loop body until the song's last tick.  The body is the events **after the jump
-label** — `SmpsChannel.label_event_index`, recorded by the parser — not "events at or after the
+label** — `SmpsChannel.loop_event_index`, resolved by the parser — not "events at or after the
 label's tick": a coordination flag written just before the label shares its tick but is not in
 the loop.  Spring Yard PSG3 has `smpsPSGAlterVol $FF` immediately before `Mus85_SYZ_Jump03:`; the
 tick-based selection replayed it every repetition and the hi-hat crept from attenuation 5 to 0 in

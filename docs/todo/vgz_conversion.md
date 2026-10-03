@@ -101,8 +101,8 @@ Each item produces part of the `SmpsSong`.  Accept each by IR comparison against
 **Accept:** inferred `smpsHeaderTempo` equals the asm's for all 19; every note's tick equals the asm's.
 
 ### [ ] 1.2 Song loop
-VGM loop offset → loop sample → loop tick; `label_tick_pos` + `smpsJump` on every channel, and
-`label_event_index` at the first event at or after that tick.  No loop offset → no jump (Title).
+VGM loop offset → loop sample → loop tick; `has_jump`, `loop_tick` and `loop_event_index` (the first
+event at or after that tick) on every channel - no labels needed.  No loop offset → no jump (Title).
 Data after one loop pass (some rippers log a fade or second pass) is cut at loop start + body.
 **Accept:** `loop_target_tick()` equals the asm's; the MOD's `Bxx` lands on the same row.
 

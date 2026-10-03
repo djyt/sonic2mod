@@ -100,12 +100,13 @@ class SmpsSongHeader:
 class SmpsChannel:
     header: SmpsChannelHeader
     events: list = field(default_factory=list)  # list of SmpsEvent
-    has_jump: bool = False
-    jump_target_label: str = ""
-    # label -> index into `events` of the first event AFTER that label in this channel's stream.
-    # A tick alone cannot say whether a zero-duration event at the label's tick (a coordination
-    # flag written just before the label) is inside the loop that jumps to it.
-    label_event_index: dict = field(default_factory=dict)
+    has_jump: bool = False        # the channel ends in a jump back: a loop
+    loop_tick: int | None = None  # the tick the jump returns to
+    # Index into `events` of the loop's first event.  A tick alone cannot say whether a
+    # zero-duration event at the loop's tick (a coordination flag written just before the
+    # target) is inside the loop.  None: the loop is taken from loop_tick on.
+    loop_event_index: int | None = None
+    loop_label: str = ""          # the assembly's name for the target, for display; a lift has none
 
 
 # A YM2612 channel's operator count: every smpsVc* macro but the algorithm one states four bytes
@@ -133,7 +134,6 @@ class SmpsSong:
     header: SmpsSongHeader
     channels: list = field(default_factory=list)  # list of SmpsChannel
     voices: list = field(default_factory=list)     # list of SmpsVoice
-    label_tick_pos: dict = field(default_factory=dict)  # label_name -> cumulative tick position
 
     def end_tick(self) -> int:
         """The tick the last event of any channel ends at (a note's duration included)."""
@@ -143,9 +143,8 @@ class SmpsSong:
     def loop_target_tick(self) -> int | None:
         """The tick the song loops back to: the latest smpsJump target over the channels;
         None when no channel jumps."""
-        ticks = [self.label_tick_pos.get(ch.jump_target_label) for ch in self.channels
-                 if ch.has_jump and ch.jump_target_label]
-        return max((t for t in ticks if t is not None), default=None)
+        return max((ch.loop_tick for ch in self.channels if ch.has_jump and ch.loop_tick is not None),
+                   default=None)
 
 
 # --- effect parameters ---

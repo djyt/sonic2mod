@@ -401,7 +401,7 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
   with no config in hand
 - Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
 - Loop unrolling uses `stop_line` parameter to prevent re-entry into `smpsLoop`
-- `extend_looping_channels` replays the events AFTER the jump label (`SmpsChannel.label_event_index`),
+- `extend_looping_channels` replays the events AFTER the jump label (`SmpsChannel.loop_event_index`; labels are the parser's own),
   not every event at the label's tick — a flag written just before the label is not part of the loop
 - YAML config requires `pyyaml` (`pip install pyyaml`); the loader (`core.config.load_yaml`) refuses a key given twice in one mapping — PyYAML would keep the last silently, and a `merge_patterns` group written without its leading `- ` merged into the group above (its `primary:` and `mod_channel:` replaced that group's: the chords came out as an FM5 mix on the arp column)
 

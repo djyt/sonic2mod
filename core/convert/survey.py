@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from ..audio import db_to_gain
 from ..config import ConversionConfig, find_settings, load_settings
 from ..merge import NoteOn, PairStats, channel_notes, pair_channels
-from ..plan import resolve_synth_roots
+from ..plan import prepare_instruments
 from .smps2mod import SmpsToModConverter
 
 
@@ -58,7 +58,7 @@ def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
     song = cfg.read_song()
     synth, psg = load_settings(find_settings(config_path))
     conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
-    resolve_synth_roots(song, cfg)
+    prepare_instruments(song, cfg, synth)     # synth roots and detune variants, as the converter
     conv.prepare_song()                      # a replayed loop body is as many notes as it plays
     baselines = conv.level_baselines()
 

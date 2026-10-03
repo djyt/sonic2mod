@@ -41,37 +41,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.audio import pitch_name
 from core.config import ConversionConfig
 from core.mod import PERIOD_TABLE, ModImage, edx_delay, read_mod, timed_pass
-from core.vgm import PSG_TONE_CHANNELS, VGM_SAMPLE_RATE, ChangeKind, ChipState, VgmLog, read_vgm
-
-Segment = tuple[float, float | None]          # (start s, Hz or None when silent)
-
-
-def chip_timeline(log: VgmLog) -> tuple[dict[str, list[Segment]], float]:
-    """Per-channel list of (time, sounding Hz | None) change points, and the recording length."""
-    state = ChipState.for_log(log)
-    out: dict[str, list[Segment]] = defaultdict(list)
-    psg_last: list[float | None] = [None] * PSG_TONE_CHANNELS
-
-    for change in state.replay(log):
-        t, ch = change.sample / VGM_SAMPLE_RATE, change.channel
-
-        # FM: a point at every key on/off and every frequency written
-        if change.kind in (ChangeKind.FM_KEY, ChangeKind.FM_FREQUENCY):
-            hz = state.fm_hz(ch)
-            out[f"FM{ch + 1}"].append((t, hz if state.fm_slots(ch) and hz > 0 else None))
-            continue
-        if change.kind not in (ChangeKind.PSG_TONE, ChangeKind.PSG_VOLUME) or ch >= PSG_TONE_CHANNELS:
-            continue
-
-        # PSG tone: a segment ends when the pitch or the audibility changes - not on every volume write,
-        # or an envelope that steps every frame (Labyrinth Zone's fTone_09) would chop 120 ms notes
-        # into 17 ms slivers that fall under --min-ms and never get judged.
-        f = state.psg_hz(ch) if state.psg_period(ch) > 0 and state.psg_audible(ch) else None
-        if f == psg_last[ch]:
-            continue
-        psg_last[ch] = f
-        out[f"PSG{ch + 1}"].append((t, f))
-    return out, log.seconds
+from core.vgm import Segment, pitch_segments, read_vgm
 
 
 def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
@@ -380,7 +350,7 @@ def main() -> None:
     cfg = ConversionConfig.from_yaml(args.config)
     prepare_config(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
-    chip, vgm_end = chip_timeline(read_vgm(args.vgz))
+    chip, vgm_end = pitch_segments(read_vgm(args.vgz))
     mod, mod_end = mod_timeline(read_mod(mod_path), cfg)
     chan_map = {c.source: c.mod_channel for c in cfg.channels}
     if args.offset is None:

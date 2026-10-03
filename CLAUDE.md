@@ -60,6 +60,7 @@ sonic2mod/
       reader.py      #     read_vgm → VgmLog: header, timestamped writes (0x8n = a 0x2A write), PCM bank, loop, GD3
       chipstate.py   #     ChipState.replay: YM2612 + SN76489 registers write by write → Change (key, freq, PSG, DAC)
       frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
+      notes.py       #     note_starts (key-on / tie / legato / PSG audible rules, NoteTracker), pitch_segments
       lift.py        #     lift_song(log, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
     smps/            #   The source: songs and the driver that plays them

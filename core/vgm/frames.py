@@ -96,6 +96,7 @@ class FrameLog:
     origin: int                     # sample where frame 0's window opens (<= 0)
     phase: int                      # where a burst starts within a frame's 735 samples
     loop_sample: int | None         # where the log loops back to
+    pcm: bytes = b""                # the log's PCM bank: what DacFrame.seeks index
 
     def frame_of(self, sample: int) -> int:
         return (sample - self.origin) // self.frame_samples
@@ -117,7 +118,7 @@ def frame_log(log: VgmLog, state: ChipState | None = None) -> FrameLog:
     origin = -((frame_samples - lead % frame_samples) % frame_samples)
 
     builder = _FrameBuilder(state, origin, frame_samples)
-    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample)
+    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm)
 
 
 def _is_dac_byte(w: VgmWrite) -> bool:
@@ -172,6 +173,11 @@ class _FrameBuilder:
             index = (w.sample - self._origin) // self._frame_samples
             while self._index < index:
                 yield self._close()
+
+            # The DAC's byte stream, most of a log's writes, is only counted: no state reads 0x2A
+            if w.reg == _DAC_REG and w.port == 0 and w.op is VgmOp.FM:
+                self._dac_write(w.sample)
+                continue
             change = self._state.apply(w, writes[i + 1] if i + 1 < len(writes) else None)
             if change is not None:
                 self._record(change)
@@ -196,12 +202,13 @@ class _FrameBuilder:
             self._seeks.append(change.value)
             self._since_seek = 0
             self._last_dac = None
-        elif kind is ChangeKind.DAC_WRITE:
-            self._dac_writes += 1
-            self._since_seek += 1
-            if self._last_dac is not None:
-                self._gaps[change.sample - self._last_dac] += 1
-            self._last_dac = change.sample
+
+    def _dac_write(self, sample: int) -> None:
+        self._dac_writes += 1
+        self._since_seek += 1
+        if self._last_dac is not None:
+            self._gaps[sample - self._last_dac] += 1
+        self._last_dac = sample
 
     def _close(self) -> Frame:
         s = self._state

@@ -5,6 +5,7 @@
     song_prep.py      the song as the driver plays it (tempo-divider re-timing, short loops replayed)
     driver_tables.py  the driver's frequency tables, note indices, envelopes, operator order
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
+    track.py          TrackState: one track's driver state as its coordination flags leave it
 """
 
 from .driver_tables import (
@@ -54,6 +55,7 @@ from .song import (
     pan_side,
 )
 from .song_prep import apply_global_tempo_div, extend_looping_channels
+from .track import TrackState
 
 __all__ = [
     "DEFAULT_DRIVER",
@@ -78,6 +80,7 @@ __all__ = [
     "SmpsSong",
     "SmpsSongHeader",
     "SmpsVoice",
+    "TrackState",
     "VoiceField",
     "apply_global_tempo_div",
     "chip_pitch",

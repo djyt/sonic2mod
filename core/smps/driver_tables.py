@@ -11,15 +11,18 @@ Line references are to `reference/smps_drivers/sonic_1/s1.sounddriver.asm`.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from enum import StrEnum
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, FM_SAMPLE_RATE, MD_PSG_CLOCK, PSG_SAMPLE_RATE
 
 
 class SmpsDriver(StrEnum):
-    """The SMPS variants these tables transcribe: a config's `driver:`."""
+    """The SMPS variants a song can come from: a config's `driver:`.  These tables are Sonic 1's;
+    a ROM read with another variant (core/rom/drivers.py) shares them where noted."""
 
     SONIC1 = "sonic1"
+    TYPE1A = "smps68k_type1a"      # SMPS 68k Type 1a: Michael Jackson's Moonwalker
 
 
 DEFAULT_DRIVER = SmpsDriver.SONIC1
@@ -234,6 +237,34 @@ PSG_ENVELOPES_BY_NAME: dict[str, tuple[int, ...]] = {
 }
 
 
+@dataclass(frozen=True)
+class PsgEnvelope:
+    """A PSG volume envelope: one attenuation step a frame from the note's start, then the last
+    step held (`loop_to` None: Sonic 1's $80, Type 1a's $83) or the steps from `loop_to` played
+    again and again (Type 1a's $80 restart, $85 nn jump)."""
+
+    steps: tuple[int, ...]
+    loop_to: int | None = None
+
+    @property
+    def loops(self) -> bool:
+        return self.loop_to is not None
+
+    def frames(self, n: int) -> list[int]:
+        """The steps the first `n` frames play.  A held envelope gives just its steps: whoever
+        plays them holds the last."""
+        if self.loop_to is None:
+            return list(self.steps)
+        out, body = list(self.steps), self.steps[self.loop_to:]
+        while len(out) < n:
+            out.extend(body)
+        return out[:max(n, len(self.steps))]
+
+
+# A song's envelopes by smpsPSGvoice name; Sonic 1's for every asm song and VGM lift
+SONIC1_ENVELOPES: dict[str, PsgEnvelope] = {name: PsgEnvelope(steps) for name, steps in PSG_ENVELOPES_BY_NAME.items()}
+
+
 # ---------------------------------------------------------------------------
 # FM register layout
 # ---------------------------------------------------------------------------
@@ -307,14 +338,14 @@ assert set(CARRIER_OFFSETS_BY_ALG[5]) == {0x04, 0x08, 0x0C}
 assert len(CARRIER_OFFSETS_BY_ALG[7]) == 4
 
 
-def noise_envelope_frames(envelope: list[int] | None, base_volume: int = 0) -> int | None:
+def noise_envelope_frames(envelope: PsgEnvelope | None, base_volume: int = 0) -> int | None:
     """Frames a noise note sounds for: its envelope, then the ramp to attenuation 15 the
-    renderer adds so the sample ends in silence (sn76489.sample_generator).  None = no
-    envelope (the note holds as long as it is keyed)."""
-    if not envelope:
+    renderer adds so the sample ends in silence (sn76489.sample_generator).  None = no envelope,
+    or one that loops: the note sounds as long as it is keyed."""
+    if envelope is None or not envelope.steps or envelope.loops:
         return None
-    held_att = min(15, base_volume + envelope[-1])
-    return len(envelope) + max(0, 15 - held_att) + 1
+    held_att = min(15, base_volume + envelope.steps[-1])
+    return len(envelope.steps) + max(0, 15 - held_att) + 1
 
 
 def chip_pitch(source_semitone: int, transpose: int, is_psg: bool) -> int:

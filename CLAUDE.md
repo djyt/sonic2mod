@@ -70,9 +70,12 @@ sonic2mod/
                      #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
     source/          #   read_song(path): .asm → SmpsParser, ROM + rom_song → read_rom_song, .vgm / .vgz → lift_song;
                      #   ConversionConfig.read_song() calls it
-    rom/             #   A ROM's SMPS bytecode (docs/todo/binary_import.md): locate.py the driver's indexes, header.py,
+    rom/             #   A ROM's SMPS bytecode (docs/todo/binary_import.md): drivers.py each SMPS 68k variant's flag table
+                     #   (sonic1, smps68k_type1a = Moonwalker), detect.py (SHA-1 pin, else the one that decodes every song),
+                     #   locate.py the Go_ block by its tables' shape → indexes, header.py,
                      #   tracks.py bytes → SmpsCode, voices.py, song.py read_rom_song / read_rom_code, dac.py the
-                     #   Z80 driver's DPCM samples (kosinski.py), fixes.py FixMusicAndSFXDataBugs as byte edits for
+                     #   Z80 driver's DPCM samples per driver (kosinski.py), envelopes.py the PSG envelopes (PsgEnvelope:
+                     #   SmpsSong.psg_envelopes, read by the PSG generator), fixes.py FixMusicAndSFXDataBugs as byte edits for
                      #   rev01 only (by SHA-1; applied by default, like the asm's).  Sonic 1's driver only
     chips/           #   The two sound chips, no driver: fm.py (YM2612 clock, carriers, TL 0.75 dB/step, pan law,
                      #   FNUM -> Hz), psg.py (SN76489 clock, attenuation 2 dB/step, period -> Hz).  smps/ and vgm/ build on it

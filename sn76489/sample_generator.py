@@ -18,9 +18,10 @@ Usage (smoke test)::
 from __future__ import annotations
 
 import functools
+import math
 import sys
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 _HERE = Path(__file__).parent
@@ -42,7 +43,7 @@ from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettin
 from core.mod import ModNote, max_sustain_secs
 from core.plan import PsgInstrument, psg_catalogue
 from core.render_cache import RenderCache, code_salt
-from core.smps import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
+from core.smps import SONIC1_ENVELOPES, PsgEnvelope, noise_envelope_frames
 from sn76489.build import get_lib_path
 from sn76489.renderer import (
     note_to_psg_n,
@@ -75,23 +76,30 @@ _TONE = "tone"
 _WHITE_NOISE, _PERIODIC_NOISE = "white_noise", "periodic_noise"
 
 
-def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[int] | None:
-    """Return the entry's envelope as a list, or None for constant volume.
+def _resolve_envelope(entry: PsgInstrumentEntry, tables: Mapping[str, PsgEnvelope],
+                      verbose: bool = False) -> PsgEnvelope | None:
+    """The entry's envelope, or None for constant volume.
 
-    A name (``fTone_01`` … ``fTone_09``) is the driver's table from
-    core.smps.driver_tables.PSG_ENVELOPES_BY_NAME; an inline list is used as written.
+    A name (``fTone_01`` …) is the song's driver's envelope (SmpsSong.psg_envelopes: Sonic 1's
+    for an asm song, a ROM's own); an inline list is held at its last step.
     """
     e = entry.envelope
     if e is None:
         return None
     if isinstance(e, str):
-        table = PSG_ENVELOPES_BY_NAME.get(e)
-        if table is None:
-            if verbose:
-                print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
-            return None
-        return list(table)
-    return list(e)  # already a list
+        table = tables.get(e)
+        if table is None and verbose:
+            print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
+        return table
+    return PsgEnvelope(tuple(e))
+
+
+def _envelope_frames(envelope: PsgEnvelope | None, secs: float, fps: float) -> list[int] | None:
+    """The steps a render of `secs` plays (a looping envelope unrolled; a held one as written,
+    the renderer holding its last step)."""
+    if envelope is None:
+        return None
+    return envelope.frames(math.ceil(secs * fps) + 1)
 
 
 def _check_warnings(caught, inst_num, verbose: bool = False):
@@ -105,8 +113,10 @@ class _PsgRenderer:
     whose envelope holds cut at a sustain loop (with loops), put in `loops_out`.  Noise never loops."""
 
     def __init__(self, synth: PsgSynthesisSettings, fps: float, cache: RenderCache, verbose: bool,
-                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None):
+                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None,
+                 envelopes: Mapping[str, PsgEnvelope]):
         self._synth = synth
+        self._envelopes = envelopes
         self._fps = fps
         self._cache = cache
         self._verbose = verbose
@@ -124,8 +134,8 @@ class _PsgRenderer:
         # A tone rendered synth_shift semitones above the pitch `root` sounds (resolve_synth_roots)
         # gets a rate raised by the same ratio, so MOD note root still sounds that pitch.
         target_rate = spec.target_rate(self._synth.amiga_clock)
-        envelope = _resolve_envelope(entry, verbose=self._verbose)
-        env_info = f" envelope={entry.envelope}({len(envelope)}fr)" if envelope else ""
+        envelope = _resolve_envelope(entry, self._envelopes, verbose=self._verbose)
+        env_info = f" envelope={entry.envelope}({len(envelope.steps)}fr)" if envelope else ""
 
         entry_type = entry.type.lower()
         if entry_type == _TONE:
@@ -152,7 +162,7 @@ class _PsgRenderer:
             print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={peak(mono):.0f}")
         return mono, rate
 
-    def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: list[int] | None,
+    def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
               env_info: str) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
         n_val = note_to_psg_n(note, synth.clock_rate)
@@ -186,7 +196,7 @@ class _PsgRenderer:
             return self._tone_render(entry, note, target_rate, envelope, sustain)
         return mono, rate
 
-    def _tone_render(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: list[int] | None,
+    def _tone_render(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
                      secs: float) -> tuple[Sequence[float], int]:
         synth = self._synth
         return self._render(
@@ -196,7 +206,7 @@ class _PsgRenderer:
             release_secs=synth.release_padding,
             clock_rate=synth.clock_rate,
             target_rate=target_rate,
-            envelope=envelope,
+            envelope=_envelope_frames(envelope, secs, self._fps),
             base_volume=entry.base_volume,
             fps=self._fps,
             oversample=synth.psg_oversample,
@@ -219,7 +229,7 @@ class _PsgRenderer:
             return None
         return loop
 
-    def _noise(self, entry: PsgInstrumentEntry, note: int, white: bool, target_rate: int, envelope: list[int] | None,
+    def _noise(self, entry: PsgInstrumentEntry, note: int, white: bool, target_rate: int, envelope: PsgEnvelope | None,
                env_info: str) -> tuple[Sequence[float], int]:
         # target_rate = amiga_clock / PERIOD_TABLE[root] is both the synthesis rate and the
         # MOD playback rate when triggered at root. When triggered at other notes (via low/high
@@ -248,7 +258,7 @@ class _PsgRenderer:
             release_secs=synth.release_padding,
             clock_rate=synth.clock_rate,
             target_rate=target_rate,
-            envelope=envelope,
+            envelope=_envelope_frames(envelope, float(sustain), self._fps),
             base_volume=entry.base_volume,
             fps=self._fps,
             tone2_n=tone2_n,
@@ -289,6 +299,7 @@ def generate_psg_samples(
     verbose: bool = False,
     rate3_dividers: dict | None = None,
     noise_envelopes: dict | None = None,
+    psg_envelopes: Mapping[str, PsgEnvelope] | None = None,
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
     raw_out: dict[int, tuple] | None = None,
@@ -303,6 +314,7 @@ def generate_psg_samples(
         noise_envelopes: {instrument: envelope label} the converter derived for the noise
                          instruments (derive_noise_envelopes) — a psg_map
                          entry's own instrument and each of its `envelopes:` variants.
+        psg_envelopes: the song's envelopes by name (SmpsSong.psg_envelopes); None: Sonic 1's.
         loops:     cut each tone whose envelope holds at a sustain loop (core.audio.loops), reported
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.
         cache_out: filled with {"hits": n, "misses": n} of the render cache
@@ -320,7 +332,8 @@ def generate_psg_samples(
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
     catalogue = psg_catalogue(config, noise_envelopes or {})
     cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
-    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out)
+    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out,
+                            psg_envelopes if psg_envelopes is not None else SONIC1_ENVELOPES)
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for spec in catalogue.values():
         rendered = renderer.render(spec)

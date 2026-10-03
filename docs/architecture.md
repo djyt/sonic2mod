@@ -309,12 +309,14 @@ stream themselves.
 ### core/rom/
 
 A Mega Drive ROM's SMPS bytecode: the score itself, beside `vgm/` (docs/todo/binary_import.md).
-Sonic 1's driver (SMPS 68k Type 1b) only, so far.
+SMPS 68k drivers: Sonic 1 (Type 1b) and Type 1a (Moonwalker; songs decode, conversion pending).
 
 ```
 image.py     RomImage: the header (title, serial, sha1), big-endian reads by address
-locate.py    locate_sounds: FMFrequencies by its bytes, the PSG1 envelope -> PSG_Index -> the Go_ block
-             -> MusicIndex ($81...), SoundIndex ($A0...), SpecSoundIndex ($D0)
+drivers.py   RomDriver: each variant's flag table (FlagSpec: effect / control / drop / refuse, operands)
+detect.py    detect_driver: pinned by SHA-1, else the one driver every song decodes with
+locate.py    locate_sounds: the FM octave, then the Go_ block by its tables' shape (music / SFX headers,
+             envelopes) -> MusicIndex ($81...), SoundIndex ($A0...), SpecSoundIndex ($D0)
 header.py    music / SFX headers -> SmpsSongHeader; pointers relative to the header (SonicDriverVer 1)
 tracks.py    decode_tracks: track bytes -> SmpsCode, following the code from each start (fall-through,
              jump, loop and call targets), laid out in address order with a label at every target.
@@ -326,9 +328,10 @@ fixes.py     data_fixes: FixMusicAndSFXDataBugs as byte edits for the one ROM ea
              each checked against the bytes it replaces; same length laid over the image, other
              lengths spliced by the decoder (Credits' deletion).  fix_data_bugs=False: as shipped
 kosinski.py  Kosinski decompression (from aonic/tools/kos_decom.py, KENS)
-dac.py       dac_samples: the Z80 driver (found through the 68k's lea DACDriver / lea z80_ram) decompressed,
-             its DPCM samples decoded (signed 8-bit, = samples/*.raw), rates from the play loop's cycles,
-             the timpani's $88-$8B pitches from DAC_sample_rate
+envelopes.py read_envelopes: PSG_Index -> PsgEnvelope by name (each driver's hold / restart / jump bytes)
+dac.py       dac_samples per driver: Sonic 1's Kosinski Z80 blob, Moonwalker's copied one; DPCM decoded
+             (signed 8-bit; Sonic 1's = samples/*.raw), rates from the play loop (Type 1a's fitted to the
+             rips), the 68k's pitch remaps as pitched copies (Sonic 1 $88-$8B, Moonwalker $88-$97)
 ```
 
 All 19 songs and 49 SFX of `sonic_rev01.bin` read as their asm event for event, with the data fixes

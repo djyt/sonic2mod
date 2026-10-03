@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
-from .driver_tables import SMPS_OP_TO_REG_OFFSET
+from .driver_tables import SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -191,6 +191,9 @@ class SmpsSong:
     header: SmpsSongHeader
     channels: list = field(default_factory=list)  # list of SmpsChannel
     voices: list = field(default_factory=list)     # list of SmpsVoice
+    # The PSG envelopes smpsPSGvoice names (fTone_01 ...): the driver's own - Sonic 1's for an asm
+    # song or a VGM lift, a ROM's read from its PSG_Index
+    psg_envelopes: dict[str, PsgEnvelope] = field(default_factory=lambda: dict(SONIC1_ENVELOPES))
 
     def end_tick(self) -> int:
         """The tick the last event of any channel ends at (a note's duration included)."""

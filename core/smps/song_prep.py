@@ -71,26 +71,23 @@ def extend_looping_channels(song: SmpsSong) -> list[dict]:
     Example: PSG3 in GHZ — loop body = {NOTE nMaxPSG dur=8 at tick=48}, loop_span=8.
     Without extension: 4 events / 56 ticks. After: ~1200 events / full song.
     """
-    label_tick_pos = song.label_tick_pos
     global_last_tick = song.end_tick()
     infos: list[dict] = []
 
     for ch in song.channels:
-        if not ch.has_jump or not ch.jump_target_label or not ch.events:
+        loop_start_tick = ch.loop_tick
+        if not ch.has_jump or loop_start_tick is None or not ch.events:
             continue
         ch_last = max(ev.tick_position + (ev.note.duration if ev.note else 0) for ev in ch.events)
         if ch_last >= global_last_tick:
             continue  # Already covers full song; skip
 
-        loop_start_tick = label_tick_pos.get(ch.jump_target_label)
-        if loop_start_tick is None:
-            continue
 
         # Loop body = the events after the jump label.  Selecting by tick alone would also
         # replay a coordination flag written just BEFORE the label at the same tick on every
         # repetition (SYZ PSG3: `smpsPSGAlterVol $FF` / `Jump03:` — the hi-hat crept from
         # attenuation 5 to 0 in five loops; on hardware it stays at 5).
-        body_index = ch.label_event_index.get(ch.jump_target_label)
+        body_index = ch.loop_event_index
         if body_index is not None:
             loop_body = ch.events[body_index:]
         else:

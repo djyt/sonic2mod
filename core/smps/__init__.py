@@ -58,6 +58,7 @@ from .parser import SmpsParser
 from .song import (
     CoordFlag,
     SmpsChannel,
+    SmpsChannelHeader,
     SmpsEvent,
     SmpsNote,
     SmpsSong,
@@ -93,6 +94,7 @@ __all__ = [
     "TL_STEP_DB",
     "CoordFlag",
     "SmpsChannel",
+    "SmpsChannelHeader",
     "SmpsDriver",
     "SmpsEvent",
     "SmpsNote",

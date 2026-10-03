@@ -107,6 +107,7 @@ sonic2mod/
       sustain_plan.py #    SustainPlanner: sustain_duration auto per instrument, held-back sustain_short warnings
       vibrato.py     #     smpsModSet → 4xy: VibratoSpeed (cycle → x), vibrato_depth (swing → y per player)
       channel_writer.py #  ChannelWriter: one channel into MOD cells (note-ons, cuts, slides, EDx/3FF/9xx/Cxx/4xy)
+      survey.py      #     SurveyContext: the song prepared as --merged prepares it (merge_survey / fold_csv)
       layout.py      #     ModLayout: leading rests' C00, tempo Fxx, the loop's Bxx/Dxx
     ui/              #   What the CLIs print
       cli.py         #     Shared Rich chrome for the three CLIs (branding, label column, UTF-8 stdout)

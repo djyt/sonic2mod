@@ -50,8 +50,8 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, format_patterns
+from core.convert import SurveyContext, survey_context
 from core.merge import PairStats
-from tools.merge_survey import SurveyContext, survey_context
 
 MARK_BEGIN = "# >>> merge_patterns - written by tools/fold_csv.py from {csv}; the config is the source of truth: edit it here, or re-run --write to replace the block from the table"
 MARK_END = "# <<< merge_patterns"

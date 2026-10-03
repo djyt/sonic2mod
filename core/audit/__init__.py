@@ -9,8 +9,23 @@
 
 from .levels import LEVEL_MAX_ERR, LEVEL_MAX_SPREAD, instrument_levels, mod_note_events, suggest_volumes, write_volumes
 from .onsets import OnsetMatch, audio_onsets, keyon_onsets, onset_match
-from .pitch import audit_pitches, instrument_verdicts, mod_pitch_timeline, note_start_offset, prepare_audit
-from .render import SR, VGM_CHANNELS, find_vgmplay, group_masks, render_mod_channels, render_vgm_channels
+from .pitch import (
+    audit_pitches,
+    audit_settings,
+    instrument_verdicts,
+    mod_pitch_timeline,
+    note_start_offset,
+    prepare_audit,
+)
+from .render import (
+    SR,
+    VGM_CHANNELS,
+    find_vgmplay,
+    group_masks,
+    reference_render_key,
+    render_mod_channels,
+    render_vgm_channels,
+)
 from .signal import (
     VIB_MIN_NOTE,
     band_profile,
@@ -28,8 +43,8 @@ from .signal import (
 
 __all__ = [
     "LEVEL_MAX_ERR", "LEVEL_MAX_SPREAD", "SR", "VGM_CHANNELS", "VIB_MIN_NOTE", "OnsetMatch", "audio_onsets",
-    "audit_pitches", "band_profile", "db", "envelope_offset", "find_vgmplay", "group_masks", "harmonic_cents",
+    "audit_pitches", "audit_settings", "band_profile", "db", "envelope_offset", "find_vgmplay", "group_masks", "harmonic_cents",
     "instrument_levels", "instrument_verdicts", "keyon_onsets", "load_wav", "mod_note_events", "mod_pitch_timeline",
-    "note_start_offset", "onset_match", "onsets", "pitch_track", "prepare_audit", "render_mod_channels",
+    "note_start_offset", "onset_match", "onsets", "pitch_track", "prepare_audit", "reference_render_key", "render_mod_channels",
     "render_vgm_channels", "rms", "seg_at", "spectrum", "suggest_volumes", "vibrato_estimate", "write_volumes"
 ]

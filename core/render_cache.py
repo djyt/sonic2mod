@@ -5,6 +5,7 @@ under a hash of those inputs, beside the others the same code made, and a later 
 asks for the same render reads it back instead of running the emulator again:
 
     <dir>/<chip>/<salt>/<key[:2]>/<key>.bin      zlib(rate, typecode, samples)
+    <dir>/<chip>/<salt>/<key[:2]>/<key><suffix>  a whole file (get_file / put_file: VGMPlay's WAVs)
         salt  a hash of the emulator DLL and the Python a render runs through (code_salt)
         key   a hash of the render's inputs (RenderCache.key)
 
@@ -71,9 +72,9 @@ class RenderCache:
         """The key of a render's inputs: a tuple of ints, floats, strings and tuples of them."""
         return hashlib.sha256(repr(inputs).encode()).hexdigest()
 
-    def _path(self, key: str) -> Path:
+    def _path(self, key: str, suffix: str = ".bin") -> Path:
         assert self._dir is not None
-        return self._dir / key[:2] / f"{key}.bin"
+        return self._dir / key[:2] / f"{key}{suffix}"
 
     def get(self, key: str) -> tuple[array.array, int] | None:
         """(samples, rate) stored under `key`, or None."""
@@ -89,6 +90,32 @@ class RenderCache:
             return None
         self._count(hit=True)
         return samples, rate
+
+    def get_file(self, key: str, dest: Path, suffix: str) -> bool:
+        """Copy the file stored under `key` to `dest`; False when there is none."""
+        if self._dir is None:
+            return False
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self._path(key, suffix), dest)
+        except OSError:
+            self._count(hit=False)
+            return False
+        self._count(hit=True)
+        return True
+
+    def put_file(self, key: str, src: Path, suffix: str) -> None:
+        """Store a copy of `src` under `key`."""
+        if self._dir is None:
+            return
+        path = self._path(key, suffix)
+        tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, tmp)
+            os.replace(tmp, path)
+        except OSError:
+            tmp.unlink(missing_ok=True)
 
     def put(self, key: str, samples: Sequence, rate: int) -> None:
         """Store a render: an array as it is, a list as doubles ('d') or ints ('i') by its first value."""

@@ -107,5 +107,43 @@ class Off(unittest.TestCase):
         self.assertEqual((cache.enabled, cache.hits, cache.misses), (False, 0, 0))
 
 
+class Files(unittest.TestCase):
+    """Whole files (VGMPlay's reference WAVs) under a key."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_a_file_comes_back_byte_for_byte(self):
+        cache = RenderCache(self.dir / "cache", "vgmplay", "salt")
+        src, dest = self.dir / "a.wav", self.dir / "out" / "b.wav"
+        src.write_bytes(b"RIFF\x00\x01\x02")
+        key = cache.key(("vgz", "ini"))
+        self.assertFalse(cache.get_file(key, dest, ".wav"))
+        cache.put_file(key, src, ".wav")
+        self.assertTrue(cache.get_file(key, dest, ".wav"))
+        self.assertEqual(dest.read_bytes(), src.read_bytes())
+        self.assertEqual((cache.hits, cache.misses), (1, 1))
+
+    def test_off_never_hits(self):
+        cache = RenderCache(None, "vgmplay", "salt")
+        src = self.dir / "a.wav"
+        src.write_bytes(b"x")
+        cache.put_file("k", src, ".wav")
+        self.assertFalse(cache.get_file("k", self.dir / "b.wav", ".wav"))
+
+
+class ReferenceKey(unittest.TestCase):
+    def test_the_key_follows_the_log_and_the_ini(self):
+        from core.audit import reference_render_key
+        base = reference_render_key(b"vgz", "[General]\nMuteMask = 0x7E")
+        self.assertEqual(base, reference_render_key(b"vgz", "[General]\nMuteMask = 0x7E"))
+        self.assertNotEqual(base, reference_render_key(b"vgz2", "[General]\nMuteMask = 0x7E"))
+        self.assertNotEqual(base, reference_render_key(b"vgz", "[General]\nMuteMask = 0x7D"))
+
+
 if __name__ == "__main__":
     unittest.main()

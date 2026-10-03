@@ -3,10 +3,16 @@
 
 VGMPlay 0.51.x (the libvgm line, Core = NUKE) is found by find_vgmplay: --vgmplay DIR, then
 VGMPLAY_DIR, then reference/vgz/vgmplay/ (untracked).  Every render is 44 100 Hz stereo WAV.
+
+A reference render is a pure function of the log and the VGMPlay.ini it ran with (mute masks,
+core, rate), so with a cache directory (settings.yaml samples.render_cache) it is kept under a
+hash of the two, per hash of the VGMPlay binaries: a song's reference is rendered once.  The
+renders run at once, one VGMPlay per channel in a directory of its own.
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import shutil
@@ -15,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..mod import isolate_channel
+from ..render_cache import RenderCache, code_salt
 
 SR = 44100                  # every render's rate
 
@@ -30,6 +37,9 @@ VGM_CHANNELS = {
 }
 
 _VGMPLAY_EXES = ("VGMPlay64.exe", "VGMPlay.exe", "vgmplay")
+_VGMPLAY_BINARY_SUFFIXES = (".exe", ".dll")
+_CACHE_CHIP = "vgmplay"         # the render cache's directory for reference renders
+_WAV = ".wav"
 _VGMPLAY_DEFAULT = Path(__file__).resolve().parents[2] / "reference" / "vgz" / "vgmplay"
 
 
@@ -79,29 +89,59 @@ def group_masks(sources: list[str]) -> tuple[int, int]:
     return ym, sn
 
 
+def reference_render_key(vgz: bytes, ini: str) -> str:
+    """A reference render's cache key: the log and the VGMPlay.ini it runs with."""
+    return hashlib.sha256(vgz + b"\0" + ini.encode("utf-8")).hexdigest()
+
+
+def _vgmplay_binaries(vgmplay: Path) -> list[Path]:
+    return [f for f in vgmplay.iterdir() if f.suffix.lower() in _VGMPLAY_BINARY_SUFFIXES]
+
+
 def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path, core: str,
-                        masks: dict[str, tuple[int, int]] | None = None) -> None:
+                        masks: dict[str, tuple[int, int]] | None = None, cache_dir: str | Path | None = None) -> None:
+    """vgm_FULL.wav and vgm_<name>.wav in `outdir`, each from the cache where it holds one."""
     masks = masks or VGM_CHANNELS
     exe = next(e for e in _VGMPLAY_EXES if (vgmplay / e).exists())
     base_ini = (vgmplay / "VGMPlay.ini").read_text(encoding="utf-8", errors="replace")
+    log = vgz.read_bytes()
+    cache = RenderCache(cache_dir, _CACHE_CHIP, code_salt(_vgmplay_binaries(vgmplay)) if cache_dir else "")
     outdir.mkdir(parents=True, exist_ok=True)
-    for name in ["FULL", *names]:
+
+    def render(name: str) -> str:
         ym, sn = (0x00, 0x0) if name == "FULL" else masks[name]
+        ini = _patch_ini(base_ini, ym, sn, core)
+        key = reference_render_key(log, ini)
+        dest = outdir / f"vgm_{name}.wav"
+        if cache.get_file(key, dest, _WAV):
+            return f"  cached VGM {name}"
+
+        # Each VGMPlay in a directory of its own: it reads VGMPlay.ini and writes ref.wav beside it
         work = outdir / f"_vgm_{name}"
         work.mkdir(exist_ok=True)
-        for f in vgmplay.iterdir():
-            if f.suffix.lower() in (".exe", ".dll"):
-                shutil.copy(f, work / f.name)
-        (work / "VGMPlay.ini").write_text(_patch_ini(base_ini, ym, sn, core), encoding="utf-8")
+        for f in _vgmplay_binaries(vgmplay):
+            shutil.copy(f, work / f.name)
+        (work / "VGMPlay.ini").write_text(ini, encoding="utf-8")
         shutil.copy(vgz, work / "ref.vgz")
         subprocess.run([str(work / exe), "ref.vgz"], cwd=work, stdin=subprocess.DEVNULL,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600, check=False)
         wav = work / "ref.wav"
         if not wav.exists():
             raise SystemExit(f"ERROR: VGMPlay produced no WAV for {name} (check LogSound support)")
-        shutil.move(str(wav), str(outdir / f"vgm_{name}.wav"))
+        shutil.move(str(wav), str(dest))
         shutil.rmtree(work, ignore_errors=True)
-        print(f"  rendered VGM {name}")
+        cache.put_file(key, dest, _WAV)
+        return f"  rendered VGM {name}"
+
+    items = ["FULL", *names]
+    with ThreadPoolExecutor(max_workers=_workers(len(items))) as pool:
+        for line in pool.map(render, items):
+            print(line)
+
+
+def _workers(jobs: int) -> int:
+    """Renders at once: cores - 1, no more than there are."""
+    return max(1, min(jobs, (os.cpu_count() or 2) - 1))
 
 
 def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) -> None:
@@ -127,7 +167,7 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
 
     # One ffmpeg per channel; they are independent, so they run at once (cores - 1 of them).
     items = [("FULL", None), *channels.items()]
-    with ThreadPoolExecutor(max_workers=max(1, min(len(items), (os.cpu_count() or 2) - 1))) as pool:
+    with ThreadPoolExecutor(max_workers=_workers(len(items))) as pool:
         for name, err in pool.map(render, items):
             if err is not None:
                 raise SystemExit(f"ERROR: ffmpeg failed for MOD channel {name}:\n{err}")

@@ -6,8 +6,11 @@
     driver_tables.py  the driver's frequency tables, note indices, envelopes, operator order
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
     track.py          TrackState: one track's driver state as its coordination flags leave it
+    playback.py       played_song: what a song plays note by note, its spelling gone
+    compare.py        compare_songs: where two songs play differently, aspect by aspect
 """
 
+from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, compare_songs
 from .driver_tables import (
     DEFAULT_DRIVER,
     ENVELOPE_TERMINATOR,
@@ -41,10 +44,12 @@ from .names import (
     voice_field_from_macro,
 )
 from .parser import SmpsParser
+from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .song import (
     CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
+    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsSong,
@@ -58,6 +63,7 @@ from .song_prep import apply_global_tempo_div, extend_looping_channels
 from .track import TrackState
 
 __all__ = [
+    "ALL_ASPECTS",
     "DEFAULT_DRIVER",
     "ENVELOPE_TERMINATOR",
     "FM_FREQUENCIES",
@@ -70,20 +76,28 @@ __all__ = [
     "PSG_FREQUENCIES",
     "PSG_FREQUENCIES_EXTENDED",
     "SMPS_OP_TO_REG_OFFSET",
+    "Aspect",
+    "ChannelDiff",
     "CoordFlag",
+    "NoteDiff",
+    "PlayedNote",
+    "PlayedSong",
     "SmpsChannel",
     "SmpsChannelHeader",
     "SmpsDriver",
+    "SmpsEffect",
     "SmpsEvent",
     "SmpsNote",
     "SmpsParser",
     "SmpsSong",
     "SmpsSongHeader",
     "SmpsVoice",
+    "SongDiff",
     "TrackState",
     "VoiceField",
     "apply_global_tempo_div",
     "chip_pitch",
+    "compare_songs",
     "extend_looping_channels",
     "flag_from_macro",
     "flag_name",
@@ -93,6 +107,7 @@ __all__ = [
     "pan_side",
     "parse_smps_note",
     "parse_synth_note",
+    "played_song",
     "psg_index_semitone",
     "psg_note_index",
     "psg_tone2_divider",

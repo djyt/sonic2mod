@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from enum import IntEnum
+
 # The NTSC Mega Drive's YM2612 clock: settings.yaml fm_synthesis clock_rate, which every renderer
 # reads; this is the fallback, and what the Sonic 1 driver's tables were computed for
 MD_FM_CLOCK = 7_670_454
@@ -28,6 +30,22 @@ CARRIER_OFFSETS_BY_ALG: tuple[tuple[int, ...], ...] = (
 )
 _OPERATOR_NAME_BY_OFFSET = {0x00: "OP1", 0x04: "OP3", 0x08: "OP2", 0x0C: "OP4"}
 _ALGORITHM_MASK = 0x7
+
+
+class OperatorReg(IntEnum):
+    """An operator register's base (channel 0, OP1): + the operator's offset + the channel."""
+
+    DT_MUL = 0x30
+    TL = 0x40
+    KS_AR = 0x50
+    AM_D1R = 0x60
+    D2R = 0x70
+    D1L_RR = 0x80
+    SSG_EG = 0x90
+
+
+REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
+TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
 
 
 def fm_frequency_hz(fnum: int, block: int, clock: int) -> float:

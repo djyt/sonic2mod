@@ -39,8 +39,8 @@ from core.audio import (
 )
 from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
-from core.mod import PERIOD_TABLE, ModNote, max_sustain_secs
-from core.plan import psg_catalogue
+from core.mod import ModNote, max_sustain_secs
+from core.plan import PsgInstrument, psg_catalogue
 from core.render_cache import RenderCache, code_salt
 from core.smps import PSG_ENVELOPES_BY_NAME, noise_envelope_frames
 from sn76489.build import get_lib_path
@@ -94,12 +94,6 @@ def _resolve_envelope(entry: PsgInstrumentEntry, verbose: bool = False) -> list[
     return list(e)  # already a list
 
 
-def _synth_note(entry: PsgInstrumentEntry) -> int:
-    """The renderer's note index the entry is rendered at: synth_root's (an SMPS semitone, C0 = 0,
-    C1 = 12; renderer index = semitone - 12), else root's."""
-    return entry.synth_root - 12 if entry.synth_root is not None else entry.root.value
-
-
 def _check_warnings(caught, inst_num, verbose: bool = False):
     for w in caught:
         if verbose and issubclass(w.category, UserWarning) and "silence" in str(w.message):
@@ -120,24 +114,24 @@ class _PsgRenderer:
         self._loops = loops
         self._loops_out = loops_out
 
-    def render(self, entry: PsgInstrumentEntry) -> tuple[Sequence[float], int] | None:
-        """(mono, rate) of the entry, its silent tail trimmed; None where nothing is heard."""
+    def render(self, spec: PsgInstrument) -> tuple[Sequence[float], int] | None:
+        """(mono, rate) of the catalogue entry, its silent tail trimmed; None where nothing is heard."""
+        entry = spec.entry
         inst_num = entry.mod_instrument
 
         # target_rate: exact Hz the MOD will play back at (period = amiga_clock / rate).
         # Noise and tone both use this. For noise, this is the only pitch-relevant parameter.
         # A tone rendered synth_shift semitones above the pitch `root` sounds (resolve_synth_roots)
         # gets a rate raised by the same ratio, so MOD note root still sounds that pitch.
-        target_rate = round(self._synth.amiga_clock / PERIOD_TABLE[entry.root.value]
-                            * 2.0 ** (getattr(entry, "synth_shift", 0) / 12.0))
+        target_rate = spec.target_rate(self._synth.amiga_clock)
         envelope = _resolve_envelope(entry, verbose=self._verbose)
         env_info = f" envelope={entry.envelope}({len(envelope)}fr)" if envelope else ""
 
         entry_type = entry.type.lower()
         if entry_type == _TONE:
-            mono, rate = self._tone(entry, target_rate, envelope, env_info)
+            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info)
         elif entry_type in (_WHITE_NOISE, _PERIODIC_NOISE):
-            mono, rate = self._noise(entry, entry_type == _WHITE_NOISE, target_rate, envelope, env_info)
+            mono, rate = self._noise(entry, spec.synth_idx, entry_type == _WHITE_NOISE, target_rate, envelope, env_info)
         else:
             if self._verbose:
                 print(f"  Warning: unknown psg entry type '{entry.type}' for inst {inst_num} — skipping")
@@ -158,10 +152,9 @@ class _PsgRenderer:
             print(f"  Instrument {inst_num:2d}: {len(mono)} samples @ {rate} Hz  peak={peak(mono):.0f}")
         return mono, rate
 
-    def _tone(self, entry: PsgInstrumentEntry, target_rate: int, envelope: list[int] | None,
+    def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: list[int] | None,
               env_info: str) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
-        note = _synth_note(entry)          # synth_root overrides the synthesis pitch for tone entries only
         n_val = note_to_psg_n(note, synth.clock_rate)
         if self._verbose:
             freq_hz = 440.0 * (2.0 ** ((note - 45) / 12.0))
@@ -226,14 +219,14 @@ class _PsgRenderer:
             return None
         return loop
 
-    def _noise(self, entry: PsgInstrumentEntry, white: bool, target_rate: int, envelope: list[int] | None,
+    def _noise(self, entry: PsgInstrumentEntry, note: int, white: bool, target_rate: int, envelope: list[int] | None,
                env_info: str) -> tuple[Sequence[float], int]:
         # target_rate = amiga_clock / PERIOD_TABLE[root] is both the synthesis rate and the
         # MOD playback rate when triggered at root. When triggered at other notes (via low/high
         # range anchoring), the MOD plays back faster/slower, approximating the LFSR frequency
         # change per note. root choice affects synthesis quality and the pitch anchor.
         synth, inst_num = self._synth, entry.mod_instrument
-        tone2_n = self._tone2_n(entry) if entry.noise_rate == 3 else None
+        tone2_n = self._tone2_n(entry, note) if entry.noise_rate == 3 else None
 
         # Cap sustain to envelope length so the sample ends at the natural decay tail
         # rather than holding noise output for the full song-longest-note duration.
@@ -261,7 +254,7 @@ class _PsgRenderer:
             tone2_n=tone2_n,
         )
 
-    def _tone2_n(self, entry: PsgInstrumentEntry) -> int:
+    def _tone2_n(self, entry: PsgInstrumentEntry, note: int) -> int:
         """Rate 3 follows tone ch2: the divider that clocks the LFSR at the hardware's frequency
         (~220 Hz for A3, not the emulator's reset N=1, near sample_rate/2: wrong timbre)."""
         # Explicit divider from the config (e.g. tone2_n: 1 for nMaxPSG, which the
@@ -274,7 +267,7 @@ class _PsgRenderer:
         dividers = self._rate3_dividers
         if entry.synth_root is None and dividers and entry.mod_instrument in dividers:
             return dividers[entry.mod_instrument]
-        return note_to_psg_n(_synth_note(entry), self._synth.clock_rate)
+        return note_to_psg_n(note, self._synth.clock_rate)
 
     def _render(self, render, inst_num: int, **kwargs) -> tuple[Sequence[float], int]:
         """render(**kwargs) through the render cache, shelved and centred (before any loop is found in it)."""
@@ -330,7 +323,7 @@ def generate_psg_samples(
     renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out)
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for spec in catalogue.values():
-        rendered = renderer.render(spec.entry)
+        rendered = renderer.render(spec)
         if rendered is not None:
             raw_data[spec.entry.mod_instrument] = rendered
     if cache_out is not None and cache.enabled:

@@ -492,12 +492,12 @@ compare_lab_zone:
     tests/baselines/lab_zone_baseline.mod: bfe4e5ee0e8e
     tests/settings.yaml: 268a59366905
 compare_marble_zone:
-  commit: d8b4b4b
+  commit: a6916ae-dirty
   date: '2026-10-03'
   inputs:
     configs/03_marble_zone.yaml: c2244eeb278e
     reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
-    tests/baselines/marble_zone_baseline.mod: 398ac4af99f2
+    tests/baselines/marble_zone_baseline.mod: 30e4ccc7883a
     tests/settings.yaml: 268a59366905
 compare_robotnik:
   commit: d8b4b4b
@@ -660,12 +660,12 @@ pitch_lab_zone:
     tests/baselines/lab_zone_baseline.mod: bfe4e5ee0e8e
     tests/settings.yaml: 268a59366905
 pitch_marble_zone:
-  commit: d8b4b4b
+  commit: a6916ae-dirty
   date: '2026-10-03'
   inputs:
     configs/03_marble_zone.yaml: c2244eeb278e
     reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
-    tests/baselines/marble_zone_baseline.mod: 398ac4af99f2
+    tests/baselines/marble_zone_baseline.mod: 30e4ccc7883a
     tests/settings.yaml: 268a59366905
 pitch_robotnik:
   commit: d8b4b4b

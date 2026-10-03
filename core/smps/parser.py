@@ -70,8 +70,10 @@ class SmpsParser:
     def __init__(self):
         self.lines = []
         self.labels = {}           # label_name -> line_index
-        self.label_tick_pos = {}   # label_name -> tick position (computed during parsing)
-        self._label_events: dict[str, int] = {}   # the channel being parsed: label -> its first event
+        # The channel being parsed: where its own walk first reached each label (a jump back to one
+        # replays from there) - the tick, and the index of the first event after it
+        self._label_ticks: dict[str, int] = {}
+        self._label_events: dict[str, int] = {}
 
     def parse_file(self, filepath):
         """Parse an SMPS assembly file into a SmpsSong.
@@ -94,22 +96,26 @@ class SmpsParser:
         header = self._parse_header()
         channels = []
 
-        label_events: list[dict[str, int]] = []
         for ch_header in header.channels:
-            self._label_events = {}
+            self._label_ticks, self._label_events = {}, {}
             channel = self._parse_channel_data(ch_header, tempo_divider=header.tempo_divider)
             channels.append(channel)
-            label_events.append(self._label_events)
 
-        # Each loop as a tick and an event index, once every channel is parsed: a label's tick is
-        # the last one any channel's walk past it recorded
-        for channel, events in zip(channels, label_events, strict=True):
+            # The loop as a tick and an event index: where THIS channel reached its jump's target.
+            # Another channel's walk past the same label (code shared by fall-through or a jump)
+            # reaches it at its own tick - Marble Zone's PSG2 4 ticks after PSG1.
             if channel.has_jump and channel.loop_label:
-                channel.loop_tick = self.label_tick_pos.get(channel.loop_label)
-                channel.loop_event_index = events.get(channel.loop_label)
+                channel.loop_tick = self._label_ticks.get(channel.loop_label)
+                channel.loop_event_index = self._label_events.get(channel.loop_label)
 
         voices = self._parse_voices(header.voice_label)
         return SmpsSong(header=header, channels=channels, voices=voices)
+
+    def _mark_label(self, label: str, tick: int, event_index: int) -> None:
+        """The channel being parsed reached `label` at `tick`, before event `event_index`; the
+        first time counts."""
+        self._label_ticks.setdefault(label, tick)
+        self._label_events.setdefault(label, event_index)
 
     _CONDITIONAL_DEFAULTS: ClassVar[dict[str, bool]] = {
         "FixMusicAndSFXDataBugs": True,
@@ -332,8 +338,8 @@ class SmpsParser:
         last_duration = 0
         no_attack_pending = False
 
-        # Track label tick positions
-        self.label_tick_pos[start_label] = 0
+        # The channel's own start: tick 0 (its loop, if it jumps back here, is taken by tick)
+        self._label_ticks.setdefault(start_label, 0)
 
         _seen_labels: set[str] = {start_label}
         tick, _, _, _, _ = self._parse_channel_lines(
@@ -388,8 +394,7 @@ class SmpsParser:
                 # Corpus scan: this triggers for 2 SFX files and 0 music files, so the
                 # music conversion path is bit-identical.
                 if pending_note is not None and self._label_precedes_duration(i + 1):
-                    self.label_tick_pos[label_name] = tick
-                    self._label_events[label_name] = len(channel.events) + 1   # after the pending note
+                    self._mark_label(label_name, tick, len(channel.events) + 1)   # after the pending note
                     _seen_labels.add(label_name)
                     i += 1
                     continue
@@ -397,8 +402,7 @@ class SmpsParser:
                     channel, pending_note, tick, last_duration, last_note_value
                 )
                 pending_note = None
-                self.label_tick_pos[label_name] = tick
-                self._label_events[label_name] = len(channel.events)
+                self._mark_label(label_name, tick, len(channel.events))
                 _seen_labels.add(label_name)
                 i += 1
                 continue
@@ -421,8 +425,11 @@ class SmpsParser:
                     channel.has_jump = True
                     channel.loop_label = target
                     return tick, last_duration, None, last_note_value, chan_tempo_div
-                # Unseen target — forward/dispatch jump; follow it without marking as a loop.
+                # Unseen target — forward/dispatch jump; follow it without marking as a loop.  The
+                # walk resumes after the label's line, so the label is reached here, now: a later
+                # jump back to it loops from this channel's tick (Labyrinth FM4 into FM3's code).
                 _seen_labels.add(target)
+                self._mark_label(target, tick, len(channel.events))
                 jump_line = self.labels[target] + 1
                 return self._parse_channel_lines(
                     channel, jump_line, tick, last_duration,

@@ -401,6 +401,10 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
   converter's own.  `core/analysis.py` deliberately keeps its own loop — it describes the song
   with no config in hand
 - Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
+- A channel's loop starts where ITS OWN walk first reached the jump's target (`loop_tick`, `loop_event_index`),
+  a forward `smpsJump` into another channel's code included (Labyrinth FM4 into FM3's).  Until 2026-10-03 label
+  ticks were one song-wide dict, the last walk past a label winning: Marble Zone PSG1 looped 1916 ticks from
+  PSG2's 124 instead of 1920 from its own 120 (the VGZ loops 1920), cutting its last note 4 ticks short
 - Loop unrolling uses `stop_line` parameter to prevent re-entry into `smpsLoop`
 - `extend_looping_channels` replays the events AFTER the jump label (`SmpsChannel.loop_event_index`; labels are the parser's own),
   not every event at the label's tick — a flag written just before the label is not part of the loop

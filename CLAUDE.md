@@ -176,6 +176,9 @@ sonic2mod/
     test_merge_units.py #   The merge primitives with hand-built objects (python -m pytest tests -q)
     test_detune_units.py #  Detune variants: FNUM → cents, routing, shared level, catalogue layers
     test_diagnostics_units.py # Warning / info kinds: every WarningKind has a report line, de-duplication
+    test_voice_units.py #   SmpsVoice operators as ints (parser, hand-built)
+    test_instrument_units.py # sounding_pitches, prepare_instruments, catalogue rendering pitch
+    test_pitch_units.py #   core/audio/pitch.py names and cents
     test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps
 ```
 

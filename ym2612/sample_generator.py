@@ -95,7 +95,7 @@ def _render_salt() -> str:
 
 def _voice_key(voice: SmpsVoice) -> tuple:
     """What of a voice program_voice writes: algorithm, feedback and the operator macros."""
-    return voice.algorithm, voice.feedback, tuple(sorted(voice.params.items()))
+    return voice.algorithm, voice.feedback, tuple(sorted(voice.operators.items()))
 
 
 def _thread_opn2(mode: str) -> OPN2:
@@ -358,17 +358,17 @@ def _smoke_test() -> None:
         index=1,
         algorithm=0x00,
         feedback=0x04,
-        params={
-            'smpsVcDetune':      '$03, $03, $03, $03',
-            'smpsVcCoarseFreq':  '$01, $00, $05, $06',
-            'smpsVcRateScale':   '$02, $02, $03, $03',
-            'smpsVcAttackRate':  '$1F, $1F, $1F, $1F',
-            'smpsVcAmpMod':      '$00, $00, $00, $00',
-            'smpsVcDecayRate1':  '$06, $09, $06, $07',
-            'smpsVcDecayRate2':  '$08, $06, $06, $07',
-            'smpsVcDecayLevel':  '$0F, $01, $01, $02',
-            'smpsVcReleaseRate': '$0F, $0F, $0F, $0F',
-            'smpsVcTotalLevel':  '$00, $13, $37, $19',
+        operators={
+            'smpsVcDetune':      (0x03, 0x03, 0x03, 0x03),
+            'smpsVcCoarseFreq':  (0x01, 0x00, 0x05, 0x06),
+            'smpsVcRateScale':   (0x02, 0x02, 0x03, 0x03),
+            'smpsVcAttackRate':  (0x1F, 0x1F, 0x1F, 0x1F),
+            'smpsVcAmpMod':      (0x00, 0x00, 0x00, 0x00),
+            'smpsVcDecayRate1':  (0x06, 0x09, 0x06, 0x07),
+            'smpsVcDecayRate2':  (0x08, 0x06, 0x06, 0x07),
+            'smpsVcDecayLevel':  (0x0F, 0x01, 0x01, 0x02),
+            'smpsVcReleaseRate': (0x0F, 0x0F, 0x0F, 0x0F),
+            'smpsVcTotalLevel':  (0x00, 0x13, 0x37, 0x19),
         },
     )
 

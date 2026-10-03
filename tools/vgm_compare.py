@@ -90,7 +90,7 @@ from core.audit import (
     rms,
     seg_at,
     spectrum,
-    vibrato_estimate,
+    vibrato_estimates,
     write_volumes,
 )
 from core.config import ConversionConfig
@@ -111,10 +111,17 @@ def _hz(f: int) -> str:
     return f"{f // 1000}k" if f >= 1000 and f % 1000 == 0 else str(f)
 
 
-def _vgm_notes(vgz: Path) -> tuple[VgmLog, list[NoteStart]]:
-    """(the log of a .vgz or .vgm, its note starts on every chip)."""
-    log = read_vgm(vgz)
-    return log, note_starts(log)
+@dataclass(frozen=True)
+class _Reference:
+    """The recording, read once: its log and its note starts on every chip."""
+
+    log: VgmLog
+    notes: list[NoteStart]
+
+    @classmethod
+    def read(cls, vgz: Path) -> _Reference:
+        log = read_vgm(vgz)
+        return cls(log, note_starts(log))
 
 
 def _chip_channel(source: str, noise_used: bool) -> str:
@@ -276,24 +283,30 @@ def _report_vibrato(per_ch: dict[str, list], rd: _Renders, offset: float, res: d
     """
     if not per_ch:
         return
-    long_notes = 0
-    vib_rows: list[str] = []
+    # The long notes, then both renders' estimates of every one at once
+    long: list[tuple[str, float, str, float]] = []          # (channel, t, note, duration)
     for ch, evs in per_ch.items():
         for i, r in enumerate(evs):
-            t, note = r.ms / 1000.0, pitch_name(r.hz)
+            t = r.ms / 1000.0
             dur = (evs[i + 1].ms / 1000.0 - t) if i + 1 < len(evs) else 3.0
-            if dur < VIB_MIN_NOTE:
-                continue
-            long_notes += 1
-            span = min(dur, 4.0) - 0.02
-            vv = vibrato_estimate(seg_at(rd.vgm[ch], t + 0.01, span))
-            vm = vibrato_estimate(seg_at(rd.mod[ch], t + offset + 0.01, span))
-            if vv is None and vm is None:
-                continue
-            flag = _vibrato_flag(vv, vm)
-            vib_rows.append(f"{ch:<6}{t:>7.3f}  {note:<4}{dur:>6.2f}   {_vibrato_cell(vv)}   {_vibrato_cell(vm)}{flag}")
-            res["vibrato"].append({"channel": ch, "t_s": t, "note": note, "dur_s": dur,
-                                   "vgm": vv, "mod": vm, "mismatch": bool(flag)})
+            if dur >= VIB_MIN_NOTE:
+                long.append((ch, t, pitch_name(r.hz), dur))
+    segs = []
+    for ch, t, _note, dur in long:
+        span = min(dur, 4.0) - 0.02
+        segs += [seg_at(rd.vgm[ch], t + 0.01, span), seg_at(rd.mod[ch], t + offset + 0.01, span)]
+    estimates = vibrato_estimates(segs)
+
+    long_notes = len(long)
+    vib_rows: list[str] = []
+    for k, (ch, t, note, dur) in enumerate(long):
+        vv, vm = estimates[2 * k], estimates[2 * k + 1]
+        if vv is None and vm is None:
+            continue
+        flag = _vibrato_flag(vv, vm)
+        vib_rows.append(f"{ch:<6}{t:>7.3f}  {note:<4}{dur:>6.2f}   {_vibrato_cell(vv)}   {_vibrato_cell(vm)}{flag}")
+        res["vibrato"].append({"channel": ch, "t_s": t, "note": note, "dur_s": dur,
+                               "vgm": vv, "mod": vm, "mismatch": bool(flag)})
 
     print(f"Vibrato ({long_notes} notes of {VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
     if not vib_rows:
@@ -484,13 +497,13 @@ def _report_dac(rd: _Renders, offset: float, res: dict) -> None:
     print("  (lowpeak differing by more than ~3% means the DAC sample plays at the wrong rate)")
 
 
-def report(cfg: ConversionConfig, song, vgz: Path, mod_path: Path, workdir: Path,
+def report(cfg: ConversionConfig, song, recording: _Reference, mod_path: Path, workdir: Path,
            offset: float | None, ref_chan: str, max_rows: int, pitch_tol: float = 35.0) -> dict:
     """Print the comparison and return the same numbers as a JSON-serialisable dict.
 
     `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
     """
-    log, notes = _vgm_notes(vgz)
+    log, notes = recording.log, recording.notes
     noise_used = any(n.channel == "NOISE" for n in notes)
     chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in VGM_CHANNELS or c.source == "PSG3"}
     names = [_chip_channel(src, noise_used) for src in chan_map]
@@ -549,7 +562,7 @@ def report(cfg: ConversionConfig, song, vgz: Path, mod_path: Path, workdir: Path
     return res
 
 
-def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None, ref_chan: str,
+def report_merged(recording: _Reference, mod_path: Path, workdir: Path, offset: float | None, ref_chan: str,
                   labels: dict[str, list[str]], max_rows: int = 400) -> dict:
     """The merged build: every MOD channel against the sum of the chip channels folded onto it.
 
@@ -559,7 +572,7 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     error.  The symbolic verdict (one note stream per channel) does not apply.
     """
     names = list(labels)
-    _, notes = _vgm_notes(vgz)
+    notes = recording.notes
     rd = _Renders({n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]},
                   {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]})
     offset_auto = offset is None
@@ -648,7 +661,7 @@ def _column_blocks(layout: dict[int, dict[int, list[str]]], spans: list[tuple[in
     return blocks
 
 
-def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
+def report_merged_patterns(cfg: ConversionConfig, recording: _Reference, mod_path: Path, workdir: Path,
                            offset: float | None, chip_names: dict[str, str]) -> dict:
     """The merged build of a merge_patterns: config, each MOD column against the hardware.
 
@@ -692,7 +705,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
         ref_col[c] = out
 
     # Every block's level, whole and at its primary's key-ons
-    _, notes = _vgm_notes(vgz)
+    notes = recording.notes
     blocks = _column_blocks(layout, spans)
     for blk in blocks:
         c, a, b = blk["column"], int(blk["t0"] * SR), int(blk["t1"] * SR)
@@ -860,7 +873,8 @@ def main() -> None:
             raise SystemExit(f"ERROR: file not found: {p}")
     workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + ("_merged" if args.merged else "")))
 
-    _, notes = _vgm_notes(vgz)
+    reference = _Reference.read(vgz)
+    notes = reference.notes
     noise_used = any(n.channel == "NOISE" for n in notes)
     masks = None
     labels: dict[str, list[str]] = {}
@@ -912,11 +926,11 @@ def main() -> None:
     print(f"Renders: {workdir}")
     print()
     if per_pattern:
-        res = report_merged_patterns(cfg, vgz, mod_path, workdir, args.offset, chip_names)
+        res = report_merged_patterns(cfg, reference, mod_path, workdir, args.offset, chip_names)
     elif args.merged:
-        res = report_merged(vgz, mod_path, workdir, args.offset, args.ref, labels, args.max_rows)
+        res = report_merged(reference, mod_path, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
-        res = report(cfg, song, vgz, mod_path, workdir, args.offset, args.ref, args.max_rows,
+        res = report(cfg, song, reference, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
 
     if args.write_volumes and "instrument_levels" not in res:

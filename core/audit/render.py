@@ -134,12 +134,12 @@ def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path
         return f"  rendered VGM {name}"
 
     items = ["FULL", *names]
-    with ThreadPoolExecutor(max_workers=_workers(len(items))) as pool:
+    with ThreadPoolExecutor(max_workers=workers(len(items))) as pool:
         for line in pool.map(render, items):
             print(line)
 
 
-def _workers(jobs: int) -> int:
+def workers(jobs: int) -> int:
     """Renders at once: cores - 1, no more than there are."""
     return max(1, min(jobs, (os.cpu_count() or 2) - 1))
 
@@ -167,7 +167,7 @@ def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) 
 
     # One ffmpeg per channel; they are independent, so they run at once (cores - 1 of them).
     items = [("FULL", None), *channels.items()]
-    with ThreadPoolExecutor(max_workers=_workers(len(items))) as pool:
+    with ThreadPoolExecutor(max_workers=workers(len(items))) as pool:
         for name, err in pool.map(render, items):
             if err is not None:
                 raise SystemExit(f"ERROR: ffmpeg failed for MOD channel {name}:\n{err}")

@@ -70,9 +70,9 @@ lab_zone:
   date: '2026-10-02'
   settings: 2a7d221c6ea5
 marble_zone:
-  commit: 101fcce-dirty
+  commit: a6916ae-dirty
   config: 938034f1489b
-  date: '2026-10-02'
+  date: '2026-10-03'
   settings: 2a7d221c6ea5
 robotnik:
   commit: 101fcce-dirty

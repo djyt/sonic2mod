@@ -6,6 +6,7 @@ VGM lift both produce.
 
 from __future__ import annotations
 
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -80,6 +81,50 @@ class Loops(unittest.TestCase):
         self.assertEqual(song.loop_target_tick(), 577)
         self.assertFalse(hasattr(song, "label_tick_pos"))
         self.assertFalse(any(hasattr(ch, "jump_target_label") for ch in song.channels))
+
+    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    def test_a_loop_starts_where_its_own_channel_reached_the_target(self):
+        # Marble Zone PSG2 walks past PSG1's loop label 4 ticks later; PSG1's loop starts at its own
+        # 120 (loop 1920 ticks = the VGZ's 1587600 samples), not PSG2's 124 (1916)
+        mz = SmpsParser().parse_file(str(_MUSIC / "Mus83 - MZ.asm"))
+        psg1 = next(ch for ch in mz.channels if ch.header.label.endswith("PSG1"))
+        self.assertEqual(psg1.loop_tick, 120)
+
+    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    def test_a_forward_jump_into_shared_code_marks_the_loop_start(self):
+        # Labyrinth FM4 jumps forward into FM3's code: its loop starts at its own jump, with an event
+        lz = SmpsParser().parse_file(str(_MUSIC / "Mus82 - LZ.asm"))
+        fm4 = next(ch for ch in lz.channels if ch.header.label.endswith("FM4"))
+        self.assertEqual(fm4.loop_tick, 96)
+        self.assertIsNotNone(fm4.loop_event_index)
+
+    @staticmethod
+    def _loop(ch) -> tuple[int, list[tuple]]:
+        """(span, body as (tick from the loop start, what plays)) of a looping channel."""
+        end = max(ev.tick_position + (ev.note.duration if ev.note else 0) for ev in ch.events)
+        body = [(ev.tick_position - ch.loop_tick,
+                 (ev.note.note_value, ev.note.duration, ev.note.is_rest) if ev.note else (ev.effect.flag, tuple(ev.effect.params)))
+                for ev in ch.events if ev.tick_position >= ch.loop_tick]
+        return end - ch.loop_tick, body
+
+    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    def test_every_channel_loops_with_the_song(self):
+        # On hardware each channel repeats in step with the song: a span that does not divide the
+        # song's must hold a body periodic in their common divisor (Green Hill's drums loop 1024
+        # ticks of one 512-tick phrase against the song's 1536)
+        for path in sorted(_MUSIC.glob("*.asm")):
+            song = SmpsParser().parse_file(str(path))
+            loops = [self._loop(ch) for ch in song.channels if ch.has_jump and ch.loop_tick is not None]
+            if not loops:
+                continue
+            period = max(span for span, _ in loops)
+            for span, body in loops:
+                step = math.gcd(span, period)
+                if step == span:
+                    continue
+                later = {(t - step, what) for t, what in body if t >= step}
+                earlier = {(t, what) for t, what in body if t < span - step}
+                self.assertEqual(earlier, later, f"{path.name}: a {span}-tick loop is not {step}-periodic")
 
     def test_a_loop_replays_from_its_event_without_labels(self):
         # A: one 100-tick note.  B: a 10-tick intro, then a 10-tick body that loops (as a lift makes it)

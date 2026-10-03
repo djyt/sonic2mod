@@ -105,6 +105,12 @@ VGM loop offset → loop sample → loop tick; `has_jump`, `loop_tick` and `loop
 event at or after that tick) on every channel - no labels needed.  No loop offset → no jump (Title).
 Data after one loop pass (some rippers log a fade or second pass) is cut at loop start + body.
 **Accept:** `loop_target_tick()` equals the asm's; the MOD's `Bxx` lands on the same row.
+Measured 2026-10-03 (the label audit): Marble Zone, Spring Yard and Robotnik loop exactly their tick
+spans' frames (1920 ticks at modifier 9 = 2160 frames = the VGZ's 1587600 samples); Labyrinth's VGZ
+loop is one frame longer than 1728 ticks' 2073 - at modifier 6 a span of ticks holds 345 or 346
+TempoWait frames depending on where it starts, so a loop's length in frames is not a function of its
+ticks alone.  Every channel's loop now starts where it reached its own target
+(`tests/test_song_units.py` checks all songs' loops agree with the song's period).
 
 ### [ ] 1.3 FM notes
 - Key-on → note; key-off with no key-on → rest; a key-on while keyed at the same frequency → tie

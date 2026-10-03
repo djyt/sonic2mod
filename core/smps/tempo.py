@@ -51,3 +51,9 @@ def frame_of_tick(segments: Sequence[TempoSegment], tick: int) -> int:
     """The frame a tick is read on, in a schedule."""
     seg = next((s for s in reversed(segments) if s.tick <= tick), segments[0])
     return seg.frame_of(tick)
+
+
+def tick_at_frame(segments: Sequence[TempoSegment], frame: int) -> int:
+    """The tick a frame plays, in a schedule (a hold frame: the next frame's)."""
+    seg = next((s for s in reversed(segments) if s.frame <= frame), segments[0])
+    return int(seg.tick_at(frame))

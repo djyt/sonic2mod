@@ -9,7 +9,7 @@ note after it:
 
 A rip starts where its recording does: `offset` ticks are added to every tick of `got`
 (align_songs finds them), the expected song before them is not compared, and neither is either
-song past the other's end.  A ripper loops where it likes, at or after the song's own loop: the
+song past the other's end, nor the rest a lift starts with there (the recording's silence).  A ripper loops where it likes, at or after the song's own loop: the
 loop is compared by its span (a rip may even loop a little early, where the bars before the
 song's loop repeat what its end plays).
 """
@@ -87,16 +87,16 @@ def compare_songs(expected: PlayedSong, got: PlayedSong, aspects: frozenset[Aspe
 
 def align_songs(expected: PlayedSong, got: PlayedSong) -> int:
     """The ticks to add to `got` so that most of its attacks land on the expected song's, at the
-    same pitch where it can (a repeated rhythm aligns anywhere): where a rip's recording starts."""
-    want = {(n, p.tick): p.pitch for n, notes in expected.channels.items() for p in notes if p.onset}
-    have = [(n, p.tick, p.pitch) for n, notes in got.channels.items() for p in notes if p.onset]
+    same note where it can (a repeated rhythm aligns anywhere): where a rip's recording starts."""
+    want = {(n, p.tick): p.note for n, notes in expected.channels.items() for p in notes if p.onset}
+    have = [(n, p.tick, p.note) for n, notes in got.channels.items() for p in notes if p.onset]
     firsts = {n: min(t for m, t, _ in have if m == n) for n, _, _ in have}
     candidates = sorted({t_want - firsts[n] for n, t_want in want if n in firsts}, key=abs)
     if not candidates:
         return 0
 
     def score(off: int) -> tuple[int, int]:
-        landed = [(want[(n, t + off)], pitch) for n, t, pitch in have if (n, t + off) in want]
+        landed = [(want[(n, t + off)], note) for n, t, note in have if (n, t + off) in want]
         return sum(a == b for a, b in landed), len(landed)
 
     return max(candidates, key=score)
@@ -126,8 +126,11 @@ def _compare_song(expected: PlayedSong, got: PlayedSong, offset: int, window: tu
 def _compare_channel(name: str, expected: list[PlayedNote], got: list[PlayedNote],
                      aspects: frozenset[Aspect], window: tuple[int, int]) -> ChannelDiff:
     lo, hi = window
-    want = {p.tick: _clipped(p, hi) for p in expected if lo <= p.tick < hi}
-    have = {p.tick: _clipped(p, hi) for p in got if lo <= p.tick < hi}
+    want, have = _windowed(expected, lo, hi), _windowed(got, lo, hi)
+
+    # A rip that starts mid-song rests until its first note: what played before is not recorded
+    if lo > 0 and lo not in want and have.get(lo, PlayedNote(lo, 0, rest=False)).rest:
+        del have[lo]
     diff = ChannelDiff(name, sum(not p.rest for p in want.values()))
 
     # Attacks: a set on each side
@@ -157,6 +160,14 @@ def _compare_channel(name: str, expected: list[PlayedNote], got: list[PlayedNote
     return diff
 
 
-def _clipped(p: PlayedNote, end: int) -> PlayedNote:
-    """A note cut where the comparison ends."""
-    return p if p.tick + p.duration <= end else dataclasses.replace(p, duration=end - p.tick)
+def _windowed(notes: list[PlayedNote], lo: int, hi: int) -> dict[int, PlayedNote]:
+    """The notes that start in [lo, hi) by tick, cut at hi; a rest from before lo from lo (a
+    note from before is not compared: its attack is not in the window)."""
+    out = {}
+    for p in notes:
+        end = min(p.tick + p.duration, hi)
+        if p.tick >= hi or end <= lo or (p.tick < lo and not p.rest):
+            continue
+        start = max(p.tick, lo)
+        out[start] = dataclasses.replace(p, tick=start, duration=end - start)
+    return out

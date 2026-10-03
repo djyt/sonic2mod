@@ -6,11 +6,12 @@
     driver_tables.py  the driver's frequency tables, note indices, envelopes, operator order
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
     track.py          TrackState: one track's driver state as its coordination flags leave it
+    tempo.py          TempoSegment, tempo_schedule: the frame each tick is read on
     playback.py       played_song: what a song plays note by note, its spelling gone
     compare.py        compare_songs: where two songs play differently, aspect by aspect
 """
 
-from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, compare_songs
+from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, align_songs, compare_songs
 from .driver_tables import (
     DEFAULT_DRIVER,
     ENVELOPE_TERMINATOR,
@@ -60,6 +61,7 @@ from .song import (
     pan_side,
 )
 from .song_prep import apply_global_tempo_div, extend_looping_channels
+from .tempo import TempoSegment, frame_of_tick, tempo_schedule
 from .track import TrackState
 
 __all__ = [
@@ -93,8 +95,10 @@ __all__ = [
     "SmpsSongHeader",
     "SmpsVoice",
     "SongDiff",
+    "TempoSegment",
     "TrackState",
     "VoiceField",
+    "align_songs",
     "apply_global_tempo_div",
     "chip_pitch",
     "compare_songs",
@@ -102,6 +106,7 @@ __all__ = [
     "flag_from_macro",
     "flag_name",
     "fm_note_index",
+    "frame_of_tick",
     "noise_envelope_frames",
     "pan_is_hard",
     "pan_side",
@@ -115,5 +120,6 @@ __all__ = [
     "source_map",
     "source_names",
     "synth_note_name",
+    "tempo_schedule",
     "voice_field_from_macro",
 ]

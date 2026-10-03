@@ -5,11 +5,18 @@ note after it:
 
     expected  |C4 8 |rest 4|E4 4|G4 8 |
     got       |C4 8 |rest 4|E4 4|A4 8 |      -> PITCH at tick 16
-    got       |C4 12       |E4 4|G4 8 |      -> TIMING at 0 (12 vs 8), missing at 8
+    got       |C4 12       |E4 4|G4 8 |      -> LENGTH at 0 (12 vs 8) and at 8 (a rest got lacks)
+
+A rip starts where its recording does: `offset` ticks are added to every tick of `got`
+(align_songs finds them), the expected song before them is not compared, and neither is either
+song past the other's end.  A ripper loops where it likes, at or after the song's own loop: the
+loop is compared by its span (a rip may even loop a little early, where the bars before the
+song's loop repeat what its end plays).
 """
 
 from __future__ import annotations
 
+import dataclasses
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -30,8 +37,8 @@ class NoteDiff:
 class ChannelDiff:
     name: str
     notes: int                                          # the expected song's notes (rests not counted)
-    missing: list[int] = field(default_factory=list)    # ticks a note or rest starts at in expected only
-    extra: list[int] = field(default_factory=list)      # ... in got only
+    missing: list[int] = field(default_factory=list)    # ticks the expected song attacks at, got not
+    extra: list[int] = field(default_factory=list)      # ... got attacks at, the expected song not
     changed: list[NoteDiff] = field(default_factory=list)
 
     @property
@@ -39,16 +46,16 @@ class ChannelDiff:
         return not (self.missing or self.extra or self.changed)
 
     def counts(self) -> Counter[Aspect]:
-        """Differences per aspect: a missing or extra note counts as timing."""
+        """Differences per aspect: a missing or extra attack counts as onset."""
         c = Counter(d.aspect for d in self.changed)
         if self.missing or self.extra:
-            c[Aspect.TIMING] += len(self.missing) + len(self.extra)
+            c[Aspect.ONSET] += len(self.missing) + len(self.extra)
         return c
 
 
 @dataclass
 class SongDiff:
-    song: list[tuple[str, object, object]]              # (what, expected, got): tempo, loop, end
+    song: list[tuple[str, object, object]]              # (what, expected, got): tempo, loop
     channels: list[ChannelDiff]
     missing_channels: list[str]
     extra_channels: list[str]
@@ -64,46 +71,92 @@ class SongDiff:
         return total
 
 
-def compare_songs(expected: PlayedSong, got: PlayedSong, aspects: frozenset[Aspect] = ALL_ASPECTS) -> SongDiff:
-    """Where `got` plays other than `expected`, in the given aspects only."""
-    song = []
-    if Aspect.TIMING in aspects:
-        for what in ("tempo", "tempo_changes", "loop_tick", "end_tick"):
-            a, b = getattr(expected, what), getattr(got, what)
-            if a != b:
-                song.append((what, a, b))
+def compare_songs(expected: PlayedSong, got: PlayedSong, aspects: frozenset[Aspect] = ALL_ASPECTS,
+                  offset: int = 0) -> SongDiff:
+    """Where `got` plays other than `expected`, in the given aspects only, `got` shifted by
+    `offset` ticks."""
+    window = (max(offset, 0), min(expected.end_tick, got.end_tick + offset))
+    song = _compare_song(expected, got, offset, window) if Aspect.ONSET in aspects else []
 
-    channels = [_compare_channel(name, notes, got.channels[name], aspects)
-                for name, notes in expected.channels.items() if name in got.channels]
-    return SongDiff(song, channels,
-                    [n for n in expected.channels if n not in got.channels],
-                    [n for n in got.channels if n not in expected.channels])
+    # Channels that play anything, on either side
+    want = {n: notes for n, notes in expected.channels.items() if any(not p.rest for p in notes)}
+    have = {n: _shifted(notes, offset) for n, notes in got.channels.items() if any(not p.rest for p in notes)}
+    channels = [_compare_channel(name, notes, have[name], aspects, window) for name, notes in want.items() if name in have]
+    return SongDiff(song, channels, [n for n in want if n not in have], [n for n in have if n not in want])
+
+
+def align_songs(expected: PlayedSong, got: PlayedSong) -> int:
+    """The ticks to add to `got` so that most of its attacks land on the expected song's, at the
+    same pitch where it can (a repeated rhythm aligns anywhere): where a rip's recording starts."""
+    want = {(n, p.tick): p.pitch for n, notes in expected.channels.items() for p in notes if p.onset}
+    have = [(n, p.tick, p.pitch) for n, notes in got.channels.items() for p in notes if p.onset]
+    firsts = {n: min(t for m, t, _ in have if m == n) for n, _, _ in have}
+    candidates = sorted({t_want - firsts[n] for n, t_want in want if n in firsts}, key=abs)
+    if not candidates:
+        return 0
+
+    def score(off: int) -> tuple[int, int]:
+        landed = [(want[(n, t + off)], pitch) for n, t, pitch in have if (n, t + off) in want]
+        return sum(a == b for a, b in landed), len(landed)
+
+    return max(candidates, key=score)
+
+
+def _shifted(notes: list[PlayedNote], offset: int) -> list[PlayedNote]:
+    return [dataclasses.replace(p, tick=p.tick + offset) for p in notes] if offset else notes
+
+
+def _compare_song(expected: PlayedSong, got: PlayedSong, offset: int, window: tuple[int, int]) -> list:
+    """The tempo and the loop."""
+    song: list[tuple[str, object, object]] = []
+    if expected.modifier != got.modifier:
+        song.append(("modifier", expected.modifier, got.modifier))
+    want = [c for c in expected.tempo_changes if window[0] <= c[0] < window[1]]
+    have = [(t + offset, m) for t, m in got.tempo_changes if window[0] <= t + offset < window[1]]
+    if want != have:
+        song.append(("tempo changes", want, have))
+
+    if (expected.loop_tick is None) != (got.loop_tick is None):
+        song.append(("loop", expected.loop_tick, got.loop_tick))
+    elif expected.loop_tick is not None and expected.loop_span != got.loop_span:
+        song.append(("loop span", expected.loop_span, got.loop_span))
+    return song
 
 
 def _compare_channel(name: str, expected: list[PlayedNote], got: list[PlayedNote],
-                     aspects: frozenset[Aspect]) -> ChannelDiff:
-    diff = ChannelDiff(name, sum(not n.rest for n in expected))
-    by_tick = {n.tick: n for n in got}
-    timing = Aspect.TIMING in aspects
+                     aspects: frozenset[Aspect], window: tuple[int, int]) -> ChannelDiff:
+    lo, hi = window
+    want = {p.tick: _clipped(p, hi) for p in expected if lo <= p.tick < hi}
+    have = {p.tick: _clipped(p, hi) for p in got if lo <= p.tick < hi}
+    diff = ChannelDiff(name, sum(not p.rest for p in want.values()))
 
-    for e in expected:
-        g = by_tick.pop(e.tick, None)
+    # Attacks: a set on each side
+    if Aspect.ONSET in aspects:
+        attacks_want = {t for t, p in want.items() if p.onset}
+        attacks_have = {t for t, p in have.items() if p.onset}
+        diff.missing = sorted(attacks_want - attacks_have)
+        diff.extra = sorted(attacks_have - attacks_want)
 
-        # A note only one side starts here: a timing difference, nothing else to compare
-        if g is None:
-            if timing:
-                diff.missing.append(e.tick)
+    for tick in sorted(want.keys() | have.keys()):
+        e, g = want.get(tick), have.get(tick)
+
+        # A note or rest only one side starts here: a length difference
+        if e is None or g is None:
+            if Aspect.LENGTH in aspects:
+                diff.changed.append(NoteDiff(tick, Aspect.LENGTH, e and e.aspect(Aspect.LENGTH), g and g.aspect(Aspect.LENGTH)))
             continue
 
-        # A rest has a length and nothing else: against one, only timing counts
-        checked = aspects & {Aspect.TIMING} if e.rest or g.rest else aspects
+        # A rest has a length and nothing else: against one, only that counts
+        checked = aspects & {Aspect.LENGTH} if e.rest or g.rest else aspects - {Aspect.ONSET}
         for aspect in Aspect:
             if aspect not in checked:
                 continue
-            want, have = e.aspect(aspect), g.aspect(aspect)
-            if want != have:
-                diff.changed.append(NoteDiff(e.tick, aspect, want, have))
-
-    if timing:
-        diff.extra = sorted(by_tick)
+            a, b = e.aspect(aspect), g.aspect(aspect)
+            if a != b:
+                diff.changed.append(NoteDiff(tick, aspect, a, b))
     return diff
+
+
+def _clipped(p: PlayedNote, end: int) -> PlayedNote:
+    """A note cut where the comparison ends."""
+    return p if p.tick + p.duration <= end else dataclasses.replace(p, duration=end - p.tick)

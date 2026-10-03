@@ -20,7 +20,7 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E4 | `smpsFade` | — | — | Fade in previous song (1-Up jingle mechanism) | ignored |
 | $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | applied to durations at parse time and kept as an event (the global `$EB` re-timing needs it) |
 | $E6 | `smpsAlterVol` | — | signed byte | Add delta to SMPS_Track.Volume attenuation (cumulative) | → `Cxx` Set Volume |
-| $E7 | `smpsNoAttack` | — | — | Suppress attack envelope on next note | flagged on note |
+| $E7 | `smpsNoAttack` | — | — | Skip the next note's key-off (FM) / envelope restart (PSG): `FMNoteOn` writes the key-on regardless, which a keyed channel ignores; after a rest or once `smpsNoteFill` keyed off, the note attacks.  Note fill and modulation are not restarted.  Every note read clears it, a held standalone duration too | flagged on note |
 | $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in **frames** | → `ECx` / `C00` Note Cut |
 | $E9 | `smpsChangeTransposition` | `smpsAlterPitch` | signed byte | **Semitone shift** — add to SMPS_Track.Transpose; all subsequent notes pitched accordingly | → updates `total_transpose`; affects note placement |
 | $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier (every track) and restart the TempoWait counter | → `Fxx` BPM change on that row; fills / vibrato / `EDx` use the new modifier |
@@ -106,6 +106,9 @@ Each VBlank (60 Hz NTSC, 50 Hz PAL):
 3. Decrement every track's DurationTimeout. When 0: advance to next note event.
 
 Net effect: every `modifier` frames, one decrement is cancelled. Effective tick rate:
+The timeout is set to `modifier` when the song loads and again where `smpsSetTempoMod` is read
+(`cfSetTempo` writes both), so the holds fall on fixed frames from there: tick k of a segment is
+read on frame `k + k // (m−1)` after it (`core/smps/tempo.py`, the VGM lift reads them backwards).
 
 ```
 effective_ticks_per_sec = fps × (modifier − 1) / modifier

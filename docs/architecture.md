@@ -130,7 +130,11 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | `SmpsVoice` | FM voice: algorithm, feedback, and `operators` - each `VoiceField` (DT, MUL, KS, AR, AM, D1R, D2R, D1L, RR, TL) as four ints in the driver's operator order.  The `smpsVc*` spellings are `names.py`'s (`voice_field_from_macro`).  `registers(tl_offset)`: the operator registers as the driver writes them (what `program_voice` writes, what a frame log holds) |
 | `SmpsSong` | Top-level container for header, channels, voices |
 
-#### What a song plays (core/smps/track.py, playback.py, compare.py)
+#### What a song plays (core/smps/track.py, tempo.py, playback.py, compare.py)
+
+`tempo.py`: `TempoSegment` (a stretch of one tempo modifier: the frame each tick is read on, its
+holds) and `tempo_schedule(modifier, changes)` from a song's start.  The playback walk and the VGM
+lift both use it.
 
 `TrackState` is one track's driver state as its flags leave it (transpose, TL offset / attenuation,
 pan, detune, voice, envelope, noise form, note fill, modulation), config-free; `DriverState`
@@ -272,7 +276,14 @@ notes.py      note_starts(log): NoteStart per FM key-on (a re-key within mod_cen
               tone channel's sounding pitch as change points (vgm_pitch_audit's chip timeline)
 cache.py      load_frames(path, cache_dir): a rip's FrameLog kept in samples.render_cache under a hash
               of the file and of the code that makes it (0.06 s for Green Hill instead of 0.65)
-lift/         lift_song(frames, LiftOptions) -> SmpsSong.  Not implemented yet: raises VgmLiftError
+lift/         lift_song(frames, LiftOptions) -> SmpsSong (Phase 1 of docs/todo/vgz_conversion.md):
+  tracks.py     each track's hits by frame: FM key writes (attack after a key-off, else a tie or
+                legato), PSG notes where the pitch jumps or the level rises (a rip logs only
+                changes), DAC seeks at the burst they follow; pitch the nearest table note
+  tempo.py      infer_tempo: the TempoMap (core.smps.TempoSegment per tempo, missed V-ints) that
+                puts every FM key-on on a tick in the fewest bits; tempo changes by a DP
+  song.py       lift_song: hits -> ticks -> SmpsChannels; smpsSetTempoMod on FM1; every track loops
+                where the rip does; the header's divider the FM notes' grid
 ```
 
 `frames.py` counts the DAC's byte stream without replaying it (most of a log's writes): no state

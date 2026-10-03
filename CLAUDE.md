@@ -62,7 +62,9 @@ sonic2mod/
       frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
       notes.py       #     note_starts (key-on / tie / legato / PSG audible rules, NoteTracker), pitch_segments
       cache.py       #     load_frames: a rip's FrameLog kept in samples.render_cache (hash of the file + the frame code)
-      lift/          #     lift_song(frames, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
+      lift/          #     lift_song(frames, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md (1.1-1.2 done):
+                     #     tracks.py hits by frame, tempo.py infer_tempo (fewest-bits hold schedule, missed V-ints,
+                     #     tempo changes), song.py ticks, loop, smpsSetTempoMod
     audit/           #   A MOD against its VGZ: pitch.py the symbolic pitch audit (report in ui/pitch_audit.py);
                      #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
@@ -73,8 +75,10 @@ sonic2mod/
       parser.py      #     SmpsParser: assembly → SmpsSong
       song_prep.py   #     The song as the driver plays it: smpsSetTempoDiv re-timing, short loops replayed
       track.py       #     TrackState: one track's driver state as its flags leave it (DriverState adds the MOD routing)
-      playback.py    #     played_song: each note as the driver plays it, the asm's spelling gone (PlayedNote, Aspect)
-      compare.py     #     compare_songs: two songs' notes matched by start tick, differences per aspect
+      tempo.py       #     TempoSegment / tempo_schedule: the frame each tick is read on (TempoWait's holds)
+      playback.py    #     played_song: each note as the driver plays it, the asm's spelling gone (PlayedNote, Aspect;
+                     #     attack from the key state: smpsNoAttack after a rest or an expired fill attacks)
+      compare.py     #     compare_songs / align_songs: two songs' notes by start tick, per aspect, a rip's start found
       driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices, chip_pitch,
                      #     PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
                      #     (sfx/tables.py re-exports this; it used to live there)
@@ -188,6 +192,8 @@ sonic2mod/
     test_pitch_units.py #   core/audio/pitch.py names and cents
     test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps, frame cache
     test_playback_units.py # played_song / compare_songs on hand-built songs: the lift's yardstick
+    test_vgm_lift_units.py # tempo inference on frames made from known schedules; the lift on built logs
+    vgm_build.py        #   VGM bytes for the tests (commands, a song's bursts frame by frame)
 ```
 
 ## Setup
@@ -272,7 +278,7 @@ python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/0
 # The lift (docs/todo/vgz_conversion.md Phase 1) against the asm: differences per channel and aspect
 # (timing, attack, pitch, voice, level, pan, modulation, fill, noise, dac), repeated ones grouped
 python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"
-python tools/vgm_lift.py --all --aspects timing          # every rip, a line each (~1 s warm)
+python tools/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -390,6 +396,9 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - Duration persistence: last explicit `dc.b` duration carries to subsequent notes
 - Labels emit no bytes: if one sits between a note byte and its duration byte, the duration still
   binds to that note (`SmpsParser._label_precedes_duration`). Affects 2 SFX, 0 music files
+- `smpsNoAttack` only skips the next note's key-off (`FMNoteOn` always writes the key-on, a keyed channel
+  ignores it): after a rest or an expired `smpsNoteFill` the note attacks, and every read clears the flag
+  (a held standalone duration too - until 2026-10-03 the parser carried it to GHZ FM4/FM5's loop note)
 - Coordination flags DO complete a pending note: a note byte with no duration byte plays with the
   saved duration, and any flag / `smpsCall` / `smpsReturn` after it applies from the NEXT note
   (`FMDoNext` puts the non-duration byte back)

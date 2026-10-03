@@ -34,7 +34,17 @@ from core.audio import pitch_name
 from core.audit import workers
 from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
 from core.config import find_settings, load_settings, load_yaml
-from core.smps import ALL_ASPECTS, Aspect, ChannelDiff, NoteDiff, SmpsParser, SongDiff, compare_songs, played_song
+from core.smps import (
+    ALL_ASPECTS,
+    Aspect,
+    ChannelDiff,
+    NoteDiff,
+    SmpsParser,
+    SongDiff,
+    align_songs,
+    compare_songs,
+    played_song,
+)
 from core.vgm import LiftOptions, VgmLiftError, lift_song, load_frames
 
 VGZ_DIR = ROOT / "reference" / "vgz"
@@ -49,6 +59,7 @@ class _Result:
     rip: Path
     asm: Path | None
     diff: SongDiff | None = None
+    offset: int = 0                     # ticks the rip starts into the song
     error: str = ""
 
 
@@ -72,7 +83,8 @@ def _lift(rip: Path, asm: Path | None, aspects: frozenset[Aspect], options: Lift
     except VgmLiftError as e:
         return _Result(rip, asm, error=f"not lifted: {e}")
     want = played_song(SmpsParser().parse_file(str(asm)))
-    return _Result(rip, asm, compare_songs(want, got, aspects))
+    offset = align_songs(want, got)
+    return _Result(rip, asm, compare_songs(want, got, aspects, offset), offset)
 
 
 # --- printing ---------------------------------------------------------------------
@@ -125,7 +137,7 @@ def _counts(diff: SongDiff | ChannelDiff) -> str:
 
 
 def _print_song(result: _Result, max_diffs: int) -> None:
-    print(f"{result.rip.name}  vs  {result.asm.name if result.asm else '-'}")
+    print(f"{result.rip.name}  vs  {result.asm.name if result.asm else '-'}   (the rip starts at tick {result.offset})")
     if result.diff is None:
         print(f"  {result.error}")
         return

@@ -10,18 +10,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..rom import RomImage, is_rom_path, read_rom_song
-from ..smps import DEFAULT_DRIVER, SmpsParser, SmpsSong
+from ..rom import DRIVERS, RomImage, is_rom_path, read_rom_song
+from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsParser, SmpsSong
 from ..vgm import LiftOptions, is_vgm_path, lift_song, load_frames
 
 
-def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: int | None = None) -> SmpsSong:
+def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: int | None = None,
+              driver: SmpsDriver | None = None) -> SmpsSong:
     """The song in `path`; `options` say what a VGM log cannot (assembly states it all itself),
-    `rom_song` which sound of a ROM ($81 ...)."""
+    `rom_song` which sound of a ROM ($81 ...), `driver` a ROM's variant (None: detected)."""
     if is_rom_path(path):
         if rom_song is None:
             raise ValueError(f"{path}: a ROM holds every song; rom_song: names which ($81 ...)")
-        return read_rom_song(RomImage.load(path), rom_song)
+        return read_rom_song(RomImage.load(path), rom_song, driver=DRIVERS[driver] if driver else None)
 
     if rom_song is not None:
         raise ValueError("rom_song: applies to a ROM input_file only (.bin / .md / .gen)")

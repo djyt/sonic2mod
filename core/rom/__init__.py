@@ -1,7 +1,10 @@
 """Mega Drive ROMs: SMPS songs read from their bytecode (the score itself), beside vgm/.
 
     image.py    RomImage: the header, big-endian reads by address
-    locate.py   locate_sounds: the driver's song and SFX indexes (Sonic 1's driver)
+    drivers.py  each SMPS 68k driver's flag table (Sonic 1 = Type 1b, Moonwalker = Type 1a)
+    envelopes.py  read_envelopes: PSG_Index -> PsgEnvelope by name, each driver's commands
+    detect.py   detect_driver: pinned by SHA-1, else the one driver every song decodes with
+    locate.py   locate_sounds: the Go_ block found by its tables' shape -> song and SFX indexes
     header.py   song / SFX headers -> SmpsSongHeader, each track's address
     tracks.py   track bytes -> SmpsCode (the ops the asm parser makes from macros)
     voices.py   the voice bank -> SmpsVoice
@@ -11,6 +14,8 @@
 """
 
 from .dac import DacSample, dac_samples
+from .detect import detect_driver
+from .drivers import DRIVERS, RomDriver
 from .fixes import RomFix, data_fixes
 from .header import track_label
 from .image import RomError, RomImage, is_rom_path
@@ -18,16 +23,19 @@ from .locate import FIRST_MUSIC, FIRST_SFX, FIRST_SPECIAL_SFX, SoundIndex, locat
 from .song import read_rom_code, read_rom_song
 
 __all__ = [
+    "DRIVERS",
     "FIRST_MUSIC",
     "FIRST_SFX",
     "FIRST_SPECIAL_SFX",
     "DacSample",
+    "RomDriver",
     "RomError",
     "RomFix",
     "RomImage",
     "SoundIndex",
     "dac_samples",
     "data_fixes",
+    "detect_driver",
     "is_rom_path",
     "locate_sounds",
     "read_rom_code",

@@ -14,10 +14,11 @@ forward jump into code not yet walked); a channel's loop starts where ITS walk r
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from .driver_tables import psg_voice_name
+from .driver_tables import DEFAULT_DRIVER, PsgEnvelope, SmpsDriver, psg_voice_name
 from .names import SMPS_DAC_NAMES_REVERSE
 from .song import CoordFlag, SmpsChannel, SmpsChannelHeader, SmpsEffect, SmpsEvent, SmpsNote, SmpsSong, SmpsSongHeader
 
@@ -56,9 +57,13 @@ class SongCode:
     voices: list
     address: int | None = None                                   # a ROM's: the header's
     addresses: dict[str, int] = field(default_factory=dict)      # ... and each label's (voices too)
+    driver: SmpsDriver = DEFAULT_DRIVER                          # the variant that reads it
+    dropped: dict[str, int] = field(default_factory=dict)        # flags read and left out, by name
+    psg_envelopes: dict[str, PsgEnvelope] | None = None          # None: Sonic 1's
+    dac_names: dict[int, str] | None = None                      # None: Sonic 1's (dKick ...)
 
     def song(self) -> SmpsSong:
-        return song_from_code(self.header, self.code, self.voices)
+        return song_from_code(self.header, self.code, self.voices, self.psg_envelopes, self.dac_names)
 
 
 @dataclass
@@ -87,10 +92,17 @@ def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
     return SmpsEffect(flag, list(operands))
 
 
-def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list) -> SmpsSong:
-    """Each of the header's channels walked from its label."""
-    channels = [_Walker(code, ch_header).walk(header.tempo_divider) for ch_header in header.channels]
-    return SmpsSong(header=header, channels=channels, voices=voices)
+def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list,
+                   psg_envelopes: dict[str, PsgEnvelope] | None = None,
+                   dac_names: Mapping[int, str] | None = None) -> SmpsSong:
+    """Each of the header's channels walked from its label.  `psg_envelopes` / `dac_names`: the
+    driver's (None: Sonic 1's).  A DAC track's byte without a name is a plain note."""
+    names = SMPS_DAC_NAMES_REVERSE if dac_names is None else dac_names
+    channels = [_Walker(code, ch_header, names).walk(header.tempo_divider) for ch_header in header.channels]
+    song = SmpsSong(header=header, channels=channels, voices=voices)
+    if psg_envelopes is not None:
+        song.psg_envelopes = dict(psg_envelopes)
+    return song
 
 
 @dataclass
@@ -134,8 +146,9 @@ _WalkState = tuple[int, int, SmpsNote | None, int, int]
 class _Walker:
     """One channel's walk through the song's code."""
 
-    def __init__(self, code: SmpsCode, header: SmpsChannelHeader):
+    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, dac_names: Mapping[int, str]):
         self._ops = code.ops
+        self._dac_names = dac_names
         self._labels = code.labels
         self._header = header
         self._channel = SmpsChannel(header=header)
@@ -311,9 +324,9 @@ class _Walker:
             note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
         elif val > LAST_NOTE:
             note = None
-        elif cur.is_dac and val in SMPS_DAC_NAMES_REVERSE:
+        elif cur.is_dac and val in self._dac_names:
             note = SmpsNote(note_value=val, duration=0, is_dac=True,
-                            dac_name=SMPS_DAC_NAMES_REVERSE[val], is_no_attack=cur.no_attack)
+                            dac_name=self._dac_names[val], is_no_attack=cur.no_attack)
         else:
             note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
         self._open_note(cur, note)

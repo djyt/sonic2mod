@@ -37,9 +37,10 @@ class ConversionConfig:
     name: str = "Untitled"
     input_file: str = ""
     rom_song: int | None = None   # a ROM input_file: the sound ID to convert ($81 ...)
-    # The SMPS variant that played the song.  An asm input states its tempo itself; a VGM / VGZ
-    # one is lifted (core/vgm/lift.py), and these override the tempo the lift infers.
-    driver: SmpsDriver = DEFAULT_DRIVER
+    # The SMPS variant that played the song; None: not stated (a ROM's is detected, an asm or a
+    # VGM log is Sonic 1's).  An asm input states its tempo itself; a VGM / VGZ one is lifted
+    # (core/vgm/lift/), and these override the tempo the lift infers.
+    driver: SmpsDriver | None = None
     tempo_modifier: int | None = None
     tempo_divider: int | None = None
     output_file: str = "output.mod"
@@ -125,11 +126,11 @@ class ConversionConfig:
 
     @property
     def lift_options(self) -> LiftOptions:
-        return LiftOptions(self.driver, self.tempo_modifier, self.tempo_divider)
+        return LiftOptions(self.driver or DEFAULT_DRIVER, self.tempo_modifier, self.tempo_divider)
 
     def read_song(self) -> SmpsSong:
         """The song `input_file` holds: assembly parsed, a ROM's song decoded, a VGM / VGZ rip lifted."""
-        return read_song(self.input_file, self.lift_options, self.rom_song)
+        return read_song(self.input_file, self.lift_options, self.rom_song, self.driver)
 
     def validate_mod_channels(self) -> None:
         """Reject a `num_mod_channels` no format tag exists for, or one the channels overflow."""
@@ -192,10 +193,11 @@ class ConversionConfig:
         """driver:, rom_song: (a ROM input only) and the tempo overrides (a VGM input only)."""
         self.use_source(self.input_file, data.get('rom_song'))
 
-        name = str(data.get('driver', DEFAULT_DRIVER))
-        if name not in SmpsDriver:
-            raise ValueError(f"driver: {name!r} is not one of {', '.join(SmpsDriver)}")
-        self.driver = SmpsDriver(name)
+        name = data.get('driver')
+        if name is not None:
+            if str(name) not in SmpsDriver:
+                raise ValueError(f"driver: {name!r} is not one of {', '.join(SmpsDriver)}")
+            self.driver = SmpsDriver(str(name))
 
         for key in _TEMPO_OVERRIDES:
             value = data.get(key)

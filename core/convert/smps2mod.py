@@ -25,7 +25,7 @@ from ..plan import (
     psg_catalogue,
 )
 from ..smps import (
-    PSG_ENVELOPES_BY_NAME,
+    PsgEnvelope,
     SmpsSong,
     apply_global_tempo_div,
     extend_looping_channels,
@@ -521,6 +521,7 @@ class SmpsToModConverter:
         psg_samples = generate_psg_samples(
             self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
             noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
+            psg_envelopes=self.song.psg_envelopes,
             loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops,
             raw_out=self._raw_renders, cache_out=psg_cache)
         if psg_cache:
@@ -584,8 +585,8 @@ class SmpsToModConverter:
         fps = 50.0 if self.config.region.lower() == 'pal' else 60.0
         for inst, d in derive_noise_envelopes(self.song, self.config).items():
             env = d['envelope']
-            env = PSG_ENVELOPES_BY_NAME.get(env) if isinstance(env, str) else env
-            frames = noise_envelope_frames(env if isinstance(env, list) else None)
+            env = self.song.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None
+            frames = noise_envelope_frames(env)
             if frames is not None:
                 out[inst] = frames / fps
         return out

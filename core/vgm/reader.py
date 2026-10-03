@@ -127,7 +127,10 @@ def is_vgm_path(path: str | Path) -> bool:
 
 def vgm_bytes(path: str | Path) -> bytes:
     """A .vgm or .vgz file's VGM bytes (gunzipped when compressed, whatever the suffix)."""
-    raw = Path(path).read_bytes()
+    return _gunzipped(Path(path).read_bytes())
+
+
+def _gunzipped(raw: bytes) -> bytes:
     return gzip.decompress(raw) if raw[:2] == _GZIP_MAGIC else raw
 
 
@@ -136,7 +139,8 @@ def read_vgm(path: str | Path) -> VgmLog:
 
 
 def decode_vgm(data: bytes) -> VgmLog:
-    """A VGM file's bytes -> its header, writes and data blocks."""
+    """A .vgm or .vgz file's bytes -> its header, writes and data blocks."""
+    data = _gunzipped(data)
     if data[:4] != _MAGIC:
         raise VgmError("not a VGM file (bad magic bytes)")
     return _Decoder(data).run()

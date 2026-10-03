@@ -5,7 +5,8 @@ under a hash of those inputs, beside the others the same code made, and a later 
 asks for the same render reads it back instead of running the emulator again:
 
     <dir>/<chip>/<salt>/<key[:2]>/<key>.bin      zlib(rate, typecode, samples)
-    <dir>/<chip>/<salt>/<key[:2]>/<key><suffix>  a whole file (get_file / put_file: VGMPlay's WAVs)
+    <dir>/<chip>/<salt>/<key[:2]>/<key><suffix>  a whole file (get_file / put_file: VGMPlay's WAVs;
+                                                  get_bytes / put_bytes: a VGZ's frame log)
         salt  a hash of the emulator DLL and the Python a render runs through (code_salt)
         key   a hash of the render's inputs (RenderCache.key)
 
@@ -106,28 +107,40 @@ class RenderCache:
 
     def put_file(self, key: str, src: Path, suffix: str) -> None:
         """Store a copy of `src` under `key`."""
+        self._store(key, suffix, lambda tmp: shutil.copyfile(src, tmp))
+
+    def get_bytes(self, key: str, suffix: str) -> bytes | None:
+        """The bytes stored under `key`, or None."""
+        if self._dir is None:
+            return None
+        try:
+            data = zlib.decompress(self._path(key, suffix).read_bytes())
+        except (OSError, zlib.error):
+            self._count(hit=False)
+            return None
+        self._count(hit=True)
+        return data
+
+    def put_bytes(self, key: str, data: bytes, suffix: str) -> None:
+        """Store `data` under `key`."""
+        self._store(key, suffix, lambda tmp: tmp.write_bytes(zlib.compress(data, 1)))
+
+    def put(self, key: str, samples: Sequence, rate: int) -> None:
+        """Store a render: an array as it is, a list as doubles ('d') or ints ('i') by its first value."""
+        if not isinstance(samples, array.array):
+            samples = array.array("d" if samples and isinstance(samples[0], float) else "i", samples)
+        packed = _HEADER.pack(rate, samples.typecode.encode()) + samples.tobytes()
+        self._store(key, ".bin", lambda tmp: tmp.write_bytes(zlib.compress(packed, 1)))
+
+    def _store(self, key: str, suffix: str, write: Callable[[Path], object]) -> None:
+        """Write a file under `key` atomically (a temp file, then os.replace); a failure stores nothing."""
         if self._dir is None:
             return
         path = self._path(key, suffix)
         tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(src, tmp)
-            os.replace(tmp, path)
-        except OSError:
-            tmp.unlink(missing_ok=True)
-
-    def put(self, key: str, samples: Sequence, rate: int) -> None:
-        """Store a render: an array as it is, a list as doubles ('d') or ints ('i') by its first value."""
-        if self._dir is None:
-            return
-        if not isinstance(samples, array.array):
-            samples = array.array("d" if samples and isinstance(samples[0], float) else "i", samples)
-        path = self._path(key)
-        tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            tmp.write_bytes(zlib.compress(_HEADER.pack(rate, samples.typecode.encode()) + samples.tobytes(), 1))
+            write(tmp)
             os.replace(tmp, path)
         except OSError:
             tmp.unlink(missing_ok=True)

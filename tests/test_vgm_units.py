@@ -7,13 +7,24 @@ from __future__ import annotations
 
 import struct
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.vgm import ChangeKind, ChipState, VgmError, VgmOp, decode_vgm, frame_log, note_starts, pitch_segments
+from core.vgm import (
+    ChangeKind,
+    ChipState,
+    VgmError,
+    VgmOp,
+    decode_vgm,
+    frame_log,
+    load_frames,
+    note_starts,
+    pitch_segments,
+)
 
 _HEADER_BYTES = 0x80
 _FRAME = 735
@@ -153,6 +164,43 @@ class Frames(unittest.TestCase):
         self.assertEqual((dac.writes, dac.since_seek), (6, 3))
         # 3 samples apart before the seek, 2 after; the 400-sample silence between is no gap
         self.assertEqual(dac.gaps, ((2, 2), (3, 2)))
+
+    def test_the_bank_comes_with_the_frames(self):
+        bank = bytes(range(8))
+        block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank
+        self.assertEqual(frame_log(decode_vgm(_vgm(block + b"\x81"))).pcm, bank)
+
+
+class FrameCache(unittest.TestCase):
+    """A rip's frame log is kept on disk under a hash of the file."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _rip(self, name: str, fnum: int) -> Path:
+        path = self.dir / name
+        path.write_bytes(_vgm(_fm_freq(0, fnum, 4) + _fm(0, 0x28, _ON) + _wait(_FRAME)))
+        return path
+
+    def test_a_cached_log_is_the_log(self):
+        rip = self._rip("a.vgm", _A4[0])
+        first = load_frames(rip, self.dir / "cache")
+        self.assertEqual(load_frames(rip, self.dir / "cache"), first)
+        self.assertEqual(first, frame_log(decode_vgm(rip.read_bytes())))
+        self.assertEqual(len(list((self.dir / "cache").rglob("*.frames"))), 1)
+
+    def test_another_file_is_another_log(self):
+        a = load_frames(self._rip("a.vgm", _A4[0]), self.dir / "cache")
+        b = load_frames(self._rip("b.vgm", _B4[0]), self.dir / "cache")
+        self.assertNotEqual(a.frames[0].fm[0].fnum, b.frames[0].fm[0].fnum)
+
+    def test_no_directory_reads_the_rip(self):
+        rip = self._rip("a.vgm", _A4[0])
+        self.assertEqual(load_frames(rip), frame_log(decode_vgm(rip.read_bytes())))
 
 
 def _fm_freq(ch: int, fnum: int, block: int) -> bytes:

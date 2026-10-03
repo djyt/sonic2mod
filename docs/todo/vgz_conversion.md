@@ -94,25 +94,48 @@ Each item produces part of the `SmpsSong`.  Accept each by IR comparison against
 it - ticks, attack, the frequency word, the voice's registers, the carriers' TL, pan, modulation,
 fill, noise byte, DAC sample - with the asm's spelling gone (calls, flag order, transposition vs
 note byte, voice TL vs track volume), and `compare_songs` matches two songs by start tick per
-`Aspect`.  `python tools/vgm_lift.py --all [--aspects timing]` lifts every rip and compares it
-with its config's asm in about a second (frame logs cached by `core.vgm.load_frames`); one rip
+`Aspect`.  `python tools/vgm_lift.py --all [--aspects onset]` lifts every rip and compares it
+with its config's asm in about four seconds (frame logs cached by `core.vgm.load_frames`); one rip
 prints its differences, repeated ones grouped.  "Accept" below means its aspects come out same.
+A rip starts where its recording does: `align_songs` finds the ticks it starts into the song.
+Aspects: `onset` (where a channel attacks - a keyed note or a DAC hit; the tempo; the loop),
+`length` (durations, rests, ties), `pitch`, `voice`, `level`, `pan`, `modulation`, `fill`,
+`noise`, `dac`.  `played_song` takes attack from the channel's key state: `smpsNoAttack` after a
+rest or an expired `smpsNoteFill` attacks, as on hardware.
 
-### [ ] 1.1 Time grid: frames → driver ticks
-- Find the tempo modifier m: the residue mod m on which no note starts (TempoWait holds every m-th
-  frame), confirmed by every note duration coming out a whole number of ticks.  Tick k lands on
-  frame `k + k // (m−1)` (`docs/pipeline.md` gotcha 7a) — invert it.
-- Tempo divider: GCD of note durations in ticks, cross-checked with `ticks_per_row`.
-- Mid-song tempo changes (Drowning's `smpsSetTempoMod`, Credits' `smpsSetTempoDiv`): segment where
-  the hold pattern changes; emit the flag at the segment start.
-- `tempo_modifier:` in the config overrides the inference.
-**Accept:** inferred `smpsHeaderTempo` equals the asm's for all 19; every note's tick equals the asm's.
+### [x] 1.1 Time grid: frames → driver ticks (done 2026-10-03, `core/vgm/lift/tempo.py`)
+- Evidence: FM key-ons only (a tie writes one too) and PSG period changes on channels without
+  modulation.  DAC seeks are not: the Z80 starts a sample up to a frame late (on a hold in 11 of
+  Labyrinth's 136 even read against the burst before them).  Key-offs are not (`smpsNoteFill`).
+  PSG writes in a rip are logged only where the value changes.
+- The phase is fixed: holds at the song's start + m−1 + m·j, and from each `smpsSetTempoMod`'s
+  frame (`cfSetTempo` resets the timeout).  The schedule that describes the song in the fewest
+  bits wins: each channel's intervals coded by frequency, every distinct value once in units of
+  the shared grid.  Schedules that put every key-on on the same frame tie (Title, Ending, 1-up:
+  m = 3, 5, 15 with lengths in 5, 6, 7 ticks - they play the same); the grid with most divisors
+  breaks it.  A missed V-int (Game Over frame 405, during a silence) shows as every later note a
+  tick off the grid: assumed where it pays.  Tempo changes: a DP over bar lines, scored like the
+  single tempo (one code for the whole song, 128 bits a change), run where the song's halves want
+  another tempo than the whole.
+- The divider is not observable - it only says how durations are spelled (GCD would give 6 for
+  Extra Life's 2, 1 for Spring Yard's 2): the lift writes the FM notes' grid, the config's
+  `tempo_divider:` overrides it, `played_song` does not compare it.
+**Result:** modifier = the asm's on all 19; Drowning's 4 changes exact; Credits' first two (15 at
+2016, 10 at 4128) exact, the m = 7 drum break at 4896 (192 ticks of DAC only, no FM or PSG key
+write) is invisible, so the later changes (3, 4) come out ~9 ticks late and FM onsets after it
+miss.  FM onsets: same on 14 songs; one extra key-on at tick 0 on Spring Yard FM3, Stage Clear
+FM1, Invincibility FM2 (song-start artefacts, 1.9) and at Marble Zone FM4/FM5 2040 (open).
+PSG onsets need the envelopes (1.6), DAC ticks the Z80 latency (1.8).
 
-### [ ] 1.2 Song loop
+### [x] 1.2 Song loop (done 2026-10-03)
 VGM loop offset → loop sample → loop tick; `has_jump`, `loop_tick` and `loop_event_index` (the first
-event at or after that tick) on every channel - no labels needed.  No loop offset → no jump (Title).
-Data after one loop pass (some rippers log a fade or second pass) is cut at loop start + body.
-**Accept:** `loop_target_tick()` equals the asm's; the MOD's `Bxx` lands on the same row.
+event at or after that tick, a spanning note split into a tie) on every channel - no labels needed.
+No loop offset → no jump (Title).  The loop and the end are the frames whose bursts follow the loop
+and end samples.  A ripper loops where it likes (Green Hill: tick 592 where the asm's channels
+reach theirs by 577), so the loop is accepted by its span.  A span one tick off the FM grid is one
+frame off it and is snapped (Final Zone and Scrap Brain loop a frame long: 1153 frames where 960
+ticks at m = 6 are exactly 1152).
+**Result:** loop span = the asm's on all 16 looping songs.
 Measured 2026-10-03 (the label audit): Marble Zone, Spring Yard and Robotnik loop exactly their tick
 spans' frames (1920 ticks at modifier 9 = 2160 frames = the VGZ's 1587600 samples); Labyrinth's VGZ
 loop is one frame longer than 1728 ticks' 2073 - at modifier 6 a span of ticks holds 345 or 346

@@ -61,7 +61,7 @@ from .song import (
     pan_side,
 )
 from .song_prep import apply_global_tempo_div, extend_looping_channels
-from .tempo import TempoSegment, frame_of_tick, tempo_schedule
+from .tempo import TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
 from .track import TrackState
 
 __all__ = [
@@ -121,5 +121,6 @@ __all__ = [
     "source_names",
     "synth_note_name",
     "tempo_schedule",
+    "tick_at_frame",
     "voice_field_from_macro",
 ]

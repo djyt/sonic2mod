@@ -165,7 +165,7 @@ class _KeyOnRows:
             self._fm_key(change.channel, change.value)
         elif kind is ChangeKind.PSG_VOLUME and self._psg_on:
             # Silent -> audible is a key-on
-            if change.value == PSG_SILENT and self._state.psg_audible(change.channel):
+            if change.previous == PSG_SILENT and self._state.psg_audible(change.channel):
                 self._emit_psg_keyon(change.channel)
         elif kind is ChangeKind.PSG_TONE and self._psg_on:
             if self._psg_new_note(change.channel):

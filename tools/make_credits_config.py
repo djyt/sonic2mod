@@ -25,7 +25,7 @@ import yaml
 sys.path.insert(0, ".")
 from core.config import ChannelConfig, ConversionConfig
 from core.plan import walk_channel
-from core.smps import CoordFlag, SmpsParser, semitone_to_note_name, source_map, synth_note_name
+from core.smps import CoordFlag, SmpsParser, VoiceField, semitone_to_note_name, source_map, synth_note_name
 
 SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/credits_skeleton.yaml"
 OUT = "configs/13_credits.yaml"
@@ -40,8 +40,8 @@ voices = {v.index: v for v in song.voices}
 
 def vec(v):
     out = []
-    for k, w in (("smpsVcCoarseFreq", 6), ("smpsVcTotalLevel", 1), ("smpsVcDecayRate1", 1), ("smpsVcDecayLevel", 2),
-                 ("smpsVcAttackRate", 1), ("smpsVcReleaseRate", 1), ("smpsVcDetune", 2)):
+    for k, w in ((VoiceField.MULTIPLE, 6), (VoiceField.TOTAL_LEVEL, 1), (VoiceField.DECAY_RATE_1, 1), (VoiceField.DECAY_LEVEL, 2),
+                 (VoiceField.ATTACK_RATE, 1), (VoiceField.RELEASE_RATE, 1), (VoiceField.DETUNE, 2)):
         out += [x * w for x in v.operator_values(k)]
     return out
 

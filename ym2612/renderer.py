@@ -33,7 +33,7 @@ if str(_HERE.parent) not in sys.path:
 
 from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
-from core.smps import FM_FREQUENCIES, MD_FM_CLOCK, SmpsVoice
+from core.smps import FM_FREQUENCIES, MD_FM_CLOCK, SmpsVoice, VoiceField
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2, output_rate
 
@@ -336,16 +336,16 @@ def _smoke_test() -> None:
         algorithm=0x00,
         feedback=0x04,
         operators={
-            'smpsVcDetune':      (0x03, 0x03, 0x03, 0x03),
-            'smpsVcCoarseFreq':  (0x01, 0x00, 0x05, 0x06),
-            'smpsVcRateScale':   (0x02, 0x02, 0x03, 0x03),
-            'smpsVcAttackRate':  (0x1F, 0x1F, 0x1F, 0x1F),
-            'smpsVcAmpMod':      (0x00, 0x00, 0x00, 0x00),
-            'smpsVcDecayRate1':  (0x06, 0x09, 0x06, 0x07),
-            'smpsVcDecayRate2':  (0x08, 0x06, 0x06, 0x07),
-            'smpsVcDecayLevel':  (0x0F, 0x01, 0x01, 0x02),
-            'smpsVcReleaseRate': (0x0F, 0x0F, 0x0F, 0x0F),
-            'smpsVcTotalLevel':  (0x00, 0x13, 0x37, 0x19),
+            VoiceField.DETUNE:      (0x03, 0x03, 0x03, 0x03),
+            VoiceField.MULTIPLE:  (0x01, 0x00, 0x05, 0x06),
+            VoiceField.RATE_SCALE:   (0x02, 0x02, 0x03, 0x03),
+            VoiceField.ATTACK_RATE:  (0x1F, 0x1F, 0x1F, 0x1F),
+            VoiceField.AMP_MOD:      (0x00, 0x00, 0x00, 0x00),
+            VoiceField.DECAY_RATE_1:  (0x06, 0x09, 0x06, 0x07),
+            VoiceField.DECAY_RATE_2:  (0x08, 0x06, 0x06, 0x07),
+            VoiceField.DECAY_LEVEL:  (0x0F, 0x01, 0x01, 0x02),
+            VoiceField.RELEASE_RATE: (0x0F, 0x0F, 0x0F, 0x0F),
+            VoiceField.TOTAL_LEVEL:  (0x00, 0x13, 0x37, 0x19),
         },
     )
 

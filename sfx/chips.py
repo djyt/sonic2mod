@@ -16,7 +16,7 @@ Line references are to `sonic_1/s1.sounddriver.asm`.
 
 from __future__ import annotations
 
-from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET
+from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET, VoiceField
 
 # YM2612 key-on/off register (global, always port 0 — not bank-switched)
 _REG_KEY_ON = 0x28
@@ -44,16 +44,16 @@ def fm_send_voice(opn2, track, voice) -> None:
     track.voice = voice
     opn2.write_reg(0xB0 + c, ((voice.feedback & 0x7) << 3) | (voice.algorithm & 0x7), bank=bank)
 
-    detune = voice.operator_values('smpsVcDetune')
-    mul    = voice.operator_values('smpsVcCoarseFreq')
-    ks     = voice.operator_values('smpsVcRateScale')
-    ar     = voice.operator_values('smpsVcAttackRate')
-    am     = voice.operator_values('smpsVcAmpMod')
-    dr     = voice.operator_values('smpsVcDecayRate1')
-    sr     = voice.operator_values('smpsVcDecayRate2')
-    sl     = voice.operator_values('smpsVcDecayLevel')
-    rr     = voice.operator_values('smpsVcReleaseRate')
-    tl     = voice.operator_values('smpsVcTotalLevel')
+    detune = voice.operator_values(VoiceField.DETUNE)
+    mul    = voice.operator_values(VoiceField.MULTIPLE)
+    ks     = voice.operator_values(VoiceField.RATE_SCALE)
+    ar     = voice.operator_values(VoiceField.ATTACK_RATE)
+    am     = voice.operator_values(VoiceField.AMP_MOD)
+    dr     = voice.operator_values(VoiceField.DECAY_RATE_1)
+    sr     = voice.operator_values(VoiceField.DECAY_RATE_2)
+    sl     = voice.operator_values(VoiceField.DECAY_LEVEL)
+    rr     = voice.operator_values(VoiceField.RELEASE_RATE)
+    tl     = voice.operator_values(VoiceField.TOTAL_LEVEL)
 
     for op in range(4):
         base = c + SMPS_OP_TO_REG_OFFSET[op]
@@ -89,7 +89,7 @@ def fm_send_tl(opn2, track) -> None:
         return
 
     bank, c = _bank_and_offset(track)
-    tl = voice.operator_values('smpsVcTotalLevel')
+    tl = voice.operator_values(VoiceField.TOTAL_LEVEL)
     carriers = CARRIER_OFFSETS_BY_ALG[voice.algorithm & 0x7]
 
     for op in range(4):

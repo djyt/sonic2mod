@@ -28,7 +28,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET, SmpsVoice
+from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET, SmpsVoice, VoiceField
 from ym2612.wrapper import OPN2
 
 # The SMPS operator order comes from core.smps.driver_tables, transcribed from
@@ -70,16 +70,16 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0
     opn2.write_reg(0xB4 + ch_in_bank, 0xC0, bank=bank)  # L=1, R=1, AMS=0, PMS=0
 
     # Per-operator parameters (lists of 4 ints, one per SMPS operator)
-    detune = voice.operator_values('smpsVcDetune')
-    mul    = voice.operator_values('smpsVcCoarseFreq')
-    tl     = voice.operator_values('smpsVcTotalLevel')
-    ks     = voice.operator_values('smpsVcRateScale')
-    ar     = voice.operator_values('smpsVcAttackRate')
-    am     = voice.operator_values('smpsVcAmpMod')
-    dr     = voice.operator_values('smpsVcDecayRate1')
-    sr     = voice.operator_values('smpsVcDecayRate2')
-    sl     = voice.operator_values('smpsVcDecayLevel')
-    rr     = voice.operator_values('smpsVcReleaseRate')
+    detune = voice.operator_values(VoiceField.DETUNE)
+    mul    = voice.operator_values(VoiceField.MULTIPLE)
+    tl     = voice.operator_values(VoiceField.TOTAL_LEVEL)
+    ks     = voice.operator_values(VoiceField.RATE_SCALE)
+    ar     = voice.operator_values(VoiceField.ATTACK_RATE)
+    am     = voice.operator_values(VoiceField.AMP_MOD)
+    dr     = voice.operator_values(VoiceField.DECAY_RATE_1)
+    sr     = voice.operator_values(VoiceField.DECAY_RATE_2)
+    sl     = voice.operator_values(VoiceField.DECAY_LEVEL)
+    rr     = voice.operator_values(VoiceField.RELEASE_RATE)
 
     for smps_op in range(4):
         off  = SMPS_OP_TO_REG_OFFSET[smps_op]
@@ -118,24 +118,24 @@ def _smoke_test() -> None:
         algorithm=0x02,
         feedback=0x07,
         operators={
-            'smpsVcDetune':      (0x00, 0x05, 0x00, 0x05),
-            'smpsVcCoarseFreq':  (0x02, 0x01, 0x08, 0x01),
-            'smpsVcRateScale':   (0x00, 0x00, 0x00, 0x00),
-            'smpsVcAttackRate':  (0x10, 0x1E, 0x1E, 0x1E),
-            'smpsVcAmpMod':      (0x00, 0x00, 0x00, 0x00),
-            'smpsVcDecayRate1':  (0x0F, 0x1F, 0x1F, 0x1F),
-            'smpsVcDecayRate2':  (0x02, 0x00, 0x00, 0x00),
-            'smpsVcDecayLevel':  (0x01, 0x00, 0x00, 0x00),
-            'smpsVcReleaseRate': (0x0F, 0x0F, 0x0F, 0x0F),
-            'smpsVcTotalLevel':  (0x01, 0x22, 0x24, 0x18),
+            VoiceField.DETUNE:      (0x00, 0x05, 0x00, 0x05),
+            VoiceField.MULTIPLE:  (0x02, 0x01, 0x08, 0x01),
+            VoiceField.RATE_SCALE:   (0x00, 0x00, 0x00, 0x00),
+            VoiceField.ATTACK_RATE:  (0x10, 0x1E, 0x1E, 0x1E),
+            VoiceField.AMP_MOD:      (0x00, 0x00, 0x00, 0x00),
+            VoiceField.DECAY_RATE_1:  (0x0F, 0x1F, 0x1F, 0x1F),
+            VoiceField.DECAY_RATE_2:  (0x02, 0x00, 0x00, 0x00),
+            VoiceField.DECAY_LEVEL:  (0x01, 0x00, 0x00, 0x00),
+            VoiceField.RELEASE_RATE: (0x0F, 0x0F, 0x0F, 0x0F),
+            VoiceField.TOTAL_LEVEL:  (0x01, 0x22, 0x24, 0x18),
         },
     )
 
-    detune = voice.operator_values('smpsVcDetune')
-    mul    = voice.operator_values('smpsVcCoarseFreq')
-    tl     = voice.operator_values('smpsVcTotalLevel')
-    ar     = voice.operator_values('smpsVcAttackRate')
-    dr     = voice.operator_values('smpsVcDecayRate1')
+    detune = voice.operator_values(VoiceField.DETUNE)
+    mul    = voice.operator_values(VoiceField.MULTIPLE)
+    tl     = voice.operator_values(VoiceField.TOTAL_LEVEL)
+    ar     = voice.operator_values(VoiceField.ATTACK_RATE)
+    dr     = voice.operator_values(VoiceField.DECAY_RATE_1)
 
     print("Smoke test — programming Title Screen voice 0 onto channel 0...")
     print(f"  algorithm={voice.algorithm}  feedback={voice.feedback}")

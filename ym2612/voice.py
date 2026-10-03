@@ -23,18 +23,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from core.chips import CARRIER_OFFSETS_BY_ALG
-
 # Allow importing smps_parser (project root) when run as a script or module
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.smps import (
-    SMPS_OP_TO_REG_OFFSET,
-    SmpsVoice,
-    VoiceField,
-)
+from core.chips import REG_FEEDBACK_ALGORITHM
+from core.smps import SmpsVoice, VoiceField
 from ym2612.wrapper import OPN2
 
 # The SMPS operator order comes from core.smps.driver_tables, transcribed from
@@ -67,48 +62,14 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0
     """
     bank       = channel // 3
     ch_in_bank = channel % 3
-    carriers   = CARRIER_OFFSETS_BY_ALG[voice.algorithm & 0x7]
 
     # Channel-level registers
-    opn2.write_reg(0xB0 + ch_in_bank,
-                   ((voice.feedback & 0x7) << 3) | (voice.algorithm & 0x7),
-                   bank=bank)
+    opn2.write_reg(REG_FEEDBACK_ALGORITHM + ch_in_bank, voice.feedback_algorithm, bank=bank)
     opn2.write_reg(0xB4 + ch_in_bank, 0xC0, bank=bank)  # L=1, R=1, AMS=0, PMS=0
 
-    # Per-operator parameters (lists of 4 ints, one per SMPS operator)
-    detune = voice.operator_values(VoiceField.DETUNE)
-    mul    = voice.operator_values(VoiceField.MULTIPLE)
-    tl     = voice.operator_values(VoiceField.TOTAL_LEVEL)
-    ks     = voice.operator_values(VoiceField.RATE_SCALE)
-    ar     = voice.operator_values(VoiceField.ATTACK_RATE)
-    am     = voice.operator_values(VoiceField.AMP_MOD)
-    dr     = voice.operator_values(VoiceField.DECAY_RATE_1)
-    sr     = voice.operator_values(VoiceField.DECAY_RATE_2)
-    sl     = voice.operator_values(VoiceField.DECAY_LEVEL)
-    rr     = voice.operator_values(VoiceField.RELEASE_RATE)
-
-    for smps_op in range(4):
-        off  = SMPS_OP_TO_REG_OFFSET[smps_op]
-        base = ch_in_bank + off
-
-        opn2.write_reg(0x30 + base,
-                       ((detune[smps_op] & 0x7) << 4) | (mul[smps_op] & 0xF),
-                       bank=bank)
-        level = tl[smps_op] & 0xFF
-        if off in carriers:
-            level = (level + tl_offset) & 0xFF     # add.b; the chip's TL field keeps 7 bits
-        opn2.write_reg(0x40 + base, level, bank=bank)
-        opn2.write_reg(0x50 + base,
-                       ((ks[smps_op] & 0x3) << 6) | (ar[smps_op] & 0x1F),
-                       bank=bank)
-        opn2.write_reg(0x60 + base,
-                       ((am[smps_op] & 0x1) << 7) | (dr[smps_op] & 0x1F),
-                       bank=bank)
-        opn2.write_reg(0x70 + base, sr[smps_op] & 0x1F, bank=bank)
-        opn2.write_reg(0x80 + base,
-                       ((sl[smps_op] & 0xF) << 4) | (rr[smps_op] & 0xF),
-                       bank=bank)
-        opn2.write_reg(0x90 + base, 0x00, bank=bank)  # SSG-EG disabled
+    # The operators, as the driver writes them (the track volume on the carriers)
+    for reg, value in voice.registers(tl_offset).items():
+        opn2.write_reg(reg + ch_in_bank, value, bank=bank)
 
 
 # ---------------------------------------------------------------------------

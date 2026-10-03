@@ -3,6 +3,9 @@
 from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 
+from ..chips import CARRIER_OFFSETS_BY_ALG, OperatorReg
+from .driver_tables import SMPS_OP_TO_REG_OFFSET
+
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
 # ---------------------------------------------------------------------------
@@ -111,6 +114,7 @@ class SmpsChannel:
 
 # A YM2612 channel's operator count
 _OPERATORS = 4
+_BYTE = 0xFF
 
 
 class VoiceField(StrEnum):
@@ -143,6 +147,36 @@ class SmpsVoice:
         out, reads as 0."""
         vals = list(self.operators.get(field_, ()))
         return (vals + [0] * _OPERATORS)[:_OPERATORS]
+
+    @property
+    def feedback_algorithm(self) -> int:
+        """Register B0."""
+        return (self.feedback & 0x7) << 3 | (self.algorithm & 0x7)
+
+    @property
+    def carrier_registers(self) -> tuple[int, ...]:
+        """The carriers' TL registers (channel 0), in the driver's FMInstrumentTLTable order."""
+        return tuple(OperatorReg.TL + off for off in CARRIER_OFFSETS_BY_ALG[self.algorithm & 0x7])
+
+    def registers(self, tl_offset: int = 0) -> dict[int, int]:
+        """The operator registers 0x30-0x9F of channel 0 as the driver writes the voice, operator
+        by operator: the track volume `tl_offset` added to the carriers' TL (add.b: modulo 256;
+        the chip reads 7 bits), SSG-EG off."""
+        f = {name: self.operator_values(name) for name in VoiceField}
+        carriers = self.carrier_registers
+        regs: dict[int, int] = {}
+        for op, off in enumerate(SMPS_OP_TO_REG_OFFSET):
+            tl = f[VoiceField.TOTAL_LEVEL][op] & _BYTE
+            if OperatorReg.TL + off in carriers:
+                tl = (tl + tl_offset) & _BYTE
+            regs[OperatorReg.DT_MUL + off] = (f[VoiceField.DETUNE][op] & 0x7) << 4 | f[VoiceField.MULTIPLE][op] & 0xF
+            regs[OperatorReg.TL + off] = tl
+            regs[OperatorReg.KS_AR + off] = (f[VoiceField.RATE_SCALE][op] & 0x3) << 6 | f[VoiceField.ATTACK_RATE][op] & 0x1F
+            regs[OperatorReg.AM_D1R + off] = (f[VoiceField.AMP_MOD][op] & 0x1) << 7 | f[VoiceField.DECAY_RATE_1][op] & 0x1F
+            regs[OperatorReg.D2R + off] = f[VoiceField.DECAY_RATE_2][op] & 0x1F
+            regs[OperatorReg.D1L_RR + off] = (f[VoiceField.DECAY_LEVEL][op] & 0xF) << 4 | f[VoiceField.RELEASE_RATE][op] & 0xF
+            regs[OperatorReg.SSG_EG + off] = 0
+        return regs
 
 
 @dataclass

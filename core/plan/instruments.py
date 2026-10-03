@@ -30,6 +30,9 @@ from ..mod import PERIOD_TABLE, ModNote
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
 # rate, what an SMPS nC5 sounds like on a channel with the usual $F4 (-12) pitch offset.
 STD_SYNTH_IDX = 36
+# The renderers count notes from C1 (index 0); configs and the song from C0 (SMPS semitone 0)
+RENDER_INDEX_C1 = 12
+TONE = "tone"            # a PSG entry's type that has a pitch (the others are noise)
 
 
 @dataclass(slots=True)
@@ -93,8 +96,18 @@ class FmInstrument:
         if self.root_idx is None:
             return STD_SYNTH_IDX
         if self.entry.synth_root is not None:
-            return self.entry.synth_root - 12
-        return self.entry.low - 12
+            return self.entry.synth_root - RENDER_INDEX_C1
+        return self.entry.low - RENDER_INDEX_C1
+
+    @property
+    def rendered_semitone(self) -> int:
+        """The pitch the sample is rendered at (SMPS semitone, C0 = 0)."""
+        return self.synth_idx + RENDER_INDEX_C1
+
+    @property
+    def root_semitone(self) -> int:
+        """The pitch MOD note `root` sounds: the rendering pitch less the shift the rate carries."""
+        return self.rendered_semitone - self.synth_shift
 
     def target_rate(self, amiga_clock: float) -> int:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
@@ -190,7 +203,20 @@ class PsgInstrument:
     def root_idx(self) -> int:
         return self.entry.root.value
 
+    @property
+    def synth_idx(self) -> int:
+        """Renderer note index (C1 = 0) a tone is rendered at: synth_root's, else root's."""
+        if self.entry.synth_root is not None:
+            return self.entry.synth_root - RENDER_INDEX_C1
+        return self.root_idx
+
+    @property
+    def root_semitone(self) -> int:
+        """The pitch MOD note `root` sounds (SMPS semitone): the rendering pitch less the shift."""
+        return self.synth_idx + RENDER_INDEX_C1 - self.entry.synth_shift
+
     def target_rate(self, amiga_clock: float) -> int:
+        """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
         return round(amiga_clock / PERIOD_TABLE[self.root_idx] * 2.0 ** (self.entry.synth_shift / 12.0))
 
 

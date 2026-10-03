@@ -2,6 +2,7 @@
 /output
 /sonic_1
 reference/vgz
+input/roms
 *.egg-info/
 *__pycache__*
 *.code-workspace

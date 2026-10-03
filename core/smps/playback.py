@@ -28,7 +28,6 @@ import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ..chips import TL_MASK
 from .driver_tables import FM_FREQUENCIES, PSG_FREQUENCIES_EXTENDED, fm_note_index, psg_note_index
 from .names import source_names
 from .song import CoordFlag, SmpsNote, SmpsSong, SmpsVoice
@@ -219,8 +218,8 @@ def _fm_voice(voice: SmpsVoice | None, tl_offset: int) -> tuple[object, object]:
     """(the voice's registers but the carriers' TL, the carriers' TL) at the track volume."""
     if voice is None:
         return None, None
-    regs = voice.registers(tl_offset)
+    regs = voice.chip_registers(tl_offset)
     carriers = voice.carrier_registers
     timbre = tuple(sorted((r, v) for r, v in regs.items() if r not in carriers))
-    return (voice.feedback_algorithm, timbre), tuple(regs[r] & TL_MASK for r in carriers)
+    return (voice.feedback_algorithm, timbre), tuple(regs[r] for r in carriers)
 

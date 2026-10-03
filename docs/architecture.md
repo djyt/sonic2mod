@@ -9,12 +9,14 @@ Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.m
 ## Data Flow
 
 ```
-  .asm file                          .vgm / .vgz rip
-     │                                   │
-     ▼                                   ▼
- SmpsParser.parse_file()          read_vgm → lift_song()   ← core/vgm/ (the lift: Phase 1 of
-  ← core/smps/parser.py              │                        docs/todo/vgz_conversion.md)
-     └──────────┬────────────────────┘
+  .asm file              ROM (.bin) + sound ID               .vgm / .vgz rip
+     │                         │                                 │
+     ▼                         ▼                                 ▼
+ SmpsParser             read_rom_code()  ← core/rom/      read_vgm → lift_song()  ← core/vgm/ (the
+  ← core/smps/parser.py        │                                 │   lift: docs/todo/vgz_conversion.md)
+     └─> SmpsCode <────────────┘                                 │
+          song_from_code()  ← core/smps/code.py: the one walk    │
+     ┌──────────┴────────────────────────────────────────────────┘
                 │   read_song(path) / ConversionConfig.read_song()   ← core/source/ picks by suffix
                 ▼
   SmpsSong (IR)               ← dataclasses in core/smps/song.py
@@ -48,10 +50,10 @@ core/
   plan/       the song read through its config: DriverState walk, instrument catalogue, detune,
               synthesis pitches, noise derivations, timeline
   config/     song configs, settings.yaml
-  source/     a song file -> SmpsSong: asm parsed (smps/), a VGM rip lifted (vgm/)
-  mod/  vgm/  smps/  chips/  audio/
-              the MOD format · VGM register logs · the SMPS source and driver · the two sound
-              chips (no driver) · sample arithmetic (no SMPS, no MOD)
+  source/     a song file -> SmpsSong: asm parsed (smps/), a ROM's bytecode read (rom/), a VGM rip lifted (vgm/)
+  mod/  rom/  vgm/  smps/  chips/  audio/
+              the MOD format · ROM bytecode · VGM register logs · the SMPS source and driver · the
+              two sound chips (no driver) · sample arithmetic (no SMPS, no MOD)
   diagnostics.py, analysis.py, cbuild.py, version.py
 ```
 
@@ -113,9 +115,18 @@ predict the same numbers (`vgm_analyze` reads its chip levels through them too).
 volume modes' `fm_tl_to_mod` / `psg_att_to_mod` and `modal_level` (the most common level, ties to the louder
 one — what a "baked" `sample_list` volume stands for), are `core/convert/level_plan.py`'s.
 
-### core/smps/parser.py
+### core/smps/code.py, parser.py, asm_writer.py
 
-The core parser. Converts SMPS assembly text into an intermediate representation.
+A song is read in two steps.  A front end turns its source into `SmpsCode` - ops in source order
+(label, track byte, flag, call, return, loop, jump, stop), code falling through from one to the
+next - and `song_from_code` walks each channel through it with the driver's reading rules (a
+note waits for its duration byte, a standalone duration re-keys, smpsNoAttack, loops unrolled,
+calls inlined, a channel's loop where its own walk reached the target).  `SmpsParser` is the asm
+front end (macros, `dc.b`, the `FixMusicAndSFXDataBugs` conditionals: `fix_data_bugs=False` reads
+the songs as shipped); `core/rom/tracks.py` the ROM's.  `write_asm` writes a `SongCode` (header,
+code, voices) back as SMPS2ASM text the parser reads into the same song, its labels named by role
+(`Mus81_FM1`, `Mus81_Loop00`, `Mus81_Voices`) and a ROM's addresses in comments.
+`parse_differences` (compare.py) says where two readings of the same bytes differ.
 
 #### IR Data Classes (core/smps/song.py)
 
@@ -295,11 +306,41 @@ reads register 0x2A.
 `tools/vgm_compare.py` read through it; before 2026-10-03 the first two each parsed the command
 stream themselves.
 
+### core/rom/
+
+A Mega Drive ROM's SMPS bytecode: the score itself, beside `vgm/` (docs/todo/binary_import.md).
+Sonic 1's driver (SMPS 68k Type 1b) only, so far.
+
+```
+image.py     RomImage: the header (title, serial, sha1), big-endian reads by address
+locate.py    locate_sounds: FMFrequencies by its bytes, the PSG1 envelope -> PSG_Index -> the Go_ block
+             -> MusicIndex ($81...), SoundIndex ($A0...), SpecSoundIndex ($D0)
+header.py    music / SFX headers -> SmpsSongHeader; pointers relative to the header (SonicDriverVer 1)
+tracks.py    decode_tracks: track bytes -> SmpsCode, following the code from each start (fall-through,
+             jump, loop and call targets), laid out in address order with a label at every target.
+             smpsFade and smpsStopSpecial end a track (the driver pops its return address)
+voices.py    25 bytes a voice -> SmpsVoice; fields read as the chip reads them; the count is the
+             highest smpsSetvoice + 1 (the bank stores none)
+song.py      read_rom_code (header, code, voices, the labels' addresses) / read_rom_song
+fixes.py     data_fixes: FixMusicAndSFXDataBugs as byte edits for the one ROM each is known in (by SHA-1),
+             each checked against the bytes it replaces; same length laid over the image, other
+             lengths spliced by the decoder (Credits' deletion).  fix_data_bugs=False: as shipped
+kosinski.py  Kosinski decompression (from aonic/tools/kos_decom.py, KENS)
+dac.py       dac_samples: the Z80 driver (found through the 68k's lea DACDriver / lea z80_ram) decompressed,
+             its DPCM samples decoded (signed 8-bit, = samples/*.raw), rates from the play loop's cycles,
+             the timpani's $88-$8B pitches from DAC_sample_rate
+```
+
+All 19 songs and 49 SFX of `sonic_rev01.bin` read as their asm event for event, with the data fixes
+on both sides or off on both; every config converts to the same MOD from either (`tests/regression.py`'s `_rom` cases,
+`tests/test_rom_units.py`).  `tools/rom_import.py` lists, compares, writes asm and DAC samples.
+
 ### core/source/
 
-`read_song(path, LiftOptions | None)`: a `.vgm` / `.vgz` path is lifted, anything else parsed by
-`SmpsParser` (an asm with a `driver:` other than `sonic1` is refused).  `ConversionConfig.read_song()`
-calls it with the config's `driver:` / `tempo_modifier:` / `tempo_divider:`; `convert.py`,
+`read_song(path, LiftOptions | None, rom_song)`: a `.vgm` / `.vgz` path is lifted, a ROM read
+(`rom_song` names the sound), anything else parsed by `SmpsParser` (an asm with a `driver:` other
+than `sonic1` is refused).  `ConversionConfig.read_song()` calls it with the config's `driver:` /
+`tempo_modifier:` / `tempo_divider:` / `rom_song:`; `convert.py`,
 `analyze.py`, `merge_survey.py`, `config_to_chip_space.py` and `vgm_pitch_audit.py` read their song
 through one or the other.
 

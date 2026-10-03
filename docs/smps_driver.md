@@ -17,7 +17,7 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $E1 | `smpsDetune` | `smpsAlterNote` | signed byte | **FNUM offset** (raw frequency count, ~10 cents/unit) added to SMPS_Track.Detune | parsed, stored; NOT applied to pitch or range lookup |
 | $E2 | `smpsNop` | — | byte | Write game-sync flag to shared RAM; no audio effect | parsed, ignored |
 | $E3 | `smpsReturn` | — | — | Return from `smpsCall` subroutine (S1/S2 drivers) | terminates inline |
-| $E4 | `smpsFade` | — | — | Fade in previous song (1-Up jingle mechanism) | ignored |
+| $E4 | `smpsFade` | — | — | Fade in previous song (1-Up jingle mechanism); `addq.w #8,sp`: the track ends here | ends the track (as `smpsStop`) |
 | $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | applied to durations at parse time and kept as an event (the global `$EB` re-timing needs it) |
 | $E6 | `smpsAlterVol` | — | signed byte | Add delta to SMPS_Track.Volume attenuation (cumulative) | → `Cxx` Set Volume |
 | $E7 | `smpsNoAttack` | — | — | Skip the next note's key-off (FM) / envelope restart (PSG): `FMNoteOn` writes the key-on regardless, which a keyed channel ignores; after a rest or once `smpsNoteFill` keyed off, the note attacks.  Note fill and modulation are not restarted.  Every note read clears it, a held standalone duration too | flagged on note |
@@ -27,7 +27,7 @@ All bytes ≥ $E0 in channel data are coordination flags (effect commands). Byte
 | $EB | `smpsSetTempoDiv` | — | byte | Set every track's tempo divider (applies to each note as it is read; last write wins over `$E5`) | every channel re-timed (`apply_global_tempo_div`); Credits' half-tempo passage |
 | $EC | `smpsPSGAlterVol` | — | signed byte | PSG volume attenuation delta | → `Cxx` Set Volume (same as smpsAlterVol) |
 | $ED | (S1 specific) | — | — | Clear "push block" sound flag | ignored |
-| $EE | `smpsStopSpecial` | — | — | Stop special SFX, resume interrupted music track | ignored |
+| $EE | `smpsStopSpecial` | — | — | Stop special SFX, resume interrupted music track; the track ends here (`addq.w #8,sp`) | ends the track (as `smpsStop`) |
 | $EF | `smpsFMvoice` | `smpsSetvoice` | voice index | Load FM voice at index into YM2612 registers | → instrument routing via `voice_map` |
 | $F0 | `smpsModSet` | — | wait, speed, change, step | Set modulation (vibrato) parameters; enables modulation flag | → `4xy` Vibrato |
 | $F1 | `smpsModOn` | — | — | Re-enable modulation (uses stored params) | → activates `4xy` |

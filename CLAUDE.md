@@ -67,12 +67,21 @@ sonic2mod/
                      #     hold schedule, missed V-ints, tempo changes), song.py ticks, per-track loops, smpsSetTempoMod
     audit/           #   A MOD against its VGZ: pitch.py the symbolic pitch audit (report in ui/pitch_audit.py);
                      #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
-    source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
+    source/          #   read_song(path): .asm → SmpsParser, ROM + rom_song → read_rom_song, .vgm / .vgz → lift_song;
+                     #   ConversionConfig.read_song() calls it
+    rom/             #   A ROM's SMPS bytecode (docs/todo/binary_import.md): locate.py the driver's indexes, header.py,
+                     #   tracks.py bytes → SmpsCode, voices.py, song.py read_rom_song / read_rom_code, dac.py the
+                     #   Z80 driver's DPCM samples (kosinski.py), fixes.py FixMusicAndSFXDataBugs as byte edits for
+                     #   rev01 only (by SHA-1; applied by default, like the asm's).  Sonic 1's driver only
     chips/           #   The two sound chips, no driver: fm.py (YM2612 clock, carriers, TL 0.75 dB/step, pan law,
                      #   FNUM -> Hz), psg.py (SN76489 clock, attenuation 2 dB/step, period -> Hz).  smps/ and vgm/ build on it
     smps/            #   The source: songs and the driver that plays them
       song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard
-      parser.py      #     SmpsParser: assembly → SmpsSong
+      code.py        #     SmpsCode (a song's ops: label, byte, flag, call, loop, jump, stop) and song_from_code, the
+                     #     one walk both front ends share: pending durations, smpsNoAttack, loops, calls
+      parser.py      #     SmpsParser: assembly → SmpsCode → SmpsSong (fix_data_bugs=False: the game as shipped)
+      asm_writer.py  #     write_asm: SongCode → SMPS2ASM text the parser reads back into the same song (labels by
+                     #     role, Mus81_Loop00; a ROM's addresses as comments)
       song_prep.py   #     The song as the driver plays it: smpsSetTempoDiv re-timing, short loops replayed
       track.py       #     TrackState: one track's driver state as its flags leave it (DriverState adds the MOD routing)
       tempo.py       #     TempoSegment / tempo_schedule: the frame each tick is read on (TempoWait's holds)
@@ -164,6 +173,7 @@ sonic2mod/
     vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
     vgm_lift.py         #   A rip lifted and compared with its asm (played_song / compare_songs); --all: every rip, in parallel
+    rom_import.py       #   A ROM's songs / SFX: list, --compare DIR (vs the asm), --asm DIR (SMPS2ASM), --dac DIR (samples)
     mod_compare.py      #   Channel-by-channel MOD comparator (core.mod.read_mod)
     mod_lint.py         #   Notes a ProTracker player cannot sound: silent 3xx, empty instrument slots
     mod_audit.py        #   A MOD's samples against the notes that play them: bytes, share of the file (KB%),
@@ -194,6 +204,7 @@ sonic2mod/
     test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps, frame cache
     test_playback_units.py # played_song / compare_songs on hand-built songs: the lift's yardstick
     test_vgm_lift_units.py # tempo inference on frames made from known schedules; the lift on built logs
+    test_rom_units.py   #   core/rom on hand-built bytes; with the ROM + sonic_1/: every sound vs its asm, asm round trip
     vgm_build.py        #   VGM bytes for the tests (commands, a song's bursts frame by frame)
 ```
 
@@ -239,8 +250,15 @@ python tools/mod_audit.py output/02_green_hill_zone_merged.mod
 # a merge_patterns: config gets a column x pattern-block table (block level, primary's key-ons)
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --merged
 
+# Convert straight from the ROM's bytecode (input/roms/, not in git): config rom_song:, or override
+python convert.py configs/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
+# The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
+python tools/rom_import.py input/roms/sonic_rev01.bin --compare sonic_1
+python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
+
 # Render all 49 sound effects to 16-bit stereo WAV (no config needed)
 python sonic2wav.py --all
+python sonic2wav.py --rom input/roms/sonic_rev01.bin   # the same 49 read from the ROM
 python sonic2wav.py --all --dry-run          # parse + render + report, write nothing
 python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
 python sfx/validate.py                       # tables, resampler, 8-bit chain, ticks, panning
@@ -422,7 +440,8 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
   so they cannot disagree.  Only MOD-emission state (note fill, vibrato, cursor) is the
   converter's own.  `core/analysis.py` deliberately keeps its own loop — it describes the song
   with no config in hand
-- Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump`
+- Parser continues past label boundaries — only stops at `smpsStop`/`smpsJump` (and `smpsFade` / `smpsStopSpecial`,
+  which end the track in the driver).  Asm and ROM share the walk: `core/smps/code.py`
 - A channel's loop starts where ITS OWN walk first reached the jump's target (`loop_tick`, `loop_event_index`),
   a forward `smpsJump` into another channel's code included (Labyrinth FM4 into FM3's).  Until 2026-10-03 label
   ticks were one song-wide dict, the last walk past a label winning: Marble Zone PSG1 looped 1916 ticks from

@@ -5,7 +5,7 @@ from typing import Any
 
 from ..mod import ModFile
 from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsSong
-from ..source import LiftOptions, is_vgm_path, read_song
+from ..source import LiftOptions, is_rom_path, is_vgm_path, read_song
 from .entries import (
     TWIN_MODES,
     parse_channel_instrument_map,
@@ -21,7 +21,7 @@ from .loader import read_yaml_file
 
 # A song config's top-level keys
 _KEYS = frozenset({
-    "name", "input_file", "driver", "tempo_modifier", "tempo_divider", "output_file", "target_bpm", "target_speed", "ticks_per_row", "num_mod_channels",
+    "name", "input_file", "rom_song", "driver", "tempo_modifier", "tempo_divider", "output_file", "target_bpm", "target_speed", "ticks_per_row", "num_mod_channels",
     "auto_bpm", "region", "range_space", "samples_dir", "max_patterns", "channels", "dac_samples", "voice_map",
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_output_file",
@@ -36,6 +36,7 @@ _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
 class ConversionConfig:
     name: str = "Untitled"
     input_file: str = ""
+    rom_song: int | None = None   # a ROM input_file: the sound ID to convert ($81 ...)
     # The SMPS variant that played the song.  An asm input states its tempo itself; a VGM / VGZ
     # one is lifted (core/vgm/lift.py), and these override the tempo the lift infers.
     driver: SmpsDriver = DEFAULT_DRIVER
@@ -127,8 +128,8 @@ class ConversionConfig:
         return LiftOptions(self.driver, self.tempo_modifier, self.tempo_divider)
 
     def read_song(self) -> SmpsSong:
-        """The song `input_file` holds: assembly parsed, a VGM / VGZ rip lifted."""
-        return read_song(self.input_file, self.lift_options)
+        """The song `input_file` holds: assembly parsed, a ROM's song decoded, a VGM / VGZ rip lifted."""
+        return read_song(self.input_file, self.lift_options, self.rom_song)
 
     def validate_mod_channels(self) -> None:
         """Reject a `num_mod_channels` no format tag exists for, or one the channels overflow."""
@@ -180,8 +181,17 @@ class ConversionConfig:
         config._read_source(data)
         return config
 
+    def use_source(self, input_file: str, rom_song: int | str | None = None) -> None:
+        """Convert `input_file` (a ROM: its sound `rom_song`, 129 / "$81" / "0x81")."""
+        if rom_song is not None and not is_rom_path(input_file):
+            raise ValueError("rom_song: applies to a ROM input_file only (.bin / .md / .gen)")
+        self.input_file = input_file
+        self.rom_song = None if rom_song is None else _sound_id(rom_song)
+
     def _read_source(self, data: dict) -> None:
-        """driver: and the tempo overrides, which only a VGM input can use."""
+        """driver:, rom_song: (a ROM input only) and the tempo overrides (a VGM input only)."""
+        self.use_source(self.input_file, data.get('rom_song'))
+
         name = str(data.get('driver', DEFAULT_DRIVER))
         if name not in SmpsDriver:
             raise ValueError(f"driver: {name!r} is not one of {', '.join(SmpsDriver)}")
@@ -224,3 +234,14 @@ class ConversionConfig:
             self.loop_drift_db = max(0.0, float(data['loop_drift_db']))
         if data.get('treble_shelf_db') is not None:
             self.treble_shelf_db = float(data['treble_shelf_db'])
+
+
+def _sound_id(value) -> int:
+    """rom_song: as YAML gives it: 129, "$81" or "0x81"."""
+    if isinstance(value, int):
+        return value
+    text = str(value).strip().lower()
+    for prefix in ("$", "0x"):
+        if text.startswith(prefix):
+            return int(text[len(prefix):], 16)
+    raise ValueError(f"rom_song: {value!r} is not a sound ID ($81 ...)")

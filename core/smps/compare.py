@@ -21,6 +21,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from .playback import Aspect, PlayedNote, PlayedSong
+from .song import SmpsSong, SmpsVoice
 
 ALL_ASPECTS = frozenset(Aspect)
 
@@ -171,3 +172,40 @@ def _windowed(notes: list[PlayedNote], lo: int, hi: int) -> dict[int, PlayedNote
         start = max(p.tick, lo)
         out[start] = dataclasses.replace(p, tick=start, duration=end - start)
     return out
+
+
+def parse_differences(expected: SmpsSong, got: SmpsSong) -> list[str]:
+    """Where two readings of the same bytes differ, spelling included: header fields, every
+    event, each channel's loop, the voices (as the chip reads them).  Labels aside - a ROM has
+    none - and voices `got` never reaches: a ROM's bank has no count, the asm's may define more.
+    Empty when they are the same song read twice (an asm and its ROM)."""
+    found = []
+    if _header(expected) != _header(got):
+        found.append(f"header: {_header(expected)} -> {_header(got)}")
+
+    for want, have in zip(expected.channels, got.channels, strict=False):
+        name = want.header.label
+        if want.events != have.events:
+            at = next((i for i, (a, b) in enumerate(zip(want.events, have.events, strict=False)) if a != b),
+                      min(len(want.events), len(have.events)))
+            found.append(f"{name}: {len(want.events)} -> {len(have.events)} events, first difference at "
+                         f"event {at}: {want.events[at:at + 1]} -> {have.events[at:at + 1]}")
+        loops = [(c.has_jump, c.loop_tick, c.loop_event_index) for c in (want, have)]
+        if loops[0] != loops[1]:
+            found.append(f"{name}: loop (jumps, tick, event) {loops[0]} -> {loops[1]}")
+
+    if len(expected.voices) < len(got.voices):
+        found.append(f"voices: {len(expected.voices)} -> {len(got.voices)}")
+    found += [f"voice {a.index}: registers differ" for a, b in zip(expected.voices, got.voices, strict=False)
+              if _chip_voice(a) != _chip_voice(b)]
+    return found
+
+
+def _header(song: SmpsSong) -> object:
+    h = song.header
+    channels = [dataclasses.replace(c, label="") for c in h.channels]
+    return dataclasses.replace(h, voice_label="", channels=channels)
+
+
+def _chip_voice(voice: SmpsVoice) -> tuple:
+    return voice.feedback_algorithm, voice.chip_registers()

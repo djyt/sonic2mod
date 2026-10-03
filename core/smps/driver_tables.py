@@ -218,11 +218,18 @@ PSG_ENVELOPES: tuple[tuple[int, ...], ...] = (
 
 ENVELOPE_TERMINATOR = 0x80
 
+
+
+def psg_voice_name(byte: int) -> str:
+    """smpsPSGvoice's byte as the music files spell it: 0 (no envelope) "$00", n "fTone_0n"."""
+    return f"fTone_{byte:02d}" if byte else "$00"
+
+
 # The same tables under the names the music files give smpsPSGvoice (fTone_01 … fTone_09,
 # also the `envelope:` keys in a config's psg_map / psg_voice_map), without the terminator:
 # the synthesiser steps one value per frame and holds the last one, which is what $80 means.
 PSG_ENVELOPES_BY_NAME: dict[str, tuple[int, ...]] = {
-    f"fTone_{i + 1:02d}": table[:table.index(ENVELOPE_TERMINATOR)]
+    psg_voice_name(i + 1): table[:table.index(ENVELOPE_TERMINATOR)]
     for i, table in enumerate(PSG_ENVELOPES)
 }
 

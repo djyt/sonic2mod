@@ -65,6 +65,19 @@ def _build_smps_note_names():
 
 SMPS_NOTE_NAMES = _build_smps_note_names()
 
+# The spelling written for each note byte (the disassembly's: nEb, nF, nAb, nBb)
+_LABEL_NAMES = ['C', 'Cs', 'D', 'Eb', 'E', 'F', 'Fs', 'G', 'Ab', 'A', 'Bb', 'B']
+_REST_BYTE = 0x80
+_FIRST_NOTE = 0x81
+
+
+def note_label(byte: int) -> str:
+    """A note byte as SMPS2ASM spells it: $80 'nRst', $81 'nC0', $AF 'nBb3'."""
+    if byte == _REST_BYTE:
+        return 'nRst'
+    octave, step = divmod(byte - _FIRST_NOTE, len(_LABEL_NAMES))
+    return f'n{_LABEL_NAMES[step]}{octave}'
+
 _CHROMATIC_NAMES = ['C', 'Cs', 'D', 'Ds', 'E', 'Es', 'Fs', 'G', 'Gs', 'A', 'As', 'B']
 
 def semitone_to_note_name(semitone: int) -> str:
@@ -245,3 +258,8 @@ _VOICE_MACROS = {
 def voice_field_from_macro(macro: str) -> VoiceField | None:
     """The operator field an smpsVc* macro sets; None for any other macro."""
     return _VOICE_MACROS.get(macro)
+
+
+def voice_macro(field_: VoiceField) -> str:
+    """The smpsVc* macro that sets an operator field."""
+    return next(m for m, f in _VOICE_MACROS.items() if f == field_)

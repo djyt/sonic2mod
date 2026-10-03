@@ -38,18 +38,12 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.audio import pitch_name
 from core.config import ConversionConfig
 from core.mod import PERIOD_TABLE, ModImage, edx_delay, read_mod, timed_pass
 from core.vgm import PSG_TONE_CHANNELS, VGM_SAMPLE_RATE, ChangeKind, ChipState, VgmLog, read_vgm
 
-_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-
 Segment = tuple[float, float | None]          # (start s, Hz or None when silent)
-
-
-def note_name(f: float) -> str:
-    m = round(69 + 12 * math.log2(f / 440.0))
-    return f"{_NOTE_NAMES[m % 12]}{m // 12 - 1}"
 
 
 def chip_timeline(log: VgmLog) -> tuple[dict[str, list[Segment]], float]:
@@ -312,7 +306,7 @@ def audit(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tu
                     hit = n
             if hit is None:
                 st["missing"] += 1
-                st["missing_notes"].append({"t_s": t0, "chip": note_name(f)})
+                st["missing_notes"].append({"t_s": t0, "chip": pitch_name(f)})
                 continue
             cents = 1200 * math.log2(hit[1] / f)
             by_inst[hit[2]][0 if abs(cents) <= tolerance else round(cents / 100) * 100] += 1
@@ -320,7 +314,7 @@ def audit(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tu
                 st["ok"] += 1
             else:
                 st["wrong"] += 1
-                st["wrong_notes"].append({"t_s": t0, "chip": note_name(f), "mod": note_name(hit[1]), "cents": cents,
+                st["wrong_notes"].append({"t_s": t0, "chip": pitch_name(f), "mod": pitch_name(hit[1]), "cents": cents,
                                           "instrument": hit[2], "placed_s": hit[0]})
         channels[src] = st
     return {"channels": channels, "instruments": instrument_verdicts(by_inst),

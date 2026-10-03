@@ -27,13 +27,19 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from core.chips import MD_FM_CLOCK
+
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
-from core.smps import FM_FREQUENCIES, MD_FM_CLOCK, SmpsVoice, VoiceField
+from core.smps import (
+    FM_FREQUENCIES,
+    SmpsVoice,
+    VoiceField,
+)
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2, output_rate
 
@@ -70,11 +76,6 @@ def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK) -> tu
         word = FM_FREQUENCIES[i]
         return word & 0x7FF, (word >> 11) & 0x7
     return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
-
-
-def fnum_block_to_freq(fnum: int, block: int, clock_rate: int = MD_FM_CLOCK) -> float:
-    """The pitch (Hz) a (fnum, block) pair plays: f = fnum × (clock/144) × 2^block / 2^21."""
-    return fnum * (clock_rate / 144.0) * (1 << block) / (1 << 21)
 
 
 def freq_to_fnum_block(freq: float, clock_rate: int = MD_FM_CLOCK) -> tuple[int, int]:

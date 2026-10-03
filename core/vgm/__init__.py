@@ -16,10 +16,8 @@ from .chipstate import (
     Change,
     ChangeKind,
     ChipState,
-    fm_frequency_hz,
     noise_rate,
     noise_white,
-    psg_frequency_hz,
 )
 from .frames import DacFrame, FmFrame, Frame, FrameLog, PsgFrame, frame_log
 from .lift import LiftOptions, VgmLiftError, lift_song
@@ -77,7 +75,6 @@ __all__ = [
     "VgmOp",
     "VgmWrite",
     "decode_vgm",
-    "fm_frequency_hz",
     "frame_log",
     "is_vgm_path",
     "lift_song",
@@ -85,7 +82,6 @@ __all__ = [
     "noise_white",
     "note_starts",
     "pitch_segments",
-    "psg_frequency_hz",
     "read_vgm",
     "vgm_bytes"
 ]

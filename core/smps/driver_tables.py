@@ -13,6 +13,8 @@ from __future__ import annotations
 import math
 from enum import StrEnum
 
+from ..chips import CARRIER_OFFSETS_BY_ALG, FM_SAMPLE_RATE, MD_PSG_CLOCK, PSG_SAMPLE_RATE
+
 
 class SmpsDriver(StrEnum):
     """The SMPS variants these tables transcribe: a config's `driver:`."""
@@ -26,16 +28,8 @@ DEFAULT_DRIVER = SmpsDriver.SONIC1
 # Frequency tables
 # ---------------------------------------------------------------------------
 
-# The NTSC Mega Drive's chip clocks: settings.yaml fm_synthesis / psg_synthesis clock_rate, which
-# every renderer reads; these are the fallback, and what the driver's tables were computed for
-MD_FM_CLOCK = 7_670_454
-MD_PSG_CLOCK = 3_579_545
-
-# The chip sample rates the driver's table-generation macros divide by.
-# FM  = YM2612 master clock / 144 = 53267  (== OPN2.NATIVE_RATE)
-# PSG = SN76489 clock / 16        = 223721.5625
-FM_SAMPLE_RATE = MD_FM_CLOCK // 144
-PSG_SAMPLE_RATE = MD_PSG_CLOCK / 16
+# The chip clocks and native rates the driver's table-generation macros divide by are the chips'
+# (core/chips): FM 53267 Hz, PSG 223721.5625 Hz at the NTSC Mega Drive's clocks.
 
 
 def _round_half_up(x: float) -> int:
@@ -248,18 +242,10 @@ SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
 _TL_TABLE_OFFSETS = (0x00, 0x08, 0x04, 0x0C)
 FM_SLOT_MASK = (8, 8, 8, 8, 0xA, 0xE, 0xE, 0xF)
 
-CARRIER_OFFSETS_BY_ALG: tuple[tuple[int, ...], ...] = tuple(
-    tuple(off for i, off in enumerate(_TL_TABLE_OFFSETS) if FM_SLOT_MASK[alg] & (1 << i))
-    for alg in range(8)
-)
-
-# The YM2612's operator registers sit in the order OP1, OP3, OP2, OP4
-_OPERATOR_NAME_BY_OFFSET = {0x00: 'OP1', 0x04: 'OP3', 0x08: 'OP2', 0x0C: 'OP4'}
-
-
-def carrier_names(algorithm: int) -> list[str]:
-    """An algorithm's carrier operators, OP1 first: algorithm 4 → ['OP2', 'OP4']."""
-    return sorted(_OPERATOR_NAME_BY_OFFSET[off] for off in CARRIER_OFFSETS_BY_ALG[algorithm & 0x7])
+# The driver's mask names the chip's carriers (core.chips.CARRIER_OFFSETS_BY_ALG), table order kept
+assert tuple(
+    tuple(off for i, off in enumerate(_TL_TABLE_OFFSETS) if FM_SLOT_MASK[alg] & (1 << i)) for alg in range(8)
+) == CARRIER_OFFSETS_BY_ALG, "FMSlotMask disagrees with the YM2612's carriers"
 
 
 # ---------------------------------------------------------------------------

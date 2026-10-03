@@ -8,8 +8,11 @@ import os
 import re
 
 from core.audio import gain_to_db
+from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK
 from core.mod import PAL_AMIGA_CLOCK
-from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK, SmpsParser
+from core.smps import (
+    SmpsParser,
+)
 from sn76489.wrapper import SN76489
 from ym2612.wrapper import OPN2, output_rate
 

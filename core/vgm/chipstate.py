@@ -21,7 +21,7 @@ from collections.abc import Iterator
 from enum import Enum
 from typing import NamedTuple
 
-from ..smps import CARRIER_OFFSETS_BY_ALG, MD_FM_CLOCK, MD_PSG_CLOCK
+from ..chips import CARRIER_OFFSETS_BY_ALG, MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
 from .reader import VgmLog, VgmOp, VgmWrite
 
 FM_CHANNELS = 6
@@ -65,10 +65,6 @@ _NOISE_WHITE_BIT = 0x04
 _NOISE_TONE2_RATE = 3              # the LFSR is clocked by tone channel 2
 _NOISE_BASE_DIVIDER = 512          # rates 0-2: clock / (512 << rate)
 
-# Pitch: f = clock x fnum / (144 x 2^(21 - block));  f = clock / (32 x period)
-_FM_CLOCK_DIVIDER = 144
-_FM_FNUM_BITS = 21
-_PSG_CLOCK_DIVIDER = 32
 
 
 class ChangeKind(Enum):
@@ -99,16 +95,6 @@ def noise_white(register: int) -> bool:
 def noise_rate(register: int) -> int:
     """The noise register's rate: 0-2 a fixed divider, 3 tone channel 2."""
     return register & _NOISE_RATE_MASK
-
-
-def fm_frequency_hz(fnum: int, block: int, clock: int) -> float:
-    """YM2612: f = fnum x (clock / 144) x 2^block / 2^21  (A4 = fnum 1083, block 4 at the MD clock)."""
-    return clock * fnum / (_FM_CLOCK_DIVIDER * (1 << (_FM_FNUM_BITS - block)))
-
-
-def psg_frequency_hz(period: int, clock: int) -> float:
-    """SN76489: f = clock / (32 x period); 0 for period 0."""
-    return clock / (_PSG_CLOCK_DIVIDER * period) if period > 0 else 0.0
 
 
 class ChipState:
@@ -304,7 +290,7 @@ class ChipState:
         counted as 1, as the Sega VDP PSG does)."""
         if self.noise_rate != _NOISE_TONE2_RATE:
             return self.psg_clock / float(_NOISE_BASE_DIVIDER << self.noise_rate)
-        return self.psg_clock / (float(_PSG_CLOCK_DIVIDER) * (self._psg_period[2] or 1))
+        return psg_frequency_hz(self._psg_period[2] or 1, self.psg_clock)
 
 
 def _data_byte_follows(w: VgmWrite, following: VgmWrite | None) -> bool:

@@ -9,6 +9,7 @@ import dataclasses
 import math
 
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
+from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db
 from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, rate3_synth_root_issues
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
@@ -24,12 +25,10 @@ from ..plan import (
     psg_catalogue,
 )
 from ..smps import (
-    DEFAULT_FM_PAN_LAW_DB,
     PSG_ENVELOPES_BY_NAME,
     SmpsSong,
     apply_global_tempo_div,
     extend_looping_channels,
-    fm_level_db,
     noise_envelope_frames,
 )
 from ..smps import semitone_to_note_name as _semitone_to_name

@@ -8,10 +8,8 @@ New code should import from ``core.smps.driver_tables`` directly.
 """
 
 from core.smps import (  # noqa: F401
-    CARRIER_OFFSETS_BY_ALG,
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,
-    FM_SAMPLE_RATE,
     FM_SLOT_MASK,
     HW_FM_CHANNEL,
     PAN_VALUES,
@@ -19,7 +17,6 @@ from core.smps import (  # noqa: F401
     PSG_ENVELOPES,
     PSG_FREQUENCIES,
     PSG_FREQUENCIES_EXTENDED,
-    PSG_SAMPLE_RATE,
     SMPS_OP_TO_REG_OFFSET,
     fm_note_index,
     psg_index_semitone,

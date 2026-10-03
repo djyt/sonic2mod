@@ -49,9 +49,9 @@ core/
               synthesis pitches, noise derivations, timeline
   config/     song configs, settings.yaml
   source/     a song file -> SmpsSong: asm parsed (smps/), a VGM rip lifted (vgm/)
-  mod/  vgm/  smps/  audio/
-              the MOD format · VGM register logs (reads smps/'s tables) · the SMPS source and
-              driver · sample arithmetic (no SMPS, no MOD)
+  mod/  vgm/  smps/  chips/  audio/
+              the MOD format · VGM register logs · the SMPS source and driver · the two sound
+              chips (no driver) · sample arithmetic (no SMPS, no MOD)
   diagnostics.py, analysis.py, cbuild.py, version.py
 ```
 
@@ -94,15 +94,20 @@ Self-checks against known-good assembled values run at import.
 - **`psg_index_semitone(index)`**: the real pitch a PSG table index sounds at, including past the table's end.
 - **`chip_pitch(semitone, transpose, is_psg)`**: the real pitch the chip plays — PSG through the driver table, so notes past its ends sound as the hardware does. What `range_space: chip` matches on.
 - **`psg_tone2_divider(note_value, transpose)`**: the tone-2 divider a note writes — what clocks a rate-3 noise LFSR.
-- **`SMPS_OP_TO_REG_OFFSET`**, **`FM_SLOT_MASK`**, **`CARRIER_OFFSETS_BY_ALG`**: the FM register layout. Read by both `ym2612/voice.py` (sample synthesis) and `sfx/chips.py` (driver emulation).
+- **`SMPS_OP_TO_REG_OFFSET`** (the order the driver stores a voice's operators), **`FM_SLOT_MASK`** (the driver's FMSlotMask, checked against `core.chips.CARRIER_OFFSETS_BY_ALG`). Read by both `ym2612/voice.py` (sample synthesis) and `sfx/chips.py` (driver emulation).
 - **`PSG_ENVELOPES`** (with `$80` terminators, for the SFX driver) and **`PSG_ENVELOPES_BY_NAME`**
   (`fTone_01` … `fTone_09` without them, what a config's `envelope:` resolves to), **`PAN_VALUES`**,
   **`HW_FM_CHANNEL`**, **`PSG_CHANNEL`**.
 
-### core/smps/levels.py
+### core/chips/
 
-The chip level laws, in one place: `TL_STEP_DB` (0.75), `PSG_STEP_DB` (2.0), `DEFAULT_FM_PAN_LAW_DB` (3.0),
-`fm_level_db`, `psg_level_db`.  Used by the converter and by `analyze.py`'s YAML skeleton, which therefore
+The two sound chips' own facts, with no driver in them: `fm.py` (YM2612: `MD_FM_CLOCK`, `FM_SAMPLE_RATE`,
+`CARRIER_OFFSETS_BY_ALG`, `carrier_names`, `fm_frequency_hz`, and the level laws `TL_STEP_DB` (0.75),
+`DEFAULT_FM_PAN_LAW_DB` (3.0), `fm_level_db`) and `psg.py` (SN76489: `MD_PSG_CLOCK`, `PSG_SAMPLE_RATE`,
+`psg_frequency_hz`, `PSG_STEP_DB` (2.0), `psg_level_db`).  `smps/driver_tables.py` builds its tables on
+them and checks at import that the driver's `FMSlotMask` names the same carriers; `vgm/` reads the chips
+through them, so only `vgm/lift.py` imports `smps/` (the song it produces) - `tests/test_chips_units.py`
+pins both.  The level laws are used by the converter and by `analyze.py`'s YAML skeleton, which therefore
 predict the same numbers (`vgm_analyze` reads its chip levels through them too).  dB → MOD volume is
 `core/mod/volume.py` (`db_to_mod_volume`, `clamp_mod_volume`, `headroom_db`); the two together, the absolute
 volume modes' `fm_tl_to_mod` / `psg_att_to_mod` and `modal_level` (the most common level, ties to the louder

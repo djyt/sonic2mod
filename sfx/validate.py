@@ -16,12 +16,16 @@ import math
 import sys
 from pathlib import Path
 
+from core.chips import MD_PSG_CLOCK
+
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import gain_to_db
-from core.smps import MD_PSG_CLOCK, SmpsParser
+from core.smps import (
+    SmpsParser,
+)
 from sfx import tables
 from sfx.batch import render_one
 from sfx.render import NATIVE_RATE

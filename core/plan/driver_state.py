@@ -27,7 +27,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..smps import FM_TL_SILENT, PSG_ATT_SILENT, CoordFlag, chip_pitch, fm_level_db, pan_side, psg_level_db, source_map
+from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
+from ..smps import (
+    CoordFlag,
+    chip_pitch,
+    pan_side,
+    source_map,
+)
 
 
 def psg_range_entry(entries, key: int):

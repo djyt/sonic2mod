@@ -67,10 +67,11 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.audio import hz_to_midi, midi_name, pitch_name
-from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK
 from core.vgm import (
     DAC_NAME,
     DEFAULT_MOD_CENTS,
@@ -84,12 +85,10 @@ from core.vgm import (
     PsgFrame,
     VgmError,
     VgmLog,
-    fm_frequency_hz,
     frame_log,
     noise_rate,
     noise_white,
     note_starts,
-    psg_frequency_hz,
     read_vgm,
 )
 

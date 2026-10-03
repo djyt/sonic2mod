@@ -24,6 +24,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from core.chips import MD_PSG_CLOCK
+
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
@@ -31,7 +33,9 @@ if str(_HERE.parent) not in sys.path:
 from core.audio import DEFAULT_TAPS, normalize_int8, resample, write_raw16
 from core.audio import to_mono as _to_mono
 from core.config import DEFAULT_PSG_OVERSAMPLE
-from core.smps import MD_PSG_CLOCK, PSG_FREQUENCIES
+from core.smps import (
+    PSG_FREQUENCIES,
+)
 from sn76489.wrapper import SN76489
 
 # Import PERIOD_TABLE for target_rate calculation

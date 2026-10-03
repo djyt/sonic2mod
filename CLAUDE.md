@@ -40,7 +40,7 @@ sonic2mod/
   sonic2wav.py       # CLI entry point — SFX → WAV rendering
   core/              # Library package; imports nothing from sfx/ or the chip packages.  Layers, each importing
                      # only those below it (a package's __init__ exports what other packages import):
-                     #   ui → convert / audit → merge → plan → config → source → vgm → mod / smps / audio   (diagnostics: any)
+                     #   ui → convert / audit → merge → plan → config → source → vgm → mod / smps → chips / audio   (diagnostics: any)
     audio/           #   Sample arithmetic, no SMPS, no MOD
       gain.py        #     db_to_gain / gain_to_db / power_to_db (the only place a dB is converted by hand)
       pcm.py         #     Mono/int8/raw16 helpers shared by the two synthesis pipelines (dithered quantiser,
@@ -65,6 +65,8 @@ sonic2mod/
     audit/           #   A MOD against its VGZ: pitch.py the symbolic pitch audit (report in ui/pitch_audit.py);
                      #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
+    chips/           #   The two sound chips, no driver: fm.py (YM2612 clock, carriers, TL 0.75 dB/step, pan law,
+                     #   FNUM -> Hz), psg.py (SN76489 clock, attenuation 2 dB/step, period -> Hz).  smps/ and vgm/ build on it
     smps/            #   The source: songs and the driver that plays them
       song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard
       parser.py      #     SmpsParser: assembly → SmpsSong
@@ -72,7 +74,6 @@ sonic2mod/
       driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices, chip_pitch,
                      #     PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
                      #     (sfx/tables.py re-exports this; it used to live there)
-      levels.py      #     Chip level laws: TL 0.75 dB/step, attenuation 2 dB/step, pan law
       names.py       #     SMPS note labels, config pitch names (synth_note_name), DAC names, SFX channel ids,
                      #     source_names / source_map
     config/          #   Per-song conversion config (song.py ConversionConfig, entries.py its maps and section
@@ -458,7 +459,7 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 7a. **Driver ticks are unevenly spaced** — with tempo modifier *m*, `TempoWait` holds every *m*-th frame, so tick *k* falls on frame `k + k // (m−1)`. GHZ's odd ticks are 16.7 ms after the even ones, not 25 ms. `_note_cell` measures `EDx` delays in frames for that reason. Two note-ons never share a cell: a 1-tick grace note keeps its row and the note it slides into takes the next one. A `Cxx` due on a delayed note's attack row moves to the note's next row.
 
-7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. The sample is **rendered at that TL offset** (`LevelPlanner.fm_render_levels` → `program_voice(tl_offset=)`, the carriers plus the track volume as `SetVoice` writes it), so the chip's 9-bit accumulator clips a multi-carrier voice exactly as the hardware does at that level — never render at TL 0 and scale afterwards (GHZ's lead clipped a third of its samples that way where the hardware, at FM1's +18, clips none). TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). Both laws live in `core/smps/levels.py` and the baselines are planned by `LevelPlanner.levels`, which walks the channels with the same `DriverState` the conversion does. When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
+7b. **FM levels are "baked" (`fm_volume_scaling: baked`, `configs/settings.yaml`)** — per MOD instrument, the (TL offset, pan) level most of its notes play at needs no command and is what its `sample_list` volume means; other notes get `Cxx = volume × 10^(ΔdB/20)`. The sample is **rendered at that TL offset** (`LevelPlanner.fm_render_levels` → `program_voice(tl_offset=)`, the carriers plus the track volume as `SetVoice` writes it), so the chip's 9-bit accumulator clips a multi-carrier voice exactly as the hardware does at that level — never render at TL 0 and scale afterwards (GHZ's lead clipped a third of its samples that way where the hardware, at FM1's +18, clips none). TL offset = `smpsHeaderFM` volume + `smpsAlterVol`; hard pan = −3 dB. No variant instruments. PSG works the same way (`psg_volume_scaling: baked`, attenuation 2 dB/step, no pan). Both laws live in `core/chips/` (`fm_level_db`, `psg_level_db`) and the baselines are planned by `LevelPlanner.levels`, which walks the channels with the same `DriverState` the conversion does. When tuning a `sample_list` volume, all channels sharing the instrument should show the same error in `vgm_compare.py` — if they don't, it is not a volume problem. Details: `docs/pipeline.md` §FM levels.
 
 7d. **PSG3 stays a noise channel once `smpsPSGform` ran** — `cfSetPSGNoise` writes VoiceControl $E0 and nothing in Sonic 1 music turns it back; `smpsPSGvoice` after it only picks the hi-hat's envelope. Nothing about the noise is configured: the `psg_map` key is the SN76489 register byte, so white/periodic and the rate are read from it (a stated `type`/`noise_rate` that disagrees warns), and `derive_noise_envelopes` reads the envelope from the song — the label most of the instrument's notes play under (the header voice for every PSG3 track: `fTone_04`, Marble Zone `fTone_09`), `envelope:` being an override. A label that needs its own sample is named in the entry's `envelopes: {label: inst}` (Scrap Brain's `fTone_08`); `psg_voice_map` is never consulted in noise mode, and a noise type there is an error. One sample standing in for several envelopes warns (`noise_envelopes`: Credits' PSG3, which has no free slot). A note transposed past the PSG table's ends plays whatever ROM follows the table; indices 125–127 are measured from the Spring Yard and Credits recordings (0 = inaudible, 922 = B2, 540 = G#3) and sit at the end of `PSG_FREQUENCIES_EXTENDED`, so `core.smps.driver_tables.psg_index_semitone` gives the hardware's pitch there (`range_space: chip` reproduces it).
 

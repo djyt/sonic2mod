@@ -7,11 +7,14 @@ with the same DriverState the conversion does.
 """
 
 from ..audio import db_to_gain
+from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
 from ..config import ConversionConfig
 from ..merge import MergePlan
 from ..mod import MOD_MAX_VOLUME
 from ..plan import DetunePlan, enabled_channels, walk_channel
-from ..smps import FM_TL_SILENT, PSG_ATT_SILENT, SmpsSong, fm_level_db, psg_level_db
+from ..smps import (
+    SmpsSong,
+)
 
 
 def fm_tl_to_mod(tl_offset: int) -> int:

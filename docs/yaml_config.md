@@ -22,6 +22,10 @@ name: "Title Screen"
 # File paths
 input_file: "path/to/song.asm"   # or a .vgm / .vgz rip: lifted back into the song (core/vgm/lift/;
                                  # docs/todo/vgz_conversion.md), or a ROM (.bin / .md / .gen) with rom_song
+# A config with no `channels:` section is MINIMAL: every section it leaves out is derived from the
+# song (core/plan/derive.py; configs/moonwalker/ holds three-line configs).  convert.py --show-config
+# prints the completed config, --write-config freezes it; a stated item (one voice's voice_map
+# entries, one sample_list row) replaces only the derived item it names.
 # rom_song: "$81"      # ROM input only: the sound ID to read from its bytecode (core/rom/; "$81", "0x81"
                        # or 129).  The data fixes known for that exact ROM are applied, as the asm
                        # applies FixMusicAndSFXDataBugs (core/rom/fixes.py: Sonic 1 rev01 only)

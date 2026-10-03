@@ -194,6 +194,8 @@ class SmpsSong:
     # The PSG envelopes smpsPSGvoice names (fTone_01 ...): the driver's own - Sonic 1's for an asm
     # song or a VGM lift, a ROM's read from its PSG_Index
     psg_envelopes: dict[str, PsgEnvelope] = field(default_factory=lambda: dict(SONIC1_ENVELOPES))
+    # Flags read and left out (a ROM's driver: pan animation, queued sounds), by name
+    dropped: dict[str, int] = field(default_factory=dict)
 
     def end_tick(self) -> int:
         """The tick the last event of any channel ends at (a note's duration included)."""

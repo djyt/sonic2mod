@@ -1,0 +1,10 @@
+# Michael Jackson's Moonwalker - Dance Attack 5.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Dance Attack 5"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$90"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [4, "fm_v00_Bb3.raw", 25, 0]   # VGZ: -5.2 dB at 14
+  - [5, "fm_v01_Eb2.raw", 33, 0]   # VGZ: +3.4 dB at 49
+  - [8, "psg_noise_e7.raw", 2, 0]   # VGZ: +10.8 dB at 6

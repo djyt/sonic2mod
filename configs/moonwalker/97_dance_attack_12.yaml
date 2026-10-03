@@ -1,0 +1,5 @@
+# Michael Jackson's Moonwalker - Dance Attack 12.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Dance Attack 12"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$97"

@@ -1,0 +1,17 @@
+# Which rip in reference/vgz/moonwalker/ each config converts, for tools/measure_volumes.py --rips.
+# Only pairs the pitch audit confirmed (Round Clear's 10 wrong notes are 2.9's timing finding, every
+# channel at the same two moments, not the pairing).  Dance Attack 1-3 and 7-12 are not
+# here: the pack names its rips in game order, not $8C-$97 order (docs/todo/binary_import.md 2.9).
+81_smooth_criminal: "03 - Smooth Criminal.vgz"
+82_beat_it: "06 - Beat It.vgz"
+83_another_part_of_me: "09 - Another Part of Me.vgz"
+84_billie_jean: "11 - Billie Jean.vgz"
+85_bad: "13 - Bad.vgz"
+86_title: "01 - Title Screen.vgz"
+87_game_over: "28 - Game Over.vgz"
+88_round_clear: "04 - Round Clear.vgz"
+89_mr_big: "15 - Mr. Big.vgz"
+8a_boss: "07 - Boss Theme.vgz"
+8f_dance_attack_4: "19 - Dance Attack 4.vgz"
+90_dance_attack_5: "20 - Dance Attack 5.vgz"
+91_dance_attack_6: "21 - Dance Attack 6.vgz"

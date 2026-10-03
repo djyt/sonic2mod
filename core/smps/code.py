@@ -63,7 +63,9 @@ class SongCode:
     dac_names: dict[int, str] | None = None                      # None: Sonic 1's (dKick ...)
 
     def song(self) -> SmpsSong:
-        return song_from_code(self.header, self.code, self.voices, self.psg_envelopes, self.dac_names)
+        song = song_from_code(self.header, self.code, self.voices, self.psg_envelopes, self.dac_names)
+        song.dropped = dict(self.dropped)
+        return song
 
 
 @dataclass

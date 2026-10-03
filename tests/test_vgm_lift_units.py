@@ -133,6 +133,15 @@ class Lift(unittest.TestCase):
         fm1 = next(c for c in song.channels if c.header.label == "FM1")
         self.assertEqual(fm1.events[fm1.loop_event_index].tick_position, 8)
 
+    def test_a_loop_inside_a_note_loops_at_the_next(self):
+        # The rip loops a tick into the note at 8: FM1 loops at 12, its last note rings on into
+        # the repeat (5 ticks to the log's end, 3 from the loop) - no split, no tie
+        song = self._song({0: _attack(), 4: _attack(), 8: _attack(), 12: _attack()}, end=17, loop=9)
+        fm1 = next(c for c in song.channels if c.header.label == "FM1")
+        self.assertEqual((fm1.loop_tick, [(ev.tick_position, ev.note.duration) for ev in fm1.events]),
+                         (12, [(0, 4), (4, 4), (8, 4), (12, 8)]))
+        self.assertEqual(song.end_tick() - song.loop_target_tick(), 8)
+
     def test_a_tempo_change_is_read_on_fm1(self):
         changes = [(288, 3)]
         segments = tempo_schedule(2, changes)

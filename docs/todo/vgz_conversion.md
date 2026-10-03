@@ -99,9 +99,12 @@ with its config's asm in about four seconds (frame logs cached by `core.vgm.load
 prints its differences, repeated ones grouped.  "Accept" below means its aspects come out same.
 A rip starts where its recording does: `align_songs` finds the ticks it starts into the song.
 Aspects: `onset` (where a channel attacks - a keyed note or a DAC hit; the tempo; the loop),
-`length` (durations, rests, ties), `pitch`, `voice`, `level`, `pan`, `modulation`, `fill`,
-`noise`, `dac`.  `played_song` takes attack from the channel's key state: `smpsNoAttack` after a
-rest or an expired `smpsNoteFill` attacks, as on hardware.
+`length` (durations, rests, ties), `note` (the table note, no detune), `pitch`, `voice`, `level`,
+`pan`, `modulation`, `fill`, `noise`, `dac`; `--channels FM` compares those channels only.
+`played_song` takes attack from the channel's key state: `smpsNoAttack` after a rest or an
+expired `smpsNoteFill` attacks, as on hardware.  A fill is a key-off: the note it cuts plays as a
+note and a rest (from the tick its key-off frame plays), the fill value its own aspect; a held
+duration (`smpsNoAttack, $34`) is a tie; a stopped track rests to the song's end.
 
 ### [x] 1.1 Time grid: frames → driver ticks (done 2026-10-03, `core/vgm/lift/tempo.py`)
 - Evidence: FM key-ons only (a tie writes one too) and PSG period changes on channels without
@@ -143,7 +146,15 @@ TempoWait frames depending on where it starts, so a loop's length in frames is n
 ticks alone.  Every channel's loop now starts where it reached its own target
 (`tests/test_song_units.py` checks all songs' loops agree with the song's period).
 
-### [ ] 1.3 FM notes
+### [ ] 1.3 FM notes (simplest form done 2026-10-03: key-ons and FNUMs → note bytes + durations)
+Done: notes at the nearest table entry, durations, ties, rests; fill key-offs as note + rest; each
+track loops at its first event in the rip's repeat (its last note rings on into it, as an asm
+track loops at a label - no tie at the rip's loop).  `vgm_lift.py --all --aspects onset length
+note --channels FM`: 13 of 19 same.  Left: one key-on at tick 0 (Spring Yard FM3, Stage Clear FM1,
+Invincibility FM2, 1.9; at Stage Clear it sets the hold phase a frame off, so its fill key-offs
+land a tick early), large `smpsAlterNote` scoops rounding to the next note (Star Light FM5,
+Scrap Brain FM4, Credits FM3/FM4), Credits after its m = 7 break (1.1).  Not done: legato,
+lifting `smpsNoteFill`, `smpsAlterNote`.
 - Key-on → note; key-off with no key-on → rest; a key-on while keyed at the same frequency → tie
   (`smpsNoAttack` + duration); a frequency change while keyed and no key-off → legato
   (`smpsNoAttack` + note); a key-on after key-off at the same frequency → retrigger.

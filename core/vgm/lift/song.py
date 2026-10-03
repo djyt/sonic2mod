@@ -83,7 +83,7 @@ def lift_song(frames: FrameLog, options: LiftOptions | None = None) -> SmpsSong:
     channels = [_channel(header, hits, tempo, end) for header, hits in tracks]
     _mark_tempo_changes(channels, tempo)
     if loop is not None:
-        _mark_loop(channels, loop)
+        _mark_loop(channels, loop, end)
 
     header = SmpsSongHeader(
         fm_count=sum(c.header.channel_type != "PSG" for c in channels),
@@ -159,12 +159,27 @@ def _mark_tempo_changes(channels: list[SmpsChannel], tempo: TempoMap) -> None:
         carrier.events.insert(i, SmpsEvent(effect=SmpsEffect(CoordFlag.SET_TEMPO_MOD, [modifier]), tick_position=tick))
 
 
-def _mark_loop(channels: list[SmpsChannel], tick: int) -> None:
-    """Every track jumps back to `tick` from the end: where the rip loops."""
+def _mark_loop(channels: list[SmpsChannel], tick: int, end: int) -> None:
+    """Every track jumps back from its end to where the rip loops (`tick`): to its first event
+    from there, its last note ringing on into the repeat (an asm track loops at a label):
+
+        rip         |C 4 |D 4 |E 4 |F 4 |       loops from 16 to 9
+                              ^9
+        lifted      |C 4 |D 4 |E 4 |F 7    |    loops from 19 to 12
+
+    A track with no event in the repeat loops at `tick`, the note there split."""
     for channel in channels:
         channel.has_jump = True
-        channel.loop_tick = tick
-        channel.loop_event_index = _split(channel, tick)
+        first = next((i for i, ev in enumerate(channel.events) if tick <= ev.tick_position < end), None)
+        if first is None:
+            channel.loop_tick = tick
+            channel.loop_event_index = _split(channel, tick)
+            continue
+
+        loop_tick = channel.events[first].tick_position
+        channel.loop_tick, channel.loop_event_index = loop_tick, first
+        last = next(ev.note for ev in reversed(channel.events) if ev.note is not None)
+        last.duration += loop_tick - tick
 
 
 def _onset_grid(tracks: list[tuple[SmpsChannelHeader, list[Hit]]], tempo: TempoMap) -> int:

@@ -62,9 +62,9 @@ sonic2mod/
       frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
       notes.py       #     note_starts (key-on / tie / legato / PSG audible rules, NoteTracker), pitch_segments
       cache.py       #     load_frames: a rip's FrameLog kept in samples.render_cache (hash of the file + the frame code)
-      lift/          #     lift_song(frames, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md (1.1-1.2 done):
-                     #     tracks.py hits by frame, tempo.py infer_tempo (fewest-bits hold schedule, missed V-ints,
-                     #     tempo changes), song.py ticks, loop, smpsSetTempoMod
+      lift/          #     lift_song(frames, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md (1.1-1.2 done,
+                     #     1.3 FM note bytes + durations): tracks.py hits by frame, tempo.py infer_tempo (fewest-bits
+                     #     hold schedule, missed V-ints, tempo changes), song.py ticks, per-track loops, smpsSetTempoMod
     audit/           #   A MOD against its VGZ: pitch.py the symbolic pitch audit (report in ui/pitch_audit.py);
                      #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
@@ -77,7 +77,8 @@ sonic2mod/
       track.py       #     TrackState: one track's driver state as its flags leave it (DriverState adds the MOD routing)
       tempo.py       #     TempoSegment / tempo_schedule: the frame each tick is read on (TempoWait's holds)
       playback.py    #     played_song: each note as the driver plays it, the asm's spelling gone (PlayedNote, Aspect;
-                     #     attack from the key state: smpsNoAttack after a rest or an expired fill attacks)
+                     #     attack from the key state: smpsNoAttack after a rest or an expired fill attacks;
+                     #     a fill's key-off a rest, a held duration a tie)
       compare.py     #     compare_songs / align_songs: two songs' notes by start tick, per aspect, a rip's start found
       driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices, chip_pitch,
                      #     PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
@@ -276,9 +277,10 @@ python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz" --frames --
 python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
 
 # The lift (docs/todo/vgz_conversion.md Phase 1) against the asm: differences per channel and aspect
-# (timing, attack, pitch, voice, level, pan, modulation, fill, noise, dac), repeated ones grouped
+# (onset, length, note, pitch, voice, level, pan, modulation, fill, noise, dac), repeated ones grouped
 python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"
 python tools/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
+python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into

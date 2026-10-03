@@ -37,6 +37,7 @@ class ConversionConfig:
     name: str = "Untitled"
     input_file: str = ""
     rom_song: int | None = None   # a ROM input_file: the sound ID to convert ($81 ...)
+    _data: dict = field(default_factory=dict, repr=False)   # the YAML it was read from
     # The SMPS variant that played the song; None: not stated (a ROM's is detected, an asm or a
     # VGM log is Sonic 1's).  An asm input states its tempo itself; a VGM / VGZ one is lifted
     # (core/vgm/lift/), and these override the tempo the lift infers.
@@ -151,7 +152,12 @@ class ConversionConfig:
     def from_yaml(cls, filepath):
         """Load configuration from a YAML file; a key it does not know is an error (a typo, or a
         retired key, would otherwise be ignored)."""
-        data = read_yaml_file(filepath)
+        return cls.from_data(read_yaml_file(filepath), filepath)
+
+    @classmethod
+    def from_data(cls, data: dict, filepath) -> "ConversionConfig":
+        """A config from its YAML data (a file's, or a minimal one completed by
+        core.plan.derive_config)."""
         unknown = sorted(set(data) - _KEYS)
         if unknown:
             raise ValueError(f"{filepath}: unknown key(s): {', '.join(unknown)}")
@@ -175,12 +181,26 @@ class ConversionConfig:
         config.channel_instrument_map = parse_channel_instrument_map(data)
         config.psg_map = parse_psg_map(data, filepath)
         config.psg_voice_map = parse_psg_voice_map(data)
-        config.sample_list = data.get('sample_list', None)
+        config.sample_list = data.get('sample_list')
         config._read_merge(data)
         config.mod_pattern_breaks = parse_pattern_breaks(data)
         config.validate_mod_channels()
         config._read_source(data)
+        config._data = dict(data)
         return config
+
+    @property
+    def is_minimal(self) -> bool:
+        """No `channels:` section: everything the config leaves out is derived from the song."""
+        return "channels" not in self._data
+
+    def stated(self) -> dict:
+        """The YAML data the config states, with any later input_file / rom_song override."""
+        data = dict(self._data)
+        data["input_file"] = self.input_file
+        if self.rom_song is not None:
+            data["rom_song"] = f"${self.rom_song:02X}"
+        return data
 
     def use_source(self, input_file: str, rom_song: int | str | None = None) -> None:
         """Convert `input_file` (a ROM: its sound `rom_song`, 129 / "$81" / "0x81")."""

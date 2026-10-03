@@ -1,0 +1,12 @@
+# Michael Jackson's Moonwalker - Mr. Big.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Mr. Big"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$89"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 48, -4]   # VGZ: +2.6 dB at 64
+  - [2, "dac82.raw", 34, -4]   # VGZ: +5.6 dB at 64
+  - [3, "dac83.raw", 31, 0]   # VGZ: +6.2 dB at 64
+  - [4, "dac85.raw", 31, 1]   # VGZ: +6.3 dB at 64
+  - [5, "fm_v00_C2.raw", 12, 0]   # VGZ: +6.3 dB at 25

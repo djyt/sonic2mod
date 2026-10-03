@@ -52,6 +52,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.config import ConversionConfig, format_patterns
 from core.convert import SurveyContext, survey_context
 from core.merge import PairStats
+from core.plan import load_config
 
 MARK_BEGIN = "# >>> merge_patterns - written by tools/fold_csv.py from {csv}; the config is the source of truth: edit it here, or re-run --write to replace the block from the table"
 MARK_END = "# <<< merge_patterns"
@@ -316,7 +317,7 @@ def main() -> None:
                     help="mix_note: NOTE on every drum-primary group: its mixes are made no higher than this "
                          "MOD note (F2: 11 kHz instead of a hat's 28 kHz)")
     args = ap.parse_args()
-    cfg = ConversionConfig.from_yaml(args.config)
+    cfg = load_config(args.config)
     columns, table, names = read_table(args.csv, cfg)
     ctx = survey_context(cfg, args.config)
     blocks, report = build(ctx, columns, table, bank=args.bank, mix_note=args.mix_note)

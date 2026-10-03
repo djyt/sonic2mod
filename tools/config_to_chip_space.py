@@ -37,7 +37,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ChannelConfig, ConversionConfig
-from core.plan import walk_channel
+from core.plan import load_config, walk_channel
 from core.smps import parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
 
 mod_name = synth_note_name   # YAML config note name for a semitone
@@ -163,7 +163,7 @@ def render(new: list[dict], indent: str) -> list[str]:
 
 def main() -> None:
     path = Path(sys.argv[1])
-    cfg = ConversionConfig.from_yaml(str(path))
+    cfg = load_config(str(path))
     if cfg.range_space == "chip":
         sys.exit(f"{path} is already in chip space")
     text = path.read_text(encoding="utf-8")

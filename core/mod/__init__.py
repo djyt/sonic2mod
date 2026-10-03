@@ -21,13 +21,14 @@ from .file import (
 )
 from .limits import MAX_MOD_SAMPLE_BYTES, max_sustain_secs, sample_limit_bytes
 from .notes import MOD_NOTE_MAP, PERIOD_TABLE, ModNote
-from .sample_audit import audit
+from .sample_audit import LOW_RATE_HZ, audit
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM, TimedRow, edx_delay, timed_pass
 from .volume import MOD_MAX_VOLUME, clamp_mod_volume, db_to_mod_volume, headroom_db
 
 __all__ = [
     "DEFAULT_BPM",
     "DEFAULT_SPEED",
+    "LOW_RATE_HZ",
     "MAX_MOD_SAMPLE_BYTES",
     "MOD_MAX_VOLUME",
     "MOD_NOTE_MAP",

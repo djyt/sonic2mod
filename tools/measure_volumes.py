@@ -9,6 +9,9 @@ Usage:
   python tools/measure_volumes.py --no-write
       Measure and report only; the configs are not touched.
   python tools/measure_volumes.py --jobs 2 --min-db 1.5
+  python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker       --rips configs/moonwalker/rips.yaml
+      Pairs from a YAML map {config stem: rip file} instead of the number prefix; a config the map
+      leaves out is skipped (Moonwalker's rips are in game order, its configs in sound-ID order).
 
 Per song, in its own process:
   1. convert.py <config>
@@ -40,6 +43,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
+
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 
@@ -64,7 +69,10 @@ def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
                           errors="replace", check=False)
 
 
-def _vgz_for(config: Path, vgz_dir: Path) -> Path | None:
+def _vgz_for(config: Path, vgz_dir: Path, rips: dict[str, str] | None = None) -> Path | None:
+    """The config's rip: the map's (`--rips`), else the file sharing its two-character prefix."""
+    if rips is not None:
+        return vgz_dir / rips[config.stem] if config.stem in rips else None
     prefix = config.stem[:2]
     hits = sorted(p for p in vgz_dir.glob(f"{prefix} - *") if p.suffix.lower() in (".vgz", ".vgm"))
     return hits[0] if hits else None
@@ -161,9 +169,15 @@ def main() -> None:
     ap.add_argument("--configs", default=str(_ROOT / "configs"), help="config directory")
     ap.add_argument("--vgz-dir", default=str(_ROOT / "reference" / "vgz"), help="VGZ directory")
     ap.add_argument("--vgmplay", default=None, help="VGMPlay directory (passed to vgm_compare.py)")
+    ap.add_argument("--rips", metavar="FILE", help="YAML {config stem: rip file in --vgz-dir}; configs it leaves out are skipped")
     args = ap.parse_args()
 
-    configs = sorted(p for p in Path(args.configs).glob("[0-9][0-9]_*.yaml"))
+    configs = sorted(p for p in Path(args.configs).glob("[0-9a-f][0-9a-f]_*.yaml"))
+    rips = None
+    if args.rips:
+        with open(args.rips, encoding="utf-8") as f:
+            rips = {str(k): str(v) for k, v in (yaml.safe_load(f) or {}).items()}
+        configs = [c for c in configs if c.stem in rips]
     if args.only:
         configs = [c for c in configs if any(n in c.stem for n in args.only)]
     if not configs:
@@ -174,7 +188,7 @@ def main() -> None:
 
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         results = list(pool.map(
-            lambda c: measure_song(c, _vgz_for(c, vgz_dir), write=not args.no_write,
+            lambda c: measure_song(c, _vgz_for(c, vgz_dir, rips), write=not args.no_write,
                                    min_db=args.min_db, vgmplay=args.vgmplay), configs))
 
     failed = 0

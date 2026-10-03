@@ -38,6 +38,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.config import ConversionConfig
 from core.convert import survey_context
 from core.merge import PairStats
+from core.plan import load_config
 
 
 def survey(cfg: ConversionConfig, config_path: str) -> tuple[list[PairStats], dict[str, int]]:
@@ -72,7 +73,7 @@ def main() -> None:
     ap.add_argument("config")
     ap.add_argument("--all", action="store_true", help="print every pair, not only the clean ones")
     args = ap.parse_args()
-    cfg = ConversionConfig.from_yaml(args.config)
+    cfg = load_config(args.config)
     stats, counts = survey(cfg, args.config)
 
     print(f"{cfg.name}: " + ", ".join(f"{s} {n}" for s, n in counts.items()) + " notes\n")

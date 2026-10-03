@@ -96,6 +96,7 @@ from core.audit import (
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, read_mod, timed_pass
+from core.plan import load_config
 from core.ui import print_audit
 from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
 
@@ -857,7 +858,7 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = ConversionConfig.from_yaml(args.config)
+    cfg = load_config(args.config)
     if args.merged:
         try:
             prepare_merged_config(cfg)          # followers off, channels packed, merge_output_file

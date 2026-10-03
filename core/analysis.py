@@ -25,11 +25,12 @@ from .smps import (
 # Effect classification
 # ---------------------------------------------------------------------------
 
-UNSUPPORTED_EFFECTS = {CoordFlag.PAN, CoordFlag.NOP}
+UNSUPPORTED_EFFECTS = {CoordFlag.NOP}
 
+# Detune is rendered into the samples (core/plan/detune.py) and smpsModSet is the driver's own
+# modulation as 4xy (verified on six songs): both are supported, not partial.
 PARTIAL_EFFECTS = {
-    CoordFlag.DETUNE:   'FNUM offset (~10 cents) — not applied to pitch',
-    CoordFlag.MOD_SET:  'approximate (sine vs triangle wave)',
+    CoordFlag.PAN:      'no MOD panning: a hard pan counts as -3 dB (fm_pan_law_db)',
 }
 
 # Known Sonic 1 DAC sample native playback rates and suggested MOD notes.

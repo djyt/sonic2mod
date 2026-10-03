@@ -3,12 +3,16 @@
 
 Usage:
     python convert.py configs/song.yaml [--output output/song.mod]
+    python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config   # a minimal config, completed
 """
 
 import argparse
 import dataclasses
 import os
 import sys
+from pathlib import Path
+
+import yaml
 
 from core.config import (
     PLAYERS,
@@ -22,6 +26,7 @@ from core.config import (
 )
 from core.convert import SampleGenerators, SmpsToModConverter
 from core.merge import prepare_merged_config
+from core.plan import complete_config
 from core.ui import Report, branding, cli_console, error_printer, print_report
 from sn76489.sample_generator import generate_psg_samples
 from ym2612.sample_generator import generate_fm_samples
@@ -68,6 +73,10 @@ def main():
                         help="Convert FILE instead of the config's input_file (a ROM: with --rom-song)")
     parser.add_argument('--rom-song', metavar='ID',
                         help="With a ROM input: the sound to convert ($81, 0x81)")
+    parser.add_argument('--show-config', action='store_true',
+                        help="Print the config as converted (a minimal one: with what was derived)")
+    parser.add_argument('--write-config', metavar='PATH',
+                        help="Write the config as converted to PATH (freeze a derived one to hand-tune) and stop")
     parser.add_argument('--merged', action='store_true',
                         help="The reduced build: fold the config's `merge:` followers onto their "
                              "primaries (composite instruments) and write merge_output_file")
@@ -97,6 +106,37 @@ def main():
             config.use_source(args.input or config.input_file, args.rom_song)
         except ValueError as e:
             _error(str(e))
+
+    if not config.input_file:
+        _error("No input_file specified in YAML config")
+
+    if not os.path.exists(config.input_file):
+        _error(f"Input file not found: {config.input_file}")
+
+    # ── Parse (an asm), read (a ROM) or lift (a VGM rip) ───────────────────────
+    try:
+        song = config.read_song()
+    except ValueError as e:
+        _error(str(e))
+
+    # ── A minimal config (no channels:) completed from the song ────────────────
+    derived: list[str] = []
+    data = config.stated()
+    if config.is_minimal:
+        try:
+            amiga_clock = load_settings(_settings_path(args.config, args.settings))[0].amiga_clock
+            config, derivation = complete_config(config, args.config, amiga_clock, song)
+        except ValueError as e:
+            _error(str(e))
+        assert derivation is not None
+        data, derived = derivation.data, derivation.derived
+    if args.show_config:
+        console.print(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None), markup=False, highlight=False)
+    if args.write_config:
+        Path(args.write_config).write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None), encoding="utf-8")
+        console.print(f"wrote {args.write_config}")
+        return
+
     if args.merged:
         try:
             prepare_merged_config(config)
@@ -105,21 +145,10 @@ def main():
     if args.output:
         config.output_file = args.output
 
-    if not config.input_file:
-        _error("No input_file specified in YAML config")
-
-    if not os.path.exists(config.input_file):
-        _error(f"Input file not found: {config.input_file}")
-
     if not args.output and (not config.output_file or config.output_file == "output.mod"):
         base = os.path.splitext(os.path.basename(config.input_file))[0]
         config.output_file = base.replace(" ", "_") + ".mod"
 
-    # ── Parse (an asm), or lift (a VGM rip) ─────────────────────────────────
-    try:
-        song = config.read_song()
-    except ValueError as e:
-        _error(str(e))
 
     # BPM derivation.  A MOD BPM is a whole number: the report says how far off the driver's
     # tempo that leaves the song, and which target_speed would leave it closer.
@@ -165,7 +194,8 @@ def main():
     print_report(console, Report(
         config=config, song=song, converter=converter, output_path=config.output_file,
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
-        synth=synth, psg_synth=psg_synth, bpm=bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns)))
+        synth=synth, psg_synth=psg_synth, bpm=bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
+        derived=derived))
 
 
 if __name__ == '__main__':

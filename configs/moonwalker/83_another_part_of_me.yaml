@@ -1,0 +1,17 @@
+# Michael Jackson's Moonwalker - Another Part of Me.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Another Part of Me"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$83"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "dac82.raw", 44, -4]   # VGZ: +0.1 dB at 64
+  - [4, "fm_v00_C3.raw", 29, 0]   # VGZ: -6.7 dB at 19
+  - [6, "fm_v01_C2.raw", 26, 0]   # VGZ: +1.5 dB at 45
+  - [8, "fm_v03_F4.raw", 11, 0]   # VGZ: +1.8 dB at 19
+  - [9, "fm_v04_F3.raw", 5, 0]   # VGZ: -8.3 dB at 3
+  - [10, "fm_v05_A5.raw", 32, 0]   # VGZ: -6.2 dB at 23
+  - [11, "fm_v06_F4.raw", 10, 0]   # VGZ: +0.6 dB at 16
+  - [12, "fm_v07_D6.raw", 9, 0]   # VGZ: +2.2 dB at 16
+  - [15, "psg_$00_Eb3.raw", 4, 0]   # VGZ: +3.1 dB at 8
+  - [16, "psg_noise_e7.raw", 3, 0]   # VGZ: +6.8 dB at 8

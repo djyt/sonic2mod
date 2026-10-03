@@ -69,6 +69,7 @@ class Report:
     bpm: dict = field(default_factory=dict)       # derived, exact, error_pct, better (option or None)
     mod_channels: int = 0
     patterns: int = 0
+    derived: list = field(default_factory=list)   # the sections a minimal config left to the song
 
 
 # ── Warnings: (check, headline, fix) ──────────────────────────────────────────────────────────
@@ -381,6 +382,11 @@ def print_header(console: Console, rep: Report) -> None:
     out = (f"[cyan]{escape(rep.output_path)}[/cyan]  [bold]{rep.output_bytes / 1024:.0f} KB[/bold]  "
            f"[dim]samples {sample_bytes / 1024:.0f} K · patterns {(rep.output_bytes - sample_bytes) / 1024:.0f} K · "
            f"{rep.patterns} patterns" + (f" · loop → {loop['target']}" if loop else "") + "[/dim]")
+    if rep.derived:
+        source += f"  [dim]· derived: {', '.join(rep.derived)}[/dim]"
+    dropped = getattr(song, "dropped", None)
+    if dropped:
+        source += "  [dim]· dropped: " + ", ".join(f"{escape(what)} x{n}" for what, n in dropped.items()) + "[/dim]"
     console.print(_label_row("Source", source))
     console.print(_label_row("Tempo", tempo))
     console.print(_label_row("Settings", f"[dim]{settings}[/dim]"))

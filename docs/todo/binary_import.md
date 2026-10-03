@@ -237,7 +237,7 @@ Bad, Round Clear and a dance queue voice sample `$DD`.  Dropped, with a report l
 rule: what is not part of the music goes).  The VGZ pack agrees: each dance is ripped with and
 without voice, so the game lays the voice over the music.
 
-### [ ] 2.8 Minimal config (the user's choice, 2026-10-03)
+### [x] 2.8 Minimal config (the user's choice; done 2026-10-03, `core/plan/derive.py`)
 The YAML holds what the ROM cannot say and the musical choices; everything else is derived when
 converting, so it improves with the converter.  `convert.py --show-config` prints the config used,
 `--write-config` freezes it for hand-tuning.  The Sonic configs stay as they are (measured, pinned).
@@ -261,7 +261,47 @@ converting, so it improves with the converter.  `convert.py --show-config` print
 
 Also: `analyze.py --rom-song`; `rom_import.py` shows the variant, tables, songs, SFX.
 
+Done as planned, with these choices:
+- A config without `channels:` is minimal (the Sonic configs state everything; `range_space` unstated
+  could not be the test).  `load_config` / `complete_config` complete one for `convert.py` and every
+  tool (`vgm_pitch_audit`, `vgm_compare`, `merge_survey`, `fold_csv`, `config_to_chip_space`,
+  `analyze.py --config`); `convert.py --show-config`, `--write-config`; the report lists the derived
+  sections and the dropped flags.
+- Roots: a window's lowest pitch at E1, the first MOD note above the sample audit's 5 kHz low-rate
+  line (C1 flagged every sample "low rate 4144").  Names as the disassembly spells them (F5, Bb2).
+- Volumes: `starting_volume`, analyze.py's skeleton law moved to core (samples are peak-normalised,
+  so the volume carries the modal TL / attenuation: 76 x gain at TL 0, PSG 16 at attenuation 0).
+  `vgm_compare --write-volumes` adds stated rows to a minimal config.
+- DAC: a sample at the note and finetune nearest its rate; its pitched copies at the nearest note at
+  that finetune.  Smooth Criminal's kick: lowest peak 72.7 Hz in rip and MOD (70-71 Hz without).
+- Smooth Criminal: one `--write-volumes` pass put every instrument within 1 dB of the rip (most
+  within 0.4).  `configs/moonwalker/`: 21 minimal configs (every music index sound but `$8B`, a
+  copy of `$87`), all convert; output in `output/moonwalker/`.  Not in regression (the user's call).
+- analyze.py, untouched for a while: Sonic DAC file names fixed for other names (`dac81` gave
+  `ac81.raw`); detune and smpsModSet no longer "partial" (both rendered exactly), pan is (no MOD pan,
+  -3 dB); a ROM song's skeleton is the derived config.
+
+Pitch audit (`vgm_pitch_audit`, by rip name): Smooth Criminal 1022/1022, Beat It 786/786, Another
+Part of Me 759/761, Billie Jean 885/885, Bad 663/663, Mr. Big 1099/1099, Boss 112/112, Title 20/20,
+Game Over 5/5, Round Clear 67/77, Dance Attack 4-6 clean; Dance Attack 1-3 and 7-12 mostly "wrong":
+the rips' game order is not `$8C`-`$97` (and the pack may be Rev 00, whose `$95`-`$97` are the
+Thriller dances) - 2.9's matcher.
+
 ### [ ] 2.9 Yardstick
+Volumes (2026-10-03): `measure_volumes.py --rips configs/moonwalker/rips.yaml` (the pairs the pitch
+audit confirmed: 13 of 21) - 68 volumes in 11 songs, one write pass; Smooth Criminal clean after,
+the rest's residuals at the 64 ceiling, one- or two-note instruments, or Beat It scaled down so its
+loudest fits (PSG at volume 1, noise +6 dB with nowhere lower).  Dance Attack 1-3 and 7-12 keep the
+starting volumes until the matcher pairs them.
+
+Open findings from 2.8:
+- Round Clear: all FM channels a whole 1-3 semitones off at 0.30 s and 2.30 s; Another Part of Me
+  -100 c on FM1 and FM4 at 53.68 s.  Simultaneous whole-semitone shifts: a transposition or legato
+  timing rule of Type 1a's that differs from Sonic 1's.
+- Smooth Criminal: 6-10 key-ons a channel unmatched at the same times on FM1/3/4/5 (40.42, 48.42,
+  52.42 s ...), as many MOD-only: a timing rule again?
+- The jingles (Title, Game Over) hold their last FM note 14-22 s: past the 10 s sample cap.
+
 `reference/vgz/moonwalker/`: vgmrips' complete set, 40 rips (12 dances twice, with and without
 voice).  By name: $81-$85 Smooth Criminal ... Bad (rips 03, 06, 09, 11, 13), $88 Round Clear (04),
 $89 Mr. Big (15), $8A Boss (07), $87 / $8B Game Over (28), $8C-$97 Dance Attack 1-12 (16-27).

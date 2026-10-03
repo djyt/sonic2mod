@@ -1,0 +1,19 @@
+# Michael Jackson's Moonwalker - Bad.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Bad"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$85"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "dac82.raw", 47, -4]   # VGZ: -1.3 dB at 64
+  - [3, "fm_v00_Ab3.raw", 22, 0]   # VGZ: -8.2 dB at 14
+  - [4, "fm_v01_F2.raw", 27, 0]   # VGZ: +0.3 dB at 45
+  - [5, "fm_v02_Bb0.raw", 22, 0]   # VGZ: -0.8 dB at 32
+  - [6, "fm_v03_F3.raw", 7, 0]   # VGZ: -11.8 dB at 3
+  - [7, "fm_v04_G3.raw", 6, 0]   # VGZ: -0.8 dB at 9
+  - [8, "fm_v05_Eb4.raw", 14, 0]   # VGZ: -0.0 dB at 23
+  - [9, "fm_v06_Ab5.raw", 9, 0]   # VGZ: -7.9 dB at 6
+  - [10, "fm_v08_Bb2.raw", 5, 0]   # VGZ: -0.9 dB at 7
+  - [11, "fm_v09_Ab3.raw", 11, 0]   # VGZ: -7.8 dB at 7
+  - [12, "psg_$00_Eb3.raw", 2, 0]   # VGZ: -2.1 dB at 3
+  - [13, "psg_noise_e7.raw", 2, 0]   # VGZ: +9.9 dB at 10

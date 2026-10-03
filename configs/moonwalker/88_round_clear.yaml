@@ -1,0 +1,12 @@
+# Michael Jackson's Moonwalker - Round Clear.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Round Clear"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$88"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 31, -4]   # VGZ: +6.2 dB at 64
+  - [2, "dac82.raw", 32, -4]   # VGZ: +6.1 dB at 64
+  - [3, "fm_v00_Bb3.raw", 12, 0]   # VGZ: -1.5 dB at 10
+  - [4, "fm_v01_Bb2.raw", 21, 0]   # VGZ: +6.6 dB at 45
+  - [5, "psg_noise_e7.raw", 2, 0]   # VGZ: +10.8 dB at 8

@@ -35,8 +35,8 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit
-from core.config import ConversionConfig
 from core.mod import read_mod
+from core.plan import load_config
 from core.ui import print_audit
 from core.vgm import pitch_segments, read_vgm
 
@@ -60,7 +60,7 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = ConversionConfig.from_yaml(args.config)
+    cfg = load_config(args.config)
     song = prepare_audit(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     chip, vgm_end = pitch_segments(read_vgm(args.vgz))

@@ -17,21 +17,20 @@ routed to and which MOD note it triggers (`ResolvedNote`).  The conversion, its 
 sustain pre-passes, the noise / rate-3 derivations and `resolve_synth_roots` all read that
 one answer.
 
-`DriverState` tracks only what every caller needs: the hardware level, the pan, the
-driver transpose, the detune, the current FM voice and the active PSG instrument entry.  State
-that is only meaningful while emitting MOD data (note fill, vibrato, cursor) stays
-in the converter.
+`DriverState` is the driver's track state (core.smps.TrackState: level, pan, transpose,
+detune, FM voice, envelope, noise form) plus the MOD routing it decides: the instrument and the
+active PSG entry.  State that is only meaningful while emitting MOD data (cursor, vibrato
+placement) stays in the converter.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
 from ..smps import (
     CoordFlag,
+    TrackState,
     chip_pitch,
-    pan_side,
     source_map,
 )
 
@@ -51,29 +50,20 @@ def psg_range_entry(entries, key: int):
 # --- the state machine ------------------------------------------------------
 
 
-class DriverState:
-    """Mutable SMPS track state, advanced one coordination flag at a time."""
+class DriverState(TrackState):
+    """The driver's track state plus the MOD instrument it routes to, advanced one coordination
+    flag at a time."""
 
-    __slots__ = ("att", "config", "detune", "envelope", "hard_panned", "instrument", "is_psg",
-                 "noise_form", "pan", "psg_entries", "psg_entry", "psg_label", "tl", "transpose", "voice")
+    __slots__ = ("config", "instrument", "psg_entries", "psg_entry", "psg_label")
 
     def __init__(self, config, *, is_psg: bool, transpose: int = 0,
                  volume: int = 0, instrument: int = 0):
+        super().__init__(is_psg=is_psg, transpose=transpose, volume=volume)
         self.config = config
-        self.is_psg = is_psg
-        self.transpose = transpose          # header pitch_offset + every smpsChangeTransposition
-        self.tl = 0 if is_psg else volume   # YM2612 TL offset, 0-127
-        self.att = volume if is_psg else 0  # SN76489 attenuation, 0-15
-        self.hard_panned = False
-        self.pan = "C"                      # smpsPan: "L", "R" or "C"
-        self.detune = 0                     # smpsDetune / smpsAlterNote: raw FNUM (PSG: divider) offset
-        self.voice: int | None = None       # smpsSetvoice index
         self.instrument = instrument        # MOD instrument slot currently routed to
         self.psg_entry = None               # active PsgInstrumentEntry
         self.psg_entries = None             # its full psg_voice_map list, if it came from one
         self.psg_label: str | None = None   # "fTone_01" / "form 0xe7", for warnings
-        self.envelope: str | None = None    # the driver's VoiceIndex: header voice, then every smpsPSGvoice
-        self.noise_form: int | None = None  # the smpsPSGform byte once one ran (SMPS_Track.PSGNoise); permanent
 
     @classmethod
     def for_channel(cls, channel, config, instrument: int = 0) -> DriverState:
@@ -97,38 +87,14 @@ class DriverState:
     # -- advancing -----------------------------------------------------------
 
     def apply(self, effect) -> None:
-        """Advance the state for one coordination flag.  Unknown flags are ignored."""
+        """Advance the track state for one coordination flag, then the MOD routing it decides."""
+        super().apply(effect)
         kind = effect.flag
 
-        if kind == CoordFlag.SET_VOICE:
-            self.voice = effect.params[0]
-
-        elif kind == CoordFlag.ALTER_VOL:
-            delta = effect.params[0]
-            if self.is_psg:
-                self.att = max(0, min(PSG_ATT_SILENT, self.att + delta))
-            else:
-                self.tl = max(0, min(FM_TL_SILENT, self.tl + delta))
-
-        elif kind == CoordFlag.PAN:
-            self.pan = pan_side(effect.params)
-            self.hard_panned = self.pan != "C"
-
-        elif kind == CoordFlag.DETUNE:
-            # SMPS_Track.Detune: added to the frequency word the driver writes (about 10 cents
-            # per unit on FM).  Not a semitone: it never moves a note or a range lookup; it is
-            # what a chorus pair's beating and a composite layer's FNUM offset come from.
-            self.detune = effect.params[0]
-
-        elif kind == CoordFlag.CHANGE_TRANSPOSITION:
-            self.transpose += effect.params[0]
-
-        elif kind == CoordFlag.PSG_FORM:
-            # cfSetPSGNoise: the channel is a noise channel from here on (nothing in Sonic 1
-            # music turns it back) and the form byte says white/periodic and the rate.  The
-            # envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
+        if kind == CoordFlag.PSG_FORM:
+            # The form byte says white/periodic and the rate: its psg_map entry plays the noise.
+            # The envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
             form_byte = effect.params[0]
-            self.noise_form = form_byte
             entry = self.config.psg_map.get(form_byte)
             if entry is not None:
                 self.psg_entry = entry
@@ -143,7 +109,6 @@ class DriverState:
             # Brain's fTone_08 hi-hat); psg_voice_map is not consulted (Credits' labels belong
             # to PSG1/PSG2).  In tone mode the label picks the psg_voice_map instrument.
             label = effect.params[0]
-            self.envelope = label
             if self.in_noise_mode:
                 if self.psg_entry is not None:
                     self.instrument = self.psg_entry.envelopes.get(label, self.psg_entry.mod_instrument)
@@ -156,11 +121,6 @@ class DriverState:
                     self.psg_label = label
 
     # -- queries -------------------------------------------------------------
-
-    @property
-    def in_noise_mode(self) -> bool:
-        """True once smpsPSGform ran on this channel; nothing in Sonic 1 music leaves it."""
-        return self.noise_form is not None
 
     def range_key(self, source_semitone: int, range_space: str | None = None) -> int:
         """What a note is matched against voice_map / psg_voice_map ranges with.
@@ -186,17 +146,6 @@ class DriverState:
             if entry.low <= key <= entry.high:
                 return entry
         return None
-
-    def level_db(self, pan_law_db: float) -> float:
-        """Hardware level of a note played right now, relative to full scale."""
-        if self.is_psg:
-            return psg_level_db(self.att)
-        return fm_level_db(self.tl, self.hard_panned, pan_law_db)
-
-    @property
-    def is_silent(self) -> bool:
-        """True when the track's own volume puts a note below audibility."""
-        return self.att >= PSG_ATT_SILENT if self.is_psg else self.tl >= FM_TL_SILENT
 
 
 # --- resolving a note ---------------------------------------------------------

@@ -2,18 +2,19 @@
 """Lift a VGM / VGZ rip into a song and compare it with the asm parse: what the lift gets wrong.
 
 Both songs go through core.smps.played_song (what the driver plays, the spelling gone) and
-compare_songs matches their notes by start tick, aspect by aspect (timing, attack, pitch, voice,
-level, pan, modulation, fill, noise, dac).  A rip's asm is its config's input_file (configs/NN_*,
+compare_songs matches their notes by start tick, aspect by aspect (onset, length, note, pitch,
+voice, level, pan, modulation, fill, noise, dac).  A rip's asm is its config's input_file (configs/NN_*,
 NN the rip's number) unless --compare names one.
 
 The frame logs are kept in settings.yaml samples.render_cache (core.vgm.load_frames), and --all
-lifts the rips in parallel: a warm run of all 19 takes about a second.
+lifts the rips in parallel: a warm run of all 19 takes about four seconds.
 
 Usage::
 
     python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"            # one rip, its differences
     python tools/vgm_lift.py --all                                               # every rip, a line each
-    python tools/vgm_lift.py --all --aspects timing --only 02 17
+    python tools/vgm_lift.py --all --aspects onset --only 02 17
+    python tools/vgm_lift.py --all --aspects onset length note --channels FM    # the FM notes (1.3)
     python tools/vgm_lift.py rip.vgz --compare "input/Mus81 - GHZ.asm" --diffs 40
 """
 
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -39,6 +41,7 @@ from core.smps import (
     Aspect,
     ChannelDiff,
     NoteDiff,
+    PlayedSong,
     SmpsParser,
     SongDiff,
     align_songs,
@@ -74,7 +77,7 @@ def _asm_for(rip: Path) -> Path | None:
 
 
 def _lift(rip: Path, asm: Path | None, aspects: frozenset[Aspect], options: LiftOptions,
-          cache_dir: str | None) -> _Result:
+          cache_dir: str | None, channels: tuple[str, ...] = ()) -> _Result:
     """One rip lifted and compared (a worker's job)."""
     if asm is None:
         return _Result(rip, asm, error="no asm to compare with (--compare)")
@@ -83,8 +86,15 @@ def _lift(rip: Path, asm: Path | None, aspects: frozenset[Aspect], options: Lift
     except VgmLiftError as e:
         return _Result(rip, asm, error=f"not lifted: {e}")
     want = played_song(SmpsParser().parse_file(str(asm)))
+    if channels:
+        got, want = _only(got, channels), _only(want, channels)
     offset = align_songs(want, got)
     return _Result(rip, asm, compare_songs(want, got, aspects, offset), offset)
+
+
+def _only(song: PlayedSong, channels: tuple[str, ...]) -> PlayedSong:
+    """`song` with only the channels whose names start with one of `channels` (FM: FM1-FM6)."""
+    return dataclasses.replace(song, channels={n: p for n, p in song.channels.items() if n.startswith(channels)})
 
 
 # --- printing ---------------------------------------------------------------------
@@ -113,7 +123,7 @@ def _voice_change(want: object, got: object) -> str:
 
 
 def _show(channel: str, d: NoteDiff) -> str:
-    if d.aspect is Aspect.PITCH:
+    if d.aspect in (Aspect.NOTE, Aspect.PITCH):
         return f"{_pitch(channel, d.expected)} -> {_pitch(channel, d.got)}"
     if d.aspect is Aspect.VOICE and channel.startswith("FM"):
         return _voice_change(d.expected, d.got)
@@ -178,6 +188,8 @@ def main() -> None:
     ap.add_argument("--only", nargs="+", metavar="NN", help="with --all: these rips (their numbers)")
     ap.add_argument("--compare", metavar="ASM", help="the asm to compare with (default: the rip's config's input_file)")
     ap.add_argument("--aspects", nargs="+", choices=[a.value for a in Aspect], help="compare only these (default: all)")
+    ap.add_argument("--channels", nargs="+", default=(), metavar="NAME",
+                    help="compare only these channels, or every one a prefix names (FM, PSG)")
     ap.add_argument("--diffs", type=int, default=_DEFAULT_DIFFS, help=f"differences listed per channel (default {_DEFAULT_DIFFS})")
     ap.add_argument("--tempo-modifier", type=int, help="the tempo modifier, not inferred")
     ap.add_argument("--tempo-divider", type=int, help="the tempo divider, not inferred")
@@ -195,7 +207,8 @@ def main() -> None:
     # One rip: every difference
     if args.rip:
         rip = Path(args.rip)
-        result = _lift(rip, Path(args.compare) if args.compare else _asm_for(rip), aspects, options, cache_dir)
+        result = _lift(rip, Path(args.compare) if args.compare else _asm_for(rip), aspects, options, cache_dir,
+                       tuple(args.channels))
         _print_song(result, args.diffs)
         sys.exit(0 if result.diff is not None and result.diff.ok else 1)
 
@@ -203,7 +216,7 @@ def main() -> None:
     rips = [r for r in sorted(VGZ_DIR.glob("*.vgz")) if not args.only or r.name[_NUMBER] in args.only]
     with ProcessPoolExecutor(workers(len(rips))) as pool:
         results = list(pool.map(_lift, rips, [_asm_for(r) for r in rips], [aspects] * len(rips),
-                                [options] * len(rips), [cache_dir] * len(rips)))
+                                [options] * len(rips), [cache_dir] * len(rips), [tuple(args.channels)] * len(rips)))
     for result in results:
         _print_line(result)
     same = sum(r.diff is not None and r.diff.ok for r in results)

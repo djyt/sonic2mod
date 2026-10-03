@@ -30,7 +30,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ...smps import TempoSegment
+from ...smps import TempoSegment, tick_at_frame
 
 MAX_MODIFIER = 64              # the largest tempo modifier tried (Credits starts at 51)
 _VALUE_BITS = 8.0              # what a distinct interval value costs to describe
@@ -69,8 +69,7 @@ class TempoMap:
     def tick(self, frame: int) -> int:
         """The tick a log frame plays (before the song: 0)."""
         frame -= sum(1 for lost in self.lost if lost < frame)
-        seg = next((s for s in reversed(self.segments) if s.frame <= frame), None)
-        return 0 if seg is None else int(seg.tick_at(frame))
+        return max(tick_at_frame(self.segments, frame), 0)
 
     def changes(self) -> list[tuple[int, int]]:
         """(tick, modifier) of every tempo change: the tick smpsSetTempoMod is read on."""

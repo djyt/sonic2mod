@@ -1,6 +1,6 @@
 """SMPS names: note labels (nC0..), real-pitch config names (A4), DAC samples, SFX channel ids, source channels."""
 
-from .song import CoordFlag
+from .song import CoordFlag, VoiceField
 
 # ---------------------------------------------------------------------------
 # SMPS Note Names → byte values
@@ -224,3 +224,24 @@ def flag_name(flag: CoordFlag) -> str:
 def flag_from_macro(macro: str) -> CoordFlag | None:
     """The coordination flag an SMPS2ASM macro (or alias) writes; None for any other name."""
     return _MACRO_FLAGS.get(macro)
+
+
+# The SMPS2ASM voice macro of each operator field (smpsVcAlgorithm / smpsVcFeedback set the voice's
+# own fields; smpsVcUnusedBits is B0's top two bits, which the chip ignores)
+_VOICE_MACROS = {
+    "smpsVcDetune": VoiceField.DETUNE,
+    "smpsVcCoarseFreq": VoiceField.MULTIPLE,
+    "smpsVcRateScale": VoiceField.RATE_SCALE,
+    "smpsVcAttackRate": VoiceField.ATTACK_RATE,
+    "smpsVcAmpMod": VoiceField.AMP_MOD,
+    "smpsVcDecayRate1": VoiceField.DECAY_RATE_1,
+    "smpsVcDecayRate2": VoiceField.DECAY_RATE_2,
+    "smpsVcDecayLevel": VoiceField.DECAY_LEVEL,
+    "smpsVcReleaseRate": VoiceField.RELEASE_RATE,
+    "smpsVcTotalLevel": VoiceField.TOTAL_LEVEL,
+}
+
+
+def voice_field_from_macro(macro: str) -> VoiceField | None:
+    """The operator field an smpsVc* macro sets; None for any other macro."""
+    return _VOICE_MACROS.get(macro)

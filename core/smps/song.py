@@ -1,7 +1,7 @@
 """The parsed song (SmpsParser's intermediate representation) and what its effects say."""
 
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -109,8 +109,24 @@ class SmpsChannel:
     loop_label: str = ""          # the assembly's name for the target, for display; a lift has none
 
 
-# A YM2612 channel's operator count: every smpsVc* macro but the algorithm one states four bytes
+# A YM2612 channel's operator count
 _OPERATORS = 4
+
+
+class VoiceField(StrEnum):
+    """A YM2612 operator field a voice sets on its four operators (registers 0x30-0x9F).
+    The SMPS2ASM macro spelling of each is core/smps/names.py's."""
+
+    DETUNE = "dt"
+    MULTIPLE = "mul"
+    RATE_SCALE = "ks"
+    ATTACK_RATE = "ar"
+    AMP_MOD = "am"
+    DECAY_RATE_1 = "d1r"
+    DECAY_RATE_2 = "d2r"
+    DECAY_LEVEL = "d1l"
+    RELEASE_RATE = "rr"
+    TOTAL_LEVEL = "tl"
 
 
 @dataclass
@@ -118,14 +134,14 @@ class SmpsVoice:
     index: int
     algorithm: int = 0
     feedback: int = 0
-    # Each smpsVc* macro's bytes as written (`smpsVcDetune $00, $05, $00, $05` -> (0, 5, 0, 5)):
-    # what the parser reads, and what a lift builds from the chip's registers
-    operators: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    # Each field's four values in the order the driver stores the operators (SMPS_OP_TO_REG_OFFSET
+    # maps each to its register slot): what the parser reads, and what a lift builds from registers
+    operators: dict[VoiceField, tuple[int, ...]] = field(default_factory=dict)
 
-    def operator_values(self, macro: str) -> list[int]:
-        """One smpsVc* macro's four operator bytes; a macro the voice leaves out, or a value it
-        leaves out, reads as 0."""
-        vals = list(self.operators.get(macro, ()))
+    def operator_values(self, field_: VoiceField) -> list[int]:
+        """One field's four operator values; a field the voice leaves out, or a value it leaves
+        out, reads as 0."""
+        vals = list(self.operators.get(field_, ()))
         return (vals + [0] * _OPERATORS)[:_OPERATORS]
 
 

@@ -53,6 +53,7 @@ from .names import (
     source_map,
     source_names,
     synth_note_name,
+    voice_field_from_macro,
 )
 from .parser import SmpsParser
 from .song import (
@@ -64,6 +65,7 @@ from .song import (
     SmpsSong,
     SmpsSongHeader,
     SmpsVoice,
+    VoiceField,
     pan_is_hard,
     pan_side,
 )
@@ -102,6 +104,7 @@ __all__ = [
     "SmpsSong",
     "SmpsSongHeader",
     "SmpsVoice",
+    "VoiceField",
     "apply_global_tempo_div",
     "carrier_names",
     "chip_pitch",
@@ -122,5 +125,6 @@ __all__ = [
     "semitone_to_note_name",
     "source_map",
     "source_names",
-    "synth_note_name"
+    "synth_note_name",
+    "voice_field_from_macro"
 ]

@@ -122,7 +122,7 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | `SmpsChannelHeader` | Channel metadata from header macros |
 | `SmpsSongHeader` | Voice label, channel counts, tempo |
 | `SmpsChannel` | Header + ordered event list + jump info |
-| `SmpsVoice` | FM voice definition (algorithm, feedback, raw params) |
+| `SmpsVoice` | FM voice: algorithm, feedback, and `operators` - each `VoiceField` (DT, MUL, KS, AR, AM, D1R, D2R, D1L, RR, TL) as four ints in the driver's operator order.  The `smpsVc*` spellings are `names.py`'s (`voice_field_from_macro`) |
 | `SmpsSong` | Top-level container for header, channels, voices |
 
 #### Parsing Stages

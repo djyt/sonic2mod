@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from .driver_tables import PAN_VALUES
-from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
+from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES, voice_field_from_macro
 from .song import (
     CoordFlag,
     SmpsChannel,
@@ -783,10 +783,11 @@ class SmpsParser:
                 if m:
                     current_voice.feedback = int(m.group(1), 16)
 
-                # Every other smpsVc* macro: its hex bytes ('$00, $05, $00, $05')
+                # An operator field's macro: its hex bytes ('$00, $05, $00, $05')
                 m = re.match(r'(smpsVc\w+)\s+(.+)', line)
-                if m:
-                    current_voice.operators[m.group(1)] = tuple(
+                field_ = voice_field_from_macro(m.group(1)) if m else None
+                if m and field_ is not None:
+                    current_voice.operators[field_] = tuple(
                         int(v.strip().lstrip('$'), 16) for v in m.group(2).split(','))
 
             i += 1

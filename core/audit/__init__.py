@@ -25,6 +25,7 @@ from .render import (
     reference_render_key,
     render_mod_channels,
     render_vgm_channels,
+    workers,
 )
 from .signal import (
     VIB_MIN_NOTE,
@@ -47,5 +48,6 @@ __all__ = [
     "audit_pitches", "audit_settings", "band_profile", "db", "envelope_offset", "find_vgmplay", "group_masks", "harmonic_cents",
     "instrument_levels", "instrument_verdicts", "keyon_onsets", "load_wav", "mod_note_events", "mod_pitch_timeline",
     "note_start_offset", "onset_match", "onsets", "pitch_track", "prepare_audit", "reference_render_key", "render_mod_channels",
-    "render_vgm_channels", "rms", "seg_at", "spectrum", "suggest_volumes", "vibrato_estimate", "vibrato_estimates", "write_volumes"
+    "render_vgm_channels", "rms", "seg_at", "spectrum", "suggest_volumes", "vibrato_estimate", "vibrato_estimates", "workers",
+    "write_volumes"
 ]

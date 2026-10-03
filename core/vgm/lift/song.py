@@ -1,4 +1,4 @@
-"""A register log lifted back into the song the driver played: VgmLog -> SmpsSong.
+"""A frame log lifted back into the song the driver played: FrameLog -> SmpsSong.
 
 The SMPS driver is deterministic, so each write pattern maps back to the flag that produced it
 (frequency table -> note byte, TempoWait hold frames -> ticks, PSG envelope curves ->
@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsSong
-from .reader import VgmError, VgmLog
+from ...smps import DEFAULT_DRIVER, SmpsDriver, SmpsSong
+from ..frames import FrameLog
+from ..reader import VgmError
 
 
 class VgmLiftError(VgmError):
@@ -27,8 +28,8 @@ class LiftOptions:
     tempo_divider: int | None = None      # None: inferred from the note durations
 
 
-def lift_song(log: VgmLog, options: LiftOptions | None = None) -> SmpsSong:
-    """The song `log` is a recording of, as SmpsParser would have read it from the asm."""
+def lift_song(frames: FrameLog, options: LiftOptions | None = None) -> SmpsSong:
+    """The song `frames` are a recording of, as SmpsParser would have read it from the asm."""
     options = options or LiftOptions()
     raise VgmLiftError(f"lifting a VGM log ({options.driver} driver) is not implemented yet: "
                        "docs/todo/vgz_conversion.md Phase 1")

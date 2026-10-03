@@ -61,7 +61,8 @@ sonic2mod/
       chipstate.py   #     ChipState.replay: YM2612 + SN76489 registers write by write → Change (key, freq, PSG, DAC)
       frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
       notes.py       #     note_starts (key-on / tie / legato / PSG audible rules, NoteTracker), pitch_segments
-      lift.py        #     lift_song(log, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
+      cache.py       #     load_frames: a rip's FrameLog kept in samples.render_cache (hash of the file + the frame code)
+      lift/          #     lift_song(frames, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
     audit/           #   A MOD against its VGZ: pitch.py the symbolic pitch audit (report in ui/pitch_audit.py);
                      #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
@@ -71,6 +72,9 @@ sonic2mod/
       song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard
       parser.py      #     SmpsParser: assembly → SmpsSong
       song_prep.py   #     The song as the driver plays it: smpsSetTempoDiv re-timing, short loops replayed
+      track.py       #     TrackState: one track's driver state as its flags leave it (DriverState adds the MOD routing)
+      playback.py    #     played_song: each note as the driver plays it, the asm's spelling gone (PlayedNote, Aspect)
+      compare.py     #     compare_songs: two songs' notes matched by start tick, differences per aspect
       driver_tables.py #   Sonic 1 driver transcription: FM/PSG frequency tables, note indices, chip_pitch,
                      #     PSG envelopes, SMPS_OP_TO_REG_OFFSET, carrier/channel/pan maps
                      #     (sfx/tables.py re-exports this; it used to live there)
@@ -154,6 +158,7 @@ sonic2mod/
     vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files (+ rate-3 noise divider, DAC seeks; --frames: frame by frame)
     vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
+    vgm_lift.py         #   A rip lifted and compared with its asm (played_song / compare_songs); --all: every rip, in parallel
     mod_compare.py      #   Channel-by-channel MOD comparator (core.mod.read_mod)
     mod_lint.py         #   Notes a ProTracker player cannot sound: silent 3xx, empty instrument slots
     mod_audit.py        #   A MOD's samples against the notes that play them: bytes, share of the file (KB%),
@@ -181,7 +186,8 @@ sonic2mod/
     test_voice_units.py #   SmpsVoice operators as ints (parser, hand-built)
     test_instrument_units.py # sounding_pitches, prepare_instruments, catalogue rendering pitch
     test_pitch_units.py #   core/audio/pitch.py names and cents
-    test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps
+    test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps, frame cache
+    test_playback_units.py # played_song / compare_songs on hand-built songs: the lift's yardstick
 ```
 
 ## Setup
@@ -262,6 +268,11 @@ python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz" --frames --
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
+
+# The lift (docs/todo/vgz_conversion.md Phase 1) against the asm: differences per channel and aspect
+# (timing, attack, pitch, voice, level, pan, modulation, fill, noise, dac), repeated ones grouped
+python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"
+python tools/vgm_lift.py --all --aspects timing          # every rip, a line each (~1 s warm)
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into

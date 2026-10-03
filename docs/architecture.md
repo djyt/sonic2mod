@@ -41,8 +41,9 @@ ym2612/       emulator wrappers and renderers; import core (plan, config, smps, 
 sn76489/
   ↓
 core/
-  ui/         report, CLI chrome
+  ui/         report, pitch-audit report, CLI chrome
   convert/    SmpsToModConverter and its passes            ── calls the chip packages through generators.py
+  audit/      a converted MOD against its VGZ, symbolically (pitch per chip note; the tools' library)
   merge/      channel folding, composites, banks
   plan/       the song read through its config: DriverState walk, instrument catalogue, detune,
               synthesis pitches, noise derivations, timeline
@@ -267,6 +268,14 @@ stream themselves.
 calls it with the config's `driver:` / `tempo_modifier:` / `tempo_divider:`; `convert.py`,
 `analyze.py`, `merge_survey.py`, `config_to_chip_space.py` and `vgm_pitch_audit.py` read their song
 through one or the other.
+
+### core/audit/
+
+`pitch.py`: the symbolic pitch audit `vgm_pitch_audit.py` and `vgm_compare.py` share — `prepare_audit`
+(the instruments as `prepare_instruments` leaves them), `mod_pitch_timeline` (each MOD note's pitch from
+`sounding_pitches`, E1x / E2x followed), `note_start_offset` (the lag, from note starts), `audit_pitches`
+(ok / wrong / missing per channel, the per-instrument verdict).  Its report is `core/ui/pitch_audit.py`.
+Beside `convert/`: it reads `plan`, `config`, `mod` and `vgm`, and nothing reads it but the tools.
 
 ### core/audio/gain.py
 

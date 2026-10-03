@@ -68,11 +68,12 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import cents, db_to_gain, gain_to_db, pitch_name, power_to_db
+from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, edx_delay, isolate_channel, read_mod, timed_pass
+from core.ui import print_audit
 from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
-from tools import vgm_pitch_audit
 
 SR = 44100
 
@@ -708,7 +709,7 @@ def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str,
         offset = auto_offset(rd.vgm["FULL"], rd.mod["FULL"])
         _say_alignment(offset, "auto, envelope cross-correlation")
         return offset
-    offset = vgm_pitch_audit.auto_offset(chip_tl, mod_tl, sources)
+    offset = note_start_offset(chip_tl, mod_tl, sources)
     env = auto_offset(rd.vgm["FULL"], rd.mod["FULL"])
     _say_alignment(offset, "auto, note starts"
                    + (f"; envelope correlation says {env * 1000:+.0f} ms — ignored" if abs(env - offset) > 0.03 else ""))
@@ -791,15 +792,15 @@ def _report_notes(per_ch: dict[str, list], rd: _Renders, offset: float, max_rows
 
 def _report_pitch_verdict(chip_tl: dict, chip_end: float, mod_tl: dict, mod_end: float, sources: dict[str, int],
                           offset: float, pitch_tol: float, res: dict) -> None:
-    """The symbolic verdict (vgm_pitch_audit), not the audio windows of the per-note table."""
+    """The symbolic verdict (core.audit), not the audio windows of the per-note table."""
     if not any(mod_tl.values()):
         return
-    pa = vgm_pitch_audit.audit(chip_tl, chip_end, mod_tl, mod_end, sources, offset, tolerance=pitch_tol)
+    pa = audit_pitches(chip_tl, chip_end, mod_tl, mod_end, sources, offset, tolerance=pitch_tol)
     res["pitch_audit"] = pa
     n_ok = sum(c["ok"] for c in pa["channels"].values())
     print(f"Pitch verdict (chip frequency registers vs the pitch each MOD note sounds at; wrong = over {pitch_tol:g} cents)")
     print(f"  {n_ok} of {n_ok + pa['bad']} notes right" + ("" if pa["bad"] else " - every note is at the hardware's pitch"))
-    vgm_pitch_audit.print_audit(pa, 60.0, indent="  ")
+    print_audit(pa, 60.0, indent="  ")
     if pa["bad"]:
         print("  (times and every wrong note: python tools/vgm_pitch_audit.py <config> <vgz> --list)")
     print()
@@ -1173,7 +1174,7 @@ def report(cfg: ConversionConfig, song, vgz: Path, mod_path: Path, workdir: Path
     offset_auto = offset is None
     chip_tl, chip_end = pitch_segments(log)
     mod = read_mod(mod_path)
-    mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod, cfg, song)
+    mod_tl, mod_end = mod_pitch_timeline(mod, cfg, song)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
     print()
     res: dict = {
@@ -1531,7 +1532,7 @@ def main() -> None:
             raise SystemExit(f"ERROR: {e}") from e
     # synth_root / synth_shift come from the song (what the converter does before rendering), and
     # so do the detune variants; without them the symbolic verdict reads every shifted entry as wrong
-    song = vgm_pitch_audit.prepare_config(cfg, args.settings, args.config)
+    song = prepare_audit(cfg, args.settings, args.config)
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):

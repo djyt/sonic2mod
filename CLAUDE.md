@@ -40,7 +40,7 @@ sonic2mod/
   sonic2wav.py       # CLI entry point — SFX → WAV rendering
   core/              # Library package; imports nothing from sfx/ or the chip packages.  Layers, each importing
                      # only those below it (a package's __init__ exports what other packages import):
-                     #   ui → convert → merge → plan → config → source → vgm → mod / smps / audio   (diagnostics: any)
+                     #   ui → convert / audit → merge → plan → config → source → vgm → mod / smps / audio   (diagnostics: any)
     audio/           #   Sample arithmetic, no SMPS, no MOD
       gain.py        #     db_to_gain / gain_to_db / power_to_db (the only place a dB is converted by hand)
       pcm.py         #     Mono/int8/raw16 helpers shared by the two synthesis pipelines (dithered quantiser,
@@ -62,6 +62,7 @@ sonic2mod/
       frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
       notes.py       #     note_starts (key-on / tie / legato / PSG audible rules, NoteTracker), pitch_segments
       lift.py        #     lift_song(log, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
+    audit/           #   pitch.py: the symbolic MOD-vs-VGZ pitch audit (vgm_pitch_audit / vgm_compare); report in ui/pitch_audit.py
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
     smps/            #   The source: songs and the driver that plays them
       song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard

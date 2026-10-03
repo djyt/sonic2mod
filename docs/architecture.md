@@ -338,6 +338,16 @@ All 19 songs and 49 SFX of `sonic_rev01.bin` read as their asm event for event, 
 on both sides or off on both; every config converts to the same MOD from either (`tests/regression.py`'s `_rom` cases,
 `tests/test_rom_units.py`).  `tools/rom_import.py` lists, compares, writes asm and DAC samples.
 
+### core/plan/derive.py
+
+A minimal config (no `channels:`) completed from its song: `derive_config` returns the YAML a
+hand-written config would hold (run through the same parsers by `ConversionConfig.from_data`) -
+range_space chip, channels, ticks_per_row / speed, voice_map and psg_voice_map windows (three
+octaves, lowest at E1), psg_map, DAC entries (note and finetune nearest each rate; the ROM's PCM
+written to samples_dir), sample_list volumes (`starting_volume`: the modal level, the samples being
+peak-normalised).  A stated item replaces the derived one it names.  `load_config` (the tools) and
+`complete_config` (convert.py) apply it.
+
 ### core/source/
 
 `read_song(path, LiftOptions | None, rom_song)`: a `.vgm` / `.vgz` path is lifted, a ROM read

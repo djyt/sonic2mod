@@ -132,8 +132,12 @@ def suggest_volumes(instruments: list[dict]) -> float:
 
 
 def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0) -> list[str]:
-    """Set sample_list volumes to the suggested values; returns a line per change."""
+    """Set sample_list volumes to the suggested values; returns a line per change.  A minimal
+    config's derived rows are added as stated ones (core.plan.derive: a stated row replaces the
+    derived row of its instrument)."""
     text = config_path.read_text(encoding="utf-8")
+    derived = _derived_rows(config_path)
+    added: list[str] = []
     changes = []
     for it in instruments:
         new = it["suggested"]
@@ -142,6 +146,11 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
         pat = re.compile(r'^(\s*-\s*\[\s*' + str(it["instrument"])
                          + r'\s*,\s*"[^"]*"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
         m = pat.search(text)
+        row = derived.get(it["instrument"])
+        if not m and row is not None and row[2] == it["volume"]:
+            added.append(f'  - [{row[0]}, "{row[1]}", {new}, {row[3]}]   # VGZ: {it["err_db"]:+.1f} dB at {it["volume"]}')
+            changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
+            continue
         if not m or int(m.group(2)) != it["volume"]:
             changes.append(f"  !! instrument {it['instrument']}: no sample_list line with volume {it['volume']} — not changed")
             continue
@@ -150,6 +159,26 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
         tail = f"{tail}; {note}" if tail.strip().startswith("#") and tail.strip() != "#" else f" # {note}"
         text = text[:m.start()] + f"{m.group(1)}{new:>{len(m.group(2))}}{m.group(3)}{tail}" + text[m.end():]
         changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
+    if added:
+        text = _add_rows(text, added)
     if any(not c.startswith("  !!") for c in changes):
         config_path.write_text(text, encoding="utf-8", newline="")
     return changes
+
+
+def _derived_rows(config_path: Path) -> dict[int, list]:
+    """A minimal config's sample_list as derived (by instrument); nothing for a full config."""
+    from ..config import ConversionConfig
+    from ..plan import load_config
+
+    if not ConversionConfig.from_yaml(str(config_path)).is_minimal:
+        return {}
+    return {row[0]: row for row in load_config(config_path).sample_list or []}
+
+
+def _add_rows(text: str, rows: list[str]) -> str:
+    """Rows put under the config's sample_list: (made at its end when it has none)."""
+    m = re.search(r"^sample_list:[^\n]*\n", text, re.M)
+    if m is None:
+        return text.rstrip("\n") + "\n\nsample_list:   # volumes set from the VGZ; the rest is derived\n" + "\n".join(rows) + "\n"
+    return text[:m.end()] + "\n".join(rows) + "\n" + text[m.end():]

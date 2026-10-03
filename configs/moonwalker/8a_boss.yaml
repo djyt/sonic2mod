@@ -1,0 +1,11 @@
+# Michael Jackson's Moonwalker - Boss.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 2.8); python convert.py <this> --show-config prints it.
+name: "Boss"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$8A"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "dac82.raw", 44, -4]   # VGZ: -0.6 dB at 64
+  - [4, "fm_v00_E2.raw", 11, 0]   # VGZ: +0.3 dB at 18
+  - [5, "fm_v01_E5.raw", 12, 0]   # VGZ: +1.8 dB at 23
+  - [6, "fm_v02_E5.raw", 24, 0]   # VGZ: -5.8 dB at 19

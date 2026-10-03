@@ -11,8 +11,11 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
-from core.chips import PSG_STEP_DB, TL_STEP_DB, carrier_names, fm_level_db
+import yaml
+
+from core.chips import PSG_STEP_DB, TL_STEP_DB, carrier_names
 
 try:
     from rich import box
@@ -43,19 +46,19 @@ from core.config import (
     load_settings,
     rate3_synth_root_issues,
 )
-from core.mod import PERIOD_TABLE, ModFile, ModNote, db_to_mod_volume
+from core.mod import PERIOD_TABLE, ModFile, ModNote
+from core.plan import derive_config, load_config, starting_volume
 from core.smps import (
     flag_name,
     psg_tone2_divider,
     synth_note_name,
 )
-from core.source import read_song
+from core.source import read_dac, read_song
 from core.ui import branding, cli_console
 
 console = cli_console(highlight=True)
 
 
-from core.audio import db_to_gain
 from core.version import get_version as _get_version
 
 _ALG_TOPOLOGY = {
@@ -511,9 +514,6 @@ def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int)
 # sample_list volume of a single-carrier FM voice at TL offset 0, centred.  Fitted to the volumes
 # measured against the VGZs in docs/audits/ (13 instruments, Title Screen + GHZ): each implies a
 # value between 68 and 92, median 76 — so expect the skeleton's numbers to be within ~2 dB.
-_FM_K = 76.0
-_PSG_TONE_VOLUME = 16     # sample_list volume of a PSG tone at attenuation 0 (GHZ measures within 1 dB)
-_PSG_NOISE_VOLUME = 16    # ... of PSG noise at attenuation 0
 
 
 def _settings() -> tuple[SynthesisSettings, PsgSynthesisSettings]:
@@ -524,9 +524,11 @@ def _settings() -> tuple[SynthesisSettings, PsgSynthesisSettings]:
         return SynthesisSettings(), PsgSynthesisSettings()
 
 
-def _db_volume(base: int, db: float) -> int:
-    """A sample_list volume scaled by a dB offset; never 0, which would be a useless suggestion."""
-    return db_to_mod_volume(base, db, minimum=1)
+def _dac_file(name: str) -> str:
+    """A DAC sample's file: Sonic 1's samples/ names (dKick -> kick.raw), else its own (dac81.raw)."""
+    if len(name) > 1 and name[0] == "d" and name[1].isupper():
+        return f"{name[1:].lower()}.raw"
+    return f"{name}.raw"
 
 
 def _channel_has_notes(ch_an: ChannelAnalysis) -> bool:
@@ -720,7 +722,7 @@ class _Skeleton:
                                   "puts Cxx on the others)")
 
     def _fm_volume(self, lv: tuple[int, bool]) -> int:
-        return max(1, min(64, round(_FM_K * db_to_gain(fm_level_db(lv[0], lv[1], self._pan_law_db)))))
+        return starting_volume("FM", lv[0], lv[1], self._pan_law_db)
 
     def _assign_psg(self):
         """One slot per smpsPSGform byte and per tone label (two for a split range).  A label every
@@ -788,12 +790,12 @@ class _Skeleton:
         if self._dac_items:
             lines.append("  # --- percussion ---")
             for base_name, inst in self._dac_bases:
-                lines.append(f"  - [{inst}, \"{base_name[1:].lower()}.raw\", 64, 0]")
+                lines.append(f"  - [{inst}, \"{_dac_file(base_name)}\", {starting_volume('DAC')}, 0]")
 
         if self._fm_voices:
             lines.append(f"  # FM volumes bake in each channel's level: TL offset (smpsHeaderFM volume + smpsAlterVol, "
                          f"{TL_STEP_DB} dB/step)")
-            lines.append(f"  # and −{self._pan_law_db:g} dB when hard-panned:  {_FM_K:g} × 10^(dB/20), max 64.  "
+            lines.append(f"  # and −{self._pan_law_db:g} dB when hard-panned (core.plan.starting_volume; samples are peak-normalised).  "
                          "Starting points (~2 dB) —")
             lines.append("  # measure with tools/vgm_compare.py; every channel sharing an instrument should read the same error.")
         for v in self._fm_voices:
@@ -808,22 +810,22 @@ class _Skeleton:
 
         if self._noise or self._tones:
             lines.append(f"  # PSG volumes bake in the track attenuation ({PSG_STEP_DB:g} dB/step): "
-                         f"tone {_PSG_TONE_VOLUME} / noise {_PSG_NOISE_VOLUME} at attenuation 0.")
+                         f"tone / noise {starting_volume('tone')} at attenuation 0.")
         for n in self._noise:
             lines.append(f"  # --- PSG noise ({n.label}) ---")
-            lines.append(self._psg_sample(n.inst, "psg_noise.raw", _PSG_NOISE_VOLUME, n.label))
+            lines.append(self._psg_sample(n.inst, "psg_noise.raw", "noise", n.label))
         for t in self._tones:
             lines.append(f"  # --- PSG tone {t.label} ---")
             if t.split is None:
-                lines.append(self._psg_sample(t.inst, f"psg_{t.label}.raw", _PSG_TONE_VOLUME, t.label))
+                lines.append(self._psg_sample(t.inst, f"psg_{t.label}.raw", "tone", t.label))
                 continue
-            lines.append(self._psg_sample(t.inst, f"psg_{t.label}_lo.raw", _PSG_TONE_VOLUME, t.label))
-            lines.append(self._psg_sample(t.inst + 1, f"psg_{t.label}_hi.raw", _PSG_TONE_VOLUME, t.label))
+            lines.append(self._psg_sample(t.inst, f"psg_{t.label}_lo.raw", "tone", t.label))
+            lines.append(self._psg_sample(t.inst + 1, f"psg_{t.label}_hi.raw", "tone", t.label))
         return lines
 
-    def _psg_sample(self, inst: int, fname: str, base: int, label: str) -> str:
+    def _psg_sample(self, inst: int, fname: str, kind: str, label: str) -> str:
         att = self._psg_attenuation(label)
-        return (f"  - [{inst}, \"{fname}\", {_db_volume(base, -PSG_STEP_DB * att)}, 0]"
+        return (f"  - [{inst}, \"{fname}\", {starting_volume(kind, att)}, 0]"
                 + (f"   # attenuation {att} (−{att * PSG_STEP_DB:g} dB)" if att else ""))
 
     def _dac_samples(self) -> list[str]:
@@ -975,6 +977,21 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
         console.print(Panel(syntax, title="Suggested YAML Skeleton", border_style="bright_blue"))
 
 
+def render_derived_config(song, args, write_path: str | None = None):
+    """A ROM song's starter config: the minimal one, completed as convert.py would (core.plan.derive)."""
+    stated = {"input_file": args.song, "rom_song": args.rom_song}
+    clock = _settings()[0].amiga_clock
+    data = derive_config(stated, song, Path(f"configs/{Path(args.song).stem}.yaml"), clock, read_dac(args.song)).data
+    yaml_text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None)
+    if write_path:
+        Path(write_path).write_text(yaml_text, encoding="utf-8")
+        console.print(f"[green]Wrote the derived config to:[/green] {write_path}  "
+                      "[dim](a minimal config needs only name, input_file and rom_song)[/dim]")
+        return
+    console.print(Panel(Syntax(yaml_text, "yaml", theme="monokai", line_numbers=False),
+                        title="Derived config (core.plan.derive)", border_style="bright_blue"))
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -985,7 +1002,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Analyse a Sonic 1 SMPS assembly file and display structured info"
     )
-    parser.add_argument('song', help="Path to the .asm file, or a .vgm / .vgz rip")
+    parser.add_argument('song', help="Path to the .asm file, a ROM (with --rom-song), or a .vgm / .vgz rip")
+    parser.add_argument('--rom-song', metavar='ID', help="With a ROM: the sound to analyse ($81, 0x81)")
     parser.add_argument('--config', '-c', help="Optional YAML config to diff against")
     parser.add_argument('--version', action='version',
                         version=f"sonic2mod {_get_version()}")
@@ -999,9 +1017,9 @@ def main():
         console.print(f"[red]Error:[/red] File not found: {args.song}")
         sys.exit(1)
 
-    # Parse (an asm), or lift (a VGM rip)
+    # Parse (an asm), read (a ROM) or lift (a VGM rip)
     try:
-        song = read_song(args.song)
+        song = read_song(args.song, rom_song=int(args.rom_song.lstrip("$").removeprefix("0x"), 16) if args.rom_song else None)
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
@@ -1012,7 +1030,7 @@ def main():
         if not os.path.exists(args.config):
             console.print(f"[red]Error:[/red] Config file not found: {args.config}")
             sys.exit(1)
-        config = ConversionConfig.from_yaml(args.config)
+        config = load_config(args.config)
 
     # Analyse
     analysis = analyze_song(song, args.song, config)
@@ -1033,7 +1051,10 @@ def main():
     if config is not None:
         render_config_coverage(analysis)
 
-    render_yaml_skeleton(analysis, args.region, write_path=args.write)
+    if args.rom_song:
+        render_derived_config(song, args, write_path=args.write)
+    else:
+        render_yaml_skeleton(analysis, args.region, write_path=args.write)
 
 
 if __name__ == '__main__':

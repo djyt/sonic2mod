@@ -110,6 +110,8 @@ sonic2mod/
       detune.py      #     Detune variants: each smpsAlterNote detune an instrument plays rendered at its FNUM offset
                      #     (majority detune in its own slot, the rest in free slots); ties retuned with E1x / E2x
       synth_roots.py #     resolve_synth_roots: each rooted entry's rendering pitch, from the song
+      derive.py      #     A minimal config (no channels:) completed from its song: load_config (every tool),
+                     #     complete_config (convert.py), starting_volume (also analyze.py's skeleton)
       noise_derive.py #    Noise envelopes and rate-3 dividers read from the song
       timeline.py    #     Timeline: tempo segments, ticks per frame, BPM, tick → (pattern, row), seconds
     merge/           #   Channel folding for the Amiga build: merge: groups → composite instruments
@@ -254,6 +256,9 @@ python tools/mod_audit.py output/02_green_hill_zone_merged.mod
 # a merge_patterns: config gets a column x pattern-block table (block level, primary's key-ons)
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --merged
 
+# A minimal config (name, input_file, rom_song; no channels:) - everything else derived from the song
+python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config
+python tools/vgm_compare.py configs/moonwalker/81_smooth_criminal.yaml "reference/vgz/moonwalker/03 - Smooth Criminal.vgz" --write-volumes
 # Convert straight from the ROM's bytecode (input/roms/, not in git): config rom_song:, or override
 python convert.py configs/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
 # The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
@@ -323,6 +328,8 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 # relative to the song's median note, so a further pass drifts the whole song.  Reference renders are reused.
 python tools/measure_volumes.py
 python tools/measure_volumes.py --only green_hill special_stage --no-write
+# Other games: pairs from a map (config stem: rip), configs with hex prefixes
+python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker --rips configs/moonwalker/rips.yaml
 ```
 
 ## Regression Testing

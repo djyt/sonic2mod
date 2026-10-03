@@ -70,7 +70,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.audio import db_to_gain
+from core.audio import db_to_gain, hz_to_midi, midi_name, pitch_name
 from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK, fm_level_db, psg_level_db
 from core.vgm import (
     FM_CHANNELS,
@@ -101,20 +101,9 @@ from core.vgm import (
 DEFAULT_FM_CLOCK = MD_FM_CLOCK
 DEFAULT_PSG_CLOCK = MD_PSG_CLOCK
 
-_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 _NOISE_RATES = ('N/512', 'N/1024', 'N/2048')
 _NOISE_TONE2_RATE = 3
 _ALL_SLOTS = 0xF
-
-
-def _nearest_note(freq: float) -> str:
-    """Return the nearest note name (e.g. 'G3', 'C#2') for a frequency in Hz."""
-    if freq <= 0:
-        return "---"
-    midi = round(69 + 12 * math.log2(freq / 440.0))
-    name = _NOTE_NAMES[midi % 12]
-    octave = midi // 12 - 1
-    return f"{name}{octave}"
 
 
 def _smps_note(freq: float, chan_type: str) -> str:
@@ -135,16 +124,14 @@ def _smps_note(freq: float, chan_type: str) -> str:
     """
     if freq <= 0 or chan_type == "noise":
         return "—"
-    midi = round(69 + 12 * math.log2(freq / 440.0))
+    midi = round(hz_to_midi(freq))
     if chan_type == "psg":
         midi += 12
     elif chan_type != "fm":
         return "—"
     if midi < 0 or midi > 127:
         return "—"
-    name = _NOTE_NAMES[midi % 12]
-    octave = midi // 12 - 1
-    return f"{name}{octave}"
+    return midi_name(midi)
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +205,7 @@ class _KeyOnRows:
         ch_name = f"FM{ch + 1}"
         freq = self._state.fm_hz(ch)
         if self._wanted(ch_name):
-            self.rows.append((self._now_ms(), ch_name, fnum, block, freq, _nearest_note(freq), _smps_note(freq, "fm")))
+            self.rows.append((self._now_ms(), ch_name, fnum, block, freq, pitch_name(freq), _smps_note(freq, "fm")))
 
         # Amplitude, whatever the filter: the carriers' linear levels summed
         linear = sum(db_to_gain(fm_level_db(tl)) for tl in self._state.fm_carrier_tls(ch))
@@ -246,7 +233,7 @@ class _KeyOnRows:
         freq = self._state.psg_hz(ch)
         self._psg_prev_period[ch] = period   # so the same period does not emit twice
         if self._wanted(ch_name):
-            self.rows.append((self._now_ms(), ch_name, period, 0, freq, _nearest_note(freq), _smps_note(freq, "psg")))
+            self.rows.append((self._now_ms(), ch_name, period, 0, freq, pitch_name(freq), _smps_note(freq, "psg")))
         self.psg_amp.setdefault(ch_name, []).append(db_to_gain(psg_level_db(self._state.psg_attenuation(ch))))
 
     def _emit_noise_keyon(self) -> None:
@@ -354,7 +341,7 @@ def _key_text(keys: tuple[int, ...]) -> str:
 
 def _fm_line(f: FmFrame, clock: int) -> str:
     freq = fm_frequency_hz(f.fnum, f.block, clock)
-    text = f"{f.fnum:>4}/{f.block}  {_nearest_note(freq):<4}"
+    text = f"{f.fnum:>4}/{f.block}  {pitch_name(freq):<4}"
     if f.keys:
         text += f"  key {_key_text(f.keys):<3}"
     tls = ",".join(f"{tl:02X}" for tl in f.carrier_tls)
@@ -365,7 +352,7 @@ def _psg_line(p: PsgFrame, clock: int) -> str:
     if p.noise is not None:
         text = f"noise {p.noise:X}"
     else:
-        text = f"N={p.period:<4}  {_nearest_note(psg_frequency_hz(p.period, clock)):<4}"
+        text = f"N={p.period:<4}  {pitch_name(psg_frequency_hz(p.period, clock)):<4}"
     if p.attenuations:
         text += f"  att {','.join(f'{a:X}' for a in p.attenuations)}"
     return text

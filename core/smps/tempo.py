@@ -1,0 +1,53 @@
+"""When the driver plays each tick: TempoWait's hold frames (docs/smps_driver.md, timing).
+
+The driver reads notes once per V-int frame, except every m-th frame (m the tempo modifier):
+TempoWait holds it.  The schedule starts with the song and again at every smpsSetTempoMod
+(cfSetTempo resets the timeout on the frame it is read):
+
+    frame   0 1 2 3 4 5 6 7 8 9        m = 3: a hold every 3rd frame, the first at frame m - 1
+    tick    0 1 . 2 3 . 4 5 . 6        '.' a hold: the frame takes the next frame's tick
+
+A segment is one stretch of constant tempo; a song's schedule is its segments in order.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TempoSegment:
+    frame: int          # its first tick frame
+    tick: int           # the tick there
+    modifier: int
+
+    def tick_at(self, frame):
+        """The tick a frame plays (a hold frame: the next frame's).  Takes an int or an array."""
+        n = frame - self.frame
+        return self.tick + n - n // self.modifier
+
+    def frame_of(self, tick: int) -> int:
+        """The frame a tick is read on."""
+        n = tick - self.tick
+        return self.frame + n + n // (self.modifier - 1)
+
+    def holds(self, frame):
+        """Whether a frame (int or array) is one of this segment's holds."""
+        return (frame - self.frame) % self.modifier == self.modifier - 1
+
+
+def tempo_schedule(modifier: int, changes: Sequence[tuple[int, int]] = ()) -> tuple[TempoSegment, ...]:
+    """A song's segments from tick 0 at frame 0: the header's modifier, then each (tick,
+    modifier) smpsSetTempoMod read."""
+    segments = [TempoSegment(0, 0, modifier)]
+    for tick, new in sorted(changes):
+        read = segments[-1].frame_of(tick)
+        segments.append(TempoSegment(read + 1, tick + 1, new))
+    return tuple(segments)
+
+
+def frame_of_tick(segments: Sequence[TempoSegment], tick: int) -> int:
+    """The frame a tick is read on, in a schedule."""
+    seg = next((s for s in reversed(segments) if s.tick <= tick), segments[0])
+    return seg.frame_of(tick)

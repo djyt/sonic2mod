@@ -17,6 +17,7 @@ from core.smps import (
     FM_FREQUENCIES,
     Aspect,
     CoordFlag,
+    PlayedNote,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEffect,
@@ -27,6 +28,7 @@ from core.smps import (
     SmpsSongHeader,
     SmpsVoice,
     VoiceField,
+    align_songs,
     compare_songs,
     played_song,
 )
@@ -54,6 +56,10 @@ def _note(value: int = _C4, duration: int = 8, **kw) -> SmpsEvent:
     return SmpsEvent(SmpsNote(value, duration, **kw))
 
 
+def _tie(duration: int = 8) -> SmpsEvent:
+    return SmpsEvent(SmpsNote(_C4, duration, is_no_attack=True))
+
+
 def _rest(duration: int) -> SmpsEvent:
     return SmpsEvent(SmpsNote(0x80, duration, is_rest=True))
 
@@ -75,10 +81,22 @@ class Voice(unittest.TestCase):
 
 class Played(unittest.TestCase):
     def test_rests_merge_but_a_tie_is_its_own_note(self):
-        notes = played_song(_song(_flag(CoordFlag.SET_VOICE, 0), _note(), _rest(4), _rest(4),
-                                  SmpsEvent(SmpsNote(_C4, 8, is_no_attack=True)))).channels["FM1"]
+        notes = played_song(_song(_note(), _rest(4), _rest(4), _note(), _tie())).channels["FM1"]
         self.assertEqual([(n.tick, n.duration, n.rest, n.attack) for n in notes],
-                         [(0, 8, False, True), (8, 8, True, True), (16, 8, False, False)])
+                         [(0, 8, False, True), (8, 8, True, True), (16, 8, False, True), (24, 8, False, False)])
+
+    def test_no_attack_after_a_rest_attacks(self):
+        # smpsNoAttack skips the key-off only: the channel is off, so the key-on attacks
+        notes = played_song(_song(_note(), _rest(8), _tie())).channels["FM1"]
+        self.assertTrue(notes[-1].attack)
+
+    def test_no_attack_after_the_fill_keyed_off_attacks(self):
+        # Fill 4 frames keys an 8-tick note off before the tie is read; fill 20 does not
+        def tie_attacks(fill: int) -> bool:
+            song = _song(_flag(CoordFlag.NOTE_FILL, fill), _note(), _tie())
+            return played_song(song).channels["FM1"][-1].attack
+        self.assertTrue(tie_attacks(4))
+        self.assertFalse(tie_attacks(20))
 
     def test_pitch_is_the_word_written_whatever_spells_it(self):
         # nC4 at transposition +2 is nD4; a detune adds to the word
@@ -121,18 +139,18 @@ class Played(unittest.TestCase):
 
 
 class Compare(unittest.TestCase):
-    def test_a_missing_note_is_one_difference(self):
+    def test_a_missing_note_is_one_attack_and_one_length(self):
         want = played_song(_song(_note(), _note(_C4 + 1), _note(_C4 + 2)))
         got = played_song(_song(_note(), _rest(8), _note(_C4 + 2)))
         diff = compare_songs(want, got)
-        self.assertEqual(diff.counts(), {Aspect.TIMING: 1})
-        self.assertEqual(diff.channels[0].changed[0].tick, 8)
+        self.assertEqual(diff.counts(), {Aspect.ONSET: 1, Aspect.LENGTH: 1})
+        self.assertEqual((diff.channels[0].missing, diff.channels[0].changed[0].tick), ([8], 8))
 
     def test_only_the_asked_aspects_count(self):
         want = played_song(_song(_note(_C4)))
         got = played_song(_song(_note(_C4 + 1)))
         self.assertEqual(compare_songs(want, got).counts(), {Aspect.PITCH: 1})
-        self.assertTrue(compare_songs(want, got, frozenset({Aspect.TIMING})).ok)
+        self.assertTrue(compare_songs(want, got, frozenset({Aspect.ONSET, Aspect.LENGTH})).ok)
 
     def test_a_shifted_note_is_missing_and_extra(self):
         want = played_song(_song(_note(duration=8), _note()))
@@ -140,11 +158,45 @@ class Compare(unittest.TestCase):
         ch = compare_songs(want, got).channels[0]
         self.assertEqual((ch.missing, ch.extra), ([8], [9]))
 
-    def test_the_song_header_counts_as_timing(self):
+    def test_a_tie_is_no_attack(self):
+        # A tie where the asm attacks: one attack missing, the length entry differs
+        want = played_song(_song(_note(), _note()))
+        got = played_song(_song(_note(), SmpsEvent(SmpsNote(_C4, 8, is_no_attack=True))))
+        diff = compare_songs(want, got)
+        self.assertEqual(diff.channels[0].missing, [8])
+        self.assertEqual(diff.counts()[Aspect.LENGTH], 1)
+
+    def test_the_modifier_is_compared_and_the_divider_is_spelling(self):
         want, got = _song(_note()), _song(_note())
         got.header.tempo_modifier = 6
+        got.header.tempo_divider = 2
         diff = compare_songs(played_song(want), played_song(got))
-        self.assertEqual(diff.song, [("tempo", (5, 1), (6, 1))])
+        self.assertEqual(diff.song, [("modifier", 5, 6)])
+
+    def test_a_rip_that_starts_late_is_aligned(self):
+        # The recording starts at the second note: its tick 0 is the song's 8
+        want = played_song(_song(_note(), _note(_C4 + 1), _note(_C4 + 2)))
+        got = played_song(_song(_note(_C4 + 1), _note(_C4 + 2)))
+        offset = align_songs(want, got)
+        self.assertEqual(offset, 8)
+        self.assertTrue(compare_songs(want, got, offset=offset).ok)
+
+    def test_a_loop_compares_by_its_span(self):
+        # The same 8-tick loop, the rip's taken a bar later: fine; a shorter one is not
+        def looping(notes: int, loop_at: int) -> SmpsSong:
+            song = _song(*[_note() for _ in range(notes)])
+            song.channels[0].has_jump, song.channels[0].loop_tick, song.channels[0].loop_event_index = True, loop_at, loop_at // 8
+            return song
+        want = played_song(looping(3, 8))
+        self.assertTrue(compare_songs(want, played_song(looping(4, 16))).ok)
+        diff = compare_songs(want, played_song(looping(3, 16)))
+        self.assertEqual([what for what, _, _ in diff.song], ["loop span"])
+
+    def test_a_channel_with_nothing_to_play_is_not_compared(self):
+        want = played_song(_song(_note()))
+        got = played_song(_song(_note()))
+        got.channels["FM2"] = [PlayedNote(0, 8, rest=True)]
+        self.assertTrue(compare_songs(want, got).ok)
 
     @unittest.skipUnless(_MUSIC.exists(), "sonic_1/ sources not present")
     def test_every_song_plays_as_itself(self):

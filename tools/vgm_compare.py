@@ -42,19 +42,11 @@ Renders land in --workdir (default: output/compare/<config-name>/).
 from __future__ import annotations
 
 import argparse
-import bisect
 import contextlib
-import itertools
 import json
 import math
-import os
-import re
-import shutil
 import statistics
-import subprocess
 import sys
-import wave
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -67,580 +59,44 @@ except ImportError:  # pragma: no cover
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.audio import cents, db_to_gain, gain_to_db, pitch_name, power_to_db
-from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit
+from core.audio import pitch_name
+from core.audit import (
+    LEVEL_MAX_ERR,
+    LEVEL_MAX_SPREAD,
+    SR,
+    VGM_CHANNELS,
+    VIB_MIN_NOTE,
+    OnsetMatch,
+    audio_onsets,
+    audit_pitches,
+    band_profile,
+    db,
+    envelope_offset,
+    find_vgmplay,
+    group_masks,
+    harmonic_cents,
+    instrument_levels,
+    keyon_onsets,
+    load_wav,
+    mod_note_events,
+    mod_pitch_timeline,
+    note_start_offset,
+    onset_match,
+    onsets,
+    prepare_audit,
+    render_mod_channels,
+    render_vgm_channels,
+    rms,
+    seg_at,
+    spectrum,
+    vibrato_estimate,
+    write_volumes,
+)
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
-from core.mod import ModImage, edx_delay, isolate_channel, read_mod, timed_pass
+from core.mod import ModImage, read_mod, timed_pass
 from core.ui import print_audit
 from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
-
-SR = 44100
-
-# VGM channel name -> (YM2612 mute mask, SN76496 mute mask) that leaves ONLY that channel audible.
-_YM_ALL, _SN_ALL = 0x7F, 0xF
-_VGM_CHANNELS = {
-    "FM1": (_YM_ALL & ~0x01, _SN_ALL), "FM2": (_YM_ALL & ~0x02, _SN_ALL),
-    "FM3": (_YM_ALL & ~0x04, _SN_ALL), "FM4": (_YM_ALL & ~0x08, _SN_ALL),
-    "FM5": (_YM_ALL & ~0x10, _SN_ALL), "FM6": (_YM_ALL & ~0x20, _SN_ALL),
-    "DAC": (_YM_ALL & ~0x40, _SN_ALL),
-    "PSG1": (_YM_ALL, _SN_ALL & ~0x1), "PSG2": (_YM_ALL, _SN_ALL & ~0x2),
-    "PSG3": (_YM_ALL, _SN_ALL & ~0x4), "NOISE": (_YM_ALL, _SN_ALL & ~0x8),
-}
-# ---------------------------------------------------------------------------
-# Rendering
-# ---------------------------------------------------------------------------
-
-_VGMPLAY_EXES = ("VGMPlay64.exe", "VGMPlay.exe", "vgmplay")
-_VGMPLAY_DEFAULT = _HERE.parent / "reference" / "vgz" / "vgmplay"
-
-
-def _find_vgmplay(arg: str | None) -> Path:
-    """Resolve the VGMPlay directory: --vgmplay, then VGMPLAY_DIR, then reference/vgz/vgmplay/."""
-    cand = arg or os.environ.get("VGMPLAY_DIR")
-    d = Path(cand) if cand else _VGMPLAY_DEFAULT
-    if any((d / exe).exists() for exe in _VGMPLAY_EXES):
-        return d
-    if cand:
-        raise SystemExit(f"ERROR: no VGMPlay executable found in {d}")
-    raise SystemExit(
-        f"ERROR: VGMPlay not found in {_VGMPLAY_DEFAULT}\n"
-        "       Unzip a VGMPlay 0.51.x build there (the directory is untracked), or pass\n"
-        "       --vgmplay DIR / set VGMPLAY_DIR.  See 'VGM comparison setup' in docs/pipeline.md.")
-
-
-def _patch_ini(src: str, ym_mask: int, sn_mask: int, core: str) -> str:
-    out, section = [], None
-    for line in src.splitlines():
-        m = re.match(r"^\[(.+)\]", line)
-        if m:
-            section = m.group(1)
-            out.append(line)
-            if section == "YM2612":
-                out += [f"MuteMask = 0x{ym_mask:02X}", f"Core = {core}"]
-            elif section == "SN76496":
-                out.append(f"MuteMask = 0x{sn_mask:X}")
-            continue
-        if section == "General" and re.match(r"^\s*(LogSound|MaxLoops|SampleRate)\s*=", line):
-            continue
-        if section in ("YM2612", "SN76496") and re.match(r"^\s*(MuteMask|Core|MuteCh\d)\s*=", line):
-            continue
-        out.append(line)
-    text = "\n".join(out) + "\n"
-    # Force WAV logging, one pass, 44100 Hz.
-    text = text.replace("[General]", "[General]\nLogSound = 1\nMaxLoops = 1\nSampleRate = 44100", 1)
-    return text
-
-
-def group_masks(sources: list[str]) -> tuple[int, int]:
-    """The mute masks that leave every one of `sources` audible (a merged channel's sum)."""
-    ym, sn = _YM_ALL, _SN_ALL
-    for s in sources:
-        y, n = _VGM_CHANNELS[s]
-        ym, sn = ym & y, sn & n
-    return ym, sn
-
-
-def render_vgm_channels(vgz: Path, names: list[str], vgmplay: Path, outdir: Path, core: str,
-                        masks: dict[str, tuple[int, int]] | None = None) -> None:
-    masks = masks or _VGM_CHANNELS
-    exe = next(e for e in _VGMPLAY_EXES if (vgmplay / e).exists())
-    base_ini = (vgmplay / "VGMPlay.ini").read_text(encoding="utf-8", errors="replace")
-    outdir.mkdir(parents=True, exist_ok=True)
-    for name in ["FULL", *names]:
-        ym, sn = (0x00, 0x0) if name == "FULL" else masks[name]
-        work = outdir / f"_vgm_{name}"
-        work.mkdir(exist_ok=True)
-        for f in vgmplay.iterdir():
-            if f.suffix.lower() in (".exe", ".dll"):
-                shutil.copy(f, work / f.name)
-        (work / "VGMPlay.ini").write_text(_patch_ini(base_ini, ym, sn, core), encoding="utf-8")
-        shutil.copy(vgz, work / "ref.vgz")
-        subprocess.run([str(work / exe), "ref.vgz"], cwd=work, stdin=subprocess.DEVNULL,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600, check=False)
-        wav = work / "ref.wav"
-        if not wav.exists():
-            raise SystemExit(f"ERROR: VGMPlay produced no WAV for {name} (check LogSound support)")
-        shutil.move(str(wav), str(outdir / f"vgm_{name}.wav"))
-        shutil.rmtree(work, ignore_errors=True)
-        print(f"  rendered VGM {name}")
-
-
-def render_mod_channels(mod_path: Path, channels: dict[str, int], outdir: Path) -> None:
-    if shutil.which("ffmpeg") is None:
-        raise SystemExit("ERROR: ffmpeg not found on PATH")
-    probe = subprocess.run(["ffmpeg", "-hide_banner", "-h", "demuxer=libopenmpt"],
-                           capture_output=True, text=True, check=False)
-    if "libopenmpt" not in probe.stdout:
-        raise SystemExit("ERROR: this ffmpeg build has no libopenmpt demuxer")
-    data = mod_path.read_bytes()
-    outdir.mkdir(parents=True, exist_ok=True)
-
-    def render(item: tuple[str, int | None]) -> tuple[str, str | None]:
-        name, ch = item
-        iso = outdir / f"_mod_{name}.mod"
-        iso.write_bytes(isolate_channel(data, ch))
-        wav = outdir / f"mod_{name}.wav"
-        r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "libopenmpt",
-                            "-sample_rate", str(SR), "-i", str(iso), "-ar", str(SR), "-ac", "2", str(wav)],
-                           capture_output=True, text=True, check=False)
-        iso.unlink(missing_ok=True)
-        return name, (r.stderr if r.returncode != 0 or not wav.exists() else None)
-
-    # One ffmpeg per channel; they are independent, so they run at once (cores - 1 of them).
-    items = [("FULL", None), *channels.items()]
-    with ThreadPoolExecutor(max_workers=max(1, min(len(items), (os.cpu_count() or 2) - 1))) as pool:
-        for name, err in pool.map(render, items):
-            if err is not None:
-                raise SystemExit(f"ERROR: ffmpeg failed for MOD channel {name}:\n{err}")
-            print(f"  rendered MOD {name}")
-
-
-# ---------------------------------------------------------------------------
-# Signal helpers
-# ---------------------------------------------------------------------------
-
-def load_wav(path: Path, stereo: bool = False) -> np.ndarray:
-    """Mono mix (L+R)/2 by default; with stereo=True the (frames, channels) array.
-
-    Pitch, onsets and envelopes use the mono mix.  LEVELS must use the stereo array: rms() of it
-    is the power average of both sides, which is what a hard-panned channel actually delivers.
-    Averaging to mono first reads a hard-panned YM2612 channel ~5 dB low against a centred one
-    (GHZ FM4/FM5), while every libopenmpt MOD channel loses the same ~1 dB, so the error does
-    not cancel between the two renders.
-    """
-    with wave.open(str(path), 'rb') as w:
-        n, ch, sw, sr = w.getnframes(), w.getnchannels(), w.getsampwidth(), w.getframerate()
-        raw = w.readframes(n)
-    if sw != 2 or sr != SR:
-        raise SystemExit(f"ERROR: {path} must be 16-bit {SR} Hz (got {sw * 8}-bit {sr} Hz)")
-    a = np.frombuffer(raw, dtype='<i2').astype(np.float64) / 32768.0
-    a = a.reshape(-1, ch)
-    return a if stereo else a.mean(axis=1)
-
-
-def db(x: float) -> float:
-    return gain_to_db(max(x, 1e-9))
-
-
-def rms(seg: np.ndarray) -> float:
-    return float(np.sqrt(np.mean(seg * seg))) if len(seg) else 0.0
-
-
-def seg_at(a: np.ndarray, t: float, dur: float) -> np.ndarray:
-    s, e = int(t * SR), int((t + dur) * SR)
-    if s < 0 or s >= len(a):
-        return np.zeros((max(e - s, 1), *a.shape[1:]))
-    return a[s:e]
-
-
-def spectrum(seg: np.ndarray, nfft: int) -> tuple[np.ndarray, np.ndarray]:
-    mag = np.abs(np.fft.rfft(seg * np.hanning(len(seg)), nfft))
-    return np.fft.rfftfreq(nfft, 1 / SR), mag
-
-
-def _band_peak(freqs: np.ndarray, mag: np.ndarray, f0: float, semis: float) -> tuple[float, float]:
-    """(interpolated peak Hz, its magnitude) within +/- semis of f0; (0, 0) when the band is empty."""
-    lo, hi = f0 / 2 ** (semis / 12), f0 * 2 ** (semis / 12)
-    idx = np.where((freqs >= lo) & (freqs <= hi))[0]
-    if len(idx) == 0:
-        return 0.0, 0.0
-    k = idx[np.argmax(mag[idx])]
-    d = 0.0
-    if 1 <= k < len(mag) - 1:
-        a, b, c = (np.log(mag[k - 1] + 1e-12), np.log(mag[k] + 1e-12), np.log(mag[k + 1] + 1e-12))
-        den = a - 2 * b + c
-        d = 0.5 * (a - c) / den if den != 0 else 0.0
-    return float((k + d) * freqs[1]), float(mag[k])
-
-
-def harmonic_cents(seg: np.ndarray, f0: float, harmonic: int | None = None, semis: float = 0.75) -> tuple[int, float]:
-    """(harmonic used, cents that partial is from harmonic * f0).
-
-    An FM voice whose carriers run at a frequency multiple of 2 or more has no energy at the
-    channel's register frequency, and a peak search there only finds leakage.  With `harmonic`
-    None the strongest of the first four partials is used; pass that number back in to measure
-    the other render on the same partial.
-    """
-    if len(seg) < 64:
-        return harmonic or 1, float("nan")
-    nfft = 1 << max(15, math.ceil(math.log2(len(seg) * 4)))
-    freqs, mag = spectrum(seg, nfft)
-    cands = [harmonic] if harmonic else [k for k in (1, 2, 3, 4) if k * f0 < SR / 2.5]
-    k, (f, _) = max(((k, _band_peak(freqs, mag, k * f0, semis)) for k in cands), key=lambda c: c[1][1])
-    return k, cents(f, k * f0)
-
-
-def band_profile(seg: np.ndarray, bands: list[tuple[int, int]], fmax: float = 22050) -> list[float]:
-    freqs, mag = spectrum(seg, 8192)
-    p = mag ** 2
-    tot = p[freqs < fmax].sum() + 1e-12
-    return [power_to_db(p[(freqs >= a) & (freqs < b)].sum() / tot + 1e-12) for a, b in bands]
-
-
-def envelope_db(a: np.ndarray, frame: float = 0.005) -> np.ndarray:
-    n = int(frame * SR)
-    nf = len(a) // n
-    if nf == 0:
-        return np.array([-120.0])
-    x = a[:nf * n].reshape(nf, n)
-    return 20 * np.log10(np.sqrt((x * x).mean(axis=1)) + 1e-9)
-
-
-def onsets(a: np.ndarray, thresh_db: float = -45, frame: float = 0.005, hold: float = 0.03,
-           rise_db: float = 6) -> list[float]:
-    env = envelope_db(a, frame)
-    out: list[float] = []
-    last = -1.0
-    for i in range(2, len(env)):
-        if env[i] > thresh_db and env[i] - min(env[i - 2], env[i - 1]) > rise_db:
-            t = i * frame
-            if last < 0 or t - last > hold:
-                out.append(t)
-            last = t
-    return out
-
-
-def auto_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float = 3.0) -> float:
-    """MOD-minus-VGM time offset (s) that best aligns the two mix envelopes."""
-    frame = 0.005
-    ev = np.clip(envelope_db(vgm_full, frame), -60, 0)
-    em = np.clip(envelope_db(mod_full, frame), -60, 0)
-    ev -= ev.mean()
-    em -= em.mean()
-    n = min(len(ev), len(em))
-    ev, em = ev[:n], em[:n]
-    maxl = int(max_lag / frame)
-    best, best_lag = -1e18, 0
-    for lag in range(-maxl, maxl + 1):
-        c = float(np.dot(em[lag:], ev[:n - lag])) if lag >= 0 else float(np.dot(em[:n + lag], ev[-lag:]))
-        if c > best:
-            best, best_lag = c, lag
-    return best_lag * frame
-
-
-# ---------------------------------------------------------------------------
-# Per-instrument levels
-# ---------------------------------------------------------------------------
-
-def mod_note_events(mod: ModImage, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]]]:
-    """({channel: [(time s, instrument, Cxx value or None)]}, {instrument: (name, volume)}) over the
-    pass core.mod.timed_pass times, so its notes and the pitch timeline share one clock."""
-    samples = {i: (s.name, s.volume) for i, s in enumerate(mod.samples, 1) if s.length}
-    events: dict[int, list[tuple]] = {c: [] for c in range(mod.channels)}
-    rows, _end = timed_pass(mod, speed)
-    for r in rows:
-        for c, (period, ins, eff, par) in enumerate(r.cells):
-            if period and ins:
-                events[c].append((r.start + edx_delay(eff, par, r.bpm), ins, par if eff == 0xC else None))
-    return events, samples
-
-
-_LEVEL_SPAN = 0.6            # seconds of a note that count towards its level
-_LEVEL_MIN_NOTES = 4         # fewer plain notes than this and no volume is suggested
-_LEVEL_SCALE_MIN_NOTES = 12  # fewer notes than this and the instrument cannot drive the common scale-down
-_LEVEL_MAX_SPREAD = 3.0      # dB between channels sharing an instrument before it is "not a volume problem"
-_LEVEL_DAC_SLACK = 2.0       # dB the DAC must be BELOW the song's median before everything is balanced to it
-_LEVEL_MAX_ERR = 18.0        # dB; beyond this something other than the volume is wrong (silent / wrong instrument)
-
-
-def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, int], events: dict[int, list[tuple]],
-                      samples: dict[int, tuple[str, int]], mod_end: float, vgm_st: dict, mod_st: dict,
-                      offset: float) -> dict:
-    """Level error MOD - VGM per (chip channel, MOD instrument, Cxx), and per instrument.
-
-    Errors are relative to an anchor so the unknown gain between the two renders drops out.
-    The anchor is the median over every plain (no Cxx) synthesised note, so that only RELATIVE
-    imbalance is reported — unless the DAC is QUIETER than that median by _LEVEL_DAC_SLACK dB or
-    more.  DAC samples sit at volume 64 and cannot be turned up, so then everything else has to
-    come down to meet them.  A DAC that is too LOUD is simply turned down (it gets a suggestion
-    like any instrument), and a gap under the slack is within what short DAC hits can be measured
-    to — chasing it would rewrite every volume for nothing.
-    Only notes without a Cxx say what the instrument's own volume should be.
-    """
-    groups: dict[tuple, list[float]] = {}
-    for ch, times in note_times.items():
-        evs = events.get(mod_chan[ch], [])
-        short = ch in ("DAC", "NOISE")
-        for i, t in enumerate(times):
-            if t > mod_end - 0.3:
-                break
-            dur = min((times[i + 1] - t) if i + 1 < len(times) else _LEVEL_SPAN, 0.15 if ch == "DAC" else _LEVEL_SPAN)
-            if dur < (0.04 if short else 0.09):
-                continue
-            lv = db(rms(seg_at(vgm_st[ch], t, dur)))
-            lm = db(rms(seg_at(mod_st[ch], t + offset, dur)))
-            if lv < -55 or lm < -75:
-                continue
-            hit = None
-            for e in evs:
-                if e[0] > t + offset + 0.03:
-                    break
-                hit = e
-            if hit is not None:
-                groups.setdefault((ch, hit[1], hit[2]), []).append(lm - lv)
-
-    def med(keys) -> float | None:
-        xs = [x for k in keys for x in groups[k]]
-        return statistics.median(xs) if xs else None
-
-    dac = med(k for k in groups if k[0] == "DAC")
-    n_dac = sum(len(groups[k]) for k in groups if k[0] == "DAC")
-    song = med(k for k in groups if k[0] != "DAC" and k[2] is None)
-    if song is None:
-        song = med(k for k in groups if k[0] != "DAC")
-    if song is None:
-        return {"anchor": None, "groups": [], "instruments": []}
-    dac_vs_song = (dac - song) if dac is not None and n_dac >= 8 else None
-    anchor: float
-    if dac is not None and dac_vs_song is not None and dac_vs_song <= -_LEVEL_DAC_SLACK:
-        anchor_name, anchor = f"the DAC (which is {dac_vs_song:+.1f} dB against the rest of the song)", dac
-    else:
-        anchor = song
-        anchor_name = "the song's median note" + (
-            f" (DAC {dac_vs_song:+.1f} dB against it)" if dac_vs_song is not None else "")
-
-    out_groups = [{"channel": ch, "instrument": ins, "cxx": cxx, "notes": len(xs),
-                   "err_db": statistics.median(xs) - anchor}
-                  for (ch, ins, cxx), xs in sorted(groups.items(), key=lambda kv: (kv[0][1], kv[0][0], kv[0][2] or -1))]
-    instruments = []
-    for ins in sorted({g["instrument"] for g in out_groups}):
-        plain = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is None]
-        if not plain:
-            continue
-        notes = sum(g["notes"] for g in plain)
-        err = statistics.median(x for g in plain for x in groups[(g["channel"], ins, None)]) - anchor
-        spread = max(g["err_db"] for g in plain) - min(g["err_db"] for g in plain)
-        name, vol = samples.get(ins, ("?", 64))
-        ok = notes >= _LEVEL_MIN_NOTES and spread <= _LEVEL_MAX_SPREAD and abs(err) <= _LEVEL_MAX_ERR
-        instruments.append({
-            "instrument": ins, "name": name, "volume": vol, "notes": notes, "err_db": err, "spread_db": spread,
-            "channels": sorted({g["channel"] for g in plain}),
-            "wanted": vol * db_to_gain(-err) if ok else None,
-        })
-    scale = suggest_volumes(instruments)
-    return {"anchor": anchor_name, "anchor_db": anchor, "groups": out_groups, "instruments": instruments,
-            "scaled_db": gain_to_db(scale)}
-
-
-def suggest_volumes(instruments: list[dict]) -> float:
-    """Fill in `suggested` from `wanted`; returns the common scale applied (1.0 = none).
-
-    64 is the ceiling.  An instrument that wants a little more than that (within the slack that a
-    level can be measured to — typically a DAC sample already at 64 reading a hair quiet) is
-    simply clamped.  Only when one wants substantially more are ALL suggestions brought down
-    together, so that the balance between them survives.
-    """
-    # Only instruments with a fair number of notes may pull everything down: Credits' fm_v0e
-    # (4 notes, read -9.9 dB) would otherwise have cost every sample 7.9 dB and left the PSG
-    # tones at volume 1-4.  A few-note instrument that wants more than 64 is clamped instead.
-    wanted = [it["wanted"] for it in instruments
-              if it.get("wanted") is not None and it.get("notes", 0) >= _LEVEL_SCALE_MIN_NOTES]
-    ceiling = 64.0 * db_to_gain(_LEVEL_DAC_SLACK)
-    scale = min(1.0, ceiling / max(wanted)) if wanted else 1.0
-    for it in instruments:
-        it["suggested"] = None if it.get("wanted") is None else max(1, min(64, round(it["wanted"] * scale)))
-    return scale
-
-
-def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0) -> list[str]:
-    """Set sample_list volumes to the suggested values; returns a line per change."""
-    text = config_path.read_text(encoding="utf-8")
-    changes = []
-    for it in instruments:
-        new = it["suggested"]
-        if new is None or new == it["volume"] or abs(gain_to_db(new / it["volume"])) < min_db:
-            continue
-        pat = re.compile(r'^(\s*-\s*\[\s*' + str(it["instrument"])
-                         + r'\s*,\s*"[^"]*"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
-        m = pat.search(text)
-        if not m or int(m.group(2)) != it["volume"]:
-            changes.append(f"  !! instrument {it['instrument']}: no sample_list line with volume {it['volume']} — not changed")
-            continue
-        note = f"VGZ: {it['err_db']:+.1f} dB at {it['volume']}"
-        tail = re.sub(r"\s*[;#]?\s*VGZ: [^;]*", "", m.group(4)).rstrip()
-        tail = f"{tail}; {note}" if tail.strip().startswith("#") and tail.strip() != "#" else f" # {note}"
-        text = text[:m.start()] + f"{m.group(1)}{new:>{len(m.group(2))}}{m.group(3)}{tail}" + text[m.end():]
-        changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
-    if any(not c.startswith("  !!") for c in changes):
-        config_path.write_text(text, encoding="utf-8", newline="")
-    return changes
-
-
-# ---------------------------------------------------------------------------
-# Vibrato
-# ---------------------------------------------------------------------------
-
-_VIB_MIN_NOTE = 0.5          # seconds; shorter notes do not hold enough cycles to measure
-_VIB_FRAME = 0.005           # pitch-track frame (200 Hz)
-_VIB_BAND = (2.5, 14.0)      # plausible vibrato rates, Hz
-_VIB_MIN_DEPTH = 3.0         # cents; below this it is period-table / FNUM quantisation wobble
-_VIB_MIN_R2 = 0.35           # share of pitch-track variance a sinusoid at the rate must explain
-_VIB_BEAT_AM = 0.15          # level swing (fraction of mean) at the same rate that marks beating
-_PEAK_FLOOR_DB = -25         # dB under the strongest spectral peak below which _pick_partial counts none
-
-
-def _pick_partial(seg: np.ndarray) -> tuple[float, float]:
-    """(centre Hz, half-bandwidth Hz) of the partial that is easiest to isolate; (0, 0) if none.
-
-    FM voices with fractional operator multiples put partials on a lattice finer than the note's
-    own frequency (Title Screen voice $01 at A2: 55 / 82.5 / 110 Hz), so the spacing is measured
-    rather than assumed.  It is read off the peaks below 500 Hz, where a vibrato of a few tens of
-    cents is too narrow to show up as separate sideband peaks.
-    """
-    freqs, mag = spectrum(seg, 1 << math.ceil(math.log2(len(seg) * 2)))
-    keep = (freqs >= 40) & (freqs <= 4000)
-    freqs, mag = freqs[keep], mag[keep].copy()
-    if not len(mag) or mag.max() <= 0:
-        return 0.0, 0.0
-    floor = mag.max() * db_to_gain(_PEAK_FLOOR_DB)
-    peaks: list[tuple[float, float]] = []            # (Hz, magnitude), strongest first
-    work = mag.copy()
-    while len(peaks) < 24:
-        k = int(np.argmax(work))
-        if work[k] < floor:
-            break
-        peaks.append((float(freqs[k]), float(work[k])))
-        work[np.abs(freqs - freqs[k]) < 12.0] = 0
-    low = sorted(f for f, _ in peaks if f < 500) or sorted(f for f, _ in peaks)
-    gaps = [b - a for a, b in itertools.pairwise(low)]
-    spacing = min(gaps) if gaps else low[0]
-    # A partial needs its own swing (2 % covers +/-35 cents) plus the first modulation sidebands.
-    ok = [(f, m) for f, m in peaks if 0.02 * f + 8.0 <= 0.45 * spacing]
-    fc = max(ok, key=lambda x: x[1])[0] if ok else min(f for f, _ in peaks)
-    return fc, min(0.45 * spacing, 3 * (0.02 * fc + 8.0))
-
-
-def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, np.ndarray, float]:
-    """(pitch deviation in cents per _VIB_FRAME, NaN where quiet; the partial's level per frame;
-    filter half-bandwidth in Hz).
-
-    Partial tracking by heterodyne: one partial is shifted to DC, isolated with a brick-wall
-    low-pass narrower than the partial spacing, and the phase derivative of what is left is its
-    instantaneous frequency.  Every partial of an FM or PSG note moves by the same number of
-    cents, so which one is tracked does not matter.
-    """
-    n = len(seg)
-    if n < int(0.2 * SR):
-        return np.array([]), np.array([]), 0.0
-    fc, bw = _pick_partial(seg)
-    if fc <= 0:
-        return np.array([]), np.array([]), 0.0
-
-    t = np.arange(n) / SR
-    spec = np.fft.fft(seg * np.exp(-2j * np.pi * fc * t))
-    spec[np.abs(np.fft.fftfreq(n, 1 / SR)) > bw] = 0
-    z = np.fft.ifft(spec)
-
-    hop = int(_VIB_FRAME * SR)
-    nf = (n - 1) // hop
-    if nf < 8:
-        return np.array([]), np.array([]), 0.0
-    # Amplitude-weighted mean frequency per frame: sum(z[k+1]·conj(z[k])) has the mean phase step
-    # as its angle and ignores samples where the partial has faded out.
-    prod = (z[1:] * np.conj(z[:-1]))[:nf * hop].reshape(nf, hop).sum(axis=1)
-    amp = np.abs(z[:nf * hop]).reshape(nf, hop).mean(axis=1)
-    dev_hz = np.angle(prod) * SR / (2 * np.pi)
-    track = 1200 * np.log2(np.maximum(fc + dev_hz, 1e-6) / fc)
-    track[amp < 0.1 * amp.max()] = np.nan
-    edge = int(0.03 / _VIB_FRAME)          # brick-wall filter rings at the segment ends
-    track[:edge] = np.nan
-    track[-edge:] = np.nan
-    return track, amp, bw
-
-
-def vibrato_estimate(seg: np.ndarray) -> dict | None:
-    """Rate (Hz) and depth (+/- cents) of periodic pitch modulation in seg; None if there is none.
-
-    Only the modulated stretch of the note is measured, so a delayed onset (smpsModSet wait) or a
-    4xy that stops before the note does not dilute the figures.  The depth is the median of the
-    per-cycle extremes, which is the same for the driver's triangle and ProTracker's sine and
-    shrugs off the pitch glitches at attack and release.
-    """
-    track, amp, bw = pitch_track(seg)
-    ok = np.where(~np.isnan(track))[0]
-    trim = int(0.05 / _VIB_FRAME)                     # attack / release transients
-    if len(ok) < int(0.4 / _VIB_FRAME) + 2 * trim:
-        return None
-    first = int(ok[0]) + trim
-    track = track[first:int(ok[-1]) + 1 - trim]
-    amp = amp[first + 1:int(ok[-1]) - trim]            # aligned with the smoothed track below
-    if np.isnan(track).any():
-        idx = np.arange(len(track))
-        good = ~np.isnan(track)
-        track = np.interp(idx, idx[good], track[good])
-    track = np.convolve(track, np.ones(3) / 3, mode="same")[1:-1]     # 15 ms smoothing
-
-    # Local swing = half the pitch range inside a window one slowest-vibrato cycle long.  The
-    # modulated stretch is the longest run where it stays near its typical (75th percentile)
-    # value; far above that is a glitch, far below is an unmodulated part of the note.
-    win = int(1 / _VIB_BAND[0] / _VIB_FRAME)
-    if len(track) < win + int(0.2 / _VIB_FRAME):
-        return None
-    views = np.lib.stride_tricks.sliding_window_view(track, win)
-    local = (views.max(axis=1) - views.min(axis=1)) / 2
-    typical = float(np.percentile(local, 75))
-    if typical < _VIB_MIN_DEPTH:
-        return None
-    active = (local > 0.5 * typical) & (local < 2.5 * typical)
-    best_a = best_b = run_a = 0
-    for i, on in enumerate([*active, False]):
-        if on:
-            continue
-        if i - run_a > best_b - best_a:
-            best_a, best_b = run_a, i
-        run_a = i + 1
-    a, b = best_a, best_b + win - 1                   # window index -> frame span
-    if (b - a) * _VIB_FRAME < 0.3:
-        return None
-    x = track[a:b]
-    tt = np.arange(len(x)) * _VIB_FRAME
-    x = x - np.polyval(np.polyfit(tt, x, 1), tt)
-
-    nfft = 8192
-    mag = np.abs(np.fft.rfft(x * np.hanning(len(x)), nfft))
-    fr = np.fft.rfftfreq(nfft, _VIB_FRAME)
-    # Anything within 20 % of the brick-wall edge is a neighbouring partial beating through the
-    # filter skirt, not modulation.
-    band = np.where((fr >= _VIB_BAND[0]) & (fr <= min(_VIB_BAND[1], 0.8 * bw)))[0]
-    k = int(band[np.argmax(mag[band])])
-    rate = float(fr[k])
-    if 1 <= k < len(mag) - 1:
-        p, q, r = mag[k - 1], mag[k], mag[k + 1]
-        den = p - 2 * q + r
-        if den != 0:
-            rate = float((k + 0.5 * (p - r) / den) * fr[1])
-
-    basis = np.column_stack([np.sin(2 * np.pi * rate * tt), np.cos(2 * np.pi * rate * tt)])
-    coef, *_ = np.linalg.lstsq(basis, x, rcond=None)
-    # FNUM / period vibrato moves the pitch and leaves the level alone.  Two detuned FM carriers
-    # beating also wobble a partial's phase periodically, but they swing its level at the same
-    # rate — and that rate scales with sample playback speed in the MOD, which vibrato does not.
-    lvl = amp[a:b]
-    lvl = lvl / lvl.mean() - 1 if len(lvl) == len(x) and lvl.mean() > 0 else np.zeros(len(x))
-    lvl = lvl - np.polyval(np.polyfit(tt, lvl, 1), tt)
-    am_coef, *_ = np.linalg.lstsq(basis, lvl, rcond=None)
-    am_depth = float(np.hypot(*am_coef))
-    var = float(np.var(x))
-    r2 = 1 - float(np.var(x - basis @ coef)) / var if var > 0 else 0.0
-    cycle = max(2, round(1 / rate / _VIB_FRAME))
-    cycles = [x[i:i + cycle] for i in range(0, len(x) - cycle + 1, cycle)]
-    if len(cycles) < 2:
-        return None
-    depth = (statistics.median(float(c.max()) for c in cycles)
-             - statistics.median(float(c.min()) for c in cycles)) / 2
-    if r2 < _VIB_MIN_R2 or depth < _VIB_MIN_DEPTH:
-        return None
-    # Onset: the stretch above is only located to within one analysis window, so take the first
-    # frame of the whole track that strays 40 % of the depth from the pitch the note starts at.
-    # (Reads ~0.1 cycle late, equally on both renders.)
-    rest = float(np.median(track[:max(3, int(0.05 / _VIB_FRAME))]))
-    moved = np.where(np.abs(track[:b] - rest) > 0.4 * depth)[0]
-    onset = int(moved[0]) if len(moved) else a
-    return {"rate_hz": rate, "depth_cents": depth, "onset_s": (first + 1 + onset) * _VIB_FRAME,
-            "dur_s": (b - a) * _VIB_FRAME, "r2": r2, "am_depth": am_depth,
-            "kind": "beat" if am_depth >= _VIB_BEAT_AM else "vibrato"}
-
 
 # ---------------------------------------------------------------------------
 # Report
@@ -683,19 +139,6 @@ class _Renders:
         self.mod = {n: a.mean(axis=1) for n, a in self.mod_st.items()}
 
 
-@dataclass
-class _OnsetMatch:
-    """One channel's reference onsets against the MOD's."""
-
-    ref: int                          # reference onsets
-    mod: int                          # MOD onsets
-    devs: list[float]                 # ms each matched one is off by
-    missing: int                      # reference onsets with no MOD one
-    extra: int | None = None          # MOD notes the chip has no key-on for (key-on matching only)
-    lost: list[float] = field(default_factory=list)   # s of each missing one (key-on matching only)
-    drift_ms: float | None = None     # the deviation's change from the song's start to its end
-
-
 def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str, int], rd: _Renders) -> float:
     """The MOD-minus-VGM offset (s), given or found; prints which."""
     if offset is not None:
@@ -706,11 +149,11 @@ def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str,
     # envelope method's failure on sparse or tempo-drifting songs (Chaos Emerald +920 ms,
     # Drowning +1205 ms).  The envelope correlation is kept for songs with no pitched notes.
     if not any(mod_tl.values()):
-        offset = auto_offset(rd.vgm["FULL"], rd.mod["FULL"])
+        offset = envelope_offset(rd.vgm["FULL"], rd.mod["FULL"])
         _say_alignment(offset, "auto, envelope cross-correlation")
         return offset
     offset = note_start_offset(chip_tl, mod_tl, sources)
-    env = auto_offset(rd.vgm["FULL"], rd.mod["FULL"])
+    env = envelope_offset(rd.vgm["FULL"], rd.mod["FULL"])
     _say_alignment(offset, "auto, note starts"
                    + (f"; envelope correlation says {env * 1000:+.0f} ms — ignored" if abs(env - offset) > 0.03 else ""))
     return offset
@@ -838,7 +281,7 @@ def _report_vibrato(per_ch: dict[str, list], rd: _Renders, offset: float, res: d
         for i, r in enumerate(evs):
             t, note = r.ms / 1000.0, pitch_name(r.hz)
             dur = (evs[i + 1].ms / 1000.0 - t) if i + 1 < len(evs) else 3.0
-            if dur < _VIB_MIN_NOTE:
+            if dur < VIB_MIN_NOTE:
                 continue
             long_notes += 1
             span = min(dur, 4.0) - 0.02
@@ -851,7 +294,7 @@ def _report_vibrato(per_ch: dict[str, list], rd: _Renders, offset: float, res: d
             res["vibrato"].append({"channel": ch, "t_s": t, "note": note, "dur_s": dur,
                                    "vgm": vv, "mod": vm, "mismatch": bool(flag)})
 
-    print(f"Vibrato ({long_notes} notes of {_VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
+    print(f"Vibrato ({long_notes} notes of {VIB_MIN_NOTE} s or longer checked; rows = notes that modulate in either render)")
     if not vib_rows:
         print("  none found")
         print()
@@ -921,8 +364,8 @@ def _print_instrument_levels(lev: dict) -> None:
                 parts.append(f"{g['channel']}{cxx}: {g['err_db']:+.1f} x{g['notes']}")
         detail = "  ".join(parts)
         sug = "" if it["suggested"] is None else ("=" if it["suggested"] == it["volume"] else str(it["suggested"]))
-        flag = "  <-- channels disagree" if it["spread_db"] > _LEVEL_MAX_SPREAD else ""
-        if abs(it["err_db"]) > _LEVEL_MAX_ERR:
+        flag = "  <-- channels disagree" if it["spread_db"] > LEVEL_MAX_SPREAD else ""
+        if abs(it["err_db"]) > LEVEL_MAX_ERR:
             flag = "  <-- too far off to be a volume problem"
         print(f"{it['instrument']:>4} {it['name']:<22} {it['volume']:>3} {it['notes']:>5} {it['err_db']:>+6.1f} "
               f"{it['spread_db']:>6.1f} {sug:>7}   {detail}{flag}")
@@ -932,119 +375,7 @@ def _print_instrument_levels(lev: dict) -> None:
     print()
 
 
-# A chip key-on and a MOD note pair when they sit within this of the local deviation
-_ONSET_WINDOW_MS = 40.0
-
-
-def _keyon_onsets(vo: list[float], mo: list[float]) -> _OnsetMatch:
-    """Chip key-ons (s) against MOD note rows (s, in VGM time), one to one.
-
-    The pairing is the one that leaves the fewest notes unpaired, then has the smallest
-    deviations (_best_pairing).  A grace note a tick before its target cannot take the
-    target's MOD note when the target has one; a greedy walk that paired the first note in
-    the window did, and reported the target lost:
-
-        chip   0 ms (grace)   30 ms          greedy: 0 <-> 30 (+30 ms), 30 lost
-        MOD                   30 ms          best:   30 <-> 30 (0 ms), 0 lost
-
-    Deviations count against the running one (_local_deviation): a MOD BPM is a whole number, so
-    a song can run a fraction of a percent off the driver's tempo (Special Stage +150 ms in
-    33 s), and every smpsSetTempoMod steps it by up to two frames.  The drift is reported on
-    its own.
-    """
-    m = _OnsetMatch(len(vo), len(mo), [], 0)
-    pairs = _best_pairing(vo, mo, _local_deviation(vo, mo))
-    paired = {i for i, _ in pairs}
-    m.devs = [(mo[j] - vo[i]) * 1000 for i, j in pairs]
-    m.lost = [t for i, t in enumerate(vo) if i not in paired]
-    m.missing = len(m.lost)
-    m.extra = len(mo) - len(pairs)
-    if len(m.devs) >= 10:
-        m.drift_ms = statistics.mean(m.devs[-5:]) - statistics.mean(m.devs[:5])
-    return m
-
-
-def _local_deviation(vo: list[float], mo: list[float]) -> list[float]:
-    """Per key-on (ms): the deviation the notes before it run at, followed note to note.  A
-    nearest-note guess cannot be used: on a song drifting past half its note spacing the
-    nearest MOD note is the previous key-on's.  The walk pairs greedily inside the window,
-    takes a step the next two notes confirm (an smpsSetTempoMod), and passes a note it cannot
-    pair; only the deviation it carries is kept (the pairing is _best_pairing's)."""
-    if not vo or not mo:
-        return [0.0] * len(vo)
-    # Start where the song starts: on a drifting song the global alignment is a mid-song
-    # compromise, so the first notes sit well off zero
-    run = statistics.median([min(((x - t) * 1000 for x in mo), key=abs) for t in vo[:5]])
-    out = []
-    i = j = 0
-    while i < len(vo):
-        d = (mo[j] - vo[i]) * 1000 if j < len(mo) else math.inf
-        if abs(d - run) <= _ONSET_WINDOW_MS:
-            out.append(run)
-            run = 0.5 * run + 0.5 * d
-            i, j = i + 1, j + 1
-        elif abs(d - run) <= 3 * _ONSET_WINDOW_MS and all(
-                i + k < len(vo) and j + k < len(mo) and abs((mo[j + k] - vo[i + k]) * 1000 - d) <= _ONSET_WINDOW_MS
-                for k in (1, 2)):
-            run = d
-        elif d < run:
-            j += 1
-        else:
-            out.append(run)
-            i += 1
-    return out
-
-
-def _best_pairing(vo: list[float], mo: list[float], local: list[float]) -> list[tuple[int, int]]:
-    """The (key-on, MOD note) index pairs, both in order, that pair the most notes and then
-    deviate least from `local`: the heaviest increasing chain over the candidate pairs (those
-    inside the window), found with a prefix-maximum tree over the MOD notes."""
-    # best[j]: the heaviest chain ending at a MOD note <= j, as (pairs, -deviation, its last link)
-    tree: list[tuple[int, float, int]] = [(0, 0.0, -1)] * (len(mo) + 1)
-
-    def best_before(j: int) -> tuple[int, float, int]:
-        out = (0, 0.0, -1)
-        while j > 0:
-            out = max(out, tree[j])
-            j -= j & -j
-        return out
-
-    def offer(j: int, value: tuple[int, float, int]) -> None:
-        j += 1
-        while j <= len(mo):
-            tree[j] = max(tree[j], value)
-            j += j & -j
-
-    links: list[tuple[int, int, int]] = []        # (key-on, MOD note, previous link)
-    for i, t in enumerate(vo):
-        lo = bisect.bisect_left(mo, t + (local[i] - _ONSET_WINDOW_MS) / 1000)
-        hi = bisect.bisect_right(mo, t + (local[i] + _ONSET_WINDOW_MS) / 1000)
-        # Every candidate of this key-on extends a chain of earlier key-ons only: offer after
-        offers = []
-        for j in range(lo, hi):
-            count, neg_dev, prev = best_before(j)
-            links.append((i, j, prev))
-            offers.append((j, (count + 1, neg_dev - abs((mo[j] - t) * 1000 - local[i]), len(links) - 1)))
-        for j, value in offers:
-            offer(j, value)
-
-    pairs = []
-    link = best_before(len(mo))[2]
-    while link >= 0:
-        i, j, link = links[link]
-        pairs.append((i, j))
-    return pairs[::-1]
-
-
-def _audio_onsets(vgm_a: np.ndarray, mod_a: np.ndarray, thresh_db: float, offset: float) -> _OnsetMatch:
-    """Detected audio onsets on both sides, matched within 40 ms."""
-    vo = onsets(vgm_a, thresh_db=thresh_db)
-    mo = [t - offset for t in onsets(mod_a, thresh_db=thresh_db)]
-    devs, missing = _onset_match(vo, mo)
-    return _OnsetMatch(len(vo), len(mo), devs, missing)
-
-
-def _print_onsets(name: str, m: _OnsetMatch, width: int) -> None:
+def _print_onsets(name: str, m: OnsetMatch, width: int) -> None:
     if not m.devs:
         print(f"  {name:<{width}} {m.ref:3d} ref onsets, {m.mod:3d} MOD onsets; none matched")
     else:
@@ -1072,10 +403,10 @@ def _report_onsets(names: list[str], note_times: dict[str, list[float]], events_
     for n in names:
         symbolic = n in note_times and n != "DAC"
         if symbolic:
-            m = _keyon_onsets([t for t in note_times[n] if t + offset < mod_end - 0.15],
+            m = keyon_onsets([t for t in note_times[n] if t + offset < mod_end - 0.15],
                               [e[0] - offset for e in events_by_chan.get(chan_of[n], [])])
         else:
-            m = _audio_onsets(rd.vgm[n], rd.mod[n], -50 if n == "NOISE" else -40, offset)
+            m = audio_onsets(rd.vgm[n], rd.mod[n], -50 if n == "NOISE" else -40, offset)
         _print_onsets(n, m, 6)
         res["channels"][n]["onsets"] = {
             "method": "key-on" if symbolic else "audio", "mod_only": m.extra, "drift_ms": m.drift_ms,
@@ -1160,7 +491,7 @@ def report(cfg: ConversionConfig, song, vgz: Path, mod_path: Path, workdir: Path
     """
     log, notes = _vgm_notes(vgz)
     noise_used = any(n.channel == "NOISE" for n in notes)
-    chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in _VGM_CHANNELS or c.source == "PSG3"}
+    chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in VGM_CHANNELS or c.source == "PSG3"}
     names = [_chip_channel(src, noise_used) for src in chan_map]
     chan_of = {n: chan_map[src] for n, src in zip(names, chan_map, strict=True)}
     sources = {c.source: c.mod_channel for c in cfg.channels}
@@ -1233,7 +564,7 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     offset_auto = offset is None
     if offset is None:
         # Within three quarters of a second: a repetitive song correlates a whole bar off
-        offset = auto_offset(rd.vgm["FULL"], rd.mod["FULL"], max_lag=0.75)
+        offset = envelope_offset(rd.vgm["FULL"], rd.mod["FULL"], max_lag=0.75)
         _say_alignment(offset, "auto, envelope cross-correlation")
     else:
         _say_alignment(offset, "given")
@@ -1263,7 +594,7 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     print("Onset timing (audio onsets on both sides, matched within 40 ms; a merged channel's onsets are"
           " every note-on of its sources)")
     for n in names:
-        m = _audio_onsets(rd.vgm[n], rd.mod[n], -50 if "NOISE" in labels[n] else -40, offset)
+        m = audio_onsets(rd.vgm[n], rd.mod[n], -50 if "NOISE" in labels[n] else -40, offset)
         _print_onsets(n, m, 14)
         res["channels"][n]["onsets"] = {
             "method": "audio", "ref": m.ref, "mod": m.mod, "matched": len(m.devs), "unmatched": m.missing,
@@ -1316,18 +647,6 @@ def _column_blocks(layout: dict[int, dict[int, list[str]]], spans: list[tuple[in
     return blocks
 
 
-def _onset_match(ref: list[float], mod: list[float]) -> tuple[list[float], int]:
-    """(ms each matched reference onset is off by, unmatched count): within 40 ms."""
-    devs, missing = [], 0
-    for t in ref:
-        d = min(((m - t) * 1000 for m in mod), key=abs, default=float("inf"))
-        if abs(d) > 40:
-            missing += 1
-        else:
-            devs.append(d)
-    return devs, missing
-
-
 def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                            offset: float | None, chip_names: dict[str, str]) -> dict:
     """The merged build of a merge_patterns: config, each MOD column against the hardware.
@@ -1351,7 +670,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
     mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *(f"col{c}" for c in columns)]}
     offset_auto = offset is None
     if offset is None:
-        offset = auto_offset(vgm_st["FULL"].mean(axis=1), mod_st["FULL"].mean(axis=1), max_lag=0.75)
+        offset = envelope_offset(vgm_st["FULL"].mean(axis=1), mod_st["FULL"].mean(axis=1), max_lag=0.75)
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (auto, envelope cross-correlation)")
     else:
         print(f"Alignment: MOD lags VGM by {offset * 1000:+.0f} ms (given)")
@@ -1418,7 +737,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
         name = f"col{c}"
         rv, rm = db(rms(ref_col[c])), db(rms(mod_st[name]))
         thr = -50 if any("PSG3" in v for v in layout[c].values()) else -40
-        devs, missing = _onset_match(onsets(ref_col[c].mean(axis=1), thresh_db=thr),
+        devs, missing = onset_match(onsets(ref_col[c].mean(axis=1), thresh_db=thr),
                                      onsets(mod_st[name].mean(axis=1), thresh_db=thr))
         diff = rm - rv - anchor
         flag = "" if abs(diff) < _BLOCK_FLAG_DB else "  <-- rebalance"
@@ -1550,7 +869,7 @@ def main() -> None:
         # merge_patterns: a column's sources change per pattern - one render per chip channel,
         # summed per pattern by report_merged_patterns; one MOD render per output column
         chip_names = {c.source: _chip_channel(c.source, noise_used) for c in cfg.channels}
-        chip_names = {s: n for s, n in chip_names.items() if n in _VGM_CHANNELS}
+        chip_names = {s: n for s, n in chip_names.items() if n in VGM_CHANNELS}
         vgm_names = sorted(set(chip_names.values()))
         chan_map = {f"col{c}": c for c in sorted({c.mod_channel for c in cfg.channels if c.enabled})}
         if cfg.merge_drop:
@@ -1561,7 +880,7 @@ def main() -> None:
         chan_map = {}
         for c in sorted((c for c in cfg.channels if c.enabled), key=lambda c: c.mod_channel):
             srcs = [_chip_channel(s, noise_used) for s in (c.source, *followers_of.get(c.source, []))]
-            srcs = [s for s in srcs if s in _VGM_CHANNELS]
+            srcs = [s for s in srcs if s in VGM_CHANNELS]
             if srcs:
                 labels["+".join(srcs)] = srcs
                 chan_map["+".join(srcs)] = c.mod_channel
@@ -1572,13 +891,13 @@ def main() -> None:
     else:
         chan_map = {c.source: c.mod_channel for c in cfg.channels}
         vgm_names = [_chip_channel(s, noise_used) for s in chan_map]
-        vgm_names = [n for n in vgm_names if n in _VGM_CHANNELS]
+        vgm_names = [n for n in vgm_names if n in VGM_CHANNELS]
 
     if not args.skip_render:
         if args.reuse_vgm and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
             print("Reusing reference renders in the workdir")
         else:
-            vgmplay = _find_vgmplay(args.vgmplay)
+            vgmplay = find_vgmplay(args.vgmplay)
             print(f"Rendering reference channels with {vgmplay} ...")
             render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core, masks)
         print("Rendering MOD channels with ffmpeg/libopenmpt ...")

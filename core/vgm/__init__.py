@@ -4,9 +4,11 @@
     chipstate.py  YM2612 + SN76489 registers replayed over the writes (ChipState, Change)
     frames.py     the log cut into V-int frames: each channel's state and writes per frame (FrameLog)
     notes.py      where notes start (NoteStart), each channel's pitch timeline (pitch_segments)
+    cache.py      a rip's frame log kept on disk (load_frames)
     lift.py       the log lifted back into the SmpsSong the driver played (lift_song)
 """
 
+from .cache import load_frames
 from .chipstate import (
     DAC_CHANNEL,
     FM_CHANNELS,
@@ -78,6 +80,7 @@ __all__ = [
     "frame_log",
     "is_vgm_path",
     "lift_song",
+    "load_frames",
     "noise_rate",
     "noise_white",
     "note_starts",

@@ -135,6 +135,14 @@ class Files(unittest.TestCase):
         cache.put_file("k", src, ".wav")
         self.assertFalse(cache.get_file("k", self.dir / "b.wav", ".wav"))
 
+    def test_bytes_come_back_and_a_damaged_file_misses(self):
+        cache = RenderCache(self.dir / "cache", "vgm_frames", "salt")
+        self.assertIsNone(cache.get_bytes("k", ".frames"))
+        cache.put_bytes("k", b"frames", ".frames")
+        self.assertEqual(cache.get_bytes("k", ".frames"), b"frames")
+        next((self.dir / "cache").rglob("k.frames")).write_bytes(b"not zlib")
+        self.assertIsNone(cache.get_bytes("k", ".frames"))
+
 
 class ReferenceKey(unittest.TestCase):
     def test_the_key_follows_the_log_and_the_ini(self):

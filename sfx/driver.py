@@ -4,7 +4,7 @@ One `tick()` call is one V-int.  SFX always run one tick per V-int — `TempoWai
 only walks the *music* track RAM to apply its compensation, so the music
 `fps * (modifier-1)/modifier` correction does not apply here (:186).
 
-Routine names and line references map onto `sonic_1/s1.sounddriver.asm`.
+Routine names and line references map onto `reference/smps_drivers/sonic_1/s1.sounddriver.asm`.
 
 The driver's `addq.w #4,sp` "skip the caller's return" trick is expressed here as
 a boolean return value: `_do_modulation` returns True only when it produced a new

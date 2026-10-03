@@ -226,10 +226,10 @@ def _index():
 
 
 _ROM_FILE = ROOT / "input" / "roms" / "sonic_rev01.bin"
-_ASM_DIR = ROOT / "sonic_1"
+_ASM_DIR = ROOT / "reference" / "smps_drivers" / "sonic_1"
 
 
-@unittest.skipUnless(_ROM_FILE.exists() and _ASM_DIR.exists(), "needs input/roms/sonic_rev01.bin and sonic_1/")
+@unittest.skipUnless(_ROM_FILE.exists() and _ASM_DIR.exists(), "needs input/roms/sonic_rev01.bin and reference/smps_drivers/sonic_1/")
 class SonicRev01(unittest.TestCase):
     """Every song and SFX of the ROM against the disassembly (data fixes off: the game as shipped)."""
 

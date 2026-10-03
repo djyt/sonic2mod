@@ -1,6 +1,6 @@
 # SFX → WAV rendering (`sonic2wav`)
 
-Renders the 49 Sonic 1 sound effects in `sonic_1/sfx/*.asm` to 16-bit stereo WAV.
+Renders the 49 Sonic 1 sound effects in `reference/smps_drivers/sonic_1/sfx/*.asm` to 16-bit stereo WAV.
 
 Unlike the MOD path, which flattens events onto a tracker row grid, this runs a **tick-accurate
 software reimplementation of the Sonic 1 sound driver** against the cycle-accurate YM2612
@@ -9,7 +9,7 @@ entirely from per-tick vibrato sweeps and volume ramps that a row grid destroys.
 
 ```bash
 python sonic2wav.py --all                       # all 49 → output/sfx/
-python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sonic2wav.py --all --dry-run             # parse + render, report, write nothing
 python sfx/validate.py                          # self-check
 ```

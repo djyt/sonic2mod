@@ -32,15 +32,11 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.audio import pitch_name
 from core.audit import workers
-from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
 from core.config import find_settings, load_settings, load_yaml
 from core.smps import (
     ALL_ASPECTS,
     Aspect,
-    ChannelDiff,
-    NoteDiff,
     PlayedSong,
     SmpsParser,
     SongDiff,
@@ -48,12 +44,12 @@ from core.smps import (
     compare_songs,
     played_song,
 )
+from core.ui import diff_counts, song_diff_lines
 from core.vgm import LiftOptions, VgmLiftError, lift_song, load_frames
 
 VGZ_DIR = ROOT / "reference" / "vgz"
 CONFIG_DIR = ROOT / "configs"
 _NUMBER = slice(0, 2)             # "02 - Green Hill Zone.vgz" / "02_green_hill_zone.yaml" -> "02"
-_FNUM_BITS = 11
 _DEFAULT_DIFFS = 12               # differences listed per channel
 
 
@@ -85,7 +81,7 @@ def _lift(rip: Path, asm: Path | None, aspects: frozenset[Aspect], options: Lift
         got = played_song(lift_song(load_frames(rip, cache_dir), options))
     except VgmLiftError as e:
         return _Result(rip, asm, error=f"not lifted: {e}")
-    want = played_song(SmpsParser().parse_file(str(asm)))
+    want = played_song(SmpsParser(fix_data_bugs=False).parse_file(str(asm)))   # the rip is the game as shipped
     if channels:
         got, want = _only(got, channels), _only(want, channels)
     offset = align_songs(want, got)
@@ -100,75 +96,13 @@ def _only(song: PlayedSong, channels: tuple[str, ...]) -> PlayedSong:
 # --- printing ---------------------------------------------------------------------
 
 
-def _pitch(channel: str, word: object) -> str:
-    """A frequency word with the note it sounds: 0x2C3B (A4)."""
-    if not isinstance(word, int):
-        return str(word)
-    if channel.startswith("FM"):
-        hz = fm_frequency_hz(word & ((1 << _FNUM_BITS) - 1), word >> _FNUM_BITS, MD_FM_CLOCK)
-    else:
-        hz = psg_frequency_hz(max(word, 1), MD_PSG_CLOCK)
-    return f"{word:#06x} ({pitch_name(hz)})"
-
-
-def _voice_change(want: object, got: object) -> str:
-    """An FM voice difference as the registers that differ: B0 and (register, byte) pairs."""
-    if not (isinstance(want, tuple) and isinstance(got, tuple)):
-        return f"{want} -> {got}"
-    (b0_want, regs_want), (b0_got, regs_got) = want, got
-    parts = [f"B0 {b0_want:#04x}->{b0_got:#04x}"] if b0_want != b0_got else []
-    a, b = dict(regs_want), dict(regs_got)
-    parts += [f"{r:#04x} {a.get(r)}->{b.get(r)}" for r in sorted(a.keys() | b.keys()) if a.get(r) != b.get(r)]
-    return ", ".join(parts) or "same"
-
-
-def _show(channel: str, d: NoteDiff) -> str:
-    if d.aspect in (Aspect.NOTE, Aspect.PITCH):
-        return f"{_pitch(channel, d.expected)} -> {_pitch(channel, d.got)}"
-    if d.aspect is Aspect.VOICE and channel.startswith("FM"):
-        return _voice_change(d.expected, d.got)
-    return f"{d.expected} -> {d.got}"
-
-
-def _grouped(changed: list[NoteDiff]) -> list[tuple[NoteDiff, int, int]]:
-    """One difference made again and again (a wrong voice on every note) as (its first, how often,
-    the last tick), in order of first appearance."""
-    groups: dict[tuple, list] = {}
-    for d in changed:
-        group = groups.setdefault((d.aspect, repr(d.expected), repr(d.got)), [d, 0, d.tick])
-        group[1] += 1
-        group[2] = d.tick
-    return [(d, n, last) for d, n, last in groups.values()]
-
-
-def _counts(diff: SongDiff | ChannelDiff) -> str:
-    counts = diff.counts()
-    return "  ".join(f"{a.value} {counts[a]}" for a in Aspect if counts[a])
-
-
 def _print_song(result: _Result, max_diffs: int) -> None:
     print(f"{result.rip.name}  vs  {result.asm.name if result.asm else '-'}   (the rip starts at tick {result.offset})")
     if result.diff is None:
         print(f"  {result.error}")
         return
-    diff = result.diff
-    for what, want, got in diff.song:
-        print(f"  {what:<14} {want} -> {got}")
-    for name in diff.missing_channels:
-        print(f"  {name:<5} not lifted")
-    for name in diff.extra_channels:
-        print(f"  {name:<5} lifted, not in the asm")
-
-    for ch in diff.channels:
-        print(f"  {ch.name:<5} {ch.notes:>4} notes   {_counts(ch) or 'same'}")
-        lines = [f"missing at {t}" for t in ch.missing] + [f"extra at {t}" for t in ch.extra]
-        lines += [f"{d.tick:>6}  {d.aspect.value:<10} {_show(ch.name, d)}" + (f"   x{n}, last at {last}" if n > 1 else "")
-                  for d, n, last in _grouped(ch.changed)]
-        for line in lines[:max_diffs]:
-            print(f"        {line}")
-        if len(lines) > max_diffs:
-            print(f"        ... {len(lines) - max_diffs} more")
-    print("  same" if diff.ok else f"  {_counts(diff)}")
+    for line in song_diff_lines(result.diff, max_diffs, missing="not lifted", extra="lifted, not in the asm"):
+        print(line)
 
 
 def _print_line(result: _Result) -> None:
@@ -178,7 +112,7 @@ def _print_line(result: _Result) -> None:
         return
     notes = sum(c.notes for c in result.diff.channels)
     song = "  song: " + ", ".join(what for what, _, _ in result.diff.song) if result.diff.song else ""
-    print(f"  {title:<26} {notes:>5} notes   {_counts(result.diff) or 'same'}{song}")
+    print(f"  {title:<26} {notes:>5} notes   {diff_counts(result.diff) or 'same'}{song}")
 
 
 def main() -> None:

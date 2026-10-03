@@ -27,7 +27,7 @@ from core.smps import (
     SmpsParser,
 )
 from sfx import tables
-from sfx.batch import render_one
+from sfx.batch import asm_sources, render_one
 from sfx.render import NATIVE_RATE
 from sfx.resample import resample
 from sn76489.wrapper import SN76489
@@ -114,7 +114,7 @@ def check_render(sfx_dir: Path) -> None:
             if not path.is_file():
                 check(stem, False, "file not found")
                 continue
-            r = render_one(str(path), opn2, sn)
+            r = render_one(asm_sources([str(path)])[0], opn2, sn)
             energy_l = sum(abs(v) for v in r.left)
             energy_r = sum(abs(v) for v in r.right)
             check(f"{r.name} is not silent", r.peak > 0.0, f"peak {r.peak:.3f}")

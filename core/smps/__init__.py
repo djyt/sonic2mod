@@ -1,17 +1,22 @@
 """The source: Sonic 1 SMPS songs and the driver that plays them.
 
     song.py           SmpsSong and its parts (the parser's output)
-    parser.py         SmpsParser: assembly -> SmpsSong
+    code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events
+    parser.py         SmpsParser: assembly -> SmpsCode -> SmpsSong
+    asm_writer.py     write_asm: SongCode -> SMPS2ASM assembly (SmpsParser reads it back)
     song_prep.py      the song as the driver plays it (tempo-divider re-timing, short loops replayed)
     driver_tables.py  the driver's frequency tables, note indices, envelopes, operator order
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
     track.py          TrackState: one track's driver state as its coordination flags leave it
     tempo.py          TempoSegment, tempo_schedule: the frame each tick is read on
     playback.py       played_song: what a song plays note by note, its spelling gone
-    compare.py        compare_songs: where two songs play differently, aspect by aspect
+    compare.py        compare_songs: where two songs play differently, aspect by aspect;
+                      parse_differences: where two readings of the same bytes differ
 """
 
-from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, align_songs, compare_songs
+from .asm_writer import write_asm
+from .code import Op, OpKind, SmpsCode, SongCode, effect_from_bytes, song_from_code
+from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, align_songs, compare_songs, parse_differences
 from .driver_tables import (
     DEFAULT_DRIVER,
     ENVELOPE_TERMINATOR,
@@ -32,8 +37,11 @@ from .driver_tables import (
     psg_index_semitone,
     psg_note_index,
     psg_tone2_divider,
+    psg_voice_name,
 )
 from .names import (
+    SFX_CHANNEL_IDS,
+    SMPS_DAC_NAMES,
     flag_from_macro,
     flag_name,
     parse_smps_note,
@@ -77,15 +85,20 @@ __all__ = [
     "PSG_ENVELOPES_BY_NAME",
     "PSG_FREQUENCIES",
     "PSG_FREQUENCIES_EXTENDED",
+    "SFX_CHANNEL_IDS",
+    "SMPS_DAC_NAMES",
     "SMPS_OP_TO_REG_OFFSET",
     "Aspect",
     "ChannelDiff",
     "CoordFlag",
     "NoteDiff",
+    "Op",
+    "OpKind",
     "PlayedNote",
     "PlayedSong",
     "SmpsChannel",
     "SmpsChannelHeader",
+    "SmpsCode",
     "SmpsDriver",
     "SmpsEffect",
     "SmpsEvent",
@@ -94,6 +107,7 @@ __all__ = [
     "SmpsSong",
     "SmpsSongHeader",
     "SmpsVoice",
+    "SongCode",
     "SongDiff",
     "TempoSegment",
     "TrackState",
@@ -102,6 +116,7 @@ __all__ = [
     "apply_global_tempo_div",
     "chip_pitch",
     "compare_songs",
+    "effect_from_bytes",
     "extend_looping_channels",
     "flag_from_macro",
     "flag_name",
@@ -110,17 +125,21 @@ __all__ = [
     "noise_envelope_frames",
     "pan_is_hard",
     "pan_side",
+    "parse_differences",
     "parse_smps_note",
     "parse_synth_note",
     "played_song",
     "psg_index_semitone",
     "psg_note_index",
     "psg_tone2_divider",
+    "psg_voice_name",
     "semitone_to_note_name",
+    "song_from_code",
     "source_map",
     "source_names",
     "synth_note_name",
     "tempo_schedule",
     "tick_at_frame",
     "voice_field_from_macro",
+    "write_asm",
 ]

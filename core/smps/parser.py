@@ -1,65 +1,27 @@
 """SMPS assembly music parser.
 
-Parses Sonic 1 SMPS assembly files (macro-based note data) into an
-intermediate representation suitable for conversion to MOD format.
+Reads Sonic 1 SMPS assembly (SMPS2ASM macros) into the song's code (core/smps/code.py), which the
+driver's reading rules turn into the intermediate representation suitable for conversion to MOD.
 """
 
 import re
-from dataclasses import dataclass
-from typing import ClassVar
 
+from .code import NO_ATTACK, Op, OpKind, SmpsCode, effect_from_bytes, song_from_code
 from .driver_tables import PAN_VALUES
-from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES, voice_field_from_macro
-from .song import (
-    CoordFlag,
-    SmpsChannel,
-    SmpsChannelHeader,
-    SmpsEffect,
-    SmpsEvent,
-    SmpsNote,
-    SmpsSong,
-    SmpsSongHeader,
-    SmpsVoice,
-)
+from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_NOTE_NAMES, voice_field_from_macro
+from .song import CoordFlag, SmpsChannelHeader, SmpsEffect, SmpsSongHeader, SmpsVoice
 
-# dc.b bytes: durations below the rest, notes from it to nB7.
-_REST = 0x80          # nRst
-_LAST_NOTE = 0xDF     # nB7
-_NO_ATTACK = 0xE7     # smpsNoAttack
 _PAN_LFO_MASK = 0x3F  # smpsPan's second operand: B4's AMS / FMS bits
 
+# Control macros: the op each is, and its operands' pattern
+_JUMP = re.compile(r'smpsJump\s+(\S+)')
+_LOOP = re.compile(r'smpsLoop\s+\$([0-9A-Fa-f]+)\s*,\s*\$([0-9A-Fa-f]+)\s*,\s*(\S+)')
+_CALL = re.compile(r'smpsCall\s+(\S+)')
+_HEX = re.compile(r'\$([0-9A-Fa-f]+)')
 
-@dataclass
-class _DcbCursor:
-    """A channel's note state as dc.b lines read and leave it."""
-    channel: SmpsChannel
-    is_dac: bool
-    tempo_div: int
-    tick: int
-    last_duration: int
-    no_attack: bool
-    pending: SmpsNote | None     # the note still waiting for its duration
-    last_note_value: int         # the last note sounded: what a standalone duration re-keys
-
-
-def _standalone_note(cur: _DcbCursor, duration: int) -> SmpsNote:
-    """What a duration byte with no note before it plays.
-
-    DAC: SavedDAC re-triggers; after a rest it stays silent.
-    FM / PSG: the last note re-keys at its frequency (1-Up: `$03,$03,$06,$06` after nE7, a
-    staccato arpeggio), unless smpsNoAttack precedes it: the note rings on (GHZ:
-    `smpsNoAttack,$3C` after nF5; PSG skips the volume write, the envelope continues).
-    """
-    held = SmpsNote(note_value=_REST, duration=duration, is_rest=True, is_no_attack=True)
-    if cur.is_dac:
-        last = next((e.note for e in reversed(cur.channel.events) if e.note is not None), None)
-        if last is None or not last.is_dac:
-            return held
-        return SmpsNote(note_value=last.note_value, duration=duration, is_dac=True, dac_name=last.dac_name)
-
-    if cur.no_attack or cur.last_note_value == 0:
-        return held
-    return SmpsNote(note_value=cur.last_note_value, duration=duration, is_retrigger=True)
+# Assembly conditionals: `if Symbol` / `if Symbol=0`
+_IF = re.compile(r'\s*if\s+(\w+)\s*(=\s*0)?\s*$')
+_FIX_DATA_BUGS = "FixMusicAndSFXDataBugs"
 
 
 # ---------------------------------------------------------------------------
@@ -67,13 +29,13 @@ def _standalone_note(cur: _DcbCursor, duration: int) -> SmpsNote:
 # ---------------------------------------------------------------------------
 
 class SmpsParser:
-    def __init__(self):
+    def __init__(self, fix_data_bugs: bool = True):
+        """fix_data_bugs: the disassembly's FixMusicAndSFXDataBugs; False reads the songs as the
+        game shipped them (the ROM, every VGZ): Marble Zone PSG3's three notes off the PSG table,
+        Credits' three late rests and the smpsAlterVol that mutes the passage after them."""
         self.lines = []
         self.labels = {}           # label_name -> line_index
-        # The channel being parsed: where its own walk first reached each label (a jump back to one
-        # replays from there) - the tick, and the index of the first event after it
-        self._label_ticks: dict[str, int] = {}
-        self._label_events: dict[str, int] = {}
+        self._symbols = {_FIX_DATA_BUGS: fix_data_bugs}
 
     def parse_file(self, filepath):
         """Parse an SMPS assembly file into a SmpsSong.
@@ -94,32 +56,8 @@ class SmpsParser:
         self._collect_labels()
 
         header = self._parse_header()
-        channels = []
-
-        for ch_header in header.channels:
-            self._label_ticks, self._label_events = {}, {}
-            channel = self._parse_channel_data(ch_header, tempo_divider=header.tempo_divider)
-            channels.append(channel)
-
-            # The loop as a tick and an event index: where THIS channel reached its jump's target.
-            # Another channel's walk past the same label (code shared by fall-through or a jump)
-            # reaches it at its own tick - Marble Zone's PSG2 4 ticks after PSG1.
-            if channel.has_jump and channel.loop_label:
-                channel.loop_tick = self._label_ticks.get(channel.loop_label)
-                channel.loop_event_index = self._label_events.get(channel.loop_label)
-
         voices = self._parse_voices(header.voice_label)
-        return SmpsSong(header=header, channels=channels, voices=voices)
-
-    def _mark_label(self, label: str, tick: int, event_index: int) -> None:
-        """The channel being parsed reached `label` at `tick`, before event `event_index`; the
-        first time counts."""
-        self._label_ticks.setdefault(label, tick)
-        self._label_events.setdefault(label, event_index)
-
-    _CONDITIONAL_DEFAULTS: ClassVar[dict[str, bool]] = {
-        "FixMusicAndSFXDataBugs": True,
-    }
+        return song_from_code(header, self._code(), voices)
 
     def _preprocess(self, text):
         """Strip comments, blank lines, normalize whitespace."""
@@ -129,12 +67,14 @@ class SmpsParser:
         for raw in text.split('\n'):
             line = raw.strip()
 
-            m_if = re.match(r'\s*if\s+(\w+)\s*$', line)
+            m_if = _IF.match(line)
             m_else = re.match(r'\s*else\s*$', line)
             m_endif = re.match(r'\s*endif\s*$', line)
 
             if m_if:
-                stack.append(self._CONDITIONAL_DEFAULTS.get(m_if.group(1), False))
+                # `if Symbol` or `if Symbol=0`; an unknown symbol reads as 0
+                value = self._symbols.get(m_if.group(1), False)
+                stack.append(not value if m_if.group(2) else value)
                 continue
             if m_else:
                 if stack:
@@ -283,291 +223,45 @@ class SmpsParser:
 
         return header
 
-    def _label_precedes_duration(self, idx):
-        """True if the next data-bearing line is a dc.b whose first token is a duration byte.
+    def _code(self) -> SmpsCode:
+        """The lines as ops: labels, control macros, flags, dc.b bytes.  Lines that are none of
+        these (header macros, voices, `even`) emit no op."""
+        ops: list[Op] = []
+        for line in self.lines:
+            ops.extend(self._line_ops(line))
+        return SmpsCode(ops)
 
-        Used to decide whether a label sits between a note byte and its duration byte.
-        Skips over consecutive label lines, since those emit no bytes either.
-        """
-        i = idx
-        while i < len(self.lines):
-            line = self.lines[i]
-            if line.endswith(':'):
-                i += 1
-                continue
-            if not line.startswith('dc.b'):
-                return False
-            first = line[4:].split(',')[0].strip()
-            if not first.startswith('$'):
-                return False
-            try:
-                return int(first[1:], 16) < _REST
-            except ValueError:
-                return False
-        return False
+    def _line_ops(self, line: str) -> list[Op]:
+        if line.endswith(':'):
+            return [Op(OpKind.LABEL, name=line[:-1].strip())]
 
-    def _finalize_pending(self, channel, pending_note, tick, last_duration, last_note_value=0):
-        """Emit a pending note with last_duration, advance tick, and return updated state.
+        # smpsFade (the 1-Up jingle restores the song it interrupted) and smpsStopSpecial (the
+        # waterfall SFX hands FM4 back to the music) end the track as smpsStop does
+        if line.startswith(('smpsStop', 'smpsFade')):
+            return [Op(OpKind.STOP)]
 
-        Returns:
-            (tick, last_note_value) — last_note_value updated if note was non-rest/non-DAC.
-        """
-        if pending_note is not None:
-            pending_note.duration = last_duration
-            if not pending_note.is_rest and not pending_note.is_dac:
-                last_note_value = pending_note.note_value
-            channel.events.append(SmpsEvent(note=pending_note, tick_position=tick))
-            tick += pending_note.duration
-        return tick, last_note_value
+        if line.startswith('smpsReturn'):
+            return [Op(OpKind.RETURN)]
 
-    def _parse_channel_data(self, ch_header, tempo_divider=1):
-        """Parse channel data starting from the channel's label.
+        m = _JUMP.match(line)
+        if m:
+            return [Op(OpKind.JUMP, name=m.group(1))]
 
-        Continues past label boundaries until smpsStop or smpsJump is hit.
-        Handles smpsLoop unrolling, smpsCall/smpsReturn inlining.
-        """
-        channel = SmpsChannel(header=ch_header)
-        start_label = ch_header.label
+        m = _LOOP.match(line)
+        if m:
+            return [Op(OpKind.LOOP, value=int(m.group(2), 16), name=m.group(3), index=int(m.group(1), 16))]
 
-        if start_label not in self.labels:
-            print(f"Warning: Label '{start_label}' not found")
-            return channel
+        m = _CALL.match(line)
+        if m:
+            return [Op(OpKind.CALL, name=m.group(1))]
 
-        start_line = self.labels[start_label] + 1  # Skip the label line itself
-        tick = 0
-        last_duration = 0
-        no_attack_pending = False
+        effect = self._try_parse_effect(line)
+        if effect is not None:
+            return [Op(OpKind.EFFECT, effect=effect)]
 
-        # The channel's own start: tick 0 (its loop, if it jumps back here, is taken by tick)
-        self._label_ticks.setdefault(start_label, 0)
-
-        _seen_labels: set[str] = {start_label}
-        tick, _, _, _, _ = self._parse_channel_lines(
-            channel, start_line, tick, last_duration, no_attack_pending,
-            ch_header.channel_type == "DAC",
-            _seen_labels=_seen_labels, chan_tempo_div=tempo_divider,
-        )
-
-        return channel
-
-    def _parse_channel_lines(self, channel, start_line, tick, last_duration,
-                              no_attack_pending, is_dac, stop_line=None,
-                              pending_note=None, last_note_value=0,
-                              _seen_labels=None, chan_tempo_div=1):
-        """Parse lines from start_line, appending events to channel.
-
-        Args:
-            stop_line: If set, stop parsing before this line index (used for loop body replay)
-            pending_note: Note waiting for a duration from the previous dc.b line.
-                          A duration byte in SMPS always applies to the last defined note
-                          value, regardless of dc.b line boundaries in the assembly source.
-            last_note_value: note_value of the last non-rest, non-DAC note emitted; used
-                             so standalone duration bytes retrigger the correct note.
-            chan_tempo_div: Per-channel tempo divider (from smpsChanTempoDiv); raw durations
-                            are multiplied by this at parse time so tick positions are
-                            comparable across channels with different dividers.
-
-        Returns:
-            (tick, last_duration, pending_note, last_note_value, chan_tempo_div) after parsing
-        """
-        if _seen_labels is None:
-            _seen_labels = set()
-        i = start_line
-        while i < len(self.lines):
-            # Stop before stop_line if set (used by loop unrolling)
-            if stop_line is not None and i >= stop_line:
-                return tick, last_duration, pending_note, last_note_value, chan_tempo_div
-
-            line = self.lines[i]
-
-            # Check if this line is a label — record its tick position.
-            # If a dc.b line ended with a bare note name (no explicit duration), that note
-            # is still pending and hasn't advanced the tick yet.  Finalize it now so the
-            # label records the tick *after* the note completes, matching the binary layout
-            # where labels always appear at a fresh command boundary.
-            if line.endswith(':'):
-                label_name = line[:-1].strip()
-                # Exception: a label emits no bytes, so if the very next data byte is a
-                # duration it still belongs to the pending note.  Finalizing here would
-                # wrongly give that note `last_duration` instead.  Carry it across.
-                #   SndA3 - Death:   dc.b nB3, $07, smpsNoAttack, nAb3 / label / dc.b $01
-                # Corpus scan: this triggers for 2 SFX files and 0 music files, so the
-                # music conversion path is bit-identical.
-                if pending_note is not None and self._label_precedes_duration(i + 1):
-                    self._mark_label(label_name, tick, len(channel.events) + 1)   # after the pending note
-                    _seen_labels.add(label_name)
-                    i += 1
-                    continue
-                tick, last_note_value = self._finalize_pending(
-                    channel, pending_note, tick, last_duration, last_note_value
-                )
-                pending_note = None
-                self._mark_label(label_name, tick, len(channel.events))
-                _seen_labels.add(label_name)
-                i += 1
-                continue
-
-            # smpsStop — end of channel.
-            # Finalize any pending note before stopping.
-            if line.startswith('smpsStop'):
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                return tick, last_duration, None, last_note_value, chan_tempo_div
-
-            # smpsJump — loop-back or forward dispatch.
-            # Finalize any pending note before the jump.
-            m = re.match(r'smpsJump\s+(\S+)', line)
-            if m:
-                target = m.group(1)
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                if target in _seen_labels or target not in self.labels:
-                    # Loop-back to an already-visited label (backward loop), or unknown
-                    # target — record the loop and stop parsing.
-                    channel.has_jump = True
-                    channel.loop_label = target
-                    return tick, last_duration, None, last_note_value, chan_tempo_div
-                # Unseen target — forward/dispatch jump; follow it without marking as a loop.  The
-                # walk resumes after the label's line, so the label is reached here, now: a later
-                # jump back to it loops from this channel's tick (Labyrinth FM4 into FM3's code).
-                _seen_labels.add(target)
-                self._mark_label(target, tick, len(channel.events))
-                jump_line = self.labels[target] + 1
-                return self._parse_channel_lines(
-                    channel, jump_line, tick, last_duration,
-                    no_attack_pending, is_dac, stop_line=None,
-                    pending_note=None, last_note_value=last_note_value,
-                    _seen_labels=_seen_labels,
-                    chan_tempo_div=chan_tempo_div,
-                )
-
-            # smpsLoop — unroll
-            m = re.match(r'smpsLoop\s+\$([0-9A-Fa-f]+)\s*,\s*\$([0-9A-Fa-f]+)\s*,\s*(\S+)', line)
-            if m:
-                loop_count = int(m.group(2), 16)
-                loop_target = m.group(3)
-
-                # A note pending at the smpsLoop boundary uses SavedDuration in the driver
-                # (the loop coord flag is treated as a non-duration byte, so the driver
-                # reuses the last saved duration).  Finalize it before replaying.
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                pending_note = None
-
-                if loop_target in self.labels:
-                    target_line = self.labels[loop_target] + 1
-                    # The first play-through already happened (lines from target to here).
-                    # Replay loop_count - 1 more times, stopping at this smpsLoop line.
-                    for _ in range(loop_count - 1):
-                        tick, last_duration, loop_pend, last_note_value, chan_tempo_div = self._parse_channel_lines(
-                            channel, target_line, tick, last_duration,
-                            no_attack_pending, is_dac, stop_line=i,
-                            pending_note=None, last_note_value=last_note_value,
-                            _seen_labels=_seen_labels,
-                            chan_tempo_div=chan_tempo_div,
-                        )
-                        # Finalize any note pending at the loop-body end before the next replay
-                        tick, last_note_value = self._finalize_pending(channel, loop_pend, tick, last_duration, last_note_value)
-                i += 1
-                continue
-
-            # smpsCall — inline subroutine
-            m = re.match(r'smpsCall\s+(\S+)', line)
-            if m:
-                call_target = m.group(1)
-                # A coordination flag completes any note that is still waiting for a duration
-                # byte (see the effect-macro branch below).
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                pending_note = None
-                if call_target in self.labels:
-                    target_line = self.labels[call_target] + 1
-                    tick, last_duration, pending_note, last_note_value, chan_tempo_div = self._parse_call(
-                        channel, target_line, tick, last_duration,
-                        no_attack_pending, is_dac, pending_note,
-                        last_note_value=last_note_value,
-                        chan_tempo_div=chan_tempo_div,
-                    )
-                i += 1
-                continue
-
-            # smpsReturn — only hit during call inlining
-            if line.startswith('smpsReturn'):
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                return tick, last_duration, None, last_note_value, chan_tempo_div
-
-            # Effect macros — do not advance tick themselves, but they do complete a pending note.
-            # FMDoNext/PSGDoNext read the byte after a note: a duration (< $80) is consumed,
-            # anything else is put back (`subq.w #1,a4`) and the note plays with the saved
-            # duration.  So a flag can never sit between a note and its duration byte, and a note
-            # that is still pending here started BEFORE this flag takes effect.  (Labels emit no
-            # bytes and are handled separately above.)
-            effect = self._try_parse_effect(line)
-            if effect is not None:
-                tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-                pending_note = None
-                if effect.flag == CoordFlag.CHAN_TEMPO_DIV:
-                    # Parser-time state: the divider scales the durations that follow.  The event
-                    # is kept too, so the converter's smpsSetTempoDiv re-timing knows which divider
-                    # each note was parsed with and which write (own or global) is the latest.
-                    chan_tempo_div = effect.params[0]
-                    channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
-                else:
-                    # Scale time-valued params so they are in DurationTimeout units,
-                    # consistent with the scaled tick positions stored in events.
-                    effect = self._scale_effect_params(effect, chan_tempo_div)
-                    channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
-                i += 1
-                continue
-
-            # dc.b lines — note/duration data.
-            # pending_note is carried in and out: a duration byte on the next dc.b line
-            # applies to a note that appeared at the end of the previous dc.b line.
-            if line.startswith('dc.b'):
-                tick, last_duration, no_attack_pending, pending_note, last_note_value = \
-                    self._parse_dcb_line(
-                        channel, line, tick, last_duration, no_attack_pending, is_dac,
-                        pending_note, last_note_value=last_note_value,
-                        chan_tempo_div=chan_tempo_div,
-                    )
-                i += 1
-                continue
-
-            i += 1
-
-        # End of file — finalize any remaining pending note
-        tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
-        return tick, last_duration, None, last_note_value, chan_tempo_div
-
-    def _scale_effect_params(self, effect: 'SmpsEffect', chan_tempo_div: int) -> 'SmpsEffect':
-        """Return a copy of effect with time-valued params scaled by chan_tempo_div.
-
-        Duration-valued params must be in the same tick units as stored tick_position
-        values (i.e., DurationTimeout = raw_byte * chan_tempo_div) so that the converter
-        can use Timeline.ticks_per_row consistently for all time conversions.
-
-        Scaled params:
-          smpsNoteFill params[0] — fill duration: NoteTimeout is decremented every raw
-                                   VBlank. The parser stores all durations as raw_ticks ×
-                                   chan_tempo_div (VBlank units), so fill_raw is already in
-                                   the same units — no conversion needed.
-          smpsModSet   params[0] — wait before vibrato: NOT scaled.  ModulationWait is
-                                   decremented once per V-int frame (DoModulation) and never
-                                   multiplied by a tempo divider — same units as the fill.
-          smpsModSet   params[1] — speed: NOT scaled either.  ModulationSpeed is reloaded from
-                                   the modulation data and decremented once per V-int frame;
-                                   the tempo divider only multiplies note durations.
-
-        So nothing is scaled today; the hook stays for flags whose parameter is a duration.
-        """
-        return effect
-
-    def _parse_call(self, channel, target_line, tick, last_duration,
-                     no_attack_pending, is_dac, pending_note=None, last_note_value=0,
-                     chan_tempo_div=1):
-        """Inline a smpsCall subroutine until smpsReturn."""
-        return self._parse_channel_lines(
-            channel, target_line, tick, last_duration,
-            no_attack_pending, is_dac, stop_line=None,
-            pending_note=pending_note, last_note_value=last_note_value,
-            chan_tempo_div=chan_tempo_div,
-        )
+        if line.startswith('dc.b'):
+            return [Op(OpKind.BYTE, value=v) for v in map(_dcb_byte, line[4:].split(',')) if v is not None]
+        return []
 
     def _try_parse_effect(self, line):
         """Try to parse a line as an SMPS effect macro. Returns SmpsEffect or None."""
@@ -580,18 +274,12 @@ class SmpsParser:
         # smpsAlterVol / smpsPSGAlterVol
         m = re.match(r'(?:smpsAlterVol|smpsPSGAlterVol)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            val = int(m.group(1), 16)
-            if val > 0x7F:
-                val -= 0x100  # signed
-            return SmpsEffect(CoordFlag.ALTER_VOL, [val])
+            return effect_from_bytes(CoordFlag.ALTER_VOL, [int(m.group(1), 16)])
 
         # smpsAlterNote / smpsDetune
         m = re.match(r'(?:smpsAlterNote|smpsDetune)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            val = int(m.group(1), 16)
-            if val > 0x7F:
-                val -= 0x100
-            return SmpsEffect(CoordFlag.DETUNE, [val])
+            return effect_from_bytes(CoordFlag.DETUNE, [int(m.group(1), 16)])
 
         # smpsModSet wait,speed,change,step
         m = re.match(
@@ -642,10 +330,7 @@ class SmpsParser:
         # smpsChangeTransposition / smpsAlterPitch
         m = re.match(r'(?:smpsChangeTransposition|smpsAlterPitch)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            val = int(m.group(1), 16)
-            if val > 0x7F:
-                val -= 0x100
-            return SmpsEffect(CoordFlag.CHANGE_TRANSPOSITION, [val])
+            return effect_from_bytes(CoordFlag.CHANGE_TRANSPOSITION, [int(m.group(1), 16)])
 
         # smpsChanTempoDiv
         m = re.match(r'smpsChanTempoDiv\s+\$([0-9A-Fa-f]+)', line)
@@ -665,98 +350,6 @@ class SmpsParser:
             return SmpsEffect(CoordFlag.SET_TEMPO_DIV, [int(m.group(1), 16)])
 
         return None
-
-    def _parse_dcb_line(self, channel, line, tick, last_duration, no_attack_pending, is_dac,
-                         pending_note=None, last_note_value=0, chan_tempo_div=1):
-        """Parse a dc.b line containing note/duration/effect data.
-
-        Tokens are comma-separated. Each token is a note name, DAC name, hex value,
-        or smpsNoAttack.
-
-        Rules:
-        - Note/DAC/rest name → create note event, await optional duration
-        - Hex < $80 following a note → duration for that note
-        - Hex < $80 not following a note → updates persistent duration
-        - smpsNoAttack ($E7) → next note gets is_no_attack=True
-        - Hex >= $80 that's not a known note → treat as data/ignored
-
-        pending_note is passed in from the previous dc.b line (may be None).
-        A duration byte always applies to the last defined note value, even if
-        it appears on the next dc.b assembly line.  The caller is responsible for
-        finalizing any pending_note that remains after the last dc.b in a channel.
-        """
-        cur = _DcbCursor(channel, is_dac, chan_tempo_div, tick, last_duration,
-                         no_attack_pending, pending_note, last_note_value)
-        for token in line[4:].strip().split(','):
-            self._parse_dcb_token(cur, token.strip())
-
-        # The pending note is not finalized: a duration on the next dc.b line is still its own.
-        return cur.tick, cur.last_duration, cur.no_attack, cur.pending, cur.last_note_value
-
-    def _parse_dcb_token(self, cur, token):
-        """One dc.b token: smpsNoAttack, a note or DAC name, a hex byte.  Anything else is ignored."""
-        if token == 'smpsNoAttack':
-            cur.no_attack = True
-            return
-
-        if token in SMPS_NOTE_NAMES:
-            self._open_note(cur, SmpsNote(note_value=SMPS_NOTE_NAMES[token], duration=0,
-                                          is_rest=(token == 'nRst'), is_no_attack=cur.no_attack))
-            return
-
-        if token in SMPS_DAC_NAMES:
-            self._open_note(cur, SmpsNote(note_value=SMPS_DAC_NAMES[token], duration=0, is_dac=True,
-                                          dac_name=token, is_no_attack=cur.no_attack))
-            return
-
-        m = re.match(r'\$([0-9A-Fa-f]+)', token)
-        if not m:
-            return
-
-        val = int(m.group(1), 16)
-        if val == _NO_ATTACK:
-            cur.no_attack = True
-        elif val < _REST:
-            self._parse_duration(cur, val * cur.tempo_div)
-        else:
-            self._parse_note_byte(cur, val)
-
-    def _parse_note_byte(self, cur, val):
-        """A byte from $80: rest, note or (DAC channel) sample.  Above the notes: skipped."""
-        if val == _REST:
-            note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
-        elif val > _LAST_NOTE:
-            note = None
-        elif cur.is_dac and val in SMPS_DAC_NAMES.values():
-            note = SmpsNote(note_value=val, duration=0, is_dac=True,
-                            dac_name=SMPS_DAC_NAMES_REVERSE.get(val, ''), is_no_attack=cur.no_attack)
-        else:
-            note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
-        self._open_note(cur, note)
-
-    def _parse_duration(self, cur, duration):
-        """A duration (already scaled by the tempo divider): the pending note's, or a note of its own."""
-        cur.last_duration = duration
-        if cur.pending is not None:
-            self._close_pending(cur)
-            return
-
-        cur.channel.events.append(SmpsEvent(note=_standalone_note(cur, duration), tick_position=cur.tick))
-        cur.tick += duration
-        cur.no_attack = False           # every read clears it (the bclr before FMDoNext / PSGDoNext)
-
-    def _open_note(self, cur, note):
-        """Finalize the pending note; `note` (None: nothing) waits for its duration next."""
-        self._close_pending(cur)
-        cur.pending = note
-        cur.no_attack = False
-
-    def _close_pending(self, cur):
-        """Emit the pending note with the last duration."""
-        cur.tick, cur.last_note_value = self._finalize_pending(
-            cur.channel, cur.pending, cur.tick, cur.last_duration, cur.last_note_value
-        )
-        cur.pending = None
 
     def _parse_voices(self, voice_label):
         """Parse voice definitions from smpsVc* macros."""
@@ -804,6 +397,21 @@ class SmpsParser:
             voices.append(current_voice)
 
         return voices
+
+
+
+
+def _dcb_byte(token: str) -> int | None:
+    """A dc.b token's byte: smpsNoAttack, a note or DAC name, a hex value; None for anything else."""
+    token = token.strip()
+    if token == 'smpsNoAttack':
+        return NO_ATTACK
+    if token in SMPS_NOTE_NAMES:
+        return SMPS_NOTE_NAMES[token]
+    if token in SMPS_DAC_NAMES:
+        return SMPS_DAC_NAMES[token]
+    m = _HEX.match(token)
+    return int(m.group(1), 16) if m else None
 
 
 def _pan_byte(operands: str) -> int:

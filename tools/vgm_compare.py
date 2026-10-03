@@ -67,7 +67,7 @@ except ImportError:  # pragma: no cover
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.audio import db_to_gain, gain_to_db, power_to_db
+from core.audio import cents, db_to_gain, gain_to_db, power_to_db
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, edx_delay, isolate_channel, read_mod, timed_pass
@@ -76,7 +76,6 @@ from tools import vgm_pitch_audit
 from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, parse_vgm
 
 SR = 44100
-_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 # VGM channel name -> (YM2612 mute mask, SN76496 mute mask) that leaves ONLY that channel audible.
 _YM_ALL, _SN_ALL = 0x7F, 0xF
@@ -233,18 +232,6 @@ def seg_at(a: np.ndarray, t: float, dur: float) -> np.ndarray:
     if s < 0 or s >= len(a):
         return np.zeros((max(e - s, 1), *a.shape[1:]))
     return a[s:e]
-
-
-def note_name(f: float) -> str:
-    if f <= 0:
-        return "---"
-    m = 69 + 12 * math.log2(f / 440.0)
-    mi = round(m)
-    return f"{_NOTE_NAMES[mi % 12]}{mi // 12 - 1}"
-
-
-def cents(f: float, ref: float) -> float:
-    return 1200 * math.log2(f / ref) if f > 0 and ref > 0 else float('nan')
 
 
 def spectrum(seg: np.ndarray, nfft: int) -> tuple[np.ndarray, np.ndarray]:

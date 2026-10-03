@@ -12,7 +12,7 @@ from typing import NamedTuple
 from ..audio import db_to_gain, power_to_db
 from ..mod import MOD_NOTE_MAP, ModNote
 from ..plan import FmLayer, walk_channel
-from ..smps import TL_STEP_DB, source_map
+from ..smps import TL_STEP_DB, CoordFlag, source_map
 
 PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL steps (0.75 dB each)
 
@@ -107,12 +107,12 @@ class _NoteWalk:
                 self._on_note(event.note, event.tick_position, st, res)
 
     def _on_effect(self, effect) -> None:
-        k = effect.effect_type
-        if k in ("smpsModSet", "smpsModOn"):
+        k = effect.flag
+        if k in (CoordFlag.MOD_SET, CoordFlag.MOD_ON):
             self._vib = True
-        elif k == "smpsModOff":
+        elif k == CoordFlag.MOD_OFF:
             self._vib = False
-        elif k == "smpsNoteFill":
+        elif k == CoordFlag.NOTE_FILL:
             self._fill = int(effect.params[0])
 
     def _on_note(self, note, tick: int, st, res) -> None:

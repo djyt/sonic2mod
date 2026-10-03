@@ -11,6 +11,7 @@ from typing import cast
 
 from .config import ConversionConfig
 from .smps import (
+    CoordFlag,
     SmpsChannel,
     SmpsEvent,
     SmpsNote,
@@ -24,11 +25,11 @@ from .smps import (
 # Effect classification
 # ---------------------------------------------------------------------------
 
-UNSUPPORTED_EFFECTS = {'smpsPan', 'smpsNop'}
+UNSUPPORTED_EFFECTS = {CoordFlag.PAN, CoordFlag.NOP}
 
 PARTIAL_EFFECTS = {
-    'smpsAlterNote':   'FNUM offset (~10 cents) — not applied to pitch',
-    'smpsModSet':      'approximate (sine vs triangle wave)',
+    CoordFlag.DETUNE:   'FNUM offset (~10 cents) — not applied to pitch',
+    CoordFlag.MOD_SET:  'approximate (sine vs triangle wave)',
 }
 
 # Known Sonic 1 DAC sample native playback rates and suggested MOD notes.
@@ -110,7 +111,7 @@ class ChannelAnalysis:
     psg_tone_stats: dict = field(default_factory=dict)  # tone_label -> PsgToneStats
     # DAC sample occurrence counts
     dac_counts: dict[str, int] = field(default_factory=dict)
-    # All effects seen: effect_type → count
+    # All effects seen: flag → count
     effect_counts: dict = field(default_factory=dict)
     # smpsChangeTransposition history
     transpose_events: list = field(default_factory=list)
@@ -268,7 +269,7 @@ class _ChannelWalk:
         self.effect_count = 0
         self.total_ticks = 0
         self.dac_counts: dict[str, int] = {}
-        self.effect_counts: dict[str, int] = {}
+        self.effect_counts: dict[CoordFlag, int] = {}
         self.voice_stats: dict[int, VoiceRangeStats] = {}
         self.psg_tone_stats: dict[str, PsgToneStats] = {}
         self.transpose_events: list[TransposeEvent] = []
@@ -298,7 +299,7 @@ class _ChannelWalk:
             if event.note is not None:
                 self._note(event.note, event.tick_position)
             elif event.effect is not None:
-                self._effect(event.effect.effect_type, event.effect.params, event.tick_position)
+                self._effect(event.effect.flag, event.effect.params, event.tick_position)
 
     def _settle_modal_levels(self) -> None:
         """Most common level per voice / PSG tone; ties go to the louder one, as in the converter."""
@@ -348,21 +349,21 @@ class _ChannelWalk:
         vs.note_count += 1
         _widen_range(vs, sem)
 
-    def _effect(self, kind: str, params: list, tick: int) -> None:
+    def _effect(self, kind: CoordFlag, params: list, tick: int) -> None:
         self.effect_count += 1
         self.effect_counts[kind] = self.effect_counts.get(kind, 0) + 1
 
-        if kind == 'smpsSetvoice':
+        if kind == CoordFlag.SET_VOICE:
             self._switch_voice(cast(int, params[0]))
-        elif kind == 'smpsPSGvoice':
+        elif kind == CoordFlag.PSG_VOICE:
             self._switch_psg(str(params[0]))
-        elif kind == 'smpsPSGform':
+        elif kind == CoordFlag.PSG_FORM:
             self._switch_psg(f"form ${params[0]:02X}")
-        elif kind == 'smpsAlterVol':
+        elif kind == CoordFlag.ALTER_VOL:
             self._volume += cast(int, params[0])
-        elif kind == 'smpsPan':
+        elif kind == CoordFlag.PAN:
             self._hard_pan = pan_is_hard(params)
-        elif kind == 'smpsChangeTransposition':
+        elif kind == CoordFlag.CHANGE_TRANSPOSITION:
             delta = params[0]
             self._transpose += delta
             self.transpose_events.append(TransposeEvent(

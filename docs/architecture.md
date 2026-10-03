@@ -117,7 +117,7 @@ The core parser. Converts SMPS assembly text into an intermediate representation
 | Class | Purpose |
 |-------|---------|
 | `SmpsNote` | Single note/rest/DAC event with value, duration, flags |
-| `SmpsEffect` | Effect macro with type string and parameter list |
+| `SmpsEffect` | A coordination flag (`CoordFlag`, keyed by its driver byte) and its parameters; `PAN`'s is the B4 byte.  The SMPS2ASM macro names are `names.py`'s (`flag_name`, `flag_from_macro`): the parser reads them, `analyze.py` prints them, nothing else uses them |
 | `SmpsEvent` | Union wrapper (note or effect) with cumulative tick position |
 | `SmpsChannelHeader` | Channel metadata from header macros |
 | `SmpsSongHeader` | Voice label, channel counts, tempo |

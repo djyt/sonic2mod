@@ -46,6 +46,7 @@ from core.smps import (
     PSG_STEP_DB,
     TL_STEP_DB,
     carrier_names,
+    flag_name,
     fm_level_db,
     psg_tone2_divider,
     synth_note_name,
@@ -84,28 +85,33 @@ def _note_range_str(ch: ChannelAnalysis) -> str:
     return f"{lo}–{hi} (semitones {ch.min_semitone}–{ch.max_semitone})"
 
 
+def _by_name(effect_counts: dict) -> list:
+    """(flag, count) in the order of the flags' SMPS2ASM names."""
+    return sorted(effect_counts.items(), key=lambda kv: flag_name(kv[0]))
+
+
 def _unsupported_summary(effect_counts: dict) -> str:
     parts = []
-    for et, n in sorted(effect_counts.items()):
+    for et, n in _by_name(effect_counts):
         if et in UNSUPPORTED_EFFECTS:
-            parts.append(f"{et} ×{n}")
+            parts.append(f"{flag_name(et)} ×{n}")
     return "  ".join(parts)
 
 
 def _partial_summary(effect_counts: dict) -> list[str]:
     parts = []
-    for et, n in sorted(effect_counts.items()):
+    for et, n in _by_name(effect_counts):
         if et in PARTIAL_EFFECTS:
-            parts.append(f"{et} ×{n}  ({PARTIAL_EFFECTS[et]})")
+            parts.append(f"{flag_name(et)} ×{n}  ({PARTIAL_EFFECTS[et]})")
     return parts
 
 
 def _normal_effect_summary(effect_counts: dict) -> str:
     """Effects excluding unsupported/partial ones."""
     parts = []
-    for et, n in sorted(effect_counts.items()):
+    for et, n in _by_name(effect_counts):
         if et not in UNSUPPORTED_EFFECTS and et not in PARTIAL_EFFECTS:
-            parts.append(f"{et} ×{n}")
+            parts.append(f"{flag_name(et)} ×{n}")
     return "  ".join(parts) if parts else "—"
 
 

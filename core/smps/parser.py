@@ -8,8 +8,10 @@ import re
 from dataclasses import dataclass
 from typing import ClassVar
 
+from .driver_tables import PAN_VALUES
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_DAC_NAMES_REVERSE, SMPS_NOTE_NAMES
 from .song import (
+    CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEffect,
@@ -24,6 +26,7 @@ from .song import (
 _REST = 0x80          # nRst
 _LAST_NOTE = 0xDF     # nB7
 _NO_ATTACK = 0xE7     # smpsNoAttack
+_PAN_LFO_MASK = 0x3F  # smpsPan's second operand: B4's AMS / FMS bits
 
 
 @dataclass
@@ -484,7 +487,7 @@ class SmpsParser:
             if effect is not None:
                 tick, last_note_value = self._finalize_pending(channel, pending_note, tick, last_duration, last_note_value)
                 pending_note = None
-                if effect.effect_type == 'smpsChanTempoDiv':
+                if effect.flag == CoordFlag.CHAN_TEMPO_DIV:
                     # Parser-time state: the divider scales the durations that follow.  The event
                     # is kept too, so the converter's smpsSetTempoDiv re-timing knows which divider
                     # each note was parsed with and which write (own or global) is the latest.
@@ -557,7 +560,7 @@ class SmpsParser:
         # smpsSetvoice / smpsFMvoice
         m = re.match(r'(?:smpsSetvoice|smpsFMvoice)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsSetvoice', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.SET_VOICE, [int(m.group(1), 16)])
 
         # smpsAlterVol / smpsPSGAlterVol
         m = re.match(r'(?:smpsAlterVol|smpsPSGAlterVol)\s+\$([0-9A-Fa-f]+)', line)
@@ -565,7 +568,7 @@ class SmpsParser:
             val = int(m.group(1), 16)
             if val > 0x7F:
                 val -= 0x100  # signed
-            return SmpsEffect('smpsAlterVol', [val])
+            return SmpsEffect(CoordFlag.ALTER_VOL, [val])
 
         # smpsAlterNote / smpsDetune
         m = re.match(r'(?:smpsAlterNote|smpsDetune)\s+\$([0-9A-Fa-f]+)', line)
@@ -573,7 +576,7 @@ class SmpsParser:
             val = int(m.group(1), 16)
             if val > 0x7F:
                 val -= 0x100
-            return SmpsEffect('smpsAlterNote', [val])
+            return SmpsEffect(CoordFlag.DETUNE, [val])
 
         # smpsModSet wait,speed,change,step
         m = re.match(
@@ -581,7 +584,7 @@ class SmpsParser:
             line
         )
         if m:
-            return SmpsEffect('smpsModSet', [
+            return SmpsEffect(CoordFlag.MOD_SET, [
                 int(m.group(1), 16),
                 int(m.group(2), 16),
                 int(m.group(3), 16),
@@ -590,36 +593,36 @@ class SmpsParser:
 
         # smpsModOn
         if line.startswith('smpsModOn'):
-            return SmpsEffect('smpsModOn', [])
+            return SmpsEffect(CoordFlag.MOD_ON, [])
 
         # smpsModOff
         if line.startswith('smpsModOff'):
-            return SmpsEffect('smpsModOff', [])
+            return SmpsEffect(CoordFlag.MOD_OFF, [])
 
         # smpsNoteFill
         m = re.match(r'smpsNoteFill\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsNoteFill', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.NOTE_FILL, [int(m.group(1), 16)])
 
         # smpsPan
         m = re.match(r'smpsPan\s+(.+)', line)
         if m:
-            return SmpsEffect('smpsPan', [m.group(1).strip()])
+            return SmpsEffect(CoordFlag.PAN, [_pan_byte(m.group(1))])
 
         # smpsNop
         m = re.match(r'smpsNop\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsNop', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.NOP, [int(m.group(1), 16)])
 
         # smpsPSGform
         m = re.match(r'smpsPSGform\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsPSGform', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.PSG_FORM, [int(m.group(1), 16)])
 
         # smpsPSGvoice
         m = re.match(r'smpsPSGvoice\s+(.+)', line)
         if m:
-            return SmpsEffect('smpsPSGvoice', [m.group(1).strip()])
+            return SmpsEffect(CoordFlag.PSG_VOICE, [m.group(1).strip()])
 
         # smpsChangeTransposition / smpsAlterPitch
         m = re.match(r'(?:smpsChangeTransposition|smpsAlterPitch)\s+\$([0-9A-Fa-f]+)', line)
@@ -627,24 +630,24 @@ class SmpsParser:
             val = int(m.group(1), 16)
             if val > 0x7F:
                 val -= 0x100
-            return SmpsEffect('smpsChangeTransposition', [val])
+            return SmpsEffect(CoordFlag.CHANGE_TRANSPOSITION, [val])
 
         # smpsChanTempoDiv
         m = re.match(r'smpsChanTempoDiv\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsChanTempoDiv', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.CHAN_TEMPO_DIV, [int(m.group(1), 16)])
 
         # smpsSetTempoMod ($EA, cfSetTempo): new tempo modifier for EVERY track, and the
         # TempoWait counter restarts.  The converter turns it into an Fxx BPM change.
         m = re.match(r'smpsSetTempoMod\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsSetTempoMod', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.SET_TEMPO_MOD, [int(m.group(1), 16)])
 
         # smpsSetTempoDiv ($EB, cfSetTempoDividerAll): every track's duration divider.  Parsed
         # so it is visible; not applied (Credits only).
         m = re.match(r'smpsSetTempoDiv\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect('smpsSetTempoDiv', [int(m.group(1), 16)])
+            return SmpsEffect(CoordFlag.SET_TEMPO_DIV, [int(m.group(1), 16)])
 
         return None
 
@@ -784,3 +787,12 @@ class SmpsParser:
             voices.append(current_voice)
 
         return voices
+
+
+def _pan_byte(operands: str) -> int:
+    """smpsPan's operands ('panLeft, $00') as the B4 byte the driver writes: direction | AMS/FMS."""
+    parts = [p.strip() for p in operands.split(",")]
+    if parts[0] not in PAN_VALUES:
+        raise ValueError(f"smpsPan: unknown direction {parts[0]!r}")
+    lfo = int(parts[1][1:], 16) if len(parts) > 1 and parts[1].startswith("$") else 0
+    return (PAN_VALUES[parts[0]] | (lfo & _PAN_LFO_MASK)) & 0xFF

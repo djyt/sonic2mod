@@ -1,5 +1,7 @@
 """SMPS names: note labels (nC0..), real-pitch config names (A4), DAC samples, SFX channel ids, source channels."""
 
+from .song import CoordFlag
+
 # ---------------------------------------------------------------------------
 # SMPS Note Names → byte values
 # Derived from _smps2asm_inc.asm enumeration
@@ -195,3 +197,30 @@ def source_names(song) -> list[str]:
 def source_map(song) -> dict:
     """Source name -> parsed channel, in header order."""
     return dict(zip(source_names(song), song.channels, strict=True))
+
+
+# The SMPS2ASM macro of each coordination flag (the name printed), and the aliases an assembly
+# may also use (_smps2asm_inc.asm)
+_FLAG_MACROS = {
+    CoordFlag.PAN: "smpsPan", CoordFlag.DETUNE: "smpsAlterNote", CoordFlag.NOP: "smpsNop",
+    CoordFlag.CHAN_TEMPO_DIV: "smpsChanTempoDiv", CoordFlag.ALTER_VOL: "smpsAlterVol",
+    CoordFlag.NOTE_FILL: "smpsNoteFill", CoordFlag.CHANGE_TRANSPOSITION: "smpsChangeTransposition",
+    CoordFlag.SET_TEMPO_MOD: "smpsSetTempoMod", CoordFlag.SET_TEMPO_DIV: "smpsSetTempoDiv",
+    CoordFlag.SET_VOICE: "smpsSetvoice", CoordFlag.MOD_SET: "smpsModSet", CoordFlag.MOD_ON: "smpsModOn",
+    CoordFlag.PSG_FORM: "smpsPSGform", CoordFlag.MOD_OFF: "smpsModOff", CoordFlag.PSG_VOICE: "smpsPSGvoice",
+}
+_FLAG_ALIASES = {
+    "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,
+    "smpsFMvoice": CoordFlag.SET_VOICE, "smpsPSGAlterVol": CoordFlag.ALTER_VOL,
+}
+_MACRO_FLAGS = {**{m: f for f, m in _FLAG_MACROS.items()}, **_FLAG_ALIASES}
+
+
+def flag_name(flag: CoordFlag) -> str:
+    """A coordination flag's SMPS2ASM macro: CoordFlag.ALTER_VOL -> 'smpsAlterVol'."""
+    return _FLAG_MACROS[flag]
+
+
+def flag_from_macro(macro: str) -> CoordFlag | None:
+    """The coordination flag an SMPS2ASM macro (or alias) writes; None for any other name."""
+    return _MACRO_FLAGS.get(macro)

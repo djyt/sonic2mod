@@ -23,7 +23,7 @@ from ..diagnostics import Diagnostics, WarningKind
 from ..merge import Composite, MergePlan
 from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume
 from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
-from ..smps import SmpsChannel, SmpsSong
+from ..smps import CoordFlag, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
 from .vibrato import VibratoSpeed, vibrato_depth
@@ -335,17 +335,17 @@ class ChannelWriter:
         has no MOD equivalent; smpsAlterNote is a raw FNUM offset (~10 cents) that does not
         affect note pitch or voice_map lookup."""
         eff = event.effect
-        kind = eff.effect_type
-        if kind == 'smpsAlterVol':
+        kind = eff.flag
+        if kind == CoordFlag.ALTER_VOL:
             # st.apply moved the TL offset / attenuation; the non-baked modes keep their own
             # MOD-volume accumulator on top of it.
             if self._is_psg or self._fm_absolute:
                 self._current_volume = self._level_volume()
             elif not self._fm_baked:
                 self._current_volume = max(0, min(64, self._current_volume - eff.params[0]))
-        elif kind == 'smpsNoteFill':
+        elif kind == CoordFlag.NOTE_FILL:
             self._note_fill = eff.params[0]
-        elif kind == 'smpsModSet':
+        elif kind == CoordFlag.MOD_SET:
             # wait, speed, change, steps
             self._vibrato_wait = eff.params[0]
             self._vibrato_change = eff.params[2]   # raw delta; scaled to period units at placement
@@ -353,9 +353,9 @@ class ChannelWriter:
             self._vibrato_speed = self._ctx.vibrato.speed(eff.params[1], self._vibrato_steps, self._cfg.source,
                                                           event.tick_position)
             self._vibrato_active = True
-        elif kind == 'smpsModOn':
+        elif kind == CoordFlag.MOD_ON:
             self._vibrato_active = True
-        elif kind == 'smpsModOff':
+        elif kind == CoordFlag.MOD_OFF:
             self._vibrato_active = False
 
     def _on_folded(self, tick: int) -> None:

@@ -20,11 +20,12 @@ The authority on "is every note right": an audio window's pitch is unreliable on
 
 from __future__ import annotations
 
-import bisect
 import itertools
 import math
 from collections import Counter, defaultdict
 from pathlib import Path
+
+import numpy as np
 
 from ..audio import pitch_name
 from ..config import ConversionConfig, find_settings, load_settings
@@ -99,44 +100,70 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
                 if f is not None and (prev is None or abs(1200 * math.log2(f / prev)) > 50):
                     starts.append((chan_map[src], t, f))
                 prev = f
-    by_chan = {c: sorted(notes) for c, notes in mod.items()}
-    times = {c: [n[0] for n in notes] for c, notes in by_chan.items()}
-
-    def same_pitch(f: float, hz: float) -> bool:
-        # Within 50 cents, any octave: a sample synthesised in the wrong octave must not hide
-        # the alignment (the audit reports that separately).
-        c = 1200 * math.log2(hz / f) % 1200
-        return c <= 50 or c >= 1150
-
-    def score(lag: float, use_pitch: bool) -> int:
-        hits = 0
-        for c, t, f in starts:
-            ts = times.get(c)
-            if not ts:
-                continue
-            want = t + lag
-            i = bisect.bisect_left(ts, want)
-            cands = [j for j in (i - 1, i) if 0 <= j < len(ts)]
-            if use_pitch:
-                cands = [j for j in cands if same_pitch(f, by_chan[c][j][1])]
-            if not cands:
-                continue
-            dev = min(abs(ts[j] - want) for j in cands)
-            hits += 3 if dev <= step else 2 if dev <= 2 * step else 1 if dev <= 2 * step + drift * t else 0
-        return hits
+    ks = range(int(-0.5 / step), int(max_lag / step) + 1)
+    lags = [k * step for k in ks]
+    scorer = _StartScorer(starts, {c: sorted(notes) for c, notes in mod.items()}, lags, step, drift)
 
     # A repeating figure makes note starts alone ambiguous by its period (Drowning alternates
     # two notes every 200 ms), so a start only counts when the MOD note there has its pitch.
     # If that finds nothing at all (every instrument wrong), starts alone decide.
     for use_pitch in (True, False):
         best, best_lag = -1, 0.0
-        for k in range(int(-0.5 / step), int(max_lag / step) + 1):
-            hits = score(k * step, use_pitch)
+        for k, lag in zip(ks, lags, strict=True):
+            hits = scorer.score(lag, use_pitch)
             if hits > best or (hits == best and abs(k) < abs(best_lag / step)):
-                best, best_lag = hits, k * step
+                best, best_lag = hits, lag
         if best > 0:
             return best_lag
     return 0.0
+
+
+def _same_pitch(f: float, hz: float) -> bool:
+    """Within 50 cents, any octave: a sample synthesised in the wrong octave must not hide the
+    alignment (the audit reports that separately)."""
+    c = 1200 * math.log2(hz / f) % 1200
+    return c <= 50 or c >= 1150
+
+
+class _StartScorer:
+    """note_start_offset's score of one lag, per channel in numpy: each chip note start against the
+    MOD notes either side of start + lag - 3 points within `step`, 2 within two, 1 within the
+    drift allowance.  Whether a candidate has the start's pitch is worked out once, with
+    math.log2, for every MOD note any lag can reach."""
+
+    def __init__(self, starts: list[tuple[int, float, float]], by_chan: dict[int, list[tuple]], lags: list[float],
+                 step: float, drift: float) -> None:
+        self._step = step
+        self._chans = []
+        for c, notes in by_chan.items():
+            mine = [(t, f) for sc, t, f in starts if sc == c]
+            if not mine or not notes:
+                continue
+            ts = np.array([n[0] for n in notes])
+            st = np.array([t for t, _ in mine])
+            near = 2 * step + drift * st
+            lo = np.searchsorted(ts, st + lags[0], "left") - 1          # first candidate any lag reaches
+            hi = np.searchsorted(ts, st + lags[-1], "left")             # last
+            pitched = np.zeros((len(mine), int((hi - lo).max()) + 1), dtype=bool)
+            for k, (_t, f) in enumerate(mine):
+                for j in range(max(int(lo[k]), 0), min(int(hi[k]), len(ts) - 1) + 1):
+                    pitched[k, j - lo[k]] = _same_pitch(f, notes[j][1])
+            self._chans.append((ts, st, near, lo, pitched))
+
+    def score(self, lag: float, use_pitch: bool) -> int:
+        step, hits = self._step, 0
+        for ts, st, near, lo, pitched in self._chans:
+            want = st + lag
+            i = np.searchsorted(ts, want, "left")
+            rows = np.arange(len(st))
+            dev = np.full(len(st), np.inf)
+            for j in (i - 1, i):
+                ok = (j >= 0) & (j < len(ts))
+                if use_pitch:
+                    ok &= pitched[rows, np.clip(j - lo, 0, pitched.shape[1] - 1)]
+                dev = np.where(ok, np.minimum(dev, np.abs(ts[np.clip(j, 0, len(ts) - 1)] - want)), dev)
+            hits += int(np.where(dev <= step, 3, np.where(dev <= 2 * step, 2, np.where(dev <= near, 1, 0))).sum())
+        return hits
 
 
 def instrument_verdicts(by_inst: dict[int, Counter]) -> list[dict]:

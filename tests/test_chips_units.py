@@ -48,18 +48,22 @@ class Facts(unittest.TestCase):
 
 class Layers(unittest.TestCase):
     def _imports(self, package: str) -> dict[str, set[str]]:
-        """{module: the core packages it imports} for each module of core/<package>."""
+        """{module: the core packages it imports} for each module of core/<package>, its
+        subpackages' as "sub/module"."""
+        top = ROOT / "core" / package
         out = {}
-        for path in (ROOT / "core" / package).glob("*.py"):
+        for path in top.rglob("*.py"):
+            rel = path.relative_to(top)
+            up = re.escape("." * (len(rel.parts) + 1))      # core/<package>/x.py: "..", one deeper: "..."
             text = path.read_text(encoding="utf-8")
-            out[path.stem] = set(re.findall(r"^from \.\.(\w+)", text, re.M))
+            out[rel.with_suffix("").as_posix()] = set(re.findall(rf"^from {up}(\w+)", text, re.M))
         return out
 
     def test_chips_import_nothing_of_core(self):
         self.assertTrue(all(not deps for deps in self._imports("chips").values()))
 
     def test_only_the_lift_reads_the_song_model(self):
-        readers = {m for m, deps in self._imports("vgm").items() if "smps" in deps}
+        readers = {m.split("/")[0] for m, deps in self._imports("vgm").items() if "smps" in deps}
         self.assertEqual(readers, {"lift"})
 
 

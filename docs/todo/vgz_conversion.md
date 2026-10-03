@@ -90,6 +90,14 @@ seek).  `vgm_analyze.py --frames` prints it.
 Each item produces part of the `SmpsSong`.  Accept each by IR comparison against the asm parse
 (after `extend_looping_channels`, since the VGZ is unrolled).
 
+**The yardstick (done 2026-10-03):** `core.smps.played_song` gives each note as the driver plays
+it - ticks, attack, the frequency word, the voice's registers, the carriers' TL, pan, modulation,
+fill, noise byte, DAC sample - with the asm's spelling gone (calls, flag order, transposition vs
+note byte, voice TL vs track volume), and `compare_songs` matches two songs by start tick per
+`Aspect`.  `python tools/vgm_lift.py --all [--aspects timing]` lifts every rip and compares it
+with its config's asm in about a second (frame logs cached by `core.vgm.load_frames`); one rip
+prints its differences, repeated ones grouped.  "Accept" below means its aspects come out same.
+
 ### [ ] 1.1 Time grid: frames → driver ticks
 - Find the tempo modifier m: the residue mod m on which no note starts (TempoWait holds every m-th
   frame), confirmed by every note duration coming out a whole number of ticks.  Tick k lands on
@@ -188,7 +196,8 @@ explained) against `samples/`.
 ### [ ] 1.10 Tooling
 - `tools/vgm_lift.py <file.vgz> [--asm OUT] [--compare song.asm]`: print the lifted song, write it
   as SMPS asm (readable, editable, and round-trippable through `SmpsParser` — a check on the lift in
-  itself), or diff it against an asm parse event by event.
+  itself), or diff it against an asm parse event by event.  The comparison and `--all` are done
+  (the yardstick above); printing and `--asm OUT` are left.
 - `analyze.py file.vgz` works (dispatch, 0.3), including its YAML skeleton generator, so a new rip
   gets a starter config.
 

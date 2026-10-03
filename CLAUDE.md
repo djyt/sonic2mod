@@ -166,6 +166,8 @@ sonic2mod/
   sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
   tests/             # Regression suite + unit tests
     regression.py       #   Before/after regression runner: every config converted, cells + samples + playback lint
+    tool_regression.py  #   The VGM tools' output, byte for byte (vgm_analyze, vgm_pitch_audit; --with-renders vgm_compare)
+    tool_baselines/     #   Its gzipped baselines + manifest.yaml (input hashes)
     settings.yaml       #   The settings every baseline is made with (convert.py --settings)
     baselines/          #   Baseline MODs + manifest.yaml (commit, date, settings / config hashes)
     test_merge_units.py #   The merge primitives with hand-built objects (python -m pytest tests -q)
@@ -323,6 +325,18 @@ python -m pytest tests -q
 4. A FAIL with differences is not an acceptance: read each changed cell before regenerating
    that song's baseline — a `3FF` written where the sounding sample cannot reach the pitch, or
    a note on a slot the merged build stopped rendering, diffs like any intended change.
+
+**The VGM tools have their own suite, `tests/tool_regression.py`**: `vgm_analyze` (key-on rows,
+PSG writes, volumes, `--frames`) on all 19 VGZs and `vgm_pitch_audit` on every regression
+baseline MOD, byte for byte, in 5 s; `--with-renders` adds `vgm_compare` on the same MODs
+(VGMPlay + ffmpeg).  Baselines are gzipped text in `tests/tool_baselines/`, with a manifest of
+their inputs' hashes.  Run it after any change to `core/vgm/`, `core/mod/timing.py` or a VGM tool.
+
+```bash
+python tests/tool_regression.py                          # PASS / FAIL + diff
+python tests/tool_regression.py --with-renders           # vgm_compare too
+python tests/tool_regression.py --generate-baselines --only analyze_02_frames   # accept one change
+```
 
 **Adding a new test case:** append a row to `_SONGS` in `tests/regression.py`
 (`TEST_CASES` is built from it):

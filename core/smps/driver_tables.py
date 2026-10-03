@@ -11,6 +11,16 @@ Line references are to `sonic_1/s1.sounddriver.asm`.
 from __future__ import annotations
 
 import math
+from enum import StrEnum
+
+
+class SmpsDriver(StrEnum):
+    """The SMPS variants these tables transcribe: a config's `driver:`."""
+
+    SONIC1 = "sonic1"
+
+
+DEFAULT_DRIVER = SmpsDriver.SONIC1
 
 # ---------------------------------------------------------------------------
 # Frequency tables

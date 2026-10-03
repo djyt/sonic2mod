@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from ..audio import gain_to_db
 from .file import PAL_AMIGA_CLOCK, SampleInfo, read_mod
 from .notes import PERIOD_TABLE
+from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM
 
 LOW_RATE_HZ = 5000.0        # below this a sample has under 2.5 kHz of bandwidth
 NOTE_NAMES = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"]
@@ -92,14 +93,14 @@ def audit(path: str, slack: float = 2.0, amiga_clock: float = PAL_AMIGA_CLOCK) -
     mod = read_mod(path)
     pats, chans = mod.patterns, mod.channels
     # Tempo: speed and BPM from F commands as they occur in play order (row 0 defaults)
-    speed, bpm = 6, 125
+    speed, bpm = DEFAULT_SPEED, DEFAULT_BPM
     for cell in pats[mod.order[0]][0] if mod.order else []:
         if cell[2] == 0xF:
             if cell[3] < 32:
                 speed = cell[3] or speed
             else:
                 bpm = cell[3]
-    row_secs = speed * 2.5 / bpm
+    row_secs = speed * TICK_SECS_AT_1_BPM / bpm
 
     # Every note-on in play order, with how long it sounds: to the channel's next note-on, C00
     # or ECx.  A looped sample sounds the whole way; an unlooped one until its bytes run out.

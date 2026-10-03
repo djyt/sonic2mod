@@ -38,7 +38,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ChannelConfig, ConversionConfig
 from core.plan import walk_channel
-from core.smps import SmpsParser, parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
+from core.smps import parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
 
 mod_name = synth_note_name   # YAML config note name for a semitone
 
@@ -54,7 +54,7 @@ def chip_notes(cfg: ConversionConfig, config_path: Path):
     # body accumulates on every replay - Continue's later notes sit lower than the first pass).
     from core.config import find_settings, load_settings
     from core.convert import SmpsToModConverter
-    song = SmpsParser().parse_file(cfg.input_file)
+    song = cfg.read_song()
     fm_off, psg_off = load_settings(find_settings(str(config_path)))
     fm_off.enabled = psg_off.enabled = False
     conv = SmpsToModConverter(song, cfg, synth=fm_off, psg_synth=psg_off)
@@ -171,7 +171,7 @@ def main() -> None:
     notes = chip_notes(cfg, path)
     # The rendering pitch of every entry that does not state synth_root, from the song
     from core.plan import resolve_synth_roots
-    resolve_synth_roots(SmpsParser().parse_file(cfg.input_file), cfg)
+    resolve_synth_roots(cfg.read_song(), cfg)
 
     def defaults(entries) -> list:
         return [e.synth_root for e in entries]

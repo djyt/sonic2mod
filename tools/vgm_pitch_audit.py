@@ -14,7 +14,7 @@ and the two pitches are compared.  Use this for "is every note right"; use vgm_c
 levels, timing, timbre and vibrato.  Its per-note pitch column measures audio windows and is
 unreliable on legato runs and 1-tick grace notes (GHZ FM3-FM5), which this tool is immune to.
 
-Both sides are in real Hz: FM frequencies come from tools/vgm_analyze.fnum_to_hz and a
+Both sides are in real Hz: FM frequencies come from core.vgm.fm_frequency_hz and a
 ``synth_root`` name is the pitch the synthesiser actually renders (freq_to_fnum_block).
 
 Usage::
@@ -28,11 +28,9 @@ from __future__ import annotations
 import argparse
 import bisect
 import contextlib
-import gzip
 import itertools
 import json
 import math
-import struct
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -41,13 +39,10 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig
-from core.mod import PERIOD_TABLE, ModImage, read_mod
-from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, fnum_to_hz
+from core.mod import PERIOD_TABLE, ModImage, edx_delay, read_mod, timed_pass
+from core.vgm import PSG_TONE_CHANNELS, VGM_SAMPLE_RATE, ChangeKind, ChipState, VgmLog, read_vgm
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-_VGM_RATE = 44100
-# VGM command -> total length in bytes, for the commands that carry no timing or pitch.
-_SKIP = {0x4F: 2, 0xE0: 5, 0x90: 5, 0x91: 5, 0x92: 6, 0x93: 11, 0x94: 2, 0x95: 5}
 
 Segment = tuple[float, float | None]          # (start s, Hz or None when silent)
 
@@ -57,87 +52,32 @@ def note_name(f: float) -> str:
     return f"{_NOTE_NAMES[m % 12]}{m // 12 - 1}"
 
 
-def chip_timeline(data: bytes) -> tuple[dict[str, list[Segment]], float]:
+def chip_timeline(log: VgmLog) -> tuple[dict[str, list[Segment]], float]:
     """Per-channel list of (time, sounding Hz | None) change points, and the recording length."""
-    ver = struct.unpack_from("<I", data, 0x08)[0]
-    rel = struct.unpack_from("<I", data, 0x34)[0] if ver >= 0x150 else 0
-    pos = 0x34 + rel if rel else 0x40
-    fm_clock = (struct.unpack_from("<I", data, 0x2C)[0] & 0x3FFF_FFFF) or DEFAULT_FM_CLOCK
-    psg_clock = (struct.unpack_from("<I", data, 0x0C)[0] & 0x3FFF_FFFF) or DEFAULT_PSG_CLOCK
-
-    t = 0
-    hi, freq, keyon = [0] * 6, [0.0] * 6, [False] * 6
-    psg_n, psg_vol, latch = [0, 0, 0], [15] * 4, (0, 0)
+    state = ChipState.for_log(log)
     out: dict[str, list[Segment]] = defaultdict(list)
+    psg_last: list[float | None] = [None] * PSG_TONE_CHANNELS
 
-    def fm_mark(ch: int) -> None:
-        out[f"FM{ch + 1}"].append((t / _VGM_RATE, freq[ch] if keyon[ch] and freq[ch] > 0 else None))
+    for change in state.replay(log):
+        t, ch = change.sample / VGM_SAMPLE_RATE, change.channel
 
-    psg_last: list[float | None] = [None, None, None]
+        # FM: a point at every key on/off and every frequency written
+        if change.kind in (ChangeKind.FM_KEY, ChangeKind.FM_FREQUENCY):
+            hz = state.fm_hz(ch)
+            out[f"FM{ch + 1}"].append((t, hz if state.fm_slots(ch) and hz > 0 else None))
+            continue
+        if change.kind not in (ChangeKind.PSG_TONE, ChangeKind.PSG_VOLUME) or ch >= PSG_TONE_CHANNELS:
+            continue
 
-    def psg_mark(ch: int) -> None:
-        # A segment ends when the pitch or the audibility changes - not on every volume write,
+        # PSG tone: a segment ends when the pitch or the audibility changes - not on every volume write,
         # or an envelope that steps every frame (Labyrinth Zone's fTone_09) would chop 120 ms notes
         # into 17 ms slivers that fall under --min-ms and never get judged.
-        f = psg_clock / (32.0 * psg_n[ch]) if psg_n[ch] > 0 and psg_vol[ch] < 15 else None
+        f = state.psg_hz(ch) if state.psg_period(ch) > 0 and state.psg_audible(ch) else None
         if f == psg_last[ch]:
-            return
+            continue
         psg_last[ch] = f
-        out[f"PSG{ch + 1}"].append((t / _VGM_RATE, f))
-
-    while pos < len(data):
-        c = data[pos]
-        if c in (0x52, 0x53):
-            reg, val = data[pos + 1], data[pos + 2]
-            base = 0 if c == 0x52 else 3
-            if c == 0x52 and reg == 0x28:
-                ch = val & 7
-                ch = ch if ch < 3 else ch - 1
-                if ch < 6:
-                    keyon[ch] = bool(val & 0xF0)
-                    fm_mark(ch)
-            elif 0xA4 <= reg <= 0xA6:
-                hi[base + reg - 0xA4] = val
-            elif 0xA0 <= reg <= 0xA2:                 # low byte latches the pair
-                ch = base + reg - 0xA0
-                fnum = ((hi[ch] & 7) << 8) | val
-                freq[ch] = fnum_to_hz(fnum, (hi[ch] >> 3) & 7, fm_clock) if fnum else 0.0
-                fm_mark(ch)
-            pos += 3
-        elif c == 0x50:
-            b = data[pos + 1]
-            if b & 0x80:
-                latch = ((b >> 5) & 3, (b >> 4) & 1)
-            ch, is_vol = latch
-            if is_vol:
-                psg_vol[ch] = b & 15
-            elif ch < 3:
-                psg_n[ch] = ((psg_n[ch] & 0x3F0) | (b & 15)) if b & 0x80 else ((psg_n[ch] & 0x00F) | ((b & 0x3F) << 4))
-            # The driver writes a period as latch + data byte; the value between the two is never
-            # heard, so wait for the data byte when it comes next (else a phantom note appears).
-            two_byte = (not is_vol and ch < 3 and b & 0x80 and pos + 3 < len(data)
-                        and data[pos + 2] == 0x50 and not data[pos + 3] & 0x80)
-            if ch < 3 and not two_byte:
-                psg_mark(ch)
-            pos += 2
-        elif c == 0x61:
-            t += struct.unpack_from("<H", data, pos + 1)[0]
-            pos += 3
-        elif c in (0x62, 0x63):
-            t += 735 if c == 0x62 else 882
-            pos += 1
-        elif 0x70 <= c <= 0x8F:                       # 7n: wait n+1;  8n: DAC write + wait n
-            t += (c & 15) + (1 if c < 0x80 else 0)
-            pos += 1
-        elif c == 0x66:
-            break
-        elif c == 0x67:
-            pos += 7 + struct.unpack_from("<I", data, pos + 3)[0]
-        elif c in _SKIP:
-            pos += _SKIP[c]
-        else:
-            raise SystemExit(f"ERROR: unsupported VGM command {c:#04x} at offset {pos:#x}")
-    return out, t / _VGM_RATE
+        out[f"PSG{ch + 1}"].append((t, f))
+    return out, log.seconds
 
 
 def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
@@ -146,8 +86,7 @@ def prepare_config(cfg: ConversionConfig, settings_path: str | Path | None, conf
     Returns the parsed song."""
     from core.config import find_settings, load_settings
     from core.plan import detune_variants_wanted, plan_detune_variants, resolve_synth_roots
-    from core.smps import SmpsParser
-    song = SmpsParser().parse_file(cfg.input_file)
+    song = cfg.read_song()
     resolve_synth_roots(song, cfg)
     synth, _psg = load_settings(str(settings_path) if settings_path else find_settings(str(config_path)))
     if detune_variants_wanted(synth):
@@ -194,26 +133,6 @@ def instrument_pitches(cfg: ConversionConfig) -> dict[int, tuple[int, int, float
     return inst
 
 
-def mod_pass(mod: ModImage, speed: int) -> tuple[list[tuple[float, int, list]], float]:
-    """Each row one pass plays (Bxx / Dxx followed, stopping at the song loop) as (start s, BPM,
-    cells), and the pass's length.  A row's Fxx set the speed and BPM of the whole row, as in
-    ProTracker: a note EDx-delayed left of the row's Fxx is timed at the new BPM."""
-    rows: list[tuple[float, int, list]] = []
-    bpm, now = 125, 0.0
-    for _pattern, _row, cells in mod.play_rows():
-        for _period, _ins, eff, par in cells:
-            if eff == 0xF and par:
-                bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
-        rows.append((now, bpm, cells))
-        now += speed * 2.5 / bpm
-    return rows, now
-
-
-def edx_delay(eff: int, par: int, bpm: int) -> float:
-    """Seconds an EDx note starts into its row (x MOD ticks); 0 for any other effect."""
-    return (par & 15) * 2.5 / bpm if eff == 0xE and par >> 4 == 0xD else 0.0
-
-
 def mod_timeline(mod: ModImage, cfg: ConversionConfig) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument); follows Bxx/Dxx and stops at the loop."""
     inst = instrument_pitches(cfg)
@@ -227,18 +146,18 @@ def mod_timeline(mod: ModImage, cfg: ConversionConfig) -> tuple[dict[int, list[t
         return (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
                 * 2 ** (finetune.get(ins, 0) / 96 + cents / 1200))
 
-    rows, end = mod_pass(mod, cfg.target_speed)
-    for now, bpm, cells in rows:
-        for c, (period, ins, eff, par) in enumerate(cells):
+    rows, end = timed_pass(mod, cfg.target_speed)
+    for r in rows:
+        for c, (period, ins, eff, par) in enumerate(r.cells):
             if period in known and ins in inst:
                 sounding[c] = (period, ins)
-                out[c].append((now + edx_delay(eff, par, bpm), pitch(period, ins), ins))
+                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(period, ins), ins))
             elif eff == 0xE and par >> 4 in (1, 2) and c in sounding:
                 # E1x / E2x: the sounding note's period moved (a tie retuned to a new detune)
                 p, ins_s = sounding[c]
                 p = p - (par & 15) if par >> 4 == 1 else p + (par & 15)
                 sounding[c] = (p, ins_s)
-                out[c].append((now, pitch(p, ins_s), ins_s))
+                out[c].append((r.start, pitch(p, ins_s), ins_s))
     return out, end
 
 
@@ -467,8 +386,7 @@ def main() -> None:
     cfg = ConversionConfig.from_yaml(args.config)
     prepare_config(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
-    raw = Path(args.vgz).read_bytes()
-    chip, vgm_end = chip_timeline(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
+    chip, vgm_end = chip_timeline(read_vgm(args.vgz))
     mod, mod_end = mod_timeline(read_mod(mod_path), cfg)
     chan_map = {c.source: c.mod_channel for c in cfg.channels}
     if args.offset is None:

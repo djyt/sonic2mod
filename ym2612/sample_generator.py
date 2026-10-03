@@ -46,13 +46,14 @@ from core.audio import (
     release_rate_db_s,
 )
 from core.audio import trim_trailing_silence as _trim_trailing_silence
+from core.chips import fm_frequency_hz
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, find_settings, load_settings
 from core.mod import max_sustain_secs
 from core.plan import FmInstrument, fm_catalogue
 from core.render_cache import RenderCache, code_salt
 from core.smps import SmpsSong, SmpsVoice, VoiceField
 from ym2612.build import get_lib_path
-from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
+from ym2612.renderer import note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
@@ -155,7 +156,7 @@ class _FmRenderer:
 
         # The release slides' rate, measured on the probe's tail
         fnum, block = note_to_fnum_block(job.spec.synth_idx, synth.clock_rate)
-        period = rate / fnum_block_to_freq(fnum, block, synth.clock_rate)
+        period = rate / fm_frequency_hz(fnum, block, synth.clock_rate)
         sustain_n = math.ceil(rate * probe)
         release = release_rate_db_s(mono, rate, sustain_n, period)
 

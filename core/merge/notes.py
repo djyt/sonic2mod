@@ -10,9 +10,13 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from ..audio import db_to_gain, power_to_db
+from ..chips import TL_STEP_DB
 from ..mod import MOD_NOTE_MAP, ModNote
 from ..plan import FmLayer, walk_channel
-from ..smps import TL_STEP_DB, CoordFlag, source_map
+from ..smps import (
+    CoordFlag,
+    source_map,
+)
 
 PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL steps (0.75 dB each)
 

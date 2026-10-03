@@ -198,7 +198,7 @@ a sample at another volume costs its full size.
 
 `LevelPlanner.levels(source_map, "FM")` therefore walks the FM channels first — with
 the same `DriverState` the conversion uses — and, for every MOD instrument, counts notes per level
-`−0.75 × TL − pan`.  The laws themselves live in `core/smps/levels.py` (dB → MOD volume: `core/mod/volume.py`).  The level with the most notes is that
+`−0.75 × TL − pan`.  The laws themselves live in `core/chips/` (`fm.py`, `psg.py`) (dB → MOD volume: `core/mod/volume.py`).  The level with the most notes is that
 instrument's **baked level**: it is what the `sample_list` volume stands for, and those notes get
 no command.  A note at any other level gets `Cxx = volume × 10^(ΔdB / 20)` (clamped to 64).  So:
 

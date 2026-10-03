@@ -28,7 +28,7 @@ Mega Drive config: FB_SEGAVDP=0x0009, SRW_SEGAVDP=16, boost_noise=1.
 import ctypes
 from ctypes import POINTER, c_int32, cast
 
-from core.smps import MD_PSG_CLOCK
+from core.chips import MD_PSG_CLOCK
 
 from .build import get_lib_path
 

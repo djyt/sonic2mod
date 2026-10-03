@@ -62,7 +62,8 @@ sonic2mod/
       frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
       notes.py       #     note_starts (key-on / tie / legato / PSG audible rules, NoteTracker), pitch_segments
       lift.py        #     lift_song(log, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
-    audit/           #   pitch.py: the symbolic MOD-vs-VGZ pitch audit (vgm_pitch_audit / vgm_compare); report in ui/pitch_audit.py
+    audit/           #   A MOD against its VGZ: pitch.py the symbolic pitch audit (report in ui/pitch_audit.py);
+                     #   render.py / signal.py / levels.py / onsets.py vgm_compare's renders and measures
     source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
     smps/            #   The source: songs and the driver that plays them
       song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard

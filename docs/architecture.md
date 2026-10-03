@@ -275,6 +275,15 @@ through one or the other.
 (the instruments as `prepare_instruments` leaves them), `mod_pitch_timeline` (each MOD note's pitch from
 `sounding_pitches`, E1x / E2x followed), `note_start_offset` (the lag, from note starts), `audit_pitches`
 (ok / wrong / missing per channel, the per-instrument verdict).  Its report is `core/ui/pitch_audit.py`.
+The rendered comparison's library is here too, `tools/vgm_compare.py` keeping its reports and CLI:
+
+```
+render.py   VGMPlay (mute masks, VGM_CHANNELS) and ffmpeg + libopenmpt renders, one channel each
+signal.py   WAV loading, level, spectra, partials, onsets, envelope alignment, pitch tracks, vibrato
+levels.py   per-instrument level error, the sample_list volumes that zero it (write_volumes)
+onsets.py   chip key-ons / audio onsets paired with the MOD's, one to one
+```
+
 Beside `convert/`: it reads `plan`, `config`, `mod` and `vgm`, and nothing reads it but the tools.
 
 ### core/audio/gain.py

@@ -67,13 +67,12 @@ except ImportError:  # pragma: no cover
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.audio import cents, db_to_gain, gain_to_db, power_to_db
+from core.audio import cents, db_to_gain, gain_to_db, pitch_name, power_to_db
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, edx_delay, isolate_channel, read_mod, timed_pass
-from core.vgm import VgmLog, read_vgm
+from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
 from tools import vgm_pitch_audit
-from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, parse_vgm
 
 SR = 44100
 
@@ -654,11 +653,10 @@ def _hz(f: int) -> str:
     return f"{f // 1000}k" if f >= 1000 and f % 1000 == 0 else str(f)
 
 
-def _vgm_rows(vgz: Path) -> tuple[VgmLog, list[tuple]]:
-    """(the log of a .vgz or .vgm, parse_vgm's rows for every chip)."""
+def _vgm_notes(vgz: Path) -> tuple[VgmLog, list[NoteStart]]:
+    """(the log of a .vgz or .vgm, its note starts on every chip)."""
     log = read_vgm(vgz)
-    rows, _, _ = parse_vgm(log, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
-    return log, rows
+    return log, note_starts(log)
 
 
 def _chip_channel(source: str, noise_used: bool) -> str:
@@ -719,9 +717,8 @@ def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str,
 
 def _note_result(ch: str, evs: list[tuple], i: int, rd: _Renders, offset: float) -> dict:
     """Key-on `evs[i]` measured in both renders: pitch on its strongest partial, level."""
-    t, _, _, _, fref, note, _ = evs[i]
-    t /= 1000.0
-    t_end = evs[i + 1][0] / 1000.0 if i + 1 < len(evs) else t + 2.0
+    t, fref, note = evs[i].ms / 1000.0, evs[i].hz, pitch_name(evs[i].hz)
+    t_end = evs[i + 1].ms / 1000.0 if i + 1 < len(evs) else t + 2.0
     win = min(0.3 if fref < 200 else 0.1, max(0.04, t_end - t - 0.03))
     harm, cv = harmonic_cents(seg_at(rd.vgm[ch], t + 0.025, win), fref)
     _, cm = harmonic_cents(seg_at(rd.mod[ch], t + offset + 0.025, win), fref, harm)
@@ -838,8 +835,8 @@ def _report_vibrato(per_ch: dict[str, list], rd: _Renders, offset: float, res: d
     vib_rows: list[str] = []
     for ch, evs in per_ch.items():
         for i, r in enumerate(evs):
-            t, note = r[0] / 1000.0, r[5]
-            dur = (evs[i + 1][0] / 1000.0 - t) if i + 1 < len(evs) else 3.0
+            t, note = r.ms / 1000.0, pitch_name(r.hz)
+            dur = (evs[i + 1].ms / 1000.0 - t) if i + 1 < len(evs) else 3.0
             if dur < _VIB_MIN_NOTE:
                 continue
             long_notes += 1
@@ -889,11 +886,11 @@ def _report_balance(names: list[str], ref: str, rd: _Renders, res: dict, width: 
     print()
 
 
-def _note_times(per_ch: dict[str, list], names: list[str], rows: list[tuple], rd: _Renders) -> dict[str, list[float]]:
+def _note_times(per_ch: dict[str, list], names: list[str], notes: list[NoteStart], rd: _Renders) -> dict[str, list[float]]:
     """Reference note starts (s) per channel: key-ons, the DAC's detected audio onsets."""
-    note_times = {ch: [r[0] / 1000.0 for r in evs] for ch, evs in per_ch.items()}
+    note_times = {ch: [n.ms / 1000.0 for n in evs] for ch, evs in per_ch.items()}
     if "NOISE" in names:
-        note_times["NOISE"] = [r[0] / 1000.0 for r in rows if r[1] == "NOISE"]
+        note_times["NOISE"] = [n.ms / 1000.0 for n in notes if n.channel == "NOISE"]
     if "DAC" in names:
         note_times["DAC"] = onsets(rd.vgm["DAC"], thresh_db=-40, hold=0.08)
     return note_times
@@ -1160,8 +1157,8 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
     """
-    log, rows = _vgm_rows(vgz)
-    noise_used = any(r[1] == "NOISE" for r in rows)
+    log, notes = _vgm_notes(vgz)
+    noise_used = any(n.channel == "NOISE" for n in notes)
     chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in _VGM_CHANNELS or c.source == "PSG3"}
     names = [_chip_channel(src, noise_used) for src in chan_map]
     chan_of = {n: chan_map[src] for n, src in zip(names, chan_map, strict=True)}
@@ -1174,7 +1171,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     rd = _Renders(vgm_st, mod_st)
 
     offset_auto = offset is None
-    chip_tl, chip_end = vgm_pitch_audit.chip_timeline(log)
+    chip_tl, chip_end = pitch_segments(log)
     mod = read_mod(mod_path)
     mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod, cfg)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
@@ -1188,10 +1185,10 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     # (its second time round the loop) have nothing to be compared with; 150 ms keeps the measuring
     # window inside the render.
     per_ch: dict[str, list] = {}
-    for r in rows:
-        if (r[1] in rd.vgm and r[1] not in ("DAC", "NOISE") and r[4] > 0
-                and r[0] / 1000.0 + offset < mod_end - 0.15):
-            per_ch.setdefault(r[1], []).append(r)
+    for n in notes:
+        if (n.channel in rd.vgm and n.channel not in (DAC_NAME, "NOISE") and n.hz > 0
+                and n.ms / 1000.0 + offset < mod_end - 0.15):
+            per_ch.setdefault(n.channel, []).append(n)
     _report_notes(per_ch, rd, offset, max_rows, res, 6,
                   ("Per-note comparison (levels are dBFS of the isolated channel; diff = MOD - VGM; vgm_c / mod_c = cents",
                    "from the chip's key-on pitch, measured in the audio - PITCH flags the two renders disagreeing)"),
@@ -1204,7 +1201,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
                     f"Whole-song channel RMS relative to {ref} (dB, L/R power):   VGM     MOD    MOD-VGM")
 
     # Per-instrument levels and onsets, against the MOD's notes as one pass plays them
-    note_times = _note_times(per_ch, names, rows, rd)
+    note_times = _note_times(per_ch, names, notes, rd)
     events_by_chan, samples = _mod_events(cfg, mod)
     lev = instrument_levels(note_times, {n: chan_of[n] for n in note_times}, events_by_chan, samples,
                             mod_end, rd.vgm_st, rd.mod_st, offset)
@@ -1229,7 +1226,7 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
     error.  The symbolic verdict (one note stream per channel) does not apply.
     """
     names = list(labels)
-    _, rows = _vgm_rows(vgz)
+    _, notes = _vgm_notes(vgz)
     rd = _Renders({n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]},
                   {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]})
     offset_auto = offset is None
@@ -1250,7 +1247,7 @@ def report_merged(vgz: Path, mod_path: Path, workdir: Path, offset: float | None
         primary = labels[n][0]
         if primary in ("DAC", "NOISE"):
             continue
-        per_ch[n] = [r for r in rows if r[1] == primary and r[4] > 0 and r[0] / 1000.0 + offset < mod_end - 0.15]
+        per_ch[n] = [s for s in notes if s.channel == primary and s.hz > 0 and s.ms / 1000.0 + offset < mod_end - 0.15]
     _report_notes(per_ch, rd, offset, max_rows, res, 14,
                   ("Per-note comparison at the primary's key-ons (levels are dBFS of the merged channel; diff = MOD - VGM;",
                    "vgm_c / mod_c = cents from the chip's key-on pitch, measured in the audio - PITCH flags the two renders"
@@ -1374,7 +1371,7 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
         ref_col[c] = out
 
     # Every block's level, whole and at its primary's key-ons
-    _, rows = _vgm_rows(vgz)
+    _, notes = _vgm_notes(vgz)
     blocks = _column_blocks(layout, spans)
     for blk in blocks:
         c, a, b = blk["column"], int(blk["t0"] * SR), int(blk["t1"] * SR)
@@ -1382,9 +1379,9 @@ def report_merged_patterns(cfg: ConversionConfig, vgz: Path, mod_path: Path, wor
         blk["vgm_db"], blk["mod_db"] = db(rms(ref_col[c][a:b])), db(rms(mod_c[a:b]))
         primary = chip_names.get(blk["sources"][0]) if blk["sources"] else None
         diffs = []
-        for r in rows:
-            t = r[0] / 1000.0 + offset
-            if r[1] != primary or not blk["t0"] <= t < blk["t1"] - _KEYON_SECS:
+        for n in notes:
+            t = n.ms / 1000.0 + offset
+            if n.channel != primary or not blk["t0"] <= t < blk["t1"] - _KEYON_SECS:
                 continue
             lv, lm = db(rms(seg_at(ref_col[c], t, _KEYON_SECS))), db(rms(seg_at(mod_c, t, _KEYON_SECS)))
             if lv > -70 and lm > -70:
@@ -1542,8 +1539,8 @@ def main() -> None:
             raise SystemExit(f"ERROR: file not found: {p}")
     workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + ("_merged" if args.merged else "")))
 
-    _, rows = _vgm_rows(vgz)
-    noise_used = any(r[1] == "NOISE" for r in rows)
+    _, notes = _vgm_notes(vgz)
+    noise_used = any(n.channel == "NOISE" for n in notes)
     masks = None
     labels: dict[str, list[str]] = {}
     per_pattern = args.merged and bool(cfg.merge_patterns_named)

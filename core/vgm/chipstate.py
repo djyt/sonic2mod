@@ -61,6 +61,7 @@ _PSG_HIGH_BITS = 0x3F
 _PSG_HIGH_SHIFT = 4
 _NOISE_MASK = 0x07
 _NOISE_RATE_MASK = 0x03
+_NOISE_WHITE_BIT = 0x04
 _NOISE_TONE2_RATE = 3              # the LFSR is clocked by tone channel 2
 _NOISE_BASE_DIVIDER = 512          # rates 0-2: clock / (512 << rate)
 
@@ -88,6 +89,16 @@ class Change(NamedTuple):
     channel: int                    # FM 0-5 / PSG 0-3 (3 = noise) / DAC_CHANNEL
     value: int                      # the register's new value
     previous: int                   # its value before the write
+
+
+def noise_white(register: int) -> bool:
+    """The noise register's bit 2: white noise (else periodic)."""
+    return bool(register & _NOISE_WHITE_BIT)
+
+
+def noise_rate(register: int) -> int:
+    """The noise register's rate: 0-2 a fixed divider, 3 tone channel 2."""
+    return register & _NOISE_RATE_MASK
 
 
 def fm_frequency_hz(fnum: int, block: int, clock: int) -> float:
@@ -279,11 +290,11 @@ class ChipState:
 
     @property
     def noise_white(self) -> bool:
-        return bool(self._noise & 0x04)
+        return noise_white(self._noise)
 
     @property
     def noise_rate(self) -> int:
-        return self._noise & _NOISE_RATE_MASK
+        return noise_rate(self._noise)
 
     def noise_shift_hz(self) -> float:
         """The LFSR's shift rate: clock / (512 << rate), or tone 2's frequency at rate 3 (its period 0

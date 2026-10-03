@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..audio import DEFAULT_DITHER, DEFAULT_TAPS
+from ..chips import DEFAULT_FM_PAN_LAW_DB, MD_FM_CLOCK, MD_PSG_CLOCK
 from ..mod import PAL_AMIGA_CLOCK, sample_limit_bytes
-from ..smps import DEFAULT_FM_PAN_LAW_DB, MD_FM_CLOCK, MD_PSG_CLOCK
 from .loader import dither_mode, mode_word, read_yaml_file
 
 if TYPE_CHECKING:

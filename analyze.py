@@ -12,6 +12,8 @@ import os
 import sys
 from dataclasses import dataclass
 
+from core.chips import PSG_STEP_DB, TL_STEP_DB, carrier_names, fm_level_db
+
 try:
     from rich import box
     from rich.panel import Panel
@@ -43,11 +45,7 @@ from core.config import (
 )
 from core.mod import PERIOD_TABLE, ModFile, ModNote, db_to_mod_volume
 from core.smps import (
-    PSG_STEP_DB,
-    TL_STEP_DB,
-    carrier_names,
     flag_name,
-    fm_level_db,
     psg_tone2_divider,
     synth_note_name,
 )

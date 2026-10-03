@@ -23,7 +23,7 @@ from collections import defaultdict
 from typing import NamedTuple
 
 from ..audio import db_to_gain
-from ..smps import fm_level_db, psg_level_db
+from ..chips import fm_level_db, psg_level_db
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_SILENT, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
 from .reader import VGM_SAMPLE_RATE, VgmLog
 

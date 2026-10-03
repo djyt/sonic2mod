@@ -23,12 +23,18 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from core.chips import CARRIER_OFFSETS_BY_ALG
+
 # Allow importing smps_parser (project root) when run as a script or module
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.smps import CARRIER_OFFSETS_BY_ALG, SMPS_OP_TO_REG_OFFSET, SmpsVoice, VoiceField
+from core.smps import (
+    SMPS_OP_TO_REG_OFFSET,
+    SmpsVoice,
+    VoiceField,
+)
 from ym2612.wrapper import OPN2
 
 # The SMPS operator order comes from core.smps.driver_tables, transcribed from

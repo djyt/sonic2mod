@@ -12,11 +12,12 @@ import struct
 import sys
 from pathlib import Path
 
+from core.chips import MD_PSG_CLOCK
+
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.smps import MD_PSG_CLOCK
 from sn76489.renderer import note_to_psg_n
 from sn76489.wrapper import SN76489
 

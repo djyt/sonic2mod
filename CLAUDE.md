@@ -266,7 +266,8 @@ python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/0
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
 # reference/vgz/vgmplay/ (untracked, like the VGZ rips; or --vgmplay DIR / VGMPLAY_DIR) and an
 # ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
-# Renders go to output/compare/<config>/; --skip-render reuses them.
+# Renders go to output/compare/<config>/; --skip-render reuses them.  Reference renders run in parallel and are
+# kept in samples.render_cache (output/cache/vgmplay/), keyed on the VGZ + VGMPlay.ini: a song is rendered once
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
 # Its "Per-instrument level error" table is what sample_list volumes are set from; --write-volumes applies
 # the suggestions to the config (then re-convert and re-run to verify)

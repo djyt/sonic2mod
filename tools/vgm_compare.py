@@ -69,6 +69,7 @@ from core.audit import (
     OnsetMatch,
     audio_onsets,
     audit_pitches,
+    audit_settings,
     band_profile,
     db,
     envelope_offset,
@@ -899,7 +900,8 @@ def main() -> None:
         else:
             vgmplay = find_vgmplay(args.vgmplay)
             print(f"Rendering reference channels with {vgmplay} ...")
-            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core, masks)
+            synth, _psg = audit_settings(args.settings, args.config)
+            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core, masks, cache_dir=synth.render_cache)
         print("Rendering MOD channels with ffmpeg/libopenmpt ...")
         render_mod_channels(mod_path, chan_map, workdir)
         print()

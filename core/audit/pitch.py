@@ -33,11 +33,17 @@ from ..plan import prepare_instruments, sounding_pitches
 from ..vgm import Segment
 
 
+def audit_settings(settings_path: str | Path | None, config_path: str | Path):
+    """(SynthesisSettings, PsgSynthesisSettings) the MOD was converted with: `settings_path`, else the
+    settings.yaml beside the config, else configs/settings.yaml."""
+    return load_settings(str(settings_path) if settings_path else find_settings(str(config_path)))
+
+
 def prepare_audit(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
     """What the converter decides before it renders, on `cfg` (core.plan.prepare_instruments: every
     entry's synth_root / synth_shift, the detune variants the settings ask for).  Returns the song."""
     song = cfg.read_song()
-    synth, _psg = load_settings(str(settings_path) if settings_path else find_settings(str(config_path)))
+    synth, _psg = audit_settings(settings_path, config_path)
     prepare_instruments(song, cfg, synth)
     return song
 

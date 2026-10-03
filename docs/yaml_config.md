@@ -106,7 +106,7 @@ dac_samples:
     mod_note: A1             # 7,375 Hz × 0.95 = 7,006 Hz
 
 # Optional: load real sample files instead of placeholders
-# Source WAVs are in sonic_1/dac/dpcm/; convert to raw signed PCM:
+# Source WAVs are in reference/smps_drivers/sonic_1/dac/dpcm/; convert to raw signed PCM:
 #   sox kick.wav -t raw -r 8250 -e signed -b 8 -c 1 kick.raw
 sample_list:
   - [1, "kick.raw", 64, 0]      # [inst_num, filename, volume, finetune]

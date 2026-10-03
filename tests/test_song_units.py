@@ -30,7 +30,7 @@ from core.smps import (
     pan_side,
 )
 
-_MUSIC = _HERE.parent / "sonic_1" / "music"
+_MUSIC = _HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "music"
 _GHZ = _MUSIC / "Mus81 - GHZ.asm"
 
 
@@ -47,7 +47,7 @@ class Flags(unittest.TestCase):
         self.assertIs(flag_from_macro("smpsFMvoice"), CoordFlag.SET_VOICE)
         self.assertIsNone(flag_from_macro("smpsNoSuchThing"))
 
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_a_parse_holds_flags_not_macro_text(self):
         song = SmpsParser().parse_file(str(_GHZ))
         effects = [ev.effect for ch in song.channels for ev in ch.events if ev.effect is not None]
@@ -61,7 +61,7 @@ class Pan(unittest.TestCase):
         self.assertTrue(pan_is_hard([0x80 | 0x12]))          # AMS / FMS bits do not move the speaker
         self.assertFalse(pan_is_hard([0xC0]))
 
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_writes_the_byte(self):
         song = SmpsParser().parse_file(str(_GHZ))
         pans = {ev.effect.params[0] for ch in song.channels for ev in ch.events
@@ -70,7 +70,7 @@ class Pan(unittest.TestCase):
 
 
 class NoAttack(unittest.TestCase):
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_a_held_duration_uses_up_the_flag(self):
         # GHZ FM4: `nG5, $28, smpsNoAttack, $3F`, flags, smpsCall: the call's first note (the
         # loop, tick 577) attacks - the driver clears the flag at every read
@@ -83,7 +83,7 @@ class NoAttack(unittest.TestCase):
 class Loops(unittest.TestCase):
     """A loop is a tick and an event index on its channel: no assembly label needed."""
 
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_resolves_each_jump(self):
         song = SmpsParser().parse_file(str(_GHZ))
         loops = {ch.header.label[-4:]: (ch.loop_tick, ch.loop_event_index) for ch in song.channels if ch.has_jump}
@@ -93,7 +93,7 @@ class Loops(unittest.TestCase):
         self.assertFalse(hasattr(song, "label_tick_pos"))
         self.assertFalse(any(hasattr(ch, "jump_target_label") for ch in song.channels))
 
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_a_loop_starts_where_its_own_channel_reached_the_target(self):
         # Marble Zone PSG2 walks past PSG1's loop label 4 ticks later; PSG1's loop starts at its own
         # 120 (loop 1920 ticks = the VGZ's 1587600 samples), not PSG2's 124 (1916)
@@ -101,7 +101,7 @@ class Loops(unittest.TestCase):
         psg1 = next(ch for ch in mz.channels if ch.header.label.endswith("PSG1"))
         self.assertEqual(psg1.loop_tick, 120)
 
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_a_forward_jump_into_shared_code_marks_the_loop_start(self):
         # Labyrinth FM4 jumps forward into FM3's code: its loop starts at its own jump, with an event
         lz = SmpsParser().parse_file(str(_MUSIC / "Mus82 - LZ.asm"))
@@ -118,7 +118,7 @@ class Loops(unittest.TestCase):
                 for ev in ch.events if ev.tick_position >= ch.loop_tick]
         return end - ch.loop_tick, body
 
-    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_every_channel_loops_with_the_song(self):
         # On hardware each channel repeats in step with the song: a span that does not divide the
         # song's must hold a body periodic in their common divisor (Green Hill's drums loop 1024

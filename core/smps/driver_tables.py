@@ -1,11 +1,11 @@
 """Sonic 1 sound driver lookup tables, regenerated from the driver source.
 
-Everything here is a transcription of `sonic_1/s1.sounddriver.asm`, not a
+Everything here is a transcription of `reference/smps_drivers/sonic_1/s1.sounddriver.asm`, not a
 recomputation from music theory.  That matters: the driver's note tables are
 what the hardware actually plays, and they differ from equal temperament in
 ways that are audible (see PSG_FREQUENCIES below).
 
-Line references are to `sonic_1/s1.sounddriver.asm`.
+Line references are to `reference/smps_drivers/sonic_1/s1.sounddriver.asm`.
 """
 
 from __future__ import annotations

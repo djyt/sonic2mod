@@ -1,7 +1,7 @@
 """Per-channel SFX track state — the offline equivalent of SMPS_Track RAM.
 
 Field names deliberately mirror the driver's RAM struct so `sfx/driver.py` reads
-alongside `sonic_1/s1.sounddriver.asm` without translation.
+alongside `reference/smps_drivers/sonic_1/s1.sounddriver.asm` without translation.
 """
 
 from __future__ import annotations

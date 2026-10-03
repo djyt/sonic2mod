@@ -10,8 +10,8 @@ only, as the asm's FixMusicAndSFXDataBugs), or with --shipped neither: the game 
 Usage::
 
     python tools/rom_import.py input/roms/sonic_rev01.bin                       # the indexes
-    python tools/rom_import.py input/roms/sonic_rev01.bin --compare sonic_1     # every sound vs its asm
-    python tools/rom_import.py input/roms/sonic_rev01.bin --compare sonic_1 --only 81 8A
+    python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1     # every sound vs its asm
+    python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1 --only 81 8A
     python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm  # MusXX.asm / SndXX.asm
     python tools/rom_import.py input/roms/sonic_rev01.bin --dac output/rom_dac  # DAC samples: .raw + manifest.yaml
 """

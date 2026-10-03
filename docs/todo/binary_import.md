@@ -77,7 +77,7 @@ PSG3, Credits PSG2 and SndBC's header only.
 
 ## Phase 1: Sonic 1 (`sonic_rev01.bin`) - done 2026-10-03
 
-`core/rom/`, beside `core/vgm/` (source → rom → smps).  `tools/rom_import.py ROM --compare sonic_1`:
+`core/rom/`, beside `core/vgm/` (source → rom → smps).  `tools/rom_import.py ROM --compare reference/smps_drivers/sonic_1`:
 68 of 68 read as their asm.
 
 ### [x] 1.1 ROM image and driver location
@@ -119,7 +119,7 @@ hit interrupts: exact only where a sample played whole (Title, GHZ, SYZ, LZ, SBZ
 Game Over).  Rates from the play loop's cycles (301 + 26 (pitch - 1) per byte): kick 8201 Hz, snare
 23784, timpani 7328; $88-$8B pitches $12 $15 $1C $1D.  VGZ write rates read 7.9-8.3 kHz (kick),
 22.9 kHz (snare): within the recordings' spread.
-Note: `sonic_1/z80.asm` is not the ROM's driver - its loop plays only the high nibble.
+Note: `reference/smps_drivers/sonic_1/z80.asm` is not the ROM's driver - its loop plays only the high nibble.
 
 ### [x] 1.9 Regression
 `tests/test_rom_units.py` (hand-built bytes; with the ROM: all 68 sounds vs the asm, the asm round

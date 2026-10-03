@@ -94,7 +94,7 @@ def discover(sfx_dir: str) -> list[str]:
     """Return the SFX .asm files in driver order.
 
     Raises FileNotFoundError with an actionable message when the directory is
-    absent — `/sonic_1` is gitignored, so a fresh clone will not have it.
+    absent — `reference/smps_drivers` is gitignored, so a fresh clone will not have it.
     """
     if not os.path.isdir(sfx_dir):
         raise FileNotFoundError(

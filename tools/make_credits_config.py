@@ -2,7 +2,7 @@
 
 Usage::
 
-    python analyze.py "sonic_1/music/Mus91 - Credits.asm" --write output/credits_skeleton.yaml
+    python analyze.py "reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm" --write output/credits_skeleton.yaml
     python tools/make_credits_config.py output/credits_skeleton.yaml
 
 Re-running keeps the volumes (and their VGZ / by-hand comments) of the existing config.
@@ -34,7 +34,7 @@ MOD_LO, MOD_SPAN = 12, 35          # MOD C1 in SMPS semitones; C1..B3
 
 with open(SKEL, encoding="utf-8") as fh:
     skel = yaml.safe_load(fh)
-song = SmpsParser().parse_file("sonic_1/music/Mus91 - Credits.asm")
+song = SmpsParser().parse_file("reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm")
 voices = {v.index: v for v in song.voices}
 
 

@@ -108,7 +108,7 @@ executionEnvironments = [
     { root = ".", pythonVersion = "3.11" },
 ]
 include = ["core", "convert.py", "analyze.py", "sonic2wav.py", "ym2612", "sn76489", "sfx", "tools"]
-exclude = ["reference", "sonic_1", "output", "**/__pycache__"]
+exclude = ["reference", "output", "**/__pycache__"]
 # Relax rules that fire on intentionally dynamic code
 reportMissingModuleSource = false
 reportAttributeAccessIssue = false

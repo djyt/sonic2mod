@@ -151,7 +151,7 @@ Output `.wav` files are written to `output/sfx/` as 16-bit stereo 44.1 kHz — s
 Render a single effect, or check what would be produced without writing anything:
 
 ```bash
-python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sonic2wav.py --all --dry-run
 ```
 

@@ -1,7 +1,7 @@
 # Sonic 1 SMPS Driver Reference
 
 Technical reference for the Sonic 1 68k sound driver as relevant to sonic2mod.
-Sources: `sonic_1/s1.sounddriver.asm`, `sonic_1/_smps2asm_inc.asm`.
+Sources: `reference/smps_drivers/sonic_1/s1.sounddriver.asm`, `reference/smps_drivers/sonic_1/_smps2asm_inc.asm`.
 
 See also: `docs/smps_format.md` (assembly syntax), `docs/pipeline.md` (conversion pipeline).
 

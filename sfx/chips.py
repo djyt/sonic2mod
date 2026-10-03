@@ -11,7 +11,7 @@ matter on a continuous timeline:
   Modulation sweeps routinely push the frequency word past $3FF, and the
   truncation is audible.
 
-Line references are to `sonic_1/s1.sounddriver.asm`.
+Line references are to `reference/smps_drivers/sonic_1/s1.sounddriver.asm`.
 """
 
 from __future__ import annotations

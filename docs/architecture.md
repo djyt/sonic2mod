@@ -87,7 +87,7 @@ No dependencies.
 
 ### core/smps/driver_tables.py
 
-A transcription of `sonic_1/s1.sounddriver.asm`, not a recomputation from music theory — the
+A transcription of `reference/smps_drivers/sonic_1/s1.sounddriver.asm`, not a recomputation from music theory — the
 driver's tables are what the hardware plays, and they differ from equal temperament audibly.
 Self-checks against known-good assembled values run at import.
 

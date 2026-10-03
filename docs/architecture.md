@@ -9,12 +9,14 @@ Related docs: `docs/smps_driver.md` (Sonic 1 driver internals), `docs/pipeline.m
 ## Data Flow
 
 ```
-  .asm file
-     │
-     ▼
- SmpsParser.parse_file()      ← core/smps/parser.py
-     │
-     ▼
+  .asm file                          .vgm / .vgz rip
+     │                                   │
+     ▼                                   ▼
+ SmpsParser.parse_file()          read_vgm → lift_song()   ← core/vgm/ (the lift: Phase 1 of
+  ← core/smps/parser.py              │                        docs/todo/vgz_conversion.md)
+     └──────────┬────────────────────┘
+                │   read_song(path) / ConversionConfig.read_song()   ← core/source/ picks by suffix
+                ▼
   SmpsSong (IR)               ← dataclasses in core/smps/song.py
      │
      ▼
@@ -45,13 +47,15 @@ core/
   plan/       the song read through its config: DriverState walk, instrument catalogue, detune,
               synthesis pitches, noise derivations, timeline
   config/     song configs, settings.yaml
-  mod/  smps/  audio/
-              the MOD format · the SMPS source and driver · sample arithmetic (no SMPS, no MOD)
+  source/     a song file -> SmpsSong: asm parsed (smps/), a VGM rip lifted (vgm/)
+  mod/  vgm/  smps/  audio/
+              the MOD format · VGM register logs (reads smps/'s tables) · the SMPS source and
+              driver · sample arithmetic (no SMPS, no MOD)
   diagnostics.py, analysis.py, cbuild.py, version.py
 ```
 
-Inside `core/` a package imports only packages below it (`mod` uses `audio`; `smps` and `audio`
-nothing); `diagnostics.py` has no imports and any package may report through it.  Each package's
+Inside `core/` a package imports only packages below it (`mod` uses `audio`; `vgm` uses `smps`;
+`smps` and `audio` nothing); `diagnostics.py` has no imports and any package may report through it.  Each package's
 `__init__.py` exports what the other packages import (`from ..smps import SmpsSong`), so a module
 can move inside its package without its importers knowing; a package's own modules import each
 other directly (`from .song import SmpsNote`).
@@ -219,6 +223,47 @@ Offset  Size   Content
 ...            Sample PCM data (concatenated)
 ```
 
+### core/mod/timing.py
+
+`timed_pass(mod, speed)`: each row `play_rows` plays with its start in seconds and the BPM in force
+(`TimedRow`), and the pass's length — `Fxx` sets speed / BPM for its whole row, a tick lasting
+2.5 / BPM s.  `edx_delay(eff, par, bpm)`: how far into its row an `EDx` note starts.  The MOD side
+of the VGZ audits (`vgm_pitch_audit.mod_timeline`, `vgm_compare.mod_note_events` /
+`mod_pattern_spans`) times its notes with these, so both share one clock.
+
+### core/vgm/
+
+A VGM / VGZ register log, the source when there is no disassembly.  Beside `smps/`, whose tables
+it reads; inside `core/` only `source/` imports it.
+
+```
+reader.py     commands -> VgmLog: header (clocks, rate), writes [VgmWrite(sample, op, port, reg,
+              value)], the PCM bank (type-0 data blocks), loop sample, GD3 tags.  No interpretation:
+              a 0x8n command is logged as the YM2612 0x2A write it is.  Unknown commands raise VgmError
+chipstate.py  ChipState.replay(log): registers write by write, yielding a Change (FM key / frequency,
+              PSG tone / volume / noise, DAC byte, PCM seek) where one is musically visible; the
+              accessors read the rest (carrier TLs, algorithm, pan, operator registers).  Chip
+              semantics: A4 latched until A0 (one latch for the chip, as Nuked-OPN2), a PSG period
+              latch followed by its data byte at the same sample is one change
+frames.py     frame_log(log): the log cut into V-int frames (FrameLog, Frame per frame: FmFrame x 6,
+              PsgFrame x 4, DacFrame).  A frame's window opens a quarter frame before the burst phase
+              (the commonest burst start, found from the writes): on all 19 Sonic 1 rips every burst
+              lands in one frame and no frame holds two
+lift.py       lift_song(log, LiftOptions) -> SmpsSong.  Not implemented yet: raises VgmLiftError
+```
+
+`tools/vgm_analyze.py` (key-on rows, `--frames`), `tools/vgm_pitch_audit.py` (`chip_timeline`) and
+`tools/vgm_compare.py` read through it; before 2026-10-03 the first two each parsed the command
+stream themselves.
+
+### core/source/
+
+`read_song(path, LiftOptions | None)`: a `.vgm` / `.vgz` path is lifted, anything else parsed by
+`SmpsParser` (an asm with a `driver:` other than `sonic1` is refused).  `ConversionConfig.read_song()`
+calls it with the config's `driver:` / `tempo_modifier:` / `tempo_divider:`; `convert.py`,
+`analyze.py`, `merge_survey.py`, `config_to_chip_space.py` and `vgm_pitch_audit.py` read their song
+through one or the other.
+
 ### core/audio/gain.py
 
 `db_to_gain`, `gain_to_db`, `power_to_db`: the dB conversions every module and tool uses.
@@ -260,7 +305,9 @@ bpm.py       derive_bpm, exact_bpm, bpm_rounding_options
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | str | "Untitled" | MOD song name (max 19 chars) |
-| `input_file` | str | "" | Input .asm path |
+| `input_file` | str | "" | Input .asm path, or a .vgm / .vgz rip (lifted) |
+| `driver` | SmpsDriver | sonic1 | The SMPS variant that played the song |
+| `tempo_modifier` / `tempo_divider` | int\|None | None | VGM input only: override the lift's inferred tempo |
 | `output_file` | str | "output.mod" | Output .mod path |
 | `target_bpm` | int | 150 | BPM (32–255), set via Fxx effect |
 | `target_speed` | int | 6 | Ticks per row (1–31), ProTracker default is 6 |

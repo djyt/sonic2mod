@@ -22,7 +22,6 @@ from core.config import (
 )
 from core.convert import SampleGenerators, SmpsToModConverter
 from core.merge import prepare_merged_config
-from core.smps import SmpsParser
 from core.ui import Report, branding, cli_console, error_printer, print_report
 from sn76489.sample_generator import generate_psg_samples
 from ym2612.sample_generator import generate_fm_samples
@@ -107,8 +106,11 @@ def main():
         base = os.path.splitext(os.path.basename(config.input_file))[0]
         config.output_file = base.replace(" ", "_") + ".mod"
 
-    # ── Parse ────────────────────────────────────────────────────────────────
-    song = SmpsParser().parse_file(config.input_file)
+    # ── Parse (an asm), or lift (a VGM rip) ─────────────────────────────────
+    try:
+        song = config.read_song()
+    except ValueError as e:
+        _error(str(e))
 
     # BPM derivation.  A MOD BPM is a whole number: the report says how far off the driver's
     # tempo that leaves the song, and which target_speed would leave it closer.

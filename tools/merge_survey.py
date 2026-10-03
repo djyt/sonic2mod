@@ -42,7 +42,6 @@ from core.config import ConversionConfig, find_settings, load_settings
 from core.convert import SmpsToModConverter
 from core.merge import NoteOn, PairStats, channel_notes, pair_channels
 from core.plan import resolve_synth_roots
-from core.smps import SmpsParser
 
 
 @dataclass
@@ -86,7 +85,7 @@ class SurveyContext:
 def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
     """Parse and prepare the song the way `convert.py --merged` does before it builds the merge
     plan (tempo re-timing, loop extension, baked levels) and collect every channel's notes."""
-    song = SmpsParser().parse_file(cfg.input_file)
+    song = cfg.read_song()
     synth, psg = load_settings(find_settings(config_path))
     conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
     resolve_synth_roots(song, cfg)

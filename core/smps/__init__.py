@@ -10,6 +10,7 @@
 
 from .driver_tables import (
     CARRIER_OFFSETS_BY_ALG,
+    DEFAULT_DRIVER,
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,
     FM_SAMPLE_RATE,
@@ -25,6 +26,7 @@ from .driver_tables import (
     PSG_FREQUENCIES_EXTENDED,
     PSG_SAMPLE_RATE,
     SMPS_OP_TO_REG_OFFSET,
+    SmpsDriver,
     carrier_names,
     chip_pitch,
     fm_note_index,
@@ -48,10 +50,10 @@ from .song import SmpsChannel, SmpsEvent, SmpsNote, SmpsSong, SmpsSongHeader, Sm
 from .song_prep import apply_global_tempo_div, extend_looping_channels
 
 __all__ = [
-    "CARRIER_OFFSETS_BY_ALG", "DEFAULT_FM_PAN_LAW_DB", "ENVELOPE_TERMINATOR", "FM_FREQUENCIES", "FM_SAMPLE_RATE",
+    "CARRIER_OFFSETS_BY_ALG", "DEFAULT_DRIVER", "DEFAULT_FM_PAN_LAW_DB", "ENVELOPE_TERMINATOR", "FM_FREQUENCIES", "FM_SAMPLE_RATE",
     "FM_SLOT_MASK", "FM_TL_SILENT", "HW_FM_CHANNEL", "MD_FM_CLOCK", "MD_PSG_CLOCK", "PAN_VALUES", "PSG_ATT_SILENT", "PSG_CHANNEL", "PSG_ENVELOPES",
     "PSG_ENVELOPES_BY_NAME", "PSG_FREQUENCIES", "PSG_FREQUENCIES_EXTENDED", "PSG_SAMPLE_RATE", "PSG_STEP_DB",
-    "SMPS_OP_TO_REG_OFFSET", "TL_STEP_DB", "SmpsChannel", "SmpsEvent", "SmpsNote", "SmpsParser", "SmpsSong",
+    "SMPS_OP_TO_REG_OFFSET", "TL_STEP_DB", "SmpsChannel", "SmpsDriver", "SmpsEvent", "SmpsNote", "SmpsParser", "SmpsSong",
     "SmpsSongHeader", "SmpsVoice", "apply_global_tempo_div", "carrier_names", "chip_pitch",
     "extend_looping_channels", "fm_level_db", "fm_note_index", "noise_envelope_frames", "pan_is_hard", "pan_side",
     "parse_smps_note", "parse_synth_note", "psg_index_semitone", "psg_level_db", "psg_note_index",

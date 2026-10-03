@@ -13,6 +13,7 @@ Usage::
     python tools/vgm_analyze.py file.vgz --chip psg --channel NOISE
     python tools/vgm_analyze.py file.vgz --chip all --max-rows 0
     python tools/vgm_analyze.py file.vgz --max-rows 500 --clock 7670454
+    python tools/vgm_analyze.py file.vgz --frames --chip all --channel FM1 PSG1   # frame by frame
 
 Output columns (FM):
     time_ms   — milliseconds from track start (VGM 44100 Hz sample clock)
@@ -61,54 +62,49 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import gzip
 import math
 import statistics
-import struct
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.audio import db_to_gain
-from core.smps import CARRIER_OFFSETS_BY_ALG, MD_FM_CLOCK, MD_PSG_CLOCK, fm_level_db, psg_level_db
+from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK, fm_level_db, psg_level_db
+from core.vgm import (
+    FM_CHANNELS,
+    NOISE_CHANNEL,
+    PSG_SILENT,
+    PSG_TONE_CHANNELS,
+    VGM_SAMPLE_RATE,
+    Change,
+    ChangeKind,
+    ChipState,
+    DacFrame,
+    FmFrame,
+    Frame,
+    PsgFrame,
+    VgmError,
+    VgmLog,
+    fm_frequency_hz,
+    frame_log,
+    psg_frequency_hz,
+    read_vgm,
+)
 
 # ---------------------------------------------------------------------------
-# Frequency math
+# Note names
 # ---------------------------------------------------------------------------
-
-# VGM files use 44100 Hz as the sample clock for wait commands.
-_VGM_SAMPLE_RATE = 44100
 
 # The recording's chip clocks, Sonic 1 on an NTSC Mega Drive.  Override with --clock / --psg-clock.
 DEFAULT_FM_CLOCK = MD_FM_CLOCK
 DEFAULT_PSG_CLOCK = MD_PSG_CLOCK
 
 _NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-
-def fnum_to_hz(fnum: int, block: int, clock: int) -> float:
-    """Convert YM2612 fnum/block pair to frequency in Hz.
-
-    Formula: freq = clock x fnum / (144 x 2^(21 - block))
-
-    YM2612: f0 = Fnum x (fM/144) x 2^B / 2^21.  Cross-check with the Sonic 1 driver, whose table
-    macro is MakeFMFrequency(f) = f x 2^21 / FM_Sample_Rate at block 0 (16.35 Hz = C0 -> $0284).
-    A4 = 440 Hz -> fnum=1083, block=4 with clock=7670454.
-
-    (Until 2026-09 this used 2^(20 - block) and reported every FM pitch one octave high; the
-    synthesiser had the mirror-image error, so configs tuned from this tool sounded right.)
-    """
-    return clock * fnum / (144 * (1 << (21 - block)))
-
-
-def _psg_period_to_hz(period: int, clock: int) -> float:
-    """Convert SN76489 10-bit tone period to frequency in Hz.
-
-    Formula: freq = clock / (32 * period)
-    """
-    if period <= 0:
-        return 0.0
-    return clock / (32 * period)
+_NOISE_RATES = ('N/512', 'N/1024', 'N/2048')
+_NOISE_TONE2_RATE = 3
+_ALL_SLOTS = 0xF
 
 
 def _nearest_note(freq: float) -> str:
@@ -152,196 +148,88 @@ def _smps_note(freq: float, chan_type: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# VGM parser
+# Key-on rows
 # ---------------------------------------------------------------------------
 
-# VGM commands (VGM spec 1.71)
-_CMD_PSG       = 0x50
-_CMD_FM        = (0x52, 0x53)   # port 0 (FM1-3), port 1 (FM4-6)
-_CMD_WAIT      = 0x61        # 16-bit sample count follows
-_CMD_END       = 0x66
-_CMD_DATA      = 0x67        # data block: 0x66, type, 32-bit size, data
-_CMD_PCM_SEEK  = 0xE0        # marks the start of a DAC sample (kick/snare/...)
+class _KeyOnRows:
+    """The rows a replay of the log yields: one per note start (see parse_vgm)."""
 
-# Commands that only wait: samples each one waits.  0x8n writes a DAC byte from the PCM bank first.
-_WAITS = {
-    0x62: 735,               # 1 NTSC frame
-    0x63: 882,               # 1 PAL frame
-    **{cmd: (cmd & 0x0F) + 1 for cmd in range(0x70, 0x80)},
-    **{cmd: cmd & 0x0F for cmd in range(0x80, 0x90)},
-}
-
-# DAC stream control commands: parameter bytes
-_DAC_STREAM_LENGTHS = {0x90: 4, 0x91: 4, 0x92: 5, 0x93: 10, 0x94: 1, 0x95: 4}
-
-_PSG_SILENT = 0xF            # 4-bit attenuation
-_NOISE = 3                   # the SN76489's noise channel
-_KEY_REG = 0x28              # YM2612 key-on/off, always via port 0
-_HEADER_CLOCK_FLAGS = 0x3FFF_FFFF
-
-
-def _data_start(data: bytes) -> int:
-    """Offset of the first command: version >= 1.50 gives it relative to 0x34."""
-    version = struct.unpack_from('<I', data, 0x08)[0]
-    if version < 0x150:
-        return 0x40
-    rel = struct.unpack_from('<I', data, 0x34)[0]
-    return (0x34 + rel) if rel else 0x40
-
-
-def _header_clock(data: bytes, offset: int, default: int) -> int:
-    """A chip clock from the header (FM 0x2C, PSG 0x0C), its flag bits stripped; 0 = not given."""
-    clock = struct.unpack_from('<I', data, offset)[0]
-    return clock & _HEADER_CLOCK_FLAGS if clock else default
-
-
-def _psg_data_byte_next(data: bytes, pos: int) -> bool:
-    """The next command is a PSG write of a data byte (not a latch)."""
-    return pos + 1 < len(data) and data[pos] == _CMD_PSG and not data[pos + 1] & 0x80
-
-
-class _ChipLog:
-    """YM2612 + SN76489 register state while a VGM log plays, and the key-on rows it yields.
-
-    `samples` is the VGM sample clock, advanced by the caller.
-    """
-
-    def __init__(self, fm_clock: int, psg_clock: int, channel_filter: set[str] | None,
-                 psg_mod_cents: float) -> None:
-        self._fm_clock = fm_clock
-        self._psg_clock = psg_clock
+    def __init__(self, state: ChipState, channel_filter: set[str] | None, chip: str, psg_mod_cents: float) -> None:
+        self._state = state
         self._filter = channel_filter
+        self._fm_on, self._psg_on, self._dac_on = chip in ('fm', 'all'), chip in ('psg', 'all'), chip in ('dac', 'all')
         self._psg_mod_cents = psg_mod_cents
-        self.samples = 0
         self.rows: list[tuple] = []
         self.fm_amp: dict[str, list[float]] = {}    # chan_name -> linear amplitudes at key-on
         self.psg_amp: dict[str, list[float]] = {}   # "PSG1".."PSG3","NOISE" -> the same
 
-        # FM per [bank][channel]: bank 0 = FM1-3, bank 1 = FM4-6
-        self._fnum_lo = [[0, 0, 0], [0, 0, 0]]
-        self._fnum_hi = [[0, 0, 0], [0, 0, 0]]
-        # Key state, and the frequency the sounding note was keyed on with.  The Sonic 1 driver's
-        # FMNoteOn writes key-on unconditionally; under smpsNoAttack only the key-OFF is skipped, so a
-        # tie (`nA5, $10, smpsNoAttack, $3B`) logs a second key-on that the chip ignores.
-        self._fm_keyed = [[False] * 3, [False] * 3]
-        self._fm_keyed_hz = [[0.0] * 3, [0.0] * 3]
-        # Amplitude: TL per slot and algorithm per channel
-        self._fm_tl: list[list[dict[int, int]]] = [[{0x00: 0, 0x04: 0, 0x08: 0, 0x0C: 0} for _ in range(3)]
-                                                   for _ in range(2)]
-        self._fm_algo = [[0] * 3 for _ in range(2)]
+        # The frequency each sounding FM note was keyed on with.  The Sonic 1 driver's FMNoteOn writes
+        # key-on unconditionally; under smpsNoAttack only the key-OFF is skipped, so a tie
+        # (`nA5, $10, smpsNoAttack, $3B`) logs a second key-on that the chip ignores.
+        self._fm_keyed = [False] * FM_CHANNELS
+        self._fm_keyed_hz = [0.0] * FM_CHANNELS
+        self._psg_prev_period = [0] * PSG_TONE_CHANNELS     # period at the last key-on
+        self._sample = 0
 
-        # PSG
-        self._psg_vol = [_PSG_SILENT] * 4
-        self._psg_freq = [0, 0, 0]          # 10-bit tone period
-        self._psg_prev_freq = [0, 0, 0]     # period at the last key-on
-        self._psg_noise = 0                 # 3-bit noise register
-        self._latch_ch: int | None = None   # last latched channel (0-3)
-        self._latch_type: int | None = None  # 0 = freq, 1 = vol
+    def feed(self, change: Change) -> None:
+        self._sample = change.sample
+        kind = change.kind
+        if kind is ChangeKind.FM_KEY and self._fm_on:
+            self._fm_key(change.channel, change.value)
+        elif kind is ChangeKind.PSG_VOLUME and self._psg_on:
+            # Silent -> audible is a key-on
+            if change.value == PSG_SILENT and self._state.psg_audible(change.channel):
+                self._emit_psg_keyon(change.channel)
+        elif kind is ChangeKind.PSG_TONE and self._psg_on:
+            if self._psg_new_note(change.channel):
+                self._emit_psg_keyon(change.channel)
+        elif kind is ChangeKind.PCM_SEEK and self._dac_on and self._wanted("DAC"):
+            self.rows.append((self._now_ms(), "DAC", change.value, 0, 0.0, f"seek {change.value}", "—"))
 
     def _now_ms(self) -> float:
-        return self.samples * 1000.0 / _VGM_SAMPLE_RATE
+        return self._sample * 1000.0 / VGM_SAMPLE_RATE
 
     def _wanted(self, ch_name: str) -> bool:
         return not self._filter or ch_name in self._filter
 
     # ---- YM2612 ----
 
-    def fm_write(self, bank: int, reg: int, val: int) -> None:
-        """A register write to port `bank`."""
-        if 0x40 <= reg <= 0x4E and (reg & 0x03) != 0x03:
-            # TL: bits[3:2] = slot offset (0x00/0x04/0x08/0x0C), bits[1:0] = channel
-            self._fm_tl[bank][reg & 0x03][reg & 0x0C] = val & 0x7F
-        elif 0xB0 <= reg <= 0xB2:
-            self._fm_algo[bank][reg - 0xB0] = val & 0x07         # feedback + algorithm
-        elif 0xA0 <= reg <= 0xA2:
-            self._fnum_lo[bank][reg - 0xA0] = val                # F-number low byte
-        elif 0xA4 <= reg <= 0xA6:
-            self._fnum_hi[bank][reg - 0xA4] = val                # block + F-number high bits
-        elif reg == _KEY_REG and bank == 0:
-            self._fm_key(val)
-
-    def _fnum_block(self, bank: int, ch: int) -> tuple[int, int]:
-        hi = self._fnum_hi[bank][ch]
-        return ((hi & 0x7) << 8) | self._fnum_lo[bank][ch], (hi >> 3) & 0x7
-
-    def _fm_key(self, val: int) -> None:
+    def _fm_key(self, ch: int, slots: int) -> None:
         """Key-on/off: a row where a key-on starts a note."""
-        ch_raw = val & 0x07
-        if ch_raw == 3:
-            return   # unused slot
-        bank, ch = (1, ch_raw - 4) if ch_raw >= 4 else (0, ch_raw)
-        if not (val >> 4) & 0x0F:
-            self._fm_keyed[bank][ch] = False
+        if not slots:
+            self._fm_keyed[ch] = False
             return
 
         # A key-on while already keyed on re-attacks nothing.  It is still a note when the pitch moved
         # to another note (a legato slide); within psg_mod_cents of where the note was keyed on it is a
         # tie, or a tie with a new smpsDetune (Scrap Brain FM4 scoops every phrase start up by 36 cents).
-        hz = fnum_to_hz(*self._fnum_block(bank, ch), self._fm_clock)
-        was = self._fm_keyed_hz[bank][ch]
-        if (self._fm_keyed[bank][ch] and hz > 0 and was > 0
+        hz = self._state.fm_hz(ch)
+        was = self._fm_keyed_hz[ch]
+        if (self._fm_keyed[ch] and hz > 0 and was > 0
                 and abs(1200.0 * math.log2(hz / was)) <= max(self._psg_mod_cents, 1e-9)):
             return
-        self._fm_keyed[bank][ch], self._fm_keyed_hz[bank][ch] = True, hz
-        self._emit_fm_keyon(bank, ch)
+        self._fm_keyed[ch], self._fm_keyed_hz[ch] = True, hz
+        self._emit_fm_keyon(ch)
 
-    def _emit_fm_keyon(self, bank: int, ch: int) -> None:
-        fnum, block = self._fnum_block(bank, ch)
+    def _emit_fm_keyon(self, ch: int) -> None:
+        fnum, block = self._state.fm_fnum_block(ch)
         if fnum == 0:
             return
-        ch_name = f"FM{bank * 3 + ch + 1}"
-        freq = fnum_to_hz(fnum, block, self._fm_clock)
+        ch_name = f"FM{ch + 1}"
+        freq = self._state.fm_hz(ch)
         if self._wanted(ch_name):
             self.rows.append((self._now_ms(), ch_name, fnum, block, freq, _nearest_note(freq), _smps_note(freq, "fm")))
 
         # Amplitude, whatever the filter: the carriers' linear levels summed
-        tl = self._fm_tl[bank][ch]
-        linear = sum(db_to_gain(fm_level_db(tl[s])) for s in sorted(CARRIER_OFFSETS_BY_ALG[self._fm_algo[bank][ch]]))
+        linear = sum(db_to_gain(fm_level_db(tl)) for tl in self._state.fm_carrier_tls(ch))
         self.fm_amp.setdefault(ch_name, []).append(linear)
 
     # ---- SN76489 ----
 
-    def psg_write(self, b: int, data_byte_next: bool) -> None:
-        """One byte written; `data_byte_next`: the next command writes a data byte."""
-        if b & 0x80:
-            self._psg_latch(b, data_byte_next)
-            return
-        ch = self._latch_ch
-        if ch is None or self._latch_type != 0 or ch >= _NOISE:
-            return
-
-        # Data byte: high 6 bits of the tone period.  An audible channel's period moving is a note.
-        self._psg_freq[ch] = (b & 0x3F) << 4 | (self._psg_freq[ch] & 0xF)
-        if self._psg_new_note(ch):
-            self._emit_psg_keyon(ch)
-
-    def _psg_latch(self, b: int, data_byte_next: bool) -> None:
-        """Latch byte: channel, type and the low nibble."""
-        ch, typ, nib = (b >> 5) & 3, (b >> 4) & 1, b & 0xF
-        self._latch_ch, self._latch_type = ch, typ
-
-        # Volume: silent -> audible is a key-on
-        if typ == 1:
-            old = self._psg_vol[ch]
-            self._psg_vol[ch] = nib
-            if old == _PSG_SILENT and nib < _PSG_SILENT:
-                self._emit_psg_keyon(ch)
-            return
-
-        if ch == _NOISE:
-            self._psg_noise = nib & 0x7
-            return
-
-        # Tone period, low nibble.  The driver always follows the latch with the high-bits byte;
-        # judging the half-written period would report a note that never sounds, so wait for it.
-        self._psg_freq[ch] = (self._psg_freq[ch] & 0x3F0) | nib
-        if not data_byte_next and self._psg_new_note(ch):
-            self._emit_psg_keyon(ch)
-
     def _psg_new_note(self, ch: int) -> bool:
         """Audible, and the period has left the current note (see psg_mod_cents)."""
-        new, old = self._psg_freq[ch], self._psg_prev_freq[ch]
-        if self._psg_vol[ch] >= _PSG_SILENT or new == old:
+        new, old = self._state.psg_period(ch), self._psg_prev_period[ch]
+        if not self._state.psg_audible(ch) or new == old:
             return False
         if new <= 0 or old <= 0 or self._psg_mod_cents <= 0:
             return True
@@ -350,51 +238,45 @@ class _ChipLog:
     def _emit_psg_keyon(self, ch: int) -> None:
         """A key-on: the volume going audible, or the period moving while audible (portamento /
         arpeggio without intervening silence)."""
-        if ch == _NOISE:
+        if ch == NOISE_CHANNEL:
             self._emit_noise_keyon()
             return
         ch_name = f"PSG{ch + 1}"
-        period = self._psg_freq[ch]
-        freq = _psg_period_to_hz(period, self._psg_clock)
-        self._psg_prev_freq[ch] = period   # so the same period does not emit twice
+        period = self._state.psg_period(ch)
+        freq = self._state.psg_hz(ch)
+        self._psg_prev_period[ch] = period   # so the same period does not emit twice
         if self._wanted(ch_name):
             self.rows.append((self._now_ms(), ch_name, period, 0, freq, _nearest_note(freq), _smps_note(freq, "psg")))
-        self.psg_amp.setdefault(ch_name, []).append(db_to_gain(psg_level_db(self._psg_vol[ch])))
+        self.psg_amp.setdefault(ch_name, []).append(db_to_gain(psg_level_db(self._state.psg_attenuation(ch))))
 
     def _emit_noise_keyon(self) -> None:
-        shift_hz, desc = self._noise_shift()
         if self._wanted("NOISE"):
-            self.rows.append((self._now_ms(), "NOISE", self._psg_noise, 0, shift_hz, desc, "—"))
-        self.psg_amp.setdefault("NOISE", []).append(db_to_gain(psg_level_db(self._psg_vol[_NOISE])))
+            self.rows.append((self._now_ms(), "NOISE", self._state.noise, 0, self._state.noise_shift_hz(),
+                              self._noise_desc(), "—"))
+        self.psg_amp.setdefault("NOISE", []).append(db_to_gain(psg_level_db(self._state.psg_attenuation(NOISE_CHANNEL))))
 
-    def _noise_shift(self) -> tuple[float, str]:
-        """(LFSR shift rate Hz, description) of the noise register: 'white/N/512', 'white/tone2 N=0'."""
-        noise_type = "white" if (self._psg_noise >> 2) & 1 else "periodic"
-        rate = self._psg_noise & 0x3
-        if rate != 3:
-            return self._psg_clock / float(512 << rate), f"{noise_type}/{('N/512', 'N/1024', 'N/2048')[rate]}"
+    def _noise_desc(self) -> str:
+        """The noise register as words: 'white/N/512', 'white/tone2 N=0'.
 
-        # Clocked by tone ch2.  The Sonic 1 driver writes PSG3's own note divider there ($C0); nMaxPSG
-        # maps to N=0, which the Sega VDP PSG treats as N=1 (maximum shift rate, near-white hiss).
-        n2 = self._psg_freq[2]
-        return self._psg_clock / (32.0 * (n2 if n2 > 0 else 1)), f"{noise_type}/tone2 N={n2}"
-
-    # ---- DAC ----
-
-    def dac_seek(self, offset: int) -> None:
-        if self._wanted("DAC"):
-            self.rows.append((self._now_ms(), "DAC", offset, 0, 0.0, f"seek {offset}", "—"))
+        At rate 3 the LFSR is clocked by tone ch2.  The Sonic 1 driver writes PSG3's own note divider
+        there ($C0); nMaxPSG maps to N=0, which the Sega VDP PSG treats as N=1 (maximum shift rate,
+        near-white hiss)."""
+        noise_type = "white" if self._state.noise_white else "periodic"
+        rate = self._state.noise_rate
+        if rate != _NOISE_TONE2_RATE:
+            return f"{noise_type}/{_NOISE_RATES[rate]}"
+        return f"{noise_type}/tone2 N={self._state.psg_period(2)}"
 
 
 def parse_vgm(
-    data: bytes,
+    log: VgmLog,
     fm_clock: int,
     psg_clock: int,
     channel_filter: set[str] | None,
     chip: str,
     psg_mod_cents: float = 70.0,
 ) -> tuple[list[tuple], dict[str, list[float]], dict[str, list[float]]]:
-    """Parse VGM binary data and return a list of key-on event rows.
+    """The key-on rows of a VGM log (`fm_clock` / `psg_clock` where its header gives none).
 
     An FM row is a key-on that starts a note: the driver also writes key-on for a tie (it only
     skips the key-OFF under smpsNoAttack), and that is not a row unless the pitch moved by more
@@ -412,65 +294,11 @@ def parse_vgm(
 
     Returns (rows, fm_amp_samples, psg_amp_samples).
     """
-    fm_on, psg_on, dac_on = chip in ('fm', 'all'), chip in ('psg', 'all'), chip in ('dac', 'all')
-    if fm_on:
-        fm_clock = _header_clock(data, 0x2C, fm_clock)
-    if psg_on:
-        psg_clock = _header_clock(data, 0x0C, psg_clock)
-    log = _ChipLog(fm_clock, psg_clock, channel_filter, psg_mod_cents)
-
-    pos, end = _data_start(data), len(data)
-    while pos < end:
-        cmd = data[pos]
-        pos += 1
-
-        # Chip writes; the chips not analysed are skipped
-        if cmd in _CMD_FM:
-            if not fm_on:
-                pos += 2
-                continue
-            if pos + 1 >= end:
-                break
-            log.fm_write(cmd - _CMD_FM[0], data[pos], data[pos + 1])
-            pos += 2
-        elif cmd == _CMD_PSG:
-            if not psg_on:
-                pos += 1
-                continue
-            if pos >= end:
-                break
-            pos += 1
-            log.psg_write(data[pos - 1], _psg_data_byte_next(data, pos))
-
-        # Time
-        elif cmd in _WAITS:
-            log.samples += _WAITS[cmd]
-        elif cmd == _CMD_WAIT:
-            if pos + 1 >= end:
-                break
-            log.samples += struct.unpack_from('<H', data, pos)[0]
-            pos += 2
-        elif cmd == _CMD_END:
-            break
-
-        # Data blocks and the DAC stream
-        elif cmd == _CMD_DATA:
-            if pos + 5 >= end:
-                break
-            pos += 2   # compat byte (always 0x66) and type byte
-            pos += 4 + struct.unpack_from('<I', data, pos)[0]
-        elif cmd == _CMD_PCM_SEEK:
-            if pos + 4 > end:
-                break
-            if dac_on:
-                log.dac_seek(struct.unpack_from('<I', data, pos)[0])
-            pos += 4
-        elif cmd in _DAC_STREAM_LENGTHS:
-            pos += _DAC_STREAM_LENGTHS[cmd]
-
-        # Unknown commands: skip 1 byte and continue (best-effort)
-
-    return log.rows, log.fm_amp, log.psg_amp
+    state = ChipState.for_log(log, fm_clock, psg_clock)
+    rows = _KeyOnRows(state, channel_filter, chip, psg_mod_cents)
+    for change in state.replay(log):
+        rows.feed(change)
+    return rows.rows, rows.fm_amp, rows.psg_amp
 
 
 # ---------------------------------------------------------------------------
@@ -516,6 +344,78 @@ def print_volume_suggestions(
 
 
 # ---------------------------------------------------------------------------
+# Frame dump
+# ---------------------------------------------------------------------------
+
+def _key_text(keys: tuple[int, ...]) -> str:
+    """Key writes as signs, '+' on / '-' off, with the slot mask where not all four: '-+', '+(3)'."""
+    return "".join("-" if not k else "+" if k == _ALL_SLOTS else f"+({k:X})" for k in keys)
+
+
+def _fm_line(f: FmFrame, clock: int) -> str:
+    freq = fm_frequency_hz(f.fnum, f.block, clock)
+    text = f"{f.fnum:>4}/{f.block}  {_nearest_note(freq):<4}"
+    if f.keys:
+        text += f"  key {_key_text(f.keys):<3}"
+    tls = ",".join(f"{tl:02X}" for tl in f.carrier_tls)
+    return text + f"  tl {tls}  alg {f.feedback_algorithm & 7}  pan {f.pan:02X}"
+
+
+def _psg_line(p: PsgFrame, clock: int) -> str:
+    if p.noise is not None:
+        text = f"noise {p.noise:X}"
+    else:
+        text = f"N={p.period:<4}  {_nearest_note(psg_frequency_hz(p.period, clock)):<4}"
+    if p.attenuations:
+        text += f"  att {','.join(f'{a:X}' for a in p.attenuations)}"
+    return text
+
+
+def _dac_line(d: DacFrame) -> str:
+    gaps = " ".join(f"{gap}x{n}" for gap, n in d.gaps)
+    return f"seek {','.join(str(s) for s in d.seeks)}  {d.writes} bytes  gaps {gaps}"
+
+
+def _frame_lines(frame: Frame, chip: str, state: ChipState) -> Iterator[tuple[str, str]]:
+    """(channel, text) for each channel written to in `frame` that `chip` covers."""
+    if chip in ('fm', 'all'):
+        for ch, f in enumerate(frame.fm):
+            if f.keys or f.frequency_writes:
+                yield f"FM{ch + 1}", _fm_line(f, state.fm_clock)
+    if chip in ('psg', 'all'):
+        for ch, p in enumerate(frame.psg):
+            if p.attenuations or p.period_writes:
+                yield ("NOISE" if ch == NOISE_CHANNEL else f"PSG{ch + 1}"), _psg_line(p, state.psg_clock)
+    if chip in ('dac', 'all') and frame.dac.seeks:
+        yield "DAC", _dac_line(frame.dac)
+
+
+def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None, max_rows: int) -> None:
+    """Each frame's writes, one line per channel written to: what the lift reads (core.vgm.frames)."""
+    fl = frame_log(log, state)
+    loop = f", loops to frame {fl.loop_frame}" if fl.loop_frame is not None else ""
+    print(f"Frames : {len(fl.frames)} of {fl.frame_samples} samples, bursts at +{fl.phase},"
+          f" frame 0 opens at sample {fl.origin}{loop}")
+    print()
+    print(f"{'frame':>6}  {'time_ms':>9}  {'chan':<5}  state (FM: fnum/block, keys written, carrier TLs; "
+          "PSG: period, attenuations written)")
+    print("-" * 96)
+
+    shown, total = 0, 0
+    for frame in fl.frames:
+        for name, text in _frame_lines(frame, chip, state):
+            if channel_filter and name not in channel_filter:
+                continue
+            total += 1
+            if max_rows and shown >= max_rows:
+                continue
+            shown += 1
+            print(f"{frame.index:>6}  {fl.seconds(frame.index) * 1000:>9.1f}  {name:<5}  {text}")
+    if total > shown:
+        print(f"  ... {total - shown} more rows (use --max-rows to show more)")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -555,6 +455,10 @@ def main() -> None:
         "--volumes", action="store_true",
         help="Print per-channel amplitude stats and suggested sample_list volumes instead of event table",
     )
+    ap.add_argument(
+        "--frames", action="store_true",
+        help="Print the log frame by frame (every channel written to in each V-int frame) instead of key-ons",
+    )
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -565,19 +469,22 @@ def main() -> None:
         print(f"ERROR: file not found: {path}", file=sys.stderr)
         sys.exit(1)
 
-    raw = path.read_bytes()
-
-    # Detect and decompress VGZ (gzip-compressed VGM)
-    if path.suffix.lower() == ".vgz" or raw[:2] == b'\x1f\x8b':
-        raw = gzip.decompress(raw)
-
-    if raw[:4] != b'Vgm ':
-        print("ERROR: not a valid VGM file (bad magic bytes)", file=sys.stderr)
+    try:
+        log = read_vgm(path)
+    except (VgmError, OSError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
     channel_filter = set(args.channel) if args.channel else None
+    if args.frames:
+        print(f"File   : {path}")
+        if "track" in log.tags:
+            print(f"Track  : {log.tags['track']} ({log.tags.get('game', '?')})")
+        print_frames(log, ChipState.for_log(log, args.clock, args.psg_clock), args.chip, channel_filter, args.max_rows)
+        return
+
     rows, fm_amp, psg_amp = parse_vgm(
-        raw,
+        log,
         fm_clock=args.clock,
         psg_clock=args.psg_clock,
         channel_filter=channel_filter,

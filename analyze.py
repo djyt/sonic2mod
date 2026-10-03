@@ -45,12 +45,12 @@ from core.mod import PERIOD_TABLE, ModFile, ModNote, db_to_mod_volume
 from core.smps import (
     PSG_STEP_DB,
     TL_STEP_DB,
-    SmpsParser,
     carrier_names,
     fm_level_db,
     psg_tone2_divider,
     synth_note_name,
 )
+from core.source import read_song
 from core.ui import branding, cli_console
 
 console = cli_console(highlight=True)
@@ -981,7 +981,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Analyse a Sonic 1 SMPS assembly file and display structured info"
     )
-    parser.add_argument('song', help="Path to the .asm file")
+    parser.add_argument('song', help="Path to the .asm file, or a .vgm / .vgz rip")
     parser.add_argument('--config', '-c', help="Optional YAML config to diff against")
     parser.add_argument('--version', action='version',
                         version=f"sonic2mod {_get_version()}")
@@ -995,9 +995,12 @@ def main():
         console.print(f"[red]Error:[/red] File not found: {args.song}")
         sys.exit(1)
 
-    # Parse
-    smps_parser = SmpsParser()
-    song = smps_parser.parse_file(args.song)
+    # Parse (an asm), or lift (a VGM rip)
+    try:
+        song = read_song(args.song)
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
 
     # Load config if provided
     config = None

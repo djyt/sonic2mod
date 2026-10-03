@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..mod import ModFile
+from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsSong
+from ..source import LiftOptions, is_vgm_path, read_song
 from .entries import (
     TWIN_MODES,
     parse_channel_instrument_map,
@@ -19,7 +21,7 @@ from .loader import read_yaml_file
 
 # A song config's top-level keys
 _KEYS = frozenset({
-    "name", "input_file", "output_file", "target_bpm", "target_speed", "ticks_per_row", "num_mod_channels",
+    "name", "input_file", "driver", "tempo_modifier", "tempo_divider", "output_file", "target_bpm", "target_speed", "ticks_per_row", "num_mod_channels",
     "auto_bpm", "region", "range_space", "samples_dir", "max_patterns", "channels", "dac_samples", "voice_map",
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_output_file",
@@ -27,11 +29,18 @@ _KEYS = frozenset({
     "treble_shelf_db",
 })
 
+_TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
+
 
 @dataclass
 class ConversionConfig:
     name: str = "Untitled"
     input_file: str = ""
+    # The SMPS variant that played the song.  An asm input states its tempo itself; a VGM / VGZ
+    # one is lifted (core/vgm/lift.py), and these override the tempo the lift infers.
+    driver: SmpsDriver = DEFAULT_DRIVER
+    tempo_modifier: int | None = None
+    tempo_divider: int | None = None
     output_file: str = "output.mod"
     target_bpm: int = 150
     target_speed: int = 6
@@ -113,6 +122,14 @@ class ConversionConfig:
         highest = max((c.mod_channel for c in self.channels if c.enabled), default=-1)
         return ModFile.round_up_channels(highest + 1)
 
+    @property
+    def lift_options(self) -> LiftOptions:
+        return LiftOptions(self.driver, self.tempo_modifier, self.tempo_divider)
+
+    def read_song(self) -> SmpsSong:
+        """The song `input_file` holds: assembly parsed, a VGM / VGZ rip lifted."""
+        return read_song(self.input_file, self.lift_options)
+
     def validate_mod_channels(self) -> None:
         """Reject a `num_mod_channels` no format tag exists for, or one the channels overflow."""
         n = self.num_mod_channels
@@ -160,7 +177,25 @@ class ConversionConfig:
         config._read_merge(data)
         config.mod_pattern_breaks = parse_pattern_breaks(data)
         config.validate_mod_channels()
+        config._read_source(data)
         return config
+
+    def _read_source(self, data: dict) -> None:
+        """driver: and the tempo overrides, which only a VGM input can use."""
+        name = str(data.get('driver', DEFAULT_DRIVER))
+        if name not in SmpsDriver:
+            raise ValueError(f"driver: {name!r} is not one of {', '.join(SmpsDriver)}")
+        self.driver = SmpsDriver(name)
+
+        for key in _TEMPO_OVERRIDES:
+            value = data.get(key)
+            if value is None:
+                continue
+            if not is_vgm_path(self.input_file):
+                raise ValueError(f"{key}: applies to a .vgm / .vgz input_file only (the asm states its tempo)")
+            if int(value) < 1:
+                raise ValueError(f"{key}: must be at least 1 (got {value})")
+            setattr(self, key, int(value))
 
     def _read_merge(self, data: dict) -> None:
         """The merged build's settings: the groups, the dropped and pooled channels, the slot

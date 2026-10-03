@@ -140,8 +140,10 @@ lift both use it.
 pan, detune, voice, envelope, noise form, note fill, modulation), config-free; `DriverState`
 (core/plan) adds the MOD routing to it.  `played_song(song)` walks every channel with it after
 `song_prep` and gives each note as the driver plays it (`PlayedNote`: ticks, attack, the frequency
-word written, the voice's registers but the carriers' TL, the carriers' TL, pan, modulation, fill,
-noise byte, DAC sample), consecutive rests merged.  `compare_songs(expected, got, aspects)` matches
+table note and the frequency word written, the voice's registers but the carriers' TL, the
+carriers' TL, pan, modulation, fill, noise byte, DAC sample), consecutive rests merged, a note
+`smpsNoteFill` keys off before the next read a note and a rest, a held duration a tie, a stopped
+track resting to the song's end.  `compare_songs(expected, got, aspects)` matches
 two songs' notes by start tick and reports per `Aspect`: the yardstick a VGM lift is accepted by
 (`tools/vgm_lift.py`), blind to how the asm spells a note.
 

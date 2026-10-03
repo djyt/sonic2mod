@@ -50,6 +50,8 @@ _TL_MASK = 0x7F
 _ALGORITHM_MASK = 0x07
 _FNUM_HI_MASK = 0x07
 _BLOCK_SHIFT = 3
+FNUM_BITS = 11                     # a frequency Change's value: FNUM | block << FNUM_BITS
+_FNUM_MASK = (1 << FNUM_BITS) - 1
 
 # SN76489 bytes
 _PSG_LATCH = 0x80
@@ -69,20 +71,23 @@ _PSG_CLOCK_DIVIDER = 32
 
 
 class ChangeKind(Enum):
-    FM_KEY = "fm_key"               # value: the slots keyed on (0 = key-off)
-    FM_FREQUENCY = "fm_frequency"   # value: FNUM | block << 11, as latched
-    PSG_TONE = "psg_tone"           # value: the period
-    PSG_VOLUME = "psg_volume"       # value: the attenuation BEFORE the write (read the new one from the state)
-    PSG_NOISE = "psg_noise"         # value: the noise register
-    DAC_WRITE = "dac_write"         # value: the byte
-    PCM_SEEK = "pcm_seek"           # value: the PCM bank offset
+    """What a Change's value (and previous) holds."""
+
+    FM_KEY = "fm_key"               # the slots keyed on (0 = key-off)
+    FM_FREQUENCY = "fm_frequency"   # FNUM | block << FNUM_BITS, as latched
+    PSG_TONE = "psg_tone"           # the period (a latch + data byte pair counts once)
+    PSG_VOLUME = "psg_volume"       # the attenuation
+    PSG_NOISE = "psg_noise"         # the noise register
+    DAC_WRITE = "dac_write"         # the byte
+    PCM_SEEK = "pcm_seek"           # the PCM bank offset
 
 
 class Change(NamedTuple):
     sample: int
     kind: ChangeKind
     channel: int                    # FM 0-5 / PSG 0-3 (3 = noise) / DAC_CHANNEL
-    value: int
+    value: int                      # the register's new value
+    previous: int                   # its value before the write
 
 
 def fm_frequency_hz(fnum: int, block: int, clock: int) -> float:
@@ -104,11 +109,14 @@ class ChipState:
 
         self._fm_regs = [bytearray(256), bytearray(256)]          # per port
         self._fm_hi_latch = 0                                     # A4..A6 waits here for A0..A2
-        self._fm_freq = [0] * FM_CHANNELS                         # FNUM | block << 11, as latched
+        self._fm_freq = [0] * FM_CHANNELS                         # FNUM | block << FNUM_BITS, as latched
         self._fm_slots = [0] * FM_CHANNELS
+        self._dac_byte = 0
+        self._pcm_offset = 0
 
         self._psg_att = [PSG_SILENT] * (PSG_TONE_CHANNELS + 1)
         self._psg_period = [0] * PSG_TONE_CHANNELS
+        self._period_before_latch = [0] * PSG_TONE_CHANNELS      # while a latch waits for its data byte
         self._noise = 0
         self._latch_channel = 0
         self._latch_volume = False
@@ -135,7 +143,8 @@ class ChipState:
             return self._fm_write(w)
         if w.op is VgmOp.PSG:
             return self._psg_write(w, following)
-        return Change(w.sample, ChangeKind.PCM_SEEK, DAC_CHANNEL, w.value)
+        previous, self._pcm_offset = self._pcm_offset, w.value
+        return Change(w.sample, ChangeKind.PCM_SEEK, DAC_CHANNEL, w.value, previous)
 
     # ---- YM2612 ----
 
@@ -144,7 +153,8 @@ class ChipState:
         if w.port == 0 and w.reg == _REG_KEY:
             return self._fm_key(w)
         if w.port == 0 and w.reg == _REG_DAC:
-            return Change(w.sample, ChangeKind.DAC_WRITE, DAC_CHANNEL, w.value)
+            previous, self._dac_byte = self._dac_byte, w.value
+            return Change(w.sample, ChangeKind.DAC_WRITE, DAC_CHANNEL, w.value, previous)
 
         # Frequency: the high byte is latched, the low byte writes the pair
         if _REG_FNUM_HI <= w.reg < _REG_FNUM_HI + _CHANNELS_PER_PORT:
@@ -156,16 +166,16 @@ class ChipState:
         hi = self._fm_hi_latch
         fnum = (hi & _FNUM_HI_MASK) << 8 | w.value
         block = (hi >> _BLOCK_SHIFT) & _FNUM_HI_MASK
-        self._fm_freq[ch] = fnum | block << 11
-        return Change(w.sample, ChangeKind.FM_FREQUENCY, ch, self._fm_freq[ch])
+        previous, self._fm_freq[ch] = self._fm_freq[ch], fnum | block << FNUM_BITS
+        return Change(w.sample, ChangeKind.FM_FREQUENCY, ch, self._fm_freq[ch], previous)
 
     def _fm_key(self, w: VgmWrite) -> Change | None:
         field = w.value & _KEY_CHANNEL_MASK
         if field == _KEY_UNUSED:
             return None
         ch = field + (_CHANNELS_PER_PORT if w.value & _KEY_PORT1_BIT else 0)
-        self._fm_slots[ch] = w.value >> _KEY_SLOTS_SHIFT
-        return Change(w.sample, ChangeKind.FM_KEY, ch, self._fm_slots[ch])
+        previous, self._fm_slots[ch] = self._fm_slots[ch], w.value >> _KEY_SLOTS_SHIFT
+        return Change(w.sample, ChangeKind.FM_KEY, ch, self._fm_slots[ch], previous)
 
     def _fm_channel_reg(self, ch: int, base: int, slot_offset: int = 0) -> int:
         port, local = divmod(ch, _CHANNELS_PER_PORT)
@@ -173,7 +183,7 @@ class ChipState:
 
     def fm_fnum_block(self, ch: int) -> tuple[int, int]:
         f = self._fm_freq[ch]
-        return f & 0x7FF, f >> 11
+        return f & _FNUM_MASK, f >> FNUM_BITS
 
     def fm_hz(self, ch: int) -> float:
         return fm_frequency_hz(*self.fm_fnum_block(ch), self.fm_clock)
@@ -228,24 +238,27 @@ class ChipState:
         ch = self._latch_channel
 
         if self._latch_volume:
-            old = self._psg_att[ch]
-            self._psg_att[ch] = b & _PSG_LOW_NIBBLE
-            return Change(w.sample, ChangeKind.PSG_VOLUME, ch, old)
+            previous, self._psg_att[ch] = self._psg_att[ch], b & _PSG_LOW_NIBBLE
+            return Change(w.sample, ChangeKind.PSG_VOLUME, ch, self._psg_att[ch], previous)
 
         if ch == NOISE_CHANNEL:
-            self._noise = b & _NOISE_MASK
-            return Change(w.sample, ChangeKind.PSG_NOISE, ch, self._noise)
+            previous, self._noise = self._noise, b & _NOISE_MASK
+            return Change(w.sample, ChangeKind.PSG_NOISE, ch, self._noise, previous)
 
-        # Tone period: a latch writes the low nibble, a data byte the high six bits
-        period = self._psg_period[ch]
+        # Tone period: a latch writes the low nibble, a data byte the high six bits.  A latch
+        # whose data byte follows at once yields nothing; the data byte's change spans both.
+        previous = period = self._psg_period[ch]
         if b & _PSG_LATCH:
             period = (period & ~_PSG_LOW_NIBBLE) | (b & _PSG_LOW_NIBBLE)
         else:
             period = (b & _PSG_HIGH_BITS) << _PSG_HIGH_SHIFT | (period & _PSG_LOW_NIBBLE)
+            previous = self._period_before_latch[ch]
         self._psg_period[ch] = period
+        self._period_before_latch[ch] = period
         if b & _PSG_LATCH and _data_byte_follows(w, following):
+            self._period_before_latch[ch] = previous
             return None
-        return Change(w.sample, ChangeKind.PSG_TONE, ch, period)
+        return Change(w.sample, ChangeKind.PSG_TONE, ch, period, previous)
 
     def psg_period(self, ch: int) -> int:
         return self._psg_period[ch]

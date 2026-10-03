@@ -13,6 +13,15 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE))
+
+from vgm_build import FRAME as _FRAME
+from vgm_build import HEADER_BYTES as _HEADER_BYTES
+from vgm_build import fm as _fm
+from vgm_build import fm_freq as _fm_freq
+from vgm_build import psg as _psg
+from vgm_build import vgm as _vgm
+from vgm_build import wait as _wait
 
 from core.vgm import (
     ChangeKind,
@@ -25,35 +34,6 @@ from core.vgm import (
     note_starts,
     pitch_segments,
 )
-
-_HEADER_BYTES = 0x80
-_FRAME = 735
-
-
-def _vgm(commands: bytes, loop_at: int | None = None, rate: int = 60) -> bytes:
-    """A v1.50 VGM: header (MD clocks), then `commands`; `loop_at` = offset into the commands."""
-    head = bytearray(_HEADER_BYTES)
-    head[0:4] = b"Vgm "
-    struct.pack_into("<I", head, 0x08, 0x150)
-    struct.pack_into("<I", head, 0x0C, 3_579_545)
-    struct.pack_into("<I", head, 0x24, rate)
-    struct.pack_into("<I", head, 0x2C, 7_670_453)
-    struct.pack_into("<I", head, 0x34, _HEADER_BYTES - 0x34)
-    if loop_at is not None:
-        struct.pack_into("<I", head, 0x1C, _HEADER_BYTES + loop_at - 0x1C)
-    return bytes(head) + commands + b"\x66"
-
-
-def _fm(port: int, reg: int, value: int) -> bytes:
-    return bytes((0x52 + port, reg, value))
-
-
-def _psg(value: int) -> bytes:
-    return bytes((0x50, value))
-
-
-def _wait(samples: int) -> bytes:
-    return b"\x61" + struct.pack("<H", samples)
 
 
 class Reader(unittest.TestCase):
@@ -165,6 +145,17 @@ class Frames(unittest.TestCase):
         # 3 samples apart before the seek, 2 after; the 400-sample silence between is no gap
         self.assertEqual(dac.gaps, ((2, 2), (3, 2)))
 
+    def test_a_late_seek_belongs_to_the_burst_before_it(self):
+        # Two bursts a frame apart; the Z80 starts a sample 600 samples after the first, in the
+        # second's window but before its burst
+        burst = _fm(0, 0x28, 0xF0)
+        seek = b"\xE0" + struct.pack("<I", 0)
+        fl = frame_log(decode_vgm(_vgm(_wait(300) + burst + _wait(600) + seek + _wait(_FRAME - 600) + burst)))
+        first = next(f.index for f in fl.frames if f.fm[0].keys)
+        sample = next(f.dac.seek_samples[0] for f in fl.frames if f.dac.seek_samples)
+        self.assertEqual(fl.frame_of(sample), first + 1)
+        self.assertEqual(fl.burst_frame(sample), first)
+
     def test_the_bank_comes_with_the_frames(self):
         bank = bytes(range(8))
         block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank
@@ -201,11 +192,6 @@ class FrameCache(unittest.TestCase):
     def test_no_directory_reads_the_rip(self):
         rip = self._rip("a.vgm", _A4[0])
         self.assertEqual(load_frames(rip), frame_log(decode_vgm(rip.read_bytes())))
-
-
-def _fm_freq(ch: int, fnum: int, block: int) -> bytes:
-    """FM1-3: the high byte (latched), then the low byte."""
-    return _fm(0, 0xA4 + ch, block << 3 | fnum >> 8) + _fm(0, 0xA0 + ch, fnum & 0xFF)
 
 
 _A4 = (1083, 4)          # 440 Hz

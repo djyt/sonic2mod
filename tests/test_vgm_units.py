@@ -102,10 +102,19 @@ class Chips(unittest.TestCase):
         _, apart = self._replay(_psg(0xA5) + b"\x70" + _psg(0x1A))
         self.assertEqual([c.value for c in apart], [0x005, 0x1A5])
 
+    def test_a_change_carries_the_value_it_replaced(self):
+        # PSG1 at 0x105, then 0x1A5 by latch + data byte: the pair's change replaces 0x105, not
+        # the half-written 0x105 -> 0x105 the latch alone leaves
+        _, changes = self._replay(_psg(0x85) + _psg(0x10) + b"\x70" + _psg(0x85) + _psg(0x1A) + _psg(0x93) + _psg(0x95))
+        tones = [(c.value, c.previous) for c in changes if c.kind is ChangeKind.PSG_TONE]
+        self.assertEqual(tones, [(0x105, 0x000), (0x1A5, 0x105)])
+        volumes = [(c.value, c.previous) for c in changes if c.kind is ChangeKind.PSG_VOLUME]
+        self.assertEqual(volumes, [(3, 0xF), (5, 3)])
+
     def test_volume_and_noise_writes(self):
         state, changes = self._replay(_psg(0xF3) + _psg(0x07) + _psg(0xE7))
         self.assertEqual([(c.kind, c.value) for c in changes],
-                         [(ChangeKind.PSG_VOLUME, 0xF), (ChangeKind.PSG_VOLUME, 0x3), (ChangeKind.PSG_NOISE, 7)])
+                         [(ChangeKind.PSG_VOLUME, 0x3), (ChangeKind.PSG_VOLUME, 0x7), (ChangeKind.PSG_NOISE, 7)])
         self.assertEqual(state.psg_attenuation(3), 7)
         self.assertTrue(state.noise_white)
         self.assertEqual(state.noise_rate, 3)

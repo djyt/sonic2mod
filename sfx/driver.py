@@ -16,10 +16,10 @@ from __future__ import annotations
 from core.smps import (
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,
-    PAN_VALUES,
     PSG_ENVELOPES,
     PSG_FREQUENCIES,
     PSG_FREQUENCIES_EXTENDED,
+    CoordFlag,
     fm_note_index,
     psg_note_index,
 )
@@ -307,27 +307,27 @@ class SfxDriver:
     # ------------------------------------------------------------------
 
     def _coord_flag(self, t: SfxTrack, effect) -> None:
-        kind = effect.effect_type
+        kind = effect.flag
         params = effect.params
 
-        if kind == 'smpsSetvoice':
+        if kind == CoordFlag.SET_VOICE:
             t.voice_index = params[0]
             voice = self._voice(t, params[0])
             if voice is not None:
                 fm_send_voice(self.opn2, t, voice)
 
-        elif kind == 'smpsAlterVol':
+        elif kind == CoordFlag.ALTER_VOL:
             t.volume = (t.volume + params[0]) & 0xFF
             if t.is_fm:
                 fm_send_tl(self.opn2, t)
 
-        elif kind == 'smpsAlterNote':
+        elif kind == CoordFlag.DETUNE:
             t.detune = params[0]                    # cfDetune :2180 — SET, not added
 
-        elif kind == 'smpsChangeTransposition':
+        elif kind == CoordFlag.CHANGE_TRANSPOSITION:
             t.transpose = (t.transpose + params[0]) & 0xFF
 
-        elif kind == 'smpsModSet':
+        elif kind == CoordFlag.MOD_SET:
             wait, speed, delta, steps = params
             t.mod_active = True
             t.mod_data = (wait, speed, delta, steps)
@@ -337,46 +337,35 @@ class SfxDriver:
             t.mod_steps = steps >> 1
             t.mod_val = 0
 
-        elif kind == 'smpsModOn':
+        elif kind == CoordFlag.MOD_ON:
             t.mod_active = True
 
-        elif kind == 'smpsModOff':
+        elif kind == CoordFlag.MOD_OFF:
             t.mod_active = False
 
-        elif kind == 'smpsNoteFill':
+        elif kind == CoordFlag.NOTE_FILL:
             t.note_timeout_master = params[0]
             t.note_timeout = params[0]
 
-        elif kind == 'smpsPan':
+        elif kind == CoordFlag.PAN:
             self._set_pan(t, params[0])
 
-        elif kind == 'smpsPSGform':
+        elif kind == CoordFlag.PSG_FORM:
             t.voice_control = 0xE0
             psg_set_noise(self.sn, params[0])
 
-        elif kind == 'smpsPSGvoice':
+        elif kind == CoordFlag.PSG_VOICE:
             t.voice_index = self._psg_voice_index(t, params[0])
 
-        elif kind in ('smpsNop', 'smpsChanTempoDiv'):
+        elif kind in (CoordFlag.NOP, CoordFlag.CHAN_TEMPO_DIV):
             pass
 
         else:
             self._warn(t, f"unhandled coord flag {kind}")
 
-    def _set_pan(self, t: SfxTrack, raw: str) -> None:
-        """smpsPan operand is the raw macro text, e.g. 'panRight, $00'."""
-        parts = [p.strip() for p in raw.split(',')]
-        name = parts[0]
-        if name not in PAN_VALUES:
-            self._warn(t, f"unknown pan value {name!r}")
-            return
-        ams_fms = 0
-        if len(parts) > 1 and parts[1].startswith('$'):
-            try:
-                ams_fms = int(parts[1][1:], 16)
-            except ValueError:
-                ams_fms = 0
-        t.ams_fms_pan = (PAN_VALUES[name] | (ams_fms & 0x3F)) & 0xFF
+    def _set_pan(self, t: SfxTrack, b4: int) -> None:
+        """The PAN flag's B4 byte (direction | AMS / FMS), as the parser read it."""
+        t.ams_fms_pan = b4
         if t.is_fm:
             fm_set_pan(self.opn2, t)
 

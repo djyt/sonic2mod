@@ -1,6 +1,7 @@
 """The parsed song (SmpsParser's intermediate representation) and what its effects say."""
 
 from dataclasses import dataclass, field
+from enum import IntEnum
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -21,9 +22,31 @@ class SmpsNote:
     is_retrigger: bool = False
 
 
+class CoordFlag(IntEnum):
+    """The driver's coordination flags a song's events carry, by their byte (s1.sounddriver.asm
+    coordflagLookup; docs/smps_driver.md).  A parse and a VGM lift both produce these: the
+    SMPS2ASM macro names are core/smps/names.py's, for reading and printing assembly."""
+
+    PAN = 0xE0                    # params: [the YM2612 B4 byte: L R AMS FMS]
+    DETUNE = 0xE1                 # [FNUM offset, signed]
+    NOP = 0xE2                    # [byte]
+    CHAN_TEMPO_DIV = 0xE5         # [divider]
+    ALTER_VOL = 0xE6              # [delta, signed]; $EC on a PSG channel
+    NOTE_FILL = 0xE8              # [frames]
+    CHANGE_TRANSPOSITION = 0xE9   # [semitones, signed]
+    SET_TEMPO_MOD = 0xEA          # [modifier]
+    SET_TEMPO_DIV = 0xEB          # [divider]
+    SET_VOICE = 0xEF              # [voice index]
+    MOD_SET = 0xF0                # [wait, speed, delta, steps]
+    MOD_ON = 0xF1
+    PSG_FORM = 0xF3               # [noise register byte]
+    MOD_OFF = 0xF4
+    PSG_VOICE = 0xF5              # [envelope name, fTone_01 ... fTone_09: the driver's table]
+
+
 @dataclass
 class SmpsEffect:
-    effect_type: str      # e.g. "smpsSetvoice", "smpsModSet", etc.
+    flag: CoordFlag
     params: list = field(default_factory=list)
 
 
@@ -128,13 +151,18 @@ class SmpsSong:
 # --- effect parameters ---
 
 
+_PAN_SPEAKERS = 0xC0              # B4 bits 7 (left) and 6 (right)
+_PAN_LEFT = 0x80
+_PAN_RIGHT = 0x40
+
+
 def pan_side(params: list) -> str:
-    """The speaker an smpsPan sends the channel to: "L", "R", or "C" for both (params arrive
-    as one 'panLeft, $00' string)."""
-    direction = str(params[0]).split(',')[0].strip().lower() if params else ''
-    return {'panleft': "L", 'panright': "R"}.get(direction, "C")
+    """The speaker a PAN flag's B4 byte sends the channel to: "L", "R", or "C" for both (or
+    neither, which the driver never writes for music)."""
+    speakers = params[0] & _PAN_SPEAKERS if params else _PAN_SPEAKERS
+    return {_PAN_LEFT: "L", _PAN_RIGHT: "R"}.get(speakers, "C")
 
 
 def pan_is_hard(params: list) -> bool:
-    """True for smpsPan panLeft / panRight."""
+    """True for a channel panned hard left or right."""
     return pan_side(params) != "C"

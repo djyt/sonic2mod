@@ -50,7 +50,7 @@ from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, fi
 from core.mod import max_sustain_secs
 from core.plan import FmInstrument, fm_catalogue
 from core.render_cache import RenderCache, code_salt
-from core.smps import SmpsSong, SmpsVoice
+from core.smps import SmpsSong, SmpsVoice, VoiceField
 from ym2612.build import get_lib_path
 from ym2612.renderer import fnum_block_to_freq, note_to_fnum_block, note_to_freq, render_layers
 from ym2612.wrapper import OPN2
@@ -359,16 +359,16 @@ def _smoke_test() -> None:
         algorithm=0x00,
         feedback=0x04,
         operators={
-            'smpsVcDetune':      (0x03, 0x03, 0x03, 0x03),
-            'smpsVcCoarseFreq':  (0x01, 0x00, 0x05, 0x06),
-            'smpsVcRateScale':   (0x02, 0x02, 0x03, 0x03),
-            'smpsVcAttackRate':  (0x1F, 0x1F, 0x1F, 0x1F),
-            'smpsVcAmpMod':      (0x00, 0x00, 0x00, 0x00),
-            'smpsVcDecayRate1':  (0x06, 0x09, 0x06, 0x07),
-            'smpsVcDecayRate2':  (0x08, 0x06, 0x06, 0x07),
-            'smpsVcDecayLevel':  (0x0F, 0x01, 0x01, 0x02),
-            'smpsVcReleaseRate': (0x0F, 0x0F, 0x0F, 0x0F),
-            'smpsVcTotalLevel':  (0x00, 0x13, 0x37, 0x19),
+            VoiceField.DETUNE:      (0x03, 0x03, 0x03, 0x03),
+            VoiceField.MULTIPLE:  (0x01, 0x00, 0x05, 0x06),
+            VoiceField.RATE_SCALE:   (0x02, 0x02, 0x03, 0x03),
+            VoiceField.ATTACK_RATE:  (0x1F, 0x1F, 0x1F, 0x1F),
+            VoiceField.AMP_MOD:      (0x00, 0x00, 0x00, 0x00),
+            VoiceField.DECAY_RATE_1:  (0x06, 0x09, 0x06, 0x07),
+            VoiceField.DECAY_RATE_2:  (0x08, 0x06, 0x06, 0x07),
+            VoiceField.DECAY_LEVEL:  (0x0F, 0x01, 0x01, 0x02),
+            VoiceField.RELEASE_RATE: (0x0F, 0x0F, 0x0F, 0x0F),
+            VoiceField.TOTAL_LEVEL:  (0x00, 0x13, 0x37, 0x19),
         },
     )
 

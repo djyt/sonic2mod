@@ -117,17 +117,17 @@ def _smoke_test() -> None:
         index=0,
         algorithm=0x02,
         feedback=0x07,
-        params={
-            'smpsVcDetune':      '$00, $05, $00, $05',
-            'smpsVcCoarseFreq':  '$02, $01, $08, $01',
-            'smpsVcRateScale':   '$00, $00, $00, $00',
-            'smpsVcAttackRate':  '$10, $1E, $1E, $1E',
-            'smpsVcAmpMod':      '$00, $00, $00, $00',
-            'smpsVcDecayRate1':  '$0F, $1F, $1F, $1F',
-            'smpsVcDecayRate2':  '$02, $00, $00, $00',
-            'smpsVcDecayLevel':  '$01, $00, $00, $00',
-            'smpsVcReleaseRate': '$0F, $0F, $0F, $0F',
-            'smpsVcTotalLevel':  '$01, $22, $24, $18',
+        operators={
+            'smpsVcDetune':      (0x00, 0x05, 0x00, 0x05),
+            'smpsVcCoarseFreq':  (0x02, 0x01, 0x08, 0x01),
+            'smpsVcRateScale':   (0x00, 0x00, 0x00, 0x00),
+            'smpsVcAttackRate':  (0x10, 0x1E, 0x1E, 0x1E),
+            'smpsVcAmpMod':      (0x00, 0x00, 0x00, 0x00),
+            'smpsVcDecayRate1':  (0x0F, 0x1F, 0x1F, 0x1F),
+            'smpsVcDecayRate2':  (0x02, 0x00, 0x00, 0x00),
+            'smpsVcDecayLevel':  (0x01, 0x00, 0x00, 0x00),
+            'smpsVcReleaseRate': (0x0F, 0x0F, 0x0F, 0x0F),
+            'smpsVcTotalLevel':  (0x01, 0x22, 0x24, 0x18),
         },
     )
 

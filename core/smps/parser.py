@@ -772,12 +772,11 @@ class SmpsParser:
                 if m:
                     current_voice.feedback = int(m.group(1), 16)
 
-                # Collect other voice params generically
+                # Every other smpsVc* macro: its hex bytes ('$00, $05, $00, $05')
                 m = re.match(r'(smpsVc\w+)\s+(.+)', line)
                 if m:
-                    param_name = m.group(1)
-                    param_vals = m.group(2).strip()
-                    current_voice.params[param_name] = param_vals
+                    current_voice.operators[m.group(1)] = tuple(
+                        int(v.strip().lstrip('$'), 16) for v in m.group(2).split(','))
 
             i += 1
 

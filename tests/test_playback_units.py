@@ -64,6 +64,11 @@ def _rest(duration: int) -> SmpsEvent:
     return SmpsEvent(SmpsNote(0x80, duration, is_rest=True))
 
 
+def _held(duration: int = 8) -> SmpsEvent:
+    """`smpsNoAttack, duration`: the parser's spelling of a held standalone duration."""
+    return SmpsEvent(SmpsNote(0x80, duration, is_rest=True, is_no_attack=True))
+
+
 def _flag(flag: CoordFlag, *params) -> SmpsEvent:
     return SmpsEvent(effect=SmpsEffect(flag, list(params)))
 
@@ -97,6 +102,31 @@ class Played(unittest.TestCase):
             return played_song(song).channels["FM1"][-1].attack
         self.assertTrue(tie_attacks(4))
         self.assertFalse(tie_attacks(20))
+
+    def test_a_held_duration_is_a_tie(self):
+        # FMNoteOn re-keys the last frequency, which a keyed channel ignores; after a rest it rests
+        song = _song(_note(), _flag(CoordFlag.CHANGE_TRANSPOSITION, 12), _held(), _rest(8), _held())
+        notes = played_song(song).channels["FM1"]
+        self.assertEqual([(n.tick, n.duration, n.rest, n.attack) for n in notes],
+                         [(0, 8, False, True), (8, 8, False, False), (16, 16, True, True)])
+        self.assertEqual(notes[1].pitch, notes[0].pitch)
+
+    def test_the_fill_keys_off_where_it_expires(self):
+        # m = 5: ticks 0-3 on frames 0-3, frame 4 a hold, tick 4 on frame 5.  Fill 2 keys the
+        # 8-tick note off on frame 2 (tick 2); fill 4 on the hold, tick 4 - as a lift reads it
+        def played(fill: int) -> list[tuple]:
+            notes = played_song(_song(_flag(CoordFlag.NOTE_FILL, fill), _note(), _note())).channels["FM1"]
+            return [(n.tick, n.duration, n.rest) for n in notes]
+        self.assertEqual(played(2), [(0, 2, False), (2, 6, True), (8, 2, False), (10, 6, True)])
+        self.assertEqual(played(4)[:2], [(0, 4, False), (4, 4, True)])
+        self.assertEqual(played(10), [(0, 8, False), (8, 8, False)])
+
+    def test_a_stopped_channel_rests_to_the_end(self):
+        # smpsStop keys the channel off: silent while the others play on
+        song = _song(_note())
+        song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)]))
+        self.assertEqual([(n.tick, n.duration, n.rest) for n in played_song(song).channels["FM1"]],
+                         [(0, 8, False), (8, 32, True)])
 
     def test_pitch_is_the_word_written_whatever_spells_it(self):
         # nC4 at transposition +2 is nD4; a detune adds to the word
@@ -149,8 +179,13 @@ class Compare(unittest.TestCase):
     def test_only_the_asked_aspects_count(self):
         want = played_song(_song(_note(_C4)))
         got = played_song(_song(_note(_C4 + 1)))
-        self.assertEqual(compare_songs(want, got).counts(), {Aspect.PITCH: 1})
+        self.assertEqual(compare_songs(want, got).counts(), {Aspect.NOTE: 1, Aspect.PITCH: 1})
         self.assertTrue(compare_songs(want, got, frozenset({Aspect.ONSET, Aspect.LENGTH})).ok)
+
+    def test_a_detune_is_pitch_not_note(self):
+        want = played_song(_song(_note()))
+        got = played_song(_song(_flag(CoordFlag.DETUNE, 3), _note()))
+        self.assertEqual(compare_songs(want, got).counts(), {Aspect.PITCH: 1})
 
     def test_a_shifted_note_is_missing_and_extra(self):
         want = played_song(_song(_note(duration=8), _note()))
@@ -180,6 +215,18 @@ class Compare(unittest.TestCase):
         offset = align_songs(want, got)
         self.assertEqual(offset, 8)
         self.assertTrue(compare_songs(want, got, offset=offset).ok)
+
+    def test_what_a_rip_rests_before_its_first_note_is_not_compared(self):
+        # The recording starts in a held note: the lift rests where the song still sounds it
+        want = played_song(_song(_note(duration=12), _note(_C4 + 1)))
+        got = played_song(_song(_rest(4), _note(_C4 + 1)))
+        self.assertTrue(compare_songs(want, got, offset=8).ok)
+
+    def test_a_rest_from_before_the_song_is_compared_from_its_start(self):
+        # The recording starts a tick before the song: its first rest is the song's, a tick longer
+        want = played_song(_song(_rest(8), _note()))
+        got = played_song(_song(_rest(9), _note()))
+        self.assertTrue(compare_songs(want, got, offset=-1).ok)
 
     def test_a_loop_compares_by_its_span(self):
         # The same 8-tick loop, the rip's taken a bar later: fine; a shorter one is not

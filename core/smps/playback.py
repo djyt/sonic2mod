@@ -9,6 +9,10 @@ voice's own TL or the track volume.  A parse and a VGM lift are compared through
 
 Consecutive rests are one rest (the second keys nothing off).  A tie (smpsNoAttack) stays a
 note of its own: the driver writes its frequency and a key-on (to a keyed channel: no attack).
+A held duration (`smpsNoAttack, $34`, which the parser spells as a no-attack rest) is a tie too:
+the last note re-keyed.  A channel that stops (smpsStop) rests to the song's end.
+smpsNoteFill is a key-off: a note it cuts is a note and a rest from the
+tick the key-off frame plays (as a lift reads it), the fill itself one more aspect.
 smpsNoAttack only skips the key-off: after a rest, or once smpsNoteFill has keyed the note off
 (it counts frames, from the last note that attacked), the key-on attacks - GHZ FM4's no-attack
 note at the loop follows a rest.  A DAC rest stops nothing (the sample plays out): it is part of
@@ -29,7 +33,7 @@ from .driver_tables import FM_FREQUENCIES, PSG_FREQUENCIES_EXTENDED, fm_note_ind
 from .names import source_names
 from .song import CoordFlag, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import apply_global_tempo_div, extend_looping_channels
-from .tempo import TempoSegment, frame_of_tick, tempo_schedule
+from .tempo import TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
 from .track import TrackState
 
 
@@ -38,6 +42,7 @@ class Aspect(StrEnum):
 
     ONSET = "onset"             # where the channel attacks: a keyed note or a DAC hit; the tempo, the loop
     LENGTH = "length"           # how long each note lasts: durations, rests, ties and legato notes
+    NOTE = "note"               # the table note: note byte and transposition, no detune
     PITCH = "pitch"             # the frequency word written: note, transposition and detune in one
     VOICE = "voice"             # FM: the operator registers but the carriers' TL; PSG: the envelope
     LEVEL = "level"             # FM: the carriers' TL; PSG: the attenuation
@@ -54,6 +59,7 @@ class PlayedNote:
     duration: int
     rest: bool
     attack: bool = True
+    note: int | None = None                 # the table word of the note, before detune
     pitch: int | None = None                # FM: block << 11 | fnum; PSG: the divider
     voice: object = None                    # FM: (B0, ((register, byte) ...)); PSG: envelope name
     level: object = None                    # FM: carrier TLs; PSG: attenuation
@@ -75,7 +81,8 @@ class PlayedNote:
 
 
 _ASPECT_FIELDS = {
-    Aspect.ONSET: ("attack",), Aspect.LENGTH: ("duration", "rest", "attack"), Aspect.PITCH: ("pitch",),
+    Aspect.ONSET: ("attack",), Aspect.LENGTH: ("duration", "rest", "attack"), Aspect.NOTE: ("note",),
+    Aspect.PITCH: ("pitch",),
     Aspect.VOICE: ("voice",), Aspect.LEVEL: ("level",), Aspect.PAN: ("pan",),
     Aspect.MODULATION: ("modulation",), Aspect.FILL: ("fill",), Aspect.NOISE: ("noise",), Aspect.DAC: ("dac",),
 }
@@ -105,19 +112,22 @@ def played_song(song: SmpsSong) -> PlayedSong:
     changes = sorted({(ev.tick_position, ev.effect.params[0]) for ch in song.channels for ev in ch.events
                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
     schedule = tempo_schedule(_NO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes)
-    channels = {name: _played_channel(ch, voices, schedule)
+    end = song.end_tick()
+    channels = {name: _played_channel(ch, voices, schedule, end)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
-    return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), song.end_tick(), channels)
+    return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels)
 
 
 # SFX run a tick every frame: a modifier no song reaches holds nothing
 _NO_HOLDS = 1 << 30
 
 
-def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...]) -> list[PlayedNote]:
+def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],
+                    end: int) -> list[PlayedNote]:
     st = TrackState.for_header(channel.header)
     played: list[PlayedNote] = []
     base: int | None = None            # the table word of the last note: a retrigger re-keys it
+    resting = True                     # the last read was a rest (the driver cleared Freq)
     keyed = False                      # the channel sounds a note
     fill_off: int | None = None        # the frame smpsNoteFill keys it off on
 
@@ -129,14 +139,14 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         if note.duration <= 0:
             continue
 
-        # A rest after a rest, or a DAC rest after a hit, only lengthens it
-        last = played[-1] if played else None
-        if note.is_rest and last is not None and (last.rest or last.dac) and last.tick + last.duration == ev.tick_position:
-            played[-1] = dataclasses.replace(last, duration=last.duration + note.duration)
-            continue
+        # A held duration re-keys the last note (a rest when there is none: TrackSetRest cleared it)
+        if note.is_rest and note.is_no_attack and not resting and base is not None:
+            note = dataclasses.replace(note, is_rest=False, is_retrigger=True)
+
+        resting = note.is_rest
         if note.is_rest:
             keyed = False
-            played.append(PlayedNote(ev.tick_position, note.duration, rest=True))
+            _rest(played, ev.tick_position, note.duration)
             continue
         if note.is_dac:
             played.append(PlayedNote(ev.tick_position, note.duration, rest=False, dac=note.dac_name))
@@ -152,7 +162,37 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
 
         if not note.is_retrigger or base is None:
             base = _table_word(note, st)
-        played.append(_note(ev.tick_position, note, st, base + st.detune, voices, attack))
+        played += _filled(_note(ev.tick_position, note, st, base, voices, attack), read, fill_off, schedule)
+
+    # smpsStop keys the channel off: it rests while the others play on
+    stop = played[-1].tick + played[-1].duration if played else 0
+    if stop < end:
+        _rest(played, stop, end - stop)
+    return played
+
+
+def _rest(played: list[PlayedNote], tick: int, duration: int) -> None:
+    """A rest appended: after a rest, or a DAC hit (the sample plays out), it only lengthens it."""
+    last = played[-1] if played else None
+    if last is not None and (last.rest or last.dac) and last.tick + last.duration == tick:
+        played[-1] = dataclasses.replace(last, duration=last.duration + duration)
+        return
+    played.append(PlayedNote(tick, duration, rest=True))
+
+
+def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[TempoSegment, ...]) -> list[PlayedNote]:
+    """`note`, or the note and a rest where smpsNoteFill keys it off before the next read.
+
+        frame   0 1 2 3 . 5 6 7 8 . 10      m = 5, fill 2: off on frame 2
+        note    C . . . . . . . . . next    ->  C 2 ticks, rest 6 ticks
+    """
+    if fill_off is None or not read < fill_off < frame_of_tick(schedule, note.tick + note.duration):
+        return [note]
+    sounds = tick_at_frame(schedule, fill_off) - note.tick
+    if sounds >= note.duration:
+        return [note]
+    played = [dataclasses.replace(note, duration=sounds)]
+    _rest(played, note.tick + sounds, note.duration - sounds)
     return played
 
 
@@ -163,13 +203,13 @@ def _table_word(note: SmpsNote, st: TrackState) -> int:
     return FM_FREQUENCIES[fm_note_index(note.note_value, st.transpose)]
 
 
-def _note(tick: int, note: SmpsNote, st: TrackState, pitch: int, voices: dict[int, SmpsVoice],
+def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
           attack: bool) -> PlayedNote:
     if st.is_psg:
         voice, level = st.envelope, st.att
     else:
         voice, level = _fm_voice(voices.get(st.voice) if st.voice is not None else None, st.tl)
-    return PlayedNote(tick, note.duration, rest=False, attack=attack, pitch=pitch,
+    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=base + st.detune,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,
                       noise=st.noise_form, dac="")

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..smps import FM_TL_SILENT, PSG_ATT_SILENT, chip_pitch, fm_level_db, pan_side, psg_level_db, source_map
+from ..smps import FM_TL_SILENT, PSG_ATT_SILENT, CoordFlag, chip_pitch, fm_level_db, pan_side, psg_level_db, source_map
 
 
 def psg_range_entry(entries, key: int):
@@ -92,32 +92,32 @@ class DriverState:
 
     def apply(self, effect) -> None:
         """Advance the state for one coordination flag.  Unknown flags are ignored."""
-        kind = effect.effect_type
+        kind = effect.flag
 
-        if kind == 'smpsSetvoice':
+        if kind == CoordFlag.SET_VOICE:
             self.voice = effect.params[0]
 
-        elif kind == 'smpsAlterVol':
+        elif kind == CoordFlag.ALTER_VOL:
             delta = effect.params[0]
             if self.is_psg:
                 self.att = max(0, min(PSG_ATT_SILENT, self.att + delta))
             else:
                 self.tl = max(0, min(FM_TL_SILENT, self.tl + delta))
 
-        elif kind == 'smpsPan':
+        elif kind == CoordFlag.PAN:
             self.pan = pan_side(effect.params)
             self.hard_panned = self.pan != "C"
 
-        elif kind == 'smpsAlterNote':
+        elif kind == CoordFlag.DETUNE:
             # SMPS_Track.Detune: added to the frequency word the driver writes (about 10 cents
             # per unit on FM).  Not a semitone: it never moves a note or a range lookup; it is
             # what a chorus pair's beating and a composite layer's FNUM offset come from.
             self.detune = effect.params[0]
 
-        elif kind == 'smpsChangeTransposition':
+        elif kind == CoordFlag.CHANGE_TRANSPOSITION:
             self.transpose += effect.params[0]
 
-        elif kind == 'smpsPSGform':
+        elif kind == CoordFlag.PSG_FORM:
             # cfSetPSGNoise: the channel is a noise channel from here on (nothing in Sonic 1
             # music turns it back) and the form byte says white/periodic and the rate.  The
             # envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
@@ -130,7 +130,7 @@ class DriverState:
                 self.psg_label = f"form {form_byte:#04x}"
                 self.instrument = entry.envelopes.get(self.envelope, entry.mod_instrument)
 
-        elif kind == 'smpsPSGvoice':
+        elif kind == CoordFlag.PSG_VOICE:
             # cfSetPSGTone: VoiceIndex changes whatever mode the channel is in.  In noise mode
             # that only changes the envelope the noise plays with: the instrument stays the
             # psg_map entry's, or the variant its `envelopes:` names for this label (Scrap

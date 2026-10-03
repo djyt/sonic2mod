@@ -13,7 +13,7 @@ import bisect
 
 from ..config import ConversionConfig
 from ..mod import shift_for_breaks
-from ..smps import SmpsSong
+from ..smps import CoordFlag, SmpsSong
 
 # A MOD BPM: ProTracker's Fxx reaches 32..255
 _MIN_BPM, _MAX_BPM = 32, 255
@@ -51,7 +51,7 @@ class Timeline:
         segs = [(0, self._song.header.tempo_modifier)]
         for ch in self._song.channels:
             segs.extend((ev.tick_position, ev.effect.params[0]) for ev in ch.events
-                        if ev.is_effect and ev.effect.effect_type == 'smpsSetTempoMod')
+                        if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD)
         segs.sort()
         out: list[tuple[int, int]] = []
         for t, m in segs:

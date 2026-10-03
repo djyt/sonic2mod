@@ -25,7 +25,7 @@ import yaml
 sys.path.insert(0, ".")
 from core.config import ChannelConfig, ConversionConfig
 from core.plan import walk_channel
-from core.smps import SmpsParser, semitone_to_note_name, source_map, synth_note_name
+from core.smps import CoordFlag, SmpsParser, semitone_to_note_name, source_map, synth_note_name
 
 SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/credits_skeleton.yaml"
 OUT = "configs/13_credits.yaml"
@@ -85,7 +85,7 @@ for source, ch in source_map(song).items():
     label = "$00"
     for event, st, res in walk_channel(ch, _bare, ChannelConfig(source=source, mod_channel=0)):
         if event.is_effect:
-            if event.effect.effect_type == "smpsPSGvoice" and not st.in_noise_mode:
+            if event.effect.flag == CoordFlag.PSG_VOICE and not st.in_noise_mode:
                 label = event.effect.params[0]
             continue
         if res is None or st.in_noise_mode:

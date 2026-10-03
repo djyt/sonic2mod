@@ -139,10 +139,13 @@ class ChipState:
 
     # ---- the replay ----
 
-    def replay(self, log: VgmLog) -> Iterator[Change]:
-        """Apply every write of `log`, yielding the changes they make."""
+    def replay(self, log: VgmLog, dac: bool = True) -> Iterator[Change]:
+        """Apply every write of `log`, yielding the changes they make.  `dac` False skips the DAC's
+        byte stream (most of a log's writes) for a reader that never looks at it."""
         writes = log.writes
         for i, w in enumerate(writes):
+            if not dac and w.reg == _REG_DAC and w.port == 0 and w.op is VgmOp.FM:
+                continue
             following = writes[i + 1] if i + 1 < len(writes) else None
             change = self.apply(w, following)
             if change is not None:

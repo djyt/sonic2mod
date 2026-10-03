@@ -7,12 +7,13 @@ import itertools
 import math
 import statistics
 import wave
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
 
 from ..audio import cents, db_to_gain, gain_to_db, power_to_db
-from .render import SR
+from .render import SR, workers
 
 
 def load_wav(path: Path, stereo: bool = False) -> np.ndarray:
@@ -212,6 +213,13 @@ def pitch_track(seg: np.ndarray) -> tuple[np.ndarray, np.ndarray, float]:
     track[:edge] = np.nan
     track[-edge:] = np.nan
     return track, amp, bw
+
+
+def vibrato_estimates(segs: list[np.ndarray]) -> list[dict | None]:
+    """vibrato_estimate of every segment, in order, several at once: numpy's FFTs release the GIL,
+    and a song has hundreds of long notes to measure in two renders each."""
+    with ThreadPoolExecutor(max_workers=workers(len(segs))) as pool:
+        return list(pool.map(vibrato_estimate, segs))
 
 
 def vibrato_estimate(seg: np.ndarray) -> dict | None:

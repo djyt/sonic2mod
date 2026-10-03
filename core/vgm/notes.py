@@ -130,7 +130,7 @@ def note_starts(log: VgmLog, state: ChipState | None = None, mod_cents: float = 
     """Every note start in `log`, in order (`state`: the chips to replay into; the log's clocks by default)."""
     state = state or ChipState.for_log(log)
     tracker = NoteTracker(state, mod_cents)
-    return [n for n in map(tracker.feed, state.replay(log)) if n is not None]
+    return [n for n in map(tracker.feed, state.replay(log, dac=False)) if n is not None]
 
 
 def pitch_segments(log: VgmLog, state: ChipState | None = None) -> tuple[dict[str, list[Segment]], float]:
@@ -142,7 +142,7 @@ def pitch_segments(log: VgmLog, state: ChipState | None = None) -> tuple[dict[st
     out: dict[str, list[Segment]] = defaultdict(list)
     psg_last: list[float | None] = [None] * PSG_TONE_CHANNELS
 
-    for change in state.replay(log):
+    for change in state.replay(log, dac=False):
         t, ch = change.sample / VGM_SAMPLE_RATE, change.channel
         if change.kind in (ChangeKind.FM_KEY, ChangeKind.FM_FREQUENCY):
             hz = state.fm_hz(ch)

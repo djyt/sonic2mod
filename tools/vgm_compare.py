@@ -44,7 +44,6 @@ from __future__ import annotations
 import argparse
 import bisect
 import contextlib
-import gzip
 import itertools
 import json
 import math
@@ -71,7 +70,8 @@ sys.path.insert(0, str(_HERE.parent))
 from core.audio import db_to_gain, gain_to_db, power_to_db
 from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
-from core.mod import ModImage, isolate_channel, read_mod
+from core.mod import ModImage, edx_delay, isolate_channel, read_mod, timed_pass
+from core.vgm import VgmLog, read_vgm
 from tools import vgm_pitch_audit
 from tools.vgm_analyze import DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, parse_vgm
 
@@ -338,14 +338,14 @@ def auto_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float = 3.0
 
 def mod_note_events(mod: ModImage, speed: int) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]]]:
     """({channel: [(time s, instrument, Cxx value or None)]}, {instrument: (name, volume)}) over the
-    pass vgm_pitch_audit.mod_pass walks, so its notes and the pitch timeline share one clock."""
+    pass core.mod.timed_pass times, so its notes and the pitch timeline share one clock."""
     samples = {i: (s.name, s.volume) for i, s in enumerate(mod.samples, 1) if s.length}
     events: dict[int, list[tuple]] = {c: [] for c in range(mod.channels)}
-    rows, _end = vgm_pitch_audit.mod_pass(mod, speed)
-    for now, bpm, cells in rows:
-        for c, (period, ins, eff, par) in enumerate(cells):
+    rows, _end = timed_pass(mod, speed)
+    for r in rows:
+        for c, (period, ins, eff, par) in enumerate(r.cells):
             if period and ins:
-                events[c].append((now + vgm_pitch_audit.edx_delay(eff, par, bpm), ins, par if eff == 0xC else None))
+                events[c].append((r.start + edx_delay(eff, par, r.bpm), ins, par if eff == 0xC else None))
     return events, samples
 
 
@@ -659,9 +659,6 @@ def vibrato_estimate(seg: np.ndarray) -> dict | None:
 # Report
 # ---------------------------------------------------------------------------
 
-_GZIP_MAGIC = b'\x1f\x8b'
-
-
 def _fmt(x: float, w: int = 7, p: int = 1) -> str:
     return f"{x:>{w}.{p}f}" if not math.isnan(x) else f"{'nan':>{w}}"
 
@@ -670,13 +667,11 @@ def _hz(f: int) -> str:
     return f"{f // 1000}k" if f >= 1000 and f % 1000 == 0 else str(f)
 
 
-def _vgm_rows(vgz: Path) -> tuple[bytes, list[tuple]]:
-    """(the VGM bytes of a .vgz or .vgm, parse_vgm's rows for every chip)."""
-    raw = vgz.read_bytes()
-    if raw[:2] == _GZIP_MAGIC:
-        raw = gzip.decompress(raw)
-    rows, _, _ = parse_vgm(raw, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
-    return raw, rows
+def _vgm_rows(vgz: Path) -> tuple[VgmLog, list[tuple]]:
+    """(the log of a .vgz or .vgm, parse_vgm's rows for every chip)."""
+    log = read_vgm(vgz)
+    rows, _, _ = parse_vgm(log, DEFAULT_FM_CLOCK, DEFAULT_PSG_CLOCK, None, 'all')
+    return log, rows
 
 
 def _chip_channel(source: str, noise_used: bool) -> str:
@@ -1178,7 +1173,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
 
     `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
     """
-    raw, rows = _vgm_rows(vgz)
+    log, rows = _vgm_rows(vgz)
     noise_used = any(r[1] == "NOISE" for r in rows)
     chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in _VGM_CHANNELS or c.source == "PSG3"}
     names = [_chip_channel(src, noise_used) for src in chan_map]
@@ -1192,7 +1187,7 @@ def report(cfg: ConversionConfig, vgz: Path, mod_path: Path, workdir: Path,
     rd = _Renders(vgm_st, mod_st)
 
     offset_auto = offset is None
-    chip_tl, chip_end = vgm_pitch_audit.chip_timeline(raw)
+    chip_tl, chip_end = vgm_pitch_audit.chip_timeline(log)
     mod = read_mod(mod_path)
     mod_tl, mod_end = vgm_pitch_audit.mod_timeline(mod, cfg)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
@@ -1302,15 +1297,11 @@ def mod_pattern_spans(mod: ModImage, speed: int = 6) -> list[tuple[int, float, f
     """[(pattern, start s, end s)] in play order on one pass (Bxx / Dxx followed, stopping at
     the song loop), timed as mod_note_events times its notes."""
     spans: list[tuple[int, float, float]] = []
-    bpm, now = 125, 0.0
-    for pattern, row, cells in mod.play_rows():
-        if not spans or spans[-1][0] != pattern or row == 0:
-            spans.append((pattern, now, now))
-        for _period, _ins, eff, par in cells:
-            if eff == 0xF and par:
-                bpm, speed = (par, speed) if par >= 0x20 else (bpm, par)
-        now += speed * 2.5 / bpm
-        spans[-1] = (spans[-1][0], spans[-1][1], now)
+    rows, end = timed_pass(mod, speed)
+    for i, r in enumerate(rows):
+        if not spans or spans[-1][0] != r.pattern or r.row == 0:
+            spans.append((r.pattern, r.start, r.start))
+        spans[-1] = (r.pattern, spans[-1][1], rows[i + 1].start if i + 1 < len(rows) else end)
     return spans
 
 

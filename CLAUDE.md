@@ -40,7 +40,7 @@ sonic2mod/
   sonic2wav.py       # CLI entry point — SFX → WAV rendering
   core/              # Library package; imports nothing from sfx/ or the chip packages.  Layers, each importing
                      # only those below it (a package's __init__ exports what other packages import):
-                     #   ui → convert → merge → plan → config → mod / smps / audio   (diagnostics: any)
+                     #   ui → convert → merge → plan → config → source → vgm → mod / smps / audio   (diagnostics: any)
     audio/           #   Sample arithmetic, no SMPS, no MOD
       gain.py        #     db_to_gain / gain_to_db / power_to_db (the only place a dB is converted by hand)
       pcm.py         #     Mono/int8/raw16 helpers shared by the two synthesis pipelines (dithered quantiser,
@@ -55,6 +55,13 @@ sonic2mod/
       volume.py      #     dB → MOD volume (db_to_mod_volume, clamp_mod_volume, headroom_db)
       limits.py      #     MAX_MOD_SAMPLE_BYTES, sample_limit_bytes, max_sustain_secs
       sample_audit.py #    A written MOD's samples against the notes that play them (tools/mod_audit.py is its CLI)
+      timing.py      #     timed_pass: when each row of one pass plays (Fxx followed), edx_delay — the VGZ audits' MOD clock
+    vgm/             #   VGM / VGZ register logs (the source without a disassembly; reads smps/'s tables)
+      reader.py      #     read_vgm → VgmLog: header, timestamped writes (0x8n = a 0x2A write), PCM bank, loop, GD3
+      chipstate.py   #     ChipState.replay: YM2612 + SN76489 registers write by write → Change (key, freq, PSG, DAC)
+      frames.py      #     frame_log → FrameLog: per V-int frame, every channel's state and writes (what the lift reads)
+      lift.py        #     lift_song(log, LiftOptions) → SmpsSong — Phase 1 of docs/todo/vgz_conversion.md, raises for now
+    source/          #   read_song(path): .asm → SmpsParser, .vgm / .vgz → lift_song; ConversionConfig.read_song() calls it
     smps/            #   The source: songs and the driver that plays them
       song.py        #     The IR: SmpsSong, SmpsChannel, SmpsEvent, SmpsNote, ...; pan_side / pan_is_hard
       parser.py      #     SmpsParser: assembly → SmpsSong
@@ -139,7 +146,7 @@ sonic2mod/
     validate.py       #   Standalone test: python sfx/validate.py
   docs/              # Technical documentation
   tools/             # Debug / analysis utilities
-    vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files (+ rate-3 noise divider, DAC seeks)
+    vgm_analyze.py      #   FM + PSG pitch analyzer for VGM/VGZ files (+ rate-3 noise divider, DAC seeks; --frames: frame by frame)
     vgm_compare.py      #   Rendered per-channel MOD-vs-VGZ audit (VGMPlay + ffmpeg/libopenmpt)
     vgm_pitch_audit.py  #   Symbolic pitch audit: chip frequency registers vs the pitch each MOD note sounds at
     mod_compare.py      #   Channel-by-channel MOD comparator (core.mod.read_mod)
@@ -164,6 +171,7 @@ sonic2mod/
     test_merge_units.py #   The merge primitives with hand-built objects (python -m pytest tests -q)
     test_detune_units.py #  Detune variants: FNUM → cents, routing, shared level, catalogue layers
     test_diagnostics_units.py # Warning / info kinds: every WarningKind has a report line, de-duplication
+    test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps
 ```
 
 ## Setup
@@ -236,6 +244,8 @@ python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip fm --cha
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
+# The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC seeks per V-int
+python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.

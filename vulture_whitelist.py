@@ -8,6 +8,8 @@
 # Fields that record what the source holds, read by nothing yet
 _.note_timeout_master  # SMPS_Track's NoteTimeoutMaster, as the SFX driver's RAM mirror holds it (sfx/track.py)
 mod_byte  # smpsHeaderFM / smpsHeaderPSG's modulation byte, as parsed (core/smps/parser.py)
+total_samples  # a VGM header's sample count (core/vgm/reader.py); the reader counts its own
+loop_samples  # a VGM header's loop length (core/vgm/reader.py); the reader finds the loop's start itself
 
 Cs1  # unused variable (core/mod/notes.py:19)
 D1  # unused variable (core/mod/notes.py:20)
@@ -67,3 +69,6 @@ Dither  # unused class (tests/test_merge_units.py:518)
 Narrowing  # unused class (tests/test_merge_units.py:562)
 ConfigLoading  # unused class (tests/test_merge_units.py:580)
 VibratoDepth  # unused class (tests/test_vibrato_depth.py:27)
+Reader  # unused class (tests/test_vgm_units.py)
+Chips  # unused class (tests/test_vgm_units.py)
+Frames  # unused class (tests/test_vgm_units.py)

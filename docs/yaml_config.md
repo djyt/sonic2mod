@@ -20,8 +20,16 @@ typo, or a key from an older version, would otherwise be ignored.
 name: "Title Screen"
 
 # File paths
-input_file: "path/to/song.asm"
+input_file: "path/to/song.asm"   # or a .vgm / .vgz rip: lifted back into the song (core/vgm/lift.py;
+                                 # docs/todo/vgz_conversion.md — not implemented yet, fails loudly)
 output_file: "output/title_screen.mod"
+
+# Source driver (VGM input)
+driver: sonic1         # the SMPS variant that played the song; sonic1 is the only one (and the default).
+                       # An asm input must be sonic1
+# tempo_modifier: 3    # VGM input only: override the lift's inferred smpsHeaderTempo modifier (frames
+# tempo_divider: 1     # TempoWait holds) / divider, where the log leaves them ambiguous. Each >= 1;
+                       # an asm input states its tempo, and setting either there is an error
 
 # Timing
 target_bpm: 150        # BPM (32–255), written as Fxx effect on row 0

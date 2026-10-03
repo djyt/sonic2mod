@@ -28,6 +28,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/audits/04_syz_audit.md` | **Spring Yard audit vs VGZ** (2026-09) — 374/380, the six left are notes written below the PSG table (the driver reads code bytes: indices 125–127 measured), song-start key-on artefacts, channel-RMS vs per-note disagreement on PSG1 |
 | `docs/audits/03_mz_audit.md` | **Marble Zone audit vs VGZ** (2026-09) — 731/731 notes, every FM/PSG channel within 0.7 dB, pitched rate-3 noise follows the melody by playback speed, snare volume, DAC-rate check by PCM write rate |
 | `docs/audits/01_title_screen_audit.md` | **Accuracy audit vs VGZ** (2026-09) — method, per-channel numbers, config fixes, pending converter work (note fill frames, vibrato formula, EDx delay, volume baking) |
+| `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
 | `reference/mml2mod-master/` | Reference MML-to-MOD converter |
 
@@ -188,7 +189,7 @@ sonic2mod/
     merge_survey.py     #   Which channel pairs fold cleanly onto one MOD channel (merge: groups); prints the YAML
     fold_csv.py         #   A per-pattern fold table (input/02_ghz_fold.csv: fold N / keep / drop per pattern and
                         #   channel) → the config's merge_patterns: section, each fold's primary chosen by measurement
-  sonic_1/           # Sonic 1 source files (driver asm, music, DAC samples)
+  reference/smps_drivers/  # SMPS driver sources (gitignored): sonic_1/ (driver asm, music, SFX, DAC samples), sonic_2/
   tests/             # Regression suite + unit tests
     regression.py       #   Before/after regression runner: every config converted, cells + samples + playback lint
     tool_regression.py  #   The VGM tools' output, byte for byte (vgm_analyze, vgm_pitch_audit; --with-renders vgm_compare)
@@ -204,7 +205,7 @@ sonic2mod/
     test_vgm_units.py   #   core/vgm on hand-built logs: reader, A4 latch, PSG latch + data, frame cut, DAC gaps, frame cache
     test_playback_units.py # played_song / compare_songs on hand-built songs: the lift's yardstick
     test_vgm_lift_units.py # tempo inference on frames made from known schedules; the lift on built logs
-    test_rom_units.py   #   core/rom on hand-built bytes; with the ROM + sonic_1/: every sound vs its asm, asm round trip
+    test_rom_units.py   #   core/rom on hand-built bytes; with the ROM + reference/smps_drivers/sonic_1/: every sound vs its asm, asm round trip
     vgm_build.py        #   VGM bytes for the tests (commands, a song's bursts frame by frame)
 ```
 
@@ -253,14 +254,14 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 # Convert straight from the ROM's bytecode (input/roms/, not in git): config rom_song:, or override
 python convert.py configs/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
 # The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
-python tools/rom_import.py input/roms/sonic_rev01.bin --compare sonic_1
+python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1
 python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
 
 # Render all 49 sound effects to 16-bit stereo WAV (no config needed)
 python sonic2wav.py --all
 python sonic2wav.py --rom input/roms/sonic_rev01.bin   # the same 49 read from the ROM
 python sonic2wav.py --all --dry-run          # parse + render + report, write nothing
-python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sfx/validate.py                       # tables, resampler, 8-bit chain, ticks, panning
 
 # Export signed 8-bit mono .raw + manifest.yaml for Amiga/Paula → output/sfx8/
@@ -269,10 +270,10 @@ python sonic2wav.py --all --8bit --max-rate 16574   # A500 target, ~half the siz
 python sonic2wav.py --all --8bit --flat-rate 8287   # one rate for every sample
 
 # Analyse a song (no config needed)
-python analyze.py "sonic_1/music/Mus8A - Title Screen.asm"
+python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm"
 
 # Analyse with config coverage diff
-python analyze.py "sonic_1/music/Mus8A - Title Screen.asm" --config configs/01_title_screen.yaml
+python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm" --config configs/01_title_screen.yaml
 
 # Verify: open output .mod in Fast Tracker 2 Clone (https://16-bits.org/ft2.php)
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):

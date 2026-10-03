@@ -33,7 +33,7 @@ from core.smps import (
     played_song,
 )
 
-_MUSIC = _HERE.parent / "sonic_1" / "music"
+_MUSIC = _HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "music"
 _C4 = 0xB1                       # nC4
 _ALG_4 = 4                       # carriers OP2 and OP4: TL registers 0x48 and 0x4C
 
@@ -245,7 +245,7 @@ class Compare(unittest.TestCase):
         got.channels["FM2"] = [PlayedNote(0, 8, rest=True)]
         self.assertTrue(compare_songs(want, got).ok)
 
-    @unittest.skipUnless(_MUSIC.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_MUSIC.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_every_song_plays_as_itself(self):
         for path in sorted(_MUSIC.glob("*.asm")):
             played = played_song(SmpsParser().parse_file(str(path)))

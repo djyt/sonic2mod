@@ -6,7 +6,7 @@ the YM2612 and SN76489 emulators, producing 16-bit stereo WAV files.
 
 Usage:
     python sonic2wav.py --all
-    python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+    python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
     python sonic2wav.py --rom input/roms/sonic_rev01.bin
     python sonic2wav.py --all --out output/sfx --rate native
 """
@@ -40,7 +40,7 @@ from ym2612.wrapper import output_rate
 
 console = cli_console()
 
-DEFAULT_SFX_DIR = os.path.join("sonic_1", "sfx")
+DEFAULT_SFX_DIR = os.path.join("reference", "smps_drivers", "sonic_1", "sfx")
 DEFAULT_OUT_DIR = os.path.join("output", "sfx")
 DEFAULT_OUT_DIR_8BIT = os.path.join("output", "sfx8")
 

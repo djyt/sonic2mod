@@ -2,7 +2,7 @@
 
 Usage::
 
-    python sfx/validate.py [--sfx-dir sonic_1/sfx]
+    python sfx/validate.py [--sfx-dir reference/smps_drivers/sonic_1/sfx]
 
 Verifies the driver tables against known-good values from the assembled ROM, the
 resampler against an analytic sine, and — if the SFX sources are present — parse
@@ -181,7 +181,7 @@ def check_amiga() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate the offline SFX driver")
-    parser.add_argument('--sfx-dir', default=str(_HERE.parent / "sonic_1" / "sfx"))
+    parser.add_argument('--sfx-dir', default=str(_HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "sfx"))
     args = parser.parse_args()
 
     check_tables()

@@ -15,7 +15,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from core.smps import SmpsParser, SmpsVoice, VoiceField, voice_field_from_macro
 
-_TITLE = _HERE.parent / "sonic_1" / "music" / "Mus8A - Title Screen.asm"
+_TITLE = _HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "music" / "Mus8A - Title Screen.asm"
 
 
 class Voice(unittest.TestCase):
@@ -31,7 +31,7 @@ class Voice(unittest.TestCase):
         self.assertIs(voice_field_from_macro("smpsVcCoarseFreq"), VoiceField.MULTIPLE)
         self.assertIsNone(voice_field_from_macro("smpsVcFeedback"))       # not an operator field
 
-    @unittest.skipUnless(_TITLE.exists(), "sonic_1/ sources not present")
+    @unittest.skipUnless(_TITLE.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_reads_fields(self):
         # Title Screen voice 0: smpsVcDetune $00, $05, $00, $05 / smpsVcCoarseFreq $02, $01, $08, $01
         v = SmpsParser().parse_file(str(_TITLE)).voices[0]

@@ -17,6 +17,10 @@ Usage:
       Conversions run as parallel subprocesses (default: one per CPU); --jobs 1
       runs them one at a time.  Results are always printed in _SONGS order.
 
+With input/roms/sonic_rev01.bin present (it is not in git), Title Screen, Green Hill Zone, Marble
+Zone and Credits (the last two with the ROM's data fixes) are also converted from its bytecode (convert.py --input --rom-song): `<name>_rom` cases that
+share their asm case's baseline, which they must match byte for byte.
+
 Besides the cell-by-cell diff, every case runs tools/mod_lint.py on its output: a note a
 ProTracker player cannot sound (a tone portamento with no sample playing, a note on an empty
 instrument slot) fails the case unless the baseline has the same issue, so a change that
@@ -194,6 +198,25 @@ def _write_manifest(manifest: dict) -> None:
     MANIFEST_FILE.write_text(_MANIFEST_HEADER + text, encoding="utf-8", newline="\n")
 
 
+# Songs read from the ROM's bytecode (core.rom) must convert to their asm case's MOD byte for byte:
+# they share its baseline.  The ROM is not in git; without it these cases are left out.
+ROM_FILE = "input/roms/sonic_rev01.bin"
+# Marble Zone and Credits carry the ROM's data fixes (core/rom/fixes.py), as their asm does.
+_ROM_SONGS = [("title_screen", "$8A"), ("green_hill_zone", "$81"), ("marble_zone", "$83"), ("credits", "$91")]
+_HAS_ROM = (_HERE.parent / ROM_FILE).exists()
+_BY_NAME = {tc["name"]: tc for tc in TEST_CASES}
+TEST_CASES += [
+    {
+        **_BY_NAME[name],
+        "name": f"{name}_rom",
+        "description": f"{_BY_NAME[name]['description']}, read from the ROM ({sound})",
+        "args": ["--input", ROM_FILE, "--rom-song", sound],
+        "shares_baseline": name,
+    }
+    for name, sound in _ROM_SONGS if _HAS_ROM
+]
+
+
 def _regression_output_path(root: Path, name: str) -> Path:
     """Return a temporary output path used exclusively by the regression tests."""
     return root / "output" / f"_regression_{name}.mod"
@@ -276,7 +299,7 @@ def _select_cases(only: list[str] | None) -> list[dict]:
 
 def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1):
     BASELINES_DIR.mkdir(parents=True, exist_ok=True)
-    cases = _select_cases(only)
+    cases = [tc for tc in _select_cases(only) if "shares_baseline" not in tc]
     print(f"Generating baselines ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
     results = convert_all(cases, root, jobs)
     manifest = _load_manifest()
@@ -309,6 +332,8 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
 def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
     cases = _select_cases(only)
     print(f"Running regression tests ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
+    if not _HAS_ROM:
+        print(f"  note: no {ROM_FILE}: the ROM cases are left out")
     all_passed = True
     results = convert_all(cases, root, jobs)
     manifest = _load_manifest()
@@ -327,7 +352,7 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
         print(f"  convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
 
         # What the baseline was made with: under other settings every diff is noise
-        made = manifest.get(tc["name"])
+        made = manifest.get(tc.get("shares_baseline", tc["name"]))
         if made is None:
             print("  note: no manifest entry (the baseline predates it)")
         elif made.get("settings") != settings:

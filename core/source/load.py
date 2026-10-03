@@ -1,20 +1,31 @@
-"""A song file -> SmpsSong, by its suffix: SMPS assembly is parsed, a VGM / VGZ rip is lifted.
+"""A song file -> SmpsSong, by its suffix: SMPS assembly is parsed, a ROM's bytecode decoded, a
+VGM / VGZ rip lifted.
 
-    .asm          ──SmpsParser───┐
-                                 ├──> SmpsSong ──> everything after the parser
-    .vgm / .vgz   ──lift_song────┘
+    .asm               ──SmpsParser───┐
+    .bin / .md / .gen  ──read_rom_song┼──> SmpsSong ──> everything after the parser
+    .vgm / .vgz        ──lift_song────┘
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from ..rom import RomImage, is_rom_path, read_rom_song
 from ..smps import DEFAULT_DRIVER, SmpsParser, SmpsSong
 from ..vgm import LiftOptions, is_vgm_path, lift_song, load_frames
 
 
-def read_song(path: str | Path, options: LiftOptions | None = None) -> SmpsSong:
-    """The song in `path`; `options` say what a VGM log cannot (assembly states it all itself)."""
+def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: int | None = None) -> SmpsSong:
+    """The song in `path`; `options` say what a VGM log cannot (assembly states it all itself),
+    `rom_song` which sound of a ROM ($81 ...)."""
+    if is_rom_path(path):
+        if rom_song is None:
+            raise ValueError(f"{path}: a ROM holds every song; rom_song: names which ($81 ...)")
+        return read_rom_song(RomImage.load(path), rom_song)
+
+    if rom_song is not None:
+        raise ValueError("rom_song: applies to a ROM input_file only (.bin / .md / .gen)")
+
     if is_vgm_path(path):
         return lift_song(load_frames(path), options)
 

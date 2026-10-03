@@ -102,6 +102,8 @@ def all_cases() -> list[_Case]:
     vgzs = _vgzs()
     cases = [c for vgz in vgzs.values() for c in _analyze_cases(vgz)]
     for tc in TEST_CASES:
+        if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
+            continue
         vgz = vgzs.get(Path(tc["config"]).name[_SONG_NUMBER])
         if vgz is not None:
             cases += _song_cases(tc, vgz)

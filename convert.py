@@ -64,6 +64,10 @@ def main():
     )
     parser.add_argument('config', nargs='?', help="YAML configuration file")
     parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
+    parser.add_argument('--input', metavar='FILE',
+                        help="Convert FILE instead of the config's input_file (a ROM: with --rom-song)")
+    parser.add_argument('--rom-song', metavar='ID',
+                        help="With a ROM input: the sound to convert ($81, 0x81)")
     parser.add_argument('--merged', action='store_true',
                         help="The reduced build: fold the config's `merge:` followers onto their "
                              "primaries (composite instruments) and write merge_output_file")
@@ -88,6 +92,11 @@ def main():
         config = ConversionConfig.from_yaml(args.config)
     except (ValueError, TypeError) as e:
         _error(str(e))
+    if args.input or args.rom_song:
+        try:
+            config.use_source(args.input or config.input_file, args.rom_song)
+        except ValueError as e:
+            _error(str(e))
     if args.merged:
         try:
             prepare_merged_config(config)

@@ -7,6 +7,7 @@ the YM2612 and SN76489 emulators, producing 16-bit stereo WAV files.
 Usage:
     python sonic2wav.py --all
     python sonic2wav.py "sonic_1/sfx/SndB5 - Ring.asm"
+    python sonic2wav.py --rom input/roms/sonic_rev01.bin
     python sonic2wav.py --all --out output/sfx --rate native
 """
 
@@ -23,12 +24,14 @@ from core.ui import LABEL_W as _LABEL_W
 from core.ui import branding, cli_console, error_printer, row_printer
 from sfx.amiga import DEFAULT_MAX_RATE
 from sfx.batch import (
+    asm_sources,
     assign_volumes,
     discover,
     global_scale,
     peak_dbfs,
     prepare_8bit,
     render_all,
+    rom_sources,
     write_8bit,
     write_all,
 )
@@ -106,6 +109,8 @@ def main():
                         help="SFX .asm files to render (default: use --all)")
     parser.add_argument('--all', '-a', action='store_true',
                         help="Render every SFX in --sfx-dir")
+    parser.add_argument('--rom', metavar='FILE',
+                        help="Render every SFX in a Sonic 1 ROM (.bin), with its known data fixes")
     parser.add_argument('--sfx-dir', default=DEFAULT_SFX_DIR,
                         help=f"Directory of SndXX .asm files (default: {DEFAULT_SFX_DIR})")
     parser.add_argument('--out', '-o', default=None,
@@ -158,7 +163,7 @@ def main():
 
     branding(console, "SONIC2WAV", _get_version())
 
-    if not args.files and not args.all:
+    if not args.files and not args.all and not args.rom:
         parser.print_help()
         sys.exit(1)
 
@@ -176,24 +181,31 @@ def main():
         except ValueError:
             _error(f"--rate must be an integer or 'native', got {args.rate!r}")
 
-    if args.all:
+    if args.rom:
+        try:
+            sources = rom_sources(args.rom)
+        except (OSError, ValueError) as e:
+            _error(str(e))
+        source = args.rom
+    elif args.all:
         try:
             paths = discover(args.sfx_dir)
         except FileNotFoundError as e:
             _error(str(e))
         if not paths:
             _error(f"No 'Snd*.asm' files found in {args.sfx_dir}")
+        sources = asm_sources(paths)
         source = args.sfx_dir
     else:
-        paths = args.files
-        missing = [p for p in paths if not os.path.isfile(p)]
+        missing = [p for p in args.files if not os.path.isfile(p)]
         if missing:
             _error("File not found: " + ", ".join(missing))
-        source = f"{len(paths)} file(s)"
+        sources = asm_sources(args.files)
+        source = f"{len(sources)} file(s)"
 
     console.rule("[dim]Sonic 1 sound effects[/dim]")
     console.print()
-    _row("Input", source, f"{len(paths)} SFX")
+    _row("Input", source, f"{len(sources)} SFX")
 
     if args.eightbit:
         rate_label = (f"flat {args.flat_rate:g} Hz" if args.flat_rate
@@ -209,7 +221,7 @@ def main():
     with console.status("[dim]Rendering…[/dim]", spinner="dots"):
         try:
             renders = render_all(
-                paths,
+                sources,
                 fps=args.fps,
                 tail_secs=args.tail,
                 max_secs=args.max_seconds,

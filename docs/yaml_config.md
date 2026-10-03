@@ -20,8 +20,12 @@ typo, or a key from an older version, would otherwise be ignored.
 name: "Title Screen"
 
 # File paths
-input_file: "path/to/song.asm"   # or a .vgm / .vgz rip: lifted back into the song (core/vgm/lift.py;
-                                 # docs/todo/vgz_conversion.md — not implemented yet, fails loudly)
+input_file: "path/to/song.asm"   # or a .vgm / .vgz rip: lifted back into the song (core/vgm/lift/;
+                                 # docs/todo/vgz_conversion.md), or a ROM (.bin / .md / .gen) with rom_song
+# rom_song: "$81"      # ROM input only: the sound ID to read from its bytecode (core/rom/; "$81", "0x81"
+                       # or 129).  The data fixes known for that exact ROM are applied, as the asm
+                       # applies FixMusicAndSFXDataBugs (core/rom/fixes.py: Sonic 1 rev01 only)
+                       # convert.py --input FILE --rom-song ID overrides input_file / rom_song
 output_file: "output/title_screen.mod"
 
 # Source driver (VGM input)

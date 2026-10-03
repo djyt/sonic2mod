@@ -6,13 +6,14 @@ import glob
 import math
 import os
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from core.audio import gain_to_db
 from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK
 from core.mod import PAL_AMIGA_CLOCK
-from core.smps import (
-    SmpsParser,
-)
+from core.rom import RomImage, locate_sounds, read_rom_song
+from core.smps import SmpsParser, SmpsSong
 from sn76489.wrapper import SN76489
 from ym2612.wrapper import OPN2, output_rate
 
@@ -68,6 +69,27 @@ class SfxRender:
         return len(self.left) / self.rate if self.rate else 0.0
 
 
+@dataclass(frozen=True)
+class SfxSource:
+    """One SFX to render: an asm file, or a sound in a ROM."""
+    name: str                       # the output file's stem: 'B5_Ring', 'B5'
+    label: str                      # what the report calls it: its path, or 'ROM $B5'
+    read: Callable[[], SmpsSong]
+
+
+def asm_sources(paths) -> list[SfxSource]:
+    return [SfxSource(output_name(p), p, lambda p=p: SmpsParser().parse_file(p)) for p in paths]
+
+
+def rom_sources(rom_path: str) -> list[SfxSource]:
+    """Every SFX the ROM's indexes name ($A0 ..., the special $D0), with the data fixes known for
+    that ROM (as the asm's)."""
+    rom = RomImage.load(rom_path)
+    index = locate_sounds(rom)
+    return [SfxSource(f"{sid:02X}", f"ROM ${sid:02X}", lambda sid=sid: read_rom_song(rom, sid, index))
+            for sid in sorted(index.sfx)]
+
+
 def discover(sfx_dir: str) -> list[str]:
     """Return the SFX .asm files in driver order.
 
@@ -95,17 +117,17 @@ def output_name(path: str) -> str:
     return ident + '_' + re.sub(r'[^A-Za-z0-9_]+', '_', title.strip()).strip('_')
 
 
-def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
+def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
                psg_gain=1.0, psg_oob="extend", target_rate: int | None = 44100,
                taps=DEFAULT_TAPS, native_rate: int = OPN2.NATIVE_RATE) -> SfxRender:
-    """Parse, render and resample a single SFX file."""
-    song = SmpsParser().parse_file(path)
+    """Read, render and resample a single SFX."""
+    song = source.read()
     warnings: list[str] = []
 
     if not song.header.is_sfx:
         warnings.append("no SFX header found — parsed as music, output may be wrong")
     if not song.channels:
-        raise ValueError(f"{os.path.basename(path)}: no channels found")
+        raise ValueError(f"{os.path.basename(source.label)}: no channels found")
 
     result = render_sfx(song, opn2, sn, fps=fps, tail_secs=tail_secs,
                         max_secs=max_secs, psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate)
@@ -120,8 +142,8 @@ def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
         rate = target_rate
 
     return SfxRender(
-        path=path,
-        name=output_name(path),
+        path=source.label,
+        name=source.name,
         left=left,
         right=right,
         rate=rate,
@@ -132,21 +154,21 @@ def render_one(path, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
     )
 
 
-def render_all(paths, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
+def render_all(sources, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
                psg_oob="extend", target_rate: int | None = 44100, taps=DEFAULT_TAPS,
                fm_clock=MD_FM_CLOCK, psg_clock=MD_PSG_CLOCK, progress=None) -> list[SfxRender]:
-    """Render every path with a single shared pair of chip instances, clocked at `fm_clock` /
+    """Render every source with a single shared pair of chip instances, clocked at `fm_clock` /
     `psg_clock` (settings.yaml fm_synthesis / psg_synthesis clock_rate)."""
     native_rate = output_rate(fm_clock)
     opn2 = OPN2(mode="ym2612")
     sn = SN76489(clock_rate=psg_clock, sample_rate=native_rate)
     try:
         renders = []
-        for path in paths:
+        for source in sources:
             if progress is not None:
-                progress(path)
+                progress(source)
             renders.append(render_one(
-                path, opn2, sn, fps=fps, tail_secs=tail_secs, max_secs=max_secs,
+                source, opn2, sn, fps=fps, tail_secs=tail_secs, max_secs=max_secs,
                 psg_gain=psg_gain, psg_oob=psg_oob, target_rate=target_rate, taps=taps,
                 native_rate=native_rate,
             ))

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, OperatorReg
+from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
 from .driver_tables import SMPS_OP_TO_REG_OFFSET
 
 # ---------------------------------------------------------------------------
@@ -177,6 +177,13 @@ class SmpsVoice:
             regs[OperatorReg.D1L_RR + off] = (f[VoiceField.DECAY_LEVEL][op] & 0xF) << 4 | f[VoiceField.RELEASE_RATE][op] & 0xF
             regs[OperatorReg.SSG_EG + off] = 0
         return regs
+
+
+    def chip_registers(self, tl_offset: int = 0) -> dict[int, int]:
+        """registers() as the chip reads them: TL is 7 bits (SMPS2ASM sets bit 7 on the carriers,
+        and some asm writes a modulator's TL as $80)."""
+        tl = range(OperatorReg.TL, OperatorReg.KS_AR)
+        return {r: v & TL_MASK if r in tl else v for r, v in self.registers(tl_offset).items()}
 
 
 @dataclass

@@ -66,6 +66,7 @@ class PsgFrame:
 @dataclass(frozen=True, slots=True)
 class DacFrame:
     seeks: tuple[int, ...]          # PCM bank offsets seeked this frame (a sample starts)
+    seek_samples: tuple[int, ...]   # where each seek is in the log (the Z80 starts a sample late)
     writes: int                     # DAC bytes written this frame
     since_seek: int                 # DAC bytes written since the last seek, at the frame's end
     gaps: tuple[tuple[int, int], ...]   # (samples between consecutive DAC bytes, how often) this frame
@@ -97,9 +98,15 @@ class FrameLog:
     phase: int                      # where a burst starts within a frame's 735 samples
     loop_sample: int | None         # where the log loops back to
     pcm: bytes = b""                # the log's PCM bank: what DacFrame.seeks index
+    end_sample: int = 0             # where the log ends (and a looping one jumps back)
 
     def frame_of(self, sample: int) -> int:
         return (sample - self.origin) // self.frame_samples
+
+    def burst_frame(self, sample: int) -> int:
+        """The frame whose driver burst `sample` follows: what the Z80 does a little after the
+        68k asked (a DAC sample started) belongs to the frame that asked."""
+        return self.frame_of(sample - self.frame_samples // _FRAME_LEAD_DIVISOR)
 
     @property
     def loop_frame(self) -> int | None:
@@ -118,7 +125,7 @@ def frame_log(log: VgmLog, state: ChipState | None = None) -> FrameLog:
     origin = -((frame_samples - lead % frame_samples) % frame_samples)
 
     builder = _FrameBuilder(state, origin, frame_samples)
-    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm)
+    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm, log.end_sample)
 
 
 def _is_dac_byte(w: VgmWrite) -> bool:
@@ -163,6 +170,7 @@ class _FrameBuilder:
         self._atts: list[list[int]] = [[] for _ in range(PSG_TONE_CHANNELS + 1)]
         self._period_writes = [0] * PSG_TONE_CHANNELS
         self._seeks: list[int] = []
+        self._seek_samples: list[int] = []
         self._dac_writes = 0
         self._gaps: Counter[int] = Counter()
 
@@ -200,6 +208,7 @@ class _FrameBuilder:
         elif kind is ChangeKind.PCM_SEEK:
             # A new sample: the silence before it is no gap of the byte stream
             self._seeks.append(change.value)
+            self._seek_samples.append(change.sample)
             self._since_seek = 0
             self._last_dac = None
 
@@ -220,7 +229,7 @@ class _FrameBuilder:
                              tuple(self._atts[ch]), self._period_writes[ch] if ch < PSG_TONE_CHANNELS else 0,
                              s.noise if ch == NOISE_CHANNEL else None)
                     for ch in range(PSG_TONE_CHANNELS + 1))
-        dac = DacFrame(tuple(self._seeks), self._dac_writes, self._since_seek, tuple(sorted(self._gaps.items())))
+        dac = DacFrame(tuple(self._seeks), tuple(self._seek_samples), self._dac_writes, self._since_seek, tuple(sorted(self._gaps.items())))
         frame = Frame(self._index, self._origin + self._index * self._frame_samples, fm, psg, dac,
                       s.dac_enabled, s.lfo, s.fm_global(_REG_MODE))
         self._index += 1

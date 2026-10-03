@@ -69,6 +69,17 @@ class Pan(unittest.TestCase):
         self.assertEqual(pans, {0x40, 0x80, 0xC0})          # panRight, panLeft, panCenter (all , $00)
 
 
+class NoAttack(unittest.TestCase):
+    @unittest.skipUnless(_GHZ.exists(), "sonic_1/ sources not present")
+    def test_a_held_duration_uses_up_the_flag(self):
+        # GHZ FM4: `nG5, $28, smpsNoAttack, $3F`, flags, smpsCall: the call's first note (the
+        # loop, tick 577) attacks - the driver clears the flag at every read
+        song = SmpsParser().parse_file(str(_GHZ))
+        fm4 = next(ch for ch in song.channels if ch.header.label.endswith("FM4"))
+        first = next(ev.note for ev in fm4.events if ev.note is not None and ev.tick_position == 577)
+        self.assertFalse(first.is_no_attack)
+
+
 class Loops(unittest.TestCase):
     """A loop is a tick and an event index on its channel: no assembly label needed."""
 

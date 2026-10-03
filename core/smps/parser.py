@@ -743,6 +743,7 @@ class SmpsParser:
 
         cur.channel.events.append(SmpsEvent(note=_standalone_note(cur, duration), tick_position=cur.tick))
         cur.tick += duration
+        cur.no_attack = False           # every read clears it (the bclr before FMDoNext / PSGDoNext)
 
     def _open_note(self, cur, note):
         """Finalize the pending note; `note` (None: nothing) waits for its duration next."""

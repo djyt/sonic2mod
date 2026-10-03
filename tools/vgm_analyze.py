@@ -62,7 +62,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import math
 import statistics
 import sys
 from collections.abc import Iterator
@@ -70,25 +69,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.audio import db_to_gain, hz_to_midi, midi_name, pitch_name
-from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK, fm_level_db, psg_level_db
+from core.audio import hz_to_midi, midi_name, pitch_name
+from core.smps import MD_FM_CLOCK, MD_PSG_CLOCK
 from core.vgm import (
-    FM_CHANNELS,
+    DAC_NAME,
+    DEFAULT_MOD_CENTS,
     NOISE_CHANNEL,
-    PSG_SILENT,
-    PSG_TONE_CHANNELS,
-    VGM_SAMPLE_RATE,
-    Change,
-    ChangeKind,
+    PSG_NAMES,
     ChipState,
     DacFrame,
     FmFrame,
     Frame,
+    NoteStart,
     PsgFrame,
     VgmError,
     VgmLog,
     fm_frequency_hz,
     frame_log,
+    noise_rate,
+    noise_white,
+    note_starts,
     psg_frequency_hz,
     read_vgm,
 )
@@ -138,121 +138,28 @@ def _smps_note(freq: float, chan_type: str) -> str:
 # Key-on rows
 # ---------------------------------------------------------------------------
 
-class _KeyOnRows:
-    """The rows a replay of the log yields: one per note start (see parse_vgm)."""
+def _noise_desc(register: int, tone2: int) -> str:
+    """The noise register as words: 'white/N/512', 'white/tone2 N=0'.
 
-    def __init__(self, state: ChipState, channel_filter: set[str] | None, chip: str, psg_mod_cents: float) -> None:
-        self._state = state
-        self._filter = channel_filter
-        self._fm_on, self._psg_on, self._dac_on = chip in ('fm', 'all'), chip in ('psg', 'all'), chip in ('dac', 'all')
-        self._psg_mod_cents = psg_mod_cents
-        self.rows: list[tuple] = []
-        self.fm_amp: dict[str, list[float]] = {}    # chan_name -> linear amplitudes at key-on
-        self.psg_amp: dict[str, list[float]] = {}   # "PSG1".."PSG3","NOISE" -> the same
+    At rate 3 the LFSR is clocked by tone ch2.  The Sonic 1 driver writes PSG3's own note divider
+    there ($C0); nMaxPSG maps to N=0, which the Sega VDP PSG treats as N=1 (maximum shift rate,
+    near-white hiss)."""
+    noise_type = "white" if noise_white(register) else "periodic"
+    rate = noise_rate(register)
+    if rate != _NOISE_TONE2_RATE:
+        return f"{noise_type}/{_NOISE_RATES[rate]}"
+    return f"{noise_type}/tone2 N={tone2}"
 
-        # The frequency each sounding FM note was keyed on with.  The Sonic 1 driver's FMNoteOn writes
-        # key-on unconditionally; under smpsNoAttack only the key-OFF is skipped, so a tie
-        # (`nA5, $10, smpsNoAttack, $3B`) logs a second key-on that the chip ignores.
-        self._fm_keyed = [False] * FM_CHANNELS
-        self._fm_keyed_hz = [0.0] * FM_CHANNELS
-        self._psg_prev_period = [0] * PSG_TONE_CHANNELS     # period at the last key-on
-        self._sample = 0
 
-    def feed(self, change: Change) -> None:
-        self._sample = change.sample
-        kind = change.kind
-        if kind is ChangeKind.FM_KEY and self._fm_on:
-            self._fm_key(change.channel, change.value)
-        elif kind is ChangeKind.PSG_VOLUME and self._psg_on:
-            # Silent -> audible is a key-on
-            if change.previous == PSG_SILENT and self._state.psg_audible(change.channel):
-                self._emit_psg_keyon(change.channel)
-        elif kind is ChangeKind.PSG_TONE and self._psg_on:
-            if self._psg_new_note(change.channel):
-                self._emit_psg_keyon(change.channel)
-        elif kind is ChangeKind.PCM_SEEK and self._dac_on and self._wanted("DAC"):
-            self.rows.append((self._now_ms(), "DAC", change.value, 0, 0.0, f"seek {change.value}", "—"))
-
-    def _now_ms(self) -> float:
-        return self._sample * 1000.0 / VGM_SAMPLE_RATE
-
-    def _wanted(self, ch_name: str) -> bool:
-        return not self._filter or ch_name in self._filter
-
-    # ---- YM2612 ----
-
-    def _fm_key(self, ch: int, slots: int) -> None:
-        """Key-on/off: a row where a key-on starts a note."""
-        if not slots:
-            self._fm_keyed[ch] = False
-            return
-
-        # A key-on while already keyed on re-attacks nothing.  It is still a note when the pitch moved
-        # to another note (a legato slide); within psg_mod_cents of where the note was keyed on it is a
-        # tie, or a tie with a new smpsDetune (Scrap Brain FM4 scoops every phrase start up by 36 cents).
-        hz = self._state.fm_hz(ch)
-        was = self._fm_keyed_hz[ch]
-        if (self._fm_keyed[ch] and hz > 0 and was > 0
-                and abs(1200.0 * math.log2(hz / was)) <= max(self._psg_mod_cents, 1e-9)):
-            return
-        self._fm_keyed[ch], self._fm_keyed_hz[ch] = True, hz
-        self._emit_fm_keyon(ch)
-
-    def _emit_fm_keyon(self, ch: int) -> None:
-        fnum, block = self._state.fm_fnum_block(ch)
-        if fnum == 0:
-            return
-        ch_name = f"FM{ch + 1}"
-        freq = self._state.fm_hz(ch)
-        if self._wanted(ch_name):
-            self.rows.append((self._now_ms(), ch_name, fnum, block, freq, pitch_name(freq), _smps_note(freq, "fm")))
-
-        # Amplitude, whatever the filter: the carriers' linear levels summed
-        linear = sum(db_to_gain(fm_level_db(tl)) for tl in self._state.fm_carrier_tls(ch))
-        self.fm_amp.setdefault(ch_name, []).append(linear)
-
-    # ---- SN76489 ----
-
-    def _psg_new_note(self, ch: int) -> bool:
-        """Audible, and the period has left the current note (see psg_mod_cents)."""
-        new, old = self._state.psg_period(ch), self._psg_prev_period[ch]
-        if not self._state.psg_audible(ch) or new == old:
-            return False
-        if new <= 0 or old <= 0 or self._psg_mod_cents <= 0:
-            return True
-        return abs(1200.0 * math.log2(new / old)) > self._psg_mod_cents
-
-    def _emit_psg_keyon(self, ch: int) -> None:
-        """A key-on: the volume going audible, or the period moving while audible (portamento /
-        arpeggio without intervening silence)."""
-        if ch == NOISE_CHANNEL:
-            self._emit_noise_keyon()
-            return
-        ch_name = f"PSG{ch + 1}"
-        period = self._state.psg_period(ch)
-        freq = self._state.psg_hz(ch)
-        self._psg_prev_period[ch] = period   # so the same period does not emit twice
-        if self._wanted(ch_name):
-            self.rows.append((self._now_ms(), ch_name, period, 0, freq, pitch_name(freq), _smps_note(freq, "psg")))
-        self.psg_amp.setdefault(ch_name, []).append(db_to_gain(psg_level_db(self._state.psg_attenuation(ch))))
-
-    def _emit_noise_keyon(self) -> None:
-        if self._wanted("NOISE"):
-            self.rows.append((self._now_ms(), "NOISE", self._state.noise, 0, self._state.noise_shift_hz(),
-                              self._noise_desc(), "—"))
-        self.psg_amp.setdefault("NOISE", []).append(db_to_gain(psg_level_db(self._state.psg_attenuation(NOISE_CHANNEL))))
-
-    def _noise_desc(self) -> str:
-        """The noise register as words: 'white/N/512', 'white/tone2 N=0'.
-
-        At rate 3 the LFSR is clocked by tone ch2.  The Sonic 1 driver writes PSG3's own note divider
-        there ($C0); nMaxPSG maps to N=0, which the Sega VDP PSG treats as N=1 (maximum shift rate,
-        near-white hiss)."""
-        noise_type = "white" if self._state.noise_white else "periodic"
-        rate = self._state.noise_rate
-        if rate != _NOISE_TONE2_RATE:
-            return f"{noise_type}/{_NOISE_RATES[rate]}"
-        return f"{noise_type}/tone2 N={self._state.psg_period(2)}"
+def _row(n: NoteStart) -> tuple:
+    """A note start as a printed row (see parse_vgm)."""
+    if n.chip == "fm":
+        return (n.ms, n.channel, n.data, n.block, n.hz, pitch_name(n.hz), _smps_note(n.hz, "fm"))
+    if n.channel == DAC_NAME:
+        return (n.ms, DAC_NAME, n.data, 0, 0.0, f"seek {n.data}", "—")
+    if n.channel == PSG_NAMES[NOISE_CHANNEL]:
+        return (n.ms, n.channel, n.data, 0, n.hz, _noise_desc(n.data, n.tone2), "—")
+    return (n.ms, n.channel, n.data, 0, n.hz, pitch_name(n.hz), _smps_note(n.hz, "psg"))
 
 
 def parse_vgm(
@@ -261,31 +168,31 @@ def parse_vgm(
     psg_clock: int,
     channel_filter: set[str] | None,
     chip: str,
-    psg_mod_cents: float = 70.0,
+    psg_mod_cents: float = DEFAULT_MOD_CENTS,
 ) -> tuple[list[tuple], dict[str, list[float]], dict[str, list[float]]]:
-    """The key-on rows of a VGM log (`fm_clock` / `psg_clock` where its header gives none).
-
-    An FM row is a key-on that starts a note: the driver also writes key-on for a tie (it only
-    skips the key-OFF under smpsNoAttack), and that is not a row unless the pitch moved by more
-    than ``psg_mod_cents``.
-
-    The SN76489 has no key-on, so a PSG tone row starts when the channel becomes audible or when
-    its period moves more than ``psg_mod_cents`` away from the period the current note started on.
-    Smaller moves are the driver's modulation (smpsModSet rewrites the divider every few frames)
-    and stay inside the note; pass 0 to get a row for every period write.
+    """The key-on rows of a VGM log (`fm_clock` / `psg_clock` where its header gives none): one
+    per note start (core.vgm.note_starts, its rules with `psg_mod_cents`; 0 = a row for every
+    PSG period write).
 
     FM rows:       (time_ms, chan_name, fnum, block, freq_hz, note_name, smps_note)
     PSG tone rows: (time_ms, chan_name, period, 0, freq_hz, note_name, smps_note)
     PSG noise rows:(time_ms, "NOISE",  noise_reg, 0, lfsr_shift_hz, noise_desc, "—")
     DAC rows:      (time_ms, "DAC",    offset, 0, 0.0, "seek <offset>", "—")
 
-    Returns (rows, fm_amp_samples, psg_amp_samples).
+    Returns (rows, fm_amp_samples, psg_amp_samples): the linear level of every FM / PSG note
+    start, whatever `channel_filter` keeps.
     """
     state = ChipState.for_log(log, fm_clock, psg_clock)
-    rows = _KeyOnRows(state, channel_filter, chip, psg_mod_cents)
-    for change in state.replay(log):
-        rows.feed(change)
-    return rows.rows, rows.fm_amp, rows.psg_amp
+    rows: list[tuple] = []
+    amps: dict[str, dict[str, list[float]]] = {"fm": {}, "psg": {}}
+    for n in note_starts(log, state, psg_mod_cents):
+        if chip not in ("all", n.chip):
+            continue
+        if n.chip in amps:
+            amps[n.chip].setdefault(n.channel, []).append(n.gain)
+        if not channel_filter or n.channel in channel_filter:
+            rows.append(_row(n))
+    return rows, amps["fm"], amps["psg"]
 
 
 # ---------------------------------------------------------------------------
@@ -430,7 +337,7 @@ def main() -> None:
         help=f"SN76489 clock in Hz (default {DEFAULT_PSG_CLOCK}; read from file if present)",
     )
     ap.add_argument(
-        "--psg-mod-cents", type=float, default=70.0, dest="psg_mod_cents", metavar="CENTS",
+        "--psg-mod-cents", type=float, default=DEFAULT_MOD_CENTS, dest="psg_mod_cents", metavar="CENTS",
         help="PSG period moves within CENTS of the note's starting pitch are modulation, not a new "
              "note (default 70; 0 = one row per period write)",
     )

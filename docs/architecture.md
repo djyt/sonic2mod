@@ -249,6 +249,10 @@ frames.py     frame_log(log): the log cut into V-int frames (FrameLog, Frame per
               PsgFrame x 4, DacFrame).  A frame's window opens a quarter frame before the burst phase
               (the commonest burst start, found from the writes): on all 19 Sonic 1 rips every burst
               lands in one frame and no frame holds two
+notes.py      note_starts(log): NoteStart per FM key-on (a re-key within mod_cents of the keyed pitch is a
+              tie), PSG channel turning audible or leaving its note's pitch, noise turning audible, PCM
+              seek; NoteTracker applies the rules change by change.  pitch_segments(log): each FM / PSG
+              tone channel's sounding pitch as change points (vgm_pitch_audit's chip timeline)
 lift.py       lift_song(log, LiftOptions) -> SmpsSong.  Not implemented yet: raises VgmLiftError
 ```
 

@@ -1183,8 +1183,10 @@ groups): `build_merge_plan` restricts each group's primary and follower notes to
 (`pattern_of` is required once any group has patterns) and pairs them as before, so a channel
 may be a follower in one block, a primary in the next and kept in a third.  What differs from
 the song-wide fold is that such a channel **stays in the output**: `prepare_merged_config`
-disables a channel only when it is a follower or dropped in every named pattern (or in a
-song-wide group / `merge_drop` / `merge_fill`).  Its notes in the patterns it follows in are
+disables a channel only when it is a follower or dropped in every named pattern and every
+pattern it plays notes in (or in a song-wide group / `merge_drop` / `merge_fill`): a block for
+pattern 0 alone that drops FM1 leaves FM1's column, and its notes after pattern 0, in place
+(`_patterns_played`, from the song `convert.py` passes in).  Its notes in the patterns it follows in are
 in `MergePlan.folded` (`is_folded`), and `ChannelWriter` skips them on its own channel;
 where something of its own still rings from a pattern it was live in, the first folded
 note-on ends it (a release slide or `C00`, as a rest would) — the hardware re-keyed the note

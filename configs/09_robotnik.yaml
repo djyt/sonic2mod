@@ -95,3 +95,39 @@ psg_voice_map:
     high: Fs7
     mod_instrument: 8
     root: Fs2
+
+# -------------------------------------------------------------------------------------------------
+# Structural pattern break after intro
+# -------------------------------------------------------------------------------------------------
+mod_pattern_breaks:
+  - pattern: 0
+    row: 47
+
+# -------------------------------------------------------------------------------------------------
+# Merged 4-Channel Version
+# -------------------------------------------------------------------------------------------------
+
+merge_patterns:
+
+    # --- Pattern $00 ------------------------------------------------------------------------------
+  - patterns: "0"
+    drop: [FM1, FM3]
+    groups:
+    - primary: FM2
+      mod_channel: 1
+    - primary: FM5
+      mod_channel: 2
+
+    # --- Pattern $01-$07 ---------------------------------------------------------------------------
+  - patterns: "1-7"
+    groups:
+    
+    # Channel 1: Combine 3 Lead Channels
+    - primary: FM1
+      followers: [FM4, PSG1]
+      mod_channel: 1
+
+    # Channel 2: Combine Sub-Melody (FM3 + PSG2)
+    - primary: FM3
+      followers: [PSG2]
+      mod_channel: 3

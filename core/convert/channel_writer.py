@@ -326,7 +326,32 @@ class ChannelWriter:
                 self._on_rest(event)
                 continue
             if not self._on_note(event, res):
-                break
+                return
+        self._on_stop()
+
+    def _on_stop(self) -> None:
+        """smpsStop keys the track off (StopTrack → FMNoteOff): an FM note still ringing at the
+        track's end releases there, as a rest would end it.  Stage Clear's closing chord held
+        its looped samples through the end and into the song's restart.  A channel that loops
+        never stops; the DAC plays its sample out, and a PSG note is cut at its duration."""
+        if self._channel.has_jump or self._is_dac or self._is_psg or self._last_inst is None:
+            return
+        notes = [ev for ev in self._channel.events if ev.is_note]
+        if not notes:
+            return
+        last = notes[-1]
+        if last.note.is_rest and not last.note.is_no_attack:
+            return                      # keyed off already
+        if not last.note.is_rest and not self._router.plays_here(last):
+            return                      # folded onto another channel: it ends there
+        end = last.tick_position + last.note.duration
+        pattern, row = self._timeline.pattern_row(end)
+        if pattern >= self._config.max_patterns:
+            return
+        self._col = self._router.current(end)
+        self._mod.ensure_pattern(pattern)       # an end on a pattern's first row: none written yet
+        if not self._mod.note_at(pattern, row, self._col):
+            self._key_off(pattern, row, end)
 
     def _on_effect(self, event) -> None:
         """walk_channel has advanced st past this flag: level, pan, transpose, FM voice and PSG

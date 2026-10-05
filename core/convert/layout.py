@@ -131,6 +131,26 @@ class ModLayout:
             if not 32 <= exact <= 255:
                 self._diag.warn(WarningKind.TEMPO_BPM_RANGE, channel='all', **change)
 
+    def song_end(self, breaks=None) -> int | None:
+        """A song that stops (no smpsJump) ends on the row its last track stops on: a D00 there,
+        so the module restarts after the key-offs (ChannelWriter._on_stop) instead of after the
+        rest of that pattern's empty rows (the Title Screen's last notes end on a pattern's first
+        row: 63 rows of silence).  Returns the pattern it ends in; None for a looping song or an
+        end past the written patterns.  No D00 on a pattern's last row (the next is the end)."""
+        if self._song.loop_target_tick() is not None:
+            return None
+        tpr = self._timeline.ticks_per_row
+        pattern, row = divmod(shift_for_breaks(round(self._song.end_tick() / tpr), breaks), 64)
+        if pattern >= len(self._mod.patterns):
+            return None
+        if row != 63:
+            ch = self._mod.free_effect_channel(pattern, row, range(max(1, self._mod.used_channels())))
+            if ch is None:
+                return None
+            self._mod.set_cursor(pattern, ch, row)
+            self._mod.set_effect(0xD, 0)
+        return pattern
+
     def loop_point(self, breaks=None) -> None:
         """Set Bxx position jump for song looping based on smpsJump targets.
 

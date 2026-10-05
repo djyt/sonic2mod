@@ -694,6 +694,24 @@ nine channels but loops to position 1.
 
 ---
 
+### 11a. A song that stops ends its notes where it stops
+
+**Problem:** Stage Clear's closing chord held its looped FM samples past the jingle's end, through
+the rest of the pattern and into the module's restart; the Title Screen's last notes ended on a
+pattern's first row, and the module then played 63 empty rows before restarting.
+
+**Cause:** Nothing was written for `smpsStop`.  The driver's `StopTrack` keys the FM channel off
+(`FMNoteOff`): the note releases there (Stage Clear's voices at release rate `$0F`, instantly,
+6.01 s into the VGZ).
+
+**Fix:** `ChannelWriter._on_stop` keys off what an FM channel still sounds at its end, as a rest
+would (a release slide at the voice's rate, else `C00`); a looping channel never stops, the DAC
+plays its sample out and a PSG note is already cut at its duration.  `ModLayout.song_end` then puts
+a `D00` on that row of a song that does not loop (none on a pattern's last row) and the patterns
+after it go, so the restart follows the key-offs.
+
+---
+
 ### 12. A note outlasts its sample (`sustain_duration: auto`)
 
 **Problem:** Synthesised samples do not loop, so a note longer than the sample goes silent.

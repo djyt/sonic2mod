@@ -278,7 +278,8 @@ class SmpsToModConverter:
     def convert(self) -> ModFile:
         """The finished MOD: the song converted, then laid out.
 
-            passes -> pattern breaks -> loop Bxx -> trailing patterns trimmed -> (merged) narrowed
+            passes -> pattern breaks -> loop Bxx (or a stopping song's end D00) -> trailing patterns
+                   trimmed -> (merged) narrowed
                    -> one-shots' first words zeroed (pt_zero_bytes)
 
         The loop's Bxx needs the post-break layout, so the order is fixed."""
@@ -292,6 +293,10 @@ class SmpsToModConverter:
         loop = self._diag.first_info(InfoKind.LOOP_SET)
         if loop:
             mod.trim_to_pattern(loop['pattern'])
+        else:
+            end = self._layout.song_end(breaks)         # a song that stops: a D00 where it does
+            if end is not None:
+                mod.trim_to_pattern(end)
 
         # Merged: columns every pattern leaves empty go (4 in use -> an M.K. file)
         if self.config.merge_active:

@@ -261,7 +261,9 @@ class SmpsToModConverter:
     def _saturate_dac_samples(self) -> None:
         """Each `dac_samples` drum with a saturate_db (merge_saturate_db in the merged build)
         soft-clipped (core.audio.pcm.saturate) and requantised to its full 8 bits: the same peak and
-        volume, a louder body.  Before the mixes, which are built from it."""
+        volume, a louder body.  Before the mixes, which are built from it: the shaped values go to
+        `_raw_renders` as a render's do, so a mix quantises the drum once, not its bytes again."""
+        clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
         for d in self.config.dac_samples:
             db = d.saturation_db(self.config.merge_active)
             sample = self.mod.samples[d.mod_instrument - 1]
@@ -269,6 +271,8 @@ class SmpsToModConverter:
                 continue
             shaped = saturate(signed8(sample.data), db)
             sample.data = full_scale_int8(shaped, self._dither)   # a silent drum stays silent
+            note = _MOD_NOTE_MAP.get(d.mod_note)
+            self._raw_renders[d.mod_instrument] = (shaped, clock / PERIOD_TABLE[note.value] if note else None)
             self._diag.info(InfoKind.DAC_SATURATED, instrument=d.mod_instrument, name=d.name, db=db)
 
     def convert(self) -> ModFile:

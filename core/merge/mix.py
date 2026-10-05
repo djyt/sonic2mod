@@ -105,7 +105,8 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     generators' output before it was quantised to 8 bits, scaled as its sample was) rather than
     from the bytes in its slot, so a mix is quantised once, here — or, for a banked composite,
     once in core.merge.banks: its normalised sum goes to `raw_out` ({provisional id: values}) and the
-    bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes.
+    bank's volume scaling is applied before that quantisation.  A drum comes off disk as bytes,
+    unless it was saturated (`saturate_db`): then its shaped values are in `raw` too.
     """
     mixer = _Mixer(mod, amiga_clock, hold_secs or {}, sources or {}, release_db_s or {}, raw or {}, padding_secs,
                    loop_drift_db, taps, shelf_hz)

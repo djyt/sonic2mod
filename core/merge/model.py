@@ -86,6 +86,16 @@ class Composite:
         2.1 s on an F# 7 semitones up and needs 3.2 s of it); `longest` where nothing was measured."""
         return max([self.longest, *(end * speed for end, _nxt, speed in self.heard)])
 
+    @property
+    def chip_render_secs(self) -> float:
+        """Seconds the fm_on_chip render is made for: `longest_played` at the render's own rate.
+        The render is made like its primary's sample (the rate of `root` + synth_shift) and mixed
+        at `base`, which runs it faster where `base` is higher: Robotnik's bass + counter at G,
+        rendered for the bass's D, gave 0.20 s for a 0.27 s note."""
+        assert self.chip_base is not None
+        native = self.chip_base.rate_root_idx + self.chip_base.synth_shift
+        return self.longest_played * 2.0 ** ((self.base - native) / 12.0)
+
     def mix_notes(self, index: int) -> list[tuple[int, int]]:
         """[(instrument, MOD note)] the sources play inside this mix, triggered for a primary
         note at `index`."""

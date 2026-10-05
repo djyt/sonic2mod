@@ -106,28 +106,20 @@ mod_pattern_breaks:
 # -------------------------------------------------------------------------------------------------
 # Merged 4-Channel Version
 # -------------------------------------------------------------------------------------------------
+# DAC · lead (FM1+FM4+PSG1) · bass + counter-melody (FM2+FM3+PSG2) · arpeggio (FM5) → 4-channel M.K.
+# The followers rest through the intro, so the folds apply song-wide.
 
-merge_patterns:
+merge_twins: always            # mixes that differ only in where a note is cut share one sample (12 → 9)
 
-    # --- Pattern $00 ------------------------------------------------------------------------------
-  - patterns: "0"
-    drop: [FM1, FM3]
-    groups:
-    - primary: FM2
-      mod_channel: 1
-    - primary: FM5
-      mod_channel: 2
+merge:
+  # Lead: FM1 (detune +3) + FM4 + PSG1 in unison - clean, one composite.  PSG1 rides FM1's vibrato.
+  - primary: FM1
+    followers: [FM4, PSG1]
+    loop_mix: true             # lead mix 50 KB unlooped → 12 KB
 
-    # --- Pattern $01-$07 ---------------------------------------------------------------------------
-  - patterns: "1-7"
-    groups:
-    
-    # Channel 1: Combine 3 Lead Channels
-    - primary: FM1
-      followers: [FM4, PSG1]
-      mod_channel: 1
-
-    # Channel 2: Combine Sub-Melody (FM3 + PSG2)
-    - primary: FM3
-      followers: [PSG2]
-      mod_channel: 3
+  # The bass carries the counter-melody: every FM3/PSG2 note starts on a bass note (0 lost), but its
+  # 8 long notes (D6 $30, E5/A5 $12, the final F#6 $30) stop at the next bass note.
+  - primary: FM2
+    followers: [FM3, PSG2]
+    loop_mix: true             # long bass + F#6 mix 52 KB → 28 KB
+    # mix_note: A2             # mixes at ~14 kHz instead of 17-25 kHz: samples 149 → 115 KB, treble above ~7 kHz gone

@@ -39,7 +39,7 @@ sample_list:
   - [4, "fm_v00_lo.raw", 27, 0] # VGZ: +1.0 dB at 31
   - [5, "fm_v00_hi.raw", 26, 0] # VGZ: +1.7 dB at 31
   # --- voice $01: Alg 2, FB 7 — FM2 ---
-  - [6, "fm_v01.raw", 25, 0] # VGZ: -0.0 dB at 32
+  - [6, "fm_v01.raw", 35, 0] # VGZ: -2.8 dB at 25
   # --- voice $02: Alg 5, FB 7 — FM3, FM4 ---
   - [7, "fm_v02.raw", 14, 0] # VGZ: -2.8 dB at 10
   # --- voice $03: Alg 5, FB 7 — FM5 ---
@@ -105,3 +105,24 @@ psg_voice_map:
       high: C6
       mod_instrument: 10
       root: G1
+
+# -------------------------------------------------------------------------------------------------
+# Merged 4-Channel Version (convert.py --merged)
+# DAC · lead (FM1+PSG1) · bass + stabs (FM2+FM3+FM4) · harmony (FM5+PSG2): every fold clean
+# (tools/merge_survey.py), no note lost or cut.  The drums stay on their own channel.
+# -------------------------------------------------------------------------------------------------
+merge:
+  # Lead: PSG1 plays FM1's data an octave down
+  - primary: FM1
+    followers: [PSG1]
+    loop_mix: true           # the held A6 loops where lead + PSG settle: 64 KB unlooped (and 0.86 s short) → 19 KB
+
+  # Bass hits with the chord stabs on top: chip composites (FM3 left, FM4 right, their fills kept)
+  - primary: FM2
+    followers: [FM3, FM4]
+
+  # Harmony: PSG2 plays FM5's data.  PSG2 rides FM5's vibrato
+  - primary: FM5
+    followers: [PSG2]
+    loop_mix: true           # the held B5: 64 KB unlooped → 6 KB.  (mix_at: primary unrolls the looped PSG
+                             # under the FM loop: 40 KB)

@@ -564,52 +564,52 @@ compare_title_screen_merged:
     tests/baselines/title_screen_merged_baseline.mod: 3d9c0e9187d2
     tests/settings.yaml: 268a59366905
 pitch_chaos_emerald:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/16_chaos_emerald.yaml: ee85d2cf2491
     reference/vgz/16 - Chaos Emerald.vgz: be334122a641
-    tests/baselines/chaos_emerald_baseline.mod: abe23024e541
+    tests/baselines/chaos_emerald_baseline.mod: 35f9bfabe6a8
     tests/settings.yaml: 268a59366905
 pitch_continue_screen:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/18_continue_screen.yaml: 49d7ddac046e
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
-    tests/baselines/continue_screen_baseline.mod: 5c39cce7d25b
+    tests/baselines/continue_screen_baseline.mod: 33a3a111ad1e
     tests/settings.yaml: 268a59366905
 pitch_credits:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/13_credits.yaml: 5e4722785991
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 876314ceb294
+    tests/baselines/credits_baseline.mod: 9af22a57ce7d
     tests/settings.yaml: 268a59366905
 pitch_drowning:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/17_drowning.yaml: 6c328a839aab
     reference/vgz/17 - Drowning.vgz: 9e6de56087b0
-    tests/baselines/drowning_baseline.mod: b48dcf037d43
+    tests/baselines/drowning_baseline.mod: 15368010caaf
     tests/settings.yaml: 268a59366905
 pitch_ending_theme:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/12_ending_theme.yaml: 178a67d2610b
     reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
-    tests/baselines/ending_theme_baseline.mod: b461a90e98c6
+    tests/baselines/ending_theme_baseline.mod: e69bfb9e6ebe
     tests/settings.yaml: 268a59366905
 pitch_extra_life:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/15_1up.yaml: 9a8286b8c5c8
     reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    tests/baselines/extra_life_baseline.mod: 331e4a1fa1a2
+    tests/baselines/extra_life_baseline.mod: 2a93ec24858c
     tests/settings.yaml: 268a59366905
 pitch_final_zone:
   commit: d8b4b4b
@@ -620,12 +620,12 @@ pitch_final_zone:
     tests/baselines/final_zone_baseline.mod: ff9fa7715a36
     tests/settings.yaml: 268a59366905
 pitch_game_over:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/19_game_over.yaml: 06edd0fe97ec
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
-    tests/baselines/game_over_baseline.mod: 3e968aaa48b0
+    tests/baselines/game_over_baseline.mod: f0a4e973c5f2
     tests/settings.yaml: 268a59366905
 pitch_ghz_lofi:
   commit: b0ed618-dirty
@@ -700,12 +700,12 @@ pitch_spring_yard_zone:
     tests/baselines/spring_yard_zone_baseline.mod: 4a8ab574ccbc
     tests/settings.yaml: 268a59366905
 pitch_stage_clear:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
-    configs/11_stage_clear.yaml: 5ca92c6aa898
+    configs/11_stage_clear.yaml: c6543856658e
     reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_baseline.mod: 15889e83986c
+    tests/baselines/stage_clear_baseline.mod: b6b503fcb533
     tests/settings.yaml: 268a59366905
 pitch_star_light_zone:
   commit: b0ed618-dirty
@@ -716,10 +716,10 @@ pitch_star_light_zone:
     tests/baselines/star_light_zone_baseline.mod: f4749bf6a079
     tests/settings.yaml: 268a59366905
 pitch_title_screen:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 0d0e5d8-dirty
+  date: '2026-10-05'
   inputs:
     configs/01_title_screen.yaml: fe501a8bf9c9
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
-    tests/baselines/title_screen_baseline.mod: 850a0ce3f6a9
+    tests/baselines/title_screen_baseline.mod: 20d42bc61cdb
     tests/settings.yaml: 268a59366905

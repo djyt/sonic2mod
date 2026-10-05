@@ -12,12 +12,13 @@ instrument catalogue, audio).  It states what it needs here; convert.py hands th
 Both return {MOD instrument: (int8 PCM bytes, sample rate)}.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 from ..audio import SustainLoop
 from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
+from ..plan import FmInstrument
 from ..smps import PsgEnvelope, SmpsSong
 
 
@@ -31,7 +32,8 @@ class FmGenerator(Protocol):
                  loops: bool = ...,
                  loops_out: dict[int, SustainLoop] | None = ...,
                  release_out: dict[int, float | None] | None = ...,
-                 cache_out: dict[str, int] | None = ...) -> dict: ...
+                 cache_out: dict[str, int] | None = ...,
+                 extra: Sequence[FmInstrument] = ...) -> dict: ...
 
 
 class PsgGenerator(Protocol):

@@ -15,6 +15,9 @@ LAST_MOD_NOTE = 35   # B3: a mix transposed past the MOD's three octaves cannot 
 NO_SLOT = "no free instrument slot"   # why a composite the fit could not place was dropped
 
 
+CHIP_BASE_IDS = 1000   # a mix's FM layers on the chip (fm_on_chip) render under ids from here: no MOD slot
+
+
 # --- config -----------------------------------------------------------------------------------
 
 
@@ -60,6 +63,12 @@ class Composite:
     longest: float = 0.0               # seconds of the longest note that plays it: a looped layer is
                                        #   unrolled for at least this (the mix cannot loop at another rate)
     pitch_hz: float | None = None      # mix: the primary's pitch at `base` (a looped mix's period)
+    chip_base: FmInstrument | None = None   # mix, fm_on_chip: the primary and its FM followers rendered
+                                       #   together on the chip (an id past CHIP_BASE_IDS), mixed in
+                                       #   place of the primary's sample and those followers' ones
+    chip_layers: frozenset = frozenset()   # mix, fm_on_chip: indices into key.layers the chip render plays
+    chip_gain: float = 1.0             # mix, fm_on_chip: the render's peak over its primary layer's alone
+                                       #   (the primary keeps its own sample's level in the sum)
     heard: list = field(default_factory=list)   # mix: per note (end, next note-on, speed): where it
                                        #   ends and where the column's next note-on cuts it (seconds, as the
                                        #   MOD places them), and how much faster than the mix's own trigger
@@ -69,6 +78,13 @@ class Composite:
     def primary(self) -> int:
         """The primary's own MOD instrument."""
         return self.key.primary
+
+    @property
+    def longest_played(self) -> float:
+        """Seconds of the mix its longest note plays through: a note triggered above the mix's
+        own note runs through it faster (`heard`'s speed: Robotnik's lead, mixed at B, holds
+        2.1 s on an F# 7 semitones up and needs 3.2 s of it); `longest` where nothing was measured."""
+        return max([self.longest, *(end * speed for end, _nxt, speed in self.heard)])
 
     def mix_notes(self, index: int) -> list[tuple[int, int]]:
         """[(instrument, MOD note)] the sources play inside this mix, triggered for a primary
@@ -91,7 +107,8 @@ class Composite:
             return "chip: " + "; ".join(parts)
         parts = [f"inst {lay.instrument} {lay.interval:+d} st" + (f" ×{lay.scale:g}" if lay.scale != 1 else "")
                  + (f", cut at {lay.fill_ms} ms" if lay.fill_ms is not None else "")
-                 for lay in self.key.layers]
+                 + (" (on the chip)" if i in self.chip_layers else "")
+                 for i, lay in enumerate(self.key.layers)]
         at = f"mix at note {self.base}" + (f", triggered at {self.note}" if self.note is not None else "")
         return f"{at}: " + "; ".join(parts)
 
@@ -202,6 +219,12 @@ class MergePlan:
     @property
     def fm_instruments(self) -> list[FmInstrument]:
         return [c.fm for c in self.composites.values() if c.fm is not None]
+
+    @property
+    def chip_bases(self) -> list[FmInstrument]:
+        """The mixes' FM layers rendered on the chip (fm_on_chip), each under its own id past
+        CHIP_BASE_IDS: rendered for the mixer, never installed in a slot."""
+        return [c.chip_base for c in self.composites.values() if c.chip_base is not None]
 
     @property
     def instruments(self) -> set[int]:

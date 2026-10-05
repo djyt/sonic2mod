@@ -282,6 +282,7 @@ merge_patterns:
         treble_shelf_db: 4
         mod_channel: 1
         mix_at: primary      # the chord keeps its loop; the chime is resampled down into it
+        fm_on_chip: false    # the chip-rendered chord settles too late to loop: 5 KB -> 24 KB
         loop_mix: true       # its 3.35 s chords loop where the mix settles
         loop_drift_db: 1     # past the attack: at the song's 12 dB it looped 40-50 ms from 20 ms in
         loop_min_ms: 300

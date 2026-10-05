@@ -59,6 +59,8 @@ class FmInstrument:
     treble_shelf_db: float | None = None   # a merge group's shelf on this composite's render
     treble_shelf_hz: float | None = None
     dither: str | None = None              # a merge group's quantisation for this composite
+    render_secs: float | None = None       # rendered for exactly this sustain and never looped (a mix's
+                                           # FM layers on the chip, core.merge: fm_on_chip); None: its own
 
     @property
     def drift_db(self) -> float | None:

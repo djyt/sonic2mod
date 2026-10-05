@@ -12,7 +12,7 @@ from ..config import MergeGroup, format_patterns
 from ..mod import PERIOD_TABLE
 from ..plan import FmInstrument, FmLayer, fm_catalogue, free_slots
 from ..smps import source_map
-from .model import LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
+from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
     NoteOn,
     channel_notes,
@@ -234,6 +234,7 @@ class _Planner:
         # Composites get provisional ids (-1, -2, ...) until the plan knows which instruments the
         # merged build no longer plays: those slots are reusable too (_assign_slots)
         self.provisional = 0
+        self.chip_ids = CHIP_BASE_IDS         # the next mix's FM-layer render (fm_on_chip)
         self.tol = max(0, int(getattr(config, "merge_tolerance", 0)))
         self.groups: list[GroupNotes] = []
         self._notes: dict[str, tuple[dict[int, NoteOn], list[int]]] = {}
@@ -373,15 +374,36 @@ class _Planner:
             best = _mix_note(g, p, present)
             if best != p.index:
                 comp.note = best
+            if g.fm_on_chip and spec is not None and p.voice is not None:
+                self._chip_base(comp, g, p, present, spec)
         self.config.sample_list.append(comp.entry)
         plan.composites[key] = comp
         return comp
+
+    def _chip_base(self, comp: Composite, g: MergeGroup, p: NoteOn, present: list[NoteOn], spec) -> None:
+        """fm_on_chip: the mix's primary and its FM followers as one chip render (each layer at
+        its own track's detune and TL, a follower keyed off at its fill), mixed in place of their
+        samples.  The rest (a PSG, a drum) is still mixed from its sample.  None to do without an
+        FM follower."""
+        fm = [i for i, fn in enumerate(present) if chip_pair(p, fn)]
+        if not fm:
+            return
+        assert p.voice is not None
+        layers = [FmLayer(p.voice, fnum_offset=p.detune)]
+        layers += [dataclasses.replace(fm_layer(p, present[i], self.tol), fnum_offset=present[i].detune) for i in fm]
+        self.chip_ids += 1
+        comp.chip_base = FmInstrument(self.chip_ids, spec.entry, layers,
+                                      f"merge[{g.label}] fm", source_label=g.label,
+                                      treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz)
+        comp.chip_layers = frozenset(fm)
 
     def _place(self, g: MergeGroup, p: NoteOn, comp: Composite, chip: bool) -> None:
         """The primary note plays `comp`: the grace note and the note it bends into alike."""
         plan = self.plan
         comp.notes += 1
         comp.longest = max(comp.longest, p.secs or 0.0)
+        if comp.chip_base is not None and comp.longest:       # rendered for the longest note, unlooped
+            comp.chip_base.render_secs = comp.longest
         label = g.label + g.where
         comp.uses[label] = comp.uses.get(label, 0) + 1
         for tt in p.all_ticks:
@@ -473,6 +495,9 @@ class _Planner:
                                  fm_slots=set(self.cat.instruments), reserve=reserve)
         stand_in(plan)
         self._measure_heard()
+        for c in plan.composites.values():         # fm_on_chip: rendered for every note's run through it
+            if c.chip_base is not None and c.longest_played:
+                c.chip_base.render_secs = c.longest_played
 
         taken = plan.instruments
         plan.mix_only = unused & plan.pcm_sources

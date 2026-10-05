@@ -483,11 +483,17 @@ class SmpsToModConverter:
         fm_loops = synth.loops_for(self.config.merge_active)
         self._release_slides = fm_loops
         fm_cache: dict[str, int] = {}
+        tl_offsets = {inst: lv[0] for inst, lv in self._fm_render_levels.items()}
+        # fm_on_chip: a mix's FM layers rendered together for the mixer, at its primary's level
+        chip_bases = {c.chip_base.inst: c for c in self._merge.composites.values()
+                      if c.chip_base is not None} if self._merge is not None else {}
+        for i, c in chip_bases.items():
+            tl_offsets[i] = tl_offsets.get(c.primary, 0)
         fm_samples = generate_fm_samples(
-            self.song, self.config, synth,
-            tl_offsets={inst: lv[0] for inst, lv in self._fm_render_levels.items()},
+            self.song, self.config, synth, tl_offsets=tl_offsets,
             peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release,
-            raw_out=self._raw_renders, cache_out=fm_cache)
+            raw_out=self._raw_renders, cache_out=fm_cache,
+            extra=[c.chip_base for c in chip_bases.values() if c.chip_base is not None])
         if fm_cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="FM", **fm_cache)
         self._sustain.flush('FM', self._loops)
@@ -496,7 +502,7 @@ class SmpsToModConverter:
 
         # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer (as a
         # PSG one is in _synthesize_psg); the slot's loop entry is the composite's
-        aside = self._mix_only_aside(fm_samples)
+        aside = self._mix_only_aside(fm_samples) | (set(chip_bases) & set(fm_samples))
         self._install_synthesized_samples({i: v for i, v in fm_samples.items() if i not in aside},
                                           self.config.sample_list, "fm", synth.max_sample_bytes)
         for i in aside:

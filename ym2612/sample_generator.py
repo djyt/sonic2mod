@@ -114,8 +114,9 @@ def _thread_opn2(mode: str) -> OPN2:
 
 
 def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl_offsets: dict[int, int],
-          verbose: bool) -> list[_RenderJob]:
-    """One job per MOD instrument of the song's catalogue (core.plan.instruments)."""
+          verbose: bool, extra: Sequence[FmInstrument] = ()) -> list[_RenderJob]:
+    """One job per MOD instrument of the song's catalogue (core.plan.instruments), then one per
+    `extra` render (a mix's FM layers, rendered for the mixer under an id that is no slot)."""
     voice_lookup = {v.index: v for v in song.voices}
     cat = fm_catalogue(song, config)
     if verbose:
@@ -123,7 +124,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
             print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
 
     jobs: list[_RenderJob] = []
-    for spec in cat.instruments.values():
+    for spec in [*cat.instruments.values(), *extra]:
         base_tl = tl_offsets.get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
                    lay.keyoff_secs)
@@ -162,7 +163,8 @@ class _FmRenderer:
 
         # A loop ending past where the notes stop being heard is longer than the plain render,
         # and less faithful: none
-        loop = self._loop(job, mono, rate, period, sustain, sustain_n) if self._loops else None
+        loop = (self._loop(job, mono, rate, period, sustain, sustain_n)
+                if self._loops and job.spec.render_secs is None else None)
         heard_n = self._heard_n(job, rate, sustain, release)
         if loop is not None and heard_n is not None and loop.end > heard_n:
             loop = None
@@ -183,8 +185,11 @@ class _FmRenderer:
         (settings.yaml) ends at its rate (the converter warns where a note needs more); with
         loops wanted, the probe is long enough to see the envelope settle in."""
         synth = self._synth
-        want = synth.sustain_by_instrument.get(job.inst, self._sustain)
         fits = max_sustain_secs(job.target_rate, synth.release_padding, synth.max_sample_bytes)
+        if job.spec.render_secs is not None:              # a fixed length, never looped: no probe
+            fixed = min(job.spec.render_secs, fits)
+            return fixed, fixed
+        want = synth.sustain_by_instrument.get(job.inst, self._sustain)
         sustain = min(want, fits)
         if self._verbose and sustain < want:
             print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
@@ -278,6 +283,7 @@ def generate_fm_samples(
     loops_out: dict[int, SustainLoop] | None = None,
     release_out: dict[int, float | None] | None = None,
     cache_out: dict[str, int] | None = None,
+    extra: Sequence[FmInstrument] = (),
 ) -> dict:
     """Render an FM sample for every instrument in the song's catalogue.
 
@@ -300,6 +306,8 @@ def generate_fm_samples(
                     converter's release slides are set from.
         cache_out:  filled with {"hits": n, "misses": n} of the render cache
                     (settings.yaml samples.render_cache; nothing when it is off).
+        extra:      renders beyond the catalogue's, under ids that are no MOD slot (core.merge:
+                    a mix's FM layers on the chip); returned and reported like the others.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
@@ -308,7 +316,7 @@ def generate_fm_samples(
     Instruments render concurrently, one per thread, ``synth.worker_threads()`` at a time
     (the ``threads`` setting); the output does not depend on the thread count.
     """
-    jobs = _jobs(song, config, synth, tl_offsets or {}, verbose)
+    jobs = _jobs(song, config, synth, tl_offsets or {}, verbose, extra)
 
     # --- Render: every instrument on its own thread ---
     # Nuked-OPN2 keeps all chip state in the per-instance struct and ctypes releases the

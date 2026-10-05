@@ -174,6 +174,11 @@ class MergeGroup:
     loop_mix: bool = False      # a long mix of this group loops where its sum settles, found in the
                                 # finished mix as a single voice's loop is (lossy: the chord's slow
                                 # movement freezes there); for a pitched primary
+    fm_on_chip: bool = True     # a mix of this group renders its FM primary and FM followers together on
+                                # the chip, unlooped for the composite's longest note, and mixes only the
+                                # rest (a PSG) on top: the voices' detune and phase run on as the
+                                # hardware's do instead of two looped samples summed; false: the
+                                # samples summed (each looped where its voice settles)
     patterns: frozenset | None = None   # the MOD patterns (of the reference build) this group folds in;
                                         # None = the whole song.  A `merge_patterns:` group has one.
 
@@ -284,6 +289,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
                       loop_mix=bool(g.get('loop_mix', False)),
+                      fm_on_chip=bool(g.get('fm_on_chip', True)),
                       treble_shelf_db=_opt(g, 'treble_shelf_db', float),
                       treble_shelf_hz=_opt(g, 'treble_shelf_hz', float),
                       limit_db=_opt(g, 'limit_db', lambda v: max(0.0, float(v))),

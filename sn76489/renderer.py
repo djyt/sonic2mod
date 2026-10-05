@@ -90,11 +90,15 @@ def _render_with_envelope(
     envelope: list | None,
     base_volume: int,
     fps: float,
+    hold: bool = False,
 ) -> list:
     """Render sustain phase with per-frame SN76489 volume steps.
 
     If *envelope* is None, renders at constant *base_volume* (existing behaviour).
-    Each frame advances the envelope index once, then holds the last value.
+    Each frame advances the envelope index once.  Past its last step the attenuation holds
+    there with *hold* (the driver's `$80` terminator: VolEnvHold rewinds the index, and Stage
+    Clear's PSG1 holds attenuation 9 for 1.9 s in the VGZ), else ramps up a step per frame to
+    silence.
 
     Args:
         sn:          Initialised SN76489 instance.
@@ -104,6 +108,7 @@ def _render_with_envelope(
         envelope:    List of absolute attenuation offsets; None = constant.
         base_volume: SN76489 base attenuation (0=max, 15=silent).
         fps:         Frame rate (60.0 NTSC / 50.0 PAL).
+        hold:        Hold the last step instead of ramping to silence.
 
     Returns:
         mono (L,R) sample list of length *sustain_n*.
@@ -132,7 +137,7 @@ def _render_with_envelope(
             vol = max(0, min(15, base_volume + delta))
             if env_idx < env_last:
                 env_idx += 1
-            else:
+            elif not hold:
                 # Last envelope frame played — begin ramp from next attenuation step
                 ramp_vol = vol + 1
         sn.write_volume(ch, vol)
@@ -183,7 +188,7 @@ def render_psg_tone_raw(
     sustain_n = int(chip_rate * sustain_secs)
     release_n = int(chip_rate * release_secs)
 
-    raw_on  = _render_with_envelope(sn, 0, sustain_n, chip_rate, envelope, base_volume, fps)
+    raw_on  = _render_with_envelope(sn, 0, sustain_n, chip_rate, envelope, base_volume, fps, hold=True)
     sn.write_volume(0, 15)  # silence
     raw_off = sn.render_samples(release_n)
     sn.shutdown()

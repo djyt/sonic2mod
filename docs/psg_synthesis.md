@@ -196,13 +196,17 @@ transcribed once, in `core/smps/driver_tables.py`:
 
 - Each value is an **attenuation delta** added to `base_volume` per VBlank frame (60 Hz NTSC / 50 Hz PAL).
 - `0` = no attenuation above base; higher = quieter.
-- After the last entry the synthesiser ramps the attenuation up one step per frame to 15
-  (`_render_with_envelope`), for tones and noise alike.  The driver does not: its `$80`
-  terminator holds the last value (`VolEnvHold` rewinds the index), so a held `fTone_01` note
-  stays at attenuation 7 on the hardware and fades out here after ~0.5 s.  Noise wants the
-  ramp (a hat's tail); for a tone it is a deviation that has not been corrected because every
-  `sample_list` volume was measured with it.  It is also why a PSG tone never gets a sustain
-  loop (`sustain_loops`): the level never settles.
+- After the last entry a **tone holds** the last value, as the driver does: its `$80`
+  terminator rewinds the index (`VolEnvHold`), so a held `fTone_05` note stays at its last
+  attenuation until the note ends (Stage Clear's PSG1 holds attenuation 9 for 1.9 s in the VGZ).
+  A held tone therefore settles and gets a sustain loop (`sustain_loops`): Stage Clear's
+  `fTone_05` sample, which wanted 6.56 s and faded out 2.2 s early, is 9.7 KB looping from
+  0.68 s.  **Noise** still ramps the attenuation up a step per frame to 15 after the last entry
+  (`_render_with_envelope(hold=False)`, a hat's tail); its notes are cut at their duration
+  anyway.  Until 2026-10-05 tones ramped too: long PSG notes faded after ~0.5 s where the
+  hardware holds.  The per-note volumes are measured over a note's first 0.6 s, which the
+  change leaves alone for the envelopes Sonic 1 holds after; a song whose PSG balance moved
+  needs `tools/measure_volumes.py`.
 - `configs/settings.yaml` used to carry a second copy of these tables (`psg_envelope_tables`); its
   `fTone_07` had lost a leading zero.  No config or Sonic 1 song uses `fTone_07`, so removing the
   copy changed no MOD.

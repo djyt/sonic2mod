@@ -1,126 +1,126 @@
 # Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
-  commit: 0d0e5d8-dirty
-  config: 446aaedcd17e
+  commit: b75b061
+  config: f8b2de11a558
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 continue_screen:
-  commit: 0d0e5d8-dirty
-  config: 7f81fa13c212
+  commit: b75b061
+  config: 01e1da35b880
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 credits:
-  commit: 0d0e5d8-dirty
-  config: 73e5c8bc7af7
+  commit: b75b061
+  config: c4ca3b2a56e4
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 drowning:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: cf114edea1d7
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 ending_theme:
-  commit: 0d0e5d8-dirty
-  config: 39a5f44f573e
+  commit: b75b061
+  config: 6e84220f1734
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 extra_life:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: ce24afbdbe3a
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 final_zone:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 5e0891bc29c8
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 game_over:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: bcbd4475362c
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 ghz_lofi:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 30e36c7d076f
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 ghz_lofi_merged:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 30e36c7d076f
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 green_hill_zone:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 4e1acaa1e4a8
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 green_hill_zone_merged:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 4e1acaa1e4a8
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 invincibility:
-  commit: 0d0e5d8-dirty
-  config: 089a5f8a1e93
+  commit: b75b061
+  config: 63774d024e7d
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 lab_zone:
-  commit: 0d0e5d8-dirty
-  config: edbbd3cc146e
+  commit: b75b061
+  config: e666592fb1d4
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 marble_zone:
-  commit: 0d0e5d8-dirty
-  config: 938034f1489b
+  commit: b75b061
+  config: 9822d87fcce9
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 robotnik:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: bda1ad81e6f5
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 robotnik_merged:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: bda1ad81e6f5
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 scrap_brain_zone:
-  commit: 0d0e5d8-dirty
-  config: 1bb0f1469993
+  commit: b75b061
+  config: d8159009faaa
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 special_stage:
-  commit: 0d0e5d8-dirty
-  config: 6fb5f55ad7eb
+  commit: b75b061
+  config: dc3c6682c2af
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 spring_yard_zone:
-  commit: 0d0e5d8-dirty
-  config: 601b57ee37be
+  commit: b75b061
+  config: 9e8486d24d5e
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 stage_clear:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 4654619e4a4e
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 stage_clear_merged:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 4654619e4a4e
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 star_light_zone:
-  commit: 0d0e5d8-dirty
-  config: be13041c56f5
+  commit: b75b061
+  config: a0b73c59e121
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 title_screen:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 91e1b4990f14
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 title_screen_merged:
-  commit: 0d0e5d8-dirty
+  commit: b75b061
   config: 91e1b4990f14
   date: '2026-10-05'
   settings: 2a7d221c6ea5

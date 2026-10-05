@@ -4,14 +4,15 @@ composites, unisons, solo and pool notes (build_merge_plan, _Planner)."""
 from __future__ import annotations
 
 import bisect
+import copy
 import dataclasses
 import math
 
 from ..audio import db_to_gain
 from ..config import MergeGroup, format_patterns
 from ..mod import PERIOD_TABLE
-from ..plan import FmInstrument, FmLayer, fm_catalogue, free_slots
-from ..smps import source_map
+from ..plan import FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
+from ..smps import apply_global_tempo_div, extend_looping_channels, source_map
 from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
     NoteOn,
@@ -27,9 +28,13 @@ from .pool import pool_notes, splice_solo_notes
 from .slots import cap_composites, drop_composite, fit_composites, same_shape_twins, stand_in, trigger_note
 
 
-def prepare_merged_config(config) -> None:
+def prepare_merged_config(config, song=None) -> None:
     """Make `config` the merged build: followers disabled, the enabled channels packed onto
     MOD channels 0..n-1 in their configured order, the output file the merged one.
+
+    `song` (as read, not yet prepared): a channel that plays in a pattern no `merge_patterns`
+    block names keeps its column, wherever the blocks fold or drop it.  Without it, only the
+    named patterns are looked at.
 
     Raises ValueError for a group naming a channel the config lacks, a channel in two groups,
     or a follower that is its own primary.
@@ -83,9 +88,11 @@ def prepare_merged_config(config) -> None:
                     where = "" if both is None else f" in pattern{'s' if len(both) > 1 else ''} {format_patterns(both)}"
                     raise ValueError(f"channel {src} is in two merge groups{where}: {ca} and {cb}")
     # A channel leaves the output when it is a follower or dropped everywhere: song-wide, or in
-    # every pattern the merge_patterns blocks name.  Anywhere else it is live (its own channel),
-    # and in the patterns it follows in, its notes go to its primary's channel instead.
+    # every pattern the merge_patterns blocks name and every pattern it plays in (a block for
+    # pattern 0 alone drops nothing after it).  Anywhere else it is live (its own channel), and
+    # in the patterns it follows in, its notes go to its primary's channel instead.
     named = frozenset(config.merge_patterns_named)
+    played = _patterns_played(song, config) if named and song is not None else {}
 
     def away_in(src: str) -> frozenset | None:
         if src in config.merge_drop or src in config.merge_fill:
@@ -94,7 +101,7 @@ def prepare_merged_config(config) -> None:
 
     for c in config.channels:
         away = away_in(c.source)
-        if away is None or (named and named <= away):
+        if away is None or (named and named | played.get(c.source, frozenset()) <= away):
             c.enabled = False
     numbered = {c.mod_channel: c.source for c in config.channels}      # the config's numbering
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
@@ -135,6 +142,21 @@ def prepare_merged_config(config) -> None:
         stem, dot, ext = config.output_file.rpartition(".")
         config.output_file = f"{stem}_merged.{ext}" if dot else f"{config.output_file}_merged"
     config.merge_active = True
+
+
+def _patterns_played(song, config) -> dict[str, frozenset]:
+    """{source: the reference build's patterns its note-ons land in}, up to the loop's pattern,
+    on a copy of `song` prepared as the converter prepares it (tempo dividers, loops replayed)."""
+    song = copy.deepcopy(song)
+    apply_global_tempo_div(song)
+    extend_looping_channels(song)
+    timeline = Timeline(song, config)
+    last = timeline.last_pattern()
+    out = {}
+    for src, ch in source_map(song).items():
+        pats = {timeline.pattern_of(ev.tick_position) for ev in ch.events if ev.note and not ev.note.is_rest}
+        out[src] = frozenset(p for p in pats if p <= last)
+    return out
 
 
 def _column_of(config, src: str, home: int, pattern: int) -> int | None:

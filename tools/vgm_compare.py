@@ -861,7 +861,7 @@ def main() -> None:
     cfg = load_config(args.config)
     if args.merged:
         try:
-            prepare_merged_config(cfg)          # followers off, channels packed, merge_output_file
+            prepare_merged_config(cfg, cfg.read_song())   # followers off, channels packed, merge_output_file
         except ValueError as e:
             raise SystemExit(f"ERROR: {e}") from e
     # synth_root / synth_shift come from the song (what the converter does before rendering), and

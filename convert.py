@@ -139,7 +139,7 @@ def main():
 
     if args.merged:
         try:
-            prepare_merged_config(config)
+            prepare_merged_config(config, song)
         except ValueError as e:
             _error(str(e))
     if args.output:

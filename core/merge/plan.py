@@ -425,7 +425,7 @@ class _Planner:
         comp.notes += 1
         comp.longest = max(comp.longest, p.secs or 0.0)
         if comp.chip_base is not None and comp.longest:       # rendered for the longest note, unlooped
-            comp.chip_base.render_secs = comp.longest
+            comp.chip_base.render_secs = comp.chip_render_secs
         label = g.label + g.where
         comp.uses[label] = comp.uses.get(label, 0) + 1
         for tt in p.all_ticks:
@@ -519,7 +519,7 @@ class _Planner:
         self._measure_heard()
         for c in plan.composites.values():         # fm_on_chip: rendered for every note's run through it
             if c.chip_base is not None and c.longest_played:
-                c.chip_base.render_secs = c.longest_played
+                c.chip_base.render_secs = c.chip_render_secs
 
         taken = plan.instruments
         plan.mix_only = unused & plan.pcm_sources

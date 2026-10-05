@@ -45,8 +45,8 @@ ghz_lofi:
   date: '2026-10-03'
   settings: 2a7d221c6ea5
 ghz_lofi_merged:
-  commit: 727a8b0-dirty
-  config: 759b68ce0bb6
+  commit: e63db46
+  config: 30e36c7d076f
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 green_hill_zone:
@@ -55,7 +55,7 @@ green_hill_zone:
   date: '2026-10-03'
   settings: 2a7d221c6ea5
 green_hill_zone_merged:
-  commit: 6d0a9bf
+  commit: e63db46
   config: 4e1acaa1e4a8
   date: '2026-10-05'
   settings: 2a7d221c6ea5

@@ -48,7 +48,7 @@ sample_list:
   - [1,  "ss_v0.raw",      32, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
   - [2,  "ss_v1.raw",      40, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
   - [3,  "ss_v2.raw",      41, 0] # VGZ: +3.9 dB at 64
-  - [4,  "ss_v3.raw",      27, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: +2.1 dB at 35
+  - [4,  "ss_v3.raw",      31, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: -1.1 dB at 27
   - [5,  "psg_tone04.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: +3.6 dB at 25
   - [6,  "psg_tone08.raw", 29, 0] # baked: 40 at PSG attenuation 1 (−2 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: -1.6 dB at 24
 

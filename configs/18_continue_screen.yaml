@@ -29,7 +29,7 @@ channels:
 sample_list:
   # --- percussion ---
   - [1, "kick.raw", 64, 0]
-  - [2, "snare.raw", 64, 0]
+  - [2, "snare.raw", 57, 0] # VGZ: +1.0 dB at 64
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1 ---
   - [3, "fm_v00.raw", 32, 0]
   # --- voice $01: alg 3: ((1→2)+3)→4, fb 7 — FM2 ---

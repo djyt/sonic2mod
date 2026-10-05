@@ -52,7 +52,7 @@ sample_list:
   - [9, "psg_fTone_05.raw",  5, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +6.6 dB at 10
   - [12, "psg_fTone_05_hi.raw",  5, 0] # PSG2's E6-B6, see psg_voice_map; volume as instrument 9; VGZ: -1.4 dB at 4
   # Detuned version (smpsAlterNote rendered into the sample)
-  - [11, "fm_v03_hi.raw", 21, 0] # VGZ: -1.5 dB at 18
+  - [11, "fm_v03_hi.raw", 18, 0] # VGZ: +1.2 dB at 21
 
 dac_samples:
   # dSnare: ×44 — native ~24000 Hz → note Fs3

@@ -39,7 +39,7 @@ sample_list:
   # --- voice $01: alg 4: (1→2)+(3→4), fb 7 — FM4, FM5, FM6 ---
   - [2, "fm_v01.raw", 27, 0] # VGZ: -2.2 dB at 21
   # --- PSG tone fTone_04 ---
-  - [3, "psg_fTone_04.raw",  9, 0] # baked: 64 at PSG attenuation 2 (−4 dB); VGZ: -0.9 dB at 8
+  - [3, "psg_fTone_04.raw",  11, 0] # baked: 64 at PSG attenuation 2 (−4 dB); VGZ: -1.6 dB at 9
   # --- PSG tone fTone_05 ---
   - [4, "psg_fTone_05.raw",  15, 0] # baked: 64 at PSG attenuation 2 (−4 dB); VGZ: -2.1 dB at 12
 

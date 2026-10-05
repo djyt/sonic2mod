@@ -44,7 +44,7 @@ sample_list:
   # --- voice $02: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
   - [5, "fm_v02.raw", 15, 0] # VGZ: -1.5 dB at 13
   # --- voice $03: alg 5: 1→(2+3+4), fb 7 — FM3, FM4 ---
-  - [6, "fm_v03.raw",  9, 0] # VGZ: -3.7 dB at 6
+  - [6, "fm_v03.raw",  8, 0] # VGZ: +1.2 dB at 9
   # --- voice $04: alg 4: (1→2)+(3→4), fb 7 — FM5 ---
   - [7, "fm_v04.raw", 21, 0] # VGZ: -4.2 dB at 13
   # --- PSG noise (form $E7) ---
@@ -53,7 +53,7 @@ sample_list:
   - [8, "psg_fTone_09.raw", 10, 0] # baked: 16 at PSG attenuation 2 (−4 dB)
   
   # Detuned version (smpsAlterNote rendered into the sample)
-  - [10, "fm_v00.raw",  9, 0] # VGZ: -3.7 dB at 6
+  - [10, "fm_v00.raw",  8, 0] # VGZ: +1.1 dB at 9
 
 dac_samples:
   # dKick: ×55 — native ~8250 Hz → note C2

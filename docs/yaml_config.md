@@ -294,7 +294,8 @@ The instruments' own samples elsewhere in the song keep the song's shelf.
 A `dac_samples` entry's `saturate_db: 2` (or `merge_saturate_db: 2`, the merged build only,
 over `saturate_db` there) soft-clips that drum when it is loaded (tanh, the drive
 solved so its RMS rises 2 dB at the same peak) and requantises it to 8 bits: the same peak and
-volume, a louder body, some added harmonics.  The drum mixes are built from it.  A compressor
+volume, a louder body, some added harmonics.  The drum mixes are built from it, from the shaped
+values before that requantisation, so a mix quantises the drum once.  A compressor
 was tried first and dropped: these drums are nearly all peak, so it turned the body down with
 the peak (the kick gained 0.4 dB for 3 dB of reduction).  Artistic: the hardware's waveform changes.
 

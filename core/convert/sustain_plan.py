@@ -52,14 +52,18 @@ class SustainPlanner:
 
     def _slides_after(self, chan_cfg, start: int, rest: int, merge: MergePlan | None) -> bool:
         """Whether the rest at `rest` ending a note that started at `start` is written as a
-        release slide, as core.convert.channel_writer writes it: in the merged build, not on a column a
-        merge group routes notes onto there (a C00 then; a slide would sit on their notes)."""
+        release slide, as core.convert.channel_writer writes it (ChannelWriter.borrowed): in the
+        merged build, not on a column another channel's group routes notes onto there (a C00
+        then; a slide would sit on their notes).  A group routing this channel's own notes there
+        is no borrow: Green Hill lofi's FM3 chords (mod_channel: 3) end in slides, and their
+        sample was cut where a C00 would have ended them, 0.13 s into the slide at full level."""
         plan = merge
         if plan is None:
             return True
         col = plan.route_at(chan_cfg.source, self._timeline.pattern_of(start))
         col = chan_cfg.mod_channel if col is None else col
-        return plan.routed_into(col, self._timeline.pattern_of(rest)) is None
+        owner = plan.routed_into(col, self._timeline.pattern_of(rest))
+        return owner is None or owner == chan_cfg.source
 
     def _needs(self, kind: str, merge: MergePlan | None) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}

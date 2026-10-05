@@ -55,7 +55,7 @@ green_hill_zone:
   date: '2026-10-03'
   settings: 2a7d221c6ea5
 green_hill_zone_merged:
-  commit: 727a8b0-dirty
+  commit: 6d0a9bf
   config: 4e1acaa1e4a8
   date: '2026-10-05'
   settings: 2a7d221c6ea5
@@ -75,9 +75,14 @@ marble_zone:
   date: '2026-10-03'
   settings: 2a7d221c6ea5
 robotnik:
-  commit: 101fcce-dirty
-  config: ba9cf65b557e
-  date: '2026-10-02'
+  commit: 6d0a9bf
+  config: bda1ad81e6f5
+  date: '2026-10-05'
+  settings: 2a7d221c6ea5
+robotnik_merged:
+  commit: 6d0a9bf
+  config: bda1ad81e6f5
+  date: '2026-10-05'
   settings: 2a7d221c6ea5
 scrap_brain_zone:
   commit: 225dad7-dirty

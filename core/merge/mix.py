@@ -96,6 +96,11 @@ def mix_pcm_composites(plan: MergePlan, mod, amiga_clock: float,
     rate (`release_db_s`, {instrument: dB/s}; a bass pluck under a kick).  A banked composite's
     sample goes to `bank_out` ({provisional id: sample}) for core.merge.banks to pack, not into a slot.
 
+    A composite with a `chip_base` (fm_on_chip) mixes that render - its primary and FM followers
+    on the chip together, unlooped - in place of the primary's sample and those followers'; the
+    render comes in `sources` and `raw` under its own id, and plays at the primary's volume times
+    `chip_gain`, so its primary layer is as loud as the primary's sample would have been.
+
     A synthesised source is taken from `raw` ({instrument: (render values, rate)}, the
     generators' output before it was quantised to 8 bits, scaled as its sample was) rather than
     from the bytes in its slot, so a mix is quantised once, here — or, for a banked composite,
@@ -177,6 +182,12 @@ class _Mixer:
             return None
         r_p = self._rate(comp.note if comp.note is not None else comp.base)
 
+        # fm_on_chip: the primary's sample gives way to the render of all the FM layers (the
+        # primary's volume and finetune still hold: the render is its sample's pitch and level)
+        src, gain = p_inst, 1.0
+        if comp.chip_base is not None and self._sample_of(comp.chip_base.inst).data:
+            src, gain = comp.chip_base.inst, comp.chip_gain
+
         # How long a looped layer is unrolled: this composite's own longest note plus the release
         # padding.  The instrument-wide sustain is the fallback when the plan had no clock: a
         # chord mix used to be unrolled for its voice's 4 s song-wide need to play 0.35 s notes.
@@ -184,11 +195,13 @@ class _Mixer:
         # must still carry; a PSG or drum primary's note is cut at its end (or ends by itself)
         fm_primary = comp.group.primary.startswith("FM")
         pad = self._padding if fm_primary else min(self._padding, _CUT_NOTE_PAD_SECS)
-        need = comp.longest + pad if comp.longest else 0.0
+        longest = comp.longest_played if comp.chip_base is not None else comp.longest
+        need = longest + pad if longest else 0.0
 
         # The followers first: how long the mix has to run before a loop may start
         layers = self._follower_layers(comp, r_p, need, problems)
-        total, keep_loop = self._primary_signal(comp, base, r_p, need, max((len(sig) for sig in layers), default=0))
+        total, keep_loop = self._primary_signal(comp, base, src, gain, r_p, need,
+                                                max((len(sig) for sig in layers), default=0))
 
         for sig in layers:
             if len(sig) > len(total):
@@ -250,7 +263,9 @@ class _Mixer:
     def _follower_layers(self, comp: Composite, r_p: float, need: float, problems: list[dict]) -> list[list[float]]:
         """Every follower's signal at its level, cut where it is keyed off, at the mix's rate."""
         layers: list[list[float]] = []
-        for lay in comp.key.layers:
+        for i, lay in enumerate(comp.key.layers):
+            if i in comp.chip_layers and comp.chip_base is not None and self._sample_of(comp.chip_base.inst).data:
+                continue                              # in the primary's chip render (fm_on_chip)
             f_inst, scale, fill_ms = lay.instrument, lay.scale, lay.fill_ms
             fs = self._sample_of(f_inst)
             if not fs.data:
@@ -285,9 +300,10 @@ class _Mixer:
             layers.append(sig)
         return layers
 
-    def _primary_signal(self, comp: Composite, base: ModSample, r_p: float, need: float,
+    def _primary_signal(self, comp: Composite, base: ModSample, src: int, gain: float, r_p: float, need: float,
                         tail: int) -> tuple[list[float], tuple[int, int] | None]:
-        """The primary's signal at its volume and the mix's rate, and the loop it keeps.
+        """The primary's signal at its volume and the mix's rate, and the loop it keeps.  `src`
+        is the render taken (the primary's own, or its chip_base's, at `gain` over its volume).
 
         A looped primary mixed at its own rate keeps its loop, moved past the followers' `tail`
         (the unrolled data repeats the loop body, so a later repeat is the same seamless loop).
@@ -297,9 +313,10 @@ class _Mixer:
         p_inst = comp.primary
         r_base = self._rate(comp.base)
         same_rate = round(r_base) == round(r_p)
-        b_data = self._values_of(p_inst, base)
+        s = self._sample_of(src)
+        b_data = self._values_of(src, s)
         keep_loop = None
-        b_loop = _loop_of(base)
+        b_loop = _loop_of(s)
         if b_loop is not None:
             s0, ln = b_loop
             if need and int(need * r_base) < s0:
@@ -312,7 +329,7 @@ class _Mixer:
                 hold = (need + self._tail_secs(p_inst)) if need else self._hold_secs.get(p_inst, 0.0)
                 b_data = unroll_values(b_data, b_loop, max(len(b_data), int(hold * r_base) + 2))
 
-        total = [v * base.volume / 64.0 for v in b_data]
+        total = [v * base.volume / 64.0 * gain for v in b_data]
         if need and keep_loop is None and len(total) > int(need * r_base) + 2:
             total = _cut_layer(total, int(need * r_base), r_base, self._release.get(p_inst))
         if not same_rate:

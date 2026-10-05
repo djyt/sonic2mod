@@ -523,7 +523,8 @@ channels onto MOD channels 0..n-1 and picks the output file; `build_merge_plan` 
 follower's note-ons up with its primary's (`channel_notes`, `pair_channels` → `PairStats`) and
 allocates one composite instrument per distinct (primary instrument, follower layers) key — two
 FM voices as chip layers in the catalogue, anything else mixed from the finished samples by
-`mix_pcm_composites`, the follower resampled by the period ratio of the two notes. The plan sits on
+`mix_pcm_composites`, the follower resampled by the period ratio of the two notes (a mix's FM
+voices rendered together on the chip first, `fm_on_chip`, unless the group turns it off). The plan sits on
 `config.merge_plan`, read by `walk_channel`; `refresh_ticks` rebuilds its tick map after the loop
 bodies are extended. A follower note that starts while the primary is silent is spliced into
 the primary's event stream as the follower's own note (`splice_solo_notes`; `walk_channel`

@@ -1087,7 +1087,17 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   triggered two semitones lower (`trigger_note`; `plan.notes` holds each note's trigger, and
   `plan.bases` the primary's note there), so Green Hill's F+A+C and Eb+G+Bb chime chords are
   one sample — a mix that would be transposed off the MOD's three octaves gets a mix of its
-  own, keyed with its base.  A drum primary sits at one note, so its mixes only share when
+  own, keyed with its base.  With the group's `fm_on_chip` (the default; `false` turns it off), a
+  pcm mix whose primary is FM and that has FM followers gets a `Composite.chip_base`: an
+  `FmInstrument` of the primary and those followers as layers (built as a chip composite's are),
+  rendered by the FM generator under an id from `CHIP_BASE_IDS` (1000), never a slot, for exactly
+  `Composite.longest_played` seconds (each note's end times its playback speed over the mix's own
+  note) with no loop (`FmInstrument.render_secs`), at the primary's render level.  The mixer takes
+  it in place of the primary's sample, at the primary's volume times `chip_gain` (the render's
+  peak over its primary layer's alone, `MergedBuild.scale_chip_volumes`), and skips the layers it
+  holds (`chip_layers`); the rest are mixed as before.  The voices' detune and phase run on
+  unlooped as the hardware's do, instead of each looped sample repeating its own few tens of ms.
+  A drum primary sits at one note, so its mixes only share when
   the followers match exactly.  A MOD sample triggered at note n plays at `amiga_clock /
   PERIOD[n]` whatever rate it was made at, so every layer is resampled by the period ratio of
   its note and the composite's trigger note (the fastest layer's, so a hat on a kick keeps its

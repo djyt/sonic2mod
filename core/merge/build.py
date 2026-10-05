@@ -201,6 +201,9 @@ class MergedBuild:
         composite's peak over its primary layer's, so the primary plays as loud as it did and the
         followers add to it as the hardware sum did.  Set before the samples are installed."""
         for c in self._plan.composites.values():
+            if c.chip_base is not None and c.chip_base.inst in fm_peaks:     # fm_on_chip: the mixer's gain
+                pk_all, pk_first = fm_peaks[c.chip_base.inst]
+                c.chip_gain = pk_all / pk_first if pk_first else 1.0
             if c.fm is None or c.entry is None or c.inst not in fm_peaks:
                 continue
             pk_all, pk_first = fm_peaks[c.inst]

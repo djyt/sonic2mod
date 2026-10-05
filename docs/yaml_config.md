@@ -623,7 +623,10 @@ baselines and audits stay the ground truth.
   fifth. The chip sums and clips them as the hardware does.
 - **Anything else** (DAC + PSG hi-hat, FM + PSG tone) is mixed from the finished samples at the
   primary's playback rate, the follower at its `sample_list` volume and baked level. A sum that
-  passes full scale plays at volume 64 and is reported.
+  passes full scale plays at volume 64 and is reported.  Where such a mix has an FM primary and
+  FM followers as well (FM + FM + PSG), those FM voices are rendered together on the YM2612 and
+  only the rest is mixed on top (`fm_on_chip`, on unless a group sets it `false`; see
+  § merge_patterns).
 - The primary's effects apply to the composite: its vibrato, note fill, `Cxx` and `EDx`.
 - A follower note that starts while the primary is silent is placed on the merged channel as
   the follower's own note (its instrument, pitch and level), so two channels that never sound
@@ -744,8 +747,22 @@ cut (by default that happens only while the composites do not all fit). A group'
 single voice's sustain loop is, with an 80 ms crossfade (the layers beat, so the join lands on
 another phase of the beat); the group's `loop_drift_db` / `loop_min_ms` steer it.  Lossy: the
 chord's slow movement freezes in the loop.  Green Hill lofi: its two long chords, 30 KB each,
-loop from 1.35 and 1.4 s (drift 1 dB, loops of at least 300 ms). Details:
-`docs/pipeline.md` § Sample banks.
+loop from 1.35 and 1.4 s (drift 1 dB, loops of at least 300 ms).
+
+`fm_on_chip` (a group key, `merge:` or `merge_patterns:`; **on by default**, `fm_on_chip: false`
+turns it off for that group): a mix with an FM primary and FM followers renders those FM voices
+together on the YM2612 (each at its own track's detune and level, a follower keyed off at its
+fill), unlooped for the composite's longest run through it (`Composite.longest_played`: a note
+triggered above the mix's own note plays it faster), and mixes only the rest (a PSG, a drum) on
+top.  Off, the mix sums each voice's finished sample, whose sustain loop repeats a few tens of
+ms, so two detuned voices' chorus is rebuilt from loop repeats.  A mix with no FM follower is
+unaffected, and so is a chip composite (FM voices only), which is rendered on the chip anyway.
+The render takes the primary's loop away: `mix_at: primary` no longer keeps one, and a long mix
+loops only where `loop_mix` finds the sum settle, which for a chord of detuned chip voices is
+late.  Robotnik's FM1 (detune +3) + FM4 + PSG1 lead, mixed at B: a 42 KB looped mix → 50 KB
+unlooped, 3.2 s for its 2.1 s F# 7 semitones up.  Green Hill lofi's FM5+FM3+FM4+PSG1 chord
+(`mix_at: primary`, `loop_mix`): 5 KB looping at 0.17 s → 24 KB looping at 2.2 s, the build
+174 → 192 KB; `fm_on_chip: false` there keeps the old size. Details: `docs/pipeline.md` § Sample banks.
 
 `python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write`
 (`--bank` adds `bank: true` to every drum-primary group) writes the section from a fold table (`Pattern,Ch 1,...` header; cells `fold N` / `keep` /

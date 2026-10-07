@@ -12,6 +12,15 @@ target_speed: 9            # 180 BPM: a MOD tick is 0.83 frames, as at 1 tick pe
 ticks_per_row: 3           # every duration is a multiple of $03: one row each, the jingle 28 rows of one pattern
 region: ntsc
 
+# Variant lofi (convert.py --variant lofi --merged -> output/15_1up_lofi_merged.mod): the merged build
+# 50 -> 30 KB.  The bass pair on a sliding loop (its level falls for as long as a note holds: looped early,
+# the fall in volume slides) and the harmony mixes at F2 (11 kHz, its treble above 5.5 kHz gone).  The
+# harmony never loops (its FM and PSG envelopes never settle together); the timpani as it is.  Left out:
+# merge_twins: always (-4.8 KB, up to 12 dB off at the cut), the lead looped at 12 dB (-1 KB)
+variants:
+  lofi:
+    name: "1-Up (Extra Life) lofi"
+
 channels:
   - source: DAC
     mod_channel: 0
@@ -115,11 +124,19 @@ merge:
   # FM4 plays FM1's data detuned (smpsAlterNote $03), FM1 left, FM4 right
   - primary: FM1
     followers: [FM4]
+    loop_start_ms: 60          # the pair beats (7 dB, 0.45 s): flat from its first window, it looped at 21 ms,
+                               # inside the attack, a 1.3 dB re-attack every beat; from 60 ms the seam is level
 
   # PSG1 plays FM2's notes
   - primary: FM2
     followers: [PSG1]
+    variants:
+      lofi: {mix_note: F2}     # 11 kHz instead of 14-18 (-7.7 KB; A2: -4.2 KB)
 
   # FM5 plays FM3's data detuned, FM3 left, FM5 right
   - primary: FM3
     followers: [FM5]
+    variants:
+      lofi:
+        loop_decay: slide      # 14.1 -> 1.6 KB; the bass 0.6 dB from the VGZ's balance (frozen at 12 dB: 1.9)
+        loop_drift_db: 2       # (3: +1.3 dB)

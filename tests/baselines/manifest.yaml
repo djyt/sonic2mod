@@ -34,9 +34,19 @@ extra_life:
   config: b4e78994646b
   date: '2026-10-07'
   settings: 2a7d221c6ea5
+extra_life_lofi:
+  commit: e622072-dirty
+  config: 5fc47ab86d73
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+extra_life_lofi_merged:
+  commit: e622072-dirty
+  config: 5fc47ab86d73
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
 extra_life_merged:
-  commit: 553c4cc-dirty
-  config: b4e78994646b
+  commit: e622072-dirty
+  config: 7b352a8b3c07
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 final_zone:

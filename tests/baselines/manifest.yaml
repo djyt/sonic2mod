@@ -80,13 +80,13 @@ invincibility:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 invincibility_lofi:
-  commit: 69c461c-dirty
-  config: 28ade19c8c9b
+  commit: 337972c-dirty
+  config: 3227e4388c9e
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 invincibility_lofi_merged:
-  commit: 69c461c-dirty
-  config: 28ade19c8c9b
+  commit: 337972c-dirty
+  config: 3227e4388c9e
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 invincibility_merged:

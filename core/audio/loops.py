@@ -256,7 +256,8 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
                       flat_db: float = FLAT_DB, span_secs: float = SPAN_SECS,
                       min_loop_secs: float = MIN_LOOP_SECS, max_loop_secs: float = MAX_LOOP_SECS,
                       cross_secs: float = CROSS_SECS, max_error: float = MAX_ERROR,
-                      timbre: bool = True, decay: bool = False) -> SustainLoop | None:
+                      timbre: bool = True, decay: bool = False,
+                      min_start_secs: float = 0.0) -> SustainLoop | None:
     """A sustain loop for a render of a note held for `sustain_n` samples at `rate` Hz whose
     fundamental period is `period` samples, or None where the envelope never settles (a
     decaying voice, one that has decayed to silence, or a sustain too short to judge).
@@ -276,6 +277,10 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     of the reference span's trend, the timbre check always on; the loop is searched in the
     render flattened from there (`flatten`) and carries the fall (SustainLoop.decay_db), which
     apply_loop flattens the same way.
+
+    `min_start_secs` (loop_start_ms): no loop starts earlier, wherever the envelope settles - a
+    beating pair is flat from its first window (its swing spans the band), and a loop that starts
+    inside the attack replays a piece of it on every pass.
 
     The loop is not yet closed: apply_loop crossfades it and cuts the sample.
     """
@@ -315,7 +320,7 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
             if not lo <= env[i] <= hi:
                 flat = i + 1
                 break
-    flat_at = _even(flat * win)
+    flat_at = max(_even(flat * win), _even(min_start_secs * rate))
     if timbre:
         flat_at = _even(_profile_holds_from(mono, rate, period, flat_at, ref_n if ref_n is not None else n,
                                             PROFILE_PER_DB * flat_db))

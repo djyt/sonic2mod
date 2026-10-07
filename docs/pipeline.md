@@ -819,6 +819,13 @@ fallen volume).  Game Over lofi merged: 54.8 → 41.8 KB, the bass level against
 Not handled: a sliding instrument used as a PCM mix source (the mix is made from the flattened
 render and keeps no slides), a legato (`3FF`) note (its curve restarts), PSG.
 
+**A loop's earliest start (`loop_start_ms`).** A detuned pair beats, and its swing spans the flat
+band from the first window, so its loop may start in the attack: 1-Up's lead pair looped at
+21 ms and replayed the onset's tail on every 0.45 s beat (a 1.3 dB jump at the seam, two extra
+audio onsets on the column).  `find_sustain_loop(min_start_secs=)` moves the flat point no earlier
+than that; neither `loop_drift_db` (the band) nor `loop_min_ms` (the length) can, and the timbre
+check moved it 1.3 s on (+10 KB).  At 60 ms the seam is level and the build 0.4 KB smaller.
+
 ---
 
 ## Pattern Breaks (`mod_pattern_breaks`)

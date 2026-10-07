@@ -224,6 +224,8 @@ class _FmRenderer:
         synth, spec = self._synth, job.spec
         plain_n = math.ceil(rate * (sustain + synth.release_padding))
         min_loop = {"min_loop_secs": spec.min_loop_ms / 1000.0} if spec.min_loop_ms is not None else {}
+        if spec.start_ms is not None:
+            min_loop["min_start_secs"] = spec.start_ms / 1000.0
         ref = min(synth.loop_ref_by_instrument.get(job.inst, sustain), sustain_n / rate)
         return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * ref),
                                  max_end=min(plain_n, sustain_n),

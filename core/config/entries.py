@@ -37,6 +37,8 @@ class InstrumentRange:
     loop_min_ms: float | None = None     # its sustain loop is at least this long (core.audio.loops' 30 ms
                                       # otherwise): a longer loop keeps a detuned voice's shimmer
                                       # moving where a short one freezes it into a buzz
+    loop_start_ms: float | None = None   # its sustain loop starts no earlier than this: past an attack a
+                                      # beating pair counts as settled through (its swing spans the band)
     loop_decay: str | None = None        # LOOP_DECAY_MODES: "slide" loops while the level still falls
                                       # and the notes' volume slides carry the fall on; None: "freeze"
     dither: str | None = None            # this sample's quantisation (core.audio.pcm.DITHER_MODES); None:
@@ -94,12 +96,14 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
     vibrato    = _opt(entry, 'vibrato',    _parse_vibrato)
     drift      = _opt(entry, 'loop_drift_db', lambda v: _drift_db(v, context))
     min_ms     = _opt(entry, 'loop_min_ms', lambda v: _loop_min_ms(v, context))
+    start_ms   = _opt(entry, 'loop_start_ms', lambda v: _loop_start_ms(v, context))
     dither     = _opt(entry, 'dither', lambda v: dither_mode(v, context))
     decay      = _opt(entry, 'loop_decay', lambda v: _loop_decay(v, context))
 
     return InstrumentRange(
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
         vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms, dither=dither, loop_decay=decay,
+        loop_start_ms=start_ms,
     )
 
 
@@ -126,6 +130,17 @@ def _loop_min_ms(v, context: str) -> float:
         raise ValueError(f"{context}: loop_min_ms must be a number of milliseconds (got {v!r})") from e
     if ms <= 0:
         raise ValueError(f"{context}: loop_min_ms must be positive (got {ms})")
+    return ms
+
+
+def _loop_start_ms(v, context: str) -> float:
+    """A `loop_start_ms` override: milliseconds, not negative."""
+    try:
+        ms = float(v)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{context}: loop_start_ms must be a number of milliseconds (got {v!r})") from e
+    if ms < 0:
+        raise ValueError(f"{context}: loop_start_ms must not be negative (got {ms})")
     return ms
 
 
@@ -180,6 +195,8 @@ class MergeGroup:
                                 # primary's entry's, then the song's, otherwise)
     loop_min_ms: float | None = None    # the shortest sustain loop of this group's chip composites
                                 # (and of its looped mixes, loop_mix)
+    loop_start_ms: float | None = None  # the earliest sustain loop start of this group's chip composites
+                                # (and of its looped mixes)
     loop_decay: str | None = None   # LOOP_DECAY_MODES for this group's chip composites (the primary's
                                 # entry's otherwise)
     treble_shelf_db: float | None = None   # a brightness shelf on this group's composites (the mixed
@@ -309,6 +326,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
                       loop_decay=_opt(g, 'loop_decay', lambda v: _loop_decay(v, ctx)),
+                      loop_start_ms=_opt(g, 'loop_start_ms', lambda v: _loop_start_ms(v, ctx)),
                       loop_mix=bool(g.get('loop_mix', False)),
                       fm_on_chip=bool(g.get('fm_on_chip', True)),
                       treble_shelf_db=_opt(g, 'treble_shelf_db', float),

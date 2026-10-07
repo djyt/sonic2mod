@@ -60,6 +60,7 @@ class FmInstrument:
     loop_drift_db: float | None = None   # a merge group's overrides for its composite; else the entry's
     loop_min_ms: float | None = None
     loop_decay: str | None = None
+    loop_start_ms: float | None = None
     treble_shelf_db: float | None = None   # a merge group's shelf on this composite's render
     treble_shelf_hz: float | None = None
     dither: str | None = None              # a merge group's quantisation for this composite
@@ -80,6 +81,11 @@ class FmInstrument:
     def min_loop_ms(self) -> float | None:
         """This instrument's shortest sustain loop override (None: core.audio.loops' default)."""
         return self.loop_min_ms if self.loop_min_ms is not None else self.entry.loop_min_ms
+
+    @property
+    def start_ms(self) -> float | None:
+        """This instrument's earliest sustain loop start override (None: wherever it settles)."""
+        return self.loop_start_ms if self.loop_start_ms is not None else self.entry.loop_start_ms
 
     @property
     def decay_mode(self) -> str:

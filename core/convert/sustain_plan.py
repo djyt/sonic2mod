@@ -35,6 +35,7 @@ class SustainPlanner:
         self._pending: dict[tuple[str, int], dict] = {}   # sustain_short warnings' fields, held back until flush
         self._rings_out: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments a channel's last note rings out on}
         self._slide_ends: dict[str, set[int]] = {}  # {"FM"/"PSG": instruments a note of ends in a release slide}
+        self._loop_refs: dict[str, dict[int, float]] = {}   # {"FM"/"PSG": {instrument: longest ring + a row}}
 
     def _synthesis_roots(self, kind: str) -> dict[int, tuple[int, int]]:
         """{MOD instrument: (MOD note index its sample is synthesised for, synth_shift)}.
@@ -65,6 +66,25 @@ class SustainPlanner:
         owner = plan.routed_into(col, self._timeline.pattern_of(rest))
         return owner is None or owner == chan_cfg.source
 
+    def _mod_span(self, start: int, end: int) -> tuple[float, float]:
+        """The ticks a ring from `start` to `end` can last in the MOD, as ChannelWriter places it:
+        a note-on on the grid starts on its row, one between rows up to half a row earlier
+        (rounded where its EDx slot is taken) and a driver tick either way (EDx counts frames);
+        its end - the next note-on, rest or cut - likewise, and a ring that ends inside its own
+        row runs to the next one (two note-ons never share a cell: a grace note's target takes
+        the next row).  On the grid both ends are exact: Game Over's 4-row chords were rendered
+        a whole row long."""
+        tpr = self._timeline.ticks_per_row
+
+        def on_grid(t: float) -> bool:
+            return abs(t / tpr - round(t / tpr)) < 1e-9
+
+        lo = start if on_grid(start) else min(start - 1, round(start / tpr) * tpr)
+        hi = end if on_grid(end) else max(end + 1, round(end / tpr) * tpr)
+        if int(end // tpr) == int(start // tpr) and not on_grid(end):
+            hi = max(hi, (int(start // tpr) + 1) * tpr)
+        return max(0.0, lo), hi
+
     def _needs(self, kind: str, merge: MergePlan | None) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
         over the enabled channels of `kind` ("FM" / "PSG").
@@ -72,8 +92,10 @@ class SustainPlanner:
         The seconds are the longest ring of any of the instrument's notes, measured at the
         sample's own synthesis rate.  A ring is a note plus the smpsNoAttack continuations
         after it: no C00 is written for those, so the sample keeps advancing; a plain rest
-        (C00) or the next note restarts it.  One row is added, the most the row grid moves
-        a note's start (EDx) or its end.  Its wall-clock length follows the MOD's tempo
+        (C00) or the next note restarts it.  Its ends are where the row grid can put them
+        (_mod_span: exact on a row, up to half a row out between rows; until 2026-10-07 a whole
+        row was added to every ring; the loop search still measures from that, `_loop_refs`).
+        Its wall-clock length follows the MOD's tempo
         segments (tick_span_secs).  Played above the synthesis root (_synthesis_roots) the
         sample runs faster by root period / note period and needs proportionally more of it,
         and a sample rendered synth_shift semitones above the root's pitch runs 2^(shift/12)
@@ -92,6 +114,7 @@ class SustainPlanner:
         comps = ({c.inst: c for c in merge.composites.values() if c.fm is None}
                  if merge is not None else {})
         needs: dict[int, tuple[float, tuple[int, int] | None]] = {}
+        self._loop_refs[kind] = {}
         for chan_cfg, channel in enabled_channels(self._song, self._config, (kind,)):
             if merge is not None and not chan_cfg.enabled:
                 continue            # a follower: its notes play as composites (credited above) or
@@ -139,7 +162,8 @@ class SustainPlanner:
                 start, ticks, inst, out_idx, slides = ring
                 if slides:
                     self._slide_ends.setdefault(kind, set()).add(inst)
-                wall = self._timeline.span_secs(start, start + ticks + self._timeline.ticks_per_row)
+                wall = self._timeline.span_secs(*self._mod_span(start, start + ticks))
+                wall_ref = self._timeline.span_secs(start, start + ticks + self._timeline.ticks_per_row)
                 comp = comps.get(inst)
                 plays = [(inst, out_idx)]
                 if comp is not None:
@@ -148,16 +172,19 @@ class SustainPlanner:
                     if inst_i != inst and inst_i not in roots:
                         continue                # a source of the other chip: its own pass counts it
                     idx_i = max(0, min(35, raw_idx))
-                    secs = wall
+                    scale = 1.0
                     root = roots.get(inst_i)
                     if root is not None:
                         root_idx, shift = root
-                        secs *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[idx_i] / 2.0 ** (shift / 12.0)
+                        scale *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[idx_i] / 2.0 ** (shift / 12.0)
                     if finetunes.get(inst_i, 0) > 0:
-                        secs *= 2.0 ** (finetunes[inst_i] / 96.0)
+                        scale *= 2.0 ** (finetunes[inst_i] / 96.0)
+                    secs = wall * scale
                     prev = needs.get(inst_i)
                     if prev is None or secs > prev[0]:
                         needs[inst_i] = (secs, root)
+                    refs = self._loop_refs.setdefault(kind, {})
+                    refs[inst_i] = max(refs.get(inst_i, 0.0), wall_ref * scale)
         return needs
 
     def resolve(self, settings, kind: str, merge: MergePlan | None):
@@ -180,7 +207,10 @@ class SustainPlanner:
                 secs = float(type(settings)().sustain_duration)    # no notes: the field's default
             per_inst = {i: min(n, _AUTO_SUSTAIN_CAP_SECS)
                         for i, (n, root) in needs.items() if root is not None and n > 0}
-            settings = dataclasses.replace(settings, sustain_duration=secs, sustain_by_instrument=per_inst)
+            refs = self._loop_refs.get(kind, {})
+            loop_refs = {i: min(refs.get(i, n), _AUTO_SUSTAIN_CAP_SECS) for i, n in per_inst.items()}
+            settings = dataclasses.replace(settings, sustain_duration=secs, sustain_by_instrument=per_inst,
+                                           loop_ref_by_instrument=loop_refs)
             self._diag.info(InfoKind.AUTO_SUSTAIN_FM if kind == 'FM' else InfoKind.AUTO_SUSTAIN_PSG,
                             secs=round(secs, 3), shortest=round(min(per_inst.values(), default=secs), 3),
                             instruments=len(per_inst))

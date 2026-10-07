@@ -164,8 +164,11 @@ def audit(path: str, slack: float = 2.0, amiga_clock: float = PAL_AMIGA_CLOCK) -
         elif i in banked:
             flags.append("sample bank (9xx offsets)")
         elif rate:
-            if not looped and secs is not None and secs + 0.05 < longest:
-                flags.append(f"too short by {longest - secs:.2f} s")
+            # Each note against the sample at its own period: a low note runs through it slower
+            # (Continue's chord composite: its 10-row notes are its lowest, its fast ones are cut)
+            short = max((sec - s.length * p / amiga_clock for _c, p, sec in notes), default=0.0)
+            if not looped and short > 0.05:
+                flags.append(f"too short by {short:.2f} s")
             if not looped and secs is not None and secs > longest + slack:
                 flags.append(f"oversize by {secs - longest:.1f} s")
             if looped and (s.loop_start / rate) > longest + slack:

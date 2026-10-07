@@ -219,7 +219,8 @@ class _PsgRenderer:
         synth = self._synth
         period = rate * 32.0 * n_val / synth.clock_rate
         plain_n = int(rate * (sustain + synth.release_padding))
-        loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * sustain),
+        ref = min(synth.loop_ref_by_instrument.get(inst_num, sustain), probe)
+        loop = find_sustain_loop(mono, rate, period, int(rate * probe), ref_n=int(rate * ref),
                                  max_end=min(plain_n, int(rate * probe)), flat_db=synth.loop_drift_db,
                                  timbre=synth.loop_timbre)
 

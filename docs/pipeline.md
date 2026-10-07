@@ -719,7 +719,8 @@ after it go, so the restart follows the key-offs.
 **Cause / rules:** `SustainPlanner._needs` measures the longest ring per instrument in the MOD's own
 time (tempo segments, after `smpsSetTempoDiv` re-timing), at the sample's playback rate (root
 period / note period against the **first** entry's root, the one the sample is rendered for),
-with a positive finetune and one row of margin.  The auto sustain is the largest need, capped
+with a positive finetune, each ring's ends where the row grid can put them (`_mod_span`: exact
+on a row, half a row either way between rows).  The auto sustain is the largest need, capped
 at 10 s; each generator also caps every instrument to the sample limit at its rate
 (`samples.max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original
 ProTracker's 65534).  `sustain_short` warnings name what is left.  Full rules: `docs/fm_synthesis.md`

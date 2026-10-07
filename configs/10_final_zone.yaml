@@ -45,11 +45,11 @@ dac_samples:
   - name: dSnare
     mod_instrument: 1
     mod_note: Fs3
-  # dHiTimpani: ×13 — native ~9588 Hz → note Ds2
+  # dHiTimpani: ×13 — ~9400 Hz in the VGZ → note D2 (-17 c)
   - name: dHiTimpani
     mod_instrument: 2
-    mod_note: Ds2
-  # dLowTimpani: ×12 — native ~7154 Hz → note A1
+    mod_note: D2
+  # dLowTimpani: ×12 — ~6900 Hz in the VGZ → note A1 (+20 c)
   - name: dLowTimpani
     mod_instrument: 2
     mod_note: A1

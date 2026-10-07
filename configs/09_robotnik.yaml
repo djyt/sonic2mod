@@ -52,11 +52,11 @@ dac_samples:
   - name: dSnare
     mod_instrument: 1
     mod_note: Fs3
-  # dHiTimpani: ×8 — native ~9588 Hz → note Ds2
+  # dHiTimpani: ×8 — ~9315 Hz in the VGZ → note D2 (-1 c)
   - name: dHiTimpani
     mod_instrument: 2
-    mod_note: Ds2
-  # dLowTimpani: ×8 — native ~7154 Hz → note A1
+    mod_note: D2
+  # dLowTimpani: ×8 — ~6870 Hz in the VGZ → note A1 (+28 c)
   - name: dLowTimpani
     mod_instrument: 2
     mod_note: A1
@@ -93,7 +93,7 @@ voice_map:
 
 # FM4 has its own instrument: on inst 6 (baked at FM1's centre level) its hard pan put a Cxx on
 # every note, which took the slot the triplets' EDx needs, and two of them snapped to the rows
-# (32 ms).  In the merged build it moves the lead composite's volume (+0.9 dB on that column)
+# (32 ms)
 channel_instrument_map:
   FM4:
     2:

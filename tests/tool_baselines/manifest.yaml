@@ -1,3 +1,4 @@
+# Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.
 analyze_01_frames:
   commit: d8b4b4b
   date: '2026-10-03'
@@ -395,12 +396,12 @@ compare_continue_screen:
     tests/baselines/continue_screen_baseline.mod: 28e7460c0dd4
     tests/settings.yaml: 268a59366905
 compare_credits:
-  commit: 6b801dd-dirty
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
-    configs/13_credits.yaml: d8a4797a5171
+    configs/13_credits.yaml: cbbb5868e442
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: fe9e23589cc8
+    tests/baselines/credits_baseline.mod: 39bf96ddaab2
     tests/settings.yaml: 268a59366905
 compare_drowning:
   commit: 273c323
@@ -435,12 +436,12 @@ compare_extra_life_merged:
     tests/baselines/extra_life_merged_baseline.mod: 51a6d1473e53
     tests/settings.yaml: 268a59366905
 compare_final_zone:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: f38b709-dirty
+  date: '2026-10-07'
   inputs:
-    configs/10_final_zone.yaml: ee1e94bc756b
+    configs/10_final_zone.yaml: f6cf5d82e26f
     reference/vgz/10 - Final Zone.vgz: 032195e2d42b
-    tests/baselines/final_zone_baseline.mod: ff9fa7715a36
+    tests/baselines/final_zone_baseline.mod: 333368145f01
     tests/settings.yaml: 268a59366905
 compare_game_over:
   commit: 273c323
@@ -515,28 +516,28 @@ compare_marble_zone:
     tests/baselines/marble_zone_baseline.mod: ed5105ccd19e
     tests/settings.yaml: 268a59366905
 compare_robotnik:
-  commit: f796b4e-dirty
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: af30863806fb
+    configs/09_robotnik.yaml: c55008969e46
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_baseline.mod: ba22ca7f7e4a
+    tests/baselines/robotnik_baseline.mod: 33f9ffa09f5e
     tests/settings.yaml: 268a59366905
 compare_robotnik_merged:
-  commit: f796b4e-dirty
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: af30863806fb
+    configs/09_robotnik.yaml: c55008969e46
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_merged_baseline.mod: 4f9114cd5afe
+    tests/baselines/robotnik_merged_baseline.mod: a36e8d5a8284
     tests/settings.yaml: 268a59366905
 compare_scrap_brain_zone:
-  commit: 273c323
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
-    configs/07_scrap_brain_zone.yaml: 522f80c0b3d6
+    configs/07_scrap_brain_zone.yaml: c086dabb1de1
     reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
-    tests/baselines/scrap_brain_zone_baseline.mod: 80848ec5ff01
+    tests/baselines/scrap_brain_zone_baseline.mod: d6f4d2c04702
     tests/settings.yaml: 268a59366905
 compare_special_stage:
   commit: 273c323
@@ -555,20 +556,20 @@ compare_spring_yard_zone:
     tests/baselines/spring_yard_zone_baseline.mod: 4e3abec3dc5c
     tests/settings.yaml: 268a59366905
 compare_stage_clear:
-  commit: 273c323
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
-    configs/11_stage_clear.yaml: c6543856658e
+    configs/11_stage_clear.yaml: 14d8e0a3e29f
     reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_baseline.mod: b6b503fcb533
+    tests/baselines/stage_clear_baseline.mod: 096d0fa1ca3f
     tests/settings.yaml: 268a59366905
 compare_stage_clear_merged:
-  commit: 273c323
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
-    configs/11_stage_clear.yaml: c6543856658e
+    configs/11_stage_clear.yaml: 14d8e0a3e29f
     reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_merged_baseline.mod: 2a381a98adef
+    tests/baselines/stage_clear_merged_baseline.mod: cff9d0a028f8
     tests/settings.yaml: 268a59366905
 compare_star_light_zone:
   commit: 273c323

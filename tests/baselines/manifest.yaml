@@ -1,3 +1,4 @@
+# Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
   commit: b75b061
   config: f8b2de11a558
@@ -9,8 +10,8 @@ continue_screen:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 credits:
-  commit: 6b801dd-dirty
-  config: c4ca3b2a56e4
+  commit: f38b709-dirty
+  config: 2131095645c0
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 drowning:
@@ -34,9 +35,9 @@ extra_life_merged:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 final_zone:
-  commit: b75b061
-  config: 5e0891bc29c8
-  date: '2026-10-05'
+  commit: f38b709-dirty
+  config: 711c7991349c
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over:
   commit: b75b061
@@ -84,19 +85,19 @@ marble_zone:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 robotnik:
-  commit: f796b4e-dirty
-  config: 9ba8fad23b9a
+  commit: f38b709-dirty
+  config: f425fb848650
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 robotnik_merged:
-  commit: f796b4e-dirty
-  config: 9ba8fad23b9a
+  commit: f38b709-dirty
+  config: f425fb848650
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 scrap_brain_zone:
-  commit: b75b061
-  config: d8159009faaa
-  date: '2026-10-05'
+  commit: f38b709-dirty
+  config: 0f1f6d1d43fc
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 special_stage:
   commit: b75b061
@@ -109,14 +110,14 @@ spring_yard_zone:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 stage_clear:
-  commit: b75b061
-  config: 4654619e4a4e
-  date: '2026-10-05'
+  commit: f38b709-dirty
+  config: 335e54be79c1
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 stage_clear_merged:
-  commit: b75b061
-  config: 4654619e4a4e
-  date: '2026-10-05'
+  commit: f38b709-dirty
+  config: 335e54be79c1
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 star_light_zone:
   commit: b75b061

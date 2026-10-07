@@ -98,10 +98,10 @@ dac_samples:
     mod_note: Fs3
   - name: dHiTimpani
     mod_instrument: 3
-    mod_note: Ds2
+    mod_note: D2  # ~9343 Hz in the VGZ (-6 c)
   - name: dMidTimpani
     mod_instrument: 3
-    mod_note: Cs2
+    mod_note: C2  # ~8446 Hz in the VGZ (-33 c)
 
 voice_map:
   # $00 — alg 0, fb 4, 96 notes

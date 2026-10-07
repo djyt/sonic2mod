@@ -382,6 +382,8 @@ def _print_instrument_levels(lev: dict) -> None:
         flag = "  <-- channels disagree" if it["spread_db"] > LEVEL_MAX_SPREAD else ""
         if abs(it["err_db"]) > LEVEL_MAX_ERR:
             flag = "  <-- too far off to be a volume problem"
+        elif it.get("from_cxx"):
+            flag = "  (from its Cxx notes: none plain long enough to measure)"
         print(f"{it['instrument']:>4} {it['name']:<22} {it['volume']:>3} {it['notes']:>5} {it['err_db']:>+6.1f} "
               f"{it['spread_db']:>6.1f} {sug:>7}   {detail}{flag}")
     if lev["scaled_db"] < -0.05:

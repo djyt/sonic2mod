@@ -34,10 +34,10 @@ sample_list:
   - [1, "snare.raw", 57, 0] # VGZ: +1.0 dB at 64
   - [2, "kick.raw", 64, 0]
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM3, FM4, FM5 ---
-  - [3, "fm_v00.raw", 19, 0] # VGZ: +4.5 dB at 32
-  - [4, "fm_v00_fm5.raw", 32, 0]
+  - [3, "fm_v00.raw", 17, 0] # VGZ: +0.9 dB at 19
+  - [4, "fm_v00_fm5.raw", 19, 0] # VGZ: +4.5 dB at 32
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
-  - [5, "fm_v01.raw", 32, 0]
+  - [5, "fm_v01.raw", 35, 0] # VGZ: -0.8 dB at 32
   # --- PSG noise (form $E7) ---
   - [6, "psg_noise.raw",  3, 0] # baked: 16 at PSG attenuation 3 (−6 dB); VGZ: +5.8 dB at 6
 
@@ -87,3 +87,26 @@ channel_instrument_map:
 mod_pattern_breaks:
   - pattern: 0
     row: 23
+
+# -------------------------------------------------------------------------------------------------
+# Merged 4-Channel Version (convert.py --merged)
+# drums (DAC+PSG3) · lead (FM1+FM5) · bass (FM2) · chords (FM3+FM4) → 4-channel M.K.
+# The two FM folds are clean (tools/merge_survey.py); the bass stays on its own channel.
+# -------------------------------------------------------------------------------------------------
+merge_twins: always            # the snare + short hat mix (4 notes) was the long-hat one cut earlier
+
+merge:
+  # Lead: FM5 plays FM1's data detuned (smpsAlterNote $03): one chip composite
+  - primary: FM1
+    followers: [FM5]
+
+  # Chords: FM3 + FM4 in parallel, four chip composites
+  - primary: FM3
+    followers: [FM4]
+
+  # Drums carry the hats: snares the long one (200 ms), kicks the short (50 ms).  Three hats start
+  # over a drum's tail and cut it (cut_primary, 0 lost); four still ringing at the next hit are cut.
+  - primary: DAC
+    followers: [PSG3]
+    cut_primary: true
+    limit_db: 4              # the kick + hat peak (0.5 dB over) limited, not the mix turned down

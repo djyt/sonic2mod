@@ -43,6 +43,15 @@ through the note, so the whole-note energy differs while the attack level (what 
 measures over its first 0.6 s) matches.  Volumes follow the per-note figure; the envelope tail is
 a synthesis question (with items 7 and 8), not a level one.
 
+**Invincibility FM5 was not this (2026-10-07).**  Its notes were 4.5 dB loud too, but the
+per-instrument table never listed `fm_v00_fm5`: the instrument's baked level is the fast run's
+(24 notes of 67–83 ms, too short to measure), so every note long enough to measure carries a `Cxx`
+and only plain notes were read.  A `Cxx` is the volume scaled by the note's level difference, so
+its error is the volume's: the table now falls back to an instrument's `Cxx` notes when it has no
+plain ones (`from_cxx`, `core/audit/levels.py`).  Volume 32 → 19; with `fm_v00` 19 → 17 and
+`fm_v01` 32 → 35 every channel is within 0.3 dB of the VGZ (DAC +0.8), and the merged build's
+columns within 0.6.  No other song's table changed.
+
 ## Everything else
 
 - Key-ons: 0 unmatched on every FM/PSG/noise channel of all ten (Drowning's tempo steps handled

@@ -476,12 +476,20 @@ compare_green_hill_zone_merged:
     tests/baselines/ghz_merged_baseline.mod: a53c70aad856
     tests/settings.yaml: 268a59366905
 compare_invincibility:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 003c168-dirty
+  date: '2026-10-07'
   inputs:
-    configs/14_invincibility.yaml: 25a9473c868c
+    configs/14_invincibility.yaml: 7f0fdde1659d
     reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
-    tests/baselines/invincibility_baseline.mod: 1f8c63ad95e9
+    tests/baselines/invincibility_baseline.mod: 86e732525355
+    tests/settings.yaml: 268a59366905
+compare_invincibility_merged:
+  commit: 003c168-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/14_invincibility.yaml: 7f0fdde1659d
+    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    tests/baselines/invincibility_merged_baseline.mod: 1417694af91c
     tests/settings.yaml: 268a59366905
 compare_lab_zone:
   commit: d8b4b4b

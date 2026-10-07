@@ -460,20 +460,20 @@ compare_game_over:
     tests/baselines/game_over_baseline.mod: e918dd47e802
     tests/settings.yaml: 268a59366905
 compare_game_over_lofi:
-  commit: 5c7ae06-dirty
+  commit: 484d422-dirty
   date: '2026-10-07'
   inputs:
-    configs/19_game_over.yaml: 07706c3f2263
+    configs/19_game_over.yaml: 5a82cd1b1034
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
-    tests/baselines/game_over_lofi_baseline.mod: 8e7049c2b1f8
+    tests/baselines/game_over_lofi_baseline.mod: c31450facbf5
     tests/settings.yaml: 268a59366905
 compare_game_over_lofi_merged:
-  commit: 5c7ae06-dirty
+  commit: 484d422-dirty
   date: '2026-10-07'
   inputs:
-    configs/19_game_over.yaml: 07706c3f2263
+    configs/19_game_over.yaml: 5a82cd1b1034
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
-    tests/baselines/game_over_lofi_merged_baseline.mod: 4bcf50c961dc
+    tests/baselines/game_over_lofi_merged_baseline.mod: e8deb512016d
     tests/settings.yaml: 268a59366905
 compare_game_over_merged:
   commit: 344c13c-dirty
@@ -724,12 +724,12 @@ pitch_game_over:
     tests/baselines/game_over_baseline.mod: f0a4e973c5f2
     tests/settings.yaml: 268a59366905
 pitch_game_over_lofi:
-  commit: 5c7ae06-dirty
+  commit: 484d422-dirty
   date: '2026-10-07'
   inputs:
-    configs/19_game_over.yaml: 07706c3f2263
+    configs/19_game_over.yaml: 5a82cd1b1034
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
-    tests/baselines/game_over_lofi_baseline.mod: 8e7049c2b1f8
+    tests/baselines/game_over_lofi_baseline.mod: c31450facbf5
     tests/settings.yaml: 268a59366905
 pitch_ghz_lofi:
   commit: b0ed618-dirty

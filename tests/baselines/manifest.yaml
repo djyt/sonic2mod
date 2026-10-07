@@ -50,13 +50,13 @@ game_over:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over_lofi:
-  commit: 5c7ae06-dirty
-  config: 8007247902ba
+  commit: 484d422-dirty
+  config: a037bf7b91f7
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over_lofi_merged:
-  commit: 5c7ae06-dirty
-  config: 8007247902ba
+  commit: 484d422-dirty
+  config: a037bf7b91f7
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over_merged:

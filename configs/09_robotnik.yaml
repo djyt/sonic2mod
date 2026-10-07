@@ -7,8 +7,9 @@ output_file: output/09_robotnik.mod
 samples_dir: "samples/"
 
 auto_bpm: true
-target_speed: 4
-ticks_per_row: 1
+target_speed: 8            # 150 BPM: 4xy x=5 is 4.10 Hz (the driver 4.25); speed 12 (225 BPM) has 3.87 or 5.16
+ticks_per_row: 3           # $03 = 1 row, a beat 4, a bar 16: four bars to a pattern.  The $04 triplets and
+                           # the DAC's $01/$05 start between rows and take EDx
 region: ntsc
 
 channels:
@@ -40,6 +41,7 @@ sample_list:
   - [5, "fm_v01.raw", 14, 0] # VGZ: -3.1 dB at 10
   # --- voice $02: alg 5: 1→(2+3+4), fb 7 — FM1, FM4 ---
   - [6, "fm_v02.raw", 19, 0] # VGZ: +1.0 dB at 22
+  - [10, "fm_v02_fm4.raw", 13, 0] # VGZ: +0.2 dB at 13
   # --- voice $05: alg 2: (1+(2→3))→4, fb 7 — FM5 ---
   - [7, "fm_v05.raw", 21, 0] # VGZ: +3.7 dB at 32
   # --- PSG tone fTone_05 ---
@@ -89,6 +91,17 @@ voice_map:
       mod_instrument: 7
       root: E2
 
+# FM4 has its own instrument: on inst 6 (baked at FM1's centre level) its hard pan put a Cxx on
+# every note, which took the slot the triplets' EDx needs, and two of them snapped to the rows
+# (32 ms).  In the merged build it moves the lead composite's volume (+0.9 dB on that column)
+channel_instrument_map:
+  FM4:
+    2:
+    - low:  Fs6
+      high: Fs7
+      mod_instrument: 10
+      root: Fs2
+
 psg_voice_map:
   fTone_05:
     low:  Fs6
@@ -97,11 +110,11 @@ psg_voice_map:
     root: Fs2
 
 # -------------------------------------------------------------------------------------------------
-# Structural pattern break after intro
+# Structural pattern break after the opening bar
 # -------------------------------------------------------------------------------------------------
 mod_pattern_breaks:
   - pattern: 0
-    row: 47
+    row: 15
 
 # -------------------------------------------------------------------------------------------------
 # Merged 4-Channel Version

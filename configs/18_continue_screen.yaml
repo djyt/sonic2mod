@@ -14,6 +14,15 @@ ticks_per_row: 3           # a beat ($0C) 4 rows, a bar 16, a pattern four bars.
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
+# Variant lofi (convert.py --variant lofi --merged -> output/18_continue_screen_lofi_merged.mod): the merged
+# build 107 -> 33 KB.  The bass and the lead on sliding loops (both fall for as long as a note holds and
+# looped only at the end of their 2.4 s / 0.9 s renders), the lead's loop past its attack peak; the chord
+# composites loop where they settle to within 12 dB.  The drums as they are.  Left out: the chords at 6 dB
+# (+20.6 KB), the bass at root A1 (-0.7 KB for its treble)
+variants:
+  lofi:
+    name: "Continue Screen lofi"
+
 channels:
   - source: DAC
     mod_channel: 0
@@ -55,6 +64,11 @@ voice_map:
       high: Es4
       mod_instrument: 3
       root: C3
+      variants:
+        lofi:
+          loop_decay: slide  # 19.9 -> 3.0 KB; the lead 0.2 dB from the VGZ's balance
+          loop_drift_db: 2
+          loop_start_ms: 80  # past the attack peak (byte 896): from 572 the loop replayed the swell, 4.7 dB
   1:
     - low:  Fs2   # was G5-A5 (source bytes) for FM2
       high: A2
@@ -65,6 +79,10 @@ voice_map:
       high: E3
       mod_instrument: 5
       root: E2
+      variants:
+        lofi:
+          loop_decay: slide  # 28.6 -> 1.4 KB, the bass column's onsets as before
+          loop_drift_db: 2
   3:
     - low:  A4   # was A5-G6 (source bytes) for FM4, FM3
       high: G5
@@ -86,3 +104,6 @@ merge:
   # FM4 plays the chord's lower note in FM3's rhythm, voice $03 both
   - primary: FM3
     followers: [FM4]
+    variants:
+      lofi:
+        loop_drift_db: 12    # the 1.5 s chords loop 0.35 s in (34 -> 9.4 KB); the column +0.2 dB against the VGZ

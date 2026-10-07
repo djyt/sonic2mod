@@ -10,9 +10,9 @@ continue_screen:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 credits:
-  commit: b75b061
+  commit: 6b801dd-dirty
   config: c4ca3b2a56e4
-  date: '2026-10-05'
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 drowning:
   commit: b75b061

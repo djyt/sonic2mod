@@ -64,8 +64,8 @@ channels:
 # (channel TL, pan) combination; the converter adds Cxx only for notes at any other level.
 sample_list:
   # --- percussion ---
-  - [1,  "kick.raw",        64, 0]
-  - [2,  "snare.raw",       64, 0]
+  - [1,  "kick.raw",        64, -2]
+  - [2,  "snare.raw",       64, 1]
   # --- voice $00: deep bass (FM2 opening) ---
   - [3,  "ghz_v00.raw",     24, 0] # VGZ: +2.4 dB at 32
   # --- voice $01: bass/rhythm pad (FM2 main loop) ---
@@ -100,14 +100,16 @@ sample_list:
 # -------------------------------------------------------------------------------------------------
 dac_samples:
 
+  # dKick: ~7715 Hz on hardware (the cycle count less this song's 5.9 % per-frame stall) → B1 ft -2 (+1 c)
   - name: dKick
     mod_instrument: 1
-    mod_note: C2
+    mod_note: B1
     merge_saturate_db: 2    # Merged build only: soft-clipped, body +2 dB at the same peak
     
+  # dSnare: ~22375 Hz on hardware (the cycle count less this song's 5.9 % per-frame stall) → F3 ft +1 (-4 c)
   - name: dSnare
     mod_instrument: 2
-    mod_note: Fs3
+    mod_note: F3
     merge_saturate_db: 2
 
 

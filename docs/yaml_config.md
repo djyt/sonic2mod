@@ -527,36 +527,41 @@ The Sonic 1 sound driver plays DAC samples via Z80-driven PCM/DPCM routines. Sam
 | dSnare | `dac/dpcm/snare.wav` | 24,000 Hz | 8-bit mono DPCM |
 | dTimpani | `dac/dpcm/timpani.wav` | 7,375 Hz | 8-bit mono DPCM |
 
-The timpani variants reuse `timpani.wav` at other playback rates.  The driver's cycle count
-(`core/rom/dac.py`: 301 + 26·(pitch − 1) Z80 cycles a byte) gives the left column; the VGZ rips
-play every DAC sample about 3.5 % slower (PCM writes per second, measured 2026-10-07 on Scrap
-Brain, Robotnik, Final Zone, Stage Clear, Credits and 1-Up; the spread is the bus contention of
-each song), and the rips are the yardstick:
+The timpani variants reuse `timpani.wav` at other playback rates.
 
-| Variant | Driver pitch | Cycle count | In the rips |
-|---------|--------------|-------------|-------------|
-| dHiTimpani | 18 | 9,635 Hz | 9,150–9,440 Hz |
-| dMidTimpani | 21 | 8,720 Hz | 8,220–8,450 Hz |
-| dLowTimpani | 28 | 7,138 Hz | 6,800–6,970 Hz |
-| dVLowTimpani | 29 | 6,957 Hz | 6,726–6,740 Hz |
+**What real hardware plays (2026-10-07).**  The Z80 driver's DPCM loop takes exactly
+301 + 26·(pitch − 1) T-states a byte (two samples) at 3,579,545 Hz — counted from the ROM's own
+code (`core/rom/dac.py`; `z80.asm` matches it instruction for instruction).  Wait states can only
+add to that.  On top of it the 68k's `UpdateMusic` stops the Z80 for the whole music update once
+a frame (`stopZ80`): the DAC holds for 3.8–6.4 % of the time, by song.  So the hardware rate is
+the cycle count less that share.
+
+The VGZ rips are **not** the yardstick for DAC pitch: their emulator runs the loop 1.7–2.8 %
+fast between the stalls (pitch-dependent; snare 24,440 Hz against the count's 23,784).  Their
+averaged rates (stalls included) land about 2–3 % above the hardware's, which is what put the
+timpani at D2 / C2 / A1 and kept the kick at C2 for a day.  `vgm_compare` therefore reads the DAC
+1–3 % flat against a rip, by design.
+
+| Sample | Driver pitch | Cycle count | Hardware at a 5 % stall | MOD note |
+|--------|--------------|-------------|-------------------------|----------|
+| dKick | 23 | 8,201 Hz | ~7,790 Hz | **B1** |
+| dSnare | 1 | 23,784 Hz | ~22,590 Hz | **F3** |
+| dTimpani | 27 | 7,328 Hz | ~6,960 Hz | **A1** |
+| dHiTimpani | 18 | 9,635 Hz | ~9,150 Hz | **D2** |
+| dMidTimpani | 21 | 8,720 Hz | ~8,280 Hz | **C2** |
+| dLowTimpani | 28 | 7,138 Hz | ~6,780 Hz | **A1** / **G#1** |
+| dVLowTimpani | 29 | 6,957 Hz | ~6,610 Hz | **G#1** |
+
+Each config states its notes **and the slot's finetune** (`sample_list`, an eighth of a semitone
+a step) from its own song's stall share, chosen so the worst sample on the slot is nearest (the
+smallest finetune within 4 cents of that): kick and snare within ±6 cents everywhere; timpani
+variants sharing a slot within ±21 (the high and mid are 173 cents apart, the low and very low 45).
 
 ### Pitch-Correct MOD Notes
 
-The Amiga Paula chip plays samples at a rate determined by the note's period value. To play a sample at its native pitch, choose the MOD note whose playback frequency (`7,093,789 / (period × 2)` Hz, PAL) best matches the rate the hardware plays it at.
-
-| Sample | Rate | MOD Note | Period | Playback Rate | Error |
-|--------|------|----------|--------|---------------|-------|
-| dKick | 8,250 Hz | **C2** | 428 | 8,287 Hz | +0.4% |
-| dSnare | 24,000 Hz | **F#3** | 151 | 23,490 Hz | -2.1% |
-| dTimpani | 7,375 Hz | **A#1** | 480 | 7,389 Hz | +0.2% |
-| dHiTimpani | ~9,320 Hz | **D2** | 381 | 9,309 Hz | -0.1% |
-| dMidTimpani | ~8,400 Hz | **C2** | 428 | 8,287 Hz | -1.3% |
-| dLowTimpani | ~6,890 Hz | **A1** | 508 | 6,982 Hz | +1.3% |
-| dVLowTimpani | ~6,730 Hz | **G#1** | 538 | 6,593 Hz | -2.0% |
-
-Until 2026-10-07 the timpani were set from the documented ratios (×1.30 / ×1.20 / ×0.97 / ×0.95 of
-7,375 Hz): the high timpani at D#2 played 95 cents sharp, the mid at C#2 70.  The kick and snare
-rows are the old figures: the rips play them ~3 % slower too (kick ~7,960 Hz, snare ~23,100 Hz).
+The Amiga Paula chip plays samples at a rate determined by the note's period value
+(`3,546,895 / period` Hz, PAL, × 2^(finetune/96)).  Choose the note and finetune whose rate is
+nearest the hardware's.
 
 Since timpani variants only differ in pitch, they can share a single MOD instrument (e.g. instrument 3) and use different trigger notes. This saves sample slots.
 

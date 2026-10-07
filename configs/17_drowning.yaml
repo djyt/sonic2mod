@@ -32,7 +32,7 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "snare.raw", 21, 0] # VGZ: -1.2 dB at 18
+  - [1, "snare.raw", 21, 3] # VGZ: -1.2 dB at 18
   # --- voice $00: alg 4: (1→2)+(3→4), fb 7 — FM1, FM5 ---
   - [2, "fm_v00.raw", 26, 0] # VGZ: -1.0 dB at 23
   # --- voice $01: alg 0: 1→2→3→4, fb 3 — FM2 ---
@@ -43,10 +43,10 @@ sample_list:
   - [5, "fm_v03.raw",  5, 0] # VGZ: +4.5 dB at 8
 
 dac_samples:
-  # dSnare: ×41 — native ~24000 Hz → note Fs3
+  # dSnare: ×41 — ~22738 Hz on hardware (the cycle count less this song's 4.4 % per-frame stall) → F3 ft +3 (-6 c)
   - name: dSnare
     mod_instrument: 1
-    mod_note: Fs3
+    mod_note: F3
 
 voice_map:
   # $00 — alg 4: (1→2)+(3→4), fb 7 — used by FM1, FM5

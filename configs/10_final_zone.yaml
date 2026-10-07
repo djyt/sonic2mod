@@ -27,8 +27,8 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "snare.raw", 64, 0]
-  - [2, "timpani.raw", 64, 0]
+  - [1, "snare.raw", 64, 4]
+  - [2, "timpani.raw", 64, -2]
   # --- voice $00: alg 5: 1→(2+3+4), fb 7 — FM1, FM5 ---
   - [3, "fm_v00.raw", 20, 0] # VGZ: -2.1 dB at 16
   # --- voice $01: alg 0: 1→2→3→4, fb 4 — FM2 ---
@@ -41,15 +41,15 @@ sample_list:
   - [8, "fm_v03_hi.raw", 29, 0] # VGZ: +2.1 dB at 37
 
 dac_samples:
-  # dSnare: ×52 — native ~24000 Hz → note Fs3
+  # dSnare: ×52 — ~22772 Hz on hardware (the cycle count less this song's 4.3 % per-frame stall) → F3 ft +4 (+3 c)
   - name: dSnare
     mod_instrument: 1
-    mod_note: Fs3
-  # dHiTimpani: ×13 — ~9400 Hz in the VGZ → note D2 (-17 c)
+    mod_note: F3
+  # dHiTimpani: ×13 — ~9225 Hz on hardware (the cycle count less this song's 4.3 % per-frame stall) → D2 ft -2 (-9 c)
   - name: dHiTimpani
     mod_instrument: 2
     mod_note: D2
-  # dLowTimpani: ×12 — ~6900 Hz in the VGZ → note A1 (+20 c)
+  # dLowTimpani: ×12 — ~6834 Hz on hardware (the cycle count less this song's 4.3 % per-frame stall) → A1 ft -2 (+12 c)
   - name: dLowTimpani
     mod_instrument: 2
     mod_note: A1

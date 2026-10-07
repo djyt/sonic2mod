@@ -33,17 +33,19 @@ PARTIAL_EFFECTS = {
     CoordFlag.PAN:      'no MOD panning: a hard pan counts as -3 dB (fm_pan_law_db)',
 }
 
-# Known Sonic 1 DAC samples: suggested MOD note and playback rate.  The timpani's are the rates
-# the VGZ rips play them at (PCM writes per second; docs/yaml_config.md § DAC Sample Rates): about
-# 3.5 % under the driver's cycle count (core/rom/dac.py), which put the high timpani a semitone sharp.
+# Known Sonic 1 DAC samples: suggested MOD note and the rate real hardware plays them at - the
+# Z80 loop's cycle count (core/rom/dac.py, exact from the ROM's code) less the 68k's once-a-frame
+# stopZ80 (~5 %; each song's own share is measured in its VGZ, which the configs' finetunes
+# follow).  The VGZ rips' emulator runs the loop 2-3 % fast: their rates are not the yardstick.
+# docs/yaml_config.md § DAC Sample Rates.
 DAC_NATIVE_INFO: dict[str, tuple[str, int]] = {
-    'dKick':        ('C2',  8_250),
-    'dSnare':       ('Fs3', 24_000),
-    'dTimpani':     ('A1',  7_080),
-    'dHiTimpani':   ('D2',  9_320),
-    'dMidTimpani':  ('C2',  8_420),
-    'dLowTimpani':  ('A1',  6_890),
-    'dVLowTimpani': ('Gs1', 6_740),
+    'dKick':        ('B1',  7_790),
+    'dSnare':       ('F3',  22_590),
+    'dTimpani':     ('A1',  6_960),
+    'dHiTimpani':   ('D2',  9_150),
+    'dMidTimpani':  ('C2',  8_280),
+    'dLowTimpani':  ('Gs1', 6_780),
+    'dVLowTimpani': ('Gs1', 6_610),
 }
 
 # Timpani variants share a single MOD instrument (same WAV, different trigger note).

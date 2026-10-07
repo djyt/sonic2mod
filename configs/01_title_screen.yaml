@@ -54,7 +54,7 @@ channels:
 sample_list:
   # --- percussion ---
   - [1, "kick.raw",          64, 0]
-  - [2, "snare.raw",         64, 0]
+  - [2, "snare.raw",         64, 4]
   # --- voice $00: bright lead synth (FM1, TL $0C = 3 steps / −2.25 dB below FM2) ---
   - [3, "fm_voice0.raw",     29, 0] # VGZ: -1.3 dB at 25
   # --- voice $00 FM5 variant: TL $0E (−3.75 dB); smpsAlterNote $03 rendered into the sample (core/plan/detune.py) ---
@@ -74,12 +74,14 @@ sample_list:
 # DAC Mappings: Kick & Snare only
 # -------------------------------------------------------------------------------------------------
 dac_samples:
+  # dKick: ~7850 Hz on hardware (the cycle count less this song's 4.3 % per-frame stall) → B1 (-5 c)
   - name: dKick
     mod_instrument: 1
-    mod_note: C2
+    mod_note: B1
+  # dSnare: ~22767 Hz on hardware (the cycle count less this song's 4.3 % per-frame stall) → F3 ft +4 (+4 c)
   - name: dSnare
     mod_instrument: 2
-    mod_note: Fs3
+    mod_note: F3
 
 
 # -------------------------------------------------------------------------------------------------

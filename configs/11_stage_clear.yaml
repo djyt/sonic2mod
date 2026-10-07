@@ -32,9 +32,9 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "snare.raw", 57, 0] # VGZ: +1.0 dB at 64
-  - [2, "kick.raw", 57, 0] # VGZ: +1.0 dB at 64
-  - [3, "timpani.raw", 57, 0] # VGZ: +1.0 dB at 64
+  - [1, "snare.raw", 57, 2] # VGZ: +1.0 dB at 64
+  - [2, "kick.raw", 57, -1] # VGZ: +1.0 dB at 64
+  - [3, "timpani.raw", 57, -1] # VGZ: +1.0 dB at 64
   # --- voice $00: Alg 5, FB 7 — FM1 ---
   - [4, "fm_v00_lo.raw", 27, 0] # VGZ: +1.0 dB at 31
   - [5, "fm_v00_hi.raw", 26, 0] # VGZ: +1.7 dB at 31
@@ -49,19 +49,19 @@ sample_list:
   - [10, "psg_fTone_05_hi.raw",  3, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +4.0 dB at 5
 
 dac_samples:
-  # dSnare: ×7 — native ~24000 Hz → note Fs3
+  # dSnare: ×7 — ~22538 Hz on hardware (the cycle count less this song's 5.2 % per-frame stall) → F3 ft +2 (-4 c)
   - name: dSnare
     mod_instrument: 1
-    mod_note: Fs3
-  # dKick: ×4 — native ~8250 Hz → note C2
+    mod_note: F3
+  # dKick: ×4 — ~7771 Hz on hardware (the cycle count less this song's 5.2 % per-frame stall) → B1 ft -1 (+1 c)
   - name: dKick
     mod_instrument: 2
-    mod_note: C2
-  # dVLowTimpani: ×4 — ~6726 Hz in the VGZ → note Gs1 (-35 c)
+    mod_note: B1
+  # dVLowTimpani: ×4 — ~6592 Hz on hardware (the cycle count less this song's 5.2 % per-frame stall) → Gs1 ft -1 (-12 c)
   - name: dVLowTimpani
     mod_instrument: 3
     mod_note: Gs1
-  # dHiTimpani: ×2 — ~9367 Hz in the VGZ → note D2 (-11 c)
+  # dHiTimpani: ×2 — ~9130 Hz on hardware (the cycle count less this song's 5.2 % per-frame stall) → D2 ft -1 (+21 c)
   - name: dHiTimpani
     mod_instrument: 3
     mod_note: D2

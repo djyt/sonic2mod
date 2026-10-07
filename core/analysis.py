@@ -33,16 +33,17 @@ PARTIAL_EFFECTS = {
     CoordFlag.PAN:      'no MOD panning: a hard pan counts as -3 dB (fm_pan_law_db)',
 }
 
-# Known Sonic 1 DAC sample native playback rates and suggested MOD notes.
-# Notes and rates from docs/yaml_config.md § DAC Sample Rates.
+# Known Sonic 1 DAC samples: suggested MOD note and playback rate.  The timpani's are the rates
+# the VGZ rips play them at (PCM writes per second; docs/yaml_config.md § DAC Sample Rates): about
+# 3.5 % under the driver's cycle count (core/rom/dac.py), which put the high timpani a semitone sharp.
 DAC_NATIVE_INFO: dict[str, tuple[str, int]] = {
     'dKick':        ('C2',  8_250),
     'dSnare':       ('Fs3', 24_000),
-    'dTimpani':     ('As1', 7_375),
-    'dHiTimpani':   ('Ds2', 9_588),
-    'dMidTimpani':  ('Cs2', 8_850),
-    'dLowTimpani':  ('A1',  7_154),
-    'dVLowTimpani': ('A1',  7_006),
+    'dTimpani':     ('A1',  7_080),
+    'dHiTimpani':   ('D2',  9_320),
+    'dMidTimpani':  ('C2',  8_420),
+    'dLowTimpani':  ('A1',  6_890),
+    'dVLowTimpani': ('Gs1', 6_740),
 }
 
 # Timpani variants share a single MOD instrument (same WAV, different trigger note).

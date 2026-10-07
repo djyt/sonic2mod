@@ -278,10 +278,10 @@ The DAC channel (driven by the Z80) plays PCM samples via the YM2612 DAC port.
 | `dKick` | $81 | Kick drum (~8,250 Hz) |
 | `dSnare` | $82 | Snare (~24,000 Hz) |
 | `dTimpani` | $83 | Timpani (~7,375 Hz) |
-| `dHiTimpani` | $88 | Timpani × 1.30 (~9,588 Hz) |
-| `dMidTimpani` | $89 | Timpani × 1.20 (~8,850 Hz) |
-| `dLowTimpani` | $8A | Timpani × 0.97 (~7,154 Hz) |
-| `dVLowTimpani` | $8B | Timpani × 0.95 (~7,006 Hz) |
+| `dHiTimpani` | $88 | Timpani at pitch 18 (~9,320 Hz in the rips) |
+| `dMidTimpani` | $89 | Timpani at pitch 21 (~8,400 Hz) |
+| `dLowTimpani` | $8A | Timpani at pitch 28 (~6,890 Hz) |
+| `dVLowTimpani` | $8B | Timpani at pitch 29 (~6,730 Hz) |
 
 Gaps ($84–$87) are unused in Sonic 1. The Z80 firmware reads the sample ID from shared RAM (`zDAC_Sample`) and plays it at the rate from its internal rate table.
 

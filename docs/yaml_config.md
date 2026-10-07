@@ -527,28 +527,36 @@ The Sonic 1 sound driver plays DAC samples via Z80-driven PCM/DPCM routines. Sam
 | dSnare | `dac/dpcm/snare.wav` | 24,000 Hz | 8-bit mono DPCM |
 | dTimpani | `dac/dpcm/timpani.wav` | 7,375 Hz | 8-bit mono DPCM |
 
-The timpani variants reuse `timpani.wav` at scaled playback rates:
+The timpani variants reuse `timpani.wav` at other playback rates.  The driver's cycle count
+(`core/rom/dac.py`: 301 + 26·(pitch − 1) Z80 cycles a byte) gives the left column; the VGZ rips
+play every DAC sample about 3.5 % slower (PCM writes per second, measured 2026-10-07 on Scrap
+Brain, Robotnik, Final Zone, Stage Clear, Credits and 1-Up; the spread is the bus contention of
+each song), and the rips are the yardstick:
 
-| Variant | Scale | Effective Rate |
-|---------|-------|----------------|
-| dHiTimpani | ×1.30 | 9,588 Hz |
-| dMidTimpani | ×1.20 | 8,850 Hz |
-| dLowTimpani | ×0.97 | 7,154 Hz |
-| dVLowTimpani | ×0.95 | 7,006 Hz |
+| Variant | Driver pitch | Cycle count | In the rips |
+|---------|--------------|-------------|-------------|
+| dHiTimpani | 18 | 9,635 Hz | 9,150–9,440 Hz |
+| dMidTimpani | 21 | 8,720 Hz | 8,220–8,450 Hz |
+| dLowTimpani | 28 | 7,138 Hz | 6,800–6,970 Hz |
+| dVLowTimpani | 29 | 6,957 Hz | 6,726–6,740 Hz |
 
 ### Pitch-Correct MOD Notes
 
-The Amiga Paula chip plays samples at a rate determined by the note's period value. To play a sample at its native pitch, choose the MOD note whose playback frequency (`7,093,789 / (period × 2)` Hz, PAL) best matches the native sample rate.
+The Amiga Paula chip plays samples at a rate determined by the note's period value. To play a sample at its native pitch, choose the MOD note whose playback frequency (`7,093,789 / (period × 2)` Hz, PAL) best matches the rate the hardware plays it at.
 
-| Sample | Native Rate | MOD Note | Period | Playback Rate | Error |
-|--------|------------|----------|--------|---------------|-------|
+| Sample | Rate | MOD Note | Period | Playback Rate | Error |
+|--------|------|----------|--------|---------------|-------|
 | dKick | 8,250 Hz | **C2** | 428 | 8,287 Hz | +0.4% |
 | dSnare | 24,000 Hz | **F#3** | 151 | 23,490 Hz | -2.1% |
 | dTimpani | 7,375 Hz | **A#1** | 480 | 7,389 Hz | +0.2% |
-| dHiTimpani | 9,588 Hz | **D#2** | 360 | 9,853 Hz | +2.8% |
-| dMidTimpani | 8,850 Hz | **C#2** | 404 | 8,779 Hz | -0.8% |
-| dLowTimpani | 7,154 Hz | **A1** | 508 | 6,982 Hz | -2.4% |
-| dVLowTimpani | 7,006 Hz | **A1** | 508 | 6,982 Hz | -0.3% |
+| dHiTimpani | ~9,320 Hz | **D2** | 381 | 9,309 Hz | -0.1% |
+| dMidTimpani | ~8,400 Hz | **C2** | 428 | 8,287 Hz | -1.3% |
+| dLowTimpani | ~6,890 Hz | **A1** | 508 | 6,982 Hz | +1.3% |
+| dVLowTimpani | ~6,730 Hz | **G#1** | 538 | 6,593 Hz | -2.0% |
+
+Until 2026-10-07 the timpani were set from the documented ratios (×1.30 / ×1.20 / ×0.97 / ×0.95 of
+7,375 Hz): the high timpani at D#2 played 95 cents sharp, the mid at C#2 70.  The kick and snare
+rows are the old figures: the rips play them ~3 % slower too (kick ~7,960 Hz, snare ~23,100 Hz).
 
 Since timpani variants only differ in pitch, they can share a single MOD instrument (e.g. instrument 3) and use different trigger notes. This saves sample slots.
 

@@ -76,14 +76,14 @@ dac_samples:
   - name: dKick
     mod_instrument: 2
     mod_note: C2
-  # dHiTimpani: ×38 — native ~9588 Hz → note Ds2
+  # dHiTimpani: ×38 — ~9260 Hz in the VGZ → note D2 (+9 c)
   - name: dHiTimpani
     mod_instrument: 3
-    mod_note: Ds2
-  # dMidTimpani: ×30 — native ~8850 Hz → note Cs2
+    mod_note: D2
+  # dMidTimpani: ×30 — ~8320 Hz in the VGZ → note C2 (-7 c)
   - name: dMidTimpani
     mod_instrument: 3
-    mod_note: Cs2
+    mod_note: C2
 
 voice_map:
   # $00 — Alg 0, FB 1 — used by FM2, FM3

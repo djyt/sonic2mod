@@ -57,14 +57,14 @@ dac_samples:
   - name: dKick
     mod_instrument: 2
     mod_note: C2
-  # dVLowTimpani: ×4 — native ~7006 Hz → note A1
+  # dVLowTimpani: ×4 — ~6726 Hz in the VGZ → note Gs1 (-35 c)
   - name: dVLowTimpani
     mod_instrument: 3
-    mod_note: A1
-  # dHiTimpani: ×2 — native ~9588 Hz → note Ds2
+    mod_note: Gs1
+  # dHiTimpani: ×2 — ~9367 Hz in the VGZ → note D2 (-11 c)
   - name: dHiTimpani
     mod_instrument: 3
-    mod_note: Ds2
+    mod_note: D2
 
 voice_map:
   0:

@@ -670,7 +670,8 @@ class SmpsToModConverter:
             fm_volume_mode=self._fm_volume_mode, psg_volume_mode=self._psg_volume_mode, pan_law_db=self.pan_law_db,
             fm_baseline_db=self._fm_baseline_db, psg_baseline_db=self._psg_baseline_db, release=self._release,
             release_slides=self._release_slides, player=self._player, leading_rests=self._leading_rest_channels,
-            stats=self._emission)
+            stats=self._emission,
+            decay={i: (lp.flat_at, lp.decay_db) for i, lp in self._loops.items() if lp.decay_db})
         for chan_cfg in self.config.channels:
             if not chan_cfg.enabled:
                 continue

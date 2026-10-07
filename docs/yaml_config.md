@@ -288,10 +288,10 @@ voice_map:
 
 YAML accepts integer (`vibrato: 12` → speed=1, depth=2), hex integer (`vibrato: 0x12`), or string (`vibrato: "1A"` → speed=1, depth=10). Also supported on `psg_map` and `psg_voice_map` entries with the same semantics.
 
-### loop_drift_db / loop_min_ms — per-instrument sustain loops
+### loop_drift_db / loop_min_ms / loop_decay — per-instrument sustain loops
 
 Where sustain loops are on (`samples.sustain_loops` in settings.yaml; the merged build by default), an
-FM sample is cut where its envelope settles plus one loop.  Two entry keys override how, for
+FM sample is cut where its envelope settles plus one loop.  Three entry keys override how, for
 that instrument alone:
 
 - `loop_drift_db` — how far above the settled level the loop may freeze (the song's
@@ -299,8 +299,20 @@ that instrument alone:
   every note the instrument plays, which then sound as rendered.
 - `loop_min_ms` — the shortest loop (30 ms otherwise).  A short loop freezes a detuned voice's
   shimmer into a buzz wherever a note, or its release slide, rings through it.
+- `loop_decay: slide` — for a voice whose level keeps falling for as long as a note holds (an FM
+  bass on D2R).  `freeze` (the default) can only loop it where it has nearly settled, or hold it
+  above where the hardware is (a bass frozen 6 dB early pulsed under 3 s notes).  `slide` loops
+  where the level starts to fall in a straight line in dB, `loop_drift_db` now being how far it
+  may stray from that line, with the timbre check always on; the sample holds the loop's level and
+  the converter writes the rest of the fall into every note that rings past it, one volume slide
+  per row: `EBx` (x units on the row's first tick) where the row's share is under an `A01`, else
+  `A0y`, `6xy` on a row that carries vibrato.  The note's release then starts from the fallen
+  volume.  Game Over lofi's bass falls 5 dB/s: looped 0.14 s in at `loop_drift_db: 3`, its sample
+  is 1.8 KB instead of 14.8, with `EB1` on each row of a long note.  Not for a voice whose timbre
+  changes as it fades (the loop keeps the timbre at its start), a PCM mix source (the mix keeps no
+  slides) or PSG.
 
-A merge group takes both too, for its chip composites.  Green Hill lofi:
+A merge group takes all three too, for its chip composites.  Green Hill lofi:
 
 ```yaml
 voice_map:

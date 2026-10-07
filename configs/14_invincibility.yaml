@@ -7,8 +7,9 @@ output_file: output/14_invincibility.mod
 samples_dir: "samples/"
 
 auto_bpm: true
-target_speed: 3
-ticks_per_row: 2
+target_speed: 4
+ticks_per_row: 3            # every 192-tick phrase fills one 64-row pattern (the loop is 3); the $04
+                            # notes (FM1/FM5 run, DAC rolls) are triplets on this grid and take EDx
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
@@ -36,6 +37,7 @@ sample_list:
   # --- voice $00: alg 2: (1+(2→3))→4, fb 7 — FM1, FM3, FM4, FM5 ---
   - [3, "fm_v00.raw", 17, 0] # VGZ: +0.9 dB at 19
   - [4, "fm_v00_fm5.raw", 19, 0] # VGZ: +4.5 dB at 32
+  - [7, "fm_v00_fm1.raw", 19, 0] # VGZ: -0.1 dB at 19
   # --- voice $01: alg 2: (1+(2→3))→4, fb 7 — FM2 ---
   - [5, "fm_v01.raw", 35, 0] # VGZ: -0.8 dB at 32
   # --- PSG noise (form $E7) ---
@@ -72,8 +74,16 @@ psg_map:
 #
 # FM5 shares FM1's data. smpsAlterNote $03 is a raw FNUM offset (+5..8 cents).
 # Its own instrument is rendered at that offset (core/plan/detune.py).
+# FM1 has its own instrument too: on inst 3 (baked at FM3/FM4's level) every note of the fast run
+# carried a Cxx, which took the slot its EDx delay needs, and the run snapped to the rows (+28 ms).
 # -------------------------------------------------------------------------------------------------
 channel_instrument_map:
+  FM1:
+    0:
+    - low:  G4
+      high: Cs6
+      mod_instrument: 7
+      root: G1
   FM5:
     0:
     - low:  G4   # was G5-Cs7 (source bytes) for FM5
@@ -86,7 +96,7 @@ channel_instrument_map:
 # -------------------------------------------------------------------------------------------------
 mod_pattern_breaks:
   - pattern: 0
-    row: 23
+    row: 15
 
 # -------------------------------------------------------------------------------------------------
 # Merged 4-Channel Version (convert.py --merged)

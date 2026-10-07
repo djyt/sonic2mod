@@ -224,7 +224,8 @@ class _FmRenderer:
         synth, spec = self._synth, job.spec
         plain_n = math.ceil(rate * (sustain + synth.release_padding))
         min_loop = {"min_loop_secs": spec.min_loop_ms / 1000.0} if spec.min_loop_ms is not None else {}
-        return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
+        ref = min(synth.loop_ref_by_instrument.get(job.inst, sustain), sustain_n / rate)
+        return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * ref),
                                  max_end=min(plain_n, sustain_n),
                                  flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
                                  timbre=synth.loop_timbre, decay=spec.decay_mode == "slide", **min_loop)

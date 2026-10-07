@@ -129,7 +129,15 @@ conversion and measures, per MOD instrument, the longest **ring** any of its not
   In the merged build a ring also ends at the next note-on in the column's stream, a pooled or
   spliced note included (Green Hill lofi's FM3 chords, 24 ticks in the song, are cut by the
   FM5 arp after 8: `cut_after`), and at a note-on of the channel's that is folded elsewhere.
-  One row is added for the row grid (`EDx` delays, cut placement).
+  A ring's ends are taken where the row grid can put them (`_mod_span`): exact for a note
+  that starts and ends on a row, up to half a row (and a driver tick) out for one between rows,
+  the next row for a ring that ends inside its own.  Until 2026-10-07 a whole row was added to
+  every ring: Game Over's 4-row chords were rendered 5 rows long (−3.3 KB of its 41.8 KB lofi
+  build; −59 KB, 1.4 %, over every regression build, none larger).  The sustain loop's reference
+  (`loop_ref_by_instrument`, find_sustain_loop's `ref_n`) keeps the row of margin: the search
+  is sensitive to where the longest note ends, and measured from the tighter end it moved loops
+  (Game Over's long chord to 63 ms, +1 dB held for 0.95 s; Marble Zone's $00 +17 KB).  A loop
+  that would end past the tighter plain render is dropped, as before.
 - Its length is measured in the MOD's own time, summed over the tempo segments
   (`smpsSetTempoMod` changes the BPM), after `smpsSetTempoDiv` re-timing.
 - It is measured at the sample's playback rate.  The sample is synthesised at the rate of

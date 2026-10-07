@@ -183,6 +183,10 @@ class SampleSettings:
     # `auto` resolved: {instrument: seconds}, each instrument's own longest ring (the converter's
     # SustainPlanner.resolve); an instrument absent here gets sustain_duration.  Empty when a number is stated.
     sustain_by_instrument: dict = field(default_factory=dict)
+    # {instrument: seconds} where its sustain loop's reference span ends (find_sustain_loop's
+    # ref_n): its longest ring with a row of margin, as every ring was measured before 2026-10-07,
+    # so tightening the rendered length did not move the loops found from it
+    loop_ref_by_instrument: dict = field(default_factory=dict)
     slide_ends: frozenset = frozenset()      # instruments a note of ends in a release slide (merged
                                              # build): only they are heard past their sustain
     exact_sustain: frozenset = frozenset()   # instruments whose auto sustain holds every note that

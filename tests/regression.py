@@ -87,6 +87,7 @@ _SONGS = [
     ("07_scrap_brain_zone",  "scrap_brain_zone",  "scrap_brain_zone",  "Scrap Brain Zone — PSG3 noise envelope variants"),
     ("08_special_stage",     "special_stage",     "special_stage",     "Special Stage"),
     ("09_robotnik",          "robotnik",          "robotnik",          "Robotnik"),
+    ("09_robotnik",          "robotnik_lofi",     "robotnik_lofi",     "Robotnik lofi — loop_drift_db 12, bass mixes at C2"),
     ("10_final_zone",        "final_zone",        "final_zone",        "Final Zone"),
     ("11_stage_clear",       "stage_clear",       "stage_clear",       "Stage Clear — range_space: chip"),
     ("12_ending_theme",      "ending_theme",      "ending_theme",      "Ending — range_space: chip, PSG2 own instrument"),
@@ -100,7 +101,7 @@ _SONGS = [
 ]
 
 # test name -> the config's variant the case converts (convert.py --variant)
-_VARIANTS: dict[str, str] = {"ghz_lofi": "lofi"}
+_VARIANTS: dict[str, str] = {"ghz_lofi": "lofi", "robotnik_lofi": "lofi"}
 
 # name -> channels to ignore (0-based MOD indices).  Normally empty; set an entry only
 # while deliberately changing that channel.

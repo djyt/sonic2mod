@@ -79,6 +79,16 @@ invincibility:
   config: 721d08ad2732
   date: '2026-10-07'
   settings: 2a7d221c6ea5
+invincibility_lofi:
+  commit: 69c461c-dirty
+  config: 28ade19c8c9b
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+invincibility_lofi_merged:
+  commit: 69c461c-dirty
+  config: 28ade19c8c9b
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
 invincibility_merged:
   commit: bd1761e-dirty
   config: 721d08ad2732

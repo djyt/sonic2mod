@@ -8,8 +8,8 @@ output_file: output/15_1up.mod
 samples_dir: "samples/"
 
 auto_bpm: true
-target_speed: 3
-ticks_per_row: 1
+target_speed: 9            # 180 BPM: a MOD tick is 0.83 frames, as at 1 tick per row and speed 3
+ticks_per_row: 3           # every duration is a multiple of $03: one row each, the jingle 28 rows of one pattern
 region: ntsc
 
 channels:
@@ -40,19 +40,21 @@ sample_list:
   # --- PSG tone fTone_05 ---
   - [5, "psg_fTone_05.raw",  4, 0] # baked: 16 at PSG attenuation 6 (−12 dB)
   # Detuned versions (smpsAlterNote rendered into the sample)
-  - [6, "fm_v00.raw", 13, 0] # VGZ: +5.6 dB at 24
-  - [7, "fm_v02.raw", 12, 0] # VGZ: +6.1 dB at 24
+  - [6, "fm_v00_fm4.raw", 13, 0] # VGZ: +5.6 dB at 24
+  - [7, "fm_v02_fm5.raw", 12, 0] # VGZ: +6.1 dB at 24
 
 dac_samples:
-  # dHiTimpani: ×5 — native ~9588 Hz → note Ds2
+  # Rates measured from the VGZ's PCM writes per second, ~3.5 % under the documented ones
+  # (9588 / 7006 / 7154 Hz, which put the high timpani at D#2, 95 cents sharp)
+  # dHiTimpani: ×5 — ~9320 Hz → note D2 (9309 Hz, −2 c)
   - name: dHiTimpani
     mod_instrument: 1
-    mod_note: Ds2
-  # dVLowTimpani: ×3 — native ~7006 Hz → note A1
+    mod_note: D2
+  # dVLowTimpani: ×3 — ~6740 Hz → note Gs1 (6593 Hz, −38 c; A1 is +61)
   - name: dVLowTimpani
     mod_instrument: 1
-    mod_note: A1
-  # dLowTimpani: ×2 — native ~7154 Hz → note A1
+    mod_note: Gs1
+  # dLowTimpani: ×2 — ~6890 Hz → note A1 (6982 Hz, +23 c)
   - name: dLowTimpani
     mod_instrument: 1
     mod_note: A1
@@ -101,3 +103,23 @@ channel_instrument_map:
         high: A4
         mod_instrument: 7
         root: G2
+
+# -------------------------------------------------------------------------------------------------
+# Merged 4-Channel Version (convert.py --merged)
+# DAC · lead (FM1+FM4) · harmony (FM2+PSG1) · bass (FM3+FM5): three doubled pairs, every fold clean.
+# Two composites a pair: the first five notes' 100 ms fill is keyed off on the chip (merge_twins:
+# always cuts them in the pattern instead, -4.7 KB, up to 12 dB off at the cut).  FM3+FM5 reads
+# +2.4 dB over its chip channels: hard left + hard right, nearly in phase, summed in mono
+# -------------------------------------------------------------------------------------------------
+merge:
+  # FM4 plays FM1's data detuned (smpsAlterNote $03), FM1 left, FM4 right
+  - primary: FM1
+    followers: [FM4]
+
+  # PSG1 plays FM2's notes
+  - primary: FM2
+    followers: [PSG1]
+
+  # FM5 plays FM3's data detuned, FM3 left, FM5 right
+  - primary: FM3
+    followers: [FM5]

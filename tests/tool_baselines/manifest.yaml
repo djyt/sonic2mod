@@ -420,12 +420,20 @@ compare_ending_theme:
     tests/baselines/ending_theme_baseline.mod: fd84881a68b7
     tests/settings.yaml: 268a59366905
 compare_extra_life:
-  commit: 273c323
+  commit: f386705-dirty
   date: '2026-10-07'
   inputs:
-    configs/15_1up.yaml: 9a8286b8c5c8
+    configs/15_1up.yaml: 9760a955ec19
     reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    tests/baselines/extra_life_baseline.mod: 2a93ec24858c
+    tests/baselines/extra_life_baseline.mod: bf913d12f8e3
+    tests/settings.yaml: 268a59366905
+compare_extra_life_merged:
+  commit: f386705-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/15_1up.yaml: 9760a955ec19
+    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    tests/baselines/extra_life_merged_baseline.mod: 016e2c506c91
     tests/settings.yaml: 268a59366905
 compare_final_zone:
   commit: d8b4b4b
@@ -628,12 +636,12 @@ pitch_ending_theme:
     tests/baselines/ending_theme_baseline.mod: e69bfb9e6ebe
     tests/settings.yaml: 268a59366905
 pitch_extra_life:
-  commit: 0d0e5d8-dirty
-  date: '2026-10-05'
+  commit: f386705-dirty
+  date: '2026-10-07'
   inputs:
-    configs/15_1up.yaml: 9a8286b8c5c8
+    configs/15_1up.yaml: 9760a955ec19
     reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    tests/baselines/extra_life_baseline.mod: 2a93ec24858c
+    tests/baselines/extra_life_baseline.mod: bf913d12f8e3
     tests/settings.yaml: 268a59366905
 pitch_final_zone:
   commit: d8b4b4b

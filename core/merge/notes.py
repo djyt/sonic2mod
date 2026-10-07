@@ -265,9 +265,9 @@ def fm_layer(p: NoteOn, f: NoteOn, tolerance: int = 1) -> FmLayer:
     """The follower as a layer of the primary's composite: its voice at its interval above the
     primary, its detune and carrier level relative to the primary's (a hard pan as TL steps)."""
     assert f.voice is not None and p.chip is not None and f.chip is not None
-    tl_delta = (f.tl - p.tl) + PAN_TL_STEPS * (int(f.hard_panned) - int(p.hard_panned))
-    return FmLayer(f.voice, f.chip - p.chip, f.detune - p.detune, tl_delta,
-                   keyoff_secs=keyoff_secs(p, f, tolerance))
+    pan_tl = PAN_TL_STEPS * (int(f.hard_panned) - int(p.hard_panned))
+    return FmLayer(f.voice, f.chip - p.chip, f.detune - p.detune, (f.tl - p.tl) + pan_tl,
+                   keyoff_secs=keyoff_secs(p, f, tolerance), pan=f.pan, pan_tl=pan_tl)
 
 
 def keyoff_secs(p: NoteOn, f: NoteOn, tolerance: int = 1) -> float | None:
@@ -310,6 +310,8 @@ class ChipLayerKey(NamedTuple):
     detune: int                 # FNUM, relative to the primary's
     tl: int                     # carrier TL steps, relative to the primary's
     fill_ms: int | None         # keyed off this long in; None: with the primary
+    sides: str = ""             # the primary's speaker and the follower's ("LR"): the composite's
+                                # volume is set from them (an L + R pair is not an L + L one)
 
     @property
     def shape(self) -> tuple:
@@ -346,7 +348,7 @@ def _layer_key(p: NoteOn, f: NoteOn, chip: bool, level_scale: float, tolerance: 
     fill = _fill_ms(p, f, tolerance)
     if chip:
         lay = fm_layer(p, f, tolerance)
-        return ChipLayerKey(lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, fill)
+        return ChipLayerKey(lay.voice_idx, lay.semitones, lay.fnum_offset, lay.tl_offset, fill, p.pan + f.pan)
     return MixLayerKey(f.instrument, f.index - p.index, round(level_scale, 4), fill)
 
 

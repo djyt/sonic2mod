@@ -98,6 +98,18 @@ class CompositeKeys(unittest.TestCase):
         self.assertEqual(k1, k2)
         self.assertEqual(k1.layers[0].interval, 7)   # the follower's interval, not its note
 
+    def test_chip_layers_know_their_speakers(self):
+        # An L + R pair and an L + L pair render the same mono layers but are not as loud on the
+        # hardware's speakers: their composites are set from the sides (ym2612 _speaker_gain)
+        left = _note(voice=5, detune=3, pan="L", hard_panned=True)
+        right, also_left = (_note(voice=5, pan=s, hard_panned=True) for s in "RL")
+        lr, ll = (composite_key(left, [f], True, lambda n: 1.0) for f in (right, also_left))
+        self.assertEqual((lr.layers[0].tl, ll.layers[0].tl), (0, 0))    # both hard: no TL step
+        self.assertEqual((lr.layers[0].sides, ll.layers[0].sides), ("LR", "LL"))
+        self.assertNotEqual(lr, ll)
+        centre = _note(voice=5, detune=3)
+        self.assertEqual(composite_key(centre, [right], True, lambda n: 1.0).layers[0].tl, 4)   # -3 dB
+
     def test_trigger_note_follows_the_transposition(self):
         c = Composite(-1, CompositeKey(MIX, 4, ()), MergeGroup("FM5", ["FM3"]), base=16, note=23)
         self.assertEqual(trigger_note(c, 16), 23)

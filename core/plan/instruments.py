@@ -44,6 +44,9 @@ class FmLayer:
     tl_offset: int = 0       # carrier TL relative to the instrument's render level
     keyoff_secs: float | None = None   # key this layer off that long after key-on (a follower's
                                        # smpsNoteFill in a composite); None: with the instrument
+    pan: str = "C"           # the speaker its track plays on: "L", "R", "C" (both)
+    pan_tl: int = 0          # TL steps of tl_offset that stand for its pan in the mono render
+                             # (core.merge.fm_layer); the hardware's speakers play it without them
 
 
 @dataclass(slots=True)

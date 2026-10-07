@@ -80,14 +80,14 @@ marble_zone:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 robotnik:
-  commit: b75b061
-  config: bda1ad81e6f5
-  date: '2026-10-05'
+  commit: f796b4e-dirty
+  config: 9ba8fad23b9a
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 robotnik_merged:
-  commit: b75b061
-  config: bda1ad81e6f5
-  date: '2026-10-05'
+  commit: f796b4e-dirty
+  config: 9ba8fad23b9a
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 scrap_brain_zone:
   commit: b75b061

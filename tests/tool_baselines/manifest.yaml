@@ -508,20 +508,20 @@ compare_marble_zone:
     tests/baselines/marble_zone_baseline.mod: ed5105ccd19e
     tests/settings.yaml: 268a59366905
 compare_robotnik:
-  commit: 273c323
+  commit: f796b4e-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: 193fdf73f2ed
+    configs/09_robotnik.yaml: af30863806fb
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_baseline.mod: ed26012b34bc
+    tests/baselines/robotnik_baseline.mod: ba22ca7f7e4a
     tests/settings.yaml: 268a59366905
 compare_robotnik_merged:
-  commit: 273c323
+  commit: f796b4e-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: 193fdf73f2ed
+    configs/09_robotnik.yaml: af30863806fb
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_merged_baseline.mod: 0a2ccfade84d
+    tests/baselines/robotnik_merged_baseline.mod: 4f9114cd5afe
     tests/settings.yaml: 268a59366905
 compare_scrap_brain_zone:
   commit: 273c323
@@ -692,12 +692,12 @@ pitch_marble_zone:
     tests/baselines/marble_zone_baseline.mod: db8429565ee3
     tests/settings.yaml: 268a59366905
 pitch_robotnik:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: f796b4e-dirty
+  date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: c4d7cd990f0e
+    configs/09_robotnik.yaml: af30863806fb
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_baseline.mod: aff0f05aaa99
+    tests/baselines/robotnik_baseline.mod: ba22ca7f7e4a
     tests/settings.yaml: 268a59366905
 pitch_scrap_brain_zone:
   commit: b0ed618-dirty

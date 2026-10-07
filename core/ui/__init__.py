@@ -6,12 +6,12 @@
     cli.py          the console chrome all three CLIs share
 """
 
-from .cli import LABEL_W, branding, cli_console, error_printer, row_printer
+from .cli import LABEL_W, add_variant_argument, branding, cli_console, error_printer, row_printer
 from .pitch_audit import print_audit, verdict_text
 from .report import Report, print_report
 from .song_diff import diff_counts, song_diff_lines
 
 __all__ = [
-    "LABEL_W", "Report", "branding", "cli_console", "diff_counts", "error_printer", "print_audit", "print_report",
+    "LABEL_W", "Report", "add_variant_argument", "branding", "cli_console", "diff_counts", "error_printer", "print_audit", "print_report",
     "row_printer", "song_diff_lines", "verdict_text"
 ]

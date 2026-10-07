@@ -37,7 +37,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit
 from core.mod import read_mod
 from core.plan import load_config
-from core.ui import print_audit
+from core.ui import add_variant_argument, print_audit
 from core.vgm import pitch_segments, read_vgm
 
 
@@ -53,6 +53,7 @@ def main() -> None:
     ap.add_argument("--tolerance", type=float, default=35.0, help="cents before a note counts as wrong (default 35)")
     ap.add_argument("--list", action="store_true", help="print every wrong / missing segment with its time")
     ap.add_argument("--json", metavar="FILE", help="write the alignment and the per-instrument verdicts as JSON")
+    add_variant_argument(ap)
     ap.add_argument("--settings", metavar="PATH",
                     help="settings the MOD was converted with (default: settings.yaml beside the config, "
                          "else configs/settings.yaml): whether it has detune variants")
@@ -60,7 +61,7 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, variant=args.variant)
     song = prepare_audit(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     chip, vgm_end = pitch_segments(read_vgm(args.vgz))

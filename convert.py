@@ -4,6 +4,7 @@
 Usage:
     python convert.py configs/song.yaml [--output output/song.mod]
     python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config   # a minimal config, completed
+    python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged    # its `variants: lofi` blocks applied
 """
 
 import argparse
@@ -27,7 +28,7 @@ from core.config import (
 from core.convert import SampleGenerators, SmpsToModConverter
 from core.merge import prepare_merged_config
 from core.plan import complete_config
-from core.ui import Report, branding, cli_console, error_printer, print_report
+from core.ui import Report, add_variant_argument, branding, cli_console, error_printer, print_report
 from sn76489.sample_generator import generate_psg_samples
 from ym2612.sample_generator import generate_fm_samples
 
@@ -80,6 +81,7 @@ def main():
     parser.add_argument('--merged', action='store_true',
                         help="The reduced build: fold the config's `merge:` followers onto their "
                              "primaries (composite instruments) and write merge_output_file")
+    add_variant_argument(parser)
     parser.add_argument('--settings', metavar='PATH',
                         help="Global settings file (default: settings.yaml beside the config, "
                              "else configs/settings.yaml)")
@@ -98,7 +100,7 @@ def main():
         sys.exit(1)
 
     try:
-        config = ConversionConfig.from_yaml(args.config)
+        config = ConversionConfig.from_yaml(args.config, args.variant)
     except (ValueError, TypeError) as e:
         _error(str(e))
     if args.input or args.rom_song:

@@ -73,9 +73,10 @@ class Derivation:
     files: dict[str, bytes] = field(default_factory=dict)   # samples_dir files to write (DAC samples)
 
 
-def load_config(path: str | Path, settings_path: str | None = None) -> ConversionConfig:
-    """A config file, a minimal one completed from its song (what every tool reads a config with)."""
-    config = ConversionConfig.from_yaml(str(path))
+def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
+    """A config file read as `variant`, a minimal one completed from its song (what every tool
+    reads a config with)."""
+    config = ConversionConfig.from_yaml(str(path), variant)
     if config.is_minimal:
         clock = load_settings(settings_path or find_settings(str(path)))[0].amiga_clock
         config, _ = complete_config(config, path, clock)
@@ -90,7 +91,7 @@ def complete_config(config: ConversionConfig, config_path: str | Path, amiga_clo
         return config, None
     song = song or config.read_song()
     derivation = derive_config(config.stated(), song, config_path, amiga_clock, read_dac(config.input_file))
-    complete = ConversionConfig.from_data(derivation.data, str(config_path))
+    complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)
     samples = Path(complete.samples_dir)
     samples.mkdir(parents=True, exist_ok=True)
     for name, pcm in derivation.files.items():

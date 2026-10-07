@@ -97,7 +97,7 @@ from core.config import ConversionConfig
 from core.merge import column_sources, prepare_merged_config
 from core.mod import ModImage, read_mod, timed_pass
 from core.plan import load_config
-from core.ui import print_audit
+from core.ui import add_variant_argument, print_audit
 from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
 
 # ---------------------------------------------------------------------------
@@ -852,6 +852,7 @@ def main() -> None:
     ap.add_argument("--settings", metavar="PATH",
                     help="settings the MOD was converted with (default: settings.yaml beside the config, "
                          "else configs/settings.yaml): whether it has detune variants")
+    add_variant_argument(ap)
     ap.add_argument("--merged", action="store_true",
                     help="audit the merged build (convert.py --merged): each MOD channel against the sum of the "
                          "chip channels folded onto it (balance and onsets; no per-note audit)")
@@ -860,7 +861,7 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, variant=args.variant)
     if args.merged:
         try:
             prepare_merged_config(cfg, cfg.read_song())   # followers off, channels packed, merge_output_file
@@ -874,7 +875,8 @@ def main() -> None:
     for p in (mod_path, vgz):
         if not p.exists():
             raise SystemExit(f"ERROR: file not found: {p}")
-    workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + ("_merged" if args.merged else "")))
+    workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + (f"_{args.variant}" if args.variant else "")
+                                                                + ("_merged" if args.merged else "")))
 
     reference = _Reference.read(vgz)
     notes = reference.notes
@@ -936,7 +938,9 @@ def main() -> None:
         res = report(cfg, song, reference, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
 
-    if args.write_volumes and "instrument_levels" not in res:
+    if args.write_volumes and args.variant:
+        print("--write-volumes: not with --variant (it writes the base sample_list rows)")
+    elif args.write_volumes and "instrument_levels" not in res:
         print("--write-volumes: not for the merged build (its instruments are measured in the reference build)")
     elif args.write_volumes:
         changes = write_volumes(Path(args.config), res["instrument_levels"]["instruments"])

@@ -53,6 +53,7 @@ from core.config import ConversionConfig, format_patterns
 from core.convert import SurveyContext, survey_context
 from core.merge import PairStats
 from core.plan import load_config
+from core.ui import add_variant_argument
 
 MARK_BEGIN = "# >>> merge_patterns - written by tools/fold_csv.py from {csv}; the config is the source of truth: edit it here, or re-run --write to replace the block from the table"
 MARK_END = "# <<< merge_patterns"
@@ -295,6 +296,8 @@ def write_block(config_path: str, block: str) -> str:
     end = text.find(MARK_END)
     if begin >= 0 and end > begin:
         end = text.find("\n", end) + 1
+        if re.search(r"^\s*variants:", text[begin:end], re.M):
+            raise SystemExit(f"{config_path}: its merge_patterns block holds variants: blocks, which --write would lose")
         text = text[:begin] + block + text[end:]
         how = "replaced"
     else:
@@ -316,8 +319,11 @@ def main() -> None:
     ap.add_argument("--mix-note", metavar="NOTE",
                     help="mix_note: NOTE on every drum-primary group: its mixes are made no higher than this "
                          "MOD note (F2: 11 kHz instead of a hat's 28 kHz)")
+    add_variant_argument(ap)
     args = ap.parse_args()
-    cfg = load_config(args.config)
+    if args.write and args.variant:
+        ap.error("--write: not with --variant (the block it writes is the base one)")
+    cfg = load_config(args.config, variant=args.variant)
     columns, table, names = read_table(args.csv, cfg)
     ctx = survey_context(cfg, args.config)
     blocks, report = build(ctx, columns, table, bank=args.bank, mix_note=args.mix_note)

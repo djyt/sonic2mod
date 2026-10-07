@@ -32,7 +32,7 @@ tests/baselines/manifest.yaml records what each baseline was made with:
 
     title_screen:
       commit: 844d0a5-dirty     # HEAD when generated; -dirty = uncommitted changes
-      config: 3f1c0e9a2b7d      # hash of the song config's content (comments aside)
+      config: 3f1c0e9a2b7d      # hash of the song config's content as the case reads it (comments aside)
       date: '2026-10-01'
       settings: 9b2e4f01c6aa    # hash of tests/settings.yaml's content
 
@@ -58,7 +58,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 import yaml
 
-from core.config import load_settings, load_yaml
+from core.config import apply_variant, load_settings, load_yaml
 from tools.mod_compare import compare_mods
 from tools.mod_lint import lint_mod
 
@@ -71,14 +71,15 @@ AMIGA_CLOCK = load_settings(str(SETTINGS_FILE))[0].amiga_clock    # the rate a p
 _HASH_CHARS = 12
 _MANIFEST_HEADER = "# Written by tests/regression.py --generate-baselines: what each baseline was made with.\n"
 
-# (config stem, test name, baseline stem, description).  Every song config has an entry:
-# a refactor is only safe once all of them still produce byte-identical MODs.
+# (config stem, test name, baseline stem, description).  Every song config has an entry, and
+# every variant a config states (_VARIANTS): a refactor is only safe once all of them still
+# produce byte-identical MODs.
 # `ignore_channels` (0-based MOD indices) is added per case only while deliberately
 # changing that channel — see _CASE_OVERRIDES below.
 _SONGS = [
     ("01_title_screen",      "title_screen",      "title_screen",      "Title Screen"),
     ("02_green_hill_zone",   "green_hill_zone",   "ghz",               "Green Hill Zone"),
-    ("02_ghz_lofi",          "ghz_lofi",          "ghz_lofi",          "Green Hill Zone lofi — mix_at: primary, A2 banks, loop_drift_db 20, root-pitch samples, merge_twins: always"),
+    ("02_green_hill_zone",   "ghz_lofi",         "ghz_lofi",          "Green Hill Zone lofi — mix_at: primary, A2 banks, loop_drift_db 20, root-pitch samples, merge_twins: always"),
     ("03_marble_zone",       "marble_zone",       "marble_zone",       "Marble Zone — pitched rate-3 noise"),
     ("04_spring_yard_zone",  "spring_yard_zone",  "spring_yard_zone",  "Spring Yard Zone — notes below the PSG table"),
     ("05_lab_zone",          "lab_zone",          "lab_zone",          "Labyrinth Zone — rootless PSG entry + channel transpose"),
@@ -98,6 +99,9 @@ _SONGS = [
     ("19_game_over",         "game_over",         "game_over",         "Game Over"),
 ]
 
+# test name -> the config's variant the case converts (convert.py --variant)
+_VARIANTS: dict[str, str] = {"ghz_lofi": "lofi"}
+
 # name -> channels to ignore (0-based MOD indices).  Normally empty; set an entry only
 # while deliberately changing that channel.
 _CASE_OVERRIDES: dict[str, list[int]] = {}
@@ -109,6 +113,7 @@ TEST_CASES = [
         "baseline": f"tests/baselines/{baseline}_baseline.mod",
         "ignore_channels": _CASE_OVERRIDES.get(name, []),
         "description": f"{desc} — all channels",
+        "variant": _VARIANTS.get(name),
         "args": [],
     }
     for stem, name, baseline, desc in _SONGS
@@ -134,16 +139,28 @@ TEST_CASES += [
         "baseline": f"tests/baselines/{baseline}_merged_baseline.mod",
         "ignore_channels": _CASE_OVERRIDES.get(f"{name}_merged", []),
         "description": f"{desc} — merged build",
+        "variant": _VARIANTS.get(name),
         "args": ["--merged"],
     }
     for stem, name, baseline, desc in _SONGS if _has_merge(stem)
 ]
 
 
-def _content_hash(path: Path) -> str:
-    """A YAML file's content hashed, comments and layout aside: reformatting is no change."""
+def variant_args(tc: dict) -> list[str]:
+    """The `--variant` a case's tools are run with (none for a base build)."""
+    return ["--variant", tc["variant"]] if tc.get("variant") else []
+
+
+def _convert_args(tc: dict) -> list[str]:
+    """convert.py's arguments after the config for a case."""
+    return [*variant_args(tc), *tc.get("args", [])]
+
+
+def _content_hash(path: Path, variant: str | None = None) -> str:
+    """A YAML file's content as `variant` reads it (core.config.apply_variant: the base build
+    ignores the variants' blocks), hashed, comments and layout aside: reformatting is no change."""
     with open(path, encoding="utf-8") as f:
-        data = load_yaml(f)
+        data = apply_variant(load_yaml(f), variant, str(path))
     text = json.dumps(data, sort_keys=True, default=str)
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:_HASH_CHARS]
 
@@ -279,7 +296,7 @@ def convert_all(cases: list[dict], root: Path, jobs: int) -> dict[str, tuple[boo
     with ThreadPoolExecutor(max_workers=max(1, min(jobs, len(cases)))) as pool:
         futures = {
             tc["name"]: pool.submit(run_conversion, tc["config"], root,
-                                    _regression_output_path(root, tc["name"]), tc.get("args"))
+                                    _regression_output_path(root, tc["name"]), _convert_args(tc))
             for tc in cases
         }
         return {name: f.result() for name, f in futures.items()}
@@ -306,7 +323,7 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
     made = {"commit": _commit(root), "date": datetime.date.today().isoformat(),
             "settings": _content_hash(SETTINGS_FILE)}
     for tc in cases:
-        print(f"\n  [{tc['name']}] convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
+        print(f"\n  [{tc['name']}] convert.py {tc['config']} {' '.join(_convert_args(tc))}".rstrip())
         tmp_path = _regression_output_path(root, tc["name"])
         ok, failure = results[tc["name"]]
         if not ok:
@@ -320,7 +337,7 @@ def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1)
             continue
         shutil.copy2(tmp_path, baseline_path)
         tmp_path.unlink(missing_ok=True)
-        manifest[tc["name"]] = {**made, "config": _content_hash(root / tc["config"])}
+        manifest[tc["name"]] = {**made, "config": _content_hash(root / tc["config"], tc.get("variant"))}
         print(f"  Saved baseline: {baseline_path}")
         issues = lint_mod(str(baseline_path), AMIGA_CLOCK)
         if issues:
@@ -349,7 +366,7 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
             all_passed = False
             continue
 
-        print(f"  convert.py {tc['config']} {' '.join(tc.get('args', []))}".rstrip())
+        print(f"  convert.py {tc['config']} {' '.join(_convert_args(tc))}".rstrip())
 
         # What the baseline was made with: under other settings every diff is noise
         made = manifest.get(tc.get("shares_baseline", tc["name"]))
@@ -361,7 +378,7 @@ def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
             tmp_path.unlink(missing_ok=True)
             all_passed = False
             continue
-        elif made.get("config") != _content_hash(root / tc["config"]):
+        elif made.get("config") != _content_hash(root / tc["config"], tc.get("variant")):
             print(f"  note: {tc['config']} changed since the baseline ({made.get('commit')}, {made.get('date')})")
 
         ok, failure = results[tc["name"]]

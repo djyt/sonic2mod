@@ -16,6 +16,7 @@ its own copy.
 
 from __future__ import annotations
 
+import argparse
 import io
 import sys
 from collections.abc import Callable
@@ -70,6 +71,13 @@ def row_printer(console: Console) -> Callable[..., None]:
                 console.print(f"  {' ' * LABEL_W}   {line}")
 
     return row
+
+
+def add_variant_argument(parser: argparse.ArgumentParser) -> None:
+    """`--variant NAME`, the same on every CLI that reads a song config (core.config.apply_variant)."""
+    parser.add_argument("--variant", metavar="NAME",
+                        help="read the config as its variant NAME: each `variants: {NAME: ...}` block laid "
+                             "over the keys beside it (default output_file: <stem>_NAME.mod)")
 
 
 def error_printer(console: Console) -> Callable[[str], NoReturn]:

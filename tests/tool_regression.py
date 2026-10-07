@@ -44,7 +44,7 @@ sys.path.insert(0, str(ROOT))
 
 import yaml
 
-from tests.regression import SETTINGS_FILE, TEST_CASES, _commit
+from tests.regression import SETTINGS_FILE, TEST_CASES, _commit, variant_args
 
 BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
@@ -89,7 +89,7 @@ def _song_cases(tc: dict, vgz: Path) -> list[_Case]:
     config, mod = ROOT / tc["config"], ROOT / tc["baseline"]
     inputs = [vgz, mod, config, SETTINGS_FILE]
     common = [tc["config"], str(vgz.relative_to(ROOT)), "--mod", tc["baseline"], "--settings",
-              str(SETTINGS_FILE.relative_to(ROOT))]
+              str(SETTINGS_FILE.relative_to(ROOT)), *variant_args(tc)]
     merged = "--merged" in tc["args"]
     cases = [] if merged else [_Case(f"pitch_{tc['name']}", ["tools/vgm_pitch_audit.py", *common, "--list"], inputs)]
     workdir = str((RENDER_DIR / tc["name"]).relative_to(ROOT))

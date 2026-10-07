@@ -55,6 +55,10 @@ Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (a
   trim_to_pattern / narrow_to        mod.py   [merged build: empty columns go]
       │
       ▼
+  compact_samples                    mod.py   [merged build (samples.compact_slots): the sample
+      │                                        slots in use renumbered from 1 without gaps; the
+      │                                        cells, warnings and sample_sources follow]
+      ▼
   ModFile → mod.get_bytes()        mod.py
       │
       ▼
@@ -1196,6 +1200,13 @@ PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
   and a slot whose waveform another slot already holds: `same as N`);
   Green Hill's merged samples went from 771 KB to 526 KB under these rules, and convert.py
   narrows a merged build whose columns all fit four to a 4-channel M.K. file (`ModFile.narrow_to`).
+  Its sample slots are then renumbered from 1 without gaps (`ModFile.compact_samples`,
+  `samples.compact_slots: merged`): the instruments a merged build no longer plays leave their
+  config numbers empty (Green Hill lofi used 25 slots up to 30).  The cells' instrument numbers,
+  the warnings and infos (`Diagnostics.remap_instruments`) and the report's sample sources follow;
+  a slot keeps its order, a `9xx` offset is relative to its own sample, and the sound is unchanged
+  (every merged build renders identically).  The 8-channel reference builds keep the config's
+  numbers, which `vgm_compare`'s per-instrument table and the `sample_list` tuning are keyed on.
 
 **When it runs.** The plan is built once the ticks are final (after `prepare_song`:
 `apply_global_tempo_div` and `extend_looping_channels`, before anything counts notes) and before the

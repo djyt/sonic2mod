@@ -205,6 +205,7 @@ sonic2mod/
     test_detune_units.py #  Detune variants: FNUM → cents, routing, shared level, catalogue layers
     test_loop_decay_units.py # Sliding loops (loop_decay: slide) on a hand-built falling tone
     test_variant_units.py #  Config variants (apply_variant): overlay, null removal, default output_file
+    test_compact_units.py #  Sample slot compaction (ModFile.compact_samples, Diagnostics.remap_instruments)
     test_diagnostics_units.py # Warning / info kinds: every WarningKind has a report line, de-duplication
     test_voice_units.py #   SmpsVoice operators as ints (parser, hand-built)
     test_instrument_units.py # sounding_pitches, prepare_instruments, catalogue rendering pitch
@@ -549,7 +550,7 @@ attack row); it displaces an attack-row `4xy`.  Details: `docs/pipeline.md` § N
 
 8a. **Row-0 tempo commands are placed last** (`ModLayout.tempo_commands`): the BPM and speed `Fxx` go into free effect cells after every channel is converted; written first on channels 0/1 they were overwritten by a note's own row-0 `Cxx`/`3FF` (the merged Green Hill lost its speed and ran at half tempo).  A missing speed shows as a MOD that plays at speed 6.  In a merged build only columns that hold notes take them (then a leading rest's `C00`, a note-less column last): one `F96` on a column no note used kept Green Hill lofi without its hats 8 channels wide (`ModFile.narrow_to` keeps any column with data).
 
-9. **Layout order is fixed, inside `convert()`**: passes (note data) → `apply_pattern_breaks` → `ModLayout.loop_point` (`Bxx`) → trim trailing patterns → narrow (merged). Breaks after the `Bxx` → loop target in the wrong pattern. Break coordinate formula: `body_start = P*64 + break_row + 1`; flat rows before `body_start` use `flat//64 : flat%64`, rows after use pattern `P+1 + br//64 : br%64` where `br = flat_row - body_start`. If `target_row != 0`, also write `Dxx` (BCD row) on a free channel at the same row, to the RIGHT of the `Bxx` (ProTracker reads a row left to right; a `Bxx` after a `Dxx` resets the row to 0).  The `Bxx` takes the first free effect slot among the columns in use (it overwrote channel 0's `EC1` in the merged Green Hill, an `A01` in Special Stage); `loop_no_slot` warns where none is free.
+9. **Layout order is fixed, inside `convert()`**: passes (note data) → `apply_pattern_breaks` → `ModLayout.loop_point` (`Bxx`) → trim trailing patterns → narrow (merged) → compact the sample slots (merged, `samples.compact_slots`: `ModFile.compact_samples` renumbers the slots in use from 1, cells / warnings / report follow, the sound unchanged). Breaks after the `Bxx` → loop target in the wrong pattern. Break coordinate formula: `body_start = P*64 + break_row + 1`; flat rows before `body_start` use `flat//64 : flat%64`, rows after use pattern `P+1 + br//64 : br%64` where `br = flat_row - body_start`. If `target_row != 0`, also write `Dxx` (BCD row) on a free channel at the same row, to the RIGHT of the `Bxx` (ProTracker reads a row left to right; a `Bxx` after a `Dxx` resets the row to 0).  The `Bxx` takes the first free effect slot among the columns in use (it overwrote channel 0's `EC1` in the merged Green Hill, an `A01` in Special Stage); `loop_no_slot` warns where none is free.
 
 ## voice_map (per-voice octave-range instrument routing)
 

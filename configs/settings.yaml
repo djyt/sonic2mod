@@ -65,6 +65,13 @@ samples:
   #   all      : every build
   sustain_loops: all
 
+  # Renumber the sample slots in use from 1 without gaps once the MOD is laid out (a merged build
+  # leaves slots of instruments it no longer plays empty).  Sound and size are unchanged.
+  #   off      : never
+  #   merged   : the --merged reduced channel version only
+  #   all      : every build (its slots no longer match the config's sample_list numbers)
+  compact_slots: merged
+
   # dB change whereby the loop is created
   # 1     : Loop voices that truly settle                                [Higher file size]
   # 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]

@@ -98,6 +98,30 @@ class Diagnostics:
         assert 'type' not in fields, fields
         self.infos.append({'type': kind, **fields})
 
+    def remap_instruments(self, mapping: dict[int, int]) -> None:
+        """Renumber the instrument slots every warning and info names (ModFile.compact_samples):
+        a slot under `instrument`, `missing` or `slot`, an "instrument N" context, and the items of
+        an `instruments` / `composites` list (a slot, or a tuple that starts with one).  A count
+        under the same names stays as it is."""
+        def slot(v):
+            return mapping.get(v, v) if isinstance(v, int) and not isinstance(v, bool) else v
+
+        def item(v):
+            if isinstance(v, (tuple, list)) and v:
+                return type(v)([slot(v[0]), *v[1:]])
+            return slot(v)
+
+        for rec in (*self.warnings, *self.infos):
+            for key in ("instrument", "missing", "slot"):
+                if key in rec:
+                    rec[key] = slot(rec[key])
+            for key in ("instruments", "composites"):
+                if isinstance(rec.get(key), list):
+                    rec[key] = [item(v) for v in rec[key]]
+            ctx = rec.get("extra_ctx")
+            if isinstance(ctx, str) and ctx.startswith("instrument ") and ctx[11:].isdigit():
+                rec["extra_ctx"] = f"instrument {slot(int(ctx[11:]))}"
+
     def infos_of(self, kind: InfoKind) -> list[dict]:
         return [i for i in self.infos if i['type'] == kind]
 

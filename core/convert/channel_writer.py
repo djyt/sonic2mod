@@ -808,8 +808,9 @@ class ChannelWriter:
                 break                       # released: nothing to modulate
             if (cont_pat, cont_row) in (fill_coord, cxx_coord):
                 continue
-            if cont_pat >= len(self._mod.patterns):
-                break
+            # A song's last note rings into patterns nothing has written yet: Game Over's closing
+            # G#3 (3 s of smpsModSet) had no 4xy at all while the check here stopped at them
+            self._mod.ensure_pattern(cont_pat)
             self._mod.set_cursor(cont_pat, mod_chan, cont_row)
             self._mod.set_effect(0x4, (vib_speed << 4) | vib_depth)
         # Restore cursor to the attack row

@@ -404,12 +404,12 @@ compare_continue_screen_merged:
     tests/baselines/continue_screen_merged_baseline.mod: 8817b9cdfe6c
     tests/settings.yaml: 268a59366905
 compare_credits:
-  commit: bd1761e-dirty
+  commit: 344c13c-dirty
   date: '2026-10-07'
   inputs:
     configs/13_credits.yaml: fd4e69be5011
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 75fe24a827de
+    tests/baselines/credits_baseline.mod: 32cb069564e6
     tests/settings.yaml: 268a59366905
 compare_drowning:
   commit: bd1761e-dirty
@@ -452,12 +452,20 @@ compare_final_zone:
     tests/baselines/final_zone_baseline.mod: 8dc340f0b8a7
     tests/settings.yaml: 268a59366905
 compare_game_over:
-  commit: bd1761e-dirty
+  commit: 344c13c-dirty
   date: '2026-10-07'
   inputs:
-    configs/19_game_over.yaml: 689322ebc5a8
+    configs/19_game_over.yaml: d97a4879b5aa
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
-    tests/baselines/game_over_baseline.mod: 044ce59b3b4d
+    tests/baselines/game_over_baseline.mod: e918dd47e802
+    tests/settings.yaml: 268a59366905
+compare_game_over_merged:
+  commit: 344c13c-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/19_game_over.yaml: d97a4879b5aa
+    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    tests/baselines/game_over_merged_baseline.mod: 790fdbbf4e8f
     tests/settings.yaml: 268a59366905
 compare_ghz_lofi:
   commit: bd1761e-dirty

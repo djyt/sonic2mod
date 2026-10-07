@@ -15,7 +15,7 @@ continue_screen_merged:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 credits:
-  commit: bd1761e-dirty
+  commit: 344c13c-dirty
   config: b78eed6650f9
   date: '2026-10-07'
   settings: 2a7d221c6ea5
@@ -45,8 +45,13 @@ final_zone:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over:
-  commit: bd1761e-dirty
-  config: e4251d235208
+  commit: 344c13c-dirty
+  config: 5193c7beb324
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+game_over_merged:
+  commit: 344c13c-dirty
+  config: 5193c7beb324
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 ghz_lofi:

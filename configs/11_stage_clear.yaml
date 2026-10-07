@@ -12,6 +12,15 @@ ticks_per_row: 1
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
+# Variant lofi (convert.py --variant lofi --merged -> output/11_stage_clear_lofi_merged.mod): the merged
+# build 70 -> 41 KB.  The lead and harmony mixes at F2 (11 kHz, their treble above 5.5 kHz gone); at F2 the
+# held A6 lead mix also loops (0.36 s in: 14.7 -> 6.1 KB).  The drums and the bass + stabs as they are.
+# Left out: the lead at A2 (+9.7 KB, 1.4 dB of treble instead of 3.3); loop drift and merge_twins change
+# nothing here
+variants:
+  lofi:
+    name: "Stage Clear lofi"
+
 channels:
   - source: DAC
     mod_channel: 0
@@ -116,6 +125,8 @@ merge:
   - primary: FM1
     followers: [PSG1]
     loop_mix: true           # the held A6 loops where lead + PSG settle: 64 KB unlooped (and 0.86 s short) → 19 KB
+    variants:
+      lofi: {mix_note: F2}   # 11 kHz instead of 12-25 (-24.5 KB; A2: -14.8 KB)
 
   # Bass hits with the chord stabs on top: chip composites (FM3 left, FM4 right, their fills kept)
   - primary: FM2
@@ -126,3 +137,5 @@ merge:
     followers: [PSG2]
     loop_mix: true           # the held B5: 64 KB unlooped → 6 KB.  (mix_at: primary unrolls the looped PSG
                              # under the FM loop: 40 KB)
+    variants:
+      lofi: {mix_note: F2}   # 11 kHz instead of 17-25 (-6.1 KB)

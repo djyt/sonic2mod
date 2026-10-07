@@ -14,12 +14,23 @@ region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
 # Variant lofi (convert.py --variant lofi --merged -> output/14_invincibility_lofi_merged.mod): the merged
-# build 45 -> 31 KB.  The hat at A2 (14 kHz) and the bass looped where it settles; the snare and kick
-# keep their own rates.  Left out: loop_drift_db 12 song-wide (the chord composites grow 3.9 KB and lose
-# onsets), the bass at D1 (-0.3 KB for 1.7 dB of its treble), merge_max_synth_shift 0 (+0.4 KB).
+# build 45 -> 23 KB.  The hat at A2 (14 kHz), no drum + hat mixes (the hats go to the fill pool), and the
+# bass looped where it settles; the snare and kick keep their own rates.  Left out: loop_drift_db 12
+# song-wide (the chord composites grow 3.9 KB and lose onsets), the bass at D1 (-0.3 KB for 1.7 dB of its
+# treble), merge_max_synth_shift 0 (+0.4 KB).
 variants:
   lofi:
     name: "Invincibility lofi"
+    # The hats leave the drum column: each plays on whichever column is silent when it starts (10 on the
+    # lead's, 4 on the chords'), the other 34 of 48 are lost - nearly every hat starts on a drum hit and
+    # the mixes that carried them cost 7.5 KB.  Chosen by ear over the mixes (31 KB), dropping only the
+    # hats over a drum (24 KB, 3 heard) and keeping the snare's one (28 KB)
+    merge_fill: [PSG3]
+    merge:
+      - primary: FM1
+        followers: [FM5]
+      - primary: FM3
+        followers: [FM4]
 
 channels:
   - source: DAC

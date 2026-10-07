@@ -44,7 +44,8 @@ def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, in
     come down to meet them.  A DAC that is too LOUD is simply turned down (it gets a suggestion
     like any instrument), and a gap under the slack is within what short DAC hits can be measured
     to — chasing it would rewrite every volume for nothing.
-    Only notes without a Cxx say what the instrument's own volume should be.
+    Only notes without a Cxx say what the instrument's own volume should be — unless it has none
+    long enough to measure, when its Cxx notes do (`from_cxx`).
     """
     groups: dict[tuple, list[float]] = {}
     for ch, times in note_times.items():
@@ -94,16 +95,22 @@ def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, in
     instruments = []
     for ins in sorted({g["instrument"] for g in out_groups}):
         plain = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is None]
-        if not plain:
-            continue
+        from_cxx = not plain
+        if from_cxx:
+            # Its plain notes too short to measure (Invincibility FM5: the baked level is the fast run's,
+            # every long note a Cxx).  A Cxx is the volume scaled by the note's level difference, so its
+            # error is the volume's; one at 64 may be clamped and says nothing
+            plain = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is not None and g["cxx"] < 64]
+            if not plain:
+                continue
         notes = sum(g["notes"] for g in plain)
-        err = statistics.median(x for g in plain for x in groups[(g["channel"], ins, None)]) - anchor
+        err = statistics.median(x for g in plain for x in groups[(g["channel"], ins, g["cxx"])]) - anchor
         spread = max(g["err_db"] for g in plain) - min(g["err_db"] for g in plain)
         name, vol = samples.get(ins, ("?", 64))
         ok = notes >= _LEVEL_MIN_NOTES and spread <= LEVEL_MAX_SPREAD and abs(err) <= LEVEL_MAX_ERR
         instruments.append({
             "instrument": ins, "name": name, "volume": vol, "notes": notes, "err_db": err, "spread_db": spread,
-            "channels": sorted({g["channel"] for g in plain}),
+            "channels": sorted({g["channel"] for g in plain}), "from_cxx": from_cxx,
             "wanted": vol * db_to_gain(-err) if ok else None,
         })
     scale = suggest_volumes(instruments)

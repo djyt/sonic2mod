@@ -60,9 +60,14 @@ green_hill_zone_merged:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 invincibility:
-  commit: b75b061
-  config: 63774d024e7d
-  date: '2026-10-05'
+  commit: 003c168-dirty
+  config: d31b8bea135d
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+invincibility_merged:
+  commit: 003c168-dirty
+  config: d31b8bea135d
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 lab_zone:
   commit: b75b061

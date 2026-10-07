@@ -89,6 +89,7 @@ class SmpsToModConverter:
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
         self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
         self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
+        self._slot_map: dict[int, int] = {}            # {old slot: new slot} of every slot ModFile.compact_samples kept
                                                        #   quantisation: what the composite mixer mixes from
         self._emission = EmissionStats()   # what the channel writers counted (bank cuts, tie retunes)
         self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
@@ -243,6 +244,8 @@ class SmpsToModConverter:
                 d['rate'] = self._sample_rates[inst]     # a mix or a bank took its slot's number over
             if inst in self._release and self._release[inst] != float('inf'):
                 d['release'] = self._release[inst]
+        if self._slot_map:                               # the slots as the written MOD numbers them
+            out = {self._slot_map[i]: d for i, d in out.items() if i in self._slot_map}
         return out
 
     @property
@@ -304,6 +307,14 @@ class SmpsToModConverter:
             if need < mod.CHANNELS:
                 self._diag.info(InfoKind.NARROWED, before=mod.CHANNELS, after=need)
                 mod.narrow_to(need)
+
+        # The slots in use renumbered without gaps (the merged build empties the slots of
+        # instruments it no longer plays): the cells, the warnings and sample_sources follow
+        settings = self.synth or self.psg_synth
+        if settings is not None and settings.compacts(self.config.merge_active):
+            self._slot_map = mod.compact_samples()
+            if self._slot_map:
+                self._diag.remap_instruments(self._slot_map)
 
         # Silent once a one-shot ends: ProTracker replays its first word
         zero_idle = self.synth.pt_zero_bytes if self.synth else True

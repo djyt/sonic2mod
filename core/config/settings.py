@@ -24,7 +24,7 @@ def _psg_volume_mode(value) -> str:
 
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
-               "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache")
+               "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -73,6 +73,14 @@ def _sample_flag(data: dict, key: str, default: bool, filepath: str) -> bool:
 
 
 SUSTAIN_LOOP_MODES = ("off", "merged", "all")
+
+
+def _compact_slots(data: dict, default: str, filepath: str) -> str:
+    """`samples.compact_slots` of settings.yaml: off | merged | all (SUSTAIN_LOOP_MODES' words)."""
+    v = mode_word(data.get("compact_slots", default))
+    if v not in SUSTAIN_LOOP_MODES:
+        raise ValueError(f"{filepath}: compact_slots must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
+    return v
 
 
 def _sustain_loops(data: dict, default: str, filepath: str) -> str:
@@ -197,6 +205,9 @@ class SampleSettings:
     # settings.yaml samples.sustain_loops: which builds cut each settled sample to a loop and
     # end its notes with a release slide (core.audio.loops) - "off", "merged" (--merged only), "all".
     sustain_loops: str = "merged"
+    # settings.yaml samples.compact_slots: which builds have their sample slots renumbered without
+    # gaps once laid out (ModFile.compact_samples) - "off", "merged" (--merged only), "all"
+    compact_slots: str = "merged"
     loop_drift_db: float = 1.0       # settings.yaml samples.loop_drift_db: dB a loop may freeze above the
                                      # level the longest note would have decayed to (core.audio.loops)
     treble_shelf_db: float = 0.0     # settings.yaml samples.treble_shelf_db: brightness shelf, 0 = off
@@ -215,6 +226,10 @@ class SampleSettings:
         """Bytes one synthesised sample may hold (core.mod.limits.sample_limit_bytes)."""
         return sample_limit_bytes(self.max_sample_kb)
 
+    def compacts(self, merged: bool) -> bool:
+        """True when this build's sample slots are renumbered without gaps (ModFile.compact_samples)."""
+        return self.compact_slots == "all" or (self.compact_slots == "merged" and merged)
+
     def loops_for(self, merged: bool) -> bool:
         """True when this build (the merged one or the reference) gets sustain loops."""
         return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
@@ -228,6 +243,7 @@ class SampleSettings:
             amiga_clock=int(data.get("amiga_clock", cls.amiga_clock)),
             max_sample_kb=_max_sample_kb(smp, cls.max_sample_kb, filepath),
             sustain_loops=_sustain_loops(smp, cls.sustain_loops, filepath),
+            compact_slots=_compact_slots(smp, cls.compact_slots, filepath),
             loop_drift_db=_loop_drift_db(smp, cls.loop_drift_db, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,

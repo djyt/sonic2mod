@@ -347,6 +347,35 @@ class ModFile:
         self.CHANNELS = channels
         self.MOD_FORMAT = self.FORMAT_TABLE[channels].encode("utf-8")
 
+    def compact_samples(self) -> dict[int, int]:
+        """Close the gaps between the sample slots in use: every slot that holds a sample or that a
+        note names keeps its order and moves down, and every cell's instrument number follows.
+        Loops, volumes and finetunes travel with their sample, and a 9xx offset is relative to its
+        own.  Returns {old slot: new slot} (1-based) for every slot kept, or {} when none moved."""
+        named: set[int] = set()
+        for pat in self.patterns:
+            data = pat.get_bytes()
+            for i in range(0, len(data), _BYTES_PER_CELL):
+                ins = (data[i] & 0xF0) | (data[i + 2] >> 4)
+                if ins:
+                    named.add(ins)
+        keep = [s for s in range(1, len(self.samples) + 1) if self.samples[s - 1].length or s in named]
+        mapping = {old: new for new, old in enumerate(keep, 1)}
+        moved = {old: new for old, new in mapping.items() if old != new}
+        if not moved:
+            return {}
+        self.samples = [self.samples[old - 1] for old in keep] + [
+            ModSample("") for _ in range(len(self.samples) - len(keep))]
+        for pat in self.patterns:
+            data = pat.get_bytes()
+            for i in range(0, len(data), _BYTES_PER_CELL):
+                ins = (data[i] & 0xF0) | (data[i + 2] >> 4)
+                new = moved.get(ins)
+                if new is not None:
+                    data[i] = (data[i] & 0x0F) | (new & 0xF0)
+                    data[i + 2] = ((new & 0x0F) << 4) | (data[i + 2] & 0x0F)
+        return mapping
+
     def trim_to_pattern(self, last_pattern: int) -> None:
         """Remove patterns after last_pattern (unreachable once the loop-point Bxx is set).
 

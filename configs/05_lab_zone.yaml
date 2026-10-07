@@ -35,7 +35,7 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "kick.raw", 64, 0]
+  - [1, "kick.raw", 64, -3]
   - [2, "snare.raw", 64, 0]
   # --- voice $00: alg 1: (1,2)→3→4, fb 6 — FM1 ---
   - [3, "fm_v00.raw", 31, 0] # VGZ: -1.1 dB at 27
@@ -56,14 +56,14 @@ sample_list:
   - [10, "fm_v00.raw",  8, 0] # VGZ: +1.1 dB at 9
 
 dac_samples:
-  # dKick: ×55 — native ~8250 Hz → note C2
+  # dKick: ×55 — ~7675 Hz on hardware (the cycle count less this song's 6.4 % per-frame stall) → B1 ft -3 (-3 c)
   - name: dKick
     mod_instrument: 1
-    mod_note: C2
-  # dSnare: ×36 — native ~24000 Hz → note Fs3
+    mod_note: B1
+  # dSnare: ×36 — ~22258 Hz on hardware (the cycle count less this song's 6.4 % per-frame stall) → F3 (-7 c)
   - name: dSnare
     mod_instrument: 2
-    mod_note: Fs3
+    mod_note: F3
 
 voice_map:
   # $00 — alg 1: (1,2)→3→4, fb 6 — used by FM1

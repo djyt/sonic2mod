@@ -388,12 +388,20 @@ compare_chaos_emerald:
     tests/baselines/chaos_emerald_baseline.mod: a38f19509a39
     tests/settings.yaml: 268a59366905
 compare_continue_screen:
-  commit: 273c323
+  commit: 8c98b99-dirty
   date: '2026-10-07'
   inputs:
-    configs/18_continue_screen.yaml: 5f0b8f58d47c
+    configs/18_continue_screen.yaml: 835847a4227a
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
-    tests/baselines/continue_screen_baseline.mod: 28e7460c0dd4
+    tests/baselines/continue_screen_baseline.mod: 981f310c1f1f
+    tests/settings.yaml: 268a59366905
+compare_continue_screen_merged:
+  commit: 8c98b99-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/18_continue_screen.yaml: 835847a4227a
+    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    tests/baselines/continue_screen_merged_baseline.mod: 9b92103e278c
     tests/settings.yaml: 268a59366905
 compare_credits:
   commit: f38b709-dirty
@@ -604,12 +612,12 @@ pitch_chaos_emerald:
     tests/baselines/chaos_emerald_baseline.mod: 35f9bfabe6a8
     tests/settings.yaml: 268a59366905
 pitch_continue_screen:
-  commit: 0d0e5d8-dirty
-  date: '2026-10-05'
+  commit: 8c98b99-dirty
+  date: '2026-10-07'
   inputs:
-    configs/18_continue_screen.yaml: 49d7ddac046e
+    configs/18_continue_screen.yaml: 835847a4227a
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
-    tests/baselines/continue_screen_baseline.mod: 33a3a111ad1e
+    tests/baselines/continue_screen_baseline.mod: 981f310c1f1f
     tests/settings.yaml: 268a59366905
 pitch_credits:
   commit: 0d0e5d8-dirty

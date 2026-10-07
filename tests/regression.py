@@ -95,6 +95,7 @@ _SONGS = [
     ("14_invincibility",     "invincibility",     "invincibility",     "Invincibility — range_space: chip"),
     ("14_invincibility",     "invincibility_lofi", "invincibility_lofi", "Invincibility lofi — hat at A2, the bass looped"),
     ("15_1up",               "extra_life",        "extra_life",        "Extra Life"),
+    ("15_1up",               "extra_life_lofi",   "extra_life_lofi",   "Extra Life lofi — the bass pair on a sliding loop, harmony mixes at F2"),
     ("16_chaos_emerald",     "chaos_emerald",     "chaos_emerald",     "Chaos Emerald"),
     ("17_drowning",          "drowning",          "drowning",          "Drowning — mid-song smpsSetTempoMod"),
     ("18_continue_screen",   "continue_screen",   "continue_screen",   "Continue — range_space: chip, key changes"),
@@ -104,7 +105,7 @@ _SONGS = [
 
 # test name -> the config's variant the case converts (convert.py --variant)
 _VARIANTS: dict[str, str] = {"ghz_lofi": "lofi", "robotnik_lofi": "lofi", "invincibility_lofi": "lofi",
-                             "game_over_lofi": "lofi"}
+                             "game_over_lofi": "lofi", "extra_life_lofi": "lofi"}
 
 # name -> channels to ignore (0-based MOD indices).  Normally empty; set an entry only
 # while deliberately changing that channel.

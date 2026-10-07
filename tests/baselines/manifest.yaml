@@ -164,6 +164,16 @@ stage_clear:
   config: bcde9b91c9ed
   date: '2026-10-07'
   settings: 2a7d221c6ea5
+stage_clear_lofi:
+  commit: 6f061d2-dirty
+  config: 2469779b4a00
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+stage_clear_lofi_merged:
+  commit: 6f061d2-dirty
+  config: 2469779b4a00
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
 stage_clear_merged:
   commit: 553c4cc-dirty
   config: bcde9b91c9ed

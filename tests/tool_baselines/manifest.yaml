@@ -643,6 +643,22 @@ compare_stage_clear:
     reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
     tests/baselines/stage_clear_baseline.mod: 3004b85fc950
     tests/settings.yaml: 268a59366905
+compare_stage_clear_lofi:
+  commit: 6f061d2-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/11_stage_clear.yaml: 0d94ec807e50
+    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    tests/baselines/stage_clear_lofi_baseline.mod: 67cb7a8f73bd
+    tests/settings.yaml: 268a59366905
+compare_stage_clear_lofi_merged:
+  commit: 6f061d2-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/11_stage_clear.yaml: 0d94ec807e50
+    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    tests/baselines/stage_clear_lofi_merged_baseline.mod: 2da6bc4d7b51
+    tests/settings.yaml: 268a59366905
 compare_stage_clear_merged:
   commit: bd1761e-dirty
   date: '2026-10-07'
@@ -850,6 +866,14 @@ pitch_stage_clear:
     configs/11_stage_clear.yaml: c6543856658e
     reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
     tests/baselines/stage_clear_baseline.mod: b6b503fcb533
+    tests/settings.yaml: 268a59366905
+pitch_stage_clear_lofi:
+  commit: 6f061d2-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/11_stage_clear.yaml: 0d94ec807e50
+    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    tests/baselines/stage_clear_lofi_baseline.mod: 67cb7a8f73bd
     tests/settings.yaml: 268a59366905
 pitch_star_light_zone:
   commit: b0ed618-dirty

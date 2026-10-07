@@ -486,18 +486,21 @@ class SmpsToModConverter:
         # voice as much as the hardware does at that level and no more.
         self._fm_render_levels = (self._levels.fm_render_levels()
                                   if self._fm_volume_mode == "baked" else {})
-        fm_peaks: dict[int, tuple[int, int]] = {}
+        fm_peaks: dict[int, tuple[int, int, float]] = {}
         # Sustain loops (settings.yaml `sustain_loops`): a settled voice's sample is cut to a loop
         # and its notes end with a release slide (core.convert.channel_writer) instead of a C00.
         fm_loops = synth.loops_for(self.config.merge_active)
         self._release_slides = fm_loops
         fm_cache: dict[str, int] = {}
         tl_offsets = {inst: lv[0] for inst, lv in self._fm_render_levels.items()}
-        # fm_on_chip: a mix's FM layers rendered together for the mixer, at its primary's level
+        # fm_on_chip: a mix's FM layers rendered together for the mixer, at the level its notes
+        # play: the composite's own, as a chip composite is rendered.  The primary's is no
+        # fallback where every one of its notes folds (it votes for nothing): Robotnik's lead
+        # FM1+FM4 was rendered at TL 0 for 18, clipped, and the mix read 2.4 dB loud
         chip_bases = {c.chip_base.inst: c for c in self._merge.composites.values()
                       if c.chip_base is not None} if self._merge is not None else {}
         for i, c in chip_bases.items():
-            tl_offsets[i] = tl_offsets.get(c.primary, 0)
+            tl_offsets[i] = tl_offsets.get(c.inst, tl_offsets.get(c.primary, 0))
         fm_samples = generate_fm_samples(
             self.song, self.config, synth, tl_offsets=tl_offsets,
             peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release,

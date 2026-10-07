@@ -1,4 +1,3 @@
-# Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
   commit: b75b061
   config: f8b2de11a558
@@ -25,12 +24,12 @@ ending_theme:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 extra_life:
-  commit: f386705-dirty
+  commit: f38b709-dirty
   config: fae0e0114f83
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 extra_life_merged:
-  commit: f386705-dirty
+  commit: f38b709-dirty
   config: fae0e0114f83
   date: '2026-10-07'
   settings: 2a7d221c6ea5
@@ -50,9 +49,9 @@ ghz_lofi:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 ghz_lofi_merged:
-  commit: b75b061
+  commit: f38b709-dirty
   config: 30e36c7d076f
-  date: '2026-10-05'
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 green_hill_zone:
   commit: b75b061
@@ -60,9 +59,9 @@ green_hill_zone:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 green_hill_zone_merged:
-  commit: b75b061
+  commit: f38b709-dirty
   config: 4e1acaa1e4a8
-  date: '2026-10-05'
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 invincibility:
   commit: c99d204-dirty

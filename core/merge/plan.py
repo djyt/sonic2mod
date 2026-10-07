@@ -385,7 +385,7 @@ class _Planner:
             assert spec is not None and p.voice is not None
             # Each layer at its own track's detune: the key's are relative (the shape), the chip's
             # are what the driver writes (the primary's own detune is its sample's, core.plan.detune)
-            layers = [FmLayer(p.voice, fnum_offset=p.detune)]
+            layers = [FmLayer(p.voice, fnum_offset=p.detune, pan=p.pan)]
             layers += [dataclasses.replace(fm_layer(p, fn, self.tol), fnum_offset=fn.detune) for fn in present]
             comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
                                    loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms,
@@ -411,7 +411,7 @@ class _Planner:
         if not fm:
             return
         assert p.voice is not None
-        layers = [FmLayer(p.voice, fnum_offset=p.detune)]
+        layers = [FmLayer(p.voice, fnum_offset=p.detune, pan=p.pan)]
         layers += [dataclasses.replace(fm_layer(p, present[i], self.tol), fnum_offset=present[i].detune) for i in fm]
         self.chip_ids += 1
         comp.chip_base = FmInstrument(self.chip_ids, spec.entry, layers,

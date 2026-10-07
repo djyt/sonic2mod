@@ -1,4 +1,3 @@
-# Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.
 analyze_01_frames:
   commit: d8b4b4b
   date: '2026-10-03'
@@ -428,12 +427,12 @@ compare_extra_life:
     tests/baselines/extra_life_baseline.mod: bf913d12f8e3
     tests/settings.yaml: 268a59366905
 compare_extra_life_merged:
-  commit: f386705-dirty
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
     configs/15_1up.yaml: 9760a955ec19
     reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    tests/baselines/extra_life_merged_baseline.mod: 016e2c506c91
+    tests/baselines/extra_life_merged_baseline.mod: 51a6d1473e53
     tests/settings.yaml: 268a59366905
 compare_final_zone:
   commit: d8b4b4b
@@ -460,12 +459,12 @@ compare_ghz_lofi:
     tests/baselines/ghz_lofi_baseline.mod: 7ed4dee4ea2f
     tests/settings.yaml: 268a59366905
 compare_ghz_lofi_merged:
-  commit: 273c323
+  commit: f38b709-dirty
   date: '2026-10-07'
   inputs:
     configs/02_ghz_lofi.yaml: 168d22ede3bc
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_lofi_merged_baseline.mod: 5855677256cf
+    tests/baselines/ghz_lofi_merged_baseline.mod: 256fc86d5bdb
     tests/settings.yaml: 268a59366905
 compare_green_hill_zone:
   commit: 273c323

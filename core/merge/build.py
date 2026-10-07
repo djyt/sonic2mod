@@ -4,6 +4,7 @@ A composite's volume (its sample_list entry), in pipeline order:
 
     plan    the primary's own volume                          core.merge.build_merge_plan
     chip    x peak(all layers) / peak(primary layer)          MergedBuild.scale_chip_volumes
+            x the speakers' level over the mono render's      (ym2612 _speaker_gain)
     mix     the normalised sum's level                        core.merge.mix_pcm_composites
     bank    the loudest member's; the others scaled in bytes  core.merge.banks.pack_banks
     chip    moved to the level its own notes play most        MergedBuild.bake_volumes
@@ -196,20 +197,22 @@ class MergedBuild:
                             reserve=self._config.merge_bank_slots, banks=len(plan.banks), dropped=dropped)
 
     # --- volumes --------------------------------------------------------------------------------
-    def scale_chip_volumes(self, fm_peaks: dict[int, tuple[int, int]]) -> None:
+    def scale_chip_volumes(self, fm_peaks: dict[int, tuple[int, int, float]]) -> None:
         """A chip composite is normalised like any sample: its volume is the primary's times the
         composite's peak over its primary layer's, so the primary plays as loud as it did and the
-        followers add to it as the hardware sum did.  Set before the samples are installed."""
+        followers add to it as the hardware sum did - on the hardware's speakers: layers on
+        opposite sides are summed in the render but never meet there (the third value, the
+        generator's speaker gain).  Set before the samples are installed."""
         for c in self._plan.composites.values():
             if c.chip_base is not None and c.chip_base.inst in fm_peaks:     # fm_on_chip: the mixer's gain
-                pk_all, pk_first = fm_peaks[c.chip_base.inst]
-                c.chip_gain = pk_all / pk_first if pk_first else 1.0
+                pk_all, pk_first, speakers = fm_peaks[c.chip_base.inst]
+                c.chip_gain = pk_all / pk_first * speakers if pk_first else 1.0
             if c.fm is None or c.entry is None or c.inst not in fm_peaks:
                 continue
-            pk_all, pk_first = fm_peaks[c.inst]
+            pk_all, pk_first, speakers = fm_peaks[c.inst]
             if not pk_first:
                 continue
-            vol = c.entry[2] * pk_all / pk_first
+            vol = c.entry[2] * pk_all / pk_first * speakers
             if vol > MOD_MAX_VOLUME:
                 c.headroom_db = headroom_db(vol)
             c.entry[2] = clamp_mod_volume(vol)

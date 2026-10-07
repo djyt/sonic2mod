@@ -80,6 +80,7 @@ class _Rendered:
     first_peak: int            # its first layer's alone, at the same level
     loop: SustainLoop | None
     release: float | None      # dB per second after key-off
+    speaker_gain: float = 1.0  # the mono render's level to the hardware speakers' (_speaker_gain)
 
 
 _worker = threading.local()
@@ -177,7 +178,8 @@ class _FmRenderer:
             if heard_n is not None and heard_n < len(mono):
                 mono = fade_end(mono, heard_n, rate)
         first_peak = self._first_peak(job, mono, sustain if loop is None else probe)
-        return _Rendered(_trim_trailing_silence(mono), rate, first_peak, loop, release)
+        gain = self._speaker_gain(job, sustain, probe if loop is not None else sustain, rate)
+        return _Rendered(_trim_trailing_silence(mono), rate, first_peak, loop, release, gain)
 
     def _sustains(self, job: _RenderJob) -> tuple[float, float]:
         """(sustain, probe): this instrument's own longest ring when `auto` resolved one
@@ -244,6 +246,37 @@ class _FmRenderer:
         return peak(alone[:len(mono)])
 
 
+    def _speaker_gain(self, job: _RenderJob, sustain: float, span: float, rate: int) -> float:
+        """The amplitude that makes a composite's mono render as loud as the hardware's speakers.
+
+        On hardware a hard-panned track sounds on one speaker; a MOD channel on both.  A level
+        is L/R power (the level law's, vgm_compare's): a primary hard left plays 3 dB under a
+        centred one.  The mono render sums every layer in one place, so two detuned voices a
+        few cents apart add nearly in phase, where on the hardware the left one and the right
+        one never meet: 1-Up's FM3 left + FM5 right (G3, a 0.6 Hz beat) read 2.4 dB loud.
+        Rendered as the speakers play it (each side its layers at their own TL, pan_tl taken
+        off), over the sustain: sqrt(P_LR / (P_mono x the primary's own share)).  1.0 for one
+        layer or layers all centred, which the speakers play as the mono render."""
+        lays = job.spec.layers
+        if len(lays) < 2 or all(lay.pan == "C" for lay in lays):
+            return 1.0
+        n = math.ceil(rate * sustain)
+
+        def power(layers: list[tuple]) -> float:
+            if not layers:
+                return 0.0
+            mono, _ = self._render_at(job, span, layers)
+            xs = mono[:n]
+            return sum(x * x for x in xs) / len(xs) if xs else 0.0
+
+        sides = [power([(v, s, f, tl - lay.pan_tl, *rest)
+                        for (v, s, f, tl, *rest), lay in zip(job.layers, lays, strict=True) if lay.pan in ("C", side)])
+                 for side in ("L", "R")]
+        p_mono = power(job.layers)
+        share = 1.0 if lays[0].pan == "C" else 0.5
+        return math.sqrt(sum(sides) / 2 / (share * p_mono)) if p_mono else 1.0
+
+
 def _report(job: _RenderJob, done: _Rendered) -> None:
     """The verbose line of a rendered instrument."""
     spec, entry, mono, loop = job.spec, job.spec.entry, done.mono, done.loop
@@ -277,7 +310,7 @@ def generate_fm_samples(
     synth: SynthesisSettings,
     verbose: bool = False,
     tl_offsets: dict[int, int] | None = None,
-    peaks_out: dict[int, tuple[int, int]] | None = None,
+    peaks_out: dict[int, tuple[int, int, float]] | None = None,
     raw_out: dict[int, tuple] | None = None,
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
@@ -294,7 +327,8 @@ def generate_fm_samples(
         tl_offsets: {instrument: track volume} to render each instrument at (the converter's
                     _plan_fm_render_levels: the level most of its notes play at); 0 = bare voice.
                     A layer's own tl_offset is relative to it.
-        peaks_out:  filled with {instrument: (peak of the render, peak of its first layer alone)}
+        peaks_out:  filled with {instrument: (peak of the render, peak of its first layer alone,
+                    the amplitude that brings the mono render to the hardware speakers' level)}
                     before normalisation - a composite's volume is its primary's times that ratio,
                     so the primary layer plays as loud as it did on its own (core.merge).
         loops:      look for a sustain loop in every instrument (core.audio.loops): a voice whose
@@ -336,7 +370,7 @@ def generate_fm_samples(
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for job, done in zip(jobs, rendered, strict=True):
         if peaks_out is not None:
-            peaks_out[job.inst] = (peak(done.mono), done.first_peak)
+            peaks_out[job.inst] = (peak(done.mono), done.first_peak, done.speaker_gain)
         if release_out is not None:
             release_out[job.inst] = done.release
         if loops_out is not None and done.loop is not None and done.loop.end <= len(done.mono):

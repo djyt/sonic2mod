@@ -108,8 +108,7 @@ channel_instrument_map:
 # Merged 4-Channel Version (convert.py --merged)
 # DAC · lead (FM1+FM4) · harmony (FM2+PSG1) · bass (FM3+FM5): three doubled pairs, every fold clean.
 # Two composites a pair: the first five notes' 100 ms fill is keyed off on the chip (merge_twins:
-# always cuts them in the pattern instead, -4.7 KB, up to 12 dB off at the cut).  FM3+FM5 reads
-# +2.4 dB over its chip channels: hard left + hard right, nearly in phase, summed in mono
+# always cuts them in the pattern instead, -4.7 KB, up to 12 dB off at the cut)
 # -------------------------------------------------------------------------------------------------
 merge:
   # FM4 plays FM1's data detuned (smpsAlterNote $03), FM1 left, FM4 right

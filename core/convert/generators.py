@@ -27,7 +27,7 @@ class FmGenerator(Protocol):
 
     def __call__(self, song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, *,
                  tl_offsets: dict[int, int] | None = ...,
-                 peaks_out: dict[int, tuple[int, int]] | None = ...,
+                 peaks_out: dict[int, tuple[int, int, float]] | None = ...,
                  raw_out: dict[int, tuple] | None = ...,
                  loops: bool = ...,
                  loops_out: dict[int, SustainLoop] | None = ...,

@@ -468,20 +468,20 @@ compare_game_over_merged:
     tests/baselines/game_over_merged_baseline.mod: 790fdbbf4e8f
     tests/settings.yaml: 268a59366905
 compare_ghz_lofi:
-  commit: bd1761e-dirty
+  commit: c9b0845-dirty
   date: '2026-10-07'
   inputs:
-    configs/02_ghz_lofi.yaml: 003fee47b1a5
+    configs/02_green_hill_zone.yaml: 3a8821bf14a2
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_lofi_baseline.mod: f61f44b86818
+    tests/baselines/ghz_lofi_baseline.mod: 425d308109d3
     tests/settings.yaml: 268a59366905
 compare_ghz_lofi_merged:
-  commit: bd1761e-dirty
+  commit: c9b0845-dirty
   date: '2026-10-07'
   inputs:
-    configs/02_ghz_lofi.yaml: 003fee47b1a5
+    configs/02_green_hill_zone.yaml: 3a8821bf14a2
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_lofi_merged_baseline.mod: 8f3e26c9ef9a
+    tests/baselines/ghz_lofi_merged_baseline.mod: ced762b4a015
     tests/settings.yaml: 268a59366905
 compare_green_hill_zone:
   commit: bd1761e-dirty

@@ -540,20 +540,20 @@ compare_robotnik:
     tests/baselines/robotnik_baseline.mod: e8957983407a
     tests/settings.yaml: 268a59366905
 compare_robotnik_lofi:
-  commit: d9d37ed-dirty
+  commit: 69c461c-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: a32054720bf2
+    configs/09_robotnik.yaml: f20a741e2978
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_lofi_baseline.mod: 8a1434f0b706
+    tests/baselines/robotnik_lofi_baseline.mod: 7b87d5a1af07
     tests/settings.yaml: 268a59366905
 compare_robotnik_lofi_merged:
-  commit: d9d37ed-dirty
+  commit: 69c461c-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: a32054720bf2
+    configs/09_robotnik.yaml: f20a741e2978
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_lofi_merged_baseline.mod: f32c6dcf2f04
+    tests/baselines/robotnik_lofi_merged_baseline.mod: b74d6d3cf673
     tests/settings.yaml: 268a59366905
 compare_robotnik_merged:
   commit: bd1761e-dirty
@@ -740,12 +740,12 @@ pitch_robotnik:
     tests/baselines/robotnik_baseline.mod: ba22ca7f7e4a
     tests/settings.yaml: 268a59366905
 pitch_robotnik_lofi:
-  commit: d9d37ed-dirty
+  commit: 69c461c-dirty
   date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: a32054720bf2
+    configs/09_robotnik.yaml: f20a741e2978
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_lofi_baseline.mod: 8a1434f0b706
+    tests/baselines/robotnik_lofi_baseline.mod: 7b87d5a1af07
     tests/settings.yaml: 268a59366905
 pitch_scrap_brain_zone:
   commit: b0ed618-dirty

@@ -13,7 +13,7 @@ ticks_per_row: 3           # $03 = 1 row, a beat 4, a bar 16: four bars to a pat
 region: ntsc
 
 # Variant lofi (convert.py --variant lofi --merged -> output/09_robotnik_lofi_merged.mod): the merged
-# build 150 -> 64 KB.  Loops allowed to freeze 12 dB early (20 froze FM5's arpeggio 30 ms into its
+# build 150 -> 59 KB.  Loops allowed to freeze 12 dB early (20 froze FM5's arpeggio 30 ms into its
 # attack for 4.7 KB), the bass + counter-melody mixes at C2 (8.3 kHz).  The drums and the lead mix as
 # the merged build has them (the lead at F2 saves 1.8 KB).  merge_max_synth_shift: 0 saves nothing
 # once these are in (+0.3 KB) and puts the bass column 7 cents flat: every note takes the root's
@@ -83,6 +83,16 @@ voice_map:
       high: Fs5
       mod_instrument: 4
       root: C2
+  variants:
+    lofi:
+      # One sample for the whole bass, the range shifted down so F#5 lands on B3 (the MOD's top note): its
+      # four C5-F#5 notes play the B3-B4 render faster, and every bass note plays at 10.5 kHz, not 15.7
+      # (-3.0 KB, the bass + counter-melody mixes included).  Rooted at B2, the high notes clamp to B3
+      0:
+        - low:  B3
+          high: Fs5
+          mod_instrument: 3
+          root: E2
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM3
   1:
     - low:  E5

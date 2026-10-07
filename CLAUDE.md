@@ -206,6 +206,7 @@ sonic2mod/
     test_loop_decay_units.py # Sliding loops (loop_decay: slide) on a hand-built falling tone
     test_variant_units.py #  Config variants (apply_variant): overlay, null removal, default output_file
     test_compact_units.py #  Sample slot compaction (ModFile.compact_samples, Diagnostics.remap_instruments)
+    test_sample_names_units.py # Sample names: channel shorthand, 22-character fit, the writer's name field
     test_diagnostics_units.py # Warning / info kinds: every WarningKind has a report line, de-duplication
     test_voice_units.py #   SmpsVoice operators as ints (parser, hand-built)
     test_instrument_units.py # sounding_pitches, prepare_instruments, catalogue rendering pitch
@@ -567,6 +568,7 @@ and does NOT affect range lookup.
   groups; a composite without one takes its primary's entry's; `samples.dither` in settings.yaml otherwise).  Shaped noise sits at the top of the band: right under
   a bright voice, hiss on a mellow one (Green Hill $05 C4–B5 / $06).  YAML reads a bare `off` as false; the
   loader takes it as `off` (`_mode_word`, also `sustain_loops: off`)
+- `name:` — the MOD sample's name (22 characters), on an entry or a merge group; otherwise `samples.names: source` makes one from what plays it (`F1/3/4/5 $05 C4-B5`, `F5+3+4+P1 F-3 [1-4]`, `bank D+F2+P3 9 hits`; `core/convert/sample_names.py`)
 - `vibrato: XY` — per-entry vibrato override (speed X, depth Y; `0` = none); also works in `psg_map` / `psg_voice_map`. Not used by any shipped config — the computed `4xy` matches the hardware
 - `range_space: chip` (song-level) — match `low`/`high` and anchor `root` on the **real pitch the chip plays** (byte + pitch_offset + `smpsChangeTransposition`; PSG through the driver table) instead of the source byte. Needed when a song changes key with `$E9` while keeping a voice (Credits: FM2 twenty times); then the derived `synth_root` is simply `low` and a merged voice's entry keeps its own range. Source space stays the default
 - Output formula: `root + (source − low)`, clamped C1–B3

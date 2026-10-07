@@ -337,6 +337,18 @@ merge_patterns:
 
 Each costs bytes: `tools/mod_audit.py` shows every sample's loop and size.
 
+### name — what the MOD calls a sample
+
+With `samples.names: source` (settings.yaml, the default) every sample is named for what plays it
+and what it was made from, in the 22 characters a MOD sample name holds
+(`core/convert/sample_names.py`): `F1/3/4/5 $05 C4-B5` (an FM voice's range and the channels
+whose notes play it), `F5 $04 C6-B7 dt+2` (a detune variant), `P1/2 fTone01`, `P3 noise E7 fTone04`,
+`D dKick B-2` (a DAC sample at the note it plays, FT2's octaves), `F5+3+4+P1 F-3 [1-4]` (a composite:
+primary first, the note it plays most, its patterns; twins numbered `#1`, `#2`) and
+`bank D+F2+P3 9 hits`.  A voice_map / psg_map / psg_voice_map entry's or a merge group's `name:`
+replaces the generated one (a group's composites keep their note after it).  `names: file` names
+each sample by its sample_list file name, as before 2026-10-08.
+
 ### treble_shelf_db — brightness (song level)
 
 `treble_shelf_db: 4` raises every synthesised render 4 dB above settings.yaml's

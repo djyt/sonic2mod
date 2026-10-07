@@ -24,7 +24,8 @@ def _psg_volume_mode(value) -> str:
 
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
-               "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots")
+               "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
+               "names")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -73,6 +74,17 @@ def _sample_flag(data: dict, key: str, default: bool, filepath: str) -> bool:
 
 
 SUSTAIN_LOOP_MODES = ("off", "merged", "all")
+
+
+NAME_MODES = ("source", "file")
+
+
+def _names(data: dict, default: str, filepath: str) -> str:
+    """`samples.names` of settings.yaml: source | file."""
+    v = mode_word(data.get("names", default))
+    if v not in NAME_MODES:
+        raise ValueError(f"{filepath}: names must be one of {', '.join(NAME_MODES)} (got '{v}')")
+    return v
 
 
 def _compact_slots(data: dict, default: str, filepath: str) -> str:
@@ -208,6 +220,9 @@ class SampleSettings:
     # settings.yaml samples.compact_slots: which builds have their sample slots renumbered without
     # gaps once laid out (ModFile.compact_samples) - "off", "merged" (--merged only), "all"
     compact_slots: str = "merged"
+    # settings.yaml samples.names: "source" names each sample for what plays it and what it was made
+    # from (core/convert/sample_names.py), "file" by its sample_list file name
+    names: str = "source"
     loop_drift_db: float = 1.0       # settings.yaml samples.loop_drift_db: dB a loop may freeze above the
                                      # level the longest note would have decayed to (core.audio.loops)
     treble_shelf_db: float = 0.0     # settings.yaml samples.treble_shelf_db: brightness shelf, 0 = off
@@ -244,6 +259,7 @@ class SampleSettings:
             max_sample_kb=_max_sample_kb(smp, cls.max_sample_kb, filepath),
             sustain_loops=_sustain_loops(smp, cls.sustain_loops, filepath),
             compact_slots=_compact_slots(smp, cls.compact_slots, filepath),
+            names=_names(smp, cls.names, filepath),
             loop_drift_db=_loop_drift_db(smp, cls.loop_drift_db, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,

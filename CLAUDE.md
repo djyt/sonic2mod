@@ -15,7 +15,7 @@ Converts Sonic 1 SMPS assembly music files to Amiga MOD format.
 | `docs/psg_synthesis.md` | **SN76489 PSG synthesis pipeline** — psg_map/psg_voice_map schema, envelope tables, root/synth_root, normalization, API |
 | `docs/sfx_rendering.md` | **SFX→WAV offline driver** — tick loop, driver frequency tables, modulation halving, retrigger semantics, mix levels, hardware deviations |
 | `docs/smps_format.md` | Assembly format syntax — header macros, dc.b token types, all effect macros |
-| `docs/yaml_config.md` | Full YAML schema — all config fields, voice_map, sample_list, BPM formula |
+| `docs/yaml_config.md` | Full YAML schema — all config fields, `variants:` (several builds from one config, `--variant`), voice_map, sample_list, BPM formula |
 | `docs/architecture.md` | **Module descriptions and layering** — `core/`'s packages (audio / mod / smps → config → plan → merge → convert → ui), `DriverState`, IR data classes, parser stages, ModFile layout |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/audits/00_soundtrack_survey.md` | **All 18 configs vs their VGZs** (2026-09) — 10 samples found synthesised in the wrong octave (fixed), every `sample_list` volume set from measurement, what each song still needs |
@@ -245,6 +245,9 @@ python convert.py configs/02_green_hill_zone.yaml --merged --verbose
 # The Amiga build: fold the config's merge: groups (7 channels → 4 for the Title Screen) into
 # composite instruments and write merge_output_file (default <output>_merged.mod)
 python convert.py configs/01_title_screen.yaml --merged
+# A variant of a config: its `variants: {lofi: ...}` blocks laid over the keys beside them (Green Hill's
+# smaller Amiga build; output output/02_green_hill_zone_lofi_merged.mod).  Every config tool takes --variant
+python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged
 # Which channel pairs of a song can fold (paired / solo / orphans / held / shorter per pair) + the YAML
 python tools/merge_survey.py configs/01_title_screen.yaml            # --all: every pair
 # Folds that differ per pattern: a table (rows = reference MOD patterns in hex, columns = Ch 1..N, cells
@@ -461,6 +464,11 @@ See `docs/pipeline.md` for the full data flow and conversion decisions.
 - `extend_looping_channels` replays the events AFTER the jump label (`SmpsChannel.loop_event_index`; labels are the parser's own),
   not every event at the label's tick — a flag written just before the label is not part of the loop
 - YAML config requires `pyyaml` (`pip install pyyaml`); the loader (`core.config.load_yaml`) refuses a key given twice in one mapping — PyYAML would keep the last silently, and a `merge_patterns` group written without its leading `- ` merged into the group above (its `primary:` and `mod_channel:` replaced that group's: the chords came out as an FM5 mix on the arp column)
+- A build that differs in a few keys is a **variant**, not a copied config: a `variants: {NAME: {...}}` block in any
+  mapping, applied by `--variant NAME` (`core.config.apply_variant`, before `from_data`: nothing downstream knows).
+  Keys replace (lists whole, `null` removes); `output_file` defaults to `<stem>_NAME.mod`.  Green Hill's lofi build
+  lives in `02_green_hill_zone.yaml` (`02_ghz_lofi.yaml` folded in 2026-10-07, byte-identical); its regression cases
+  are `_VARIANTS` in `tests/regression.py`
 
 ## SMPS Effect → MOD Effect Mapping
 

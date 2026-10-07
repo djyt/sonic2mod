@@ -39,6 +39,7 @@ from core.config import ConversionConfig
 from core.convert import survey_context
 from core.merge import PairStats
 from core.plan import load_config
+from core.ui import add_variant_argument
 
 
 def survey(cfg: ConversionConfig, config_path: str) -> tuple[list[PairStats], dict[str, int]]:
@@ -72,8 +73,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("config")
     ap.add_argument("--all", action="store_true", help="print every pair, not only the clean ones")
+    add_variant_argument(ap)
     args = ap.parse_args()
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, variant=args.variant)
     stats, counts = survey(cfg, args.config)
 
     print(f"{cfg.name}: " + ", ".join(f"{s} {n}" for s, n in counts.items()) + " notes\n")

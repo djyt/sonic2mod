@@ -1,5 +1,6 @@
 """A song's conversion config (ConversionConfig): what convert.py reads from configs/<song>.yaml."""
 
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -17,7 +18,7 @@ from .entries import (
     parse_psg_voice_map,
     parse_voice_maps,
 )
-from .loader import read_yaml_file
+from .loader import VARIANTS_KEY, apply_variant, read_yaml_file
 
 # A song config's top-level keys
 _KEYS = frozenset({
@@ -37,6 +38,8 @@ class ConversionConfig:
     name: str = "Untitled"
     input_file: str = ""
     rom_song: int | None = None   # a ROM input_file: the sound ID to convert ($81 ...)
+    # The `variants:` entry the config was read as (convert.py --variant; None: the base build)
+    variant: str | None = None
     _data: dict = field(default_factory=dict, repr=False)   # the YAML it was read from
     # The SMPS variant that played the song; None: not stated (a ROM's is detected, an asm or a
     # VGM log is Sonic 1's).  An asm input states its tempo itself; a VGM / VGZ one is lifted
@@ -149,20 +152,27 @@ class ConversionConfig:
             )
 
     @classmethod
-    def from_yaml(cls, filepath):
-        """Load configuration from a YAML file; a key it does not know is an error (a typo, or a
-        retired key, would otherwise be ignored)."""
-        return cls.from_data(read_yaml_file(filepath), filepath)
+    def from_yaml(cls, filepath, variant: str | None = None):
+        """Load configuration from a YAML file, read as `variant` (core.config.loader.apply_variant);
+        a key it does not know is an error (a typo, or a retired key, would otherwise be ignored).
+        A variant that states no output_file writes <output_file stem>_<variant>.mod."""
+        data = read_yaml_file(filepath)
+        resolved = apply_variant(data, variant, str(filepath))
+        if variant is not None and "output_file" not in ((data.get(VARIANTS_KEY) or {}).get(variant) or {}):
+            stem, ext = os.path.splitext(resolved.get("output_file", "output.mod"))
+            resolved["output_file"] = f"{stem}_{variant}{ext}"
+        return cls.from_data(resolved, filepath, variant)
 
     @classmethod
-    def from_data(cls, data: dict, filepath) -> "ConversionConfig":
-        """A config from its YAML data (a file's, or a minimal one completed by
-        core.plan.derive_config)."""
+    def from_data(cls, data: dict, filepath, variant: str | None = None) -> "ConversionConfig":
+        """A config from its YAML data with its variant applied (a file's, or a minimal one completed
+        by core.plan.derive_config)."""
         unknown = sorted(set(data) - _KEYS)
         if unknown:
             raise ValueError(f"{filepath}: unknown key(s): {', '.join(unknown)}")
         config = cls(
             name=data.get('name', 'Untitled'),
+            variant=variant,
             input_file=data.get('input_file', ''),
             output_file=data.get('output_file', 'output.mod'),
             target_bpm=data.get('target_bpm', 150),

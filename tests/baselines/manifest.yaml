@@ -55,13 +55,13 @@ game_over_merged:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 ghz_lofi:
-  commit: bd1761e-dirty
-  config: cd1fa75ba294
+  commit: 3a323ee-dirty
+  config: ab9800dfd143
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 ghz_lofi_merged:
-  commit: bd1761e-dirty
-  config: cd1fa75ba294
+  commit: 3a323ee-dirty
+  config: ab9800dfd143
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 green_hill_zone:

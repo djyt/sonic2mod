@@ -1,5 +1,8 @@
-"""Reading a config file: YAML with no key given twice, and the value words every section shares."""
+"""Reading a config file: YAML with no key given twice, its `variants:` blocks, and the value words
+every section shares."""
 
+
+from typing import Any
 
 from ..audio import DITHER_MODES
 
@@ -42,6 +45,55 @@ def load_yaml(stream):
         return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
     _Strict.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
     return yaml.load(stream, Loader=_Strict)
+
+
+VARIANTS_KEY = "variants"
+
+
+def apply_variant(data: dict, variant: str | None, context: str = "config") -> dict:
+    """A config's data as `variant` reads it: in every mapping that holds a `variants:` block, the
+    block's entry for `variant` is laid over the mapping's own keys (a key given null is removed,
+    a list replaces the list) and the block itself is dropped.  No variant: every block dropped,
+    the base build.  A variant named by no block is an error that lists the ones there are.
+
+        - primary: DAC
+          mix_note: C3
+          variants:
+            lofi: {mix_note: A2}        # convert.py --variant lofi
+    """
+    seen: set[str] = set()
+    resolved = _resolve(data, variant, seen, context)
+    if variant is not None and variant not in seen:
+        known = ", ".join(sorted(seen)) or "none"
+        raise ValueError(f"{context}: no variant {variant!r} (variants: {known})")
+    return resolved
+
+
+def _resolve(node: Any, variant: str | None, seen: set[str], context: str) -> Any:
+    if isinstance(node, list):
+        return [_resolve(v, variant, seen, context) for v in node]
+    if not isinstance(node, dict):
+        return node
+    out = {k: _resolve(v, variant, seen, context) for k, v in node.items() if k != VARIANTS_KEY}
+    blocks = node.get(VARIANTS_KEY)
+    if blocks is None:
+        return out
+    if not isinstance(blocks, dict):
+        raise ValueError(f"{context}: {VARIANTS_KEY}: must map variant names to the keys they change")
+    seen.update(str(name) for name in blocks)
+    overlay = blocks.get(variant) if variant is not None else None
+    if overlay is None:
+        return out
+    if not isinstance(overlay, dict):
+        raise ValueError(f"{context}: {VARIANTS_KEY}: {variant}: must be a mapping of the keys it changes")
+    for k, v in overlay.items():
+        if k == VARIANTS_KEY:
+            raise ValueError(f"{context}: {VARIANTS_KEY}: {variant}: a variant cannot hold variants")
+        if v is None:
+            out.pop(k, None)
+        else:
+            out[k] = _resolve(v, variant, seen, context)
+    return out
 
 
 def read_yaml_file(filepath) -> dict:

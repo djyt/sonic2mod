@@ -13,6 +13,46 @@ CLI `--output` overrides the YAML `output_file` if both are given.
 A key the converter does not know is an error, in a song config and in `settings.yaml` alike: a
 typo, or a key from an older version, would otherwise be ignored.
 
+## variants — several builds from one config
+
+A build that differs from the song's usual one in a few keys (Green Hill Zone's lofi Amiga build:
+smaller mixes, earlier loops) is a **variant** of the same config, not a copy of it.  Any mapping
+may hold a `variants:` block; with `--variant NAME` its `NAME` entry is laid over the keys beside
+it, and without one every block is ignored (the base build, unchanged):
+
+```yaml
+variants:                     # at the top: the song-level keys
+  lofi:
+    name: "Green Hill Zone lofi"
+    merge_twins: always
+
+merge_patterns:
+  - patterns: "1-4"
+    groups:
+      - primary: DAC
+        followers: [FM2, PSG3]
+        mix_note: C3
+        variants:
+          lofi: {mix_note: A2}   # this group only, in the lofi build
+```
+
+```bash
+python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged
+```
+
+- An entry's keys **replace** the mapping's: a nested mapping or a list is replaced whole (a list
+  such as `followers:` or `sample_list:` is restated in full), and a key given `null` is removed.
+  To change one key of a nested mapping, put the `variants:` block in that mapping.
+- `output_file` defaults to `<output_file stem>_<variant>.mod` (and the merged build to
+  `..._<variant>_merged.mod`); an entry may state its own.
+- A variant no block names is an error that lists the ones there are.
+- Every tool that reads a config takes `--variant` too: `vgm_compare.py`, `vgm_pitch_audit.py`,
+  `merge_survey.py`, `fold_csv.py` (not with `--write`), `analyze.py --config`.
+  `vgm_compare.py --write-volumes` writes the base `sample_list` only, so it refuses a variant.
+- A regression case converts a variant through `_VARIANTS` in `tests/regression.py`; its
+  manifest hashes the config as that variant reads it, so a base case is not marked changed by
+  an edit to a variant's block.
+
 ## Full Schema
 
 ```yaml

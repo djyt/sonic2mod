@@ -54,7 +54,7 @@ from core.smps import (
     synth_note_name,
 )
 from core.source import read_dac, read_song
-from core.ui import branding, cli_console
+from core.ui import add_variant_argument, branding, cli_console
 
 console = cli_console(highlight=True)
 
@@ -1005,6 +1005,7 @@ def main():
     parser.add_argument('song', help="Path to the .asm file, a ROM (with --rom-song), or a .vgm / .vgz rip")
     parser.add_argument('--rom-song', metavar='ID', help="With a ROM: the sound to analyse ($81, 0x81)")
     parser.add_argument('--config', '-c', help="Optional YAML config to diff against")
+    add_variant_argument(parser)
     parser.add_argument('--version', action='version',
                         version=f"sonic2mod {_get_version()}")
     parser.add_argument('--region', choices=['ntsc', 'pal'], default='ntsc',
@@ -1030,7 +1031,7 @@ def main():
         if not os.path.exists(args.config):
             console.print(f"[red]Error:[/red] Config file not found: {args.config}")
             sys.exit(1)
-        config = load_config(args.config)
+        config = load_config(args.config, variant=args.variant)
 
     # Analyse
     analysis = analyze_song(song, args.song, config)

@@ -76,6 +76,12 @@ samples:
   #   all      : every build (its slots no longer match the config's sample_list numbers)
   compact_slots: merged
 
+  # What the MOD calls each sample (22 characters):
+  #   source   : what plays it and what it was made from - "F1/3/4/5 $05 C4-B5", "F5+3+4+P1 D-3 [1-4]",
+  #              "D dKick B-2" (a voice_map / psg entry's or a merge group's `name:` replaces it)
+  #   file     : its sample_list file name
+  names: source
+
   # dB change whereby the loop is created
   # 1     : Loop voices that truly settle                                [Higher file size]
   # 3-12  : Increasingly aggressive looping of slowly decaying voices    [Lower file size]

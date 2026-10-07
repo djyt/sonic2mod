@@ -32,7 +32,7 @@ class ModSample:
     data: bytes
 
     def __init__(self, name):
-        self._name = name[0:21]
+        self._name = name[:22]
         self.length = 0
         self._finetune = 0
         self._volume = 0
@@ -72,9 +72,11 @@ class ModSample:
             return
         self.data = bytes(_IDLE_WORD_BYTES) + self.data[_IDLE_WORD_BYTES:]
 
-    def set_name(self, name: str) -> None: self._name = name[:21]
-    def get_name(self): return self._name.ljust(21, ' ')
-    def get_name_bytes(self): return bytearray(self.get_name(), 'utf-8') + b'\x00'
+    def set_name(self, name: str) -> None: self._name = name[:22]
+    def get_name(self): return self._name
+    def get_name_bytes(self):
+        """The 22-byte name field: ASCII, NUL padded (no terminator needed when all 22 are used)."""
+        return bytearray(self._name.encode('ascii', 'replace')[:22].ljust(22, b'\x00'))
     def get_bytes(self):
         output = bytearray()
         output += self.get_name_bytes()

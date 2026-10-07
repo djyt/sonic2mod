@@ -76,6 +76,8 @@ class WriterContext:
     # {instrument: (sample index its level starts to fall at, dB per sample)}: a sliding sustain
     # loop's fall (loop_decay: slide), which _write_decay writes into each note as volume slides
     decay: dict[int, tuple[int, float]] = field(default_factory=dict)
+    # {instrument: the sources whose note-ons play it} (core/convert/sample_names.py)
+    played: dict[int, set] = field(default_factory=dict)
     _sample_detunes: dict[int, float] | None = field(default=None, init=False)
 
     @property
@@ -490,6 +492,7 @@ class ChannelWriter:
         dac_inst, dac_note, region = self._router.drum(
             tick, dac_cfg.mod_instrument, MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3))
         self._mod.set_note(dac_note, dac_inst)
+        self._played(dac_inst, tick)
         self._last_inst, self._last_vol = dac_inst, self._sample_volume(dac_inst)
         self._bank_member = plan.bank_members.get((self._cfg.source, tick)) if plan is not None else None
         if region is None:
@@ -526,6 +529,7 @@ class ChannelWriter:
         self._open_cell(n.pattern, n.row, n.tick)
 
         self._mod.set_note(n.mod_note, n.instrument)
+        self._played(n.instrument, n.tick)
         self._last_inst, self._last_vol = n.instrument, self._emit_volume(n.instrument)
         self._last_idx, self._last_chip, self._last_voice = n.mod_note.value, n.res.chip, self._st.voice
         if self._ctx.detune is not None and not n.psg:
@@ -544,6 +548,12 @@ class ChannelWriter:
         self._write_decay(n, fill)
         self._cut_banked(n)
         return True
+
+    def _played(self, inst: int, tick: int) -> None:
+        """Note which source plays `inst`: this channel, or the follower a solo note came from."""
+        plan = self._ctx.merge
+        solo = plan.solo.get((self._cfg.source, tick)) if plan is not None else None
+        self._ctx.played.setdefault(inst, set()).add(solo[0] if solo else self._cfg.source)
 
     def _melodic_note(self, event, res: ResolvedNote) -> _Note:
         """The note as resolved, with what its placement depends on: its fill or duration cut,

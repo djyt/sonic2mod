@@ -37,6 +37,8 @@ class InstrumentRange:
     loop_min_ms: float | None = None     # its sustain loop is at least this long (core.audio.loops' 30 ms
                                       # otherwise): a longer loop keeps a detuned voice's shimmer
                                       # moving where a short one freezes it into a buzz
+    name: str | None = None              # the MOD sample's name (22 characters; samples.names: source
+                                      # makes one otherwise, core/convert/sample_names.py)
     loop_start_ms: float | None = None   # its sustain loop starts no earlier than this: past an attack a
                                       # beating pair counts as settled through (its swing spans the band)
     loop_decay: str | None = None        # LOOP_DECAY_MODES: "slide" loops while the level still falls
@@ -99,12 +101,18 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
     start_ms   = _opt(entry, 'loop_start_ms', lambda v: _loop_start_ms(v, context))
     dither     = _opt(entry, 'dither', lambda v: dither_mode(v, context))
     decay      = _opt(entry, 'loop_decay', lambda v: _loop_decay(v, context))
+    name       = _opt(entry, 'name', _sample_name)
 
     return InstrumentRange(
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
         vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms, dither=dither, loop_decay=decay,
-        loop_start_ms=start_ms,
+        loop_start_ms=start_ms, name=name,
     )
+
+
+def _sample_name(v) -> str:
+    """A `name:` override: the MOD sample's name, at most the 22 characters the format holds."""
+    return str(v)[:22]
 
 
 # loop_decay: what a sustain loop does with a level that is still falling.  "freeze" (the default)
@@ -197,6 +205,7 @@ class MergeGroup:
                                 # (and of its looped mixes, loop_mix)
     loop_start_ms: float | None = None  # the earliest sustain loop start of this group's chip composites
                                 # (and of its looped mixes)
+    name: str | None = None         # its composites' MOD sample name (the note each plays at is added)
     loop_decay: str | None = None   # LOOP_DECAY_MODES for this group's chip composites (the primary's
                                 # entry's otherwise)
     treble_shelf_db: float | None = None   # a brightness shelf on this group's composites (the mixed
@@ -327,6 +336,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
                       loop_decay=_opt(g, 'loop_decay', lambda v: _loop_decay(v, ctx)),
                       loop_start_ms=_opt(g, 'loop_start_ms', lambda v: _loop_start_ms(v, ctx)),
+                      name=_opt(g, 'name', _sample_name),
                       loop_mix=bool(g.get('loop_mix', False)),
                       fm_on_chip=bool(g.get('fm_on_chip', True)),
                       treble_shelf_db=_opt(g, 'treble_shelf_db', float),
@@ -386,6 +396,7 @@ class PsgInstrumentEntry:
                                              # instrument} — a noise-mode envelope that gets its own sample
                                              # (Scrap Brain's fTone_08); other labels play mod_instrument
     dither: str | None = None                # as InstrumentRange.dither
+    name: str | None = None                  # as InstrumentRange.name
 
 
 def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_voice_map entry") -> 'PsgInstrumentEntry':
@@ -417,6 +428,7 @@ def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_v
         base_volume=v.get('base_volume', 0),
         vibrato=pvm_vibrato,
         dither=_opt(v, 'dither', lambda d: dither_mode(d, context)),
+        name=_opt(v, 'name', _sample_name),
     )
 
 
@@ -570,6 +582,7 @@ def parse_psg_map(data: dict, filepath) -> dict:
             vibrato=_opt(psg_entry, 'vibrato', _parse_vibrato),
             envelopes={str(label): inst for label, inst in raw_envs.items()},
             dither=dither_mode(psg_entry['dither'], ctx) if 'dither' in psg_entry else None,
+            name=_opt(psg_entry, 'name', _sample_name),
         )
     return out
 

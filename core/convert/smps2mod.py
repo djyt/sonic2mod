@@ -37,6 +37,7 @@ from .channel_writer import ChannelWriter, EmissionStats, WriterContext
 from .generators import SampleGenerators
 from .layout import ModLayout
 from .level_plan import LevelPlanner
+from .sample_names import sample_names
 from .sustain_plan import SustainPlanner
 from .vibrato import VibratoSpeed
 
@@ -89,6 +90,7 @@ class SmpsToModConverter:
         self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
         self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
         self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
+        self._played: dict[int, set] = {}              # {instrument: sources whose notes play it}
         self._slot_map: dict[int, int] = {}            # {old slot: new slot} of every slot ModFile.compact_samples kept
                                                        #   quantisation: what the composite mixer mixes from
         self._emission = EmissionStats()   # what the channel writers counted (bank cuts, tie retunes)
@@ -308,9 +310,15 @@ class SmpsToModConverter:
                 self._diag.info(InfoKind.NARROWED, before=mod.CHANNELS, after=need)
                 mod.narrow_to(need)
 
+        # Each sample named for what plays it and what it was made from (samples.names)
+        settings = self.synth or self.psg_synth
+        if settings is not None and settings.names == "source":
+            envs = {i: d['envelope'] for i, d in derive_noise_envelopes(self.song, self.config).items()}
+            for inst, name in sample_names(mod, self.song, self.config, self._played, self._merge, envs).items():
+                mod.samples[inst - 1].set_name(name)
+
         # The slots in use renumbered without gaps (the merged build empties the slots of
         # instruments it no longer plays): the cells, the warnings and sample_sources follow
-        settings = self.synth or self.psg_synth
         if settings is not None and settings.compacts(self.config.merge_active):
             self._slot_map = mod.compact_samples()
             if self._slot_map:
@@ -681,7 +689,7 @@ class SmpsToModConverter:
             fm_volume_mode=self._fm_volume_mode, psg_volume_mode=self._psg_volume_mode, pan_law_db=self.pan_law_db,
             fm_baseline_db=self._fm_baseline_db, psg_baseline_db=self._psg_baseline_db, release=self._release,
             release_slides=self._release_slides, player=self._player, leading_rests=self._leading_rest_channels,
-            stats=self._emission,
+            stats=self._emission, played=self._played,
             decay={i: (lp.flat_at, lp.decay_db) for i, lp in self._loops.items() if lp.decay_db})
         for chan_cfg in self.config.channels:
             if not chan_cfg.enabled:

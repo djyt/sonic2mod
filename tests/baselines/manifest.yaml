@@ -25,9 +25,14 @@ ending_theme:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 extra_life:
-  commit: b75b061
-  config: ce24afbdbe3a
-  date: '2026-10-05'
+  commit: f386705-dirty
+  config: fae0e0114f83
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+extra_life_merged:
+  commit: f386705-dirty
+  config: fae0e0114f83
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 final_zone:
   commit: b75b061

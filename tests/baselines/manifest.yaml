@@ -100,13 +100,13 @@ robotnik:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 robotnik_lofi:
-  commit: d9d37ed-dirty
-  config: 07793fc0af7e
+  commit: 69c461c-dirty
+  config: 1ea0ec3e9458
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 robotnik_lofi_merged:
-  commit: d9d37ed-dirty
-  config: 07793fc0af7e
+  commit: 69c461c-dirty
+  config: 1ea0ec3e9458
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 robotnik_merged:

@@ -5,9 +5,14 @@ chaos_emerald:
   date: '2026-10-05'
   settings: 2a7d221c6ea5
 continue_screen:
-  commit: b75b061
-  config: 01e1da35b880
-  date: '2026-10-05'
+  commit: 8c98b99-dirty
+  config: 11dae8520876
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+continue_screen_merged:
+  commit: 8c98b99-dirty
+  config: 11dae8520876
+  date: '2026-10-07'
   settings: 2a7d221c6ea5
 credits:
   commit: f38b709-dirty

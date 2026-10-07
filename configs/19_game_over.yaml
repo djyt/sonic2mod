@@ -12,6 +12,15 @@ target_speed: 9            # 213 BPM as before: a duration unit is 3 MOD ticks, 
 ticks_per_row: 3           # a beat ($0C) 4 rows, a bar 16: the 7 bars in 2 patterns (was 6)
 region: ntsc
 
+# Variant lofi (convert.py --variant lofi --merged -> output/19_game_over_lofi_merged.mod): the merged
+# build 85 -> 54 KB.  The bass and the lead loop where they settle (both played their 2.7 s / 0.9 s
+# renders before looping at the very end), the bass at root A1 (chosen by ear over C2, 3.7 KB more).
+# The chords are chip composites: mix_note does nothing to them, and looped they grow (+5 KB).  Left
+# out: the bass at loop_drift_db 12 (its 60 ms loop pulses under 3.4 s notes, 112 onsets against 69).
+variants:
+  lofi:
+    name: "Game Over lofi"
+
 channels:
   - source: DAC
     mod_channel: 0
@@ -51,6 +60,12 @@ voice_map:
       high: D6
       mod_instrument: 2
       root: G2
+      variants:
+        lofi:
+          loop_drift_db: 4   # a 0.45 s loop from 1336 instead of 0.9 s unlooped (15.7 -> 6.9 KB): past the
+          loop_min_ms: 300   # attack's swell, 0.7 dB of level change inside the loop.  At 6 and 12 it started at
+                             # 520, before the peak, and replayed the swell every 0.45 s (2.7 dB); without the
+                             # 300 ms minimum it looped 87 ms from 37 ms under 3 s notes
   # $01 — alg 4: (1→2)+(3→4), fb 7 — used by FM2, FM3
   1:
     - low:  A6
@@ -63,6 +78,10 @@ voice_map:
       high: D4
       mod_instrument: 4
       root: E2
+      variants:
+        lofi:
+          root: A1           # 7 kHz at its low note instead of 10.5 (2.3 dB of its treble)
+          loop_drift_db: 6   # loops 2.0 s in instead of 2.7 (38 -> 14.8 KB); at 12 its 60 ms loop pulsed
   # $03 — alg 7: 1+2+3+4, fb 3 — used by FM5
   3:
     - low:  D7

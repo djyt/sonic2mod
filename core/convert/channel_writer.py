@@ -33,12 +33,11 @@ _MAX_RELEASE_ROWS = 64         # a release still sounding this many rows on is c
 _HIGHEST_NOTE = 35             # B3, the last of the MOD's 36 notes
 
 
-def _rows_after(tick: float, end: float, tpr: float):
-    """The ticks one row apart after `tick`, before `end` (summed row by row, as the rows run)."""
-    t = tick + tpr
-    while t < end:
-        yield t
-        t += tpr
+def _grid_rows(row_total: int, end: float, tpr: float):
+    """The ticks the rows from `row_total` on start at, before `end`."""
+    while row_total * tpr < end:
+        yield row_total * tpr
+        row_total += 1
 
 
 @dataclass
@@ -794,7 +793,12 @@ class ChannelWriter:
         vib_start_tick = n.tick + self._vibrato_wait * self._timeline.ticks_per_frame_at(n.tick)
         tpr = self._timeline.ticks_per_row
         fill_coord = (fill.pattern, fill.row) if fill.placed else None
-        for cont_tick in _rows_after(n.tick, n.tick + n.duration, tpr):
+        # The rows of the grid after the one the note went on, not whole rows counted from its
+        # tick: a note that starts between rows (EDx) would otherwise reach a row past its end,
+        # the next note's attack row (Robotnik at 3 ticks per row: a $04 triplet's 4xy started
+        # the vibrato of the long note after it 200 ms early)
+        row_total = n.pattern * 64 + n.row + 1
+        for cont_tick in _grid_rows(row_total, n.tick + n.duration, tpr):
             if cont_tick + tpr / 2 < vib_start_tick:
                 continue                    # still waiting
             cont_pat, cont_row = self._timeline.pattern_row(cont_tick)

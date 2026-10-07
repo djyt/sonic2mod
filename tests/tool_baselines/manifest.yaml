@@ -396,12 +396,12 @@ compare_continue_screen:
     tests/baselines/continue_screen_baseline.mod: 28e7460c0dd4
     tests/settings.yaml: 268a59366905
 compare_credits:
-  commit: 273c323
+  commit: 6b801dd-dirty
   date: '2026-10-07'
   inputs:
     configs/13_credits.yaml: d8a4797a5171
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: deea302e241e
+    tests/baselines/credits_baseline.mod: fe9e23589cc8
     tests/settings.yaml: 268a59366905
 compare_drowning:
   commit: 273c323

@@ -9,6 +9,16 @@ continue_screen:
   config: 89b48b298b01
   date: '2026-10-07'
   settings: 2a7d221c6ea5
+continue_screen_lofi:
+  commit: 07175ae-dirty
+  config: 4776c72e809e
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
+continue_screen_lofi_merged:
+  commit: 07175ae-dirty
+  config: 4776c72e809e
+  date: '2026-10-07'
+  settings: 2a7d221c6ea5
 continue_screen_merged:
   commit: 553c4cc-dirty
   config: 89b48b298b01

@@ -395,6 +395,22 @@ compare_continue_screen:
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
     tests/baselines/continue_screen_baseline.mod: 61e999e83597
     tests/settings.yaml: 268a59366905
+compare_continue_screen_lofi:
+  commit: 07175ae-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/18_continue_screen.yaml: c030bfe88cfe
+    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    tests/baselines/continue_screen_lofi_baseline.mod: 477c3119f678
+    tests/settings.yaml: 268a59366905
+compare_continue_screen_lofi_merged:
+  commit: 07175ae-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/18_continue_screen.yaml: c030bfe88cfe
+    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    tests/baselines/continue_screen_lofi_merged_baseline.mod: e6c6f5690a87
+    tests/settings.yaml: 268a59366905
 compare_continue_screen_merged:
   commit: 553c4cc-dirty
   date: '2026-10-07'
@@ -706,6 +722,14 @@ pitch_continue_screen:
     configs/18_continue_screen.yaml: 835847a4227a
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
     tests/baselines/continue_screen_baseline.mod: 981f310c1f1f
+    tests/settings.yaml: 268a59366905
+pitch_continue_screen_lofi:
+  commit: 07175ae-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/18_continue_screen.yaml: c030bfe88cfe
+    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    tests/baselines/continue_screen_lofi_baseline.mod: 477c3119f678
     tests/settings.yaml: 268a59366905
 pitch_credits:
   commit: 0d0e5d8-dirty

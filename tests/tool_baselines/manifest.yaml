@@ -380,52 +380,52 @@ analyze_19_volumes:
   inputs:
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
 compare_chaos_emerald:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/16_chaos_emerald.yaml: ee85d2cf2491
+    configs/16_chaos_emerald.yaml: 5c39e0349d2c
     reference/vgz/16 - Chaos Emerald.vgz: be334122a641
-    tests/baselines/chaos_emerald_baseline.mod: abe23024e541
+    tests/baselines/chaos_emerald_baseline.mod: a38f19509a39
     tests/settings.yaml: 268a59366905
 compare_continue_screen:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/18_continue_screen.yaml: 49d7ddac046e
+    configs/18_continue_screen.yaml: 5f0b8f58d47c
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
-    tests/baselines/continue_screen_baseline.mod: 5c39cce7d25b
+    tests/baselines/continue_screen_baseline.mod: 28e7460c0dd4
     tests/settings.yaml: 268a59366905
 compare_credits:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/13_credits.yaml: 5e4722785991
+    configs/13_credits.yaml: d8a4797a5171
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 876314ceb294
+    tests/baselines/credits_baseline.mod: deea302e241e
     tests/settings.yaml: 268a59366905
 compare_drowning:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/17_drowning.yaml: 6c328a839aab
     reference/vgz/17 - Drowning.vgz: 9e6de56087b0
-    tests/baselines/drowning_baseline.mod: b48dcf037d43
+    tests/baselines/drowning_baseline.mod: 15368010caaf
     tests/settings.yaml: 268a59366905
 compare_ending_theme:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/12_ending_theme.yaml: 178a67d2610b
+    configs/12_ending_theme.yaml: 0333263e182c
     reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
-    tests/baselines/ending_theme_baseline.mod: b461a90e98c6
+    tests/baselines/ending_theme_baseline.mod: fd84881a68b7
     tests/settings.yaml: 268a59366905
 compare_extra_life:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/15_1up.yaml: 9a8286b8c5c8
     reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    tests/baselines/extra_life_baseline.mod: 331e4a1fa1a2
+    tests/baselines/extra_life_baseline.mod: 2a93ec24858c
     tests/settings.yaml: 268a59366905
 compare_final_zone:
   commit: d8b4b4b
@@ -436,44 +436,44 @@ compare_final_zone:
     tests/baselines/final_zone_baseline.mod: ff9fa7715a36
     tests/settings.yaml: 268a59366905
 compare_game_over:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/19_game_over.yaml: 06edd0fe97ec
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
-    tests/baselines/game_over_baseline.mod: 3e968aaa48b0
+    tests/baselines/game_over_baseline.mod: f0a4e973c5f2
     tests/settings.yaml: 268a59366905
 compare_ghz_lofi:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/02_ghz_lofi.yaml: b3ad38dfa89f
+    configs/02_ghz_lofi.yaml: 168d22ede3bc
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_lofi_baseline.mod: e340846901b7
+    tests/baselines/ghz_lofi_baseline.mod: 7ed4dee4ea2f
     tests/settings.yaml: 268a59366905
 compare_ghz_lofi_merged:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/02_ghz_lofi.yaml: b3ad38dfa89f
+    configs/02_ghz_lofi.yaml: 168d22ede3bc
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_lofi_merged_baseline.mod: b57f303e36d2
+    tests/baselines/ghz_lofi_merged_baseline.mod: 5855677256cf
     tests/settings.yaml: 268a59366905
 compare_green_hill_zone:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/02_green_hill_zone.yaml: a736956b5e11
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_baseline.mod: c9d82a0ba964
+    tests/baselines/ghz_baseline.mod: df06e57fe825
     tests/settings.yaml: 268a59366905
 compare_green_hill_zone_merged:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/02_green_hill_zone.yaml: a736956b5e11
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_merged_baseline.mod: a53c70aad856
+    tests/baselines/ghz_merged_baseline.mod: 10e6c8fa7a14
     tests/settings.yaml: 268a59366905
 compare_invincibility:
   commit: 003c168-dirty
@@ -492,84 +492,100 @@ compare_invincibility_merged:
     tests/baselines/invincibility_merged_baseline.mod: 1417694af91c
     tests/settings.yaml: 268a59366905
 compare_lab_zone:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/05_lab_zone.yaml: 99acb652c7db
+    configs/05_lab_zone.yaml: a6d7d768234e
     reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
-    tests/baselines/lab_zone_baseline.mod: bfe4e5ee0e8e
+    tests/baselines/lab_zone_baseline.mod: 5fc30734ea8e
     tests/settings.yaml: 268a59366905
 compare_marble_zone:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/03_marble_zone.yaml: c2244eeb278e
+    configs/03_marble_zone.yaml: a49f2336024a
     reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
-    tests/baselines/marble_zone_baseline.mod: db8429565ee3
+    tests/baselines/marble_zone_baseline.mod: ed5105ccd19e
     tests/settings.yaml: 268a59366905
 compare_robotnik:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/09_robotnik.yaml: c4d7cd990f0e
+    configs/09_robotnik.yaml: 193fdf73f2ed
     reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_baseline.mod: aff0f05aaa99
+    tests/baselines/robotnik_baseline.mod: ed26012b34bc
+    tests/settings.yaml: 268a59366905
+compare_robotnik_merged:
+  commit: 273c323
+  date: '2026-10-07'
+  inputs:
+    configs/09_robotnik.yaml: 193fdf73f2ed
+    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    tests/baselines/robotnik_merged_baseline.mod: 0a2ccfade84d
     tests/settings.yaml: 268a59366905
 compare_scrap_brain_zone:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/07_scrap_brain_zone.yaml: 338938a05292
+    configs/07_scrap_brain_zone.yaml: 522f80c0b3d6
     reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
-    tests/baselines/scrap_brain_zone_baseline.mod: eebdb35ba016
+    tests/baselines/scrap_brain_zone_baseline.mod: 80848ec5ff01
     tests/settings.yaml: 268a59366905
 compare_special_stage:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/08_special_stage.yaml: c7f881045385
+    configs/08_special_stage.yaml: d2d743df745a
     reference/vgz/08 - Special Stage.vgz: df7ed997e893
-    tests/baselines/special_stage_baseline.mod: 89eb5f1c5c1c
+    tests/baselines/special_stage_baseline.mod: 776b6ad3be33
     tests/settings.yaml: 268a59366905
 compare_spring_yard_zone:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/04_spring_yard_zone.yaml: 5c691883e3bc
+    configs/04_spring_yard_zone.yaml: b5f2bf19b6dd
     reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
-    tests/baselines/spring_yard_zone_baseline.mod: 4a8ab574ccbc
+    tests/baselines/spring_yard_zone_baseline.mod: 4e3abec3dc5c
     tests/settings.yaml: 268a59366905
 compare_stage_clear:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/11_stage_clear.yaml: 5ca92c6aa898
+    configs/11_stage_clear.yaml: c6543856658e
     reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_baseline.mod: 15889e83986c
+    tests/baselines/stage_clear_baseline.mod: b6b503fcb533
+    tests/settings.yaml: 268a59366905
+compare_stage_clear_merged:
+  commit: 273c323
+  date: '2026-10-07'
+  inputs:
+    configs/11_stage_clear.yaml: c6543856658e
+    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    tests/baselines/stage_clear_merged_baseline.mod: 2a381a98adef
     tests/settings.yaml: 268a59366905
 compare_star_light_zone:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
-    configs/06_star_light_zone.yaml: 84d2399699fc
+    configs/06_star_light_zone.yaml: 38b073de453e
     reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
-    tests/baselines/star_light_zone_baseline.mod: f4749bf6a079
+    tests/baselines/star_light_zone_baseline.mod: 8362af76db64
     tests/settings.yaml: 268a59366905
 compare_title_screen:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/01_title_screen.yaml: fe501a8bf9c9
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
-    tests/baselines/title_screen_baseline.mod: 850a0ce3f6a9
+    tests/baselines/title_screen_baseline.mod: 20d42bc61cdb
     tests/settings.yaml: 268a59366905
 compare_title_screen_merged:
-  commit: d8b4b4b
-  date: '2026-10-03'
+  commit: 273c323
+  date: '2026-10-07'
   inputs:
     configs/01_title_screen.yaml: fe501a8bf9c9
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
-    tests/baselines/title_screen_merged_baseline.mod: 3d9c0e9187d2
+    tests/baselines/title_screen_merged_baseline.mod: 17bc1b90e0d0
     tests/settings.yaml: 268a59366905
 pitch_chaos_emerald:
   commit: 0d0e5d8-dirty

@@ -77,6 +77,7 @@ voice_map:
 # other way to 4 channels, DAC+FM4 with FM2 kept, cuts two bass notes by 320 ms at the kicks
 # -------------------------------------------------------------------------------------------------
 merge_tolerance: 2
+merge_twins: always
 
 merge:
   - primary: FM3

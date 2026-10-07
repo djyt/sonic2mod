@@ -45,13 +45,13 @@ final_zone:
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over:
-  commit: 344c13c-dirty
-  config: 5193c7beb324
+  commit: ac29043-dirty
+  config: 812f9be11cf4
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 game_over_merged:
-  commit: 344c13c-dirty
-  config: 5193c7beb324
+  commit: ac29043-dirty
+  config: 812f9be11cf4
   date: '2026-10-07'
   settings: 2a7d221c6ea5
 ghz_lofi:

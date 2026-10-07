@@ -13,6 +13,14 @@ ticks_per_row: 3            # every 192-tick phrase fills one 64-row pattern (th
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
+# Variant lofi (convert.py --variant lofi --merged -> output/14_invincibility_lofi_merged.mod): the merged
+# build 45 -> 31 KB.  The hat at A2 (14 kHz) and the bass looped where it settles; the snare and kick
+# keep their own rates.  Left out: loop_drift_db 12 song-wide (the chord composites grow 3.9 KB and lose
+# onsets), the bass at D1 (-0.3 KB for 1.7 dB of its treble), merge_max_synth_shift 0 (+0.4 KB).
+variants:
+  lofi:
+    name: "Invincibility lofi"
+
 channels:
   - source: DAC
     mod_channel: 0
@@ -64,10 +72,18 @@ voice_map:
       high: D3
       mod_instrument: 5
       root: G1
+      variants:
+        lofi:
+          loop_drift_db: 12  # loops 0.13 s in instead of playing 0.54 s unlooped (7.5 -> 1.2 KB); the
+                             # bass column 0.7 dB louder against the VGZ
 psg_map:
   0xE7:                    # form $E7
     mod_instrument: 6
     root: A3
+    variants:
+      lofi:
+        root: A2           # 14 kHz: the hat's treble above 7 kHz gone, and the drum + hat mixes are made at
+                           # the snare's 22 kHz instead of the hat's 28 (-8.4 KB with the solo hats' sample)
     
 # -------------------------------------------------------------------------------------------------
 # Per-channel instrument-map overrides.

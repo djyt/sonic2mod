@@ -507,6 +507,22 @@ compare_invincibility:
     reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
     tests/baselines/invincibility_baseline.mod: d8647a5fc498
     tests/settings.yaml: 268a59366905
+compare_invincibility_lofi:
+  commit: 69c461c-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/14_invincibility.yaml: 34bf4c85c3c6
+    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    tests/baselines/invincibility_lofi_baseline.mod: 87da25a16594
+    tests/settings.yaml: 268a59366905
+compare_invincibility_lofi_merged:
+  commit: 69c461c-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/14_invincibility.yaml: 34bf4c85c3c6
+    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    tests/baselines/invincibility_lofi_merged_baseline.mod: 7a10c760bc17
+    tests/settings.yaml: 268a59366905
 compare_invincibility_merged:
   commit: bd1761e-dirty
   date: '2026-10-07'
@@ -714,6 +730,14 @@ pitch_invincibility:
     configs/14_invincibility.yaml: 619c2ae866e8
     reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
     tests/baselines/invincibility_baseline.mod: 36b574e78bce
+    tests/settings.yaml: 268a59366905
+pitch_invincibility_lofi:
+  commit: 69c461c-dirty
+  date: '2026-10-07'
+  inputs:
+    configs/14_invincibility.yaml: 34bf4c85c3c6
+    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    tests/baselines/invincibility_lofi_baseline.mod: 87da25a16594
     tests/settings.yaml: 268a59366905
 pitch_lab_zone:
   commit: d8b4b4b

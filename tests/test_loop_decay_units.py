@@ -1,5 +1,5 @@
 """A sliding sustain loop (core.audio.loops, loop_decay: slide) on a hand-built render: a tone
-whose level falls in a straight line (in dB) after a short attack.
+whose level falls in a straight line (in dB) after a short attack; and loop_start_ms on a beating one.
 
     python -m pytest tests -q
 """
@@ -69,6 +69,16 @@ class SlidingLoopTests(unittest.TestCase):
         loop = find_sustain_loop(steady, RATE, PERIOD, len(steady), flat_db=1.0, decay=True)
         assert loop is not None
         self.assertEqual(loop.decay_db, 0.0)
+
+    def test_min_start_keeps_the_loop_out_of_the_attack(self):
+        beating = [0.5 * (1 + 0.4 * math.sin(2 * math.pi * 2.0 * i / RATE)) * math.sin(2 * math.pi * FREQ * i / RATE)
+                   for i in range(int(RATE * SECS))]
+        free = find_sustain_loop(beating, RATE, PERIOD, len(beating), flat_db=6.0, timbre=False)
+        held = find_sustain_loop(beating, RATE, PERIOD, len(beating), flat_db=6.0, timbre=False,
+                                 min_start_secs=0.06)
+        assert free is not None and held is not None
+        self.assertLess(free.start / RATE, 0.06)         # a beating pair is flat from its first window
+        self.assertGreaterEqual(held.start / RATE, 0.06)
 
     def test_flatten_holds_the_level(self):
         flat = flatten(self.mono, int(0.1 * RATE), FALL_DB_S / RATE)

@@ -260,7 +260,8 @@ class _Mixer:
         return find_sustain_loop(total, round(r_p), r_p / comp.pitch_hz, end, ref_n=ref, max_end=end,
                                  flat_db=g.loop_drift_db if g.loop_drift_db is not None else self._drift,
                                  cross_secs=_MIX_CROSS_SECS, timbre=False,
-                                 min_loop_secs=g.loop_min_ms / 1000.0 if g.loop_min_ms else MIN_LOOP_SECS)
+                                 min_loop_secs=g.loop_min_ms / 1000.0 if g.loop_min_ms else MIN_LOOP_SECS,
+                                 min_start_secs=(g.loop_start_ms or 0.0) / 1000.0)
 
     def _follower_layers(self, comp: Composite, r_p: float, need: float, problems: list[dict]) -> list[list[float]]:
         """Every follower's signal at its level, cut where it is keyed off, at the mix's rate."""

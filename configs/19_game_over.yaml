@@ -13,10 +13,12 @@ ticks_per_row: 3           # a beat ($0C) 4 rows, a bar 16: the 7 bars in 2 patt
 region: ntsc
 
 # Variant lofi (convert.py --variant lofi --merged -> output/19_game_over_lofi_merged.mod): the merged
-# build 85 -> 54 KB.  The bass and the lead loop where they settle (both played their 2.7 s / 0.9 s
-# renders before looping at the very end), the bass at root A1 (chosen by ear over C2, 3.7 KB more).
-# The chords are chip composites: mix_note does nothing to them, and looped they grow (+5 KB).  Left
-# out: the bass at loop_drift_db 12 (its 60 ms loop pulses under 3.4 s notes, 112 onsets against 69).
+# build 85 -> 41 KB.  The lead loops where it settles and the bass where its level starts to fall
+# (both played their 0.9 s / 2.7 s renders before looping at the very end), the fall written into
+# its notes as volume slides (loop_decay: slide); the bass at root A1 (chosen by ear over C2, 3.7 KB
+# more).  The chords are chip composites: mix_note does nothing to them, and looped they grow
+# (+5 KB).  Left out: the bass frozen at loop_drift_db 12 (its 60 ms loop pulses under 3.4 s notes,
+# 112 onsets against 69).
 variants:
   lofi:
     name: "Game Over lofi"
@@ -81,7 +83,9 @@ voice_map:
       variants:
         lofi:
           root: A1           # 7 kHz at its low note instead of 10.5 (2.3 dB of its treble)
-          loop_drift_db: 6   # loops 2.0 s in instead of 2.7 (38 -> 14.8 KB); at 12 its 60 ms loop pulsed
+          loop_decay: slide  # it falls 5 dB/s for as long as a note holds: looped 0.14 s in, the fall in
+          loop_drift_db: 3   # EB1 rows (38 -> 1.8 KB; frozen at drift 6 it looped 2.0 s in, 14.8 KB).  At
+                             # 3 dB off the line the fall starts 0.09 s in (2: 0.26 s, 4.2 KB; 1: 0.86 s)
   # $03 — alg 7: 1+2+3+4, fb 3 — used by FM5
   3:
     - low:  D7

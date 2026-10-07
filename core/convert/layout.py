@@ -71,7 +71,18 @@ class ModLayout:
         if self._config.target_speed != _DEFAULT_SPEED:
             wanted.insert(0, (0xF, self._config.target_speed))
         used = {c.mod_channel for c in self._config.channels if c.enabled}
-        order = [c for c in range(self._mod.CHANNELS) if c not in used] + sorted(used)
+        spare = [c for c in range(self._mod.CHANNELS) if c not in used]
+        # The merged build is narrowed to the columns that hold notes once laid out
+        # (ModFile.narrow_to): a column without notes holding the BPM keeps it wide (Green Hill lofi
+        # without its hats: 8 channels for one F96), so there it is the last resort, after a
+        # leading rest's C00 on a column with notes
+        merged = self._config.merge_active
+        if merged:
+            sounding = self._sounding_columns()
+            order = sorted(sounding)
+            spare = [c for c in range(self._mod.CHANNELS) if c not in sounding]
+        else:
+            order = spare + sorted(used)
         for eff, par in wanted:
             slot = self._mod.free_effect_channel(0, 0, order)
             if slot is None:
@@ -86,12 +97,26 @@ class ModLayout:
                             self._diag.warn(WarningKind.REST_NO_SLOT, mod_channel=ch,
                                             channel=rests.get(ch, f'MOD channel {ch}'))
                         break
+            if slot is None and merged:
+                slot = self._mod.free_effect_channel(0, 0, spare)
             if slot is None:
                 self._diag.warn(WarningKind.TEMPO_NO_SLOT, pattern=0, row=0,
                                 modifier=self._song.header.tempo_modifier, bpm=par)
                 continue
             self._mod.set_cursor(0, slot, 0)
             self._mod.set_effect(eff, par)
+
+    def _sounding_columns(self) -> set[int]:
+        """The MOD columns any pattern has a note on."""
+        cols: set[int] = set()
+        for pattern in self._mod.patterns:
+            data = pattern.get_bytes()
+            for row in range(64):
+                for ch in range(self._mod.CHANNELS):
+                    i = self._mod.cell_index(row, ch)
+                    if ((data[i] & 0x0F) << 8) | data[i + 1]:
+                        cols.add(ch)
+        return cols
 
     def tempo_changes(self) -> None:
         """Fxx (set BPM) on the row of every smpsSetTempoMod, in a cell whose effect slot is free.

@@ -35,6 +35,13 @@ loop, and the sample can be cut there: its length no longer depends on the notes
      samples just before its start, so the jump lands on a matching waveform whatever
      the residual mismatch, and the sample is cut at the loop's end.
 
+With `decay` (a voice's `loop_decay: slide`) the level need not have settled: the flat point is
+where the envelope starts to fall in a straight line (in dB, within `flat_db` of the line the
+reference span draws) and the timbre holds from there.  The samples from that point on are
+turned up by the fall (`flatten`), so the loop plays at the flat point's level, and the fall is
+reported (SustainLoop.decay_db, dB per sample) for the converter to write as volume slides into
+every note that rings past it: a bass that falls 4 dB a second for 3 s costs a loop, not 3 s.
+
 `release_rate_db_s` measures how fast the level falls after key-off, in dB per second,
 from the same render: with the sample cut at the loop, the converter has to end each note
 itself, and a volume slide at that rate (an exponential one, row by row) is what a MOD can
@@ -78,6 +85,7 @@ PROBE_SECS = 4.0          # sustain rendered to look for a loop in (span + longe
 RELEASE_FLOOR_DB = 48.0   # a release this far down is at the 8-bit floor (~49 dB): nothing past it is heard
 MAX_END_FRACTION = 0.8    # a loop ending later than this fraction of the sustain saves nothing:
                           # the envelope was still settling (a slowly decaying voice) - no loop
+MIN_DECAY_DB_S = 0.1      # a fall slower than this (dB per second) is no fall: a plain loop
 
 
 @dataclass(slots=True)
@@ -88,6 +96,8 @@ class SustainLoop:
     error: float        # relative RMS discontinuity at the loop point before the crossfade
     flat_at: int        # first sample of the flat region
     cross: int = 0      # samples crossfaded at the loop's end (apply_loop)
+    decay_db: float = 0.0   # dB the level falls per sample from flat_at on (find_sustain_loop's
+                            # `decay`): flattened in the sample, written as volume slides
 
     @property
     def end(self) -> int:
@@ -163,6 +173,42 @@ def _band(ref: list[float], tol: float) -> tuple[float, float]:
     return end + min(residual) - tol, end + max(residual) + tol
 
 
+def _trend_flat(env: list[float], ref_w: int, span_w: int, tol: float) -> tuple[int, float]:
+    """(first window of the straight fall, its slope in dB per window): the reference span's
+    trend line extended back, every window from the first one on within `tol` of it (widened by
+    the span's own swing around it, a beating pair), and the slope refitted over all of them."""
+    ref = env[ref_w - span_w:ref_w]
+    mt = (span_w - 1) / 2.0
+    mean = sum(ref) / span_w
+    sxx = sum((i - mt) ** 2 for i in range(span_w))
+    slope = sum((i - mt) * (v - mean) for i, v in enumerate(ref)) / sxx if sxx else 0.0
+    residual = [v - (mean + slope * (i - mt)) for i, v in enumerate(ref)]
+    lo, hi = min(residual) - tol, max(residual) + tol
+    flat = 0
+    for i in range(ref_w - 1, -1, -1):
+        r = env[i] - (mean + slope * (i - (ref_w - span_w) - mt))
+        if not lo <= r <= hi:
+            flat = i + 1
+            break
+    pts = env[flat:ref_w]
+    n = len(pts)
+    if n < 2:
+        return flat, slope
+    m = (n - 1) / 2.0
+    mean = sum(pts) / n
+    sxx = sum((i - m) ** 2 for i in range(n))
+    return flat, sum((i - m) * (v - mean) for i, v in enumerate(pts)) / sxx
+
+
+def flatten(mono: Sequence[float], start: int, decay_db: float) -> list[float]:
+    """The samples from `start` on turned up by `decay_db` dB per sample: a level that falls in a
+    straight line (in dB) held where it was at `start`."""
+    out = list(mono)
+    for i in range(start, len(out)):
+        out[i] *= 10.0 ** (decay_db * (i - start) / 20.0)
+    return out
+
+
 def _profile(window: Sequence[float], period: float) -> list[float]:
     """Harmonics 1..PROFILE_HARMONICS of a window at the note's frequency (Goertzel), as fractions
     of their sum: its timbre, whatever its level or phase."""
@@ -210,7 +256,7 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
                       flat_db: float = FLAT_DB, span_secs: float = SPAN_SECS,
                       min_loop_secs: float = MIN_LOOP_SECS, max_loop_secs: float = MAX_LOOP_SECS,
                       cross_secs: float = CROSS_SECS, max_error: float = MAX_ERROR,
-                      timbre: bool = True) -> SustainLoop | None:
+                      timbre: bool = True, decay: bool = False) -> SustainLoop | None:
     """A sustain loop for a render of a note held for `sustain_n` samples at `rate` Hz whose
     fundamental period is `period` samples, or None where the envelope never settles (a
     decaying voice, one that has decayed to silence, or a sustain too short to judge).
@@ -225,6 +271,11 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     `timbre` also asks the voice's harmonic profile to hold from the loop's start to the longest
     note's end (PROFILE_PER_DB); the merged build turns it off, as it costs bytes there
     (SampleSettings.loop_timbre).
+
+    `decay` (loop_decay: slide): flat means falling in a straight line (in dB) within `flat_db`
+    of the reference span's trend, the timbre check always on; the loop is searched in the
+    render flattened from there (`flatten`) and carries the fall (SustainLoop.decay_db), which
+    apply_loop flattens the same way.
 
     The loop is not yet closed: apply_loop crossfades it and cuts the sample.
     """
@@ -248,20 +299,28 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     env = [_db(_rms(mono[i * win:(i + 1) * win]), peak) for i in range(nwin)]
     if max(env[ref_w - span_w:ref_w]) < SILENT_DB:
         return None                                  # decayed away before the reference
-    lo, hi = _band(env[ref_w - span_w:ref_w], flat_db)
-    # From the reference span's end back, the span's own windows included: a decaying voice's
-    # span sits above the band at its start, and a loop there froze that level (the Title
-    # Screen's voice $01 looped at 0.2 s, 7 dB above where its longest note ends)
-    flat = 0
-    for i in range(ref_w - 1, -1, -1):
-        if not lo <= env[i] <= hi:
-            flat = i + 1
-            break
+    decay_db = 0.0
+    if decay:
+        flat, slope = _trend_flat(env, ref_w, span_w, flat_db)
+        if -slope * rate / win >= MIN_DECAY_DB_S:
+            decay_db = -slope / win
+        timbre = True
+    else:
+        lo, hi = _band(env[ref_w - span_w:ref_w], flat_db)
+        # From the reference span's end back, the span's own windows included: a decaying voice's
+        # span sits above the band at its start, and a loop there froze that level (the Title
+        # Screen's voice $01 looped at 0.2 s, 7 dB above where its longest note ends)
+        flat = 0
+        for i in range(ref_w - 1, -1, -1):
+            if not lo <= env[i] <= hi:
+                flat = i + 1
+                break
     flat_at = _even(flat * win)
     if timbre:
         flat_at = _even(_profile_holds_from(mono, rate, period, flat_at, ref_n if ref_n is not None else n,
                                             PROFILE_PER_DB * flat_db))
     end_limit = int(MAX_END_FRACTION * n) if max_end is None else min(max_end, n)
+    x = flatten(mono[:n], flat_at, decay_db) if decay_db else mono
 
     check = max(32, math.ceil(2 * period))
     cross = _even(cross_secs * rate)
@@ -275,12 +334,12 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
         top = min(max_len, n - s - check, end_limit - s)
         if top < min_len:
             break
-        for e, length in _errors(mono, s, min_len, top, check, period):
+        for e, length in _errors(x, s, min_len, top, check, period):
             # Bytes before the loop cost as much as bytes in it; the merged build keeps its old score
             score = e + LENGTH_PENALTY * (length + (s - flat_at if timbre else 0)) / rate
             if score < best_score:
                 best_score = score
-                best = SustainLoop(s, length, e, flat_at, min(cross, length // 2))
+                best = SustainLoop(s, length, e, flat_at, min(cross, length // 2), decay_db)
     if best is None or best.error > max_error:
         return None
     return best
@@ -294,7 +353,10 @@ def probe_secs(sustain: float, fits: float) -> float:
 
 def apply_loop(mono: Sequence[float], loop: SustainLoop) -> list[float]:
     """The sample cut at the loop's end, with the last `loop.cross` samples of the loop faded
-    into the samples before the loop's start so playback jumps back without a step."""
+    into the samples before the loop's start so playback jumps back without a step; a sliding
+    loop's samples flattened from its flat point on first."""
+    if loop.decay_db:
+        mono = flatten(mono[:loop.end], loop.flat_at, loop.decay_db)
     out = list(mono[:loop.end])
     c = loop.cross
     if c > 0 and loop.start >= c:

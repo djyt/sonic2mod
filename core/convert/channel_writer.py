@@ -7,10 +7,12 @@ driver's behaviour a MOD note does not have by itself.
                 ├──► DAC     → the drum's sample at its note (9xx inside a sample bank)
                 └──► melodic → note-on, then on its rows: ECx / C00 (fill, PSG duration),
                                EDx (between rows), 3FF (legato), 9xx (bank), Cxx (level),
-                               4xy (vibrato), E1x / E2x (a tie's detune)
+                               4xy (vibrato), E1x / E2x (a tie's detune), A0y / 6xy (a
+                               sliding loop's fall, loop_decay: slide)
 
-Effect priority, one per row: Cxx > 4xy > ECx; EDx, 3FF and 9xx take the attack row and move a
-Cxx due there to the next free row of the note.
+Effect priority, one per row: Cxx > 4xy > ECx > A0y; EDx, 3FF and 9xx take the attack row and move
+a Cxx due there to the next free row of the note.  A fall's slide rides a 4xy row as 6xy (vibrato
+continues) once an earlier row set that 4xy.
 """
 
 import bisect
@@ -71,6 +73,9 @@ class WriterContext:
     player: str                             # settings.yaml `player`: the 4xy depth table
     leading_rests: dict[int, str]           # MOD channel -> source; laid out by ModLayout.leading_rests
     stats: EmissionStats
+    # {instrument: (sample index its level starts to fall at, dB per sample)}: a sliding sustain
+    # loop's fall (loop_decay: slide), which _write_decay writes into each note as volume slides
+    decay: dict[int, tuple[int, float]] = field(default_factory=dict)
     _sample_detunes: dict[int, float] | None = field(default=None, init=False)
 
     @property
@@ -536,6 +541,7 @@ class ChannelWriter:
             self._attack_level_or_vibrato(n, vib_speed, vib_depth)
         if n.vib_on and vib_speed > 0:
             self._continue_vibrato(n, vib_speed, vib_depth, fill, cxx_coord)
+        self._write_decay(n, fill)
         self._cut_banked(n)
         return True
 
@@ -655,7 +661,8 @@ class ChannelWriter:
             # The fill is a key-off: the voice releases from that row on (the sub-row position
             # is given up for the slide's slot)
             out.slides.update(self._write_release(
-                mod_chan, fill_row_total, self._emit_volume(n.instrument), rel_rate,
+                mod_chan, fill_row_total, round(self._decayed_volume(n, fill_row_total * self._timeline.ticks_per_row)),
+                rel_rate,
                 n.tick, min(self._next_note_row(n.tick), next_pat * 64 + next_row)))
         else:
             self._write_cut(mod_chan, fill_row_total, fill_sub)
@@ -815,6 +822,84 @@ class ChannelWriter:
             self._mod.set_effect(0x4, (vib_speed << 4) | vib_depth)
         # Restore cursor to the attack row
         self._mod.set_cursor(n.pattern, mod_chan, n.row)
+
+    # --- a sliding loop's fall ---------------------------------------------------------------
+    def _decay_of(self, n: _Note) -> tuple[float, float] | None:
+        """(seconds into the note its level starts to fall, dB per second) where the note plays a
+        sliding sustain loop (loop_decay: slide), at the rate its MOD note plays the sample: a note
+        above the sample's root runs through the render, and its fall, faster.  None otherwise, or
+        on a sound inside a sample bank."""
+        d = self._ctx.decay.get(n.instrument)
+        if d is None or n.region is not None:
+            return None
+        flat_at, db = d
+        rate = self._ctx.amiga_clock / PERIOD_TABLE[n.mod_note.value]
+        return flat_at / rate, db * rate
+
+    def _decayed_volume(self, n: _Note, tick: float) -> float:
+        """The MOD volume a note on a sliding loop has fallen to by `tick` (its own volume without one)."""
+        vol = float(self._emit_volume(n.instrument))
+        d = self._decay_of(n)
+        if d is None:
+            return vol
+        t0, db_s = d
+        return vol * db_to_gain(-db_s * max(0.0, self._timeline.span_secs(n.tick, tick) - t0))
+
+    def _write_decay(self, n: _Note, fill: _Fill) -> None:
+        """A sliding loop's fall (core.audio.loops: the sample holds the level its loop starts
+        at): one A0y per row of the ring toward where the render's level would be by the row's
+        end, as _write_release steps a release, or EBx where the row's share is less than an A01
+        takes (speed - 1 units: Game Over's bass falls one unit a row at speed 9, and A01 every
+        eighth row made a staircase).  Up to the row the ring ends on (its rest's
+        release takes over from the fallen volume), the next note-on, or the fill.  A row whose
+        slot is taken is skipped and the next one catches up; a 4xy row becomes 6xy (vibrato
+        continues + slide) once an earlier row of the note set that same 4xy; a Cxx row sets
+        the volume the next rows slide from."""
+        d = self._decay_of(n)
+        if d is None:
+            return
+        tpr, speed = self._timeline.ticks_per_row, self._config.target_speed
+        per_tick = speed - 1
+        if per_tick < 1:
+            return
+        col = self._col
+        ring_end = n.tick + self._ring_ticks.get(id(n.event), n.duration)
+        end_pat, end_row = self._timeline.pattern_row(ring_end)
+        stop = min(end_pat * 64 + end_row, self._next_note_row(n.tick), self._config.max_patterns * 64)
+        if fill.placed:
+            stop = min(stop, fill.pattern * 64 + fill.row)
+        v = float(self._emit_volume(n.instrument))
+        vib = None
+        attack = self._mod.effect_at(n.pattern, n.row, col)
+        if attack[0] == 0x4:
+            vib = attack[1]
+        for r in range(n.pattern * 64 + n.row + 1, stop):
+            pattern, row = divmod(r, 64)
+            self._mod.ensure_pattern(pattern)
+            free = self._mod.effect_slot_free(pattern, row, col)
+            eff, param = self._mod.effect_at(pattern, row, col)
+            if not free and eff == 0xC:
+                v = float(param)
+                continue
+            fall = v - self._decayed_volume(n, (r + 1) * tpr)
+            y = min(15, round(fall / per_tick))
+            fine = min(15, round(fall))
+            if free and y < 1 and fine >= 1:
+                # Less than an A01 takes (speed - 1 units): EBx, x units once, on the row's first tick
+                self._mod.set_cursor(pattern, col, row)
+                self._mod.set_effect(0xE, 0xB0 | fine)
+                v = max(0.0, v - fine)
+                continue
+            if y <= 0 or not (free or (eff == 0x4 and param == vib)):
+                if not free and eff == 0x4:
+                    vib = param
+                continue
+            self._mod.set_cursor(pattern, col, row)
+            self._mod.set_effect(0xA if free else 0x6, y)
+            v = max(0.0, v - y * per_tick)
+        if stop > n.pattern * 64 + n.row + 1:
+            self._last_vol = round(v)
+        self._mod.set_cursor(n.pattern, col, n.row)
 
     def _cut_banked(self, n: _Note) -> None:
         """A banked sound would run on into the next one in its bank: cut once it is over, unless

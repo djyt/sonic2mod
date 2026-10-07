@@ -227,7 +227,7 @@ class _FmRenderer:
         return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * sustain),
                                  max_end=min(plain_n, sustain_n),
                                  flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
-                                 timbre=synth.loop_timbre, **min_loop)
+                                 timbre=synth.loop_timbre, decay=spec.decay_mode == "slide", **min_loop)
 
     def _heard_n(self, job: _RenderJob, rate: int, sustain: float, release: float | None) -> int | None:
         """Where a sample whose sustain holds every note stops being heard: at its sustain where
@@ -295,6 +295,8 @@ def _report(job: _RenderJob, done: _Rendered) -> None:
     else:
         root_str = f"synth_idx={spec.synth_idx}"
     loop_str = (f", loop {loop.start}+{loop.length} (err {loop.error:.2f})" if loop else "")
+    if loop and loop.decay_db:
+        loop_str += f", sliding {loop.decay_db * done.rate:.2f} dB/s from {loop.flat_at}"
     print(f"  Instrument {job.inst:2d}: voice={voices_str}{label}, "
           f"{root_str}, "
           f"rate={job.target_rate} Hz, {len(mono)} samples, peak={peak(mono)}{loop_str}")

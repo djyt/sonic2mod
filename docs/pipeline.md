@@ -792,6 +792,32 @@ to leave its `C00` there (`set_note` keeps the effect bytes: a silent note), now
 `_clear_stale_cut`; and the slides never reach a note-on's row (they stop at the row before the
 next note-on tick), so the two cannot collide.
 
+**Sliding loops (`loop_decay: slide`, 2026-10-07).** A voice whose level falls for as long as a
+note holds (an FM bass on a non-zero D2R) never settles: `freeze` loops it near the end of its
+longest note (Game Over lofi's bass: 2.0 s in, 14.8 KB) or, at a large drift, holds it above
+the hardware (frozen 12 dB early it pulsed under 3.4 s notes: 112 audio onsets against the
+VGZ's 71).  With `decay`, `find_sustain_loop` takes the reference span's trend line instead of
+its end level: flat is every window back from the span within `loop_drift_db` of that line
+extended (`_trend_flat`), the slope refitted over all of them, the timbre check always on (it
+never moved Game Over's bass: its harmonic profile holds from 0.09 s).  A fall under
+`MIN_DECAY_DB_S` (0.1 dB/s) is a plain loop.  The loop is searched in the render flattened from
+the flat point (`flatten`: each sample turned up by the fall so far), `apply_loop` flattens it
+the same way, and `SustainLoop.decay_db` (dB per sample) goes to the converter with `flat_at`
+(`WriterContext.decay`).  `ChannelWriter._write_decay` then writes, on each row a note rings
+through after the attack row, a slide toward `volume × 10^(−fall × (t − t0)/20)`, where t0 and
+the fall are the sample's flat point and dB-per-sample at the rate the note's MOD period plays
+it (a note above the root runs through the render, and its fall, faster, exactly as the unlooped
+sample did).  Targets are absolute and the volume is tracked, so a row whose slot is taken
+(`Cxx`, a cut) is made up on the next; a `Cxx` row resets the tracked volume.  The slide is
+`A0y` when the row's share is at least one `A01` (speed − 1 units), else `EBx` (x units on the
+row's first tick): Game Over's bass falls one unit a row at speed 9, and `A01` every eighth row
+was a staircase.  A row holding a `4xy` the note set on an earlier row becomes `6xy` (vibrato
+continues + slide).  The slides stop at the row the ring ends on (its rest's release starts from
+the fallen volume, `_last_vol`), the next note-on or the fill (whose release also starts from the
+fallen volume).  Game Over lofi merged: 54.8 → 41.8 KB, the bass level against the VGZ +0.3 dB.
+Not handled: a sliding instrument used as a PCM mix source (the mix is made from the flattened
+render and keeps no slides), a legato (`3FF`) note (its curve restarts), PSG.
+
 ---
 
 ## Pattern Breaks (`mod_pattern_breaks`)

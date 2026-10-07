@@ -388,7 +388,7 @@ class _Planner:
             layers = [FmLayer(p.voice, fnum_offset=p.detune, pan=p.pan)]
             layers += [dataclasses.replace(fm_layer(p, fn, self.tol), fnum_offset=fn.detune) for fn in present]
             comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
-                                   loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms,
+                                   loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms, loop_decay=g.loop_decay,
                                    treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz,
                                    dither=g.dither)
         else:

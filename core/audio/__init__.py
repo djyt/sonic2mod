@@ -10,6 +10,7 @@
 from .gain import db_to_gain, gain_to_db, power_to_db
 from .loops import (
     FLAT_DB,
+    MIN_LOOP_SECS,
     PROBE_SECS,
     RELEASE_FLOOR_DB,
     SustainLoop,
@@ -57,6 +58,7 @@ __all__ = [
     "DITHER_SHAPED",
     "FLAT_DB",
     "INT8_PEAK",
+    "MIN_LOOP_SECS",
     "NO_PITCH",
     "PROBE_SECS",
     "RELEASE_FLOOR_DB",

@@ -37,6 +37,8 @@ class InstrumentRange:
     loop_min_ms: float | None = None     # its sustain loop is at least this long (core.audio.loops' 30 ms
                                       # otherwise): a longer loop keeps a detuned voice's shimmer
                                       # moving where a short one freezes it into a buzz
+    loop_decay: str | None = None        # LOOP_DECAY_MODES: "slide" loops while the level still falls
+                                      # and the notes' volume slides carry the fall on; None: "freeze"
     dither: str | None = None            # this sample's quantisation (core.audio.pcm.DITHER_MODES); None:
 
 
@@ -93,11 +95,27 @@ def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "I
     drift      = _opt(entry, 'loop_drift_db', lambda v: _drift_db(v, context))
     min_ms     = _opt(entry, 'loop_min_ms', lambda v: _loop_min_ms(v, context))
     dither     = _opt(entry, 'dither', lambda v: dither_mode(v, context))
+    decay      = _opt(entry, 'loop_decay', lambda v: _loop_decay(v, context))
 
     return InstrumentRange(
         low=low, high=high, mod_instrument=inst, root=root, synth_root=synth_root,
-        vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms, dither=dither,
+        vibrato=vibrato, loop_drift_db=drift, loop_min_ms=min_ms, dither=dither, loop_decay=decay,
     )
+
+
+# loop_decay: what a sustain loop does with a level that is still falling.  "freeze" (the default)
+# loops only where the level has settled to within loop_drift_db; "slide" loops where it falls
+# in a straight line (in dB) with the timbre holding, plays the loop at that level, and writes
+# the rest of the fall into the notes as volume slides (core.audio.loops, ChannelWriter)
+LOOP_DECAY_MODES = ("freeze", "slide")
+
+
+def _loop_decay(v, context: str) -> str:
+    """A `loop_decay` value: one of LOOP_DECAY_MODES."""
+    mode = str(v).lower()
+    if mode not in LOOP_DECAY_MODES:
+        raise ValueError(f"{context}: loop_decay must be one of {', '.join(LOOP_DECAY_MODES)} (got {v!r})")
+    return mode
 
 
 def _loop_min_ms(v, context: str) -> float:
@@ -162,6 +180,8 @@ class MergeGroup:
                                 # primary's entry's, then the song's, otherwise)
     loop_min_ms: float | None = None    # the shortest sustain loop of this group's chip composites
                                 # (and of its looped mixes, loop_mix)
+    loop_decay: str | None = None   # LOOP_DECAY_MODES for this group's chip composites (the primary's
+                                # entry's otherwise)
     treble_shelf_db: float | None = None   # a brightness shelf on this group's composites (the mixed
                                 # sum, drums off disk included; a chip composite's render), on top of
                                 # any song shelf; treble_shelf_hz its corner (None: the settings')
@@ -288,6 +308,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None),
                       loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),
+                      loop_decay=_opt(g, 'loop_decay', lambda v: _loop_decay(v, ctx)),
                       loop_mix=bool(g.get('loop_mix', False)),
                       fm_on_chip=bool(g.get('fm_on_chip', True)),
                       treble_shelf_db=_opt(g, 'treble_shelf_db', float),

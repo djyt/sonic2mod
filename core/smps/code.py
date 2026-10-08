@@ -49,13 +49,19 @@ def signed_byte(value: int) -> int:
 
 class OpKind(Enum):
     LABEL = auto()     # name: a jump / loop / call target, or a channel's start; emits no byte
-    BYTE = auto()      # value: a note, rest, DAC sample, duration or smpsNoAttack byte
+    NOTE = auto()      # value: its SMPS number: $80 rest, $81 nC0 ... ($E0 B7: past SMPS's bytes), a DAC sample
+    DURATION = auto()  # value: ticks
+    NO_ATTACK = auto() # smpsNoAttack (value: its byte)
     EFFECT = auto()    # effect: a coordination flag the song keeps as an event
     CALL = auto()      # name: the target
     RETURN = auto()
     LOOP = auto()      # name: the target; value: the play count; index: the counter's slot
     JUMP = auto()      # name: the target
     STOP = auto()
+
+
+# What a front end's track bytes read as: what the walk treats as one byte of the track
+TRACK_BYTES = frozenset({OpKind.NOTE, OpKind.DURATION, OpKind.NO_ATTACK})
 
 
 @dataclass(frozen=True)
@@ -65,6 +71,18 @@ class Op:
     name: str = ""
     effect: SmpsEffect | None = None
     index: int = 0
+
+
+def track_byte(value: int) -> Op | None:
+    """An SMPS track byte as an op: $00-$7F a duration, $80-$DF a rest, note or DAC sample, $E7
+    smpsNoAttack; None for any other (a flag's)."""
+    if value == NO_ATTACK:
+        return Op(OpKind.NO_ATTACK, value=value)
+    if value < REST:
+        return Op(OpKind.DURATION, value=value)
+    if value <= LAST_NOTE:
+        return Op(OpKind.NOTE, value=value)
+    return None
 
 
 @dataclass
@@ -222,7 +240,7 @@ class _Walker:
         its duration byte (labels emit no bytes) leaves the duration the note's."""
         while i < len(self._ops) and self._ops[i].kind is OpKind.LABEL:
             i += 1
-        return i < len(self._ops) and self._ops[i].kind is OpKind.BYTE and self._ops[i].value < REST
+        return i < len(self._ops) and self._ops[i].kind is OpKind.DURATION
 
     def _finalize_pending(self, pending: SmpsNote | None, tick: int, last_duration: int,
                           last_note_value: int) -> tuple[int, int]:
@@ -271,9 +289,9 @@ class _Walker:
                 self._mark_label(op.name, tick, len(channel.events))
                 continue
 
-            # Every other op but a byte completes a pending note with the saved duration:
+            # Every other op but a track byte completes a pending note with the saved duration:
             # FMDoNext reads a non-duration byte after a note and puts it back
-            if op.kind is not OpKind.BYTE:
+            if op.kind not in TRACK_BYTES:
                 tick, last_note_value = self._finalize_pending(pending, tick, last_duration, last_note_value)
                 pending = None
 
@@ -325,7 +343,7 @@ class _Walker:
             # A track byte; the cursor carries a pending note across ops (and dc.b lines)
             cur = _Cursor(channel, self._is_dac, tempo_div, tick, last_duration, no_attack, pending,
                           last_note_value)
-            self._byte(cur, op.value)
+            self._byte(cur, op)
             tick, last_duration, no_attack, pending, last_note_value = (
                 cur.tick, cur.last_duration, cur.no_attack, cur.pending, cur.last_note_value)
 
@@ -350,21 +368,19 @@ class _Walker:
             self._channel.events.append(SmpsEvent(effect=SmpsEffect(CoordFlag.PAN, [pan]), tick_position=tick))
         return tempo_div
 
-    def _byte(self, cur: _Cursor, val: int) -> None:
+    def _byte(self, cur: _Cursor, op: Op) -> None:
         """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample."""
-        if val == NO_ATTACK:
+        if op.kind is OpKind.NO_ATTACK:
             cur.no_attack = True
-        elif val < REST:
-            self._duration(cur, val * cur.tempo_div)
+        elif op.kind is OpKind.DURATION:
+            self._duration(cur, op.value * cur.tempo_div)
         else:
-            self._note(cur, val)
+            self._note(cur, op.value)
 
     def _note(self, cur: _Cursor, val: int) -> None:
-        """A byte from $80: rest, note or (DAC channel) sample.  Above the notes: skipped."""
+        """A rest, note or (DAC channel) sample."""
         if val == REST:
             note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
-        elif val > LAST_NOTE:
-            note = None
         elif cur.is_dac and val in self._dac_names:
             note = SmpsNote(note_value=val, duration=0, is_dac=True,
                             dac_name=self._dac_names[val], is_no_attack=cur.no_attack)

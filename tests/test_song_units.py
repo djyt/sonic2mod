@@ -96,9 +96,9 @@ class OtherDrivers(unittest.TestCase):
     def test_a_voice_with_its_own_pan_pans_the_track_it_is_set_on(self):
         # FM1: voice 0 (pan left in the voice), a note, voice 1 (no pan byte), a note
         ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [0])),
-               Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x08),
+               Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x08),
                Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [1])),
-               Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x08), Op(OpKind.STOP)]
+               Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x08), Op(OpKind.STOP)]
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
         song = song_from_code(header, SmpsCode(ops), [SmpsVoice(0, pan=0x80), SmpsVoice(1)])
         effects = [(ev.effect.flag, ev.effect.params, ev.tick_position) for ev in song.channels[0].events
@@ -127,17 +127,24 @@ class OtherDrivers(unittest.TestCase):
         # after it rests too, and its read frame does not count
         header = SmpsSongHeader(fm_count=1, tempo_modifier=NO_TEMPO_HOLDS, key_run_out=10,
                                 channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
-        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=4),
-               Op(OpKind.BYTE, value=0xE7), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=30), Op(OpKind.STOP)]
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=4),
+               Op(OpKind.NO_ATTACK, value=0xE7), Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=30), Op(OpKind.STOP)]
         song = song_from_code(header, SmpsCode(ops), [])
         notes = [(ev.tick_position, ev.note.duration, ev.note.is_rest) for ev in song.channels[0].events if ev.note]
         self.assertEqual(notes, [(0, 4, False), (4, 7, False), (11, 23, True)])   # 10 counted frames + the tie's read
 
     def test_no_run_out_leaves_a_long_note_whole(self):
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
-        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x7F), Op(OpKind.STOP)]
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x7F), Op(OpKind.STOP)]
         notes = [ev.note for ev in song_from_code(header, SmpsCode(ops), []).channels[0].events if ev.note]
         self.assertEqual([(n.duration, n.is_rest) for n in notes], [(0x7F, False)])
+
+    def test_a_note_past_smps_bytes_is_a_note(self):
+        # B7 ($E0) has no SMPS byte (flags start there); a grammar that names it as a NOTE plays it
+        header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.NOTE, value=0xE0), Op(OpKind.DURATION, value=6), Op(OpKind.STOP)]
+        notes = [ev.note for ev in song_from_code(header, SmpsCode(ops), []).channels[0].events if ev.note]
+        self.assertEqual([(n.note_value, n.duration, n.is_rest) for n in notes], [(0xE0, 6, False)])
 
     def test_no_tempo_holds_reads_a_tick_every_frame(self):
         segment = tempo_schedule(NO_TEMPO_HOLDS)[0]

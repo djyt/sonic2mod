@@ -6,7 +6,7 @@ driver's reading rules turn into the intermediate representation suitable for co
 
 import re
 
-from .code import NO_ATTACK, Op, OpKind, SmpsCode, effect_from_bytes, song_from_code
+from .code import NO_ATTACK, Op, OpKind, SmpsCode, effect_from_bytes, song_from_code, track_byte
 from .driver_tables import PAN_VALUES
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_NOTE_NAMES, voice_field_from_macro
 from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsEffect, SmpsSongHeader, SmpsVoice
@@ -260,7 +260,8 @@ class SmpsParser:
             return [Op(OpKind.EFFECT, effect=effect)]
 
         if line.startswith('dc.b'):
-            return [Op(OpKind.BYTE, value=v) for v in map(_dcb_byte, line[4:].split(',')) if v is not None]
+            ops = (track_byte(v) for v in map(_dcb_byte, line[4:].split(',')) if v is not None)
+            return [op for op in ops if op is not None]
         return []
 
     def _try_parse_effect(self, line):

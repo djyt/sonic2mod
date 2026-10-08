@@ -19,6 +19,7 @@ from .code import (
     FIRST_FLAG,
     FIRST_NOTE,
     LAST_NOTE,
+    TRACK_BYTES,
     Op,
     OpKind,
     SmpsCode,
@@ -26,6 +27,7 @@ from .code import (
     effect_from_bytes,
     signed_byte,
     song_from_code,
+    track_byte,
 )
 from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, align_songs, compare_songs, parse_differences
 from .driver_tables import (
@@ -114,6 +116,7 @@ __all__ = [
     "SMPS_DAC_NAMES",
     "SMPS_OP_TO_REG_OFFSET",
     "SONIC1_ENVELOPES",
+    "TRACK_BYTES",
     "Aspect",
     "ChannelDiff",
     "ChannelType",
@@ -173,6 +176,7 @@ __all__ = [
     "synth_note_name",
     "tempo_schedule",
     "tick_at_frame",
+    "track_byte",
     "voice_field_from_macro",
     "write_asm",
 ]

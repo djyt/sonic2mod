@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ..smps import FIRST_FLAG, ChannelType, Op, OpKind, effect_from_bytes
+from ..smps import FIRST_FLAG, ChannelType, Op, OpKind, effect_from_bytes, track_byte
 from .flags import FlagKind, FlagSpec
 from .image import RomError
 from .memory import SoundMemory
@@ -45,7 +45,9 @@ def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, ki
     """The SMPS instruction at `address`, read by a `kind` track."""
     byte = memory.byte(address)
     if byte < FIRST_FLAG:
-        return Instruction((Op(OpKind.BYTE, value=byte),), 1, True)
+        op = track_byte(byte)
+        assert op is not None
+        return Instruction((op,), 1, True)
 
     spec = variant.flags[kind].get(byte)
     if spec is None:
@@ -56,7 +58,7 @@ def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, ki
     length = 1 + len(operands)
 
     if spec.kind is FlagKind.NO_ATTACK:
-        return Instruction((Op(OpKind.BYTE, value=byte),), length, True)
+        return Instruction((Op(OpKind.NO_ATTACK, value=byte),), length, True)
 
     if spec.kind in (FlagKind.JUMP, FlagKind.CALL):
         target = memory.code_pointer(address + 1)

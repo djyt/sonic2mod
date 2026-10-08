@@ -14,6 +14,11 @@ from enum import IntEnum
 MD_FM_CLOCK = 7_670_454
 _CLOCK_DIVIDER = 144                 # one output sample per 144 clocks
 FM_SAMPLE_RATE = MD_FM_CLOCK // _CLOCK_DIVIDER     # 53267 (== OPN2.NATIVE_RATE)
+
+# The chip variants Nuked-OPN2 emulates (settings.yaml fm_synthesis.mode): the Mega Drive's YM2612,
+# whose DAC adds a sign bias, or a discrete YM3438
+FM_CHIP_MODES = ("ym2612", "ym3438")
+
 _FNUM_SCALE_BITS = 21
 
 TL_STEP_DB = 0.75                    # total level: dB per step

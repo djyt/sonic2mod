@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..audio import DEFAULT_DITHER, DEFAULT_TAPS
-from ..chips import DEFAULT_FM_PAN_LAW_DB, MD_FM_CLOCK, MD_PSG_CLOCK
+from ..chips import DEFAULT_FM_PAN_LAW_DB, FM_CHIP_MODES, MD_FM_CLOCK, MD_PSG_CLOCK
 from ..mod import PAL_AMIGA_CLOCK, sample_limit_bytes
 from .loader import dither_mode, mode_word, read_yaml_file
 
@@ -111,6 +111,14 @@ def _legato(data: dict, default: str, filepath: str) -> str:
     v = str(data.get("legato", default)).lower()
     if v not in LEGATO_MODES:
         raise ValueError(f"{filepath}: legato must be one of {', '.join(LEGATO_MODES)} (got '{v}')")
+    return v
+
+
+def _fm_mode(section: dict, default: str, filepath: str) -> str:
+    """fm_synthesis.mode of settings.yaml: ym2612 | ym3438."""
+    v = str(section.get("mode", default)).lower()
+    if v not in FM_CHIP_MODES:
+        raise ValueError(f"{filepath}: fm_synthesis.mode must be one of {', '.join(FM_CHIP_MODES)} (got '{v}')")
     return v
 
 
@@ -374,7 +382,7 @@ class SynthesisSettings(SampleSettings):
         smp = _samples_section(data, filepath)
         return cls(
             enabled=s.get("enabled", cls.enabled),
-            mode=s.get("mode", cls.mode),
+            mode=_fm_mode(s, cls.mode, filepath),
             clock_rate=s.get("clock_rate", cls.clock_rate),
             sustain_duration=_sustain_duration(s, cls.sustain_duration),
             release_padding=s.get("release_padding", cls.release_padding),

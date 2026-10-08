@@ -465,7 +465,7 @@ class SmpsToModConverter:
         sample_list.  What the PSG renders (psg_insts) and a merge composite (rendered or
         mixed) are never loaded."""
         merge_insts = (self._merge.instruments | self._merge.unused) if self._merge is not None else set()
-        if synth and synth.enabled and synth.mode == "ym2612":
+        if synth and synth.enabled:
             fm_samples, missing = self._synthesize_fm(synth)
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             self._load_disk_samples(set(fm_samples) | psg_insts | missing | merge_insts)

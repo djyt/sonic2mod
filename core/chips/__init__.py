@@ -8,6 +8,7 @@ them: smps/ (the driver's tables) and vgm/ (the register log) are both built on 
 from .fm import (
     CARRIER_OFFSETS_BY_ALG,
     DEFAULT_FM_PAN_LAW_DB,
+    FM_CHIP_MODES,
     FM_SAMPLE_RATE,
     FM_TL_SILENT,
     MD_FM_CLOCK,
@@ -22,7 +23,7 @@ from .fm import (
 from .psg import MD_PSG_CLOCK, PSG_ATT_SILENT, PSG_SAMPLE_RATE, PSG_STEP_DB, psg_frequency_hz, psg_level_db
 
 __all__ = [
-    "CARRIER_OFFSETS_BY_ALG", "DEFAULT_FM_PAN_LAW_DB", "FM_SAMPLE_RATE", "FM_TL_SILENT", "MD_FM_CLOCK", "MD_PSG_CLOCK",
+    "CARRIER_OFFSETS_BY_ALG", "DEFAULT_FM_PAN_LAW_DB", "FM_CHIP_MODES", "FM_SAMPLE_RATE", "FM_TL_SILENT", "MD_FM_CLOCK", "MD_PSG_CLOCK",
     "PSG_ATT_SILENT", "PSG_SAMPLE_RATE", "PSG_STEP_DB", "REG_FEEDBACK_ALGORITHM", "TL_MASK", "TL_STEP_DB",
     "OperatorReg", "carrier_names", "fm_frequency_hz",
     "fm_level_db", "psg_frequency_hz", "psg_level_db"

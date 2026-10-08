@@ -77,11 +77,11 @@ seek).  `vgm_analyze.py --frames` prints it.
   3 residues mod 3, Title 2 of 5 mod 5: the TempoWait hold is visible as expected.
 
 ### [x] 0.3 Input dispatch
-`core/source/read_song(path, LiftOptions)`: `.vgm` / `.vgz` → `lift_song`, else `SmpsParser`;
+`core.source.read_song(path, LiftOptions, rom_song)`: `.vgm` / `.vgz` → `lift_song`, a ROM → `read_rom_song`, else `SmpsParser`;
 `ConversionConfig.read_song()` passes the config's options.  `convert.py`, `analyze.py`,
 `merge_survey.py`, `config_to_chip_space.py` and `vgm_pitch_audit.py` read through it.  Config keys
-`driver:` (`SmpsDriver`, `sonic1` only), `tempo_modifier:` / `tempo_divider:` (VGM input only,
->= 1); documented in `docs/yaml_config.md`.  `lift_song` raises `VgmLiftError` until Phase 1.
+`driver:` (`SmpsDriver`: `sonic1`; `smps68k_type1a` since `binary_import.md` 2.1, ROM input only), `tempo_modifier:` / `tempo_divider:` (VGM input only,
+>= 1); documented in `docs/yaml_config.md`.  `lift_song` raised `VgmLiftError` until Phase 1; now only for a driver other than `sonic1`.
 
 ---
 
@@ -127,7 +127,7 @@ duration (`smpsNoAttack, $34`) is a tie; a stopped track rests to the song's end
 2016, 10 at 4128) exact, the m = 7 drum break at 4896 (192 ticks of DAC only, no FM or PSG key
 write) is invisible, so the later changes (3, 4) come out ~9 ticks late and FM onsets after it
 miss.  FM onsets: same on 14 songs; one extra key-on at tick 0 on Spring Yard FM3, Stage Clear
-FM1, Invincibility FM2 (song-start artefacts, 1.9) and at Marble Zone FM4/FM5 2040 (open).
+FM1, Invincibility FM2 (song-start artefacts, 1.9) and at Marble Zone FM4/FM5 2040 (gone by 2026-10-08: Marble Zone's FM reads same).
 PSG onsets need the envelopes (1.6), DAC ticks the Z80 latency (1.8).
 
 ### [x] 1.2 Song loop (done 2026-10-03)
@@ -174,9 +174,8 @@ lifting `smpsNoteFill`, `smpsAlterNote`.
   (`SetVoice` writes them all).  Modulators + algorithm/feedback identify the voice; carrier TLs
   are voice TL + track volume — take each voice's lowest observed carrier TL as the voice's own and
   the rest as `smpsAlterVol` offsets (plus `SmpsChannelHeader.volume` for the channel's first).
-- Deduplicate into `SmpsVoice`, indices in order of first appearance.  `SmpsVoice.params` holds
-  `smpsVc*` strings today; give it an int constructor (or store ints) rather than formatting hex
-  text to be parsed back.
+- Deduplicate into `SmpsVoice`, indices in order of first appearance.  (Done beforehand: `SmpsVoice.operators`
+  holds ints by `VoiceField`, built from registers as from the asm.)
 - Optional `voice_bank: <asm file>`: match lifted voices to a known voice table and take its
   indices, so an asm-made config's `voice_map` applies to the VGZ unchanged — the key to comparing
   MODs in the test bed, and useful for hacks that reuse Sonic 1's bank.
@@ -194,6 +193,8 @@ frame to match.  `smpsModOn` / `smpsModOff` where it starts and stops between no
 measures vibrato on (Title, GHZ, Spring Yard, Scrap Brain, Stage Clear, Special Stage).
 
 ### [ ] 1.6 PSG tone
+Started with 1.1: notes at the nearest `PSGFrequencies` entry, an attack where the level rises
+(`psg_hits`).  Envelopes, volumes, vibrato and the extended indices are open.
 - Notes: audible + divider → note via `PSGFrequencies` (including the measured out-of-table indices
   125–127 in `PSG_FREQUENCIES_EXTENDED`); a same-pitch retrigger shows only as the envelope
   restarting (attenuation stepping back up to the curve's start).
@@ -204,12 +205,14 @@ measures vibrato on (Title, GHZ, Spring Yard, Scrap Brain, Stage Clear, Special 
 Yard's below-table notes, Labyrinth's `smpsAlterPitch` loops, Ending's PSG2 are the hard ones).
 
 ### [ ] 1.7 PSG noise
+Started: PSG3's hits in noise mode (`noise_mode`, period from tone channel 3).  The rest is open.
 Noise register → form byte `$E0 | white << 2 | rate` → `smpsPSGform`; key-ons as 1.6 on channel 3's
 attenuation; envelope label matched as 1.6 (Scrap Brain's `fTone_08` hi-hat variant); rate 3: the
 tone-2 divider lifted as PSG3's note so `derive_rate3_dividers` finds it.
 **Accept:** `psg_map` keys and noise envelopes derived from the lifted song equal the asm's.
 
 ### [ ] 1.8 DAC
+Started: a hit per `0xE0` seek, named `pcm 0x…` by its offset (`dac_hits`).  The rest is open.
 - Notes from `0xE0` seeks; the sample is the data-block bytes from the seek to the last `0x8n`
   before the next seek or silence; the rate from the `0x8n` wait nibbles (the Z80 loop's period).
   Same offset at another rate = another pitch of the same sample (timpani).
@@ -236,6 +239,8 @@ explained) against `samples/`.
   gets a starter config.
 
 ### [ ] 1.11 Regression
+Started: `tests/test_vgm_lift_units.py` covers tempo inference, attacks / ties / rests and loops.  No VGZ
+case in `tests/regression.py` yet.
 Add a VGZ case per song that has a lifted config (start with Title Screen and GHZ) to
 `tests/regression.py`; `tests/test_vgm_lift_units.py` for the inference primitives (tempo hold,
 tie/legato/retrigger, envelope match, modulation fit) with hand-built frame logs.
@@ -255,6 +260,9 @@ Today `core/smps/driver_tables.py` *is* Sonic 1: the FM frequency table, `PSGFre
 range, DAC scheme) chosen by the config's `driver:`, Sonic 1 the default, and thread it through
 the lifter **and** the converter (both read the same tables — the converter must render and place
 a Sonic 2 note with Sonic 2's tables).  Baselines must stay byte-identical.
+Partly done by `binary_import.md` 2.1-2.5: `core/rom/drivers.py` `RomDriver` (flags, envelope commands, DAC
+names) and `SmpsSong.psg_envelopes`; frequency tables, tempo and modulation are still Sonic 1's, and the lift
+reads `sonic1` only.
 
 ### [ ] 2.2 Sources for the variants
 - ValleyBell's **SMPSPlay** driver definitions (`DefDrv` / per-game INI): frequency tables, tempo

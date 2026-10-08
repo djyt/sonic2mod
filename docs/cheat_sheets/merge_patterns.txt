@@ -1,45 +1,60 @@
 merge_patterns cheat sheet (convert.py --merged)
 =================================================
 
-Block keys
+Block keys (merge_patterns: [ ... ])
   patterns: "1-4"              reference MOD patterns in hex; ranges and commas ("0, 5-c"); a bare YAML number is decimal
   drop: [FM4, PSG1]            these channels' notes are left out in the block's patterns
   groups:                      the folds and moves that hold in those patterns
 
-Group keys
+Group keys (merge_patterns groups and song-wide merge: groups)
   primary: FM5                 the channel that carries the fold: its column, its fill, its vibrato
   followers: [FM3, FM4, PSG1]  folded onto the primary as composites or solo notes
-  mod_channel: 2  |  FM2       the column the primary's notes take here (a channels: number or a source);
+  mod_channel: 2  |  FM2       merge_patterns only: the column the primary's notes take here (a channels: number or a source);
                                free there = its owner folded, dropped or moved away; with no followers = a plain move
   cut_primary: true            a follower note over the primary's tail plays and cuts it (the drum rule)
-  bank: true                   the group's mixes share slots as sample banks with 9xx; drum primaries only
+  bank: true                   the group's mixes (not chip composites) share slots as sample banks with 9xx; any primary
+                               (a melodic note gives its attack row to 9xx)
   mix_note: C3                 cap on the note a mix is made at (bytes vs the hat's treble; C2 loses the hat, F2 keeps it to 5.5 kHz)
   mix_at: primary              a mix is made at the primary's own note, so a looped lead/bass/chord keeps its loop
                                (a few KB instead of the whole note unrolled); the chime is resampled down into it
   max_composites: 8            keep the N most-played composites; the rest use a stand-in or the primary alone
   fill_lost: true              follower notes the fold cannot place go to the fill pool (any silent column)
   fill_cut: true               follower notes the fold would cut short go to the pool, whole notes only
-  fill: true                   (no followers) the channel's notes in these patterns are sprinkled over whichever
-                               column in use is silent when each starts; lost where none is
-  cut_after: 8                 a pooled note may take this group's column once its note is N ticks old (cuts the tail)
+  fill: true                   merge_patterns only, no followers, no mod_channel: the channel's notes are sprinkled over
+                               whichever column in use is silent when each starts; lost where none is
+  cut_after: 8                 merge_patterns only: a pooled note may take this group's column once its note is N ticks old
+  fm_on_chip: false            default true: a mix's FM primary + FM followers render together on the chip, the rest mixed on top;
+                               false sums the looped samples
+  loop_mix: true               a long mix loops where its sum settles (lossy; for a pitched primary)
+  limit_db: 3                  a mix past full scale has its peaks limited by up to N dB instead of being turned down
+  loop_drift_db / loop_min_ms / loop_start_ms / loop_decay: slide   the group's chip composites' sustain loops
+                               (loop_min_ms / loop_start_ms its looped mixes' too); default the primary's entry's, then the song's
+  treble_shelf_db: 3           a brightness shelf on the group's composites, over the song's; treble_shelf_hz its corner
+  dither: shaped | flat | off  the composites' quantisation (default the primary's entry's, then samples.dither)
+  name: "chords"               the composites' sample name (the note each plays at is added)
 
 Song level (beside the blocks)
-  merge_bank_slots: 3          instrument slots held back for the banks; the converter says when one went unused
-                               while composites had no slot (lower it), and when a sound found no bank (raise it)
-  merge_tolerance: 1           ticks a follower note-on may be off the primary's and still fold
+  merge_bank_slots: auto       default auto: the converter picks the slots held back for the banks (rebuilds once);
+                               a number pins it, and the report says when one went unused or a sound found no bank
+  merge_tolerance: 1           ticks a follower note-on may be off the primary's and still fold (default 1)
   merge_fill: [PSG1]           pooled channels: each note on whichever output column is silent
   merge_fill_cut_after: {DAC: 2}   song-wide fallback for cut_after, by the column's owner
   merge_drop: [FM3]            channels left out of the merged build everywhere
-  merge_max_synth_shift: 0     cap on how far above its root a sample is rendered (bytes)
+  merge_twins: always          default short: same-shape composites give up their slot only while slots are short
+  merge_max_synth_shift: 0     cap on how far above its root a sample is rendered (default 12; 0 halves shifted samples)
+  merge_loop_timbre: true      the merged build's loops wait for the timbre to hold too (bigger samples; default off)
   loop_drift_db: 6             this song's loop_drift_db over settings.yaml's (1): loops may freeze that far above
-                               the settled level, so looped samples end sooner (bytes vs a slowly moving sustain)
-  merge_output_file: output/x.mod   where --merged writes
+                               the settled level, so looped samples end sooner (both builds)
+  treble_shelf_db: 2           this song's shelf over settings.yaml's (0; both builds)
+  merge_output_file: output/x.mod   where --merged writes (default <output>_merged.mod)
+  dac_samples: merge_saturate_db    a drum's saturate_db in the merged build only
 
 Gotcha
   every group starts with "- " — without it its keys merge into the group above (the loader now refuses the duplicate key)
 
-Tools
+Tools (each takes --variant NAME; fold_csv --write does not)
   python tools/fold_csv.py <config> <table.csv> --write --bank --mix-note C3   draft the section from a fold table
-  python tools/merge_survey.py <config> --all                                   every channel pair's fold counts
+                                                                                (--bank / --mix-note: on drum-primary groups)
+  python tools/merge_survey.py <config> --all                                   every channel pair, not only the clean ones
   python convert.py <config> --merged                                           build; read "composite slots" and the warnings
-  python tools/mod_audit.py output/<song>_merged.mod                            samples vs the notes that play them (waste, silence)
+  python tools/mod_audit.py output/<song>_merged.mod --banks                    samples vs the notes that play them; per 9xx sound

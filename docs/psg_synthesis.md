@@ -1,428 +1,239 @@
-# SN76489 PSG Synthesis Pipeline
+# SN76489 PSG Synthesis
 
-How PSG channels are synthesized into Amiga MOD samples using the SN76489 emulator.
+How sonic2mod renders each PSG instrument as an 8-bit MOD sample on the VGMPlay SN76489 core.
 
-Related docs: `docs/yaml_config.md` §PSG Instrument Mapping (YAML schema), `docs/smps_driver.md` §PSG Channels (driver internals), `docs/fm_synthesis.md` (FM/YM2612 equivalent).
+Related: `docs/fm_synthesis.md` (the YM2612 counterpart; shared rules are not repeated here),
+`docs/smps_driver.md` § PSG Channels (what the driver does), `docs/yaml_config.md` § 4 (`psg_map` / `psg_voice_map` keys)
+and § 8 (settings.yaml).
 
 ---
 
 ## Overview
 
 ```
-psg_map / psg_voice_map entry  →  generate_psg_samples()  →  PCM mono  →  normalize  →  MOD sample
-(PsgInstrumentEntry + root)       (sn76489/ package)          (int8)
+catalogue entry → render_psg_tone_raw / render_psg_noise_raw → shelf, DC block → loop (tones) → int8 (peak-normalised, dithered)
 ```
 
-Three entry types correspond to SN76489 output modes:
+| Type | SN76489 mode | Where it comes from |
+|------|--------------|---------------------|
+| `tone` | Square wave, tone channels 0–2 | `psg_voice_map` (always tone) |
+| `white_noise` | White-noise LFSR | `psg_map` key byte, bit 2 = 1 |
+| `periodic_noise` | Periodic-noise LFSR | `psg_map` key byte, bit 2 = 0 |
 
-| Type | SN76489 mode | Typical use |
-|------|-------------|-------------|
-| `tone` | Square-wave tone channel | PSG1–PSG3 melodic voices |
-| `white_noise` | White-noise LFSR | Snare, hi-hat, percussive noise |
-| `periodic_noise` | Periodic noise LFSR | Buzzy bass, periodic pulse |
+| File | Role |
+|------|------|
+| `sn76489/build.py`, `sn76489/wrapper.py` | Compile `reference/SN76489/sn76489.c` + `panning.c` (`core.cbuild`); ctypes `SN76489` class |
+| `sn76489/renderer.py` | Note or noise form → PCM (`render_psg_tone_raw`, `render_psg_noise_raw`) |
+| `sn76489/sample_generator.py` | The config's PSG catalogue → `{inst: (pcm, rate)}` (`generate_psg_samples`) |
 
 ---
 
 ## Quick Start
 
-1. Set `psg_synthesis.enabled: true` in `configs/settings.yaml`.
-2. Ensure gcc or MSVC is on PATH (needed to compile `sn76489.c`).
-3. Run smoke tests to verify the pipeline produces audible output.
-4. Convert: `python convert.py configs/my_song.yaml`.
-
-### Smoke tests
+`psg_synthesis.enabled` is `true` in the shipped `configs/settings.yaml` (code default `false`).
+The first render compiles the DLL, so gcc or MSVC must be on PATH.
 
 ```bash
-# DLL + chip: C3 tone + white noise → output/psg_{tone,noise}_test.raw
-python sn76489/validate.py
-
-# Renderer: C3 tone + white noise → output/psg_{tone,noise}_test.raw
-python sn76489/renderer.py
-
-# Full pipeline: fTone_04 envelope + white noise → output/psg_sample_gen_test_*.raw
-python sn76489/sample_generator.py
+python sn76489/validate.py           # C3 tone + white noise → output/psg_{tone,noise}_test.raw
+python sn76489/renderer.py           # the same through the renderer
+python sn76489/sample_generator.py   # periodic noise + white noise with fTone_04 → output/psg_sample_gen_test_*.raw
+python convert.py configs/01_title_screen.yaml
 ```
 
-Audacity import (all PSG raw files):
-```
-File > Import > Raw Data
-  Encoding   : Signed 16-bit PCM
-  Byte order : Little-endian
-  Channels   : 1 (Mono)
-  Sample rate: (use the rate printed to console by each script)
-```
+Audacity: File > Import > Raw Data, signed 16-bit PCM, little-endian, mono, at the printed rate.
 
 ---
 
-## Settings Reference
+## How a note becomes a sample
 
-`configs/settings.yaml` — `psg_synthesis:` block:
+### The catalogue: what is rendered
 
-| Field | Type | Default | Notes |
-|-------|------|---------|-------|
-| `enabled` | bool | `false` | Set `true`; requires gcc/MSVC for sn76489.c |
-| `clock_rate` | int | `3579545` | NTSC Mega Drive SN76489 clock (Hz) |
-| `amiga_clock` | top level | `3546895` | PAL Amiga clock used for `target_rate` calc (shared with FM) |
-| `oversample` | int | `8` | Tones render at this multiple of the sample's rate, then are resampled down (§ Oversampling); 4 is within 0.2 dB and half the PSG time |
-| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.0` when the key is absent) | Seconds held before key-off. `auto` = each PSG instrument its own longest ring at its playback pitch, capped at 10 s — the FM rules, `docs/fm_synthesis.md` § `sustain_duration: auto`. Tones are also capped per instrument to the `samples.max_sample_kb` limit (settings.yaml, 128 or 64) at their rate; noise is capped to its envelope |
-| `sustain_loops` / `loop_drift_db` | `samples:` | `merged` / `1` | Cut a tone whose envelope settles to a sustain loop (`core/audio/loops.py`, `generate_psg_samples(loops=True)`); noise never loops. `docs/pipeline.md` § Sustain loops |
-| `release_padding` | float | `0.2` | Seconds captured after key-off |
+`core.plan.instruments.psg_catalogue` lists every PSG instrument, rendered once for the
+**first** entry that names its slot: each `psg_map` entry, then its `envelopes:` variants
+(each a slot of its own), then the `psg_voice_map` entries.  An entry without `root` renders
+nothing.  The merged build drops what it no longer plays; an instrument that is only a mix
+source is rendered for the mixer and gives up its slot.
 
-The envelope tables are not a setting; see § Envelope Tables.  A `psg_envelope_tables` block left
-in `settings.yaml` is ignored with a warning.
+A `psg_map` key is the SN76489 noise byte `$E0 | white << 2 | rate`, so the type and rate are
+read from it, never configured.  The noise envelope is read from the song
+(`core.plan.noise_derive.derive_noise_envelopes`): the label most of the instrument's notes
+play under (the header voice or the last `smpsPSGvoice`; ties to the first heard).  A
+`psg_voice_map` entry plays its own label's envelope.  A stated `envelope:` overrides either.
 
----
+### Tone pitch: synth_root, synth_shift, target_rate
 
-## psg_map and psg_voice_map (YAML)
-
-### psg_map
-
-Keyed by `smpsPSGform` byte (hex or decimal). When `smpsPSGform $E7` appears in channel data, the PSG channel switches to this instrument, and stays a noise channel (nothing in Sonic 1 music turns it back).
-
-The key is the SN76489 noise register byte, `$E0 | white << 2 | rate`, so the noise **type** (bit 2: 0 = `periodic_noise`, 1 = `white_noise`) and **rate** (bits 0–1: 0 = N/512, 1 = N/1024, 2 = N/2048, 3 = follow tone channel 2) are read from it.  The **envelope** is read from the song: `smpsPSGform` does not change it, so the noise plays with the driver's VoiceIndex — the header voice or the last `smpsPSGvoice` — and `derive_noise_envelopes` picks the label most of the instrument's notes play under.  A config states only what is a conversion choice:
-
-```yaml
-psg_map:
-  0xE7:                    # smpsPSGform byte: white noise, rate 3 (LFSR clocked by PSG3's own tone register)
-    mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A2               # MOD note anchor — determines target_rate AND where low plays
-    low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
-    envelopes:             # optional: a noise-mode envelope that gets its own sample
-      fTone_08: 18         #   (Scrap Brain's hi-hat variant); other labels play mod_instrument
-```
-
-Optional overrides: `envelope:` (a label or inline list) replaces the derived envelope; `tone2_n:` / `synth_root:` replace the derived rate-3 divider.  A stated `type` or `noise_rate` that contradicts the key byte warns and is ignored.  When one instrument is played with several envelopes and none has a variant, `convert.py` warns (`noise_envelopes`) — Credits' PSG3 plays `fTone_04`, `fTone_08` and `fTone_09` through one sample because the song has no free slot.
-
-### psg_voice_map
-
-Keyed by `smpsPSGvoice` label name (e.g. `fTone_01`–`fTone_09`). When `smpsPSGvoice fTone_03` appears in channel data on a **tone** channel, the PSG channel switches to this instrument; the envelope defaults to the label.  A noise channel never consults this map — there `smpsPSGvoice` only changes the envelope (see `envelopes:` above), and a noise `type` in a `psg_voice_map` entry is a config error.
-
-```yaml
-psg_voice_map:
-  fTone_01:
-    mod_instrument: 8      # MOD instrument slot (1-based)
-    root: A3               # MOD note anchor; determines target_rate
-    synth_root: A3         # (optional) synthesis pitch override
-  fTone_03:
-    mod_instrument: 9
-    root: A3
-```
-
-### PsgInstrumentEntry fields
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `mod_instrument` | int | yes | MOD slot (1-based, 1–31) |
-| `type` | str | derived | `psg_map`: bit 2 of the key byte (`white_noise` / `periodic_noise`); `psg_voice_map`: always `tone` |
-| `root` | note | yes | MOD note anchor; controls `target_rate` AND where `low` plays |
-| `low` | note | no | SMPS pitch anchor for melodic formula: `output = root + (source − low)` |
-| `high` | note | no | Upper bound of melodic range (paired with `low`) |
-| `synth_root` | note | no | Synthesis pitch override; does NOT affect `target_rate`. On a rate-3 noise entry it overrides the derived LFSR divider (chromatically — the driver's table is not chromatic, so leave it out) |
-| `noise_rate` | int | derived | Bits 0–1 of the `psg_map` key byte: 0=N/512, 1=N/1024, 2=N/2048, 3=follow ch2 (divider derived from the song's own notes — see §rate 3). Stating it only warns when it disagrees |
-| `tone2_n` | int | no | Rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR clock. An override — normally omitted, because the converter derives the divider from the song (`nMaxPSG` → 1) |
-| `envelope` | str/list | no | `psg_map`: override of the envelope derived from the song (a label such as `fTone_04`, or an inline list of per-frame attenuation deltas). `psg_voice_map`: defaults to the entry's label |
-| `envelopes` | dict | no | `psg_map` only: `{label: mod_instrument}` — a noise-mode envelope rendered as its own sample; labels not listed play `mod_instrument` |
-| `base_volume` | int | no | SN76489 base attenuation (0=max, 15=silent); 0 in every shipped config, the header volume is applied as `Cxx` |
-
----
-
-## Pitch: root, synth_root, and target_rate for PSG Tones
-
-The relationship between these three values is identical to YM2612 (see `docs/fm_synthesis.md` §Pitch):
-
-- **`root`** always determines `target_rate`:
-  ```
-  target_rate = round(amiga_clock / PERIOD_TABLE[root.value])
-  ```
-  This controls how fast the Amiga plays back the sample. It does NOT change because of `synth_root`.
-
-- **`synth_root`** is the frequency rendered via the SN76489 emulator.  It is derived from the
-  song (`core.plan.synth_roots.resolve_synth_roots`: the chip pitch the instrument's notes play most
-  often, through the driver's table, at most an octave above the pitch `root` sounds); the
-  sample's rate is raised by 2^(`synth_shift`/12) so no note moves.  No config states it.  A
-  stated value is a rendering pitch elsewhere in the range, handled the same way
-  (`docs/fm_synthesis.md` §Pitch).
-
-- For **noise entries**, `root` controls `target_rate` and the MOD anchor where `low` plays.
-  When `low` is set, notes trigger at `root + (source − low)` — the same melodic formula as tones.
-  When `low` is absent, all notes trigger at `root` (fixed pitch for unpitched noise).
-  For `noise_rate: 3` the LFSR frequency comes from the song itself (see §noise_rate: 3), independently of `root`.
-
-### PSG frequency divider
-
-`note_to_psg_n` writes the divider the Sonic 1 driver writes for the note: its entry in
-`core.smps.driver_tables.PSG_FREQUENCIES` (index 0 = nC0 = 130.98 Hz = C3, so MOD index i is table
-index i − 24).  The table differs from the rounded equal-temperament divider on 29 of its 70
-entries — a few cents in the usual range, up to 85 cents at the top — and the table is what the
-hardware plays.  Off the table, or at another clock, the formula stands in:
+As for FM (`docs/fm_synthesis.md` § Pitch): `resolve_synth_roots` derives `synth_root` from
+the chip pitch the entry's notes play, through the driver's table, at most an octave above the
+pitch `root` sounds, and the shift goes into the rate:
 
 ```
-N = round(clock_rate / (2 × freq × 16)),  clamped 1–1023,   freq = 440 × 2^((note_idx − 45) / 12)
+target_rate = round(amiga_clock / PERIOD_TABLE[root] × 2^(synth_shift / 12))
 ```
 
-`note_to_psg_n(mod_note_index, clock_rate)` in `sn76489/renderer.py` does this calculation.
+The tone is rendered at `synth_root` (at `root` when there is none).  An entry with `low`
+places notes at `root + (key − low)`; a rooted tone without `low` takes the channel's
+transpose path (`docs/pipeline.md` § `voice_map` routing).
 
-### synth_note_idx
+### Tone divider
+
+`note_to_psg_n` writes the divider the Sonic 1 driver writes for the note:
+`core.smps.driver_tables.PSG_FREQUENCIES` (index 0 = `nC0` = 130.98 Hz = C3, so MOD index i is
+table index i − 24).  The table is what the hardware plays; it differs from equal temperament
+by up to 85 cents at the top.  Off the table, or at another clock:
 
 ```
-synth_note_idx = synth_root - 12    (if synth_root set)
-synth_note_idx = root.value         (otherwise)
+N = round(clock / (32 × freq)),  clamped 1–1023
 ```
 
-The −12 offset maps SMPS semitone convention to renderer index (idx 0 = C1).
+### Noise pitch
 
-A `synth_root_ambiguous` warning means the entry's `low` is played at several chip pitches
-(Spring Yard's `fTone_06`: three notes fall off the end of the driver's table) — split the
-entry or use `range_space: chip`.
+A noise entry's `root` sets its rate and its MOD note.  With `low`, notes are placed at
+`root + (key − low)` and MOD playback speed follows the melody; without it, every note plays at
+`root`.  Rates 0–2 clock the LFSR at a fixed N/512, N/1024, N/2048; rate 3 follows tone channel 2.
 
----
+### Rate-3 noise: the tone-2 divider
 
-## Envelope Tables
+Rate 3 (every Sonic 1 song's `$E7`) clocks the LFSR from tone channel 2's divider, and the
+driver keeps writing PSG3's own note there even in noise mode.  So the divider is in the song:
+`core.plan.noise_derive.derive_rate3_dividers` looks it up as the driver does,
+`PSGFrequencies[note − $81 + transpose]`:
 
-The nine Sonic 1 driver envelopes (`PSG1`–`PSG9`, `s1.sounddriver.asm` lines 43–60) are
-transcribed once, in `core/smps/driver_tables.py`:
+- at the entry's `low` note when it has one (the sample plays at `root` for that note) —
+  Marble Zone: `low: A3`, transpose `$0B` → index 56 → **N = 34** (3290 Hz);
+- otherwise at the note the instrument plays most — every hi-hat is `nMaxPSG` → **N = 1**.
 
-- `PSG_ENVELOPES` — the driver's tables with their `$80` terminators, indexed by
-  `VoiceIndex − 1`; what the SFX driver (`sfx/driver.py`) steps.
-- `PSG_ENVELOPES_BY_NAME` — the same tables under the `smpsPSGvoice` labels the music files use,
-  `fTone_01` … `fTone_09`, without the terminator; what a config's `envelope:` name resolves to
-  (`sn76489/sample_generator.py::_resolve_envelope`).
+`nMaxPSG` is not a pitch: it indexes the table's last entry, divider 1 — an LFSR at
+clock/32 ≈ 112 kHz, near-white hiss.  A chromatic
+`A8` there gives N ≈ 16, a dull 7 kHz rattle; `rate3_synth_root_issues` warns for a rate-3
+`synth_root` outside the table's C3–Gs8.  `convert.py --verbose` prints the divider used.
 
-```python
->>> from core.smps.driver_tables import PSG_ENVELOPES_BY_NAME
->>> PSG_ENVELOPES_BY_NAME["fTone_04"]
-(0, 0, 2, 3, 4, 4, 5, 5, 5, 6)
-```
+Precedence: `tone2_n`, then `synth_root` (its note's divider), then the derivation.  Before the
+audible render the LFSR is spun at N = 1 for 4096 discarded samples, past the shift register's
+start-up run of zero bits.
 
-- Each value is an **attenuation delta** added to `base_volume` per VBlank frame (60 Hz NTSC / 50 Hz PAL).
-- `0` = no attenuation above base; higher = quieter.
-- After the last entry a **tone holds** the last value, as the driver does: its `$80`
-  terminator rewinds the index (`VolEnvHold`), so a held `fTone_05` note stays at its last
-  attenuation until the note ends (Stage Clear's PSG1 holds attenuation 9 for 1.9 s in the VGZ).
-  A held tone therefore settles and gets a sustain loop (`sustain_loops`): Stage Clear's
-  `fTone_05` sample, which wanted 6.56 s and faded out 2.2 s early, is 9.7 KB looping from
-  0.68 s.  **Noise** still ramps the attenuation up a step per frame to 15 after the last entry
-  (`_render_with_envelope(hold=False)`, a hat's tail); its notes are cut at their duration
-  anyway.  Until 2026-10-05 tones ramped too: long PSG notes faded after ~0.5 s where the
-  hardware holds.  The per-note volumes are measured over a note's first 0.6 s, which the
-  change leaves alone for the envelopes Sonic 1 holds after; a song whose PSG balance moved
-  needs `tools/measure_volumes.py`.
-- `configs/settings.yaml` used to carry a second copy of these tables (`psg_envelope_tables`); its
-  `fTone_07` had lost a leading zero.  No config or Sonic 1 song uses `fTone_07`, so removing the
-  copy changed no MOD.
-- The driver steps the envelope once per frame at `DurationTimeout` expiry.
-- For envelope descriptions, see `docs/smps_driver.md` §PSG Channels.
+The sample holds one LFSR rate; the hardware retunes it every note.  A pitched noise channel is
+approximated by MOD playback speed — acceptable for Marble Zone's short `fTone_09` bursts over
+nine semitones.
 
-### Inline envelope
+### Envelopes
 
-Instead of a named key, you can pass a list directly:
-```yaml
-envelope: [0, 0, 2, 4, 6, 10, 15]
-```
+An envelope name resolves through the song's own tables (`SmpsSong.psg_envelopes`; Sonic 1's
+are `core.smps.driver_tables.SONIC1_ENVELOPES`, the driver data in `docs/smps_driver.md` § PSG
+volume envelopes).  One step, an attenuation added to `base_volume`, is written per frame
+(60 Hz, 50 with `region: pal`).  After the last step a **tone holds** it, as the driver's `$80`
+terminator does — so a held tone settles and can loop; **noise** ramps one step per frame to
+silence (a hat's tail).  An inline list (`envelope: [0, 0, 2, 4]`) works the same; a looping
+envelope (another driver's) is unrolled.
 
----
+### Length
 
-## Oversampling
+Tones follow the FM rules (`docs/fm_synthesis.md` § Length: `sustain_duration: auto`): each
+instrument its own longest ring at its playback rate, capped at 10 s and at what fits
+`samples.max_sample_kb`.  Noise is rendered for its envelope plus the ramp to silence
+(`noise_envelope_frames`), or at most 0.5 s without an envelope, and no longer than its notes
+where its auto sustain holds them all.  The chip has no release: `release_padding` renders
+silence, trimmed off, though it still counts against the sample limit.
 
-A tone renders at 8x the sample's rate (`psg_synthesis.oversample`) and `core.audio.resample` brings it
-down.  At the sample's own rate the core's anti-aliasing (`IntermediatePos`) is a box average:
--1.9 dB at 70 % of Nyquist, -3.9 dB at Nyquist, aliases folding back.  Oversampled, a square
-tone's upper band is 1.2-1.7 dB up and the aliases gone.  Noise renders at the sample's rate:
-white either way, and band-limited its crest factor rose, 7 dB of level lost (measured
-2026-09-30).
+### Sustain loops
 
-## Quantisation
+With `samples.sustain_loops` on for the build, a tone whose envelope holds is probed and cut to
+a loop as FM is (`docs/fm_synthesis.md` § Sustain loops); a loop ending past the notes' sustain
+is dropped.  Noise never loops, and PSG notes end in cuts, not release slides.
 
-Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and
-first-order noise shaping (`core.audio.pcm.to_int8`, shared with the FM pipeline and `sfx/amiga.py`).
-The tone:noise balance, like every other level, is the `sample_list` volume's job, measured
-against the VGZ (`tools/vgm_compare.py --write-volumes`).  The old fixed scale
-(`psg_output_max`, removed 2026-09-27; the key warns and is ignored) left the noise channel at
-half scale, which only cost it a bit.
+### Oversampling
+
+A tone renders at `psg_synthesis.oversample` × the sample's rate (8) and is resampled down
+(`core.audio.resample`, `samples.resample_taps`).  At the sample's own rate the core's
+anti-aliasing (`IntermediatePos`) is a box average: −1.9 dB at 70 % of Nyquist, −3.9 dB at
+Nyquist, aliases folding back; 4× is within 0.2 dB of 8× at half the time.  Noise renders at
+the sample's rate: it is white either way, and band-limiting raised its crest factor and cost
+7 dB of level.
+
+### Conditioning and quantisation
+
+As FM (`docs/fm_synthesis.md` § Conditioning and quantisation): shelf, DC block, trailing
+silence trimmed, peak-normalised to the full 8 bits with the entry's or `samples.dither`.  The
+tone:noise balance is the `sample_list` volumes'.
 
 ---
 
 ## SN76489 Emulator Internals
 
-**C source:** `reference/SN76489/sn76489.c` + `panning.c` (VGMPlay fork, Mega Drive config)
+`reference/SN76489/sn76489.c` (VGMPlay), configured for the Mega Drive: `FB_SEGAVDP = 0x0009`
+(16-bit LFSR feedback), `SRW_SEGAVDP = 16`, `boost_noise = 1`.  `PSGVolumeValues[16]`: 2 dB per
+attenuation step, 4096 at 0, silence at 15.  `SN76489_Update` writes stereo int32, about ±4096
+per channel.
 
-**Mega Drive configuration:**
-```
-FB_SEGAVDP  = 0x0009   (Sega VDP 16-bit LFSR feedback pattern)
-SRW_SEGAVDP = 16       (shift register width)
-boost_noise = 1        (doubles noise channel amplitude to match hardware)
-```
+**`SN76489_Reset` must run after `SN76489_Init`** — the C source has it commented out of
+`Init`, leaving `Registers[]`, `ToneFreqVals[]` and `IntermediatePos[]` as malloc garbage
+(out-of-bounds `PSGVolumeValues` reads).  `SN76489.reset()` does it.
 
-**PSG volume table:** `PSGVolumeValues[16]` — 2 dB attenuation per step, index 0 = 4096 (max), index 15 = 0 (silence).
-
-**Register protocol:**
-
-Tone frequency (channels 0–2), 10-bit divider N:
-```
-Byte 1 (latch):  1 CC 0 NNNN   (low 4 bits of N)
-Byte 2 (data):   0 0 NNNNNN    (high 6 bits, N >> 4)
-where CC = channel index (0–2)
-```
-
-Volume (any channel 0–3):
-```
-Latch:  1 CC 1 VVVV   (0 = max, 15 = silent)
-```
-
-Noise (channel 3):
-```
-0xE0 | (fb << 2) | rate
-where:
-  fb   : 0 = periodic noise, 1 = white noise
-  rate : 0/1/2 = N/512, N/1024, N/2048; 3 = follow tone ch2 LFSR clock
-```
-
-**Critical: `SN76489_Reset` must be called manually after `SN76489_Init`.** The C source has the reset call commented out inside `Init`. Without it, `Registers[]`, `ToneFreqVals[]`, and `IntermediatePos[]` contain garbage from `malloc`, causing out-of-bounds reads into `PSGVolumeValues`.
-
-`SN76489_Update` writes stereo INT32 buffers; max amplitude ≈ ±4096 per tone channel.
+| Write | Bytes |
+|-------|-------|
+| Tone divider N (channels 0–2) | `1 CC 0 NNNN` (low 4 bits), then `0 0 NNNNNN` (N >> 4) |
+| Volume (channels 0–3) | `1 CC 1 VVVV` (0 = loudest, 15 = silent) |
+| Noise (channel 3) | `0xE0 \| white << 2 \| rate` (rate 0/1/2 = N/512, N/1024, N/2048; 3 = tone channel 2) |
 
 ---
 
-## Module API Reference
+## Module API
 
-### `sn76489/build.py`
-
-- `get_lib_path() → Path` — Returns compiled library path, rebuilding from C sources if the DLL is missing or older than the sources.
-- Compiles `reference/SN76489/sn76489.c` + `panning.c` using gcc or MSVC.
-- Output: `sn76489/sn76489.dll` (Windows) or `sn76489/sn76489.so` (Unix).
-
-### `sn76489/wrapper.py` — `SN76489` class
+### `sn76489/wrapper.py`
 
 ```python
-SN76489(clock_rate=3_579_545, sample_rate=44100)
+SN76489(clock_rate=3579545, sample_rate=44100)   # the output rate is fixed at construction
+sn.reset()
+sn.write(byte)
+sn.write_tone_freq(ch, n)        # ch 0–2, N clamped 1–1023
+sn.write_volume(ch, vol)         # ch 0–3, 0 = loudest, 15 = silent
+sn.write_noise(white, rate)      # rate 0–3
+sn.render_samples(n) -> list[tuple[int, int]]
+sn.shutdown()
 ```
-
-| Method | Description |
-|--------|-------------|
-| `write_tone_freq(ch, n)` | Set tone channel ch (0–2) frequency divider N (1–1023) |
-| `write_volume(ch, vol)` | Set channel ch (0–3) volume; 0=max, 15=silent |
-| `write_noise(white, rate)` | Configure noise: white=True/False, rate=0/1/2/3 |
-| `render_samples(n) → list[(L,R)]` | Render n samples as (int32, int32) stereo pairs |
-| `shutdown()` | Free chip context |
 
 ### `sn76489/renderer.py`
 
 ```python
-note_to_psg_n(mod_note_index, clock_rate=_NTSC_CLOCK) → int
+note_to_psg_n(mod_note_index, clock_rate=3579545) -> int            # idx 0 = C1, 24 = C3
+render_psg_tone_raw(mod_note_index, sustain_secs=1.0, release_secs=0.2, clock_rate=3579545,
+                    target_rate=None, envelope=None, base_volume=0, fps=60.0,
+                    oversample=8, taps=32) -> (list, rate)
+render_psg_noise_raw(white, noise_rate, sustain_secs=0.4, release_secs=0.1, clock_rate=3579545,
+                     target_rate=None, envelope=None, base_volume=0, fps=60.0,
+                     tone2_n=None) -> (list, rate)
+render_psg_tone(...) / render_psg_noise(...) -> (bytes, rate)       # int8, peak-normalised
 ```
-Converts MOD note index (0=C1, 24=C3) to 10-bit SN76489 divider N.
 
-```python
-render_psg_tone(mod_note_index, sustain_secs, release_secs, clock_rate, target_rate) → (bytes, int)
-render_psg_tone_raw(..., envelope, base_volume, fps) → (list[int], int)
-```
-Render a PSG square-wave tone to 8-bit mono PCM (packed) or raw int list (before normalization).
-
-```python
-render_psg_noise(white, noise_rate, sustain_secs, release_secs, clock_rate, target_rate, tone2_n) → (bytes, int)
-render_psg_noise_raw(..., envelope, base_volume, fps, tone2_n) → (list[int], int)
-```
-Render a PSG noise burst. `tone2_n` sets tone ch2 divider when `noise_rate=3` (follow ch2).
-
-All render functions return `(pcm_or_list, sample_rate_hz)`.
+`target_rate=None` renders at 44 100 Hz.  `envelope` is the per-frame step list.
 
 ### `sn76489/sample_generator.py`
 
 ```python
-generate_psg_samples(config, psg_synth, verbose=False) → dict[int, tuple[bytes, int]]
+generate_psg_samples(config, psg_synth, verbose=False, rate3_dividers=None, noise_envelopes=None,
+                     psg_envelopes=None, loops=False, loops_out=None, raw_out=None,
+                     cache_out=None) -> dict[int, tuple[bytes, int]]
 ```
 
-Renders all `PsgInstrumentEntry` objects from `config.psg_map` and `config.psg_voice_map`.
-
-Pipeline:
-1. Iterate all entries; call `render_psg_tone_raw()` or `render_psg_noise_raw()` per entry.
-2. Trim trailing silence from each raw list.
-3. Peak-normalise each instrument to ±127 and quantise (dithered) to int8 bytes.
-4. Return `{inst_num: (pcm_bytes, sample_rate_hz)}`.
-
-Returns a dict ready for insertion into a `ModFile` via `sample_list`.
+Returns `{instrument: (int8 PCM, rate)}` for every catalogue instrument.  The converter passes
+the derived `rate3_dividers` and `noise_envelopes` (`{instrument: ...}`) and the song's
+`psg_envelopes` (None: Sonic 1's); `psg_synth.sustain_duration` must already be resolved.
 
 ---
 
 ## Common Mistakes
 
-### A stated synth_root that is not what the chip plays
+### A stated synth_root or tone2_n
 
-Until 2026-09-27 every entry had to state `synth_root`, and a wrong value rendered the tone in
-the wrong octave (Spring Yard's `fTone_06` was an octave high for four notes).  The converter now
-derives it from the song, so delete stated values rather than correct them.  A value you do
-state is honoured as a rendering pitch and the notes are re-placed to stay in tune; the only
-audible effect of a wrong one is a stretched sample, never a wrong pitch.
-
-### Rate 3 (follow ch2; form bytes `$E3` / `$E7`) — pitch and timbre
-
-Rate 3 (bits 0–1 of the `smpsPSGform` byte, every Sonic 1 song's `$E7`) makes the SN76489 LFSR clock from PSG tone ch2's frequency divider N.
-In Sonic 1, PSG3's driver writes its own note frequency to SN76489 tone channel 2 (`$C0`)
-even in noise mode, so the LFSR tracks PSG3's own notes — not SMPS PSG channel 2.
-
-The synthesizer uses `tone2_n` from the entry when given, then `synth_root`, and otherwise the
-divider the converter derives from the song (below), and writes it to tone ch2 before rendering.
-A fast warmup (N=1, 4096
-discarded samples) spins the LFSR into its pseudo-random region to avoid the initial DC-bias
-artifact.
-
-**`nMaxPSG` is N=0, not a musical note.**  The common Sonic 1 noise trigger `nMaxPSG` (= nA5)
-indexes the last `PSGFrequencies` entry, 223721.56 Hz, so the driver writes divider **0** to tone
-ch2.  The Sega VDP PSG clocks a zero divider as N=1: LFSR shift rate = clock/32 ≈ 112 kHz, which is
-near-white hiss out to the sampling Nyquist.  The converter derives that `1` itself (below); eight
-configs used to say `synth_root: A8` instead → N≈16 → 7 kHz, which sounds like a dull rattle.
-`tools/vgm_analyze.py --chip psg --channel NOISE` prints the divider actually written in a VGZ
-recording (`white/tone2 N=0`), and `tools/vgm_compare.py` shows the resulting band profile
-against the MOD's.
-
-`convert.py` (and `analyze.py --config`) **warn** when a rate-3 entry without `tone2_n` has a
-`synth_root` outside the driver's table, C3–Gs8 (`core.config.rate3_synth_root_issues`) — no note
-can make the driver write that frequency, and `A8` in particular is the nMaxPSG mistake above.
-The `analyze.py` YAML skeleton states no divider either; it adds a comment with the value the
-converter will derive, and `low:` when the channel plays pitched noise.
-
-**The divider is derived from the song — leave `tone2_n` and `synth_root` out.**
-
-PSG3 keeps writing its own note's divider to tone channel 2, looked up in the driver's
-`PSGFrequencies` table (`core/smps/driver_tables.py`): `N = PSGFrequencies[note − $81 + transpose]`, with the
-table's degenerate last entry (index 69, `nMaxPSG`) counting as 1.  The table is *not* chromatic, so
-this cannot be reproduced by a note-name formula.  `derive_rate3_dividers`
-does the lookup for every rate-3 noise instrument:
-
-- at the entry's `low` note when it has one (the sample plays at `root` for that note, and MOD
-  playback speed moves it from there) — Marble Zone: `low: A3`, header transpose `$0B` →
-  index 56 → **N = 34** (3290 Hz);
-- otherwise at the note the instrument plays most — every hi-hat in the soundtrack is `nMaxPSG`
-  → **N = 1**.
-
-`convert.py` prints what it used (`rate-3 noise inst 10  tone-2 divider 34  from nA3 +11`).
-An explicit `tone2_n` wins, then an explicit `synth_root` (converted chromatically), then the
-derivation; the `root` fallback only remains for a rate-3 entry that plays no note at all.
-
-Checked against every recording: all songs but Marble Zone write divider 0 on every noise hit
-(→ 1); Marble Zone's derived dividers match the recording note for note — 17 ×20, 18 ×2, 19 ×12,
-22 ×18, 23, 26 ×28, 29 ×4, 31 ×10, 34, 38 ×4 — except the five notes the disassembly flags as a
-data bug (they index past the table and read ROM garbage).  Before this, eight configs had used
-`synth_root: A8` (N ≈ 16, a dull 7 kHz rattle) and Marble Zone `C7` (N = 53; its anchor is 34).
-
-Set `root`/`low` separately to control MOD pitch anchoring — they are independent of `synth_root`.
-
-The synthesized sample captures one fixed LFSR frequency.  Per-note timbre shifts (hardware
-tracks tone ch2 in real time) are approximated by the MOD playing the sample at different
-speeds.
-
-| | Hardware (rate 3) | MOD synthesis |
-|---|---|---|
-| LFSR clock source | PSG3 tone register `$C0` N (dynamic, changes per note) | Fixed at synth_root's N |
-| Per-note timbre | New LFSR sequence per note frequency | Same sample sped up/slowed down |
-| Rhythm and timing | Correct | Correct |
-| Amplitude envelope | Correct (fTone_09 decay) | Correct (fTone_09 decay) |
-
-The timbre approximation is acceptable for Marble Zone: the noise bursts are short (fTone_09
-= 16 frames) and the pitch range is modest (G3–E4 ≈ 9 semitones = up to ~1.7× playback speed).
+Both are derived from the song; delete stated values rather than correct them.  A stated tone
+`synth_root` only moves the rendering pitch (the notes stay in tune, the sample stretches); a
+stated rate-3 `synth_root` or `tone2_n` replaces the divider the hardware uses.
 
 ### Noise too loud or too quiet against the tones
 
-Every sample is peak-normalised, so the noise:tone balance is the `sample_list` volumes' —
-measure them with `tools/vgm_compare.py --write-volumes` (the old `psg_output_max` scale is
-gone).
+Every sample is peak-normalised, so the balance is the `sample_list` volumes': measure them with
+`tools/vgm_compare.py --write-volumes`.
+
+### One noise sample for several envelopes
+
+`noise_envelopes` warns when an instrument plays under several labels: give a label its own
+slot in the entry's `envelopes:` (Credits' PSG3 has no free slot and keeps the warning).

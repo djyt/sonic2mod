@@ -32,7 +32,7 @@ bytes → asm text → parser.  Text loses the addresses, and it means writing a
 reading works.  The writer comes later as `--asm` (1.7), where a round trip is a check on both.
 
 **Ground truth.**  The disassembly's asm assembles to this ROM, except where the disassembly
-fixes bugs: `SmpsParser._CONDITIONAL_DEFAULTS` sets `FixMusicAndSFXDataBugs: True`, but the ROM
+fixes bugs: `SmpsParser` reads with `FixMusicAndSFXDataBugs` on (`fix_data_bugs=True`, 0.3), but the ROM
 (and every VGZ) is the game as shipped.  Two songs differ: Marble Zone's PSG3 (three notes
 off the PSG table) and Credits (three extra rests, plus an `smpsAlterVol $0C` that mutes a
 passage).
@@ -189,7 +189,8 @@ driver, read with capstone (`$60000`-`$61700`), and `reference/sega_retro/`.
 `RomDriver`: each flag byte's `FlagSpec` (effect, no-attack, return, stop, jump, loop, call,
 drop, refuse; operand count, `more_if_set` for `$E4`).  `SmpsDriver.TYPE1A` =
 `smps68k_type1a`.  A config's `driver:` is now optional: a ROM's is detected, an asm or a VGM log
-is Sonic 1's.  The FM pitch rule, envelopes and DAC scheme join the variant in 2.4-2.5.
+is Sonic 1's.  The envelopes and DAC scheme joined the variant in 2.4-2.5; the FM pitch rule did not
+(Sonic 1's table for every driver: Type 1a differs only past the top note).
 
 ### [x] 2.2 Locate (done 2026-10-03)
 `locate_sounds` finds the `Go_` block by its tables' shape (music / SFX / special entries at
@@ -228,13 +229,13 @@ DAC names come from the driver (`RomDriver.dac_names`: Sonic 1's `dKick` …, Ty
 for every byte to `$DF`), so the walk makes every Moonwalker DAC hit a DAC note.  The ROM-streamed
 voice samples (from `$86`) are not read: 2.7 drops them.
 
-### [ ] 2.6 Pan animation (`$E4`)
-No MOD panning: dropped, counted in the report.  If a stereo build ever exists, it is a pan
+### [x] 2.6 Pan animation (`$E4`)
+No MOD panning: dropped, counted in the report (`SongCode.dropped`: `convert.py`'s report, `rom_import.py`).  If a stereo build ever exists, it is a pan
 table walk.
 
-### [ ] 2.7 Song-triggered sounds (`$EB`)
+### [x] 2.7 Song-triggered sounds (`$EB`)
 Bad, Round Clear and a dance queue voice sample `$DD`.  Dropped, with a report line (the user's
-rule: what is not part of the music goes).  The VGZ pack agrees: each dance is ripped with and
+rule: what is not part of the music goes; done as 2.6).  The VGZ pack agrees: each dance is ripped with and
 without voice, so the game lays the voice over the music.
 
 ### [x] 2.8 Minimal config (the user's choice; done 2026-10-03, `core/plan/derive.py`)
@@ -310,8 +311,9 @@ not in the music index - find them (the 49 SFX?).  A matcher pairs each rip with
 `align_songs` / `compare_songs` on the lifted onsets, not by name.  Then `vgm_pitch_audit`,
 `vgm_compare`, the volumes; SMPSPlay (Type 1a) to listen against.
 
-### [ ] 2.10 Unknown data
-A flag outside the variant's table, or a pointer outside the ROM: fail, naming the address.
+### [x] 2.10 Unknown data
+A flag outside the variant's table, or a pointer outside the ROM: fail, naming the address
+(`RomError` in `core/rom/tracks.py`, `RomImage` reads).
 
 ### Later
 Other Sonic 1 builds and hacks (same driver, other addresses); Golden Axe II (Type 1b);

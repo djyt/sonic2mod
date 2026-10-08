@@ -1,1488 +1,994 @@
 # sonic2mod Conversion Pipeline
 
-How SMPS assembly music maps to Amiga ProTracker MOD format.
+The rules by which an SMPS song becomes a ProTracker MOD: timing, note placement, effects, levels,
+sample length, the merged (Amiga) build, and how a conversion is checked against a VGZ recording.
+What the driver does is `smps_driver.md`; how samples are rendered is `fm_synthesis.md` /
+`psg_synthesis.md`; config keys are `yaml_config.md`; module structure is `architecture.md`;
+ProTracker effects are `mod_effects.txt`.
 
-Related docs: `docs/smps_driver.md` (driver internals), `docs/smps_format.md` (assembly syntax),
-`docs/architecture.md` (module overview), `docs/mod_effects.txt` (ProTracker effect reference),
-`docs/fm_synthesis.md` (FM synthesis — synth_root, pitch matching, OPN2 internals),
-`docs/psg_synthesis.md` (PSG synthesis — psg_map/psg_voice_map, envelope tables, SN76489 internals),
-`docs/yaml_config.md` (full YAML schema).
+**Contents**
 
----
-
-## Data Flow
-
-```
-  .asm file
-      │
-      ▼
-  SmpsParser.parse_file()          smps_parser.py
-      │  • strips comments, collects labels
-      │  • parses header macros (voice ptr, channel headers, tempo)
-      │  • walks each channel's dc.b stream: notes, durations, coord flags
-      │  • unrolls smpsLoop, inlines smpsCall
-      │  • produces SmpsSong IR
-      │
-      ▼
-  SmpsSong (intermediate representation)
-      │  • SmpsSongHeader  (tempo, channel counts, voice label)
-      │  • SmpsChannel[]   (header + ordered SmpsEvent list)
-      │  • SmpsVoice[]     (FM patch parameters, not directly mapped)
-      │
-      ▼
-  SmpsToModConverter.convert()     smps2mod.py
-      │  1. Create ModFile (10-channel default)
-      │  2. Set BPM + Speed on pattern 0 (Fxx effects)
-      │  3. Optionally run generate_fm_samples() → synthesized PCM
-      │  4. Load sample files from sample_list (or placeholders)
-      │  5. extend_looping_channels() — extend short PSG loops to match song length
-      │  6. For each configured channel: walk SmpsEvent list → write MOD rows
-      │  (_convert_passes; then convert() lays the MOD out, in this order:)
-      │
-      ▼
-  apply_pattern_breaks(mod, breaks)   mod.py   [optional — only if mod_pattern_breaks set]
-      │  • Splits pattern stream at (P, break_row); repacks body into patterns P+1..N
-      │  • Writes Bxx at (P, break_row) → P+1 (skip blank tail rows of pattern P)
-      │  • Remaps any existing Bxx effects (loop jumps must NOT be written before this)
-      │
-      ▼
-  converter._set_loop_point(breaks)   smps2mod.py
-      │  • Scans post-break MOD backward for last row with non-zero period
-      │  • Maps loop_target_tick → post-break (pattern, row) using break formula
-      │  • Writes Bxx (+ optional Dxx companion) at the last data row
-      │
-      ▼
-  trim_to_pattern / narrow_to        mod.py   [merged build: empty columns go]
-      │
-      ▼
-  compact_samples                    mod.py   [merged build (samples.compact_slots): the sample
-      │                                        slots in use renumbered from 1 without gaps; the
-      │                                        cells, warnings and sample_sources follow]
-      ▼
-  ModFile → mod.get_bytes()        mod.py
-      │
-      ▼
-  .mod binary
-```
+1. [The conversion at a glance](#the-conversion-at-a-glance)
+2. [Timing](#timing)
+3. [Notes: range, transpose, routing](#notes-range-transpose-routing)
+4. [Effects](#effects)
+5. [Levels](#levels)
+6. [Song start, loop and end](#song-start-loop-and-end)
+7. [Detune variants](#detune-variants)
+8. [Sample length, sustain loops and release slides](#sample-length-sustain-loops-and-release-slides)
+9. [Pattern breaks](#pattern-breaks-mod_pattern_breaks)
+10. [The merged build](#the-merged-build)
+11. [Verifying against a VGZ](#verifying-against-a-vgz)
 
 ---
 
-## SMPS → MOD Effect Mapping
-
-One effect per note-row in MOD format. See `docs/mod_effects.txt` for full ProTracker effect documentation.
-
-| SMPS Command | Byte | Parameters | MOD Effect | MOD Code | Notes |
-|-------------|------|------------|------------|----------|-------|
-| `smpsAlterVol` | $E6 | signed TL delta | Set Volume | `Cxx` (Cmd C) | FM: cumulative TL offset, 0.75 dB/step. `Cxx` only on notes whose level differs from the instrument's baked level — see §FM levels |
-| `smpsModSet` | $F0 | wait,speed,change,step | Vibrato | `4xy` (Cmd 4) | x from the driver's cycle length, y per note from its swing in cents (gotcha 4); triangle→sine |
-| `smpsModOn` | $F1 | — | Vibrato (continues) | `4xy` | Re-activates stored params |
-| `smpsModOff` | $F4 | — | (clears vibrato state) | none | No MOD effect; future notes have no vibrato |
-| `smpsNoteFill` | $E8 | frames | Note Cut | `ECx` / `C00` | Fill is in V-int **frames**; scaled by `(mod−1)/mod` onto the tick timeline, then placed to the MOD tick: `ECx` inside a row, `C00` on a row boundary. Any fill length works; skipped when it outlasts the note |
-| `smpsJump` | $F6 | address | Position Jump | `Bxx` (Cmd B) | Target = post-break pattern for the max loop-start tick; Bxx placed at last row with a note period in the post-break MOD; see §Pattern Breaks |
-| `smpsLoop` | $F7 | idx,count,addr | (none — unrolled) | — | Loop body replayed at parse time |
-| `smpsCall` | $F8 | address | (none — inlined) | — | Subroutine events spliced into caller |
-| `smpsSetvoice` | $EF | voice index | (instrument routing) | — | Updates voice_map lookup; no direct MOD effect |
-| `smpsChangeTransposition` | $E9 | signed byte | (pitch shift) | — | Updates total_transpose; affects next note placement |
-| `smpsDetune` / `smpsAlterNote` | $E1 | signed byte | (sample) / `E1x` `E2x` | — | FNUM offset (+3…8 c for $03): the note plays its instrument's sample rendered at that offset — a **detune variant** in a free slot (`core/plan/detune.py`); a tie after a detune change gets a fine slide. Never a semitone, never a range lookup |
-| `smpsPan` | $E0 | direction | (level only) | — | MOD panning is channel-based, but a hard-panned note counts `fm_pan_law_db` (3 dB) quieter than a centred one — see §FM levels |
-| `smpsNoAttack` | $E7 | — | (flagged on note) | — | No MOD equivalent; note plays without re-attack in SMPS |
-| `smpsNop` | $E2 | byte | (none) | — | Game sync byte; ignored |
-| `smpsPSGform` | $F3 | byte | (routing) | — | Looks up `psg_map[byte]` → new PSG instrument |
-| `smpsPSGvoice` | $F5 | label | (routing) | — | Looks up `psg_voice_map[label]` → new PSG instrument |
-| `smpsMaxRelRate` | $F9 | — | (none) | — | FM1 release; ignored |
-
-### Legato (`smpsNoAttack` before a note byte)
-
-The driver's `cfNoAttack` sets a flag; the next note byte writes its frequency and skips the
-key-on, so the envelope carries on at the new pitch.  Sonic 1 uses it for 1-tick grace notes
-that bend into a chord (Green Hill's stabs: FM4 and FM5 play `F2` for one tick, then `E2`
-legato; FM3 the same a tick later) and for Drowning's FM3 slide line (240 of 241 notes).  A MOD
-note-on re-triggers its sample, so `ChannelWriter` writes a legato note as the target note
-with a **full-speed tone portamento**, `3FF`: the period slides to the new note within a tick
-and the sample is not re-triggered (the instrument number only resets the volume).  The
-portamento takes the effect slot, so the note gets no `EDx` (it is rounded to the nearer row)
-and a `Cxx` due on it moves to the next free row of the note, as a delayed note's does.  The
-sustain scan counts a legato note as the same ring.  Before this, every stab was heard twice.
-
-A portamento never changes the sample, so when the target note resolves to **another
-instrument** — another range of the same voice, its sample rendered for another octave — the
-target is written on the instrument that is sounding: the previous MOD note moved by the
-chip-pitch difference, with the previous instrument number.  Green Hill's FM3 grace `C6`
-(voice $08's C6–B6 range, instrument 15, rendered an octave up) bends into `B5` (its C5–B5
-range, instrument 14): written as `B2 3FF` after `C2` it slid instrument 15's sample up to
-B6, an octave high; it is now `B1 3FF`.  A target that would leave the MOD's three octaves
-that way is re-triggered on its own instrument instead.  Stage Clear has one such note.
-
-A no-attack note after an `smpsSetvoice` is re-triggered too: the hardware rewrites the
-operators under the running envelope, so the note sounds with the new voice, and a portamento
-would keep the old voice's sample.  Green Hill's FM4 and FM5 open the loop body that way (voice
-$08 → $05 at the jump label, tick 577); written as `3FF` they rode the intro's last, decayed
-note at −50 dB for four rows (first pass) and after every loop-back whatever the song's end
-left on the channel — heard as a silent start to pattern 5.  `tools/mod_lint.py` flags a `3xx`
-with nothing playable under it, and the regression suite fails a case on any such note its
-baseline does not have.
-
-A no-attack note with nothing sounding on the channel yet (no note-on before it) is a real
-note-on as well: Drowning's FM3 trill is `smpsNoAttack` from its first note, and written as
-`3FF` from row 0 the whole line was silent — `tools/mod_lint.py` reported 240 silent
-portamentos there.  After that first note the chain rides one sample, so a chain longer than
-the sample (the 10 s auto-sustain cap, `sustain_short`) goes silent where the sample ends
-unless `sustain_loops: all` loops it; the lint lists those rows too.
-
-These three rules are `legato: strict` in `settings.yaml`.  `legato: loose`
-writes every legato note as a `3FF` on the target's own instrument, as the conversion did
-before 2026-09-28 — byte-identical to those builds — which sounds right only in a player that
-swaps the sample on an instrument number (OpenMPT); FT2 clone and ProTracker do not, and the
-MODs are checked in FT2 clone.  `legato: retrigger` (the default since 2026-09-28) writes every no-attack note as a plain
-note-on, as the conversion did before 030ca81 (its pattern cells are those of that build; the
-samples keep today's lengths).  What that trades: a grace note bending into a chord is heard
-as two attacks, but a legato onto a note that has already sounded for seconds is not left on
-the sample's decayed tail.  Green Hill's FM1 shows the second case: E held 56 ticks, a
-no-attack rest holds it 56 more, then a no-attack C 2.8 s in — the hardware plays that C at
-the level of a fresh note (−13.6 dB in the VGZ), a `3FF` there rides instrument 12's sample
-where voice $06 has decayed into a beat null (−39.5 dB).  The sample-side answer (a render
-whose sustain decays as slowly as the hardware's, or a loop) is the envelope-tail question
-the audits left open; the setting is the note-side one.
-
-### Effect priority (one per note-row)
-
-When multiple effects are active on the same note, **first match wins**:
-
-1. **Cxx — Set Volume** (`smpsAlterVol` result differs from current): volume changes take priority because they affect all subsequent notes until changed again.
-2. **4xy — Vibrato** (`smpsModSet/On` active, speed > 0): vibrato is a continuous effect; priority over note-cut.
-3. **ECx — Note Cut** (`smpsNoteFill` cut falling inside the attack row): lowest priority.
-
-Implication: if volume changes on the same row as vibrato, vibrato is dropped for that row. Design songs (and YAML configs) to avoid stacking these on the same row.
-
-A cut that lands inside the attack row while that row needs `Cxx` is moved to the start of the next
-row (`C00`), or dropped if the next event is already there.  Cuts on later rows of the note have
-the effect column to themselves (the `4xy` continuation skips that row).  Exception to the order
-above: an attack-row `ECx` does displace `4xy` — a note that short has no audible vibrato.
-
-### Notes that start between rows (`EDx`)
-
-A note whose tick is not a multiple of `ticks_per_row` goes on the row it starts **in**, delayed
-with `EDx` (`SmpsToModConverter._note_cell`).  Before, it was rounded to the nearer row — up to half
-a row early or late, and because Python rounds halves to even, early and late on alternate notes
-(GHZ FM4/FM5 play 115 / 155 notes one tick off the grid).
-
-- **The delay is measured in frames, not average ticks.**  With tempo modifier *m*, `TempoWait`
-  holds every *m*-th frame, so tick *k* falls on frame `k + k // (m − 1)` and ticks are unevenly
-  spaced.  GHZ (*m* = 3, 2 ticks per row): an odd tick comes 1 frame = 16.7 ms after its row
-  starts, not the 25 ms an average tick lasts — exactly `ED1` at speed 3.  Measured: FM4/FM5
-  median onset error +17 ms with the average-tick delay (`ED2`), +1 ms with the frame delay.
-  `x = round(frames × target_speed × Timeline.ticks_per_frame_at(tick) / Timeline.ticks_per_row)`.
-- **`EDx` needs the cell's one effect slot.**  A cut (note fill, or a PSG note's end) inside the
-  attack row keeps it, and the note is rounded as before.  A `Cxx` due on the attack row gives
-  way when the note lasts into the next row: the volume is set on the first later row of the note
-  with a free slot instead (one row at the instrument's own level — a lost row of level beats
-  33 ms of timing; Drowning FM4 pans every other note hard, so half its notes carry a −3 dB `Cxx`
-  and all of them start a tick off the grid).  An attack-row `4xy` is given up for it (later rows
-  carry the vibrato), and a rest's `C00` on the same row is overwritten — the new note ends the
-  old one anyway.
-- **Two note-ons cannot share a cell.**  When the row already holds the channel's previous
-  note-on — a 1-tick grace note and the note it slides into under `smpsNoAttack` — the later one
-  takes the next row, undelayed: late by less than a row (GHZ: 33 ms) instead of erasing the
-  grace.  The slide target is still re-triggered; a `3xx` slide is not possible when the two
-  notes sit in different `voice_map` ranges, as they do in GHZ.
-- DAC notes carry no other effect, so they always get their delay (Title Screen's 2-tick snare
-  roll: three hits on three rows instead of two on one).
-
-Songs with off-grid notes: Title Screen (DAC), GHZ (FM3–FM5), Spring Yard (FM4, FM5, PSG1),
-Ending (DAC), Chaos Emerald (PSG1, PSG2), Drowning (FM4, FM5); songs whose notes all sit on the grid do not change.
-GHZ key-ons with no MOD note row: FM1 4, FM3 2, FM4 15, FM5 15 → 0 on every channel.
-
-### FM levels (`fm_volume_scaling: baked`)
-
-On the chip an FM note's level is set by the track's TL offset — `smpsHeaderFM` volume plus every
-`smpsAlterVol` so far, 0.75 dB per step — and by its pan: a centred channel drives both speakers,
-a hard-panned one drives one (−3 dB power).  A MOD note's level is its instrument's default
-volume unless a `Cxx` overrides it, and instruments cannot share sample data, so a second copy of
-a sample at another volume costs its full size.
-
-`LevelPlanner.levels(source_map, "FM")` therefore walks the FM channels first — with
-the same `DriverState` the conversion uses — and, for every MOD instrument, counts notes per level
-`−0.75 × TL − pan`.  The laws themselves live in `core/chips/` (`fm.py`, `psg.py`) (dB → MOD volume: `core/mod/volume.py`).  The level with the most notes is that
-instrument's **baked level**: it is what the `sample_list` volume stands for, and those notes get
-no command.  A note at any other level gets `Cxx = volume × 10^(ΔdB / 20)` (clamped to 64).  So:
-
-- `Cxx` appears on the *minority* channel of a shared instrument and where `smpsAlterVol` has
-  moved a channel — not on every note, and with the chip's law (a fade stays a fade);
-- no variant instruments, no extra sample memory;
-- `sample_list` volumes stay hand-set (measure with `tools/vgm_compare.py`); with the law right,
-  every channel using an instrument shows the *same* error, which one volume then fixes.
-  GHZ: instrument 11 read +4.8 / +4.6 / +4.6 dB on FM3 (centre) / FM4 (left) / FM5 (right);
-  16 → 9 brought all three within 0.4 dB.  Whole song: every FM channel within ±0.3 dB.
-
-Across the 18 configs this took `Cxx` on FM notes from 1662 to 887.  Songs that gained commands
-had been wrong silently: Drowning's crescendo (`smpsAlterVol` with negative deltas) used to clip
-at volume 64 and vanish.
-
-Legacy modes: `fm_volume_scaling: true` (header TL + log law as an absolute volume, `Cxx` on
-every FM note) and `false` (header TL ignored, one `smpsAlterVol` step = one *linear* volume unit
-≈ 0.3 dB — FM1's GHZ fade drifted 5 dB).
-
-### PSG levels (`psg_volume_scaling: baked`)
-
-Same scheme on the SN76489: level = −2 dB × attenuation (`smpsHeaderPSG` volume +
-`smpsPSGAlterVol`, 15 = silent), planned by `LevelPlanner.levels(source_map, "PSG")` — the same pass, with the
-same `DriverState` instrument tracking the conversion uses (header voice, `smpsPSGform` →
-`psg_map`, `smpsPSGvoice` → `psg_voice_map` and its per-note range dispatch).  The attenuation most of an instrument's notes play at needs no command
-and is what its `sample_list` volume stands for.  There is no pan term — the PSG is mono.
-
-The legacy mode (`absolute`) made the volume `64 × 10^(−2·att/20) × sample volume / 64`, so every
-PSG note whose track attenuation was not 0 carried a `Cxx` — 3241 of 3241 PSG notes across the 18
-configs; baked leaves 498.  That is more than tidiness: the effect column is now free on most PSG
-notes, so an attack-row note cut no longer has to move to the next row to make room for the
-volume (Title Screen 12, Spring Yard 264 cuts restored to the tick).
-
-The configs were migrated when the mode was introduced: each PSG `sample_list` volume became what
-its dominant attenuation emitted before (Title Screen noise 16 → 6, i.e. the old `C06`; the change
-is recorded in a trailing comment on each line).  Per-note effective volume is identical before
-and after on every song except 268 Scrap Brain notes that went 12 → 13 — the single rounding is
-the more accurate one (32 × 10^(−8/20) = 12.7).
-
----
-
-## Tempo commands on row 0 (`ModLayout.tempo_commands`)
-
-The BPM and, when it is not 6, the speed are `Fxx` on pattern 0 row 0.  They are placed
-after every channel is converted, into cells whose effect slot is free (spare channels first,
-then any channel with no effect on row 0; a leading rest's `C00` gives way if nothing else is
-free, with a warning).  They used to be written first, on channels 0 and 1, where a note's own
-row-0 effect silently overwrote them: the merged Green Hill build lost its speed 3 to a `Cxx`
-and played at half tempo.  Mid-song `smpsSetTempoMod` changes are placed the same way
-(`ModLayout.tempo_changes`).
-
-## Loop extension (`extend_looping_channels`)
-
-A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) is extended by
-replaying the loop body until the song's last tick.  The body is the events **after the jump
-label** — `SmpsChannel.loop_event_index`, resolved by the parser — not "events at or after the
-label's tick": a coordination flag written just before the label shares its tick but is not in
-the loop.  Spring Yard PSG3 has `smpsPSGAlterVol $FF` immediately before `Mus85_SYZ_Jump03:`; the
-tick-based selection replayed it every repetition and the hi-hat crept from attenuation 5 to 0 in
-five loops.  The SYZ VGZ shows attenuation 5 for the whole song.  (Marble Zone: 2 cells.)
-
----
-
-## Timing: Ticks → Rows → Patterns
-
-### Tick-to-row formula
+## The conversion at a glance
 
 ```
-row_total = int(tick_position / ticks_per_row)
-pattern   = row_total // 64
-row       = row_total % 64
+.asm / ROM / .vgz ─ read_song ─► SmpsSong ─ SmpsToModConverter.convert() ─► ModFile ─ get_bytes() ─► .mod
 ```
 
-`ticks_per_row` is set in YAML (`ticks_per_row: 6` default). Choose it to be the GCD of the note durations in the song so all durations map to whole row counts.
+Each SMPS channel becomes one MOD column (its `channels:` entry's `mod_channel`).  Every pass reads a
+channel the same way — `walk_channel` advancing one `DriverState` and `resolve_note` deciding what each
+note plays (`architecture.md`) — so the passes cannot disagree.
 
-### Common SMPS durations with ticks_per_row = 6
+**One pass** (`_convert_once`):
 
-| SMPS duration | Ticks | MOD rows |
-|---------------|-------|----------|
-| $03 | 3 | 0.5 (avoid) |
-| $06 | 6 | 1 |
-| $0C | 12 | 2 |
-| $12 | 18 | 3 |
-| $18 | 24 | 4 |
-| $24 | 36 | 6 |
-| $30 | 48 | 8 |
+1. rendering pitches and detune variants (`prepare_instruments`), on the song as parsed;
+2. `prepare_song`: `apply_global_tempo_div`, then `extend_looping_channels`;
+3. merged build only: the merge plan (`build_merge_plan`);
+4. sustain needs (`SustainPlanner`);
+5. samples: FM rendered, disk samples loaded, DAC drums saturated, PSG rendered; merged: composites
+   mixed and banked;
+6. every channel written (`ChannelWriter`);
+7. row 0: leading rests' `C00`, then BPM / speed `Fxx`; mid-song tempo `Fxx` (`ModLayout`).
 
-### Common SMPS durations with ticks_per_row = 2
-
-| SMPS duration | Ticks | MOD rows |
-|---------------|-------|----------|
-| $02 | 2 | 1 |
-| $04 | 4 | 2 |
-| $06 | 6 | 3 |
-| $08 | 8 | 4 |
-| $0C | 12 | 6 |
-| $10 | 16 | 8 |
-
-### BPM and speed setup
-
-MOD timing is set by two `Fxx` effects placed in Pattern 0, Row 0:
-- **Channel 0:** `Fxx` where xx = BPM (range $20–$FF = 32–255 BPM)
-- **Channel 1:** `Fxx` where xx = speed (range $01–$1F = ticks per row)
-
-These are written automatically by `smps2mod.py`. See `docs/yaml_config.md` §BPM Derivation for the formula and `auto_bpm` option.
-
-**Whole-number BPM.**  The formula rarely lands on an integer, and the MOD's BPM is one:
-Special Stage (modifier 8, divider 2, 2 ticks per row) at speed 3 is 98.4375 → 98, which ran
-0.44 % slow — 139 ms behind the hardware over its 33 s pass; Star Light and Chaos Emerald were
-187.5 → 188 (+0.27 %).  `target_speed` only changes how many MOD ticks a row has, never the row
-grid, so it is free to choose: speed 4 makes those two exactly 250, speed 6 makes Special Stage
-196.875 → 197 (+0.06 %).  `convert.py` prints the exact value, the error in ms per minute and
-the speed that would do better (`core.config.bpm_rounding_options`); the `analyze.py` skeleton
-picks that speed.  Residuals now: Invincibility, Continue and Game Over ±0.07 %, everything else
-exact.
-
-**Mid-song tempo changes** (`smpsSetTempoMod`, $EA — Drowning ×4, Credits ×5).  The flag sets
-every track's modifier and restarts the TempoWait counter.  The converter collects the changes
-(`Timeline.collect_segments`), scales the BPM by the change in tick rate and writes `Fxx` on the
-row of each change — in a spare MOD channel when there is one, else any cell without an effect,
-else a cell holding only a `4xy` continuation (`ModLayout.tempo_changes`; a song that loops back into
-another segment gets an `Fxx` at the loop target too).  Note fills, vibrato rates and `EDx`
-delays use the modifier in force at their tick (`Timeline.ticks_per_frame_at`).  Every segment's BPM must fit
-32–255: Drowning goes 75 → 100 → 112 → 125 → 135 at 2 ticks per row (1 tick per row would need
-270 at the end); `convert.py` warns when a segment is clamped.
-
-**Global duration divider** (`smpsSetTempoDiv`, $EB — Credits' half-tempo passage, written from
-the DAC track).  `cfSetTempoDividerAll` writes every track's `TempoDivider`; the driver multiplies
-a duration by it when the note is *read*, so a note begun before the change keeps its length and
-the last write wins against the track's own `smpsChanTempoDiv`.  `apply_global_tempo_div`
-re-times every channel accordingly before anything reads ticks (the carrying channel first, since
-the change's real tick depends on any earlier change; the parser keeps `smpsChanTempoDiv` as an
-event so the divider each note was parsed with is known).  Rows stay ticks: the passage simply
-has twice as many rows, at the same BPM.  Labels (loop targets) are not re-timed — no song that
-uses the flag loops.
-
-*Inherent:* the driver's holds come at the end of each counter cycle, so the first frames after a
-change run a little fast and the MOD ends up one to two frames (17–48 ms) behind at each change,
-flat in between — Drowning is +59 ms behind by its end.  The audit tools follow that; a listener
-has nothing to compare it with.
-
----
-
-## MOD Binary Format Quick Reference
+**Then the layout** (`convert()`), in this fixed order:
 
 ```
-Offset   Size   Content
-0        20     Song name (ASCII, null-terminated, max 19 chars)
-20       930    31 sample headers (30 bytes each)
-950      1      Number of patterns used (1–127)
-951      1      Always 127 (ProTracker sentinel)
-952      128    Position list (pattern indices, 0-based)
-1080     4      Format tag: "M.K." (4ch), "8CHN", "10CH", "16CH"
-1084     …      Pattern data (N patterns × channels×4×64 bytes each)
-…        …      Sample PCM data (concatenated, 8-bit signed)
+pattern breaks → loop Bxx (or a stopping song's D00) → trailing patterns trimmed
+  → (merged) narrowed to the columns in use → sample names → (compact_slots) slots renumbered
+  → one-shots' first word zeroed (samples.pt_zero_bytes)
 ```
 
-### 4-byte note cell
-
-```
-Byte 0:  [inst high nibble][period high byte high nibble]  = (inst>>4)<<4 | period>>8
-Byte 1:  period low byte
-Byte 2:  [inst low nibble][effect command nibble]
-Byte 3:  effect parameter
-```
-
-Period values come from `PERIOD_TABLE` in `tables.py` (ProTracker PAL periods, C1–B3).
-Instrument is 1-based (1–31); 0 = no instrument (continue previous).
+The `Bxx` needs the post-break layout, so breaks always come first.  A merged build with
+`merge_bank_slots: auto` may run the whole pass again (up to four builds; § Sample banks).
 
 ### MOD limits
 
 | Resource | Limit |
 |----------|-------|
-| Samples/instruments | 31 |
-| Patterns | 127 |
+| Instruments | 31 |
+| Patterns / positions | 127 (`max_patterns`) |
 | Rows per pattern | 64 |
-| Channels | 4, 8, 10, 12, 14, or 16 (format tag required) |
-| Sample size | 131070 bytes (65535 words × 2) in the format; original ProTracker's editor takes 65534. `samples.max_sample_kb` (settings.yaml, 128 or 64) is what the generators cap each instrument's sustain to, and `sample_truncated` warns if one is cut anyway |
-| Note range | C1–B3 (36 semitones) |
+| Channels | 4, 8, 10, 12, 14, 16 (format tag) |
+| Notes | C1–B3, 36 semitones |
+| Effects | one per cell |
+| Sample | 131070 bytes in the format, 65534 in the original ProTracker editor; `samples.max_sample_kb` (128 / 64) caps what the generators render, `sample_truncated` warns if one is cut anyway |
+| BPM | 32–255 (`Fxx` ≥ $20) |
+| Speed | 1–31 MOD ticks per row |
 
 ---
 
-### `range_space: chip` — ranges on the pitch the chip plays
+## Timing
 
-`voice_map` / `psg_voice_map` ranges are matched against the source byte (`note − $81`) by default,
-and `root` anchors that byte.  A song that changes key with `smpsChangeTransposition` while
-keeping a voice breaks that model: the same byte must reach different MOD notes.  Credits' FM2
-does it twenty times, and the whole medley moves voices between octaves; matched on source bytes
-it audited at 8 % of notes right.  With `range_space: chip` (song-level) the key is the real pitch
-— byte + pitch_offset + accumulated `$E9`, PSG through the driver's frequency table
-(`core.smps.driver_tables.psg_index_semitone`) — so `low`/`high` are chip pitches, `synth_root` is simply `low`,
-and a voice spanning more than three octaves gets one entry per window.  Two voices sharing one
-sample keep separate entries: `root_e = root_head + (low_e − low_head)`.  `configs/13_credits.yaml`
-is generated this way (1623 of 1635 notes right; the 12 left are detune scoops the converter does
-not do, and PSG notes transposed below the table).
+### Ticks, rows, patterns
 
-`tools/config_to_chip_space.py <config>` converts an existing source-space config: for every
-entry it collects the chip pitches each channel plays through it (loops extended, every
-transposition), makes one entry per touching range with `synth_root` = the range's low note and
-`root` shifted so the tuning `synth_root − root` is unchanged, and warns where a range cannot
-fit MOD C1–B3 at that tuning — those notes need an instrument of their own (Ending's PSG2 plays
-E6–B6 on a sample that reaches B3+24 at most).  Stage Clear, Ending, Invincibility and Continue
-were converted this way (62 → 74, 190 → 194, 140 → 204, 70 → 101 notes right); Star Light by hand.
-Source space is still what the other configs use.
-
-## voice_map Routing
-
-### Decision tree
+A row is `ticks_per_row` duration units.  The parser stores durations already multiplied by the
+header's tempo divider, so in stored ticks a row is `ticks_per_row × divider` (`Timeline.ticks_per_row`):
 
 ```
-Note event: source_semitone = (note_byte − $81); current_voice = active voice index
+row_total = tick / (ticks_per_row × divider)      pattern = row_total // 64      row = row_total % 64
+```
+
+- A **note-on** goes on the row it starts in (floor), delayed with `EDx` when it starts between
+  rows (§ Notes that start between rows); without a free slot for the delay it is rounded.
+- Everything else (rests, cuts, tempo changes, the loop target) rounds to the nearest row
+  (`Timeline.pattern_row`).
+- `merge_patterns:` pattern numbers count note-ons by floor, shifted past the breaks
+  (`Timeline.pattern_of`).
+
+### Choosing `ticks_per_row`
+
+The GCD of the song's note durations puts every note on a row.  A coarser grid still works (notes
+between rows take `EDx`) and makes fewer patterns; a finer one wastes rows.  Every tempo segment's
+BPM must also fit 32–255 (Drowning needs `ticks_per_row: 2`).
+
+| Common durations | GCD | `ticks_per_row` |
+|------------------|-----|-----------------|
+| $06, $0C, $18 | 6 | 6 |
+| $04, $08, $0C | 4 | 4 |
+| $04, $06, $0C | 2 | 2 |
+
+### BPM
+
+The driver reads `fps × (m − 1) / m` ticks a second (tempo modifier *m*; the `TempoWait` mechanism is
+`smps_driver.md` § Timing System), and one duration unit is `divider` ticks.  ProTracker plays
+`BPM / (2.5 × speed)` rows a second.  Equating rows per second:
+
+```
+BPM = fps × (m − 1) × speed × 2.5 / (m × divider × ticks_per_row)        fps = 60 NTSC, 50 PAL
+```
+
+| Song | divider | m | speed | tpr | BPM |
+|------|---------|---|-------|-----|-----|
+| Title Screen | 1 | 5 | 6 | 6 | 120 |
+| Green Hill | 1 | 3 | 3 | 2 | 150 |
+| Special Stage | 2 | 8 | 6 | 2 | 196.875 → 197 |
+
+`auto_bpm: true` computes it (`derive_bpm`: rounded, clamped to 32–255; 150 when the modifier is
+≤ 1); `region` picks the fps.  Otherwise `target_bpm` is used as written.  The speed `Fxx` is
+written only when `target_speed` is not 6.
+
+**The BPM is a whole number.**  A rounded BPM drifts against the hardware: Special Stage at speed 3
+is 98.4375 → 98, 139 ms behind over its 33 s pass.  `target_speed` changes the MOD ticks per row, not
+the row grid, so choose the speed whose BPM is (nearly) whole — speed 6 above.  `convert.py` prints
+the error and the better speed; `analyze.py`'s skeleton and minimal configs pick it
+(`bpm_rounding_options`).
+
+### Frames versus ticks
+
+`TempoWait` holds every *m*-th V-int frame, so ticks are unevenly spaced: tick *k* of a tempo
+segment falls on frame `k + k // (m − 1)`.  Note fill and modulation count **frames**, not ticks
+(`smps_driver.md`).  Every frame count is put on the tick timeline with
+`Timeline.ticks_per_frame_at(tick)` = `(m − 1) / m` for the modifier in force at that tick (1 for SFX),
+never multiplied by the tempo divider.
+
+### Mid-song tempo changes (`smpsSetTempoMod`, $EA)
+
+The flag sets every track's modifier and restarts the hold counter.  `Timeline.collect_segments` splits
+the song into tempo segments; each change gets `Fxx` with the BPM scaled by the change in tick rate
+(`Timeline.bpm_for`) on its row (`ModLayout.tempo_changes`: a spare column first, then any cell with no
+effect, then one holding only a `4xy` continuation).  A loop back into another segment gets an `Fxx`
+at the loop target too.  Fills, vibrato rates and `EDx` delays use the modifier at their tick.  A
+segment whose BPM leaves 32–255 is clamped and warned (`tempo_bpm_range`).
+
+Inherent: the driver's holds fall at the end of each counter cycle, so the MOD is one to two frames
+behind after each change (Drowning ends 59 ms late).  The audit tools allow for it.
+
+### Global duration divider (`smpsSetTempoDiv`, $EB)
+
+`cfSetTempoDividerAll` writes every track's divider, and the driver multiplies a duration by it when
+the note is read: a note begun before the change keeps its length, and the last write wins against a
+track's own `smpsChanTempoDiv`.  `apply_global_tempo_div` re-times every channel before anything
+reads ticks (the carrying channel first; the parser keeps `smpsChanTempoDiv` as an event so each
+note's divider is known).  Rows stay ticks: Credits' half-tempo passage has twice the rows at the
+same BPM.  Loop labels are not re-timed; no song that uses the flag loops.
+
+### Tempo commands on row 0
+
+The BPM and speed `Fxx` are placed after every channel is converted (`ModLayout.tempo_commands`),
+into cells whose effect slot is free: spare columns first, then any column with no row-0 effect;
+failing that a leading rest's `C00` gives way (warned `rest_no_slot` when the song loops to row 0).
+Written first, a note's own row-0 `Cxx` overwrote them and the song played at the wrong speed.  In a
+merged build only columns that hold notes take them first: an `Fxx` on an empty column keeps it from
+being narrowed away.
+
+---
+
+## Notes: range, transpose, routing
+
+### SMPS range to MOD range
+
+SMPS notes are bytes $81–$DF: semitone `byte − $81`, C0 to A#7.  A MOD has C1–B3.  A note's MOD
+index is its semitone plus transposition, or a `root` anchor; one outside 0–35 is **clamped** and
+warned (`clamp_high` / `clamp_low`), never silenced.
+
+| Source notes | Semitones | Transpose to land on C1–B3 |
+|--------------|-----------|----------------------------|
+| C0–B2 | 0–35 | 0 |
+| C3–B5 | 36–71 | −36 (most FM) |
+| C4–B6 | 48–83 | −48 |
+
+A channel spanning more than three octaves needs `voice_map` ranges, each with its own instrument.
+FM labels are real pitches (`nA4` at offset 0 is 440 Hz); a PSG byte indexes the driver's table,
+whose `nC0` is C3 (`psg_synthesis.md`).
+
+### `voice_map` routing (`resolve_note`)
+
+```
+key = note − $81 (range_space: source)   or   the chip's pitch (range_space: chip)
                 │
                 ▼
-        voice_map[current_voice] exists?
-        ├── YES → scan InstrumentRange list for matching [low, high]
-        │         ├── MATCH FOUND:
-        │         │     mod_instrument = entry.mod_instrument
-        │         │     entry.root set?
-        │         │     ├── YES: output = root + (source_semitone − entry.low)
-        │         │     │         [clamped C1–B3; ignores total_transpose]
-        │         │     └── NO:  output = source_semitone + total_transpose
-        │         │               [total_transpose = header pitch + smpsChangeTransposition]
-        │         └── NO MATCH: fall through ↓
-        └── NO  → channel_instrument_map[source][current_voice] exists?
-                  ├── YES → same range scan logic
-                  └── NO  → use channel default instrument + total_transpose
+ranges = channel_instrument_map[channel][voice]  or else  voice_map[voice]
+                │
+     entry with low ≤ key ≤ high?
+     ├── yes: instrument = entry.mod_instrument (or its detune variant)
+     │        ├── root set:  MOD note = root + (key − low)                        path fm_root
+     │        └── no root:   MOD note = (note − $81) + driver transpose + transpose
+     └── no:  the channel's instrument, MOD note as "no root"; a voice with ranges warns map_gap
 ```
 
-### When to use `root`
+- `driver transpose` = the header's pitch offset plus every `smpsChangeTransposition` so far;
+  `transpose` = the channel's YAML value.
+- `channel_instrument_map` replaces the voice's `voice_map` list for that channel; it does not fall
+  through to it.
+- PSG: a multi-entry `psg_voice_map` list dispatches per note on `low`/`high` (that entry stays
+  active); `root` with `low` places a tone as above, `root` alone pins a noise note; noise mode routes
+  through `psg_map` (`psg_synthesis.md`).
+- `smpsDetune` never takes part: it is a FNUM offset, not semitones (§ Detune variants).
 
-Use `root` when:
-- The channel does **not** use `smpsChangeTransposition` mid-song, OR
-- You want a fixed anchor regardless of transposition (e.g. FM2 bass in GHZ).
+### `root`
 
-**Do NOT use `root`** when:
-- The channel uses `smpsChangeTransposition` ($E9) dynamically — the notes will land at `root + offset` regardless of the transposition, which may be incorrect.
-- Example: GHZ FM1/FM3/FM4 use `smpsAlterPitch` to shift register ranges mid-song. These channels must use the `total_transpose` path (no `root`).
+`root` is **unconditional**: `low` always plays at `root`, whatever the pitch offset, detune or
+`smpsChangeTransposition`.  The sample's rendering pitch (`synth_root`) never moves a note: its
+difference from the pitch `root` sounds (`synth_shift`) goes into the sample's rate
+(`fm_synthesis.md` § Pitch: synth_root, synth_shift, target_rate).
 
-### root formula
+- **Use it** where a channel's key is fixed: the anchor is exact and independent of `transpose`.
+  When the entries cover every note of a channel, set `transpose: 0`.
+- **Don't** on a channel that changes key with `$E9` mid-song: the same byte must reach different
+  notes, and `root` places them all alike.  Use the transpose path (no `root`), or `range_space:
+  chip`.  The same holds for a PSG entry with `low` (Labyrinth Zone's PSG1/PSG2 walk with
+  `smpsAlterPitch`: rootless, `transpose: -12` on the channels).
+- **Choosing it:** keep `root + (high − low)` within C1–B3, and prefer the highest such `root`: the
+  sample plays at `root`'s rate, so a higher `root` keeps more treble (C2 ≈ 8.3 kHz, C3 ≈ 16.6 kHz).
+
+### `range_space: chip`
+
+By default ranges match the source byte.  With `range_space: chip` (song level) they match the pitch
+the chip plays — byte + pitch offset + accumulated `$E9`, a PSG note through the driver's table
+(`psg_index_semitone`, which also gives the hardware's pitch for notes transposed past the table's
+ends) — so `low`/`high` are chip pitches, `root` always sounds `low` (never `synth_root_ambiguous`),
+and a voice spanning more than three octaves gets one entry per window.  Two voices sharing one sample keep
+separate entries: `root_e = root_head + (low_e − low_head)`.  Needed where a song changes key while
+keeping a voice: Credits' FM2 does it twenty times, and matched on source bytes 8 % of its notes
+were right.
+
+`tools/config_to_chip_space.py <config>` converts a source-space config: for every entry it collects
+the chip pitches each channel plays through it (loops extended, every transposition), writes one
+entry per range touched with `synth_root` = its low note and `root` shifted to keep the tuning, and
+warns where a range cannot fit C1–B3 at that tuning (those notes need an instrument of their own:
+Ending's PSG2).
+
+---
+
+## Effects
+
+### SMPS → MOD mapping
+
+| SMPS | Byte | MOD | Rule |
+|------|------|-----|------|
+| `smpsAlterVol` | $E6 | `Cxx` | FM TL offset, 0.75 dB/step; `Cxx` only where a note's level differs from its instrument's baked level (§ Levels) |
+| `smpsPSGAlterVol` | $EC | `Cxx` | PSG attenuation, 2 dB/step; same rule |
+| `smpsPan` | $E0 | (level) | MOD pan is per channel; a hard-panned FM note counts `fm_pan_law_db` (3 dB) quieter |
+| `smpsModSet` / `smpsModOn` / `smpsModOff` | $F0 / $F1 / $F4 | `4xy` / — | § Vibrato |
+| `smpsNoteFill` | $E8 | `ECx` / `C00` / release slide | § Note fill |
+| `smpsNoAttack` | $E7 | note-on or `3FF` | § Legato |
+| `smpsDetune` / `smpsAlterNote` | $E1 | (sample), `E1x` / `E2x` | § Detune variants |
+| `smpsChangeTransposition` | $E9 | (placement) | adds to the driver transpose |
+| `smpsSetvoice` | $EF | (routing) | picks the `voice_map` list |
+| `smpsPSGform` / `smpsPSGvoice` | $F3 / $F5 | (routing) | `psg_map` / `psg_voice_map` (`psg_synthesis.md`) |
+| `smpsSetTempoMod` | $EA | `Fxx` | § Mid-song tempo changes |
+| `smpsSetTempoDiv` / `smpsChanTempoDiv` | $EB / $E5 | (re-timing) | § Global duration divider |
+| `smpsJump` | $F6 | `Bxx` (+ `Dxx`) | the song's loop (§ Song start, loop and end); a short loop is replayed |
+| `smpsStop`, `smpsFade`, `smpsStopSpecial` | $F2, $E4, $EE | key-off, `D00` | § A song that stops |
+| `smpsLoop` / `smpsCall` | $F7 / $F8 | — | unrolled / inlined by the parser (`smps_format.md`) |
+| `smpsNop`, $ED, `smpsMaxRelRate` | $E2, $ED, $F9 | — | ignored |
+| DAC note | | the drum | `dac_samples`: its instrument at its `mod_note` |
+
+### Effect priority
+
+A cell has one effect.  On a note's rows:
+
+1. **Attack row:** `EDx`, `3FF` and `9xx` take the slot; a `Cxx` due there moves to the first later
+   row of the note with a free slot (one row at the instrument's own level costs less than 33 ms of
+   timing).  Otherwise `Cxx` > `4xy` > an in-row `ECx`, except that an attack-row `ECx` displaces
+   `4xy` (a note that short has no audible vibrato).  A cut inside an attack row that needs `Cxx`
+   moves to the next row's start (`C00`).
+2. **Later rows:** `Cxx` (moved) > `4xy` > `ECx` / `C00` (fill) > a sliding loop's fall (`A0y` /
+   `EBx`, or `6xy` on a row whose `4xy` the note set earlier).
+3. **After the note:** the release slide (`A0y` rows) takes only free slots and stops at the next
+   note-on's row.
+
+A volume change on a vibrato row drops that row's vibrato; `smpsAlterVol` is sparse, so this is rarely
+heard.
+
+### Notes that start between rows (`EDx`)
+
+A note whose tick is off the row grid goes on the row it starts in, delayed with `EDx`
+(`ChannelWriter._note_cell`), instead of being rounded half a row early or late.
+
+- **The delay is measured in frames.**  Ticks are unevenly spaced (§ Frames versus ticks): on Green
+  Hill (*m* = 3, two ticks a row) an odd tick is one frame (16.7 ms) after its row, not the 25 ms an
+  average tick lasts — exactly `ED1` at speed 3.
+  `x = round(frames × target_speed × ticks_per_frame / ticks_per_row)`.
+- **It needs the slot.**  A cut (fill, or a PSG note's end) inside the attack row keeps it, and the
+  note is rounded instead.  A due `Cxx` gives way when the note lasts two rows or more (it moves to a
+  later row); an attack-row `4xy` gives way (later rows carry the vibrato); a rest's `C00` there is
+  overwritten (the new note ends the old one).
+- **Two note-ons never share a cell.**  When the row already holds the channel's previous note-on (a
+  one-tick grace note), the later one takes the next row, undelayed.
+- DAC notes carry no other effect, so they always get their delay (unless a `9xx` takes the slot).
+
+### Note fill (`smpsNoteFill`)
+
+The fill counts frames; on the tick timeline it is `fill × ticks_per_frame`.  The cut is placed to the
+MOD tick: `ECx` inside a row, `C00` on a row boundary (`ECx` cannot reach past its own row).  Nothing is
+written when the fill outlasts the note (`fill × ticks_per_frame ≥ duration`: the duration expires
+first) or lands on the next event's row.  A fill equal to the duration byte **does** fire when *m* > 1
+(the note lasts `duration × m/(m−1)` frames).  With release slides on, a fill on an FM note starts the
+release slide instead of a cut (its sub-row position is given up).  PSG notes with no fill are cut at
+the end of their ring (after `smpsNoAttack` continuations: `_ring_ticks`).
+
+### Vibrato (`smpsModSet` → `4xy`)
+
+The driver (`smps_driver.md` § smpsModSet) has a steady cycle of `2 · speed · (steps + 1)` frames and a
+swing of `delta · steps / 2` units of the note's own frequency word — the YM2612 FNUM of its pitch class
+(644 for C … 1216 for B) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on
+B.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.
+`VibratoSpeed.speed` / `vibrato_depth`:
 
 ```
-output_note = entry.root.value + (source_semitone − entry.low) − entry.synth_shift
+x     = 64 · ticks_per_row / ((target_speed − 1) · cycle_frames · ticks_per_frame_at(tick))
+swing = period · (delta · steps / 2) / frequency_word         (periods, per note)
+y     = the depth whose peak in the player is nearest the swing (_VIBRATO_PEAK)
 ```
 
-- `root` is **unconditional** — `smpsDetune`, header pitch_offset, and `smpsChangeTransposition` do NOT affect the root path.
-- `synth_shift` is 0 unless the entry states a `synth_root` other than the pitch the chip plays for `low` (`resolve_synth_roots`); then `root` is the note where `synth_root` sounds and the notes move down by the difference (`docs/fm_synthesis.md` §Pitch).
-- Ensure `root + (high − low) − synth_shift` stays within C1–B3 (values 0–35) to avoid clamping.
+- The peak depends on the player (settings.yaml `player`, `convert.py --player`): PT2 peaks at
+  `2y − 1` whole periods, FT2 at `2y − ¼`.
+- A swing under 0.7 periods writes no vibrato (the smallest depth would overshoot threefold).  An `x`
+  past 15 plays at 15 and is reported.
+- A row carries `4xy` when modulation runs for at least half of it, the attack row included, from the
+  `smpsModSet` wait (frames) on; the continuation stops at the release slide.
+- A per-entry `vibrato: XY` override wins; no shipped config needs one.
+- Region-independent (both clocks scale with fps).  What remains is the 4-bit grid: one step of `x`
+  is 0.4–0.6 Hz, one step of `y` 10–30 c.
 
-### Choosing root placement
+### Legato (`smpsNoAttack` before a note)
 
-Higher `root` value → higher `target_rate` → better synthesis quality (more audio frequency resolution at Amiga sample rate).
+The driver writes the new frequency and skips the key-on: the envelope carries on at the new pitch
+(Green Hill's one-tick grace notes bending into chords; Drowning's FM3 slide line).  A MOD note-on
+re-triggers its sample.  settings.yaml `legato` chooses how such a note is written:
 
-```
-target_rate = round(amiga_clock / PERIOD_TABLE[root.value])
-```
+| `legato` | Writes |
+|----------|--------|
+| `retrigger` (default) | every no-attack note as a plain note-on |
+| `strict` | `3FF` (full-speed tone portamento, no re-trigger), with the rules below |
+| `loose` | `3FF` on the target's own instrument, always |
 
-Example — source C5–B6 (span = 12 semitones):
-- `root: C2` → output C2–B2, target_rate ≈ 8,287 Hz (acceptable)
-- `root: C3` → output C3–B3, target_rate ≈ 16,574 Hz (better quality)
-- Choose the highest `root` that keeps the full range within C1–B3.
+`retrigger` trades a grace note heard as two attacks for never riding a decayed tail: Green Hill
+FM1 holds an E for 2.8 s, then a no-attack C — the hardware plays it at a fresh note's level, a
+`3FF` there is 26 dB down.
+
+`strict`, because in FT2 clone and ProTracker a portamento never changes the sample:
+
+- a target in **another range** of the voice (another instrument, rendered for another octave) is
+  written on the sounding instrument, its MOD note moved by the chip-pitch difference (a target
+  that would leave C1–B3 is re-triggered on its own instrument);
+- after an **`smpsSetvoice`** the note is re-triggered (the hardware rewrites the operators under the
+  running envelope);
+- with **nothing sounding** on the channel yet it is a note-on (Drowning's FM3 is no-attack from its
+  first note).
+
+`loose` sounds right only in a player that swaps the sample on an instrument number (OpenMPT).  A
+`3FF` takes the attack row's slot: no `EDx` (the note is rounded), a due `Cxx` moves a row.  Under
+`strict` / `loose` the sustain need counts a legato note as the same ring, and `tools/mod_lint.py` flags
+a `3xx` with nothing playable under it.
+
+---
+
+## Levels
+
+### FM (`fm_volume_scaling: baked`)
+
+On the chip a note's level is its TL offset — `smpsHeaderFM` volume plus every `smpsAlterVol`, 0.75 dB
+per step — and its pan: hard-panned is −3 dB (`fm_pan_law_db`; L/R power, a centred channel drives both
+speakers).  A MOD note plays at its instrument's volume unless `Cxx` overrides it, and a second copy of
+a sample at another volume costs its full size.  So:
+
+- `LevelPlanner.levels("FM")` walks every FM channel with the conversion's `DriverState` and counts,
+  per MOD instrument, notes per level `−0.75 × TL − pan`.  The most common level (ties: the louder) is
+  the instrument's **baked level**; its `sample_list` volume stands for it and those notes get no
+  command.
+- Any other note gets `Cxx = volume × 10^(ΔdB / 20)` (× the channel's `volume / 64`, clamped to 64).
+- The sample is **rendered at** that TL offset (`LevelPlanner.fm_render_levels`), so the chip clips a
+  multi-carrier voice as the hardware does at that level (`fm_synthesis.md` § Level: render level and the channel accumulator).
+- A detune variant votes as its instrument; a merged build's unison gain is part of the level.
+- The laws are `core/chips/` (`fm_level_db`, `psg_level_db`); dB → MOD volume is `core/mod/volume.py`.
+
+With the law right, every channel sharing an instrument shows the **same** error against the VGZ, which
+one `sample_list` volume fixes (§ Per-instrument levels).  If channels disagree, it is not a volume
+problem.
+
+Legacy modes: `true` (header TL as an absolute volume, `Cxx` on every FM note) and `false` (one
+`smpsAlterVol` step = one linear MOD volume unit, ≈ 0.3 dB).
+
+### PSG (`psg_volume_scaling: baked`)
+
+The same scheme on the SN76489: level = −2 dB × attenuation (`smpsHeaderPSG` volume +
+`smpsPSGAlterVol`, 15 = silent; a silent note neither votes nor sounds), no pan term, planned by
+`LevelPlanner.levels("PSG")` with the conversion's PSG instrument tracking.  Most PSG notes then carry
+no `Cxx`, which leaves the slot to vibrato and in-row cuts.  Legacy mode `absolute`: `Cxx` on nearly
+every PSG note.
+
+---
+
+## Song start, loop and end
+
+### Loop extension
+
+A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) has the loop body
+replayed to the song's last tick (`extend_looping_channels`).  The body is the events **after the jump
+label** (`SmpsChannel.loop_event_index`), not every event at the label's tick: Spring Yard PSG3's
+`smpsPSGAlterVol $FF` just before its label would otherwise repeat each pass and walk the hi-hat to
+full volume.
+
+### Leading rests
+
+A channel whose first event is a rest gets `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, after
+every channel is converted): a song that loops to position 0 otherwise rings its last note through the
+rest.  An effect already in that cell moves to a free row-0 cell; with none free the `C00` is
+dropped, warned (`rest_no_slot`) only when the loop does return to row 0.  The row-0 `Fxx` are placed
+after this (§ Tempo commands on row 0).
+
+### The loop
+
+`ModLayout.loop_point`, after the pattern breaks:
+
+- **Where:** the row of the song's end tick (`round(end / tpr) − 1`, shifted past the breaks), on the
+  first column in use with a free effect slot (`loop_no_slot` warns where none is).
+- **Target:** `round(loop_target_tick / tpr)` shifted past the breaks → `Bxx` to its pattern.
+- **Mid-pattern target:** a `Dxx` (BCD row) on a free column **to the right** of the `Bxx`: ProTracker
+  reads a row left to right, and a `Bxx` after a `Dxx` resets the row to 0.
+- Patterns after the loop's are trimmed.
+
+### A song that stops
+
+`smpsStop` (and `smpsFade`, `smpsStopSpecial`) keys the track off.  `ChannelWriter._on_stop` ends what
+an FM channel still sounds there as a rest would (release slide, else `C00`); a looping channel never
+stops, the DAC plays out and a PSG note is already cut.  `ModLayout.song_end` puts `D00` on that row
+of a song that does not loop (none on a pattern's last row) and the patterns after go, so the module
+restarts after the key-offs, not after a pattern of silence.
 
 ---
 
 ## Detune variants
 
-`smpsAlterNote` / `smpsDetune` ($E1) adds a raw offset to the frequency word the driver writes
-(`FMUpdateFreq`), so its interval depends on the note: `$03` is +8 c on C (fnum 644), +4.5 c on
-A# (1148).  A MOD retunes only a whole sample, in 12.5 c finetune steps, so `core/plan/detune.py`
-gives every detune an instrument plays a sample of its own, rendered on the chip with the offset
-(settings.yaml `fm_synthesis.detune_variants`, on by default; FM only):
+`smpsDetune` / `smpsAlterNote` ($E1) adds a raw offset to the frequency word (`FMUpdateFreq`), so its
+interval depends on the note: `$03` is +8 c on C (FNUM 644), +4.5 c on A# (1148).  It is not semitones
+and never affects range lookup.  A MOD retunes only a whole sample in 12.5 c finetune steps, so
+`core/plan/detune.py` (settings.yaml `fm_synthesis.detune_variants`, on by default; FM only) renders
+every detune an instrument plays into a sample of its own:
 
-- the detune most of an instrument's notes play at is its **own**: its slot's sample is rendered
-  with it (Title Screen's FM5 instrument, all `$03`, takes no slot more);
-- every other detune is a **variant** in a free slot (the most played first), sharing the
-  instrument's map entry, level plan and `sample_list` volume / finetune;
-- one that finds no slot plays the instrument's own sample (`detune_no_slot` warns: Credits,
-  31 instruments, 11 detunes);
-- `resolve_note` routes a note to its variant, so every pass sees it; the plan is made on the
-  song as parsed (before the loop extension) so `vgm_pitch_audit.py` / `vgm_compare.py` make the
-  same one (`prepare_config`), and the level table counts a variant's notes under its base;
-- a **tie** after a detune change (`smpsAlterNote $EC`, `nG5, $02`, `smpsAlterNote $00`,
-  `smpsNoAttack, $06`: Scrap Brain FM4's scoop) is re-written by the driver at the new detune;
-  the MOD note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference
-  (only on a row of its own with a free effect slot; `--verbose` counts them);
-- a merged chip composite renders every layer at its own track's detune (the key keeps them
-  relative: the chord's shape).
+- the detune most of its notes play at is its **own**: its slot's sample is rendered with it (Title
+  Screen's FM5 double takes no extra slot);
+- every other detune is a **variant** in a free slot, the most played first, sharing the instrument's
+  entry, level and `sample_list` volume / finetune;
+- one with no free slot plays the instrument's own sample (`detune_no_slot`: Credits);
+- `resolve_note` routes a note to its variant, so every pass sees it.  The plan is made on the song as
+  parsed, before the loop extension, as the audit tools make it (`prepare_instruments`);
+- a **tie** after a detune change (Scrap Brain FM4's scoop: `smpsAlterNote $EC`, a note,
+  `smpsAlterNote $00`, `smpsNoAttack`, duration) is re-written by the driver at the new detune; the MOD
+  note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference (only a row of its
+  own with a free slot; `--verbose` counts them);
+- a merged chip composite renders each layer at its own track's detune.
 
-Scrap Brain: FM4 10 wrong notes → 0 (60 ms), mean error 12.7 → 3.7 c.  Across the 13 songs
-with a detune, every detuned channel moved toward the hardware (GHZ FM5 80 notes off by more
-than 10 c → 8, Final Zone FM4 47 → 8, Marble Zone FM3 22 → 0) and none away.
+Never stand in for a detune with `finetune: 1`: that moves every note of the slot, detuned or not.
 
 ---
 
-## Common Gotchas
+## Sample length, sustain loops and release slides
 
-### 1. smpsAlterNote / smpsDetune is NOT semitones
+### Sample length versus notes
 
-**Problem:** voice_map range doesn't match expected notes after `smpsAlterNote $03`.
+A sample that does not loop must last as long as the longest note that plays it, measured in the MOD's
+own time at the sample's playback rate.  `sustain_duration: auto` computes that per instrument
+(`SustainPlanner`, 10 s cap, then each generator's cap to `samples.max_sample_kb`), and `sustain_short`
+warns where a note still outlasts its sample.  The rules are `fm_synthesis.md` §
+Length: `sustain_duration: auto`.  A looped sample holds any note and warns nothing.
 
-**Cause:** `$E1` adds a raw FNUM offset (~10 cents per unit). It is NOT a semitone shift and does NOT affect `source_semitone` used in range lookup.
+### Sustain loops (`samples.sustain_loops`, `core/audio/loops.py`)
 
-**Fix:** Ignore `smpsAlterNote` when writing `voice_map` ranges.  The detune itself needs no config: see § Detune variants.  Do not stand in for it with `finetune: 1` (+12.5 c, and on every note of the slot: GHZ's FM5 is detuned on 16 of its 80 bell notes).
+`off` | `merged` (the code's default: the `--merged` build only) | `all` (settings.yaml ships `all`).
+An instrument whose envelope settles is cut where it settles plus one loop, so its length no longer
+depends on the notes.  `find_sustain_loop`:
 
----
+1. **Reference:** the RMS envelope (windows of two fundamental periods, dB below the peak) over the
+   last second (`SPAN_SECS`) of the instrument's longest note, never the attack.
+2. **Flat point:** the first window after which every window stays within `loop_drift_db` (default 1 dB)
+   of the reference span's end level, widened by the span's swing around its trend.  A band, not a
+   level, so a beating chorus pair is flat once the beat is steady; detrended, so a decaying voice is
+   not flat across its decay.  The span's own windows are checked too.
+3. **Timbre:** a loop starts only where the harmonic profile (harmonics 1–8, `PROFILE_PER_DB` 0.25 per dB
+   of drift) holds until the longest ring ends: Spring Yard's $05 is level-flat from 20 ms while its
+   second harmonic swings 30 dB.  Merged builds skip this unless the song sets `merge_loop_timbre: true`
+   (it grows the samples).
+4. **Length:** every even length (a MOD loop is in words) from 30 ms to `MAX_LOOP_SECS` (1.2 s: a pair
+   beating at 1 Hz needs a whole beat), from up to six starts a period apart, scored by the
+   discontinuity at the join (two periods after the start against two after the end) plus
+   `LENGTH_PENALTY` per second of loop — and, with the timbre check, of the bytes between the flat
+   point and the start.
+   Never a whole number of cycles: every Sonic voice detunes its operators (DT1), so the best length is
+   where their phases come closest to recurring.
+5. **Close:** `apply_loop` crossfades the loop's last 15 ms into the samples before its start and cuts
+   the sample at its end.
 
-### 2. smpsChangeTransposition mid-song breaks root anchoring
+No loop where the reference has decayed below −50 dB (percussive), where the loop would end later than
+the plain render (`MAX_END_FRACTION`: still settling), or where the raw discontinuity exceeds
+`MAX_ERROR` (≈ −2.5 dB, uncorrelated).  The generators search a 4 s probe render (`PROBE_SECS`) and fall
+back to the plain one.  PSG tones loop the same way; noise never loops.
 
-**Problem:** Notes land at unexpected pitches after a `smpsChangeTransposition` event.
+`loop_drift_db` is the size/fidelity knob (settings, song or entry level): at 1 dB a slowly decaying
+voice loops only near the end of its longest note and keeps its decay; at 3–12 dB it loops earlier,
+smaller, and its long notes end louder than the hardware's.
 
-**Cause:** `root` is unconditional — it anchors `source_low` to a fixed MOD note regardless of `total_transpose`. If `smpsChangeTransposition` changes the chip pitch mid-song, the root path gives wrong output.
+Per entry (or merge group): `loop_min_ms` sets the shortest loop (an early short loop buzzes);
+`loop_start_ms` the earliest start — a detuned pair's swing spans the band from its first window, so
+its loop may start in the attack (1-Up's lead pair looped at 21 ms and replayed the onset on every
+beat); `loop_decay: slide` below.
 
-**Fix:** For channels that use `$E9` dynamically, omit `root` from `voice_map` entries and rely on `total_transpose`. If you need synthesis accuracy, set `synth_root` to the actual chip pitch.
+### Release slides
 
----
+A looped sample rings until something stops it, so with loops on every FM note ends with a volume
+slide at the voice's release rate instead of `C00` (`ChannelWriter._write_release`): `release_rate_db_s`
+fits the dB/s slope of the render's tail after key-off, and one `A0y` per row from the rest's (or the
+fill's) row takes the volume to where that slope is at the row's end — the chip's release is linear in
+dB, so each row's target is the last one's times a fixed ratio.  Rows whose share rounds to nothing are
+skipped, a taken slot is skipped, the slide stops at the next note-on's row, and after 64 rows a `C00`
+ends what is left (release rate 0 rings forever).  A release that falls 30 dB within a row (RR $0F:
+every Title Screen voice) stays a cut; PSG notes keep their cuts (attenuation 15 is instant).  On a
+column another channel's notes borrow, the end is a plain `C00`.  `_clear_stale_cut` removes a rest's
+`C00` from a cell a later note-on rounds onto (a note-on with `C00` is silent).
 
-### 3. smpsNoteFill longer than a row is a `C00` / `ECx` on a later row
+### Sliding loops (`loop_decay: slide`)
 
-**Problem:** Expecting every `smpsNoteFill` to show up as `ECx` next to its note.
+A voice whose level falls for as long as it holds (an FM bass on a non-zero D2R) never settles: the
+default `freeze` loops it near the end of its longest note, or at a large drift holds it too loud.
+With `slide` (entry or merge group) `find_sustain_loop` follows the reference span's trend line: flat is
+every window back from the span within `loop_drift_db` of that line extended, the slope refitted over
+them, the timbre check always on; a fall under 0.1 dB/s (`MIN_DECAY_DB_S`) is a plain loop.  The render
+is flattened from the flat point (`flatten`), the loop found and closed in it, and the fall
+(`SustainLoop.decay_db`, `flat_at`) goes to the converter.
 
-**Cause:** `ECx` can only cut within its own row (x < speed).  The converter works out the cut
-position in absolute MOD ticks and writes it on whichever row it falls in: `ECx` when it is inside
-a row, `C00` when it is exactly on a row boundary.  There is no upper limit on the fill value
-(GHZ FM3/FM4 use `$1E` = 500 ms).
-
-**When no cut is written:** the fill outlasts the note (`fill × (mod−1)/mod ≥ duration`, the
-driver's DurationTimeout expires first), or the cut would land on the next event's row.
-
----
-
-### 4. smpsModSet → `4xy`: rate from the cycle in frames, depth per note
-
-**The driver** (`DoModulation`, once per V-int frame, after `wait` frames): every `speed` frames
-it adds `delta` to an accumulator; when the step counter reaches 0 it reloads it from the
-**original** `steps` byte, negates `delta` and spends that update.  Only the first half-swing uses
-the halved count (`lsr.b #1` on `smpsModSet` / note start).  So:
-
-- steady cycle = `2 · speed · (steps + 1)` **frames** — not ticks, and not multiplied by the tempo
-  divider (the parser used to multiply `speed` by it);
-- swing = `delta · steps / 2` either side of centre, in the units of the note's own frequency
-  word, which it is added to: the YM2612 FNUM of the note's pitch class (644 for C … 1216 for B)
-  or, on a PSG channel, the SN76489 divider from `PSGFrequencies`.  The same `smpsModSet` is
-  therefore deeper in cents on C than on B, and enormous on a high PSG note (Stage Clear's last
-  PSG1 note: divider 127 ± 16 = ±200 c at 6 Hz — real, it is in the register log).
-
-**ProTracker:** the vibrato position advances by `x` on each of a row's `speed − 1` processing
-ticks and wraps at 64.  The sine's peak depends on the player (settings.yaml `player`,
-`convert.py --player`): PT2 truncates `(255·y) >> 7` to whole periods, **2y − 1**; FT2 works in
-quarter periods, `((255·y) >> 5) / 4` = **2y − ¼**.  A PT2 `y=1` is one period, a stepped wobble
-(0 or ±1) at half FT2's depth.
-
-**Conversion** (`VibratoSpeed.speed` / `vibrato_depth`):
-
-```
-x = 64 · Timeline.ticks_per_row / ((target_speed − 1) · cycle_frames · Timeline.ticks_per_frame_at(tick))
-swing = period · (delta · steps / 2) / frequency_word                (periods, per note)
-y = the depth whose peak in the player is nearest the swing (_VIBRATO_PEAK)
-```
-
-Region-independent.  A swing below 0.7 periods means the smallest depth would overshoot the hardware
-threefold, so no vibrato is written (Spring Yard FM4/FM5: ±3 c on hardware).  When `x` would
-exceed 15 `convert.py` says so.  A per-entry `vibrato:` override still wins, but none is needed
-any more: the eight that existed were workarounds for the old formula and are gone.
-
-**Measured** (hardware → MOD): Title Screen FM4 5.99 Hz ±19 c → 5.99 Hz ±18 c (`4C3`; was `485` =
-3.98 Hz ±36 c); GHZ PSG1 7.35 Hz ±7 c → 7.44 Hz ±7 c (was 4.98 Hz); Scrap Brain FM1 4.96 Hz ±54 c →
-5.23 Hz ±53 c; Spring Yard FM1 5.99 Hz ±25 c → 6.24 Hz ±19 c; Stage Clear FM5 4.99 Hz ±15 c →
-4.99 Hz ±14 c; Special Stage 4.25 Hz ±20…32 c → 4.06 Hz ±20…30 c.  What is left is the 4-bit
-grid: one step of `x` is 0.4–0.6 Hz, one step of `y` is 10–30 c depending on the period.
-
-**Known inaccuracy (measured 2026-09, see `docs/audits/01_title_screen_audit.md` §2):** the current
-speed/depth formula runs the LFO too slow and too deep — Title Screen FM4 `smpsModSet $00,$01,$06,$04`
-is 5.75 Hz / ±19 cents on hardware but `485` = 3.85 Hz / ±33 cents in the MOD; `4C3` would be right.
-Modulation timers count V-int **frames** (60 Hz), not tempo ticks; the steady cycle is
-`2·speed·(steps+1)` frames with amplitude `delta·steps/2` FNUM units, and ProTracker's cycle is
-`64/x` processing ticks (`speed−1` per row) with amplitude ≈ `2·y` period units.
-
----
-
-### 4b. smpsNoteFill counts frames, not ticks
-
-**Problem:** Note cuts land late on songs with a tempo modifier (Title Screen fill `$0C` cuts at
-250 ms in the MOD, 200 ms on hardware).
-
-**Cause:** `TempoWait` only delays `DurationTimeout`; `NoteTimeoutUpdate` still runs every V-int,
-so the fill value is in frames (60 Hz) while durations are in ticks (`fps × (mod−1)/mod`).
-
-**Fix (done):** `Timeline.ticks_per_frame(modifier)` = `(mod−1)/mod` (1.0 for SFX / mod ≤ 1); `Timeline.ticks_per_frame_at(tick)` picks the modifier in force at a tick, so mid-song `smpsSetTempoMod` is honoured
-converts frame counts to ticks; the fill and the `smpsModSet` wait both go through it
-(`×0.8` for tempo modifier 5, `×0.667` for GHZ's 3).  The same ratio decides whether the fill fires
-at all: a fill equal to the duration byte **does** fire when the song has a tempo modifier, because
-the note lasts `duration × mod/(mod−1)` frames.
-
-Verified against hardware key-off timing in the GHZ VGZ (YM2612 reg `$28` writes): FM2
-`smpsNoteFill $04` → 158 key-offs at exactly 4 frames (67 ms; the old output cut at 100 ms), FM1
-`$0B`/`$14` → 11/20 frames, FM3/FM4 `$1E` → 30 frames (previously no cut at all, since 30 ≥ the
-24-tick duration), PSG `$06`/`$10` → 100/267 ms (were 150/400).  Title Screen noise cuts: worst
-error vs the recording +75 ms → +15 ms.
-
-**Related parser fix:** `_scale_effect_params` used to multiply the `smpsModSet` wait by the tempo
-divider.  The driver never does (`ModulationWait` is a raw frame count), so divider-2 songs had
-the vibrato onset twice as late before the tick error was even added — Special Stage `$1A` started
-at ~990 ms instead of 433 ms.
-
-**Vibrato rows:** a row carries `4xy` when modulation is running for at least half of it, the
-attack row included — so notes shorter than the wait no longer get vibrato at all (they used to
-get it on the attack row unconditionally).
-
-Mid-song `smpsSetTempoMod` is followed (§BPM and speed setup); the rate and depth of the `4xy`
-itself are gotcha 4.
+`ChannelWriter._write_decay` writes the fall into each note: on every row it rings through after the
+attack row, a slide toward `volume × 10^(−fall × (t − t0) / 20)`, with *t0* and the fall at the rate
+the note's period plays the sample (a note above the root falls faster, as the unlooped sample did).
+`A0y` where the row's share is at least one `A01` (`speed − 1` units), else `EBx` (Game Over's bass falls
+a unit a row at speed 9: `A01` every eighth row was a staircase); `6xy` on a row carrying the note's
+`4xy`.  Targets are absolute, so a taken row is made up on the next; a `Cxx` row resets the tracked
+volume.  The slides stop at the ring's end (its rest's release starts from the fallen volume), the
+next note-on or the fill.  Not handled: a sliding instrument as a pcm mix source (the mix has no
+slides), a `3FF` note (its curve restarts), PSG.
 
 ---
 
-### 5. Wrong operator order → distorted FM synthesis
+## Pattern breaks (`mod_pattern_breaks`)
 
-**Problem:** Synthesized FM samples sound like an overdriven guitar / extreme distortion.
-
-**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` mapping (`core/smps/driver_tables.py`). SMPS stores operators in reversed order (OP4,OP3,OP2,OP1); the correct mapping is `(0x0C, 0x04, 0x08, 0x00)`. The wrong mapping `(0x00, 0x08, 0x04, 0x0C)` puts OP1 (often TL≈$01, near max volume) into the self-feedback slot.
-
-**Fix:** Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/smps/driver_tables.py` — `ym2612/voice.py` and `sfx/chips.py` both read it from there. Do not change it.
-
----
-
-### 6. Synthesized FM samples are silent by default
-
-**Problem:** FM channels produce no sound even after configuring `voice_map`.
-
-**Cause:** `synthesis.enabled: false` in `configs/settings.yaml` (default). Synthesis requires compiling `ym3438.c` via gcc or MSVC.
-
-**Fix:** Set `synthesis.enabled: true` in `configs/settings.yaml`. Or load pre-rendered `.raw` files via `sample_list` without enabling synthesis.
-
----
-
-### 7. Loop Bxx must be written after apply_pattern_breaks
-
-**Problem:** Loop point lands in the wrong pattern, or a D-row companion effect is needed unnecessarily.
-
-**Cause:** `ModLayout.loop_point()` uses post-break MOD coordinates. If called inside `convert()` (before `apply_pattern_breaks`), the Bxx is placed at a pre-break row number that gets displaced during repacking. The target tick-to-pattern conversion also ignores the row offset that the break introduces.
-
-**Fix:** `convert()` keeps the order (since 2026-09-30; the CLI used to):
-```
-self._convert_passes()                               # all note data; no Bxx
-apply_pattern_breaks(mod, config.mod_pattern_breaks) # repacks stream
-self._set_loop_point(config.mod_pattern_breaks)      # Bxx in final layout
-```
-`ModLayout.loop_point(breaks)` accepts the breaks list so it can apply the coordinate-remapping formula (see §Pattern Breaks).
-
----
-
-### 8. FM5 fall-through into FM1 data
-
-**Problem:** FM5 appears to contain FM1's note data.
-
-**Cause:** In many Sonic 1 songs, FM5 contains only a `smpsAlterNote` or `smpsAlterPitch` command then implicitly falls through to FM1's label (no `smpsStop`). The parser does not stop at label boundaries — only `smpsStop` or `smpsJump` terminate a channel.
-
-**Fix:** This is correct behavior, not a parser bug. FM5 deliberately shares FM1's data with a pitch offset (chorus/detune effect). Configure FM5 with the same `voice_map` as FM1; its FNUM detune is rendered into the samples it plays (§ Detune variants).
-
----
-
-### 9. Effect priority conflict silences vibrato
-
-**Problem:** Vibrato (`4xy`) disappears from rows where `smpsAlterVol` fires.
-
-**Cause:** Volume changes take priority over vibrato in `smps2mod.py`. If both are active on the same row, `Cxx` is emitted instead of `4xy`.
-
-**Fix:** This is a fundamental MOD limitation (one effect per note). In practice, `smpsAlterVol` events are sparse; vibrato is continuous. The loss is usually inaudible. If critical, split the channel to a second MOD channel (use `channel_instrument_map` for the volume-change section).
-
----
-
-### 10. Standalone dc.b duration byte ≠ rest
-
-**Problem:** A bare `dc.b $0C` line after an `smpsNoteFill` advances time but no note appears.
-
-**Cause:** A duration byte with no preceding note on the same `dc.b` line emits a continuation event. Without a preceding `smpsNoAttack`, the parser **retriggles the last note** (`is_rest=False, note_value=last_note_value`) — e.g. staccato arpeggio in 1-Up. With a preceding `smpsNoAttack`, it emits a rest/sustain (`is_rest=True, is_no_attack=True`) — e.g. held note in GHZ. This is correct per the SMPS driver behavior (`FMNoteOn` is gated by the no-attack flag).
-
-**Fix:** No fix needed — this is working as designed. The implicit wait correctly represents the held note duration.
-
----
-
-### 11. A leading rest needs its `C00` at pattern 0 row 0
-
-**Problem:** Robotnik and Special Stage loop to position 0.  On every pass after the first, the
-last note before the `Bxx` kept ringing through the channel's opening rest (6.4 s on Robotnik's
-FM channels) until the channel's next event.
-
-**Cause:** The emitter skipped the `C00` of a rest at pattern 0 row 0 because nothing plays there
-on the first pass and that row holds the `Fxx` speed / BPM commands.
-
-**Fix:** `ModLayout.leading_rests` runs after all channels are converted: it writes the `C00`, and
-moves an `Fxx` in the way to a free cell on row 0 (spare channels first, then any cell without an
-effect).  Only when no cell is free is the `C00` dropped, and only if the song does loop back to
-row 0 (`SmpsSong.loop_target_tick() == 0`) is that a `rest_no_slot` warning — Star Light rests on all
-nine channels but loops to position 1.
-
----
-
-### 11a. A song that stops ends its notes where it stops
-
-**Problem:** Stage Clear's closing chord held its looped FM samples past the jingle's end, through
-the rest of the pattern and into the module's restart; the Title Screen's last notes ended on a
-pattern's first row, and the module then played 63 empty rows before restarting.
-
-**Cause:** Nothing was written for `smpsStop`.  The driver's `StopTrack` keys the FM channel off
-(`FMNoteOff`): the note releases there (Stage Clear's voices at release rate `$0F`, instantly,
-6.01 s into the VGZ).
-
-**Fix:** `ChannelWriter._on_stop` keys off what an FM channel still sounds at its end, as a rest
-would (a release slide at the voice's rate, else `C00`); a looping channel never stops, the DAC
-plays its sample out and a PSG note is already cut at its duration.  `ModLayout.song_end` then puts
-a `D00` on that row of a song that does not loop (none on a pattern's last row) and the patterns
-after it go, so the restart follows the key-offs.
-
----
-
-### 12. A note outlasts its sample (`sustain_duration: auto`)
-
-**Problem:** Synthesised samples do not loop, so a note longer than the sample goes silent.
-
-**Cause / rules:** `SustainPlanner._needs` measures the longest ring per instrument in the MOD's own
-time (tempo segments, after `smpsSetTempoDiv` re-timing), at the sample's playback rate (root
-period / note period against the **first** entry's root, the one the sample is rendered for),
-with a positive finetune, each ring's ends where the row grid can put them (`_mod_span`: exact
-on a row, half a row either way between rows).  The auto sustain is the largest need, capped
-at 10 s; each generator also caps every instrument to the sample limit at its rate
-(`samples.max_sample_kb` in settings.yaml: 128 = the format's 131070 bytes, 64 = original
-ProTracker's 65534).  `sustain_short` warnings name what is left.  Full rules: `docs/fm_synthesis.md`
-§ `sustain_duration: auto`.  With sustain loops on (below) a looped instrument holds any
-note and warns nothing.
-
----
-
-## Sustain loops and release slides (`sustain_loops`, `core/audio/loops.py`)
-
-`samples.sustain_loops` in `settings.yaml` (`off` | `merged` — the default: the `--merged` build only |
-`all`) makes a sample's length independent of the notes it plays, the one structural thing a
-hand-made Amiga MOD does that a plain render cannot.
-
-**The loop.** After rendering, `core.audio.loops.find_sustain_loop` looks at the RMS envelope of the
-sustain (windows of two fundamental periods, dB below the sample's peak).  The reference is the
-`SPAN_SECS` (1 s) before the end of the instrument's longest note (`ref_n`; the span after that
-note's end when the note is shorter than the span, never the attack); the envelope is *flat*
-from the first window after which every window stays within `loop_drift_db` of the level at the
-span's end, widened by the span's swing around its trend (detrended: a decaying voice's span
-must not pass its whole decay, and its attack, as flat).  A band, not a level, so a chorus pair
-that beats is flat once the beating is steady.  The span's own windows are checked too: until
-2026-10-01 the scan started before the span, so a decaying voice was "flat" from the span's
-first window whatever its level there - the Title Screen's voice $01 looped at 0.2 s, 7 dB above
-where its longest note ends, and the closing chord held level for 2 s where the hardware falls
-6 dB (the merged FM4+FM3 column read +2.1 dB against the VGZ, ±0.9 dB after).
-Loop candidates start at the flat point and run every even length (a MOD loop is measured in
-words) from 30 ms to `MAX_LOOP_SECS` (1.2 s: a detuned pair beating at 1 Hz needs a whole
-beat), scored by the discontinuity the loop would introduce — the RMS difference between the
-two periods after the loop start and the two after its end — plus `LENGTH_PENALTY` per second.
-A whole number of fundamental cycles is rarely the answer: nearly every Sonic 1 voice detunes its
-operators (DT1), so the waveform never repeats exactly (voice $04's best raw match is a −20 dB
-jump); the best length is where the operators' phases come closest to recurring.  `apply_loop`
-then crossfades the last 15 ms of the loop into the samples before its start and cuts the
-sample at the loop's end.  numpy scores every length at once; without it only the fundamental's
-grid is tried.
-
-Generators render a `PROBE_SECS` (4 s) sustain to search in and fall back to the note's own
-length without a loop.  No loop is made where the level at the reference has decayed below
-−50 dB (a percussive voice), where the loop would end later than the plain render (a voice
-still settling: `MAX_END_FRACTION`, and the sustain-plus-release length), or where the raw
-discontinuity is over `MAX_ERROR` (−2.5 dB, i.e. uncorrelated).  `loop_drift_db` (1 dB default)
-is the fidelity knob: a slowly decaying voice (Green Hill's $00, $06, $08: carriers with a
-sustain rate of 3–7) loops only where its last second is within that of the loop point, so at 1 dB
-its long notes keep their decay and its sample stays long; at 3–6 dB it loops earlier and its
-longest notes end that much louder than the hardware's.  Green Hill merged (2026-10-01):
-1 dB → 411 KB of samples, 3 dB → 414 KB, 6 dB → 404 KB, 12 dB → 388 KB (unlooped 479 KB; the
-size is not monotonic in the drift, because an earlier flat point changes which loop scores
-best).  Honouring the drift for the span's own windows (above) cost the reference builds 15 %
-of their samples at 1 dB (Extra Life 19 → 51 KB, Title Screen 35 → 49 KB) and the merged ones
-nothing (Green Hill 414 → 411 KB, lofi 167 → 165 KB: a PSG chime no longer froze at its note's
-end and rang under the whole lead note).  PSG tones are looped
-the same way (`sn76489/sample_generator.py`); noise never is.
-
-**The release.** A looped sample rings until something stops it, and a plain sample is cut
-where the hardware released, so with loops on every FM note ends with a volume slide instead
-of `C00`: `release_rate_db_s` fits the dB-per-second slope of the render's tail after key-off
-(the `release_padding`), and `SmpsToModConverter._write_release` writes one `A0y` per row from
-the rest's row (or the note fill's row, whose sub-row `ECx` position is given up) until the
-volume is gone or the next note-on's row.  The chip's release is linear in dB, so each row's
-target is the last row's times a fixed ratio and `y` is what takes the volume there
-(`(speed − 1)` slide ticks per row; rows whose share rounds to 0 are skipped so a slow release
-keeps its pace); after 64 rows a `C00` ends what is left (release rate 0 rings forever on the
-hardware).  A release that is over within a row (`RR $0F`: every Title Screen voice) stays a
-`C00`/`ECx`, and PSG notes keep their cuts (the driver sets attenuation 15 at once).  A mixed
-composite ends the way its primary does.  The vibrato continuation stops at the slide.
-
-Two things the slides made visible: a rest whose row rounds onto the next note-on's cell used
-to leave its `C00` there (`set_note` keeps the effect bytes: a silent note), now cleared by
-`_clear_stale_cut`; and the slides never reach a note-on's row (they stop at the row before the
-next note-on tick), so the two cannot collide.
-
-**Sliding loops (`loop_decay: slide`, 2026-10-07).** A voice whose level falls for as long as a
-note holds (an FM bass on a non-zero D2R) never settles: `freeze` loops it near the end of its
-longest note (Game Over lofi's bass: 2.0 s in, 14.8 KB) or, at a large drift, holds it above
-the hardware (frozen 12 dB early it pulsed under 3.4 s notes: 112 audio onsets against the
-VGZ's 71).  With `decay`, `find_sustain_loop` takes the reference span's trend line instead of
-its end level: flat is every window back from the span within `loop_drift_db` of that line
-extended (`_trend_flat`), the slope refitted over all of them, the timbre check always on (it
-never moved Game Over's bass: its harmonic profile holds from 0.09 s).  A fall under
-`MIN_DECAY_DB_S` (0.1 dB/s) is a plain loop.  The loop is searched in the render flattened from
-the flat point (`flatten`: each sample turned up by the fall so far), `apply_loop` flattens it
-the same way, and `SustainLoop.decay_db` (dB per sample) goes to the converter with `flat_at`
-(`WriterContext.decay`).  `ChannelWriter._write_decay` then writes, on each row a note rings
-through after the attack row, a slide toward `volume × 10^(−fall × (t − t0)/20)`, where t0 and
-the fall are the sample's flat point and dB-per-sample at the rate the note's MOD period plays
-it (a note above the root runs through the render, and its fall, faster, exactly as the unlooped
-sample did).  Targets are absolute and the volume is tracked, so a row whose slot is taken
-(`Cxx`, a cut) is made up on the next; a `Cxx` row resets the tracked volume.  The slide is
-`A0y` when the row's share is at least one `A01` (speed − 1 units), else `EBx` (x units on the
-row's first tick): Game Over's bass falls one unit a row at speed 9, and `A01` every eighth row
-was a staircase.  A row holding a `4xy` the note set on an earlier row becomes `6xy` (vibrato
-continues + slide).  The slides stop at the row the ring ends on (its rest's release starts from
-the fallen volume, `_last_vol`), the next note-on or the fill (whose release also starts from the
-fallen volume).  Game Over lofi merged: 54.8 → 41.8 KB, the bass level against the VGZ +0.3 dB.
-Not handled: a sliding instrument used as a PCM mix source (the mix is made from the flattened
-render and keeps no slides), a legato (`3FF`) note (its curve restarts), PSG.
-
-**A loop's earliest start (`loop_start_ms`).** A detuned pair beats, and its swing spans the flat
-band from the first window, so its loop may start in the attack: 1-Up's lead pair looped at
-21 ms and replayed the onset's tail on every 0.45 s beat (a 1.3 dB jump at the seam, two extra
-audio onsets on the column).  `find_sustain_loop(min_start_secs=)` moves the flat point no earlier
-than that; neither `loop_drift_db` (the band) nor `loop_min_ms` (the length) can, and the timbre
-check moved it 1.3 s on (+10 KB).  At 60 ms the seam is level and the build 0.4 KB smaller.
-
----
-
-## Pattern Breaks (`mod_pattern_breaks`)
-
-### Purpose
-
-A SMPS song often has a short intro (e.g. 32 rows) followed by a long loop body. Without breaks,
-the intro and body share Pattern 0, leaving 32 blank rows of silence at the end of the pattern on
-every loop iteration.
-
-`mod_pattern_breaks` inserts a `Bxx` jump after the intro rows and repacks the body data into
-fully-packed patterns, eliminating the wasted rows.
-
-### YAML config
+A short intro followed by the loop body would share pattern 0 with the body, wasting the pattern's
+remaining rows on every pass.  A break at `(pattern P, row R)` ends P at row R with `Bxx → P+1` and
+repacks everything after it into full patterns from P+1 (`apply_pattern_breaks`):
 
 ```yaml
 mod_pattern_breaks:
-  - pattern: 0    # which pattern to split
-    row: 31       # last intro row; Bxx written here, body starts at row+1
+  - pattern: 0
+    row: 31      # last intro row; the body starts at P+1 row 0
 ```
 
-Parsed as `[(0, 31)]` — a list of `(pattern_slot, row)` tuples.
+Every pre-break flat row at or after `P × 64 + R + 1` moves forward by `63 − R` rows
+(`shift_for_breaks`; several breaks apply in order).  Green Hill, break (0, 31): flat row 288 →
+320 = pattern 5 row 0 (`B05`); flat row 287 → pattern 4 row 63 (`B04` + `D63`).
 
-### What apply_pattern_breaks does
-
-1. Extracts the **body**: all rows after `(P, break_row)` across all patterns P..N.
-2. Repacks body into patterns P+1, P+2, … (fully 64 rows each; extra pattern appended if needed).
-3. Clears rows `break_row+1..63` of pattern P.
-4. Writes `Bxx → P+1` at `(P, break_row)` on the first free channel.
-5. Updates any pre-existing `Bxx` effects that targeted old post-break patterns (remaps coordinates).
-
-**Critical:** Do NOT write any `Bxx` loop-jump before calling `apply_pattern_breaks`. The remapping
-in step 5 only works correctly if the loop Bxx does not exist yet — write it afterward via
-`ModLayout.loop_point(breaks)`.
-
-### Coordinate remapping formula (single break at (P, break_row))
-
-```
-body_start = P * 64 + break_row + 1   # first flat row of the body stream
-
-# pre-break flat row T → post-break position:
-if T < body_start:
-    pat, row = T // 64, T % 64        # still in intro portion (unchanged)
-else:
-    br = T - body_start
-    pat, row = P + 1 + br // 64, br % 64
-```
-
-Example — GHZ, break at (0, 31) → body_start = 32:
-- Loop target at pre-break flat row 288: br = 256 → pat=5, row=0 → **B05** ✓
-- Loop target at pre-break flat row 287: br = 255 → pat=4, row=63 → **B04 + D63** (Dxx companion needed)
-
-### ModLayout.loop_point(breaks) algorithm
-
-1. **Bxx location** — scan `self.mod.patterns` backward for the last row where any channel cell
-   has a non-zero period (`((byte0 & 0x0F) << 8) | byte1 != 0`). This is the last row with actual
-   note data in the post-break layout. Bxx is placed there on channel 0.
-
-2. **Bxx target** — apply the coordinate formula above to `loop_target_tick`:
-   ```
-   flat_row = int(round(loop_target_tick / ticks_per_row))
-   # then apply formula → (target_pattern, target_row)
-   ```
-
-3. **Dxx companion** — if `target_row != 0`, write `Dxx` (BCD-encoded row) on the next free
-   channel at the same row so playback resumes at the correct row within the target pattern.
+The loop's `Bxx` is written after the breaks (§ The loop), in post-break coordinates; a `Bxx` written
+before would land on a displaced row.
 
 ---
 
-## Verifying against a VGZ (`tools/vgm_compare.py`)
+## The merged build
 
-### VGM comparison setup
+The reference MOD keeps every SMPS channel.  The Amiga build (`convert.py --merged`, `core/merge/`)
+folds channels together so the song fits three or four: a **group** names a **primary** and its
+**followers**; the followers leave the output and the primary plays a **composite instrument**
+wherever a follower sounds with it.  Nothing else in the config changes, and the plain conversion is
+unaffected: the reference MOD, its baselines and audits stay the ground truth.
 
-`reference/vgz/` is **untracked** (`.gitignore`): it holds the reference recordings
-(`01 - Title Theme.vgz`, …) and the VGMPlay binaries, neither of which belongs in the repo.
-On a fresh checkout:
+### Groups (`merge:`)
 
-1. Put the VGZ rips of the songs you want to audit in `reference/vgz/`.
-2. Unzip a **VGMPlay 0.51.x** Windows build (Valley Bell's libvgm-based player, source at
-   <https://github.com/ValleyBell/vgmplay-libvgm>) into `reference/vgz/vgmplay/` so that it contains
-   `VGMPlay64.exe` (or `VGMPlay.exe`), `VGMPlay.ini` and `zlib1.dll`.  The 0.51 line is required:
-   the tool patches `VGMPlay.ini` with `Core = NUKE` / `MuteMask = …`, and the older 0.40.x
-   "legacy" builds use a different ini layout.
-3. Install an ffmpeg build that includes the libopenmpt demuxer (the gyan.dev *full* build does;
-   check with `ffmpeg -h demuxer=libopenmpt`) and `pip install numpy`.
+```yaml
+merge:
+  - primary: FM1
+    followers: [FM5]        # the lead's detuned double
+  - primary: DAC
+    followers: [PSG3]       # the hi-hat lands on the drum hits
+    cut_primary: true
+```
 
-VGMPlay is looked up as `--vgmplay DIR` → `VGMPLAY_DIR` environment variable →
-`reference/vgz/vgmplay/`, so with the layout above no flag is needed.
+The live channels are packed onto MOD columns 0..n-1 in their configured order (`num_mod_channels`
+pads).  Per primary note-on at tick *t*, with the follower's notes as `walk_channel` resolves them
+(`smpsNoAttack` continuations extend a note, a rest ends it; a drum or noise note *sounds* for its
+sample when that is shorter, and for its fill — `NoteOn.sounding`):
+
+| Follower | Result | Counted |
+|----------|--------|---------|
+| note-on at *t*, same duration | composite | `paired` |
+| note-on at *t*, longer | composite; its tail is cut by the primary's next rest (`truncated`) or re-attacked by its next note (`held`) | `paired` |
+| note-on at *t*, shorter | composite, the follower keyed off at its duration inside it (`keyoff_secs`) — unless it ends within `merge_tolerance` of the primary | `shorter` |
+| none, resting | the primary alone | `alone` |
+| none, still sounding | the primary alone; the ring is lost | `held` |
+| note-on while the primary sounds, at no primary note-on | lost; with `cut_primary: true` it plays as a solo note and cuts the primary's tail | `orphan` / `cuts` |
+| note-on while the primary is silent | the follower's own note spliced onto the primary's column (its instrument, note, level, fill); its rest follows unless the primary takes the column back | `solo` (`solo_cut`) |
+
+- `merge_tolerance` (ticks, default 1): a follower note-on that close to the primary's counts as at
+  *t* (`match_onsets`, nearest first), and a note that short followed by an `smpsNoAttack` note is a
+  grace note: the two are one note at the target pitch, so chords fold on the pitches they land on
+  (Green Hill's FM3 starts its chord tone a tick after FM4/FM5).
+- The **primary's** effects apply to the composite: its vibrato, fill, `Cxx`, `EDx`.  A follower whose
+  modulation differs is counted (`vibrato`) but plays the primary's; a solo note has no vibrato.  The
+  primary's fill cuts the whole composite (choose the primary accordingly: § Choosing the primary).
+- `cut_primary: true` lets a follower note that starts over the primary's tail play and cut it — what
+  a hi-hat does to a drum's decay on a 4-channel Amiga.
+- `max_composites: N` keeps a group's N most-played composites; the rest play the primary alone.
+- `merge_drop: [...]` leaves channels out of the merged build altogether: which parts to keep is a
+  musical choice (Green Hill keeps drums, bass, lead and one harmony).
+- Followers and dropped channels **stay in every walk** (levels, envelopes, rendering pitches, which
+  the composites and solo notes are made from), but not in the output.  Instruments no note of the
+  merged build plays are not rendered (`MergePlan.unused`).
+- Two channels that never sound at once are a clean pair of solo notes: they simply share a column.
+
+**Survey first.** `tools/merge_survey.py <config>` counts the table above for every ordered pair of a
+song's channels and suggests groups (never one with orphans); the converter reports the same counts
+for the groups it was given.
+
+### The fill pool (`merge_fill`)
+
+`merge_fill: [PSG1, PSG2]` pools every note of those channels; a group's `fill_lost: true` pools the
+follower notes it cannot fold (orphans), and `fill_cut: true` the follower notes whose ring the fold
+would cut (a note longer than the primary's, with the primary's next note-on or rest inside it).  The
+pool (`pool_notes`) runs before anything folds — a pooled follower note leaves its group and the groups
+are paired again — and places each note on **any** output column silent when it starts:
+
+- each column's occupancy is its own notes' sounding spans plus everything spliced onto it;
+- the column that stays silent longest wins — the whole note where one can, else one whose next
+  note-on cuts it — never for less than a row (`fill_min_ticks`); a note with no silent column is lost;
+- a `fill_cut` note moves only where a column is silent for all of it, else it stays folded;
+- `merge_fill_cut_after: {DAC: 2, FM2: 4}` lets a column's notes count for that many ticks only, so a
+  pool note may cut a kick's decay or a bass note's second half (a column not named is never cut);
+- pool notes are spliced as solo notes, keeping their own instrument, level and pitch on whatever
+  column they land.
+
+The report gives, per source, notes placed where, cut, lost and stayed folded.  A line that starts on
+the other parts' note-ons cannot be pooled: Green Hill's chimes start on a bass and drum hit almost
+every time (30 of 188 placed), so they fold onto the bass as bass+chime mixes instead.
+
+### Composite instruments
+
+One composite per distinct **key**; the key holds intervals, not notes, so the same chord shape at
+another pitch plays the same composite.
+
+**Chip composites** — every follower an FM voice paired with an FM primary: key `("fm", primary
+instrument, (voice, semitones, detune, TL, fill, sides)...)`, an `FmInstrument` with one `FmLayer` per
+voice in the instrument catalogue, rendered by `ym2612.renderer.render_layers`: each layer on its own
+YM2612 channel at the composite's rendering pitch plus its interval, its track's detune added to the
+frequency word as `FMUpdateFreq` does, its carrier TL the follower's track level relative to the
+primary's (a hard pan counts 4 steps), a follower keyed off at its fill (`FmLayer.keyoff_secs`).  The
+chip sums and clips the voices as the hardware does.
+
+- Rendered at the level the composite's own notes play most (`fm_render_levels` counts it as any
+  instrument).
+- Volume: the primary's `sample_list` volume × the composite's peak over its primary layer's alone ×
+  the **speaker gain** (layers on opposite speakers are summed in the mono render but never meet on
+  the hardware: `_speaker_gain` scales to L/R power; 1-Up's FM3 left + FM5 right read 2.4 dB loud
+  without it), moved by the difference between the composite's baked level and the primary
+  instrument's **in the reference build** (the level its volume was measured for).  Past 64 it is
+  clamped and `merge_headroom` says by how much.
+
+**Mixed (pcm) composites** — anything else: key `("pcm", primary instrument, (instrument, interval,
+level scale, fill)...)`, mixed by `mix_pcm_composites` once every sample is in:
+
+- **Trigger note:** the fastest layer's (`_mix_note`: a hat on a kick keeps its treble), capped by the
+  group's `mix_note` (Green Hill's drum mixes at F2: 2.5× fewer bytes, no hat above 5.5 kHz), or the
+  primary's own with `mix_at: primary` (a looped primary keeps its loop; the followers are resampled
+  down into it).  A shape transposed off C1–B3 from where its mix was made gets a mix of its own.
+- **Sources** are the generators' unquantised renders (`raw_out`; a drum off disk as bytes unless
+  saturated), so a mix is quantised once — by the mixer, or by its bank.  Each layer is resampled by the
+  period ratio of its note to the trigger note (a layer resampled *up* uses a 12-tap kernel,
+  `UPSAMPLE_TAPS`: the 32-tap sinc rings ahead of a transient and the drum came in late behind the hat)
+  and added at `sample_list volume × 10^((level − baked level) / 20)`.
+- A follower's **fill** is part of the key: its layer is cut there and decays at the voice's release
+  rate (`_cut_layer`; a 2 ms fade where there is none, a PSG note).
+- **Length:** the composite's own longest note plus the release padding (`Composite.longest`; padding
+  for an FM primary, whose note ends in a release slide, 50 ms for a PSG or drum primary, whose note is
+  cut); a layer outlasting that is keyed off with its release, never chopped (a hard cut clicked on
+  every kick).  A looped follower is unrolled for that length.  A looped primary mixed at its own rate
+  keeps its loop, moved past the followers' tails (a later repeat of the loop body is the same seamless
+  loop); one whose longest note ends before its loop starts, or mixed at another rate, plays straight
+  through.
+- **Level:** the sum is peak-normalised and the composite's volume set to the sum's level; past full
+  scale it stays at 64 and `merge_headroom` reports it — unless the group's `limit_db` limits the
+  peaks by up to that many dB instead (`limit_peaks`: denser, a little transient distortion).
+- Group sound options: `treble_shelf_db` / `treble_shelf_hz` (a brightness shelf on the group's
+  composites, on top of any song shelf), `dither:`, `name:`.
+
+**`fm_on_chip`** (a group key, on unless `false`): a mix with an FM primary and FM followers renders
+those FM voices together on the chip (`Composite.chip_base`, an `FmInstrument` under an id from
+`CHIP_BASE_IDS`, never a slot), unlooped, for `Composite.longest_played` (each note's end times its
+playback speed over the mix's trigger note), at the composite's own render level; the mixer takes it in
+place of the primary's sample, at the primary's volume times `chip_gain`, and mixes only the rest (a
+PSG, a drum) on top.  The voices' detune and phase run on as the hardware's do, instead of two looped
+samples repeating a few tens of ms each.  The render takes the primary's loop away: `mix_at: primary`
+then keeps none, and a long mix loops only where `loop_mix` finds the sum settle.
+
+**`loop_mix: true`** (a group key): a long mix with no loop loops where its sum settles, found in the
+finished mix as a voice's sustain loop is, with an 80 ms crossfade (the layers beat; the join lands on
+another phase of the beat); the group's `loop_drift_db` / `loop_min_ms` / `loop_start_ms` steer it.
+Lossy: the chord's slow movement freezes in the loop.
+
+### Mixes end where no note reaches
+
+Per mixed note the plan records where it ends and where the next note-on of its primary's column (own,
+spliced and pooled notes; not `smpsNoAttack` notes) cuts it, as the MOD places them — a note-on on a
+row boundary exactly, one between rows half a row either way, two in one row a row apart — and how
+much faster than the mix's trigger note it plays (`_Planner._measure_heard`, `Composite.heard`).  The
+mixer cuts the finished sum, with a 2 ms fade, at the latest point any note reaches: the earlier of
+its end plus the release slide (an FM primary's: until the voice has fallen 48 dB, `RELEASE_FLOOR_DB`,
+at most the release padding) and its next note-on.  A kept loop no note reaches is dropped and the mix cut the
+same way.  The layer cuts inside the mix are unchanged, so what plays before the cut is the same
+audio.
+
+### A follower's note fill
+
+The driver keys a follower off at its `smpsNoteFill` while the primary plays on (Green Hill's bass: a
+67 ms pluck under every kick), so the fill is part of every follower key: a chip layer is keyed off
+early, a pcm layer cut with its release (above).  A **solo** note keeps its own fill, and a PSG solo note
+ends at its duration on whatever column it lands; an FM solo note on a PSG primary rings into its
+rest's release.  The source instruments' sustain needs count the notes they play inside composites,
+and skip followers' own walks and a live channel's folded notes.
+
+### Per-pattern folds (`merge_patterns:`)
+
+A song-wide group folds a follower everywhere.  When the arrangement wants different folds per
+section (Green Hill: the bass rides the drum column through the verse and has its own in the intro and
+bridge), the groups are given per block of patterns:
+
+```yaml
+merge_patterns:
+  - patterns: "1-4"           # hex, as Fast Tracker shows them: "0", "1-4", "d-10", "0, 5-c"
+    drop: [PSG2]              # their notes in these patterns are left out
+    groups:
+      - primary: DAC
+        followers: [FM2, PSG3]
+        cut_primary: true
+      - primary: FM3
+        followers: [FM4, FM5, PSG1]
+        mod_channel: FM2      # take FM2's column here (the bass is folded into the drums)
+```
+
+- **Pattern numbers** are the reference build's, after its `mod_pattern_breaks`; a note belongs to the
+  pattern its note-on lands in.  A YAML integer is decimal; write strings for hex.
+- Each group is a `MergeGroup` with a `patterns` set: its primary's and followers' notes are restricted
+  to those patterns and paired as before.  A channel may follow in one block, lead in the next and be
+  kept in a third.
+- A channel **stays in the output** unless it is a follower or dropped in every named pattern and every
+  pattern it plays in (or song-wide).  In the patterns it follows in, its notes are `MergePlan.folded`
+  and `ChannelWriter` skips them on its own column; the first folded note-on ends whatever of its own
+  still rings there (release slide or `C00`), and its rests there write nothing.  The output has one
+  column per source that is live anywhere (Green Hill: 8 of 9), each keeping its meaning for a hand
+  finish in a tracker.
+- A fold lands on its **primary's** column.  `mod_channel:` (a `channels:` number or a source) moves the
+  primary's notes to that column in the group's patterns; the column must be free there (its owner
+  folded, dropped or moved) — two sources on one column in a pattern is an error naming it.  A group
+  with no followers and a `mod_channel` is a plain move.
+- `ChannelWriter` routes each note-on by its tick's reference pattern (`_ColumnRouter`); rests and cuts
+  follow the note to its column, a ring left on another column when the block changes is cut there,
+  and a channel's own end in a column another channel borrows is a plain `C00`.
+- A group with no followers and `fill: true` pools its primary's notes in the block's patterns (the
+  channel has no column there; unplaced notes are lost).  Its `cut_after: N` lets a pooled note take
+  that group's column once its note is N ticks old (`MergePlan.cut_after_at`; `merge_fill_cut_after` is
+  the song-wide fallback).  Green Hill's bridge arpeggio is sprinkled over the four columns this way.
+- Two groups may share a primary in different patterns; identical chords in two blocks share one
+  composite (`Composite.uses`).  A song-wide `merge:` may sit beside `merge_patterns:`; a channel claimed
+  twice in one pattern is an error.  Notes of a departed channel in patterns no group folds are lost
+  (`merge_dropped`); patterns no block names fold nothing (`merge_unspecified`).
+
+### Choosing the primary (`tools/fold_csv.py`)
+
+`tools/fold_csv.py <config> <table.csv> [--write] [--bank] [--mix-note F2]` writes the
+`merge_patterns:` section from a fold table: a row per pattern (hex), a column per reference MOD
+channel, each cell `fold N` / `fold N*` / `keep` / `drop` / blank (kept where the channel plays, else
+dropped); equal rows join into one block.  The table cannot name a fold's primary, so the tool tries
+every member:
+
+- the drums own any fold they are in (every note cuts a drum's decay on an Amiga, and the fold stays on
+  the drum column);
+- otherwise the member that plays the fewest follower notes **wrong**: lost ones, plus paired ones the
+  primary's own effects would distort (`distorted`: a primary fill shorter than the follower's note
+  cuts the composite; the primary's vibrato is the composite's).  A chime with a 16-frame fill and
+  vibrato never leads a chord it rides.
+
+The counts are printed; `fold N*` names the primary by ear over the measurement.  `--write` replaces
+the block between its marker comments; the config stays the source of truth.
+
+### Sample banks (`bank: true`)
+
+A group's mixed composites share instrument slots, each sound chosen with `9xx` (offset × 256 bytes, up
+to $FF00; `core/merge/banks.py`).  `pack_banks` runs once the mixes exist, most-played first:
+
+- each sound starts on a 256-byte boundary and is followed by one MOD tick of silence (at the slowest
+  tempo) up to the next boundary; one finetune per bank;
+- a bank plays at its loudest member's volume, quieter members scaled into their bytes (8-bit range
+  lost), so `_layout` groups sounds by volume where that takes no more banks than first fit;
+- a looped mix goes last in its bank (the bank's loop header is its loop) and its notes need no cut;
+- chip composites are never banked;
+- a member that fits nowhere is dropped like any composite over budget (§ Slots) and reported
+  (`merge_bank_dropped`); banks the slots could not hold are counted (`MergePlan.bank_overflow`).
+
+**In the output** every banked note starts with `9xx` (none at offset 0) and, unless the column's next
+note-on comes first, is cut once its sound is over (`ChannelWriter._cut_after`: the sound's seconds as
+frames, then ticks as a fill is; `C00` on a row, `ECx` inside one).  A melodic primary banks too; the
+`9xx` takes the attack row: a `Cxx` moves to the note's next free row, an `EDx` is dropped, a cut inside
+the attack row moves to the next row, and a no-attack note is re-triggered.  A banked sound's level is
+measured under its own id (`Composite.bank_id`), and its release slide takes its primary's rate.
+
+**`merge_bank_slots`** — slots the composite fit holds back for the banks (the banks also take any slot
+the fit leaves free).  `auto` (the default): the conversion runs again with the reserve the banks
+turned out to need (`bank_reserve_wanted`, up to four builds) — fewer where a held slot sat empty while
+composites went without, more where bank sounds carry more notes than the least-played composites they
+would displace.  A number pins it, and a held slot left empty goes back to the composites once
+(`merge_bank_retry`).
+
+### Slots
+
+Composites share the 31 slots with the instruments the merged build still plays.
+`fit_composites`:
+
+- **Offered:** slots nothing in the config names, then those of instruments no note of the merged build
+  plays.  A drum's slot is never reused (it is loaded from disk).  A mix source's slot can be: its sample
+  is rendered anyway and kept aside for the mixer (`MergePlan.mix_only`, `_mix_sources`); an FM source's
+  slot takes only a pcm composite (the FM catalogue holds one entry per slot).
+- **Order:** each group's `max_composites` first, then the most-played composites first.
+- **Over budget:** composites are dropped — same-shape twins first, then those whose primary instrument
+  is played anyway (no new slot needed), then the least played — and the fit is redone, since a dropped
+  composite hands its notes back to the primary's own instrument and releases its sources.
+- **A composite owns its slot:** both catalogues drop the instrument formerly named there.
+- The report: `composite slots: N used of M free (K asked for)`; `merge_unsupported` lists the notes that
+  play the primary alone.
+
+Three rules keep one sound out of two slots:
+
+- **A unison is the primary, louder** (`unison_gain_db`).  A chord whose every follower is the
+  primary's own voice at the same pitch, no detune, keyed off with it (chip), or the primary's
+  instrument at its note with no cut (mix), makes no composite: the note plays the primary's
+  instrument with the followers' gain (`MergePlan.gains`; amplitudes add on a shared speaker, powers
+  across speakers: +6 dB for an equal pair on one side, +3 dB for left + right).  The gain is baked into
+  the instrument's level (`ResolvedNote.gain_db`), its `sample_list` volume moved accordingly
+  (`merge_unison_volume`); a `Cxx` instead would land a row late on every delayed note.  A detuned
+  unison beats, so it stays a composite.
+- **Twins give up their slot first** (`same_shape_twins`).  Composites of one shape (same voices and
+  intervals, differing only in fill or level) are twins; the one whose followers ring furthest (`_reach`:
+  fewest cut, then the latest cuts), then the most played, is kept, if it can play every note of the
+  other (a mix transposed past B3 cannot).
+- **Stand-ins** (`stand_in`): a composite dropped for any reason plays a surviving one of its shape
+  ("stands in") instead of losing the follower.
+
+`merge_twins: always` (song level; default `short`, only while slots are short) drops twins even when
+everything fits, for the bytes.
+
+### Other merged-build rules
+
+- **Rendering pitch:** `merge_max_synth_shift` (default 12) caps how far above its root's pitch a sample
+  is rendered; 0 halves every shifted sample, at the cost of envelopes running faster up the range
+  (`fm_synthesis.md` § Pitch: synth_root, synth_shift, target_rate).
+- **Loops:** `samples.sustain_loops: merged` loops this build only; its loops skip the timbre check
+  unless `merge_loop_timbre: true`.
+- **Columns:** a merged build whose columns fit four is written as a 4-channel M.K. file
+  (`ModFile.narrow_to`); its slots are renumbered from 1 without gaps (`samples.compact_slots: merged`,
+  `ModFile.compact_samples`; the cells, warnings and report follow, the sound is unchanged).  Reference
+  builds keep the config's numbers, which `sample_list` tuning is keyed on.
+- **Output:** `merge_output_file`, default `<output stem>_merged.mod`.
+
+### When it runs
+
+The plan is built once the ticks are final (after `prepare_song`) and before any sample is rendered, so
+chip composites are catalogue entries like any instrument.  It lives on `config.merge_plan`, which
+`walk_channel` reads: the level pre-passes, the sustain scan and `ChannelWriter` see composites the same
+way.
+
+### Verifying a merged build
+
+- **Regression:** every config with a merge section is a second case, `<name>_merged`.
+- **Against the VGZ:** `tools/vgm_compare.py <config> <vgz> --merged` renders each merged column and,
+  with a combined mute mask, the sum of the chip channels folded onto it, and reports whole-song balance
+  and audio onsets per column.  With `merge_patterns:` it renders every chip channel once and builds
+  each column's reference per pattern from the channels that sound there (`core.merge.column_sources`):
+  a column × pattern-block table of block level and the primary's key-on attacks against the song's
+  median block, flagged at 2 dB.  Pooled notes are in no reference.  The per-note audit needs one note
+  stream per channel, so it is the reference build's.
+- **Samples:** `tools/mod_audit.py <mod> [--banks]` reads any MOD back and reports each sample against
+  the notes that play it: unused, too short, oversize, empty slot, low rate, `same as N` (first 100 ms
+  correlate ≥ 0.98), `finetune variant of N`, and per bank sound with `--banks`.
+- **Size cuts:** `tools/mod_render_diff.py` renders two MODs per channel and reports the worst 20 ms
+  difference; hold the dither seed fixed to see past its noise.
+
+---
+
+## Verifying against a VGZ
+
+### Setup
+
+`reference/vgz/` is untracked: it holds the VGZ rips and VGMPlay.
+
+1. Put the rips in `reference/vgz/`.
+2. Unzip a **VGMPlay 0.51.x** Windows build (<https://github.com/ValleyBell/vgmplay-libvgm>) into
+   `reference/vgz/vgmplay/` (`VGMPlay64.exe` or `VGMPlay.exe`, `VGMPlay.ini`, `zlib1.dll`).  The 0.51 line
+   is required: the tool patches `VGMPlay.ini` with `Core = NUKE` / `MuteMask = …`, which 0.40.x lays out
+   differently.  Looked up as `--vgmplay DIR` → `VGMPLAY_DIR` → `reference/vgz/vgmplay/`.
+3. An ffmpeg build with the libopenmpt demuxer (`ffmpeg -h demuxer=libopenmpt`; the gyan.dev *full*
+   build has it), and `pip install numpy`.
 
 ### Running it
 
 ```bash
 python convert.py configs/01_title_screen.yaml
 python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
-python tools/vgm_compare.py <cfg> <vgz> --skip-render        # reuse output/compare/<cfg>/*.wav
+python tools/vgm_compare.py <cfg> <vgz> --skip-render     # reuse output/compare/<cfg>/*.wav
 ```
 
-Sections of the report: per-note pitch/level, per-channel summary, **pitch verdict**, **vibrato**,
-channel balance, **per-instrument levels**, onset timing, noise (decay + band profile), DAC (rate check).
+Report sections: per-note pitch/level, per-channel summary, pitch verdict, vibrato, channel balance
+(`--ref`, default FM2), per-instrument levels, onset timing, noise (decay, band profile), DAC rate.
+Notes the recording plays after the MOD's single pass has ended are left out.  Levels are L/R power,
+never a mono mix (a hard-panned YM2612 channel reads ~5 dB low in mono).
 
-**Pitch verdict** is `tools/vgm_pitch_audit.py` run inside the report: the chip's frequency-register
-timeline against the pitch each MOD note sounds at, with the per-instrument verdict ("synth_root is
-1 octave too high" vs "mixed").  It is the authority on "is every note right", and what
-`--fail-pitch-cents` tests.  The per-note `vgm_c` / `mod_c` columns are audio measurements and only
-a cross-check: both are taken on the strongest of the note's first four partials (an FM voice whose
-carriers use a frequency multiple of 2 or more has nothing at the register frequency — measuring
-there read −50…−110 c of pure leakage on GHZ FM1), and `<-- PITCH` flags the two *renders*
-disagreeing by more than 25 c.  What is left after that is grace notes: the window holds the next
-pitch on hardware and a row-quantised one in the MOD (todo item 3).  GHZ: 453 flags → 25.
-Notes the recording plays once the MOD's single pass has ended (its second time round the loop) are
-left out of every table.
+### Pitch verdict (`tools/vgm_pitch_audit.py`)
 
-**Per-instrument levels** is the table to set `sample_list` volumes from.  Every note is matched
-to the MOD instrument (and `Cxx`) that plays it, and the level error MOD − VGM is reported per
-instrument with a per-channel breakdown:
+The authority on "is every note right", symbolic and self-aligning: the chip's frequency registers
+against the pitch each MOD note sounds at, with a per-instrument verdict ("synth_root is 1 octave too
+high" — fix that instrument; "mixed" — a note problem).  `vgm_compare` prints it as "Pitch verdict";
+run it alone with `--list` for every wrong segment.  The per-note `vgm_c` / `mod_c` columns are audio
+cross-checks on the strongest of a note's first four partials (a carrier at multiple 2+ has nothing at
+the register frequency); `<-- PITCH` flags the two renders disagreeing by more than 25 c, which is left
+to grace notes.
+
+### Per-instrument levels
+
+The table to set `sample_list` volumes from.  Each note is matched to the instrument (and `Cxx`) that
+plays it, and the error MOD − VGM is reported per instrument with a per-channel breakdown:
 
 ```
 inst sample            vol notes    err spread suggest   per channel (Cxx: err xnotes)
   11 ghz_v05_lo.raw     16   116   +4.6    0.2       9   FM3 C1D: +4.8 x20  FM4: +4.6 x58  FM5: +4.6 x58
 ```
 
-- Only notes **without** a `Cxx` say what the instrument's own volume should be;
-  `suggest = volume × 10^(−err/20)`.
-- In the baked volume modes every channel sharing an instrument must show the same error.
-  `spread` is the disagreement; above 3 dB no volume is suggested — it is not a volume problem
-  (look at pan, note fills, a wrong instrument, the alignment).
-- Errors are relative to the song's median note, so only *relative* imbalance shows.  The DAC
-  (fixed samples at volume 64, cannot be turned up) becomes the anchor only when it is 2 dB or
-  more off that median; a smaller gap is within what short DAC hits can be measured to.
-- Levels are L/R power, never a mono mix: a hard-panned YM2612 channel reads ~5 dB low in a
-  mono mix while every MOD channel loses the same 1 dB.
+- Only notes without a `Cxx` say what the volume should be: `suggest = volume × 10^(−err/20)`.
+- In the baked modes every channel sharing an instrument must show the same error.  `spread` is their
+  disagreement; above 3 dB nothing is suggested — look at pan, fills, a wrong instrument, alignment.
+- Errors are relative to the song's median note.  The DAC (fixed samples at 64) becomes the anchor only
+  when it sits 2 dB or more below that median.
 
-`--write-volumes` rewrites the config's `sample_list` volumes to the suggestions (errors of 1 dB
-or more) and records `# VGZ: +4.6 dB at 16` on the line.  Re-convert and re-run to verify.
+`--write-volumes` writes the suggestions of 1 dB or more into the config, with `# VGZ: +4.6 dB at 16`
+on the line; re-convert and re-run to verify.  `tools/measure_volumes.py` does it for every song
+(cores − 1 in parallel): convert, one write pass, re-convert, verify, then a line per song with the
+volumes changed, what is still ≥ 1 dB off (ceiling, channels disagree, two-note instruments marked) and
+the pitch verdict.  Exactly one write pass: the errors are relative to the median, so a second pass
+drifts the whole song.  Run it after any change to how samples are rendered.
 
-`tools/measure_volumes.py` does that for every song at once (cores − 1 in parallel, one process
-per song): convert, one `--write-volumes` pass, re-convert, verify, then one line per song with
-the volumes changed, what is still 1 dB or more off (instruments at the 64 ceiling, channels that
-disagree and two-note instruments are marked as such) and the pitch verdict.  Run it after any
-change to how samples are rendered.  It makes exactly one write pass: the errors are relative to
-the song's median note, so once many instruments move the frame moves with them and a further
-pass drifts the whole song.  The reference renders are reused whenever they exist.
+### Vibrato table
 
-**Vibrato table.**  Every FM / PSG-tone note of 0.5 s or longer is pitch-tracked in both renders
-(one partial isolated by heterodyne + brick-wall filter, instantaneous frequency from the phase
-derivative).  A row is printed when either side modulates: rate in Hz and depth as ± cents, measured
-only over the modulated stretch so `smpsModSet` wait times do not dilute it.  Flags: `VIBRATO`
-(rate off by > 15 % or depth by > 5 c / 30 %), `MISSING in MOD`, `not in VGM` (MOD-only wobble —
-a `4xy` the hardware does not have, or a sample loop that is not a whole number of periods).
-Rows marked `b` are **beating**, not vibrato: two detuned FM carriers wobble a partial's phase
-periodically too, but they also swing its level at the same rate (≥ 15 % → `b`; real vibrato
-measures ~3 %).  A beat's rate follows sample playback speed, so a `BEAT RATE` flag points at
-`synth_root` / multi-sampling, never at `4xy` — GHZ FM4/FM5 C6 (4.46 Hz on hardware, 6.5 Hz in the
-MOD) have no `smpsModSet` at all.  PSG notes are covered: the SN76489 has no key-on, so
-`vgm_analyze.parse_vgm` starts a PSG note when the channel becomes audible or its period moves more
-than 70 cents from where the note started — smaller moves are the driver's modulation and stay
-inside the note (GHZ PSG1 `smpsModSet $0E,$01,$01,$03`: 7.35 Hz ±7 c on hardware, theory 7.5 Hz;
-MOD 4.98 Hz).
-Reference points: the driver's steady cycle is `2·speed·(steps+1)` frames, ProTracker's is
-`x·(speed−1)·BPM / (160·speed)` Hz.  Title Screen FM4 closing A2: hardware 5.99 Hz ±19 c
-(theory 6.0 Hz); MOD `485` 3.98 Hz ±36 c before the formula was fixed, `4C3` 5.99 Hz ±18 c after.
+Every FM / PSG-tone note of 0.5 s or more is pitch-tracked in both renders (one partial, heterodyned,
+instantaneous frequency).  A row prints when either side modulates: rate and ± cents over the
+modulated stretch only.  Flags: `VIBRATO` (rate off by > 15 %, or depth by > 5 c and 30 %), `MISSING
+in MOD`, `not in VGM`.  `b` rows are **beating**: two detuned carriers also swing the partial's level at
+the rate (≥ 15 %); a `BEAT RATE` flag points at `synth_root` (a beat follows playback speed), never at
+`4xy`.  A PSG note starts where the channel becomes audible or its period moves more than 70 c
+(`core/vgm/notes.py`); smaller moves are modulation inside the note.
 
-**CI use.**  `--json FILE` writes everything in the report (per-note rows, channel summaries,
-vibrato, noise bands, DAC peaks) plus a `checks` list and an overall `passed`.  Thresholds are
-opt-in, and any failed one makes the exit code 1:
+### Onset timing
+
+Each FM / PSG / noise key-on in the register log is matched one to one to a MOD note row within 40 ms
+(`EDx` rows at their delayed start), so `unmatched` counts notes the MOD lacks or misplaces and
+`MOD-only` counts re-triggers where the hardware ties; unmatched times are listed (JSON `unmatched_s`).
+A chip key-on counts as a note only after a key-off or a pitch move of more than 70 c — under
+`smpsNoAttack` the driver still writes key-on.  The window follows the running deviation; a change of 20
+ms or more from first notes to last prints as `drift` (a MOD off the driver's tempo), and a step of up to
+120 ms confirmed by the next two notes re-syncs (a tempo change).  The DAC uses audio onsets (the log
+holds PCM seeks, not hits), so its count is approximate.
+
+### CI use
+
+`--json FILE` writes the whole report plus a `checks` list and `passed`.  Thresholds are opt-in; any
+failure exits 1:
 
 | Flag | Fails when |
 |------|-----------|
 | `--fail-balance-db DB` | a channel's level relative to `--ref` differs from the recording by more than DB |
-| `--fail-pitch-cents C` | the pitch verdict has a wrong note (more than C cents from the chip register) or a missing one, or a note is silent in the MOD render |
-| `--fail-unmatched N` | a channel has more than N chip key-ons with no MOD note row within 40 ms (DAC: detected audio onsets) |
-
-```bash
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" \
-       --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
-```
-
-**Onset timing** matches each FM / PSG / noise key-on in the register log to a MOD note row, one
-to one, so `unmatched` is a count of notes the MOD really lacks or places more than 40 ms off, and
-`MOD-only` counts rows the chip has no key-on for (a re-trigger where the hardware ties); the times of
-unmatched key-ons are listed under the channel (JSON `unmatched_s`).  MOD rows carrying `EDx` are
-timed at their delayed start.  A chip key-on only counts as a note when the channel was keyed off
-or the pitch moved by more than 70 cents: the driver's `FMNoteOn` writes key-on unconditionally,
-and under `smpsNoAttack` only the key-OFF is skipped, so ties (GHZ `nA5, $10, smpsNoAttack, $3B`)
-and tied `smpsDetune` scoops (Scrap Brain FM4, +36 c) log a key-on the chip ignores.  Title
-Screen: 0 unmatched on every FM channel; GHZ read FM1 4, FM3 2, FM4 15, FM5 15 before todo item 3
-(grace notes, off-grid notes and the tie key-ons above) and reads 0 since.  The 40 ms window follows the running deviation of the notes matched so far, and the
-change from the song's first notes to its last is printed as `drift` when it reaches 20 ms: a
-MOD that runs slightly off the driver's tempo is one finding, not a lost note per bar (Special
-Stage read +139 ms over its 33 s pass before its speed was changed, 0 unmatched).  The matcher
-also re-syncs across a step of up to 120 ms when the next two notes confirm it (a tempo change).
-An audio onset detector cannot do this on sustained channels (it read 28–143
-unmatched per GHZ channel with every note in place).  The DAC still uses it — the log holds PCM
-seeks, not hits (GHZ has two seeks 20 ms apart and hits with none) — so its count stays
-approximate (Title Screen 3, GHZ 60).
-
-## Channel merging (`merge:`, `convert.py --merged`)
-
-The Amiga build folds SMPS channels onto one MOD channel (`core/merge/`; config in
-`docs/yaml_config.md` § merge). A group names a **primary** and its **followers**; the followers
-leave the output and the primary plays a composite instrument wherever a follower sounds with it.
-
-**Per primary note-on at tick t**, with the follower's note-ons as `walk_channel` resolves them
-(`smpsNoAttack` continuations extend a note; a rest ends it; a drum or noise note *sounds* for
-its sample's length when that is shorter, `NoteOn.sounding`, from the drum file's size at its
-`mod_note` and the noise envelope's frames — and for its note fill, which keys it off first). A follower note-on within `merge_tolerance` ticks
-of the primary's counts as at t (`match_onsets`, nearest first, each follower note once), and a
-note of at most that many ticks followed by an `smpsNoAttack` note is a grace note bending into
-it: the two are one note at the target pitch, so a chord is folded on the pitches it lands on
-(Green Hill's FM3 starts its grace a tick after FM4/FM5). A mixed (non-chip) pair needs no
-equal durations: each sample plays out as it is.
-
-| Follower at t | Result | Counted as |
-|---|---|---|
-| note-on, same duration | composite | `paired` |
-| note-on, longer | composite; its tail is cut by the primary's next rest (`truncated`, when it outlasts the rest by more than `merge_tolerance`: a grace note's tick is no loss) or re-attacked by the primary's next note (`held` there) | `paired` |
-| note-on, shorter | composite; the follower is keyed off at its duration inside it (`keyoff_secs`: a chip layer's YM2612 key-off, a mix layer cut with its release) — unless it ends within `merge_tolerance` ticks of the primary's own end, which is no key-off (two identical chords once differed by a key-off 20 ms before the note was cut, and cost a slot each) | `shorter` |
-| none, resting | the primary alone (right) | `alone` |
-| none, still sounding | the primary alone; the follower's ring is lost | `held` |
-| note-on while the primary sounds, no primary note-on | lost; with the group's `cut_primary: true` it plays as a solo note and cuts the primary's tail | `orphan` / `cuts` |
-| note-on while the primary is silent | the follower's own note, spliced into the primary's event stream with the follower's instrument, MOD note and level (`walk_channel` yields it with the follower's state); the follower's rest follows it unless the primary takes the channel back first | `solo` (`solo_cut` when a primary note-on ends it early) |
-
-A pair is clean when nothing is lost; `tools/merge_survey.py` prints the counts for every
-ordered pair of a song's channels and suggests groups (never one with orphans). Two channels
-that never sound at once are a clean pair with nothing but solo notes: they simply share the
-MOD channel. Follower notes whose modulation state differs from the primary's are counted
-(`vibrato`) but play with the primary's `4xy`; a solo note carries no vibrato.
-
-The followers stay in the walks of the merged build (`enabled_channels` yields them while
-`merge_active`) so their instruments keep their baked levels, envelopes and rendering pitches,
-which the composites and solo notes are made from; only `_convert_all_channels` skips them.
-Instruments no note of the merged build plays are dropped from the catalogue before rendering
-(`MergePlan.unused`, reported as "not rendered"); a sample a pcm composite is mixed from is
-kept until the mix is done and blanked after.
-
-**The fill pool** (`merge_fill: [PSG1, PSG2]`; a group's `fill_lost: true` for the follower
-notes it cannot fold — its orphans, `PairStats.lost_notes`; a group's
-`fill_cut: true` for the follower notes whose ring the fold would cut, `PairStats.cut_notes`:
-a note longer than the primary's with the primary's next note-on or rest inside it) places
-notes on ANY output channel that is silent when they start, not only their group's primary
-(`pool_notes`).  It runs before anything folds: a pooled follower note leaves its group's
-notes and the groups are paired again, so a cut note that found a channel silent for all of
-it plays whole there instead of as a truncated composite; one that found none folds as before
-(reported as "stay folded").  Green Hill's lead rests through patterns 2–4, and PSG1's
-24-tick chime rings, cut at 8 ticks inside the bass mixes, play whole on its channel there
-(11 of 17).  The channels' occupancy counts the solo notes the groups will splice.    Each live channel's occupancy is its own notes'
-sounding spans plus everything spliced onto it; a pool note takes the channel that stays silent
-longest — the whole note where one can, else the channel whose next note-on cuts it
-(`cut`), and never for less than a row (`fill_min_ticks`); a note with no silent channel is
-lost.  `merge_fill_cut_after: {DAC: 2, FM2: 4}` lets a channel's notes count for that many
-ticks only, so a pool note may cut a kick's decay or a bass note's second half — what a
-hand-made 4-channel cover does.  Pool notes are spliced as solo notes are (`_splice_note`), so
-they keep their own instrument, level and pitch on whatever channel they land, including the
-drum channel (the FM level law applies to every FM note on a channel, spliced or not).  The
-converter reports per source how many were placed where, cut, and lost (`merge_fill`).  Green
-Hill's chime lines cannot be pooled: PSG2 starts with a bass note-on on 107 of its 113 notes and
-PSG1 on 72 of 75, and every one of those also starts on a drum, so only 30 of 188 found a silent
-channel even with `merge_fill_cut_after`; they fold onto the bass channel as bass+chime mixes
-instead (`FM2 + [PSG2, PSG1]`, the survey's "folds with losses" pair).
-
-**Composite instruments.** One per distinct key. Slots: the ones nothing in the config names,
-then the ones the merged build frees (instruments no note plays once the followers are gone),
-the most-played composites first (`fit_composites`).  A freed instrument that a pcm mix is
-made from (`MergePlan.mix_only`) gives up its slot too when it is a PSG instrument: the PSG
-generator still renders it, the converter keeps the sample aside (`_mix_sources`) instead of
-installing it, and `mix_pcm_composites` reads its sources from there before the slot table
-(loop points come from the sample objects).  An FM mix source stays pinned, because the FM
-catalogue holds one entry per slot and the composite would displace it; a drum does too,
-since it is loaded from disk into its slot.  Green Hill: `psg_tone06`'s slot 20, once
-blanked after mixing, now holds an eighth bass+chime mix.  Each group's `max_composites` is
-applied first; then, while the composites do not all fit, as many as are over are dropped —
-first those whose primary instrument is played anyway (dropping them needs no new slot), then
-the least played — and the fit is redone, because a dropped composite hands its notes back to
-the primary's own instrument, which may be one of the slots on offer.  It used to be computed
-once, before the budgets: a chord over budget fell back to FM5's instrument 11, which the unused
-scan had already given away, and eight of Green Hill's notes played an empty slot.  The
-converter prints `composite slots: N used of M free (K asked for)`; a dropped composite's notes
-play the primary alone and `merge_unsupported` says which.  A composite owns the slot it is
-given: both catalogues drop the instrument that used to be named there (`fm_catalogue` puts
-the composite in over it, `psg_catalogue` pops every composite slot as well as `plan.unused`).
-Until 2026-09-28 the FM catalogue kept the old owner and the PSG generator rendered its tone
-into the slot regardless, so Green Hill's F+A+C chord (slot 18, once `psg_tone03`) played a
-PSG chime and the composites in slots 13 and 15 played `ghz_v07` / `ghz_v08_hi`.
-
-- two FM voices → `("fm", primary instrument, (follower voice, interval, detune, TL delta)...)`:
-  an `FmInstrument` with one `FmLayer` per voice, added to the instrument catalogue and rendered
-  by `ym2612.renderer.render_layers` — each layer on its own YM2612 channel at the composite's
-  rendering pitch plus its interval, with the follower's `smpsDetune` (relative to the
-  primary's) added to the frequency word as `FMUpdateFreq` does, and its carrier TL the
-  follower's track level relative to the primary's (a hard pan counts 4 steps). The sample is
-  rendered at the level the composite's own notes play most (`LevelPlanner.fm_render_levels` counts it
-  like any instrument) and its `sample_list` volume is the primary's times the composite's
-  peak over its primary layer's alone (the generator renders that layer by itself too), moved by
-  the difference between the composite's baked level and the primary instrument's **in the
-  reference build** (`_merge_baselines`, the levels the plan was built with — the sample_list
-  volume was measured for those; in the merged build the primary instrument may keep only a few
-  fallback notes at another level, and Green Hill's bell arp once dropped 13.5 dB that way): the
-  primary plays as loud as it did and the follower adds to it as the hardware sum did.  Past 64 the
-  volume is clamped and `merge_headroom` says by how much.
-- anything else → `("pcm", primary instrument, (follower instrument, interval above the
-  primary's MOD note, level gain, fill)...)`: mixed by `mix_pcm_composites` once every sample
-  is in, at the primary MOD note it was first met at (`Composite.base`).  The sources are the
-  generators' **unquantised renders** (`raw_out` of both generators, `SmpsToModConverter._raw_renders`,
-  peak-scaled as their samples were and cut where their samples were), a drum its bytes off disk,
-  so a mix passes one sinc resample per layer (from the sample's own rate, itself one sinc from the
-  chip's) and one dithered quantisation — the mixer's, or for a banked composite the bank's, which
-  scales the normalised sum (`raw_out` of the mixer) by the member's volume before quantising.
-  Until 2026-09-29 the mixer read the 8-bit samples back, so every mix was quantised twice and a
-  quieter bank member three times (about 3 dB of noise floor; the measured change is dither-level).  The key is a
-  **shape**, as a chip composite's is: the same chord two semitones down is the same mix
-  triggered two semitones lower (`trigger_note`; `plan.notes` holds each note's trigger, and
-  `plan.bases` the primary's note there), so Green Hill's F+A+C and Eb+G+Bb chime chords are
-  one sample — a mix that would be transposed off the MOD's three octaves gets a mix of its
-  own, keyed with its base.  With the group's `fm_on_chip` (the default; `false` turns it off), a
-  pcm mix whose primary is FM and that has FM followers gets a `Composite.chip_base`: an
-  `FmInstrument` of the primary and those followers as layers (built as a chip composite's are),
-  rendered by the FM generator under an id from `CHIP_BASE_IDS` (1000), never a slot, for exactly
-  `Composite.longest_played` seconds (each note's end times its playback speed over the mix's own
-  note) with no loop (`FmInstrument.render_secs`), at the primary's render level.  The mixer takes
-  it in place of the primary's sample, at the primary's volume times `chip_gain` (the render's
-  peak over its primary layer's alone, `MergedBuild.scale_chip_volumes`), and skips the layers it
-  holds (`chip_layers`); the rest are mixed as before.  The voices' detune and phase run on
-  unlooped as the hardware's do, instead of each looped sample repeating its own few tens of ms.
-  A drum primary sits at one note, so its mixes only share when
-  the followers match exactly.  A MOD sample triggered at note n plays at `amiga_clock /
-  PERIOD[n]` whatever rate it was made at, so every layer is resampled by the period ratio of
-  its note and the composite's trigger note (the fastest layer's, so a hat on a kick keeps its
-  treble, or the group's `mix_note` when that is lower: Green Hill's drum mixes at F2 cost 2.5
-  times fewer bytes than at the hat's A3 and lose the hat above 5.5 kHz; `MergePlan.note_at`
-  gives the converter that note) and added at `sample_list volume
-  × 10^((level − baked level)/20)`. The sum is
-  peak-normalised and the composite's volume set to the sum's level; past full scale it stays
-  at 64 and `merge_headroom` says by how much (Green Hill's kick+bass mixes: the kick's
-  transient and the bass's attack coincide, 3.3 dB over, so every drum+bass mix plays that much
-  under the two chip channels' sum; the balance inside it is right).  With sustain loops on, a
-  looped follower is unrolled for the longer of the two instruments' longest notes and never
-  shorter than its sample — it used to be the primary's alone, and a drum primary has none, so
-  a looped bass under a kick was unrolled to two bytes and every drum+bass mix was the drum
-  alone until 2026-09-28 — and a looped primary mixed at its own rate keeps its loop, moved
-  past the followers' tails (the unrolled data repeats the loop body, so any later repeat of it
-  is the same seamless loop): Green Hill's bass+chime mixes are the chime's length plus one
-  bass loop.  Mixed at another rate the loop points would not land on samples, so the primary
-  is unrolled for its longest note instead and the mix plays straight through — for the
-  longer of the instrument's sustain figure and the composite's own longest note plus the
-  release padding (`Composite.longest`; the bridge lead's 2.8 s notes under a chime a twelfth up
-  got a 1.6 s mix from the instrument figure and stopped dead; the verse chords, 0.35 s notes, got 4.5 s
-  mixes from the same figure, so a mix is now the composite's own longest note plus the release
-  padding and every layer, looped or not, is cut to that; the padding is the release padding
-  for an FM primary, whose note ends in a release slide the sample must carry, and 50 ms for a
-  PSG or drum primary, whose note is cut at its end — a layer that outlasts that length is keyed
-  off there with its release, never chopped (a hard cut at 0.25 s clicked on every kick whose bass
-  rang the whole note), so a looped layer is unrolled one release tail past it; a looped primary
-  whose composite's longest note ends before its loop starts gets no loop, just the notes' length; a released layer is cut
-  where it falls to the 8-bit floor, `RELEASE_FLOOR_DB` 48 dB, not 60; a group's `mix_at: primary`
-  mixes at the primary's own note so its loop survives, and a song's `loop_drift_db` overrides
-  settings.yaml's).  A layer resampled *up* into a mix uses a 12-tap kernel (`UPSAMPLE_TAPS`): the
-  32-tap sinc rings 2 ms ahead of every transient, and a kick upsampled under a hat that sits at
-  the mix's own rate came in late behind the hat, which the ear hears as the hat triggering early.  The source instruments' own
-  sustain needs count those notes too (`SustainPlanner._needs` credits a mixed composite's ring to its
-  primary's and followers' instruments at the notes they play inside it): once the bridge lead
-  was a group primary its long notes were the composites', its own longest note fell to a second,
-  and the loop search cut its sample 0.09 s in, at the attack's level — 4 dB louder wherever it
-  played on its own.  Conversely `SustainPlanner._needs` skips followers' own walks and a live channel's
-  folded notes: those notes are composites (credited to their sources) or spliced onto a live
-  channel (counted there), or not played at all, so a dropped channel's long notes no longer size
-  a sample.  `tools/mod_audit.py` reads any MOD back and reports each sample's bytes and seconds
-  against the longest note that plays it (unused, too short, oversize, empty slot, sample bank,
-  and a slot whose waveform another slot already holds: `same as N`);
-  Green Hill's merged samples went from 771 KB to 526 KB under these rules, and convert.py
-  narrows a merged build whose columns all fit four to a 4-channel M.K. file (`ModFile.narrow_to`).
-  Its sample slots are then renumbered from 1 without gaps (`ModFile.compact_samples`,
-  `samples.compact_slots: merged`): the instruments a merged build no longer plays leave their
-  config numbers empty (Green Hill lofi used 25 slots up to 30).  The cells' instrument numbers,
-  the warnings and infos (`Diagnostics.remap_instruments`) and the report's sample sources follow;
-  a slot keeps its order, a `9xx` offset is relative to its own sample, and the sound is unchanged
-  (every merged build renders identically).  The 8-channel reference builds keep the config's
-  numbers, which `vgm_compare`'s per-instrument table and the `sample_list` tuning are keyed on.
-
-**When it runs.** The plan is built once the ticks are final (after `prepare_song`:
-`apply_global_tempo_div` and `extend_looping_channels`, before anything counts notes) and before the
-samples render, so the FM composites are catalogue entries like any other; it is stored on
-`config.merge_plan`, which `walk_channel` reads, so the level pre-passes, the sustain scan and
-`ChannelWriter` all see the composite instruments the same way (the DAC branch asks the plan
-directly).
-
-**Verification.** The reference MOD is untouched by all this; the merged build is a second
-regression case per song that has a `merge:` section (`<name>_merged`).
-`tools/vgm_compare.py <config> <vgz> --merged` renders each merged MOD channel and, with a
-combined mute mask, the sum of the chip channels folded onto it, and reports whole-song balance
-and audio onsets per channel (the per-note audit needs one note stream per channel, so it is
-the reference build's).  Title Screen after the volume rule above: every merged channel within
-1.2 dB of its chip sum.  With `merge_patterns:` a column's sources change per pattern, so it
-renders every chip channel once and builds each column's reference per pattern from the
-channels that sound there (`core.merge.column_sources`, `report_merged_patterns`): a table of
-column x pattern block, whole-block level and the primary's key-on attacks (100 ms), against
-the song's anchor (the median block), flagged at 2 dB.  Pooled notes are in no reference.  Until
-2026-10-01 it labelled the columns by whole-song groups and reported four of Green Hill's silent.
-
-### Per-pattern folds (`merge_patterns:`, `tools/fold_csv.py`)
-
-A song-wide `merge:` group folds a follower everywhere.  Green Hill's arrangement wants
-different folds in different sections — the bass shares the drum channel through the verse
-(patterns 1–c) and has its own channel in the intro and the bridge (0, d–10); FM3 is a chord
-tone in one section and a countermelody in the next — and a MOD that is going to be finished
-by hand in a tracker wants each section folded as the arranger chose, on channels that keep
-their meaning.  That is what `merge_patterns:` is: a list of blocks, each naming the patterns
-it covers and the groups (and `drop:` channels) that hold there.  The pattern numbers are the
-**reference build's**, after its `mod_pattern_breaks`, in hex as Fast Tracker shows them; a
-note belongs to the pattern its note-on lands in (`SmpsToModConverter.pattern_of_tick`: the
-row `int(tick // tpr)` shifted past the breaks).
-
-The groups are ordinary `MergeGroup`s with a `patterns` set (`None` = song-wide, the `merge:`
-groups): `build_merge_plan` restricts each group's primary and follower notes to its patterns
-(`pattern_of` is required once any group has patterns) and pairs them as before, so a channel
-may be a follower in one block, a primary in the next and kept in a third.  What differs from
-the song-wide fold is that such a channel **stays in the output**: `prepare_merged_config`
-disables a channel only when it is a follower or dropped in every named pattern and every
-pattern it plays notes in (or in a song-wide group / `merge_drop` / `merge_fill`): a block for
-pattern 0 alone that drops FM1 leaves FM1's column, and its notes after pattern 0, in place
-(`_patterns_played`, from the song `convert.py` passes in).  Its notes in the patterns it follows in are
-in `MergePlan.folded` (`is_folded`), and `ChannelWriter` skips them on its own channel;
-where something of its own still rings from a pattern it was live in, the first folded
-note-on ends it (a release slide or `C00`, as a rest would) — the hardware re-keyed the note
-on the primary's channel — and its rests in those patterns write nothing, so the column is
-empty for the tracker.  The same set drives `_unused_instruments`, the fill pool's occupancy
-and the PSG note-cut positions.  A fold lands on its **primary's** column, so the output has
-one MOD channel per source that is live somewhere (Green Hill: 8 of 9, PSG3 never is), and a
-primary that changes between blocks moves the fold to another column — unless the group says
-`mod_channel:` (a `channels:` number or a source name): then the primary's notes take that
-column in the group's patterns (`MergeGroup.route`, resolved by `prepare_merged_config`, which
-then checks every named pattern's columns: a live source sits on its route there, or on its own
-column where it plays its own notes, and two on one column is an error naming the pattern —
-so a column is free when its owner is folded, dropped or moved elsewhere; `MergePlan.route_at`).
-A group with no followers and a `mod_channel` is a plain move; one with `fill: true` instead
-sends its primary's notes in the block's patterns to the fill pool (`pool_notes`, which now
-refuses a target column nobody plays on in that pattern — a folded, dropped, moved-away or
-pooled channel's own — and marks an unplaced pooled note `folded`, so it leaves the channel's own
-column as well).  How soon a pooled note may cut a column's note is the column owner's group's
-`cut_after` in that block (`MergePlan.cut_after_at`), the song-wide `merge_fill_cut_after` being the
-fallback: Green Hill's bridge chords give way to the arp after 8 of their 24 ticks, 40 of 64 arp
-notes placed.  `ChannelWriter` picks the column per note-on from the tick's
-reference pattern (`_ColumnRouter`), rests and cuts follow the note to the column it
-went to, a note still ringing on another column when the block changes is cut
-there, and a channel's own end-of-ring cut in a borrowed column is a plain `C00` (a release
-slide would sit on the borrower's notes) or nothing where the borrower's note-on already is.
-A column is borrowed only by *another* channel's notes: a group's `mod_channel:` routing its
-own primary there (Green Hill's FM5 chords on column 1 in patterns 1–4) ends its notes with the
-release slide as on its home column — until 2026-10-01 those were `C00` as well.  A solo note
-spliced onto the primary ends the way its own chip does: an FM note on a PSG primary rings into
-its rest's release instead of taking the PSG duration cut, and the zero-length rest that ends
-one solo note gives way to a solo note starting on the same tick.
-Green Hill's chords take the bass column in patterns 1–4, where the bass rides the drums, so
-the verse needs four columns.  Two groups may share a
-primary in different patterns; `PairStats.group` keeps their stats apart, and composites are
-keyed as before, so identical chords in two blocks share one instrument (`Composite.uses`
-counts each group's notes on it; the report lists a shared composite under every group that
-plays it, saying which it was made for — the report is written after the mixes and banks,
-`report_groups`, so banked sounds show their slot and `9xx`).  Notes of a departed
-channel in patterns no group folds, and a live channel's notes in patterns it is dropped in,
-are lost and reported (`merge_dropped`); patterns no block names are reported too
-(`merge_unspecified`: nothing folds there).  A song-wide `merge:` may sit beside
-`merge_patterns:`; a channel claimed twice in one pattern is an error.
-
-`tools/fold_csv.py <config> <table.csv>` writes the section from a fold table: one row per
-pattern, one column per MOD channel of the reference build, each cell `fold N` / `keep` /
-`drop` / blank (kept when the channel plays there, else dropped) — `input/02_ghz_fold.csv`.
-A fold needs a primary the table cannot name: the tool tries every member over the fold's
-patterns with `SurveyContext.pair` (the survey's rules restricted to those patterns), the
-drums own any fold they are in (every note cuts a drum's decay on an Amiga, and the fold then
-stays on the drum column), otherwise the member that plays the fewest follower notes
-**wrong** wins: lost ones (`PairStats.lost`), plus paired ones the primary's own effects
-would distort (`distorted`) — the primary's note fill cuts the whole composite, so a fill
-shorter than a follower's note truncates it, and the primary's vibrato is the composite's.
-Green Hill's chord block (patterns 1–4, FM3+FM4+FM5 over PSG1's chime): by losses alone the
-chime won (2 lost against an FM primary's 8), but its 16-frame fill would cut every chord at
-267 ms of its 400 and put its vibrato on voices that have none, so FM3 — the chord's longest
-voice, whose rest never cuts the others — is the primary and the chime is a layer keyed off
-at its own fill inside the mix.  The per-candidate counts are printed, and the ear overrules
-the measurement by naming the primary in the table: `fold 2*` on FM5's cell is what Green Hill
-ships with, the user's choice over FM3 in an A/B listen.  Rows with equal cells join
-into one block; `--write` puts the section into the config between marker comments.  The
-config is the source of truth: the table is a quick way to draft the folds, the block can be
-edited by hand afterwards, and a re-run with `--write` replaces it from the table.  Green
-Hill's table (17 patterns, 4 blocks) folds to 8 channels; the composite budget is the
-constraint it exposes: the groups ask for 37 composite instruments (the drum+bass+hat mixes
-alone are one per bass note, with and without the bass's pluck) and 18 slots are free.
-
-**A follower's note fill in a composite.** The driver keys a follower off at its
-`smpsNoteFill` while the primary plays on (Green Hill's bass: `$04`, a 67 ms pluck under
-every kick), so `NoteOn.fill` / `fill_secs` (frames / the region's frame rate) are part of
-every follower key: a chip layer carries `FmLayer.keyoff_secs` and `render_layers` keys that
-YM2612 channel off early (`_render_raw_mono` renders in segments); a pcm layer is cut at the
-fill and decays at the voice's measured release rate (`_cut_layer`, `release_db_s` from
-`core.audio.loops`; a 2 ms fade where there is none, a PSG note ends the instant its attenuation is
-15).  A **solo** note keeps its own fill too: `ChannelWriter` reads it off the spliced
-`NoteOn` (`_nf`) instead of the channel's state, and a PSG solo note ends at its duration on
-whatever channel it lands (`_psg_note`) — until 2026-09-28 a bass note alone on the drum
-column rang its whole (looped) sample where the reference had `EC1`.
-
-### Sample banks (`bank: true`, `9xx`, `core/merge/banks.py`)
-
-The drum column's mixes are the slot budget's biggest consumer (one per drum, bass note and
-hat, with and without the bass's pluck) and its notes carry no other command, so their effect
-slot is free for `9xx`, the sample offset (xx × 256 bytes, up to $FF00).  A group with
-`bank: true` has its mixed composites laid end to end in as few instruments as they fit: each
-sound aligned to 256 bytes and followed by one MOD tick of silence (at the song's slowest
-tempo), each bank at its loudest member's volume with the quieter members scaled into their
-bytes, one finetune per bank.  A looped mix goes last in its bank (nothing may follow a loop;
-the bank's loop header is its loop) and its notes need no cut.  Chip composites are never
-banked.  A banked composite takes no slot in the fit (`Composite.banked`; `_assign_slots`
-leaves its provisional id), the fit holds `merge_bank_slots` slots back and whatever else it
-leaves free is the banks' too (`MergePlan.spare_slots`); `pack_banks` runs after the mixes
-exist, most-played first, installs the banks, points `plan.ticks` at the bank slots and
-records each note's `(offset, sound bytes)` in `plan.regions` and its composite in
-`plan.bank_members`.  A member that fits nowhere is dropped like any composite over budget (a
-same-shape stand-in, else the primary alone) and reported with its reason
-(`merge_bank_dropped`); the banks the slots could not hold are counted
-(`MergePlan.bank_overflow`, notes per bank).
-
-**`merge_bank_slots: auto`** (the default; a number pins it).  How many banks the mixes need is
-known only once they are made, after the composites took their slots, so `convert()` builds
-again with the reserve the banks turned out to need (`bank_reserve_wanted`, up to four
-builds): the banks they filled, where a held-back slot sat empty while composites went
-without one; more, where banks found no slot and their notes outnumber those of the
-least-played composites that would give theirs up.  A pinned number keeps the old rule (an
-empty reserve slot goes back to the composites, once).  Both Green Hill configs came out
-identical at auto and at their old `merge_bank_slots: 2`.
-
-**A melodic primary banks too** (Green Hill's FM2+PSG1 in patterns d–10, 2026-09-30).  Its
-notes may need their attack row's slot for something else, and the `9xx` wins (a note at
-offset 0 needs none): a `Cxx` due there moves to the note's next free row (the delayed-note
-rule; counted in the report), an `EDx` delay is given up (the note is rounded to its row), a
-note fill or PSG cut inside the attack row moves to the next row, and a no-attack note is
-re-triggered (`3FF` would keep the previous sound).  A banked sound's level is measured under
-its own id (`Composite.bank_id`, `LevelPlanner._count`), not the bank slot's, which also holds a drum
-or another chord, and its release slide takes its primary's rate (`_bank_note` in
-`ChannelWriter`; a bank's slot has no rate of its own).  On Green Hill none of its 23 notes
-needed another command, the seven mixes (81 KB, seven slots) joined the drum banks (three
-slots in all, the looped one last in the third), and the four slots freed gave FM1+PSG2 the
-three composites it had been denied.  A member quieter than its bank's loudest is scaled down
-in its bytes (8-bit range lost), so `_layout` groups sounds by volume where that takes no more
-banks than first fit: loudest first, into a bank of its own volume, a new bank while under
-first fit's count, else the nearest volume; a loop is placed in turn and laid out last.  Green
-Hill: 23 bass notes 3 dB down → 4 one-note mixes (mean over banked notes 0.38 → 0.04 dB).
-
-In the output every banked note starts with `9xx` at its offset (none at offset 0) and,
-because the sample would run on into the next sound, is cut once its sound is over:
-`_cut_after` turns the sound's seconds into frames and driver ticks as a note fill does and
-writes `C00` on the row (`ECx` inside it), unless the channel's next note-on is there first.
-The tick of silence after each sound absorbs the cut's rounding.  A banked note that starts
-between rows gives up its `EDx` to the offset (counted).  The converter prints each bank's
-slot, size and sounds (`9xx`, bytes, notes) and how many notes were cut.  Green Hill: 18 drum
-sounds (170 KB) in three banks instead of 18 slots.
-
-Every sound starts on its 256-byte boundary: a member quantised from its raw sum can be a
-byte shorter than its sample (an odd length evened with a zero), and until 2026-09-29 every
-later sound in the bank started a byte early, its `9xx` rounding down onto up to 255 bytes of
-the previous sound's silence: most of Green Hill's merged drum hits were up to 23 ms late.
-
-**Mixes end where no note reaches** (`_Planner._measure_heard`, `Composite.heard`).  A mix
-used to run for its longest note plus the release padding plus every layer's release tail,
-though the column's next note-on retriggers the channel first: Green Hill's drum+bass sounds
-were 0.39 s for hits 0.2 s apart.  Per note the plan records where it ends and where the next
-note-on of its primary's stream (own, spliced and pooled notes; not smpsNoAttack notes, which
-a strict legato writes as `3FF`) cuts it, as the MOD places them: a note-on on a row boundary
-exactly, one between rows half a row either way, two in one row a row apart (a row of margin on
-every note, before 2026-10-01, made Green Hill's drum sounds 250 ms for hits 200 ms apart: the
-banks held 16 KB no note plays, and a slower BPM still never reached the next sound), and how
-much faster than the mix's own trigger note it plays (a chord shape transposed an octave up
-needs twice the bytes).
-The mixer cuts the finished sum at the latest point any note reaches — the earlier of its end
-plus the release slide (an FM primary's lasts until the voice has fallen 48 dB) and its next
-note-on — with a 2 ms fade; the layer cuts inside the mix stay where they were, so what plays
-before the cut is the same audio.  Checked with `tools/mod_render_diff.py`, with the dither
-seed held fixed: the lofi build renders identically, Green Hill differs at −46 dB in the last
-row of one release slide.  A loop the mix kept (a looped primary at its own rate) that no note
-reaches is dropped and the mix cut the same way.  Green Hill merged: 530 → 419 KB; lofi 328 →
-232 KB.
-
-**Slots, again.** Two rules wasted slots: the pinned set was computed once, before any
-composite was dropped, so a source of a dropped mix stayed reserved; and every FM mix source
-was pinned because the FM catalogue renders by slot.  Now `fit_composites` recomputes the
-sources on each pass, and an FM source's slot may hold a **pcm** composite (`_plan_slots`,
-`pcm_only`): only chip composites enter the FM catalogue, so the source is still rendered
-there and the converter keeps it aside for the mixer (`_mix_sources`, as a PSG source is).
-Green Hill recovered its two empty slots.  A composite dropped for lack of a slot (or by
-`max_composites`) no longer loses the follower's note when a surviving composite has the same
-**shape** — the same voices at the same notes, differing only in fill or level
-(`_shape`, `_stand_in`): its notes play that one, reported as "stands in".  Green Hill's
-verse bass: 119 notes mixed, 69 alone between drum hits, 4 lost (pattern 2, pitches no drum
-mix exists for); 26 follower notes over all groups still play the primary alone
-(`merge_unsupported` lists each).
-
-**Three rules against one sound in two slots** (2026-09-29, found by ear in FT2 clone: Green
-Hill merged slots $19 and $1F sounded the same).
-
-- *A unison is the primary, louder* (`unison_gain_db`).  A chord whose every follower is the
-  primary's own voice at the same chip pitch, no detune and keyed off with it (chip), or the
-  primary's instrument at its MOD note with no cut (mix), makes no composite: the note plays
-  the primary's own instrument, and `MergePlan.gains` carries the dB the followers add (their
-  amplitudes summed on each speaker they share, powers across speakers - L/R power, as the level
-  law: +6.02 dB for an equal pair on one side, +3.01 for Green Hill's FM4 left + FM5 right, which
-  played 2.3 dB loud at +6 until 2026-10-01; each chip channel is clamped on its own before the
-  DAC sums them, so the sum is linear; `NoteOn.pan`, `DriverState.pan`).  `walk_channel` puts it on `ResolvedNote.gain_db`,
-  so `LevelPlanner.levels` bakes the instrument at the level most of its notes now play, gain
-  included, and the instrument's `sample_list` volume moves from its reference-build level by
-  the difference (the chip composites' volume move, `merge_unison_volume` in the report).  A
-  `Cxx` instead would have been wrong: every one of Green Hill's 58 FM4+FM5 unison notes starts
-  between rows, and a `Cxx` due on an `EDx` row moves to the next row, after an attack 6 dB
-  quiet.  Green Hill's slot 7 (voice $05 doubled, 11 KB) was slot 11's bytes at volume 20; now
-  slot 11 is baked at 20 and its 20 own notes carry the `Cxx` they carried before.  A detuned
-  unison (Title Screen FM4+FM3, `smpsDetune` +3) stays a composite: it beats.
-- *Twins give up their slot first* (`same_shape_twins`, `_reach`).  While the composites do not all fit,
-  one whose shape (`_shape`) another has is dropped before any that would lose its notes; of
-  each shape the one whose followers ring furthest is kept (fewest cut, then the latest cuts,
-  then the most played), since a layer ringing on under a short note is heard less than one
-  cut from a long one, and only where it can play every note of the other (a mix transposed
-  past B3 loses the note).  `drop_composite(..., prefer=key)` names it for `stand_in`, which
-  now runs after every drop inside the fit: counted as the primary's own until the fit ended,
-  a twin's notes kept its primary's slot out of the next pass (Green Hill's voice $08 sample
-  stayed installed with nothing playing it).  Green Hill: the lead chord of patterns 1–4 in
-  slots 25 and 31 (the same four voices, PSG1 cut at 267 ms in one) is one slot.  The report's
-  `composite slots` line counts these apart ("N more play a same-shape stand-in").
-- *Twins always* (`merge_twins: always`, song level): the twins give up their slots whether or
-  not the composites fit, for the bytes.  Green Hill lofi: the lead chord's short-note twin
-  (22 notes, PSG1 cut at 267 ms) plays its long-note twin, 7 KB saved, nothing above −40 dB
-  in the render diff.
-- *An idle bank reserve goes back to the composites* (`SmpsToModConverter.convert`).  How many
-  banks the mixes need is known only once they are mixed, so when the banks leave a
-  `merge_bank_slots` slot empty while composites were dropped the whole conversion runs again,
-  from a copy of the song and config taken before the first pass, with the reserve set to the
-  banks filled (`merge_bank_retry` in the report).  Green Hill at `merge_bank_slots: 3` and
-  at 2 now write the same bytes.
-
-`tools/mod_audit.py` checks the result from the file alone: `same as N` where a slot's first
-100 ms is slot N's waveform (correlation >= 0.98, with the level difference and how long the
-two agree), `finetune variant of N` for the intended chorus copies (Title Screen 3/4, Spring
-Yard 5/6, Ending 8/11).  The bytes are compared as they are, so two mixes made the same
-distance below their trigger notes match whatever pitch each plays at; a transposed copy
-rendered at another rate does not.  What it still flags on purpose: Title Screen's detuned
-unison (18 vs 5, the loop freezes the beat) and its hat mixes 15–17 against 10/11 (the hat
-is cut at 50 or 250 ms under a kick loud enough to hide it; there are slots to spare, so no
-twin is dropped).
-
-## SMPS Note Range to MOD Range
-
-SMPS supports 8 octaves (C0–B7, bytes $81–$DF). MOD supports 3 octaves (C1–B3, 36 semitones). Mapping requires transposing down.
-
-| SMPS note range | Bytes | Semitones | Recommended transpose | MOD result |
-|-----------------|-------|-----------|----------------------|------------|
-| C0–B2 (very low) | $81–$A8 | 0–35 | 0 | C1–B3 |
-| C3–B5 (mid) | $A9–$C8 | 36–71 | **−36** | C1–B3 |
-| C4–B6 (high) | $B9–$D8 | 48–83 | **−48** | C1–B3 (clips low) |
-| C5–B7 (very high) | $C9–$DF | 60–94 | **−60** | C1–B3 (clips low+high) |
-
-Notes outside C1–B3 after transpose are **clamped** (not silenced) with a warning. Use per-channel `transpose` in YAML and `voice_map` with `root` for best control.
+| `--fail-pitch-cents C` | the pitch verdict has a note more than C cents off or missing, or a note is silent in the MOD render |
+| `--fail-unmatched N` | a channel has more than N chip key-ons with no MOD note row within 40 ms |

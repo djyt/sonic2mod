@@ -1,6 +1,8 @@
 """DAC samples, read out of the ROM's Z80 driver: DPCM, each nibble one delta on an accumulator
 that starts at $80.  Each driver loads and indexes them its own way.
 
+The Z80 program, as the 68k loads it: core/rom/z80.py.
+
 Sonic 1 (Type 1b)
     68k   lea (DACDriver).l,a0 / lea (z80_ram).l,a1      the Kosinski blob, decompressed by KosDec
     Z80   ld iy,zPCM_Table: 8 bytes a sample             start.w, size.w, pitch.b (little-endian)
@@ -33,7 +35,6 @@ from ...smps import FIRST_NOTE
 from ..image import RomError, RomImage
 from ..variant import DacSample
 from ..z80 import Z80_RAM_BASE, z80_ram, z80_word
-from .kosinski import kosinski
 
 _Z80_CLOCK = MD_PSG_CLOCK                 # the Z80 and the PSG both run at the master clock / 15
 _LONG = 4
@@ -47,7 +48,6 @@ _LD_IY = bytes.fromhex("FD21")            # ld iy,nn: the PCM table
 
 # 68k instructions the readers look for
 _LEA_A0 = bytes.fromhex("41F9")                         # lea (xxx).l,a0
-_LEA_Z80_RAM_A1 = bytes.fromhex("43F9") + Z80_RAM_BASE.to_bytes(_LONG, "big")   # lea (z80_ram).l,a1
 _MOVE_D0_ABS = bytes.fromhex("13C0")                    # move.b d0,(xxx).l
 _MOVE_D1_ABS = bytes.fromhex("13C1")                    # move.b d1,(xxx).l
 _MOVE_IMM_ABS = bytes.fromhex("13FC00")                 # move.b #ii,(xxx).l: opcode, 00ii, the long
@@ -79,7 +79,7 @@ class _Sonic1Dac:
         self._names = names
 
     def samples(self) -> list[DacSample]:
-        z80 = self._z80_driver()
+        z80 = z80_ram(self._rom)
         table = _pcm_table(z80)
         deltas = _deltas(z80)
         out = [_sample(z80, table + i * self._ENTRY, self._SIZE, self._PITCH, FIRST_NOTE + i, deltas,
@@ -90,15 +90,6 @@ class _Sonic1Dac:
         out += [_copy(timpani, self._FIRST_PITCHED + i, pitch, self._CYCLES, self._names)
                 for i, pitch in enumerate(pitches)]
         return out
-
-    def _z80_driver(self) -> bytes:
-        """The Kosinski blob the 68k decompresses into Z80 RAM."""
-        rom = self._rom
-        found = [a for a in rom.find_all(_LEA_Z80_RAM_A1) if rom.bytes_at(a - _LONG - len(_LEA_A0), len(_LEA_A0)) == _LEA_A0]
-        if len(found) != 1:
-            raise RomError(f"{len(found)} loads of the Z80 driver (lea x,a0 / lea z80_ram,a1), not one")
-        blob, _ = kosinski(rom.data, rom.long(found[0] - _LONG))
-        return blob
 
 
 class _Type1aDac:

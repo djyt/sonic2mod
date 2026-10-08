@@ -37,8 +37,8 @@ from core.rom.detect import first_failure
 from core.rom.envelopes import read_envelopes
 from core.rom.fixes import apply_fixes
 from core.rom.header import read_music_header, read_sfx_header
+from core.rom.kosinski import kosinski
 from core.rom.smps68k import SONIC1, TYPE1A
-from core.rom.smps68k.kosinski import kosinski
 from core.rom.smps68k.memory import Relative68kMemory
 from core.rom.smpsz80 import TYPE0FM
 from core.rom.smpsz80.drums import _Player, _wrap
@@ -504,6 +504,15 @@ class Kosinski(unittest.TestCase):
         out, end = kosinski(data, 0)
         self.assertEqual(out, b"ABABABA")
         self.assertEqual(end, len(data))
+
+    def test_a_blob_unpacked_to_68k_ram_then_copied_to_the_z80(self):
+        # Streets of Rage's load: lea src,a0 / lea buf,a1 / jsr KosDec / lea z80_ram+$10,a1 /
+        # lea buf,a2 / move.w #4,d2 / move.b (a2)+,(a1)+ / dbra d2: the first 5 bytes reach Z80 $0010
+        code = bytes.fromhex("41F9 00000300 43F9 00FF7000 4EB9 000085A2 43F9 00A00010"
+                             "45F9 00FF7000 343C 0004 12DA 51CA FFFC")
+        blob = bytes([0b1011_0011, 0b10, 0x41, 0x42, 0xFE, 0x00, 0xF8, 0x00])   # "ABABABA" (above)
+        ram = z80_ram(_rom(code.ljust(0x100, b"\0") + blob))
+        self.assertEqual(ram[0x0F:0x16], b"\0ABABA\0")
 
 
 class Effects(unittest.TestCase):

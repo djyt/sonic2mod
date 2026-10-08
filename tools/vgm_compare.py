@@ -861,7 +861,7 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = load_config(args.config, variant=args.variant)
+    cfg = load_config(args.config, args.settings, variant=args.variant)
     if args.merged:
         try:
             prepare_merged_config(cfg, cfg.read_song())   # followers off, channels packed, merge_output_file
@@ -943,7 +943,7 @@ def main() -> None:
     elif args.write_volumes and "instrument_levels" not in res:
         print("--write-volumes: not for the merged build (its instruments are measured in the reference build)")
     elif args.write_volumes:
-        changes = write_volumes(Path(args.config), res["instrument_levels"]["instruments"])
+        changes = write_volumes(Path(args.config), res["instrument_levels"]["instruments"], settings_path=args.settings)
         print(f"sample_list volumes written to {args.config}:" if changes else "sample_list volumes: nothing to change")
         for line in changes:
             print(line)

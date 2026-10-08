@@ -116,6 +116,14 @@ samples:
   root_harmonics: 8
   top_note: A3
 
+  # The widest window a minimal config's voice is cut into, in semitones.  A sample played a
+  # distance d from the pitch it was rendered at runs its attack, decay and carrier beating
+  # 2^(d/12) times too fast or slow; a narrower window keeps notes nearer it, one more sample a cut.
+  #   0     : no cap - windows as wide as the MOD's range and root_harmonics allow   [smallest]
+  #   12    : no note more than an octave from its render pitch (2x at worst)
+  #   9     : 1.7x at worst
+  max_window: 0
+
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)
 # -------------------------------------------------------------------------------------------------

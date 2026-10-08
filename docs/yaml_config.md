@@ -74,12 +74,23 @@ A window's `root` sets every one of its notes' rates, and so how many harmonics 
 Nyquist (the same count for each note of the window).  Its lowest pitch goes on the first MOD note
 whose rate keeps `samples.root_harmonics` harmonics of it (never under E1, the audit's 5 kHz
 line); the window ends at `samples.top_note` (A3) and narrows, to an octave at least, to reach
-that note; one that still cannot sits as high as it fits.  A bass voice stays at E1; a lead moves
+that note; one that still cannot sits as high as it fits.  `samples.max_window` caps every
+window's span: a sample played d semitones from the pitch it was rendered at runs its envelope
+2^(d/12) times too fast or slow (`docs/todo/user_improvements.md` item 7).  A bass voice stays at E1; a lead moves
 up and its sample grows with its rate (§ 8).
 
 A stated item replaces only the derived item it names: one voice's `voice_map` list, one
-`psg_map` form, one `sample_list` row (by slot).  Reuse the derived slot numbers
-(`--show-config` prints them); `--write-config` freezes the result as a full config.
+`psg_map` form, one `sample_list` row.  A row naming a derived sample's file (`fm_v04_C3.raw`,
+`psg_noise_e7.raw`, `dac81.raw`) replaces that sample's row wherever its slot is now: a setting
+that splits a window renumbers the slots after it, and the row follows its file.  One naming a
+derived file the song no longer has (another setting's window, or one the song lost) is left out,
+and `convert.py` says how many; any other
+file replaces the row of its slot.  A derived window with no row starts at the level its own notes
+mostly play at, scaled as its voice's nearest measured window was (measured / starting volume):
+a window `max_window` splits off keeps its measured neighbour's correction.  `vgm_compare
+--write-volumes` finds a row by its file too, adds rows for windows that have none, and writes
+every derived file's current slot.  `--show-config` prints the derived slots; `--write-config`
+freezes the result as a full config.
 
 ---
 
@@ -480,6 +491,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `resample_taps` | `32` | `32` | Resampler kernel width |
 | `render_cache` | off | `output/cache` | Directory (relative to the project root) caching chip renders by a hash of their inputs |
 | `root_harmonics` | `8` | `8` | Minimal configs: harmonics a window's lowest note keeps below Nyquist (§ 2); 0 = every window at E1, the smallest samples |
+| `max_window` | `0` | `9` | Minimal configs: the widest window in semitones, so no note plays far from its render pitch (§ 2); 0 = no cap |
 | `top_note` | `A3` | `A3` | Minimal configs: the highest MOD note a window reaches.  A#3 (period 120) and B3 (113) are past Paula's period-124 DMA limit and sound bad on an Amiga |
 
 ---

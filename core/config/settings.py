@@ -25,7 +25,7 @@ def _psg_volume_mode(value) -> str:
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
-               "names", "root_harmonics", "top_note")
+               "names", "root_harmonics", "top_note", "max_window")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -195,6 +195,17 @@ def _root_harmonics(data: dict, default: float, filepath: str) -> float:
     return v
 
 
+def _max_window(data: dict, default: int, filepath: str) -> int:
+    """`samples.max_window` of settings.yaml: the widest derived window in semitones; 0 = no cap."""
+    try:
+        v = int(data.get("max_window", default))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: max_window must be a whole number of semitones") from e
+    if v < 0:
+        raise ValueError(f"{filepath}: max_window must not be negative (got {v})")
+    return v
+
+
 def _top_note(data: dict, default: int, filepath: str) -> int:
     """`samples.top_note` of settings.yaml: the highest MOD note a derived window reaches, as its
     index from C1 (A3 = 33)."""
@@ -269,6 +280,8 @@ class SampleSettings:
                                      # (core.plan.derive); 0 = every window at the low-rate line
     top_note: int = ModNote.A3.value  # settings.yaml samples.top_note: the highest MOD note a derived
                                      # window reaches (A#3 / B3 are past Paula's period-124 DMA limit)
+    max_window: int = 0              # settings.yaml samples.max_window: the widest derived window in
+                                     # semitones, so no note plays far from its render pitch; 0 = no cap
     loop_timbre: bool = True         # a sustain loop waits for the timbre to hold too
                                      # (core.audio.loops.PROFILE_PER_DB); the converter clears it
                                      # for a merged build unless the song sets merge_loop_timbre
@@ -306,6 +319,7 @@ class SampleSettings:
             render_cache=_render_cache(smp),
             root_harmonics=_root_harmonics(smp, cls.root_harmonics, filepath),
             top_note=_top_note(smp, cls.top_note, filepath),
+            max_window=_max_window(smp, cls.max_window, filepath),
         )
 
 

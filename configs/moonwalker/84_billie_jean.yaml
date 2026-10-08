@@ -5,14 +5,15 @@ input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
 rom_song: "$84"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [16, "fm_v06_Fs5.raw", 9, 0]   # VGZ: -1.6 dB at 8
   - [2, "dac82.raw", 42, -4]   # VGZ: -1.5 dB at 64
   - [4, "fm_v00_Fs3.raw", 23, 0]   # VGZ: -8.4 dB at 16
-  - [5, "fm_v01_Fs2.raw", 27, 0]   # VGZ: -0.0 dB at 49
-  - [6, "fm_v02_Cs3.raw", 8, 0]   # VGZ: -2.1 dB at 11
-  - [7, "fm_v03_Fs4.raw", 5, 0]   # VGZ: -1.2 dB at 8
-  - [9, "fm_v05_A3.raw", 7, 0]   # VGZ: -5.9 dB at 6
-  - [10, "fm_v06_Fs4.raw", 8, 0]   # VGZ: -0.5 dB at 14
-  - [11, "fm_v07_E4.raw", 13, 0]   # VGZ: -9.6 dB at 8
-  - [12, "psg_$00_A3.raw", 3, 0]   # VGZ: -2.0 dB at 4
-  - [13, "psg_fTone_05_A3.raw", 4, 0]   # VGZ: -2.8 dB at 5
-  - [14, "psg_noise_e7.raw", 3, 0]   # VGZ: +6.8 dB at 10
+  - [6, "fm_v01_Fs2.raw", 27, 0]   # VGZ: -0.0 dB at 49
+  - [8, "fm_v02_Cs3.raw", 8, 0]   # VGZ: -2.1 dB at 11
+  - [10, "fm_v03_Fs4.raw", 5, 0]   # VGZ: -1.2 dB at 8
+  - [13, "fm_v05_A3.raw", 6, 0] # VGZ: +0.3 dB at 7
+  - [15, "fm_v06_Fs4.raw", 9, 0] # VGZ: -1.3 dB at 8
+  - [17, "fm_v07_E4.raw", 13, 0]   # VGZ: -9.6 dB at 8
+  - [19, "psg_$00_A3.raw", 3, 0]   # VGZ: -2.0 dB at 4
+  - [21, "psg_fTone_05_A3.raw", 4, 0]   # VGZ: -2.8 dB at 5
+  - [22, "psg_noise_e7.raw", 3, 0]   # VGZ: +6.8 dB at 10

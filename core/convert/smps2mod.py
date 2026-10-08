@@ -733,8 +733,5 @@ class SmpsToModConverter:
                 self._diag.warn(WarningKind.MISSING_SOURCE, source=source)
                 continue
 
-            smps_channel = source_map[source]
-            is_dac = smps_channel.header.channel_type == ChannelType.DAC     # by the song, not the name: Type 0 FM's drums are FM3
-
-            ChannelWriter(ctx, smps_channel, chan_cfg, is_dac).write()
+            ChannelWriter(ctx, source_map[source], chan_cfg).write()
 

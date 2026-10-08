@@ -12,7 +12,7 @@ from typing import NamedTuple
 from ..audio import db_to_gain, power_to_db
 from ..chips import TL_STEP_DB
 from ..config import region_fps
-from ..mod import MOD_NOTE_MAP, ModNote
+from ..mod import MOD_NOTE_MAP
 from ..plan import FmLayer, walk_channel
 from ..smps import (
     ChannelType,
@@ -154,7 +154,7 @@ class _NoteWalk:
         if d is None:
             return None
         n = NoteOn(tick, note.duration, self._sounding(tick, note.duration, d.mod_instrument, self._fill),
-                   d.mod_instrument, MOD_NOTE_MAP.get(d.mod_note, ModNote.C3).value, ChannelType.DAC,
+                   d.mod_instrument, MOD_NOTE_MAP[d.mod_note].value, ChannelType.DAC,
                    note_value=note.note_value, secs=self._secs(tick, note.duration))
         n.fill, n.fill_secs = self._fill, self._fill_secs()
         return n

@@ -315,9 +315,9 @@ class _Deriver:
     def _fm_drum(self, name: str, drum: FmDrum) -> dict:
         """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
         drum's own volume (its render is peak-normalised, as an FM voice's)."""
-        slot = self._take(ChannelType.FM, _DAC_FILE.format(name))
         hard = drum.voice.pan is not None and pan_is_hard([drum.voice.pan])
-        self._rows[-1][SAMPLE_VOLUME] = starting_volume(ChannelType.FM, drum.tl_offset, hard)
+        slot = self._take(ChannelType.FM, _DAC_FILE.format(name),
+                          volume=starting_volume(ChannelType.FM, drum.tl_offset, hard))
         return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}
 
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:
@@ -369,9 +369,10 @@ class _Deriver:
 
     # --- helpers ------------------------------------------------------------------------
 
-    def _take(self, kind: str, file: str, key=None, window: tuple[int, int] | None = None) -> int:
+    def _take(self, kind: str, file: str, key=None, window: tuple[int, int] | None = None,
+              volume: int | None = None) -> int:
         """The next slot, its row at the level its notes (`window`'s, lowest and highest pitch)
-        mostly play at."""
+        mostly play at, or at `volume`."""
         counts = Counter()
         for (pitch, lv), n in self._levels.get((kind, key), Counter()).items():
             if window is None or window[0] <= pitch <= window[1]:
@@ -381,7 +382,7 @@ class _Deriver:
         self._next += 1
         if window is not None:
             self._group[inst] = _Window((kind, key), window[0])
-        self._rows.append([inst, file, starting_volume(kind, level, panned), 0])
+        self._rows.append([inst, file, starting_volume(kind, level, panned) if volume is None else volume, 0])
         return inst
 
     def _default(self, key: str, value) -> None:

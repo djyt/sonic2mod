@@ -2,12 +2,16 @@
 
 Type 0 FM's fill counter (Golden Axe, Z80 $00E8) is reset by every read that attacks and counts
 down on every frame that reads nothing, TempoWait's holds included; at 256 it keys the channel off.
-A tie (smpsNoAttack) neither resets nor counts.  The rips agree: long FM1 notes in Death Adder,
-The Battle and Conclusion end 258-260 frames after their attack.  Sonic 1 has no run-out.
+A tie (smpsNoAttack) neither resets nor counts, and one read after the key-off does not key on
+again.  The rips agree: long FM1 notes in Death Adder, The Battle and Conclusion end 258-260
+frames after their attack, and the 8 ties each of The Battle and Conclusion read after it are
+silent.  Sonic 1 has no run-out.
 
 The song states the limit (SmpsSongHeader.key_run_out); this pass, run on the walked song, cuts
 each FM note that outlasts it and makes the rest of what it held a rest.  Every pass after it -
-playback, the yardstick, the sample lengths, the converter's release - sees the key-off.
+playback, the yardstick, the sample lengths, the converter's release - sees the key-off.  It
+runs before the loops are replayed and the global tempo divider applied: a replayed loop keeps
+the first pass's cuts, and a tie chain across the jump is counted from neither side.
 
     attack  tie   tie                   frames: the attack's read, then 256 counted (a tie's read
     |-------|-----|--------------|      frame is not counted)

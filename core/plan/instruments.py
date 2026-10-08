@@ -156,7 +156,7 @@ def fm_drum_catalogue(song, config: ConversionConfig) -> dict[int, FmDrumInstrum
         drum = song.fm_drums.get(entry.name)
         if drum is None or entry.mod_instrument in out:
             continue
-        root = MOD_NOTE_MAP.get(entry.mod_note, ModNote.C3)
+        root = MOD_NOTE_MAP[entry.mod_note]
         out[entry.mod_instrument] = FmDrumInstrument(entry.mod_instrument, entry.name, drum, root.value)
     return out
 

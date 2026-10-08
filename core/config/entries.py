@@ -373,7 +373,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
 
 @dataclass
 class ChannelConfig:
-    source: str          # "DAC", "FM1"-"FM5", "PSG1"-"PSG3"
+    source: str          # the song's channel name: "DAC", "FM1"-"FM6", "PSG1"-"PSG3" (Type 0 FM's drums: "FM3")
     mod_channel: int     # 0-based MOD channel index
     transpose: int = 0   # Semitone offset
     instrument: int = 1  # MOD instrument number (1-31)

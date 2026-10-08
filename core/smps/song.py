@@ -104,6 +104,7 @@ class SmpsSongHeader:
     psg_count: int = 0
     tempo_divider: int = 1
     tempo_modifier: int = 5
+    tempo_phase: int = 0       # frames the first TempoWait hold comes late (core/smps/tempo.py; Type 0 FM: 1)
     channels: list = field(default_factory=list)  # list of SmpsChannelHeader
     # True when parsed from smpsHeader*SFX* macros.  SFX have no tempo modifier byte and run
     # one tick per V-int unconditionally — the music (modifier-1)/modifier rate correction

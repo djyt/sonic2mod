@@ -88,6 +88,7 @@ class HeaderLayout:
     fm_slots: tuple[TrackSlot, ...]          # the DAC / FM entries in header order, as many as it has tracks
     sfx_channels: frozenset[int]             # the channel ids an SFX track may name
     never_holds: int | None = None           # the tempo byte that never stalls (Type 0 FM's 0)
+    tempo_phase: int = 0                     # frames the first hold comes late (Type 0 FM: 1)
 
 
 @dataclass(frozen=True, eq=False)     # one object per driver: compared by identity

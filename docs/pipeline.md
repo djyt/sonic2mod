@@ -949,9 +949,18 @@ python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every 
   sides (a song's already multiplied by it), so it never moves a note; it sets how the converter counts
   rows (`ticks_per_row` × divider).
 - Aspects: by default what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects all` for
-  every one - a lifted note's pitch is its table word, no detune yet).
+  every one - a lifted note's pitch is its table word, no detune yet).  The lift matches a note to the
+  song's own FM table (`LiftOptions.fm_frequencies`) and holds at its phase (`tempo_phase`).
+- A tie that changes nothing compared is one note on both sides: a rip shows a read only where the
+  driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.
 - Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one
   side plays are named, not compared.  Ticks print with seconds into the song.
+- Verdict per kind, the song's (`channel_type`, not the name): `FM same · DAC onset 4 · PSG note 31
+  (lift unfinished)`.  FM is what the lift reads in full (`LIFTED_KINDS`): its verdict is the song's;
+  a DAC or PSG difference may be the lift's (vgz_conversion.md 1.6-1.8).  `--all` ends with both
+  counts (Sonic: 13 of 19 FM same · 3 on every channel).
+- A rip is only as good as its emulator and ripper: a whole song off from one point on (Golden Axe's
+  Path of Fiend at 38 s) is a frame the rip lost or gained, which the lift reads as a tempo change.
 
 ### Pitch verdict (`tools/vgm_pitch_audit.py`)
 

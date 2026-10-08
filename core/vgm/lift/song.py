@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from ...smps import (
     DEFAULT_DRIVER,
+    FM_FREQUENCIES,
     Aspect,
     CoordFlag,
     SmpsChannel,
@@ -45,6 +46,10 @@ _DAC_FM_CHANNELS = 5            # with the DAC on, FM6 is the DAC
 # noise byte, DAC sample names)
 LIFTED_ASPECTS = frozenset({Aspect.ONSET, Aspect.LENGTH, Aspect.NOTE})
 
+# The channel kinds the lift reads in full; a DAC or PSG track's differences may be the lift's
+# (vgz_conversion.md 1.6-1.8: DAC sample names, PSG envelopes and noise still open)
+LIFTED_KINDS = frozenset({"FM"})
+
 
 class VgmLiftError(VgmError):
     """The log is not one the driver could have written, or the lift cannot read it yet."""
@@ -57,6 +62,8 @@ class LiftOptions:
     driver: SmpsDriver = DEFAULT_DRIVER
     tempo_modifier: int | None = None     # None: inferred from the frames TempoWait holds
     tempo_divider: int | None = None      # None: the grid the FM notes start on (a divider is only spelling)
+    tempo_phase: int = 0                  # frames the driver's first hold comes late (Type 0 FM: 1)
+    fm_frequencies: tuple[int, ...] = FM_FREQUENCIES   # the driver's FM table a note's pitch is matched to
 
 
 def lift_song(frames: FrameLog, options: LiftOptions | None = None) -> SmpsSong:
@@ -66,7 +73,7 @@ def lift_song(frames: FrameLog, options: LiftOptions | None = None) -> SmpsSong:
         raise VgmLiftError(f"driver: {options.driver}: the lift reads {DEFAULT_DRIVER} logs only")
 
     # Each track's hits by frame, in the order the asm declares its tracks
-    tracks = _tracks(frames)
+    tracks = _tracks(frames, options.fm_frequencies)
     if not any(hits for _, hits in tracks):
         raise VgmLiftError("the log plays no note")
 
@@ -75,7 +82,7 @@ def lift_song(frames: FrameLog, options: LiftOptions | None = None) -> SmpsSong:
     key_writes |= {f"PSG{ch + 1}": fs for ch in range(PSG_TONE_CHANNELS) if (fs := psg_period_frames(frames, ch))}
     first = min(h.frame for _, hits in tracks for h in hits if not h.rest)       # the first note: no later than tick 0
     try:
-        tempo = infer_tempo(key_writes, first, options.tempo_modifier)
+        tempo = infer_tempo(key_writes, first, options.tempo_modifier, options.tempo_phase)
     except TempoError as e:
         raise VgmLiftError(str(e)) from e
 
@@ -97,17 +104,17 @@ def lift_song(frames: FrameLog, options: LiftOptions | None = None) -> SmpsSong:
         tempo_divider=options.tempo_divider or grid,
         tempo_modifier=tempo.modifier,
         channels=[c.header for c in channels])
-    return SmpsSong(header, channels)
+    return SmpsSong(header, channels, fm_frequencies=options.fm_frequencies)
 
 
-def _tracks(fl: FrameLog) -> list[tuple[SmpsChannelHeader, list[Hit]]]:
+def _tracks(fl: FrameLog, fm_frequencies: tuple[int, ...]) -> list[tuple[SmpsChannelHeader, list[Hit]]]:
     """(header, hits) of every track: the DAC, FM1 up to the last FM channel used, PSG1-3."""
     tracks: list[tuple[SmpsChannelHeader, list[Hit]]] = []
     fm_channels = _DAC_FM_CHANNELS if dac_used(fl) else _DAC_FM_CHANNELS + 1
     if dac_used(fl):
         tracks.append((SmpsChannelHeader("DAC", "DAC"), dac_hits(fl)))
 
-    fm = [fm_hits(fl, ch) for ch in range(fm_channels)]
+    fm = [fm_hits(fl, ch, fm_frequencies) for ch in range(fm_channels)]
     used = max((ch + 1 for ch, hits in enumerate(fm) if hits), default=0)
     tracks += [(SmpsChannelHeader("FM", f"FM{ch + 1}"), fm[ch]) for ch in range(used)]
 

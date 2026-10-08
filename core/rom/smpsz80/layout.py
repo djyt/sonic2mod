@@ -2,7 +2,9 @@
 $03E5).
 
     music tracks   the drum track (its notes trigger drum programs on FM3), FM1 FM2 FM4 FM5 FM6
-    tempo          0 never stalls (the counter is never loaded: Death Adder)
+    tempo          0 never stalls (the counter is never loaded: Death Adder); the counter is loaded as the
+                   song starts, after that frame's tempo check ($06CA before $043A): the first hold
+                   comes a frame late, at frame m (the rips: every key-on, at modifier 2 too)
     voice          26 bytes: B0, B4 (pan, AMS, FMS), then TL DT/MUL KS/AR AM/D1R D2R D1L/RR
 """
 
@@ -16,6 +18,7 @@ HEADER_TYPE0 = HeaderLayout(
               TrackSlot("FM", "FM4"), TrackSlot("FM", "FM5"), TrackSlot("FM", "FM6")),
     sfx_channels=frozenset({0x02, 0x04, 0x05, 0x06, 0x80, 0xA0, 0xC0, 0xE0}),    # FM3-FM6 (no DAC), the PSG
     never_holds=0,
+    tempo_phase=1,
 )
 
 VOICE_TYPE0 = VoiceLayout((OperatorReg.TL, OperatorReg.DT_MUL, OperatorReg.KS_AR, OperatorReg.AM_D1R,

@@ -51,7 +51,8 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
     fm_count, psg_count = memory.byte(address + 2), memory.byte(address + 3)
     tempo = memory.byte(address + 5)
     header = SmpsSongHeader(fm_count=fm_count, psg_count=psg_count, tempo_divider=memory.byte(address + 4),
-                            tempo_modifier=NO_TEMPO_HOLDS if tempo == layout.never_holds else tempo)
+                            tempo_modifier=NO_TEMPO_HOLDS if tempo == layout.never_holds else tempo,
+                            tempo_phase=layout.tempo_phase)
     voices = _voices(memory, address)
     header.voice_label = track_label(voices) if voices is not None else ""
     tracks: dict[str, int] = {}

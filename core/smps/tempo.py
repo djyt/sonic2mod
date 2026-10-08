@@ -7,6 +7,9 @@ TempoWait holds it.  The schedule starts with the song and again at every smpsSe
     frame   0 1 2 3 4 5 6 7 8 9        m = 3: a hold every 3rd frame, the first at frame m - 1
     tick    0 1 . 2 3 . 4 5 . 6        '.' a hold: the frame takes the next frame's tick
 
+A driver that loads its counter after the frame's tempo check (Type 0 FM: it starts the song
+later in the frame) holds `phase` frames later: phase 1 puts the first at frame m.
+
 A segment is one stretch of constant tempo; a song's schedule is its segments in order.
 A driver that never holds (an SFX; Type 0 FM's tempo 0) plays at NO_TEMPO_HOLDS: a modifier no
 song reaches, so every formula here and in the converter reads it as a tick a frame.
@@ -25,26 +28,31 @@ class TempoSegment:
     frame: int          # its first tick frame
     tick: int           # the tick there
     modifier: int
+    phase: int = 0      # frames the first hold comes late (Sonic 1: 0, at frame m - 1; Type 0 FM: 1)
 
     def tick_at(self, frame):
         """The tick a frame plays (a hold frame: the next frame's).  Takes an int or an array."""
         n = frame - self.frame
-        return self.tick + n - n // self.modifier
+        late = n - self.phase
+        return self.tick + n - (late + abs(late)) // 2 // self.modifier     # holds before: none until `phase`
 
     def frame_of(self, tick: int) -> int:
         """The frame a tick is read on."""
         n = tick - self.tick
-        return self.frame + n + n // (self.modifier - 1)
+        if n <= self.phase:
+            return self.frame + n
+        return self.frame + n + (n - self.phase) // (self.modifier - 1)
 
     def holds(self, frame):
         """Whether a frame (int or array) is one of this segment's holds."""
-        return (frame - self.frame) % self.modifier == self.modifier - 1
+        late = frame - self.frame - self.phase
+        return (late >= 0) & (late % self.modifier == self.modifier - 1)
 
 
-def tempo_schedule(modifier: int, changes: Sequence[tuple[int, int]] = ()) -> tuple[TempoSegment, ...]:
-    """A song's segments from tick 0 at frame 0: the header's modifier, then each (tick,
-    modifier) smpsSetTempoMod read."""
-    segments = [TempoSegment(0, 0, modifier)]
+def tempo_schedule(modifier: int, changes: Sequence[tuple[int, int]] = (), phase: int = 0) -> tuple[TempoSegment, ...]:
+    """A song's segments from tick 0 at frame 0: the header's modifier at the driver's `phase`,
+    then each (tick, modifier) smpsSetTempoMod read (cfSetTempo resets the timeout: phase 0)."""
+    segments = [TempoSegment(0, 0, modifier, phase)]
     for tick, new in sorted(changes):
         read = segments[-1].frame_of(tick)
         segments.append(TempoSegment(read + 1, tick + 1, new))

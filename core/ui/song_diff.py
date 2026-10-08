@@ -3,19 +3,36 @@ count and differences, one difference made again and again printed once with its
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections import Counter
+from collections.abc import Callable, Mapping
 
 from ..audio import pitch_name
 from ..chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
 from ..smps import Aspect, ChannelDiff, NoteDiff, SongDiff
 
 _FNUM_BITS = 11
+_KIND_ORDER = ("FM", "DAC", "PSG")
 
 
 def diff_counts(diff: SongDiff | ChannelDiff) -> str:
     """'onset 3  pitch 1', or '' when nothing differs."""
     counts = diff.counts()
     return "  ".join(f"{a.value} {counts[a]}" for a in Aspect if counts[a])
+
+
+def kind_verdicts(diff: SongDiff, kinds: Mapping[str, str], trusted: frozenset[str]) -> str:
+    """Each channel kind's differences, the kinds a judge reads in full first:
+    'FM same · DAC onset 4 · PSG note 31 (lift unfinished)'.  `kinds`: each channel's;
+    `trusted`: the kinds whose differences are the song's, not the judge's."""
+    order = sorted({kinds.get(c.name, "") for c in diff.channels},
+                   key=lambda k: (k not in trusted, _KIND_ORDER.index(k) if k in _KIND_ORDER else len(_KIND_ORDER)))
+    parts = []
+    for kind in order:
+        counts = sum((c.counts() for c in diff.channels if kinds.get(c.name, "") == kind), Counter())
+        found = "  ".join(f"{a.value} {counts[a]}" for a in Aspect if counts[a])
+        parts.append(f"{kind or '?'} {found or 'same'}")
+    line = " · ".join(parts)
+    return line + (" (lift unfinished)" if any(k not in trusted for k in order) else "")
 
 
 def song_diff_lines(diff: SongDiff, max_diffs: int, missing: str = "missing", extra: str = "extra",

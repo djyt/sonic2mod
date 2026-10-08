@@ -7,7 +7,14 @@
 Both sides are read as the game shipped (data bugs kept): the rip recorded that.  The song states
 its tempo exactly, so the lift is given its modifier (the tempo it starts at; changes are still
 found) and divider; only where that tempo fits no schedule is it inferred, and RipDiff says so.
-The channels compared are those both sides play, less what ChannelChoice leaves out.
+The lift matches each note to the song's own FM table (Golden Axe's is not Sonic 1's).
+The channels compared are those both sides play, less what ChannelChoice leaves out; each is of
+the kind the song says (RipDiff.kinds: Golden Axe's drum track is FM3 by name, DAC by kind).
+
+A tie that changes nothing compared (smpsNoAttack at the same note, by default; with --aspects all
+the same level, voice ... too) is merged into the note before it on both sides: it is heard as one
+note, and a rip shows the read only where the driver writes the frequency on reads alone (Sonic
+1's does; Type 0 FM writes it every frame).
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ from pathlib import Path
 from ..config import ConversionConfig
 from ..smps import (
     Aspect,
+    PlayedNote,
     PlayedSong,
     SmpsDriver,
     SmpsSong,
@@ -29,6 +37,7 @@ from ..smps import (
     compare_songs,
     frame_of_tick,
     played_song,
+    source_map,
     tempo_schedule,
 )
 from ..source import is_vgm_path, read_song
@@ -102,12 +111,19 @@ class RipDiff:
     only_song: list[str] = field(default_factory=list)     # channels only the song plays: not compared
     only_rip: list[str] = field(default_factory=list)      # ... only the rip plays
     error: str = ""
+    kinds: dict[str, str] = field(default_factory=dict)     # each compared channel's: FM, DAC, PSG
     schedule: tuple[TempoSegment, ...] = ()                 # the song's: when each tick plays
     fps: float = 0.0                                        # the rip's frames a second
 
     @property
     def ok(self) -> bool:
         return self.diff is not None and self.diff.ok
+
+    def same_in(self, kinds: frozenset[str]) -> bool:
+        """No difference on the channels of `kinds` (FM), nor in the song's tempo or loop."""
+        if self.diff is None:
+            return False
+        return not self.diff.song and all(c.ok for c in self.diff.channels if self.kinds.get(c.name) in kinds)
 
     def seconds(self, tick: int) -> float:
         """When a tick of the song plays, from its start."""
@@ -124,23 +140,25 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
     except VgmLiftError as e:
         return RipDiff(None, error=f"not lifted: {e}")
 
-    # The channels both play, as chosen
-    want, got = played_song(song), played_song(lifted)
+    # The channels both play, as chosen; ties that change nothing compared merged
+    want, got = _merge_ties(played_song(song), aspects), _merge_ties(played_song(lifted), aspects)
     playing_want, playing_got = _playing(want, channels), _playing(got, channels)
     shared = playing_want & playing_got
     want, got = _only(want, shared), _only(got, shared)
 
     offset = align_songs(want, got)
+    kinds = {name: channel.header.channel_type for name, channel in source_map(song).items() if name in shared}
     return RipDiff(compare_songs(want, got, aspects, offset), offset, tempo,
-                   sorted(playing_want - shared), sorted(playing_got - shared),
-                   schedule=tempo_schedule(want.modifier, want.tempo_changes),
+                   sorted(playing_want - shared), sorted(playing_got - shared), kinds=kinds,
+                   schedule=tempo_schedule(want.modifier, want.tempo_changes, want.tempo_phase),
                    fps=VGM_SAMPLE_RATE / frames.frame_samples)
 
 
 def _lift(song: SmpsSong, frames: FrameLog, options: LiftOptions | None) -> tuple[SmpsSong, LiftTempo]:
     """The rip lifted at `options`, else at the song's tempo, inferred where that fits no schedule."""
     if options is not None:
-        lifted = lift_song(frames, options)
+        lifted = lift_song(frames, dataclasses.replace(options, tempo_phase=song.header.tempo_phase,
+                                                       fm_frequencies=song.fm_frequencies))
         stated = options.tempo_modifier is not None or options.tempo_divider is not None
         return lifted, _tempo(lifted, TempoSource.STATED if stated else TempoSource.INFERRED)
 
@@ -148,11 +166,12 @@ def _lift(song: SmpsSong, frames: FrameLog, options: LiftOptions | None) -> tupl
     refused = ""
     if h.tempo_modifier:
         try:
-            lifted = lift_song(frames, LiftOptions(tempo_modifier=h.tempo_modifier, tempo_divider=h.tempo_divider or None))
+            lifted = lift_song(frames, LiftOptions(tempo_modifier=h.tempo_modifier, tempo_divider=h.tempo_divider or None,
+                                                   tempo_phase=h.tempo_phase, fm_frequencies=song.fm_frequencies))
             return lifted, _tempo(lifted, TempoSource.SONG)
         except VgmLiftError as e:
             refused = str(e)
-    lifted = lift_song(frames)
+    lifted = lift_song(frames, LiftOptions(tempo_phase=h.tempo_phase, fm_frequencies=song.fm_frequencies))
     return lifted, _tempo(lifted, TempoSource.INFERRED, refused)
 
 
@@ -163,6 +182,32 @@ def _tempo(lifted: SmpsSong, source: TempoSource, refused: str = "") -> LiftTemp
 def _playing(song: PlayedSong, channels: ChannelChoice) -> set[str]:
     """The chosen channels that play anything."""
     return {name for name, notes in song.channels.items() if channels.picks(name) and any(not p.rest for p in notes)}
+
+
+# What a tie is, not what it changes: when it starts and how long it lasts
+_TIE_ASPECTS = frozenset({Aspect.ONSET, Aspect.LENGTH})
+
+
+def _merge_ties(song: PlayedSong, aspects: frozenset[Aspect]) -> PlayedSong:
+    """Each channel with every tie that changes none of `aspects` folded into the note it continues."""
+    kept = aspects - _TIE_ASPECTS
+    return dataclasses.replace(song, channels={name: _merged(notes, kept) for name, notes in song.channels.items()})
+
+
+def _merged(notes: list[PlayedNote], kept: frozenset[Aspect]) -> list[PlayedNote]:
+    out: list[PlayedNote] = []
+    for note in notes:
+        if out and _continues(out[-1], note, kept):
+            out[-1] = dataclasses.replace(out[-1], duration=out[-1].duration + note.duration)
+            continue
+        out.append(note)
+    return out
+
+
+def _continues(last: PlayedNote, note: PlayedNote, kept: frozenset[Aspect]) -> bool:
+    """`note` is a tie of `last` that changes none of `kept`."""
+    return (not note.attack and not note.rest and not last.rest and note.tick == last.tick + last.duration
+            and all(note.aspect(a) == last.aspect(a) for a in kept))
 
 
 def _only(song: PlayedSong, names: set[str]) -> PlayedSong:

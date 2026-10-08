@@ -55,9 +55,10 @@ class Hit:
 # --- FM -------------------------------------------------------------------------------------
 
 
-def fm_hits(fl: FrameLog, ch: int) -> list[Hit]:
+def fm_hits(fl: FrameLog, ch: int, fm_frequencies: tuple[int, ...] = FM_FREQUENCIES) -> list[Hit]:
     """FM channel `ch`'s key writes: a note at each key-on, a rest at each key-off of a keyed
-    channel."""
+    channel.  A note is the entry of `fm_frequencies` (the driver's table) nearest its pitch."""
+    table_hz = [_word_hz(word) for word in fm_frequencies]
     hits = []
     keyed = False
     for frame in fl.frames:
@@ -75,23 +76,23 @@ def fm_hits(fl: FrameLog, ch: int) -> list[Hit]:
             else:
                 keyed = False
         if on:
-            hits.append(Hit(frame.index, _fm_note(fm.fnum, fm.block), attack))
+            hits.append(Hit(frame.index, _fm_note(fm.fnum, fm.block, table_hz), attack))
         elif was_keyed:
             hits.append(Hit(frame.index))
     return hits
 
 
-def _fm_note(fnum: int, block: int) -> int:
-    """The note byte whose table entry is nearest the pitch (pitch_offset 0)."""
+def _fm_note(fnum: int, block: int, table_hz: list[float]) -> int:
+    """The note byte whose table entry (`table_hz`: each entry's pitch) is nearest the pitch
+    (pitch_offset 0)."""
     hz = fm_frequency_hz(fnum, block, MD_FM_CLOCK)
     if hz <= 0:
         return _FM_FIRST_NOTE
-    index = min(range(1, len(FM_FREQUENCIES)), key=lambda i: abs(math.log2(hz / _fm_table_hz(i))))
+    index = min(range(1, len(table_hz)), key=lambda i: abs(math.log2(hz / table_hz[i])))
     return _FM_FIRST_NOTE - 1 + index
 
 
-def _fm_table_hz(index: int) -> float:
-    word = FM_FREQUENCIES[index]
+def _word_hz(word: int) -> float:
     return fm_frequency_hz(word & _FNUM_MASK, word >> _FNUM_BITS, MD_FM_CLOCK)
 
 

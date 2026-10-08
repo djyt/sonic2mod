@@ -1,0 +1,15 @@
+# Which rip in reference/vgz/golden_axe/ each config converts (by FM1's opening notes; every FM
+# channel matches its rip: docs/todo/binary_import.md 3.6).  $8A and $8F are stubs, not songs.
+81_wilderness: "02 - Wilderness.vgz"
+82_turtle_village_1: "06 - Turtle Village 1.vgz"
+83_turtle_village_2: "08 - Turtle Village 2.vgz"
+84_path_of_fiend: "07 - Path of Fiend.vgz"
+85_death_adder: "09 - Death Adder.vgz"
+86_battle_field: "03 - Battle Field.vgz"
+87_showdown: "10 - Showdown.vgz"
+88_game_over: "13 - Game Over.vgz"
+89_the_battle: "01 - The Battle.vgz"
+8b_theme_of_thief: "04 - Theme of Thief.vgz"
+8c_old_map: "05 - Old Map.vgz"
+8d_conclusion: "11 - Conclusion.vgz"
+8e_sutakora_sassa: "12 - Sutakora, Sassa!.vgz"

@@ -10,6 +10,7 @@ the driver's (SoundMemory.header_pointer: Sonic 1 relative to the header, ...).
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from ..smps import SFX_CHANNEL_IDS, SmpsChannelHeader, SmpsSongHeader, psg_voice_name
@@ -28,6 +29,7 @@ _MAX_PSG_TRACKS = 3
 _MAX_SFX_TRACKS = 6
 
 _PSG_CHANNEL_BIT = 0x80  # an SFX channel id with bit 7 set is a PSG channel
+_SONIC1_SFX_CHANNELS = frozenset(SFX_CHANNEL_IDS.values())
 
 
 @dataclass(frozen=True)
@@ -118,8 +120,9 @@ def is_music_header(memory: SoundMemory, address: int) -> bool:
     return all(memory.contains(memory.header_pointer(address, slot)) for slot in slots)
 
 
-def is_sfx_header(memory: SoundMemory, address: int) -> bool:
-    """Plausible as an SFX header: every track entry marked $80 with a known channel id."""
+def is_sfx_header(memory: SoundMemory, address: int, channels: Collection[int] = _SONIC1_SFX_CHANNELS) -> bool:
+    """Plausible as an SFX header: every track entry marked $80 with one of the driver's channel
+    ids (Sonic 1's: FM3-FM5, the PSG; a Z80 driver's FM6 too)."""
     if not memory.contains(address, _SFX_FIXED):
         return False
     count = memory.byte(address + 3)
@@ -127,7 +130,7 @@ def is_sfx_header(memory: SoundMemory, address: int) -> bool:
         return False
 
     entries = [address + _SFX_FIXED + i * _SFX_TRACK for i in range(count)]
-    return all(memory.byte(at) == _SFX_TRACK_MARK and memory.byte(at + 1) in SFX_CHANNEL_IDS.values()
+    return all(memory.byte(at) == _SFX_TRACK_MARK and memory.byte(at + 1) in channels
                and memory.contains(memory.header_pointer(address, at + 2)) for at in entries)
 
 

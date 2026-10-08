@@ -50,6 +50,17 @@ def variant_output_file(path: str, variant: str) -> str:
     return f"{stem}_{variant}{ext}"
 
 
+RANGE_SPACES = ("source", "chip")
+
+
+def _range_space(data: dict, filepath) -> str:
+    """`range_space:` source | chip; anything else is an error (it read as source)."""
+    space = str(data.get("range_space", "source")).lower()
+    if space not in RANGE_SPACES:
+        raise ValueError(f"{filepath}: range_space must be one of {', '.join(RANGE_SPACES)} (got {data['range_space']!r})")
+    return space
+
+
 def _region(data: dict, filepath) -> str:
     """`region:`, lower-cased; an unknown one is an error."""
     region = str(data.get("region", "ntsc")).lower()
@@ -208,7 +219,7 @@ class ConversionConfig:
             num_mod_channels=data.get('num_mod_channels'),
             auto_bpm=data.get('auto_bpm', False),
             region=_region(data, filepath),
-            range_space=str(data.get('range_space', 'source')),
+            range_space=_range_space(data, filepath),
             samples_dir=data.get('samples_dir', './samples/'),
             max_patterns=data.get('max_patterns', 127),
         )

@@ -41,9 +41,9 @@ python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged   # a 
 | `--player ft2\|pt2` | Overrides `player` in settings.yaml |
 | `-v`, `--verbose` | Also list composites, bank sounds, loop extensions, synthesis pitches |
 
-**Validation.**  The YAML loader refuses a key given twice in one mapping.  An unknown
-**top-level** key, and an unknown key in a settings.yaml section, is an error.  Keys *inside*
-entries (`channels`, `voice_map`, merge groups, …) are not checked: a typo there is ignored.
+**Validation.**  The YAML loader refuses a key given twice in one mapping.  A key the converter
+does not know is an error everywhere — top level, inside every entry and group, and in each
+settings.yaml section — as is a `region`, `range_space` or `mod_note` it cannot read.
 
 **Order of application.**  `variants:` overlay → song keys parsed → (no `channels:`) the
 minimal config completed from the song → `--merged` → `--output` → `auto_bpm` → settings, then
@@ -101,7 +101,7 @@ The reference build keeps every SMPS channel on a MOD channel of its own.
 | `auto_bpm` | `false` | Derive the BPM from the SMPS tempo header (every shipped config sets it) |
 | `target_bpm` | `150` | BPM when `auto_bpm` is off; written as `Fxx` on row 0, not range-checked |
 | `target_speed` | `6` | MOD ticks per row.  Changes nothing in the row grid; choose it so the derived BPM is (nearly) whole — `convert.py` prints the better speed |
-| `region` | `ntsc` | `ntsc` (60 Hz) or `pal` (50 Hz), lower case |
+| `region` | `ntsc` | `ntsc` (60 Hz) or `pal` (50 Hz) |
 
 Formulas, tempo changes and the speed choice: `docs/pipeline.md` § Timing.
 
@@ -259,7 +259,7 @@ dac_samples:
 |---|---|---|
 | `name` | required | SMPS DAC name: `dKick`, `dSnare`, `dTimpani`, `dHiTimpani`, `dMidTimpani`, `dLowTimpani`, `dVLowTimpani` |
 | `mod_instrument` | required | Slot; timpani variants share one and differ by `mod_note` |
-| `mod_note` | `C3` | Trigger note (`Fs3`, `F#3`, `Gb3` all work; an unknown name becomes C3) |
+| `mod_note` | `C3` | Trigger note (`Fs3`, `F#3`, `Gb3` all work) |
 | `saturate_db`, `merge_saturate_db` | `0` | § 5 |
 
 Pick the `mod_note` and `sample_list` finetune whose Amiga rate (`3546895 / period × 2^(ft/96)`)

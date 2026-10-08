@@ -277,4 +277,4 @@ One line each; the linked section has the cause and the detail.
 - A config with no `channels:` is minimal: the rest is derived from the song.
 - A build that differs in a few keys is a `variants:` block, not a copied config.
 - The YAML loader refuses a key given twice (a `merge_patterns` group missing its `- `).
-- Unknown top-level / settings keys are errors; keys inside entries are not checked.
+- A key the converter does not know is an error, inside entries and groups too.

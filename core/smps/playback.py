@@ -30,9 +30,9 @@ from enum import StrEnum
 
 from .driver_tables import PSG_FREQUENCIES_EXTENDED, fm_note_index, psg_note_index
 from .names import source_names
-from .song import CoordFlag, SmpsNote, SmpsSong, SmpsVoice
+from .song import SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import apply_global_tempo_div, extend_looping_channels
-from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
+from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
 
 
@@ -109,10 +109,7 @@ def played_song(song: SmpsSong) -> PlayedSong:
     extend_looping_channels(song)
 
     voices = {v.index: v for v in song.voices}
-    changes = sorted({(ev.tick_position, ev.effect.params[0]) for ch in song.channels for ev in ch.events
-                      if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
-    schedule = tempo_schedule(NO_TEMPO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes,
-                              song.header.tempo_phase)
+    changes, schedule = song.tempo_changes(), song.tempo_schedule()
     end = song.end_tick()
     channels = {name: _played_channel(ch, voices, schedule, end, song.fm_frequencies)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}

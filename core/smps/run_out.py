@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import dataclasses
 
-from .song import REST, CoordFlag, SmpsEvent, SmpsNote, SmpsSong
-from .tempo import TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
+from .song import REST, SmpsEvent, SmpsNote, SmpsSong
+from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 
 
 def apply_run_out(song: SmpsSong) -> None:
@@ -27,9 +27,7 @@ def apply_run_out(song: SmpsSong) -> None:
     limit = song.header.key_run_out
     if not limit:
         return
-    changes = sorted({(ev.tick_position, ev.effect.params[0]) for ch in song.channels for ev in ch.events
-                      if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
-    schedule = tempo_schedule(song.header.tempo_modifier, changes, song.header.tempo_phase)
+    schedule = song.tempo_schedule()
     for channel in song.channels:
         if channel.header.channel_type == "FM":
             channel.events = _cut(channel.events, schedule, limit)

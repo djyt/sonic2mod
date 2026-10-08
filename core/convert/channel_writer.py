@@ -1005,18 +1005,13 @@ class ChannelWriter:
         row_total = int(tick // tpr)
         # The delay is measured in FRAMES, because driver ticks are not evenly spaced: with
         # tempo modifier m, TempoWait holds every m-th frame, so tick k falls on frame
-        # k + k // (m - 1).  GHZ (m = 3, 2 ticks per row): an odd tick is 1 frame = 16.7 ms
-        # after its row starts, not the 25 ms an average tick lasts - exactly ED1 at speed 3.
-        # A row is tpr / ticks_per_frame(m) frames and `speed` MOD ticks long.
-        # (Counted from the start of the current tempo segment: smpsSetTempoMod restarts
-        # the counter.)
-        seg_start, m = self._timeline.segment_at(tick)
-        holds = m > 1 and not self._ctx.song.header.is_sfx
-
-        def held(k):
-            return max(int(k) - seg_start, 0) // (m - 1) if holds else 0
-        frames = (tick + held(tick)) - (row_total * tpr + held(row_total * tpr))
-        delay = int(frames * speed * self._timeline.ticks_per_frame(m) / tpr + 0.5)
+        # k + k // (m - 1) (Timeline.holds_before).  GHZ (m = 3, 2 ticks per row): an odd tick
+        # is 1 frame = 16.7 ms after its row starts, not the 25 ms an average tick lasts -
+        # exactly ED1 at speed 3.  A row is tpr / ticks_per_frame(m) frames and `speed` MOD
+        # ticks long.
+        tl, row_start = self._timeline, row_total * tpr
+        frames = (tick + tl.holds_before(tick)) - (row_start + tl.holds_before(row_start))
+        delay = int(frames * speed * tl.ticks_per_frame_at(tick) / tpr + 0.5)
         if delay >= speed:
             row_total, delay = row_total + 1, 0
         if delay and cut_tick is not None and round(cut_tick * speed / tpr) < (row_total + 1) * speed:

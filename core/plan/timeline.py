@@ -13,7 +13,7 @@ import bisect
 
 from ..config import ConversionConfig
 from ..mod import shift_for_breaks
-from ..smps import CoordFlag, SmpsSong
+from ..smps import CoordFlag, SmpsSong, TempoSegment, frame_of_tick
 
 # A MOD BPM: ProTracker's Fxx reaches 32..255
 _MIN_BPM, _MAX_BPM = 32, 255
@@ -24,6 +24,7 @@ class Timeline:
         self._song = song
         self._config = config
         self._segments: list[tuple[int, int]] = []
+        self._schedule: tuple[TempoSegment, ...] | None = None
 
     @property
     def ticks_per_row(self) -> float:
@@ -61,6 +62,7 @@ class Timeline:
             elif not out or out[-1][1] != m:
                 out.append((t, m))
         self._segments = out
+        self._schedule = self._song.tempo_schedule()
 
     def segment_at(self, tick) -> tuple[int, int]:
         """(start tick, tempo modifier) of the tempo segment `tick` falls in."""
@@ -87,6 +89,14 @@ class Timeline:
 
     def ticks_per_frame_at(self, tick) -> float:
         return self.ticks_per_frame(self.segment_at(tick)[1])
+
+    def holds_before(self, tick: float) -> int:
+        """TempoWait holds before the driver reads `tick` (core.smps.tempo: the driver's phase,
+        each smpsSetTempoMod restarting the count).  GHZ, m = 3: tick 5 is read on frame 7."""
+        if self._schedule is None:
+            self._schedule = self._song.tempo_schedule()
+        k = int(tick)
+        return frame_of_tick(self._schedule, k) - k
 
     def bpm_for(self, modifier: int) -> int:
         """MOD BPM for a tempo modifier: the song's BPM scaled by the change in tick rate."""

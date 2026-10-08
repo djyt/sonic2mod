@@ -95,8 +95,11 @@ it - ticks, attack, the frequency word, the voice's registers, the carriers' TL,
 fill, noise byte, DAC sample - with the asm's spelling gone (calls, flag order, transposition vs
 note byte, voice TL vs track volume), and `compare_songs` matches two songs by start tick per
 `Aspect`.  `python tools/vgm_lift.py --all [--aspects onset]` lifts every rip and compares it
-with its config's asm in about four seconds (frame logs cached by `core.vgm.load_frames`); one rip
-prints its differences, repeated ones grouped.  "Accept" below means its aspects come out same.
+with its config's song (asm or ROM; `core/audit/rip_diff.py`) in about four seconds (frame logs
+cached by `core.vgm.load_frames`); one rip prints its differences, repeated ones grouped.  "Accept"
+below means its aspects come out same.  The lift takes the song's tempo; `--infer-tempo` judges
+the inference.  Default aspects: `LIFTED_ASPECTS` (what the lift reads; grows with 1.3-1.8).
+Usage: `docs/pipeline.md` § Verifying against a VGZ.
 A rip starts where its recording does: `align_songs` finds the ticks it starts into the song.
 Aspects: `onset` (where a channel attacks - a keyed note or a DAC hit; the tempo; the loop),
 `length` (durations, rests, ties), `note` (the table note, no detune), `pitch`, `voice`, `level`,
@@ -122,7 +125,15 @@ duration (`smpsNoAttack, $34`) is a tie; a stopped track rests to the song's end
   another tempo than the whole.
 - The divider is not observable - it only says how durations are spelled (GCD would give 6 for
   Extra Life's 2, 1 for Spring Yard's 2): the lift writes the FM notes' grid, the config's
-  `tempo_divider:` overrides it, `played_song` does not compare it.
+  `tempo_divider:` overrides it, `played_song` does not compare it.  Both mean ticks a duration
+  unit spans: a walked song's durations are already multiplied by it, the lift's are ticks, so
+  neither moves a note; the converter counts a row as `ticks_per_row` × divider.  The grid is the
+  divider times what the durations share (Moonwalker's Mr. Big: 6 for 2), or less where notes fall
+  off it (Golden Axe: 1 for 2, its drums' 1-2 frame notes).  Given the song's, the lift states it.
+- A given modifier (a song's header) is the tempo the song starts at: changes are still searched
+  (2026-10-08).  Before, it skipped the search with changes, so a song whose first write lands on a
+  hold (the DP reads from event 0 on, the one-tempo fit does not) failed: 6 of Golden Axe's 12 rips
+  at their header tempos; all lift now.  `NO_TEMPO_HOLDS`: a tick a frame from the first note.
 **Result:** modifier = the asm's on all 19; Drowning's 4 changes exact; Credits' first two (15 at
 2016, 10 at 4128) exact, the m = 7 drum break at 4896 (192 ticks of DAC only, no FM or PSG key
 write) is invisible, so the later changes (3, 4) come out ~9 ticks late and FM onsets after it
@@ -231,15 +242,18 @@ explained) against `samples/`.
   matching music pattern and warn; not handled.
 
 ### [ ] 1.10 Tooling
-- `tools/vgm_lift.py <file.vgz> [--asm OUT] [--compare song.asm]`: print the lifted song, write it
+- `tools/vgm_lift.py <file.vgz> [--asm OUT] [--input song]`: print the lifted song, write it
   as SMPS asm (readable, editable, and round-trippable through `SmpsParser` — a check on the lift in
-  itself), or diff it against an asm parse event by event.  The comparison and `--all` are done
-  (the yardstick above); printing and `--asm OUT` are left.
+  itself), or diff it against an asm or ROM song event by event.  The comparison and `--all` are done
+  (the yardstick above; any config set with a `rips.yaml` since 2026-10-08); printing and `--asm OUT`
+  are left.
 - `analyze.py file.vgz` works (dispatch, 0.3), including its YAML skeleton generator, so a new rip
   gets a starter config.
 
 ### [ ] 1.11 Regression
-Started: `tests/test_vgm_lift_units.py` covers tempo inference, attacks / ties / rests and loops.  No VGZ
+Started: `tests/test_vgm_lift_units.py` covers tempo inference, attacks / ties / rests and loops;
+`tests/test_rip_diff_units.py` the yardstick; `tests/tool_regression.py` keeps `vgm_lift`'s output
+(`lift_*`, the Moonwalker pairs with its ROM).  No VGZ
 case in `tests/regression.py` yet.
 Add a VGZ case per song that has a lifted config (start with Title Screen and GHZ) to
 `tests/regression.py`; `tests/test_vgm_lift_units.py` for the inference primitives (tempo hold,

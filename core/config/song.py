@@ -172,9 +172,10 @@ class ConversionConfig:
     def lift_options(self) -> LiftOptions:
         return LiftOptions(self.driver or DEFAULT_DRIVER, self.tempo_modifier, self.tempo_divider)
 
-    def read_song(self) -> SmpsSong:
-        """The song `input_file` holds: assembly parsed, a ROM's song decoded, a VGM / VGZ rip lifted."""
-        return read_song(self.input_file, self.lift_options, self.rom_song, self.driver)
+    def read_song(self, fix_data_bugs: bool = True) -> SmpsSong:
+        """The song `input_file` holds: assembly parsed, a ROM's song decoded, a VGM / VGZ rip lifted
+        (`fix_data_bugs` False: as the game shipped)."""
+        return read_song(self.input_file, self.lift_options, self.rom_song, self.driver, fix_data_bugs)
 
     def validate_mod_channels(self) -> None:
         """Reject a `num_mod_channels` no format tag exists for, or one the channels overflow."""

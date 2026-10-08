@@ -298,20 +298,29 @@ the rest's residuals at the 64 ceiling, one- or two-note instruments, or Beat It
 loudest fits (PSG at volume 1, noise +6 dB with nowhere lower).  Dance Attack 1-3 and 7-12 keep the
 starting volumes until the matcher pairs them.
 
+ROM against rip (2026-10-08): `vgm_lift.py --all --configs configs/moonwalker` lifts each rip at its
+ROM song's tempo and compares note by note (`docs/pipeline.md` § Verifying against a VGZ).  FM
+onsets, lengths and notes: same on all 13 pairs, but FM5's first note a tick late in 4 rips (Round
+Clear, Another Part of Me, Bad, Game Over: a song-start artefact, as Sonic's, vgz_conversion.md
+1.9).  The rips play the detunes the ROM states (Beat It FM5 +2: fnum 768 on D#2's 766).  DAC, PSG
+tone and noise differ where the lift is open (vgz_conversion.md 1.6-1.8).
+
 Open findings from 2.8:
 - Round Clear: all FM channels a whole 1-3 semitones off at 0.30 s and 2.30 s; Another Part of Me
   -100 c on FM1 and FM4 at 53.68 s.  Simultaneous whole-semitone shifts: a transposition or legato
-  timing rule of Type 1a's that differs from Sonic 1's.
+  timing rule of Type 1a's that differs from Sonic 1's.  Not the ROM read (its FM notes play as the
+  rip): the converter or the MOD.
 - Smooth Criminal: 6-10 key-ons a channel unmatched at the same times on FM1/3/4/5 (40.42, 48.42,
-  52.42 s ...), as many MOD-only: a timing rule again?
+  52.42 s ...), as many MOD-only: a timing rule again?  Not the ROM read either (FM onsets same).
 - The jingles (Title, Game Over) hold their last FM note 14-22 s: past the 10 s sample cap.
 
 `reference/vgz/moonwalker/`: vgmrips' complete set, 40 rips (12 dances twice, with and without
 voice).  By name: $81-$85 Smooth Criminal ... Bad (rips 03, 06, 09, 11, 13), $88 Round Clear (04),
 $89 Mr. Big (15), $8A Boss (07), $87 / $8B Game Over (28), $8C-$97 Dance Attack 1-12 (16-27).
-Title Screen (01) is likely $86; Round 1-5 Start (02, 05, 08, 10, 12) and Final Boss Demo (14) are
-not in the music index - find them (the 49 SFX?).  A matcher pairs each rip with its sound by
-`align_songs` / `compare_songs` on the lifted onsets, not by name.  Then `vgm_pitch_audit`,
+Title Screen (01) is $86 (its FM plays as the rip); Round 1-5 Start (02, 05, 08, 10, 12) and Final
+Boss Demo (14) are not in the music index - find them (the 49 SFX?).  A matcher pairs each rip with its
+sound by `align_songs` / `compare_songs` on the lifted onsets, not by name (`core/audit/rip_diff.py`
+compares one pair).  Then `vgm_pitch_audit`,
 `vgm_compare`, the volumes; SMPSPlay (Type 1a) to listen against.
 
 ### [x] 2.10 Unknown data
@@ -492,7 +501,10 @@ Each item lands with every baseline byte-identical unless it says otherwise.
 - [ ] **3.5 Drums** (B): `smpsz80/drums.py` decodes the 14 programs; the kit; the render; the MOD
   drum channel.  Check: each drum sample against the rips' FM3.
 - [ ] **3.6 Configs + yardstick.**  `configs/golden_axe/`: 13 minimal configs, `rips.yaml`;
-  `vgm_pitch_audit` clean, `measure_volumes.py --rips`, `vgm_compare` per song.
+  `vgm_lift.py --all --configs configs/golden_axe --skip FM3` (the drums: not pitches),
+  `vgm_pitch_audit` clean, `measure_volumes.py --configs configs/golden_axe`, `vgm_compare` per song.
+  The lift takes each song's header tempo (each of the 12 rips with one lifts at it; tempo 0 needs
+  `NO_TEMPO_HOLDS` from the reader).
 - [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice
   layout, drum programs); ROM tests skip without it.  No regression cases yet (the user's call).
 - [ ] **3.8 Docs.**  `architecture.md` § 3; every variant's driver facts in one home

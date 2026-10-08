@@ -16,13 +16,15 @@ from ..vgm import LiftOptions, is_vgm_path, lift_song, load_frames
 
 
 def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: int | None = None,
-              driver: SmpsDriver | None = None) -> SmpsSong:
+              driver: SmpsDriver | None = None, fix_data_bugs: bool = True) -> SmpsSong:
     """The song in `path`; `options` say what a VGM log cannot (assembly states it all itself),
-    `rom_song` which sound of a ROM ($81 ...), `driver` a ROM's variant (None: detected)."""
+    `rom_song` which sound of a ROM ($81 ...), `driver` a ROM's variant (None: detected).
+    `fix_data_bugs` False: an asm or a ROM as the game shipped (what a rip recorded)."""
     if is_rom_path(path):
         if rom_song is None:
             raise ValueError(f"{path}: a ROM holds every song; rom_song: names which ($81 ...)")
-        return read_rom_song(RomImage.load(path), rom_song, variant=VARIANTS[driver] if driver else None)
+        variant = VARIANTS[driver] if driver else None
+        return read_rom_song(RomImage.load(path), rom_song, fix_data_bugs=fix_data_bugs, variant=variant)
 
     if rom_song is not None:
         raise ValueError("rom_song: applies to a ROM input_file only (.bin / .md / .gen)")
@@ -32,7 +34,7 @@ def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: in
 
     if options is not None and options.driver != DEFAULT_DRIVER:
         raise ValueError(f"driver: {options.driver}: the assembly parser reads {DEFAULT_DRIVER} songs only")
-    return SmpsParser().parse_file(str(path))
+    return SmpsParser(fix_data_bugs=fix_data_bugs).parse_file(str(path))
 
 
 def read_dac(path: str | Path) -> list[DacSample]:

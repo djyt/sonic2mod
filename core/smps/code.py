@@ -24,7 +24,7 @@ from .song import CoordFlag, SmpsChannel, SmpsChannelHeader, SmpsEffect, SmpsEve
 
 # Track bytes: durations below the rest, notes from it to nB7, flags above.
 REST = 0x80           # nRst
-LAST_NOTE = 0xDF      # nB7
+LAST_NOTE = 0xDF      # nAs7
 NO_ATTACK = 0xE7      # smpsNoAttack
 
 
@@ -117,7 +117,7 @@ class _Cursor:
     last_duration: int
     no_attack: bool
     pending: SmpsNote | None     # the note still waiting for its duration
-    last_note_value: int         # the last note sounded: what a standalone duration re-keys
+    last_note_value: int         # the last note read, 0 after a rest: what a standalone duration re-keys
 
 
 def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
@@ -126,7 +126,9 @@ def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
     DAC: SavedDAC re-triggers; after a rest it stays silent.
     FM / PSG: the last note re-keys at its frequency (1-Up: `$03,$03,$06,$06` after nE7, a
     staccato arpeggio), unless smpsNoAttack precedes it: the note rings on (GHZ:
-    `smpsNoAttack,$3C` after nF5; PSG skips the volume write, the envelope continues).
+    `smpsNoAttack,$3C` after nF5; PSG skips the volume write, the envelope continues).  After a
+    rest there is no frequency (TrackSetRest clears Freq, the PSG's sets it to -1): the track
+    rests on (Credits PSG3, `nRst, $24` then 32 bare durations).
     """
     held = SmpsNote(note_value=REST, duration=duration, is_rest=True, is_no_attack=True)
     if cur.is_dac:
@@ -135,7 +137,9 @@ def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
             return held
         return SmpsNote(note_value=last.note_value, duration=duration, is_dac=True, dac_name=last.dac_name)
 
-    if cur.no_attack or cur.last_note_value == 0:
+    if cur.last_note_value == 0:
+        return SmpsNote(note_value=REST, duration=duration, is_rest=True, is_no_attack=cur.no_attack)
+    if cur.no_attack:
         return held
     return SmpsNote(note_value=cur.last_note_value, duration=duration, is_retrigger=True)
 
@@ -199,7 +203,9 @@ class _Walker:
             return tick, last_note_value
 
         pending.duration = last_duration
-        if not pending.is_rest and not pending.is_dac:
+        if pending.is_rest:
+            last_note_value = 0         # the driver clears the frequency: a bare duration rests on
+        elif not pending.is_dac:
             last_note_value = pending.note_value
         self._channel.events.append(SmpsEvent(note=pending, tick_position=tick))
         return tick + pending.duration, last_note_value

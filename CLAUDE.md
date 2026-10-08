@@ -242,7 +242,7 @@ One line each; the linked section has the cause and the detail.
 - Notes are bytes $81–$DF (C0–A#7).  FM labels are real pitches: `nA4` at pitch offset 0 = 440 Hz
   (`f = fnum × (clock/144) × 2^block / 2^21`, A4 = fnum 1083, block 4).  A PSG `nC0` is C3.
 - A standalone duration byte **re-keys the last note** at its frequency; after `smpsNoAttack` it is a
-  tie; after a rest the driver stays silent (the parser still re-keys there: a known bug).
+  tie; after a rest it rests (the driver cleared the frequency).
 - `smpsNoAttack` only skips the next key-off: after a rest or an expired fill the note attacks,
   and every read clears the flag.
 - A coordination flag completes a pending note; it applies from the next note.

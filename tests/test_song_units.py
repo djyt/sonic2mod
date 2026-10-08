@@ -113,6 +113,15 @@ class OtherDrivers(unittest.TestCase):
         song = SmpsSong(header=SmpsSongHeader(channels=headers), channels=[SmpsChannel(header=h) for h in headers])
         self.assertEqual(source_names(song), ["FM3", "FM1", "FM4"])
 
+    def test_a_late_first_hold_shifts_the_cycle_a_frame(self):
+        # Type 0 FM loads its counter after the frame's tempo check: at modifier 2, holds at 2, 4, 6
+        segment = tempo_schedule(2, phase=1)[0]
+        self.assertEqual([f for f in range(8) if segment.holds(f)], [2, 4, 6])
+        self.assertEqual([segment.frame_of(t) for t in range(5)], [0, 1, 3, 5, 7])
+        self.assertEqual([segment.tick_at(segment.frame_of(t)) for t in range(5)], list(range(5)))
+        sonic = tempo_schedule(2)[0]
+        self.assertEqual([f for f in range(8) if sonic.holds(f)], [1, 3, 5, 7])
+
     def test_no_tempo_holds_reads_a_tick_every_frame(self):
         segment = tempo_schedule(NO_TEMPO_HOLDS)[0]
         self.assertEqual((segment.tick_at(10_000), segment.frame_of(10_000), segment.holds(10_000)),

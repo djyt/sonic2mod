@@ -94,6 +94,7 @@ class PlayedSong:
     loop_tick: int | None
     end_tick: int
     channels: dict[str, list[PlayedNote]]           # "DAC", "FM1" .. "PSG3"
+    tempo_phase: int = 0                            # frames the first hold comes late (core/smps/tempo.py)
 
     @property
     def loop_span(self) -> int | None:
@@ -110,11 +111,13 @@ def played_song(song: SmpsSong) -> PlayedSong:
     voices = {v.index: v for v in song.voices}
     changes = sorted({(ev.tick_position, ev.effect.params[0]) for ch in song.channels for ev in ch.events
                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
-    schedule = tempo_schedule(NO_TEMPO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes)
+    schedule = tempo_schedule(NO_TEMPO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes,
+                              song.header.tempo_phase)
     end = song.end_tick()
     channels = {name: _played_channel(ch, voices, schedule, end, song.fm_frequencies)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
-    return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels)
+    return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels,
+                      song.header.tempo_phase)
 
 
 

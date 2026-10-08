@@ -1,0 +1,5 @@
+# Golden Axe - Turtle Village 1.  A minimal config: everything else is derived from the ROM
+# (docs/todo/binary_import.md 3.6); python convert.py <this> --show-config prints it.
+name: "Turtle Village 1"
+input_file: "input/roms/Golden Axe (World) (Rev A).md"
+rom_song: "$82"

@@ -9,9 +9,9 @@
 from .cli import LABEL_W, add_variant_argument, branding, cli_console, error_printer, row_printer
 from .pitch_audit import print_audit, verdict_text
 from .report import Report, print_report
-from .song_diff import diff_counts, song_diff_lines
+from .song_diff import diff_counts, kind_verdicts, song_diff_lines
 
 __all__ = [
-    "LABEL_W", "Report", "add_variant_argument", "branding", "cli_console", "diff_counts", "error_printer", "print_audit", "print_report",
+    "LABEL_W", "Report", "add_variant_argument", "branding", "cli_console", "diff_counts", "error_printer", "kind_verdicts", "print_audit", "print_report",
     "row_printer", "song_diff_lines", "verdict_text"
 ]

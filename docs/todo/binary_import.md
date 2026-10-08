@@ -530,11 +530,25 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   Baselines byte-identical (regenerated for the new setting's hash: all 41 MODs equal the old).
   Found: a note keyed 256 frames with no other runs out (the fill counter, `$00E8`) - for music
   tracks too; not modelled outside the drums (Game Over's long notes: check in 3.6).
-- [ ] **3.6 Configs + yardstick.**  `configs/golden_axe/`: 13 minimal configs, `rips.yaml`;
-  `vgm_lift.py --all --configs configs/golden_axe --skip FM3` (the drums: not pitches),
-  `vgm_pitch_audit` clean, `measure_volumes.py --configs configs/golden_axe`, `vgm_compare` per song.
-  The lift takes each song's header tempo (each of the 12 rips with one lifts at it; tempo 0 needs
-  `NO_TEMPO_HOLDS` from the reader).
+- [ ] **3.6 Configs + yardstick.**  Done so far (2026-10-08):
+  - `configs/golden_axe/`: 13 minimal configs, `rips.yaml` (by FM1's opening notes).
+  - The yardstick: the lift matches notes to the song's FM table; ties that change nothing compared
+    merge on both sides (Type 0 FM writes the frequency every frame: a rip shows no read); the verdict
+    per kind, by the song's channel type (`FM same · DAC ... (lift unfinished)`).
+  - **Found: the hold phase.**  The driver loads the tempo counter as the song starts, after that
+    frame's tempo check (`$06CA` before `$043A`): the first hold comes at frame m, Sonic 1's at m - 1.
+    `TempoSegment.phase`, `SmpsSongHeader.tempo_phase` (`HeaderLayout`: Type 0 FM 1), playback and the
+    lift take it.  FM1's key-ons on the rips' frames: Sutakora 128/128 (1/128 at Sonic's phase),
+    Showdown 245/245 (1/245), Wilderness 235/235 (160/235).  The converter's timeline (rates, rows) is
+    phase-free: unchanged.
+  - `vgm_lift --all --configs configs/golden_axe --skip FM3` (drums: not pitches): FM same on
+    Sutakora, Showdown, Turtle Village 2; the rest 2-14 onset / length at the first note and the loop,
+    and loop spans a tick or two off.  Path of Fiend: every note to 38 s, then the rip's hold cycle
+    shifts a frame (a lost / extra V-int, the rip's or the hardware's: the lift reads a tempo change);
+    Battle Field's "tempo change" is the same, harmless.  Moonwalker: FM same on 9 of 13 (the rest:
+    FM5's first note).
+  Left: `vgm_pitch_audit`, `measure_volumes.py --configs configs/golden_axe`, `vgm_compare` per song;
+  the 256-frame fill on long notes (Game Over).
 - [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice
   layout, drum programs); ROM tests skip without it.  No regression cases yet (the user's call).
 - [ ] **3.8 Docs.**  `architecture.md` § 3; every variant's driver facts in one home

@@ -77,16 +77,17 @@ class TempoMap:
 
 
 def infer_tempo(key_writes: Mapping[str, Sequence[int]], first: int | None = None,
-                modifier: int | None = None) -> TempoMap:
+                modifier: int | None = None, phase: int = 0) -> TempoMap:
     """The tempo map that puts every channel's key-write frames on ticks.  `first`: the earliest
     note of any kind (the song starts no later); `modifier`: the tempo the song starts at, not
-    inferred (a song's header states it; tempo changes are still looked for)."""
-    ev = _Events(key_writes)
+    inferred (a song's header states it; tempo changes are still looked for); `phase`: frames the
+    driver's first hold comes late (core/smps/tempo.py)."""
+    ev = _Events(key_writes, phase)
     first = int(ev.frames[0]) if first is None else min(first, int(ev.frames[0]))
 
     # A driver that never holds: a tick a frame from the first note
     if modifier == NO_TEMPO_HOLDS:
-        return TempoMap((TempoSegment(first, 0, modifier),))
+        return TempoMap((TempoSegment(first, 0, modifier, phase),))
     every = list(range(2, MAX_MODIFIER + 1))
     starts = [modifier] if modifier else every
 
@@ -98,7 +99,7 @@ def infer_tempo(key_writes: Mapping[str, Sequence[int]], first: int | None = Non
     # Or tempo changes (Drowning, Credits), where the halves of the song want other tempos than
     # the whole: whichever describes the song in fewer bits
     steady = bool(single) and all(half and half[0].modifier == single[0].modifier
-                                  for half in (_Events(part).singles(every) for part in ev.halves(key_writes)))
+                                  for half in (_Events(part, phase).singles(every) for part in ev.halves(key_writes)))
     if not steady and (changed := ev.segmented(starts, every, first)) is not None:
         fits.append(changed)
     if not fits:
@@ -163,7 +164,8 @@ def _prefix_bits(steps: np.ndarray) -> np.ndarray:
 class _Events:
     """The key-write frames: their union (the events) and each channel's intervals between them."""
 
-    def __init__(self, key_writes: Mapping[str, Sequence[int]]) -> None:
+    def __init__(self, key_writes: Mapping[str, Sequence[int]], phase: int = 0) -> None:
+        self._phase = phase                 # frames the driver's first hold comes late
         per_channel = [np.unique(np.asarray(frames, dtype=np.int64)) for frames in key_writes.values() if len(frames)]
         if not per_channel:
             raise TempoError("no key writes")
@@ -202,10 +204,10 @@ class _Events:
         used[self.frames % m] = True
         return [int(r) for r in np.nonzero(~used)[0]]
 
-    @staticmethod
-    def song_start(m: int, residue: int, first: int) -> TempoSegment:
-        """Holds on frames = residue (mod m): the song's start, the latest such phase <= first."""
-        return TempoSegment(first - ((first - (residue + 1)) % m), 0, m)
+    def song_start(self, m: int, residue: int, first: int) -> TempoSegment:
+        """Holds on frames = residue (mod m): the song's start, the latest such phase <= first (the
+        first hold `phase` frames past m - 1)."""
+        return TempoSegment(first - ((first + self._phase - (residue + 1)) % m), 0, m, self._phase)
 
     def single(self, m: int, residue: int, first: int, lost: Sequence[int] = ()) -> _Fit | None:
         """One tempo for the whole song, or None where a key write lands on a hold."""
@@ -222,7 +224,7 @@ class _Events:
         saves more than _LOST_BITS."""
         seg = fit.segments[0]
         gaps = np.argsort(np.diff(self.frames))[::-1][:_LOST_GAPS] + 1
-        residue = (seg.frame - 1) % seg.modifier
+        residue = (seg.frame + seg.phase - 1) % seg.modifier
         for _ in range(_MAX_LOST):
             trials = [self.single(seg.modifier, residue, seg.frame, [*fit.lost, int(self.frames[p]) - 1])
                       for p in gaps if int(self.frames[p]) - 1 not in fit.lost]

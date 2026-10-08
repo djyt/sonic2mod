@@ -21,8 +21,19 @@ sys.path.insert(0, str(_HERE))
 from vgm_build import bursts, fm_freq, key
 
 from core.audit import ChannelChoice, RipShelf, SongSource, TempoSource, compare_with_rip
-from core.smps import NO_TEMPO_HOLDS, Aspect, ChannelDiff, SongDiff, TempoSegment, frame_of_tick, tempo_schedule
-from core.ui import song_diff_lines
+from core.audit.rip_diff import _merge_ties
+from core.smps import (
+    NO_TEMPO_HOLDS,
+    Aspect,
+    ChannelDiff,
+    PlayedNote,
+    PlayedSong,
+    SongDiff,
+    TempoSegment,
+    frame_of_tick,
+    tempo_schedule,
+)
+from core.ui import kind_verdicts, song_diff_lines
 from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song, load_frames
 from core.vgm.lift.tempo import infer_tempo
 
@@ -162,6 +173,34 @@ class RipCompare(unittest.TestCase):
         song = lift_song(frames, LiftOptions(tempo_modifier=_MODIFIER))
         found = compare_with_rip(song, frames, channels=ChannelChoice(skip=("FM1",)))
         self.assertEqual(([c.name for c in found.diff.channels], found.only_rip), (["FM2"], []))
+
+
+class Ties(unittest.TestCase):
+    """A tie that changes nothing compared is one note on both sides of a comparison."""
+
+    def _song(self, *notes: PlayedNote) -> PlayedSong:
+        return PlayedSong(5, (), None, 100, {"FM1": list(notes)})
+
+    def test_a_tie_at_the_same_note_merges_unless_it_changes_what_is_compared(self):
+        fade = self._song(PlayedNote(0, 10, False, True, note=0x232D, level=(16,)),
+                          PlayedNote(10, 10, False, False, note=0x232D, level=(17,)))
+        merged = _merge_ties(fade, frozenset({Aspect.ONSET, Aspect.LENGTH, Aspect.NOTE}))
+        self.assertEqual([(p.tick, p.duration) for p in merged.channels["FM1"]], [(0, 20)])
+        kept = _merge_ties(fade, frozenset({Aspect.LENGTH, Aspect.LEVEL}))     # the level is compared: two notes
+        self.assertEqual(len(kept.channels["FM1"]), 2)
+
+    def test_a_tie_to_another_note_or_an_attack_stays(self):
+        song = self._song(PlayedNote(0, 10, False, True, note=1), PlayedNote(10, 10, False, False, note=2),
+                          PlayedNote(20, 10, False, True, note=2))
+        self.assertEqual(len(_merge_ties(song, frozenset({Aspect.NOTE})).channels["FM1"]), 3)
+
+
+class KindVerdicts(unittest.TestCase):
+    def test_what_the_judge_reads_in_full_first_the_rest_marked(self):
+        diff = SongDiff([], [ChannelDiff("PSG1", 5), ChannelDiff("FM3", 9), ChannelDiff("FM1", 4)], [], [])
+        kinds = {"PSG1": "PSG", "FM3": "DAC", "FM1": "FM"}
+        self.assertEqual(kind_verdicts(diff, kinds, frozenset({"FM"})), "FM same · DAC same · PSG same (lift unfinished)")
+        self.assertEqual(kind_verdicts(diff, {"FM1": "FM"}, frozenset({"FM"})).split(" · ")[0], "FM same")
 
 
 class DiffLines(unittest.TestCase):

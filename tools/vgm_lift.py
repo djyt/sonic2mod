@@ -44,8 +44,8 @@ sys.path.insert(0, str(ROOT))
 from core.audit import RIPS_MAP, ChannelChoice, RipDiff, RipShelf, SongSource, compare_with_rip, workers
 from core.config import find_settings, load_settings, parse_number
 from core.smps import ALL_ASPECTS, Aspect
-from core.ui import diff_counts, song_diff_lines
-from core.vgm import LIFTED_ASPECTS, LiftOptions, is_vgm_path, load_frames
+from core.ui import kind_verdicts, song_diff_lines
+from core.vgm import LIFTED_ASPECTS, LIFTED_KINDS, LiftOptions, is_vgm_path, load_frames
 
 VGZ_DIR = ROOT / "reference" / "vgz"
 CONFIG_DIR = ROOT / "configs"
@@ -173,7 +173,8 @@ def _print_line(result: _Result) -> None:
     song = "  song: " + ", ".join(what for what, _, _ in found.diff.song) if found.diff.song else ""
     refused = _tempo(found) if found.tempo and found.tempo.refused else ""
     extra = "".join(f"  [{line}]" for line in (refused, _unshared(found)) if line)
-    print(f"  {title:<26} {notes:>5} notes   {diff_counts(found.diff) or 'same'}{song}{extra}")
+    verdict = kind_verdicts(found.diff, found.kinds, LIFTED_KINDS)
+    print(f"  {title:<26} {notes:>5} notes   {verdict}{song}{extra}")
 
 
 def _lift_options(args: argparse.Namespace) -> LiftOptions | None:
@@ -242,8 +243,10 @@ def main() -> None:
         results = list(pool.map(_compare, rips, sources, [aspects] * n, [channels] * n, [lift] * n, [cache_dir] * n))
     for result in results:
         _print_line(result)
+    trusted = sum(r.found.same_in(LIFTED_KINDS) for r in results)
     same = sum(r.found.ok for r in results)
-    print(f"{same} of {n} lift as their song plays")
+    print(f"{trusted} of {n} play as their song on {' '.join(sorted(LIFTED_KINDS))} (what the lift reads in full) · "
+          f"{same} on every channel")
     sys.exit(0 if same == n else 1)
 
 

@@ -416,6 +416,9 @@ full volume.
 
 ### Leading rests
 
+The drum track's rests write nothing: the sample plays out, as on the chip, and an FM drum rings on
+(Type 0 FM); only a silent drum's hit stops it (`ChannelWriter._stop_ringing`).
+
 A channel whose first event is a rest gets `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, after
 every channel is converted): a song that loops to position 0 otherwise rings its last note through the
 rest.  An effect already in that cell moves to a free row-0 cell; with none free the `C00` is

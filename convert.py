@@ -156,7 +156,7 @@ def main():
     # tempo that leaves the song, and which target_speed would leave it closer.
     bpm: dict = {}
     if config.auto_bpm:
-        fps = 60 if config.region == "ntsc" else 50
+        fps = config.fps
         config.target_bpm = derive_bpm(song.header.tempo_divider, song.header.tempo_modifier,
                                        config.ticks_per_row, config.target_speed, fps)
         exact = exact_bpm(song.header.tempo_divider, song.header.tempo_modifier,

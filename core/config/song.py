@@ -32,6 +32,25 @@ _KEYS = frozenset({
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
 
+# Console region (`region:`) -> V-int frames a second: what the tempo, note fills and modulation count in
+REGION_FPS = {"ntsc": 60, "pal": 50}
+
+
+def region_fps(region: str) -> int:
+    """V-int frames a second for a `region:` value (ntsc | pal, any case)."""
+    fps = REGION_FPS.get(str(region).lower())
+    if fps is None:
+        raise ValueError(f"region must be one of {', '.join(REGION_FPS)} (got {region!r})")
+    return fps
+
+
+def _region(data: dict, filepath) -> str:
+    """`region:`, lower-cased; an unknown one is an error."""
+    region = str(data.get("region", "ntsc")).lower()
+    if region not in REGION_FPS:
+        raise ValueError(f"{filepath}: region must be one of {', '.join(REGION_FPS)} (got {data['region']!r})")
+    return region
+
 
 @dataclass
 class ConversionConfig:
@@ -180,7 +199,7 @@ class ConversionConfig:
             ticks_per_row=data.get('ticks_per_row', 6.0),
             num_mod_channels=data.get('num_mod_channels'),
             auto_bpm=data.get('auto_bpm', False),
-            region=data.get('region', 'ntsc'),
+            region=_region(data, filepath),
             range_space=str(data.get('range_space', 'source')),
             samples_dir=data.get('samples_dir', './samples/'),
             max_patterns=data.get('max_patterns', 127),
@@ -198,6 +217,11 @@ class ConversionConfig:
         config._read_source(data)
         config._data = dict(data)
         return config
+
+    @property
+    def fps(self) -> int:
+        """V-int frames a second of the config's region."""
+        return region_fps(self.region)
 
     @property
     def is_minimal(self) -> bool:

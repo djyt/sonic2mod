@@ -1076,7 +1076,7 @@ class ChannelWriter:
         _next_note_row) is there first.  Seconds are V-int frames at the region's frame rate,
         then driver ticks as a note fill is (ticks_per_frame_at), so a tempo change is honoured.
         Leaves the cursor on the cut's cell; returns whether one was written."""
-        fps = 50.0 if self._config.region.lower() == 'pal' else 60.0
+        fps = self._config.fps
         speed = self._config.target_speed
         tpr = self._timeline.ticks_per_row
         cut_ticks = secs * fps * self._timeline.ticks_per_frame_at(tick)

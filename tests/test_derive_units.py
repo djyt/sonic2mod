@@ -15,6 +15,9 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(_HERE))
+
+from roms import MOONWALKER_ROM, needs_moonwalker
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings
 from core.mod import ModNote
@@ -47,17 +50,16 @@ class Helpers(unittest.TestCase):
         self.assertEqual(_output_path(Path("elsewhere/song.yaml")), "output/song.mod")
 
 
-_MOONWALKER = ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
-_STATED = {"name": "Smooth Criminal", "input_file": str(_MOONWALKER), "rom_song": "$81"}
+_STATED = {"name": "Smooth Criminal", "input_file": str(MOONWALKER_ROM), "rom_song": "$81"}
 _CONFIG = Path("configs/moonwalker/81_smooth_criminal.yaml")
 _SETTINGS = SampleSettings(amiga_clock=3546895)
 
 
-@unittest.skipUnless(_MOONWALKER.exists(), "needs input/roms/Michael Jackson's Moonwalker (World) (Rev A).md")
+@needs_moonwalker
 class Moonwalker(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.rom = RomImage.load(_MOONWALKER)
+        cls.rom = RomImage.load(MOONWALKER_ROM)
         cls.song = read_rom_song(cls.rom, 0x81)
         cls.dac = dac_samples(cls.rom)
 
@@ -155,7 +157,7 @@ class Moonwalker(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "configs" / "mw" / "81_sc.yaml"
             path.parent.mkdir(parents=True)
-            path.write_text(f'input_file: "{_MOONWALKER.as_posix()}"\nrom_song: "$81"\n'
+            path.write_text(f'input_file: "{MOONWALKER_ROM.as_posix()}"\nrom_song: "$81"\n'
                             f'samples_dir: "{Path(tmp).as_posix()}/samples"\n'
                             'variants:\n  lofi: {name: "SC lofi"}\n', encoding="utf-8")
             config = ConversionConfig.from_yaml(str(path), "lofi")

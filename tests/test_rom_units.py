@@ -16,6 +16,9 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(_HERE))
+
+from roms import MOONWALKER_ROM, needs_moonwalker
 
 from core.rom import (
     RomError,
@@ -572,16 +575,13 @@ if __name__ == "__main__":
     unittest.main()
 
 
-_MOONWALKER = ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
-
-
-@unittest.skipUnless(_MOONWALKER.exists(), "needs input/roms/Michael Jackson's Moonwalker (World) (Rev A).md")
+@needs_moonwalker
 class Moonwalker(unittest.TestCase):
     """SMPS 68k Type 1a, no disassembly: what docs/todo/binary_import.md's probe found."""
 
     @classmethod
     def setUpClass(cls):
-        cls.rom = RomImage.load(_MOONWALKER)
+        cls.rom = RomImage.load(MOONWALKER_ROM)
         cls.index = locate_sounds(cls.rom)
 
     def test_the_indexes_by_structure(self):

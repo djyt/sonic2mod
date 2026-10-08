@@ -18,6 +18,7 @@ ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_HERE))
 
+from roms import MOONWALKER_RIPS, MOONWALKER_ROM, needs_moonwalker_rips
 from vgm_build import bursts, fm_freq, key
 
 from core.audit import ChannelChoice, RipShelf, SongSource, TempoSource, compare_with_rip
@@ -210,18 +211,13 @@ class DiffLines(unittest.TestCase):
         self.assertIn("missing at 12 (0.20s)", "\n".join(lines))
 
 
-_MOONWALKER = ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
-_MOONWALKER_RIPS = ROOT / "reference" / "vgz" / "moonwalker"
-
-
-@unittest.skipUnless(_MOONWALKER.exists() and _MOONWALKER_RIPS.exists(),
-                     "needs input/roms/Michael Jackson's Moonwalker (World) (Rev A).md and reference/vgz/moonwalker/")
+@needs_moonwalker_rips
 class Moonwalker(unittest.TestCase):
     """ROM songs against their rips, at the ROM's tempo: the FM notes play as recorded."""
 
     def _found(self, sound: int, rip: str):
-        song = SongSource(_MOONWALKER, sound).read()
-        return compare_with_rip(song, load_frames(_MOONWALKER_RIPS / rip), channels=ChannelChoice(only=("FM",)))
+        song = SongSource(MOONWALKER_ROM, sound).read()
+        return compare_with_rip(song, load_frames(MOONWALKER_RIPS / rip), channels=ChannelChoice(only=("FM",)))
 
     def test_smooth_criminal(self):
         found = self._found(0x81, "03 - Smooth Criminal.vgz")

@@ -48,7 +48,7 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 sys.path.insert(0, str(_ROOT))
 
-from core.audit import RipShelf
+from core.audit import RipShelf, named
 
 _CHANGE = re.compile(r"^\s+instrument\s+(\d+)\s+\((.*?)\s*\):\s+(\d+)\s+->\s+(\d+)\s+\(([-+0-9.]+) dB\)")
 
@@ -153,23 +153,25 @@ def _fmt_residual(it: dict) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Measure and write every song's sample_list volumes against its VGZ")
-    ap.add_argument("--only", nargs="+", metavar="NAME", help="configs whose stem contains any NAME")
+    ap.add_argument("--only", nargs="+", metavar="NAME", help="configs whose stem holds a NAME")
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1),
                     help="songs measured at once (default: CPU cores - 1)")
     ap.add_argument("--no-write", action="store_true", help="measure and report; leave the configs alone")
     ap.add_argument("--min-db", type=float, default=1.0,
                     help="report verify-pass instruments off by this much or more (default 1.0)")
-    ap.add_argument("--configs", default=str(_ROOT / "configs"), help="config directory")
-    ap.add_argument("--vgz-dir", default=str(_ROOT / "reference" / "vgz"), help="VGZ directory")
+    ap.add_argument("--configs", help="config directory (default configs/, or the --vgz-dir's mirror)")
+    ap.add_argument("--vgz-dir", help="VGZ directory (default reference/vgz/ + the configs' subfolder)")
     ap.add_argument("--vgmplay", default=None, help="VGMPlay directory (passed to vgm_compare.py)")
     ap.add_argument("--rips", metavar="FILE", help="YAML {config stem: rip file in --vgz-dir} (default: rips.yaml beside "
                                                    "the configs, else by number); configs it leaves out are skipped")
     args = ap.parse_args()
 
-    shelf = RipShelf.load(args.configs, args.vgz_dir, args.rips)
-    configs = shelf.config_files()
-    if args.only:
-        configs = [c for c in configs if any(n in c.stem for n in args.only)]
+    try:
+        shelf = RipShelf.around(args.configs, args.vgz_dir, args.rips,
+                                config_root=_ROOT / "configs", rip_root=_ROOT / "reference" / "vgz")
+    except ValueError as e:
+        raise SystemExit(f"{e} (--vgz-dir / --configs)") from e
+    configs = [c for c in shelf.config_files() if named(args.only, c)]
     if not configs:
         raise SystemExit("no configs matched")
     jobs = max(1, min(args.jobs, len(configs)))

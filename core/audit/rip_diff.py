@@ -11,8 +11,8 @@ The lift matches each note to the song's own FM table (Golden Axe's is not Sonic
 The channels compared are those both sides play, less what ChannelChoice leaves out; each is of
 the kind the song says (RipDiff.kinds: Golden Axe's drum track is FM3 by name, DAC by kind).
 
-A tie that changes nothing compared (smpsNoAttack at the same note, by default; with --aspects all
-the same level, voice ... too) is merged into the note before it on both sides: it is heard as one
+A tie that changes nothing compared (smpsNoAttack at the same note, by default; with every aspect
+compared the same level, voice ... too) is merged into the note before it on both sides: it is heard as one
 note, and a rip shows the read only where the driver writes the frequency on reads alone (Sonic
 1's does; Type 0 FM writes it every frame).
 """
@@ -64,7 +64,12 @@ class SongSource:
     @property
     def label(self) -> str:
         """'Mus81 - GHZ.asm', 'Moonwalker (World) (Rev A).md $81'."""
-        return self.path.name if self.rom_song is None else f"{self.path.name} ${self.rom_song:02X}"
+        return f"{self.path.name} {self.sound}".rstrip()
+
+    @property
+    def sound(self) -> str:
+        """A ROM song's sound, '$81'; '' for an asm."""
+        return "" if self.rom_song is None else f"${self.rom_song:02X}"
 
     def read(self) -> SmpsSong:
         return read_song(self.path, rom_song=self.rom_song, driver=self.driver, fix_data_bugs=False)
@@ -106,6 +111,9 @@ class LiftTempo:
 
 @dataclass
 class RipDiff:
+    """A song against its rip: the differences (None: not compared, `error` says why) and how they
+    were found."""
+
     diff: SongDiff | None
     offset: int = 0                         # ticks the rip starts into the song
     tempo: LiftTempo | None = None
@@ -164,7 +172,7 @@ def _lift(song: SmpsSong, frames: FrameLog, options: LiftOptions | None) -> tupl
         return lifted, _tempo(lifted, TempoSource.STATED if stated else TempoSource.INFERRED)
 
     h = song.header
-    refused = ""
+    refused = "none stated"
     if h.tempo_modifier:
         try:
             lifted = lift_song(frames, LiftOptions(tempo_modifier=h.tempo_modifier, tempo_divider=h.tempo_divider or None,

@@ -46,7 +46,9 @@ sys.path.insert(0, str(ROOT))
 
 import yaml
 
+from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, _commit, variant_args
+from tests.roms import MOONWALKER_RIPS, MOONWALKER_ROM
 
 BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
@@ -57,12 +59,11 @@ _HASH_CHARS = 12
 _DIFF_LINES = 40                  # diff lines printed per failing case
 _COMPARE_START = "Config :"       # vgm_compare output compared from this line
 _MANIFEST_HEADER = "# Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.\n"
-_SONG_NUMBER = slice(0, 2)        # "02_green_hill_zone" / "02 - Green Hill Zone.vgz" -> "02"
+_CASE_TAG = slice(0, 2)           # a rip's number names its cases: "02 - Green Hill Zone.vgz" -> analyze_02_rows
 _LIFT_DETAIL = "02"               # the rip vgm_lift prints in full
 _LIFT_DIFFS = "4"                 # ... its differences per channel
-MOONWALKER_ROM = ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
-MOONWALKER_RIPS = VGZ_DIR / "moonwalker"
-MOONWALKER_CONFIGS = ROOT / "configs" / "moonwalker"
+_CONFIG_DIR = ROOT / "configs"
+_MOONWALKER_CONFIGS = _CONFIG_DIR / "moonwalker"
 _MOONWALKER_DETAIL = "88_round_clear"
 
 
@@ -76,12 +77,12 @@ class _Case:
     output: str = field(default="", repr=False)
 
 
-def _vgzs() -> dict[str, Path]:
-    return {p.name[_SONG_NUMBER]: p for p in sorted(VGZ_DIR.glob("*.vgz"))}
+def _vgzs() -> list[Path]:
+    return sorted(VGZ_DIR.glob("*.vgz"))
 
 
 def _analyze_cases(vgz: Path) -> list[_Case]:
-    n = vgz.name[_SONG_NUMBER]
+    n = vgz.name[_CASE_TAG]
     tool = ["tools/vgm_analyze.py", str(vgz.relative_to(ROOT))]
     modes = {
         "rows": ["--chip", "all", "--max-rows", "0"],
@@ -106,19 +107,21 @@ def _song_cases(tc: dict, vgz: Path) -> list[_Case]:
     return cases
 
 
-def _lift_cases(vgzs: dict[str, Path]) -> list[_Case]:
+def _lift_cases(vgzs: list[Path]) -> list[_Case]:
     """vgm_lift: the Sonic rips against their asm; the Moonwalker ROM's songs against their rips."""
     tool = ["tools/vgm_lift.py"]
-    cases = [_Case("lift_all", [*tool, "--all"], list(vgzs.values()))]
-    detail = vgzs.get(_LIFT_DETAIL)
+    cases = [_Case("lift_all", [*tool, "--all"], [*vgzs, *RipShelf.load(_CONFIG_DIR, VGZ_DIR).config_files()])]
+    detail = next((v for v in vgzs if v.name.startswith(_LIFT_DETAIL)), None)
     if detail is not None:
         cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)), "--aspects", "all",
                                                     "--diffs", _LIFT_DIFFS], [detail]))
     if not (MOONWALKER_ROM.exists() and MOONWALKER_RIPS.exists()):
         return cases
 
-    configs = str(MOONWALKER_CONFIGS.relative_to(ROOT))
-    inputs = [MOONWALKER_ROM, MOONWALKER_CONFIGS / "rips.yaml", *sorted(MOONWALKER_RIPS.glob("*.vgz"))]
+    configs = str(_MOONWALKER_CONFIGS.relative_to(ROOT))
+    shelf = RipShelf.load(_MOONWALKER_CONFIGS, MOONWALKER_RIPS)
+    inputs = [MOONWALKER_ROM, _MOONWALKER_CONFIGS / RIPS_MAP, *sorted(MOONWALKER_RIPS.glob("*.vgz")),
+              *shelf.config_files()]
     return [*cases,
             _Case("lift_moonwalker_all", [*tool, "--all", "--configs", configs], inputs),
             _Case(f"lift_moonwalker_{_MOONWALKER_DETAIL}", [*tool, str(Path(configs) / f"{_MOONWALKER_DETAIL}.yaml")], inputs)]
@@ -126,11 +129,12 @@ def _lift_cases(vgzs: dict[str, Path]) -> list[_Case]:
 
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs.values() for c in _analyze_cases(vgz)] + _lift_cases(vgzs)
+    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs)
+    shelf = RipShelf.load(_CONFIG_DIR, VGZ_DIR)
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
             continue
-        vgz = vgzs.get(Path(tc["config"]).name[_SONG_NUMBER])
+        vgz = shelf.rip_for(ROOT / tc["config"])
         if vgz is not None:
             cases += _song_cases(tc, vgz)
     return cases
@@ -249,8 +253,9 @@ def main() -> None:
         for c in _select(None, True):
             print(f"{c.name:<32} {'(renders) ' if c.renders else ''}{' '.join(c.argv)}")
         return
-    if not MOONWALKER_ROM.exists():
-        print(f"  note: no {MOONWALKER_ROM.relative_to(ROOT)}: the lift_moonwalker cases are left out")
+    missing = [p.relative_to(ROOT).as_posix() for p in (MOONWALKER_ROM, MOONWALKER_RIPS) if not p.exists()]
+    if missing:
+        print(f"  note: no {' or '.join(missing)}: the lift_moonwalker cases are left out")
     if args.generate_baselines:
         generate(args.only, args.with_renders, args.jobs)
         return

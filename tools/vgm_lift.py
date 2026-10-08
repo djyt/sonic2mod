@@ -3,10 +3,12 @@
 bytecode: what the lift gets wrong, or where the song reads other than the game played.
 
 Both songs go through core.smps.played_song (what the driver plays, the spelling gone) and
-compare_songs matches their notes by start tick, aspect by aspect (onset, length, note, pitch,
-voice, level, pan, modulation, fill, noise, dac): core/audit/rip_diff.py.  The lift is given the
-song's tempo (modifier and divider; inferred only where it fits no schedule, said so); the
-channels compared are those both play.
+compare_songs matches their notes by start tick, aspect by aspect: by default what the lift reads
+(onset, length, note), with --aspects all also pitch, voice, level, pan, modulation, fill, noise
+and dac (core/audit/rip_diff.py).  A tie that changes nothing compared is merged into the note
+before it on both sides.  The lift is given the song's tempo (modifier and divider; inferred
+only where it fits no schedule, said so); the channels compared are those both play.  --all's
+verdict is per channel kind, FM (what the lift reads in full) first.
 
 Pairs (core/audit/rips.py): a config and its rip share a number, or the rips.yaml beside the
 configs names it (configs/moonwalker/).  A rip's song is its config's input_file (and rom_song)
@@ -22,7 +24,7 @@ Usage::
     python tools/vgm_lift.py rip.vgz --input "input/roms/X.md" --rom-song '$88'   # any song
     python tools/vgm_lift.py --all                                               # every rip, a line each
     python tools/vgm_lift.py --all --configs configs/moonwalker                  # every pair rips.yaml names
-    python tools/vgm_lift.py --all --aspects onset --only 02 17
+    python tools/vgm_lift.py --all --aspects onset --only 02 17                 # rips or configs whose name holds one
     python tools/vgm_lift.py --all --aspects onset length note --channels FM --skip FM3
     python tools/vgm_lift.py --all --infer-tempo --aspects onset                 # judge the tempo inference
 """
@@ -31,7 +33,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -41,10 +42,10 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.audit import RIPS_MAP, ChannelChoice, RipDiff, RipShelf, SongSource, compare_with_rip, workers
+from core.audit import RIPS_MAP, ChannelChoice, RipDiff, RipShelf, SongSource, compare_with_rip, named, workers
 from core.config import find_settings, load_settings, parse_number
 from core.smps import ALL_ASPECTS, Aspect
-from core.ui import kind_verdicts, song_diff_lines
+from core.ui import kind_verdicts, modifier_text, song_diff_lines
 from core.vgm import LIFTED_ASPECTS, LIFTED_KINDS, LiftOptions, is_vgm_path, load_frames
 
 VGZ_DIR = ROOT / "reference" / "vgz"
@@ -59,6 +60,16 @@ class _Result:
     rip: Path
     source: SongSource | None
     found: RipDiff
+
+
+def _compare_config(rip: Path, config: Path, aspects: frozenset[Aspect], channels: ChannelChoice,
+                    lift: LiftOptions | None, cache_dir: str | None) -> _Result:
+    """One pair lifted and compared (--all's job): a config that does not load is its own line."""
+    try:
+        source = SongSource.from_config(config, ROOT)
+    except (OSError, ValueError) as e:
+        return _Result(rip, None, RipDiff(None, error=f"{config.name}: {e}"))
+    return _compare(rip, source, aspects, channels, lift, cache_dir)
 
 
 def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], channels: ChannelChoice,
@@ -76,23 +87,13 @@ def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], c
 # --- pairs ----------------------------------------------------------------------
 
 
-def _mirror(path: Path, here: Path, there: Path) -> Path:
-    """`path`'s folder under `there` as it sits under `here` (configs/moonwalker -> reference/vgz/moonwalker)."""
-    folder = Path(os.path.abspath(path))        # not resolve(): a linked folder keeps its place
-    if not folder.is_relative_to(here):
-        raise SystemExit(f"{path}: not under {here.relative_to(ROOT)}; name its partner (--vgz-dir / --configs)")
-    return there / folder.relative_to(here)
-
-
 def _shelf(args: argparse.Namespace, configs: Path | None = None, rips: Path | None = None) -> RipShelf:
     """The configs and rips to pair: the folders given, else each mirroring the other."""
-    configs = configs or (Path(args.configs) if args.configs else None)
-    rips = rips or (Path(args.vgz_dir) if args.vgz_dir else None)
-    if configs is None:
-        configs = _mirror(rips, VGZ_DIR, CONFIG_DIR) if rips else CONFIG_DIR
-    if rips is None:
-        rips = _mirror(configs, CONFIG_DIR, VGZ_DIR)
-    return RipShelf.load(configs, rips, args.rips)
+    try:
+        return RipShelf.around(configs or args.configs, rips or args.vgz_dir, args.rips,
+                               config_root=CONFIG_DIR, rip_root=VGZ_DIR)
+    except ValueError as e:
+        raise SystemExit(f"{e} (--vgz-dir / --configs)") from e
 
 
 def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None]:
@@ -105,7 +106,8 @@ def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None]:
     config = configs[0] if configs else None
     rip = rips[0] if rips else None
     if rip is None:
-        rip = _shelf(args, configs=config.parent).rip_for(config) if config else None
+        assert config is not None                   # one of the two was named
+        rip = _shelf(args, configs=config.parent).rip_for(config)
         if rip is None:
             raise SystemExit(f"{config}: no rip pairs with it (name one, or --rips)")
     if args.input:
@@ -127,8 +129,7 @@ def _source(config: Path) -> SongSource:
 
 def _title(result: _Result) -> str:
     """The rip, and a ROM song's sound: '03 - Smooth Criminal $81'."""
-    sound = result.source.rom_song if result.source else None
-    return result.rip.stem if sound is None else f"{result.rip.stem} ${sound:02X}"
+    return f"{result.rip.stem} {result.source.sound if result.source else ''}".rstrip()
 
 
 def _tempo(found: RipDiff) -> str:
@@ -137,7 +138,7 @@ def _tempo(found: RipDiff) -> str:
     if tempo is None:
         return ""
     why = f" (the song's: {tempo.refused})" if tempo.refused else ""
-    return f"tempo {tempo.source}: modifier {tempo.modifier}, divider {tempo.divider}{why}"
+    return f"tempo {tempo.source}: {modifier_text(tempo.modifier)}, divider {tempo.divider}{why}"
 
 
 def _unshared(found: RipDiff) -> str:
@@ -200,7 +201,7 @@ def main() -> None:
     ap.add_argument("--vgz-dir", metavar="DIR", help=f"the rips (default {VGZ_DIR.relative_to(ROOT)}/ + the configs' subfolder)")
     ap.add_argument("--rips", metavar="FILE", help=f"YAML {{config stem: rip file}} (default: {RIPS_MAP} beside the configs, "
                                                    "else rips pair by number)")
-    ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name starts so (02, 88_)")
+    ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name holds one (02, 88_)")
     ap.add_argument("--input", "--compare", metavar="FILE", help="the song: an asm or a ROM (default: the rip's config's input_file)")
     ap.add_argument("--rom-song", metavar="ID", help="with a ROM --input: its sound ($81 ...)")
     ap.add_argument("--aspects", nargs="+", choices=[*(a.value for a in Aspect), _EVERY_ASPECT],
@@ -232,15 +233,14 @@ def main() -> None:
         sys.exit(0 if result.found.ok else 1)
 
     # Every pair: a line each, lifted in parallel
-    pairs = [(c, r) for c, r in _shelf(args).pairs()
-             if not args.only or r.name.startswith(tuple(args.only)) or c.stem.startswith(tuple(args.only))]
+    pairs = [(c, r) for c, r in _shelf(args).pairs() if named(args.only, c, r)]
     if not pairs:
         raise SystemExit("no rip pairs with a config")
-    rips = [r for _, r in pairs]
-    sources = [_source(c) for c, _ in pairs]
+    configs, rips = [c for c, _ in pairs], [r for _, r in pairs]
     n = len(pairs)
     with ProcessPoolExecutor(workers(n)) as pool:
-        results = list(pool.map(_compare, rips, sources, [aspects] * n, [channels] * n, [lift] * n, [cache_dir] * n))
+        results = list(pool.map(_compare_config, rips, configs, [aspects] * n, [channels] * n, [lift] * n,
+                                [cache_dir] * n))
     for result in results:
         _print_line(result)
     trusted = sum(r.found.same_in(LIFTED_KINDS) for r in results)

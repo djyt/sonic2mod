@@ -156,12 +156,12 @@ class SharedFiles(unittest.TestCase):
 
     def test_a_shared_file_is_replaced_only_when_its_bytes_change(self):
         path = self.dir / "dac81.raw"
-        write_shared(path, b"")
+        write_shared(path, b"\x01\x02")
         before = path.stat().st_mtime_ns
-        write_shared(path, b"")
+        write_shared(path, b"\x01\x02")
         self.assertEqual(path.stat().st_mtime_ns, before)        # same bytes: not written
-        write_shared(path, b"")
-        self.assertEqual(path.read_bytes(), b"")
+        write_shared(path, b"\x03")
+        self.assertEqual(path.read_bytes(), b"\x03")
         self.assertEqual([p.name for p in self.dir.iterdir()], ["dac81.raw"])
 
     def test_a_failed_write_leaves_the_old_file_and_no_temp(self):

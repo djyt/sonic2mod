@@ -60,11 +60,14 @@ class SongCode:
     driver: SmpsDriver = DEFAULT_DRIVER                          # the variant that reads it
     dropped: dict[str, int] = field(default_factory=dict)        # flags read and left out, by name
     psg_envelopes: dict[str, PsgEnvelope] | None = None          # None: Sonic 1's
+    fm_frequencies: tuple[int, ...] | None = None                # None: Sonic 1's
     dac_names: dict[int, str] | None = None                      # None: Sonic 1's (dKick ...)
 
     def song(self) -> SmpsSong:
         song = song_from_code(self.header, self.code, self.voices, self.psg_envelopes, self.dac_names)
         song.dropped = dict(self.dropped)
+        if self.fm_frequencies is not None:
+            song.fm_frequencies = self.fm_frequencies
         return song
 
 

@@ -26,6 +26,7 @@ from core.plan import (
     prepare_instruments,
     sounding_pitches,
 )
+from core.smps import FM_FREQUENCIES
 
 _C2 = ModNote.C2.value          # MOD index 12
 ROOT = _HERE.parent
@@ -48,7 +49,7 @@ class RenderingPitch(unittest.TestCase):
 
 class Sounding(unittest.TestCase):
     def test_each_rooted_instrument_with_its_detune(self):
-        song = SimpleNamespace(voices=[SimpleNamespace(index=0)])
+        song = SimpleNamespace(voices=[SimpleNamespace(index=0)], fm_frequencies=FM_FREQUENCIES)
         cfg = ConversionConfig()
         cfg.voice_map = {
             0: [InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2, synth_root=64, synth_shift=4)],
@@ -62,8 +63,8 @@ class Sounding(unittest.TestCase):
         got = sounding_pitches(song, cfg)
         self.assertEqual(sorted(got), [3, 5, 23])
         self.assertEqual((got[3].root, got[3].root_semitone), (_C2, 60))
-        self.assertAlmostEqual(got[3].cents, detune_cents(64, 3))
-        self.assertAlmostEqual(got[23].cents, detune_cents(64, -20))
+        self.assertAlmostEqual(got[3].cents, detune_cents(64, 3, FM_FREQUENCIES))
+        self.assertAlmostEqual(got[23].cents, detune_cents(64, -20, FM_FREQUENCIES))
         self.assertEqual((got[5].root, got[5].root_semitone, got[5].cents), (_C2, 24, 0.0))
 
 

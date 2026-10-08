@@ -28,7 +28,7 @@ import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
 
-from .driver_tables import FM_FREQUENCIES, PSG_FREQUENCIES_EXTENDED, fm_note_index, psg_note_index
+from .driver_tables import PSG_FREQUENCIES_EXTENDED, fm_note_index, psg_note_index
 from .names import source_names
 from .song import CoordFlag, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import apply_global_tempo_div, extend_looping_channels
@@ -112,14 +112,14 @@ def played_song(song: SmpsSong) -> PlayedSong:
                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
     schedule = tempo_schedule(NO_TEMPO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes)
     end = song.end_tick()
-    channels = {name: _played_channel(ch, voices, schedule, end)
+    channels = {name: _played_channel(ch, voices, schedule, end, song.fm_frequencies)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
     return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels)
 
 
 
 def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],
-                    end: int) -> list[PlayedNote]:
+                    end: int, fm_frequencies: tuple[int, ...]) -> list[PlayedNote]:
     st = TrackState.for_header(channel.header)
     played: list[PlayedNote] = []
     base: int | None = None            # the table word of the last note: a retrigger re-keys it
@@ -166,7 +166,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         attack = not note.is_no_attack or not keyed
         keyed = True
         if not note.is_retrigger or base is None:
-            base = _table_word(note, st)
+            base = _table_word(note, st, fm_frequencies)
         sounded = _note(ev.tick_position, note, st, base, voices, attack)
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
@@ -211,11 +211,11 @@ def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[T
     return played
 
 
-def _table_word(note: SmpsNote, st: TrackState) -> int:
+def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:
     """The frequency word the driver reads for a note byte at the track's transposition."""
     if st.is_psg:
         return PSG_FREQUENCIES_EXTENDED[psg_note_index(note.note_value, st.transpose)]
-    return FM_FREQUENCIES[fm_note_index(note.note_value, st.transpose)]
+    return fm_frequencies[fm_note_index(note.note_value, st.transpose)]
 
 
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],

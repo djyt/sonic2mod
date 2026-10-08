@@ -16,7 +16,7 @@ from ..flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, e
 from ..image import RomImage
 from ..variant import DacSample, SmpsVariant
 from .layout import HEADER_TYPE0, VOICE_TYPE0
-from .locate import locate_type0, sound_bank
+from .locate import fm_frequencies, locate_type0, sound_bank
 from .memory import BankedZ80Memory
 
 GOLDEN_AXE_REV_A_SHA1 = "2ce17105ca916fbbe3ac9ae3a2086e66b07996dd"
@@ -65,5 +65,6 @@ TYPE0FM = SmpsVariant(
     voice_layout=VOICE_TYPE0,
     dac_names={b: f"drum{b:02X}" for b in range(_FIRST_NOTE, _LAST_NOTE + 1)},
     dac=_no_samples,
+    fm_frequencies=fm_frequencies,
     known_roms={GOLDEN_AXE_REV_A_SHA1: ()},
 )

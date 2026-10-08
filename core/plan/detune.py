@@ -33,7 +33,6 @@ import math
 from dataclasses import dataclass, field
 
 from ..config import SAMPLE_FILE, SAMPLE_SLOT, SAMPLE_VOLUME
-from ..smps import FM_FREQUENCIES
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
 
@@ -139,11 +138,12 @@ def _stem(filename: str) -> str:
     return filename.rsplit(".", 1)[0]
 
 
-def detune_cents(semitone: int, fnum_offset: int) -> float:
-    """Cents an FNUM offset moves a note (SMPS semitone, C0 = 0) the driver's table plays: the
-    offset is added to the whole block|fnum word, as FMUpdateFreq adds it."""
-    i = max(0, min(len(FM_FREQUENCIES) - 1, semitone + 1))      # table index 1 = nC0
-    word = FM_FREQUENCIES[i]
+def detune_cents(semitone: int, fnum_offset: int, fm_frequencies: tuple[int, ...]) -> float:
+    """Cents an FNUM offset moves a note (SMPS semitone, C0 = 0) the driver's table plays
+    (`fm_frequencies`: the song's): the offset is added to the whole block|fnum word, as
+    FMUpdateFreq adds it."""
+    i = max(0, min(len(fm_frequencies) - 1, semitone + 1))      # table index 1 = nC0
+    word = fm_frequencies[i]
     moved = max(0, min(_WORD_MAX, word + fnum_offset))
     return 1200.0 * math.log2(_word_hz(moved) / _word_hz(word))
 

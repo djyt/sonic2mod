@@ -9,10 +9,17 @@ from __future__ import annotations
 from ...chips import OperatorReg
 from ...smps import SFX_CHANNEL_IDS, CoordFlag
 from ..flags import CALL, JUMP, LOOP, NO_ATTACK, STOP, FlagSpec, effect
+from ..image import RomImage
 from ..variant import HeaderLayout, TrackSlot, VoiceLayout
 
 # The DAC, then FM1-FM6 in header order; SFX on FM3-FM5 and the PSG
 HEADER_68K = HeaderLayout((TrackSlot("DAC"), *[TrackSlot("FM")] * 6), frozenset(SFX_CHANNEL_IDS.values()))
+
+def sonic1_fm_frequencies(rom: RomImage) -> None:
+    """Sonic 1's FM table (core.smps): the 68k drivers here play every note from it (Type 1a's
+    differs only past the top note)."""
+    return None
+
 
 # 25 bytes: feedback / algorithm, then each register's four operator bytes, TL last
 VOICE_68K = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.KS_AR, OperatorReg.AM_D1R, OperatorReg.D2R,

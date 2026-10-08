@@ -55,6 +55,7 @@ from core.smps import (
     effect_from_bytes,
     noise_envelope_frames,
     parse_differences,
+    played_song,
     song_from_code,
     source_names,
     write_asm,
@@ -390,6 +391,14 @@ class Type0Fm(unittest.TestCase):
                          [(0xA0, 16), (0xA0, 16)])                       # durations x divider 2
         self.assertEqual(code.dropped, {"$E0 (no handler)": 1})
 
+    def test_notes_play_from_the_songs_own_fm_table(self):
+        code = self._code(bytes([0xEF, 0x00, 0xA0, 0x08, 0xF2]))           # $A0: table index $20
+        table = tuple(range(0x1000, 0x1000 + 0x60))
+        code.fm_frequencies = table
+        fm1 = played_song(code.song()).channels["FM1"]
+        played = next(p for p in fm1 if not p.rest)
+        self.assertEqual(played.note, table[0x20 - 12])                   # transposition -12
+
     def test_slide_mode_is_refused_and_so_is_the_asm(self):
         with self.assertRaisesRegex(RomError, "slide mode"):
             self._code(bytes([0xFC, 0x01, 0xA0, 0x00, 0x00, 0x08, 0xF2]))
@@ -580,6 +589,8 @@ class GoldenAxe(unittest.TestCase):
         self.assertEqual(source_names(songs[0x81]), ["FM3", "FM1", "FM2", "FM4", "FM5", "FM6"])
         self.assertEqual(songs[0x85].header.tempo_modifier, NO_TEMPO_HOLDS)          # Death Adder: tempo 0
         self.assertTrue(all(v.pan is not None for v in songs[0x81].voices))
+        self.assertEqual(songs[0x81].fm_frequencies[1:3], (0x283, 0x2A4))             # nC0: Z80 $07D9
+        self.assertEqual(len(songs[0x81].fm_frequencies), len(FM_FREQUENCIES))
 
     def test_sfx_with_slides_or_fm3_special_mode_are_refused(self):
         index = locate_type0(self.rom)

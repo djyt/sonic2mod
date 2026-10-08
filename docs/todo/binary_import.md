@@ -396,7 +396,7 @@ What differs between variants, and where it lives (after 3.0):
 | header | DAC + FM + PSG | drums + FM, channel order table | `SmpsVariant.header` (`HeaderLayout`) |
 | flags | table | table + note modes (slide, raw: refused) | `SmpsVariant.flags` |
 | voice | 25 bytes | 26, pan inside | `SmpsVariant.voice_layout` |
-| pitch | Sonic 1's table | the driver's | `core/smps/driver_tables.py` (3.1, 3.4) |
+| pitch | Sonic 1's table | the driver's | `SmpsVariant.fm_frequencies` -> `SmpsSong.fm_frequencies` |
 | tempo 0 | 256 frames | never | `HeaderLayout.never_holds` -> `NO_TEMPO_HOLDS` |
 | percussion | DAC PCM | FM drum programs | `SmpsVariant.dac` (`smps68k/dac.py`; 3.5) |
 | envelopes | `Go_` PSG_Index | not located (no song uses the PSG) | `SoundIndex.envelopes` (locate), `envelopes.py` |
@@ -495,7 +495,14 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   the rest (Moonwalker's `--asm` used to stop at SndA3's LFO).  `RomImage.title` reads Shift-JIS
   (`GOLDEN AXE`).  The drum track names its bytes `drum81`...; no samples until 3.5.
   Baselines, tool regression, Sonic / Moonwalker ROM outputs byte-identical.
-- [ ] **3.4 Pitch from the song's table:** playback, detune, `ym2612` rendering.
+- [x] **3.4 Pitch from the song's table** (2026-10-08).  `SmpsSong.fm_frequencies` (Sonic 1's by
+  default, as `psg_envelopes`); `SmpsVariant.fm_frequencies`: the 68k pair Sonic 1's, Type 0 FM its
+  driver's (`smpsz80/locate.py`, indexed from `$80` as the driver reads it: `$81` = `$283`; 6-18
+  cents flat, mostly -12).  Read by `played_song`, `detune_cents` (now required: no silent Sonic
+  default) and FM rendering (`note_to_fnum_block` / `render_layers` take the table; the render
+  cache keys a song's own table, Sonic 1's keys as before).  Not: the VGM lift (the tooling
+  rework's), the SFX driver (Sonic 1's own).  A Wilderness smoke conversion now stops at the drum
+  track's samples (3.5).  Baselines, tool regression, ROM outputs byte-identical.
 - [ ] **3.5 Drums** (B): `smpsz80/drums.py` decodes the 14 programs; the kit; the render; the MOD
   drum channel.  Check: each drum sample against the rips' FM3.
 - [ ] **3.6 Configs + yardstick.**  `configs/golden_axe/`: 13 minimal configs, `rips.yaml`;

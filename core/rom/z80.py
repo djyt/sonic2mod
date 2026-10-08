@@ -30,6 +30,8 @@ def z80_ram(rom: RomImage) -> bytes:
                 or rom.bytes_at(copy_at, len(_COPY)) != _COPY):
             continue
         dest, src, count = rom.word(at + 4), rom.long(src_at + 2), rom.word(count_at + 2) + 1
+        if dest + count > Z80_RAM_SIZE:
+            raise RomError(f"${at:X}: copies {count} bytes to Z80 ${dest:04X}, past its {Z80_RAM_SIZE // 1024} KB")
         image[dest:dest + count] = rom.bytes_at(src, count)
     if not any(image):
         raise RomError("no copy of the Z80 driver into Z80 RAM found")

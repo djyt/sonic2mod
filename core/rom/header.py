@@ -87,11 +87,12 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
                                                      volume=_field(memory, at, fm.volume)))
         at += fm.size
 
-    for _ in range(psg_count):
+    for i in range(psg_count):
         start = memory.header_pointer(address, at)
         label = track_label(start)
         tracks[start] = ChannelType.PSG
-        header.channels.append(SmpsChannelHeader(channel_type=ChannelType.PSG, label=label,
+        chip = layout.psg_slots[i] if layout.psg_slots else ""
+        header.channels.append(SmpsChannelHeader(channel_type=ChannelType.PSG, label=label, chip_channel=chip,
                                                  pitch_offset=signed_byte(_field(memory, at, psg.pitch)),
                                                  volume=_field(memory, at, psg.volume),
                                                  mod_byte=_field(memory, at, psg.mod),
@@ -101,6 +102,8 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
 
 
 def read_sfx_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> RomHeader:
+    if not layout.sfx_channels:
+        raise RomError(f"${address:X}: SFX not read for this driver (music only)")
     if not is_sfx_header(memory, address, layout):
         raise RomError(f"${address:X}: not an SFX header")
 

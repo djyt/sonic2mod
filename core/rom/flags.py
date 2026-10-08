@@ -15,6 +15,7 @@ class EnvelopeCommand(Enum):
     HOLD = auto()        # the last step stays
     RESTART = auto()     # back to the first step, this frame
     JUMP = auto()        # to the step the next byte names, this frame
+    MUTE = auto()        # silence, held (Streets of Rage's $83 keys the channel off)
 
 
 class FlagKind(Enum):

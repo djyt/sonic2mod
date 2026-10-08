@@ -61,6 +61,7 @@ class CoordFlag(IntEnum):
 
     # No Sonic 1 byte: another driver's flag, valued past $FF
     SET_VOL = 0x1F0               # [level]: the track's volume, absolute (Type 0 FM's $F0)
+    DAC_SAMPLE = 0x1F1            # [DAC byte]: what the drum track's notes play from here (Streets of Rage's $F0)
 
 
 @dataclass

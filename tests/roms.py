@@ -9,6 +9,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 MOONWALKER_ROM = _ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
 MOONWALKER_RIPS = _ROOT / "reference" / "vgz" / "moonwalker"
+STREETS_OF_RAGE_ROM = _ROOT / "input" / "roms" / "Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 
 
 def _needs(*paths: Path):
@@ -19,3 +20,4 @@ def _needs(*paths: Path):
 
 needs_moonwalker = _needs(MOONWALKER_ROM)
 needs_moonwalker_rips = _needs(MOONWALKER_ROM, MOONWALKER_RIPS)
+needs_streets_of_rage = _needs(STREETS_OF_RAGE_ROM)

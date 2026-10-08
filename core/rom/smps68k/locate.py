@@ -63,7 +63,7 @@ def locate_68k(rom: RomImage) -> SoundIndex:
 
     music = index("music", _FIRST_MUSIC, _is_music_header)
     sfx = index("sfx", _FIRST_SFX, _is_sfx_header) | index("special_sfx", _FIRST_SPECIAL_SFX, _is_sfx_header)
-    return SoundIndex(music, sfx, _envelopes(rom, go["psg_index"]))
+    return SoundIndex(music, sfx, pointers_before_data(rom, go["psg_index"]))
 
 
 def _go_block(rom: RomImage, memory: SoundMemory) -> dict[str, int]:
@@ -115,8 +115,9 @@ def _is_sfx_header(memory: SoundMemory, address: int) -> bool:
     return is_sfx_header(memory, address, HEADER_68K)
 
 
-def _envelopes(rom: RomImage, table: int) -> tuple[int, ...]:
-    """PSG_Index: a long per envelope; the table ends where the first envelope's bytes begin."""
+def pointers_before_data(rom: RomImage, table: int) -> tuple[int, ...]:
+    """A table of longs (PSG_Index: one per envelope) that ends where the first thing it points at
+    begins."""
     pointers: list[int] = []
     at = table
     while not pointers or at < min(pointers):

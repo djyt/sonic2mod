@@ -48,6 +48,7 @@ from ..config import (
     region_fps,
     variant_output_file,
 )
+from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..rom import DacSample
 from ..smps import SmpsSong, note_label, source_map, synth_note_name
@@ -129,7 +130,7 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     samples = Path(complete.samples_dir)
     samples.mkdir(parents=True, exist_ok=True)
     for name, pcm in derivation.files.items():
-        (samples / name).write_bytes(pcm)
+        write_shared(samples / name, pcm)       # other conversions may be reading it
     return complete, derivation
 
 

@@ -37,7 +37,7 @@ sonic2mod/
   convert.py  analyze.py  sonic2wav.py   CLIs: conversion, song analysis, SFX → WAV
   core/        library; layers, each importing only those below it (diagnostics.py: any):
                ui → convert / audit → merge → plan → config → source → vgm / rom → smps / mod
-               → chips / audio / render_cache.  Imports nothing from sfx/ or the chip packages
+               → chips / audio / render_cache / files.  Imports nothing from sfx/ or the chip packages
     smps/        the IR (SmpsSong), parser, the shared song walk (code.py), driver tables, playback
     rom/ vgm/    ROM bytecode reader; VGM register logs and the lift back to a song
     source/      read_song(path): picks asm / ROM / VGM

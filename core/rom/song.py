@@ -23,7 +23,7 @@ def locate_sounds(rom: RomImage, variant: SmpsVariant | None = None) -> SoundInd
 def dac_samples(rom: RomImage, variant: SmpsVariant | None = None) -> list[DacSample]:
     """Every DAC sample a song can play, its pitched copies after the samples."""
     variant = variant or detect_variant(rom)
-    return variant.dac(rom, variant.dac_names)
+    return variant.dac(rom, variant.dac_names) if variant.dac else []
 
 
 def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
@@ -45,8 +45,10 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
         voices = read_voices(memory, head.voices, voices_used(tracks.code), variant.voice_layout)
         tracks.labels[head.header.voice_label] = head.voices
     envelopes = read_envelopes(memory, index.envelopes, variant) if index.envelopes else None
-    fm_frequencies = variant.fm_frequencies(rom)
-    drums = {} if index.is_sfx(sound_id) else variant.fm_drums(rom, head.header, fm_frequencies or FM_FREQUENCIES)
+    fm_frequencies = variant.fm_frequencies(image) if variant.fm_frequencies else None
+    drums = {}
+    if variant.fm_drums and not index.is_sfx(sound_id):
+        drums = variant.fm_drums(image, head.header, fm_frequencies or FM_FREQUENCIES)
     return SongCode(head.header, tracks.code, voices, address=address, addresses=tracks.labels,
                     driver=variant.name, dropped=dict(tracks.dropped), psg_envelopes=envelopes,
                     dac_names=dict(variant.dac_names), fm_frequencies=fm_frequencies, fm_drums=drums)

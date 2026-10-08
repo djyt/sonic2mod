@@ -102,8 +102,8 @@ class SmpsVariant:
     header: HeaderLayout
     voice_layout: VoiceLayout
     dac_names: Mapping[int, str]                                     # the DAC track's bytes that play a sample
-    dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]]    # every sample a song can play
-    fm_frequencies: Callable[[RomImage], tuple[int, ...] | None]     # the FM table notes play from; None: Sonic 1's
+    dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]] | None = None   # every sample a song can play
+    fm_frequencies: Callable[[RomImage], tuple[int, ...]] | None = None           # the FM table; None: Sonic 1's
     # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
-    fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]]
+    fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
     known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes

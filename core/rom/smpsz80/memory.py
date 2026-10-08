@@ -12,7 +12,7 @@ from ..image import RomError, RomImage
 from ..memory import SoundMemory
 
 BANK_SIZE = 0x8000
-WINDOW = 0x8000            # the Z80 address the bank appears at
+_WINDOW = 0x8000           # the Z80 address the bank appears at
 
 
 class BankedZ80Memory(SoundMemory):
@@ -26,17 +26,17 @@ class BankedZ80Memory(SoundMemory):
         return self._bank <= address and address + length <= self._bank + BANK_SIZE and super().contains(address, length)
 
     def header_pointer(self, header: int, at: int) -> int:
-        return self.rom_address(self.word(at))
+        return self._rom_address(self.word(at))
 
     def code_pointer(self, operand: int) -> int:
-        target = self.rom_address(self.word(operand))
+        target = self._rom_address(self.word(operand))
         if not self.contains(target):
             raise RomError(f"${operand - 1:X}: pointer to Z80 ${self.word(operand):04X}, outside the bank")
         return target
 
-    def rom_address(self, z80_address: int) -> int:
+    def _rom_address(self, z80_address: int) -> int:
         """Where a Z80 window address reads from.  Outside the window: an address outside the bank."""
-        return self._bank + z80_address - WINDOW
+        return self._bank + z80_address - _WINDOW
 
     def bytes_at(self, address: int, length: int) -> bytes:
         if not self.contains(address, length):

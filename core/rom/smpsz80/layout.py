@@ -13,13 +13,15 @@ $03E5).
 from __future__ import annotations
 
 from ...chips import OperatorReg
-from ...smps import ChannelType
+from ...smps import SFX_CHANNEL_IDS, ChannelType
 from ..variant import HeaderLayout, TrackSlot, VoiceLayout
+
+_SFX_FM6 = 0x06                 # an SFX track's channel byte for FM6 (Sonic 1's SFX stop at FM5)
 
 HEADER_TYPE0 = HeaderLayout(
     fm_slots=(TrackSlot(ChannelType.DAC, "FM3"), TrackSlot(ChannelType.FM, "FM1"), TrackSlot(ChannelType.FM, "FM2"),
               TrackSlot(ChannelType.FM, "FM4"), TrackSlot(ChannelType.FM, "FM5"), TrackSlot(ChannelType.FM, "FM6")),
-    sfx_channels=frozenset({0x02, 0x04, 0x05, 0x06, 0x80, 0xA0, 0xC0, 0xE0}),    # FM3-FM6 (no DAC), the PSG
+    sfx_channels=frozenset({*SFX_CHANNEL_IDS.values(), _SFX_FM6}),    # FM3-FM6 (no DAC), the PSG
     never_holds=0,
     tempo_phase=1,
     key_run_out=0x100,

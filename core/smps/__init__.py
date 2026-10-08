@@ -15,7 +15,17 @@
 """
 
 from .asm_writer import write_asm
-from .code import Op, OpKind, SmpsCode, SongCode, effect_from_bytes, song_from_code
+from .code import (
+    FIRST_NOTE,
+    LAST_NOTE,
+    Op,
+    OpKind,
+    SmpsCode,
+    SongCode,
+    effect_from_bytes,
+    signed_byte,
+    song_from_code,
+)
 from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, align_songs, compare_songs, parse_differences
 from .driver_tables import (
     DEFAULT_DRIVER,
@@ -80,9 +90,11 @@ __all__ = [
     "ALL_ASPECTS",
     "DEFAULT_DRIVER",
     "ENVELOPE_TERMINATOR",
+    "FIRST_NOTE",
     "FM_FREQUENCIES",
     "FM_SLOT_MASK",
     "HW_FM_CHANNEL",
+    "LAST_NOTE",
     "NO_TEMPO_HOLDS",
     "PAN_VALUES",
     "PSG_CHANNEL",
@@ -144,6 +156,7 @@ __all__ = [
     "psg_tone2_divider",
     "psg_voice_name",
     "semitone_to_note_name",
+    "signed_byte",
     "song_from_code",
     "source_map",
     "source_names",

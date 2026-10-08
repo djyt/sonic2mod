@@ -34,9 +34,15 @@ from .song import (
     SmpsSongHeader,
 )
 
-# Track bytes: durations below the rest (REST, song.py), notes from it to nB7, flags above.
+# Track bytes: durations below the rest (REST, song.py), notes after it to nAs7, flags above.
+FIRST_NOTE = 0x81     # nC0
 LAST_NOTE = 0xDF      # nAs7
 NO_ATTACK = 0xE7      # smpsNoAttack
+
+
+def signed_byte(value: int) -> int:
+    """A track byte as the driver adds it: two's complement ($F4 = -12)."""
+    return value - 0x100 if value > 0x7F else value
 
 
 class OpKind(Enum):
@@ -104,7 +110,7 @@ def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
     """A flag from its operand bytes, as the song keeps it: signed where the driver adds it as
     signed, smpsPSGvoice's envelope by name."""
     if flag in _SIGNED_FLAGS:
-        return SmpsEffect(flag, [b - 0x100 if b > 0x7F else b for b in operands])
+        return SmpsEffect(flag, [signed_byte(b) for b in operands])
     if flag == CoordFlag.PSG_VOICE:
         return SmpsEffect(flag, [psg_voice_name(operands[0])])
     return SmpsEffect(flag, list(operands))

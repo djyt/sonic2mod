@@ -19,7 +19,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from ...smps import FM_FREQUENCIES
-from ..header import is_music_header, is_sfx_header
+from ..header import is_music_header, is_sfx_header, read_index
 from ..image import RomError, RomImage
 from ..memory import SoundMemory
 from ..variant import SoundIndex
@@ -58,9 +58,13 @@ def locate_68k(rom: RomImage) -> SoundIndex:
     def end_of(table: int) -> int:
         return next((a for a in ends if a > table), len(rom.data))
 
-    music = _index(rom, memory, go["music"], end_of(go["music"]), _FIRST_MUSIC, _is_music_header)
-    sfx = _index(rom, memory, go["sfx"], end_of(go["sfx"]), _FIRST_SFX, _is_sfx_header)
-    sfx |= _index(rom, memory, go["special_sfx"], end_of(go["special_sfx"]), _FIRST_SPECIAL_SFX, _is_sfx_header)
+    def index(table: str, first_id: int, plausible) -> dict[int, int]:
+        """A long per sound, up to the next table."""
+        slots = range(go[table], end_of(go[table]) - _LONG + 1, _LONG)
+        return read_index(memory, slots, rom.long, first_id, plausible)
+
+    music = index("music", _FIRST_MUSIC, _is_music_header)
+    sfx = index("sfx", _FIRST_SFX, _is_sfx_header) | index("special_sfx", _FIRST_SPECIAL_SFX, _is_sfx_header)
     return SoundIndex(music, sfx, _envelopes(rom, go["psg_index"]))
 
 
@@ -118,19 +122,6 @@ def _is_envelope(memory: SoundMemory, address: int) -> bool:
         if value > _ATTENUATION_MAX:
             return False
     return False
-
-
-def _index(rom: RomImage, memory: SoundMemory, start: int, end: int, first_id: int, plausible) -> dict[int, int]:
-    """A pointer table's entries by sound ID, up to `end` or the first implausible one."""
-    entries: dict[int, int] = {}
-    for at in range(start, end - _LONG + 1, _LONG):
-        address = rom.long(at)
-        if not rom.contains(address) or not plausible(memory, address):
-            break
-        entries[first_id + len(entries)] = address
-    if not entries:
-        raise RomError(f"the index at ${start:X} points at no header")
-    return entries
 
 
 def _envelopes(rom: RomImage, table: int) -> tuple[int, ...]:

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from ..header import is_music_header, is_sfx_header
+from ..header import is_music_header, is_sfx_header, read_index
 from ..image import RomError, RomImage
 from ..variant import SoundIndex
 from ..z80 import z80_ram
@@ -51,8 +51,13 @@ def locate_type0(rom: RomImage) -> SoundIndex:
     music_table = memory.header_pointer(bank, bank + _MUSIC_INDEX)
     sfx_table = memory.header_pointer(bank, bank + _SFX_INDEX)
 
-    music = _index(memory, music_table, sfx_table, _FIRST_MUSIC, _FIRST_SFX - _FIRST_MUSIC, _is_music_header)
-    sfx = _index(memory, sfx_table, bank + BANK_SIZE, _FIRST_SFX, _LAST_SFX - _FIRST_SFX + 1, _is_sfx_header)
+    def index(start: int, end: int, first_id: int, most: int, plausible) -> dict[int, int]:
+        """A word per sound: up to `end`, `most` of them."""
+        slots = range(start, min(end, start + most * _WORD), _WORD)
+        return read_index(memory, slots, lambda at: memory.header_pointer(start, at), first_id, plausible)
+
+    music = index(music_table, sfx_table, _FIRST_MUSIC, _FIRST_SFX - _FIRST_MUSIC, _is_music_header)
+    sfx = index(sfx_table, bank + BANK_SIZE, _FIRST_SFX, _LAST_SFX - _FIRST_SFX + 1, _is_sfx_header)
     return SoundIndex(music, sfx)
 
 
@@ -72,7 +77,7 @@ def fm_frequencies(rom: RomImage) -> tuple[int, ...]:
     octave stands at $80 (a rest: never read), $81 is the octave's first."""
     z80 = z80_ram(rom)
     start = fm_table(z80) - _WORD
-    return tuple(int.from_bytes(z80[at:at + _WORD], "little") for at in range(start, start + _NOTES * _WORD, _WORD))
+    return _words(z80, start, _NOTES)
 
 
 def fm_table(z80: bytes) -> int:
@@ -85,7 +90,7 @@ def fm_table(z80: bytes) -> int:
 
 def _is_fm_octave(z80: bytes, at: int) -> bool:
     """Twelve words a semitone apart in one block, then the same notes a block up."""
-    words = [int.from_bytes(z80[at + i * _WORD:at + (i + 1) * _WORD], "little") for i in range(2 * _OCTAVE)]
+    words = _words(z80, at, 2 * _OCTAVE)
     low, high = words[:_OCTAVE], words[_OCTAVE:]
     block = low[0] >> _BLOCK_SHIFT
     if any(w >> _BLOCK_SHIFT != block for w in low) or any(w >> _BLOCK_SHIFT != block + 1 for w in high):
@@ -126,14 +131,6 @@ def _is_sfx_header(memory: BankedZ80Memory, address: int) -> bool:
     return is_sfx_header(memory, address, HEADER_TYPE0)
 
 
-def _index(memory: BankedZ80Memory, start: int, end: int, first_id: int, most: int, plausible) -> dict[int, int]:
-    """An index's entries by sound ID: up to `end`, `most` of them, or the first implausible one."""
-    entries: dict[int, int] = {}
-    for at in range(start, min(end, start + most * _WORD), _WORD):
-        address = memory.header_pointer(start, at)
-        if not memory.contains(address) or not plausible(memory, address):
-            break
-        entries[first_id + len(entries)] = address
-    if not entries:
-        raise RomError(f"the index at ${start:X} points at no header")
-    return entries
+def _words(z80: bytes, at: int, count: int) -> tuple[int, ...]:
+    """`count` little-endian words of Z80 RAM from `at`."""
+    return tuple(int.from_bytes(z80[i:i + _WORD], "little") for i in range(at, at + count * _WORD, _WORD))

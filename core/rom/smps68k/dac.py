@@ -184,8 +184,7 @@ def _pitch_table(rom: RomImage, move: bytes, pitch_at: int, count: int, read: by
     if read == _LEA_A0:
         return rom.bytes_at(rom.long(at + len(read)), count)
     extension = at + len(read)
-    displacement = rom.byte(extension + 1)
-    return rom.bytes_at(extension + (displacement - 0x100 if displacement > 0x7F else displacement), count)
+    return rom.bytes_at(extension + rom.signed_byte(extension + 1), count)
 
 
 def _decode(dpcm: bytes, deltas: bytes) -> bytes:

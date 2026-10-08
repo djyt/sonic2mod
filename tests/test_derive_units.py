@@ -1,5 +1,5 @@
-"""A minimal config completed from its song (core/plan/derive.py).  The Moonwalker class reads the
-ROM when it is present.
+"""A minimal config completed from its song (core/plan/derive.py).  The Moonwalker and GoldenAxe
+classes read their ROMs when they are present.
 
     python -m pytest tests -q
 """
@@ -162,6 +162,34 @@ class Moonwalker(unittest.TestCase):
             complete, _ = complete_config(config, path, _SETTINGS, self.song)
             self.assertTrue(Path(complete.output_file).as_posix().endswith("output/mw/81_sc_lofi.mod"))
             self.assertEqual(complete.name, "SC lofi")
+
+
+_GOLDEN_AXE = ROOT / "input" / "roms" / "Golden Axe (World) (Rev A).md"
+
+
+@unittest.skipUnless(_GOLDEN_AXE.exists(), "needs input/roms/Golden Axe (World) (Rev A).md")
+class GoldenAxe(unittest.TestCase):
+    """Type 0 FM: the drum track's FM drums get slots of their own; a silent one none."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.song = read_rom_song(RomImage.load(_GOLDEN_AXE), 0x81)       # Wilderness hits drum89 too
+        stated = {"name": "Wilderness", "input_file": str(_GOLDEN_AXE), "rom_song": "$81"}
+        cls.data = derive_config(stated, cls.song, "configs/golden_axe/81_wilderness.yaml", SampleSettings()).data
+
+    def test_each_hit_drum_has_a_slot_at_the_drum_root(self):
+        drums = {d["name"]: d for d in self.data["dac_samples"]}
+        self.assertTrue(drums and all(name.startswith("drum") for name in drums))
+        self.assertEqual({d["mod_note"] for d in drums.values()}, {ModNote(SampleSettings().drum_root).name})
+        files = {row[1] for row in self.data["sample_list"]}
+        self.assertTrue(all(f"{name}.raw" in files for name in drums))
+
+    def test_a_silent_drum_has_none(self):
+        self.assertTrue(self.song.fm_drums["drum89"].silent)
+        self.assertNotIn("drum89", {d["name"] for d in self.data["dac_samples"]})
+
+    def test_the_drums_play_on_fm3(self):
+        self.assertIn("FM3", {c["source"] for c in self.data["channels"]})
 
 
 if __name__ == "__main__":

@@ -15,8 +15,9 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import cents, hz_to_midi, midi_name, pitch_name
-from core.smps import FM_FREQUENCIES
-from ym2612.renderer import note_to_fnum_block
+from core.smps import FM_FREQUENCIES, FmFrame, SmpsVoice, VoiceField
+from ym2612.renderer import note_to_fnum_block, render_frames
+from ym2612.wrapper import output_rate
 
 
 class Names(unittest.TestCase):
@@ -53,6 +54,26 @@ class RenderedPitch(unittest.TestCase):
         golden_axe_c1 = 0xA7E                                       # 15.6 cents under Sonic 1's
         table = (*FM_FREQUENCIES[:13], golden_axe_c1, *FM_FREQUENCIES[14:])
         self.assertEqual(note_to_fnum_block(0, fm_frequencies=table), (0x27E, 1))
+
+
+
+class RenderedFrames(unittest.TestCase):
+    """An FM drum program rendered frame by frame (ym2612/renderer.py render_frames)."""
+
+    _VOICE = SmpsVoice(0, algorithm=7, operators={VoiceField.ATTACK_RATE: (31, 31, 31, 31),
+                                                  VoiceField.MULTIPLE: (1, 1, 1, 1),
+                                                  VoiceField.RELEASE_RATE: (15, 15, 15, 15)})
+
+    def test_each_frame_lasts_a_frame_and_the_key_off_silences(self):
+        word = FM_FREQUENCIES[13 + 33]                                  # A3
+        frames = [FmFrame(word, True, True), FmFrame(word, True), FmFrame(word, False)]
+        mono, rate = render_frames(self._VOICE, 0, frames, 60.0, tail_secs=0.05)
+        self.assertEqual(rate, output_rate(7670454))
+        self.assertEqual(len(mono), round(3 * rate / 60.0) + math.ceil(0.05 * rate))
+        held = max(abs(x) for x in mono[:round(2 * rate / 60.0)])
+        tail = max(abs(x) for x in mono[-100:])
+        self.assertGreater(held, 0)
+        self.assertLess(tail, held / 100)                               # released: nothing left
 
 
 if __name__ == "__main__":

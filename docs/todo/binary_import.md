@@ -145,43 +145,7 @@ driver, read with capstone (`$60000`-`$61700`), and `reference/sega_retro/`.
 
 ### Probe (2026-10-03)
 
-- **Found:** music index `$600A4`, 23 songs `$81`-`$97` (Sega Retro's Rev 01 column, exactly).  It
-  sits in the driver's `Go_` block at `$60000` (Sonic 1's order: priorities `$60100`, special SFX
-  `$67C78` (4), music `$600A4`, SFX `$67BC4` (49), speed-up, PSG_Index `$60020` (6 envelopes)).
-  `locate_sounds` misses it: it looks for Sonic 1's 96-entry FM table and its `$80`-terminated
-  envelopes.
-- **Same as Sonic 1:** song headers (relative pointers, DAC first, 6-byte PSG entries), 25-byte
-  voices in the same register order, TempoWait tempo (`$60BC0`), durations x divider, PSG pitch
-  (`note - $81 + transpose`, 69-entry table `$611F6`), FM pitch values (a one-octave table at
-  `$61024`, block = `(note - $80 + transpose) / 12`: Sonic 1's 96 words are exactly that table
-  per block - only notes past the top wrap differently), modulation (`$F0`), note fill, jump /
-  loop / call pointers.
-- **Flags** (jump table `$61290`, 31 entries; `$FF` runs into the `$E0` handler): with Type 1a's
-  operand lengths all 23 songs decode into contiguous code; with Sonic 1's, 8 fail.
-
-  | byte | Type 1a (Moonwalker) | Sonic 1 | used |
-  |------|----------------------|---------|------|
-  | `$E3` | sets a global flag (`$FC` clears it), 0 operands | return | no |
-  | `$E4` | pan animation: mode, 0 → off, else table, index, limit, speed (5 bytes) | fade | 6 |
-  | `$E5` | alter volume: FM byte, PSG byte | channel tempo divider | no |
-  | `$E9` | LFO: register `$22`, AMS/FMS | transposition | no |
-  | `$EA` `$ED` `$EE` | detune (as `$E1`), 1 operand | tempo / push / stop special | no |
-  | `$EB` | queue a sound (all 3 uses: `$DD`, a voice sample) | tempo divider, all tracks | 5 |
-  | `$F9` | return | FM1 release rate | 75 |
-  | `$FA` | channel tempo divider | - | 4 |
-  | `$FB` | transposition | - | 63 |
-  | `$FC` | clears `$E3`'s flag | - | no |
-  | `$FD` | SSG-EG, 4 operands | - | no |
-  | `$FE` | FM3 special mode, 8 operands | - | no |
-- **PSG envelopes** are the ROM's, not `driver_tables`': six, ending `$83` (hold - Sonic 1's
-  `$80`); `$80` restarts the envelope, `$85 nn` jumps to index nn; envelope 6 has no terminator
-  and runs into 5.  Songs use 1, 4, 5.
-- **DAC:** the Z80 driver is copied uncompressed (code `$6166A`, 525 bytes; samples `$61876`, 7442
-  bytes, to Z80 `$0210`); 12-byte table entries; 5 samples in Z80 RAM, IDs 6 on streamed from ROM
-  banks (the voice samples, `$1FF8` set by the 68k); two delta arrays (`$1A` drums, `$2A` voice:
-  `-3` for `-2`).  The 68k remaps notes: `$88`-`$8F` play sample `$85` at a pitch from `$602FA`,
-  `$90`+ sample `$82` at a patched rate.  Songs use `$81`-`$84`, `$88`, `$8A`, `$8C`, `$90`, `$91`.
-- **Tempos:** modifiers 3 … 32 and 255 (the title jingle: a hold every 255 frames).
+The driver's facts: `docs/smps_variants.md` § Type 1a.
 
 ### Work before Moonwalker converts
 
@@ -333,7 +297,7 @@ SMPS Z80: Phase 3.
 
 ---
 
-## Phase 3: SMPS Z80
+## Phase 3: SMPS Z80 - done 2026-10-08
 
 First target: **Golden Axe (World) (Rev A)** - `GM 00054018-01`, SMPS Z80 **Type 0 FM** (the
 user's name: an early, simpler Type 1 FM - Sonic Retro's class for the FM-drum Z80 games, Flicky,
@@ -343,56 +307,7 @@ algorithm; each needs a ROM + disassembly pair, as Phase 1 had).
 
 ### Probe (2026-10-08)
 
-Read from the Z80 driver with `z80dis` (`pip install z80dis`; capstone has no Z80).
-
-- **Driver:** copied uncompressed by the 68k (`$34DC`): `$DF8` bytes, ROM `$1D2F0` -> Z80 `$0000`.
-  The 68k sets the bank once (`$1C00` = 1, `$1C01` = `$80`): Z80 `$8000`-`$FFFF` = ROM
-  `$18000`-`$1FFFF`.  Every song, voice and pointer lives in that bank.
-- **Pointers:** absolute Z80 addresses, little-endian (68k: big-endian, Sonic 1 relative).
-- **Bank header** (`$8000`, words): `+0` priorities `$8016`, `+4` music index `$8069` (15 songs,
-  `$81`-`$8F`), `+6` SFX index `$8087` (`$90`-`$B9`), `+8` pitch envelopes `$800E` (the driver adds
-  them to the frequency word, `$01C5`; no music track sets one).  Queue commands `$E0`-`$E3`: fade,
-  stop, ?, SEGA voice (DAC, Z80 `$0F00`).  SFX headers: Sonic 1's layout, LE pointers, tracks on
-  FM3-FM6 (`$02`, `$05`, `$06`) and the PSG; all share the voice bank at `$80DB`.
-- **Song header:** Sonic 1's fields (voices, FM count, PSG count, divider, tempo; FM entry: ptr,
-  transpose, volume; PSG entry 6 bytes).  Every song: 6 FM, 0 PSG.
-- **Track order** (Z80 `$0501`): drum controller, FM1, FM2, FM4, FM5, FM6.  FM3 belongs to the drums.
-- **Drum controller** (Z80 `$0899`): its notes are not pitches.  Low nibble n -> FM drum n on FM3,
-  bits 4-6 -> PSG drum (none used).  A drum is a record (Z80 `$096B`, 14: program ptr,
-  transpose, volume, voice index into `$0987`) and a program: SMPS bytecode in the driver, run at
-  divider 1, level = record volume + controller volume.  Programs use slide mode (`$FC 01`: note,
-  slide, skipped byte, duration; a signed fnum step per frame, octave wrap at `$27E` / `$4FE`) and
-  `$E7` tie chains of 1-2 frame notes.  A new hit restarts FM3's program.
-- **Flags** (Z80 `$0B65`, `$E0`-`$FF`).  Handler entered at the first operand, `INC DE` after:
-  an unhandled flag is a 1-operand no-op.
-
-  | byte | Type 0 FM | Sonic 1 | music uses |
-  |------|-----------|---------|------------|
-  | `$E0`-`$E4`, `$E8`-`$EE`, `$F1`, `$F3`-`$F5`, `$FA`, `$FF` | no-op, 1 operand (no pan, fill, modulation) | various | - |
-  | `$E5` `$E6` | alter volume | tempo div / alter volume | - |
-  | `$E7` | no attack (FM only) | same | 256 |
-  | `$EF` | set voice | same | 131 |
-  | `$F0` | **set volume** (absolute) | modulation | 16 |
-  | `$F2` | stop | same | 25 |
-  | `$F6` `$F7` `$F8` | jump, loop, call | same | 65, 199, 94 |
-  | `$F9` | return | FM1 release rate | 34 |
-  | `$FB` | transposition (add) | - | 2 |
-  | `$FC` | slide mode on / off | - | drums only |
-  | `$FD` | raw-frequency mode (note = fnum word) | - | - |
-  | `$FE` | FM3 special mode, 4 operands | - | - |
-
-- **Voice:** 26 bytes: `$B0`, `$B4` (pan, AMS, FMS: **pan is in the voice**), TL x4, DT/MUL,
-  RS/AR, AM/D1R, D2R, SL/RR; register offsets 0, 8, 4, C.  Sonic 1: 25 bytes, TL last, no pan.
-  Volume adds to the carriers' TL (`$0C09`), as Sonic 1.
-- **Pitch:** FM table Z80 `$07D9`, 96 words, note `$81` = C0 as Sonic 1, but every note above C0
-  8-16 cents flat (mean -11).  PSG table `$074D` (no song uses the PSG).
-- **Tempo:** TempoWait as Sonic 1 (a stall every `tempo` frames), but **tempo 0 = no stall**
-  (Death Adder).  NTSC: V-int; PAL: YM timer B `$CB` (62.8 Hz).  The rips run at 60 Hz.
-- **Songs and rips** (`reference/vgz/golden_axe/`, by FM1's opening notes): `$81` Wilderness,
-  `$82` Turtle Village 1, `$83` Turtle Village 2, `$84` Path of Fiend, `$85` Death Adder, `$86`
-  Battle Field, `$87` Showdown, `$88` Game Over, `$89` The Battle, `$8B` Theme of Thief, `$8C` Old
-  Map, `$8D` Conclusion, `$8E` Sutakora, Sassa!.  `$8A`, `$8F`: stubs (every track one stop).
-  The 15 decode into contiguous code, every pointer inside the bank.
+The driver's facts, and what the rips confirmed since: `docs/smps_variants.md` § Type 0 FM.
 
 ### Architecture
 
@@ -561,10 +476,16 @@ Each item lands with every baseline byte-identical unless it says otherwise.
     the release slide (looped samples held them up to 5 s longer).  Volumes re-verified: unchanged.
   - Death Adder FM1 at 7464: a tie to another pitch, no key write - the lift sees one note (its
     hits are key writes; open, vgz_conversion.md).
-- [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice
-  layout, drum programs); ROM tests skip without it.  No regression cases yet (the user's call).
-- [ ] **3.8 Docs.**  `architecture.md` § 3; every variant's driver facts in one home
-  (`docs/smps_variants.md`: Type 1a's from Phase 2, Type 0 FM's from here), this file keeps the plan.
+- [x] **3.7 Tests** (2026-10-08).  Hand-built bytes: LE pointers and the bank's bounds, the locator
+  (driver, bank, indexes), the header layout (drums on FM3, tempo 0), the 26-byte voice and its pan,
+  `$F0` / `$FB` / no-handler flags, refusals, the drum player (slide, tie, holds, wrap), the hold
+  phase, the run-out, tie merging, the per-kind verdict, `render_frames`, `drum_rings`, the FM
+  table in playback and rendering.  With the ROM: the driver, bank and indexes, every song read,
+  the drum kit, the refused SFX, the derived drum slots (none for a silent drum).  No regression
+  cases yet (the user's call).
+- [x] **3.8 Docs** (2026-10-08).  `docs/smps_variants.md`: every variant's driver facts (Type 1a's
+  from Phase 2, Type 0 FM's from here) and how to add one; `architecture.md` § 3; this file keeps
+  the plan.
 
 Out of scope: SFX (`$90`-`$B9`), PSG drums (unused), PAL timer B, the SEGA voice.
 

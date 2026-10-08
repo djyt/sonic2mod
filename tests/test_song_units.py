@@ -17,6 +17,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.smps import (
     NO_TEMPO_HOLDS,
     CoordFlag,
+    FmDrum,
     Op,
     OpKind,
     SmpsChannel,
@@ -132,6 +133,23 @@ class OtherDrivers(unittest.TestCase):
         song = song_from_code(header, SmpsCode(ops), [])
         notes = [(ev.tick_position, ev.note.duration, ev.note.is_rest) for ev in song.channels[0].events if ev.note]
         self.assertEqual(notes, [(0, 4, False), (4, 7, False), (11, 23, True)])   # 10 counted frames + the tie's read
+
+    def test_a_drum_is_heard_until_the_drum_tracks_next_hit(self):
+        # Hits at 0 (drum81), 10 (drum82), 40 (drum81), the song ending at 50; a rest between does not stop one
+        from types import SimpleNamespace
+
+        from core.convert.fm_drums import drum_rings
+        events = [SmpsEvent(SmpsNote(0x81, 10, is_dac=True, dac_name="drum81"), tick_position=0),
+                  SmpsEvent(SmpsNote(0x82, 20, is_dac=True, dac_name="drum82"), tick_position=10),
+                  SmpsEvent(SmpsNote(0x80, 10, is_rest=True), tick_position=30),
+                  SmpsEvent(SmpsNote(0x81, 10, is_dac=True, dac_name="drum81"), tick_position=40)]
+        drums = SmpsChannel(header=SmpsChannelHeader(channel_type="DAC", label="drums"), events=events)
+        song = SmpsSong(header=SmpsSongHeader(channels=[drums.header]), channels=[drums])
+        song.fm_drums = {name: FmDrum(SmpsVoice(0), 0, ()) for name in ("drum81", "drum82")}
+        config = SimpleNamespace(dac_samples=[SimpleNamespace(name="drum81", mod_instrument=1, mod_note="C3"),
+                                              SimpleNamespace(name="drum82", mod_instrument=2, mod_note="C3")])
+        timeline = SimpleNamespace(span_secs=lambda start, end: (end - start) / 10)
+        self.assertEqual(drum_rings(song, config, timeline), {1: 1.0, 2: 3.0})
 
     def test_no_run_out_leaves_a_long_note_whole(self):
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])

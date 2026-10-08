@@ -547,8 +547,14 @@ Each item lands with every baseline byte-identical unless it says otherwise.
     shifts a frame (a lost / extra V-int, the rip's or the hardware's: the lift reads a tempo change);
     Battle Field's "tempo change" is the same, harmless.  Moonwalker: FM same on 9 of 13 (the rest:
     FM5's first note).
-  Left: `vgm_pitch_audit`, `measure_volumes.py --configs configs/golden_axe`, `vgm_compare` per song;
-  the 256-frame fill on long notes (Game Over).
+  - `vgm_pitch_audit`: all 13, 14345 notes right, none wrong or missing (FM pitch segments now start
+    at a key write or a pitch change, not every frequency write: Type 0 FM writes one a frame).
+  - `measure_volumes.py --configs configs/golden_axe`: 102 volumes in 11 songs; residuals at the 64
+    ceiling, on 1-2 note drums, one instrument its channels play 16 dB apart.  (Game Over, 2.5 s, broke
+    the envelope alignment's 3 s window: fixed.)
+  - **The 256-frame run-out is real:** the rips key off Death Adder's, The Battle's and Conclusion's
+    long FM1 notes after 258-260 frames; the songs hold them 384-592.  The MOD holds them too long.
+  Left: model the run-out (a driver's longest key-on: the IR states it, the writer keys off there).
 - [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice
   layout, drum programs); ROM tests skip without it.  No regression cases yet (the user's call).
 - [ ] **3.8 Docs.**  `architecture.md` § 3; every variant's driver facts in one home

@@ -177,7 +177,8 @@ class _Deriver:
 
     def _timing(self) -> None:
         """Ticks per row: the grid every note starts and lasts on, coarsened until the song fits
-        the pattern limit; the speed whose whole-number BPM is nearest the driver's tempo."""
+        the pattern limit and some speed's BPM fits 32-255; the speed whose whole-number BPM is
+        nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
         ticks = [e.tick_position for ch in self._song.channels for e in ch.events if e.note is not None]
@@ -187,12 +188,22 @@ class _Deriver:
         limit = int(self._stated.get("max_patterns", 127))
         while end / grid / _ROWS_PER_PATTERN > limit:
             grid *= 2
-        self._out.data["ticks_per_row"] = grid
+
+        # Stored ticks hold the header's tempo divider; ticks_per_row counts duration units
+        # (Timeline multiplies the divider back in).  A grid so fine that no speed's BPM fits
+        # 32-255 is coarsened: notes between rows take EDx
+        h = self._song.header
+        divider = max(h.tempo_divider, 1)
+        fps = region_fps(self._stated.get("region", "ntsc"))
+        while True:
+            tpr = grid // divider if grid % divider == 0 else grid / divider
+            options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
+            if options or h.tempo_modifier <= 1 or grid >= end:
+                break
+            grid *= 2
+        self._out.data["ticks_per_row"] = tpr
         self._out.derived.append("ticks_per_row")
 
-        h = self._song.header
-        fps = region_fps(self._stated.get("region", "ntsc"))
-        options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, grid, fps)
         self._default("target_speed", options[0]["speed"] if options else 6)
 
     def _windows(self, notes: dict, kind: str, file_stem) -> dict:

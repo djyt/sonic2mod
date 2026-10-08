@@ -1,4 +1,5 @@
-"""MOD notes: the ProTracker period table, ModNote (C1..B3) and its config spellings."""
+"""MOD notes: the ProTracker period table, a period's playback rate, ModNote (C1..B3) and its config
+spellings."""
 
 from enum import Enum
 
@@ -12,6 +13,16 @@ PERIOD_TABLE = [
 #   C-3  C#3  D-3  D#3  E-3  F-3  F#3  G-3  G#3  A-3  A#3  B-3
     214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113, 0,
 ]
+
+
+def period_rate(period: int, clock: float) -> float:
+    """The rate Paula plays a sample at on `period`: 428 (C-2) at the PAL clock -> 8287 Hz."""
+    return clock / period
+
+
+def note_rate(note: int, clock: float) -> float:
+    """The rate a sample plays at on MOD note `note` (0 = C1)."""
+    return period_rate(PERIOD_TABLE[note], clock)
 
 
 class ModNote(Enum):

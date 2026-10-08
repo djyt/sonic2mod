@@ -4,7 +4,7 @@
     pcm.py       mono / int8 / raw16, DC block, treble shelf, a render's conditioning, dithered quantiser
     resample.py  polyphase windowed-sinc resampler (FM renders, PSG tones, mixes, SFX)
     loops.py     where a render settles, its best crossfaded loop, its release rate
-    pitch.py     Hz <-> MIDI, note names (A4, C#4), cents
+    pitch.py     Hz <-> MIDI and semitones from C0, note names (A4, C#4), cents
 """
 
 from .gain import db_to_gain, gain_to_db, power_to_db
@@ -44,7 +44,7 @@ from .pcm import (
     trim_trailing_silence,
     write_raw16,
 )
-from .pitch import NO_PITCH, cents, hz_to_midi, midi_name, pitch_name
+from .pitch import NO_PITCH, cents, hz_to_midi, midi_name, pitch_name, semitone_to_hz
 from .resample import DEFAULT_BETA, DEFAULT_PHASES, DEFAULT_TAPS, build_kernel, resample, resample_stereo
 
 __all__ = [
@@ -88,6 +88,7 @@ __all__ = [
     "resample",
     "resample_stereo",
     "saturate",
+    "semitone_to_hz",
     "signed8",
     "to_int8",
     "to_mono",

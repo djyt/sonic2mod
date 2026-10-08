@@ -100,24 +100,20 @@ samples:
   # is identical either way.  A path (relative to the project), or off.
   render_cache: output/cache
 
-  # Where a minimal config's (no channels:) FM and PSG tone windows sit in the MOD's range
-  # (core/plan/derive.py).  A window's lowest note is placed on the first MOD note whose rate keeps
-  # root_harmonics harmonics of it below Nyquist (never under 5 kHz, E1); a higher note costs bytes
-  # in proportion to its rate.  A window narrows (to an octave at most) to reach that note.
-  #   0     : every window at E1 - smallest samples; a high lead keeps 2-4 harmonics   [lofi]
-  #   8     : high leads and PSG tones move up, bass voices stay at E1
-  #   16    : mid voices move up too; few windows narrow
-  # top_note: the highest MOD note a derived window reaches.  A3 - A#3 (period 120) and B3 (113) are
-  # past Paula's period-124 DMA limit and sound bad on an Amiga; B3 for trackers only.
+  # Minimal configs (no channels:): where a voice's windows sit in the MOD's range.
+  # root_harmonics: harmonics a window's lowest note keeps below Nyquist (never under 5 kHz, E1).
+  #   0     : every window at E1; a high lead keeps 2-4 harmonics   [smallest]
+  #   8     : leads and PSG tones move up; bass stays at E1          [default]
+  #   16    : mid voices move up too
+  # top_note: a window's highest note.  A#3 / B3 pass Paula's period-124 limit: bad on an Amiga.
   root_harmonics: 8
   top_note: A3
 
-  # The widest window a minimal config's voice is cut into, in semitones.  A sample played a
-  # distance d from the pitch it was rendered at runs its attack, decay and carrier beating
-  # 2^(d/12) times too fast or slow; a narrower window keeps notes nearer it, one more sample a cut.
-  #   0     : no cap - windows as wide as the MOD's range and root_harmonics allow   [smallest]
-  #   12    : no note more than an octave from its render pitch (2x at worst)
-  #   9     : 1.7x at worst; Moonwalker costs about what 12 does (+8 %)                  [default]
+  # Widest window, in semitones.  A note d semitones from its sample's pitch runs its envelope
+  # 2^(d/12) times too fast or slow; each cut costs a sample.
+  #   0     : no cap                             [smallest]
+  #   12    : 2x at worst
+  #   9     : 1.7x at worst; Moonwalker +8 %     [default]
   max_window: 9
 
 # -------------------------------------------------------------------------------------------------

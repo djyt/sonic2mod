@@ -13,7 +13,7 @@ A unison chord's primary instrument moves too (bake_volumes).
 """
 
 from ..audio import DEFAULT_TAPS, FLAT_DB, db_to_gain
-from ..config import DEFAULT_SHELF_HZ, ConversionConfig, SynthesisSettings
+from ..config import DEFAULT_SHELF_HZ, SAMPLE_SLOT, SAMPLE_VOLUME, ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..mod import (
     MAX_MOD_SAMPLE_BYTES,
@@ -212,10 +212,10 @@ class MergedBuild:
             pk_all, pk_first, speakers = fm_peaks[c.inst]
             if not pk_first:
                 continue
-            vol = c.entry[2] * pk_all / pk_first * speakers
+            vol = c.entry[SAMPLE_VOLUME] * pk_all / pk_first * speakers
             if vol > MOD_MAX_VOLUME:
                 c.headroom_db = headroom_db(vol)
-            c.entry[2] = clamp_mod_volume(vol)
+            c.entry[SAMPLE_VOLUME] = clamp_mod_volume(vol)
 
     def bake_volumes(self, fm_baseline: dict[int, float], psg_baseline: dict[int, float],
                      gained: dict[str, set[int]]) -> None:
@@ -236,7 +236,7 @@ class MergedBuild:
             base_c = fm_baseline.get(c.inst)
             if base_p is None or base_c is None:
                 continue
-            self._set_sample_volume(c.entry, db_to_mod_volume(c.entry[2], base_c - base_p))
+            self._set_sample_volume(c.entry, db_to_mod_volume(c.entry[SAMPLE_VOLUME], base_c - base_p))
 
     def _bake_unisons(self, fm_baseline: dict[int, float], psg_baseline: dict[int, float],
                       gained: dict[str, set[int]]) -> None:
@@ -252,9 +252,9 @@ class MergedBuild:
                     continue
                 db = baseline[inst] - ref[inst]
                 for e in self._config.sample_list or []:
-                    if e[0] != inst:
+                    if e[SAMPLE_SLOT] != inst:
                         continue
-                    was = e[2] if len(e) > 2 else MOD_MAX_VOLUME
+                    was = e[SAMPLE_VOLUME] if len(e) > SAMPLE_VOLUME else MOD_MAX_VOLUME
                     want = was * db_to_gain(db)
                     if want > MOD_MAX_VOLUME:
                         over.append((inst, headroom_db(want)))
@@ -266,11 +266,11 @@ class MergedBuild:
 
     def _set_sample_volume(self, entry: list, volume: int) -> None:
         """A sample's volume, in both places it is kept: its sample_list entry and the MOD."""
-        if len(entry) > 2:
-            entry[2] = volume
+        if len(entry) > SAMPLE_VOLUME:
+            entry[SAMPLE_VOLUME] = volume
         else:
             entry.append(volume)
-        sample = self._mod.samples[entry[0] - 1]
+        sample = self._mod.samples[entry[SAMPLE_SLOT] - 1]
         if sample is not None:
             sample.set_volume(volume)
 

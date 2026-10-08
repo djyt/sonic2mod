@@ -84,8 +84,7 @@ A stated item replaces only the derived item it names: one voice's `voice_map` l
 `psg_noise_e7.raw`, `dac81.raw`) replaces that sample's row wherever its slot is now: a setting
 that splits a window renumbers the slots after it, and the row follows its file.  One naming a
 derived file the song no longer has (another setting's window, or one the song lost) is left out,
-and `convert.py` says how many; any other
-file replaces the row of its slot.  A derived window with no row starts at the level its own notes
+and the report names it; any other file replaces the row of its slot.  A derived window with no row starts at the level its own notes
 mostly play at, scaled as its voice's nearest measured window was (measured / starting volume):
 a window `max_window` splits off keeps its measured neighbour's correction.  `vgm_compare
 --write-volumes` finds a row by its file too, adds rows for windows that have none, and writes

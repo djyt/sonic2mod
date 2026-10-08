@@ -32,7 +32,7 @@ import math
 from dataclasses import dataclass, field
 
 from ..audio import DEFAULT_DITHER, gain_to_db, to_int8
-from ..mod import PERIOD_TABLE, ModSample
+from ..mod import ModSample, note_rate
 from .mix import composite_dither
 from .model import Composite, MergePlan
 from .slots import drop_composite, stand_in
@@ -65,7 +65,7 @@ def _region(c: Composite, sound: int, looped: bool, pad_secs: float, amiga_clock
     `pad_secs` of silence at the rate it is triggered at, up to the next 256-byte boundary."""
     if looped:
         return sound
-    rate = amiga_clock / PERIOD_TABLE[c.note if c.note is not None else c.base]
+    rate = note_rate(c.note if c.note is not None else c.base, amiga_clock)
     return -(-(sound + math.ceil(rate * pad_secs)) // ALIGN) * ALIGN
 
 

@@ -1,4 +1,5 @@
-"""Real pitch: Hz <-> MIDI numbers, note names in standard spelling (A4 = 440 Hz, C#4), cents.
+"""Real pitch: Hz <-> MIDI numbers and semitones from C0, note names in standard spelling (A4 = 440 Hz,
+C#4), cents.
 
 What the VGM tools print for a chip's frequency.  SMPS labels and config spellings are
 core/smps/names.py's.
@@ -10,6 +11,7 @@ import math
 
 A4_HZ = 440.0
 A4_MIDI = 69
+_C0_MIDI = 12       # semitones from C0 (chip pitches, config names) are MIDI numbers less this
 NOTE_NAMES = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B')
 NO_PITCH = "---"
 _SEMITONES = 12
@@ -19,6 +21,11 @@ _CENTS_PER_OCTAVE = 1200
 def hz_to_midi(hz: float) -> float:
     """440 Hz -> 69.0; fractional between semitones."""
     return A4_MIDI + _SEMITONES * math.log2(hz / A4_HZ)
+
+
+def semitone_to_hz(semitone: int) -> float:
+    """Semitones from C0 to Hz: 57 (A4) -> 440.0."""
+    return A4_HZ * 2.0 ** ((semitone + _C0_MIDI - A4_MIDI) / _SEMITONES)
 
 
 def midi_name(midi: int) -> str:

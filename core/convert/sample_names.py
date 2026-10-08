@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 
-from ..config import ConversionConfig
+from ..config import SAMPLE_FILE, SAMPLE_SLOT, ConversionConfig
 from ..merge import MergePlan
 from ..mod import MOD_NOTE_MAP, PERIOD_TABLE, ModFile
 from ..mod.sample_audit import note_name
@@ -146,7 +146,7 @@ def sample_names(mod: ModFile, song: SmpsSong, config: ConversionConfig, played:
 
     # Anything else off disk keeps its file name
     for e in config.sample_list or []:
-        inst = e[0]
-        if inst not in names and len(e) > 1 and isinstance(e[1], str):
-            names[inst] = _fit([e[1].removesuffix(".raw")])
+        inst = e[SAMPLE_SLOT]
+        if inst not in names and len(e) > SAMPLE_FILE and isinstance(e[SAMPLE_FILE], str):
+            names[inst] = _fit([e[SAMPLE_FILE].removesuffix(".raw")])
     return {i: n for i, n in names.items() if 0 < i <= len(mod.samples) and mod.samples[i - 1].length}

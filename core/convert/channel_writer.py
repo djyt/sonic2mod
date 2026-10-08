@@ -20,10 +20,10 @@ import math
 from dataclasses import dataclass, field
 
 from ..audio import db_to_gain
-from ..config import ChannelConfig, ConversionConfig, SynthesisSettings
+from ..config import SAMPLE_SLOT, SAMPLE_VOLUME, ChannelConfig, ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, WarningKind
 from ..merge import Composite, MergePlan
-from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume
+from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume, note_rate
 from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
 from ..smps import CoordFlag, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
@@ -236,7 +236,7 @@ class ChannelWriter:
 
         self._dac_map = {dac_cfg.name: dac_cfg for dac_cfg in ctx.config.dac_samples}
         # {inst_num: sample volume} from sample_list, for Cxx scaling
-        self._sample_vols = {e[0]: (e[2] if len(e) > 2 else MOD_MAX_VOLUME) for e in ctx.config.sample_list or []}
+        self._sample_vols = {e[SAMPLE_SLOT]: (e[SAMPLE_VOLUME] if len(e) > SAMPLE_VOLUME else MOD_MAX_VOLUME) for e in ctx.config.sample_list or []}
 
         # How the level st tracks reaches the MOD — see SynthesisSettings.fm_volume_mode.
         # "baked" needs no accumulator (the note's level is read off st at placement time);
@@ -843,7 +843,7 @@ class ChannelWriter:
         if d is None or n.region is not None:
             return None
         flat_at, db = d
-        rate = self._ctx.amiga_clock / PERIOD_TABLE[n.mod_note.value]
+        rate = note_rate(n.mod_note.value, self._ctx.amiga_clock)
         return flat_at / rate, db * rate
 
     def _decayed_volume(self, n: _Note, tick: float) -> float:
@@ -922,7 +922,7 @@ class ChannelWriter:
     def _cut_bank_sound(self, pattern: int, row: int, tick: int, note_value: int, sound_bytes: int) -> None:
         """Cut a banked sound where its bytes run out at the note's rate, unless the channel's next
         note comes first.  The cursor goes back to the note's cell."""
-        rate = self._ctx.amiga_clock / PERIOD_TABLE[note_value]
+        rate = note_rate(note_value, self._ctx.amiga_clock)
         self._ctx.stats.bank_cuts += self._cut_after(self._col, tick, sound_bytes / rate, self._next_note_row(tick))
         self._mod.set_cursor(pattern, self._col, row)
 

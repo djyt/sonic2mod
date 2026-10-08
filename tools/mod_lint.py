@@ -39,7 +39,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import find_settings, load_settings
-from core.mod import PAL_AMIGA_CLOCK, read_mod
+from core.mod import PAL_AMIGA_CLOCK, period_rate, read_mod
 
 
 def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
@@ -54,7 +54,7 @@ def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
         h = headers[inst - 1]
         if h.looped:
             return None
-        return h.length / (amiga_clock / period) if period else 0.0
+        return h.length / period_rate(period, amiga_clock) if period else 0.0
 
     issues: list[dict] = []
     speed, bpm = 6, 125

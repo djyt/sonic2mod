@@ -123,6 +123,7 @@ def main():
 
     # ── A minimal config (no channels:) completed from the song ────────────────
     derived: list[str] = []
+    stale: list[str] = []
     data = config.stated()
     if config.is_minimal:
         try:
@@ -131,10 +132,7 @@ def main():
         except ValueError as e:
             _error(str(e))
         assert derivation is not None
-        data, derived = derivation.data, derivation.derived
-        if derivation.stale:
-            console.print(f"[dim]{len(derivation.stale)} sample_list row(s) name windows these settings do not cut "
-                          f"(another max_window's, or stale): {', '.join(row[1] for row in derivation.stale)}[/dim]")
+        data, derived, stale = derivation.data, derivation.derived, derivation.stale
     if args.show_config:
         console.print(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None), markup=False, highlight=False)
     if args.write_config:
@@ -200,7 +198,7 @@ def main():
         config=config, song=song, converter=converter, output_path=config.output_file,
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
         synth=synth, psg_synth=psg_synth, bpm=bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
-        derived=derived))
+        derived=derived, stale=stale))
 
 
 if __name__ == '__main__':

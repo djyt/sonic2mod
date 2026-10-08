@@ -10,10 +10,19 @@ import math
 
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
 from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db
-from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings, rate3_synth_root_issues
+from ..config import (
+    SAMPLE_FILE,
+    SAMPLE_FINETUNE,
+    SAMPLE_SLOT,
+    SAMPLE_VOLUME,
+    ConversionConfig,
+    PsgSynthesisSettings,
+    SynthesisSettings,
+    rate3_synth_root_issues,
+)
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
-from ..mod import MAX_MOD_SAMPLE_BYTES, PERIOD_TABLE, ModFile, ModSample, apply_pattern_breaks
+from ..mod import MAX_MOD_SAMPLE_BYTES, ModFile, ModSample, apply_pattern_breaks, note_rate
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..plan import (
     DetunePlan,
@@ -185,7 +194,7 @@ class SmpsToModConverter:
         composite's, appended by the plan) unless `original` asks for the first (the source the
         slot was named for, kept aside for the mixer)."""
         sample_list = self.config.sample_list or []
-        entries = [e for e in sample_list if e[0] == inst_num]
+        entries = [e for e in sample_list if e[SAMPLE_SLOT] == inst_num]
         entry = (entries[0] if original else entries[-1]) if entries else None
         pcm_data = pcm_orig[:max_bytes]
         if len(pcm_orig) > max_bytes:
@@ -194,12 +203,12 @@ class SmpsToModConverter:
                             instrument=inst_num, bytes=len(pcm_orig), max_bytes=max_bytes)
         if len(pcm_data) % 2:                   # a MOD sample is whole words: evened with a zero
             pcm_data += b"\0"
-        sample = ModSample(entry[1] if entry else f"{prefix}_inst{inst_num}")
+        sample = ModSample(entry[SAMPLE_FILE] if entry else f"{prefix}_inst{inst_num}")
         sample.data = pcm_data
         sample.length = len(pcm_data) // 2
-        sample.set_volume(entry[2] if entry and len(entry) > 2 else 64)
-        if entry and len(entry) > 3 and entry[3] != 0:
-            sample.set_finetune(entry[3])
+        sample.set_volume(entry[SAMPLE_VOLUME] if entry and len(entry) > SAMPLE_VOLUME else 64)
+        if entry and len(entry) > SAMPLE_FINETUNE and entry[SAMPLE_FINETUNE] != 0:
+            sample.set_finetune(entry[SAMPLE_FINETUNE])
         if loop is not None and loop.end <= len(pcm_data) and loop.length >= 4:
             sample.repeat = loop.start // 2
             sample.repeat_length = loop.length // 2
@@ -277,7 +286,7 @@ class SmpsToModConverter:
             shaped = saturate(signed8(sample.data), db)
             sample.data = full_scale_int8(shaped, self._dither)   # a silent drum stays silent
             note = _MOD_NOTE_MAP.get(d.mod_note)
-            self._raw_renders[d.mod_instrument] = (shaped, clock / PERIOD_TABLE[note.value] if note else None)
+            self._raw_renders[d.mod_instrument] = (shaped, note_rate(note.value, clock) if note else None)
             self._diag.info(InfoKind.DAC_SATURATED, instrument=d.mod_instrument, name=d.name, db=db)
 
     def convert(self) -> ModFile:
@@ -482,7 +491,7 @@ class SmpsToModConverter:
 
     def _load_disk_samples(self, skip: set[int]) -> None:
         for entry in self.config.sample_list or []:
-            if entry[0] not in skip:
+            if entry[SAMPLE_SLOT] not in skip:
                 self.mod.add_samples(self.config.samples_dir, [entry])
 
     def _synthesize_fm(self, synth: SynthesisSettings) -> tuple[dict, set[int]]:
@@ -612,13 +621,13 @@ class SmpsToModConverter:
         silence).  What core.merge bounds a note's sounding span with."""
         import os
         clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
-        files = {e[0]: e[1] for e in (self.config.sample_list or [])}
+        files = {e[SAMPLE_SLOT]: e[SAMPLE_FILE] for e in (self.config.sample_list or [])}
         out: dict[int, float] = {}
         for d in self.config.dac_samples:
             path = os.path.join(self.config.samples_dir, files.get(d.mod_instrument, ""))
             note = _MOD_NOTE_MAP.get(d.mod_note)
             if d.mod_instrument in files and note is not None and os.path.exists(path):
-                out[d.mod_instrument] = os.path.getsize(path) / (clock / PERIOD_TABLE[note.value])
+                out[d.mod_instrument] = os.path.getsize(path) / note_rate(note.value, clock)
         fps = self.config.fps
         for inst, d in derive_noise_envelopes(self.song, self.config).items():
             env = d['envelope']

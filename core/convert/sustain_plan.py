@@ -7,10 +7,10 @@ whether it loops: a looped sample holds any note).
 import dataclasses
 
 from ..audio import SustainLoop
-from ..config import ConversionConfig, SynthesisSettings
+from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergePlan
-from ..mod import PERIOD_TABLE, max_sustain_secs
+from ..mod import PERIOD_TABLE, max_sustain_secs, note_rate
 from ..plan import Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import SmpsSong
 
@@ -104,7 +104,7 @@ class SustainPlanner:
         The MOD note and instrument are the ones core.convert.channel_writer will trigger: the same
         walk_channel / resolve_note.
         """
-        finetunes = {e[0]: e[3] for e in (self._config.sample_list or []) if len(e) > 3}
+        finetunes = {e[SAMPLE_SLOT]: e[SAMPLE_FINETUNE] for e in (self._config.sample_list or []) if len(e) > SAMPLE_FINETUNE}
         roots = self._synthesis_roots(kind)
         # A note that plays a mixed composite (core.merge) plays its source samples inside it:
         # the primary's at the note, each follower's at its interval.  They need the ring as much
@@ -225,7 +225,7 @@ class SustainPlanner:
             if root is None:
                 continue
             root_idx, shift = root
-            rate = round(settings.amiga_clock / PERIOD_TABLE[root_idx] * 2.0 ** (shift / 12.0))
+            rate = round(note_rate(root_idx, settings.amiga_clock) * 2.0 ** (shift / 12.0))
             fits = max_sustain_secs(rate, settings.release_padding, settings.max_sample_bytes)
             want = per_inst.get(inst, sustain)
             have = min(want, fits)

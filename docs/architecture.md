@@ -260,7 +260,7 @@ renders.  Rules: `docs/pipeline.md` § The merged build.
 | Module | Role |
 |---|---|
 | `file.py` | `ModFile` (writer: samples, patterns, positions, cell helpers, `narrow_to`, `compact_samples`, `trim_to_pattern`, `zero_idle_words`), `apply_pattern_breaks`, `row_to_bcd`; the one reader `read_mod` → `ModImage` (`play_rows`: one pass in play order), `isolate_channel` |
-| `notes.py` | `PERIOD_TABLE` (C1–B3), `ModNote`, `MOD_NOTE_MAP` (config spellings) |
+| `notes.py` | `PERIOD_TABLE` (C1–B3), `note_rate` / `period_rate` (a note's playback rate), `ModNote`, `MOD_NOTE_MAP` (config spellings) |
 | `volume.py` | dB → MOD volume: `db_to_mod_volume`, `clamp_mod_volume`, `headroom_db` |
 | `limits.py` | `MAX_MOD_SAMPLE_BYTES`, `sample_limit_bytes`, `max_sustain_secs` |
 | `timing.py` | `timed_pass`, `edx_delay`: when each row plays — the MOD clock of the audits |
@@ -307,7 +307,7 @@ limits.
 | `core/audio/pcm.py` | Mono / int8 helpers: dithered quantiser (`to_int8`, `full_scale_int8`), `dc_block`, `high_shelf`, `saturate`, `limit_peaks` |
 | `core/audio/resample.py` | Polyphase windowed-sinc resampler (FM, PSG, SFX) |
 | `core/audio/loops.py` | Sustain loops: `find_sustain_loop`, `apply_loop`, `release_rate_db_s`, `heard_padding` |
-| `core/audio/pitch.py` | Hz ↔ note names and cents |
+| `core/audio/pitch.py` | Hz ↔ MIDI and semitones from C0 (`semitone_to_hz`), note names, cents |
 | `core/render_cache.py` | `RenderCache`: chip renders on disk by a hash of their inputs and of the code |
 | `core/cbuild.py` | `CLibrary`: compile a C emulator with gcc / MSVC, rebuilt when a source is newer |
 | `ym2612/` | `build.py` (Nuked-OPN2 → DLL), `wrapper.py` (`OPN2`), `voice.py` (`program_voice`), `renderer.py` (`render_note`, `render_layers`), `sample_generator.py` (`generate_fm_samples`), `validate.py` |

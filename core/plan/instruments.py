@@ -24,8 +24,8 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 
-from ..config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
-from ..mod import PERIOD_TABLE, ModNote
+from ..config import SAMPLE_SLOT, ConversionConfig, InstrumentRange, PsgInstrumentEntry
+from ..mod import ModNote, note_rate
 
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
 # rate, what an SMPS nC5 sounds like on a channel with the usual $F4 (-12) pitch offset.
@@ -129,7 +129,7 @@ class FmInstrument:
 
     def target_rate(self, amiga_clock: float) -> int:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
-        base = amiga_clock / PERIOD_TABLE[self.rate_root_idx]
+        base = note_rate(self.rate_root_idx, amiga_clock)
         return round(base * 2.0 ** (self.synth_shift / 12.0))
 
 
@@ -201,7 +201,7 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
 
 def free_slots(config, song) -> list[int]:
     """Instrument slots nothing in the config names."""
-    used = {e[0] for e in (config.sample_list or [])}
+    used = {e[SAMPLE_SLOT] for e in (config.sample_list or [])}
     used |= set(fm_catalogue(song, config).instruments)
     used |= set(psg_catalogue(config))
     used |= {d.mod_instrument for d in config.dac_samples}
@@ -235,7 +235,7 @@ class PsgInstrument:
 
     def target_rate(self, amiga_clock: float) -> int:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
-        return round(amiga_clock / PERIOD_TABLE[self.root_idx] * 2.0 ** (self.entry.synth_shift / 12.0))
+        return round(note_rate(self.root_idx, amiga_clock) * 2.0 ** (self.entry.synth_shift / 12.0))
 
 
 def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None) -> dict[int, PsgInstrument]:

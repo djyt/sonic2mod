@@ -32,6 +32,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from ..config import SAMPLE_FILE, SAMPLE_SLOT, SAMPLE_VOLUME
 from ..smps import FM_FREQUENCIES
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
@@ -122,13 +123,13 @@ def plan_detune_variants(song, config) -> DetunePlan:
             continue
         plan.add(DetuneVariant(slots.pop(0), inst, d, notes))
 
-    entries = {e[0]: e for e in (config.sample_list or [])}
+    entries = {e[SAMPLE_SLOT]: e for e in (config.sample_list or [])}
     if plan.variants and config.sample_list is None:
         config.sample_list = []
     for v in plan.variants.values():
         base = entries.get(v.base)
-        name = f"{_stem(base[1]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}"[:_NAME_CHARS]
-        config.sample_list.append([v.inst, name, *(base[2:] if base else [])])
+        name = f"{_stem(base[SAMPLE_FILE]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}"[:_NAME_CHARS]
+        config.sample_list.append([v.inst, name, *(base[SAMPLE_VOLUME:] if base else [])])
 
     config.detune_plan = plan
     return plan

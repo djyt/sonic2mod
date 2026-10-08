@@ -249,7 +249,7 @@ class Headers(unittest.TestCase):
                                      psg_entry=EntryLayout(4, volume=2, envelope=3))
         song = bytes([0, 0, 2, 1]) + bytes([0, 11, 4]) + bytes([0, 12, 5]) + bytes([0, 13, 7, 3]) + bytes([0xF2] * 3)
         head = read_music_header(_memory(song), _SONG, layout)
-        dac, fm, psg = head.header.channels
+        _dac, fm, psg = head.header.channels
         self.assertEqual((head.header.tempo_divider, head.header.tempo_modifier), (1, NO_TEMPO_HOLDS))
         self.assertEqual((fm.volume, fm.pitch_offset, psg.volume, psg.psg_voice_label), (5, 0, 7, "fTone_03"))
         self.assertEqual(head.tracks, {_SONG + 11: ChannelType.DAC, _SONG + 12: ChannelType.FM, _SONG + 13: ChannelType.PSG})

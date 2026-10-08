@@ -3,14 +3,15 @@ fixes its disassembly's FixMusicAndSFXDataBugs makes, as byte edits to rev01."""
 
 from __future__ import annotations
 
-from ...smps import SMPS_DAC_NAMES, CoordFlag, SmpsDriver
-from ..fixes import RomFix
-from ..flags import RETURN, STOP, EnvelopeCommand, drop, effect, every_kind
-from ..variant import SmpsVariant
-from .common import FLAGS_68K, HEADER_68K, VOICE_68K
+from core.rom.fixes import RomFix
+from core.rom.flags import RETURN, STOP, EnvelopeCommand, drop, effect, every_kind
+from core.rom.variant import SmpsVariant
+from core.smps import SMPS_DAC_NAMES, CoordFlag, SmpsDriver
+
+from ..common import FLAGS_68K, HEADER_68K, VOICE_68K
+from ..locate import locate_68k
+from ..memory import Relative68kMemory
 from .dac import sonic1_dac
-from .locate import locate_68k
-from .memory import Relative68kMemory
 
 SONIC1_REV01_SHA1 = "1f1e480f768237eb0c0e725b622b0d791f47a7a9"
 

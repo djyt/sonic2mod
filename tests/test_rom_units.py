@@ -34,17 +34,17 @@ from core.rom import (
     read_rom_song,
 )
 from core.rom.detect import first_failure
+from core.rom.drivers.smps68k import SONIC1, TYPE1A
+from core.rom.drivers.smps68k.memory import Relative68kMemory
+from core.rom.drivers.smpsz80 import TYPE0FM
+from core.rom.drivers.smpsz80.memory import BankedZ80Memory, Z80RamMemory
+from core.rom.drivers.smpsz80.type0fm.drums import _Player, _wrap
+from core.rom.drivers.smpsz80.type0fm.layout import HEADER_TYPE0, VOICE_TYPE0
+from core.rom.drivers.smpsz80.type0fm.locate import fm_table, locate_type0, sound_bank
 from core.rom.envelopes import read_envelopes
 from core.rom.fixes import apply_fixes
 from core.rom.header import read_music_header, read_sfx_header
 from core.rom.kosinski import kosinski
-from core.rom.smps68k import SONIC1, TYPE1A
-from core.rom.smps68k.memory import Relative68kMemory
-from core.rom.smpsz80 import TYPE0FM
-from core.rom.smpsz80.drums import _Player, _wrap
-from core.rom.smpsz80.layout import HEADER_TYPE0, VOICE_TYPE0
-from core.rom.smpsz80.locate import fm_table, locate_type0, sound_bank
-from core.rom.smpsz80.memory import BankedZ80Memory, Z80RamMemory
 from core.rom.tracks import decode_tracks
 from core.rom.variant import EntryLayout, VoiceLayout
 from core.rom.voices import read_voices
@@ -460,7 +460,7 @@ class Type0Fm(unittest.TestCase):
 
 
 class FmDrums(unittest.TestCase):
-    """Type 0 FM's drum programs run frame by frame (core/rom/smpsz80/drums.py)."""
+    """Type 0 FM's drum programs run frame by frame (core/rom/drivers/smpsz80/type0fm/drums.py)."""
 
     _AT = 0x100
     _TABLE = tuple(0x2400 + i for i in range(0x60))      # block 4, fnum $400 + index

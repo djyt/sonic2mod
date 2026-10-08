@@ -417,7 +417,7 @@ def generate_fm_drums(
     A drum sounds until the drum track's next hit: `ring_secs` is its longest such ring.  It is
     rendered for its program and the release after the stop (synth.release_padding), but never
     past its ring; a program that never stops is rendered for its ring, up to the frames it was
-    run for (core/rom/smpsz80/drums.py), where it ends still keyed.  Each sample is
+    run for (core/rom/drivers/smpsz80/type0fm/drums.py), where it ends still keyed.  Each sample is
     conditioned (shelf, DC block) and quantised to its full 8 bits like any FM render: its level is
     the sample_list volume's job.
     """

@@ -2,9 +2,8 @@
 
     song.py  detect.py       what a ROM holds: its index, each sound -> SongCode / SmpsSong, its
                              DAC samples; the variant pinned by SHA-1, else the one that reads it
-    variants.py              every variant, the ROMs each is known in, their data fixes
-    smps68k/                 the 68k family: Sonic 1 (Type 1b), Moonwalker (Type 1a)
-    smpsz80/                 the Z80 family: Golden Axe (Type 0 FM)
+    variants.py              every variant by name, the ROMs each is known in, their data fixes
+    drivers/                 the drivers, by family, a folder each (drivers/__init__.py)
     header.py  tracks.py     generic readers: headers, track bytes -> SmpsCode (the ops the asm
     voices.py  envelopes.py  parser makes from macros), voices, PSG envelopes; driven by the variant
     grammar.py               a track grammar: the instruction at an address (SMPS's)
@@ -13,7 +12,7 @@
     memory.py  fixes.py      flag specs; SoundMemory (how a driver reads pointers); RomFix
     image.py                 RomImage: the header, big-endian reads by address
 
-    image / memory / flags / fixes / grammar / variant  <-  readers  <-  families  <-  variants  <-  detect / song
+    image / memory / flags / fixes / grammar / variant  <-  readers  <-  drivers  <-  variants  <-  detect / song
 """
 
 from .detect import detect_variant

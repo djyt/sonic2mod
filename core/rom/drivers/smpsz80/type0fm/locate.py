@@ -17,13 +17,14 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from ...chips import split_freq_word
-from ..header import is_music_header, is_sfx_header, read_index
-from ..image import RomError, RomImage
-from ..variant import SoundIndex
-from ..z80 import z80_ram, z80_word
+from core.chips import split_freq_word
+from core.rom.header import is_music_header, is_sfx_header, read_index
+from core.rom.image import RomError, RomImage
+from core.rom.variant import SoundIndex
+from core.rom.z80 import z80_ram, z80_word
+
+from ..memory import BANK_SIZE, BankedZ80Memory
 from .layout import HEADER_TYPE0
-from .memory import BANK_SIZE, BankedZ80Memory
 
 _FIRST_MUSIC = 0x81
 _FIRST_SFX = 0x90            # the dispatch: $81-$8F music, $90-$B9 SFX, $E0-$E3 commands

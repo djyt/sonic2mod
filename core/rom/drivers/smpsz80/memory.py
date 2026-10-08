@@ -8,8 +8,8 @@ read past the bank, is not the driver's data.
 
 from __future__ import annotations
 
-from ..image import RomError, RomImage
-from ..memory import SoundMemory
+from core.rom.image import RomError, RomImage
+from core.rom.memory import SoundMemory
 
 BANK_SIZE = 0x8000
 _WINDOW = 0x8000           # the Z80 address the bank appears at

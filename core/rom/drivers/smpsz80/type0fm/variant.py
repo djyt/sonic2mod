@@ -9,14 +9,15 @@ an FM drum program on FM3, drums.py; bits 4-6 a PSG drum: no song plays one).
 
 from __future__ import annotations
 
-from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
-from ..flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, every_kind, refuse
-from ..image import RomImage
-from ..variant import SmpsVariant
+from core.rom.flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, every_kind, refuse
+from core.rom.image import RomImage
+from core.rom.variant import SmpsVariant
+from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
+
+from ..memory import BankedZ80Memory
 from .drums import drum_name, read_fm_drums
 from .layout import HEADER_TYPE0, VOICE_TYPE0
 from .locate import fm_frequencies, locate_type0, sound_bank
-from .memory import BankedZ80Memory
 
 GOLDEN_AXE_REV_A_SHA1 = "2ce17105ca916fbbe3ac9ae3a2086e66b07996dd"
 

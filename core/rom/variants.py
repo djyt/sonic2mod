@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from .drivers import DRIVERS
 from .fixes import RomFix
 from .image import RomImage
-from .smps68k import MUCOM, SONIC1, TYPE1A
-from .smpsz80 import TYPE0FM
 from .variant import SmpsVariant
 
-VARIANTS = {v.name: v for v in (SONIC1, TYPE1A, TYPE0FM, MUCOM)}
+VARIANTS = {v.name: v for v in DRIVERS}
 
 
 def pinned_variant(rom: RomImage) -> SmpsVariant | None:

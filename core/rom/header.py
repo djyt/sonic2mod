@@ -39,7 +39,7 @@ _PSG_CHANNEL_BIT = 0x80  # an SFX channel id with bit 7 set is a PSG channel
 class RomHeader:
     header: SmpsSongHeader
     voices: int | None         # the voice bank's address; None: the song has none (smpsHeaderVoiceNull)
-    tracks: dict[str, int]     # each track's label -> its first byte's address
+    tracks: dict[int, ChannelType]     # each track's first byte -> the kind of track it starts
 
 
 def read_index(memory: SoundMemory, slots: range, pointer: Callable[[int], int], first_id: int,
@@ -68,14 +68,14 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
                             tempo_phase=layout.tempo_phase, key_run_out=layout.key_run_out)
     voices = _voices(memory, address)
     header.voice_label = track_label(voices) if voices is not None else ""
-    tracks: dict[str, int] = {}
+    tracks: dict[int, ChannelType] = {}
 
     # The DAC and FM tracks; the DAC's pitch and volume bytes go unread, as SmpsParser leaves them
     at = address + _MUSIC_FIXED
     for slot in layout.fm_slots[:fm_count]:
         start = memory.header_pointer(address, at)
         label = track_label(start)
-        tracks[label] = start
+        tracks[start] = slot.channel_type
         if slot.channel_type == ChannelType.DAC:
             header.channels.append(SmpsChannelHeader(channel_type=ChannelType.DAC, label=label, chip_channel=slot.chip_channel))
         else:
@@ -87,7 +87,7 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
     for _ in range(psg_count):
         start = memory.header_pointer(address, at)
         label = track_label(start)
-        tracks[label] = start
+        tracks[start] = ChannelType.PSG
         header.channels.append(SmpsChannelHeader(channel_type=ChannelType.PSG, label=label,
                                                  pitch_offset=signed_byte(memory.byte(at + 2)),
                                                  volume=memory.byte(at + 3), mod_byte=memory.byte(at + 4),
@@ -104,16 +104,17 @@ def read_sfx_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> 
     header = SmpsSongHeader(tempo_divider=memory.byte(address + 2), tempo_modifier=0, is_sfx=True)
     voices = _voices(memory, address)
     header.voice_label = track_label(voices) if voices is not None else ""
-    tracks: dict[str, int] = {}
+    tracks: dict[int, ChannelType] = {}
 
     at = address + _SFX_FIXED
     for _ in range(memory.byte(address + 3)):
         channel = memory.byte(at + 1)
         start = memory.header_pointer(address, at + 2)
         label = track_label(start)
-        tracks[label] = start
+        kind = ChannelType.PSG if channel & _PSG_CHANNEL_BIT else ChannelType.FM
+        tracks[start] = kind
         header.channels.append(SmpsChannelHeader(
-            channel_type=ChannelType.PSG if channel & _PSG_CHANNEL_BIT else ChannelType.FM, label=label,
+            channel_type=kind, label=label,
             pitch_offset=signed_byte(memory.byte(at + 4)), volume=memory.byte(at + 5), hw_channel=channel))
         at += _SFX_TRACK
     return RomHeader(header, voices, tracks)

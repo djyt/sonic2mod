@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from ...smps import SMPS_DAC_NAMES, CoordFlag, SmpsDriver
 from ..fixes import RomFix
-from ..flags import RETURN, STOP, EnvelopeCommand, drop, effect
+from ..flags import RETURN, STOP, EnvelopeCommand, drop, effect, every_kind
 from ..variant import SmpsVariant
 from .common import FLAGS_68K, HEADER_68K, VOICE_68K
 from .dac import sonic1_dac
@@ -27,7 +27,7 @@ SONIC1 = SmpsVariant(
     name=SmpsDriver.SONIC1,
     memory=Relative68kMemory,
     locate=locate_68k,
-    flags={
+    flags=every_kind({
         **FLAGS_68K,
         0xE3: RETURN,
         0xE4: STOP,                                   # smpsFade: the 1-Up jingle restores the song
@@ -38,7 +38,7 @@ SONIC1 = SmpsVariant(
         0xED: drop("smpsClearPush"),
         0xEE: STOP,                                   # smpsStopSpecial: FM4 handed back to the music
         0xF9: drop("smpsMaxRelRate"),
-    },
+    }),
     envelope_commands={0x80: EnvelopeCommand.HOLD},
     header=HEADER_68K,
     voice_layout=VOICE_68K,

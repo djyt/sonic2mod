@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ..smps import FIRST_FLAG, Op, OpKind, effect_from_bytes
+from ..smps import FIRST_FLAG, ChannelType, Op, OpKind, effect_from_bytes
 from .flags import FlagKind, FlagSpec
 from .image import RomError
 from .memory import SoundMemory
@@ -41,13 +41,13 @@ class Instruction:
     dropped: str = ""               # a DROP flag's name
 
 
-def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant) -> Instruction:
-    """The SMPS instruction at `address`."""
+def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:
+    """The SMPS instruction at `address`, read by a `kind` track."""
     byte = memory.byte(address)
     if byte < FIRST_FLAG:
         return Instruction((Op(OpKind.BYTE, value=byte),), 1, True)
 
-    spec = variant.flags.get(byte)
+    spec = variant.flags[kind].get(byte)
     if spec is None:
         raise RomError(f"${address:X}: ${byte:02X} is no {variant.name} coordination flag")
     if spec.kind is FlagKind.REFUSE:
@@ -60,8 +60,8 @@ def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant) ->
 
     if spec.kind in (FlagKind.JUMP, FlagKind.CALL):
         target = memory.code_pointer(address + 1)
-        kind = OpKind.JUMP if spec.kind is FlagKind.JUMP else OpKind.CALL
-        return Instruction((Op(kind, name=track_label(target)),), length, spec.kind is FlagKind.CALL, target)
+        op_kind = OpKind.JUMP if spec.kind is FlagKind.JUMP else OpKind.CALL
+        return Instruction((Op(op_kind, name=track_label(target)),), length, spec.kind is FlagKind.CALL, target)
 
     if spec.kind is FlagKind.LOOP:
         target = memory.code_pointer(address + 1 + _LOOP_POINTER)

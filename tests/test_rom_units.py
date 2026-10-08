@@ -6,6 +6,7 @@ The last class reads the real ROM and the disassembly when both are present.
 
 from __future__ import annotations
 
+import dataclasses
 import glob
 import re
 import sys
@@ -50,6 +51,7 @@ from core.smps import (
     FM_FREQUENCIES,
     NO_TEMPO_HOLDS,
     SONIC1_ENVELOPES,
+    ChannelType,
     CoordFlag,
     OpKind,
     PsgEnvelope,
@@ -134,7 +136,7 @@ class Tracks(unittest.TestCase):
 
     def test_flags_take_their_operands_and_signed_ones_are_signed(self):
         dac = bytes([0xF0, 1, 2, 3, 4, 0xE9, 0xF4, 0xE6, 0x02, 0x80, 0x01, 0xF2])
-        code = decode_tracks(_memory(_music([dac])), {"dac": _SONG + 10}, SONIC1).code
+        code = decode_tracks(_memory(_music([dac])), {_SONG + 10: ChannelType.DAC}, SONIC1).code
         effects = [op.effect for op in code.ops if op.kind is OpKind.EFFECT]
         self.assertEqual([(e.flag, e.params) for e in effects],
                          [(CoordFlag.MOD_SET, [1, 2, 3, 4]), (CoordFlag.CHANGE_TRANSPOSITION, [-12]),
@@ -160,11 +162,19 @@ class Tracks(unittest.TestCase):
 
     def test_an_unknown_flag_names_its_address(self):
         with self.assertRaisesRegex(RomError, r"\$20A: \$FB"):
-            decode_tracks(_memory(_music([bytes([0xFB])])), {"x": _SONG + 10}, SONIC1)
+            decode_tracks(_memory(_music([bytes([0xFB])])), {_SONG + 10: ChannelType.FM}, SONIC1)
+
+    def test_code_two_kinds_share_needs_one_flag_table(self):
+        psg = {**SONIC1.flags[ChannelType.PSG]}
+        variant = dataclasses.replace(SONIC1, flags={**SONIC1.flags, ChannelType.PSG: psg})
+        memory = _memory(_music([bytes([0x80, 0x01, 0xF2])]))
+        with self.assertRaisesRegex(RomError, r"\$20C: code shared by PSG and FM tracks"):
+            decode_tracks(memory, {_SONG + 10: ChannelType.FM, _SONG + 12: ChannelType.PSG}, variant)
+        decode_tracks(memory, {_SONG + 10: ChannelType.FM, _SONG + 12: ChannelType.PSG}, SONIC1)
 
     def test_smpsFade_and_smpsStopSpecial_end_the_track(self):
         for flag in (0xE4, 0xEE):
-            code = decode_tracks(_memory(_music([bytes([0x80, 0x01, flag, 0xA0, 0x01])])), {"x": _SONG + 10}, SONIC1).code
+            code = decode_tracks(_memory(_music([bytes([0x80, 0x01, flag, 0xA0, 0x01])])), {_SONG + 10: ChannelType.FM}, SONIC1).code
             self.assertIs(code.ops[-1].kind, OpKind.STOP)
 
 
@@ -230,7 +240,7 @@ class Headers(unittest.TestCase):
         self.assertEqual([c.channel_type for c in head.header.channels], ["DAC", "FM"])
         self.assertEqual((head.header.tempo_divider, head.header.tempo_modifier), (2, 5))
         self.assertEqual(head.header.channels[1].pitch_offset, -12)
-        self.assertEqual(sorted(head.tracks.values()), [_SONG + 14, _SONG + 15])
+        self.assertEqual(head.tracks, {_SONG + 14: ChannelType.DAC, _SONG + 15: ChannelType.FM})
 
     def test_sfx_channels_carry_their_hardware_channel(self):
         sfx = bytes([0, 0, 1, 1, 0x80, 0xC0, 0, 10, 0xF4, 0x02, 0xF2])
@@ -263,7 +273,7 @@ class Fixes(unittest.TestCase):
     def test_a_splice_reads_the_original_bytes_as_the_replacement(self):
         fm = bytes([0xA0, 0x06, 0x80, 0x80, 0xE6, 0x0C, 0xB0, 0x06, 0xF2])
         fix = RomFix(_SONG + 12, bytes([0x80, 0x80, 0xE6, 0x0C]), b"", "test")
-        code = decode_tracks(_memory(_music([fm])), {"x": _SONG + 10}, SONIC1, {fix.address: fix}).code
+        code = decode_tracks(_memory(_music([fm])), {_SONG + 10: ChannelType.FM}, SONIC1, {fix.address: fix}).code
         self.assertEqual([op.value for op in code.ops if op.kind is OpKind.BYTE], [0xA0, 0x06, 0xB0, 0x06])
         self.assertFalse(any(op.kind is OpKind.EFFECT for op in code.ops))
 
@@ -433,7 +443,7 @@ class FmDrums(unittest.TestCase):
     def _frames(self, program: bytes, modifier: int = NO_TEMPO_HOLDS) -> list[tuple[int, bool, bool]]:
         ram = bytearray(0x2000)
         ram[self._AT:self._AT + len(program)] = program
-        player = _Player(Z80RamMemory(RomImage(bytes(ram))), TYPE0FM.flags, self._TABLE,
+        player = _Player(Z80RamMemory(RomImage(bytes(ram))), TYPE0FM.flags[ChannelType.FM], self._TABLE,
                          tempo_schedule(modifier)[0], divider=1, transpose=0)
         frames, cut = player.play(self._AT)
         self.assertEqual(cut, "")

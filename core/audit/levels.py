@@ -138,22 +138,30 @@ def suggest_volumes(instruments: list[dict]) -> float:
     return scale
 
 
-def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0) -> list[str]:
+def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0,
+                  settings_path: str | None = None) -> list[str]:
     """Set sample_list volumes to the suggested values; returns a line per change.  A minimal
-    config's derived rows are added as stated ones (core.plan.derive: a stated row replaces the
-    derived row of its instrument)."""
+    config's derived rows (derived under `settings_path`, as the MOD was converted) are added as
+    stated ones (core.plan.derive: a stated row replaces the derived row of its instrument)."""
     text = config_path.read_text(encoding="utf-8")
-    derived = _derived_rows(config_path)
+    derived = _derived_rows(config_path, settings_path)
     added: list[str] = []
     changes = []
     for it in instruments:
         new = it["suggested"]
         if new is None or new == it["volume"] or abs(gain_to_db(new / it["volume"])) < min_db:
             continue
-        pat = re.compile(r'^(\s*-\s*\[\s*' + str(it["instrument"])
-                         + r'\s*,\s*"[^"]*"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
-        m = pat.search(text)
         row = derived.get(it["instrument"])
+        # A minimal config's row is found by its file (core.plan.derive matches it so: slots move when
+        # a setting splits a window) and given the instrument's slot now; a full config's by its slot
+        slot, file = (r'\d+', re.escape(row[1])) if row is not None else (str(it["instrument"]), r'[^"]*')
+        pat = re.compile(r'^(\s*-\s*\[\s*' + slot + r'\s*,\s*"' + file
+                         + r'"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
+        m = pat.search(text)
+        if m and row is not None:
+            head = re.sub(r'\[\s*\d+', f"[{it['instrument']}", m.group(1), count=1)
+            text = text[:m.start()] + head + text[m.start() + len(m.group(1)):]
+            m = pat.search(text)
         if not m and row is not None and row[2] == it["volume"]:
             added.append(f'  - [{row[0]}, "{row[1]}", {new}, {row[3]}]   # VGZ: {it["err_db"]:+.1f} dB at {it["volume"]}')
             changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
@@ -169,18 +177,27 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
     if added:
         text = _add_rows(text, added)
     if any(not c.startswith("  !!") for c in changes):
+        text = _renumber_rows(text, {row[1]: row[0] for row in derived.values()})
         config_path.write_text(text, encoding="utf-8", newline="")
     return changes
 
 
-def _derived_rows(config_path: Path) -> dict[int, list]:
+def _renumber_rows(text: str, slot_of: dict[str, int]) -> str:
+    """Every sample_list row naming a derived file given that file's slot now (a minimal config's
+    rows follow their file, so a number left from before a setting split a window is only noise)."""
+    def slot(m: re.Match) -> str:
+        return f"{m.group(1)}{slot_of.get(m.group(3), m.group(2))}{m.group(4)}"
+    return re.sub(r'^(\s*-\s*\[\s*)(\d+)(?=\s*,\s*"([^"]*)")(\s*)', slot, text, flags=re.M)
+
+
+def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[int, list]:
     """A minimal config's sample_list as derived (by instrument); nothing for a full config."""
     from ..config import ConversionConfig
     from ..plan import load_config
 
     if not ConversionConfig.from_yaml(str(config_path)).is_minimal:
         return {}
-    return {row[0]: row for row in load_config(config_path).sample_list or []}
+    return {row[0]: row for row in load_config(config_path, settings_path).sample_list or []}
 
 
 def _add_rows(text: str, rows: list[str]) -> str:

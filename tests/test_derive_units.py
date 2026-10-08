@@ -6,6 +6,7 @@ ROM when it is present.
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,7 @@ ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings
+from core.mod import ModNote
 from core.plan import complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
 from core.rom import RomImage, dac_samples, read_rom_song
@@ -85,6 +87,16 @@ class Moonwalker(unittest.TestCase):
                 entries = config.psg_voice_map[st.envelope or "$00"] if st.is_psg else config.voice_map[st.voice]
                 self.assertTrue(any(e.low <= res.chip <= e.high for e in entries), (source, event.tick_position))
 
+    def test_windows_end_at_top_note_and_span_at_most_max_window(self):
+        for max_window in (0, 9):
+            settings = dataclasses.replace(_SETTINGS, max_window=max_window)
+            data = derive_config(_STATED, self.song, _CONFIG, settings, self.dac).data
+            config = ConversionConfig.from_data(data, str(_CONFIG))
+            for entries in [*config.voice_map.values(), *config.psg_voice_map.values()]:
+                for e in entries:
+                    self.assertLessEqual(e.root.value + e.high - e.low, ModNote.A3.value)
+                    self.assertLessEqual(e.high - e.low, max_window or 99)
+
     def test_a_pitched_dac_copy_plays_its_samples_slot_tuned_to_its_rate(self):
         d = self._derive()
         dac = {e["name"]: e for e in d.data["dac_samples"]}
@@ -107,6 +119,24 @@ class Moonwalker(unittest.TestCase):
         self.assertEqual(rows[5], {row[0]: row for row in base["sample_list"]}[5])
         self.assertEqual(parse_smps_note(d.data["voice_map"][0][0]["low"]),
                          parse_smps_note(base["voice_map"][0][0]["low"]))
+
+    def test_a_stated_row_follows_its_derived_file_to_its_slot(self):
+        base = {row[0]: row for row in self._derive().data["sample_list"]}
+        file = base[5][1]
+        d = self._derive({**_STATED, "sample_list": [[9, file, 33, 0], [6, "fm_v00_C9.raw", 20, 0]]})
+        rows = {row[0]: row for row in d.data["sample_list"]}
+        self.assertEqual(rows[5], [5, file, 33, 0])     # slots renumbered since: the file decides
+        self.assertEqual(rows[9], base[9])
+        self.assertEqual(rows[6], base[6])              # a derived name the song no longer has
+        self.assertEqual(d.stale, [[6, "fm_v00_C9.raw", 20, 0]])
+
+    def test_a_window_with_no_measurement_takes_its_measured_neighbours_correction(self):
+        base = {row[0]: row for row in self._derive().data["sample_list"]}
+        self.assertEqual(base[4][1][:7], base[5][1][:7])          # voice $00 in two windows
+        d = self._derive({**_STATED, "sample_list": [[4, base[4][1], base[4][2] * 2, 0]]})
+        rows = {row[0]: row for row in d.data["sample_list"]}
+        self.assertEqual(rows[5][2], min(64, round(base[5][2] * 2)))
+        self.assertEqual(rows[6], base[6])                         # another voice: its own start
 
     def test_completing_writes_the_dac_samples(self):
         with tempfile.TemporaryDirectory() as tmp:

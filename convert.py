@@ -132,6 +132,9 @@ def main():
             _error(str(e))
         assert derivation is not None
         data, derived = derivation.data, derivation.derived
+        if derivation.stale:
+            console.print(f"[dim]{len(derivation.stale)} sample_list row(s) name windows these settings do not cut "
+                          f"(another max_window's, or stale): {', '.join(row[1] for row in derivation.stale)}[/dim]")
     if args.show_config:
         console.print(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None), markup=False, highlight=False)
     if args.write_config:

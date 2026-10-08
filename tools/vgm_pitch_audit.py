@@ -61,7 +61,7 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = load_config(args.config, variant=args.variant)
+    cfg = load_config(args.config, args.settings, variant=args.variant)
     song = prepare_audit(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     chip, vgm_end = pitch_segments(read_vgm(args.vgz))

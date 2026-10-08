@@ -72,7 +72,7 @@ from .song import (
     pan_side,
 )
 from .song_prep import apply_global_tempo_div, extend_looping_channels
-from .tempo import TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
+from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
 from .track import TrackState
 
 __all__ = [
@@ -82,6 +82,7 @@ __all__ = [
     "FM_FREQUENCIES",
     "FM_SLOT_MASK",
     "HW_FM_CHANNEL",
+    "NO_TEMPO_HOLDS",
     "PAN_VALUES",
     "PSG_CHANNEL",
     "PSG_ENVELOPES",

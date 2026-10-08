@@ -438,9 +438,9 @@ IR additions (`core/smps`), each generic:
 | chip channel on every channel header | source names FM1 FM2 FM4 FM5 FM6 + FM3 drums, as the rip names them | SFX `hw_channel` |
 | `CoordFlag.SET_VOL` | `$F0`: absolute volume; `CoordFlag` is keyed by Sonic's bytes, so a value outside `$E0`-`$FF` | - |
 | `SmpsVoice.pan` (the `$B4` byte, optional) | the level law needs L/R power; applied on set voice | `PAN` effect |
-| `SmpsSong.fm_frequencies` (None: Sonic 1's) | -11 cents; playback, detune, rendering read it | `psg_envelopes` |
-| tempo modifier None = no stall | front ends map their 0 (Sonic 1: 256 frames) | - |
-| percussion kit on the song | a drum channel's bytes name sounds; the kit says what each is | `dac_names` |
+| `NO_TEMPO_HOLDS` | Type 0 FM's tempo 0: no stall; a modifier no song reaches, so every tempo formula reads it as a tick a frame (`None` would reach every formula; 0 already means "SFX") | playback's SFX |
+| `SmpsSong.fm_frequencies` (None: Sonic 1's) | -11 cents; playback, detune, rendering read it (3.4) | `psg_envelopes` |
+| percussion kit on the song | a drum channel's bytes name sounds; the kit says what each is (3.5) | `dac_names` |
 
 **Drums (decided 2026-10-08: B).**  A hit is 1-6 frames of tied pitch steps and slides, below a
 MOD row, so each drum is a one-shot sample, as a DAC sample: the program rendered on the YM2612
@@ -466,8 +466,13 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   Found, not fixed (predates this): `complete_config` rewrites the minimal configs' shared
   `dac*.raw` with `write_bytes`, so parallel conversions of two Moonwalker songs can read a
   truncated sample (an empty DAC slot; seen on 2 of 22).  `measure_volumes.py` runs in parallel.
-- [ ] **3.1 IR additions** above, Sonic 1 / Type 1a values stated where they had defaults (chip
-  channel, tempo 0 -> 256).  `source_names` reads the chip channel.
+- [x] **3.1 IR additions** (2026-10-08): `SmpsChannelHeader.chip_channel` (`source_names`: header
+  order unless stated), `CoordFlag.SET_VOL` (`smpsSetVol`; track state, analysis, the writer's
+  non-baked modes: channel volume less the TL moved from the header's), `SmpsVoice.pan` (the walk
+  writes a `PAN` after its smpsSetvoice), `NO_TEMPO_HOLDS` (`core/smps/tempo.py`; the report shows
+  "no holds").  Each lands with its consumers; `fm_frequencies` and the kit with theirs (3.4, 3.5).
+  Sonic 1's modifier 0 left as is (no song has it; the asm round trip keeps the byte).  Baselines,
+  tool regression byte-identical; unit tests for each.
 - [ ] **3.2 Z80 memory + locate.**  `smpsz80/`: `memory.py` (bank window, LE); `locate.py`: the
   driver blob by its LE FM table, the bank by its header's shape (music entries at plausible
   headers); SHA-1 pin.  `rom_import.py` lists Golden Axe's 15 songs and 42 SFX.

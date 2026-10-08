@@ -367,13 +367,15 @@ class ChannelWriter:
         affect note pitch or voice_map lookup."""
         eff = event.effect
         kind = eff.flag
-        if kind == CoordFlag.ALTER_VOL:
+        if kind in (CoordFlag.ALTER_VOL, CoordFlag.SET_VOL):
             # st.apply moved the TL offset / attenuation; the non-baked modes keep their own
-            # MOD-volume accumulator on top of it.
+            # MOD-volume accumulator on top of it: the channel volume less the TL steps the song
+            # moved from its header volume (smpsAlterVol: by its delta; SET_VOL: to its level)
             if self._is_psg or self._fm_absolute:
                 self._current_volume = self._level_volume()
             elif not self._fm_baked:
-                self._current_volume = max(0, min(64, self._current_volume - eff.params[0]))
+                moved = self._current_volume - eff.params[0] if kind == CoordFlag.ALTER_VOL else                     self._cfg.volume - (eff.params[0] - self._channel.header.volume)
+                self._current_volume = max(0, min(64, moved))
         elif kind == CoordFlag.NOTE_FILL:
             self._note_fill = eff.params[0]
         elif kind == CoordFlag.MOD_SET:

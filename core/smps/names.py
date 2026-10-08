@@ -191,12 +191,15 @@ SFX_CHANNEL_IDS = {
 
 
 def source_names(song) -> list[str]:
-    """"DAC", "FM1".."FMn", "PSG1".."PSGn" for a parsed song's channels, in header order."""
+    """"DAC", "FM1".."FMn", "PSG1".."PSGn" for a parsed song's channels, in header order; a
+    channel that states its chip channel (Type 0 FM's FM1 FM2 FM4 FM5 FM6) is named by it."""
     names: list[str] = []
     fm = psg = 0
     for ch in song.channels:
         kind = ch.header.channel_type
-        if kind == "DAC":
+        if ch.header.chip_channel:
+            names.append(ch.header.chip_channel)
+        elif kind == "DAC":
             names.append("DAC")
         elif kind == "FM":
             fm += 1
@@ -221,6 +224,7 @@ _FLAG_MACROS = {
     CoordFlag.SET_TEMPO_MOD: "smpsSetTempoMod", CoordFlag.SET_TEMPO_DIV: "smpsSetTempoDiv",
     CoordFlag.SET_VOICE: "smpsSetvoice", CoordFlag.MOD_SET: "smpsModSet", CoordFlag.MOD_ON: "smpsModOn",
     CoordFlag.PSG_FORM: "smpsPSGform", CoordFlag.MOD_OFF: "smpsModOff", CoordFlag.PSG_VOICE: "smpsPSGvoice",
+    CoordFlag.SET_VOL: "smpsSetVol",        # not Sonic 1's SMPS2ASM: this project's spelling
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

@@ -100,7 +100,8 @@ def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list,
     """Each of the header's channels walked from its label.  `psg_envelopes` / `dac_names`: the
     driver's (None: Sonic 1's).  A DAC track's byte without a name is a plain note."""
     names = SMPS_DAC_NAMES_REVERSE if dac_names is None else dac_names
-    channels = [_Walker(code, ch_header, names).walk(header.tempo_divider) for ch_header in header.channels]
+    pans = {v.index: v.pan for v in voices if v.pan is not None}
+    channels = [_Walker(code, ch_header, names, pans).walk(header.tempo_divider) for ch_header in header.channels]
     song = SmpsSong(header=header, channels=channels, voices=voices)
     if psg_envelopes is not None:
         song.psg_envelopes = dict(psg_envelopes)
@@ -152,9 +153,11 @@ _WalkState = tuple[int, int, SmpsNote | None, int, int]
 class _Walker:
     """One channel's walk through the song's code."""
 
-    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, dac_names: Mapping[int, str]):
+    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, dac_names: Mapping[int, str],
+                 voice_pans: Mapping[int, int]):
         self._ops = code.ops
         self._dac_names = dac_names
+        self._voice_pans = voice_pans     # a voice that stores its B4 byte pans the track it is set on
         self._labels = code.labels
         self._header = header
         self._channel = SmpsChannel(header=header)
@@ -315,6 +318,11 @@ class _Walker:
         if effect.flag == CoordFlag.CHAN_TEMPO_DIV:
             tempo_div = effect.params[0]
         self._channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
+
+        # A voice with its own pan byte: the driver writes B4 as it loads the voice
+        pan = self._voice_pans.get(effect.params[0]) if effect.flag == CoordFlag.SET_VOICE else None
+        if pan is not None:
+            self._channel.events.append(SmpsEvent(effect=SmpsEffect(CoordFlag.PAN, [pan]), tick_position=tick))
         return tempo_div
 
     def _byte(self, cur: _Cursor, val: int) -> None:

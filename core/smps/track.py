@@ -54,6 +54,12 @@ class TrackState:
             else:
                 self.tl = max(0, min(FM_TL_SILENT, self.tl + delta))
 
+        elif kind == CoordFlag.SET_VOL:
+            if self.is_psg:
+                self.att = max(0, min(PSG_ATT_SILENT, effect.params[0]))
+            else:
+                self.tl = max(0, min(FM_TL_SILENT, effect.params[0]))
+
         elif kind == CoordFlag.PAN:
             self.pan = pan_side(effect.params)
             self.hard_panned = self.pan != "C"

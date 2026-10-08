@@ -8,12 +8,16 @@ TempoWait holds it.  The schedule starts with the song and again at every smpsSe
     tick    0 1 . 2 3 . 4 5 . 6        '.' a hold: the frame takes the next frame's tick
 
 A segment is one stretch of constant tempo; a song's schedule is its segments in order.
+A driver that never holds (an SFX; Type 0 FM's tempo 0) plays at NO_TEMPO_HOLDS: a modifier no
+song reaches, so every formula here and in the converter reads it as a tick a frame.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+
+NO_TEMPO_HOLDS = 1 << 30
 
 
 @dataclass(frozen=True)

@@ -19,6 +19,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from ...smps import FM_FREQUENCIES
+from ..envelopes import is_envelope
 from ..header import is_music_header, is_sfx_header, read_index
 from ..image import RomError, RomImage
 from ..memory import SoundMemory
@@ -38,11 +39,8 @@ _OCTAVE = 12
 _GO_TABLES = ("priorities", "special_sfx", "music", "sfx", "speed_up", "psg_index")
 _GO_BYTES = len(_GO_TABLES) * _LONG
 
-# What makes a candidate block: its first entries checked, envelopes as SMPS writes them
+# What makes a candidate block: its first entries checked
 _ENTRIES_CHECKED = 3
-_ENVELOPE_MAX = 64              # bytes before the command byte that ends or loops an envelope
-_ATTENUATION_MAX = 0x1F           # steps past $F occur (Sonic 1 PSG2: ... 8, $10): the driver clamps
-_ENVELOPE_COMMAND = 0x80        # $80 and up: hold, restart, jump (each driver its own codes)
 
 
 @lru_cache(maxsize=8)
@@ -74,12 +72,18 @@ def _go_block(rom: RomImage, memory: SoundMemory) -> dict[str, int]:
     if len(found) != 1:
         where = ", ".join(f"${a:X}" for a in found[:8])
         raise RomError(f"{len(found)} driver pointer blocks (Go_) found{': ' + where if where else ''}, not one")
-    return {name: rom.long(found[0] + i * _LONG) for i, name in enumerate(_GO_TABLES)}
+    return {name: rom.long(slot) for name, slot in _go_slots(found[0]).items()}
+
+
+def _go_slots(at: int) -> dict[str, int]:
+    """Where each of a Go_ block's table pointers is."""
+    return {name: at + i * _LONG for i, name in enumerate(_GO_TABLES)}
 
 
 def _is_go_block(rom: RomImage, memory: SoundMemory, at: int) -> bool:
     data = rom.data
-    music, sfx, special, envelopes = at + 8, at + 12, at + 4, at + 20
+    slot = _go_slots(at)
+    music, sfx, special, envelopes = slot["music"], slot["sfx"], slot["special_sfx"], slot["psg_index"]
 
     # Cheap first: the four tables' pointers lie inside the ROM (a 24-bit address: top byte 0)
     if any(data[p] for p in (music, sfx, special, envelopes)):
@@ -92,7 +96,7 @@ def _is_go_block(rom: RomImage, memory: SoundMemory, at: int) -> bool:
     return (_entries_are(rom, memory, music_table, _is_music_header)
             and _entries_are(rom, memory, sfx_table, _is_sfx_header)
             and _entries_are(rom, memory, special_table, _is_sfx_header, count=1)
-            and _entries_are(rom, memory, envelope_table, _is_envelope))
+            and _entries_are(rom, memory, envelope_table, is_envelope))
 
 
 def _entries_are(rom: RomImage, memory: SoundMemory, table: int, plausible, count: int = _ENTRIES_CHECKED) -> bool:
@@ -109,19 +113,6 @@ def _is_music_header(memory: SoundMemory, address: int) -> bool:
 
 def _is_sfx_header(memory: SoundMemory, address: int) -> bool:
     return is_sfx_header(memory, address, HEADER_68K)
-
-
-def _is_envelope(memory: SoundMemory, address: int) -> bool:
-    """Attenuation steps (0-$1F) up to a command byte ($80 and up)."""
-    for i in range(_ENVELOPE_MAX):
-        if not memory.contains(address + i):
-            return False
-        value = memory.byte(address + i)
-        if value >= _ENVELOPE_COMMAND:
-            return i > 0
-        if value > _ATTENUATION_MAX:
-            return False
-    return False
 
 
 def _envelopes(rom: RomImage, table: int) -> tuple[int, ...]:

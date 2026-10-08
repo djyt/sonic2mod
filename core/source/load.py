@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..rom import VARIANTS, DacSample, RomImage, dac_samples, is_rom_path, read_rom_song
+from ..rom import VARIANTS, DacSample, RomImage, SmpsVariant, dac_samples, is_rom_path, read_rom_song
 from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsParser, SmpsSong
 from ..vgm import LiftOptions, is_vgm_path, lift_song, load_frames
 
@@ -23,8 +23,7 @@ def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: in
     if is_rom_path(path):
         if rom_song is None:
             raise ValueError(f"{path}: a ROM holds every song; rom_song: names which ($81 ...)")
-        variant = VARIANTS[driver] if driver else None
-        return read_rom_song(RomImage.load(path), rom_song, fix_data_bugs=fix_data_bugs, variant=variant)
+        return read_rom_song(RomImage.load(path), rom_song, fix_data_bugs=fix_data_bugs, variant=_variant(driver))
 
     if rom_song is not None:
         raise ValueError("rom_song: applies to a ROM input_file only (.bin / .md / .gen)")
@@ -41,4 +40,9 @@ def read_dac(path: str | Path, driver: SmpsDriver | None = None) -> list[DacSamp
     """A ROM's DAC samples (its driver's: `driver`, else detected); nothing for any other input."""
     if not is_rom_path(path):
         return []
-    return dac_samples(RomImage.load(path), VARIANTS[driver] if driver else None)
+    return dac_samples(RomImage.load(path), _variant(driver))
+
+
+def _variant(driver: SmpsDriver | None) -> SmpsVariant | None:
+    """The variant a config's driver: names; None: the ROM's own (detected)."""
+    return VARIANTS[driver] if driver else None

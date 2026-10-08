@@ -52,9 +52,8 @@ from ..config import (
 )
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
-from ..rom import DacSample
 from ..smps import C1_SEMITONE, ChannelType, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
-from ..source import read_dac
+from ..source import DacSample, read_dac
 from .driver_state import walk_channel
 
 MAX_INSTRUMENTS = 31

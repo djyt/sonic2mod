@@ -45,6 +45,7 @@ from core.rom.smpsz80.layout import HEADER_TYPE0, VOICE_TYPE0
 from core.rom.smpsz80.locate import fm_table, locate_type0, sound_bank
 from core.rom.smpsz80.memory import BankedZ80Memory, Z80RamMemory
 from core.rom.tracks import decode_tracks
+from core.rom.variant import EntryLayout
 from core.rom.voices import read_voices
 from core.rom.z80 import z80_ram
 from core.smps import (
@@ -241,6 +242,17 @@ class Headers(unittest.TestCase):
         self.assertEqual((head.header.tempo_divider, head.header.tempo_modifier), (2, 5))
         self.assertEqual(head.header.channels[1].pitch_offset, -12)
         self.assertEqual(head.tracks, {_SONG + 14: ChannelType.DAC, _SONG + 15: ChannelType.FM})
+
+    def test_a_layout_without_tempo_reads_its_own_entries(self):
+        # voices.w fm.b psg.b, FM ptr.w volume.b, PSG ptr.w volume.b envelope.b: Streets of Rage's shape
+        layout = dataclasses.replace(SONIC1.header, tempo=False, fm_entry=EntryLayout(3, volume=2),
+                                     psg_entry=EntryLayout(4, volume=2, envelope=3))
+        song = bytes([0, 0, 2, 1]) + bytes([0, 11, 4]) + bytes([0, 12, 5]) + bytes([0, 13, 7, 3]) + bytes([0xF2] * 3)
+        head = read_music_header(_memory(song), _SONG, layout)
+        dac, fm, psg = head.header.channels
+        self.assertEqual((head.header.tempo_divider, head.header.tempo_modifier), (1, NO_TEMPO_HOLDS))
+        self.assertEqual((fm.volume, fm.pitch_offset, psg.volume, psg.psg_voice_label), (5, 0, 7, "fTone_03"))
+        self.assertEqual(head.tracks, {_SONG + 11: ChannelType.DAC, _SONG + 12: ChannelType.FM, _SONG + 13: ChannelType.PSG})
 
     def test_sfx_channels_carry_their_hardware_channel(self):
         sfx = bytes([0, 0, 1, 1, 0x80, 0xC0, 0, 10, 0xF4, 0x02, 0xF2])

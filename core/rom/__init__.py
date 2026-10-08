@@ -16,7 +16,6 @@
 
 from .detect import detect_variant
 from .fixes import RomFix
-from .header import track_label
 from .image import RomError, RomImage, is_rom_path
 from .song import dac_samples, locate_sounds, read_rom_code, read_rom_song
 from .variant import DacSample, SmpsVariant, SoundIndex
@@ -37,5 +36,4 @@ __all__ = [
     "locate_sounds",
     "read_rom_code",
     "read_rom_song",
-    "track_label",
 ]

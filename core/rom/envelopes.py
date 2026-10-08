@@ -18,6 +18,11 @@ from .variant import SmpsVariant
 _COMMAND = 0x80             # a byte from $80 is a command
 _MAX_STEPS = 0x100          # past this an envelope is not data
 
+# What a located envelope looks like: steps past $F occur (Sonic 1 PSG2: ... 8, $10; the driver
+# clamps), a command within the first 64 bytes
+_PLAUSIBLE_STEPS = 64
+_PLAUSIBLE_ATTENUATION = 0x1F
+
 
 def read_envelopes(memory: SoundMemory, addresses: tuple[int, ...], variant: SmpsVariant) -> dict[str, PsgEnvelope]:
     """The envelope at each address, by smpsPSGvoice name."""
@@ -42,3 +47,16 @@ def _envelope(memory: SoundMemory, address: int, variant: SmpsVariant) -> PsgEnv
             raise RomError(f"PSG envelope at ${address:X}: loops to step {loop_to} of {len(steps)}")
         return PsgEnvelope(tuple(steps), loop_to)
     raise RomError(f"PSG envelope at ${address:X}: no command in {_MAX_STEPS} bytes")
+
+
+def is_envelope(memory: SoundMemory, address: int) -> bool:
+    """Plausible as an envelope: attenuation steps (0-$1F) up to a command byte."""
+    for i in range(_PLAUSIBLE_STEPS):
+        if not memory.contains(address + i):
+            return False
+        value = memory.byte(address + i)
+        if value >= _COMMAND:
+            return i > 0
+        if value > _PLAUSIBLE_ATTENUATION:
+            return False
+    return False

@@ -48,17 +48,10 @@ class TrackState:
             self.voice = effect.params[0]
 
         elif kind == CoordFlag.ALTER_VOL:
-            delta = effect.params[0]
-            if self.is_psg:
-                self.att = max(0, min(PSG_ATT_SILENT, self.att + delta))
-            else:
-                self.tl = max(0, min(FM_TL_SILENT, self.tl + delta))
+            self._set_level((self.att if self.is_psg else self.tl) + effect.params[0])
 
         elif kind == CoordFlag.SET_VOL:
-            if self.is_psg:
-                self.att = max(0, min(PSG_ATT_SILENT, effect.params[0]))
-            else:
-                self.tl = max(0, min(FM_TL_SILENT, effect.params[0]))
+            self._set_level(effect.params[0])
 
         elif kind == CoordFlag.PAN:
             self.pan = pan_side(effect.params)
@@ -90,6 +83,13 @@ class TrackState:
 
         elif kind in (CoordFlag.MOD_ON, CoordFlag.MOD_OFF):
             self.modulation_on = kind == CoordFlag.MOD_ON
+
+    def _set_level(self, level: int) -> None:
+        """The track's attenuation (PSG) or TL offset (FM), clamped to what the chip reads."""
+        if self.is_psg:
+            self.att = max(0, min(PSG_ATT_SILENT, level))
+        else:
+            self.tl = max(0, min(FM_TL_SILENT, level))
 
     @property
     def in_noise_mode(self) -> bool:

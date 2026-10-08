@@ -209,14 +209,14 @@ class _Fill:
 
 
 class ChannelWriter:
-    def __init__(self, ctx: WriterContext, channel: SmpsChannel, chan_cfg: ChannelConfig, is_dac: bool):
+    def __init__(self, ctx: WriterContext, channel: SmpsChannel, chan_cfg: ChannelConfig):
         self._ctx = ctx
         self._mod = ctx.mod
         self._config = ctx.config
         self._timeline = ctx.timeline
         self._channel = channel
         self._cfg = chan_cfg
-        self._is_dac = is_dac
+        self._is_dac = channel.header.channel_type == ChannelType.DAC   # by the song: Type 0 FM's drums are FM3
         self._is_psg = channel.header.channel_type == ChannelType.PSG
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._router = _ColumnRouter(ctx, chan_cfg.source, chan_cfg.mod_channel)
@@ -249,9 +249,9 @@ class ChannelWriter:
         self._fm_baked = fm_mode == "baked"
         self._psg_baked = ctx.psg_volume_mode == "baked"
         self._current_volume = chan_cfg.volume
-        if is_dac or (not self._is_psg and fm_mode == "off"):
+        if self._is_dac or (not self._is_psg and fm_mode == "off"):
             self._st.tl = 0          # neither mode reads the smpsHeaderFM volume byte
-        if self._is_psg or (self._fm_absolute and not is_dac):
+        if self._is_psg or (self._fm_absolute and not self._is_dac):
             self._current_volume = self._level_volume()
 
         # The sounding note, as _emit_volume and _release_rate read it: dB a unison chord adds
@@ -375,7 +375,10 @@ class ChannelWriter:
             if self._is_psg or self._fm_absolute:
                 self._current_volume = self._level_volume()
             elif not self._fm_baked:
-                moved = self._current_volume - eff.params[0] if kind == CoordFlag.ALTER_VOL else                     self._cfg.volume - (eff.params[0] - self._channel.header.volume)
+                if kind == CoordFlag.ALTER_VOL:
+                    moved = self._current_volume - eff.params[0]
+                else:                                   # SET_VOL: from the channel's header volume
+                    moved = self._cfg.volume - (eff.params[0] - self._channel.header.volume)
                 self._current_volume = max(0, min(64, moved))
         elif kind == CoordFlag.NOTE_FILL:
             self._note_fill = eff.params[0]
@@ -510,7 +513,7 @@ class ChannelWriter:
         cell.  Returns the EDx delay left: a sound inside a sample bank starts with 9xx instead."""
         plan = self._ctx.merge
         dac_inst, dac_note, region = self._router.drum(
-            tick, dac_cfg.mod_instrument, MOD_NOTE_MAP.get(dac_cfg.mod_note, ModNote.C3))
+            tick, dac_cfg.mod_instrument, MOD_NOTE_MAP[dac_cfg.mod_note])
         self._mod.set_note(dac_note, dac_inst)
         self._played(dac_inst, tick)
         self._last_inst, self._last_vol = dac_inst, self._sample_volume(dac_inst)

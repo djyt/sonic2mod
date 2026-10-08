@@ -4,12 +4,12 @@ core cannot import the chip packages that render its samples: they import core (
 instrument catalogue, audio).  It states what it needs here; convert.py hands the implementations in.
 
     convert.py ── SampleGenerators(fm=ym2612..., psg=sn76489..., fm_drums=ym2612...) ──► SmpsToModConverter
-                                                                         │ calls
-    ym2612/  sn76489/ ── implement ──► FmGenerator / PsgGenerator ◄──────┘
+                                                                                           │ calls
+    ym2612/  sn76489/ ── implement ──► FmGenerator / PsgGenerator / FmDrumGenerator ◄──────┘
          │
          └── import ──► core.plan, core.config, core.smps, core.audio
 
-Both return {MOD instrument: (int8 PCM bytes, sample rate)}.
+Each returns {MOD instrument: (int8 PCM bytes, sample rate)}.
 """
 
 from collections.abc import Mapping, Sequence

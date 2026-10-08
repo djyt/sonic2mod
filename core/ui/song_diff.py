@@ -15,7 +15,11 @@ _KIND_ORDER = (ChannelType.FM, ChannelType.DAC, ChannelType.PSG)
 
 def diff_counts(diff: SongDiff | ChannelDiff) -> str:
     """'onset 3  pitch 1', or '' when nothing differs."""
-    counts = diff.counts()
+    return _aspect_counts(diff.counts())
+
+
+def _aspect_counts(counts: Counter) -> str:
+    """'onset 3  pitch 1': each aspect that differs, in Aspect order."""
     return "  ".join(f"{a.value} {counts[a]}" for a in Aspect if counts[a])
 
 
@@ -28,7 +32,7 @@ def kind_verdicts(diff: SongDiff, kinds: Mapping[str, str], trusted: frozenset[s
     parts = []
     for kind in order:
         counts = sum((c.counts() for c in diff.channels if kinds.get(c.name, "") == kind), Counter())
-        found = "  ".join(f"{a.value} {counts[a]}" for a in Aspect if counts[a])
+        found = _aspect_counts(counts)
         parts.append(f"{kind or '?'} {found or 'same'}")
     line = " · ".join(parts)
     return line + (" (lift unfinished)" if any(k not in trusted for k in order) else "")

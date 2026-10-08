@@ -213,11 +213,11 @@ class _FmRenderer:
     def _chip_render(self, layers: list[tuple], synth_idx: int, sustain: float, target_rate: int):
         """render_layers, or the render an earlier conversion cached (core/render_cache.py)."""
         synth = self._synth
-        # Sonic 1's table keys as nothing: the keys every render had before songs had their own
-        table = None if self._fm_frequencies == FM_FREQUENCIES else self._fm_frequencies
         inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
                   synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps)
-        inputs += (table,) if table is not None else ()
+        # Sonic 1's table keys as nothing: the keys every render had before songs had their own
+        if self._fm_frequencies != FM_FREQUENCIES:
+            inputs += (self._fm_frequencies,)
         return self._cache.through(inputs, lambda: render_layers(
             layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
             opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps,
@@ -368,7 +368,7 @@ def generate_fm_samples(
     # GIL for the batch call, so the renders run truly in parallel; each worker thread
     # keeps its own OPN2 (see _thread_opn2).  The results are byte-identical to a serial
     # render and are consumed in job order, so the MOD does not depend on scheduling.
-    cache = RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
+    cache = _fm_cache(synth)
     renderer = _FmRenderer(synth, cache, loops, verbose, song.fm_frequencies)
     rendered: list[_Rendered] = []
     if jobs:
@@ -400,6 +400,11 @@ def generate_fm_samples(
     return {inst: (full_scale_int8(mono, dither[inst]), rate) for inst, (mono, rate) in raw_data.items()}
 
 
+def _fm_cache(synth: SynthesisSettings) -> RenderCache:
+    """The FM renders an earlier conversion kept (core/render_cache.py)."""
+    return RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
+
+
 def generate_fm_drums(
     drums: Sequence[FmDrumInstrument],
     synth: SynthesisSettings,
@@ -411,11 +416,12 @@ def generate_fm_drums(
 
     A drum sounds until the drum track's next hit: `ring_secs` is its longest such ring.  It is
     rendered for its program and the release after the stop (synth.release_padding), but never
-    past its ring; a program that never stops is rendered for its ring.  Each sample is
+    past its ring; a program that never stops is rendered for its ring, up to the frames it was
+    run for (core/rom/smpsz80/drums.py), where it ends still keyed.  Each sample is
     conditioned (shelf, DC block) and quantised to its full 8 bits like any FM render: its level is
     the sample_list volume's job.
     """
-    cache = RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
+    cache = _fm_cache(synth)
     out = {}
     for d in drums:
         ring = ring_secs.get(d.inst)

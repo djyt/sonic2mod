@@ -132,6 +132,7 @@ How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
 | `driver_tables.py` | Transcription of the Sonic 1 driver: FM / PSG frequency tables, `fm_note_index`, `psg_note_index`, `chip_pitch`, `psg_tone2_divider`, PSG envelopes (`SONIC1_ENVELOPES`), `SMPS_OP_TO_REG_OFFSET`, pan values, `SmpsDriver`.  Self-checks at import |
 | `names.py` | Note labels and the two spellings (`semitone_to_note_name`: driver's `Es`; `synth_note_name`: config's `F`), `parse_smps_note`, `parse_synth_note`, DAC names, flag macro names, `source_names` |
 | `song_prep.py` | The song as played: `apply_global_tempo_div` (`smpsSetTempoDiv` re-timing), `extend_looping_channels` |
+| `run_out.py` | `apply_run_out`: a driver's key-on run-out (Type 0 FM: 256 frames) as the walk's last step - the held note cut, a rest after |
 | `percussion.py` | `FmDrum`, `FmFrame`: a drum track's FM drum as the chip plays it, frame by frame (`SmpsSong.fm_drums`) |
 | `tempo.py` | `TempoSegment`, `tempo_schedule`: the frame each tick is read on; `NO_TEMPO_HOLDS` (SFX, a driver's no-stall tempo) |
 | `track.py` | `TrackState`: one track's driver state as its flags leave it |

@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 # Intermediate representation data classes
 # ---------------------------------------------------------------------------
 
+REST = 0x80           # nRst: the note byte that rests
+
+
 @dataclass
 class SmpsNote:
     note_value: int       # SMPS byte value (0x80=rest, 0x81=C0, etc.)
@@ -29,6 +32,9 @@ class SmpsNote:
     # channel re-keys at its EXISTING frequency — which differs from re-deriving it if a
     # smpsChangeTransposition landed in between (SndA8 - SS Goal does exactly that).
     is_retrigger: bool = False
+    # Shaped by the driver's key-on run-out (core/smps/run_out.py): a note cut short, or the rest the
+    # cut leaves.  Off the song's own rhythm: the row grid (core.plan.derive) leaves it out
+    run_out: bool = False
 
 
 class CoordFlag(IntEnum):
@@ -105,6 +111,8 @@ class SmpsSongHeader:
     tempo_divider: int = 1
     tempo_modifier: int = 5
     tempo_phase: int = 0       # frames the first TempoWait hold comes late (core/smps/tempo.py; Type 0 FM: 1)
+    key_run_out: int | None = None   # frames a note keys without an attacking read before the driver keys
+                                     # it off (core/smps/run_out.py; Type 0 FM: 256); None: never
     channels: list = field(default_factory=list)  # list of SmpsChannelHeader
     # True when parsed from smpsHeader*SFX* macros.  SFX have no tempo modifier byte and run
     # one tick per V-int unconditionally — the music (modifier-1)/modifier rate correction

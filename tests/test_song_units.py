@@ -122,6 +122,23 @@ class OtherDrivers(unittest.TestCase):
         sonic = tempo_schedule(2)[0]
         self.assertEqual([f for f in range(8) if sonic.holds(f)], [1, 3, 5, 7])
 
+    def test_a_note_held_past_the_run_out_is_keyed_off_there(self):
+        # A run-out of 10 frames at a tick a frame: a 30-tick note plays 10, then rests; the tie
+        # after it rests too, and its read frame does not count
+        header = SmpsSongHeader(fm_count=1, tempo_modifier=NO_TEMPO_HOLDS, key_run_out=10,
+                                channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=4),
+               Op(OpKind.BYTE, value=0xE7), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=30), Op(OpKind.STOP)]
+        song = song_from_code(header, SmpsCode(ops), [])
+        notes = [(ev.tick_position, ev.note.duration, ev.note.is_rest) for ev in song.channels[0].events if ev.note]
+        self.assertEqual(notes, [(0, 4, False), (4, 7, False), (11, 23, True)])   # 10 counted frames + the tie's read
+
+    def test_no_run_out_leaves_a_long_note_whole(self):
+        header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x7F), Op(OpKind.STOP)]
+        notes = [ev.note for ev in song_from_code(header, SmpsCode(ops), []).channels[0].events if ev.note]
+        self.assertEqual([(n.duration, n.is_rest) for n in notes], [(0x7F, False)])
+
     def test_no_tempo_holds_reads_a_tick_every_frame(self):
         segment = tempo_schedule(NO_TEMPO_HOLDS)[0]
         self.assertEqual((segment.tick_at(10_000), segment.frame_of(10_000), segment.holds(10_000)),

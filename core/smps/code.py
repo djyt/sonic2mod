@@ -21,10 +21,20 @@ from enum import Enum, auto
 from .driver_tables import DEFAULT_DRIVER, PsgEnvelope, SmpsDriver, psg_voice_name
 from .names import SMPS_DAC_NAMES_REVERSE
 from .percussion import FmDrum
-from .song import CoordFlag, SmpsChannel, SmpsChannelHeader, SmpsEffect, SmpsEvent, SmpsNote, SmpsSong, SmpsSongHeader
+from .run_out import apply_run_out
+from .song import (
+    REST,
+    CoordFlag,
+    SmpsChannel,
+    SmpsChannelHeader,
+    SmpsEffect,
+    SmpsEvent,
+    SmpsNote,
+    SmpsSong,
+    SmpsSongHeader,
+)
 
-# Track bytes: durations below the rest, notes from it to nB7, flags above.
-REST = 0x80           # nRst
+# Track bytes: durations below the rest (REST, song.py), notes from it to nB7, flags above.
 LAST_NOTE = 0xDF      # nAs7
 NO_ATTACK = 0xE7      # smpsNoAttack
 
@@ -111,6 +121,7 @@ def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list,
     song = SmpsSong(header=header, channels=channels, voices=voices)
     if psg_envelopes is not None:
         song.psg_envelopes = dict(psg_envelopes)
+    apply_run_out(song)
     return song
 
 

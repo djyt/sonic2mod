@@ -63,6 +63,30 @@ def _parse_vibrato(v) -> int:
     return (int(s[0], 16) << 4) | int(s[1], 16)
 
 
+# The keys each kind of entry takes: any other is an error, as at the top level (a typo would be ignored)
+_SAMPLE_KEYS = frozenset({"loop_drift_db", "loop_min_ms", "loop_start_ms", "loop_decay", "dither", "name"})
+_RANGE_KEYS = frozenset({"low", "high", "mod_instrument", "root", "synth_root", "vibrato"}) | _SAMPLE_KEYS
+_PSG_KEYS = frozenset({"mod_instrument", "root", "synth_root", "low", "high", "tone2_n", "envelope",
+                       "base_volume", "vibrato", "dither", "name", "type", "noise_rate"})
+_PSG_MAP_KEYS = _PSG_KEYS | {"envelopes"}
+_CHANNEL_KEYS = frozenset({"source", "mod_channel", "transpose", "instrument", "volume", "enabled"})
+_DAC_KEYS = frozenset({"name", "mod_instrument", "mod_note", "saturate_db", "merge_saturate_db"})
+_GROUP_KEYS = frozenset({"primary", "followers", "cut_primary", "max_composites", "fill_lost", "fill_cut", "bank",
+                         "mod_channel", "mix_note", "fill", "cut_after", "mix_at", "loop_mix", "fm_on_chip",
+                         "treble_shelf_db", "treble_shelf_hz", "limit_db"}) | _SAMPLE_KEYS
+_BLOCK_KEYS = frozenset({"patterns", "groups", "drop"})
+_BREAK_KEYS = frozenset({"pattern", "row"})
+
+
+def _check_keys(d, known: frozenset, context: str) -> None:
+    """`d` is a mapping holding only `known` keys."""
+    if not isinstance(d, dict):
+        raise ValueError(f"Config error: {context} must be a mapping (got {d!r})")
+    unknown = sorted(str(k) for k in set(d) - known)
+    if unknown:
+        raise ValueError(f"Config error: unknown key(s) in {context}: {', '.join(unknown)}")
+
+
 def _opt(d: dict, key: str, parse_fn):
     """Return parse_fn(d[key]) if key is present, otherwise None."""
     return parse_fn(d[key]) if key in d else None
@@ -86,6 +110,7 @@ def _mod_note(v: str, context: str) -> 'ModNote':
 
 def _parse_instrument_range(entry: dict, context: str = "voice_map entry") -> "InstrumentRange":
     """Parse a single InstrumentRange dict from YAML."""
+    _check_keys(entry, _RANGE_KEYS, context)
     low  = parse_smps_note(_require(entry, 'low',  context))
     high = parse_smps_note(_require(entry, 'high', context))
 
@@ -297,6 +322,7 @@ def format_patterns(patterns) -> str:
 def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
     if not isinstance(g, dict):
         raise ValueError(f"{ctx}: a merge group is a mapping with primary: and followers:")
+    _check_keys(g, _GROUP_KEYS, ctx)
     followers = g.get('followers', [])
     if isinstance(followers, str):
         followers = [followers]
@@ -406,6 +432,7 @@ def _parse_psg_voice_entry(v: dict, default_envelope: str, context: str = "psg_v
     changes the envelope, and an envelope that needs its own sample is named under
     psg_map[<form>].envelopes.  A noise type here is therefore a config error.
     """
+    _check_keys(v, _PSG_KEYS, context)
     if v.get('type', 'tone') != 'tone' or 'noise_rate' in v:
         raise ValueError(
             f"{context}: psg_voice_map entries are tones; a noise-mode envelope variant goes under "
@@ -493,6 +520,7 @@ def parse_channels(data: dict) -> list[ChannelConfig]:
     out = []
     for i, ch_data in enumerate(data.get('channels', [])):
         ctx = f"channels[{i}]"
+        _check_keys(ch_data, _CHANNEL_KEYS, ctx)
         out.append(ChannelConfig(
             source=_require(ch_data, 'source', ctx),
             mod_channel=_require(ch_data, 'mod_channel', ctx),
@@ -509,10 +537,14 @@ def parse_dac_samples(data: dict) -> list[DacSampleConfig]:
     out = []
     for i, dac_data in enumerate(data.get('dac_samples', [])):
         ctx = f"dac_samples[{i}]"
+        _check_keys(dac_data, _DAC_KEYS, ctx)
+        mod_note = str(dac_data.get('mod_note', 'C3'))
+        if mod_note not in MOD_NOTE_MAP:
+            raise ValueError(f"{ctx}: mod_note {mod_note!r} is not a MOD note (C1 .. B3, like F2, Fs2 or F#2)")
         out.append(DacSampleConfig(
             name=_require(dac_data, 'name', ctx),
             mod_instrument=_require(dac_data, 'mod_instrument', ctx),
-            mod_note=dac_data.get('mod_note', 'C3'),
+            mod_note=mod_note,
             saturate_db=max(0.0, float(dac_data.get('saturate_db', 0.0))),
             merge_saturate_db=_opt(dac_data, 'merge_saturate_db', lambda v: max(0.0, float(v))),
         ))
@@ -556,6 +588,7 @@ def parse_psg_map(data: dict, filepath) -> dict:
     for k, psg_entry in data.get('psg_map', {}).items():
         form_byte = int(str(k), 0)
         ctx = f"psg_map[{k}]"
+        _check_keys(psg_entry, _PSG_MAP_KEYS, ctx)
         inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"
         noise_rate = form_byte & 0x03
         for key, derived in (('type', inferred_type), ('noise_rate', noise_rate)):
@@ -614,6 +647,7 @@ def parse_merge_groups(data: dict) -> tuple[list[MergeGroup], set, dict]:
         ctx = f"merge_patterns[{i}]"
         if not isinstance(blk, dict):
             raise ValueError(f"{ctx}: a block is a mapping with patterns: and groups:")
+        _check_keys(blk, _BLOCK_KEYS, ctx)
         pats = parse_patterns(_require(blk, 'patterns', ctx), ctx)
         named |= pats
         pdrop = blk.get('drop', []) or []
@@ -626,6 +660,8 @@ def parse_merge_groups(data: dict) -> tuple[list[MergeGroup], set, dict]:
 
 def parse_pattern_breaks(data: dict) -> list[tuple[int, int]]:
     """`mod_pattern_breaks:` [{pattern: N, row: R}, ...] as (pattern, row)."""
+    for i, b in enumerate(data.get('mod_pattern_breaks', [])):
+        _check_keys(b, _BREAK_KEYS, f"mod_pattern_breaks[{i}]")
     return [(int(_require(b, 'pattern', f"mod_pattern_breaks[{i}]")),
              int(_require(b, 'row', f"mod_pattern_breaks[{i}]")))
             for i, b in enumerate(data.get('mod_pattern_breaks', []))]

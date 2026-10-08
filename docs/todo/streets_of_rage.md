@@ -268,17 +268,32 @@ a song pass (the `run_out` precedent).
   rows (was: doubled).  No Moonwalker / Golden Axe song changes (each fits at its exact grid).
   Speeds stay 2-8: a 13-frame grid (`$91`) wants speed 13 for BPM 150 exactly (Phase 4).
 
-### Phase 1: read the ROM
-- [ ] 1.1 `core/rom/smps68k/mucom.py`: the variant, pinned by SHA-1.  Locate (pointer block or the
-  `lea $7288C` that loads the index), header, voices, FM / PSG / volume tables, envelopes.
-- [ ] 1.2 The SoR grammar module: notes, rests, ties, flags per kind, loops (start label, end
-  `LOOP`, `LOOP_EXIT`), `$00` stop, `$FF` jump.
-- [ ] 1.3 `rom_import.py` lists the 16 songs; the SFX index is listed, not read.
-- [ ] 1.4 Tests: hand-built bytes per flag.  With the ROM: every song decodes, flag counts as § 1.4.
+### Phase 1: read the ROM (done 2026-10-09)
+- [x] 1.1 `SmpsDriver.MUCOM` (`smps68k_mucom`), pinned by SHA-1.  Each table found by the code
+  that reads it (a lea after `subi.b #$81,d0` ...); PSG rows 2-6 checked equal to Sonic 1's.
+  `HeaderLayout`: no tempo, 3- / 4-byte entries, `psg_slots` (PSG3 PSG2 PSG1).  `VoiceLayout`:
+  register order, FB/ALG last.  `fm_frequencies`: 97 words (B7 included).  Envelopes: `$83`
+  is `EnvelopeCommand.MUTE` (hold att 15).  The volume table waits for Phase 2.
+- [x] 1.2 The grammar: notes, rests, `$00` stop, ties (`NO_ATTACK`), loops (`$F5` a body label,
+  `$F6` `LOOP`, `$FE` `OpKind.LOOP_EXIT`), `$FF` jump, pan, vibrato (`MOD_SET`, count + 1),
+  detune that sets, PSG noise (`PSG_FORM $E7`), drum samples (`CoordFlag.DAC_SAMPLE`, notes
+  `SELECTED_SAMPLE`).  Read and dropped (reported): volume, volume step, gate, register write,
+  detune that adds (Phase 2); LFO, FM3 special mode (decision 3).
+  The walk: `LOOP_EXIT` (out on the loop's last pass, the tie dropped), a replay or call hands
+  its tie state back (no Sonic / Moonwalker / Golden Axe song changes), DAC notes play the
+  selected sample.
+- [x] 1.3 `rom_import.py`: the 17 index entries read; the 48 SFX listed "not read (music only)".
+- [x] 1.4 `tests/test_rom_mucom.py`: the grammar on hand-built bytes; with the ROM: tables, every
+  song on its chip channels, what is dropped, envelope 3, `$89`'s loop.
+- Read through the real path, every FM key-on of the 15 rips is on its frame.  Not yet: the
+  jump back clears a tie (`$8F` FM1 / FM4 / FM5: the note at the loop target attacks on each
+  replay, tied on the first pass).
+- `$89`'s `$F6` without `$F5`: the walk unrolls a loop from its `$F6`, so it plays as written
+  (16 passes) with no data fix: 6.1 is done by this.
 
 ### Phase 2: the walk
-- [ ] 2.1 IR flags and walk rules of 2.2: volume steps, detune add, DAC sample, loop exit, noise
-  pitch.
+- [ ] 2.1 IR flags and walk rules of 2.2: volume steps, detune add, noise pitch, the tie the
+  jump back drops.
 - [ ] 2.2 Song passes: gate, voice patches.
 - [ ] 2.3 Yardstick: `vgm_lift --all --configs configs/streets_of_rage` (pairs in `rips.yaml`).
   FM onsets, lengths and notes must equal the rips, as the throwaway player did.
@@ -302,7 +317,7 @@ a song pass (the `run_out` precedent).
 - [ ] 5.3 Vibrato against `vgm_compare`'s vibrato rate and depth.
 
 ### Phase 6: close
-- [ ] 6.1 `$89`: a `RomFix` that opens the noise track's outer loop (decision 2).
+- [x] 6.1 `$89`: plays as written without a fix (Phase 1).
 - [ ] 6.2 `docs/smps_variants.md` section (the facts of part 1, moved); `docs/architecture.md`;
   CLAUDE.md.
 

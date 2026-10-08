@@ -121,6 +121,7 @@ class HeaderLayout:
     tempo: bool = True                       # divider.b modifier.b after the counts; without: a tick a frame
     fm_entry: EntryLayout = SMPS_FM_ENTRY
     psg_entry: EntryLayout = SMPS_PSG_ENTRY
+    psg_slots: tuple[str, ...] = ()          # each PSG entry's chip channel; () = header order (PSG1 first)
     never_holds: int | None = None           # the tempo byte that never stalls (Type 0 FM's 0)
     tempo_phase: int = 0                     # frames the first hold comes late (Type 0 FM: 1)
     key_run_out: int | None = None           # frames a note keys without an attacking read (Type 0 FM: 256)

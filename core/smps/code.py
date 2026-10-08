@@ -40,6 +40,7 @@ FIRST_NOTE = 0x81     # nC0
 LAST_NOTE = 0xDF      # nAs7
 FIRST_FLAG = LAST_NOTE + 1     # $E0: coordination flags from here
 NO_ATTACK = 0xE7      # smpsNoAttack
+SELECTED_SAMPLE = 0x100   # a drum track's note that plays the sample DAC_SAMPLE chose (no SMPS byte)
 
 
 def signed_byte(value: int) -> int:
@@ -56,6 +57,7 @@ class OpKind(Enum):
     CALL = auto()      # name: the target
     RETURN = auto()
     LOOP = auto()      # name: the target; value: the play count; index: the counter's slot
+    LOOP_EXIT = auto() # name: its loop's target; on the loop's last pass, out past the loop's end
     JUMP = auto()      # name: the target
     STOP = auto()
 
@@ -189,8 +191,8 @@ def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
 
 
 # What a walk hands back to the walk it was called from:
-# (tick, last_duration, pending note, last_note_value, tempo divider)
-_WalkState = tuple[int, int, SmpsNote | None, int, int]
+# (tick, last_duration, pending note, last_note_value, tempo divider, smpsNoAttack pending)
+_WalkState = tuple[int, int, SmpsNote | None, int, int, bool]
 
 
 class _Walker:
@@ -211,6 +213,9 @@ class _Walker:
         self._label_ticks: dict[str, int] = {}
         self._label_events: dict[str, int] = {}
 
+        self._passes: dict[str, int] = {}          # each loop being replayed (by its body's label): the pass
+        self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
+
     def walk(self, tempo_divider: int) -> SmpsChannel:
         channel = self._channel
         start = self._header.label
@@ -229,6 +234,11 @@ class _Walker:
             channel.loop_tick = self._label_ticks.get(channel.loop_label)
             channel.loop_event_index = self._label_events.get(channel.loop_label)
         return channel
+
+    def _loop_end(self, i: int, body: str) -> int | None:
+        """The index of the LOOP op from `i` on that replays `body`: the loop a LOOP_EXIT leaves."""
+        return next((j for j in range(i, len(self._ops))
+                     if self._ops[j].kind is OpKind.LOOP and self._ops[j].name == body), None)
 
     def _mark_label(self, label: str, tick: int, event_index: int) -> None:
         """The walk reached `label` at `tick`, before event `event_index`; the first time counts."""
@@ -271,7 +281,7 @@ class _Walker:
         i = start
         while i < len(self._ops):
             if stop is not None and i >= stop:
-                return tick, last_duration, pending, last_note_value, tempo_div
+                return tick, last_duration, pending, last_note_value, tempo_div, no_attack
 
             op = self._ops[i]
             i += 1
@@ -296,17 +306,17 @@ class _Walker:
                 pending = None
 
             if op.kind is OpKind.STOP:
-                return tick, last_duration, None, last_note_value, tempo_div
+                return tick, last_duration, None, last_note_value, tempo_div, no_attack
 
             if op.kind is OpKind.RETURN:      # only reached while a call is inlined
-                return tick, last_duration, None, last_note_value, tempo_div
+                return tick, last_duration, None, last_note_value, tempo_div, no_attack
 
             if op.kind is OpKind.JUMP:
                 # Back to code this channel walked (or an unknown target): the loop, the end
                 if op.name in seen or op.name not in self._labels:
                     channel.has_jump = True
                     channel.loop_label = op.name
-                    return tick, last_duration, None, last_note_value, tempo_div
+                    return tick, last_duration, None, last_note_value, tempo_div, no_attack
 
                 # Forward into code not walked yet: followed, and the label is reached here, now -
                 # a later jump back to it loops from this tick (Labyrinth FM4 into FM3's code)
@@ -320,17 +330,30 @@ class _Walker:
                 if op.name not in self._labels:
                     continue
                 body = self._labels[op.name] + 1
-                for _ in range(op.value - 1):
-                    tick, last_duration, body_pending, last_note_value, tempo_div = self._walk(
+                for repeat in range(2, op.value + 1):
+                    self._passes[op.name] = repeat
+                    tick, last_duration, body_pending, last_note_value, tempo_div, no_attack = self._walk(
                         body, tick, last_duration, no_attack, stop=i - 1,
                         last_note_value=last_note_value, seen=seen, tempo_div=tempo_div)
                     tick, last_note_value = self._finalize_pending(body_pending, tick, last_duration, last_note_value)
+                self._passes.pop(op.name, None)
+                continue
+
+            if op.kind is OpKind.LOOP_EXIT:
+                # On its loop's last pass: out past the loop's end, a tie dropped (Streets of Rage's $FE)
+                end = self._loop_end(i, op.name)
+                if end is None or self._passes.get(op.name, 1) < self._ops[end].value:
+                    continue
+                no_attack = False
+                if op.name in self._passes:                 # the last replay ends here
+                    return tick, last_duration, None, last_note_value, tempo_div, no_attack
+                i = end + 1                                 # a loop of one pass: past its end
                 continue
 
             if op.kind is OpKind.CALL:
                 if op.name not in self._labels:
                     continue
-                tick, last_duration, pending, last_note_value, tempo_div = self._walk(
+                tick, last_duration, pending, last_note_value, tempo_div, no_attack = self._walk(
                     self._labels[op.name] + 1, tick, last_duration, no_attack,
                     last_note_value=last_note_value, tempo_div=tempo_div)
                 continue
@@ -349,7 +372,7 @@ class _Walker:
 
         # The end of the code: the pending note still plays
         tick, last_note_value = self._finalize_pending(pending, tick, last_duration, last_note_value)
-        return tick, last_duration, None, last_note_value, tempo_div
+        return tick, last_duration, None, last_note_value, tempo_div, no_attack
 
     def _effect(self, effect: SmpsEffect, tick: int, tempo_div: int) -> int:
         """Keep a flag as an event; the tempo divider it leaves.
@@ -360,6 +383,8 @@ class _Walker:
         """
         if effect.flag == CoordFlag.CHAN_TEMPO_DIV:
             tempo_div = effect.params[0]
+        if effect.flag == CoordFlag.DAC_SAMPLE:
+            self._dac_sample = effect.params[0]
         self._channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
 
         # A voice with its own pan byte: the driver writes B4 as it loads the voice
@@ -378,7 +403,10 @@ class _Walker:
             self._note(cur, op.value)
 
     def _note(self, cur: _Cursor, val: int) -> None:
-        """A rest, note or (DAC channel) sample."""
+        """A rest, note or (DAC channel) sample; SELECTED_SAMPLE the one DAC_SAMPLE chose (none yet:
+        the driver plays nothing)."""
+        if val == SELECTED_SAMPLE:
+            val = REST if self._dac_sample is None else self._dac_sample
         if val == REST:
             note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
         elif cur.is_dac and val in self._dac_names:

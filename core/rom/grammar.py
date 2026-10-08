@@ -49,6 +49,12 @@ def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, ki
         assert op is not None
         return Instruction((op,), 1, True)
 
+    return flag_instruction(memory, address, variant, kind)
+
+
+def flag_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:
+    """The coordination flag at `address`, as the `kind` track's flag table says."""
+    byte = memory.byte(address)
     spec = variant.flags[kind].get(byte)
     if spec is None:
         raise RomError(f"${address:X}: ${byte:02X} is no {variant.name} coordination flag")

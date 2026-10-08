@@ -319,16 +319,172 @@ A flag outside the variant's table, or a pointer outside the ROM: fail, naming t
 (`RomError` in `core/rom/tracks.py`, `RomImage` reads).
 
 ### Later
-Other Sonic 1 builds and hacks (same driver, other addresses); Golden Axe II (Type 1b);
-`input/roms/` also holds Golden Axe (Rev A) and OutRun (SMPS Z80 Type 1 DAC: Phase 3).
+Other Sonic 1 builds and hacks (same driver, other addresses); Golden Axe II (Type 1b).
+SMPS Z80: Phase 3.
 
 ---
 
-## Phase 3: SMPS Z80 (Sonic 2, Sonic 3 & Knuckles)
+## Phase 3: SMPS Z80
 
-Z80 bank pointers (little-endian), Saxman compression (Sonic 2), Z80 DAC tables, the tempo
-overflow algorithm (shared with `vgz_conversion.md` 2.3).  Each needs a ROM + disassembly pair
-(s2disasm, skdisasm) to accept against, as Phase 1 has.
+First target: **Golden Axe (World) (Rev A)** - `GM 00054018-01`, SMPS Z80 **Type 0 FM** (the
+user's name: an early, simpler Type 1 FM - Sonic Retro's class for the FM-drum Z80 games, Flicky,
+Fighting Masters; Golden Axe is not listed).  Branch `smps_z80_type0fm`.  Next: the real Type 1
+FM; OutRun (Type 1 DAC, `input/roms/`).  Later: Sonic 2, S3K (Saxman, the tempo overflow
+algorithm; each needs a ROM + disassembly pair, as Phase 1 had).
+
+### Probe (2026-10-08)
+
+Read from the Z80 driver with `z80dis` (`pip install z80dis`; capstone has no Z80).
+
+- **Driver:** copied uncompressed by the 68k (`$34DC`): `$DF8` bytes, ROM `$1D2F0` -> Z80 `$0000`.
+  The 68k sets the bank once (`$1C00` = 1, `$1C01` = `$80`): Z80 `$8000`-`$FFFF` = ROM
+  `$18000`-`$1FFFF`.  Every song, voice and pointer lives in that bank.
+- **Pointers:** absolute Z80 addresses, little-endian (68k: big-endian, Sonic 1 relative).
+- **Bank header** (`$8000`, words): `+0` priorities `$8016`, `+4` music index `$8069` (15 songs,
+  `$81`-`$8F`), `+6` SFX index `$8087` (`$90`-`$B9`), `+8` PSG envelopes `$800E`.  Queue commands
+  `$E0`-`$E3`: fade, stop, ?, SEGA voice (DAC, Z80 `$0F00`).
+- **Song header:** Sonic 1's fields (voices, FM count, PSG count, divider, tempo; FM entry: ptr,
+  transpose, volume; PSG entry 6 bytes).  Every song: 6 FM, 0 PSG.
+- **Track order** (Z80 `$0501`): drum controller, FM1, FM2, FM4, FM5, FM6.  FM3 belongs to the drums.
+- **Drum controller** (Z80 `$0899`): its notes are not pitches.  Low nibble n -> FM drum n on FM3,
+  bits 4-6 -> PSG drum (none used).  A drum is a record (Z80 `$096B`, 14: program ptr,
+  transpose, volume, voice index into `$0987`) and a program: SMPS bytecode in the driver, run at
+  divider 1, level = record volume + controller volume.  Programs use slide mode (`$FC 01`: note,
+  slide, skipped byte, duration; a signed fnum step per frame, octave wrap at `$27E` / `$4FE`) and
+  `$E7` tie chains of 1-2 frame notes.  A new hit restarts FM3's program.
+- **Flags** (Z80 `$0B65`, `$E0`-`$FF`).  Handler entered at the first operand, `INC DE` after:
+  an unhandled flag is a 1-operand no-op.
+
+  | byte | Type 0 FM | Sonic 1 | music uses |
+  |------|-----------|---------|------------|
+  | `$E0`-`$E4`, `$E8`-`$EE`, `$F1`, `$F3`-`$F5`, `$FA`, `$FF` | no-op, 1 operand (no pan, fill, modulation) | various | - |
+  | `$E5` `$E6` | alter volume | tempo div / alter volume | - |
+  | `$E7` | no attack (FM only) | same | 256 |
+  | `$EF` | set voice | same | 131 |
+  | `$F0` | **set volume** (absolute) | modulation | 16 |
+  | `$F2` | stop | same | 25 |
+  | `$F6` `$F7` `$F8` | jump, loop, call | same | 65, 199, 94 |
+  | `$F9` | return | FM1 release rate | 34 |
+  | `$FB` | transposition (add) | - | 2 |
+  | `$FC` | slide mode on / off | - | drums only |
+  | `$FD` | raw-frequency mode (note = fnum word) | - | - |
+  | `$FE` | FM3 special mode, 4 operands | - | - |
+
+- **Voice:** 26 bytes: `$B0`, `$B4` (pan, AMS, FMS: **pan is in the voice**), TL x4, DT/MUL,
+  RS/AR, AM/D1R, D2R, SL/RR; register offsets 0, 8, 4, C.  Sonic 1: 25 bytes, TL last, no pan.
+  Volume adds to the carriers' TL (`$0C09`), as Sonic 1.
+- **Pitch:** FM table Z80 `$07D9`, 96 words, note `$81` = C0 as Sonic 1, but every note above C0
+  8-16 cents flat (mean -11).  PSG table `$074D` (no song uses the PSG).
+- **Tempo:** TempoWait as Sonic 1 (a stall every `tempo` frames), but **tempo 0 = no stall**
+  (Death Adder).  NTSC: V-int; PAL: YM timer B `$CB` (62.8 Hz).  The rips run at 60 Hz.
+- **Songs and rips** (`reference/vgz/golden_axe/`, by FM1's opening notes): `$81` Wilderness,
+  `$82` Turtle Village 1, `$83` Turtle Village 2, `$84` Path of Fiend, `$85` Death Adder, `$86`
+  Battle Field, `$87` Showdown, `$88` Game Over, `$89` The Battle, `$8B` Theme of Thief, `$8C` Old
+  Map, `$8D` Conclusion, `$8E` Sutakora, Sassa!.  `$8A`, `$8F`: stubs (every track one stop).
+  The 15 decode into contiguous code, every pointer inside the bank.
+
+### Architecture
+
+What differs between variants, and where it lives (after 3.0):
+
+| Axis | Sonic 1 / Type 1a | Type 0 FM | Lives in |
+|------|-------------------|-----------|----------|
+| addressing | 68k, BE, relative | Z80 bank window, LE, absolute | `SoundMemory` (`smps68k/memory.py`) |
+| locating | `Go_` block scan | driver blob + bank header | `SmpsVariant.locate` (`smps68k/locate.py`) |
+| header | DAC + FM + PSG | drums + FM, channel order table | `header.py` (3.3: a header layout) |
+| flags | table | table + note modes (slide, raw) | `SmpsVariant.flags`; modes: 3.3 |
+| voice | 25 bytes | 26, pan inside | `SmpsVariant.voice_layout` (3.3: the `$B4` byte) |
+| pitch | Sonic 1's table | the driver's | `core/smps/driver_tables.py` (3.1, 3.4) |
+| tempo 0 | 256 frames | never | `core/smps/tempo.py` (3.1) |
+| percussion | DAC PCM | FM drum programs | `SmpsVariant.dac` (`smps68k/dac.py`; 3.5) |
+| envelopes | `Go_` PSG_Index | bank header | `SoundIndex.envelopes` (locate), `envelopes.py` |
+
+Generic readers driven by a variant object, each family in its own package.  Each layer imports
+only the layers below it:
+
+```
+ core/source ──read_rom_song──> core/rom ──SongCode──> core/smps (walk, IR)
+
+ core/rom/
+   song.py  detect.py                  locate_sounds, read_rom_code / read_rom_song, dac_samples;
+      │                                detect_variant (SHA-1 pin, else the one that reads every song)
+   variants.py                         the registry: SmpsDriver -> variant, SHA-1 pins, data_fixes
+      │
+   smps68k/                            sonic1.py type1a.py common.py (flags, voice layout, rev01
+      │                                fixes)  memory.py  locate.py (Go_)  dac.py kosinski.py
+   smpsz80/  (3.2)                     type0fm.py  memory.py (bank window)  locate.py  drums.py
+      │
+   header.py tracks.py voices.py       generic readers: bytes -> IR, driven by SoundMemory and
+   envelopes.py                        the variant; no family's facts
+      │
+   variant.py flags.py memory.py       the vocabulary: SmpsVariant, VoiceLayout, SoundIndex,
+   fixes.py image.py                   DacSample; FlagSpec; SoundMemory; RomFix; RomImage
+```
+
+- `SoundMemory`: the driver's view of the ROM.  Addresses stay ROM offsets; `word`,
+  `header_pointer`, `code_pointer` read pointer values as the driver does.  Readers never see byte
+  order, relative pointers or banks.
+- `SmpsVariant`: one frozen object per driver: memory, `locate(rom)`, flags, envelope commands,
+  voice layout, DAC names and samples, the ROMs it is known in (SHA-1 -> data fixes).  Readers
+  ask it, never branch on its name.
+- Families build variants from the vocabulary and the readers (`locate` checks headers with
+  `is_music_header`); `detect.py` / `song.py` reach them through `variants.py`.
+- `core/smps` stays variant-free: the IR states what the song does (below), not which driver.
+
+IR additions (`core/smps`), each generic:
+
+| Addition | Why | Precedent |
+|----------|-----|-----------|
+| chip channel on every channel header | source names FM1 FM2 FM4 FM5 FM6 + FM3 drums, as the rip names them | SFX `hw_channel` |
+| `CoordFlag.SET_VOL` | `$F0`: absolute volume; `CoordFlag` is keyed by Sonic's bytes, so a value outside `$E0`-`$FF` | - |
+| `SmpsVoice.pan` (the `$B4` byte, optional) | the level law needs L/R power; applied on set voice | `PAN` effect |
+| `SmpsSong.fm_frequencies` (None: Sonic 1's) | -11 cents; playback, detune, rendering read it | `psg_envelopes` |
+| tempo modifier None = no stall | front ends map their 0 (Sonic 1: 256 frames) | - |
+| percussion kit on the song | a drum channel's bytes name sounds; the kit says what each is | `dac_names` |
+
+**Drums (decided 2026-10-08: B).**  A hit is 1-6 frames of tied pitch steps and slides, below a
+MOD row, so each drum is a one-shot sample, as a DAC sample: the program rendered on the YM2612
+frame by frame (voice, fnum per frame, key-off at its stop).  Exact, one instrument per drum; the
+drum channel works as the DAC channel does.  Needs a frame-scheduled FM render in `ym2612/`,
+handed to the converter like the other generators.  (Rejected, A: FM3 as notes - slide and
+frame-level ties in the IR and converter, lost at row resolution anyway.)
+
+Percussion becomes a kit of sound sources: PCM (Sonic 1, Moonwalker, OutRun) or FM program
+(Type 0 FM); the config's `dac_samples` derivation and the DAC channel's writing serve both.
+
+### Work
+
+Each item lands with every baseline byte-identical unless it says otherwise.
+
+- [x] **3.0 Refactor, no behaviour change** (2026-10-08).  The layout above; `RomDriver` ->
+  `SmpsVariant`, `DRIVERS` -> `VARIANTS`, `detect_driver` -> `detect_variant`, `driver=` ->
+  `variant=`; `SoundIndex.envelopes` holds the envelopes' addresses (the 68k's PSG_Index is read by
+  `locate`); `decode_tracks(memory, starts, variant, splices)`.  Verified: regression, tool
+  regression, 253 unit tests, `rom_import.py` (listings, `--compare` 68 of 68, `--asm`, `--dac`) for
+  both ROMs, the 22 Moonwalker MODs: byte-identical.  Changed: a ROM no variant locates names each
+  attempt (Golden Axe, OutRun).
+  Found, not fixed (predates this): `complete_config` rewrites the minimal configs' shared
+  `dac*.raw` with `write_bytes`, so parallel conversions of two Moonwalker songs can read a
+  truncated sample (an empty DAC slot; seen on 2 of 22).  `measure_volumes.py` runs in parallel.
+- [ ] **3.1 IR additions** above, Sonic 1 / Type 1a values stated where they had defaults (chip
+  channel, tempo 0 -> 256).  `source_names` reads the chip channel.
+- [ ] **3.2 Z80 memory + locate.**  `smpsz80/`: `memory.py` (bank window, LE); `locate.py`: the
+  driver blob by its LE FM table, the bank by its header's shape (music entries at plausible
+  headers); SHA-1 pin.  `rom_import.py` lists Golden Axe's 15 songs and 42 SFX.
+- [ ] **3.3 Type 0 FM reading.**  `smpsz80/type0fm.py`: flags, track order, 26-byte voices, `$F0` ->
+  `SET_VOL`, the driver's FM table -> `fm_frequencies`.  All 15 songs -> `SmpsSong`; `$FC` / `$FD` /
+  `$FE` in a song refused.  `--asm`: refused for this variant (no SMPS2ASM spelling).
+- [ ] **3.4 Pitch from the song's table:** playback, detune, `ym2612` rendering.
+- [ ] **3.5 Drums** (B): `smpsz80/drums.py` decodes the 14 programs; the kit; the render; the MOD
+  drum channel.  Check: each drum sample against the rips' FM3.
+- [ ] **3.6 Configs + yardstick.**  `configs/golden_axe/`: 13 minimal configs, `rips.yaml`;
+  `vgm_pitch_audit` clean, `measure_volumes.py --rips`, `vgm_compare` per song.
+- [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice
+  layout, drum programs); ROM tests skip without it.  No regression cases yet (the user's call).
+- [ ] **3.8 Docs.**  `architecture.md` § 3; every variant's driver facts in one home
+  (`docs/smps_variants.md`: Type 1a's from Phase 2, Type 0 FM's from here), this file keeps the plan.
+
+Out of scope: SFX (`$90`-`$B9`), PSG drums (unused), PAL timer B, the SEGA voice.
 
 ---
 

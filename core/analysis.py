@@ -34,7 +34,7 @@ PARTIAL_EFFECTS = {
 }
 
 # Known Sonic 1 DAC samples: suggested MOD note and the rate real hardware plays them at - the
-# Z80 loop's cycle count (core/rom/dac.py, exact from the ROM's code) less the 68k's once-a-frame
+# Z80 loop's cycle count (core/rom/smps68k/dac.py, exact from the ROM's code) less the 68k's once-a-frame
 # stopZ80 (~5 %; each song's own share is measured in its VGZ, which the configs' finetunes
 # follow).  The VGZ rips' emulator runs the loop 2-3 % fast: their rates are not the yardstick.
 # docs/yaml_config.md § DAC Sample Rates.

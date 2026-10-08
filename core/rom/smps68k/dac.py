@@ -26,13 +26,11 @@ pitch its own byte sets.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
 
-from ..chips import MD_PSG_CLOCK
-from ..smps import SmpsDriver
-from .detect import detect_driver
-from .drivers import RomDriver
-from .image import RomError, RomImage
+from ...chips import MD_PSG_CLOCK
+from ..image import RomError, RomImage
+from ..variant import DacSample
 from .kosinski import kosinski
 
 _Z80_CLOCK = MD_PSG_CLOCK                 # the Z80 and the PSG both run at the master clock / 15
@@ -58,26 +56,14 @@ _COPY_TO_Z80 = (bytes.fromhex("4DF900A0"), bytes.fromhex("4BF9"), bytes.fromhex(
 _SEARCH_BACK = 0x40                                     # how far before a pitch write its table is read
 
 
-@dataclass(frozen=True)
-class DacSample:
-    sound: int        # the DAC track's byte: $81 dKick
-    name: str
-    pcm: bytes        # signed 8-bit, as samples/*.raw hold it
-    pitch: int        # the play loop's counter
-    rate: float       # Hz
-    of: int = 0       # a pitched copy: the byte whose sample it plays (Sonic 1's $88 -> $83)
-
-    @property
-    def is_pitched_copy(self) -> bool:
-        return self.of != 0
+def sonic1_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
+    """Every DAC sample a Sonic 1 song can play, its pitched copies after the samples."""
+    return _Sonic1Dac(rom, names).samples()
 
 
-def dac_samples(rom: RomImage, driver: RomDriver | None = None) -> list[DacSample]:
-    """Every DAC sample a song can play, its pitched copies after the samples."""
-    driver = driver or detect_driver(rom)
-    if driver.name == SmpsDriver.TYPE1A:
-        return _Type1aDac(rom, driver.dac_names).samples()
-    return _Sonic1Dac(rom, driver.dac_names).samples()
+def type1a_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
+    """Every DAC sample a Type 1a song can play, its pitched copies after the samples."""
+    return _Type1aDac(rom, names).samples()
 
 
 class _Sonic1Dac:
@@ -88,7 +74,7 @@ class _Sonic1Dac:
     _FIRST_PITCHED = 0x88
     _PITCHED = 4                          # $88-$8B
 
-    def __init__(self, rom: RomImage, names: dict[int, str]):
+    def __init__(self, rom: RomImage, names: Mapping[int, str]):
         self._rom = rom
         self._names = names
 
@@ -127,7 +113,7 @@ class _Type1aDac:
     _ALT = 8
     _RAM_SAMPLES = 5                      # from $86 a sample streams from ROM (not read here)
 
-    def __init__(self, rom: RomImage, names: dict[int, str]):
+    def __init__(self, rom: RomImage, names: Mapping[int, str]):
         self._rom = rom
         self._names = names
 
@@ -190,14 +176,14 @@ def _deltas(z80: bytes) -> bytes:
 
 
 def _sample(z80: bytes, entry: int, size_at: int, pitch_at: int, sound: int, deltas: bytes,
-            cycles: tuple[float, float], names: dict[int, str]) -> DacSample:
+            cycles: tuple[float, float], names: Mapping[int, str]) -> DacSample:
     start, size, pitch = _word(z80, entry), _word(z80, entry + size_at), z80[entry + pitch_at]
     if not size or start + size > len(z80):
         raise RomError(f"DAC sample ${sound:02X}: entry at Z80 ${entry:04X} holds no sample")
     return DacSample(sound, names[sound], _decode(z80[start:start + size], deltas), pitch, _rate(pitch, cycles))
 
 
-def _copy(of: DacSample, sound: int, pitch: int, cycles: tuple[float, float], names: dict[int, str]) -> DacSample:
+def _copy(of: DacSample, sound: int, pitch: int, cycles: tuple[float, float], names: Mapping[int, str]) -> DacSample:
     return DacSample(sound, names[sound], of.pcm, pitch, _rate(pitch, cycles), of.sound)
 
 

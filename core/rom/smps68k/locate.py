@@ -11,20 +11,23 @@ not by one game's bytes.
     Moonwalker      Go_ block $60000 (the driver's start), music $600A4, PSG_Index $60020
 
 An index ends at the next table the Go_ block names, or at the first entry that does not point
-at a plausible header.
+at a plausible header; PSG_Index where the first envelope's bytes begin.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from functools import lru_cache
 
-from ..smps import FM_FREQUENCIES
-from .header import is_music_header, is_sfx_header
-from .image import RomError, RomImage
+from ...smps import FM_FREQUENCIES
+from ..header import is_music_header, is_sfx_header
+from ..image import RomError, RomImage
+from ..memory import SoundMemory
+from ..variant import SoundIndex
+from .memory import Relative68kMemory
 
-FIRST_MUSIC = 0x81
-FIRST_SFX = 0xA0
-FIRST_SPECIAL_SFX = 0xD0
+_FIRST_MUSIC = 0x81
+_FIRST_SFX = 0xA0
+_FIRST_SPECIAL_SFX = 0xD0
 
 _LONG = 4
 _WORD = 2
@@ -41,53 +44,35 @@ _ATTENUATION_MAX = 0x1F           # steps past $F occur (Sonic 1 PSG2: ... 8, $1
 _ENVELOPE_COMMAND = 0x80        # $80 and up: hold, restart, jump (each driver its own codes)
 
 
-@dataclass(frozen=True)
-class SoundIndex:
-    """Each sound ID's header address, and where the PSG envelopes' pointers start."""
-
-    music: dict[int, int]
-    sfx: dict[int, int]       # SoundIndex and SpecSoundIndex
-    envelopes: int = 0        # PSG_Index; 0: not located (a hand-built index)
-
-    def address(self, sound_id: int) -> int:
-        found = self.music.get(sound_id, self.sfx.get(sound_id))
-        if found is None:
-            raise RomError(f"sound ${sound_id:02X}: not in the ROM's indexes "
-                           f"(music ${min(self.music):02X}-${max(self.music):02X}, "
-                           f"SFX ${min(self.sfx):02X}-${max(self.sfx):02X})")
-        return found
-
-    def is_sfx(self, sound_id: int) -> bool:
-        return sound_id in self.sfx
-
-
-def locate_sounds(rom: RomImage) -> SoundIndex:
+@lru_cache(maxsize=8)
+def locate_68k(rom: RomImage) -> SoundIndex:
     """The song and SFX indexes of a ROM with an SMPS 68k (Type 1) driver."""
     if not rom.find_all(_words(FM_FREQUENCIES[:_OCTAVE])):
         raise RomError("no SMPS FM frequency octave: not an SMPS 68k driver")
 
-    go = _go_block(rom)
+    memory = Relative68kMemory(rom)
+    go = _go_block(rom, memory)
     ends = sorted(go.values())
 
     def end_of(table: int) -> int:
         return next((a for a in ends if a > table), len(rom.data))
 
-    music = _index(rom, go["music"], end_of(go["music"]), FIRST_MUSIC, is_music_header)
-    sfx = _index(rom, go["sfx"], end_of(go["sfx"]), FIRST_SFX, is_sfx_header)
-    sfx |= _index(rom, go["special_sfx"], end_of(go["special_sfx"]), FIRST_SPECIAL_SFX, is_sfx_header)
-    return SoundIndex(music, sfx, go["psg_index"])
+    music = _index(rom, memory, go["music"], end_of(go["music"]), _FIRST_MUSIC, is_music_header)
+    sfx = _index(rom, memory, go["sfx"], end_of(go["sfx"]), _FIRST_SFX, is_sfx_header)
+    sfx |= _index(rom, memory, go["special_sfx"], end_of(go["special_sfx"]), _FIRST_SPECIAL_SFX, is_sfx_header)
+    return SoundIndex(music, sfx, _envelopes(rom, go["psg_index"]))
 
 
-def _go_block(rom: RomImage) -> dict[str, int]:
+def _go_block(rom: RomImage, memory: SoundMemory) -> dict[str, int]:
     """The one Go_ block in the ROM."""
-    found = [a for a in range(0, len(rom.data) - _GO_BYTES, _WORD) if _is_go_block(rom, a)]
+    found = [a for a in range(0, len(rom.data) - _GO_BYTES, _WORD) if _is_go_block(rom, memory, a)]
     if len(found) != 1:
         where = ", ".join(f"${a:X}" for a in found[:8])
         raise RomError(f"{len(found)} driver pointer blocks (Go_) found{': ' + where if where else ''}, not one")
     return {name: rom.long(found[0] + i * _LONG) for i, name in enumerate(_GO_TABLES)}
 
 
-def _is_go_block(rom: RomImage, at: int) -> bool:
+def _is_go_block(rom: RomImage, memory: SoundMemory, at: int) -> bool:
     data = rom.data
     music, sfx, special, envelopes = at + 8, at + 12, at + 4, at + 20
 
@@ -99,26 +84,26 @@ def _is_go_block(rom: RomImage, at: int) -> bool:
         return False
 
     music_table, sfx_table, special_table, envelope_table = tables
-    return (_entries_are(rom, music_table, is_music_header)
-            and _entries_are(rom, sfx_table, is_sfx_header)
-            and _entries_are(rom, special_table, is_sfx_header, count=1)
-            and _entries_are(rom, envelope_table, _is_envelope))
+    return (_entries_are(rom, memory, music_table, is_music_header)
+            and _entries_are(rom, memory, sfx_table, is_sfx_header)
+            and _entries_are(rom, memory, special_table, is_sfx_header, count=1)
+            and _entries_are(rom, memory, envelope_table, _is_envelope))
 
 
-def _entries_are(rom: RomImage, table: int, plausible, count: int = _ENTRIES_CHECKED) -> bool:
+def _entries_are(rom: RomImage, memory: SoundMemory, table: int, plausible, count: int = _ENTRIES_CHECKED) -> bool:
     for i in range(count):
         address = rom.long(table + i * _LONG)
-        if not rom.contains(address) or not plausible(rom, address):
+        if not rom.contains(address) or not plausible(memory, address):
             return False
     return True
 
 
-def _is_envelope(rom: RomImage, address: int) -> bool:
+def _is_envelope(memory: SoundMemory, address: int) -> bool:
     """Attenuation steps (0-$1F) up to a command byte ($80 and up)."""
     for i in range(_ENVELOPE_MAX):
-        if not rom.contains(address + i):
+        if not memory.contains(address + i):
             return False
-        value = rom.byte(address + i)
+        value = memory.byte(address + i)
         if value >= _ENVELOPE_COMMAND:
             return i > 0
         if value > _ATTENUATION_MAX:
@@ -126,17 +111,30 @@ def _is_envelope(rom: RomImage, address: int) -> bool:
     return False
 
 
-def _index(rom: RomImage, start: int, end: int, first_id: int, plausible) -> dict[int, int]:
+def _index(rom: RomImage, memory: SoundMemory, start: int, end: int, first_id: int, plausible) -> dict[int, int]:
     """A pointer table's entries by sound ID, up to `end` or the first implausible one."""
     entries: dict[int, int] = {}
     for at in range(start, end - _LONG + 1, _LONG):
         address = rom.long(at)
-        if not rom.contains(address) or not plausible(rom, address):
+        if not rom.contains(address) or not plausible(memory, address):
             break
         entries[first_id + len(entries)] = address
     if not entries:
         raise RomError(f"the index at ${start:X} points at no header")
     return entries
+
+
+def _envelopes(rom: RomImage, table: int) -> tuple[int, ...]:
+    """PSG_Index: a long per envelope; the table ends where the first envelope's bytes begin."""
+    pointers: list[int] = []
+    at = table
+    while not pointers or at < min(pointers):
+        address = rom.long(at)
+        if not rom.contains(address):
+            break
+        pointers.append(address)
+        at += _LONG
+    return tuple(pointers)
 
 
 def _words(values) -> bytes:

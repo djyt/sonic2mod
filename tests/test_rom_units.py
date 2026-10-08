@@ -23,17 +23,18 @@ from core.rom import (
     RomImage,
     dac_samples,
     data_fixes,
-    detect_driver,
+    detect_variant,
     locate_sounds,
     read_rom_code,
     read_rom_song,
 )
 from core.rom.detect import first_failure
-from core.rom.drivers import SONIC1, TYPE1A
 from core.rom.envelopes import read_envelopes
 from core.rom.fixes import apply_fixes
 from core.rom.header import read_music_header, read_sfx_header
-from core.rom.kosinski import kosinski
+from core.rom.smps68k import SONIC1, TYPE1A
+from core.rom.smps68k.kosinski import kosinski
+from core.rom.smps68k.memory import Relative68kMemory
 from core.rom.tracks import decode_tracks
 from core.rom.voices import read_voices
 from core.smps import (
@@ -55,6 +56,11 @@ _SONG = 0x200          # where the hand-built songs start
 
 def _rom(song: bytes) -> RomImage:
     return RomImage(_HEADER + song)
+
+
+def _memory(song: bytes) -> Relative68kMemory:
+    """The hand-built ROM as the 68k drivers read it."""
+    return Relative68kMemory(_rom(song))
 
 
 def _music(tracks: list[bytes], tempo: tuple[int, int] = (1, 3), voices: bytes = b"") -> bytes:
@@ -98,7 +104,7 @@ class Tracks(unittest.TestCase):
         dac = bytes([0x80, 0x10, 0xF2])
         fm_at = 6 + 8 + len(dac)
         fm = bytes([0xA0, 0x0C, 0xF6]) + _pointer(fm_at + 3, fm_at)
-        song = read_rom_song(_rom(_music([dac, fm])), 0x81, _index(), driver=SONIC1)
+        song = read_rom_song(_rom(_music([dac, fm])), 0x81, _index(), variant=SONIC1)
         fm1 = song.channels[1]
         self.assertTrue(fm1.has_jump)
         self.assertEqual((fm1.loop_tick, fm1.loop_event_index), (0, None))   # its own start: by tick, as the parser
@@ -106,7 +112,7 @@ class Tracks(unittest.TestCase):
 
     def test_flags_take_their_operands_and_signed_ones_are_signed(self):
         dac = bytes([0xF0, 1, 2, 3, 4, 0xE9, 0xF4, 0xE6, 0x02, 0x80, 0x01, 0xF2])
-        code = decode_tracks(_rom(_music([dac])), {"dac": _SONG + 10}).code
+        code = decode_tracks(_memory(_music([dac])), {"dac": _SONG + 10}, SONIC1).code
         effects = [op.effect for op in code.ops if op.kind is OpKind.EFFECT]
         self.assertEqual([(e.flag, e.params) for e in effects],
                          [(CoordFlag.MOD_SET, [1, 2, 3, 4]), (CoordFlag.CHANGE_TRANSPOSITION, [-12]),
@@ -117,7 +123,7 @@ class Tracks(unittest.TestCase):
         dac = bytes([0xF2])
         fm_at = 6 + 8 + len(dac)
         fm = bytes([0xA0, 0x06, 0xF7, 0x00, 0x02]) + _pointer(fm_at + 5, fm_at + 1) + bytes([0xF2])
-        song = read_rom_song(_rom(_music([dac, fm])), 0x81, _index(), driver=SONIC1)
+        song = read_rom_song(_rom(_music([dac, fm])), 0x81, _index(), variant=SONIC1)
         notes = [(e.note.note_value, e.note.duration, e.note.is_retrigger) for e in song.channels[1].events]
         # the replay re-reads $06 alone: a standalone duration re-keys the note
         self.assertEqual(notes, [(0xA0, 6, False), (0xA0, 6, True)])
@@ -127,16 +133,16 @@ class Tracks(unittest.TestCase):
         fm_at = 6 + 8 + len(dac)
         sub = fm_at + 5
         fm = bytes([0xF8]) + _pointer(fm_at + 1, sub) + bytes([0xF2, 0x00]) + bytes([0xB0, 0x04, 0xE3])
-        song = read_rom_song(_rom(_music([dac, fm])), 0x81, _index(), driver=SONIC1)
+        song = read_rom_song(_rom(_music([dac, fm])), 0x81, _index(), variant=SONIC1)
         self.assertEqual([e.note.note_value for e in song.channels[1].events], [0xB0])
 
     def test_an_unknown_flag_names_its_address(self):
         with self.assertRaisesRegex(RomError, r"\$20A: \$FB"):
-            decode_tracks(_rom(_music([bytes([0xFB])])), {"x": _SONG + 10})
+            decode_tracks(_memory(_music([bytes([0xFB])])), {"x": _SONG + 10}, SONIC1)
 
     def test_smpsFade_and_smpsStopSpecial_end_the_track(self):
         for flag in (0xE4, 0xEE):
-            code = decode_tracks(_rom(_music([bytes([0x80, 0x01, flag, 0xA0, 0x01])])), {"x": _SONG + 10}).code
+            code = decode_tracks(_memory(_music([bytes([0x80, 0x01, flag, 0xA0, 0x01])])), {"x": _SONG + 10}, SONIC1).code
             self.assertIs(code.ops[-1].kind, OpKind.STOP)
 
 
@@ -145,7 +151,7 @@ class Type1a(unittest.TestCase):
 
     def _song(self, fm: bytes):
         dac = bytes([0xF2])
-        return read_rom_code(_rom(_music([dac, fm])), 0x81, _index(), driver=TYPE1A)
+        return read_rom_code(_rom(_music([dac, fm])), 0x81, _index(), variant=TYPE1A)
 
     def test_f9_returns_where_sonic1_writes_a_release_rate(self):
         fm_at = 6 + 8 + 1
@@ -186,20 +192,19 @@ class Envelopes(unittest.TestCase):
         self.assertEqual(noise_envelope_frames(PsgEnvelope((0, 13))), 2 + 2 + 1)
 
     def test_each_drivers_commands_end_an_envelope(self):
-        # PSG_Index: 3 pointers, then the envelopes: hold, restart, jump to step 1
-        table = _SONG
-        data = bytes([0x00, 0x00, 0x02, 0x0C, 0x00, 0x00, 0x02, 0x0F, 0x00, 0x00, 0x02, 0x12,
-                      0x00, 0x01, 0x83, 0x02, 0x03, 0x80, 0x04, 0x05, 0x06, 0x85, 0x01])
-        envelopes = read_envelopes(_rom(data), table, TYPE1A)
+        # Three envelopes: hold, restart, jump to step 1
+        data = bytes([0x00, 0x01, 0x83, 0x02, 0x03, 0x80, 0x04, 0x05, 0x06, 0x85, 0x01])
+        addresses = (_SONG, _SONG + 3, _SONG + 6)
+        envelopes = read_envelopes(_memory(data), addresses, TYPE1A)
         self.assertEqual(envelopes, {"fTone_01": PsgEnvelope((0, 1)), "fTone_02": PsgEnvelope((2, 3), 0),
                                      "fTone_03": PsgEnvelope((4, 5, 6), 1)})
         with self.assertRaisesRegex(RomError, r"\$83"):
-            read_envelopes(_rom(data), table, SONIC1)       # Sonic 1 knows only $80 (hold)
+            read_envelopes(_memory(data), addresses, SONIC1)       # Sonic 1 knows only $80 (hold)
 
 
 class Headers(unittest.TestCase):
     def test_music_tracks_are_relative_to_the_header(self):
-        head = read_music_header(_rom(_music([b"\xF2", b"\xF2"], tempo=(2, 5))), _SONG)
+        head = read_music_header(_memory(_music([b"\xF2", b"\xF2"], tempo=(2, 5))), _SONG)
         self.assertEqual([c.channel_type for c in head.header.channels], ["DAC", "FM"])
         self.assertEqual((head.header.tempo_divider, head.header.tempo_modifier), (2, 5))
         self.assertEqual(head.header.channels[1].pitch_offset, -12)
@@ -207,7 +212,7 @@ class Headers(unittest.TestCase):
 
     def test_sfx_channels_carry_their_hardware_channel(self):
         sfx = bytes([0, 0, 1, 1, 0x80, 0xC0, 0, 10, 0xF4, 0x02, 0xF2])
-        head = read_sfx_header(_rom(sfx), _SONG)
+        head = read_sfx_header(_memory(sfx), _SONG)
         ch = head.header.channels[0]
         self.assertTrue(head.header.is_sfx)
         self.assertEqual((ch.channel_type, ch.hw_channel, ch.pitch_offset, ch.volume), ("PSG", 0xC0, -12, 2))
@@ -222,7 +227,7 @@ class Voices(unittest.TestCase):
                      0, 0, 0, 0x85,             # AM/D1R: op1 AM, D1R 5
                      0, 0, 0, 0, 0x0F, 0x1F, 0x2F, 0x3F,
                      0x80, 0x10, 0x20, 0x9F])   # TL: bit 7 dropped
-        voice = read_voices(_rom(raw), _SONG, 1)[0]
+        voice = read_voices(_memory(raw), _SONG, 1, SONIC1.voice_layout)[0]
         self.assertEqual((voice.algorithm, voice.feedback), (2, 7))
         self.assertEqual(voice.operators[VoiceField.MULTIPLE], (4, 3, 2, 1))
         self.assertEqual(voice.operators[VoiceField.DETUNE], (1, 0, 0, 7))
@@ -235,9 +240,8 @@ class Voices(unittest.TestCase):
 class Fixes(unittest.TestCase):
     def test_a_splice_reads_the_original_bytes_as_the_replacement(self):
         fm = bytes([0xA0, 0x06, 0x80, 0x80, 0xE6, 0x0C, 0xB0, 0x06, 0xF2])
-        rom = _rom(_music([fm]))
         fix = RomFix(_SONG + 12, bytes([0x80, 0x80, 0xE6, 0x0C]), b"", "test")
-        code = decode_tracks(rom, {"x": _SONG + 10}, {fix.address: fix}).code
+        code = decode_tracks(_memory(_music([fm])), {"x": _SONG + 10}, SONIC1, {fix.address: fix}).code
         self.assertEqual([op.value for op in code.ops if op.kind is OpKind.BYTE], [0xA0, 0x06, 0xB0, 0x06])
         self.assertFalse(any(op.kind is OpKind.EFFECT for op in code.ops))
 
@@ -378,7 +382,7 @@ class Moonwalker(unittest.TestCase):
         self.assertEqual((len(self.index.sfx), max(self.index.sfx)), (49, 0xD3))
 
     def test_the_driver_is_type1a_pinned_or_tried(self):
-        self.assertIs(detect_driver(self.rom), TYPE1A)
+        self.assertIs(detect_variant(self.rom), TYPE1A)
         self.assertIsNone(first_failure(self.rom, self.index, TYPE1A))
         self.assertIsNotNone(first_failure(self.rom, self.index, SONIC1))
 

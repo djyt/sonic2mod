@@ -21,7 +21,15 @@ from collections.abc import Iterator
 from enum import Enum
 from typing import NamedTuple
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
+from ..chips import (
+    CARRIER_OFFSETS_BY_ALG,
+    MD_FM_CLOCK,
+    MD_PSG_CLOCK,
+    fm_frequency_hz,
+    freq_word,
+    psg_frequency_hz,
+    split_freq_word,
+)
 from .reader import VgmLog, VgmOp, VgmWrite
 
 FM_CHANNELS = 6
@@ -50,8 +58,6 @@ _TL_MASK = 0x7F
 _ALGORITHM_MASK = 0x07
 _FNUM_HI_MASK = 0x07
 _BLOCK_SHIFT = 3
-FNUM_BITS = 11                     # a frequency Change's value: FNUM | block << FNUM_BITS
-_FNUM_MASK = (1 << FNUM_BITS) - 1
 
 # SN76489 bytes
 _PSG_LATCH = 0x80
@@ -71,7 +77,7 @@ class ChangeKind(Enum):
     """What a Change's value (and previous) holds."""
 
     FM_KEY = "fm_key"               # the slots keyed on (0 = key-off)
-    FM_FREQUENCY = "fm_frequency"   # FNUM | block << FNUM_BITS, as latched
+    FM_FREQUENCY = "fm_frequency"   # the frequency word (core.chips.freq_word), as latched
     PSG_TONE = "psg_tone"           # the period (a latch + data byte pair counts once)
     PSG_VOLUME = "psg_volume"       # the attenuation
     PSG_NOISE = "psg_noise"         # the noise register
@@ -106,7 +112,7 @@ class ChipState:
 
         self._fm_regs = [bytearray(256), bytearray(256)]          # per port
         self._fm_hi_latch = 0                                     # A4..A6 waits here for A0..A2
-        self._fm_freq = [0] * FM_CHANNELS                         # FNUM | block << FNUM_BITS, as latched
+        self._fm_freq = [0] * FM_CHANNELS                         # frequency words, as latched
         self._fm_slots = [0] * FM_CHANNELS
         self._dac_byte = 0
         self._pcm_offset = 0
@@ -166,7 +172,7 @@ class ChipState:
         hi = self._fm_hi_latch
         fnum = (hi & _FNUM_HI_MASK) << 8 | w.value
         block = (hi >> _BLOCK_SHIFT) & _FNUM_HI_MASK
-        previous, self._fm_freq[ch] = self._fm_freq[ch], fnum | block << FNUM_BITS
+        previous, self._fm_freq[ch] = self._fm_freq[ch], freq_word(fnum, block)
         return Change(w.sample, ChangeKind.FM_FREQUENCY, ch, self._fm_freq[ch], previous)
 
     def _fm_key(self, w: VgmWrite) -> Change | None:
@@ -183,7 +189,7 @@ class ChipState:
 
     def fm_fnum_block(self, ch: int) -> tuple[int, int]:
         f = self._fm_freq[ch]
-        return f & _FNUM_MASK, f >> FNUM_BITS
+        return split_freq_word(f)
 
     def fm_hz(self, ch: int) -> float:
         return fm_frequency_hz(*self.fm_fnum_block(ch), self.fm_clock)

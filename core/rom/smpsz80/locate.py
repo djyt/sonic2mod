@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from ...chips import split_freq_word
 from ..header import is_music_header, is_sfx_header, read_index
 from ..image import RomError, RomImage
 from ..variant import SoundIndex
@@ -39,8 +40,6 @@ _OCTAVE = 12
 _NOTES = 0x60                # $80-$DF: rest and the 95 notes, as Sonic 1's table
 _SEMITONE = (1.04, 1.08)
 _OCTAVE_DRIFT = 0.02
-_BLOCK_SHIFT = 11
-_FNUM_MASK = 0x7FF
 
 
 @lru_cache(maxsize=8)
@@ -92,15 +91,16 @@ def _is_fm_octave(z80: bytes, at: int) -> bool:
     """Twelve words a semitone apart in one block, then the same notes a block up."""
     words = _words(z80, at, 2 * _OCTAVE)
     low, high = words[:_OCTAVE], words[_OCTAVE:]
-    block = low[0] >> _BLOCK_SHIFT
-    if any(w >> _BLOCK_SHIFT != block for w in low) or any(w >> _BLOCK_SHIFT != block + 1 for w in high):
+    low_split, high_split = [split_freq_word(w) for w in low], [split_freq_word(w) for w in high]
+    block = low_split[0][1]
+    if any(b != block for _, b in low_split) or any(b != block + 1 for _, b in high_split):
         return False
 
-    fnums = [w & _FNUM_MASK for w in low]
+    fnums = [f for f, _ in low_split]
     lo, hi = _SEMITONE
     if not all(fnums[i] and lo < fnums[i + 1] / fnums[i] < hi for i in range(_OCTAVE - 1)):
         return False
-    return all(abs((h & _FNUM_MASK) / f - 1) < _OCTAVE_DRIFT for h, f in zip(high, fnums, strict=True))
+    return all(abs(h / f - 1) < _OCTAVE_DRIFT for (h, _), f in zip(high_split, fnums, strict=True))
 
 
 def _is_sound_header(memory: BankedZ80Memory, bank: int) -> bool:

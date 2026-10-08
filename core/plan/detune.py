@@ -32,13 +32,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from ..chips import FREQ_WORD_MAX, split_freq_word
 from ..config import SAMPLE_FILE, SAMPLE_SLOT, SAMPLE_VOLUME
+from ..smps import fm_table_index
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
 
-_FNUM_BITS = 11
-_FNUM_MASK = (1 << _FNUM_BITS) - 1
-_WORD_MAX = 0x3FFF          # block (3 bits) | fnum (11 bits)
 _NAME_CHARS = 22            # a MOD sample name
 
 
@@ -142,12 +141,13 @@ def detune_cents(semitone: int, fnum_offset: int, fm_frequencies: tuple[int, ...
     """Cents an FNUM offset moves a note (SMPS semitone, C0 = 0) the driver's table plays
     (`fm_frequencies`: the song's): the offset is added to the whole block|fnum word, as
     FMUpdateFreq adds it."""
-    i = max(0, min(len(fm_frequencies) - 1, semitone + 1))      # table index 1 = nC0
+    i = max(0, min(len(fm_frequencies) - 1, fm_table_index(semitone)))
     word = fm_frequencies[i]
-    moved = max(0, min(_WORD_MAX, word + fnum_offset))
+    moved = max(0, min(FREQ_WORD_MAX, word + fnum_offset))
     return 1200.0 * math.log2(_word_hz(moved) / _word_hz(word))
 
 
 def _word_hz(word: int) -> float:
     """Relative frequency of a block|fnum word: fnum × 2^block."""
-    return max(1, word & _FNUM_MASK) * (1 << (word >> _FNUM_BITS))
+    fnum, block = split_freq_word(word)
+    return max(1, fnum) * (1 << block)

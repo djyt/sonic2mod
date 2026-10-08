@@ -28,6 +28,7 @@ from .code import (
 )
 from .compare import ALL_ASPECTS, ChannelDiff, NoteDiff, SongDiff, align_songs, compare_songs, parse_differences
 from .driver_tables import (
+    C1_SEMITONE,
     DEFAULT_DRIVER,
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,
@@ -45,6 +46,7 @@ from .driver_tables import (
     SmpsDriver,
     chip_pitch,
     fm_note_index,
+    fm_table_index,
     noise_envelope_frames,
     psg_index_semitone,
     psg_note_index,
@@ -88,6 +90,7 @@ from .track import TrackState
 
 __all__ = [
     "ALL_ASPECTS",
+    "C1_SEMITONE",
     "DEFAULT_DRIVER",
     "ENVELOPE_TERMINATOR",
     "FIRST_NOTE",
@@ -142,6 +145,7 @@ __all__ = [
     "flag_from_macro",
     "flag_name",
     "fm_note_index",
+    "fm_table_index",
     "frame_of_tick",
     "noise_envelope_frames",
     "note_label",

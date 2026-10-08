@@ -53,6 +53,28 @@ REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
 TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
 
 
+# A frequency word: block << 11 | FNUM, registers A4 (block, FNUM high bits) and A0 written
+# together.  0x2C3B: block 5, FNUM 1083 (A4)
+_FNUM_BITS = 11
+_FNUM_MASK = (1 << _FNUM_BITS) - 1
+_BLOCK_MASK = 0x7
+FREQ_WORD_MAX = (_BLOCK_MASK << _FNUM_BITS) | _FNUM_MASK      # 0x3FFF
+
+
+def split_freq_word(word: int) -> tuple[int, int]:
+    """(FNUM, block) of a frequency word."""
+    return word & _FNUM_MASK, (word >> _FNUM_BITS) & _BLOCK_MASK
+
+
+def freq_word(fnum: int, block: int) -> int:
+    return (block & _BLOCK_MASK) << _FNUM_BITS | (fnum & _FNUM_MASK)
+
+
+def freq_word_hz(word: int, clock: int = MD_FM_CLOCK) -> float:
+    """The pitch a frequency word plays at `clock`."""
+    return fm_frequency_hz(*split_freq_word(word), clock)
+
+
 def fm_frequency_hz(fnum: int, block: int, clock: int) -> float:
     """The pitch an FNUM / block pair plays at `clock`."""
     return clock * fnum / (_CLOCK_DIVIDER * (1 << (_FNUM_SCALE_BITS - block)))

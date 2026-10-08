@@ -27,7 +27,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from core.chips import MD_FM_CLOCK
+from core.chips import FREQ_WORD_MAX, MD_FM_CLOCK, freq_word, split_freq_word
 
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
@@ -36,10 +36,12 @@ if str(_HERE.parent) not in sys.path:
 from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
 from core.smps import (
+    C1_SEMITONE,
     FM_FREQUENCIES,
     FmFrame,
     SmpsVoice,
     VoiceField,
+    fm_table_index,
 )
 from ym2612.voice import program_voice
 from ym2612.wrapper import OPN2, output_rate
@@ -74,10 +76,9 @@ def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK,
     block and as 574 in the next sounds the same pitch with a different envelope and detune.
     Off the table, or at another clock, the formula in freq_to_fnum_block stands in.
     """
-    i = mod_note_index + 13
+    i = fm_table_index(C1_SEMITONE + mod_note_index)
     if clock_rate == MD_FM_CLOCK and 0 <= i < len(fm_frequencies):
-        word = fm_frequencies[i]
-        return word & 0x7FF, (word >> 11) & 0x7
+        return split_freq_word(fm_frequencies[i])
     return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
 
 
@@ -168,9 +169,8 @@ def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels, keyof
 def detuned_fnum_block(fnum: int, block: int, fnum_offset: int) -> tuple[int, int]:
     """The frequency word the driver writes with an smpsAlterNote detune: the offset is added
     to the whole block|fnum word (FMUpdateFreq), so it can carry into the block."""
-    word = ((block & 0x7) << 11 | (fnum & 0x7FF)) + fnum_offset
-    word = max(0, min(0x3FFF, word))
-    return word & 0x7FF, (word >> 11) & 0x7
+    word = max(0, min(FREQ_WORD_MAX, freq_word(fnum, block) + fnum_offset))
+    return split_freq_word(word)
 
 
 def _normalize_int8(mono: Sequence[int]) -> bytes:
@@ -337,7 +337,7 @@ def render_frames(
         if frame.attack and keyed:
             opn2.key_off(channel)
             mono += opn2.render_mono(_RETRIGGER_GAP)
-        _set_freq(opn2, frame.word & 0x7FF, (frame.word >> 11) & 0x7, channel)
+        _set_freq(opn2, *split_freq_word(frame.word), channel)
         if frame.attack:
             opn2.key_on(channel)
         elif keyed and not frame.keyed:

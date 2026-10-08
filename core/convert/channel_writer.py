@@ -25,7 +25,7 @@ from ..diagnostics import Diagnostics, WarningKind
 from ..merge import Composite, MergePlan
 from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume, note_rate
 from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
-from ..smps import CoordFlag, SmpsChannel, SmpsSong
+from ..smps import C1_SEMITONE, CoordFlag, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
 from .vibrato import VibratoSpeed, vibrato_depth
@@ -92,7 +92,7 @@ class WriterContext:
         """Cents an FM instrument's sample is detuned by (core.plan.detune): its FNUM offset at the
         pitch it is rendered at."""
         if self._sample_detunes is None:
-            self._sample_detunes = {i.inst: detune_cents(i.synth_idx + 12, i.layers[0].fnum_offset,
+            self._sample_detunes = {i.inst: detune_cents(C1_SEMITONE + i.synth_idx, i.layers[0].fnum_offset,
                                                          self.song.fm_frequencies)
                                     for i in fm_catalogue(self.song, self.config).instruments.values()
                                     if len(i.layers) == 1}

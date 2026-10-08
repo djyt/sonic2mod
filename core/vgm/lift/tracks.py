@@ -23,7 +23,7 @@ import math
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from ...chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
+from ...chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, freq_word_hz, psg_frequency_hz
 from ...smps import FM_FREQUENCIES, PSG_FREQUENCIES
 from ..chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_SILENT
 from ..frames import Frame, FrameLog
@@ -32,8 +32,6 @@ from ..notes import DEFAULT_MOD_CENTS
 _REST = 0x80                    # the note byte of a rest
 _FM_FIRST_NOTE = 0x81           # FMSetFreq subtracts $80: table entry 0 is the rest
 _PSG_FIRST_NOTE = 0x81          # PSGSetFreq subtracts $81
-_FNUM_BITS = 11
-_FNUM_MASK = (1 << _FNUM_BITS) - 1
 _CENTS_PER_OCTAVE = 1200.0
 _NOISE_TONE = 2                 # the noise track writes its period into tone channel 3
 
@@ -93,7 +91,7 @@ def _fm_note(fnum: int, block: int, table_hz: list[float]) -> int:
 
 
 def _word_hz(word: int) -> float:
-    return fm_frequency_hz(word & _FNUM_MASK, word >> _FNUM_BITS, MD_FM_CLOCK)
+    return freq_word_hz(word)
 
 
 # --- PSG ------------------------------------------------------------------------------------

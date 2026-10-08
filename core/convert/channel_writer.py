@@ -409,16 +409,26 @@ class ChannelWriter:
     def _on_rest(self, event) -> None:
         note, tick = event.note, event.tick_position
 
+        # The drum track's rest plays nothing new: the sample plays out (DACUpdateTrack returns on
+        # $80), and Type 0 FM lets an FM drum ring on FM3.  A follower's rest spliced in still cuts.
+        if self._is_dac and getattr(event, "merged", None) is None:
+            return
+
         # is_no_attack=True marks an FM/DAC standalone-duration continuation — the YM2612
         # envelope sustains naturally; do not emit C00.
         if note.is_no_attack:
             if self._sounding_cents is not None and self._last_inst is not None and not self._st.is_psg:
                 self._retune_tie(tick)
             return
+        self._stop_ringing(event)
 
+    def _stop_ringing(self, event) -> None:
+        """End what rings on the channel's column at `event`: a rest, or a silent drum's hit."""
+        tick = event.tick_position
         pattern, row = self._timeline.pattern_row(tick)
         if pattern >= self._config.max_patterns:
             return
+        self._mod.ensure_pattern(pattern)
         if self._last_inst is None and self._router.away(event):
             return                  # nothing of this channel's sounds here: no C00 clutter
         self._col = self._router.current(tick)
@@ -472,17 +482,16 @@ class ChannelWriter:
         """A drum hit: its dac_samples instrument and note.  DAC notes carry no other effect, so
         the slot is always free for EDx."""
         note, tick = event.note, event.tick_position
-        pattern, row, note_delay = self._note_cell(tick, True, None)
-        if pattern >= self._config.max_patterns:
-            return False
 
         # A silent FM drum (its program a rest): the hit only stops the drum ringing, as FM3's key-off
         drum = self._ctx.song.fm_drums.get(note.dac_name)
         if drum is not None and drum.silent:
-            self._mod.ensure_pattern(pattern)
-            self._mod.set_cursor(pattern, self._col, row)
-            self._mod.set_effect(0xC, 0)
+            self._stop_ringing(event)
             return True
+
+        pattern, row, note_delay = self._note_cell(tick, True, None)
+        if pattern >= self._config.max_patterns:
+            return False
         self._open_cell(pattern, row, tick)
 
         dac_cfg = self._dac_map.get(note.dac_name)

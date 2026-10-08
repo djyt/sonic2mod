@@ -24,7 +24,22 @@ from core.mod import ModNote
 from core.plan import complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
 from core.rom import RomImage, dac_samples, read_rom_song
-from core.smps import parse_smps_note, source_map
+from core.smps import (
+    NO_TEMPO_HOLDS,
+    REST,
+    ChannelType,
+    CoordFlag,
+    Op,
+    OpKind,
+    SmpsChannelHeader,
+    SmpsCode,
+    SmpsEffect,
+    SmpsSongHeader,
+    SmpsVoice,
+    parse_smps_note,
+    song_from_code,
+    source_map,
+)
 
 
 class StartingVolume(unittest.TestCase):
@@ -48,6 +63,21 @@ class Helpers(unittest.TestCase):
         self.assertEqual(_output_path(Path("configs/moonwalker/81_smooth_criminal.yaml")),
                          "output/moonwalker/81_smooth_criminal.mod")
         self.assertEqual(_output_path(Path("elsewhere/song.yaml")), "output/song.mod")
+
+
+class RowGrid(unittest.TestCase):
+    def test_a_one_frame_stagger_keeps_the_beat_on_rows(self):
+        # A tick a frame; FM1 every 7, FM2 a frame behind it.  The exact grid (1) needs 5 patterns,
+        # 1 is allowed: the grid that puts the most notes on rows is the beat's, 7
+        def track(label: str, lead: list) -> list:
+            return [Op(OpKind.LABEL, name=label), Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [0])),
+                    *lead, *[Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=7)] * 40, Op(OpKind.STOP)]
+        ops = track("FM1", []) + track("FM2", [Op(OpKind.NOTE, value=REST), Op(OpKind.DURATION, value=1)])
+        channels = [SmpsChannelHeader(channel_type=ChannelType.FM, label=name) for name in ("FM1", "FM2")]
+        header = SmpsSongHeader(fm_count=2, tempo_modifier=NO_TEMPO_HOLDS, channels=channels)
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)])
+        stated = {"name": "Grid", "input_file": "song.asm", "max_patterns": 1}
+        self.assertEqual(derive_config(stated, song, Path("configs/grid.yaml"), _SETTINGS).data["ticks_per_row"], 7)
 
 
 _STATED = {"name": "Smooth Criminal", "input_file": str(MOONWALKER_ROM), "rom_song": "$81"}

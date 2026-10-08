@@ -254,12 +254,19 @@ a song pass (the `run_out` precedent).
 ## 3. Plan
 
 ### Phase 0: refactors (2.1)
-- [ ] 0.1 Freeze outputs: Moonwalker and Golden Axe minimal configs are not in regression;
-  snapshot their MODs from a worktree at `HEAD` (memory: refactor settings matrix).
-- [ ] 0.2 2.1 items 1-7, one commit each.  Gate for each: `tests/regression.py`,
-  `tests/tool_regression.py`, `pytest`, `rom_import.py --compare` (Sonic 68/68), and the snapshots
-  byte-identical.
-- [ ] 0.3 Item 8, row grid: changes minimal configs only.  Compare the snapshots and listen.
+- [x] 0.1 Snapshot (2026-10-08, scratch, not kept): every song read (asm, 3 ROMs, fixed and
+  shipped: SongCode ops and SmpsSong repr), `rom_import` listings and `--asm`, Sonic's
+  `--compare`, the 35 Moonwalker / Golden Axe minimal MODs and derived configs.
+- [x] 0.2 2.1 items 1-7, one commit each; each gate passed (regression, tool regression, pytest,
+  ruff, pyright, vulture, the snapshot unchanged).  1 `grammar.py` + `SmpsVariant.grammar`;
+  2 `flags` per `ChannelType` (`every_kind`), a header's tracks name their kind; 3 `HeaderLayout`
+  `tempo` / `EntryLayout`; 4 `VoiceLayout.operator_offsets` / `feedback_last`; 5 `OpKind.NOTE` /
+  `DURATION` / `NO_ATTACK` (`track_byte`); 7 `z80_ram`: copy, Kosinski, buffered Kosinski
+  (SoR's, found at `$10636`), `kosinski.py` in `core/rom`.  6 not needed: SoR's index is not a
+  `Go_` block, so its own locate reuses `read_index`; `locate_68k`'s octave check fails it fast.
+- [x] 0.3 Row grid: where the exact grid is too fine, the multiple of it with the most notes on
+  rows (was: doubled).  No Moonwalker / Golden Axe song changes (each fits at its exact grid).
+  Speeds stay 2-8: a 13-frame grid (`$91`) wants speed 13 for BPM 150 exactly (Phase 4).
 
 ### Phase 1: read the ROM
 - [ ] 1.1 `core/rom/smps68k/mucom.py`: the variant, pinned by SHA-1.  Locate (pointer block or the

@@ -61,6 +61,7 @@ _MOD_SPAN = 35               # C1 ... B3
 _MIN_WINDOW = 12             # narrowest window root_harmonics may cut
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
 _ROWS_PER_PATTERN = 64
+_MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
 _FIRST_NOTE = 0x81           # the note byte of C0
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
 _FINETUNE_STEPS = 96         # finetune steps an octave
@@ -221,36 +222,54 @@ class _Deriver:
     # --- sections ---------------------------------------------------------------------
 
     def _timing(self) -> None:
-        """Ticks per row: the grid every note starts and lasts on, coarsened until the song fits
-        the pattern limit and some speed's BPM fits 32-255; the speed whose whole-number BPM is
-        nearest the driver's tempo."""
+        """Ticks per row: the grid every note starts and lasts on.  Where that grid is too fine (the
+        pattern limit, or no speed's BPM in 32-255), the multiple of it that puts the most notes on
+        rows: the rest take EDx.  A 1-frame stagger between channels makes the exact grid 1 frame;
+        the beat's grid (7 frames) keeps all but the staggered notes on rows.  The speed whose
+        whole-number BPM is nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
         # The song's own rhythm: a driver's run-out cut (core/smps/run_out.py) falls between rows (ECx)
         notes = [e for ch in self._song.channels for e in ch.events if e.note is not None and not e.note.run_out]
         ticks = [e.tick_position for e in notes] + [e.note.duration for e in notes]
-        grid = math.gcd(*ticks) or 1
-        end = self._song.end_tick()
-        limit = int(self._stated.get("max_patterns", 127))
-        while end / grid / _ROWS_PER_PATTERN > limit:
-            grid *= 2
+        exact = math.gcd(*ticks) or 1
+        starts = Counter(e.tick_position for e in notes)
 
-        # Stored ticks hold the header's tempo divider; ticks_per_row counts duration units
-        # (Timeline multiplies the divider back in).  A grid so fine that no speed's BPM fits
-        # 32-255 is coarsened: notes between rows take EDx
-        h = self._song.header
-        divider = max(h.tempo_divider, 1)
-        fps = region_fps(self._stated.get("region", "ntsc"))
-        while True:
-            tpr = grid // divider if grid % divider == 0 else grid / divider
-            options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
-            if options or h.tempo_modifier <= 1 or grid >= end:
-                break
-            grid *= 2
+        def on_rows(grid: int) -> int:
+            return sum(n for tick, n in starts.items() if tick % grid == 0)
+
+        fitting = [g for g in range(exact, _MAX_GRID_STEPS * exact + 1, exact) if self._grid_options(g) is not None]
+        grid = max(fitting, key=lambda g: (on_rows(g), -g)) if fitting else self._coarsened(exact)
+        tpr, options = self._grid_options(grid) or self._tpr_options(grid)
         self._out.data["ticks_per_row"] = tpr
         self._out.derived.append("ticks_per_row")
 
         self._default("target_speed", options[0]["speed"] if options else 6)
+
+    def _tpr_options(self, grid: int) -> tuple[float, list[dict]]:
+        """Ticks per row for `grid` and the speeds whose BPM fits.  Stored ticks hold the header's
+        tempo divider; ticks_per_row counts duration units (Timeline multiplies the divider back in)."""
+        h = self._song.header
+        divider = max(h.tempo_divider, 1)
+        tpr = grid // divider if grid % divider == 0 else grid / divider
+        fps = region_fps(self._stated.get("region", "ntsc"))
+        return tpr, bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
+
+    def _grid_options(self, grid: int) -> tuple[float, list[dict]] | None:
+        """`grid`'s ticks per row and speeds, if the song fits the pattern limit at it and some speed's
+        BPM fits (a tempo without one: any); else None."""
+        limit = int(self._stated.get("max_patterns", 127))
+        if self._song.end_tick() / grid / _ROWS_PER_PATTERN > limit:
+            return None
+        tpr, options = self._tpr_options(grid)
+        return (tpr, options) if options or self._song.header.tempo_modifier <= 1 else None
+
+    def _coarsened(self, grid: int) -> int:
+        """`grid` doubled until it fits, or reaches the song's end."""
+        end = self._song.end_tick()
+        while grid < end and self._grid_options(grid) is None:
+            grid *= 2
+        return grid
 
     def _windows(self, notes: dict, kind: str, file_stem) -> dict:
         """An entry per window of each voice's (envelope's) chip pitches."""

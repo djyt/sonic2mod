@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 
-from ..smps import Op, OpKind, SmpsCode
+from ..smps import ChannelType, Op, OpKind, SmpsCode
 from .fixes import RomFix
 from .grammar import Instruction, track_label
 from .image import RomError
@@ -26,39 +26,52 @@ class DecodedTracks:
     dropped: Counter[str] = field(default_factory=Counter)   # flags read and left out, by name
 
 
-def decode_tracks(memory: SoundMemory, starts: dict[str, int], variant: SmpsVariant,
+def decode_tracks(memory: SoundMemory, starts: dict[int, ChannelType], variant: SmpsVariant,
                   splices: dict[int, RomFix] | None = None) -> DecodedTracks:
-    """The code reached from `starts` (label -> address).  `splices`: data fixes whose bytes read
-    as their (other-length) replacement."""
+    """The code reached from `starts` (address -> the kind of track starting there), each
+    instruction read with its track's flag table.  `splices`: data fixes whose bytes read as their
+    (other-length) replacement."""
     splices = splices or {}
     decoded: dict[int, Instruction] = {}
-    labels = set(starts.values())
-    todo = list(starts.values())
+    kinds: dict[int, ChannelType] = {}
+    labels = set(starts)
+    todo = list(starts.items())
 
     while todo:
-        address = todo.pop()
+        address, kind = todo.pop()
         if address in decoded:
+            _check_shared(address, kinds[address], kind, variant)
             continue
-        one = _splice(memory, splices[address], variant) if address in splices else variant.grammar(memory, address, variant)
+        if address in splices:
+            one = _splice(memory, splices[address], variant, kind)
+        else:
+            one = variant.grammar(memory, address, variant, kind)
         decoded[address] = one
+        kinds[address] = kind
         if one.falls_through:
-            todo.append(address + one.length)
+            todo.append((address + one.length, kind))
         if one.target is not None:
             labels.add(one.target)
-            todo.append(one.target)
+            todo.append((one.target, kind))
 
     _check_overlaps(decoded)
     dropped = Counter(d.dropped for d in decoded.values() if d.dropped)
-    return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in labels}, dropped)
+    return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in sorted(labels)}, dropped)
 
 
-def _splice(memory: SoundMemory, fix: RomFix, variant: SmpsVariant) -> Instruction:
+def _check_shared(address: int, read_as: ChannelType, kind: ChannelType, variant: SmpsVariant) -> None:
+    """Code two kinds of track reach is read once: only where their flag tables are one."""
+    if variant.flags[read_as] is not variant.flags[kind]:
+        raise RomError(f"${address:X}: code shared by {read_as} and {kind} tracks, whose flags differ")
+
+
+def _splice(memory: SoundMemory, fix: RomFix, variant: SmpsVariant, kind: ChannelType) -> Instruction:
     """A fix's original bytes, read as its replacement: plain instructions, no pointers."""
     patch = memory.patched(fix.address, fix.replacement)
     ops: list[Op] = []
     at, end = fix.address, fix.address + len(fix.replacement)
     while at < end:
-        one = variant.grammar(patch, at, variant)
+        one = variant.grammar(patch, at, variant, kind)
         if one.target is not None or not one.falls_through:
             raise RomError(f"data fix at ${fix.address:X}: a replacement may not jump, call, loop or stop")
         ops += one.ops

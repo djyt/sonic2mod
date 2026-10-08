@@ -4,7 +4,7 @@ with a disassembler (docs/todo/binary_import.md, Phase 2)."""
 from __future__ import annotations
 
 from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, SmpsDriver
-from ..flags import RETURN, EnvelopeCommand, drop, effect, refuse
+from ..flags import RETURN, EnvelopeCommand, drop, effect, every_kind, refuse
 from ..variant import SmpsVariant
 from .common import FLAGS_68K, HEADER_68K, VOICE_68K
 from .dac import type1a_dac
@@ -18,7 +18,7 @@ TYPE1A = SmpsVariant(
     name=SmpsDriver.TYPE1A,
     memory=Relative68kMemory,
     locate=locate_68k,
-    flags={
+    flags=every_kind({
         **FLAGS_68K,
         0xE3: refuse("sets a global flag ($FC clears it; what reads it is not known)"),
         0xE4: drop("pan animation", 1, more_if_set=4),
@@ -35,7 +35,7 @@ TYPE1A = SmpsVariant(
         0xFD: refuse("SSG-EG", 4),
         0xFE: refuse("FM3 special mode", 8),
         0xFF: effect(CoordFlag.PAN),                  # past the jump table: runs into $E0's handler
-    },
+    }),
     envelope_commands={0x83: EnvelopeCommand.HOLD, 0x80: EnvelopeCommand.RESTART,
                        0x85: EnvelopeCommand.JUMP},   # $61152
     header=HEADER_68K,

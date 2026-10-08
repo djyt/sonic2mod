@@ -3,10 +3,11 @@ operand bytes follow it.  Each variant's table is its family's (smps68k/ ...).""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from ..smps import CoordFlag
+from ..smps import ChannelType, CoordFlag
 
 
 class EnvelopeCommand(Enum):
@@ -55,3 +56,8 @@ JUMP = FlagSpec(FlagKind.JUMP, 2)
 LOOP = FlagSpec(FlagKind.LOOP, 4)           # index, count, pointer
 CALL = FlagSpec(FlagKind.CALL, 2)
 NO_ATTACK = FlagSpec(FlagKind.NO_ATTACK)
+
+
+def every_kind(table: Mapping[int, FlagSpec]) -> dict[ChannelType, Mapping[int, FlagSpec]]:
+    """One flag table for every kind of track (DAC, FM, PSG): each SMPS variant so far."""
+    return dict.fromkeys(ChannelType, table)

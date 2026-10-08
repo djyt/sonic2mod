@@ -98,7 +98,7 @@ class SmpsVariant:
     name: SmpsDriver
     memory: Callable[[RomImage], SoundMemory]
     locate: Callable[[RomImage], SoundIndex]
-    flags: Mapping[int, FlagSpec]
+    flags: Mapping[ChannelType, Mapping[int, FlagSpec]]                 # each kind of track's flag table
     envelope_commands: Mapping[int, EnvelopeCommand]
     header: HeaderLayout
     voice_layout: VoiceLayout
@@ -109,4 +109,4 @@ class SmpsVariant:
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
     known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes
     # The track grammar: the instruction at an address (grammar.py; SMPS's for every variant so far)
-    grammar: Callable[[SoundMemory, int, SmpsVariant], Instruction] = smps_instruction
+    grammar: Callable[[SoundMemory, int, SmpsVariant, ChannelType], Instruction] = smps_instruction

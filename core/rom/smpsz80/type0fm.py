@@ -10,7 +10,7 @@ an FM drum program on FM3, drums.py; bits 4-6 a PSG drum: no song plays one).
 from __future__ import annotations
 
 from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
-from ..flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, refuse
+from ..flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, every_kind, refuse
 from ..image import RomImage
 from ..variant import SmpsVariant
 from .drums import drum_name, read_fm_drums
@@ -55,7 +55,7 @@ TYPE0FM = SmpsVariant(
     name=SmpsDriver.TYPE0FM,
     memory=_memory,
     locate=locate_type0,
-    flags=_FLAGS,
+    flags=every_kind(_FLAGS),
     envelope_commands={},          # no PSG envelope table located (no song uses the PSG)
     header=HEADER_TYPE0,
     voice_layout=VOICE_TYPE0,

@@ -31,6 +31,7 @@ from collections.abc import Mapping
 from ...chips import MD_PSG_CLOCK
 from ..image import RomError, RomImage
 from ..variant import DacSample
+from ..z80 import z80_ram
 from .kosinski import kosinski
 
 _Z80_CLOCK = MD_PSG_CLOCK                 # the Z80 and the PSG both run at the master clock / 15
@@ -51,8 +52,6 @@ _MOVE_D0_ABS = bytes.fromhex("13C0")                    # move.b d0,(xxx).l
 _MOVE_D1_ABS = bytes.fromhex("13C1")                    # move.b d1,(xxx).l
 _MOVE_IMM_ABS = bytes.fromhex("13FC00")                 # move.b #ii,(xxx).l
 _MOVE_PC_INDEXED = bytes.fromhex("103B")                # move.b d8(pc,d0.w),d0
-_COPY_TO_Z80 = (bytes.fromhex("4DF900A0"), bytes.fromhex("4BF9"), bytes.fromhex("303C"),
-                bytes.fromhex("1CDD51C8FFFC"))          # lea z80,a6 / lea src,a5 / move.w #n,d0 / copy, dbra
 _SEARCH_BACK = 0x40                                     # how far before a pitch write its table is read
 
 
@@ -118,7 +117,7 @@ class _Type1aDac:
         self._names = names
 
     def samples(self) -> list[DacSample]:
-        z80 = self._z80_image()
+        z80 = z80_ram(self._rom)
         table = _pcm_table(z80)
         deltas = _deltas(z80)
         out = [_sample(z80, table + i * self._ENTRY, self._SIZE, self._PITCH, _FIRST_SAMPLE + i, deltas,
@@ -137,21 +136,6 @@ class _Type1aDac:
         out += [_copy(by_sound[self._ALT_SAMPLE], self._FIRST_ALT + i, first if i == 0 else usual,
                       self._CYCLES, self._names) for i in range(self._ALT)]
         return out
-
-    def _z80_image(self) -> bytes:
-        """Z80 RAM as the 68k's copy loops fill it."""
-        rom, image = self._rom, bytearray(0x2000)
-        lea_z80, lea_src, move_count, copy = _COPY_TO_Z80
-        for at in rom.find_all(lea_z80):
-            src_at, count_at, copy_at = at + 6, at + 12, at + 16
-            if (rom.bytes_at(src_at, 2) != lea_src or rom.bytes_at(count_at, 2) != move_count
-                    or rom.bytes_at(copy_at, len(copy)) != copy):
-                continue
-            dest, src, count = rom.word(at + 4), rom.long(src_at + 2), rom.word(count_at + 2) + 1
-            image[dest:dest + count] = rom.bytes_at(src, count)
-        if not any(image):
-            raise RomError("no copy of the Z80 driver into Z80 RAM found")
-        return bytes(image)
 
     def _immediate_pitches(self, pitch_at: int) -> tuple[int, int]:
         target = (_Z80_RAM + pitch_at).to_bytes(_LONG, "big")

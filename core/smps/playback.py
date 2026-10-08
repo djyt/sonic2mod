@@ -128,7 +128,8 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
     base: int | None = None            # the table word of the last note: a retrigger re-keys it
     resting = True                     # the last read was a rest (the driver cleared Freq)
     keyed = False                      # the channel sounds a note
-    fill_off: int | None = None        # the frame smpsNoteFill keys it off on
+    fill_off: int | None = None        # the frame smpsNoteFill's NoteTimeout runs out on
+    timed_out = False                  # NoteTimeout has run out since the last read that reloaded it
 
     for ev in channel.events:
         if ev.is_effect:
@@ -141,27 +142,45 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         # A held duration re-keys the last note (a rest when there is none: TrackSetRest cleared it)
         if note.is_rest and note.is_no_attack and not resting and base is not None:
             note = dataclasses.replace(note, is_rest=False, is_retrigger=True)
-
-        resting = note.is_rest
-        if note.is_rest:
-            keyed = False
-            _rest(played, ev.tick_position, note.duration)
-            continue
         if note.is_dac:
+            resting = False
             played.append(PlayedNote(ev.tick_position, note.duration, rest=False, dac=note.dac_name))
             continue
 
-        # Attacks unless smpsNoAttack finds the note still keyed; the fill restarts on an attack
+        # NoteTimeout ran out before this read: it keyed the channel off then
         read = frame_of_tick(schedule, ev.tick_position)
-        keyed = keyed and (fill_off is None or read <= fill_off)
-        attack = not note.is_no_attack or not keyed
-        if not note.is_no_attack:
-            fill_off = read + st.fill if st.fill else None
-        keyed = True
+        if fill_off is not None and read > fill_off:
+            keyed, fill_off, timed_out = False, None, True
 
+        # Every read without smpsNoAttack reloads NoteTimeout (FinishTrackUpdate), a rest's too
+        if not note.is_no_attack:
+            fill_off, timed_out = (read + st.fill if st.fill else None), False
+
+        # A PSG note read under smpsNoAttack once the fill has run out stays silent: SetPSGVolume
+        # writes no volume while NoteTimeout is 0
+        silent = st.is_psg and note.is_no_attack and st.fill and timed_out
+        resting = note.is_rest
+        if note.is_rest or silent:
+            keyed = False
+            _rest(played, ev.tick_position, note.duration)
+            continue
+
+        # Attacks unless smpsNoAttack finds the note still keyed
+        attack = not note.is_no_attack or not keyed
+        keyed = True
         if not note.is_retrigger or base is None:
             base = _table_word(note, st)
-        played += _filled(_note(ev.tick_position, note, st, base, voices, attack), read, fill_off, schedule)
+        sounded = _note(ev.tick_position, note, st, base, voices, attack)
+
+        # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
+        # read that way leaves it sounding (NoteTimeout is spent)
+        if not st.is_psg and note.is_no_attack:
+            next_read = frame_of_tick(schedule, ev.tick_position + note.duration)
+            if fill_off is not None and fill_off < next_read:
+                fill_off, timed_out = None, True
+            played.append(sounded)
+            continue
+        played += _filled(sounded, read, fill_off, schedule)
 
     # smpsStop keys the channel off: it rests while the others play on
     stop = played[-1].tick + played[-1].duration if played else 0

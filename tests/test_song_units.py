@@ -80,6 +80,33 @@ class NoAttack(unittest.TestCase):
         self.assertFalse(first.is_no_attack)
 
 
+class BareDurations(unittest.TestCase):
+    _SONG = """
+Song_Header:
+	smpsHeaderStartSong 1
+	smpsHeaderVoice     Song_Voices
+	smpsHeaderChan      $02, $00
+	smpsHeaderTempo     $01, $03
+	smpsHeaderDAC       Song_DAC
+	smpsHeaderFM        Song_FM1, $00, $00
+Song_DAC:
+	smpsStop
+Song_FM1:
+	dc.b	nC4, $08, $08, nRst, $08, $08
+	smpsNoAttack
+	dc.b	$08
+	smpsStop
+Song_Voices:
+"""
+
+    def test_a_bare_duration_rekeys_the_note_but_rests_after_a_rest(self):
+        # TrackSetRest clears the frequency: no note for a bare duration to re-key
+        fm1 = SmpsParser().parse_text(self._SONG).channels[1]
+        notes = [ev.note for ev in fm1.events if ev.note is not None]
+        self.assertEqual([(n.is_rest, n.is_retrigger) for n in notes],
+                         [(False, False), (False, True), (True, False), (True, False), (True, False)])
+
+
 class Loops(unittest.TestCase):
     """A loop is a tick and an event index on its channel: no assembly label needed."""
 

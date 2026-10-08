@@ -62,11 +62,9 @@ its duration byte leaves the duration the note's (SndA3 Death: `nAb3` / label / 
 
 It re-keys the channel (`docs/smps_driver.md` § Note reads), so the parser makes it a note:
 `SmpsNote(note_value=<last note>, is_retrigger=True)`.  After `smpsNoAttack` it is the last note
-held instead (`is_rest=True, is_no_attack=True`).  On the DAC track it re-hits the last sample, and
-after a rest it is a rest.
-
-On FM and PSG tracks the parser re-keys the last note even after a rest, where the driver keeps
-resting (Credits PSG3: 32 loops of hi-hats the game does not play).
+held instead (`is_rest=True, is_no_attack=True`).  After a rest it is a rest on every track: the
+driver has no frequency (or DAC sample) left to re-key (Credits PSG3: 32 loops of bare durations
+after `nRst`, silent in the rip).
 
 ### smpsNoAttack
 

@@ -121,6 +121,25 @@ class Played(unittest.TestCase):
         self.assertEqual(played(4)[:2], [(0, 4, False), (4, 4, True)])
         self.assertEqual(played(10), [(0, 8, False), (8, 8, False)])
 
+    def test_a_fill_cannot_key_off_an_fm_tie(self):
+        # Fill 14 runs out on frame 14, inside the tie: FMNoteOff does nothing under smpsNoAttack
+        notes = played_song(_song(_flag(CoordFlag.NOTE_FILL, 14), _note(), _tie())).channels["FM1"]
+        self.assertEqual([(n.tick, n.duration, n.rest, n.attack) for n in notes],
+                         [(0, 8, False, True), (8, 8, False, False)])
+
+    def test_a_fill_keys_off_a_psg_tie(self):
+        # PSGNoteOff has no smpsNoAttack check: the tie is cut where the fill runs out
+        notes = played_song(_song(_flag(CoordFlag.NOTE_FILL, 14), _note(), _tie(), kind="PSG")).channels["PSG1"]
+        self.assertEqual([(n.tick, n.rest) for n in notes][:2], [(0, False), (8, False)])
+        self.assertTrue(notes[2].rest)
+        self.assertLess(notes[1].duration, 8)
+
+    def test_a_psg_tie_after_the_fill_ran_out_stays_silent(self):
+        # SetPSGVolume writes no volume under smpsNoAttack once NoteTimeout is 0
+        notes = played_song(_song(_flag(CoordFlag.NOTE_FILL, 4), _note(), _tie(), kind="PSG")).channels["PSG1"]
+        self.assertEqual([(n.rest, n.tick + n.duration) for n in notes][-1], (True, 16))
+        self.assertEqual(len(notes), 2)
+
     def test_a_stopped_channel_rests_to_the_end(self):
         # smpsStop keys the channel off: silent while the others play on
         song = _song(_note())

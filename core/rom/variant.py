@@ -83,14 +83,42 @@ class TrackSlot:
 
 
 @dataclass(frozen=True)
+class EntryLayout:
+    """A music header's track entry: its size, and where each byte after the pointer word is
+    (None: the driver stores none)."""
+
+    size: int
+    pitch: int | None = None
+    volume: int | None = None
+    mod: int | None = None
+    envelope: int | None = None
+
+
+SMPS_FM_ENTRY = EntryLayout(4, pitch=2, volume=3)                    # ptr.w pitch.b volume.b
+SMPS_PSG_ENTRY = EntryLayout(6, pitch=2, volume=3, mod=4, envelope=5)  # ... mod.b envelope.b
+
+_SHARED_BYTES = 4           # voices.w fm.b psg.b: every header's
+_TEMPO_BYTES = 2            # divider.b modifier.b
+
+
+@dataclass(frozen=True)
 class HeaderLayout:
-    """How a driver reads its song and SFX headers beyond the fields every SMPS header shares."""
+    """How a driver reads its song and SFX headers: voices.w fm.b psg.b, the tempo if `tempo`,
+    then each track's entry."""
 
     fm_slots: tuple[TrackSlot, ...]          # the DAC / FM entries in header order, as many as it has tracks
     sfx_channels: frozenset[int]             # the channel ids an SFX track may name
+    tempo: bool = True                       # divider.b modifier.b after the counts; without: a tick a frame
+    fm_entry: EntryLayout = SMPS_FM_ENTRY
+    psg_entry: EntryLayout = SMPS_PSG_ENTRY
     never_holds: int | None = None           # the tempo byte that never stalls (Type 0 FM's 0)
     tempo_phase: int = 0                     # frames the first hold comes late (Type 0 FM: 1)
     key_run_out: int | None = None           # frames a note keys without an attacking read (Type 0 FM: 256)
+
+    @property
+    def entries_at(self) -> int:
+        """Where the first track entry starts."""
+        return _SHARED_BYTES + (_TEMPO_BYTES if self.tempo else 0)
 
 
 @dataclass(frozen=True, eq=False)     # one object per driver: compared by identity

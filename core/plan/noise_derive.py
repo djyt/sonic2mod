@@ -4,7 +4,7 @@ driver writes from PSG3's own notes.
 """
 
 from ..config import ConversionConfig
-from ..smps import SmpsSong, psg_tone2_divider
+from ..smps import ChannelType, SmpsSong, psg_tone2_divider
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .driver_state import enabled_channels, walk_channel
 
@@ -25,7 +25,7 @@ def derive_noise_envelopes(song: SmpsSong, config: ConversionConfig) -> dict[int
     in for several envelopes (Credits' PSG3, which has no free slot for variants).
     """
     counts: dict[int, dict[str | None, int]] = {}
-    for chan_cfg, channel in enabled_channels(song, config, ("PSG",)):
+    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.PSG,)):
         for _event, st, res in walk_channel(channel, config, chan_cfg):
             if res is not None and st.in_noise_mode and st.psg_entry is not None:
                 per = counts.setdefault(st.instrument, {})
@@ -62,7 +62,7 @@ def derive_rate3_dividers(song: SmpsSong, config: ConversionConfig) -> dict[int,
     """
 
     seen: dict[int, dict] = {}        # instrument -> {'entry', 'notes': {(note_value, transpose): count}}
-    for chan_cfg, channel in enabled_channels(song, config, ("PSG",)):
+    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.PSG,)):
         for event, st, res in walk_channel(channel, config, chan_cfg):
             if res is None:
                 continue

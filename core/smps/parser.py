@@ -9,7 +9,7 @@ import re
 from .code import NO_ATTACK, Op, OpKind, SmpsCode, effect_from_bytes, song_from_code
 from .driver_tables import PAN_VALUES
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_NOTE_NAMES, voice_field_from_macro
-from .song import CoordFlag, SmpsChannelHeader, SmpsEffect, SmpsSongHeader, SmpsVoice
+from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsEffect, SmpsSongHeader, SmpsVoice
 
 _PAN_LFO_MASK = 0x3F  # smpsPan's second operand: B4's AMS / FMS bits
 
@@ -150,7 +150,7 @@ class SmpsParser:
                 if pitch_raw > 0x7F:
                     pitch_raw -= 0x100
                 ch = SmpsChannelHeader(
-                    channel_type="PSG" if chanid & 0x80 else "FM",
+                    channel_type=ChannelType.PSG if chanid & 0x80 else ChannelType.FM,
                     label=m.group(2).rstrip(','),
                     pitch_offset=pitch_raw,
                     volume=int(m.group(4), 16),
@@ -178,7 +178,7 @@ class SmpsParser:
             m = re.match(r'smpsHeaderDAC\s+(\S+)', line)
             if m:
                 ch = SmpsChannelHeader(
-                    channel_type="DAC",
+                    channel_type=ChannelType.DAC,
                     label=m.group(1).rstrip(',')
                 )
                 header.channels.append(ch)
@@ -192,7 +192,7 @@ class SmpsParser:
                 if pitch_raw > 0x7F:
                     pitch_raw -= 0x100
                 ch = SmpsChannelHeader(
-                    channel_type="FM",
+                    channel_type=ChannelType.FM,
                     label=m.group(1).rstrip(','),
                     pitch_offset=pitch_raw,
                     volume=int(m.group(3), 16)
@@ -210,7 +210,7 @@ class SmpsParser:
                 if pitch_raw > 0x7F:
                     pitch_raw -= 0x100
                 ch = SmpsChannelHeader(
-                    channel_type="PSG",
+                    channel_type=ChannelType.PSG,
                     label=m.group(1).rstrip(','),
                     pitch_offset=pitch_raw,
                     volume=int(m.group(3), 16),

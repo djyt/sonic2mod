@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from core.smps import HW_FM_CHANNEL, PSG_CHANNEL
+from core.smps import HW_FM_CHANNEL, PSG_CHANNEL, ChannelType
 
 
 # SMPS_Track.Freq is a signed word; -1 marks "no valid note" (PSGSetFreq .restpsg).
@@ -20,7 +20,7 @@ class SfxTrack:
     so every counter starts at 0 and modulation starts disabled — see :1059.
     """
 
-    channel_type: str            # "FM" | "PSG"
+    channel_type: ChannelType    # FM | PSG
     voice_control: int           # $02/$04/$05 (FM) or $80/$A0/$C0 (PSG); -> $E0 after smpsPSGform
     events: list                 # flat SmpsEvent list; smpsLoop is already unrolled
     name: str = ""               # for diagnostics only
@@ -67,7 +67,7 @@ class SfxTrack:
 
     @property
     def is_fm(self) -> bool:
-        return self.channel_type == "FM"
+        return self.channel_type == ChannelType.FM
 
     @property
     def hw_ch(self) -> int:

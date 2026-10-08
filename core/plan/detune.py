@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 
 from ..chips import FREQ_WORD_MAX, split_freq_word
 from ..config import SAMPLE_FILE, SAMPLE_SLOT, SAMPLE_VOLUME
-from ..smps import fm_table_index
+from ..smps import ChannelType, fm_table_index
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
 
@@ -98,7 +98,7 @@ def plan_detune_variants(song, config) -> DetunePlan:
     synthesised = set(fm_catalogue(song, config).instruments)
 
     counts: dict[int, dict[int, int]] = {}
-    for chan_cfg, channel in enabled_channels(song, config, ("FM",)):
+    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM,)):
         for _event, _st, res in walk_channel(channel, config, chan_cfg):
             if res is None or res.instrument not in synthesised:
                 continue

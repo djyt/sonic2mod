@@ -53,7 +53,7 @@ from ..config import (
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..rom import DacSample
-from ..smps import C1_SEMITONE, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
+from ..smps import C1_SEMITONE, ChannelType, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
 from ..source import read_dac
 from .driver_state import walk_channel
 
@@ -84,9 +84,9 @@ def starting_volume(kind: str, level: int = 0, hard_panned: bool = False,
                     pan_law_db: float = DEFAULT_FM_PAN_LAW_DB) -> int:
     """A sample_list volume to start from: a sample is peak-normalised, so the volume carries the
     level its notes mostly play at.  `kind` FM (level: TL offset), tone / noise (attenuation), DAC."""
-    if kind == "DAC":
+    if kind == ChannelType.DAC:
         return _FULL
-    if kind == "FM":
+    if kind == ChannelType.FM:
         gain = _FM_SCALE * db_to_gain(fm_level_db(level, hard_panned, pan_law_db))
     else:
         gain = _PSG_SCALE * db_to_gain(psg_level_db(level))
@@ -176,7 +176,7 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        self._items("voice_map", self._windows(fm, "FM", _FM_STEM.format))
+        self._items("voice_map", self._windows(fm, ChannelType.FM, _FM_STEM.format))
         self._items("psg_voice_map", self._windows(tone, "tone", _TONE_STEM.format))
         self._items("psg_map", {form: self._noise(form) for form in sorted(noise)})
         self._sample_list()
@@ -216,7 +216,7 @@ class _Deriver:
                     levels[("tone", st.envelope or "$00")][(res.chip, (st.att, False))] += 1
                 elif res is not None and st.voice is not None:
                     fm[st.voice][res.chip] += 1
-                    levels[("FM", st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
+                    levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
         return fm, tone, noise, dac
 
     # --- sections ---------------------------------------------------------------------
@@ -303,7 +303,7 @@ class _Deriver:
             base = by_sound[sample.of] if sample.of else sample
             if base.sound not in slots:
                 file = _DAC_FILE.format(base.name)
-                slots[base.sound] = self._take("DAC", file)
+                slots[base.sound] = self._take(ChannelType.DAC, file)
                 self._rows[-1][SAMPLE_FINETUNE] = self._nearest(base.rate)[1]
                 self._out.files[file] = base.pcm
             finetune = next(r[SAMPLE_FINETUNE] for r in self._rows if r[SAMPLE_SLOT] == slots[base.sound])
@@ -316,9 +316,9 @@ class _Deriver:
     def _fm_drum(self, name: str, drum: FmDrum) -> dict:
         """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
         drum's own volume (its render is peak-normalised, as an FM voice's)."""
-        slot = self._take("FM", _DAC_FILE.format(name))
+        slot = self._take(ChannelType.FM, _DAC_FILE.format(name))
         hard = drum.voice.pan is not None and pan_is_hard([drum.voice.pan])
-        self._rows[-1][SAMPLE_VOLUME] = starting_volume("FM", drum.tl_offset, hard)
+        self._rows[-1][SAMPLE_VOLUME] = starting_volume(ChannelType.FM, drum.tl_offset, hard)
         return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}
 
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:

@@ -8,9 +8,9 @@ from collections.abc import Callable, Mapping
 
 from ..audio import pitch_name
 from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
-from ..smps import Aspect, ChannelDiff, NoteDiff, SongDiff
+from ..smps import Aspect, ChannelDiff, ChannelType, NoteDiff, SongDiff
 
-_KIND_ORDER = ("FM", "DAC", "PSG")
+_KIND_ORDER = (ChannelType.FM, ChannelType.DAC, ChannelType.PSG)
 
 
 def diff_counts(diff: SongDiff | ChannelDiff) -> str:

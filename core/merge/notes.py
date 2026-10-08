@@ -15,6 +15,7 @@ from ..config import region_fps
 from ..mod import MOD_NOTE_MAP, ModNote
 from ..plan import FmLayer, walk_channel
 from ..smps import (
+    ChannelType,
     CoordFlag,
     source_map,
 )
@@ -34,7 +35,7 @@ class NoteOn:
                               # runs out first (a drum hit, a hi-hat's envelope)
     instrument: int           # MOD instrument
     index: int                # MOD note index (C1 = 0)
-    kind: str                 # "FM" | "PSG" | "DAC"
+    kind: ChannelType
     chip: int | None = None   # the pitch the chip plays; None where the note has none (DAC, noise)
     detune: int = 0
     tl: int = 0
@@ -124,7 +125,7 @@ class _NoteWalk:
         if note.is_rest:
             self._on_rest(note, tick)
             return
-        if self._kind == "DAC":
+        if self._kind == ChannelType.DAC:
             n = self._drum(note, tick)
             if n is None:
                 return
@@ -153,7 +154,7 @@ class _NoteWalk:
         if d is None:
             return None
         n = NoteOn(tick, note.duration, self._sounding(tick, note.duration, d.mod_instrument, self._fill),
-                   d.mod_instrument, MOD_NOTE_MAP.get(d.mod_note, ModNote.C3).value, "DAC",
+                   d.mod_instrument, MOD_NOTE_MAP.get(d.mod_note, ModNote.C3).value, ChannelType.DAC,
                    note_value=note.note_value, secs=self._secs(tick, note.duration))
         n.fill, n.fill_secs = self._fill, self._fill_secs()
         return n
@@ -258,7 +259,7 @@ def _sounding_at(ticks: list[int], notes: dict[int, NoteOn], t: int) -> NoteOn |
 
 def chip_pair(p: NoteOn, f: NoteOn) -> bool:
     """True when the two notes are FM voices the chip can render together."""
-    return (p.kind == "FM" and f.kind == "FM" and p.chip is not None and f.chip is not None
+    return (p.kind == ChannelType.FM and f.kind == ChannelType.FM and p.chip is not None and f.chip is not None
             and p.voice is not None and f.voice is not None)
 
 

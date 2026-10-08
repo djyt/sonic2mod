@@ -24,6 +24,7 @@ from .percussion import FmDrum
 from .run_out import apply_run_out
 from .song import (
     REST,
+    ChannelType,
     CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
@@ -184,7 +185,7 @@ class _Walker:
         self._labels = code.labels
         self._header = header
         self._channel = SmpsChannel(header=header)
-        self._is_dac = header.channel_type == "DAC"
+        self._is_dac = header.channel_type == ChannelType.DAC
 
         # Where this channel's walk first reached each label (a jump back to one replays from
         # there): the tick, and the index of the first event after it

@@ -71,6 +71,7 @@ from .parser import SmpsParser
 from .percussion import FmDrum, FmFrame
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .song import (
+    ChannelType,
     CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
@@ -111,6 +112,7 @@ __all__ = [
     "SONIC1_ENVELOPES",
     "Aspect",
     "ChannelDiff",
+    "ChannelType",
     "CoordFlag",
     "FmDrum",
     "FmFrame",

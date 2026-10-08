@@ -85,9 +85,17 @@ class SmpsEvent:
         return self.effect is not None
 
 
+class ChannelType(StrEnum):
+    """A track's chip, as the song's header says (never its name: Type 0 FM's drum track is FM3)."""
+
+    DAC = "DAC"
+    FM = "FM"
+    PSG = "PSG"
+
+
 @dataclass
 class SmpsChannelHeader:
-    channel_type: str     # "DAC", "FM", "PSG"
+    channel_type: ChannelType
     label: str
     pitch_offset: int = 0
     volume: int = 0

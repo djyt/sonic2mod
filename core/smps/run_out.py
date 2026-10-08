@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from .song import REST, SmpsEvent, SmpsNote, SmpsSong
+from .song import REST, ChannelType, SmpsEvent, SmpsNote, SmpsSong
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 
 
@@ -29,7 +29,7 @@ def apply_run_out(song: SmpsSong) -> None:
         return
     schedule = song.tempo_schedule()
     for channel in song.channels:
-        if channel.header.channel_type == "FM":
+        if channel.header.channel_type == ChannelType.FM:
             channel.events = _cut(channel.events, schedule, limit)
 
 

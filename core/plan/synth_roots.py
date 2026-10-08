@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..smps import ChannelType
 from .driver_state import enabled_channels, walk_channel
 
 
@@ -38,7 +39,7 @@ def resolve_synth_roots(song, config) -> list[dict]:
     """
     votes: dict[int, dict[int, int]] = {}       # id(entry) -> {D: notes}
     pitches: dict[int, dict[int, int]] = {}     # id(entry) -> {chip pitch: notes}
-    for chan_cfg, channel in enabled_channels(song, config, ("FM", "PSG")):
+    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM, ChannelType.PSG)):
         for _event, st, res in walk_channel(channel, config, chan_cfg):
             if res is None:
                 continue

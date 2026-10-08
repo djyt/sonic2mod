@@ -25,7 +25,7 @@ from ..diagnostics import Diagnostics, WarningKind
 from ..merge import Composite, MergePlan
 from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume, note_rate
 from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
-from ..smps import C1_SEMITONE, CoordFlag, SmpsChannel, SmpsSong
+from ..smps import C1_SEMITONE, ChannelType, CoordFlag, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
 from .vibrato import VibratoSpeed, vibrato_depth
@@ -217,7 +217,7 @@ class ChannelWriter:
         self._channel = channel
         self._cfg = chan_cfg
         self._is_dac = is_dac
-        self._is_psg = channel.header.channel_type == "PSG"
+        self._is_psg = channel.header.channel_type == ChannelType.PSG
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._router = _ColumnRouter(ctx, chan_cfg.source, chan_cfg.mod_channel)
 
@@ -590,7 +590,7 @@ class ChannelWriter:
         # into its rest's release)
         solo = getattr(event, "merged", None)
         fill = self._note_fill if solo is None else solo.fill
-        psg = self._is_psg if solo is None else solo.kind == "PSG"
+        psg = self._is_psg if solo is None else solo.kind == ChannelType.PSG
 
         # A Cxx due on the attack row gives way to EDx when the note lasts into the next row:
         # the volume is then set there (_attack_commands).  Drowning FM4 pans every other note

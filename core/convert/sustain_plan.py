@@ -12,7 +12,7 @@ from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergePlan
 from ..mod import PERIOD_TABLE, max_sustain_secs, note_rate
 from ..plan import Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
-from ..smps import SmpsSong
+from ..smps import ChannelType, SmpsSong
 
 _AUTO_SUSTAIN_CAP_SECS = 10.0
 
@@ -45,7 +45,7 @@ class SustainPlanner:
         instrument catalogue (core.plan.instruments), which is what the generators render from; an
         instrument absent here is not synthesised (loaded from disk).
         """
-        if kind == "FM":
+        if kind == ChannelType.FM:
             return {i.inst: (i.rate_root_idx, i.synth_shift)
                     for i in fm_catalogue(self._song, self._config).instruments.values()}
         return {i.inst: (i.root_idx, i.entry.synth_shift)

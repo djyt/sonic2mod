@@ -1,12 +1,13 @@
 """A song's FM voice bank: each voice as its driver's VoiceLayout stores it.
 
-    feedback / algorithm   (unused << 6) | (feedback << 3) | algorithm
-    B4                     L R AMS FMS, where the driver stores it in the voice
-    then per operator register, four bytes in register order: operators 4, 3, 2, 1
+    feedback / algorithm   (unused << 6) | (feedback << 3) | algorithm; first, or last
+    B4                     L R AMS FMS, after it, where the driver stores it in the voice
+    then per operator register, four bytes, one per operator slot (VoiceLayout.operator_offsets:
+    SMPS's registers +0 +8 +4 +C)
     (Sonic 1: DT/MUL  KS/AR  AM/D1R  D2R  D1L/RR  TL - 25 bytes; Type 0 FM: B4, TL first - 26)
 
-SmpsVoice keeps each field's four values in SMPS2ASM's operand order (operators 1-4), so each
-group of four is reversed.  Each field is read as the chip reads its register: the bits no
+SmpsVoice keeps each field's four values in SMPS2ASM's operand order (SMPS_OP_TO_REG_OFFSET: its
+slots +C +4 +8 +0), so each group is reordered from the layout's.  Each field is read as the chip reads its register: the bits no
 field owns (SMPS2ASM's AM at bit 5, TL's bit 7 on the carriers, an AR or D2R written past its
 width in the asm) are not the voice.
 """
@@ -14,7 +15,7 @@ width in the asm) are not the voice.
 from __future__ import annotations
 
 from ..chips import OperatorReg
-from ..smps import CoordFlag, OpKind, SmpsCode, SmpsVoice, VoiceField
+from ..smps import SMPS_OP_TO_REG_OFFSET, CoordFlag, OpKind, SmpsCode, SmpsVoice, VoiceField
 from .memory import SoundMemory
 from .variant import OPERATORS, VoiceLayout
 
@@ -42,11 +43,15 @@ def read_voices(memory: SoundMemory, address: int, count: int, layout: VoiceLayo
 
 
 def _voice(raw: bytes, index: int, layout: VoiceLayout) -> SmpsVoice:
-    voice = SmpsVoice(index=index, algorithm=raw[0] & 0x7, feedback=(raw[0] >> 3) & 0x7,
-                      pan=raw[1] if layout.pan else None)
+    feedback = raw[layout.feedback_at]
+    voice = SmpsVoice(index=index, algorithm=feedback & 0x7, feedback=(feedback >> 3) & 0x7,
+                      pan=raw[layout.feedback_at + 1] if layout.pan else None)
+
+    # Each SmpsVoice operator's byte: the stored one in its register slot
+    order = [layout.operator_offsets.index(offset) for offset in SMPS_OP_TO_REG_OFFSET]
     for group, register in enumerate(layout.groups):
         at = layout.groups_at + group * OPERATORS
         stored = raw[at:at + OPERATORS]
         for field_, shift, mask in _FIELDS[register]:
-            voice.operators[field_] = tuple((b >> shift) & mask for b in reversed(stored))
+            voice.operators[field_] = tuple((stored[k] >> shift) & mask for k in order)
     return voice

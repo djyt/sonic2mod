@@ -1,8 +1,9 @@
 """A song's FM voice bank: each voice as its driver's VoiceLayout stores it.
 
     feedback / algorithm   (unused << 6) | (feedback << 3) | algorithm
+    B4                     L R AMS FMS, where the driver stores it in the voice
     then per operator register, four bytes in register order: operators 4, 3, 2, 1
-    (Sonic 1: DT/MUL  KS/AR  AM/D1R  D2R  D1L/RR  TL - 25 bytes)
+    (Sonic 1: DT/MUL  KS/AR  AM/D1R  D2R  D1L/RR  TL - 25 bytes; Type 0 FM: B4, TL first - 26)
 
 SmpsVoice keeps each field's four values in SMPS2ASM's operand order (operators 1-4), so each
 group of four is reversed.  Each field is read as the chip reads its register: the bits no
@@ -41,9 +42,11 @@ def read_voices(memory: SoundMemory, address: int, count: int, layout: VoiceLayo
 
 
 def _voice(raw: bytes, index: int, layout: VoiceLayout) -> SmpsVoice:
-    voice = SmpsVoice(index=index, algorithm=raw[0] & 0x7, feedback=(raw[0] >> 3) & 0x7)
+    voice = SmpsVoice(index=index, algorithm=raw[0] & 0x7, feedback=(raw[0] >> 3) & 0x7,
+                      pan=raw[1] if layout.pan else None)
     for group, register in enumerate(layout.groups):
-        stored = raw[1 + group * OPERATORS:1 + (group + 1) * OPERATORS]
+        at = layout.groups_at + group * OPERATORS
+        stored = raw[at:at + OPERATORS]
         for field_, shift, mask in _FIELDS[register]:
             voice.operators[field_] = tuple((b >> shift) & mask for b in reversed(stored))
     return voice

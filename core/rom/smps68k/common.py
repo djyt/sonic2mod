@@ -7,9 +7,12 @@ docs/todo/binary_import.md has the table.
 from __future__ import annotations
 
 from ...chips import OperatorReg
-from ...smps import CoordFlag
+from ...smps import SFX_CHANNEL_IDS, CoordFlag
 from ..flags import CALL, JUMP, LOOP, NO_ATTACK, STOP, FlagSpec, effect
-from ..variant import VoiceLayout
+from ..variant import HeaderLayout, TrackSlot, VoiceLayout
+
+# The DAC, then FM1-FM6 in header order; SFX on FM3-FM5 and the PSG
+HEADER_68K = HeaderLayout((TrackSlot("DAC"), *[TrackSlot("FM")] * 6), frozenset(SFX_CHANNEL_IDS.values()))
 
 # 25 bytes: feedback / algorithm, then each register's four operator bytes, TL last
 VOICE_68K = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.KS_AR, OperatorReg.AM_D1R, OperatorReg.D2R,

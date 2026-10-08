@@ -4,6 +4,7 @@
                              DAC samples; the variant pinned by SHA-1, else the one that reads it
     variants.py              every variant, the ROMs each is known in, their data fixes
     smps68k/                 the 68k family: Sonic 1 (Type 1b), Moonwalker (Type 1a)
+    smpsz80/                 the Z80 family: Golden Axe (Type 0 FM)
     header.py  tracks.py     generic readers: headers, track bytes -> SmpsCode (the ops the asm
     voices.py  envelopes.py  parser makes from macros), voices, PSG envelopes; driven by the variant
     variant.py  flags.py     the vocabulary: SmpsVariant, VoiceLayout, SoundIndex, DacSample;

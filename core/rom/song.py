@@ -36,7 +36,8 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     address = index.address(sound_id)
     image, splices = apply_fixes(rom, data_fixes(rom) if fix_data_bugs else ())
     memory = variant.memory(image)
-    head = read_sfx_header(memory, address) if index.is_sfx(sound_id) else read_music_header(memory, address)
+    read_header = read_sfx_header if index.is_sfx(sound_id) else read_music_header
+    head = read_header(memory, address, variant.header)
 
     tracks = decode_tracks(memory, head.tracks, variant, splices)
     voices = []

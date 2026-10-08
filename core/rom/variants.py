@@ -5,9 +5,10 @@ from __future__ import annotations
 from .fixes import RomFix
 from .image import RomImage
 from .smps68k import SONIC1, TYPE1A
+from .smpsz80 import TYPE0FM
 from .variant import SmpsVariant
 
-VARIANTS = {v.name: v for v in (SONIC1, TYPE1A)}
+VARIANTS = {v.name: v for v in (SONIC1, TYPE1A, TYPE0FM)}
 
 
 def pinned_variant(rom: RomImage) -> SmpsVariant | None:

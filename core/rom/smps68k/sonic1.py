@@ -7,7 +7,7 @@ from ...smps import SMPS_DAC_NAMES, CoordFlag, SmpsDriver
 from ..fixes import RomFix
 from ..flags import RETURN, STOP, EnvelopeCommand, drop, effect
 from ..variant import SmpsVariant
-from .common import FLAGS_68K, VOICE_68K
+from .common import FLAGS_68K, HEADER_68K, VOICE_68K
 from .dac import sonic1_dac
 from .locate import locate_68k
 from .memory import Relative68kMemory
@@ -41,6 +41,7 @@ SONIC1 = SmpsVariant(
         0xF9: drop("smpsMaxRelRate"),
     },
     envelope_commands={0x80: EnvelopeCommand.HOLD},
+    header=HEADER_68K,
     voice_layout=VOICE_68K,
     dac_names={v: k for k, v in SMPS_DAC_NAMES.items()},
     dac=sonic1_dac,

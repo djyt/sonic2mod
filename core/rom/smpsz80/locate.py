@@ -21,6 +21,7 @@ from ..header import is_music_header, is_sfx_header
 from ..image import RomError, RomImage
 from ..variant import SoundIndex
 from ..z80 import z80_ram
+from .layout import HEADER_TYPE0
 from .memory import BANK_SIZE, BankedZ80Memory
 
 _FIRST_MUSIC = 0x81
@@ -31,9 +32,6 @@ _MUSIC_INDEX = 4             # the sound header's words
 _SFX_INDEX = 6
 _WORD = 2
 _ENTRIES_CHECKED = 3
-
-# SFX tracks: FM3-FM6 (no DAC to give FM6 up for), the PSG
-_SFX_CHANNELS = frozenset({0x02, 0x04, 0x05, 0x06, 0x80, 0xA0, 0xC0, 0xE0})
 
 # The FM table: an octave of fnums a semitone apart (2^(1/12) = 1.059), the next octave's within
 # the drift of a hand-tuned table (Golden Axe: $283 then $27E)
@@ -52,8 +50,7 @@ def locate_type0(rom: RomImage) -> SoundIndex:
     music_table = memory.header_pointer(bank, bank + _MUSIC_INDEX)
     sfx_table = memory.header_pointer(bank, bank + _SFX_INDEX)
 
-    music = _index(memory, music_table, sfx_table, _FIRST_MUSIC, _FIRST_SFX - _FIRST_MUSIC,
-                   is_music_header)
+    music = _index(memory, music_table, sfx_table, _FIRST_MUSIC, _FIRST_SFX - _FIRST_MUSIC, _is_music_header)
     sfx = _index(memory, sfx_table, bank + BANK_SIZE, _FIRST_SFX, _LAST_SFX - _FIRST_SFX + 1, _is_sfx_header)
     return SoundIndex(music, sfx)
 
@@ -98,7 +95,7 @@ def _is_sound_header(memory: BankedZ80Memory, bank: int) -> bool:
         return False
     music_table = memory.header_pointer(bank, bank + _MUSIC_INDEX)
     sfx_table = memory.header_pointer(bank, bank + _SFX_INDEX)
-    return (_entries_are(memory, music_table, is_music_header)
+    return (_entries_are(memory, music_table, _is_music_header)
             and _entries_are(memory, sfx_table, _is_sfx_header))
 
 
@@ -112,8 +109,12 @@ def _entries_are(memory: BankedZ80Memory, table: int, plausible) -> bool:
     return True
 
 
+def _is_music_header(memory: BankedZ80Memory, address: int) -> bool:
+    return is_music_header(memory, address, HEADER_TYPE0)
+
+
 def _is_sfx_header(memory: BankedZ80Memory, address: int) -> bool:
-    return is_sfx_header(memory, address, _SFX_CHANNELS)
+    return is_sfx_header(memory, address, HEADER_TYPE0)
 
 
 def _index(memory: BankedZ80Memory, start: int, end: int, first_id: int, most: int, plausible) -> dict[int, int]:

@@ -393,11 +393,11 @@ What differs between variants, and where it lives (after 3.0):
 |------|-------------------|-----------|----------|
 | addressing | 68k, BE, relative | Z80 bank window, LE, absolute | `SoundMemory` (`smps68k/memory.py`) |
 | locating | `Go_` block scan | driver blob + bank header | `SmpsVariant.locate` (`smps68k/locate.py`) |
-| header | DAC + FM + PSG | drums + FM, channel order table | `header.py` (3.3: a header layout) |
-| flags | table | table + note modes (slide, raw) | `SmpsVariant.flags`; modes: 3.3 |
-| voice | 25 bytes | 26, pan inside | `SmpsVariant.voice_layout` (3.3: the `$B4` byte) |
+| header | DAC + FM + PSG | drums + FM, channel order table | `SmpsVariant.header` (`HeaderLayout`) |
+| flags | table | table + note modes (slide, raw: refused) | `SmpsVariant.flags` |
+| voice | 25 bytes | 26, pan inside | `SmpsVariant.voice_layout` |
 | pitch | Sonic 1's table | the driver's | `core/smps/driver_tables.py` (3.1, 3.4) |
-| tempo 0 | 256 frames | never | `core/smps/tempo.py` (3.1) |
+| tempo 0 | 256 frames | never | `HeaderLayout.never_holds` -> `NO_TEMPO_HOLDS` |
 | percussion | DAC PCM | FM drum programs | `SmpsVariant.dac` (`smps68k/dac.py`; 3.5) |
 | envelopes | `Go_` PSG_Index | not located (no song uses the PSG) | `SoundIndex.envelopes` (locate), `envelopes.py` |
 
@@ -414,12 +414,12 @@ only the layers below it:
       │
    smps68k/                            sonic1.py type1a.py common.py (flags, voice layout, rev01
       │                                fixes)  memory.py  locate.py (Go_)  dac.py kosinski.py
-   smpsz80/                            memory.py (bank window)  locate.py; type0fm.py (3.3), drums.py (3.5)
+   smpsz80/                            type0fm.py layout.py memory.py (bank window) locate.py; drums.py (3.5)
       │
    header.py tracks.py voices.py       generic readers: bytes -> IR, driven by SoundMemory and
    envelopes.py                        the variant; no family's facts
       │
-   variant.py flags.py memory.py       the vocabulary: SmpsVariant, VoiceLayout, SoundIndex,
+   variant.py flags.py memory.py       the vocabulary: SmpsVariant, HeaderLayout, VoiceLayout, SoundIndex,
    fixes.py image.py z80.py            DacSample; FlagSpec; SoundMemory; RomFix; RomImage; z80_ram
 ```
 
@@ -484,10 +484,17 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   `$90`-`$B9`).  `is_sfx_header` takes the driver's channel ids (FM6).  0.1 s; Sonic 1, Moonwalker,
   OutRun refused (no copy loop / no Z80 FM table).  The SHA-1 pin and `VARIANTS` entry wait for
   3.3: registered before, the variant would misread voices and the drum track, not refuse them.
-- [ ] **3.3 Type 0 FM reading.**  `smpsz80/type0fm.py` registered and pinned by SHA-1; `rom_import.py`
-  lists the 15 songs and 42 SFX.  Flags, track order, 26-byte voices, `$F0` ->
-  `SET_VOL`, the driver's FM table -> `fm_frequencies`.  All 15 songs -> `SmpsSong`; `$FC` / `$FD` /
-  `$FE` in a song refused.  `--asm`: refused for this variant (no SMPS2ASM spelling).
+- [x] **3.3 Type 0 FM reading** (2026-10-08).  `smpsz80/type0fm.py` (`TYPE0FM`, pinned by SHA-1
+  `2ce17105...`), `smpsz80/layout.py`: `HeaderLayout` (DAC / FM slots with their chip channels, the
+  tempo byte that never holds, SFX channel ids; Sonic 1 / Type 1a share `HEADER_68K`) and
+  `VoiceLayout(pan=True)` (26 bytes, TL first).  Flags: `$F0` -> `SET_VOL`, `$FB` transposition,
+  no-handler bytes dropped with one operand (`$E0 (no handler)` in the report), `$FC` / `$FD` /
+  `$FE` refused.  `rom_import.py` lists all 15 songs (`no holds` for Death Adder) and 21 of 42
+  SFX (20 use slide mode, 1 FM3 special mode: refused); `--asm` refuses them (`write_asm`: no
+  SMPS2ASM spelling of a chip channel or a voice's pan) and, as for every refusal now, writes
+  the rest (Moonwalker's `--asm` used to stop at SndA3's LFO).  `RomImage.title` reads Shift-JIS
+  (`GOLDEN AXE`).  The drum track names its bytes `drum81`...; no samples until 3.5.
+  Baselines, tool regression, Sonic / Moonwalker ROM outputs byte-identical.
 - [ ] **3.4 Pitch from the song's table:** playback, detune, `ym2612` rendering.
 - [ ] **3.5 Drums** (B): `smpsz80/drums.py` decodes the 14 programs; the kit; the render; the MOD
   drum channel.  Check: each drum sample against the rips' FM3.

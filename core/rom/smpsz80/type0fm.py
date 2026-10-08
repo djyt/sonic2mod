@@ -11,19 +11,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ...smps import CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
+from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
 from ..flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, refuse
 from ..image import RomImage
 from ..variant import DacSample, SmpsVariant
-from .drums import read_fm_drums
+from .drums import drum_name, read_fm_drums
 from .layout import HEADER_TYPE0, VOICE_TYPE0
 from .locate import fm_frequencies, locate_type0, sound_bank
 from .memory import BankedZ80Memory
 
 GOLDEN_AXE_REV_A_SHA1 = "2ce17105ca916fbbe3ac9ae3a2086e66b07996dd"
 
-_FIRST_NOTE = 0x81
-_LAST_NOTE = 0xDF
 
 # No handler of its own: one operand skipped
 _NO_OPS = (*range(0xE0, 0xE5), *range(0xE8, 0xEF), 0xF1, 0xF3, 0xF4, 0xF5, 0xFA, 0xFF)
@@ -68,7 +66,7 @@ TYPE0FM = SmpsVariant(
     envelope_commands={},          # no PSG envelope table located (no song uses the PSG)
     header=HEADER_TYPE0,
     voice_layout=VOICE_TYPE0,
-    dac_names={b: f"drum{b:02X}" for b in range(_FIRST_NOTE, _LAST_NOTE + 1)},
+    dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)},
     dac=_no_samples,
     fm_frequencies=fm_frequencies,
     fm_drums=_fm_drums,

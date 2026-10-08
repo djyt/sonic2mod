@@ -16,15 +16,14 @@ WINDOW = 0x8000            # the Z80 address the bank appears at
 
 
 class BankedZ80Memory(SoundMemory):
+    _BYTE_ORDER = "little"
+
     def __init__(self, image: RomImage, bank: int):
         super().__init__(image)
         self._bank = bank
 
     def contains(self, address: int, length: int = 1) -> bool:
         return self._bank <= address and address + length <= self._bank + BANK_SIZE and super().contains(address, length)
-
-    def word(self, address: int) -> int:
-        return int.from_bytes(self.bytes_at(address, 2), "little")
 
     def header_pointer(self, header: int, at: int) -> int:
         return self.rom_address(self.word(at))
@@ -52,8 +51,7 @@ class Z80RamMemory(SoundMemory):
     """The driver's own RAM, $0000-$1FFF as the 68k loaded it (core/rom/z80.py): its tables and
     drum programs.  Addresses are Z80 addresses; pointers absolute, little-endian."""
 
-    def word(self, address: int) -> int:
-        return int.from_bytes(self.bytes_at(address, 2), "little")
+    _BYTE_ORDER = "little"
 
     def header_pointer(self, header: int, at: int) -> int:
         return self.word(at)

@@ -17,7 +17,7 @@ from ..smps import Op, OpKind, SmpsCode, effect_from_bytes
 from .fixes import RomFix
 from .flags import FlagKind, FlagSpec
 from .header import track_label
-from .image import RomError, RomImage
+from .image import RomError
 from .memory import SoundMemory
 from .variant import SmpsVariant
 
@@ -60,7 +60,7 @@ def decode_tracks(memory: SoundMemory, starts: dict[str, int], variant: SmpsVari
         address = todo.pop()
         if address in decoded:
             continue
-        one = _splice(splices[address], variant) if address in splices else _decode(memory, address, variant)
+        one = _splice(memory, splices[address], variant) if address in splices else _decode(memory, address, variant)
         decoded[address] = one
         if one.falls_through:
             todo.append(address + one.length)
@@ -73,12 +73,12 @@ def decode_tracks(memory: SoundMemory, starts: dict[str, int], variant: SmpsVari
     return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in labels}, dropped)
 
 
-def _splice(fix: RomFix, variant: SmpsVariant) -> _Decoded:
+def _splice(memory: SoundMemory, fix: RomFix, variant: SmpsVariant) -> _Decoded:
     """A fix's original bytes, read as its replacement: plain instructions, no pointers."""
-    patch = variant.memory(RomImage(fix.replacement))
+    patch = memory.patched(fix.address, fix.replacement)
     ops: list[Op] = []
-    at = 0
-    while at < len(fix.replacement):
+    at, end = fix.address, fix.address + len(fix.replacement)
+    while at < end:
         one = _decode(patch, at, variant)
         if one.target is not None or not one.falls_through:
             raise RomError(f"data fix at ${fix.address:X}: a replacement may not jump, call, loop or stop")

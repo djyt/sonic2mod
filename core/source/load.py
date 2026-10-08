@@ -37,6 +37,8 @@ def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: in
     return SmpsParser(fix_data_bugs=fix_data_bugs).parse_file(str(path))
 
 
-def read_dac(path: str | Path) -> list[DacSample]:
-    """A ROM's DAC samples (its driver's); nothing for any other input."""
-    return dac_samples(RomImage.load(path)) if is_rom_path(path) else []
+def read_dac(path: str | Path, driver: SmpsDriver | None = None) -> list[DacSample]:
+    """A ROM's DAC samples (its driver's: `driver`, else detected); nothing for any other input."""
+    if not is_rom_path(path):
+        return []
+    return dac_samples(RomImage.load(path), VARIANTS[driver] if driver else None)

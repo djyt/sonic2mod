@@ -69,6 +69,9 @@ class RomImage:
     def word(self, address: int) -> int:
         return int.from_bytes(self.bytes_at(address, 2), "big")
 
+    def signed_byte(self, address: int) -> int:
+        return int.from_bytes(self.bytes_at(address, 1), "big", signed=True)
+
     def signed_word(self, address: int) -> int:
         return int.from_bytes(self.bytes_at(address, 2), "big", signed=True)
 

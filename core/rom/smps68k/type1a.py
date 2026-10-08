@@ -3,7 +3,7 @@ with a disassembler (docs/todo/binary_import.md, Phase 2)."""
 
 from __future__ import annotations
 
-from ...smps import CoordFlag, SmpsDriver
+from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, SmpsDriver
 from ..flags import RETURN, EnvelopeCommand, drop, effect, refuse
 from ..variant import SmpsVariant
 from .common import FLAGS_68K, HEADER_68K, VOICE_68K, no_fm_drums, sonic1_fm_frequencies
@@ -13,7 +13,6 @@ from .memory import Relative68kMemory
 
 MOONWALKER_REV_A_SHA1 = "70d9b760c87196af364492512104fa18c9d69cce"
 
-_LAST_NOTE = 0xDF
 
 TYPE1A = SmpsVariant(
     name=SmpsDriver.TYPE1A,
@@ -42,7 +41,7 @@ TYPE1A = SmpsVariant(
     header=HEADER_68K,
     voice_layout=VOICE_68K,
     # Every note byte goes to the DAC (the 68k remaps $88-$97 to pitched samples)
-    dac_names={b: f"dac{b:02X}" for b in range(0x81, _LAST_NOTE + 1)},
+    dac_names={b: f"dac{b:02X}" for b in range(FIRST_NOTE, LAST_NOTE + 1)},
     dac=type1a_dac,
     fm_frequencies=sonic1_fm_frequencies,
     fm_drums=no_fm_drums,

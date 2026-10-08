@@ -31,7 +31,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 
-from ...smps import CoordFlag, FmDrum, FmFrame, SmpsSongHeader, TempoSegment, tempo_schedule
+from ...smps import CoordFlag, FmDrum, FmFrame, SmpsSongHeader, TempoSegment, signed_byte, tempo_schedule
 from ..flags import FlagKind, FlagSpec
 from ..image import RomError, RomImage
 from ..voices import read_voices
@@ -78,9 +78,9 @@ def read_fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[i
         record = ram.word(records + (n - 1) * 2)
         start, transpose, volume, _, voice = (ram.word(record), *ram.bytes_at(record + 2, _RECORD - 2))
         voice_at = ram.word(voices + voice * 2)
-        player = _Player(ram, flags, fm_frequencies, holds, divider, _signed(transpose))
+        player = _Player(ram, flags, fm_frequencies, holds, divider, signed_byte(transpose))
         frames, cut = player.play(start)
-        drums[f"drum{_DRUM_TRACK + n:02X}"] = FmDrum(read_voices(ram, voice_at, 1, VOICE_TYPE0)[0], volume,
+        drums[drum_name(_DRUM_TRACK + n)] = FmDrum(read_voices(ram, voice_at, 1, VOICE_TYPE0)[0], volume,
                                                      frames, cut)
     return drums
 
@@ -161,7 +161,7 @@ class _Player:
                 raise _Stop(f"note ${byte:02X} at transposition {self._transpose}: off the FM table")
             self._word = self._table[index]
             if self._slide is not None:
-                self._slide = _signed(self._take())
+                self._slide = signed_byte(self._take())
                 self._take()
                 self._duration = self._take() * self._divider
             elif self._ram.byte(self._pc) < _REST:
@@ -198,7 +198,7 @@ class _Player:
         elif spec.kind is FlagKind.LOOP:
             self._loop()
         elif spec.kind is FlagKind.EFFECT and spec.flag == CoordFlag.CHANGE_TRANSPOSITION:
-            self._transpose += _signed(self._take())
+            self._transpose += signed_byte(self._take())
         elif spec.kind is FlagKind.DROP:
             self._pc += spec.operands
         else:
@@ -238,6 +238,7 @@ def _wrap(word: int) -> int:
     return word
 
 
-def _signed(byte: int) -> int:
-    return byte - 0x100 if byte > 0x7F else byte
+def drum_name(note: int) -> str:
+    """The drum track's note $8n: drum8n (its DacSample's name, the config's dac_samples entry)."""
+    return f"drum{note:02X}"
 

@@ -8,8 +8,7 @@ from ..memory import SoundMemory
 
 
 class Relative68kMemory(SoundMemory):
-    def word(self, address: int) -> int:
-        return self._image.word(address)
+    _BYTE_ORDER = "big"
 
     def header_pointer(self, header: int, at: int) -> int:
         return header + self.word(at)

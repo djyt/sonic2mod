@@ -316,6 +316,12 @@ class SmpsZ80(unittest.TestCase):
         with self.assertRaisesRegex(RomError, "outside the bank"):
             memory.byte(self._BANK - 1)
 
+    def test_a_fix_reads_in_the_banks_own_memory(self):
+        # A data fix's bytes spliced in: little-endian, the bank's pointers unchanged
+        patch = BankedZ80Memory(self._rom(), self._BANK).patched(self._BANK + 0x40, bytes([0x12, 0x34]))
+        self.assertEqual(patch.word(self._BANK + 0x40), 0x3412)
+        self.assertEqual(patch.header_pointer(self._BANK, self._BANK + 4), self._BANK + 0x10)
+
     def test_the_driver_is_what_the_copy_loop_loads(self):
         self.assertEqual(fm_table(z80_ram(self._rom())), self._FM_TABLE)
 

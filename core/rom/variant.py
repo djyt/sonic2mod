@@ -15,6 +15,7 @@ from ..chips import OperatorReg
 from ..smps import ChannelType, FmDrum, SmpsDriver, SmpsSongHeader
 from .fixes import RomFix
 from .flags import EnvelopeCommand, FlagSpec
+from .grammar import Instruction, smps_instruction
 from .image import RomError, RomImage
 from .memory import SoundMemory
 
@@ -107,3 +108,5 @@ class SmpsVariant:
     # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
     known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes
+    # The track grammar: the instruction at an address (grammar.py; SMPS's for every variant so far)
+    grammar: Callable[[SoundMemory, int, SmpsVariant], Instruction] = smps_instruction

@@ -50,6 +50,7 @@ from core.config import (
 from core.mod import PERIOD_TABLE, ModFile, ModNote, period_rate
 from core.plan import derive_config, load_config, starting_volume
 from core.smps import (
+    ChannelType,
     flag_name,
     psg_tone2_divider,
     synth_note_name,
@@ -361,7 +362,7 @@ def render_voices_table(analysis: SongAnalysis):
     # Build voice usage map: voice_idx -> list of "FM1 (C3-F4)" strings
     voice_usage: dict[int, list[str]] = {}
     for ch_an in analysis.channels:
-        if ch_an.channel_type == "FM":
+        if ch_an.channel_type == ChannelType.FM:
             for vi, vs in ch_an.voice_stats.items():
                 if vs.note_count == 0:
                     entry = f"{ch_an.name}"
@@ -410,7 +411,7 @@ def render_config_coverage(analysis: SongAnalysis):
     for ch_an in analysis.channels:
         config = analysis.config
 
-        if ch_an.channel_type == "DAC":
+        if ch_an.channel_type == ChannelType.DAC:
             dac_cfgs = {d.name: d for d in config.dac_samples}
             for name, _ in sorted(ch_an.dac_counts.items(), key=lambda x: -x[1]):
                 if name in dac_cfgs:
@@ -420,7 +421,7 @@ def render_config_coverage(analysis: SongAnalysis):
                     cov = "[red]✗[/red] not configured"
                 table.add_row(ch_an.name, name, "—", cov)
 
-        elif ch_an.channel_type == "FM":
+        elif ch_an.channel_type == ChannelType.FM:
             if not ch_an.voice_stats:
                 table.add_row(ch_an.name, "—", "—",
                               "[dim]no notes[/dim]" if ch_an.config_enabled else "[dim]disabled[/dim]")
@@ -533,9 +534,9 @@ def _dac_file(name: str) -> str:
 
 
 def _channel_has_notes(ch_an: ChannelAnalysis) -> bool:
-    if ch_an.channel_type == "DAC":
+    if ch_an.channel_type == ChannelType.DAC:
         return bool(ch_an.dac_counts)
-    if ch_an.channel_type == "FM":
+    if ch_an.channel_type == ChannelType.FM:
         return any(vs.note_count > 0 for vs in ch_an.voice_stats.values())
     # PSG
     return any(ts.note_count > 0 for ts in ch_an.psg_tone_stats.values())
@@ -620,8 +621,8 @@ class _Skeleton:
         self._analysis = analysis
         self._region = region
         self._active = [ch for ch in analysis.channels if _channel_has_notes(ch)]
-        self._fm = [ch for ch in self._active if ch.channel_type == "FM"]
-        self._psg = [ch for ch in self._active if ch.channel_type == "PSG"]
+        self._fm = [ch for ch in self._active if ch.channel_type == ChannelType.FM]
+        self._psg = [ch for ch in self._active if ch.channel_type == ChannelType.PSG]
         self._synth, self._psg_synth = _settings()
         self._pan_law_db = self._synth.fm_pan_law_db   # a hard-panned note vs a centred one
         self._next_inst = 1
@@ -657,7 +658,7 @@ class _Skeleton:
         seen: set[str] = set()
         inst_by_name: dict[str, int] = {}
         for ch_an in self._active:
-            if ch_an.channel_type != "DAC":
+            if ch_an.channel_type != ChannelType.DAC:
                 continue
             for name, count in sorted(ch_an.dac_counts.items(), key=lambda x: -x[1]):
                 if name in seen:
@@ -1041,9 +1042,9 @@ def main():
     render_header(analysis, args.region)
 
     for ch_an in analysis.channels:
-        if ch_an.channel_type == "DAC":
+        if ch_an.channel_type == ChannelType.DAC:
             render_channel_dac(ch_an, config)
-        elif ch_an.channel_type == "FM":
+        elif ch_an.channel_type == ChannelType.FM:
             render_channel_fm(ch_an, config)
         else:
             render_channel_psg(ch_an, config)

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from ..config import ConversionConfig
 from ..plan import Timeline, fm_drum_catalogue
-from ..smps import SmpsChannel, SmpsSong
+from ..smps import ChannelType, SmpsChannel, SmpsSong
 
 
 def drum_rings(song: SmpsSong, config: ConversionConfig, timeline: Timeline) -> dict[int, float]:
@@ -22,7 +22,7 @@ def drum_rings(song: SmpsSong, config: ConversionConfig, timeline: Timeline) -> 
     slots = {d.name: d.inst for d in fm_drum_catalogue(song, config).values()}
     rings: dict[int, float] = {}
     for channel in song.channels:
-        if channel.header.channel_type != "DAC":
+        if channel.header.channel_type != ChannelType.DAC:
             continue
         hits = [ev for ev in channel.events if ev.is_note and not ev.note.is_rest]
         if not hits:

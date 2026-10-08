@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 from ..config import MergeGroup
 from ..plan import FmInstrument
+from ..smps import ChannelType
 from .notes import CHIP, CompositeKey, NoteOn, PairStats
 
 LAST_MOD_NOTE = 35   # B3: a mix transposed past the MOD's three octaves cannot play the note
@@ -42,7 +43,7 @@ class Composite:
     inst: int
     key: CompositeKey
     group: MergeGroup
-    primary_kind: str = "FM"           # the primary channel's chip: "FM" | "PSG" | "DAC" (its NoteOn's)
+    primary_kind: ChannelType = ChannelType.FM     # the primary channel's chip (its NoteOn's)
     notes: int = 0
     fm: FmInstrument | None = None     # chip-rendered: an entry for the instrument catalogue
     entry: list | None = None          # its sample_list entry [inst, name, volume, finetune]

@@ -13,11 +13,12 @@ $03E5).
 from __future__ import annotations
 
 from ...chips import OperatorReg
+from ...smps import ChannelType
 from ..variant import HeaderLayout, TrackSlot, VoiceLayout
 
 HEADER_TYPE0 = HeaderLayout(
-    fm_slots=(TrackSlot("DAC", "FM3"), TrackSlot("FM", "FM1"), TrackSlot("FM", "FM2"),
-              TrackSlot("FM", "FM4"), TrackSlot("FM", "FM5"), TrackSlot("FM", "FM6")),
+    fm_slots=(TrackSlot(ChannelType.DAC, "FM3"), TrackSlot(ChannelType.FM, "FM1"), TrackSlot(ChannelType.FM, "FM2"),
+              TrackSlot(ChannelType.FM, "FM4"), TrackSlot(ChannelType.FM, "FM5"), TrackSlot(ChannelType.FM, "FM6")),
     sfx_channels=frozenset({0x02, 0x04, 0x05, 0x06, 0x80, 0xA0, 0xC0, 0xE0}),    # FM3-FM6 (no DAC), the PSG
     never_holds=0,
     tempo_phase=1,

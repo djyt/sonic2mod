@@ -25,6 +25,7 @@ from ..mod import (
     headroom_db,
 )
 from ..plan import Timeline
+from ..smps import ChannelType
 from .banks import pack_banks
 from .mix import mix_pcm_composites
 from .model import NO_SLOT, MergePlan
@@ -232,7 +233,7 @@ class MergedBuild:
         for c in self._plan.composites.values():
             if c.fm is None or c.entry is None:
                 continue
-            base_p = self._baselines.get("FM", {}).get(c.primary)
+            base_p = self._baselines.get(ChannelType.FM, {}).get(c.primary)
             base_c = fm_baseline.get(c.inst)
             if base_p is None or base_c is None:
                 continue
@@ -245,7 +246,7 @@ class MergedBuild:
         build's by the difference.  No Cxx: every Green Hill FM4+FM5 unison starts between rows,
         and a Cxx there lands a row late, after an attack at the old level."""
         over = []
-        for kind, baseline in (("FM", fm_baseline), ("PSG", psg_baseline)):
+        for kind, baseline in ((ChannelType.FM, fm_baseline), (ChannelType.PSG, psg_baseline)):
             ref = self._baselines.get(kind, {})
             for inst in sorted(gained.get(kind, ())):
                 if inst in self._plan.instruments or inst not in ref or inst not in baseline:

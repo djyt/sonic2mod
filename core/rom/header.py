@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..smps import NO_TEMPO_HOLDS, SmpsChannelHeader, SmpsSongHeader, psg_voice_name, signed_byte
+from ..smps import NO_TEMPO_HOLDS, ChannelType, SmpsChannelHeader, SmpsSongHeader, psg_voice_name, signed_byte
 from .image import RomError
 from .memory import SoundMemory
 from .variant import HeaderLayout
@@ -80,10 +80,10 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
         start = memory.header_pointer(address, at)
         label = track_label(start)
         tracks[label] = start
-        if slot.channel_type == "DAC":
-            header.channels.append(SmpsChannelHeader(channel_type="DAC", label=label, chip_channel=slot.chip_channel))
+        if slot.channel_type == ChannelType.DAC:
+            header.channels.append(SmpsChannelHeader(channel_type=ChannelType.DAC, label=label, chip_channel=slot.chip_channel))
         else:
-            header.channels.append(SmpsChannelHeader(channel_type="FM", label=label, chip_channel=slot.chip_channel,
+            header.channels.append(SmpsChannelHeader(channel_type=ChannelType.FM, label=label, chip_channel=slot.chip_channel,
                                                      pitch_offset=signed_byte(memory.byte(at + 2)),
                                                      volume=memory.byte(at + 3)))
         at += _FM_TRACK
@@ -92,7 +92,7 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
         start = memory.header_pointer(address, at)
         label = track_label(start)
         tracks[label] = start
-        header.channels.append(SmpsChannelHeader(channel_type="PSG", label=label,
+        header.channels.append(SmpsChannelHeader(channel_type=ChannelType.PSG, label=label,
                                                  pitch_offset=signed_byte(memory.byte(at + 2)),
                                                  volume=memory.byte(at + 3), mod_byte=memory.byte(at + 4),
                                                  psg_voice_label=psg_voice_name(memory.byte(at + 5))))
@@ -117,7 +117,7 @@ def read_sfx_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> 
         label = track_label(start)
         tracks[label] = start
         header.channels.append(SmpsChannelHeader(
-            channel_type="PSG" if channel & _PSG_CHANNEL_BIT else "FM", label=label,
+            channel_type=ChannelType.PSG if channel & _PSG_CHANNEL_BIT else ChannelType.FM, label=label,
             pitch_offset=signed_byte(memory.byte(at + 4)), volume=memory.byte(at + 5), hw_channel=channel))
         at += _SFX_TRACK
     return RomHeader(header, voices, tracks)

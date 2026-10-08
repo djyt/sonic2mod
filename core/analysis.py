@@ -11,6 +11,7 @@ from typing import cast
 
 from .config import ConversionConfig
 from .smps import (
+    ChannelType,
     CoordFlag,
     SmpsChannel,
     SmpsEvent,
@@ -99,7 +100,7 @@ class TransposeEvent:
 @dataclass
 class ChannelAnalysis:
     name: str              # "DAC", "FM1", "PSG2", etc.
-    channel_type: str      # "DAC", "FM", "PSG"
+    channel_type: ChannelType
     note_count: int
     rest_count: int
     effect_count: int
@@ -226,7 +227,7 @@ def analyze_song(song: SmpsSong, file_path: str,
     )
 
 
-def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
+def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: ChannelType,
                      config: ConversionConfig | None,
                      cfg_channels: dict) -> ChannelAnalysis:
     """Analyze a single SmpsChannel."""
@@ -266,7 +267,7 @@ def _analyze_channel(ch: SmpsChannel, source_name: str, ch_type: str,
 class _ChannelWalk:
     """One channel's events, tallied: counts, note ranges, per-voice / per-tone stats, transpositions."""
 
-    def __init__(self, ch: SmpsChannel, ch_type: str):
+    def __init__(self, ch: SmpsChannel, ch_type: ChannelType):
         self._ch_type = ch_type
         self.note_count = 0
         self.rest_count = 0
@@ -291,7 +292,7 @@ class _ChannelWalk:
         self._psg_label: str | None = None
 
         # A PSG channel starts on its header voice
-        if ch_type == "PSG" and ch.header.psg_voice_label:
+        if ch_type == ChannelType.PSG and ch.header.psg_voice_label:
             self._psg_label = ch.header.psg_voice_label
             _get_or_create_psg_tone(self.psg_tone_stats, self._psg_label)
 
@@ -334,9 +335,9 @@ class _ChannelWalk:
         if self.max_semitone is None or sem > self.max_semitone:
             self.max_semitone = sem
 
-        if self._ch_type == "PSG" and self._psg_label is not None:
+        if self._ch_type == ChannelType.PSG and self._psg_label is not None:
             self._psg_note(self._psg_label, sem)
-        if self._ch_type == "FM" and self._voice_idx is not None:
+        if self._ch_type == ChannelType.FM and self._voice_idx is not None:
             self._fm_note(self._voice_idx, sem)
 
     def _psg_note(self, label: str, sem: int) -> None:
@@ -397,10 +398,10 @@ def _widen_range(stats: VoiceRangeStats | PsgToneStats, sem: int) -> None:
     stats.max_semitone = max(stats.max_semitone, sem)
 
 
-def _uncovered_notes(semitones: set[int], source_name: str, ch_type: str,
+def _uncovered_notes(semitones: set[int], source_name: str, ch_type: ChannelType,
                      config: ConversionConfig) -> list[int]:
     """An FM channel's semitones that neither the voice_map nor its channel's instrument map covers."""
-    if ch_type != "FM" or not config.voice_map:
+    if ch_type != ChannelType.FM or not config.voice_map:
         return []
 
     cim = config.channel_instrument_map.get(source_name, {})

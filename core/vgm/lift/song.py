@@ -23,6 +23,7 @@ from ...smps import (
     DEFAULT_DRIVER,
     FM_FREQUENCIES,
     Aspect,
+    ChannelType,
     CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
@@ -48,7 +49,7 @@ LIFTED_ASPECTS = frozenset({Aspect.ONSET, Aspect.LENGTH, Aspect.NOTE})
 
 # The channel kinds the lift reads in full; a DAC or PSG track's differences may be the lift's
 # (vgz_conversion.md 1.6-1.8: DAC sample names, PSG envelopes and noise still open)
-LIFTED_KINDS = frozenset({"FM"})
+LIFTED_KINDS = frozenset({ChannelType.FM})
 
 
 class VgmLiftError(VgmError):
@@ -112,16 +113,16 @@ def _tracks(fl: FrameLog, fm_frequencies: tuple[int, ...]) -> list[tuple[SmpsCha
     tracks: list[tuple[SmpsChannelHeader, list[Hit]]] = []
     fm_channels = _DAC_FM_CHANNELS if dac_used(fl) else _DAC_FM_CHANNELS + 1
     if dac_used(fl):
-        tracks.append((SmpsChannelHeader("DAC", "DAC"), dac_hits(fl)))
+        tracks.append((SmpsChannelHeader(ChannelType.DAC, "DAC"), dac_hits(fl)))
 
     fm = [fm_hits(fl, ch, fm_frequencies) for ch in range(fm_channels)]
     used = max((ch + 1 for ch, hits in enumerate(fm) if hits), default=0)
-    tracks += [(SmpsChannelHeader("FM", f"FM{ch + 1}"), fm[ch]) for ch in range(used)]
+    tracks += [(SmpsChannelHeader(ChannelType.FM, f"FM{ch + 1}"), fm[ch]) for ch in range(used)]
 
     noise = noise_mode(fl)
     for ch in range(PSG_TONE_CHANNELS):
         last = ch == PSG_TONE_CHANNELS - 1
-        tracks.append((SmpsChannelHeader("PSG", f"PSG{ch + 1}"), psg_hits(fl, ch, noise and last)))
+        tracks.append((SmpsChannelHeader(ChannelType.PSG, f"PSG{ch + 1}"), psg_hits(fl, ch, noise and last)))
     return tracks
 
 

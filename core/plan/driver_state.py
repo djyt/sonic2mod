@@ -6,7 +6,7 @@ itself, plus the analyser and two config-generating tools.  They had already dri
 (the rule for what a `smpsPSGvoice` may do once the channel is in noise mode was
 written three different ways), so it lives here once.
 
-    for chan_cfg, channel in enabled_channels(song, config, ("FM", "PSG")):
+    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM, ChannelType.PSG)):
         for event, st, res in walk_channel(channel, config, chan_cfg):
             if res is not None:                 # a pitched note: res.instrument, res.index ...
                 ...
@@ -28,6 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..smps import (
+    ChannelType,
     CoordFlag,
     TrackState,
     chip_pitch,
@@ -70,7 +71,7 @@ class DriverState(TrackState):
         """Initial state for a parsed channel: header transpose, volume and PSG voice."""
         header = channel.header
         st = cls(config,
-                 is_psg=header.channel_type == "PSG",
+                 is_psg=header.channel_type == ChannelType.PSG,
                  transpose=header.pitch_offset,
                  volume=header.volume,
                  instrument=instrument)
@@ -263,7 +264,7 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
         yield event, st, res
 
 
-def enabled_channels(song, config, kinds=("FM", "PSG")):
+def enabled_channels(song, config, kinds=(ChannelType.FM, ChannelType.PSG)):
     """(chan_cfg, parsed channel) for every enabled config channel of the given chip kinds.
 
     In the merged build (`convert.py --merged`) the followers and the dropped channels are

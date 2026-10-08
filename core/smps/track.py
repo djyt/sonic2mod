@@ -9,7 +9,7 @@ walk that compares a parse with a lift (playback.py) reads it as it is.
 from __future__ import annotations
 
 from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
-from .song import CoordFlag, SmpsChannelHeader, SmpsEffect, pan_side
+from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsEffect, pan_side
 
 
 class TrackState:
@@ -36,7 +36,7 @@ class TrackState:
     @classmethod
     def for_header(cls, header: SmpsChannelHeader) -> TrackState:
         """A track as its header starts it: transpose, volume and PSG voice."""
-        st = cls(is_psg=header.channel_type == "PSG", transpose=header.pitch_offset, volume=header.volume)
+        st = cls(is_psg=header.channel_type == ChannelType.PSG, transpose=header.pitch_offset, volume=header.volume)
         st.envelope = header.psg_voice_label or None
         return st
 

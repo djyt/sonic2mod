@@ -18,7 +18,7 @@ from collections import Counter
 from .code import NO_ATTACK, REST, Op, OpKind, SongCode
 from .driver_tables import PAN_VALUES
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES_REVERSE, flag_name, note_label, voice_macro
-from .song import CoordFlag, SmpsChannelHeader, SmpsVoice, VoiceField
+from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsVoice, VoiceField
 
 _BYTES_PER_LINE = 12
 _PAN_SPEAKERS = 0xC0
@@ -104,7 +104,7 @@ class _Writer:
         """DAC, FM1..., PSG1... in header order; an SFX track by its channel id (cFM5: FM5)."""
         if c.hw_channel:
             return _SFX_CHANNEL_NAMES[c.hw_channel].removeprefix(_CHANNEL_ID_PREFIX)
-        if c.channel_type == "DAC":
+        if c.channel_type == ChannelType.DAC:
             return "DAC"
         roles[c.channel_type] += 1
         return f"{c.channel_type}{roles[c.channel_type]}"
@@ -139,9 +139,9 @@ class _Writer:
 
     def _channel_header(self, c: SmpsChannelHeader) -> str:
         label = self._name_of(c.label)
-        if c.channel_type == "DAC":
+        if c.channel_type == ChannelType.DAC:
             return _macro("smpsHeaderDAC", label)
-        if c.channel_type == "FM":
+        if c.channel_type == ChannelType.FM:
             return _macro("smpsHeaderFM", f"{label}, {_hex(c.pitch_offset)}, {_hex(c.volume)}")
         return _macro("smpsHeaderPSG", f"{label}, {_hex(c.pitch_offset)}, {_hex(c.volume)}, "
                                        f"{_hex(c.mod_byte)}, {c.psg_voice_label}")
@@ -151,7 +151,7 @@ class _Writer:
     def _code(self) -> list[str]:
         """The ops, dc.b bytes gathered into lines; DAC tracks' bytes named as samples."""
         ops = self._song.code.ops
-        dac = set().union(*(self._reached(c.label) for c in self._song.header.channels if c.channel_type == "DAC"))
+        dac = set().union(*(self._reached(c.label) for c in self._song.header.channels if c.channel_type == ChannelType.DAC))
         lines: list[str] = []
         tokens: list[str] = []
 

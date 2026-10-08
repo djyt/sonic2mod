@@ -7,13 +7,13 @@ docs/todo/binary_import.md has the table.
 from __future__ import annotations
 
 from ...chips import OperatorReg
-from ...smps import SFX_CHANNEL_IDS, CoordFlag, FmDrum, SmpsSongHeader
+from ...smps import SFX_CHANNEL_IDS, ChannelType, CoordFlag, FmDrum, SmpsSongHeader
 from ..flags import CALL, JUMP, LOOP, NO_ATTACK, STOP, FlagSpec, effect
 from ..image import RomImage
 from ..variant import HeaderLayout, TrackSlot, VoiceLayout
 
 # The DAC, then FM1-FM6 in header order; SFX on FM3-FM5 and the PSG
-HEADER_68K = HeaderLayout((TrackSlot("DAC"), *[TrackSlot("FM")] * 6), frozenset(SFX_CHANNEL_IDS.values()))
+HEADER_68K = HeaderLayout((TrackSlot(ChannelType.DAC), *[TrackSlot(ChannelType.FM)] * 6), frozenset(SFX_CHANNEL_IDS.values()))
 
 def sonic1_fm_frequencies(rom: RomImage) -> None:
     """Sonic 1's FM table (core.smps): the 68k drivers here play every note from it (Type 1a's

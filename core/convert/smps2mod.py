@@ -36,6 +36,7 @@ from ..plan import (
     psg_catalogue,
 )
 from ..smps import (
+    ChannelType,
     PsgEnvelope,
     SmpsSong,
     apply_global_tempo_div,
@@ -174,9 +175,9 @@ class SmpsToModConverter:
         whose volume mode is baked (LevelPlanner.levels)."""
         baselines = {}
         if self._fm_volume_mode == "baked":
-            baselines["FM"] = self._levels.levels("FM")
+            baselines[ChannelType.FM] = self._levels.levels(ChannelType.FM)
         if self._psg_volume_mode == "baked":
-            baselines["PSG"] = self._levels.levels("PSG")
+            baselines[ChannelType.PSG] = self._levels.levels(ChannelType.PSG)
         return baselines
 
     # --- global duration divider (smpsSetTempoDiv, $EB) -------------------------------------
@@ -691,14 +692,14 @@ class SmpsToModConverter:
 
         self._fm_baseline_db: dict[int, float] = {}
         if self._fm_volume_mode == "baked":
-            self._fm_baseline_db = self._levels.levels("FM")
+            self._fm_baseline_db = self._levels.levels(ChannelType.FM)
             # The samples were rendered (before the loop bodies were extended) at what this
             # walk now says is each instrument's baseline; the two must agree or the Cxx law
             # would be measured from a level the sample does not carry.
             pan_law = self.pan_law_db
             for inst, (tl, pan) in getattr(self, '_fm_render_levels', {}).items():
                 base = self._fm_baseline_db.get(inst)
-                if inst in self._gained.get("FM", ()):
+                if inst in self._gained.get(ChannelType.FM, ()):
                     continue            # a unison chord's gain is in the baseline, not in the render
                 if self._merge is not None and inst in self._merge.mix_only and inst in self._merge.instruments:
                     continue            # rendered for the mixer; the slot's baseline is its composite's
@@ -708,7 +709,7 @@ class SmpsToModConverter:
                           f"baked level is {base:+.2f} dB — the loop extension changed the modal level")
         self._psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
-            self._psg_baseline_db = self._levels.levels("PSG")
+            self._psg_baseline_db = self._levels.levels(ChannelType.PSG)
 
         # Merged build: volumes measured for the reference build, moved to the merged build's levels
         if self._merged is not None:
@@ -733,7 +734,7 @@ class SmpsToModConverter:
                 continue
 
             smps_channel = source_map[source]
-            is_dac = smps_channel.header.channel_type == "DAC"     # by the song, not the name: Type 0 FM's drums are FM3
+            is_dac = smps_channel.header.channel_type == ChannelType.DAC     # by the song, not the name: Type 0 FM's drums are FM3
 
             ChannelWriter(ctx, smps_channel, chan_cfg, is_dac).write()
 

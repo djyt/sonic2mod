@@ -12,7 +12,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from ..chips import OperatorReg
-from ..smps import FmDrum, SmpsDriver, SmpsSongHeader
+from ..smps import ChannelType, FmDrum, SmpsDriver, SmpsSongHeader
 from .fixes import RomFix
 from .flags import EnvelopeCommand, FlagSpec
 from .image import RomError, RomImage
@@ -77,7 +77,7 @@ class VoiceLayout:
 class TrackSlot:
     """A music header's DAC / FM entry: what the driver's track table makes of it."""
 
-    channel_type: str              # "DAC" (the percussion track) or "FM"
+    channel_type: ChannelType     # DAC (the percussion track) or FM
     chip_channel: str = ""         # the chip channel it plays on; "" = header order (Sonic 1's)
 
 

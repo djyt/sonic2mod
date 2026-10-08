@@ -13,6 +13,7 @@ from ..merge import MergePlan
 from ..mod import MOD_MAX_VOLUME
 from ..plan import DetunePlan, enabled_channels, walk_channel
 from ..smps import (
+    ChannelType,
     SmpsSong,
 )
 
@@ -74,7 +75,7 @@ class LevelPlanner:
         its samples where the hardware, at the channel's +18 TL, clips none.
         """
         pan_law = self._pan_law_db
-        counts = self._count("FM", lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
+        counts = self._count(ChannelType.FM, lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
         return self._with_variants({inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
                                     for inst, per in counts.items()})
 

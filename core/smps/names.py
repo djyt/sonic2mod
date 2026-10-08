@@ -1,6 +1,6 @@
 """SMPS names: note labels (nC0..), real-pitch config names (A4), DAC samples, SFX channel ids, source channels."""
 
-from .song import CoordFlag, VoiceField
+from .song import ChannelType, CoordFlag, VoiceField
 
 # ---------------------------------------------------------------------------
 # SMPS Note Names → byte values
@@ -199,9 +199,9 @@ def source_names(song) -> list[str]:
         kind = ch.header.channel_type
         if ch.header.chip_channel:
             names.append(ch.header.chip_channel)
-        elif kind == "DAC":
+        elif kind == ChannelType.DAC:
             names.append("DAC")
-        elif kind == "FM":
+        elif kind == ChannelType.FM:
             fm += 1
             names.append(f"FM{fm}")
         else:

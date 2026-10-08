@@ -27,6 +27,7 @@ from pathlib import Path
 from ..config import ConversionConfig
 from ..smps import (
     Aspect,
+    ChannelType,
     PlayedNote,
     PlayedSong,
     SmpsDriver,
@@ -111,7 +112,7 @@ class RipDiff:
     only_song: list[str] = field(default_factory=list)     # channels only the song plays: not compared
     only_rip: list[str] = field(default_factory=list)      # ... only the rip plays
     error: str = ""
-    kinds: dict[str, str] = field(default_factory=dict)     # each compared channel's: FM, DAC, PSG
+    kinds: dict[str, ChannelType] = field(default_factory=dict)     # each compared channel's
     schedule: tuple[TempoSegment, ...] = ()                 # the song's: when each tick plays
     fps: float = 0.0                                        # the rip's frames a second
 

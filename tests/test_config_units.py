@@ -14,7 +14,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 import io
 
-from core.config import ConversionConfig, load_yaml
+from core.config import ConversionConfig, load_yaml, parse_number
 
 _BASE = {"input_file": "song.asm", "channels": [{"source": "FM1", "mod_channel": 0}]}
 
@@ -56,6 +56,23 @@ class Values(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "region"):
             _config(region="secam")
         self.assertEqual((_config(region="PAL").fps, _config(range_space="Chip").range_space), (50, "chip"))
+
+
+class Numbers(unittest.TestCase):
+    def test_one_spelling_for_every_number_key(self):
+        # $ and 0x are hex everywhere; bare digits are decimal, a vibrato's hex
+        for v in (5, "5", "$05", "0x05", "05"):
+            self.assertEqual(parse_number(v, "t"), 5)
+        self.assertEqual(parse_number("12", "t", base=16), 0x12)
+        with self.assertRaisesRegex(ValueError, "not a number"):
+            parse_number("nA4", "t")
+
+    def test_keys_and_rom_song_take_the_spellings(self):
+        config = _config(voice_map={"$05": [{"low": "C4", "high": "B5", "mod_instrument": 1}]},
+                         psg_map={"$E7": {"mod_instrument": 2, "root": "A3"}})
+        self.assertEqual((list(config.voice_map), list(config.psg_map)), ([5], [0xE7]))
+        for v in (129, "$81", "0x81"):
+            self.assertEqual(ConversionConfig.from_data({**_BASE, "input_file": "x.bin", "rom_song": v}, "t").rom_song, 0x81)
 
 
 class Vibrato(unittest.TestCase):

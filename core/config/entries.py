@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from ..mod import MOD_NOTE_MAP, ModNote
 from ..smps import parse_smps_note, parse_synth_note, synth_note_name
-from .loader import dither_mode
+from .loader import dither_mode, parse_number
 
 if TYPE_CHECKING:
     from .song import ConversionConfig
@@ -50,23 +50,17 @@ class InstrumentRange:
 
 
 def _parse_vibrato(v) -> int:
-    """Parse a vibrato value (the loader keeps its text as written) → raw byte (high=speed,
-    low=depth).  Two hex digits, the 4xy parameter:
+    """A vibrato value (the loader keeps its text as written) → the 4xy parameter byte
+    (high nibble speed, low depth), read as hex digits:
       vibrato: 12    → speed=1, depth=2 → 0x12
       vibrato: 1A    → speed=1, depth=10 → 0x1A
-      vibrato: 0x12  → 0x12 (a hex literal is the byte itself)
+      vibrato: 0x12  → 0x12
       vibrato: 0     → none
     """
-    s = str(v).strip().upper()
-    if s.startswith("0X"):
-        n = int(s, 16)
-        if not 0 <= n <= 0xFF:
-            raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
-        return n
-    s = (s.lstrip("0") or "0").zfill(2)
-    if len(s) > 2:
-        raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
-    return (int(s[0], 16) << 4) | int(s[1], 16)
+    n = parse_number(str(v), "vibrato", base=16)
+    if not 0 <= n <= 0xFF:
+        raise ValueError(f"vibrato: {v!r} exceeds 2 hex digits")
+    return n
 
 
 # The keys each kind of entry takes: any other is an error, as at the top level (a typo would be ignored)
@@ -565,7 +559,7 @@ def parse_voice_maps(data: dict) -> dict:
             continue
         if not isinstance(range_list, list):
             raise ValueError(f"voice_map[{voice_key}] must be a list of ranges (low, high, mod_instrument, ...)")
-        voice_map[int(str(voice_key), 0)] = [_parse_instrument_range(e, f"voice_map[{voice_key}][{j}]")
+        voice_map[parse_number(voice_key, f"voice_map key {voice_key!r}")] = [_parse_instrument_range(e, f"voice_map[{voice_key}][{j}]")
                                             for j, e in enumerate(range_list)]
     return voice_map
 
@@ -577,7 +571,7 @@ def parse_channel_instrument_map(data: dict) -> dict:
     for ch_name, vim_data in data.get('channel_instrument_map', {}).items():
         out[ch_name] = {}
         for voice_key, range_list in vim_data.items():
-            out[ch_name][int(str(voice_key), 0)] = [
+            out[ch_name][parse_number(voice_key, f"channel_instrument_map[{ch_name}] key {voice_key!r}")] = [
                 _parse_instrument_range(e, f"channel_instrument_map[{ch_name}][{voice_key}][{j}]")
                 for j, e in enumerate(range_list)
             ]
@@ -591,7 +585,7 @@ def parse_psg_map(data: dict, filepath) -> dict:
     from the song by the converter unless stated."""
     out: dict = {}
     for k, psg_entry in data.get('psg_map', {}).items():
-        form_byte = int(str(k), 0)
+        form_byte = parse_number(k, f"psg_map key {k!r}")
         ctx = f"psg_map[{k}]"
         _check_keys(psg_entry, _PSG_MAP_KEYS, ctx)
         inferred_type = "white_noise" if (form_byte & 0x04) else "periodic_noise"

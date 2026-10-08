@@ -176,7 +176,7 @@ Use `chip` for a song that changes key with `$E9` while keeping a voice;
 
 ```yaml
 voice_map:
-  0:                      # voice index (smpsSetvoice); write 5 or 0x05, not $05 or 08
+  0:                      # voice index (smpsSetvoice): 5, $05 or 0x05
     - low: G5             # SMPS note names: G5, Cs6, Eb4 (no #)
       high: A6
       mod_instrument: 3
@@ -482,9 +482,8 @@ regression runner exits 2 otherwise); add a new key to both.
 | `low`, `high`, `synth_root` | SMPS note names `C0`–`B7`: `Cs6`, `Db6`; no `#` |
 | `root` | MOD notes `C1`–`B3`: `Cs2`; no `#`, no flats |
 | `mod_note`, `mix_note` | MOD notes: `Fs3`, `F#3`, `Gb3` |
-| `voice_map` keys | `5` or `0x05` (not `$05`, not `08`) |
-| `psg_map` keys | `0xE7` |
-| `rom_song` | `"$81"`, `"0x81"`, `129` |
+| `voice_map` keys, `psg_map` keys, `rom_song`, `--rom-song` | `$81` or `0x81` (hex), or decimal digits (`129`) |
+| `vibrato` | hex digits: `12`, `1A`, `0x12` |
 
 - `channels.transpose` only acts on the transpose path; an entry with `root` ignores it.
 - A `merge_patterns` group written without its leading `- ` would merge into the group above;

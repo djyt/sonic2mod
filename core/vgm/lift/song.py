@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from ...smps import (
     DEFAULT_DRIVER,
+    Aspect,
     CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
@@ -38,6 +39,11 @@ from .tempo import TempoError, TempoMap, infer_tempo
 from .tracks import Hit, dac_hits, dac_used, fm_hits, fm_key_on_frames, noise_mode, psg_hits, psg_period_frames
 
 _DAC_FM_CHANNELS = 5            # with the DAC on, FM6 is the DAC
+
+# What a lifted song states as the driver played it; the rest is open (docs/todo/vgz_conversion.md
+# 1.3-1.8: detune - a note's pitch is its table word -, voices, levels, pan, modulation, fills, the
+# noise byte, DAC sample names)
+LIFTED_ASPECTS = frozenset({Aspect.ONSET, Aspect.LENGTH, Aspect.NOTE})
 
 
 class VgmLiftError(VgmError):

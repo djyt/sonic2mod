@@ -9,9 +9,10 @@ Usage:
   python tools/measure_volumes.py --no-write
       Measure and report only; the configs are not touched.
   python tools/measure_volumes.py --jobs 2 --min-db 1.5
-  python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker       --rips configs/moonwalker/rips.yaml
-      Pairs from a YAML map {config stem: rip file} instead of the number prefix; a config the map
-      leaves out is skipped (Moonwalker's rips are in game order, its configs in sound-ID order).
+  python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker
+      Pairs from the rips.yaml beside the configs (or --rips FILE), {config stem: rip file}, instead
+      of the number prefix; a config the map leaves out is skipped (Moonwalker's rips are in game
+      order, its configs in sound-ID order).  core/audit/rips.py.
 
 Per song, in its own process:
   1. convert.py <config>
@@ -43,10 +44,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
-
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
+sys.path.insert(0, str(_ROOT))
+
+from core.audit import RipShelf
 
 _CHANGE = re.compile(r"^\s+instrument\s+(\d+)\s+\((.*?)\s*\):\s+(\d+)\s+->\s+(\d+)\s+\(([-+0-9.]+) dB\)")
 
@@ -69,15 +71,6 @@ def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
                           errors="replace", check=False)
 
 
-def _vgz_for(config: Path, vgz_dir: Path, rips: dict[str, str] | None = None) -> Path | None:
-    """The config's rip: the map's (`--rips`), else the file sharing its two-character prefix."""
-    if rips is not None:
-        return vgz_dir / rips[config.stem] if config.stem in rips else None
-    prefix = config.stem[:2]
-    hits = sorted(p for p in vgz_dir.glob(f"{prefix} - *") if p.suffix.lower() in (".vgz", ".vgm"))
-    return hits[0] if hits else None
-
-
 def _pitch(res: dict) -> tuple[int | None, int | None]:
     pa = res.get("pitch_audit")
     if not pa:
@@ -91,7 +84,7 @@ def measure_song(config: Path, vgz: Path | None, *, write: bool, min_db: float,
     r = SongResult(config, vgz)
     t0 = time.time()
     if vgz is None:
-        r.error = "no VGZ with this number prefix"
+        r.error = "no rip pairs with it"
         return r
     py = sys.executable
     compare = [py, str(_HERE / "vgm_compare.py"), str(config), str(vgz), "--reuse-vgm"]
@@ -169,26 +162,22 @@ def main() -> None:
     ap.add_argument("--configs", default=str(_ROOT / "configs"), help="config directory")
     ap.add_argument("--vgz-dir", default=str(_ROOT / "reference" / "vgz"), help="VGZ directory")
     ap.add_argument("--vgmplay", default=None, help="VGMPlay directory (passed to vgm_compare.py)")
-    ap.add_argument("--rips", metavar="FILE", help="YAML {config stem: rip file in --vgz-dir}; configs it leaves out are skipped")
+    ap.add_argument("--rips", metavar="FILE", help="YAML {config stem: rip file in --vgz-dir} (default: rips.yaml beside "
+                                                   "the configs, else by number); configs it leaves out are skipped")
     args = ap.parse_args()
 
-    configs = sorted(p for p in Path(args.configs).glob("[0-9a-f][0-9a-f]_*.yaml"))
-    rips = None
-    if args.rips:
-        with open(args.rips, encoding="utf-8") as f:
-            rips = {str(k): str(v) for k, v in (yaml.safe_load(f) or {}).items()}
-        configs = [c for c in configs if c.stem in rips]
+    shelf = RipShelf.load(args.configs, args.vgz_dir, args.rips)
+    configs = shelf.config_files()
     if args.only:
         configs = [c for c in configs if any(n in c.stem for n in args.only)]
     if not configs:
         raise SystemExit("no configs matched")
-    vgz_dir = Path(args.vgz_dir)
     jobs = max(1, min(args.jobs, len(configs)))
     print(f"{len(configs)} songs, {jobs} at a time, {'measure only' if args.no_write else 'one write pass + verify'}")
 
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         results = list(pool.map(
-            lambda c: measure_song(c, _vgz_for(c, vgz_dir, rips), write=not args.no_write,
+            lambda c: measure_song(c, shelf.rip_for(c), write=not args.no_write,
                                    min_db=args.min_db, vgmplay=args.vgmplay), configs))
 
     failed = 0

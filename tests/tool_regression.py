@@ -13,6 +13,8 @@ Cases, all 19 VGZs in reference/vgz/ (untracked, as the asm sources are):
     analyze_NN_frames   vgm_analyze --frames --chip all              core.vgm.frame_log
     pitch_<song>        vgm_pitch_audit --list on the song's regression baseline MOD
     compare_<song>      vgm_compare on the same MOD (--with-renders; also each merged build)
+    lift_all, lift_02   vgm_lift: every rip against its asm; Green Hill's every aspect
+    lift_moonwalker_*   vgm_lift on the Moonwalker ROM's songs and rips (left out without them)
 
 The MODs are tests/baselines/ (made with tests/settings.yaml, which these runs read too), so a
 converter change does not move these baselines; a regenerated conversion baseline may.  A
@@ -56,6 +58,12 @@ _DIFF_LINES = 40                  # diff lines printed per failing case
 _COMPARE_START = "Config :"       # vgm_compare output compared from this line
 _MANIFEST_HEADER = "# Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.\n"
 _SONG_NUMBER = slice(0, 2)        # "02_green_hill_zone" / "02 - Green Hill Zone.vgz" -> "02"
+_LIFT_DETAIL = "02"               # the rip vgm_lift prints in full
+_LIFT_DIFFS = "4"                 # ... its differences per channel
+MOONWALKER_ROM = ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
+MOONWALKER_RIPS = VGZ_DIR / "moonwalker"
+MOONWALKER_CONFIGS = ROOT / "configs" / "moonwalker"
+_MOONWALKER_DETAIL = "88_round_clear"
 
 
 @dataclass
@@ -98,9 +106,27 @@ def _song_cases(tc: dict, vgz: Path) -> list[_Case]:
     return cases
 
 
+def _lift_cases(vgzs: dict[str, Path]) -> list[_Case]:
+    """vgm_lift: the Sonic rips against their asm; the Moonwalker ROM's songs against their rips."""
+    tool = ["tools/vgm_lift.py"]
+    cases = [_Case("lift_all", [*tool, "--all"], list(vgzs.values()))]
+    detail = vgzs.get(_LIFT_DETAIL)
+    if detail is not None:
+        cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)), "--aspects", "all",
+                                                    "--diffs", _LIFT_DIFFS], [detail]))
+    if not (MOONWALKER_ROM.exists() and MOONWALKER_RIPS.exists()):
+        return cases
+
+    configs = str(MOONWALKER_CONFIGS.relative_to(ROOT))
+    inputs = [MOONWALKER_ROM, MOONWALKER_CONFIGS / "rips.yaml", *sorted(MOONWALKER_RIPS.glob("*.vgz"))]
+    return [*cases,
+            _Case("lift_moonwalker_all", [*tool, "--all", "--configs", configs], inputs),
+            _Case(f"lift_moonwalker_{_MOONWALKER_DETAIL}", [*tool, str(Path(configs) / f"{_MOONWALKER_DETAIL}.yaml")], inputs)]
+
+
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs.values() for c in _analyze_cases(vgz)]
+    cases = [c for vgz in vgzs.values() for c in _analyze_cases(vgz)] + _lift_cases(vgzs)
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
             continue
@@ -223,6 +249,8 @@ def main() -> None:
         for c in _select(None, True):
             print(f"{c.name:<32} {'(renders) ' if c.renders else ''}{' '.join(c.argv)}")
         return
+    if not MOONWALKER_ROM.exists():
+        print(f"  note: no {MOONWALKER_ROM.relative_to(ROOT)}: the lift_moonwalker cases are left out")
     if args.generate_baselines:
         generate(args.only, args.with_renders, args.jobs)
         return

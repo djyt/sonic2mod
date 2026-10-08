@@ -707,6 +707,126 @@ compare_title_screen_merged:
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
+lift_02:
+  commit: 6642fd5-dirty
+  date: '2026-10-08'
+  inputs:
+    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+lift_all:
+  commit: 6642fd5-dirty
+  date: '2026-10-08'
+  inputs:
+    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+lift_moonwalker_88_round_clear:
+  commit: 6642fd5-dirty
+  date: '2026-10-08'
+  inputs:
+    configs/moonwalker/rips.yaml: cd533949370b
+    input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
+    reference/vgz/moonwalker/01 - Title Screen.vgz: b71f7a4780e4
+    reference/vgz/moonwalker/02 - Round 1 Start.vgz: 4f77d60d4a63
+    reference/vgz/moonwalker/03 - Smooth Criminal.vgz: 3b229a98c04e
+    reference/vgz/moonwalker/04 - Round Clear.vgz: e954ffc2f8ab
+    reference/vgz/moonwalker/05 - Round 2 Start.vgz: d0ddb775aa7f
+    reference/vgz/moonwalker/06 - Beat It.vgz: 0119f4ed1be1
+    reference/vgz/moonwalker/07 - Boss Theme.vgz: 4cfdbb7bbaca
+    reference/vgz/moonwalker/08 - Round 3 Start.vgz: b4a27eb0c325
+    reference/vgz/moonwalker/09 - Another Part of Me.vgz: b84d23ff5df0
+    reference/vgz/moonwalker/10 - Round 4 Start.vgz: 62e65d3661b6
+    reference/vgz/moonwalker/11 - Billie Jean.vgz: ad2fc69f030e
+    reference/vgz/moonwalker/12 - Round 5 Start.vgz: 4a5e9bd7c728
+    reference/vgz/moonwalker/13 - Bad.vgz: cb26d617559b
+    reference/vgz/moonwalker/14 - Final Boss Demo.vgz: 7ae0d8ff04dc
+    reference/vgz/moonwalker/15 - Mr. Big.vgz: 2704df0bf870
+    reference/vgz/moonwalker/16 - Dance Attack 1.vgz: b2e99f522e9b
+    reference/vgz/moonwalker/17 - Dance Attack 2.vgz: fae01d91d7f0
+    reference/vgz/moonwalker/18 - Dance Attack 3.vgz: fd800c61f085
+    reference/vgz/moonwalker/19 - Dance Attack 4.vgz: 3ef8f287c791
+    reference/vgz/moonwalker/20 - Dance Attack 5.vgz: faecb2f4c5c3
+    reference/vgz/moonwalker/21 - Dance Attack 6.vgz: 44911d8cbd01
+    reference/vgz/moonwalker/22 - Dance Attack 7.vgz: 2913f074589f
+    reference/vgz/moonwalker/23 - Dance Attack 8.vgz: 77b3480bb49f
+    reference/vgz/moonwalker/24 - Dance Attack 9.vgz: 8434e38b8049
+    reference/vgz/moonwalker/25 - Dance Attack 10.vgz: 4e69b2df9771
+    reference/vgz/moonwalker/26 - Dance Attack 11.vgz: 0d78b96aa995
+    reference/vgz/moonwalker/27 - Dance Attack 12.vgz: f69d32e10831
+    reference/vgz/moonwalker/28 - Game Over.vgz: 31dd1dc47e1a
+    reference/vgz/moonwalker/29 - Dance Attack 1 (with voice).vgz: 88c6d46aea79
+    reference/vgz/moonwalker/30 - Dance Attack 2 (with voice).vgz: 3d0d16987ebe
+    reference/vgz/moonwalker/31 - Dance Attack 3 (with voice).vgz: 45679bda979b
+    reference/vgz/moonwalker/32 - Dance Attack 4 (with voice).vgz: 77493bccf3ec
+    reference/vgz/moonwalker/33 - Dance Attack 5 (with voice).vgz: 74a6b37df3d9
+    reference/vgz/moonwalker/34 - Dance Attack 6 (with voice).vgz: 11eaba394a2a
+    reference/vgz/moonwalker/35 - Dance Attack 7 (with voice).vgz: 27f913f24564
+    reference/vgz/moonwalker/36 - Dance Attack 8 (with voice).vgz: 13725b5b3d46
+    reference/vgz/moonwalker/37 - Dance Attack 9 (with voice).vgz: 06b66ed76651
+    reference/vgz/moonwalker/38 - Dance Attack 10 (with voice).vgz: f3dfafea85a9
+    reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
+    reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
+lift_moonwalker_all:
+  commit: 6642fd5-dirty
+  date: '2026-10-08'
+  inputs:
+    configs/moonwalker/rips.yaml: cd533949370b
+    input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
+    reference/vgz/moonwalker/01 - Title Screen.vgz: b71f7a4780e4
+    reference/vgz/moonwalker/02 - Round 1 Start.vgz: 4f77d60d4a63
+    reference/vgz/moonwalker/03 - Smooth Criminal.vgz: 3b229a98c04e
+    reference/vgz/moonwalker/04 - Round Clear.vgz: e954ffc2f8ab
+    reference/vgz/moonwalker/05 - Round 2 Start.vgz: d0ddb775aa7f
+    reference/vgz/moonwalker/06 - Beat It.vgz: 0119f4ed1be1
+    reference/vgz/moonwalker/07 - Boss Theme.vgz: 4cfdbb7bbaca
+    reference/vgz/moonwalker/08 - Round 3 Start.vgz: b4a27eb0c325
+    reference/vgz/moonwalker/09 - Another Part of Me.vgz: b84d23ff5df0
+    reference/vgz/moonwalker/10 - Round 4 Start.vgz: 62e65d3661b6
+    reference/vgz/moonwalker/11 - Billie Jean.vgz: ad2fc69f030e
+    reference/vgz/moonwalker/12 - Round 5 Start.vgz: 4a5e9bd7c728
+    reference/vgz/moonwalker/13 - Bad.vgz: cb26d617559b
+    reference/vgz/moonwalker/14 - Final Boss Demo.vgz: 7ae0d8ff04dc
+    reference/vgz/moonwalker/15 - Mr. Big.vgz: 2704df0bf870
+    reference/vgz/moonwalker/16 - Dance Attack 1.vgz: b2e99f522e9b
+    reference/vgz/moonwalker/17 - Dance Attack 2.vgz: fae01d91d7f0
+    reference/vgz/moonwalker/18 - Dance Attack 3.vgz: fd800c61f085
+    reference/vgz/moonwalker/19 - Dance Attack 4.vgz: 3ef8f287c791
+    reference/vgz/moonwalker/20 - Dance Attack 5.vgz: faecb2f4c5c3
+    reference/vgz/moonwalker/21 - Dance Attack 6.vgz: 44911d8cbd01
+    reference/vgz/moonwalker/22 - Dance Attack 7.vgz: 2913f074589f
+    reference/vgz/moonwalker/23 - Dance Attack 8.vgz: 77b3480bb49f
+    reference/vgz/moonwalker/24 - Dance Attack 9.vgz: 8434e38b8049
+    reference/vgz/moonwalker/25 - Dance Attack 10.vgz: 4e69b2df9771
+    reference/vgz/moonwalker/26 - Dance Attack 11.vgz: 0d78b96aa995
+    reference/vgz/moonwalker/27 - Dance Attack 12.vgz: f69d32e10831
+    reference/vgz/moonwalker/28 - Game Over.vgz: 31dd1dc47e1a
+    reference/vgz/moonwalker/29 - Dance Attack 1 (with voice).vgz: 88c6d46aea79
+    reference/vgz/moonwalker/30 - Dance Attack 2 (with voice).vgz: 3d0d16987ebe
+    reference/vgz/moonwalker/31 - Dance Attack 3 (with voice).vgz: 45679bda979b
+    reference/vgz/moonwalker/32 - Dance Attack 4 (with voice).vgz: 77493bccf3ec
+    reference/vgz/moonwalker/33 - Dance Attack 5 (with voice).vgz: 74a6b37df3d9
+    reference/vgz/moonwalker/34 - Dance Attack 6 (with voice).vgz: 11eaba394a2a
+    reference/vgz/moonwalker/35 - Dance Attack 7 (with voice).vgz: 27f913f24564
+    reference/vgz/moonwalker/36 - Dance Attack 8 (with voice).vgz: 13725b5b3d46
+    reference/vgz/moonwalker/37 - Dance Attack 9 (with voice).vgz: 06b66ed76651
+    reference/vgz/moonwalker/38 - Dance Attack 10 (with voice).vgz: f3dfafea85a9
+    reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
+    reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 pitch_chaos_emerald:
   commit: 0d0e5d8-dirty
   date: '2026-10-05'

@@ -3,6 +3,8 @@ count and differences, one difference made again and again printed once with its
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from ..audio import pitch_name
 from ..chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
 from ..smps import Aspect, ChannelDiff, NoteDiff, SongDiff
@@ -16,17 +18,26 @@ def diff_counts(diff: SongDiff | ChannelDiff) -> str:
     return "  ".join(f"{a.value} {counts[a]}" for a in Aspect if counts[a])
 
 
-def song_diff_lines(diff: SongDiff, max_diffs: int, missing: str = "missing", extra: str = "extra") -> list[str]:
+def song_diff_lines(diff: SongDiff, max_diffs: int, missing: str = "missing", extra: str = "extra",
+                    seconds: Callable[[int], float] | None = None) -> list[str]:
     """Every difference, `max_diffs` at most per channel; the last line the verdict.  `missing` /
-    `extra`: what a channel only the expected / only the compared song has is called."""
+    `extra`: what a channel only the expected / only the compared song has is called; `seconds`:
+    when a tick plays (shown beside it)."""
     lines = [f"  {what:<14} {want} -> {got}" for what, want, got in diff.song]
     lines += [f"  {name:<5} {missing}" for name in diff.missing_channels]
     lines += [f"  {name:<5} {extra}" for name in diff.extra_channels]
 
+    # A tick as a column (' 3264  54.40s'), or in a sentence ('3264 (54.40s)')
+    def column(tick: int) -> str:
+        return f"{tick:>6}" if seconds is None else f"{tick:>6} {seconds(tick):>7.2f}s"
+
+    def inline(tick: int) -> str:
+        return f"{tick}" if seconds is None else f"{tick} ({seconds(tick):.2f}s)"
+
     for ch in diff.channels:
         lines.append(f"  {ch.name:<5} {ch.notes:>4} notes   {diff_counts(ch) or 'same'}")
-        found = [f"missing at {t}" for t in ch.missing] + [f"extra at {t}" for t in ch.extra]
-        found += [f"{d.tick:>6}  {d.aspect.value:<10} {_show(ch.name, d)}" + (f"   x{n}, last at {last}" if n > 1 else "")
+        found = [f"missing at {inline(t)}" for t in ch.missing] + [f"extra at {inline(t)}" for t in ch.extra]
+        found += [f"{column(d.tick)}  {d.aspect.value:<10} {_show(ch.name, d)}" + (f"   x{n}, last at {inline(last)}" if n > 1 else "")
                   for d, n, last in _grouped(ch.changed)]
         lines += [f"        {line}" for line in found[:max_diffs]]
         if len(found) > max_diffs:

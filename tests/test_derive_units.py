@@ -67,7 +67,8 @@ class Moonwalker(unittest.TestCase):
         self.assertEqual(d.data["output_file"], "output/moonwalker/81_smooth_criminal.mod")
         self.assertEqual(d.data["range_space"], "chip")
         self.assertEqual(len(d.data["channels"]), 9)
-        self.assertEqual((d.data["ticks_per_row"], d.data["target_speed"]), (2, 2))
+        # Notes every 2 stored ticks, the header divider 2: one duration unit a row
+        self.assertEqual((d.data["ticks_per_row"], d.data["target_speed"]), (1, 2))
         self.assertLessEqual(max(row[0] for row in d.data["sample_list"]), 31)
         self.assertNotIn("name", d.derived)
 

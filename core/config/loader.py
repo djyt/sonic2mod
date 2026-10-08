@@ -7,6 +7,25 @@ from typing import Any
 from ..audio import DITHER_MODES
 
 
+def parse_number(value, context: str, base: int = 10) -> int:
+    """A number as a config writes it: `$81` or `0x81` is hex, other digits are in `base`, a YAML
+    int is itself.  Bare digits differ by key: a voice index `12` is decimal, a vibrato `12`
+    the hex digits 1 and 2 (base=16)."""
+    if isinstance(value, bool):
+        raise ValueError(f"{context}: {value!r} is not a number")
+    if isinstance(value, int):
+        return value
+    text = str(value).strip().lower()
+    for prefix in ("$", "0x"):
+        if text.startswith(prefix):
+            text, base = text[len(prefix):], 16
+            break
+    try:
+        return int(text, base)
+    except ValueError:
+        raise ValueError(f"{context}: {value!r} is not a number ($81, 0x81 or digits)") from None
+
+
 def mode_word(v) -> str:
     """A mode setting's value as written: YAML 1.1 reads a bare `off` as false (and `on` as true)."""
     if isinstance(v, bool):

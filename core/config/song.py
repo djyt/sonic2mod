@@ -18,7 +18,7 @@ from .entries import (
     parse_psg_voice_map,
     parse_voice_maps,
 )
-from .loader import VARIANTS_KEY, apply_variant, read_yaml_file
+from .loader import VARIANTS_KEY, apply_variant, parse_number, read_yaml_file
 
 # A song config's top-level keys
 _KEYS = frozenset({
@@ -260,7 +260,7 @@ class ConversionConfig:
         if rom_song is not None and not is_rom_path(input_file):
             raise ValueError("rom_song: applies to a ROM input_file only (.bin / .md / .gen)")
         self.input_file = input_file
-        self.rom_song = None if rom_song is None else _sound_id(rom_song)
+        self.rom_song = None if rom_song is None else parse_number(rom_song, "rom_song")
 
     def _read_source(self, data: dict) -> None:
         """driver:, rom_song: (a ROM input only) and the tempo overrides (a VGM input only)."""
@@ -309,14 +309,3 @@ class ConversionConfig:
             self.loop_drift_db = max(0.0, float(data['loop_drift_db']))
         if data.get('treble_shelf_db') is not None:
             self.treble_shelf_db = float(data['treble_shelf_db'])
-
-
-def _sound_id(value) -> int:
-    """rom_song: as YAML gives it: 129, "$81" or "0x81"."""
-    if isinstance(value, int):
-        return value
-    text = str(value).strip().lower()
-    for prefix in ("$", "0x"):
-        if text.startswith(prefix):
-            return int(text[len(prefix):], 16)
-    raise ValueError(f"rom_song: {value!r} is not a sound ID ($81 ...)")

@@ -44,6 +44,7 @@ from core.config import (
     SynthesisSettings,
     find_settings,
     load_settings,
+    parse_number,
     rate3_synth_root_issues,
 )
 from core.mod import PERIOD_TABLE, ModFile, ModNote
@@ -1020,7 +1021,7 @@ def main():
 
     # Parse (an asm), read (a ROM) or lift (a VGM rip)
     try:
-        song = read_song(args.song, rom_song=int(args.rom_song.lstrip("$").removeprefix("0x"), 16) if args.rom_song else None)
+        song = read_song(args.song, rom_song=parse_number(args.rom_song, "--rom-song") if args.rom_song else None)
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)

@@ -18,7 +18,7 @@ from .entries import (
     parse_patterns,
     rate3_synth_root_issues,
 )
-from .loader import apply_variant, load_yaml
+from .loader import apply_variant, load_yaml, parse_number
 from .settings import (
     DEFAULT_AMIGA_CLOCK,
     DEFAULT_PSG_OVERSAMPLE,
@@ -40,6 +40,6 @@ __all__ = [
     "DEFAULT_AMIGA_CLOCK", "DEFAULT_PSG_OVERSAMPLE", "DEFAULT_SHELF_HZ", "LEGATO_MODES", "PLAYERS", "REGION_FPS", "SAMPLE_KEYS",
     "SUSTAIN_LOOP_MODES", "ChannelConfig", "ConversionConfig", "DacSampleConfig", "InstrumentRange", "MergeGroup",
     "PsgInstrumentEntry", "PsgSynthesisSettings", "SampleSettings", "SynthesisSettings", "apply_variant",
-    "bpm_rounding_options", "derive_bpm", "exact_bpm", "find_settings", "format_patterns", "load_settings", "load_yaml", "parse_patterns",
+    "bpm_rounding_options", "derive_bpm", "exact_bpm", "find_settings", "format_patterns", "load_settings", "load_yaml", "parse_number", "parse_patterns",
     "rate3_synth_root_issues", "region_fps", "variant_output_file", "with_song_overrides"
 ]

@@ -20,10 +20,11 @@ sys.path.insert(0, str(_HERE))
 from roms import MOONWALKER_ROM, needs_moonwalker
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings
+from core.drivers import dac_samples, read_rom_song
 from core.mod import ModNote
 from core.plan import complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
-from core.rom import RomImage, dac_samples, read_rom_song
+from core.rom import RomImage
 from core.smps import (
     NO_TEMPO_HOLDS,
     REST,

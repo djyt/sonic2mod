@@ -1,9 +1,7 @@
-"""Mega Drive ROMs: SMPS songs read from their bytecode (the score itself), beside vgm/.
+"""Mega Drive ROMs: the framework SMPS songs are read from their bytecode with (the score itself),
+beside vgm/.  It knows no driver: each is a description in core/drivers, the layer above, that
+these readers are driven by.
 
-    song.py  detect.py       what a ROM holds: its index, each sound -> SongCode / SmpsSong, its
-                             DAC samples; the variant pinned by SHA-1, else the one that reads it
-    variants.py              every variant by name, the ROMs each is known in, their data fixes
-    drivers/                 the drivers, by family, a folder each (drivers/__init__.py)
     header.py  tracks.py     generic readers: headers, track bytes -> SmpsCode (the ops the asm
     voices.py  envelopes.py  parser makes from macros), voices, PSG envelopes; driven by the variant
     grammar.py               a track grammar: the instruction at an address (SMPS's)
@@ -12,29 +10,19 @@
     memory.py  fixes.py      flag specs; SoundMemory (how a driver reads pointers); RomFix
     image.py                 RomImage: the header, big-endian reads by address
 
-    image / memory / flags / fixes / grammar / variant  <-  readers  <-  drivers  <-  variants  <-  detect / song
+    image / memory / flags / fixes / grammar / variant  <-  readers
 """
 
-from .detect import detect_variant
 from .fixes import RomFix
 from .image import RomError, RomImage, is_rom_path
-from .song import dac_samples, locate_sounds, read_rom_code, read_rom_song
 from .variant import DacSample, SmpsVariant, SoundIndex
-from .variants import VARIANTS, data_fixes
 
 __all__ = [
-    "VARIANTS",
     "DacSample",
     "RomError",
     "RomFix",
     "RomImage",
     "SmpsVariant",
     "SoundIndex",
-    "dac_samples",
-    "data_fixes",
-    "detect_variant",
     "is_rom_path",
-    "locate_sounds",
-    "read_rom_code",
-    "read_rom_song",
 ]

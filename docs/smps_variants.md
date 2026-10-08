@@ -1,15 +1,15 @@
 # SMPS variants
 
-The SMPS drivers the ROM reader knows (`core/rom/`), what each differs from Sonic 1 by, and how
+The SMPS drivers the ROM reader knows (`core/drivers/`), what each differs from Sonic 1 by, and how
 each fact was found.  Sonic 1 itself is `docs/smps_driver.md`; how the reader is built is
 `docs/architecture.md` § 3; the plan and its history `docs/todo/binary_import.md`.
 
 | Variant (`driver:`) | Family | Game | Code |
 |---|---|---|---|
-| `sonic1` (Type 1b, modified) | SMPS 68k | Sonic the Hedgehog | `core/rom/drivers/smps68k/sonic1/` |
-| `smps68k_type1a` | SMPS 68k | Michael Jackson's Moonwalker | `core/rom/drivers/smps68k/type1a/` |
-| `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/rom/drivers/smpsz80/type0fm/` |
-| `smps68k_mucom` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/rom/drivers/smps68k/mucom/` |
+| `sonic1` (Type 1b, modified) | SMPS 68k | Sonic the Hedgehog | `core/drivers/smps68k/sonic1/` |
+| `smps68k_type1a` | SMPS 68k | Michael Jackson's Moonwalker | `core/drivers/smps68k/type1a/` |
+| `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/drivers/smpsz80/type0fm/` |
+| `smps68k_mucom` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/drivers/smps68k/mucom/` |
 
 A ROM known by its SHA-1 is pinned to its variant; any other is tried with each (`detect.py`).
 Streets of Rage's facts are in `docs/todo/streets_of_rage.md` until its conversion is done.
@@ -140,11 +140,11 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 
 1. Probe: find the driver (68k code, or the Z80 blob the 68k copies), its flag jump table, the
    song index, a song header and a voice.  Compare each table with Sonic 1's.
-2. Code: a folder in its family (`core/rom/drivers/smps68k/<driver>/`, `smpsz80/<driver>/`):
+2. Code: a folder in its family (`core/drivers/smps68k/<driver>/`, `smpsz80/<driver>/`):
    `variant.py`, the `SmpsVariant` (memory, locate, flags per kind of track, track grammar, header
    and voice layouts, envelope commands, DAC, FM table, FM drums, the ROMs it is known in), and
    whatever only this driver has; what two drivers of a family share moves up to the family
-   folder.  Add it to `core/rom/drivers/__init__.py`'s `DRIVERS`.  A driver imports the framework
+   folder.  Add it to `core/drivers/registry.py`'s `DRIVERS`.  A driver imports the framework
    absolutely (`core.rom.flags`), its family relatively.  Nothing outside its folder names it:
    what the song itself must say goes in the IR (`core/smps`), what a reader needs in the
    variant's description - never a variant check.

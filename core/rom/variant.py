@@ -1,8 +1,9 @@
 """SmpsVariant: everything one SMPS driver differs by, as data and hooks the generic readers ask.
-Each driver's folder (drivers/<family>/<driver>/variant.py) builds one; variants.py lists them.
+Each driver's folder (core/drivers/<family>/<driver>/variant.py) builds one; core/drivers/registry.py
+lists them.
 
     readers   header.py tracks.py voices.py envelopes.py    ask the variant, never its name
-    drivers   drivers/smps68k/ sonic1 type1a mucom, drivers/smpsz80/ type0fm
+    drivers   core/drivers/smps68k/ sonic1 type1a mucom, core/drivers/smpsz80/ type0fm   (the layer above)
 """
 
 from __future__ import annotations

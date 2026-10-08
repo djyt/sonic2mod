@@ -17,9 +17,10 @@ sys.path.insert(0, str(_HERE))
 
 from roms import STREETS_OF_RAGE_ROM, needs_streets_of_rage
 
-from core.rom import RomImage, detect_variant, locate_sounds, read_rom_code, read_rom_song
-from core.rom.drivers.smps68k import MUCOM
-from core.rom.drivers.smps68k.memory import Relative68kMemory
+from core.drivers import detect_variant, locate_sounds, read_rom_code, read_rom_song
+from core.drivers.smps68k import MUCOM
+from core.drivers.smps68k.memory import Relative68kMemory
+from core.rom import RomImage
 from core.rom.grammar import track_label
 from core.rom.image import RomError
 from core.rom.tracks import decode_tracks

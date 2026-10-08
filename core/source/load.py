@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..rom import VARIANTS, DacSample, RomImage, SmpsVariant, dac_samples, is_rom_path, read_rom_song
+from ..drivers import VARIANTS, dac_samples, read_rom_song
+from ..rom import DacSample, RomImage, SmpsVariant, is_rom_path
 from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsParser, SmpsSong
 from ..vgm import LiftOptions, is_vgm_path, lift_song, load_frames
 

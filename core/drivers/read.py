@@ -3,16 +3,17 @@ and voices -> SmpsSong) and its DAC samples.  The variant is detected unless giv
 
 from __future__ import annotations
 
-from ..smps import FM_FREQUENCIES, SmpsSong, SongCode
+from core.rom.envelopes import read_envelopes
+from core.rom.fixes import apply_fixes
+from core.rom.header import read_music_header, read_sfx_header
+from core.rom.image import RomImage
+from core.rom.tracks import decode_tracks
+from core.rom.variant import DacSample, SmpsVariant, SoundIndex
+from core.rom.voices import read_voices, voices_used
+from core.smps import FM_FREQUENCIES, SmpsSong, SongCode
+
 from .detect import detect_variant
-from .envelopes import read_envelopes
-from .fixes import apply_fixes
-from .header import read_music_header, read_sfx_header
-from .image import RomImage
-from .tracks import decode_tracks
-from .variant import DacSample, SmpsVariant, SoundIndex
-from .variants import data_fixes
-from .voices import read_voices, voices_used
+from .registry import data_fixes
 
 
 def locate_sounds(rom: RomImage, variant: SmpsVariant | None = None) -> SoundIndex:

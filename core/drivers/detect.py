@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from .header import read_music_header
-from .image import RomError, RomImage
-from .tracks import decode_tracks
-from .variant import SmpsVariant, SoundIndex
-from .variants import VARIANTS, pinned_variant
+from core.rom.header import read_music_header
+from core.rom.image import RomError, RomImage
+from core.rom.tracks import decode_tracks
+from core.rom.variant import SmpsVariant, SoundIndex
+
+from .registry import VARIANTS, pinned_variant
 
 
 @lru_cache(maxsize=8)

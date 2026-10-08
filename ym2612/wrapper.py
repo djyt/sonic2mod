@@ -35,7 +35,7 @@ collects one (L, R) pair per batch, yielding exactly ``n`` samples.
 import array
 import ctypes
 
-from core.chips import MD_FM_CLOCK
+from core.chips import FM_CHIP_MODES, MD_FM_CLOCK
 
 from .build import get_lib_path
 
@@ -120,7 +120,7 @@ class OPN2:
             mode: "ym2612" (Mega Drive VA2, default) or "ym3438" (YM3438 accurate).
                   Remembered on the instance: ``reset()`` with no argument keeps it.
         """
-        if mode not in ("ym2612", "ym3438"):
+        if mode not in FM_CHIP_MODES:
             raise ValueError(f"OPN2 mode must be 'ym2612' or 'ym3438' (got {mode!r})")
         self.mode = mode
         self._lib = _load_lib()
@@ -145,7 +145,7 @@ class OPN2:
     def reset(self, mode: str | None = None) -> None:
         """Reset the chip; ``mode`` switches chip type, None keeps the instance's."""
         if mode is not None:
-            if mode not in ("ym2612", "ym3438"):
+            if mode not in FM_CHIP_MODES:
                 raise ValueError(f"OPN2 mode must be 'ym2612' or 'ym3438' (got {mode!r})")
             self.mode = mode
         chip_type = _YM3438_MODE_YM2612 if self.mode == "ym2612" else 0

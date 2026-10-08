@@ -84,9 +84,9 @@ class DetunePlan:
 
 
 def detune_variants_wanted(synth) -> bool:
-    """True where FM is synthesised on the YM2612 and settings.yaml fm_synthesis.detune_variants
-    allows variants (a SynthesisSettings, or None)."""
-    return synth is not None and synth.enabled and synth.mode == "ym2612" and synth.detune_variants
+    """True where FM is synthesised and settings.yaml fm_synthesis.detune_variants allows
+    variants (a SynthesisSettings, or None)."""
+    return synth is not None and synth.enabled and synth.detune_variants
 
 
 def plan_detune_variants(song, config) -> DetunePlan:

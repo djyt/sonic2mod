@@ -4,7 +4,7 @@ compare each with its asm, or write each as SMPS2ASM assembly.
 
 The comparison is two-fold: core.smps.parse_differences (every event, spelling included - the
 ROM and the asm are the same bytes, so nothing may differ) and, for music, compare_songs on what
-the driver plays.  Both sides read with the data fixes (core/rom/variants.py: known for this exact ROM
+the driver plays.  Both sides read with the data fixes (core/drivers/registry.py: known for this exact ROM
 only, as the asm's FixMusicAndSFXDataBugs), or with --shipped neither: the game as it was sold.
 
 Usage::
@@ -16,7 +16,7 @@ Usage::
     python tools/rom_import.py input/roms/sonic_rev01.bin --dac output/rom_dac  # DAC samples: .raw + manifest.yaml
     python tools/rom_import.py "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"   # Type 1a, detected
 
-The driver is detected (core/rom/detect.py); --driver states it.
+The driver is detected (core/drivers/detect.py); --driver states it.
 """
 
 from __future__ import annotations
@@ -32,18 +32,8 @@ sys.path.insert(0, str(ROOT))
 
 import yaml
 
-from core.rom import (
-    VARIANTS,
-    RomError,
-    RomImage,
-    SmpsVariant,
-    SoundIndex,
-    dac_samples,
-    data_fixes,
-    detect_variant,
-    locate_sounds,
-    read_rom_code,
-)
+from core.drivers import VARIANTS, dac_samples, data_fixes, detect_variant, locate_sounds, read_rom_code
+from core.rom import RomError, RomImage, SmpsVariant, SoundIndex
 from core.smps import (
     SmpsDriver,
     SmpsParser,

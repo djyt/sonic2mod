@@ -1,5 +1,5 @@
 """The words a driver's flag table is written in: what a coordination flag byte does and how many
-operand bytes follow it.  Each driver's tables are its own (drivers/ ...)."""
+operand bytes follow it.  Each driver's tables are its own (core/drivers/ ...)."""
 
 from __future__ import annotations
 

@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from .drivers import DRIVERS
-from .fixes import RomFix
-from .image import RomImage
-from .variant import SmpsVariant
+from core.rom.fixes import RomFix
+from core.rom.image import RomImage
+from core.rom.variant import SmpsVariant
+
+from .smps68k import MUCOM, SONIC1, TYPE1A
+from .smpsz80 import TYPE0FM
+
+DRIVERS = (SONIC1, TYPE1A, TYPE0FM, MUCOM)
 
 VARIANTS = {v.name: v for v in DRIVERS}
 

@@ -37,10 +37,11 @@ Full module map: `docs/architecture.md`.
 sonic2mod/
   convert.py  analyze.py  sonic2wav.py   CLIs: conversion, song analysis, SFX → WAV
   core/        library; layers, each importing only those below it (diagnostics.py: any):
-               ui → convert / audit → merge → plan → config → source → vgm / rom → smps / mod
+               ui → convert / audit → merge → plan → config → source → vgm / drivers → rom → smps / mod
                → chips / audio / render_cache / files.  Imports nothing from sfx/ or the chip packages
     smps/        the IR (SmpsSong), parser, the shared song walk (code.py), driver tables, playback
-    rom/ vgm/    ROM bytecode reader; VGM register logs and the lift back to a song
+    drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs
+    rom/ vgm/    the ROM framework (readers driven by a driver's description); VGM register logs and the lift
     source/      read_song(path): picks asm / ROM / VGM
     config/      ConversionConfig, settings.yaml, variants
     plan/        DriverState walk (resolve_note), instrument catalogue, synth roots, detune, timeline,

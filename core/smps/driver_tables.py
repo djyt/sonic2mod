@@ -19,7 +19,7 @@ from ..chips import CARRIER_OFFSETS_BY_ALG, FM_SAMPLE_RATE, MD_PSG_CLOCK, PSG_SA
 
 class SmpsDriver(StrEnum):
     """The SMPS variants a song can come from: a config's `driver:`.  These tables are Sonic 1's;
-    a ROM read with another variant (core/rom/drivers/ ...) shares them where noted."""
+    a ROM read with another variant (core/drivers/ ...) shares them where noted."""
 
     SONIC1 = "sonic1"
     TYPE1A = "smps68k_type1a"      # SMPS 68k Type 1a: Michael Jackson's Moonwalker

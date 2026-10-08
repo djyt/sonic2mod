@@ -22,25 +22,23 @@ sys.path.insert(0, str(_HERE))
 from roms import MOONWALKER_ROM, needs_moonwalker
 
 from core.chips import OperatorReg
-from core.rom import (
-    RomError,
-    RomFix,
-    RomImage,
+from core.drivers import (
     dac_samples,
     data_fixes,
     detect_variant,
+    first_failure,
     locate_sounds,
     read_rom_code,
     read_rom_song,
 )
-from core.rom.detect import first_failure
-from core.rom.drivers.smps68k import SONIC1, TYPE1A
-from core.rom.drivers.smps68k.memory import Relative68kMemory
-from core.rom.drivers.smpsz80 import TYPE0FM
-from core.rom.drivers.smpsz80.memory import BankedZ80Memory, Z80RamMemory
-from core.rom.drivers.smpsz80.type0fm.drums import _Player, _wrap
-from core.rom.drivers.smpsz80.type0fm.layout import HEADER_TYPE0, VOICE_TYPE0
-from core.rom.drivers.smpsz80.type0fm.locate import fm_table, locate_type0, sound_bank
+from core.drivers.smps68k import SONIC1, TYPE1A
+from core.drivers.smps68k.memory import Relative68kMemory
+from core.drivers.smpsz80 import TYPE0FM
+from core.drivers.smpsz80.memory import BankedZ80Memory, Z80RamMemory
+from core.drivers.smpsz80.type0fm.drums import _Player, _wrap
+from core.drivers.smpsz80.type0fm.layout import HEADER_TYPE0, VOICE_TYPE0
+from core.drivers.smpsz80.type0fm.locate import fm_table, locate_type0, sound_bank
+from core.rom import RomError, RomFix, RomImage
 from core.rom.envelopes import read_envelopes
 from core.rom.fixes import apply_fixes
 from core.rom.header import read_music_header, read_sfx_header
@@ -460,7 +458,7 @@ class Type0Fm(unittest.TestCase):
 
 
 class FmDrums(unittest.TestCase):
-    """Type 0 FM's drum programs run frame by frame (core/rom/drivers/smpsz80/type0fm/drums.py)."""
+    """Type 0 FM's drum programs run frame by frame (core/drivers/smpsz80/type0fm/drums.py)."""
 
     _AT = 0x100
     _TABLE = tuple(0x2400 + i for i in range(0x60))      # block 4, fnum $400 + index

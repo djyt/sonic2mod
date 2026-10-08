@@ -13,15 +13,13 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 
-from ..smps import Op, OpKind, SmpsCode, effect_from_bytes
+from ..smps import FIRST_FLAG, Op, OpKind, SmpsCode, effect_from_bytes
 from .fixes import RomFix
 from .flags import FlagKind, FlagSpec
 from .header import track_label
 from .image import RomError
 from .memory import SoundMemory
 from .variant import SmpsVariant
-
-_FIRST_FLAG = 0xE0
 
 _LOOP_INDEX = 0            # smpsLoop's operands: index, count, pointer
 _LOOP_COUNT = 1
@@ -90,7 +88,7 @@ def _splice(memory: SoundMemory, fix: RomFix, variant: SmpsVariant) -> _Decoded:
 def _decode(memory: SoundMemory, address: int, variant: SmpsVariant) -> _Decoded:
     """The instruction at `address`."""
     byte = memory.byte(address)
-    if byte < _FIRST_FLAG:
+    if byte < FIRST_FLAG:
         return _Decoded((Op(OpKind.BYTE, value=byte),), 1, True)
 
     spec = variant.flags.get(byte)

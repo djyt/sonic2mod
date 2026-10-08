@@ -16,6 +16,7 @@
 
 from .asm_writer import write_asm
 from .code import (
+    FIRST_FLAG,
     FIRST_NOTE,
     LAST_NOTE,
     Op,
@@ -71,6 +72,7 @@ from .parser import SmpsParser
 from .percussion import FmDrum, FmFrame
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .song import (
+    REST,
     ChannelType,
     CoordFlag,
     SmpsChannel,
@@ -94,6 +96,7 @@ __all__ = [
     "C1_SEMITONE",
     "DEFAULT_DRIVER",
     "ENVELOPE_TERMINATOR",
+    "FIRST_FLAG",
     "FIRST_NOTE",
     "FM_FREQUENCIES",
     "FM_SLOT_MASK",
@@ -106,6 +109,7 @@ __all__ = [
     "PSG_ENVELOPES_BY_NAME",
     "PSG_FREQUENCIES",
     "PSG_FREQUENCIES_EXTENDED",
+    "REST",
     "SFX_CHANNEL_IDS",
     "SMPS_DAC_NAMES",
     "SMPS_OP_TO_REG_OFFSET",

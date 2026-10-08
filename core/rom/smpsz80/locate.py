@@ -21,7 +21,7 @@ from ...chips import split_freq_word
 from ..header import is_music_header, is_sfx_header, read_index
 from ..image import RomError, RomImage
 from ..variant import SoundIndex
-from ..z80 import z80_ram
+from ..z80 import z80_ram, z80_word
 from .layout import HEADER_TYPE0
 from .memory import BANK_SIZE, BankedZ80Memory
 
@@ -133,4 +133,4 @@ def _is_sfx_header(memory: BankedZ80Memory, address: int) -> bool:
 
 def _words(z80: bytes, at: int, count: int) -> tuple[int, ...]:
     """`count` little-endian words of Z80 RAM from `at`."""
-    return tuple(int.from_bytes(z80[i:i + _WORD], "little") for i in range(at, at + count * _WORD, _WORD))
+    return tuple(z80_word(z80, i) for i in range(at, at + count * _WORD, _WORD))

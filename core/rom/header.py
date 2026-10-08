@@ -134,7 +134,8 @@ def is_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> 
 
     slots = [address + _MUSIC_FIXED + i * _FM_TRACK for i in range(fm_count)]
     slots += [address + _MUSIC_FIXED + fm_count * _FM_TRACK + i * _PSG_TRACK for i in range(psg_count)]
-    if not memory.contains(address, (slots[-1] - address) + _PSG_TRACK):
+    last = _PSG_TRACK if psg_count else _FM_TRACK
+    if not memory.contains(address, (slots[-1] - address) + last):
         return False
     return all(memory.contains(memory.header_pointer(address, slot)) for slot in slots)
 

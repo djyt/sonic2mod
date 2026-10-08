@@ -7,7 +7,7 @@ from ...smps import SMPS_DAC_NAMES, CoordFlag, SmpsDriver
 from ..fixes import RomFix
 from ..flags import RETURN, STOP, EnvelopeCommand, drop, effect
 from ..variant import SmpsVariant
-from .common import FLAGS_68K, HEADER_68K, VOICE_68K, no_fm_drums, sonic1_fm_frequencies
+from .common import FLAGS_68K, HEADER_68K, VOICE_68K
 from .dac import sonic1_dac
 from .locate import locate_68k
 from .memory import Relative68kMemory
@@ -15,8 +15,7 @@ from .memory import Relative68kMemory
 SONIC1_REV01_SHA1 = "1f1e480f768237eb0c0e725b622b0d791f47a7a9"
 
 _REV01_FIXES = (
-    RomFix(0x754BA, bytes.fromhex("8006C1030306 80B524".replace(" ", "")),
-           bytes.fromhex("8006B5030306 80A924".replace(" ", "")),
+    RomFix(0x754BA, bytes.fromhex("8006C1030306 80B524"), bytes.fromhex("8006B5030306 80A924"),
            "Marble Zone PSG3: nE5 nE5 nE5 / nE4 an octave lower (off the PSG table as shipped)"),
     RomFix(0x781BD, bytes.fromhex("808080E60C"), b"",
            "Credits PSG2: three late rests and an FM-only smpsAlterVol $0C that mutes the passage"),
@@ -45,7 +44,5 @@ SONIC1 = SmpsVariant(
     voice_layout=VOICE_68K,
     dac_names={v: k for k, v in SMPS_DAC_NAMES.items()},
     dac=sonic1_dac,
-    fm_frequencies=sonic1_fm_frequencies,
-    fm_drums=no_fm_drums,
     known_roms={SONIC1_REV01_SHA1: _REV01_FIXES},
 )

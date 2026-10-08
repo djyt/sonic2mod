@@ -32,7 +32,17 @@ import re
 from collections.abc import Mapping
 
 from ...chips import split_freq_word
-from ...smps import CoordFlag, FmDrum, FmFrame, SmpsSongHeader, TempoSegment, signed_byte, tempo_schedule
+from ...smps import (
+    FIRST_FLAG,
+    REST,
+    CoordFlag,
+    FmDrum,
+    FmFrame,
+    SmpsSongHeader,
+    TempoSegment,
+    signed_byte,
+    tempo_schedule,
+)
 from ..flags import FlagKind, FlagSpec
 from ..image import RomError, RomImage
 from ..voices import read_voices
@@ -44,8 +54,7 @@ _MAX_FRAMES = 512            # ~8.5 s: past any hit's ring
 _FILL_FRAMES = 0x100         # a note keyed this long without another runs out
 
 _DRUM_TRACK = 0x80           # the drum track's note $8n plays FM drum n (bits 4-6: a PSG drum, unread)
-_REST = 0x80
-_FLAG = 0xE0
+_WORD = 2
 _SLIDE_MODE = 0xFC           # refused in a song (tracks.py); the drum programs' own
 _SLIDE_ON = 1
 
@@ -74,10 +83,10 @@ def read_fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[i
     holds = tempo_schedule(header.tempo_modifier)[0]
 
     drums: dict[str, FmDrum] = {}
-    for n in range(1, (voices - records) // 2 + 1):
-        record = ram.word(records + (n - 1) * 2)
-        start, transpose, volume, _, voice = (ram.word(record), *ram.bytes_at(record + 2, _RECORD - 2))
-        voice_at = ram.word(voices + voice * 2)
+    for n in range(1, (voices - records) // _WORD + 1):            # a record pointer per drum, the voices next
+        record = ram.word(records + (n - 1) * _WORD)
+        start, transpose, volume, _, voice = (ram.word(record), *ram.bytes_at(record + _WORD, _RECORD - _WORD))
+        voice_at = ram.word(voices + voice * _WORD)
         player = _Player(ram, flags, fm_frequencies, holds, divider, signed_byte(transpose))
         frames, cut = player.play(start)
         drums[drum_name(_DRUM_TRACK + n)] = FmDrum(read_voices(ram, voice_at, 1, VOICE_TYPE0)[0], volume,
@@ -147,7 +156,7 @@ class _Player:
         no_attack = False
         while True:
             byte = self._take()
-            if byte < _FLAG:
+            if byte < FIRST_FLAG:
                 break
             no_attack = self._flag(byte, no_attack)
 
@@ -155,8 +164,8 @@ class _Player:
             self._keyed = False
 
         # A note: its word, then a slide (slide mode) and a duration; a lone duration re-keys
-        if byte >= _REST:
-            index = byte - _REST + (self._transpose if byte != _REST else 0)
+        if byte >= REST:
+            index = byte - REST + (self._transpose if byte != REST else 0)
             if not 0 <= index < len(self._table):
                 raise _Stop(f"note ${byte:02X} at transposition {self._transpose}: off the FM table")
             self._word = self._table[index]
@@ -164,7 +173,7 @@ class _Player:
                 self._slide = signed_byte(self._take())
                 self._take()
                 self._duration = self._take() * self._divider
-            elif self._ram.byte(self._pc) < _REST:
+            elif self._ram.byte(self._pc) < REST:
                 self._duration = self._take() * self._divider
         else:
             self._duration = byte * self._divider

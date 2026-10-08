@@ -6,7 +6,7 @@ from __future__ import annotations
 from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, SmpsDriver
 from ..flags import RETURN, EnvelopeCommand, drop, effect, refuse
 from ..variant import SmpsVariant
-from .common import FLAGS_68K, HEADER_68K, VOICE_68K, no_fm_drums, sonic1_fm_frequencies
+from .common import FLAGS_68K, HEADER_68K, VOICE_68K
 from .dac import type1a_dac
 from .locate import locate_68k
 from .memory import Relative68kMemory
@@ -43,7 +43,5 @@ TYPE1A = SmpsVariant(
     # Every note byte goes to the DAC (the 68k remaps $88-$97 to pitched samples)
     dac_names={b: f"dac{b:02X}" for b in range(FIRST_NOTE, LAST_NOTE + 1)},
     dac=type1a_dac,
-    fm_frequencies=sonic1_fm_frequencies,
-    fm_drums=no_fm_drums,
     known_roms={MOONWALKER_REV_A_SHA1: ()},
 )

@@ -38,6 +38,7 @@ from .song import (
 # Track bytes: durations below the rest (REST, song.py), notes after it to nAs7, flags above.
 FIRST_NOTE = 0x81     # nC0
 LAST_NOTE = 0xDF      # nAs7
+FIRST_FLAG = LAST_NOTE + 1     # $E0: coordination flags from here
 NO_ATTACK = 0xE7      # smpsNoAttack
 
 

@@ -44,6 +44,12 @@ def region_fps(region: str) -> int:
     return fps
 
 
+def variant_output_file(path: str, variant: str) -> str:
+    """Where a variant writes when it states no output_file: <stem>_<variant><ext>."""
+    stem, ext = os.path.splitext(path)
+    return f"{stem}_{variant}{ext}"
+
+
 def _region(data: dict, filepath) -> str:
     """`region:`, lower-cased; an unknown one is an error."""
     region = str(data.get("region", "ntsc")).lower()
@@ -174,12 +180,14 @@ class ConversionConfig:
     def from_yaml(cls, filepath, variant: str | None = None):
         """Load configuration from a YAML file, read as `variant` (core.config.loader.apply_variant);
         a key it does not know is an error (a typo, or a retired key, would otherwise be ignored).
-        A variant that states no output_file writes <output_file stem>_<variant>.mod."""
+        A variant that states no output_file writes <output_file stem>_<variant>.mod; a minimal
+        config's is suffixed once its output_file is derived (core.plan.complete_config)."""
         data = read_yaml_file(filepath)
         resolved = apply_variant(data, variant, str(filepath))
-        if variant is not None and "output_file" not in ((data.get(VARIANTS_KEY) or {}).get(variant) or {}):
-            stem, ext = os.path.splitext(resolved.get("output_file", "output.mod"))
-            resolved["output_file"] = f"{stem}_{variant}{ext}"
+        stated = (data.get(VARIANTS_KEY) or {}).get(variant) or {}
+        minimal_unnamed = "channels" not in resolved and "output_file" not in resolved
+        if variant is not None and "output_file" not in stated and not minimal_unnamed:
+            resolved["output_file"] = variant_output_file(resolved.get("output_file", "output.mod"), variant)
         return cls.from_data(resolved, filepath, variant)
 
     @classmethod

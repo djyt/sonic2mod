@@ -189,7 +189,7 @@ voice_map:
 | `mod_instrument` | required | MOD slot 1–31 |
 | `root` | none | Root path anchor (above); without it the entry only names the slot |
 | `synth_root` | derived | Rendering pitch (`docs/fm_synthesis.md` § Pitch: synth_root, synth_shift, target_rate).  Derived from the song (the pitch its notes play most, at most an octave above `low`); stating it changes the sample's rate, never where notes land |
-| `vibrato` | from `smpsModSet` | Two hex digits `XY` = `4xy`; `0` = none.  Write `12` or `"1A"` (YAML reads `0x12` as decimal 18) |
+| `vibrato` | from `smpsModSet` | Two hex digits `XY` = `4xy` (`12`, `1A` or `0x12`); `0` = none |
 | sample keys | | `loop_drift_db`, `loop_min_ms`, `loop_start_ms`, `loop_decay`, `dither`, `name` (§ 5) |
 
 `smpsAlterNote` / `smpsDetune` never affects range lookup: detuned notes get a variant of the
@@ -487,6 +487,5 @@ regression runner exits 2 otherwise); add a new key to both.
 | `rom_song` | `"$81"`, `"0x81"`, `129` |
 
 - `channels.transpose` only acts on the transpose path; an entry with `root` ignores it.
-- `vibrato: 0x12` is decimal 18 in YAML: write `12` or `"1A"`.
 - A `merge_patterns` group written without its leading `- ` would merge into the group above;
   the loader refuses the duplicate key that results.

@@ -22,6 +22,11 @@ def dither_mode(v, context: str) -> str:
     return mode
 
 
+# Keys whose value is read as written: `vibrato: 12` is the hex digits 1 and 2, which YAML would
+# read as decimal 12 (and `0x12` as 18)
+_LITERAL_KEYS = frozenset({"vibrato"})
+
+
 def load_yaml(stream):
     """yaml.safe_load that refuses a mapping with a key given twice.
 
@@ -36,13 +41,18 @@ def load_yaml(stream):
 
     def _mapping(loader, node, deep=False):
         seen = set()
-        for key_node, _ in node.value:
+        literal = {}
+        for key_node, value_node in node.value:
             key = loader.construct_object(key_node, deep=deep)
             if key in seen:
                 raise ValueError(f"line {key_node.start_mark.line + 1}: key {key!r} is given twice in one mapping "
                                  f"(a list item missing its leading '- ' merges into the item above)")
             seen.add(key)
-        return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
+            if key in _LITERAL_KEYS and isinstance(value_node, yaml.ScalarNode):
+                literal[key] = value_node.value
+        mapping = yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
+        mapping.update(literal)
+        return mapping
     _Strict.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
     return yaml.load(stream, Loader=_Strict)
 

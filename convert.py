@@ -126,8 +126,8 @@ def main():
     data = config.stated()
     if config.is_minimal:
         try:
-            amiga_clock = load_settings(_settings_path(args.config, args.settings))[0].amiga_clock
-            config, derivation = complete_config(config, args.config, amiga_clock, song)
+            settings = load_settings(_settings_path(args.config, args.settings))[0]
+            config, derivation = complete_config(config, args.config, settings, song)
         except ValueError as e:
             _error(str(e))
         assert derivation is not None

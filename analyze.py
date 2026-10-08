@@ -981,8 +981,8 @@ def render_yaml_skeleton(analysis: SongAnalysis, region: str, write_path: str | 
 def render_derived_config(song, args, write_path: str | None = None):
     """A ROM song's starter config: the minimal one, completed as convert.py would (core.plan.derive)."""
     stated = {"input_file": args.song, "rom_song": args.rom_song}
-    clock = _settings()[0].amiga_clock
-    data = derive_config(stated, song, Path(f"configs/{Path(args.song).stem}.yaml"), clock, read_dac(args.song)).data
+    data = derive_config(stated, song, Path(f"configs/{Path(args.song).stem}.yaml"), _settings()[0],
+                         read_dac(args.song)).data
     yaml_text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None)
     if write_path:
         Path(write_path).write_text(yaml_text, encoding="utf-8")

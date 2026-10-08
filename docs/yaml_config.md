@@ -66,9 +66,16 @@ sample_list:                 # optional: volumes measured against the VGZ
 
 Derived: `name` (file stem), `output_file` (`output/` mirroring `configs/`),
 `range_space: chip`, `auto_bpm: true`, `channels` (every channel that plays, in header order),
-`ticks_per_row` and `target_speed`, `voice_map` / `psg_voice_map` (one rooted entry per
-three-octave window of the pitches each voice plays), `psg_map`, `dac_samples` (ROM input only)
-and `sample_list` (starting volumes).
+`ticks_per_row` and `target_speed`, `voice_map` / `psg_voice_map` (one rooted entry per window
+of the pitches each voice plays), `psg_map`, `dac_samples` (ROM input only) and `sample_list`
+(starting volumes).
+
+A window's `root` sets every one of its notes' rates, and so how many harmonics fit below
+Nyquist (the same count for each note of the window).  Its lowest pitch goes on the first MOD note
+whose rate keeps `samples.root_harmonics` harmonics of it (never under E1, the audit's 5 kHz
+line); the window ends at `samples.top_note` (A3) and narrows, to an octave at least, to reach
+that note; one that still cannot sits as high as it fits.  A bass voice stays at E1; a lead moves
+up and its sample grows with its rate (§ 8).
 
 A stated item replaces only the derived item it names: one voice's `voice_map` list, one
 `psg_map` form, one `sample_list` row (by slot).  Reuse the derived slot numbers
@@ -472,6 +479,8 @@ regression runner exits 2 otherwise); add a new key to both.
 | `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | same | Brightness shelf on every render; 0 = off |
 | `resample_taps` | `32` | `32` | Resampler kernel width |
 | `render_cache` | off | `output/cache` | Directory (relative to the project root) caching chip renders by a hash of their inputs |
+| `root_harmonics` | `8` | `8` | Minimal configs: harmonics a window's lowest note keeps below Nyquist (§ 2); 0 = every window at E1, the smallest samples |
+| `top_note` | `A3` | `A3` | Minimal configs: the highest MOD note a window reaches.  A#3 (period 120) and B3 (113) are past Paula's period-124 DMA limit and sound bad on an Amiga |
 
 ---
 

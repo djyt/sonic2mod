@@ -11,9 +11,12 @@ An override replaces the item it names (one voice's entries, one envelope's, one
 one sample_list row), never the whole section.
 
 Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
-    FM / PSG tone   one per three-octave window of the chip pitches a voice / envelope plays,
-                    its lowest at E1 (the first MOD note above the audit's 5 kHz low-rate line)
-                    or as high as a wider window allows; the converter picks the rendering pitch
+    FM / PSG tone   windows of the chip pitches a voice / envelope plays, each one entry, its
+                    lowest pitch at the first MOD note whose rate keeps samples.root_harmonics
+                    harmonics below Nyquist, never under the audit's 5 kHz low-rate line (E1),
+                    the window no higher than samples.top_note (A3: Paula's DMA limit).  A window
+                    narrows to reach that note, to an octave at least; one that still cannot
+                    reach it sits as high as it fits.  The converter picks the rendering pitch
     DAC             one per sample; a pitched copy plays its sample's slot at the note nearest
                     its rate
     volumes         starting_volume: every synthesised sample is peak-normalised, so its volume
@@ -34,6 +37,7 @@ from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db, psg_level_db
 from ..config import (
     ChannelConfig,
     ConversionConfig,
+    SampleSettings,
     bpm_rounding_options,
     find_settings,
     load_settings,
@@ -49,6 +53,8 @@ from .driver_state import walk_channel
 MAX_INSTRUMENTS = 31
 _MOD_C1 = 12                 # synth_note_name's semitone for MOD C1
 _MOD_SPAN = 35               # C1 ... B3
+_A4 = 57                     # the chip pitch of A4 (440 Hz), C0 = 0
+_MIN_WINDOW = 12             # a window narrows to reach its harmonics no further than an octave
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
 _ROWS_PER_PATTERN = 64
 _FIRST_NOTE = 0x81           # the note byte of C0
@@ -86,19 +92,19 @@ def load_config(path: str | Path, settings_path: str | None = None, variant: str
     reads a config with)."""
     config = ConversionConfig.from_yaml(str(path), variant)
     if config.is_minimal:
-        clock = load_settings(settings_path or find_settings(str(path)))[0].amiga_clock
-        config, _ = complete_config(config, path, clock)
+        settings = load_settings(settings_path or find_settings(str(path)))[0]
+        config, _ = complete_config(config, path, settings)
     return config
 
 
-def complete_config(config: ConversionConfig, config_path: str | Path, amiga_clock: int,
+def complete_config(config: ConversionConfig, config_path: str | Path, settings: SampleSettings,
                     song: SmpsSong | None = None) -> tuple[ConversionConfig, Derivation | None]:
     """A minimal config (no channels:) completed from its song, the ROM's DAC samples written to
     its samples_dir; any other config as it is."""
     if not config.is_minimal:
         return config, None
     song = song or config.read_song()
-    derivation = derive_config(config.stated(), song, config_path, amiga_clock, read_dac(config.input_file))
+    derivation = derive_config(config.stated(), song, config_path, settings, read_dac(config.input_file))
     if config.variant is not None and "output_file" in derivation.derived:
         derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)
     complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)
@@ -109,20 +115,26 @@ def complete_config(config: ConversionConfig, config_path: str | Path, amiga_clo
     return complete, derivation
 
 
-def derive_config(stated: dict, song: SmpsSong, config_path: str | Path, amiga_clock: int,
+def derive_config(stated: dict, song: SmpsSong, config_path: str | Path, settings: SampleSettings,
                   dac: list[DacSample] | None = None) -> Derivation:
-    """`stated` (a config's YAML data) completed from `song`; `dac`: the ROM's DAC samples."""
+    """`stated` (a config's YAML data) completed from `song`; `settings`: the clock and the window
+    placement (samples.root_harmonics, samples.top_note); `dac`: the ROM's DAC samples."""
     out = Derivation(dict(stated))
-    _Deriver(stated, song, out, amiga_clock, dac or []).run(Path(config_path))
+    _Deriver(stated, song, out, settings, dac or []).run(Path(config_path))
     return out
 
 
 class _Deriver:
-    def __init__(self, stated: dict, song: SmpsSong, out: Derivation, amiga_clock: int, dac: list[DacSample]):
+    def __init__(self, stated: dict, song: SmpsSong, out: Derivation, settings: SampleSettings,
+                 dac: list[DacSample]):
         self._stated = stated
         self._song = song
         self._out = out
-        self._clock = amiga_clock
+        self._clock = settings.amiga_clock
+        self._harmonics = settings.root_harmonics
+        self._top = settings.top_note
+        # The lowest MOD note any window starts at: the first above the sample audit's low-rate line
+        self._floor = next(i for i, period in enumerate(PERIOD_TABLE) if self._clock / period >= LOW_RATE_HZ)
         self._dac = {s.name: s for s in dac}
         self._next = 1                      # the next free instrument slot
         self._rows: list[list] = []         # sample_list rows derived
@@ -221,18 +233,25 @@ class _Deriver:
         out = {}
         for key in sorted(notes, key=str):
             entries = []
-            for lo, hi in _windows(list(notes[key])):
+            for lo, hi in _windows(list(notes[key]), self._max_span):
                 inst = self._take(kind, f"{file_stem(key)}_{_pitch_name(lo)}.raw", key)
+                root = min(self._lowest_root(lo), self._top - (hi - lo))
                 entries.append({"low": _pitch_name(lo), "high": _pitch_name(hi),
-                                "mod_instrument": inst, "root": synth_note_name(_MOD_C1 + self._root_index(hi - lo))})
+                                "mod_instrument": inst, "root": synth_note_name(_MOD_C1 + root)})
             out[key] = entries
         return out
 
-    def _root_index(self, span: int) -> int:
-        """The MOD note a window's lowest pitch plays at: the first whose rate clears the sample
-        audit's low-rate line (E1 at the PAL clock), or as high as a wider window allows."""
-        floor = next(i for i, period in enumerate(PERIOD_TABLE) if self._clock / period >= LOW_RATE_HZ)
-        return min(floor, _MOD_SPAN - span)
+    def _lowest_root(self, pitch: int) -> int:
+        """The first MOD note (0 = C1) from the floor whose rate keeps root_harmonics harmonics of
+        chip pitch `pitch` below Nyquist; past top_note when none can."""
+        need = 2 * self._harmonics * 440 * 2 ** ((pitch - _A4) / 12)
+        return next((i for i in range(self._floor, self._top + 1) if self._clock / PERIOD_TABLE[i] >= need),
+                    self._top + 1)
+
+    def _max_span(self, pitch: int) -> int:
+        """The widest window whose lowest chip pitch is `pitch`: from the MOD note that pitch needs
+        to top_note, but at least an octave (one that needs more sits as high as it fits)."""
+        return min(self._top - self._floor, max(_MIN_WINDOW, self._top - self._lowest_root(pitch)))
 
     def _noise(self, form: int) -> dict:
         return {"mod_instrument": self._take("noise", f"psg_noise_{form:02x}.raw", form), "root": _NOISE_ROOT}
@@ -311,13 +330,13 @@ def _pitch_name(semitone: int) -> str:
     return note_label(_FIRST_NOTE + semitone)[len("n"):]
 
 
-def _windows(pitches: list[int]) -> list[tuple[int, int]]:
-    """Distinct pitches cut into runs spanning at most a MOD's three octaves."""
+def _windows(pitches: list[int], max_span) -> list[tuple[int, int]]:
+    """Distinct pitches cut into runs, each spanning at most `max_span(its lowest pitch)`."""
     ps = sorted(set(pitches))
     out, start = [], 0
     while start < len(ps):
-        end = start
-        while end + 1 < len(ps) and ps[end + 1] - ps[start] <= _MOD_SPAN:
+        end, span = start, max_span(ps[start])
+        while end + 1 < len(ps) and ps[end + 1] - ps[start] <= span:
             end += 1
         out.append((ps[start], ps[end]))
         start = end + 1

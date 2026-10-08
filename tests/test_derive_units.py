@@ -15,7 +15,7 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.config import ChannelConfig, ConversionConfig
+from core.config import ChannelConfig, ConversionConfig, SampleSettings
 from core.plan import complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
 from core.rom import RomImage, dac_samples, read_rom_song
@@ -34,9 +34,10 @@ class StartingVolume(unittest.TestCase):
 
 
 class Helpers(unittest.TestCase):
-    def test_windows_span_three_octaves_at_most(self):
-        self.assertEqual(_windows([40, 10, 45, 46, 81]), [(10, 45), (46, 81)])
-        self.assertEqual(_windows([60]), [(60, 60)])
+    def test_windows_span_what_their_lowest_pitch_allows(self):
+        self.assertEqual(_windows([40, 10, 45, 46, 81], lambda lo: 35), [(10, 45), (46, 81)])
+        self.assertEqual(_windows([60], lambda lo: 35), [(60, 60)])
+        self.assertEqual(_windows([10, 20, 30, 45], lambda lo: 40 - lo), [(10, 30), (45, 45)])
 
     def test_the_configs_tree_is_mirrored_under_output(self):
         self.assertEqual(_output_path(Path("configs/moonwalker/81_smooth_criminal.yaml")),
@@ -47,7 +48,7 @@ class Helpers(unittest.TestCase):
 _MOONWALKER = ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
 _STATED = {"name": "Smooth Criminal", "input_file": str(_MOONWALKER), "rom_song": "$81"}
 _CONFIG = Path("configs/moonwalker/81_smooth_criminal.yaml")
-_CLOCK = 3546895
+_SETTINGS = SampleSettings(amiga_clock=3546895)
 
 
 @unittest.skipUnless(_MOONWALKER.exists(), "needs input/roms/Michael Jackson's Moonwalker (World) (Rev A).md")
@@ -59,7 +60,7 @@ class Moonwalker(unittest.TestCase):
         cls.dac = dac_samples(cls.rom)
 
     def _derive(self, stated=None):
-        return derive_config(stated or _STATED, self.song, _CONFIG, _CLOCK, self.dac)
+        return derive_config(stated or _STATED, self.song, _CONFIG, _SETTINGS, self.dac)
 
     def test_everything_but_the_stated_keys_is_derived(self):
         d = self._derive()
@@ -112,7 +113,7 @@ class Moonwalker(unittest.TestCase):
             stated = {**_STATED, "output_file": f"{tmp}/sc.mod"}
             config = ConversionConfig.from_data(stated, str(_CONFIG))
             self.assertTrue(config.is_minimal)
-            complete, derivation = complete_config(config, _CONFIG, _CLOCK, self.song)
+            complete, derivation = complete_config(config, _CONFIG, _SETTINGS, self.song)
             self.assertIsNotNone(derivation)
             self.assertFalse(complete.is_minimal)
             self.assertEqual(Path(complete.samples_dir), Path(tmp) / "samples")
@@ -128,7 +129,7 @@ class Moonwalker(unittest.TestCase):
                             f'samples_dir: "{Path(tmp).as_posix()}/samples"\n'
                             'variants:\n  lofi: {name: "SC lofi"}\n', encoding="utf-8")
             config = ConversionConfig.from_yaml(str(path), "lofi")
-            complete, _ = complete_config(config, path, _CLOCK, self.song)
+            complete, _ = complete_config(config, path, _SETTINGS, self.song)
             self.assertTrue(Path(complete.output_file).as_posix().endswith("output/mw/81_sc_lofi.mod"))
             self.assertEqual(complete.name, "SC lofi")
 

@@ -269,7 +269,10 @@ Done as planned, with these choices:
   `analyze.py --config`); `convert.py --show-config`, `--write-config`; the report lists the derived
   sections and the dropped flags.
 - Roots: a window's lowest pitch at E1, the first MOD note above the sample audit's 5 kHz low-rate
-  line (C1 flagged every sample "low rate 4144").  Names as the disassembly spells them (F5, Bb2).
+  line (C1 flagged every sample "low rate 4144").  **2026-10-08:** placed by pitch instead
+  (`samples.root_harmonics`, `samples.top_note`; `docs/yaml_config.md` § 2): at E1 a high lead kept
+  2-4 harmonics (Another Part of Me FM 7, Mr Big's PSG 1), and windows reached B3, past Paula's
+  DMA limit.  At 8 harmonics the 22 songs grow 1411 -> 1502 KB (Mr Big +33, Boss +28).  Names as the disassembly spells them (F5, Bb2).
 - Volumes: `starting_volume`, analyze.py's skeleton law moved to core (samples are peak-normalised,
   so the volume carries the modal TL / attenuation: 76 x gain at TL 0, PSG 16 at attenuation 0).
   `vgm_compare --write-volumes` adds stated rows to a minimal config.

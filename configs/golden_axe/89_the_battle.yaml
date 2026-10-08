@@ -3,3 +3,10 @@
 name: "The Battle"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$89"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum88.raw", 15, 0]   # VGZ: +12.6 dB at 64
+  - [2, "drum8B.raw", 36, 0]   # VGZ: +4.9 dB at 64
+  - [5, "fm_v01_A3.raw", 50, 0]   # VGZ: -2.4 dB at 38
+  - [6, "fm_v01_A4.raw", 50, 0]   # VGZ: -2.4 dB at 38
+  - [10, "fm_v06_F1.raw", 64, 0]   # VGZ: -7.1 dB at 32

@@ -3,3 +3,10 @@
 name: "Turtle Village 2"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$83"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum86.raw", 57, 0]   # VGZ: -2.2 dB at 64
+  - [2, "fm_v00_C3.raw", 54, 0]   # VGZ: -1.8 dB at 64
+  - [9, "fm_v02_C3.raw", 44, 0]   # VGZ: +0.1 dB at 64
+  - [10, "fm_v02_Bb3.raw", 39, 0]   # VGZ: +1.2 dB at 64
+  - [11, "fm_v02_Ab4.raw", 36, 0]   # VGZ: +1.9 dB at 64

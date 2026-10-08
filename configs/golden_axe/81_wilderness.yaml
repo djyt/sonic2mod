@@ -3,3 +3,20 @@
 name: "Wilderness"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$81"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "drum82.raw", 36, 0]   # VGZ: -6.2 dB at 64
+  - [5, "drum86.raw", 17, 0]   # VGZ: +0.5 dB at 64
+  - [6, "drum87.raw", 14, 0]   # VGZ: +1.8 dB at 64
+  - [7, "drum8C.raw", 23, 0]   # VGZ: -2.3 dB at 64
+  - [8, "fm_v00_G3.raw", 31, 0]   # VGZ: -5.0 dB at 64
+  - [9, "fm_v00_G4.raw", 26, 0]   # VGZ: -3.5 dB at 64
+  - [10, "fm_v01_G2.raw", 11, 0]   # VGZ: +4.0 dB at 64
+  - [11, "fm_v01_F3.raw", 11, 0]   # VGZ: +3.9 dB at 64
+  - [12, "fm_v01_E4.raw", 12, 0]   # VGZ: +3.6 dB at 64
+  - [13, "fm_v02_C3.raw", 11, 0]   # VGZ: +4.2 dB at 64
+  - [14, "fm_v02_D4.raw", 11, 0]   # VGZ: +4.3 dB at 64
+  - [15, "fm_v03_A1.raw", 17, 0]   # VGZ: +0.1 dB at 64
+  - [16, "fm_v03_G2.raw", 18, 0]   # VGZ: +0.0 dB at 64
+  - [17, "fm_v04_C3.raw", 20, 0]   # VGZ: -0.9 dB at 64
+  - [18, "fm_v04_B3.raw", 20, 0]   # VGZ: -1.0 dB at 64

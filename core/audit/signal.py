@@ -126,7 +126,7 @@ def envelope_offset(vgm_full: np.ndarray, mod_full: np.ndarray, max_lag: float =
     em -= em.mean()
     n = min(len(ev), len(em))
     ev, em = ev[:n], em[:n]
-    maxl = int(max_lag / frame)
+    maxl = min(int(max_lag / frame), n - 1)       # a jingle shorter than the window: lags it holds
     best, best_lag = -1e18, 0
     for lag in range(-maxl, maxl + 1):
         c = float(np.dot(em[lag:], ev[:n - lag])) if lag >= 0 else float(np.dot(em[:n + lag], ev[-lag:]))

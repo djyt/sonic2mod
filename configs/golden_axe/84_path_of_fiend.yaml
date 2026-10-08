@@ -3,3 +3,15 @@
 name: "Path of Fiend"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$84"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum82.raw", 51, 0]   # VGZ: +0.1 dB at 64
+  - [2, "drum87.raw", 55, 0]   # VGZ: -0.5 dB at 64
+  - [4, "drum8C.raw", 34, 0]   # VGZ: +3.5 dB at 64
+  - [5, "fm_v00_D3.raw", 36, 0]   # VGZ: +3.2 dB at 64
+  - [6, "fm_v00_C4.raw", 37, 0]   # VGZ: +2.8 dB at 64
+  - [7, "fm_v00_Bb4.raw", 37, 0]   # VGZ: +2.8 dB at 64
+  - [12, "fm_v02_Eb3.raw", 44, 0]   # VGZ: +1.4 dB at 64
+  - [13, "fm_v02_D4.raw", 51, 0]   # VGZ: +0.1 dB at 64
+  - [14, "fm_v02_C5.raw", 52, 0]   # VGZ: -0.1 dB at 64
+  - [15, "fm_v02_Bb5.raw", 53, 0]   # VGZ: -0.2 dB at 64

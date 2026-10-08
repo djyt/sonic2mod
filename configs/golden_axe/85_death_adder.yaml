@@ -3,3 +3,18 @@
 name: "Death Adder"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$85"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 57, 0]   # VGZ: -3.0 dB at 64
+  - [2, "drum82.raw", 31, 0]   # VGZ: +2.1 dB at 64
+  - [3, "drum86.raw", 28, 0]   # VGZ: +3.0 dB at 64
+  - [4, "drum87.raw", 35, 0]   # VGZ: +1.1 dB at 64
+  - [5, "drum88.raw", 41, 0]   # VGZ: -0.3 dB at 64
+  - [6, "drum8C.raw", 21, 0]   # VGZ: +5.7 dB at 64
+  - [7, "fm_v00_C2.raw", 40, 0]   # VGZ: +0.1 dB at 64
+  - [8, "fm_v00_Bb2.raw", 48, 0]   # VGZ: -1.6 dB at 64
+  - [9, "fm_v00_Ab3.raw", 48, 0]   # VGZ: -1.7 dB at 64
+  - [10, "fm_v00_G4.raw", 48, 0]   # VGZ: -1.6 dB at 64
+  - [11, "fm_v01_G2.raw", 40, 0]   # VGZ: +0.1 dB at 64
+  - [12, "fm_v01_F3.raw", 39, 0]   # VGZ: +0.2 dB at 64
+  - [13, "fm_v02_G2.raw", 33, 0]   # VGZ: +1.7 dB at 64

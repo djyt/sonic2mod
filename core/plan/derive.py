@@ -31,7 +31,7 @@ from pathlib import Path
 
 from ..audio import db_to_gain
 from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db, psg_level_db
-from ..config import ChannelConfig, ConversionConfig, bpm_rounding_options, find_settings, load_settings
+from ..config import ChannelConfig, ConversionConfig, bpm_rounding_options, find_settings, load_settings, region_fps
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote
 from ..rom import DacSample
 from ..smps import SmpsSong, note_label, source_map, synth_note_name
@@ -191,7 +191,7 @@ class _Deriver:
         self._out.derived.append("ticks_per_row")
 
         h = self._song.header
-        fps = 50 if str(self._stated.get("region", "ntsc")).lower() == "pal" else 60
+        fps = region_fps(self._stated.get("region", "ntsc"))
         options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, grid, fps)
         self._default("target_speed", options[0]["speed"] if options else 6)
 

@@ -11,6 +11,7 @@ from typing import NamedTuple
 
 from ..audio import db_to_gain, power_to_db
 from ..chips import TL_STEP_DB
+from ..config import region_fps
 from ..mod import MOD_NOTE_MAP, ModNote
 from ..plan import FmLayer, walk_channel
 from ..smps import (
@@ -94,7 +95,7 @@ class _NoteWalk:
         self._tick_secs = tick_secs
         self._grace = grace
         self._dac_map = {d.name: d for d in config.dac_samples}
-        self._fps = 50.0 if str(getattr(config, "region", "ntsc")).lower() == "pal" else 60.0
+        self._fps = float(region_fps(getattr(config, "region", "ntsc")))
         self.notes: dict[int, NoteOn] = {}
         self.rests: list[int] = []
         self._vib = False

@@ -619,7 +619,7 @@ class SmpsToModConverter:
             note = _MOD_NOTE_MAP.get(d.mod_note)
             if d.mod_instrument in files and note is not None and os.path.exists(path):
                 out[d.mod_instrument] = os.path.getsize(path) / (clock / PERIOD_TABLE[note.value])
-        fps = 50.0 if self.config.region.lower() == 'pal' else 60.0
+        fps = self.config.fps
         for inst, d in derive_noise_envelopes(self.song, self.config).items():
             env = d['envelope']
             env = self.song.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None

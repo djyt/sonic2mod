@@ -343,8 +343,9 @@ class SmpsParser:
         if m:
             return SmpsEffect(CoordFlag.SET_TEMPO_MOD, [int(m.group(1), 16)])
 
-        # smpsSetTempoDiv ($EB, cfSetTempoDividerAll): every track's duration divider.  Parsed
-        # so it is visible; not applied (Credits only).
+        # smpsSetTempoDiv ($EB, cfSetTempoDividerAll): every track's duration divider, from the
+        # note read after it.  Kept as an event; song_prep.apply_global_tempo_div re-times the
+        # channels (Credits only).
         m = re.match(r'smpsSetTempoDiv\s+\$([0-9A-Fa-f]+)', line)
         if m:
             return SmpsEffect(CoordFlag.SET_TEMPO_DIV, [int(m.group(1), 16)])

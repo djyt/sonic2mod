@@ -56,7 +56,8 @@ pitch at transposition 0: `nA4` = fnum 1084, block 4 = 440.5 Hz.
 70 SN76489 dividers.  Index *i* sounds C3 + *i* semitones (index 0 = 854 = 131 Hz), so a label
 sounds three octaves above its name at transposition 0, one below with the usual header $D0.
 The rows are transcribed Hz values, not exact octaves.  Index 69 is `nMaxPSG` (= `nA5`):
-divider 1, about 112 kHz, inaudible — the noise channel's trigger note.
+divider 0, which the PSG clocks as 1 (about 112 kHz, inaudible) — the noise channel's trigger
+note.
 
 The mask **wraps, it does not clamp**.  An index past the table reads the code that follows it:
 indices 125–127 (a note one to three semitones below the table) were measured from the Spring

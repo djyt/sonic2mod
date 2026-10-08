@@ -208,6 +208,7 @@ class ModLayout:
         # row's effects left to right and a Bxx after a Dxx resets the break row to 0.
         cols = range(max(1, self._mod.used_channels()))
         need = 2 if target_row != 0 else 1
+        self._mod.ensure_pattern(last_pattern)      # a song ending in rests ends past its last note's pattern
         free = [c for c in cols if self._mod.effect_slot_free(last_pattern, last_row, c)]
         b_chan = free[0] if len(free) >= need else 0
         if len(free) < need:

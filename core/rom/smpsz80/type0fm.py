@@ -4,17 +4,18 @@
 
 A flag handler starts at the first operand and the driver steps past one more byte after it: a
 flag with no handler of its own skips one operand.  The drum track's notes name drums (low nibble:
-an FM drum program on FM3, bits 4-6 a PSG drum); the programs are the driver's (3.5).
+an FM drum program on FM3 (drums.py), bits 4-6 a PSG drum (no song plays one).
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ...smps import CoordFlag, SmpsDriver
+from ...smps import CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
 from ..flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, refuse
 from ..image import RomImage
 from ..variant import DacSample, SmpsVariant
+from .drums import read_fm_drums
 from .layout import HEADER_TYPE0, VOICE_TYPE0
 from .locate import fm_frequencies, locate_type0, sound_bank
 from .memory import BankedZ80Memory
@@ -46,6 +47,10 @@ _FLAGS: dict[int, FlagSpec] = {
 }
 
 
+def _fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
+    return read_fm_drums(rom, header, fm_frequencies, _FLAGS)
+
+
 def _memory(image: RomImage) -> BankedZ80Memory:
     return BankedZ80Memory(image, sound_bank(image))
 
@@ -66,5 +71,6 @@ TYPE0FM = SmpsVariant(
     dac_names={b: f"drum{b:02X}" for b in range(_FIRST_NOTE, _LAST_NOTE + 1)},
     dac=_no_samples,
     fm_frequencies=fm_frequencies,
+    fm_drums=_fm_drums,
     known_roms={GOLDEN_AXE_REV_A_SHA1: ()},
 )

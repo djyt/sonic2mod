@@ -42,6 +42,7 @@ class Composite:
     inst: int
     key: CompositeKey
     group: MergeGroup
+    primary_kind: str = "FM"           # the primary channel's chip: "FM" | "PSG" | "DAC" (its NoteOn's)
     notes: int = 0
     fm: FmInstrument | None = None     # chip-rendered: an entry for the instrument catalogue
     entry: list | None = None          # its sample_list entry [inst, name, volume, finetune]

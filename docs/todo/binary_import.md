@@ -503,8 +503,24 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   cache keys a song's own table, Sonic 1's keys as before).  Not: the VGM lift (the tooling
   rework's), the SFX driver (Sonic 1's own).  A Wilderness smoke conversion now stops at the drum
   track's samples (3.5).  Baselines, tool regression, ROM outputs byte-identical.
-- [ ] **3.5 Drums** (B): `smpsz80/drums.py` decodes the 14 programs; the kit; the render; the MOD
-  drum channel.  Check: each drum sample against the rips' FM3.
+- [x] **3.5 Drums** (2026-10-08, B).  `smpsz80/drums.py`: the driver's drum tables found by the
+  code that reads them (`ld de,init / ldi x3 / ld hl,records ...`), each of the 14 programs run
+  frame by frame as the driver does (TempoWait hold, then the track: reads, ties, slide mode and
+  its octave wrap, the 256-frame fill run-out, stop) -> `SmpsSong.fm_drums` (`FmDrum`: voice, TL
+  offset, frames; `core/smps/percussion.py`).  Checked against the rips' FM3, frame by frame:
+  **all 4477 hits in the 11 rips with drums match a program exactly** at some TempoWait phase; the
+  one-shot takes the cycle from the hit (a hit on hardware differs by a frame per hold inside it).
+  Rendered whole: `fm_drum_catalogue` (`core/plan`) -> `generate_fm_drums` -> `render_frames`
+  (`ym2612/`: key-off, frequency, key-on per frame, a retrigger 4 chip samples apart), for its
+  program and release, capped at its longest ring (`core/convert/fm_drums.py`: a hit to the next;
+  `drum8A` never stops).  Derive: a slot per drum hit at `samples.drum_root` (new setting, C3),
+  volume by the FM level law at the drum's TL; a silent drum (`drum89`, a rest) gets no slot, its
+  hits are `C00`.  Groundwork: the converter and the mixer now tell a channel's kind by the song
+  (`channel_type`), not its name (`DAC`, `PSG*`); `layout.loop_point` creates the last pattern of a
+  song that ends in rests (Showdown).  All 13 songs convert, every check clear, `mod_lint` clean.
+  Baselines byte-identical (regenerated for the new setting's hash: all 41 MODs equal the old).
+  Found: a note keyed 256 frames with no other runs out (the fill counter, `$00E8`) - for music
+  tracks too; not modelled outside the drums (Game Over's long notes: check in 3.6).
 - [ ] **3.6 Configs + yardstick.**  `configs/golden_axe/`: 13 minimal configs, `rips.yaml`;
   `vgm_pitch_audit` clean, `measure_volumes.py --rips`, `vgm_compare` per song.
 - [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice

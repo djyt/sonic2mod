@@ -379,7 +379,7 @@ class _Planner:
         self.provisional -= 1
         inst = self.provisional
         vol, ft = self.vol_of.get(p.instrument, (64, 0))
-        comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft], banked=g.bank and not chip,
+        comp = Composite(inst, key, g, p.kind, entry=[inst, f"merge {g.label}"[:21], vol, ft], banked=g.bank and not chip,
                          pitch_hz=semitone_to_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None

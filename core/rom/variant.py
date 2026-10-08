@@ -12,7 +12,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from ..chips import OperatorReg
-from ..smps import SmpsDriver
+from ..smps import FmDrum, SmpsDriver, SmpsSongHeader
 from .fixes import RomFix
 from .flags import EnvelopeCommand, FlagSpec
 from .image import RomError, RomImage
@@ -102,4 +102,6 @@ class SmpsVariant:
     dac_names: Mapping[int, str]                                     # the DAC track's bytes that play a sample
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]]    # every sample a song can play
     fm_frequencies: Callable[[RomImage], tuple[int, ...] | None]     # the FM table notes play from; None: Sonic 1's
+    # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
+    fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]]
     known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes

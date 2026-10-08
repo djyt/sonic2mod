@@ -217,7 +217,7 @@ class ChannelWriter:
         self._channel = channel
         self._cfg = chan_cfg
         self._is_dac = is_dac
-        self._is_psg = chan_cfg.source.startswith('PSG')
+        self._is_psg = channel.header.channel_type == "PSG"
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._router = _ColumnRouter(ctx, chan_cfg.source, chan_cfg.mod_channel)
 
@@ -475,6 +475,14 @@ class ChannelWriter:
         pattern, row, note_delay = self._note_cell(tick, True, None)
         if pattern >= self._config.max_patterns:
             return False
+
+        # A silent FM drum (its program a rest): the hit only stops the drum ringing, as FM3's key-off
+        drum = self._ctx.song.fm_drums.get(note.dac_name)
+        if drum is not None and drum.silent:
+            self._mod.ensure_pattern(pattern)
+            self._mod.set_cursor(pattern, self._col, row)
+            self._mod.set_effect(0xC, 0)
+            return True
         self._open_cell(pattern, row, tick)
 
         dac_cfg = self._dac_map.get(note.dac_name)
@@ -1169,6 +1177,6 @@ class ChannelWriter:
             tr = res.total_transpose
             w.update(voice_idx=st.voice, extra_ctx=st.psg_label, transpose=tr,
                      boundary=_semitone_to_name((_HIGHEST_NOTE if high else 0) - tr))
-            if source.startswith('PSG') and not st.psg_label and self._config.psg_voice_map:
+            if st.is_psg and not st.psg_label and self._config.psg_voice_map:
                 w['psg_available_labels'] = list(self._config.psg_voice_map.keys())
         self._ctx.diag.warn(kind, **w)

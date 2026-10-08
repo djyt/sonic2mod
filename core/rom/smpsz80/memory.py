@@ -46,3 +46,20 @@ class BankedZ80Memory(SoundMemory):
 
     def byte(self, address: int) -> int:
         return self.bytes_at(address, 1)[0]
+
+
+class Z80RamMemory(SoundMemory):
+    """The driver's own RAM, $0000-$1FFF as the 68k loaded it (core/rom/z80.py): its tables and
+    drum programs.  Addresses are Z80 addresses; pointers absolute, little-endian."""
+
+    def word(self, address: int) -> int:
+        return int.from_bytes(self.bytes_at(address, 2), "little")
+
+    def header_pointer(self, header: int, at: int) -> int:
+        return self.word(at)
+
+    def code_pointer(self, operand: int) -> int:
+        target = self.word(operand)
+        if not self.contains(target):
+            raise RomError(f"Z80 ${operand - 1:04X}: pointer to ${target:04X}, outside Z80 RAM")
+        return target

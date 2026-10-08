@@ -25,7 +25,7 @@ def _psg_volume_mode(value) -> str:
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
-               "names", "root_harmonics", "top_note", "max_window")
+               "names", "root_harmonics", "top_note", "max_window", "drum_root")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -182,15 +182,15 @@ def _non_negative(data: dict, key: str, default, filepath: str, cast=float):
     return v
 
 
-def _top_note(data: dict, default: int, filepath: str) -> int:
-    """`samples.top_note` of settings.yaml as its index from C1 (A3 = 33)."""
-    v = data.get("top_note")
+def _mod_note(data: dict, key: str, default: int, filepath: str) -> int:
+    """A `samples:` MOD note of settings.yaml (top_note, drum_root) as its index from C1 (A3 = 33)."""
+    v = data.get(key)
     if v is None:
         return default
     try:
         return ModNote[str(v)].value
     except KeyError:
-        raise ValueError(f"{filepath}: top_note must be a MOD note C1..B3 (A3, As3; got {v!r})") from None
+        raise ValueError(f"{filepath}: {key} must be a MOD note C1..B3 (A3, As3; got {v!r})") from None
 
 
 # The project root: configs/ and a relative samples.render_cache are read from it
@@ -255,6 +255,7 @@ class SampleSettings:
     root_harmonics: float = 8.0
     top_note: int = ModNote.A3.value
     max_window: int = 0
+    drum_root: int = ModNote.C3.value    # settings.yaml samples.drum_root: the note an FM drum is rendered for
     loop_timbre: bool = True         # a sustain loop waits for the timbre to hold too
                                      # (core.audio.loops.PROFILE_PER_DB); the converter clears it
                                      # for a merged build unless the song sets merge_loop_timbre
@@ -291,8 +292,9 @@ class SampleSettings:
             dither=dither_mode(smp.get("dither", cls.dither), f"{filepath}: samples"),
             render_cache=_render_cache(smp),
             root_harmonics=_non_negative(smp, "root_harmonics", cls.root_harmonics, filepath),
-            top_note=_top_note(smp, cls.top_note, filepath),
+            top_note=_mod_note(smp, "top_note", cls.top_note, filepath),
             max_window=_non_negative(smp, "max_window", cls.max_window, filepath, int),
+            drum_root=_mod_note(smp, "drum_root", cls.drum_root, filepath),
         )
 
 

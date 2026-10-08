@@ -3,7 +3,7 @@
 core cannot import the chip packages that render its samples: they import core (the config, the
 instrument catalogue, audio).  It states what it needs here; convert.py hands the implementations in.
 
-    convert.py ── SampleGenerators(fm=ym2612..., psg=sn76489...) ──► SmpsToModConverter
+    convert.py ── SampleGenerators(fm=ym2612..., psg=sn76489..., fm_drums=ym2612...) ──► SmpsToModConverter
                                                                          │ calls
     ym2612/  sn76489/ ── implement ──► FmGenerator / PsgGenerator ◄──────┘
          │
@@ -18,7 +18,7 @@ from typing import Protocol
 
 from ..audio import SustainLoop
 from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
-from ..plan import FmInstrument
+from ..plan import FmDrumInstrument, FmInstrument
 from ..smps import PsgEnvelope, SmpsSong
 
 
@@ -49,9 +49,17 @@ class PsgGenerator(Protocol):
                  cache_out: dict[str, int] | None = ...) -> dict: ...
 
 
+class FmDrumGenerator(Protocol):
+    """ym2612.sample_generator.generate_fm_drums: a drum track's FM drum programs, rendered whole."""
+
+    def __call__(self, drums: Sequence[FmDrumInstrument], synth: SynthesisSettings, frame_hz: float,
+                 ring_secs: Mapping[int, float], cache_out: dict[str, int] | None = ...) -> dict: ...
+
+
 @dataclass(frozen=True)
 class SampleGenerators:
-    """One generator per chip; None where the caller renders nothing."""
+    """One generator per chip (and the FM drums); None where the caller renders nothing."""
 
     fm: FmGenerator | None = None
     psg: PsgGenerator | None = None
+    fm_drums: FmDrumGenerator | None = None

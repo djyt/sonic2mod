@@ -20,6 +20,7 @@ from enum import Enum, auto
 
 from .driver_tables import DEFAULT_DRIVER, PsgEnvelope, SmpsDriver, psg_voice_name
 from .names import SMPS_DAC_NAMES_REVERSE
+from .percussion import FmDrum
 from .song import CoordFlag, SmpsChannel, SmpsChannelHeader, SmpsEffect, SmpsEvent, SmpsNote, SmpsSong, SmpsSongHeader
 
 # Track bytes: durations below the rest, notes from it to nB7, flags above.
@@ -61,6 +62,7 @@ class SongCode:
     dropped: dict[str, int] = field(default_factory=dict)        # flags read and left out, by name
     psg_envelopes: dict[str, PsgEnvelope] | None = None          # None: Sonic 1's
     fm_frequencies: tuple[int, ...] | None = None                # None: Sonic 1's
+    fm_drums: dict[str, FmDrum] = field(default_factory=dict)    # the drum track's FM programs
     dac_names: dict[int, str] | None = None                      # None: Sonic 1's (dKick ...)
 
     def song(self) -> SmpsSong:
@@ -68,6 +70,7 @@ class SongCode:
         song.dropped = dict(self.dropped)
         if self.fm_frequencies is not None:
             song.fm_frequencies = self.fm_frequencies
+        song.fm_drums = dict(self.fm_drums)
         return song
 
 

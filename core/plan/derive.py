@@ -15,6 +15,8 @@ Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
                     on the first MOD note keeping samples.root_harmonics harmonics (never under
                     E1, the 5 kHz line), its top at most samples.top_note (A3), its span at most
                     samples.max_window.  The converter picks the rendering pitch
+    FM drum         one per drum the drum track hits (Type 0 FM: core.smps.percussion), rendered
+                    whole at samples.drum_root; nothing written
     DAC             one per sample; a pitched copy plays its sample's slot at the note nearest
                     its rate
     volumes         starting_volume: samples are peak-normalised, so the volume carries the level
@@ -51,7 +53,7 @@ from ..config import (
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..rom import DacSample
-from ..smps import SmpsSong, note_label, source_map, synth_note_name
+from ..smps import FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
 from ..source import read_dac
 from .driver_state import walk_channel
 
@@ -70,8 +72,8 @@ _FM_STEM = "fm_v{:02x}"                 # an FM voice's windows: fm_v04_C3.raw
 _TONE_STEM = "psg_{}"                   # a PSG envelope's: psg_$00_Cs3.raw
 _WINDOW_FILE = "{}_{}.raw"              # stem, lowest pitch
 _NOISE_FILE = "psg_noise_{:02x}.raw"    # psg_noise_e7.raw
-_DAC_FILE = "{}.raw"                    # the ROM's sample name: dac81.raw
-_DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|dac[0-9a-f]{2}\.raw")   # any of them
+_DAC_FILE = "{}.raw"                    # the ROM's sample name: dac81.raw; an FM drum's: drum81.raw
+_DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|(dac|drum)[0-9a-f]{2}\.raw")   # any of them
 
 # Starting sample_list volumes at TL offset 0 / attenuation 0 (calibrated on Green Hill Zone)
 _FM_SCALE = 76.0
@@ -153,6 +155,7 @@ class _Deriver:
         self._harmonics = settings.root_harmonics
         self._top = settings.top_note
         self._max_window = settings.max_window
+        self._drum_root = ModNote(settings.drum_root).name
         # Lowest MOD note a window starts at: the first above the sample audit's low-rate line
         self._floor = next(i for i, period in enumerate(PERIOD_TABLE) if period_rate(period, self._clock) >= LOW_RATE_HZ)
         self._dac = {s.name: s for s in dac}
@@ -289,6 +292,11 @@ class _Deriver:
         slots: dict[int, int] = {}
         entries = []
         for name in sorted(hit):
+            drum = self._song.fm_drums.get(name)
+            if drum is not None:
+                if not drum.silent:          # a silent drum's hits are cuts: no sample
+                    entries.append(self._fm_drum(name, drum))
+                continue
             sample = self._dac.get(name)
             if sample is None:
                 raise ValueError(f"DAC sample {name}: the ROM's driver has no such sample")
@@ -304,6 +312,14 @@ class _Deriver:
         self._out.data["dac_samples"] = entries
         self._out.derived.append("dac_samples")
         self._default("samples_dir", (Path(self._out.data["output_file"]).parent / "samples").as_posix())
+
+    def _fm_drum(self, name: str, drum: FmDrum) -> dict:
+        """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
+        drum's own volume (its render is peak-normalised, as an FM voice's)."""
+        slot = self._take("FM", _DAC_FILE.format(name))
+        hard = drum.voice.pan is not None and pan_is_hard([drum.voice.pan])
+        self._rows[-1][SAMPLE_VOLUME] = starting_volume("FM", drum.tl_offset, hard)
+        return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}
 
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:
         """The MOD note (C1-B3) and finetune a sample plays at `rate` on: the nearest in pitch (a

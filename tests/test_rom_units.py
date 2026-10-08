@@ -36,9 +36,10 @@ from core.rom.smps68k import SONIC1, TYPE1A
 from core.rom.smps68k.kosinski import kosinski
 from core.rom.smps68k.memory import Relative68kMemory
 from core.rom.smpsz80 import TYPE0FM
+from core.rom.smpsz80.drums import _Player, _wrap
 from core.rom.smpsz80.layout import HEADER_TYPE0, VOICE_TYPE0
 from core.rom.smpsz80.locate import fm_table, locate_type0, sound_bank
-from core.rom.smpsz80.memory import BankedZ80Memory
+from core.rom.smpsz80.memory import BankedZ80Memory, Z80RamMemory
 from core.rom.tracks import decode_tracks
 from core.rom.voices import read_voices
 from core.rom.z80 import z80_ram
@@ -58,6 +59,7 @@ from core.smps import (
     played_song,
     song_from_code,
     source_names,
+    tempo_schedule,
     write_asm,
 )
 
@@ -406,6 +408,43 @@ class Type0Fm(unittest.TestCase):
             write_asm(self._code(bytes([0xF2])), "Mus81")
 
 
+class FmDrums(unittest.TestCase):
+    """Type 0 FM's drum programs run frame by frame (core/rom/smpsz80/drums.py)."""
+
+    _AT = 0x100
+    _TABLE = tuple(0x2400 + i for i in range(0x60))      # block 4, fnum $400 + index
+
+    def _frames(self, program: bytes, modifier: int = NO_TEMPO_HOLDS) -> list[tuple[int, bool, bool]]:
+        ram = bytearray(0x2000)
+        ram[self._AT:self._AT + len(program)] = program
+        player = _Player(Z80RamMemory(RomImage(bytes(ram))), TYPE0FM.flags, self._TABLE,
+                         tempo_schedule(modifier)[0], divider=1, transpose=0)
+        frames, cut = player.play(self._AT)
+        self.assertEqual(cut, "")
+        return [(f.word, f.keyed, f.attack) for f in frames]
+
+    # Slide mode: note $B8, slide +5 a frame, a skipped byte, 3 frames; then a tie to $A0 for 2; stop
+    _SLIDE_TIE_STOP = bytes([0xFC, 0x01, 0xB8, 0x05, 0x00, 0x03, 0xFC, 0x00, 0xE7, 0xA0, 0x02, 0xF2])
+
+    def test_a_slide_moves_the_word_each_frame_and_a_tie_changes_it_unkeyed(self):
+        b8, a0 = self._TABLE[0x38], self._TABLE[0x20]
+        self.assertEqual(self._frames(self._SLIDE_TIE_STOP),
+                         [(b8, True, True), (b8 + 5, True, False), (b8 + 10, True, False),
+                          (a0, True, False), (a0, True, False), (a0, False, False)])
+
+    def test_tempo_holds_stretch_the_program_a_frame_each(self):
+        # A hold every 2nd frame (1, 3, 5 ...): a tick every 2 frames, so the 3 + 2 ticks take 10
+        # frames and the stop is the 11th
+        frames = self._frames(self._SLIDE_TIE_STOP, modifier=2)
+        self.assertEqual(len(frames), 11)
+        self.assertEqual([f[2] for f in frames].count(True), 1)
+
+    def test_a_slide_wraps_the_octave_as_the_driver_does(self):
+        self.assertEqual(_wrap(0x227E), 0x1CFE)      # fnum $27E: down a block, fnum + $280
+        self.assertEqual(_wrap(0x24FF), 0x2A7F)      # fnum $4FF: up a block, fnum - $280
+        self.assertEqual(_wrap(0x2400), 0x2400)
+
+
 class Kosinski(unittest.TestCase):
     def test_literals_inline_copies_and_the_end_marker(self):
         # descriptor bits (from bit 0): 1 1 (literals A B), 0 0 1 1 (inline: count 3+2, offset -2), 0 1 (full)
@@ -591,6 +630,14 @@ class GoldenAxe(unittest.TestCase):
         self.assertTrue(all(v.pan is not None for v in songs[0x81].voices))
         self.assertEqual(songs[0x81].fm_frequencies[1:3], (0x283, 0x2A4))             # nC0: Z80 $07D9
         self.assertEqual(len(songs[0x81].fm_frequencies), len(FM_FREQUENCIES))
+
+    def test_the_drum_kit(self):
+        drums = read_rom_song(self.rom, 0x81).fm_drums                 # Wilderness: tempo 10
+        self.assertEqual(sorted(drums), [f"drum{0x80 + n:02X}" for n in range(1, 15)])
+        kick = drums["drum81"]
+        self.assertEqual([f.word for f in kick.frames[:4]], [0x1474, 0x1388, 0x1ACF, 0x12CF])  # a tie chain down
+        self.assertTrue(drums["drum89"].silent)                       # a rest: a hit only stops the drum before
+        self.assertIn("no stop", drums["drum8A"].cut)                  # runs on into voice data
 
     def test_sfx_with_slides_or_fm3_special_mode_are_refused(self):
         index = locate_type0(self.rom)

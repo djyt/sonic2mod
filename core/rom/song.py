@@ -3,7 +3,7 @@ and voices -> SmpsSong) and its DAC samples.  The variant is detected unless giv
 
 from __future__ import annotations
 
-from ..smps import SmpsSong, SongCode
+from ..smps import FM_FREQUENCIES, SmpsSong, SongCode
 from .detect import detect_variant
 from .envelopes import read_envelopes
 from .fixes import apply_fixes
@@ -45,9 +45,11 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
         voices = read_voices(memory, head.voices, voices_used(tracks.code), variant.voice_layout)
         tracks.labels[head.header.voice_label] = head.voices
     envelopes = read_envelopes(memory, index.envelopes, variant) if index.envelopes else None
+    fm_frequencies = variant.fm_frequencies(rom)
+    drums = {} if index.is_sfx(sound_id) else variant.fm_drums(rom, head.header, fm_frequencies or FM_FREQUENCIES)
     return SongCode(head.header, tracks.code, voices, address=address, addresses=tracks.labels,
                     driver=variant.name, dropped=dict(tracks.dropped), psg_envelopes=envelopes,
-                    dac_names=dict(variant.dac_names), fm_frequencies=variant.fm_frequencies(rom))
+                    dac_names=dict(variant.dac_names), fm_frequencies=fm_frequencies, fm_drums=drums)
 
 
 def read_rom_song(rom: RomImage, sound_id: int, index: SoundIndex | None = None,

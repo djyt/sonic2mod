@@ -12,7 +12,9 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.config import ConversionConfig
+import io
+
+from core.config import ConversionConfig, load_yaml
 
 _BASE = {"input_file": "song.asm", "channels": [{"source": "FM1", "mod_channel": 0}]}
 
@@ -54,6 +56,17 @@ class Values(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "region"):
             _config(region="secam")
         self.assertEqual((_config(region="PAL").fps, _config(range_space="Chip").range_space), (50, "chip"))
+
+
+class Vibrato(unittest.TestCase):
+    def test_vibrato_is_read_as_written(self):
+        # YAML would read 12 as decimal twelve and 0x12 as 18: the loader keeps the text
+        text = "voice_map:\n  0:\n" + "".join(
+            f"    - {{low: C{o}, high: B{o}, mod_instrument: 1, vibrato: {v}}}\n"
+            for o, v in ((1, "12"), (2, "0x12"), (3, "1A"), (4, "010"), (5, "0")))
+        data = {**_BASE, **load_yaml(io.StringIO(text))}
+        ranges = ConversionConfig.from_data(data, "test.yaml").voice_map[0]
+        self.assertEqual([r.vibrato for r in ranges], [0x12, 0x12, 0x1A, 0x10, 0])
 
 
 if __name__ == "__main__":

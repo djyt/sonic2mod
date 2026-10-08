@@ -50,14 +50,20 @@ class InstrumentRange:
 
 
 def _parse_vibrato(v) -> int:
-    """Parse a vibrato value from YAML (int or str) → raw byte (high=speed, low=depth).
-
-    The value is treated as two ASCII hex digits (each nibble is a hex digit 0–F):
-      vibrato: 12   (YAML int 12)  → str(12)="12" → speed=1, depth=2 → 0x12
-      vibrato: "1A" (YAML string)  → upper="1A"   → speed=1, depth=10 → 0x1A
-      vibrato: 0    (suppress)     → "00" → speed=0, depth=0
+    """Parse a vibrato value (the loader keeps its text as written) → raw byte (high=speed,
+    low=depth).  Two hex digits, the 4xy parameter:
+      vibrato: 12    → speed=1, depth=2 → 0x12
+      vibrato: 1A    → speed=1, depth=10 → 0x1A
+      vibrato: 0x12  → 0x12 (a hex literal is the byte itself)
+      vibrato: 0     → none
     """
-    s = str(v).upper().zfill(2)
+    s = str(v).strip().upper()
+    if s.startswith("0X"):
+        n = int(s, 16)
+        if not 0 <= n <= 0xFF:
+            raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
+        return n
+    s = (s.lstrip("0") or "0").zfill(2)
     if len(s) > 2:
         raise ValueError(f"vibrato value '{v}' exceeds 2 hex digits")
     return (int(s[0], 16) << 4) | int(s[1], 16)

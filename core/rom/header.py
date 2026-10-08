@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..smps import NO_TEMPO_HOLDS, SmpsChannelHeader, SmpsSongHeader, psg_voice_name
+from .image import RomError
 from .memory import SoundMemory
 from .variant import HeaderLayout
 
@@ -46,7 +47,7 @@ def track_label(address: int) -> str:
 
 def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> RomHeader:
     if not is_music_header(memory, address, layout):
-        raise ValueError(f"${address:X}: not a music header")
+        raise RomError(f"${address:X}: not a music header")
 
     fm_count, psg_count = memory.byte(address + 2), memory.byte(address + 3)
     tempo = memory.byte(address + 5)
@@ -85,7 +86,7 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
 
 def read_sfx_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> RomHeader:
     if not is_sfx_header(memory, address, layout):
-        raise ValueError(f"${address:X}: not an SFX header")
+        raise RomError(f"${address:X}: not an SFX header")
 
     # SFX run one tick per V-int: no tempo modifier byte
     header = SmpsSongHeader(tempo_divider=memory.byte(address + 2), tempo_modifier=0, is_sfx=True)

@@ -319,6 +319,13 @@ class SmpsZ80(unittest.TestCase):
     def test_the_driver_is_what_the_copy_loop_loads(self):
         self.assertEqual(fm_table(z80_ram(self._rom())), self._FM_TABLE)
 
+    def test_a_copy_past_z80_ram_is_refused(self):
+        # The loop's destination moved to $1FF0: its $80 bytes would run past the 8 KB
+        rom = bytearray(self._rom().data)
+        rom[0x304:0x306] = (0x1FF0).to_bytes(2, "big")
+        with self.assertRaisesRegex(RomError, "past its 8 KB"):
+            z80_ram(RomImage(bytes(rom)))
+
     def test_the_bank_and_its_indexes_are_found_by_their_shape(self):
         rom = self._rom()
         index = locate_type0(rom)

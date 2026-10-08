@@ -39,7 +39,7 @@ WARN = "[yellow]⚠[/yellow]"
 BAD = "[red]✗[/red]"
 
 _KIND_STYLE = {
-    'FM': "cyan", 'PSG': "magenta", 'noise': "magenta", 'DAC': "blue",
+    'FM': "cyan", 'PSG': "magenta", 'noise': "magenta", 'DAC': "blue", 'drum': "blue",
     'chip': "bright_cyan", 'mix': "bright_magenta", 'bank': "bright_blue",
 }
 

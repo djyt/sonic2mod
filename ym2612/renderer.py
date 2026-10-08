@@ -37,6 +37,7 @@ from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
 from core.smps import (
     FM_FREQUENCIES,
+    FmFrame,
     SmpsVoice,
     VoiceField,
 )
@@ -300,6 +301,56 @@ def render_note(
         target_rate, opn2, channel, clock_rate, tl_offset=tl_offset,
     )
     return _normalize_int8(mono), out_rate
+
+
+# The driver keys a retriggered note off at the start of its read and on at the end, a few
+# hundred Z80 cycles later: the chip sees the key-off for these samples (~75 us)
+_RETRIGGER_GAP = 4
+
+
+def render_frames(
+    voice: SmpsVoice,
+    tl_offset: int,
+    frames: Sequence[FmFrame],
+    frame_hz: float,
+    tail_secs: float = 0.0,
+    target_rate: int | None = None,
+    opn2: OPN2 | None = None,
+    clock_rate: int = MD_FM_CLOCK,
+    taps: int = DEFAULT_TAPS,
+) -> tuple[array.array, int]:
+    """A track as the driver plays it frame by frame (an FM drum program, core.smps.percussion) ->
+    (mono, out_rate): the voice at `tl_offset`, then each frame's frequency word and key state
+    held for 1 / frame_hz seconds, then `tail_secs` more (a release, after the last frame's)."""
+    native_rate = output_rate(clock_rate)
+    if opn2 is None:
+        opn2 = OPN2(mode="ym2612")
+    else:
+        opn2.reset()
+    channel = 0
+    program_voice(opn2, voice, channel, tl_offset=tl_offset)
+
+    mono = array.array('i')
+    keyed = False
+    at = 0.0                                     # where the next frame starts, in native samples
+    for frame in frames:
+        if frame.attack and keyed:
+            opn2.key_off(channel)
+            mono += opn2.render_mono(_RETRIGGER_GAP)
+        _set_freq(opn2, frame.word & 0x7FF, (frame.word >> 11) & 0x7, channel)
+        if frame.attack:
+            opn2.key_on(channel)
+        elif keyed and not frame.keyed:
+            opn2.key_off(channel)
+        keyed = frame.keyed
+
+        at += native_rate / frame_hz
+        mono += opn2.render_mono(round(at) - len(mono))
+    mono += opn2.render_mono(math.ceil(native_rate * tail_secs))
+
+    if target_rate is not None and target_rate != native_rate:
+        return _resample(mono, native_rate, target_rate, taps), target_rate
+    return mono, native_rate
 
 
 def render_note_raw(

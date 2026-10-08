@@ -15,7 +15,17 @@ from .derive import Derivation, complete_config, derive_config, load_config, sta
 from .detune import DetunePlan, DetuneVariant, detune_cents, detune_variants_wanted, plan_detune_variants
 from .driver_state import DriverState, ResolvedNote, enabled_channels, walk_channel
 from .instrument_plan import InstrumentPitch, InstrumentPlan, prepare_instruments, sounding_pitches
-from .instruments import FmCatalogue, FmInstrument, FmLayer, PsgInstrument, fm_catalogue, free_slots, psg_catalogue
+from .instruments import (
+    FmCatalogue,
+    FmDrumInstrument,
+    FmInstrument,
+    FmLayer,
+    PsgInstrument,
+    fm_catalogue,
+    fm_drum_catalogue,
+    free_slots,
+    psg_catalogue,
+)
 from .noise_derive import derive_noise_envelopes, derive_rate3_dividers
 from .synth_roots import resolve_synth_roots
 from .timeline import Timeline
@@ -26,6 +36,7 @@ __all__ = [
     "DetuneVariant",
     "DriverState",
     "FmCatalogue",
+    "FmDrumInstrument",
     "FmInstrument",
     "FmLayer",
     "InstrumentPitch",
@@ -41,6 +52,7 @@ __all__ = [
     "detune_variants_wanted",
     "enabled_channels",
     "fm_catalogue",
+    "fm_drum_catalogue",
     "free_slots",
     "load_config",
     "plan_detune_variants",

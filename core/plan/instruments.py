@@ -7,6 +7,7 @@ once, for the FIRST entry that names the instrument, in the order the maps are w
     FM:  voice_map (voices the song defines), channel_instrument_map (rooted entries),
          channel_instrument_map (rootless entries, played at C1)
     PSG: psg_map (each entry's own instrument, then its `envelopes:` variants), psg_voice_map
+    FM drums: dac_samples entries whose drum the song plays as an FM program (fm_drum_catalogue)
 
 Everything that needs to know "what is instrument N rendered as" reads it from here: the
 sample generators (what to render), the converter's sustain scan (the rate each sample
@@ -25,7 +26,8 @@ import dataclasses
 from dataclasses import dataclass, field
 
 from ..config import SAMPLE_SLOT, ConversionConfig, InstrumentRange, PsgInstrumentEntry
-from ..mod import ModNote, note_rate
+from ..mod import MOD_NOTE_MAP, ModNote, note_rate
+from ..smps import FmDrum
 
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
 # rate, what an SMPS nC5 sounds like on a channel with the usual $F4 (-12) pitch offset.
@@ -131,6 +133,32 @@ class FmInstrument:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
         base = note_rate(self.rate_root_idx, amiga_clock)
         return round(base * 2.0 ** (self.synth_shift / 12.0))
+
+
+@dataclass(frozen=True)
+class FmDrumInstrument:
+    """A drum track's FM drum (core.smps.percussion), rendered whole for its dac_samples slot at the
+    rate its note plays: a hit sounds at the pitch the chip played it."""
+    inst: int
+    name: str              # the drum track's DAC name (drum81)
+    drum: FmDrum
+    root_idx: int          # the MOD note the drum track plays it on
+
+    def target_rate(self, amiga_clock: float) -> int:
+        return round(note_rate(self.root_idx, amiga_clock))
+
+
+def fm_drum_catalogue(song, config: ConversionConfig) -> dict[int, FmDrumInstrument]:
+    """Every dac_samples slot whose drum the song plays as an FM program; the first entry naming
+    a slot renders it."""
+    out: dict[int, FmDrumInstrument] = {}
+    for entry in config.dac_samples:
+        drum = song.fm_drums.get(entry.name)
+        if drum is None or entry.mod_instrument in out:
+            continue
+        root = MOD_NOTE_MAP.get(entry.mod_note, ModNote.C3)
+        out[entry.mod_instrument] = FmDrumInstrument(entry.mod_instrument, entry.name, drum, root.value)
+    return out
 
 
 @dataclass(slots=True)

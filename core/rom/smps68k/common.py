@@ -7,7 +7,7 @@ docs/todo/binary_import.md has the table.
 from __future__ import annotations
 
 from ...chips import OperatorReg
-from ...smps import SFX_CHANNEL_IDS, CoordFlag
+from ...smps import SFX_CHANNEL_IDS, CoordFlag, FmDrum, SmpsSongHeader
 from ..flags import CALL, JUMP, LOOP, NO_ATTACK, STOP, FlagSpec, effect
 from ..image import RomImage
 from ..variant import HeaderLayout, TrackSlot, VoiceLayout
@@ -19,6 +19,11 @@ def sonic1_fm_frequencies(rom: RomImage) -> None:
     """Sonic 1's FM table (core.smps): the 68k drivers here play every note from it (Type 1a's
     differs only past the top note)."""
     return None
+
+
+def no_fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
+    """The 68k drivers here play DAC samples on the drum track."""
+    return {}
 
 
 # 25 bytes: feedback / algorithm, then each register's four operator bytes, TL last

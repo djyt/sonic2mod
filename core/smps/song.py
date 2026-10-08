@@ -1,10 +1,16 @@
 """The parsed song (SmpsParser's intermediate representation) and what its effects say."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
+from typing import TYPE_CHECKING
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
 from .driver_tables import FM_FREQUENCIES, SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
+
+if TYPE_CHECKING:
+    from .percussion import FmDrum  # it imports SmpsVoice from here
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -206,6 +212,9 @@ class SmpsSong:
     # The FM frequency words the driver plays notes with, by fm_note_index (index 1 = nC0): Sonic
     # 1's, or a ROM driver's own (Golden Axe's, 8-16 cents flat)
     fm_frequencies: tuple[int, ...] = FM_FREQUENCIES
+    # The drum track's FM drum programs by DAC name (Type 0 FM's drum81 ...; core/smps/percussion.py);
+    # empty where the drum track plays DAC samples
+    fm_drums: dict[str, FmDrum] = field(default_factory=dict)
     # Flags read and left out (a ROM's driver: pan animation, queued sounds), by name
     dropped: dict[str, int] = field(default_factory=dict)
 

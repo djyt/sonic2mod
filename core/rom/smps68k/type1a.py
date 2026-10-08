@@ -6,7 +6,7 @@ from __future__ import annotations
 from ...smps import CoordFlag, SmpsDriver
 from ..flags import RETURN, EnvelopeCommand, drop, effect, refuse
 from ..variant import SmpsVariant
-from .common import FLAGS_68K, HEADER_68K, VOICE_68K, sonic1_fm_frequencies
+from .common import FLAGS_68K, HEADER_68K, VOICE_68K, no_fm_drums, sonic1_fm_frequencies
 from .dac import type1a_dac
 from .locate import locate_68k
 from .memory import Relative68kMemory
@@ -45,5 +45,6 @@ TYPE1A = SmpsVariant(
     dac_names={b: f"dac{b:02X}" for b in range(0x81, _LAST_NOTE + 1)},
     dac=type1a_dac,
     fm_frequencies=sonic1_fm_frequencies,
+    fm_drums=no_fm_drums,
     known_roms={MOONWALKER_REV_A_SHA1: ()},
 )

@@ -56,6 +56,7 @@ from .names import (
     voice_field_from_macro,
 )
 from .parser import SmpsParser
+from .percussion import FmDrum, FmFrame
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .song import (
     CoordFlag,
@@ -96,6 +97,8 @@ __all__ = [
     "Aspect",
     "ChannelDiff",
     "CoordFlag",
+    "FmDrum",
+    "FmFrame",
     "NoteDiff",
     "Op",
     "OpKind",

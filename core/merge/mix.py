@@ -195,7 +195,7 @@ class _Mixer:
         # chord mix used to be unrolled for its voice's 4 s song-wide need to play 0.35 s notes.
         # The release padding is for an FM primary, whose note ends in a release slide the sample
         # must still carry; a PSG or drum primary's note is cut at its end (or ends by itself)
-        fm_primary = comp.group.primary.startswith("FM")
+        fm_primary = comp.primary_kind == "FM"
         pad = self._padding if fm_primary else min(self._padding, _CUT_NOTE_PAD_SECS)
         longest = comp.longest_played if comp.chip_base is not None else comp.longest
         need = longest + pad if longest else 0.0

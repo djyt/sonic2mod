@@ -19,6 +19,7 @@ from ..config import (
     PsgSynthesisSettings,
     SynthesisSettings,
     rate3_synth_root_issues,
+    region_fps,
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
@@ -30,6 +31,7 @@ from ..plan import (
     derive_noise_envelopes,
     derive_rate3_dividers,
     fm_catalogue,
+    fm_drum_catalogue,
     prepare_instruments,
     psg_catalogue,
 )
@@ -43,6 +45,7 @@ from ..smps import (
 from ..smps import semitone_to_note_name as _semitone_to_name
 from ..smps import source_map as source_map_for
 from .channel_writer import ChannelWriter, EmissionStats, WriterContext
+from .fm_drums import drum_rings
 from .generators import SampleGenerators
 from .layout import ModLayout
 from .level_plan import LevelPlanner
@@ -223,6 +226,8 @@ class SmpsToModConverter:
         out: dict[int, dict] = {}
         for d in self.config.dac_samples:
             out[d.mod_instrument] = {'kind': 'DAC', 'source': d.name}
+        for drum in fm_drum_catalogue(self.song, self.config).values():
+            out[drum.inst] = {'kind': 'drum', 'source': f"{drum.name} FM"}
         if self.synth is not None and self.synth.enabled:
             for inst in fm_catalogue(self.song, self.config).instruments.values():
                 e = inst.entry
@@ -251,7 +256,7 @@ class SmpsToModConverter:
                 groups = sorted({m.group.label for m in b.members})
                 out[b.slot] = {'kind': 'bank', 'source': f"{len(b.members)} sounds · {', '.join(groups)}"}
         for inst, d in out.items():
-            if inst in self._sample_rates and d['kind'] in ('FM', 'PSG', 'noise', 'chip'):
+            if inst in self._sample_rates and d['kind'] in ('FM', 'PSG', 'noise', 'chip', 'drum'):
                 d['rate'] = self._sample_rates[inst]     # a mix or a bank took its slot's number over
             if inst in self._release and self._release[inst] != float('inf'):
                 d['release'] = self._release[inst]
@@ -476,8 +481,9 @@ class SmpsToModConverter:
         merge_insts = (self._merge.instruments | self._merge.unused) if self._merge is not None else set()
         if synth and synth.enabled:
             fm_samples, missing = self._synthesize_fm(synth)
+            drums = self._synthesize_fm_drums(synth)
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
-            self._load_disk_samples(set(fm_samples) | psg_insts | missing | merge_insts)
+            self._load_disk_samples(set(fm_samples) | set(drums) | psg_insts | missing | merge_insts)
             return
         if self.config.sample_list:
             self._load_disk_samples(psg_insts | merge_insts)
@@ -549,6 +555,23 @@ class SmpsToModConverter:
             self._mix_sources[i] = self._make_sample(i, fm_samples[i][0], "fm", self._loops.pop(i, None),
                                                      synth.max_sample_bytes, original=True)
         return fm_samples, missing
+
+    def _synthesize_fm_drums(self, synth: SynthesisSettings) -> dict:
+        """The drum track's FM drums rendered whole into their dac_samples slots (none where it
+        plays DAC samples)."""
+        drums = list(fm_drum_catalogue(self.song, self.config).values())
+        if not drums:
+            return {}
+        generate_fm_drums = self._generators.fm_drums
+        if generate_fm_drums is None:
+            raise ValueError("the song's drums are FM programs but no drum generator was given (SampleGenerators.fm_drums)")
+        cache: dict[str, int] = {}
+        samples = generate_fm_drums(drums, synth, region_fps(self.config.region),
+                                    drum_rings(self.song, self.config, self._timeline), cache_out=cache)
+        if cache:
+            self._diag.info(InfoKind.RENDER_CACHE, chip="FM drums", **cache)
+        self._install_synthesized_samples(samples, self.config.sample_list, "drum", synth.max_sample_bytes)
+        return samples
 
     def _synthesize_psg(self, psg_synth: PsgSynthesisSettings | None) -> None:
         """Every PSG instrument rendered and installed, with the rate-3 dividers and noise
@@ -710,7 +733,7 @@ class SmpsToModConverter:
                 continue
 
             smps_channel = source_map[source]
-            is_dac = (source == "DAC")
+            is_dac = smps_channel.header.channel_type == "DAC"     # by the song, not the name: Type 0 FM's drums are FM3
 
             ChannelWriter(ctx, smps_channel, chan_cfg, is_dac).write()
 

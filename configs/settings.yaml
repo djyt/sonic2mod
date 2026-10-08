@@ -116,6 +116,13 @@ samples:
   #   9     : 1.7x at worst; Moonwalker +8 %     [default]
   max_window: 9
 
+  # The MOD note an FM drum (Golden Axe's drum programs, rendered whole) is rendered for: its
+  # sample's rate.  Broadband like noise; a hit is 0.1-0.4 s.
+  #   C2    : ~8.3 kHz; dull hats                    [smallest]
+  #   C3    : ~16.6 kHz                              [default]
+  #   A3    : ~27.9 kHz, the noise samples' rate
+  drum_root: C3
+
 # -------------------------------------------------------------------------------------------------
 # Conversion flags (applied regardless of synthesis settings)
 # -------------------------------------------------------------------------------------------------

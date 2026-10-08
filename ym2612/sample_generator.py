@@ -23,7 +23,7 @@ import functools
 import math
 import sys
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,11 +49,11 @@ from core.audio import trim_trailing_silence as _trim_trailing_silence
 from core.chips import fm_frequency_hz
 from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, find_settings, load_settings
 from core.mod import max_sustain_secs
-from core.plan import FmInstrument, fm_catalogue
+from core.plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from core.render_cache import RenderCache, code_salt
 from core.smps import FM_FREQUENCIES, SmpsSong, SmpsVoice, VoiceField
 from ym2612.build import get_lib_path
-from ym2612.renderer import note_to_fnum_block, note_to_freq, render_layers
+from ym2612.renderer import note_to_fnum_block, note_to_freq, render_frames, render_layers
 from ym2612.wrapper import OPN2
 
 # ---------------------------------------------------------------------------
@@ -398,6 +398,47 @@ def generate_fm_samples(
     # gained by leaving a quiet instrument quiet in the sample — it only loses bits.
     dither = {job.inst: job.spec.dither_mode or synth.dither for job in jobs}
     return {inst: (full_scale_int8(mono, dither[inst]), rate) for inst, (mono, rate) in raw_data.items()}
+
+
+def generate_fm_drums(
+    drums: Sequence[FmDrumInstrument],
+    synth: SynthesisSettings,
+    frame_hz: float,
+    ring_secs: Mapping[int, float],
+    cache_out: dict[str, int] | None = None,
+) -> dict:
+    """Each FM drum's program rendered whole (render_frames) -> {instrument: (int8 PCM, rate)}.
+
+    A drum sounds until the drum track's next hit: `ring_secs` is its longest such ring.  It is
+    rendered for its program and the release after the stop (synth.release_padding), but never
+    past its ring; a program that never stops is rendered for its ring.  Each sample is
+    conditioned (shelf, DC block) and quantised to its full 8 bits like any FM render: its level is
+    the sample_list volume's job.
+    """
+    cache = RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
+    out = {}
+    for d in drums:
+        ring = ring_secs.get(d.inst)
+        frames = d.drum.frames
+        if ring is not None:
+            frames = frames[:max(1, math.ceil(ring * frame_hz))]
+        stopped = len(frames) == len(d.drum.frames) and not d.drum.cut
+        tail = synth.release_padding if stopped else 0.0
+        if ring is not None:
+            tail = max(0.0, min(tail, ring - len(frames) / frame_hz))
+        rate = d.target_rate(synth.amiga_clock)
+
+        inputs = ("fm_drum", _voice_key(d.drum.voice), d.drum.tl_offset, frames, frame_hz, tail, rate,
+                  synth.mode, synth.clock_rate, synth.resample_taps)
+        mono, rate = cache.through(inputs, lambda d=d, frames=frames, tail=tail, rate=rate: render_frames(
+            d.drum.voice, d.drum.tl_offset, frames, frame_hz, tail, rate, _thread_opn2(synth.mode),
+            synth.clock_rate, synth.resample_taps))
+        shelves = [(synth.treble_shelf_hz, synth.treble_shelf_db)]
+        mono = _trim_trailing_silence(condition_render(mono, rate, shelves, synth.dc_block))
+        out[d.inst] = (full_scale_int8(mono, synth.dither), rate)
+    if cache_out is not None and cache.enabled:
+        cache_out.update(hits=cache.hits, misses=cache.misses)
+    return out
 
 
 # ---------------------------------------------------------------------------

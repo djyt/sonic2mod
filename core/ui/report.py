@@ -32,7 +32,7 @@ from rich.text import Text
 
 from ..diagnostics import InfoKind, WarningKind
 from ..mod import MAX_MOD_SAMPLE_BYTES, PAL_AMIGA_CLOCK, audit
-from ..smps import source_names, synth_note_name
+from ..smps import NO_TEMPO_HOLDS, source_names, synth_note_name
 
 OK = "[green]✓[/green]"
 WARN = "[yellow]⚠[/yellow]"
@@ -357,7 +357,8 @@ def print_header(console: Console, rep: Report) -> None:
     source = (f"[cyan]{escape(cfg.input_file)}[/cyan]  [dim]{escape(song.header.voice_label or '')} · "
               f"{' · '.join(parts)}[/dim]")
     b = rep.bpm
-    tempo = (f"div {song.header.tempo_divider} · mod {song.header.tempo_modifier} · {cfg.region.upper()}  [dim]→[/dim]  "
+    modifier = "no holds" if song.header.tempo_modifier == NO_TEMPO_HOLDS else f"mod {song.header.tempo_modifier}"
+    tempo = (f"div {song.header.tempo_divider} · {modifier} · {cfg.region.upper()}  [dim]→[/dim]  "
              f"[bold]{cfg.target_bpm}[/bold] BPM · speed [bold]{cfg.target_speed}[/bold] · "
              f"{cfg.ticks_per_row} ticks/row")
     if b.get('exact') and abs(b.get('error_pct', 0.0)) >= _BPM_ERROR_PCT:

@@ -32,7 +32,7 @@ from .driver_tables import FM_FREQUENCIES, PSG_FREQUENCIES_EXTENDED, fm_note_ind
 from .names import source_names
 from .song import CoordFlag, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import apply_global_tempo_div, extend_looping_channels
-from .tempo import TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
+from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
 from .track import TrackState
 
 
@@ -110,15 +110,12 @@ def played_song(song: SmpsSong) -> PlayedSong:
     voices = {v.index: v for v in song.voices}
     changes = sorted({(ev.tick_position, ev.effect.params[0]) for ch in song.channels for ev in ch.events
                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
-    schedule = tempo_schedule(_NO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes)
+    schedule = tempo_schedule(NO_TEMPO_HOLDS if song.header.is_sfx else song.header.tempo_modifier, changes)
     end = song.end_tick()
     channels = {name: _played_channel(ch, voices, schedule, end)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
     return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels)
 
-
-# SFX run a tick every frame: a modifier no song reaches holds nothing
-_NO_HOLDS = 1 << 30
 
 
 def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],

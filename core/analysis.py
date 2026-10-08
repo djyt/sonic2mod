@@ -365,6 +365,8 @@ class _ChannelWalk:
             self._switch_psg(f"form ${params[0]:02X}")
         elif kind == CoordFlag.ALTER_VOL:
             self._volume += cast(int, params[0])
+        elif kind == CoordFlag.SET_VOL:
+            self._volume = cast(int, params[0])
         elif kind == CoordFlag.PAN:
             self._hard_pan = pan_is_hard(params)
         elif kind == CoordFlag.CHANGE_TRANSPOSITION:

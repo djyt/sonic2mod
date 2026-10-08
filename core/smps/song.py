@@ -46,6 +46,9 @@ class CoordFlag(IntEnum):
     MOD_OFF = 0xF4
     PSG_VOICE = 0xF5              # [envelope name, fTone_01 ... fTone_09: the driver's table]
 
+    # No Sonic 1 byte: another driver's flag, valued past $FF
+    SET_VOL = 0x1F0               # [level]: the track's volume, absolute (Type 0 FM's $F0)
+
 
 @dataclass
 class SmpsEffect:
@@ -83,6 +86,9 @@ class SmpsChannelHeader:
     # Music headers imply the hardware channel by declaration order; SFX headers do not, so
     # cFM3/cFM4/cFM5 are indistinguishable without this.  0 = not an SFX channel.
     hw_channel: int = 0
+    # The chip channel a music track plays on ("FM3"), where its driver's order is not header
+    # order (Sonic 1's: DAC, FM1.., PSG1..); "" = header order.  core/smps/names.py source_names
+    chip_channel: str = ""
 
 
 @dataclass
@@ -141,6 +147,9 @@ class SmpsVoice:
     # Each field's four values in the order the driver stores the operators (SMPS_OP_TO_REG_OFFSET
     # maps each to its register slot): what the parser reads, and what a lift builds from registers
     operators: dict[VoiceField, tuple[int, ...]] = field(default_factory=dict)
+    # Register B4 (L R AMS FMS) where the driver stores it in the voice: setting the voice pans
+    # the track (the walk writes a PAN after its smpsSetvoice).  None: Sonic 1's, pan by flag only
+    pan: int | None = None
 
     def operator_values(self, field_: VoiceField) -> list[int]:
         """One field's four operator values; a field the voice leaves out, or a value it leaves

@@ -15,19 +15,29 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.smps import (
+    NO_TEMPO_HOLDS,
     CoordFlag,
+    Op,
+    OpKind,
     SmpsChannel,
     SmpsChannelHeader,
+    SmpsCode,
+    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsParser,
     SmpsSong,
     SmpsSongHeader,
+    SmpsVoice,
+    TrackState,
     extend_looping_channels,
     flag_from_macro,
     flag_name,
     pan_is_hard,
     pan_side,
+    song_from_code,
+    source_names,
+    tempo_schedule,
 )
 
 _MUSIC = _HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "music"
@@ -67,6 +77,46 @@ class Pan(unittest.TestCase):
         pans = {ev.effect.params[0] for ch in song.channels for ev in ch.events
                 if ev.effect is not None and ev.effect.flag is CoordFlag.PAN}
         self.assertEqual(pans, {0x40, 0x80, 0xC0})          # panRight, panLeft, panCenter (all , $00)
+
+
+class OtherDrivers(unittest.TestCase):
+    """What a driver other than Sonic 1's puts in a song (Type 0 FM: docs/todo/binary_import.md)."""
+
+    def test_set_vol_is_absolute_where_alter_vol_adds(self):
+        fm = TrackState(is_psg=False, volume=8)
+        fm.apply(SmpsEffect(CoordFlag.ALTER_VOL, [4]))
+        self.assertEqual(fm.tl, 12)
+        fm.apply(SmpsEffect(CoordFlag.SET_VOL, [3]))
+        self.assertEqual(fm.tl, 3)
+        psg = TrackState(is_psg=True, volume=2)
+        psg.apply(SmpsEffect(CoordFlag.SET_VOL, [0x20]))
+        self.assertEqual(psg.att, 15)                         # clamped as smpsAlterVol is
+        self.assertEqual(flag_from_macro(flag_name(CoordFlag.SET_VOL)), CoordFlag.SET_VOL)
+
+    def test_a_voice_with_its_own_pan_pans_the_track_it_is_set_on(self):
+        # FM1: voice 0 (pan left in the voice), a note, voice 1 (no pan byte), a note
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [0])),
+               Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x08),
+               Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [1])),
+               Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x08), Op(OpKind.STOP)]
+        header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(0, pan=0x80), SmpsVoice(1)])
+        effects = [(ev.effect.flag, ev.effect.params, ev.tick_position) for ev in song.channels[0].events
+                   if ev.effect is not None]
+        self.assertEqual(effects, [(CoordFlag.SET_VOICE, [0], 0), (CoordFlag.PAN, [0x80], 0),
+                                   (CoordFlag.SET_VOICE, [1], 8)])
+
+    def test_a_track_that_states_its_chip_channel_is_named_by_it(self):
+        headers = [SmpsChannelHeader(channel_type="FM", label="drums", chip_channel="FM3"),
+                   SmpsChannelHeader(channel_type="FM", label="a", chip_channel="FM1"),
+                   SmpsChannelHeader(channel_type="FM", label="b", chip_channel="FM4")]
+        song = SmpsSong(header=SmpsSongHeader(channels=headers), channels=[SmpsChannel(header=h) for h in headers])
+        self.assertEqual(source_names(song), ["FM3", "FM1", "FM4"])
+
+    def test_no_tempo_holds_reads_a_tick_every_frame(self):
+        segment = tempo_schedule(NO_TEMPO_HOLDS)[0]
+        self.assertEqual((segment.tick_at(10_000), segment.frame_of(10_000), segment.holds(10_000)),
+                         (10_000, 10_000, False))
 
 
 class NoAttack(unittest.TestCase):

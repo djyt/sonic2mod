@@ -3,3 +3,8 @@
 name: "Conclusion"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$8D"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [3, "drum8C.raw", 39, 0]   # VGZ: +3.6 dB at 64
+  - [6, "fm_v01_Eb3.raw", 33, 0]   # VGZ: +5.0 dB at 64
+  - [10, "fm_v03_C4.raw", 52, 0]   # VGZ: +1.1 dB at 64

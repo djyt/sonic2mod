@@ -3,3 +3,21 @@
 name: "Battle Field"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$86"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum86.raw", 11, 0]   # VGZ: +11.3 dB at 64
+  - [2, "drum8C.raw", 26, 0]   # VGZ: +4.2 dB at 64
+  - [7, "fm_v00_G5.raw", 32, 0]   # VGZ: +2.2 dB at 64
+  - [8, "fm_v01_B2.raw", 40, 0]   # VGZ: +0.3 dB at 64
+  - [9, "fm_v01_A3.raw", 41, 0]   # VGZ: +0.2 dB at 64
+  - [10, "fm_v01_G4.raw", 41, 0]   # VGZ: +0.1 dB at 64
+  - [11, "fm_v02_A0.raw", 38, 0]   # VGZ: +0.7 dB at 64
+  - [12, "fm_v02_A1.raw", 39, 0]   # VGZ: +0.6 dB at 64
+  - [13, "fm_v02_G2.raw", 42, 0]   # VGZ: -0.1 dB at 64
+  - [14, "fm_v02_A3.raw", 41, 0]   # VGZ: +0.2 dB at 64
+  - [15, "fm_v03_D2.raw", 32, 0]   # VGZ: +2.3 dB at 64
+  - [16, "fm_v03_D3.raw", 31, 0]   # VGZ: +2.5 dB at 64
+  - [17, "fm_v04_D2.raw", 39, 0]   # VGZ: +0.5 dB at 64
+  - [18, "fm_v04_C3.raw", 41, 0]   # VGZ: +0.0 dB at 64
+  - [19, "fm_v04_B3.raw", 43, 0]   # VGZ: -0.3 dB at 64
+  - [20, "fm_v04_A4.raw", 44, 0]   # VGZ: -0.4 dB at 64

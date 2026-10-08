@@ -299,7 +299,7 @@ class Fixes(unittest.TestCase):
         fm = bytes([0xA0, 0x06, 0x80, 0x80, 0xE6, 0x0C, 0xB0, 0x06, 0xF2])
         fix = RomFix(_SONG + 12, bytes([0x80, 0x80, 0xE6, 0x0C]), b"", "test")
         code = decode_tracks(_memory(_music([fm])), {_SONG + 10: ChannelType.FM}, SONIC1, {fix.address: fix}).code
-        self.assertEqual([op.value for op in code.ops if op.kind is OpKind.BYTE], [0xA0, 0x06, 0xB0, 0x06])
+        self.assertEqual([op.value for op in code.ops if op.kind in (OpKind.NOTE, OpKind.DURATION)], [0xA0, 0x06, 0xB0, 0x06])
         self.assertFalse(any(op.kind is OpKind.EFFECT for op in code.ops))
 
     def test_a_fix_whose_bytes_differ_is_refused(self):

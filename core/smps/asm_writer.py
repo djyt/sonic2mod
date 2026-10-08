@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .code import NO_ATTACK, REST, Op, OpKind, SongCode
+from .code import NO_ATTACK, REST, TRACK_BYTES, Op, OpKind, SongCode
 from .driver_tables import PAN_VALUES
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES_REVERSE, flag_name, note_label, voice_macro
 from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsVoice, VoiceField
@@ -161,7 +161,7 @@ class _Writer:
             tokens.clear()
 
         for i, op in enumerate(ops):
-            if op.kind is OpKind.BYTE:
+            if op.kind in TRACK_BYTES:
                 tokens.append(_byte(op.value, i in dac))
                 continue
             flush()

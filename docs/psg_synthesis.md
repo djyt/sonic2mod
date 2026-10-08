@@ -102,8 +102,8 @@ driver keeps writing PSG3's own note there even in noise mode.  So the divider i
   Marble Zone: `low: A3`, transpose `$0B` → index 56 → **N = 34** (3290 Hz);
 - otherwise at the note the instrument plays most — every hi-hat is `nMaxPSG` → **N = 1**.
 
-`nMaxPSG` is not a pitch: it indexes the table's last entry, divider 1 — an LFSR at
-clock/32 ≈ 112 kHz, near-white hiss.  A chromatic
+`nMaxPSG` is not a pitch: it indexes the table's last entry, divider 0, which the Sega PSG
+clocks as 1 — an LFSR at clock/32 ≈ 112 kHz, near-white hiss.  A chromatic
 `A8` there gives N ≈ 16, a dull 7 kHz rattle; `rate3_synth_root_issues` warns for a rate-3
 `synth_root` outside the table's C3–Gs8.  `convert.py --verbose` prints the divider used.
 

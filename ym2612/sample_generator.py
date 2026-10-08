@@ -427,18 +427,21 @@ def _smoke_test() -> None:
         voices=[voice1],
     )
 
-    # Minimal ConversionConfig with voice_map for voice 1
+    # Minimal ConversionConfig with voice_map for voice 1: the Title Screen's bass range, rendered
+    # at its low note (a real conversion derives synth_root from the song first)
     from core.mod import ModNote
+    from core.smps import parse_smps_note
     fake_config = ConversionConfig()
     fake_config.voice_map = {
         1: [
-            InstrumentRange(low=0, high=95, mod_instrument=5, root=ModNote.A3),
+            InstrumentRange(low=parse_smps_note("A2"), high=parse_smps_note("D4"), mod_instrument=5,
+                            root=ModNote.A1),
         ]
     }
 
     synth = dataclasses.replace(load_settings(find_settings())[0], sustain_duration=1.5)   # a fixed hold, not auto
 
-    print("Smoke test — generate_fm_samples(voice=1/FM2-bass, root=A3)...")
+    print("Smoke test — generate_fm_samples(voice=1/FM2-bass, A2-D4 at root A1)...")
     print(f"  amiga_clock = {synth.amiga_clock}")
     print(f"  sustain     = {synth.sustain_duration}s, release = {synth.release_padding}s")
     print()

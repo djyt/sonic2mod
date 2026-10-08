@@ -157,7 +157,7 @@ def psg_note_index(note_value: int, transpose: int) -> int:
 def psg_index_semitone(index: int) -> int:
     """Real pitch (SMPS semitone, C0 = 0) the PSG plays for a table index.
 
-    Entries 0-68 are chromatic from C3 (index 0 = 851 = 131 Hz), so the pitch is index + 36.
+    Entries 0-68 are chromatic from C3 (index 0 = 854 = 131 Hz), so the pitch is index + 36.
     The driver masks the index to 7 bits and reads on past the table, so a note transposed
     below C3 (Credits PSG1: indices 125-127) or above nMaxPSG plays whatever word sits there -
     Marble Zone's five "data bug" notes, and Credits' G#3 where A2 was written.  Those come out

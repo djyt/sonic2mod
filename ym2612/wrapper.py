@@ -251,10 +251,10 @@ class OPN2:
         Delegates to the C helper OPN2_RenderBatch which runs the
         ``n_samples × 24`` clock loop entirely in C, writing results into
         pre-allocated int32 buffers.  In YM2612 mode the chip time-
-        multiplexes six channels across the 24-clock period: each channel's
-        audio appears at the four output-enable clocks where
-        ``(cycles & 3) == 3``; all other clocks carry a sign-only DC bias
-        of ±3.  Summing all 24 values mixes the six channels together and
+        multiplexes six channels across the 24-clock period: each channel
+        holds four clocks and its audio appears on the last of them, where
+        ``(cycles & 3) == 3`` (six output clocks a sample); the other 18
+        carry a sign-only DC bias of ±3.  Summing all 24 values mixes the six channels together and
         is the standard way to use Nuked-OPN2 at the native sample rate.
 
         A DC offset of ``_CLOCKS_PER_SAMPLE × 3 = 72`` is subtracted to

@@ -416,9 +416,8 @@ class PsgInstrumentEntry:
     high: int | None = None              # SMPS semitone upper bound (inclusive); used for list-entry range dispatch
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers), 3 = follow tone ch2
     tone2_n: int | None = None           # noise_rate 3 only: explicit tone-ch2 divider N (1–1023) for the LFSR
-                                             # clock; overrides the value derived from synth_root/root.
-                                             # nMaxPSG in the Sonic 1 driver writes N=0, which the Sega
-                                             # VDP PSG treats as N=1 (maximum shift rate) — use tone2_n: 1.
+                                             # clock; overrides the divider derived from the song's notes
+                                             # (core.plan.derive_rate3_dividers).
     envelope: str | list[int] | None = None  # Named table str ("fTone_04") or inline list[int].  A psg_map
                                              # (noise) entry leaves it None: the converter derives it from
                                              # the song (derive_noise_envelopes); stating it is an override

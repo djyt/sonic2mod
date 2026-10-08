@@ -46,7 +46,8 @@ class Timeline:
 
         cfSetTempo writes v_main_tempo for every track and restarts the TempoWait counter, so
         from that tick on ticks run at fps*(m-1)/m with the hold pattern starting afresh.
-        Only the modifier changes here; the divider (smpsSetTempoDiv, $EB) is not applied.
+        Only the modifier changes here; the divider (smpsSetTempoDiv, $EB) re-timed the ticks
+        before (song_prep.apply_global_tempo_div).
         """
         segs = [(0, self._song.header.tempo_modifier)]
         for ch in self._song.channels:

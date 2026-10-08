@@ -22,7 +22,7 @@ from .chipstate import (
     noise_white,
 )
 from .frames import DacFrame, FmFrame, Frame, FrameLog, PsgFrame, frame_log
-from .lift import LiftOptions, VgmLiftError, lift_song
+from .lift import LIFTED_ASPECTS, LiftOptions, VgmLiftError, lift_song
 from .notes import (
     DAC_NAME,
     DEFAULT_MOD_CENTS,
@@ -53,6 +53,7 @@ __all__ = [
     "DEFAULT_MOD_CENTS",
     "FM_CHANNELS",
     "FM_NAMES",
+    "LIFTED_ASPECTS",
     "NOISE_CHANNEL",
     "PSG_NAMES",
     "PSG_SILENT",

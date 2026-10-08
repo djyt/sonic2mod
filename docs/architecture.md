@@ -119,8 +119,8 @@ adds composite instruments to the same catalogue.
 | `smps/code.py` | `SmpsCode`, `Op`, `SongCode`; `song_from_code`: walks each channel through the ops with the driver's reading rules (pending durations, standalone durations, `smpsNoAttack`, loops unrolled, calls inlined, fall-through, each channel's own loop point).  Asm and ROM share it |
 | `rom/` | Generic readers driven by an `SmpsVariant` (`variant.py`: what one driver differs by - memory, locate, flags, voice layout, envelope commands, DAC; `flags.py`; `memory.py`: `SoundMemory`, how a driver reads pointers).  `header.py`, `tracks.py` (bytes → `SmpsCode`), `voices.py`, `envelopes.py`; `fixes.py` (`RomFix`, `apply_fixes`).  `z80.py` (`z80_ram`: Z80 RAM as the 68k's copy loops fill it).  Families: `smps68k/` (`sonic1.py` with rev01's data fixes, `type1a.py`, `common.py`, `memory.py`, `locate.py`: the `Go_` block by its tables' shape, `dac.py` + `kosinski.py`); `smpsz80/` (`memory.py`: the bank window; `locate.py`: the driver by its FM table, the bank by its sound header).  `variants.py` (registry, SHA-1 pins, `data_fixes`), `detect.py` (`detect_variant`), `song.py` (`locate_sounds`, `read_rom_code`, `read_rom_song`, `dac_samples`).  Layers: vocabulary ← readers ← families ← registry ← `detect` / `song` |
 | `vgm/` | `reader.py` (`read_vgm` → `VgmLog`), `chipstate.py` (`ChipState.replay`: registers write by write), `frames.py` (`frame_log`: per V-int frame, every channel's state), `notes.py` (`note_starts`, `pitch_segments`), `cache.py` (`load_frames`, cached) |
-| `vgm/lift/` | `lift_song(frames, LiftOptions)` → `SmpsSong`: `tracks.py` (hits by frame), `tempo.py` (`infer_tempo`), `song.py`.  Work in progress: `docs/todo/vgz_conversion.md` |
-| `source/load.py` | `read_song(path, options, rom_song, driver)`: picks the front end by suffix; `read_dac(path)` |
+| `vgm/lift/` | `lift_song(frames, LiftOptions)` → `SmpsSong`: `tracks.py` (hits by frame), `tempo.py` (`infer_tempo`; a given modifier is where the song starts), `song.py` (`LIFTED_ASPECTS`: what a lift states).  Work in progress: `docs/todo/vgz_conversion.md` |
+| `source/load.py` | `read_song(path, options, rom_song, driver, fix_data_bugs)`: picks the front end by suffix; `read_dac(path)` |
 | `smps/asm_writer.py` | `write_asm`: a `SongCode` back to SMPS2ASM text the parser reads into the same song |
 
 How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
@@ -325,6 +325,8 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 |---|---|
 | `core/audit/pitch.py` | Symbolic pitch audit: each MOD note's pitch against the chip's frequency registers (`tools/vgm_pitch_audit.py`, and the verdict inside `vgm_compare`) |
 | `core/audit/render.py`, `signal.py`, `levels.py`, `onsets.py` | `vgm_compare`'s per-channel renders (VGMPlay, ffmpeg + libopenmpt), measures, per-instrument levels, onset matching |
+| `core/audit/rip_diff.py` | `compare_with_rip(song, frames, aspects, ChannelChoice, lift)` → `RipDiff`: a song (`SongSource`: asm, or ROM + sound, as shipped) against its rip lifted at the song's tempo (`LiftTempo`) - `tools/vgm_lift.py` |
+| `core/audit/rips.py` | `RipShelf`: a config's rip and a rip's config, by number or the `rips.yaml` beside the configs (`vgm_lift`, `measure_volumes`) |
 | `tools/` | `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `measure_volumes`, `rom_import`, `mod_compare`, `mod_lint`, `mod_audit`, `mod_render_diff`, `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config`, `release` |
 | `tests/regression.py` | Every config (and its merged build, variants, ROM cases) converted and compared with a baseline MOD, cells and samples |
 | `tests/tool_regression.py` | The VGM tools' output, byte for byte |

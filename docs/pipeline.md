@@ -928,6 +928,31 @@ Report sections: per-note pitch/level, per-channel summary, pitch verdict, vibra
 Notes the recording plays after the MOD's single pass has ended are left out.  Levels are L/R power,
 never a mono mix (a hard-panned YM2612 channel reads ~5 dB low in mono).
 
+### The song before conversion (`tools/vgm_lift.py`)
+
+Does the song as read - asm or ROM bytecode - play what the rip recorded?  No MOD, no audio: the rip
+is lifted to a song (`core/vgm/lift/`) and both are compared note by note through `played_song`
+(`core/audit/rip_diff.py`).  A difference here is the reader's or the lift's, not the converter's;
+one only `vgm_compare` / `vgm_pitch_audit` show is the converter's.
+
+```bash
+python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml       # a config and its rip
+python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every pair, a line each
+```
+
+- Pairs: a config and its rip share a number, or the `rips.yaml` beside the configs maps config stem
+  to rip (`core/audit/rips.py`; `measure_volumes.py` pairs the same way).  Rips sit in `reference/vgz/`
+  under the configs' subfolder.  `--input FILE [--rom-song ID]` names any song.
+- Both sides as shipped (data bugs kept).  The lift takes the song's tempo modifier (where it starts:
+  tempo changes are still found) and divider; inferred only where it fits no schedule, said so
+  (`--infer-tempo` to judge the inference).  The divider is spelling: durations are ticks on both
+  sides (a song's already multiplied by it), so it never moves a note; it sets how the converter counts
+  rows (`ticks_per_row` × divider).
+- Aspects: by default what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects all` for
+  every one - a lifted note's pitch is its table word, no detune yet).
+- Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one
+  side plays are named, not compared.  Ticks print with seconds into the song.
+
 ### Pitch verdict (`tools/vgm_pitch_audit.py`)
 
 The authority on "is every note right", symbolic and self-aligning: the chip's frequency registers

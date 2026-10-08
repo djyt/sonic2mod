@@ -30,7 +30,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ...smps import TempoSegment, tick_at_frame
+from ...smps import NO_TEMPO_HOLDS, TempoSegment, tick_at_frame
 
 MAX_MODIFIER = 64              # the largest tempo modifier tried (Credits starts at 51)
 _VALUE_BITS = 8.0              # what a distinct interval value costs to describe
@@ -79,21 +79,27 @@ class TempoMap:
 def infer_tempo(key_writes: Mapping[str, Sequence[int]], first: int | None = None,
                 modifier: int | None = None) -> TempoMap:
     """The tempo map that puts every channel's key-write frames on ticks.  `first`: the earliest
-    note of any kind (the song starts no later); `modifier`: the tempo, not inferred."""
+    note of any kind (the song starts no later); `modifier`: the tempo the song starts at, not
+    inferred (a song's header states it; tempo changes are still looked for)."""
     ev = _Events(key_writes)
     first = int(ev.frames[0]) if first is None else min(first, int(ev.frames[0]))
-    modifiers = [modifier] if modifier else list(range(2, MAX_MODIFIER + 1))
+
+    # A driver that never holds: a tick a frame from the first note
+    if modifier == NO_TEMPO_HOLDS:
+        return TempoMap((TempoSegment(first, 0, modifier),))
+    every = list(range(2, MAX_MODIFIER + 1))
+    starts = [modifier] if modifier else every
 
     # One tempo for the whole song, a missed V-int or two allowed
-    single = ev.singles(modifiers, first)
+    single = ev.singles(starts, first)
     top = list(dict.fromkeys(fit.modifier for fit in single))[:_REFINED]
     fits = [ev.with_lost(fit) for fit in single if fit.modifier in top]
 
     # Or tempo changes (Drowning, Credits), where the halves of the song want other tempos than
     # the whole: whichever describes the song in fewer bits
     steady = bool(single) and all(half and half[0].modifier == single[0].modifier
-                                  for half in (_Events(part).singles(modifiers) for part in ev.halves(key_writes)))
-    if not modifier and not steady and (changed := ev.segmented(modifiers, first)) is not None:
+                                  for half in (_Events(part).singles(every) for part in ev.halves(key_writes)))
+    if not steady and (changed := ev.segmented(starts, every, first)) is not None:
         fits.append(changed)
     if not fits:
         raise TempoError("no tempo schedule puts every key write on a tick")
@@ -239,14 +245,15 @@ class _Events:
 
     # -- tempo changes ----------------------------------------------------------------
 
-    def segmented(self, modifiers: list[int], first: int) -> _Fit | None:
-        """The fewest-bits schedule with tempo changes.  A change is looked for where several
-        channels key on at once (a bar line) and every _COARSE events, then again _FINE either
-        side of each one found, until the changes stay put."""
+    def segmented(self, starts: list[int], modifiers: list[int], first: int) -> _Fit | None:
+        """The fewest-bits schedule with tempo changes, the song starting at one of `starts`, each
+        change to one of `modifiers`.  A change is looked for where several channels key on at
+        once (a bar line) and every _COARSE events, then again _FINE either side of each one
+        found, until the changes stay put."""
         points = set(range(_COARSE, self.n, _COARSE)) | set(self.together.tolist())
         best = None
         for _ in range(_REFINES):
-            fit = self._dp(modifiers, first, sorted(points))
+            fit = self._dp(starts, modifiers, first, sorted(points))
             if fit is None or (best is not None and fit.segments == best.segments):
                 return fit or best
             best = fit if best is None or fit.key() < best.key() else best
@@ -254,11 +261,11 @@ class _Events:
             points |= {j for c in found for j in range(c - _FINE, c + _FINE + 1) if 0 < j < self.n}
         return best
 
-    def _dp(self, modifiers: list[int], first: int, points) -> _Fit | None:
+    def _dp(self, starts: list[int], modifiers: list[int], first: int, points) -> _Fit | None:
         """Dynamic programming over events: cost[i] = the cheapest schedule of events [0, i), a
         change allowed at each of `points`.  An interval a change splits is charged log2 of its
         frames, so splitting one saves nothing."""
-        start_cost, start_back = self._song_starts(tuple(modifiers), first)
+        start_cost, start_back = self._song_starts(tuple(starts), first)
         cost, back = start_cost.copy(), start_back.copy()
         mods = np.asarray(modifiers)
         for j in points:

@@ -151,11 +151,14 @@ python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz" --frames --
 # cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
 
-# The lift (docs/todo/vgz_conversion.md Phase 1) against the asm: differences per channel and aspect
-# (onset, length, note, pitch, voice, level, pan, modulation, fill, noise, dac), repeated ones grouped
+# The song as read (asm or ROM) against its rip, lifted (docs/todo/vgz_conversion.md Phase 1): differences per
+# channel and aspect, repeated ones grouped.  The lift takes the song's tempo; aspects default to what it reads
+# (onset length note; --aspects all).  Pairs by number or the rips.yaml beside the configs
 python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"
 python tools/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
 python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
+python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
+python tools/vgm_lift.py --all --configs configs/moonwalker                  # every Moonwalker pair
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -176,8 +179,8 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 # relative to the song's median note, so a further pass drifts the whole song.  Reference renders are reused.
 python tools/measure_volumes.py
 python tools/measure_volumes.py --only green_hill special_stage --no-write
-# Other games: pairs from a map (config stem: rip), configs with hex prefixes
-python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker --rips configs/moonwalker/rips.yaml
+# Other games: pairs from the rips.yaml beside the configs (config stem: rip; or --rips FILE)
+python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker
 ```
 
 
@@ -215,9 +218,10 @@ python -m pytest tests -q                              # unit tests (merge rules
 
 A change to one config runs only that song's cases (`--only`).
 
-**The VGM tools have their own suite, `tests/tool_regression.py`**: `vgm_analyze` on all 19 VGZs and
-`vgm_pitch_audit` on every baseline MOD, byte for byte, in 5 s; `--with-renders` adds `vgm_compare`.
-Run it after any change to `core/vgm/`, `core/mod/timing.py` or a VGM tool.
+**The VGM tools have their own suite, `tests/tool_regression.py`**: `vgm_analyze` on all 19 VGZs,
+`vgm_pitch_audit` on every baseline MOD and `vgm_lift` (the Moonwalker pairs too, with its ROM), byte
+for byte, in about 10 s; `--with-renders` adds `vgm_compare`.
+Run it after any change to `core/vgm/`, `core/audit/`, `core/mod/timing.py` or a VGM tool.
 
 ```bash
 python tests/tool_regression.py                          # PASS / FAIL + diff

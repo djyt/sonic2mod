@@ -25,12 +25,12 @@ continue_screen_merged:
   date: '2026-10-08'
   settings: 60be427da909
 credits:
-  commit: 9917fa3-dirty
+  commit: 270bf7d-dirty
   config: b78eed6650f9
   date: '2026-10-08'
   settings: 60be427da909
 drowning:
-  commit: c5455ba-dirty
+  commit: 270bf7d-dirty
   config: 3cbadaaf1a0b
   date: '2026-10-08'
   settings: 60be427da909

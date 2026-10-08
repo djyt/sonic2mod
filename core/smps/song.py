@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
 from .driver_tables import FM_FREQUENCIES, SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
+from .tempo import NO_TEMPO_HOLDS, TempoSegment, tempo_schedule
 
 if TYPE_CHECKING:
     from .percussion import FmDrum  # it imports SmpsVoice from here
@@ -231,6 +232,18 @@ class SmpsSong:
         """The tick the last event of any channel ends at (a note's duration included)."""
         return max((ev.tick_position + (ev.note.duration if ev.note else 0)
                     for ch in self.channels for ev in ch.events), default=0)
+
+    def tempo_changes(self) -> list[tuple[int, int]]:
+        """(tick, modifier) of every smpsSetTempoMod, in tick order."""
+        return sorted({(ev.tick_position, ev.effect.params[0]) for ch in self.channels for ev in ch.events
+                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
+
+    def tempo_schedule(self) -> tuple[TempoSegment, ...]:
+        """When the driver reads each tick (core/smps/tempo.py): the header's tempo at the driver's
+        phase, then each smpsSetTempoMod.  An SFX never holds."""
+        modifier = self.header.tempo_modifier
+        holds = modifier > 1 and not self.header.is_sfx
+        return tempo_schedule(modifier if holds else NO_TEMPO_HOLDS, self.tempo_changes(), self.header.tempo_phase)
 
     def loop_target_tick(self) -> int | None:
         """The tick the song loops back to: the latest smpsJump target over the channels;

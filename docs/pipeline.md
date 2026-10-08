@@ -129,8 +129,9 @@ the error and the better speed; `analyze.py`'s skeleton and minimal configs pick
 ### Frames versus ticks
 
 `TempoWait` holds every *m*-th V-int frame, so ticks are unevenly spaced: tick *k* of a tempo
-segment falls on frame `k + k // (m − 1)`.  Note fill and modulation count **frames**, not ticks
-(`smps_driver.md`).  Every frame count is put on the tick timeline with
+segment falls on frame `k + k // (m − 1)` (the song's schedule, `SmpsSong.tempo_schedule`: the driver's
+phase, a segment starting the tick after its `smpsSetTempoMod`; `Timeline.holds_before` places `EDx`
+by it).  Note fill and modulation count **frames**, not ticks (`smps_driver.md`).  Every frame count is put on the tick timeline with
 `Timeline.ticks_per_frame_at(tick)` = `(m − 1) / m` for the modifier in force at that tick (1 for SFX),
 never multiplied by the tempo divider.
 

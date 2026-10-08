@@ -852,12 +852,12 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 477c3119f678
     tests/settings.yaml: 268a59366905
 pitch_credits:
-  commit: aadc6cc-dirty
+  commit: 270bf7d-dirty
   date: '2026-10-08'
   inputs:
     configs/13_credits.yaml: fd4e69be5011
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 378fad773e47
+    tests/baselines/credits_baseline.mod: 36c137a35c8e
     tests/settings.yaml: a79a8ba763a3
 pitch_drowning:
   commit: 0d0e5d8-dirty

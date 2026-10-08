@@ -852,13 +852,13 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 477c3119f678
     tests/settings.yaml: 268a59366905
 pitch_credits:
-  commit: 0d0e5d8-dirty
-  date: '2026-10-05'
+  commit: aadc6cc-dirty
+  date: '2026-10-08'
   inputs:
-    configs/13_credits.yaml: 5e4722785991
+    configs/13_credits.yaml: fd4e69be5011
     reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 9af22a57ce7d
-    tests/settings.yaml: 268a59366905
+    tests/baselines/credits_baseline.mod: 378fad773e47
+    tests/settings.yaml: a79a8ba763a3
 pitch_drowning:
   commit: 0d0e5d8-dirty
   date: '2026-10-05'
@@ -916,21 +916,21 @@ pitch_game_over_lofi:
     tests/baselines/game_over_lofi_baseline.mod: c31450facbf5
     tests/settings.yaml: 268a59366905
 pitch_ghz_lofi:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: aadc6cc-dirty
+  date: '2026-10-08'
   inputs:
-    configs/02_ghz_lofi.yaml: b3ad38dfa89f
+    configs/02_green_hill_zone.yaml: 3a8821bf14a2
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_lofi_baseline.mod: e340846901b7
-    tests/settings.yaml: 268a59366905
+    tests/baselines/ghz_lofi_baseline.mod: 20f98108b1ed
+    tests/settings.yaml: a79a8ba763a3
 pitch_green_hill_zone:
-  commit: b0ed618-dirty
-  date: '2026-10-03'
+  commit: aadc6cc-dirty
+  date: '2026-10-08'
   inputs:
-    configs/02_green_hill_zone.yaml: a736956b5e11
+    configs/02_green_hill_zone.yaml: 3a8821bf14a2
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    tests/baselines/ghz_baseline.mod: c9d82a0ba964
-    tests/settings.yaml: 268a59366905
+    tests/baselines/ghz_baseline.mod: 128618a646c8
+    tests/settings.yaml: a79a8ba763a3
 pitch_invincibility:
   commit: c99d204-dirty
   date: '2026-10-07'

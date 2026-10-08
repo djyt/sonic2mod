@@ -135,18 +135,24 @@ def note_starts(log: VgmLog, state: ChipState | None = None, mod_cents: float = 
 
 def pitch_segments(log: VgmLog, state: ChipState | None = None) -> tuple[dict[str, list[Segment]], float]:
     """Per FM / PSG tone channel, (seconds, Hz | None) at every change of what it sounds; and the
-    log's length.  FM: a point at every key and frequency write.  PSG: only where the pitch or the
-    audibility changes, not at every volume write - an envelope stepping every frame (Labyrinth
-    Zone's fTone_09) would chop a 120 ms note into 17 ms slivers."""
+    log's length.  FM: a point at every key write, and at a frequency write that moves the pitch -
+    a driver writing it every frame (Type 0 FM) would chop every note into 17 ms slivers.  PSG: only
+    where the pitch or the audibility changes, not at every volume write - an envelope stepping every
+    frame (Labyrinth Zone's fTone_09) would do the same."""
     state = state or ChipState.for_log(log)
     out: dict[str, list[Segment]] = defaultdict(list)
     psg_last: list[float | None] = [None] * PSG_TONE_CHANNELS
+    fm_last: dict[int, float | None] = {}
 
     for change in state.replay(log, dac=False):
         t, ch = change.sample / VGM_SAMPLE_RATE, change.channel
         if change.kind in (ChangeKind.FM_KEY, ChangeKind.FM_FREQUENCY):
             hz = state.fm_hz(ch)
-            out[FM_NAMES[ch]].append((t, hz if state.fm_slots(ch) and hz > 0 else None))
+            sounding = hz if state.fm_slots(ch) and hz > 0 else None
+            if change.kind is ChangeKind.FM_FREQUENCY and ch in fm_last and sounding == fm_last[ch]:
+                continue
+            fm_last[ch] = sounding
+            out[FM_NAMES[ch]].append((t, sounding))
             continue
         if change.kind not in (ChangeKind.PSG_TONE, ChangeKind.PSG_VOLUME) or ch >= PSG_TONE_CHANNELS:
             continue

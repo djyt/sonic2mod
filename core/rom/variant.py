@@ -89,6 +89,7 @@ class HeaderLayout:
     sfx_channels: frozenset[int]             # the channel ids an SFX track may name
     never_holds: int | None = None           # the tempo byte that never stalls (Type 0 FM's 0)
     tempo_phase: int = 0                     # frames the first hold comes late (Type 0 FM: 1)
+    key_run_out: int | None = None           # frames a note keys without an attacking read (Type 0 FM: 256)
 
 
 @dataclass(frozen=True, eq=False)     # one object per driver: compared by identity

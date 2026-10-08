@@ -530,7 +530,7 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   Baselines byte-identical (regenerated for the new setting's hash: all 41 MODs equal the old).
   Found: a note keyed 256 frames with no other runs out (the fill counter, `$00E8`) - for music
   tracks too; not modelled outside the drums (Game Over's long notes: check in 3.6).
-- [ ] **3.6 Configs + yardstick.**  Done so far (2026-10-08):
+- [x] **3.6 Configs + yardstick** (2026-10-08):
   - `configs/golden_axe/`: 13 minimal configs, `rips.yaml` (by FM1's opening notes).
   - The yardstick: the lift matches notes to the song's FM table; ties that change nothing compared
     merge on both sides (Type 0 FM writes the frequency every frame: a rip shows no read); the verdict
@@ -552,9 +552,15 @@ Each item lands with every baseline byte-identical unless it says otherwise.
   - `measure_volumes.py --configs configs/golden_axe`: 102 volumes in 11 songs; residuals at the 64
     ceiling, on 1-2 note drums, one instrument its channels play 16 dB apart.  (Game Over, 2.5 s, broke
     the envelope alignment's 3 s window: fixed.)
-  - **The 256-frame run-out is real:** the rips key off Death Adder's, The Battle's and Conclusion's
-    long FM1 notes after 258-260 frames; the songs hold them 384-592.  The MOD holds them too long.
-  Left: model the run-out (a driver's longest key-on: the IR states it, the writer keys off there).
+  - **The 256-frame run-out:** the rips key off Death Adder's, The Battle's and Conclusion's long FM1
+    notes 258-260 frames after the attack (256 counted, a tie's read not).  `core/smps/run_out.py`,
+    run after the walk (`SmpsSongHeader.key_run_out`, `HeaderLayout`: Type 0 FM 256): each FM note
+    cut on its key-off frame, the rest of what it held a rest (`SmpsNote.run_out`, which the row grid
+    leaves out: The Battle's 173-tick cut kept 3 ticks a row, not 1 - patterns 17 K, not 49 K).
+    The Battle and Conclusion now match the rips on every FM channel; the MOD ends those notes with
+    the release slide (looped samples held them up to 5 s longer).  Volumes re-verified: unchanged.
+  - Death Adder FM1 at 7464: a tie to another pitch, no key write - the lift sees one note (its
+    hits are key writes; open, vgz_conversion.md).
 - [ ] **3.7 Tests.**  Unit tests on hand-built bytes (LE pointers, bank bounds, flags, voice
   layout, drum programs); ROM tests skip without it.  No regression cases yet (the user's call).
 - [ ] **3.8 Docs.**  `architecture.md` § 3; every variant's driver facts in one home

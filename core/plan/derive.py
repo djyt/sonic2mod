@@ -228,8 +228,9 @@ class _Deriver:
         nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
-        ticks = [e.tick_position for ch in self._song.channels for e in ch.events if e.note is not None]
-        ticks += [e.note.duration for ch in self._song.channels for e in ch.events if e.note is not None]
+        # The song's own rhythm: a driver's run-out cut (core/smps/run_out.py) falls between rows (ECx)
+        notes = [e for ch in self._song.channels for e in ch.events if e.note is not None and not e.note.run_out]
+        ticks = [e.tick_position for e in notes] + [e.note.duration for e in notes]
         grid = math.gcd(*ticks) or 1
         end = self._song.end_tick()
         limit = int(self._stated.get("max_patterns", 127))

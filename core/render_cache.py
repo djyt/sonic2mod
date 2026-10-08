@@ -12,7 +12,7 @@ asks for the same render reads it back instead of running the emulator again:
 
 Only the chip render is cached; what follows it (shelf, DC block, loops, quantising) is cheap and
 runs every time, so the settings that steer it are not part of the key.  Writes are atomic
-(temp file + os.replace): parallel conversions share one directory.  A file that cannot be read
+(core/files.py): parallel conversions share one directory.  A file that cannot be read
 is a miss; one that cannot be written is skipped.  Renders made by other code can never be read
 again: the first cache opened with a new salt removes them.
 """
@@ -20,14 +20,16 @@ again: the first cache opened with a new salt removes them.
 from __future__ import annotations
 
 import array
+import contextlib
 import hashlib
-import os
 import shutil
 import struct
 import threading
 import zlib
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
+
+from .files import write_atomic
 
 # A file's header: playback rate, array typecode
 _HEADER = struct.Struct("<Ic")
@@ -133,17 +135,13 @@ class RenderCache:
         self._store(key, ".bin", lambda tmp: tmp.write_bytes(zlib.compress(packed, 1)))
 
     def _store(self, key: str, suffix: str, write: Callable[[Path], object]) -> None:
-        """Write a file under `key` atomically (a temp file, then os.replace); a failure stores nothing."""
+        """Write a file under `key` atomically (core/files.py); a failure stores nothing."""
         if self._dir is None:
             return
         path = self._path(key, suffix)
-        tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
-        try:
+        with contextlib.suppress(OSError):
             path.parent.mkdir(parents=True, exist_ok=True)
-            write(tmp)
-            os.replace(tmp, path)
-        except OSError:
-            tmp.unlink(missing_ok=True)
+            write_atomic(path, write)
 
     def through(self, inputs: tuple, render: Callable[[], tuple[Sequence, int]]) -> tuple[Sequence, int]:
         """render()'s (samples, rate), or what a render with the same inputs stored (an array)."""

@@ -1,4 +1,5 @@
 """The render cache (core/render_cache.py): what goes in comes back, and nothing stale does.
+Shared files (core/files.py): written whole or not at all.
 
     python -m pytest tests -q
 """
@@ -14,6 +15,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.files import write_atomic, write_shared
 from core.render_cache import RenderCache, code_salt
 
 
@@ -142,6 +144,38 @@ class Files(unittest.TestCase):
         self.assertEqual(cache.get_bytes("k", ".frames"), b"frames")
         next((self.dir / "cache").rglob("k.frames")).write_bytes(b"not zlib")
         self.assertIsNone(cache.get_bytes("k", ".frames"))
+
+
+class SharedFiles(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_a_shared_file_is_replaced_only_when_its_bytes_change(self):
+        path = self.dir / "dac81.raw"
+        write_shared(path, b"")
+        before = path.stat().st_mtime_ns
+        write_shared(path, b"")
+        self.assertEqual(path.stat().st_mtime_ns, before)        # same bytes: not written
+        write_shared(path, b"")
+        self.assertEqual(path.read_bytes(), b"")
+        self.assertEqual([p.name for p in self.dir.iterdir()], ["dac81.raw"])
+
+    def test_a_failed_write_leaves_the_old_file_and_no_temp(self):
+        path = self.dir / "dac81.raw"
+        path.write_bytes(b"old")
+
+        def fail(tmp: Path) -> None:
+            tmp.write_bytes(b"pa")
+            raise OSError("disk full")
+
+        with self.assertRaises(OSError):
+            write_atomic(path, fail)
+        self.assertEqual(path.read_bytes(), b"old")
+        self.assertEqual([p.name for p in self.dir.iterdir()], ["dac81.raw"])
 
 
 class ReferenceKey(unittest.TestCase):

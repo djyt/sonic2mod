@@ -81,11 +81,11 @@ adds composite instruments to the same catalogue.
         source
         vgm   rom
         smps  mod
-        chips  audio  render_cache               diagnostics.py: importable from anywhere
+        chips  audio  render_cache  files        diagnostics.py: importable from anywhere
 ```
 
 - Inside `core/` a package imports only packages below it.  `smps` imports `chips` only; `audio`,
-  `chips`, `render_cache` and `diagnostics` import nothing in `core`.
+  `chips`, `files` and `diagnostics` import nothing in `core`; `render_cache` only `files`.
 - A package's `__init__.py` exports what other packages import (`from ..smps import SmpsSong`);
   its own modules import each other directly.  A module can move inside its package unseen.
 - `core/` never imports `ym2612/`, `sn76489/` or `sfx/`.  The converter receives the two sample
@@ -309,6 +309,7 @@ limits.
 | `core/audio/loops.py` | Sustain loops: `find_sustain_loop`, `apply_loop`, `release_rate_db_s`, `heard_padding` |
 | `core/audio/pitch.py` | Hz ↔ MIDI and semitones from C0 (`semitone_to_hz`), note names, cents |
 | `core/render_cache.py` | `RenderCache`: chip renders on disk by a hash of their inputs and of the code |
+| `core/files.py` | `write_atomic`, `write_shared`: files parallel conversions share (the cache, a minimal config's DAC samples), never read half-written |
 | `core/cbuild.py` | `CLibrary`: compile a C emulator with gcc / MSVC, rebuilt when a source is newer |
 | `ym2612/` | `build.py` (Nuked-OPN2 → DLL), `wrapper.py` (`OPN2`), `voice.py` (`program_voice`), `renderer.py` (`render_note`, `render_layers`), `sample_generator.py` (`generate_fm_samples`), `validate.py` |
 | `sn76489/` | `build.py`, `wrapper.py` (`SN76489`), `renderer.py`, `sample_generator.py` (`generate_psg_samples`), `validate.py` |

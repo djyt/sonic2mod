@@ -183,7 +183,7 @@ python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Tit
 python tools/measure_volumes.py
 python tools/measure_volumes.py --only green_hill special_stage --no-write
 # Other games: pairs from the rips.yaml beside the configs (config stem: rip; or --rips FILE)
-python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker
+python tools/measure_volumes.py --configs configs/moonwalker      # the rips: its mirror, reference/vgz/moonwalker
 ```
 
 

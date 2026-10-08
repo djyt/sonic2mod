@@ -329,7 +329,7 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 | `core/audit/pitch.py` | Symbolic pitch audit: each MOD note's pitch against the chip's frequency registers (`tools/vgm_pitch_audit.py`, and the verdict inside `vgm_compare`) |
 | `core/audit/render.py`, `signal.py`, `levels.py`, `onsets.py` | `vgm_compare`'s per-channel renders (VGMPlay, ffmpeg + libopenmpt), measures, per-instrument levels, onset matching |
 | `core/audit/rip_diff.py` | `compare_with_rip(song, frames, aspects, ChannelChoice, lift)` → `RipDiff`: a song (`SongSource`: asm, or ROM + sound, as shipped) against its rip lifted at the song's tempo (`LiftTempo`) - `tools/vgm_lift.py` |
-| `core/audit/rips.py` | `RipShelf`: a config's rip and a rip's config, by number or the `rips.yaml` beside the configs (`vgm_lift`, `measure_volumes`) |
+| `core/audit/rips.py` | `RipShelf`: a config's rip and a rip's config, by number or the `rips.yaml` beside the configs; one folder given, the other mirrors it (`around`); `named`, the tools' `--only` (`vgm_lift`, `measure_volumes`, `tool_regression`) |
 | `tools/` | `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `measure_volumes`, `rom_import`, `mod_compare`, `mod_lint`, `mod_audit`, `mod_render_diff`, `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config`, `release` |
 | `tests/regression.py` | Every config (and its merged build, variants, ROM cases) converted and compared with a baseline MOD, cells and samples |
 | `tests/tool_regression.py` | The VGM tools' output, byte for byte |

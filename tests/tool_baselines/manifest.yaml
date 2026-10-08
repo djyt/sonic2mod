@@ -708,7 +708,7 @@ compare_title_screen_merged:
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
 lift_02:
-  commit: 65e067c-dirty
+  commit: 8c882c2-dirty
   date: '2026-10-08'
   inputs:
     reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
@@ -736,7 +736,7 @@ lift_all:
     reference/vgz/18 - Continue.vgz: bc4a60482c1e
     reference/vgz/19 - Game Over.vgz: a6a8d7a60226
 lift_moonwalker_88_round_clear:
-  commit: 6642fd5-dirty
+  commit: 8c882c2-dirty
   date: '2026-10-08'
   inputs:
     configs/moonwalker/rips.yaml: cd533949370b

@@ -30,7 +30,7 @@ from .render import (
     workers,
 )
 from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip
-from .rips import RIPS_MAP, RipShelf
+from .rips import RIPS_MAP, RipShelf, named
 from .signal import (
     VIB_MIN_NOTE,
     band_profile,
@@ -77,6 +77,7 @@ __all__ = [
     "load_wav",
     "mod_note_events",
     "mod_pitch_timeline",
+    "named",
     "note_start_offset",
     "onset_match",
     "onsets",

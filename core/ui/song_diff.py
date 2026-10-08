@@ -8,9 +8,14 @@ from collections.abc import Callable, Mapping
 
 from ..audio import pitch_name
 from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
-from ..smps import Aspect, ChannelDiff, ChannelType, NoteDiff, SongDiff
+from ..smps import NO_TEMPO_HOLDS, Aspect, ChannelDiff, ChannelType, NoteDiff, SongDiff
 
 _KIND_ORDER = (ChannelType.FM, ChannelType.DAC, ChannelType.PSG)
+
+
+def modifier_text(modifier: int) -> str:
+    """A tempo modifier as the tools print it: 'modifier $03', 'no holds' (NO_TEMPO_HOLDS)."""
+    return "no holds" if modifier == NO_TEMPO_HOLDS else f"modifier ${modifier:02X}"
 
 
 def diff_counts(diff: SongDiff | ChannelDiff) -> str:

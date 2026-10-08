@@ -45,7 +45,6 @@ from core.rom import (
     read_rom_code,
 )
 from core.smps import (
-    NO_TEMPO_HOLDS,
     SmpsDriver,
     SmpsParser,
     SmpsSong,
@@ -56,7 +55,7 @@ from core.smps import (
     played_song,
     write_asm,
 )
-from core.ui import song_diff_lines
+from core.ui import modifier_text, song_diff_lines
 
 _DEFAULT_DIFFS = 12
 
@@ -84,8 +83,7 @@ def _list(rom: RomImage, index: SoundIndex, ids: list[int], fixed: bool, variant
         h = song.header
         tracks = ", ".join(f"{n} {t}" for t in ("DAC", "FM", "PSG")
                            if (n := sum(c.channel_type == t for c in h.channels)))
-        modifier = "no holds" if h.tempo_modifier == NO_TEMPO_HOLDS else f"modifier ${h.tempo_modifier:02X}"
-        tempo = f"divider ${h.tempo_divider:02X}" + ("" if h.is_sfx else f" {modifier}")
+        tempo = f"divider ${h.tempo_divider:02X}" + ("" if h.is_sfx else f" {modifier_text(h.tempo_modifier)}")
         dropped = ", ".join(f"{what} x{n}" for what, n in song.dropped.items())
         print(f"  ${sound_id:02X}  ${index.address(sound_id):05X}  {'SFX  ' if h.is_sfx else 'music'}  "
               f"{tracks:<20} {tempo:<26} {len(song.voices)} voices" + (f"   dropped: {dropped}" if dropped else ""))
@@ -139,7 +137,7 @@ def _write(rom: RomImage, index: SoundIndex, ids: list[int], out_dir: Path, fixe
         path = out_dir / f"{prefix}.asm"
         try:
             text = write_asm(read_rom_code(rom, sound_id, index, fixed, variant), prefix, comment)
-        except (RomError, ValueError) as e:
+        except ValueError as e:                     # RomError among them
             print(f"  ${sound_id:02X}  not written: {e}")
             continue
         path.write_text(text, encoding="utf-8")

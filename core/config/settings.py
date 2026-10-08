@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from ..audio import DEFAULT_DITHER, DEFAULT_TAPS
 from ..chips import DEFAULT_FM_PAN_LAW_DB, FM_CHIP_MODES, MD_FM_CLOCK, MD_PSG_CLOCK
-from ..mod import PAL_AMIGA_CLOCK, sample_limit_bytes
+from ..mod import PAL_AMIGA_CLOCK, ModNote, sample_limit_bytes
 from .loader import dither_mode, mode_word, read_yaml_file
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ def _psg_volume_mode(value) -> str:
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
-               "names")
+               "names", "root_harmonics", "top_note")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -183,6 +183,30 @@ def _loop_drift_db(data: dict, default: float, filepath: str) -> float:
     return v
 
 
+def _root_harmonics(data: dict, default: float, filepath: str) -> float:
+    """`samples.root_harmonics` of settings.yaml: harmonics a derived window's lowest note keeps
+    below its sample's Nyquist; 0 = every window at the low-rate line."""
+    try:
+        v = float(data.get("root_harmonics", default))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{filepath}: root_harmonics must be a number") from e
+    if v < 0:
+        raise ValueError(f"{filepath}: root_harmonics must not be negative (got {v})")
+    return v
+
+
+def _top_note(data: dict, default: int, filepath: str) -> int:
+    """`samples.top_note` of settings.yaml: the highest MOD note a derived window reaches, as its
+    index from C1 (A3 = 33)."""
+    v = data.get("top_note")
+    if v is None:
+        return default
+    try:
+        return ModNote[str(v)].value
+    except KeyError:
+        raise ValueError(f"{filepath}: top_note must be a MOD note C1..B3 (A3, As3; got {v!r})") from None
+
+
 # The project root: configs/ and a relative samples.render_cache are read from it
 _ROOT = Path(__file__).resolve().parents[2]
 
@@ -240,6 +264,11 @@ class SampleSettings:
     dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.audio.pcm.dc_block)
     render_cache: str | None = None  # settings.yaml samples.render_cache: where chip renders are kept
                                      # (core/render_cache.py); None = off
+    root_harmonics: float = 8.0      # settings.yaml samples.root_harmonics: a minimal config's windows
+                                     # are placed so their lowest note keeps this many harmonics
+                                     # (core.plan.derive); 0 = every window at the low-rate line
+    top_note: int = ModNote.A3.value  # settings.yaml samples.top_note: the highest MOD note a derived
+                                     # window reaches (A#3 / B3 are past Paula's period-124 DMA limit)
     loop_timbre: bool = True         # a sustain loop waits for the timbre to hold too
                                      # (core.audio.loops.PROFILE_PER_DB); the converter clears it
                                      # for a merged build unless the song sets merge_loop_timbre
@@ -275,6 +304,8 @@ class SampleSettings:
             dc_block=_sample_flag(smp, "dc_block", cls.dc_block, filepath),
             dither=dither_mode(smp.get("dither", cls.dither), f"{filepath}: samples"),
             render_cache=_render_cache(smp),
+            root_harmonics=_root_harmonics(smp, cls.root_harmonics, filepath),
+            top_note=_top_note(smp, cls.top_note, filepath),
         )
 
 

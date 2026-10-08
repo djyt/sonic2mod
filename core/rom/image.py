@@ -4,6 +4,7 @@ from address 0, so an address is an offset into the file)."""
 from __future__ import annotations
 
 import hashlib
+import unicodedata
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -88,4 +89,10 @@ class RomImage:
 
 
 def _text(raw: bytes) -> str:
-    return " ".join(raw.decode("latin-1").split())
+    """A header field: Shift-JIS where it is (Golden Axe's full-width "ＧＯＬＤＥＮ ＡＸＥ" -> "GOLDEN AXE"),
+    else byte for byte; padded with spaces or NULs."""
+    try:
+        text = unicodedata.normalize("NFKC", raw.decode("shift_jis"))
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+    return " ".join(text.replace("\0", " ").split())

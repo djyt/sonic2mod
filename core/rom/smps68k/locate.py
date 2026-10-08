@@ -23,6 +23,7 @@ from ..header import is_music_header, is_sfx_header
 from ..image import RomError, RomImage
 from ..memory import SoundMemory
 from ..variant import SoundIndex
+from .common import HEADER_68K
 from .memory import Relative68kMemory
 
 _FIRST_MUSIC = 0x81
@@ -57,9 +58,9 @@ def locate_68k(rom: RomImage) -> SoundIndex:
     def end_of(table: int) -> int:
         return next((a for a in ends if a > table), len(rom.data))
 
-    music = _index(rom, memory, go["music"], end_of(go["music"]), _FIRST_MUSIC, is_music_header)
-    sfx = _index(rom, memory, go["sfx"], end_of(go["sfx"]), _FIRST_SFX, is_sfx_header)
-    sfx |= _index(rom, memory, go["special_sfx"], end_of(go["special_sfx"]), _FIRST_SPECIAL_SFX, is_sfx_header)
+    music = _index(rom, memory, go["music"], end_of(go["music"]), _FIRST_MUSIC, _is_music_header)
+    sfx = _index(rom, memory, go["sfx"], end_of(go["sfx"]), _FIRST_SFX, _is_sfx_header)
+    sfx |= _index(rom, memory, go["special_sfx"], end_of(go["special_sfx"]), _FIRST_SPECIAL_SFX, _is_sfx_header)
     return SoundIndex(music, sfx, _envelopes(rom, go["psg_index"]))
 
 
@@ -84,9 +85,9 @@ def _is_go_block(rom: RomImage, memory: SoundMemory, at: int) -> bool:
         return False
 
     music_table, sfx_table, special_table, envelope_table = tables
-    return (_entries_are(rom, memory, music_table, is_music_header)
-            and _entries_are(rom, memory, sfx_table, is_sfx_header)
-            and _entries_are(rom, memory, special_table, is_sfx_header, count=1)
+    return (_entries_are(rom, memory, music_table, _is_music_header)
+            and _entries_are(rom, memory, sfx_table, _is_sfx_header)
+            and _entries_are(rom, memory, special_table, _is_sfx_header, count=1)
             and _entries_are(rom, memory, envelope_table, _is_envelope))
 
 
@@ -96,6 +97,14 @@ def _entries_are(rom: RomImage, memory: SoundMemory, table: int, plausible, coun
         if not rom.contains(address) or not plausible(memory, address):
             return False
     return True
+
+
+def _is_music_header(memory: SoundMemory, address: int) -> bool:
+    return is_music_header(memory, address, HEADER_68K)
+
+
+def _is_sfx_header(memory: SoundMemory, address: int) -> bool:
+    return is_sfx_header(memory, address, HEADER_68K)
 
 
 def _is_envelope(memory: SoundMemory, address: int) -> bool:

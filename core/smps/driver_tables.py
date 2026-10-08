@@ -23,6 +23,7 @@ class SmpsDriver(StrEnum):
 
     SONIC1 = "sonic1"
     TYPE1A = "smps68k_type1a"      # SMPS 68k Type 1a: Michael Jackson's Moonwalker
+    TYPE0FM = "smpsz80_type0fm"    # SMPS Z80 Type 0 FM (an early Type 1 FM): Golden Axe
 
 
 DEFAULT_DRIVER = SmpsDriver.SONIC1

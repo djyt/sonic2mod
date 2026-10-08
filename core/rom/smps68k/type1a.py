@@ -6,7 +6,7 @@ from __future__ import annotations
 from ...smps import CoordFlag, SmpsDriver
 from ..flags import RETURN, EnvelopeCommand, drop, effect, refuse
 from ..variant import SmpsVariant
-from .common import FLAGS_68K, VOICE_68K
+from .common import FLAGS_68K, HEADER_68K, VOICE_68K
 from .dac import type1a_dac
 from .locate import locate_68k
 from .memory import Relative68kMemory
@@ -39,6 +39,7 @@ TYPE1A = SmpsVariant(
     },
     envelope_commands={0x83: EnvelopeCommand.HOLD, 0x80: EnvelopeCommand.RESTART,
                        0x85: EnvelopeCommand.JUMP},   # $61152
+    header=HEADER_68K,
     voice_layout=VOICE_68K,
     # Every note byte goes to the DAC (the 68k remaps $88-$97 to pitched samples)
     dac_names={b: f"dac{b:02X}" for b in range(0x81, _LAST_NOTE + 1)},

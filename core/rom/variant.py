@@ -3,6 +3,7 @@ package (smps68k/ ...) builds one per driver; variants.py lists them.
 
     readers   header.py tracks.py voices.py envelopes.py    ask the variant, never its name
     families  smps68k/                                       Sonic 1 (Type 1b), Moonwalker (Type 1a)
+              smpsz80/                                       Golden Axe (Type 0 FM)
 """
 
 from __future__ import annotations
@@ -56,14 +57,37 @@ class DacSample:
 
 @dataclass(frozen=True)
 class VoiceLayout:
-    """How a driver stores an FM voice: the feedback / algorithm byte, then four bytes (one per
-    operator, in register order) for each operator register in `groups` order."""
+    """How a driver stores an FM voice: the feedback / algorithm byte, the B4 byte if `pan`
+    (L R AMS FMS), then four bytes (one per operator, in register order) for each operator
+    register in `groups` order."""
 
     groups: tuple[OperatorReg, ...]
+    pan: bool = False
 
     @property
     def size(self) -> int:
-        return 1 + len(self.groups) * OPERATORS
+        return self.groups_at + len(self.groups) * OPERATORS
+
+    @property
+    def groups_at(self) -> int:
+        return 1 + self.pan
+
+
+@dataclass(frozen=True)
+class TrackSlot:
+    """A music header's DAC / FM entry: what the driver's track table makes of it."""
+
+    channel_type: str              # "DAC" (the percussion track) or "FM"
+    chip_channel: str = ""         # the chip channel it plays on; "" = header order (Sonic 1's)
+
+
+@dataclass(frozen=True)
+class HeaderLayout:
+    """How a driver reads its song and SFX headers beyond the fields every SMPS header shares."""
+
+    fm_slots: tuple[TrackSlot, ...]          # the DAC / FM entries in header order, as many as it has tracks
+    sfx_channels: frozenset[int]             # the channel ids an SFX track may name
+    never_holds: int | None = None           # the tempo byte that never stalls (Type 0 FM's 0)
 
 
 @dataclass(frozen=True, eq=False)     # one object per driver: compared by identity
@@ -73,6 +97,7 @@ class SmpsVariant:
     locate: Callable[[RomImage], SoundIndex]
     flags: Mapping[int, FlagSpec]
     envelope_commands: Mapping[int, EnvelopeCommand]
+    header: HeaderLayout
     voice_layout: VoiceLayout
     dac_names: Mapping[int, str]                                     # the DAC track's bytes that play a sample
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]]    # every sample a song can play

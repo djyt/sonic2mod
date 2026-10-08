@@ -42,7 +42,14 @@ _LABEL_WIDTH = 24       # the address comment's column
 
 
 def write_asm(song: SongCode, name: str, comment: str = "") -> str:
-    """The song as an .asm file; `name` prefixes its labels (Mus81), `comment` heads the file."""
+    """The song as an .asm file; `name` prefixes its labels (Mus81), `comment` heads the file.
+    ValueError for what SMPS2ASM has no spelling of: a track's chip channel, a voice's pan byte
+    (Type 0 FM's drum track and voices)."""
+    unspellable = [what for what, found in (
+        ("a track that states its chip channel", any(c.chip_channel for c in song.header.channels)),
+        ("a voice that stores its pan", any(v.pan is not None for v in song.voices))) if found]
+    if unspellable:
+        raise ValueError(f"no SMPS2ASM spelling of {' or '.join(unspellable)} ({song.driver})")
     return _Writer(song, name).text(comment)
 
 

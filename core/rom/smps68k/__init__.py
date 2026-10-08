@@ -1,0 +1,15 @@
+"""The SMPS 68k family: the driver runs on the 68k, its data big-endian and in the 68k's address
+space.
+
+    common.py     the flags and voice layout every variant here shares
+    sonic1.py     Sonic 1 (Type 1b, modified) and rev01's data fixes
+    type1a.py     Type 1a (Michael Jackson's Moonwalker)
+    memory.py     pointers: big-endian, relative (SonicDriverVer 1)
+    locate.py     the Go_ block, found by its tables' shape -> SoundIndex
+    dac.py        the DPCM samples in each driver's Z80 code (kosinski.py: Sonic 1's is compressed)
+"""
+
+from .sonic1 import SONIC1
+from .type1a import TYPE1A
+
+__all__ = ["SONIC1", "TYPE1A"]

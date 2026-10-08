@@ -260,7 +260,7 @@ Today `core/smps/driver_tables.py` *is* Sonic 1: the FM frequency table, `PSGFre
 range, DAC scheme) chosen by the config's `driver:`, Sonic 1 the default, and thread it through
 the lifter **and** the converter (both read the same tables — the converter must render and place
 a Sonic 2 note with Sonic 2's tables).  Baselines must stay byte-identical.
-Partly done by `binary_import.md` 2.1-2.5: `core/rom/drivers.py` `RomDriver` (flags, envelope commands, DAC
+Partly done by `binary_import.md` 2.1-2.5: `core/rom/` `SmpsVariant` (flags, envelope commands, DAC
 names) and `SmpsSong.psg_envelopes`; frequency tables, tempo and modulation are still Sonic 1's, and the lift
 reads `sonic1` only.
 

@@ -1,41 +1,37 @@
 """Mega Drive ROMs: SMPS songs read from their bytecode (the score itself), beside vgm/.
 
-    image.py    RomImage: the header, big-endian reads by address
-    drivers.py  each SMPS 68k driver's flag table (Sonic 1 = Type 1b, Moonwalker = Type 1a)
-    envelopes.py  read_envelopes: PSG_Index -> PsgEnvelope by name, each driver's commands
-    detect.py   detect_driver: pinned by SHA-1, else the one driver every song decodes with
-    locate.py   locate_sounds: the Go_ block found by its tables' shape -> song and SFX indexes
-    header.py   song / SFX headers -> SmpsSongHeader, each track's address
-    tracks.py   track bytes -> SmpsCode (the ops the asm parser makes from macros)
-    voices.py   the voice bank -> SmpsVoice
-    song.py     read_rom_song: a sound ID -> SmpsSong (read_rom_code: before the walk)
-    fixes.py    data_fixes: the disassembly's FixMusicAndSFXDataBugs as byte edits, for the ROM they are known in
-    dac.py      dac_samples: the DPCM samples in the Kosinski-compressed Z80 driver (kosinski.py)
+    song.py  detect.py       what a ROM holds: its index, each sound -> SongCode / SmpsSong, its
+                             DAC samples; the variant pinned by SHA-1, else the one that reads it
+    variants.py              every variant, the ROMs each is known in, their data fixes
+    smps68k/                 the 68k family: Sonic 1 (Type 1b), Moonwalker (Type 1a)
+    header.py  tracks.py     generic readers: headers, track bytes -> SmpsCode (the ops the asm
+    voices.py  envelopes.py  parser makes from macros), voices, PSG envelopes; driven by the variant
+    variant.py  flags.py     the vocabulary: SmpsVariant, VoiceLayout, SoundIndex, DacSample;
+    memory.py  fixes.py      flag specs; SoundMemory (how a driver reads pointers); RomFix
+    image.py                 RomImage: the header, big-endian reads by address
+
+    image / memory / flags / fixes / variant  <-  readers  <-  families  <-  variants  <-  detect / song
 """
 
-from .dac import DacSample, dac_samples
-from .detect import detect_driver
-from .drivers import DRIVERS, RomDriver
-from .fixes import RomFix, data_fixes
+from .detect import detect_variant
+from .fixes import RomFix
 from .header import track_label
 from .image import RomError, RomImage, is_rom_path
-from .locate import FIRST_MUSIC, FIRST_SFX, FIRST_SPECIAL_SFX, SoundIndex, locate_sounds
-from .song import read_rom_code, read_rom_song
+from .song import dac_samples, locate_sounds, read_rom_code, read_rom_song
+from .variant import DacSample, SmpsVariant, SoundIndex
+from .variants import VARIANTS, data_fixes
 
 __all__ = [
-    "DRIVERS",
-    "FIRST_MUSIC",
-    "FIRST_SFX",
-    "FIRST_SPECIAL_SFX",
+    "VARIANTS",
     "DacSample",
-    "RomDriver",
     "RomError",
     "RomFix",
     "RomImage",
+    "SmpsVariant",
     "SoundIndex",
     "dac_samples",
     "data_fixes",
-    "detect_driver",
+    "detect_variant",
     "is_rom_path",
     "locate_sounds",
     "read_rom_code",

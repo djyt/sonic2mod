@@ -1,11 +1,11 @@
-"""Track bytes -> SmpsCode, as the ROM's driver reads them (its flag table: drivers.py).
+"""Track bytes -> SmpsCode, as the ROM's driver reads them (its flag table: SmpsVariant.flags).
 
 The code is decoded by following it from each track's start - fall-through, jump, loop and call
 targets - and laid out in address order, a label at every start and target: the order the asm
 writes it in, so the walk (core/smps/code.py) reads both the same way.
 
     $00-$7F  duration        $80 rest   $81-$DF note / DAC sample
-    $E0-$FF  flag + operands; a pointer operand is relative: target = its address + 1 + signed word
+    $E0-$FF  flag + operands; a pointer operand's target is the driver's (SoundMemory.code_pointer)
 """
 
 from __future__ import annotations
@@ -14,10 +14,12 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from ..smps import Op, OpKind, SmpsCode, effect_from_bytes
-from .drivers import SONIC1, FlagKind, FlagSpec, RomDriver
 from .fixes import RomFix
+from .flags import FlagKind, FlagSpec
 from .header import track_label
 from .image import RomError, RomImage
+from .memory import SoundMemory
+from .variant import SmpsVariant
 
 _FIRST_FLAG = 0xE0
 
@@ -45,8 +47,8 @@ class DecodedTracks:
     dropped: Counter[str] = field(default_factory=Counter)   # flags read and left out, by name
 
 
-def decode_tracks(rom: RomImage, starts: dict[str, int], splices: dict[int, RomFix] | None = None,
-                  driver: RomDriver = SONIC1) -> DecodedTracks:
+def decode_tracks(memory: SoundMemory, starts: dict[str, int], variant: SmpsVariant,
+                  splices: dict[int, RomFix] | None = None) -> DecodedTracks:
     """The code reached from `starts` (label -> address).  `splices`: data fixes whose bytes read
     as their (other-length) replacement."""
     splices = splices or {}
@@ -58,7 +60,7 @@ def decode_tracks(rom: RomImage, starts: dict[str, int], splices: dict[int, RomF
         address = todo.pop()
         if address in decoded:
             continue
-        one = _splice(splices[address], driver) if address in splices else _decode(rom, address, driver)
+        one = _splice(splices[address], variant) if address in splices else _decode(memory, address, variant)
         decoded[address] = one
         if one.falls_through:
             todo.append(address + one.length)
@@ -71,13 +73,13 @@ def decode_tracks(rom: RomImage, starts: dict[str, int], splices: dict[int, RomF
     return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in labels}, dropped)
 
 
-def _splice(fix: RomFix, driver: RomDriver) -> _Decoded:
+def _splice(fix: RomFix, variant: SmpsVariant) -> _Decoded:
     """A fix's original bytes, read as its replacement: plain instructions, no pointers."""
-    patch = RomImage(fix.replacement)
+    patch = variant.memory(RomImage(fix.replacement))
     ops: list[Op] = []
     at = 0
     while at < len(fix.replacement):
-        one = _decode(patch, at, driver)
+        one = _decode(patch, at, variant)
         if one.target is not None or not one.falls_through:
             raise RomError(f"data fix at ${fix.address:X}: a replacement may not jump, call, loop or stop")
         ops += one.ops
@@ -85,30 +87,30 @@ def _splice(fix: RomFix, driver: RomDriver) -> _Decoded:
     return _Decoded(tuple(ops), len(fix.original), True)
 
 
-def _decode(rom: RomImage, address: int, driver: RomDriver) -> _Decoded:
+def _decode(memory: SoundMemory, address: int, variant: SmpsVariant) -> _Decoded:
     """The instruction at `address`."""
-    byte = rom.byte(address)
+    byte = memory.byte(address)
     if byte < _FIRST_FLAG:
         return _Decoded((Op(OpKind.BYTE, value=byte),), 1, True)
 
-    spec = driver.flags.get(byte)
+    spec = variant.flags.get(byte)
     if spec is None:
-        raise RomError(f"${address:X}: ${byte:02X} is no {driver.name} coordination flag")
+        raise RomError(f"${address:X}: ${byte:02X} is no {variant.name} coordination flag")
     if spec.kind is FlagKind.REFUSE:
         raise RomError(f"${address:X}: ${byte:02X} {spec.what}: not converted")
-    operands = list(rom.bytes_at(address + 1, _operand_count(rom, address, spec)))
+    operands = list(memory.bytes_at(address + 1, _operand_count(memory, address, spec)))
     length = 1 + len(operands)
 
     if spec.kind is FlagKind.NO_ATTACK:
         return _Decoded((Op(OpKind.BYTE, value=byte),), length, True)
 
     if spec.kind in (FlagKind.JUMP, FlagKind.CALL):
-        target = _pointer(rom, address + 1)
+        target = memory.code_pointer(address + 1)
         kind = OpKind.JUMP if spec.kind is FlagKind.JUMP else OpKind.CALL
         return _Decoded((Op(kind, name=track_label(target)),), length, spec.kind is FlagKind.CALL, target)
 
     if spec.kind is FlagKind.LOOP:
-        target = _pointer(rom, address + 1 + _LOOP_POINTER)
+        target = memory.code_pointer(address + 1 + _LOOP_POINTER)
         op = Op(OpKind.LOOP, value=operands[_LOOP_COUNT], name=track_label(target), index=operands[_LOOP_INDEX])
         return _Decoded((op,), length, True, target)
 
@@ -122,19 +124,12 @@ def _decode(rom: RomImage, address: int, driver: RomDriver) -> _Decoded:
     return _Decoded((Op(OpKind.EFFECT, effect=effect_from_bytes(spec.flag, operands)),), length, True)
 
 
-def _operand_count(rom: RomImage, address: int, spec: FlagSpec) -> int:
+def _operand_count(memory: SoundMemory, address: int, spec: FlagSpec) -> int:
     """The flag's operand bytes; `more_if_set` follow when the first is not 0 (Type 1a's pan
     animation: 0 switches it off, else table, index, limit, speed)."""
-    if spec.more_if_set and rom.byte(address + 1):
+    if spec.more_if_set and memory.byte(address + 1):
         return spec.operands + spec.more_if_set
     return spec.operands
-
-
-def _pointer(rom: RomImage, operand: int) -> int:
-    target = operand + 1 + rom.signed_word(operand)
-    if not rom.contains(target):
-        raise RomError(f"${operand - 1:X}: pointer to ${target:X}, outside the ROM")
-    return target
 
 
 def _check_overlaps(decoded: dict[int, _Decoded]) -> None:

@@ -4,7 +4,7 @@ compare each with its asm, or write each as SMPS2ASM assembly.
 
 The comparison is two-fold: core.smps.parse_differences (every event, spelling included - the
 ROM and the asm are the same bytes, so nothing may differ) and, for music, compare_songs on what
-the driver plays.  Both sides read with the data fixes (core/rom/fixes.py: known for this exact ROM
+the driver plays.  Both sides read with the data fixes (core/rom/variants.py: known for this exact ROM
 only, as the asm's FixMusicAndSFXDataBugs), or with --shipped neither: the game as it was sold.
 
 Usage::
@@ -33,14 +33,14 @@ sys.path.insert(0, str(ROOT))
 import yaml
 
 from core.rom import (
-    DRIVERS,
-    RomDriver,
+    VARIANTS,
     RomError,
     RomImage,
+    SmpsVariant,
     SoundIndex,
     dac_samples,
     data_fixes,
-    detect_driver,
+    detect_variant,
     locate_sounds,
     read_rom_code,
 )
@@ -70,13 +70,13 @@ def _ids(index: SoundIndex, only: list[str] | None) -> list[int]:
     return [i for i in ids if not only or f"{i:02X}" in {o.upper() for o in only}]
 
 
-def _list(rom: RomImage, index: SoundIndex, ids: list[int], fixed: bool, driver: RomDriver) -> None:
-    print(f"{rom.title}  {rom.serial}  sha1 {rom.sha1}  driver {driver.name}")
+def _list(rom: RomImage, index: SoundIndex, ids: list[int], fixed: bool, variant: SmpsVariant) -> None:
+    print(f"{rom.title}  {rom.serial}  sha1 {rom.sha1}  driver {variant.name}")
     for fix in data_fixes(rom):
         print(f"  data fix ${fix.address:05X}  {fix.what}{'' if fixed else '  (off: --shipped)'}")
     for sound_id in ids:
         try:
-            song = read_rom_code(rom, sound_id, index, fixed, driver)
+            song = read_rom_code(rom, sound_id, index, fixed, variant)
         except RomError as e:
             print(f"  ${sound_id:02X}  ${index.address(sound_id):05X}  not read: {e}")
             continue
@@ -90,7 +90,7 @@ def _list(rom: RomImage, index: SoundIndex, ids: list[int], fixed: bool, driver:
 
 
 def _compare(rom: RomImage, index: SoundIndex, ids: list[int], asm_dir: Path, max_diffs: int, fixed: bool,
-             driver: RomDriver) -> bool:
+             variant: SmpsVariant) -> bool:
     """Each sound against its asm; True when every one reads and plays the same."""
     same = 0
     for sound_id in ids:
@@ -100,7 +100,7 @@ def _compare(rom: RomImage, index: SoundIndex, ids: list[int], asm_dir: Path, ma
             print(f"  ${sound_id:02X}  no {prefix}*.asm in {asm_dir}")
             continue
 
-        got = read_rom_code(rom, sound_id, index, fixed, driver).song()
+        got = read_rom_code(rom, sound_id, index, fixed, variant).song()
         want = SmpsParser(fix_data_bugs=fixed).parse_file(str(asm))
         found = parse_differences(want, got)
         diff = None if index.is_sfx(sound_id) else _played_diff(want, got)
@@ -125,7 +125,7 @@ def _played_diff(want: SmpsSong, got: SmpsSong) -> SongDiff:
     return compare_songs(expected, played, offset=align_songs(expected, played))
 
 
-def _write(rom: RomImage, index: SoundIndex, ids: list[int], out_dir: Path, fixed: bool, driver: RomDriver) -> None:
+def _write(rom: RomImage, index: SoundIndex, ids: list[int], out_dir: Path, fixed: bool, variant: SmpsVariant) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     for sound_id in ids:
         prefix = _prefix(index, sound_id)
@@ -135,15 +135,15 @@ def _write(rom: RomImage, index: SoundIndex, ids: list[int], out_dir: Path, fixe
             comment += (f"\nFixMusicAndSFXDataBugs: the {len(fixes)} data fixes known for this ROM applied "
                         "(labels keep its addresses)")
         path = out_dir / f"{prefix}.asm"
-        path.write_text(write_asm(read_rom_code(rom, sound_id, index, fixed, driver), prefix, comment), encoding="utf-8")
+        path.write_text(write_asm(read_rom_code(rom, sound_id, index, fixed, variant), prefix, comment), encoding="utf-8")
         print(f"  {path}")
 
 
-def _write_dac(rom: RomImage, out_dir: Path, driver: RomDriver) -> None:
+def _write_dac(rom: RomImage, out_dir: Path, variant: SmpsVariant) -> None:
     """Each DAC sample as signed 8-bit .raw (what samples/ holds), and a manifest of their rates;
     a pitched copy (Sonic 1's $88-$8B timpani, Moonwalker's $88-$97) shares its sample's file."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    samples = dac_samples(rom, driver)
+    samples = dac_samples(rom, variant)
     files = {s.pcm: f"{s.name}.raw" for s in samples if not s.is_pitched_copy}
     for pcm, name in files.items():
         (out_dir / name).write_bytes(pcm)
@@ -173,20 +173,20 @@ def main() -> None:
 
     try:
         rom = RomImage.load(args.rom)
-        index = locate_sounds(rom)
-        driver = DRIVERS[SmpsDriver(args.driver)] if args.driver else detect_driver(rom)
+        variant = VARIANTS[SmpsDriver(args.driver)] if args.driver else detect_variant(rom)
+        index = locate_sounds(rom, variant)
     except (OSError, RomError) as e:
         sys.exit(f"error: {e}")
     ids = _ids(index, args.only)
 
     if args.asm:
-        _write(rom, index, ids, Path(args.asm), not args.shipped, driver)
+        _write(rom, index, ids, Path(args.asm), not args.shipped, variant)
     if args.dac:
-        _write_dac(rom, Path(args.dac), driver)
+        _write_dac(rom, Path(args.dac), variant)
     if args.compare:
-        sys.exit(0 if _compare(rom, index, ids, Path(args.compare), args.diffs, not args.shipped, driver) else 1)
+        sys.exit(0 if _compare(rom, index, ids, Path(args.compare), args.diffs, not args.shipped, variant) else 1)
     if not (args.asm or args.dac):
-        _list(rom, index, ids, not args.shipped, driver)
+        _list(rom, index, ids, not args.shipped, variant)
 
 
 if __name__ == "__main__":

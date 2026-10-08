@@ -299,6 +299,11 @@ a song pass (the `run_out` precedent).
 - [ ] 6.2 `docs/smps_variants.md` section (the facts of part 1, moved); `docs/architecture.md`;
   CLAUDE.md.
 
+### Test selection (the user, 2026-10-08)
+Hundreds of songs cannot each be a regression case.  Phase 0 uses a one-off snapshot of
+everything (scratch, not kept).  Later: cases chosen by coverage (each driver, IR flag, walk rule,
+config feature exercised at least once), a song added only for what no case covers yet.
+
 ### Decisions (the user, 2026-10-08)
 1. Name: `smps68k_mucom`.
 2. `$89`: played as written: a `RomFix` closes the loop.

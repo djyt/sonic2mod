@@ -7,11 +7,12 @@
     smpsz80/                 the Z80 family: Golden Axe (Type 0 FM)
     header.py  tracks.py     generic readers: headers, track bytes -> SmpsCode (the ops the asm
     voices.py  envelopes.py  parser makes from macros), voices, PSG envelopes; driven by the variant
+    grammar.py               a track grammar: the instruction at an address (SMPS's)
     variant.py  flags.py     the vocabulary: SmpsVariant, VoiceLayout, SoundIndex, DacSample;
     memory.py  fixes.py      flag specs; SoundMemory (how a driver reads pointers); RomFix
     image.py                 RomImage: the header, big-endian reads by address
 
-    image / memory / flags / fixes / variant  <-  readers  <-  families  <-  variants  <-  detect / song
+    image / memory / flags / fixes / grammar / variant  <-  readers  <-  families  <-  variants  <-  detect / song
 """
 
 from .detect import detect_variant

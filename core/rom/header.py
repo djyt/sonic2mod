@@ -16,6 +16,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..smps import NO_TEMPO_HOLDS, ChannelType, SmpsChannelHeader, SmpsSongHeader, psg_voice_name, signed_byte
+from .grammar import track_label
 from .image import RomError
 from .memory import SoundMemory
 from .variant import HeaderLayout
@@ -39,11 +40,6 @@ class RomHeader:
     header: SmpsSongHeader
     voices: int | None         # the voice bank's address; None: the song has none (smpsHeaderVoiceNull)
     tracks: dict[str, int]     # each track's label -> its first byte's address
-
-
-def track_label(address: int) -> str:
-    """The name a ROM song gives the code at `address` (a ROM has no labels)."""
-    return f"loc_{address:05X}"
 
 
 def read_index(memory: SoundMemory, slots: range, pointer: Callable[[int], int], first_id: int,

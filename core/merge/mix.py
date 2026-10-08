@@ -24,8 +24,8 @@ from ..audio import (
     to_int8,
     unroll_values,
 )
-from ..config import DEFAULT_SHELF_HZ
-from ..mod import MAX_MOD_SAMPLE_BYTES, PERIOD_TABLE, ModSample, clamp_mod_volume
+from ..config import DEFAULT_SHELF_HZ, SAMPLE_FILE
+from ..mod import MAX_MOD_SAMPLE_BYTES, ModSample, clamp_mod_volume, note_rate
 from .model import Composite, MergePlan
 
 # --- mixing the pcm composites -------------------------------------------------------------
@@ -153,7 +153,7 @@ class _Mixer:
         return self._sources.get(inst) or self._mod.samples[inst - 1]
 
     def _rate(self, index: int) -> float:
-        return self._clock / PERIOD_TABLE[index]
+        return note_rate(index, self._clock)
 
     def _tail_secs(self, inst: int) -> float:
         """How long a layer keyed off at the composite's end still sounds: its release to the
@@ -369,7 +369,7 @@ def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] |
     if len(pcm) % 2:
         pcm += b"\x00"
 
-    sample = ModSample(comp.entry[1] if comp.entry else f"merge{comp.inst}")
+    sample = ModSample(comp.entry[SAMPLE_FILE] if comp.entry else f"merge{comp.inst}")
     sample.data = pcm
     sample.length = len(pcm) // 2
     sample.set_volume(vol)

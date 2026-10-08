@@ -171,44 +171,19 @@ def _treble_shelf(data: dict, defaults: tuple[float, float], filepath: str) -> t
         raise ValueError(f"{filepath}: treble_shelf_db / treble_shelf_hz must be numbers") from e
 
 
-def _loop_drift_db(data: dict, default: float, filepath: str) -> float:
-    """`samples.loop_drift_db` of settings.yaml: how far a looped sample's level may sit above
-    where the instrument's longest note would have decayed to."""
+def _non_negative(data: dict, key: str, default, filepath: str, cast=float):
+    """A settings.yaml number in `data` that may not be negative: `cast` (float, or int for a count)."""
     try:
-        v = float(data.get("loop_drift_db", default))
+        v = cast(data.get(key, default))
     except (TypeError, ValueError) as e:
-        raise ValueError(f"{filepath}: loop_drift_db must be a number of dB") from e
+        raise ValueError(f"{filepath}: {key} must be a{' whole' if cast is int else ''} number") from e
     if v < 0:
-        raise ValueError(f"{filepath}: loop_drift_db must not be negative (got {v})")
-    return v
-
-
-def _root_harmonics(data: dict, default: float, filepath: str) -> float:
-    """`samples.root_harmonics` of settings.yaml: harmonics a derived window's lowest note keeps
-    below its sample's Nyquist; 0 = every window at the low-rate line."""
-    try:
-        v = float(data.get("root_harmonics", default))
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{filepath}: root_harmonics must be a number") from e
-    if v < 0:
-        raise ValueError(f"{filepath}: root_harmonics must not be negative (got {v})")
-    return v
-
-
-def _max_window(data: dict, default: int, filepath: str) -> int:
-    """`samples.max_window` of settings.yaml: the widest derived window in semitones; 0 = no cap."""
-    try:
-        v = int(data.get("max_window", default))
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{filepath}: max_window must be a whole number of semitones") from e
-    if v < 0:
-        raise ValueError(f"{filepath}: max_window must not be negative (got {v})")
+        raise ValueError(f"{filepath}: {key} must not be negative (got {v})")
     return v
 
 
 def _top_note(data: dict, default: int, filepath: str) -> int:
-    """`samples.top_note` of settings.yaml: the highest MOD note a derived window reaches, as its
-    index from C1 (A3 = 33)."""
+    """`samples.top_note` of settings.yaml as its index from C1 (A3 = 33)."""
     v = data.get("top_note")
     if v is None:
         return default
@@ -275,13 +250,11 @@ class SampleSettings:
     dc_block: bool = False           # settings.yaml samples.dc_block: each render's DC removed (core.audio.pcm.dc_block)
     render_cache: str | None = None  # settings.yaml samples.render_cache: where chip renders are kept
                                      # (core/render_cache.py); None = off
-    root_harmonics: float = 8.0      # settings.yaml samples.root_harmonics: a minimal config's windows
-                                     # are placed so their lowest note keeps this many harmonics
-                                     # (core.plan.derive); 0 = every window at the low-rate line
-    top_note: int = ModNote.A3.value  # settings.yaml samples.top_note: the highest MOD note a derived
-                                     # window reaches (A#3 / B3 are past Paula's period-124 DMA limit)
-    max_window: int = 0              # settings.yaml samples.max_window: the widest derived window in
-                                     # semitones, so no note plays far from its render pitch; 0 = no cap
+    # settings.yaml samples.root_harmonics / top_note / max_window: where a minimal config's windows
+    # sit (core.plan.derive): harmonics their lowest note keeps, their highest note, widest span (0: any)
+    root_harmonics: float = 8.0
+    top_note: int = ModNote.A3.value
+    max_window: int = 0
     loop_timbre: bool = True         # a sustain loop waits for the timbre to hold too
                                      # (core.audio.loops.PROFILE_PER_DB); the converter clears it
                                      # for a merged build unless the song sets merge_loop_timbre
@@ -310,16 +283,16 @@ class SampleSettings:
             sustain_loops=_sustain_loops(smp, cls.sustain_loops, filepath),
             compact_slots=_compact_slots(smp, cls.compact_slots, filepath),
             names=_names(smp, cls.names, filepath),
-            loop_drift_db=_loop_drift_db(smp, cls.loop_drift_db, filepath),
+            loop_drift_db=_non_negative(smp, "loop_drift_db", cls.loop_drift_db, filepath),
             treble_shelf_db=shelf_db,
             treble_shelf_hz=shelf_hz,
             resample_taps=_positive_int(smp, "resample_taps", cls.resample_taps, filepath, even=True),
             dc_block=_sample_flag(smp, "dc_block", cls.dc_block, filepath),
             dither=dither_mode(smp.get("dither", cls.dither), f"{filepath}: samples"),
             render_cache=_render_cache(smp),
-            root_harmonics=_root_harmonics(smp, cls.root_harmonics, filepath),
+            root_harmonics=_non_negative(smp, "root_harmonics", cls.root_harmonics, filepath),
             top_note=_top_note(smp, cls.top_note, filepath),
-            max_window=_max_window(smp, cls.max_window, filepath),
+            max_window=_non_negative(smp, "max_window", cls.max_window, filepath, int),
         )
 
 

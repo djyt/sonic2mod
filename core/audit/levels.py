@@ -7,6 +7,7 @@ import statistics
 from pathlib import Path
 
 from ..audio import db_to_gain, gain_to_db
+from ..config import SAMPLE_FILE, SAMPLE_FINETUNE, SAMPLE_SLOT, SAMPLE_VOLUME
 from ..mod import ModImage, edx_delay, timed_pass
 from .signal import db, rms, seg_at
 
@@ -141,53 +142,63 @@ def suggest_volumes(instruments: list[dict]) -> float:
 def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0,
                   settings_path: str | None = None) -> list[str]:
     """Set sample_list volumes to the suggested values; returns a line per change.  A minimal
-    config's derived rows (derived under `settings_path`, as the MOD was converted) are added as
-    stated ones (core.plan.derive: a stated row replaces the derived row of its instrument)."""
+    config (derived under `settings_path`, as the MOD was) gains rows for derived samples it lacks."""
     text = config_path.read_text(encoding="utf-8")
     derived = _derived_rows(config_path, settings_path)
+
+    # A minimal config's rows follow their file (core.plan.derive): each numbered as its slot is now
+    text = _renumber_rows(text, {row[SAMPLE_FILE]: row[SAMPLE_SLOT] for row in derived.values()})
+
     added: list[str] = []
     changes = []
     for it in instruments:
         new = it["suggested"]
         if new is None or new == it["volume"] or abs(gain_to_db(new / it["volume"])) < min_db:
             continue
-        row = derived.get(it["instrument"])
-        # A minimal config's row is found by its file (core.plan.derive matches it so: slots move when
-        # a setting splits a window) and given the instrument's slot now; a full config's by its slot
-        slot, file = (r'\d+', re.escape(row[1])) if row is not None else (str(it["instrument"]), r'[^"]*')
-        pat = re.compile(r'^(\s*-\s*\[\s*' + slot + r'\s*,\s*"' + file
-                         + r'"\s*,\s*)(\d+)(\s*,\s*-?\d+\s*\])([^\r\n]*)', re.M)
-        m = pat.search(text)
-        if m and row is not None:
-            head = re.sub(r'\[\s*\d+', f"[{it['instrument']}", m.group(1), count=1)
-            text = text[:m.start()] + head + text[m.start() + len(m.group(1)):]
-            m = pat.search(text)
-        if not m and row is not None and row[2] == it["volume"]:
-            added.append(f'  - [{row[0]}, "{row[1]}", {new}, {row[3]}]   # VGZ: {it["err_db"]:+.1f} dB at {it["volume"]}')
-            changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
-            continue
-        if not m or int(m.group(2)) != it["volume"]:
-            changes.append(f"  !! instrument {it['instrument']}: no sample_list line with volume {it['volume']} — not changed")
-            continue
+        inst, row = it["instrument"], derived.get(it["instrument"])
+        change = f"  instrument {inst:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)"
         note = f"VGZ: {it['err_db']:+.1f} dB at {it['volume']}"
-        tail = re.sub(r"\s*[;#]?\s*VGZ: [^;]*", "", m.group(4)).rstrip()
+
+        # The instrument's row: by slot, and by file in a minimal config
+        m = _row_pattern(str(inst), re.escape(row[SAMPLE_FILE]) if row else _ANY_FILE).search(text)
+
+        # A derived sample with no row: one added
+        if not m and row is not None and row[SAMPLE_VOLUME] == it["volume"]:
+            added.append(f'  - [{inst}, "{row[SAMPLE_FILE]}", {new}, {row[SAMPLE_FINETUNE]}]   # {note}')
+            changes.append(change)
+            continue
+        if not m or int(m["volume"]) != it["volume"]:
+            changes.append(f"  !! instrument {inst}: no sample_list line with volume {it['volume']} — not changed")
+            continue
+
+        # The volume replaced, the comment's earlier VGZ note with it
+        tail = re.sub(r"\s*[;#]?\s*VGZ: [^;]*", "", m["tail"]).rstrip()
         tail = f"{tail}; {note}" if tail.strip().startswith("#") and tail.strip() != "#" else f" # {note}"
-        text = text[:m.start()] + f"{m.group(1)}{new:>{len(m.group(2))}}{m.group(3)}{tail}" + text[m.end():]
-        changes.append(f"  instrument {it['instrument']:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)")
+        text = text[:m.start("volume")] + f"{new:>{len(m['volume'])}}{m['end']}{tail}" + text[m.end():]
+        changes.append(change)
+
     if added:
         text = _add_rows(text, added)
     if any(not c.startswith("  !!") for c in changes):
-        text = _renumber_rows(text, {row[1]: row[0] for row in derived.values()})
         config_path.write_text(text, encoding="utf-8", newline="")
     return changes
 
 
+_ANY_SLOT = r"\d+"
+_ANY_FILE = r'[^"]*'
+
+
+def _row_pattern(slot: str = _ANY_SLOT, file: str = _ANY_FILE) -> re.Pattern:
+    """A sample_list row of the config's text: `  - [5, "fm_v01_F2.raw", 45, 0]   # comment`."""
+    return re.compile(rf'^(?P<head>\s*-\s*\[\s*)(?P<slot>{slot})\s*,\s*"(?P<file>{file})"\s*,\s*'
+                      rf'(?P<volume>\d+)(?P<end>(?:\s*,\s*-?\d+)?\s*\])(?P<tail>[^\r\n]*)', re.M)
+
+
 def _renumber_rows(text: str, slot_of: dict[str, int]) -> str:
-    """Every sample_list row naming a derived file given that file's slot now (a minimal config's
-    rows follow their file, so a number left from before a setting split a window is only noise)."""
-    def slot(m: re.Match) -> str:
-        return f"{m.group(1)}{slot_of.get(m.group(3), m.group(2))}{m.group(4)}"
-    return re.sub(r'^(\s*-\s*\[\s*)(\d+)(?=\s*,\s*"([^"]*)")(\s*)', slot, text, flags=re.M)
+    """Each row naming a file in `slot_of` given that file's slot."""
+    def renumber(m: re.Match) -> str:
+        return m["head"] + str(slot_of.get(m["file"], m["slot"])) + m[0][m.end("slot") - m.start():]
+    return _row_pattern().sub(renumber, text)
 
 
 def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[int, list]:
@@ -197,7 +208,7 @@ def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[i
 
     if not ConversionConfig.from_yaml(str(config_path)).is_minimal:
         return {}
-    return {row[0]: row for row in load_config(config_path, settings_path).sample_list or []}
+    return {row[SAMPLE_SLOT]: row for row in load_config(config_path, settings_path).sample_list or []}
 
 
 def _add_rows(text: str, rows: list[str]) -> str:

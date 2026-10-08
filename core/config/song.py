@@ -69,6 +69,10 @@ def _region(data: dict, filepath) -> str:
     return region
 
 
+# A sample_list row's fields; volume and finetune may be left off
+SAMPLE_SLOT, SAMPLE_FILE, SAMPLE_VOLUME, SAMPLE_FINETUNE = range(4)
+
+
 @dataclass
 class ConversionConfig:
     name: str = "Untitled"
@@ -103,7 +107,7 @@ class ConversionConfig:
     channels: list = field(default_factory=list)       # list of ChannelConfig
     dac_samples: list = field(default_factory=list)    # list of DacSampleConfig
 
-    sample_list: list | None = None                 # [inst_num, filename, volume, finetune]
+    sample_list: list | None = None                 # rows [slot, file, volume, finetune]: SAMPLE_*
     samples_dir: str = "./samples/"
     max_patterns: int = 127
     voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}

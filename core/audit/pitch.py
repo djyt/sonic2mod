@@ -27,8 +27,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ..audio import pitch_name
-from ..config import ConversionConfig, find_settings, load_settings
+from ..audio import pitch_name, semitone_to_hz
+from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig, find_settings, load_settings
 from ..mod import PERIOD_TABLE, ModImage, edx_delay, timed_pass
 from ..plan import prepare_instruments, sounding_pitches
 from ..vgm import Segment
@@ -52,14 +52,14 @@ def prepare_audit(cfg: ConversionConfig, settings_path: str | Path | None, confi
 def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument); follows Bxx/Dxx and stops at the loop."""
     inst = sounding_pitches(song, cfg)
-    finetune = {e[0]: (e[3] if len(e) > 3 else 0) for e in (cfg.sample_list or [])}
+    finetune = {e[SAMPLE_SLOT]: (e[SAMPLE_FINETUNE] if len(e) > SAMPLE_FINETUNE else 0) for e in (cfg.sample_list or [])}
     known = set(PERIOD_TABLE)
     out: dict[int, list[tuple]] = defaultdict(list)
     sounding: dict[int, tuple[int, int]] = {}         # channel -> (period, instrument) of its note
 
     def pitch(period: int, ins: int) -> float:
         root, synth, cents = inst[ins]
-        return (440.0 * 2 ** ((synth - 57) / 12) * PERIOD_TABLE[root] / period
+        return (semitone_to_hz(synth) * PERIOD_TABLE[root] / period
                 * 2 ** (finetune.get(ins, 0) / 96 + cents / 1200))
 
     rows, end = timed_pass(mod, cfg.target_speed)

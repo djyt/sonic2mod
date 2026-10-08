@@ -47,7 +47,7 @@ from core.config import (
     parse_number,
     rate3_synth_root_issues,
 )
-from core.mod import PERIOD_TABLE, ModFile, ModNote
+from core.mod import PERIOD_TABLE, ModFile, ModNote, period_rate
 from core.plan import derive_config, load_config, starting_volume
 from core.smps import (
     flag_name,
@@ -507,7 +507,7 @@ def _noise_root_for_synth(note_letter: int, synth_freq: float, amiga_clock: int)
         period = PERIOD_TABLE[root_idx] if root_idx < len(PERIOD_TABLE) else 0
         if period == 0:
             break
-        if amiga_clock / period > 2.0 * synth_freq:
+        if period_rate(period, amiga_clock) > 2.0 * synth_freq:
             return ModNote(root_idx).name
     return ModNote(24 + note_letter).name
 

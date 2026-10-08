@@ -8,7 +8,7 @@ import copy
 import dataclasses
 import math
 
-from ..audio import db_to_gain
+from ..audio import db_to_gain, semitone_to_hz
 from ..config import MergeGroup, format_patterns
 from ..mod import PERIOD_TABLE
 from ..plan import FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
@@ -380,7 +380,7 @@ class _Planner:
         inst = self.provisional
         vol, ft = self.vol_of.get(p.instrument, (64, 0))
         comp = Composite(inst, key, g, entry=[inst, f"merge {g.label}"[:21], vol, ft], banked=g.bank and not chip,
-                         pitch_hz=_pitch_hz(p.chip) if p.chip is not None else None)
+                         pitch_hz=semitone_to_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None
             # Each layer at its own track's detune: the key's are relative (the shape), the chip's
@@ -534,14 +534,6 @@ def _note_on_ticks(events) -> list[int]:
     notes (a portamento under a strict legato keeps the sample playing)."""
     return sorted({e.tick_position for e in events
                    if e.is_note and not e.note.is_rest and not e.note.is_no_attack})
-
-
-_A4 = 57                # SMPS semitone (C0 = 0) of A4, 440 Hz
-
-
-def _pitch_hz(semitone: int) -> float:
-    """The frequency of a chip pitch (SMPS semitone, C0 = 0)."""
-    return 440.0 * 2.0 ** ((semitone - _A4) / 12.0)
 
 
 def _mix_note(g: MergeGroup, p: NoteOn, present: list[NoteOn]) -> int:

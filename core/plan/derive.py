@@ -11,21 +11,15 @@ An override replaces the item it names (one voice's entries, one envelope's, one
 one sample_list row), never the whole section.
 
 Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
-    FM / PSG tone   windows of the chip pitches a voice / envelope plays, each one entry, its
-                    lowest pitch at the first MOD note whose rate keeps samples.root_harmonics
-                    harmonics below Nyquist, never under the audit's 5 kHz low-rate line (E1),
-                    the window no higher than samples.top_note (A3: Paula's DMA limit).  A window
-                    narrows to reach that note, to an octave at least; one that still cannot
-                    reach it sits as high as it fits.  samples.max_window caps every window's
-                    span, so no note plays far from its render pitch (an envelope runs
-                    2^(distance/12) times too fast or slow).  The converter picks the rendering pitch
+    FM / PSG tone   an entry per window of the chip pitches a voice / envelope plays: its lowest
+                    on the first MOD note keeping samples.root_harmonics harmonics (never under
+                    E1, the 5 kHz line), its top at most samples.top_note (A3), its span at most
+                    samples.max_window.  The converter picks the rendering pitch
     DAC             one per sample; a pitched copy plays its sample's slot at the note nearest
                     its rate
-    volumes         starting_volume: every synthesised sample is peak-normalised, so its volume
-                    carries the level its notes mostly play at (TL offset and pan, or attenuation;
-                    each window's own notes), until vgm_compare --write-volumes sets it from a rip.
-                    A window with no measured row whose voice has one starts as its nearest
-                    measured window was corrected (a setting that splits a window keeps its level)
+    volumes         starting_volume: samples are peak-normalised, so the volume carries the level
+                    the window's notes mostly play at, until vgm_compare --write-volumes measures
+                    it.  An unmeasured window takes its voice's nearest measured correction
 """
 
 from __future__ import annotations
@@ -36,10 +30,15 @@ from collections import Counter, defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NamedTuple
 
-from ..audio import db_to_gain
+from ..audio import db_to_gain, semitone_to_hz
 from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db, psg_level_db
 from ..config import (
+    SAMPLE_FILE,
+    SAMPLE_FINETUNE,
+    SAMPLE_SLOT,
+    SAMPLE_VOLUME,
     ChannelConfig,
     ConversionConfig,
     SampleSettings,
@@ -49,7 +48,7 @@ from ..config import (
     region_fps,
     variant_output_file,
 )
-from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote
+from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..rom import DacSample
 from ..smps import SmpsSong, note_label, source_map, synth_note_name
 from ..source import read_dac
@@ -58,17 +57,20 @@ from .driver_state import walk_channel
 MAX_INSTRUMENTS = 31
 _MOD_C1 = 12                 # synth_note_name's semitone for MOD C1
 _MOD_SPAN = 35               # C1 ... B3
-_A4 = 57                     # the chip pitch of A4 (440 Hz), C0 = 0
-_MIN_WINDOW = 12             # a window narrows to reach its harmonics no further than an octave
+_MIN_WINDOW = 12             # narrowest window root_harmonics may cut
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
 _ROWS_PER_PATTERN = 64
 _FIRST_NOTE = 0x81           # the note byte of C0
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
 _FINETUNE_STEPS = 96         # finetune steps an octave
-_ROW_FINETUNE = 3            # sample_list row: [instrument, file, volume, finetune]
-# A file name the derivation gives a sample (_take, _dac_samples): a stated row naming one is a
-# derived sample's, wherever its slot has moved to
-_DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|dac[0-9a-f]{2}\.raw")
+
+# Derived sample files.  A stated row naming one follows that sample to its slot
+_FM_STEM = "fm_v{:02x}"                 # an FM voice's windows: fm_v04_C3.raw
+_TONE_STEM = "psg_{}"                   # a PSG envelope's: psg_$00_Cs3.raw
+_WINDOW_FILE = "{}_{}.raw"              # stem, lowest pitch
+_NOISE_FILE = "psg_noise_{:02x}.raw"    # psg_noise_e7.raw
+_DAC_FILE = "{}.raw"                    # the ROM's sample name: dac81.raw
+_DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|dac[0-9a-f]{2}\.raw")   # any of them
 
 # Starting sample_list volumes at TL offset 0 / attenuation 0 (calibrated on Green Hill Zone)
 _FM_SCALE = 76.0
@@ -88,14 +90,19 @@ def starting_volume(kind: str, level: int = 0, hard_panned: bool = False,
         gain = _PSG_SCALE * db_to_gain(psg_level_db(level))
     return max(1, min(_FULL, round(gain)))
 
+
+class _Window(NamedTuple):
+    voice: tuple    # (kind, voice / envelope)
+    low: int        # lowest chip pitch
+
+
 @dataclass
 class Derivation:
     data: dict                                              # the config's YAML, stated and derived
     derived: list[str] = field(default_factory=list)        # the sections the song filled
     files: dict[str, bytes] = field(default_factory=dict)   # samples_dir files to write (DAC samples)
-    stale: list[list] = field(default_factory=list)         # stated sample_list rows naming a derived
-                                                            # file these settings do not cut (left out:
-                                                            # another max_window's, or a stale one)
+    stale: list[str] = field(default_factory=list)          # stated rows' files these settings do not
+                                                            # cut (another max_window's, or stale): left out
 
 
 def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
@@ -128,8 +135,8 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
 
 def derive_config(stated: dict, song: SmpsSong, config_path: str | Path, settings: SampleSettings,
                   dac: list[DacSample] | None = None) -> Derivation:
-    """`stated` (a config's YAML data) completed from `song`; `settings`: the clock and the window
-    placement (samples.root_harmonics, samples.top_note); `dac`: the ROM's DAC samples."""
+    """`stated` (a config's YAML data) completed from `song`; `settings`: the clock and window
+    placement; `dac`: the ROM's DAC samples."""
     out = Derivation(dict(stated))
     _Deriver(stated, song, out, settings, dac or []).run(Path(config_path))
     return out
@@ -145,14 +152,14 @@ class _Deriver:
         self._harmonics = settings.root_harmonics
         self._top = settings.top_note
         self._max_window = settings.max_window
-        # The lowest MOD note any window starts at: the first above the sample audit's low-rate line
-        self._floor = next(i for i, period in enumerate(PERIOD_TABLE) if self._clock / period >= LOW_RATE_HZ)
+        # Lowest MOD note a window starts at: the first above the sample audit's low-rate line
+        self._floor = next(i for i, period in enumerate(PERIOD_TABLE) if period_rate(period, self._clock) >= LOW_RATE_HZ)
         self._dac = {s.name: s for s in dac}
         self._next = 1                      # the next free instrument slot
         self._rows: list[list] = []         # sample_list rows derived
         # (kind, voice / label / form) -> {(chip pitch, level): notes}; noise and DAC: pitch None
         self._levels: dict[tuple, Counter] = defaultdict(Counter)
-        self._group: dict[int, tuple] = {}  # slot -> (kind, key, lowest pitch) of a voice's window
+        self._group: dict[int, _Window] = {}  # slot -> the voice window it holds
 
     def run(self, config_path: Path) -> None:
         self._default("name", config_path.stem)
@@ -166,8 +173,8 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        self._items("voice_map", self._windows(fm, "FM", lambda v: f"fm_v{v:02x}"))
-        self._items("psg_voice_map", self._windows(tone, "tone", lambda label: f"psg_{label}"))
+        self._items("voice_map", self._windows(fm, "FM", _FM_STEM.format))
+        self._items("psg_voice_map", self._windows(tone, "tone", _TONE_STEM.format))
         self._items("psg_map", {form: self._noise(form) for form in sorted(noise)})
         self._sample_list()
         if self._next - 1 > MAX_INSTRUMENTS:
@@ -243,12 +250,12 @@ class _Deriver:
         self._default("target_speed", options[0]["speed"] if options else 6)
 
     def _windows(self, notes: dict, kind: str, file_stem) -> dict:
-        """One entry per three-octave window of each voice's (envelope's) chip pitches."""
+        """An entry per window of each voice's (envelope's) chip pitches."""
         out = {}
         for key in sorted(notes, key=str):
             entries = []
             for lo, hi in _windows(list(notes[key]), self._max_span):
-                inst = self._take(kind, f"{file_stem(key)}_{_pitch_name(lo)}.raw", key, (lo, hi))
+                inst = self._take(kind, _WINDOW_FILE.format(file_stem(key), _pitch_name(lo)), key, (lo, hi))
                 root = min(self._lowest_root(lo), self._top - (hi - lo))
                 entries.append({"low": _pitch_name(lo), "high": _pitch_name(hi),
                                 "mod_instrument": inst, "root": synth_note_name(_MOD_C1 + root)})
@@ -256,21 +263,20 @@ class _Deriver:
         return out
 
     def _lowest_root(self, pitch: int) -> int:
-        """The first MOD note (0 = C1) from the floor whose rate keeps root_harmonics harmonics of
-        chip pitch `pitch` below Nyquist; past top_note when none can."""
-        need = 2 * self._harmonics * 440 * 2 ** ((pitch - _A4) / 12)
-        return next((i for i in range(self._floor, self._top + 1) if self._clock / PERIOD_TABLE[i] >= need),
+        """First MOD note (0 = C1) from the floor keeping root_harmonics harmonics of `pitch` below
+        Nyquist; past top_note when none does."""
+        need = 2 * self._harmonics * semitone_to_hz(pitch)
+        return next((i for i in range(self._floor, self._top + 1) if note_rate(i, self._clock) >= need),
                     self._top + 1)
 
     def _max_span(self, pitch: int) -> int:
-        """The widest window whose lowest chip pitch is `pitch`: from the MOD note that pitch needs
-        to top_note, but at least an octave (one that needs more sits as high as it fits), and no
-        wider than max_window."""
+        """Widest window from `pitch`: up to top_note from the note `pitch` needs (an octave at
+        least), at most max_window."""
         span = min(self._top - self._floor, max(_MIN_WINDOW, self._top - self._lowest_root(pitch)))
         return min(span, self._max_window) if self._max_window else span
 
     def _noise(self, form: int) -> dict:
-        return {"mod_instrument": self._take("noise", f"psg_noise_{form:02x}.raw", form), "root": _NOISE_ROOT}
+        return {"mod_instrument": self._take("noise", _NOISE_FILE.format(form), form), "root": _NOISE_ROOT}
 
     def _dac_samples(self, hit: Counter) -> None:
         """A slot per DAC sample hit (a pitched copy shares its sample's): the sample at the note and
@@ -287,11 +293,11 @@ class _Deriver:
                 raise ValueError(f"DAC sample {name}: the ROM's driver has no such sample")
             base = by_sound[sample.of] if sample.of else sample
             if base.sound not in slots:
-                file = f"{base.name}.raw"
+                file = _DAC_FILE.format(base.name)
                 slots[base.sound] = self._take("DAC", file)
-                self._rows[-1][_ROW_FINETUNE] = self._nearest(base.rate)[1]
+                self._rows[-1][SAMPLE_FINETUNE] = self._nearest(base.rate)[1]
                 self._out.files[file] = base.pcm
-            finetune = next(r[_ROW_FINETUNE] for r in self._rows if r[0] == slots[base.sound])
+            finetune = next(r[SAMPLE_FINETUNE] for r in self._rows if r[SAMPLE_SLOT] == slots[base.sound])
             note, _ = self._nearest(sample.rate, (finetune,))
             entries.append({"name": name, "mod_instrument": slots[base.sound], "mod_note": note})
         self._out.data["dac_samples"] = entries
@@ -301,57 +307,55 @@ class _Deriver:
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:
         """The MOD note (C1-B3) and finetune a sample plays at `rate` on: the nearest in pitch (a
         finetune step is an eighth of a semitone)."""
-        options = [(abs(math.log2(self._clock / period * 2 ** (ft / _FINETUNE_STEPS) / rate)), note, ft)
+        options = [(abs(math.log2(period_rate(period, self._clock) * 2 ** (ft / _FINETUNE_STEPS) / rate)), note, ft)
                    for note, period in enumerate(PERIOD_TABLE[:_MOD_SPAN + 1]) for ft in finetunes]
         _, note, ft = min(options)
         return ModNote(note).name, ft
 
     def _sample_list(self) -> None:
-        """Derived rows for the derived slots.  A stated row naming a derived sample's file replaces
-        that sample's row at whatever slot it has now (a window split or narrowed by a setting
-        renumbers the slots after it); one naming a derived file these settings do not cut is left
-        out (a measurement under another max_window); any other replaces the row of its slot (the
-        user's own sample)."""
-        slot_of = {row[1]: row[0] for row in self._rows}
+        """Derived rows, stated ones over them.  A stated row naming a derived file follows it to its
+        slot (settings renumber slots); one naming a file these settings do not cut is left out; any
+        other replaces its slot's row (the user's own sample)."""
+        slot_of = {row[SAMPLE_FILE]: row[SAMPLE_SLOT] for row in self._rows}
         stated = {}
         for row in self._stated.get("sample_list", []) or []:
-            if row[1] in slot_of:
-                stated[slot_of[row[1]]] = [slot_of[row[1]], *row[1:]]
-            elif _DERIVED_FILE.fullmatch(str(row[1])):
-                self._out.stale.append(row)
+            file = row[SAMPLE_FILE]
+            if file in slot_of:
+                stated[slot_of[file]] = [slot_of[file], *row[SAMPLE_FILE:]]
+            elif _DERIVED_FILE.fullmatch(str(file)):
+                self._out.stale.append(file)
             else:
-                stated[row[0]] = row
-        rows = {row[0]: row for row in self._rows} | self._inherited(stated) | stated
+                stated[row[SAMPLE_SLOT]] = row
+        rows = {row[SAMPLE_SLOT]: row for row in self._rows} | self._inherited(stated) | stated
         if self._rows:
             self._out.data["sample_list"] = [rows[i] for i in sorted(rows)]
             self._out.derived.append("sample_list")
 
     def _inherited(self, stated: dict[int, list]) -> dict[int, list]:
-        """Rows for the windows a measurement has not reached: the starting volume scaled as the
-        nearest measured window of the same voice was (measured / its starting volume).  The
-        starting volume carries each window's own level; what a measurement corrects beyond it
-        (the level law, the voice's peak-to-loudness) is the voice's, so a window a setting
-        split off starts where its measured neighbour ended up."""
-        derived = {row[0]: row for row in self._rows}
-        measured = [slot for slot in stated if slot in self._group and stated[slot][1] == derived[slot][1]]
+        """Unmeasured windows' rows: the starting volume times the nearest measured window's
+        correction (measured / starting).  Beyond the level, a correction is the voice's."""
+        derived = {row[SAMPLE_SLOT]: row for row in self._rows}
+        measured = [slot for slot in stated
+                    if slot in self._group and stated[slot][SAMPLE_FILE] == derived[slot][SAMPLE_FILE]]
         out = {}
-        for slot, (kind, key, low) in self._group.items():
+        for slot, window in self._group.items():
             if slot in stated:
                 continue
-            siblings = [m for m in measured if self._group[m][:2] == (kind, key)]
+            siblings = [m for m in measured if self._group[m].voice == window.voice]
             if not siblings:
                 continue
-            near = min(siblings, key=lambda m: abs(self._group[m][2] - low))
-            ratio = float(stated[near][2]) / max(derived[near][2], 1)
-            row = derived[slot]
-            out[slot] = [slot, row[1], max(1, min(_FULL, round(row[2] * ratio))), *row[3:]]
+            near = min(siblings, key=lambda m: abs(self._group[m].low - window.low))
+            ratio = float(stated[near][SAMPLE_VOLUME]) / max(derived[near][SAMPLE_VOLUME], 1)
+            row = list(derived[slot])
+            row[SAMPLE_VOLUME] = max(1, min(_FULL, round(row[SAMPLE_VOLUME] * ratio)))
+            out[slot] = row
         return out
 
     # --- helpers ------------------------------------------------------------------------
 
     def _take(self, kind: str, file: str, key=None, window: tuple[int, int] | None = None) -> int:
-        """The next slot, its sample_list row at the level its notes mostly play at (the notes of
-        `window`, lowest and highest chip pitch, when the voice is cut into several)."""
+        """The next slot, its row at the level its notes (`window`'s, lowest and highest pitch)
+        mostly play at."""
         counts = Counter()
         for (pitch, lv), n in self._levels.get((kind, key), Counter()).items():
             if window is None or window[0] <= pitch <= window[1]:
@@ -360,7 +364,7 @@ class _Deriver:
         inst = self._next
         self._next += 1
         if window is not None:
-            self._group[inst] = (kind, key, window[0])
+            self._group[inst] = _Window((kind, key), window[0])
         self._rows.append([inst, file, starting_volume(kind, level, panned), 0])
         return inst
 

@@ -128,7 +128,7 @@ class Moonwalker(unittest.TestCase):
         self.assertEqual(rows[5], [5, file, 33, 0])     # slots renumbered since: the file decides
         self.assertEqual(rows[9], base[9])
         self.assertEqual(rows[6], base[6])              # a derived name the song no longer has
-        self.assertEqual(d.stale, [[6, "fm_v00_C9.raw", 20, 0]])
+        self.assertEqual(d.stale, ["fm_v00_C9.raw"])
 
     def test_a_window_with_no_measurement_takes_its_measured_neighbours_correction(self):
         base = {row[0]: row for row in self._derive().data["sample_list"]}

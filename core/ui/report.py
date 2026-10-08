@@ -70,6 +70,7 @@ class Report:
     mod_channels: int = 0
     patterns: int = 0
     derived: list = field(default_factory=list)   # the sections a minimal config left to the song
+    stale: list = field(default_factory=list)     # its sample_list files these settings do not cut
 
 
 # ── Warnings: (check, headline, fix) ──────────────────────────────────────────────────────────
@@ -384,6 +385,8 @@ def print_header(console: Console, rep: Report) -> None:
            f"{rep.patterns} patterns" + (f" · loop → {loop['target']}" if loop else "") + "[/dim]")
     if rep.derived:
         source += f"  [dim]· derived: {', '.join(rep.derived)}[/dim]"
+    if rep.stale:
+        source += f"  [dim]· rows unused (another max_window's, or stale): {', '.join(rep.stale)}[/dim]"
     dropped = getattr(song, "dropped", None)
     if dropped:
         source += "  [dim]· dropped: " + ", ".join(f"{escape(what)} x{n}" for what, n in dropped.items()) + "[/dim]"

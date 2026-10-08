@@ -56,22 +56,32 @@ class DacSample:
         return self.of != 0
 
 
+# The register offset (operator slot) of each of a group's four bytes, as SMPS stores them
+SMPS_OPERATOR_OFFSETS = (0x00, 0x08, 0x04, 0x0C)
+
+
 @dataclass(frozen=True)
 class VoiceLayout:
-    """How a driver stores an FM voice: the feedback / algorithm byte, the B4 byte if `pan`
-    (L R AMS FMS), then four bytes (one per operator, in register order) for each operator
-    register in `groups` order."""
+    """How a driver stores an FM voice: the feedback / algorithm byte and, if `pan`, the B4 byte
+    (L R AMS FMS) - first, or last if `feedback_last` - and four bytes for each operator register
+    in `groups` order, the register offset of each in `operator_offsets`."""
 
     groups: tuple[OperatorReg, ...]
     pan: bool = False
+    feedback_last: bool = False
+    operator_offsets: tuple[int, ...] = SMPS_OPERATOR_OFFSETS
 
     @property
     def size(self) -> int:
-        return self.groups_at + len(self.groups) * OPERATORS
+        return 1 + self.pan + len(self.groups) * OPERATORS
 
     @property
     def groups_at(self) -> int:
-        return 1 + self.pan
+        return 0 if self.feedback_last else 1 + self.pan
+
+    @property
+    def feedback_at(self) -> int:
+        return len(self.groups) * OPERATORS if self.feedback_last else 0
 
 
 @dataclass(frozen=True)

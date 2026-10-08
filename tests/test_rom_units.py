@@ -21,6 +21,7 @@ sys.path.insert(0, str(_HERE))
 
 from roms import MOONWALKER_ROM, needs_moonwalker
 
+from core.chips import OperatorReg
 from core.rom import (
     RomError,
     RomFix,
@@ -45,7 +46,7 @@ from core.rom.smpsz80.layout import HEADER_TYPE0, VOICE_TYPE0
 from core.rom.smpsz80.locate import fm_table, locate_type0, sound_bank
 from core.rom.smpsz80.memory import BankedZ80Memory, Z80RamMemory
 from core.rom.tracks import decode_tracks
-from core.rom.variant import EntryLayout
+from core.rom.variant import EntryLayout, VoiceLayout
 from core.rom.voices import read_voices
 from core.rom.z80 import z80_ram
 from core.smps import (
@@ -279,6 +280,18 @@ class Voices(unittest.TestCase):
         self.assertEqual(voice.operators[VoiceField.RATE_SCALE], (0, 1, 0, 0))
         self.assertEqual(voice.operators[VoiceField.AMP_MOD], (1, 0, 0, 0))
         self.assertEqual(voice.operators[VoiceField.TOTAL_LEVEL], (0x1F, 0x20, 0x10, 0x00))
+
+    def test_register_order_with_feedback_last(self):
+        # Streets of Rage's shape: each group in register order (+0 +4 +8 +C), B0 last
+        groups = (OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_AR, OperatorReg.AM_D1R,
+                  OperatorReg.D2R, OperatorReg.D1L_RR)
+        layout = VoiceLayout(groups, feedback_last=True, operator_offsets=(0x00, 0x04, 0x08, 0x0C))
+        raw = bytes([1, 2, 3, 4, 0x11, 0x12, 0x13, 0x14, *[0x1F] * 16, 0x3A])
+        voice = read_voices(_memory(raw), _SONG, 1, layout)[0]
+        regs = voice.registers()
+        self.assertEqual((voice.algorithm, voice.feedback), (2, 7))
+        self.assertEqual([regs[OperatorReg.DT_MUL + off] for off in (0, 4, 8, 12)], [1, 2, 3, 4])
+        self.assertEqual([regs[OperatorReg.TL + off] for off in (0, 4, 8, 12)], [0x11, 0x12, 0x13, 0x14])
 
 
 class Fixes(unittest.TestCase):

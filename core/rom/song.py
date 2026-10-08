@@ -47,7 +47,7 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     envelopes = read_envelopes(memory, index.envelopes, variant) if index.envelopes else None
     return SongCode(head.header, tracks.code, voices, address=address, addresses=tracks.labels,
                     driver=variant.name, dropped=dict(tracks.dropped), psg_envelopes=envelopes,
-                    dac_names=dict(variant.dac_names))
+                    dac_names=dict(variant.dac_names), fm_frequencies=variant.fm_frequencies(rom))
 
 
 def read_rom_song(rom: RomImage, sound_id: int, index: SoundIndex | None = None,

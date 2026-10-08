@@ -18,6 +18,7 @@ sys.path.insert(0, str(_HERE.parent))
 from core.config import InstrumentRange
 from core.plan import DetunePlan, DetuneVariant, FmCatalogue, FmInstrument, FmLayer, detune_cents
 from core.plan.instruments import _add_detune_variants
+from core.smps import FM_FREQUENCIES
 
 _NC5 = 60          # SMPS semitone of nC5 (C0 = 0): fnum 644
 _NAS5 = 70         # nA#5: fnum 1148, the table's widest (its octave runs B 606 ... A# 1148)
@@ -26,12 +27,12 @@ _NAS5 = 70         # nA#5: fnum 1148, the table's widest (its octave runs B 606 
 class DetuneCentsTest(unittest.TestCase):
     def test_interval_follows_the_fnum(self):
         # +3 on C (fnum 644) is wider than on A# (fnum 1148): Title Screen's "+5..8 c"
-        self.assertAlmostEqual(detune_cents(_NC5, 3), 8.05, places=2)
-        self.assertAlmostEqual(detune_cents(_NAS5, 3), 4.52, places=2)
+        self.assertAlmostEqual(detune_cents(_NC5, 3, FM_FREQUENCIES), 8.05, places=2)
+        self.assertAlmostEqual(detune_cents(_NAS5, 3, FM_FREQUENCIES), 4.52, places=2)
 
     def test_sign_and_zero(self):
-        self.assertLess(detune_cents(_NC5, -20), 0)
-        self.assertEqual(detune_cents(_NC5, 0), 0)
+        self.assertLess(detune_cents(_NC5, -20, FM_FREQUENCIES), 0)
+        self.assertEqual(detune_cents(_NC5, 0, FM_FREQUENCIES), 0)
 
 
 class DetunePlanTest(unittest.TestCase):

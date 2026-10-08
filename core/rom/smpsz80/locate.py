@@ -36,6 +36,7 @@ _ENTRIES_CHECKED = 3
 # The FM table: an octave of fnums a semitone apart (2^(1/12) = 1.059), the next octave's within
 # the drift of a hand-tuned table (Golden Axe: $283 then $27E)
 _OCTAVE = 12
+_NOTES = 0x60                # $80-$DF: rest and the 95 notes, as Sonic 1's table
 _SEMITONE = (1.04, 1.08)
 _OCTAVE_DRIFT = 0.02
 _BLOCK_SHIFT = 11
@@ -64,6 +65,14 @@ def sound_bank(rom: RomImage) -> int:
         where = ", ".join(f"${b:X}" for b in found)
         raise RomError(f"{len(found)} banks start with a sound header{': ' + where if where else ''}, not one")
     return found[0]
+
+
+def fm_frequencies(rom: RomImage) -> tuple[int, ...]:
+    """The driver's FM table as it indexes it: note byte - $80, so the word before the first
+    octave stands at $80 (a rest: never read), $81 is the octave's first."""
+    z80 = z80_ram(rom)
+    start = fm_table(z80) - _WORD
+    return tuple(int.from_bytes(z80[at:at + _WORD], "little") for at in range(start, start + _NOTES * _WORD, _WORD))
 
 
 def fm_table(z80: bytes) -> int:

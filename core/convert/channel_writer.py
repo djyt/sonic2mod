@@ -92,7 +92,8 @@ class WriterContext:
         """Cents an FM instrument's sample is detuned by (core.plan.detune): its FNUM offset at the
         pitch it is rendered at."""
         if self._sample_detunes is None:
-            self._sample_detunes = {i.inst: detune_cents(i.synth_idx + 12, i.layers[0].fnum_offset)
+            self._sample_detunes = {i.inst: detune_cents(i.synth_idx + 12, i.layers[0].fnum_offset,
+                                                         self.song.fm_frequencies)
                                     for i in fm_catalogue(self.song, self.config).instruments.values()
                                     if len(i.layers) == 1}
         return self._sample_detunes.get(inst, 0.0)
@@ -1116,7 +1117,7 @@ class ChannelWriter:
         if (pattern, row) == self._last_note_cell or self._router.borrowed(mod_chan, tick):
             return                      # the attack row's slide would retune the attack too
         self._mod.ensure_pattern(pattern)
-        want = detune_cents(self._last_chip, self._st.detune) - self._sounding_cents
+        want = detune_cents(self._last_chip, self._st.detune, self._ctx.song.fm_frequencies) - self._sounding_cents
         moved = self._fine_slide(pattern, row, mod_chan, self._sounding_period, want)
         if moved is not None:
             self._sounding_period -= moved

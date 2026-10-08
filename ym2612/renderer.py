@@ -61,19 +61,21 @@ def note_to_freq(mod_note_index: int) -> float:
     return 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
 
 
-def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK) -> tuple[int, int]:
-    """(fnum, block) the Sonic 1 driver writes for this note.
+def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK,
+                       fm_frequencies: tuple[int, ...] = FM_FREQUENCIES) -> tuple[int, int]:
+    """(fnum, block) the driver writes for this note: from `fm_frequencies`, its FM frequency
+    table (Sonic 1's, core.smps.driver_tables.FM_FREQUENCIES, unless a song has its own).
 
-    Its FM frequency table (core.smps.driver_tables.FM_FREQUENCIES: index 1 = nC0, so MOD index
-    i, C1 = 0, is table index i + 13) runs fnum 644–1216 with the block from the octave.
+    The table's index 1 = nC0, so MOD index i, C1 = 0, is table index i + 13; Sonic 1's runs
+    fnum 644–1216 with the block from the octave.
     Using the same registers as the hardware matters beyond pitch: rate scaling and detune
     read the key code (block and the fnum's top bits), so a note written as fnum 1148 in one
     block and as 574 in the next sounds the same pitch with a different envelope and detune.
     Off the table, or at another clock, the formula in freq_to_fnum_block stands in.
     """
     i = mod_note_index + 13
-    if clock_rate == MD_FM_CLOCK and 0 <= i < len(FM_FREQUENCIES):
-        word = FM_FREQUENCIES[i]
+    if clock_rate == MD_FM_CLOCK and 0 <= i < len(fm_frequencies):
+        word = fm_frequencies[i]
         return word & 0x7FF, (word >> 11) & 0x7
     return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
 
@@ -201,6 +203,7 @@ def render_layers(
     channel: int = 0,
     clock_rate: int = MD_FM_CLOCK,
     taps: int = DEFAULT_TAPS,
+    fm_frequencies: tuple[int, ...] = FM_FREQUENCIES,
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -228,7 +231,7 @@ def render_layers(
         keyoff = layer[4] if len(layer) > 4 else None
         ch = channel + i
         program_voice(opn2, voice, ch, tl_offset=tl_offset)
-        fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate)
+        fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate, fm_frequencies)
         if fnum_offset:
             fnum, block = detuned_fnum_block(fnum, block, fnum_offset)
         _set_freq(opn2, fnum, block, ch)

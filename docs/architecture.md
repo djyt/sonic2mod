@@ -102,7 +102,7 @@ adds composite instruments to the same catalogue.
 
 | Class | Holds |
 |---|---|
-| `SmpsSong` | `header`, `channels`, `voices`, `psg_envelopes`, `dropped` (flags a ROM driver read and left out); `end_tick()`, `loop_target_tick()` |
+| `SmpsSong` | `header`, `channels`, `voices`, `psg_envelopes`, `fm_frequencies` (the FM table notes play from: Sonic 1's, or a ROM driver's), `dropped` (flags a ROM driver read and left out); `end_tick()`, `loop_target_tick()` |
 | `SmpsSongHeader` | voice label, FM / PSG counts, tempo divider and modifier, channel headers, `is_sfx` |
 | `SmpsChannelHeader` | type, label, pitch offset, volume, PSG modulation byte, voice and `psg_voice_label`; SFX `hw_channel`; `chip_channel` where the driver's order is not header order (`source_names`) |
 | `SmpsChannel` | header, `events`, jump / loop info (`loop_tick`, `loop_event_index`, `loop_label`) |

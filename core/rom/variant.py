@@ -101,4 +101,5 @@ class SmpsVariant:
     voice_layout: VoiceLayout
     dac_names: Mapping[int, str]                                     # the DAC track's bytes that play a sample
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]]    # every sample a song can play
+    fm_frequencies: Callable[[RomImage], tuple[int, ...] | None]     # the FM table notes play from; None: Sonic 1's
     known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes

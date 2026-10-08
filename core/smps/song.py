@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
-from .driver_tables import SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
+from .driver_tables import FM_FREQUENCIES, SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
 
 # ---------------------------------------------------------------------------
 # Intermediate representation data classes
@@ -203,6 +203,9 @@ class SmpsSong:
     # The PSG envelopes smpsPSGvoice names (fTone_01 ...): the driver's own - Sonic 1's for an asm
     # song or a VGM lift, a ROM's read from its PSG_Index
     psg_envelopes: dict[str, PsgEnvelope] = field(default_factory=lambda: dict(SONIC1_ENVELOPES))
+    # The FM frequency words the driver plays notes with, by fm_note_index (index 1 = nC0): Sonic
+    # 1's, or a ROM driver's own (Golden Axe's, 8-16 cents flat)
+    fm_frequencies: tuple[int, ...] = FM_FREQUENCIES
     # Flags read and left out (a ROM's driver: pan animation, queued sounds), by name
     dropped: dict[str, int] = field(default_factory=dict)
 

@@ -6,7 +6,7 @@ space.
     type1a.py     Type 1a (Michael Jackson's Moonwalker)
     memory.py     pointers: big-endian, relative (SonicDriverVer 1)
     locate.py     the Go_ block, found by its tables' shape -> SoundIndex
-    dac.py        the DPCM samples in each driver's Z80 code (kosinski.py: Sonic 1's is compressed)
+    dac.py        the DPCM samples in each driver's Z80 code (core/rom/z80.py loads it)
 """
 
 from .sonic1 import SONIC1

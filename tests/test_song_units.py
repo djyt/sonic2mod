@@ -136,20 +136,11 @@ class OtherDrivers(unittest.TestCase):
 
     def test_a_drum_is_heard_until_the_drum_tracks_next_hit(self):
         # Hits at 0 (drum81), 10 (drum82), 40 (drum81), the song ending at 50; a rest between does not stop one
-        from types import SimpleNamespace
+        self.assertEqual(_drum_rings(loop_tick=None), {1: 1.0, 2: 3.0})
 
-        from core.convert.fm_drums import drum_rings
-        events = [SmpsEvent(SmpsNote(0x81, 10, is_dac=True, dac_name="drum81"), tick_position=0),
-                  SmpsEvent(SmpsNote(0x82, 20, is_dac=True, dac_name="drum82"), tick_position=10),
-                  SmpsEvent(SmpsNote(0x80, 10, is_rest=True), tick_position=30),
-                  SmpsEvent(SmpsNote(0x81, 10, is_dac=True, dac_name="drum81"), tick_position=40)]
-        drums = SmpsChannel(header=SmpsChannelHeader(channel_type="DAC", label="drums"), events=events)
-        song = SmpsSong(header=SmpsSongHeader(channels=[drums.header]), channels=[drums])
-        song.fm_drums = {name: FmDrum(SmpsVoice(0), 0, ()) for name in ("drum81", "drum82")}
-        config = SimpleNamespace(dac_samples=[SimpleNamespace(name="drum81", mod_instrument=1, mod_note="C3"),
-                                              SimpleNamespace(name="drum82", mod_instrument=2, mod_note="C3")])
-        timeline = SimpleNamespace(span_secs=lambda start, end: (end - start) / 10)
-        self.assertEqual(drum_rings(song, config, timeline), {1: 1.0, 2: 3.0})
+    def test_the_last_hit_rings_across_the_loop(self):
+        # The track jumps back to tick 5: the hit at 40 rings to the end (1.0), then 5 -> 10 (0.5)
+        self.assertEqual(_drum_rings(loop_tick=5), {1: 1.5, 2: 3.0})
 
     def test_no_run_out_leaves_a_long_note_whole(self):
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
@@ -161,6 +152,26 @@ class OtherDrivers(unittest.TestCase):
         segment = tempo_schedule(NO_TEMPO_HOLDS)[0]
         self.assertEqual((segment.tick_at(10_000), segment.frame_of(10_000), segment.holds(10_000)),
                          (10_000, 10_000, False))
+
+
+def _drum_rings(loop_tick: int | None) -> dict[int, float]:
+    """drum_rings on a drum track hitting drum81 at 0 and 40, drum82 at 10, resting at 30; ten
+    ticks a second."""
+    from types import SimpleNamespace
+
+    from core.convert.fm_drums import drum_rings
+    events = [SmpsEvent(SmpsNote(0x81, 10, is_dac=True, dac_name="drum81"), tick_position=0),
+              SmpsEvent(SmpsNote(0x82, 20, is_dac=True, dac_name="drum82"), tick_position=10),
+              SmpsEvent(SmpsNote(0x80, 10, is_rest=True), tick_position=30),
+              SmpsEvent(SmpsNote(0x81, 10, is_dac=True, dac_name="drum81"), tick_position=40)]
+    drums = SmpsChannel(header=SmpsChannelHeader(channel_type="DAC", label="drums"), events=events,
+                        has_jump=loop_tick is not None, loop_tick=loop_tick)
+    song = SmpsSong(header=SmpsSongHeader(channels=[drums.header]), channels=[drums])
+    song.fm_drums = {name: FmDrum(SmpsVoice(0), 0, ()) for name in ("drum81", "drum82")}
+    config = SimpleNamespace(dac_samples=[SimpleNamespace(name="drum81", mod_instrument=1, mod_note="C3"),
+                                          SimpleNamespace(name="drum82", mod_instrument=2, mod_note="C3")])
+    timeline = SimpleNamespace(span_secs=lambda start, end: (end - start) / 10)
+    return drum_rings(song, config, timeline)
 
 
 class NoAttack(unittest.TestCase):

@@ -18,12 +18,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from ...smps import FM_FREQUENCIES
-from ..envelopes import is_envelope
-from ..header import is_music_header, is_sfx_header, read_index
-from ..image import RomError, RomImage
-from ..memory import SoundMemory
-from ..variant import SoundIndex
+from core.rom.envelopes import is_envelope
+from core.rom.header import is_music_header, is_sfx_header, read_index
+from core.rom.image import RomError, RomImage
+from core.rom.memory import SoundMemory
+from core.rom.variant import SoundIndex
+from core.smps import FM_FREQUENCIES
+
 from .common import HEADER_68K
 from .memory import Relative68kMemory
 

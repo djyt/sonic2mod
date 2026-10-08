@@ -3,7 +3,7 @@
 The drum track's note n (low nibble) starts drum n (Golden Axe's driver, Z80 $0899):
 
     records  Z80 $096B   a word per drum -> ptr.w transpose.b volume.b envelope.b voice.b
-    voices   Z80 $0987   a word per voice -> 26 bytes (smpsz80/layout.py)
+    voices   Z80 $0987   a word per voice -> 26 bytes (layout.py)
     init     Z80 $0941   the drum track's flags, channel (FM3) and divider (1)
 
 Both tables are found by the code that reads them, not by their addresses:
@@ -31,8 +31,12 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 
-from ...chips import split_freq_word
-from ...smps import (
+from core.chips import split_freq_word
+from core.rom.flags import FlagKind, FlagSpec
+from core.rom.image import RomError, RomImage
+from core.rom.voices import read_voices
+from core.rom.z80 import z80_ram
+from core.smps import (
     FIRST_FLAG,
     REST,
     CoordFlag,
@@ -43,12 +47,9 @@ from ...smps import (
     signed_byte,
     tempo_schedule,
 )
-from ..flags import FlagKind, FlagSpec
-from ..image import RomError, RomImage
-from ..voices import read_voices
-from ..z80 import z80_ram
+
+from ..memory import Z80RamMemory
 from .layout import VOICE_TYPE0
-from .memory import Z80RamMemory
 
 _MAX_FRAMES = 512            # ~8.5 s: past any hit's ring
 _FILL_FRAMES = 0x100         # a note keyed this long without another runs out

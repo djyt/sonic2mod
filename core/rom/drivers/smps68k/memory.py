@@ -3,8 +3,8 @@ is an offset from the header, a flag's is relative: target = operand + 1 + signe
 
 from __future__ import annotations
 
-from ..image import RomError
-from ..memory import SoundMemory
+from core.rom.image import RomError
+from core.rom.memory import SoundMemory
 
 
 class Relative68kMemory(SoundMemory):

@@ -6,11 +6,13 @@ each fact was found.  Sonic 1 itself is `docs/smps_driver.md`; how the reader is
 
 | Variant (`driver:`) | Family | Game | Code |
 |---|---|---|---|
-| `sonic1` (Type 1b, modified) | SMPS 68k | Sonic the Hedgehog | `core/rom/smps68k/sonic1.py` |
-| `smps68k_type1a` | SMPS 68k | Michael Jackson's Moonwalker | `core/rom/smps68k/type1a.py` |
-| `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/rom/smpsz80/type0fm.py` |
+| `sonic1` (Type 1b, modified) | SMPS 68k | Sonic the Hedgehog | `core/rom/drivers/smps68k/sonic1/` |
+| `smps68k_type1a` | SMPS 68k | Michael Jackson's Moonwalker | `core/rom/drivers/smps68k/type1a/` |
+| `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/rom/drivers/smpsz80/type0fm/` |
+| `smps68k_mucom` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/rom/drivers/smps68k/mucom/` |
 
 A ROM known by its SHA-1 is pinned to its variant; any other is tried with each (`detect.py`).
+Streets of Rage's facts are in `docs/todo/streets_of_rage.md` until its conversion is done.
 
 ---
 
@@ -66,7 +68,7 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 
 **Where things are**
 - **Driver:** copied uncompressed by the 68k (`$34DC`: `$DF8` bytes, ROM `$1D2F0` -> Z80 `$0000`;
-  `core/rom/z80.py` reads the copy loop).  Found by its FM table (`smpsz80/locate.py`).
+  `core/rom/z80.py` reads the copy loop).  Found by its FM table (`type0fm/locate.py`).
 - **Bank:** set once by the 68k (`$1C00` = 1, `$1C01` = `$80`): Z80 `$8000`-`$FFFF` = ROM
   `$18000`-`$1FFFF`.  Every song, voice and pointer lives there; pointers are absolute Z80
   addresses, little-endian.  Found as the one bank starting with a sound header.
@@ -76,7 +78,7 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 - **Songs:** Sonic 1's header fields; every song 6 FM, 0 PSG.  `$8A`, `$8F` are stubs.  SFX: Sonic
   1's layout, tracks on FM3-FM6 and the PSG, one shared voice bank at `$80DB`.
 
-**How it plays** (`smpsz80/layout.py`, `type0fm.py`)
+**How it plays** (`type0fm/layout.py`, `type0fm/variant.py`)
 - **Track order** (Z80 `$0501`): the drum track, FM1, FM2, FM4, FM5, FM6.
 - **Flags** (Z80 `$0B65`): a handler starts at the first operand and the driver steps one byte
   past it, so a flag with no handler skips one operand.
@@ -113,7 +115,7 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 - **Frequency writes:** every FM channel's, every frame.  A rip shows no read at a tie: the
   yardstick merges ties that change nothing compared, the pitch audit segments at pitch changes.
 
-**Drums** (`smpsz80/drums.py`, Z80 `$0899`)
+**Drums** (`type0fm/drums.py`, Z80 `$0899`)
 - The drum track's note `$8n` starts FM drum n on FM3 (bits 4-6 a PSG drum: no song plays one).
   A drum is a record (`$096B`, 14: program, transpose, volume, voice index into `$0987`) and a
   program: track bytecode in the driver, at divider 1, its level the record's volume plus the drum
@@ -138,10 +140,14 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 
 1. Probe: find the driver (68k code, or the Z80 blob the 68k copies), its flag jump table, the
    song index, a song header and a voice.  Compare each table with Sonic 1's.
-2. Code: the family's package (`core/rom/smps68k/`, `smpsz80/`): an `SmpsVariant` (memory, locate,
-   flags, header and voice layouts, envelope commands, DAC, FM table, FM drums, the ROMs it is known
-   in); register it in `core/rom/variants.py`.  What the song itself must say goes in the IR
-   (`core/smps`), never a variant check downstream.
+2. Code: a folder in its family (`core/rom/drivers/smps68k/<driver>/`, `smpsz80/<driver>/`):
+   `variant.py`, the `SmpsVariant` (memory, locate, flags per kind of track, track grammar, header
+   and voice layouts, envelope commands, DAC, FM table, FM drums, the ROMs it is known in), and
+   whatever only this driver has; what two drivers of a family share moves up to the family
+   folder.  Add it to `core/rom/drivers/__init__.py`'s `DRIVERS`.  A driver imports the framework
+   absolutely (`core.rom.flags`), its family relatively.  Nothing outside its folder names it:
+   what the song itself must say goes in the IR (`core/smps`), what a reader needs in the
+   variant's description - never a variant check.
 3. Check: `tools/rom_import.py` lists every song; `tools/vgm_lift.py` against the rips (FM is what
    it reads in full); `tools/vgm_pitch_audit.py`; `tools/measure_volumes.py`.  A rip is only as good
    as its emulator and ripper: back a finding with the driver's code.

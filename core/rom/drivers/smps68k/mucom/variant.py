@@ -18,16 +18,17 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from ...chips import OperatorReg
-from ...smps import PSG_FREQUENCIES, ChannelType, CoordFlag, SmpsDriver
-from ..flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, refuse
-from ..header import is_music_header, read_index
-from ..image import RomError, RomImage
-from ..memory import SoundMemory
-from ..variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
-from .locate import pointers_before_data
-from .memory import Relative68kMemory
-from .mucom_grammar import mucom_instruction
+from core.chips import OperatorReg
+from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, refuse
+from core.rom.header import is_music_header, read_index
+from core.rom.image import RomError, RomImage
+from core.rom.memory import SoundMemory
+from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
+from core.smps import PSG_FREQUENCIES, ChannelType, CoordFlag, SmpsDriver
+
+from ..locate import pointers_before_data
+from ..memory import Relative68kMemory
+from .grammar import mucom_instruction
 
 STREETS_OF_RAGE_REV_A_SHA1 = "731cdf182fe647e4977477ba4dd2e2b46b9b878a"
 

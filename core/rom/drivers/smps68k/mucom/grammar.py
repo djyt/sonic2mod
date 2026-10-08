@@ -19,7 +19,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ...smps import (
+from core.rom.grammar import Instruction, flag_instruction, track_label
+from core.rom.image import RomError
+from core.rom.memory import SoundMemory
+from core.rom.variant import SmpsVariant
+from core.smps import (
     FIRST_NOTE,
     REST,
     SELECTED_SAMPLE,
@@ -29,10 +33,6 @@ from ...smps import (
     OpKind,
     SmpsEffect,
 )
-from ..grammar import Instruction, flag_instruction, track_label
-from ..image import RomError
-from ..memory import SoundMemory
-from ..variant import SmpsVariant
 
 FIRST_FLAG = 0xF0
 END = 0x00

@@ -12,9 +12,9 @@ $03E5).
 
 from __future__ import annotations
 
-from ...chips import OperatorReg
-from ...smps import SFX_CHANNEL_IDS, ChannelType
-from ..variant import HeaderLayout, TrackSlot, VoiceLayout
+from core.chips import OperatorReg
+from core.rom.variant import HeaderLayout, TrackSlot, VoiceLayout
+from core.smps import SFX_CHANNEL_IDS, ChannelType
 
 _SFX_FM6 = 0x06                 # an SFX track's channel byte for FM6 (Sonic 1's SFX stop at FM5)
 

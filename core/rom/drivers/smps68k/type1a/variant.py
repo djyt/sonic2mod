@@ -3,13 +3,14 @@ with a disassembler (docs/todo/binary_import.md, Phase 2)."""
 
 from __future__ import annotations
 
-from ...smps import FIRST_NOTE, LAST_NOTE, CoordFlag, SmpsDriver
-from ..flags import RETURN, EnvelopeCommand, drop, effect, every_kind, refuse
-from ..variant import SmpsVariant
-from .common import FLAGS_68K, HEADER_68K, VOICE_68K
+from core.rom.flags import RETURN, EnvelopeCommand, drop, effect, every_kind, refuse
+from core.rom.variant import SmpsVariant
+from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, SmpsDriver
+
+from ..common import FLAGS_68K, HEADER_68K, VOICE_68K
+from ..locate import locate_68k
+from ..memory import Relative68kMemory
 from .dac import type1a_dac
-from .locate import locate_68k
-from .memory import Relative68kMemory
 
 MOONWALKER_REV_A_SHA1 = "70d9b760c87196af364492512104fa18c9d69cce"
 

@@ -1,27 +1,396 @@
-# YAML Configuration Reference
+# YAML configuration reference
 
-Per-song YAML configs allow fine-grained control over the SMPS-to-MOD conversion. Place them in the `configs/` directory.
+Two files drive a conversion:
 
-## Usage
+- a **song config** (`configs/<song>.yaml`): what to read, and how each SMPS channel becomes MOD
+  channels and instruments;
+- **`settings.yaml`**: synthesis and sample settings shared by every song (§ 8).
+
+This page lists every key: what to write, and in a line or two what it does.  The mechanics
+live in `docs/pipeline.md` (conversion), `docs/fm_synthesis.md` / `docs/psg_synthesis.md`
+(sample rendering) and `docs/smps_driver.md` (the hardware).
+
+1. [Running a config](#1-running-a-config)
+2. [Minimal config](#2-minimal-config)
+3. [A full config: one MOD channel per SMPS channel](#3-a-full-config-one-mod-channel-per-smps-channel)
+4. [Instruments: how a note finds its sample](#4-instruments-how-a-note-finds-its-sample)
+5. [Shaping samples](#5-shaping-samples)
+6. [The merged (Amiga) build](#6-the-merged-amiga-build)
+7. [Variants](#7-variants)
+8. [settings.yaml](#8-settingsyaml)
+9. [Spelling notes and pitfalls](#9-spelling-notes-and-pitfalls)
+
+---
+
+## 1. Running a config
 
 ```bash
-python convert.py configs/my_song.yaml
+python convert.py configs/01_title_screen.yaml              # the reference build: every channel
+python convert.py configs/01_title_screen.yaml --merged     # the Amiga build (§ 6)
+python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged   # a variant (§ 7)
 ```
 
-CLI `--output` overrides the YAML `output_file` if both are given.
+| Flag | Effect |
+|---|---|
+| `-o`, `--output PATH` | Overrides `output_file` (also the merged build's file) |
+| `--input FILE`, `--rom-song ID` | Override `input_file` / `rom_song` |
+| `--show-config` / `--write-config PATH` | Print / write the completed config (§ 2) and stop |
+| `--merged` | Build the merged output (§ 6) |
+| `--variant NAME` | Apply a `variants:` block (§ 7) |
+| `--settings PATH` | Use this settings file (default: `settings.yaml` beside the config, else `configs/settings.yaml`) |
+| `--player ft2\|pt2` | Overrides `player` in settings.yaml |
+| `-v`, `--verbose` | Also list composites, bank sounds, loop extensions, synthesis pitches |
 
-A key the converter does not know is an error, in a song config and in `settings.yaml` alike: a
-typo, or a key from an older version, would otherwise be ignored.
+**Validation.**  The YAML loader refuses a key given twice in one mapping.  An unknown
+**top-level** key, and an unknown key in a settings.yaml section, is an error.  Keys *inside*
+entries (`channels`, `voice_map`, merge groups, …) are not checked: a typo there is ignored.
 
-## variants — several builds from one config
+**Order of application.**  `variants:` overlay → song keys parsed → (no `channels:`) the
+minimal config completed from the song → `--merged` → `--output` → `auto_bpm` → settings, then
+the song's own overrides of them.
 
-A build that differs from the song's usual one in a few keys (Green Hill Zone's lofi Amiga build:
-smaller mixes, earlier loops) is a **variant** of the same config, not a copy of it.  Any mapping
-may hold a `variants:` block; with `--variant NAME` its `NAME` entry is laid over the keys beside
-it, and without one every block is ignored (the base build, unchanged):
+---
+
+## 2. Minimal config
+
+A config with **no `channels:` key** is minimal: everything it leaves out is derived from the
+song (`core/plan/derive.py`).
 
 ```yaml
-variants:                     # at the top: the song-level keys
+name: "Smooth Criminal"
+input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
+rom_song: "$81"
+sample_list:                 # optional: volumes measured against the VGZ
+  - [4, "fm_v00_Bb2.raw", 24, 0]
+```
+
+Derived: `name` (file stem), `output_file` (`output/` mirroring `configs/`),
+`range_space: chip`, `auto_bpm: true`, `channels` (every channel that plays, in header order),
+`ticks_per_row` and `target_speed`, `voice_map` / `psg_voice_map` (one rooted entry per
+three-octave window of the pitches each voice plays), `psg_map`, `dac_samples` (ROM input only)
+and `sample_list` (starting volumes).
+
+A stated item replaces only the derived item it names: one voice's `voice_map` list, one
+`psg_map` form, one `sample_list` row (by slot).  Reuse the derived slot numbers
+(`--show-config` prints them); `--write-config` freezes the result as a full config.
+
+---
+
+## 3. A full config: one MOD channel per SMPS channel
+
+The reference build keeps every SMPS channel on a MOD channel of its own.
+`configs/01_title_screen.yaml` is a complete example.
+
+### Song keys
+
+| Key | Default | Meaning |
+|---|---|---|
+| `name` | `"Untitled"` | MOD title (19 characters kept) |
+| `input_file` | — | `.asm`; a `.vgm` / `.vgz` rip (lifted back into a song, `docs/todo/vgz_conversion.md`); or a ROM (`.bin` / `.md` / `.gen`) with `rom_song`.  Relative to the working directory |
+| `rom_song` | — | ROM input only: the sound ID, `"$81"`, `"0x81"` or `129`.  Data fixes known for that exact ROM are applied (`core/rom/fixes.py`) |
+| `driver` | `sonic1` | The SMPS variant: `sonic1`, `smps68k_type1a` (Moonwalker).  A ROM's is detected |
+| `tempo_modifier`, `tempo_divider` | inferred | VGM input only: override the lift's tempo (each ≥ 1) |
+| `output_file` | `<input name>.mod` | Where the MOD is written |
+| `samples_dir` | `./samples/` | Where `sample_list` files are read from (relative to the working directory) |
+
+### Timing
+
+| Key | Default | Meaning |
+|---|---|---|
+| `ticks_per_row` | `6` | SMPS ticks per MOD row, counted as the asm's duration bytes (before the header's tempo divider): the row grid.  Pick the GCD of the song's durations |
+| `auto_bpm` | `false` | Derive the BPM from the SMPS tempo header (every shipped config sets it) |
+| `target_bpm` | `150` | BPM when `auto_bpm` is off; written as `Fxx` on row 0, not range-checked |
+| `target_speed` | `6` | MOD ticks per row.  Changes nothing in the row grid; choose it so the derived BPM is (nearly) whole — `convert.py` prints the better speed |
+| `region` | `ntsc` | `ntsc` (60 Hz) or `pal` (50 Hz), lower case |
+
+Formulas, tempo changes and the speed choice: `docs/pipeline.md` § Timing.
+
+### `channels:`
+
+One entry per SMPS channel to convert; a channel not listed is skipped.
+
+```yaml
+channels:
+  - source: DAC
+    mod_channel: 0
+  - source: FM1
+    mod_channel: 1
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `source` | required | `DAC`, `FM1`–`FM5`, `PSG1`–`PSG3` |
+| `mod_channel` | required | 0-based MOD column |
+| `transpose` | `0` | Semitones added on the transpose path only (a note no entry anchors with `root`, § 4) |
+| `instrument` | `1` | Fallback slot for notes no map entry routes |
+| `volume` | `64` | Scales every volume the channel writes (× volume / 64) |
+| `enabled` | `true` | `false` skips the channel |
+
+### Layout
+
+| Key | Default | Meaning |
+|---|---|---|
+| `mod_pattern_breaks` | none | `[{pattern: 0, row: 31}]`: the intro ends at that row, a `Bxx` jumps to the next pattern and the body is repacked from there.  `docs/pipeline.md` § Pattern breaks (`mod_pattern_breaks`) |
+| `num_mod_channels` | derived | Pad the MOD to 4 / 8 / 10 / 12 / 14 / 16 channels (at least the highest `mod_channel` + 1) |
+| `max_patterns` | `127` | Writing stops at this pattern |
+
+---
+
+## 4. Instruments: how a note finds its sample
+
+```
+ DAC note ────────────── dac_samples[name] ───────────────────────────→ slot + mod_note
+
+ FM note ── voice ─┬─ channel_instrument_map[source][voice] ─┐
+                   └─ voice_map[voice] ──────────────────────┴─ entry whose low..high
+                                                               holds the note → slot
+
+ PSG tone ─ label ──── psg_voice_map[label] ──────────────────→ entry → slot
+ PSG noise ─ form ──── psg_map[form byte] (envelopes: by label) → entry → slot
+```
+
+Then the MOD note:
+
+| The entry has | MOD note |
+|---|---|
+| `root` (and, for PSG, `low`) | `root + (note − low)` — the **root path** |
+| `root`, noise | `root`, always |
+| no `root`, or no entry | SMPS note + header pitch offset + `smpsChangeTransposition` + channel `transpose` — the **transpose path** (index 0 = C1) |
+
+A result outside C1–B3 is clamped with a warning.  When to anchor with `root`, and why `root`
+ignores key changes under `range_space: source`: `docs/pipeline.md` § `voice_map` routing.
+
+Each synthesised slot's sample is rendered for the **first** entry that names it.
+
+### `range_space`
+
+| Value | `low` / `high` / `root` are matched on |
+|---|---|
+| `source` (default) | the note byte (`nC5` = `C5`) |
+| `chip` | the pitch the chip plays: byte + pitch offset + `smpsChangeTransposition` (PSG through the driver table) |
+
+Use `chip` for a song that changes key with `$E9` while keeping a voice;
+`tools/config_to_chip_space.py` converts a source-space config.  `docs/pipeline.md` § `range_space: chip`.
+
+### `voice_map`
+
+```yaml
+voice_map:
+  0:                      # voice index (smpsSetvoice); write 5 or 0x05, not $05 or 08
+    - low: G5             # SMPS note names: G5, Cs6, Eb4 (no #)
+      high: A6
+      mod_instrument: 3
+      root: G2            # MOD note C1..B3 where low plays: G2, Cs2 (no #, no flats)
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `low`, `high` | required | The range, inclusive |
+| `mod_instrument` | required | MOD slot 1–31 |
+| `root` | none | Root path anchor (above); without it the entry only names the slot |
+| `synth_root` | derived | Rendering pitch (`docs/fm_synthesis.md` § Pitch: synth_root, synth_shift, target_rate).  Derived from the song (the pitch its notes play most, at most an octave above `low`); stating it changes the sample's rate, never where notes land |
+| `vibrato` | from `smpsModSet` | Two hex digits `XY` = `4xy`; `0` = none.  Write `12` or `"1A"` (YAML reads `0x12` as decimal 18) |
+| sample keys | | `loop_drift_db`, `loop_min_ms`, `loop_start_ms`, `loop_decay`, `dither`, `name` (§ 5) |
+
+`smpsAlterNote` / `smpsDetune` never affects range lookup: detuned notes get a variant of the
+entry's sample automatically (`docs/pipeline.md` § Detune variants).
+
+### `channel_instrument_map`
+
+The same entries, for one channel only; checked before `voice_map`.
+
+```yaml
+channel_instrument_map:
+  FM5:                    # FM5 shares FM1's data but plays at its own level
+    0:
+      - {low: G5, high: A6, mod_instrument: 4, root: G2}
+```
+
+### `psg_voice_map`
+
+PSG tone instruments, by envelope label (`smpsPSGvoice` or the `smpsHeaderPSG` voice).  A value
+is one entry or a list split by `low` / `high`.  Ignored on a channel in noise mode.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `mod_instrument`, `root` | required | Slot and anchor.  Without `low`, `root` only sets the sample's rate and the note takes the transpose path |
+| `low`, `high` | none | Range, and the root-path anchor |
+| `envelope` | the label | Envelope override: `fTone_01`…`fTone_09` or an inline list |
+| `synth_root`, `base_volume` (0), `vibrato`, `dither`, `name` | | As in `voice_map`; `base_volume` is the SN76489 attenuation rendered at |
+
+A label not in the map leaves the current instrument playing.  `type` other than `tone`, or any
+`noise_rate`, is an error.
+
+### `psg_map`
+
+Noise instruments, keyed by the `smpsPSGform` byte (`0xE7`).  The byte is the SN76489 noise
+register: bit 2 white / periodic, bits 0–1 the rate.  Once a channel takes `smpsPSGform` it stays
+a noise channel; a later `smpsPSGvoice` only changes the envelope.
+
+```yaml
+psg_map:
+  0xE7:
+    mod_instrument: 7
+    root: A3              # the MOD note every hit plays
+    envelopes: {fTone_08: 18}   # a label that gets its own sample (Scrap Brain's hi-hat)
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `mod_instrument`, `root` | required | Slot; `root` is every hit's MOD note |
+| `low`, `high` | none | With `low`, hits follow the note: `root + (note − low)` (Marble Zone's pitched noise) |
+| `envelopes` | `{}` | `{label: slot}` variants |
+| `envelope` | derived | Override of the envelope read from the song |
+| `tone2_n`, `synth_root` | derived | Rate 3 only: override the tone-2 divider the song gives (`docs/psg_synthesis.md` § Rate-3 noise: the tone-2 divider) |
+| `base_volume`, `vibrato`, `dither`, `name` | | As above |
+
+`type` / `noise_rate` are redundant with the byte: one that disagrees warns and is ignored.
+
+### `dac_samples`
+
+```yaml
+dac_samples:
+  - name: dKick
+    mod_instrument: 1
+    mod_note: B1
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `name` | required | SMPS DAC name: `dKick`, `dSnare`, `dTimpani`, `dHiTimpani`, `dMidTimpani`, `dLowTimpani`, `dVLowTimpani` |
+| `mod_instrument` | required | Slot; timpani variants share one and differ by `mod_note` |
+| `mod_note` | `C3` | Trigger note (`Fs3`, `F#3`, `Gb3` all work; an unknown name becomes C3) |
+| `saturate_db`, `merge_saturate_db` | `0` | § 5 |
+
+Pick the `mod_note` and `sample_list` finetune whose Amiga rate (`3546895 / period × 2^(ft/96)`)
+is nearest the hardware's: kick B1, snare F3, timpani A1 / D2 / C2 / G#1 in the shipped configs.
+The rate depends on the song (the 68k stalls the Z80 for a share of each frame), so each config
+picks its own: the smallest finetune within 4 cents of the best for the worst sample on the slot.
+The rates and why the VGZ rips read 2–3 % fast: `docs/smps_driver.md` § DAC playback rates.
+
+### `sample_list`
+
+`[slot, "file.raw", volume, finetune]` — one row per slot.
+
+- **Synthesised slot** (FM or PSG with synthesis on): only `volume` (0–64) and `finetune`
+  (−8…7, 12.5 c a step, optional) are used.  Volumes are set by measurement:
+  `tools/vgm_compare.py --write-volumes` (`docs/pipeline.md` § Verifying against a VGZ).
+- **Disk sample** (DAC drums, or synthesis off): the file, signed 8-bit mono PCM, from
+  `samples_dir`.
+- With baked levels (the default) the volume is the level of the instrument's most common
+  `smpsAlterVol` / pan state; other notes get `Cxx` (`docs/pipeline.md` § Levels).
+- The last row for a slot wins; a synthesised slot with no row plays at 64.
+
+---
+
+## 5. Shaping samples
+
+Optional keys that trade bytes or fidelity per instrument.  "Entry" = a `voice_map`,
+`channel_instrument_map`, `psg_map` or `psg_voice_map` entry; "group" = a merge group (§ 6),
+applied to its composites.
+
+| Key | Where | Meaning |
+|---|---|---|
+| `loop_drift_db` | entry, group, song | How far above the settled level a sustain loop may freeze (dB).  Lower = loops later, more faithful; the song key replaces `samples.loop_drift_db` |
+| `loop_min_ms` | entry, group | Shortest loop (default 30 ms).  Raise where a short loop buzzes |
+| `loop_start_ms` | entry, group | Earliest loop start: keeps a beating pair's loop out of its attack |
+| `loop_decay` | entry, group | `freeze` (default) or `slide`: loop a voice that keeps fading early and write the fall as volume slides (FM only) |
+| `dither` | entry, group | `shaped` / `flat` / `off` (YAML's bare `off` works) over `samples.dither` |
+| `name` | entry, group | MOD sample name (22 characters) instead of the generated one |
+| `treble_shelf_db` | song, group | Brightness shelf above `samples.treble_shelf_hz`.  The song key replaces the setting; a group's adds to it |
+| `treble_shelf_hz` | group | The group's shelf frequency |
+| `saturate_db` | `dac_samples` entry | Soft-clip the drum so its RMS rises this many dB at the same peak |
+| `merge_saturate_db` | `dac_samples` entry | The same, merged build only (replaces `saturate_db` there) |
+| `limit_db` | group | Limit a mix's peaks above full scale by up to this many dB instead of turning the whole mix down |
+
+Sustain loops and slides: `docs/pipeline.md` § Sample length, sustain loops and release slides.  `tools/mod_audit.py` shows each
+sample's loop and size.
+
+---
+
+## 6. The merged (Amiga) build
+
+`convert.py --merged` folds channels so the song fits 3–4 Amiga channels.  The reference build
+is unaffected.  Rules: `docs/pipeline.md` § The merged build.  Terse key list:
+`docs/cheat_sheets/merge_patterns.txt`.
+
+### `merge:` — song-wide groups
+
+```yaml
+merge:
+  - primary: FM1          # the channel that carries the fold
+    followers: [FM5]      # folded onto it as composite instruments
+  - primary: DAC
+    followers: [PSG3]
+    cut_primary: true     # a hat over a drum's decay plays and cuts it
+```
+
+### `merge_patterns:` — groups per block of patterns
+
+```yaml
+merge_patterns:
+  - patterns: "1-4"               # reference-build patterns, hex as trackers show them
+    drop: [PSG2]                  # these channels' notes are left out here
+    groups:
+      - primary: DAC
+        followers: [FM2, PSG3]
+      - primary: FM5
+        followers: [FM3, FM4]
+        mod_channel: FM2          # take FM2's column here (its owner rides the drums)
+```
+
+`patterns:` takes `"0"`, `"1-4"`, `"d-10"`, `"0, 5-c"` or a list; a bare YAML number is
+**decimal**.  Every group starts with `- `.  A channel stays in the output unless it is a
+follower or dropped in every pattern the blocks name.  `merge:` groups may sit beside
+`merge_patterns:`.  `tools/fold_csv.py` writes the section from a fold table.
+
+### Group keys
+
+| Key | Default | Meaning |
+|---|---|---|
+| `primary` | required | The channel whose column, fill and vibrato the fold uses |
+| `followers` | `[]` | Channels folded onto it (empty only with `mod_channel` or `fill`) |
+| `cut_primary` | `false` | A follower note over the primary's tail plays and cuts it |
+| `max_composites` | none | Keep the N most-played composites; the rest use a same-shape stand-in or the primary alone |
+| `fill_lost` | `false` | Follower notes the fold cannot place go to the fill pool |
+| `fill_cut` | `false` | Follower notes the fold would cut short go to the pool, whole notes only |
+| `bank` | `false` | The group's mixes share slots as sample banks, chosen with `9xx` |
+| `mix_note` | fastest layer's | Cap on the note a mix is made at (bytes vs treble) |
+| `mix_at` | — | `primary`: mix at the primary's own note so its loop survives |
+| `fm_on_chip` | `true` | FM primary + FM followers in a mix are rendered together on the chip |
+| `loop_mix` | `false` | Loop long mixes where the sum settles |
+| `mod_channel` | primary's | `merge_patterns` only: the column (a `channels:` number or a source) the primary's notes take; it must be free there |
+| `fill` | `false` | `merge_patterns` only, no followers: the channel's notes go to whichever column is silent |
+| `cut_after` | — | `merge_patterns` only: a pooled note may take this group's column once its note is N ticks old |
+| sample keys | | `loop_*`, `dither`, `name`, `treble_shelf_db` / `_hz`, `limit_db` (§ 5) |
+
+### Song-level merge keys
+
+| Key | Default | Meaning |
+|---|---|---|
+| `merge_output_file` | `<output stem>_merged.mod` | Where `--merged` writes |
+| `merge_drop` | `[]` | Channels left out of the merged build |
+| `merge_fill` | `[]` | The fill pool: each note on whichever column is silent when it starts |
+| `merge_fill_cut_after` | `{}` | `{channel: ticks}`: a pool note may cut that column's notes once they are this old |
+| `merge_tolerance` | `1` | Ticks a follower note-on may be off the primary's and still fold |
+| `merge_bank_slots` | `auto` | Slots held back for sample banks; `auto` rebuilds with what the banks need, a number pins it |
+| `merge_twins` | `short` | `always`: composites of the same shape share one sample even when slots are free |
+| `merge_max_synth_shift` | `12` | Cap (semitones) on how far above its root a sample is rendered; `0` halves bytes |
+| `merge_loop_timbre` | `false` | Loops wait until the voice's timbre holds, as in the reference build |
+
+What folds cleanly is a property of the song: `python tools/merge_survey.py <config>` counts it
+per channel pair and prints suggested groups.
+
+---
+
+## 7. Variants
+
+A build that differs in a few keys (Green Hill's `lofi`) is a variant of the config, not a copy.
+Any mapping may hold a `variants:` block; `--variant NAME` lays its `NAME` entry over the keys
+beside it.  Without `--variant` the blocks are ignored.
+
+```yaml
+variants:
   lofi:
     name: "Green Hill Zone lofi"
     merge_twins: always
@@ -33,829 +402,91 @@ merge_patterns:
         followers: [FM2, PSG3]
         mix_note: C3
         variants:
-          lofi: {mix_note: A2}   # this group only, in the lofi build
+          lofi: {mix_note: A2}    # this group only
 ```
 
-```bash
-python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged
-```
-
-- An entry's keys **replace** the mapping's: a nested mapping or a list is replaced whole (a list
-  such as `followers:` or `sample_list:` is restated in full), and a key given `null` is removed.
-  To change one key of a nested mapping, put the `variants:` block in that mapping.
-- `output_file` defaults to `<output_file stem>_<variant>.mod` (and the merged build to
-  `..._<variant>_merged.mod`); an entry may state its own.
-- A variant no block names is an error that lists the ones there are.
-- Every tool that reads a config takes `--variant` too: `vgm_compare.py`, `vgm_pitch_audit.py`,
-  `merge_survey.py`, `fold_csv.py` (not with `--write`), `analyze.py --config`.
-  `vgm_compare.py --write-volumes` writes the base `sample_list` only, so it refuses a variant.
-- A regression case converts a variant through `_VARIANTS` in `tests/regression.py`; its
-  manifest hashes the config as that variant reads it, so a base case is not marked changed by
-  an edit to a variant's block.
-
-## Full Schema
-
-```yaml
-# Song name written into MOD header (max 19 characters)
-name: "Title Screen"
-
-# File paths
-input_file: "path/to/song.asm"   # or a .vgm / .vgz rip: lifted back into the song (core/vgm/lift/;
-                                 # docs/todo/vgz_conversion.md), or a ROM (.bin / .md / .gen) with rom_song
-# A config with no `channels:` section is MINIMAL: every section it leaves out is derived from the
-# song (core/plan/derive.py; configs/moonwalker/ holds three-line configs).  convert.py --show-config
-# prints the completed config, --write-config freezes it; a stated item (one voice's voice_map
-# entries, one sample_list row) replaces only the derived item it names.
-# rom_song: "$81"      # ROM input only: the sound ID to read from its bytecode (core/rom/; "$81", "0x81"
-                       # or 129).  The data fixes known for that exact ROM are applied, as the asm
-                       # applies FixMusicAndSFXDataBugs (core/rom/fixes.py: Sonic 1 rev01 only)
-                       # convert.py --input FILE --rom-song ID overrides input_file / rom_song
-output_file: "output/title_screen.mod"
-
-# Source driver (VGM input)
-driver: sonic1         # the SMPS variant that played the song: sonic1, smps68k_type1a (Moonwalker).
-                       # Optional: a ROM's is detected; an asm or a VGM log is sonic1
-# tempo_modifier: 3    # VGM input only: override the lift's inferred smpsHeaderTempo modifier (frames
-# tempo_divider: 1     # TempoWait holds) / divider, where the log leaves them ambiguous. Each >= 1;
-                       # an asm input states its tempo, and setting either there is an error
-
-# Timing
-target_bpm: 150        # BPM (32–255), written as Fxx effect on row 0
-target_speed: 6        # Ticks per row (1–31), ProTracker default is 6
-ticks_per_row: 6       # SMPS ticks per MOD row (controls time scaling)
-auto_bpm: true         # Derive BPM from SMPS tempo header (overrides target_bpm)
-range_space: source    # what voice_map/psg_voice_map low/high match: "source" (the note byte, default)
-                       # or "chip" (the real pitch after pitch_offset + smpsChangeTransposition —
-                       # for songs that change key with $E9; see docs/pipeline.md § range_space)
-region: ntsc           # Console region: "ntsc" (60 Hz) or "pal" (50 Hz)
-
-# MOD format
-# num_mod_channels: 10  # Optional. Derived from the channels section (highest mod_channel + 1,
-                       # rounded up to 4/8/10/12/14/16); set it only to pad upward so a spare
-                       # channel can carry Fxx (tempo change) / Dxx (loop row) effects
-max_patterns: 127      # Truncation limit (max 127)
-
-# Channel mappings (one entry per SMPS channel to convert)
-channels:
-  - source: DAC        # SMPS source: DAC, FM1–FM5, PSG1–PSG3
-    mod_channel: 0     # 0-based MOD channel index
-    instrument: 1      # MOD instrument number (1–31)
-    transpose: 0       # Semitone offset (default 0)
-    volume: 64         # MOD volume (0–64, default 64)
-    enabled: true      # Set false to skip this channel
-
-  - source: FM1
-    mod_channel: 1
-    transpose: -36     # Shift SMPS octave 3+ into MOD range
-    instrument: 2
-
-  - source: FM2
-    mod_channel: 2
-    transpose: -24     # Lower channels may need less shift
-    instrument: 3
-
-  # ... more channels ...
-
-# DAC sample mappings (how SMPS drum names become MOD notes)
-# Choose mod_note to match the sample's native playback rate on Amiga hardware.
-# See "DAC Sample Rates" section below for pitch-correct note values.
-dac_samples:
-  - name: dKick              # SMPS DAC name
-    mod_instrument: 1        # MOD instrument number to trigger
-    mod_note: C2             # Pitch-correct note for 8,250 Hz sample
-
-  - name: dSnare
-    mod_instrument: 2
-    mod_note: Fs3            # Pitch-correct note for 24,000 Hz sample
-
-  - name: dTimpani
-    mod_instrument: 3
-    mod_note: As1            # Pitch-correct note for 7,375 Hz sample
-
-  # Timpani variants share instrument 3, using different notes for pitch
-  - name: dHiTimpani
-    mod_instrument: 3
-    mod_note: Ds2            # 7,375 Hz × 1.30 = 9,588 Hz
-
-  - name: dMidTimpani
-    mod_instrument: 3
-    mod_note: Cs2            # 7,375 Hz × 1.20 = 8,850 Hz
-
-  - name: dLowTimpani
-    mod_instrument: 3
-    mod_note: A1             # 7,375 Hz × 0.97 = 7,154 Hz
-
-  - name: dVLowTimpani
-    mod_instrument: 3
-    mod_note: A1             # 7,375 Hz × 0.95 = 7,006 Hz
-
-# Optional: load real sample files instead of placeholders
-# Source WAVs are in reference/smps_drivers/sonic_1/dac/dpcm/; convert to raw signed PCM:
-#   sox kick.wav -t raw -r 8250 -e signed -b 8 -c 1 kick.raw
-sample_list:
-  - [1, "kick.raw", 64, 0]      # [inst_num, filename, volume, finetune]
-  - [2, "snare.raw", 64, 0]
-  - [3, "timpani.raw", 64, 0]
-
-samples_dir: "./samples/"       # Base path for sample files
-
-# Additional top-level keys (see dedicated sections below for full syntax):
-#
-# voice_map:             Routes SMPS voice index + note range → MOD instrument + pitch anchor
-# channel_instrument_map: Per-channel override for voice_map (e.g. an FM5 double at its own level)
-# psg_map:               Maps smpsPSGform bytes → PSG instrument (noise type auto-inferred from key bit 2)
-# psg_voice_map:         Maps smpsPSGvoice label → PSG instrument
-# mod_pattern_breaks:    Insert Bxx jumps + repack patterns to eliminate blank loop rows
-#   - pattern: 0         # Pattern to split
-#     row: 31            # Last intro row; body starts at row+1
-# merge:                 Channel folding for the Amiga build (convert.py --merged), see below
-#   - primary: FM1
-#     followers: [FM5]
-# merge_patterns:        The same per block of patterns (verse folds ≠ bridge folds), see below
-# merge_drop / merge_fill / merge_fill_cut_after: channels left out, or pooled onto silent channels
-# merge_output_file:     Where --merged writes (default: output_file stem + "_merged.mod")
-```
-
-## Channel Source Names
-
-| Source | SMPS Channel | Typical Content |
-|--------|--------------|-----------------|
-| `DAC` | DAC | Drum/percussion samples |
-| `FM1` | 1st FM channel | Lead melody |
-| `FM2` | 2nd FM channel | Harmony/bass |
-| `FM3` | 3rd FM channel | Counter-melody |
-| `FM4` | 4th FM channel | Pads/chords |
-| `FM5` | 5th FM channel | Often shares FM1 data with offset |
-| `PSG1` | 1st PSG channel | High melody/arpeggios |
-| `PSG2` | 2nd PSG channel | Harmony |
-| `PSG3` | 3rd PSG channel | Noise/rhythm |
-
-## Transpose Guide
-
-SMPS uses 8 octaves (C0–B7, bytes $81–$DF). MOD has 3 octaves (C1–B3, 36 semitones). You must transpose to fit.
-
-| SMPS Note Range | Transpose | MOD Result |
-|-----------------|-----------|------------|
-| C0–B2 (low) | -0 to -12 | C1–B3 (may still clip high) |
-| C3–B5 (mid) | **-36** | C1–B3 (recommended for most FM) |
-| C4–B6 (high) | -48 | C1–B3 (may clip low) |
-| Mixed range | per-channel | Tune each channel separately |
-
-Notes outside C1–B3 after transpose are clamped with a warning. Use per-channel transpose in YAML for best results.
-
-## voice_map
-
-Routes a SMPS voice index + source-note range to a specific MOD instrument slot, with an optional pitch anchor (`root`). The rendering pitch is derived from the song; `synth_root` may state one (see below).
-
-For synthesis pitch matching (how `root`, `synth_root`, and `low` interact with `target_rate`), see `docs/fm_synthesis.md` §Pitch.
-
-```yaml
-voice_map:
-  0:                          # SMPS voice index (from smpsSetvoice)
-    - low:  G5                # Bottom of source-note range (inclusive)
-      high: G6                # Top of source-note range (inclusive)
-      mod_instrument: 4       # MOD instrument slot (1-based)
-      root: Fs2               # G5 plays at F#2; each semitone above shifts output by 1
-      synth_root: C6          # (optional) render at C6 instead of the pitch the chip plays for G5; the sample's rate carries the difference
-    - low:  Gs6
-      high: C7
-      mod_instrument: 12
-      root: G3
-```
-
-`low`/`high` are SMPS note names (no `n` prefix): `C5`, `Gs6`, `B7`, etc. Range lookup uses `(note_value − $81)`. `smpsAlterNote` is a raw FNUM offset (~10 cents) and does NOT affect range selection or pitch placement.
-
-### root — pitch anchor
-
-`root` is an **absolute** MOD note anchor: the note at which playback sounds at the entry's rendering pitch (`synth_root`). With the rendering pitch derived, that is the pitch the chip plays for `low`, so source `low` plays at `root`, unconditionally — `smpsChangeTransposition` events and header pitch_offset do not affect this. The placement formula is:
-
-```
-output = root + (source − low) − synth_shift      # synth_shift is 0 unless synth_root is stated
-```
-
-Each semitone above `low` shifts the output up by 1, clamped to C1–B3.
-
-Without `root`, the entry still selects the correct `mod_instrument` but pitch falls through to the channel-transpose path (`smps_note + total_transpose`).
-
-### synth_root — rendering pitch (derived; optional)
-
-Every rooted entry is rendered at the pitch the chip really plays for its `low` note — `low`
-plus the pitch offset and every `smpsChangeTransposition`, PSG through the driver's table —
-which `core.plan.synth_roots.resolve_synth_roots` reads from the song before synthesis.  No shipped
-config states `synth_root`; `convert.py` counts the derived entries and warns
-(`synth_root_ambiguous`) where an entry's `low` is played at several chip pitches, which is the
-cue for `range_space: chip` or a split entry.
-
-Stating `synth_root` picks a different rendering pitch, anywhere in the range.  The output is
-kept in tune by placing every note lower by `synth_shift = synth_root − derived`:
-
-```
-target_rate = amiga_clock / PERIOD_TABLE[root]           # unchanged by synth_root
-output      = root + (source − low) − synth_shift        # root is where synth_root sounds
-```
-
-**Example** — a voice whose chip range is G3–B4, rendered in the middle so the sample is
-stretched at most a fifth each way rather than a ninth upwards:
-
-```yaml
-- low:  G3
-  high: B4
-  mod_instrument: 22
-  root: C2          # playback at C2 sounds D4
-  synth_root: D4    # G3 plays at F1, B4 at A2
-```
-
-### vibrato — per-entry override
-
-Overrides the channel-level `smpsModSet` vibrato for any note matched by this range entry.
-Value is two hex digits mirroring ProTracker effect `4xy` (x = speed nibble, y = depth nibble).
-
-```yaml
-voice_map:
-  3:
-    - low: A6
-      high: E7
-      mod_instrument: 4
-      root: A2
-      vibrato: 12      # speed=1, depth=2 (overrides smpsModSet params for this range)
-```
-
-| Value | Meaning |
-|-------|---------|
-| absent | Use channel smpsModSet speed/depth (default) |
-| `00` | Suppress vibrato entirely for this entry |
-| `XY` | Speed nibble X, depth nibble Y (same encoding as `4xy`) |
-
-YAML accepts integer (`vibrato: 12` → speed=1, depth=2), hex integer (`vibrato: 0x12`), or string (`vibrato: "1A"` → speed=1, depth=10). Also supported on `psg_map` and `psg_voice_map` entries with the same semantics.
-
-### loop_drift_db / loop_min_ms / loop_start_ms / loop_decay — per-instrument sustain loops
-
-Where sustain loops are on (`samples.sustain_loops` in settings.yaml; the merged build by default), an
-FM sample is cut where its envelope settles plus one loop.  Four entry keys override how, for
-that instrument alone:
-
-- `loop_drift_db` — how far above the settled level the loop may freeze (the song's
-  `loop_drift_db`, else settings.yaml's).  Lower loops later: past more of the attack, or past
-  every note the instrument plays, which then sound as rendered.
-- `loop_min_ms` — the shortest loop (30 ms otherwise).  A short loop freezes a detuned voice's
-  shimmer into a buzz wherever a note, or its release slide, rings through it.
-- `loop_start_ms` — the earliest the loop may start.  A detuned pair beats, and its swing spans
-  the flat band, so it counts as settled from its first window: 1-Up's lead pair (FM1+FM4, a
-  7 dB beat every 0.45 s) looped at 21 ms, inside the attack, and replayed a piece of it on every
-  beat (a 1.3 dB jump at the seam).  `loop_start_ms: 60` costs the bytes before the new start only.
-- `loop_decay: slide` — for a voice whose level keeps falling for as long as a note holds (an FM
-  bass on D2R).  `freeze` (the default) can only loop it where it has nearly settled, or hold it
-  above where the hardware is (a bass frozen 6 dB early pulsed under 3 s notes).  `slide` loops
-  where the level starts to fall in a straight line in dB, `loop_drift_db` now being how far it
-  may stray from that line, with the timbre check always on; the sample holds the loop's level and
-  the converter writes the rest of the fall into every note that rings past it, one volume slide
-  per row: `EBx` (x units on the row's first tick) where the row's share is under an `A01`, else
-  `A0y`, `6xy` on a row that carries vibrato.  The note's release then starts from the fallen
-  volume.  Game Over lofi's bass falls 5 dB/s: looped 0.14 s in at `loop_drift_db: 3`, its sample
-  is 1.8 KB instead of 14.8, with `EB1` on each row of a long note.  Not for a voice whose timbre
-  changes as it fades (the loop keeps the timbre at its start), a PCM mix source (the mix keeps no
-  slides) or PSG.
-
-A merge group takes all four too, for its chip composites (and `loop_min_ms` / `loop_start_ms`
-for its looped mixes).  Green Hill lofi:
-
-```yaml
-voice_map:
-  5:
-    - low: C4
-      high: B5
-      mod_instrument: 11
-      root: C2
-      loop_drift_db: 1      # at the song's 12 dB it looped 27 ms from 13 ms in
-merge_patterns:
-  - patterns: "d-10"
-    groups:
-      - primary: FM3
-        followers: [FM4]
-        loop_min_ms: 400    # the chords' slow release rang through an 87 ms loop
-```
-
-Each costs bytes: `tools/mod_audit.py` shows every sample's loop and size.
-
-### name — what the MOD calls a sample
-
-With `samples.names: source` (settings.yaml, the default) every sample is named for what plays it
-and what it was made from, in the 22 characters a MOD sample name holds
-(`core/convert/sample_names.py`): `F1/3/4/5 $05 C4-B5` (an FM voice's range and the channels
-whose notes play it), `F5 $04 C6-B7 dt+2` (a detune variant), `P1/2 fTone01`, `P3 noise E7 fTone04`,
-`D dKick B-2` (a DAC sample at the note it plays, FT2's octaves), `F5+3+4+P1 F-3 [1-4]` (a composite:
-primary first, the note it plays most, its patterns; twins numbered `#1`, `#2`) and
-`bank D+F2+P3 9 hits`.  A voice_map / psg_map / psg_voice_map entry's or a merge group's `name:`
-replaces the generated one (a group's composites keep their note after it).  `names: file` names
-each sample by its sample_list file name, as before 2026-10-08.
-
-### treble_shelf_db — brightness (song level)
-
-`treble_shelf_db: 4` raises every synthesised render 4 dB above settings.yaml's
-`treble_shelf_hz` (2500), over the settings' own `treble_shelf_db` (0: off).  An artistic
-choice: the renders match the hardware, hand-made Amiga covers are brighter.  The DAC samples
-come off disk and are not shelved.
-
-A merge group takes its own `treble_shelf_db` (and `treble_shelf_hz`), on top of the song's,
-on its composites only: a mix's whole sum (the drums off disk too), a chip composite's render.
-The instruments' own samples elsewhere in the song keep the song's shelf.
-
-A `dac_samples` entry's `saturate_db: 2` (or `merge_saturate_db: 2`, the merged build only,
-over `saturate_db` there) soft-clips that drum when it is loaded (tanh, the drive
-solved so its RMS rises 2 dB at the same peak) and requantises it to 8 bits: the same peak and
-volume, a louder body, some added harmonics.  The drum mixes are built from it, from the shaped
-values before that requantisation, so a mix quantises the drum once.  A compressor
-was tried first and dropped: these drums are nearly all peak, so it turned the body down with
-the peak (the kick gained 0.4 dB for 3 dB of reduction).  Artistic: the hardware's waveform changes.
-
-A merge group's `limit_db: 4` limits a mix whose sum is past full scale: its peaks (a kick and a
-bass attack landing together) come down to full scale by up to 4 dB, with a 1.5 ms lookahead and
-a 60 ms release (`core.audio.pcm.limit_peaks`), instead of the whole sound playing that much quieter
-at volume 64.  Denser, a little transient distortion.  Green Hill's drum groups: 20 mixes, up to
-3.2 dB taken off a peak, none turned down any more.
-
-### Choosing root
-
-`root` is absolute, so choose it based on where you want the note to land in the MOD pattern — independent of any channel transposition. Ensure the full range `root + (high − low)` stays within C1–B3 (values 0–35).
-
-**Example** — source C5–B6 (`low`=C5, `high`=B6, span=11 semitones):
-- `root: C2` (value 12): C5 → C2, B6 → B2. Span 12–23, all in range ✓.
-- `root: C3` (value 24): C5 → C3, B6 → B3. Span 24–35, all in range ✓ (higher `target_rate` = better quality).
-
-### When to set `transpose: 0`
-
-If `voice_map` entries cover the full note range of a channel, the base YAML `transpose` is redundant. Set `transpose: 0` and let `root` control pitch placement entirely.
-
-### channel_instrument_map — per-channel voice_map override
-
-Overrides `voice_map` for a specific SMPS source channel. Useful when one channel needs
-different instrument routing than the global `voice_map` — e.g. FM5 shares FM1's note data
-but needs instruments of its own (its smpsAlterNote detune is rendered into whatever samples it
-plays, docs/pipeline.md § Detune variants).
-
-Format: `{source_channel: {voice_index: [InstrumentRange, ...]}}`
-
-```yaml
-channel_instrument_map:
-  FM5:
-    4:                        # voice $04 on FM5 only (global voice_map[4] used for all other channels)
-      - low:  C6
-        high: B7
-        mod_instrument: 27    # FM5's own: its detune is rendered into the sample
-        root: C2
-        synth_root: C5
-      - low:  B4
-        high: B4
-        mod_instrument: 28
-        root: B1
-        synth_root: B3
-```
-
-When a note is played on FM5 with voice $04, `channel_instrument_map["FM5"][4]` is checked
-first; `voice_map[4]` is only consulted if no per-channel override exists for that voice.
+- Keys **replace**: a list or nested mapping is restated whole; `null` removes a key.  To change
+  one key of a nested mapping, put the block inside that mapping.
+- `output_file` defaults to `<stem>_<NAME>.mod` (merged: `<stem>_<NAME>_merged.mod`).  A stated
+  `merge_output_file` is not suffixed.
+- An unknown NAME is an error listing the known ones.
+- `--variant` is taken by `convert.py`, `analyze.py --config`, `tools/vgm_compare.py`,
+  `vgm_pitch_audit.py`, `merge_survey.py` and `fold_csv.py`.  `vgm_compare.py --write-volumes`
+  and `fold_csv.py --write` refuse it (they edit the base config).
+- Regression cases for variants: `_VARIANTS` in `tests/regression.py`.
 
 ---
 
-## PSG Instrument Mapping
-
-For full PSG synthesis details (SN76489 internals, normalization, envelope tables, API),
-see `docs/psg_synthesis.md`.
-
-### psg_map
-
-Maps `smpsPSGform` byte values to synthesized PSG instruments. The key is the raw
-`smpsPSGform` byte, which is the SN76489 noise register: the noise **type** (bit 2) and **rate**
-(bits 0–1) are read from it, and the **envelope** is read from the song (the header voice or the
-last `smpsPSGvoice`; the label most of the instrument's notes play under).  When `smpsPSGform $E7`
-appears in channel data, the PSG channel switches to the specified instrument and stays a noise
-channel; a later `smpsPSGvoice` only changes its envelope.
-
-```yaml
-psg_map:
-  0xE7:                    # smpsPSGform byte: bit 2=1 → white noise, bits [1:0]=3 → follow tone ch2
-    mod_instrument: 7      # MOD instrument slot (1-based)
-    root: A2               # MOD anchor — determines target_rate AND where low plays
-    low: A3                # SMPS pitch anchor — nA3 → MOD A2; each semitone above/below shifts ±1
-    envelopes:             # optional: an envelope label that gets its own sample in noise mode
-      fTone_08: 18         #   (Scrap Brain's hi-hat); other labels play mod_instrument
-    tone2_n: 1             # optional override, rate 3 only: explicit tone-ch2 divider (1–1023)
-    synth_root: A3         # optional override, weaker than tone2_n: LFSR rate as a note name
-    envelope: fTone_04     # optional override of the derived envelope: a name (fTone_01–fTone_09,
-                           #   core/smps/driver_tables.py) or an inline list
-    base_volume: 0         # SN76489 base attenuation (0=max, 15=silent); the default
-```
-
-A stated `type` or `noise_rate` that contradicts the key byte warns and is ignored.  One instrument
-played with several envelopes and no variant for the others warns (`noise_envelopes`).
-
-With rate 3 the converter works the LFSR clock out from the song: PSG3 keeps writing its
-own note's divider to tone channel 2, so the value is `PSGFrequencies[note − $81 + transpose]` from
-the driver's table.  Sonic 1's `nMaxPSG` (the usual hi-hat note) is entry 69 = 223721 Hz, a divider
-of **0**, which the Sega VDP PSG clocks as N=1 (112 kHz shift rate, near-white hiss).  `convert.py`
-prints the divider it used; `tone2_n` and `synth_root` exist only as overrides, and no shipped
-config uses them.  To see what a recording does:
-`python tools/vgm_analyze.py <song>.vgz --chip psg --channel NOISE` prints `white/tone2 N=<n>` for
-every noise key-on.
-
-SN76489 noise register byte encoding:
-- Bits [1:0]: rate — 0=N/512, 1=N/1024, 2=N/2048, 3=follow tone ch2 (LFSR freq set by synth_root)
-- Bit [2]: type — 0=periodic noise, 1=white noise (auto-inferred; do not specify manually)
-- `$E0`–`$E3` = periodic noise; `$E4`–`$E7` = white noise; `$E7` is most common in Sonic 1
-
-Rate values (bits 0–1 of the key byte):
-- `0` = N/512 (fixed LFSR clock, fastest preset)
-- `1` = N/1024
-- `2` = N/2048
-- `3` = follow tone ch2 — `tone2_n` if given, else `synth_root` if given, else derived from the song through the driver's `PSGFrequencies` table (the normal case; see `docs/psg_synthesis.md`)
-
-### psg_voice_map
-
-Maps `smpsPSGvoice` envelope labels → MOD instrument numbers. Labels are the symbolic
-names from the SMPS assembly (`fTone_01`–`fTone_09` in Sonic 1).
-
-```yaml
-psg_voice_map:
-  fTone_01:
-    mod_instrument: 8    # required
-    root: A2             # required — MOD anchor; determines target_rate
-    synth_root: A4       # optional synthesis pitch override
-  fTone_03:
-    mod_instrument: 9
-    root: A2
-    synth_root: A4
-```
-
-`root` and `mod_instrument` are required fields. `synth_root`, `low`, `high`, `envelope`
-(defaults to the label), `base_volume`, and `vibrato` are optional. A list of entries
-(range-split) is also accepted. Entries are always tones: when `smpsPSGvoice fTone_03` appears in
-channel data on a tone channel, the PSG channel switches to the specified instrument; on a noise
-channel (after `smpsPSGform`) the label only changes the envelope and this map is not consulted —
-give the label its own sample with `psg_map[<byte>].envelopes` instead. A noise `type` here is an
-error. Labels not in the map are silently ignored.
-
-## Timing
-
-The relationship between SMPS ticks and MOD rows:
-
-```
-MOD row = SMPS tick / ticks_per_row
-```
-
-Common SMPS durations with `ticks_per_row: 6`:
-
-| SMPS Duration | Hex | MOD Rows |
-|---------------|-----|----------|
-| 6 ticks | $06 | 1 row |
-| 12 ticks | $0C | 2 rows |
-| 18 ticks | $12 | 3 rows |
-| 24 ticks | $18 | 4 rows |
-| 48 ticks | $30 | 8 rows |
-
-Adjust `ticks_per_row` if the song uses unusual timing divisions.
-
-## BPM Derivation
-
-Set `auto_bpm: true` to derive BPM automatically from the SMPS tempo header instead of guessing.
-
-### How SMPS Tempo Works
-
-The SMPS driver runs on VBlank (60 Hz NTSC, 50 Hz PAL). Each frame:
-
-1. A tempo counter decrements by 1
-2. When it hits 0, `TempoWait` fires: resets counter to `modifier`, adds +1 to all tracks' `DurationTimeout`
-3. All tracks' `DurationTimeout` is decremented by 1
-
-The net effect: every `modifier` frames, one frame's decrement is cancelled. The effective tick rate is:
-
-```
-SMPS_ticks_per_second = fps × (modifier - 1) / modifier
-```
-
-Note durations from assembly are also multiplied by the `divider` value at load time.
-
-### Formula
-
-```
-BPM = fps × (modifier - 1) × speed × 2.5 / (modifier × divider × ticks_per_row)
-```
-
-Where:
-- `fps` = 60 (NTSC) or 50 (PAL)
-- `modifier` = SMPS header tempo modifier (e.g. 5 for Title Screen)
-- `divider` = SMPS header tempo divider (e.g. 1 for Title Screen)
-- `speed` = MOD speed / ticks per row (default 6)
-- `ticks_per_row` = SMPS ticks per MOD row (default 6)
-
-### Example Values
-
-| Song | Divider | Modifier | NTSC BPM | PAL BPM |
-|------|---------|----------|----------|---------|
-| Title Screen | 1 | 5 | **120** | 100 |
-
-With `speed = ticks_per_row` (both 6), the formula simplifies to:
-
-```
-BPM = fps × (modifier - 1) × 2.5 / (modifier × divider)
-```
-
-### Rounding, and choosing `target_speed`
-
-The MOD's BPM is a whole number.  When the formula does not land on one the song runs a fraction
-of a percent off the hardware: Special Stage at speed 3 is 98.4375 → 98 (−0.44 %, 139 ms behind
-over a 33 s pass).  `target_speed` changes how many MOD ticks a row has, not the row grid, so pick
-the speed that makes the BPM (nearly) whole — `convert.py` prints the error and the better speed,
-and the `analyze.py` skeleton chooses it (`core.config.bpm_rounding_options`).  Special Stage:
-speed 6 → 196.875 → 197 (+0.06 %); Star Light / Chaos Emerald: speed 4 → 250 exactly.
-
-Songs with `smpsSetTempoMod` (Drowning, Credits) get an `Fxx` at every change, each segment's BPM
-scaled from the header's; every segment must fit 32–255, which is why Drowning uses
-`ticks_per_row: 2` (75 → 135 BPM; one tick per row would need 270 at the end).
-
-### Usage
-
-In YAML config:
-```yaml
-auto_bpm: true
-region: ntsc    # or "pal"
-```
-
-Or via CLI:
-```bash
-python convert.py song.asm --auto-bpm --region ntsc
-```
-
-## DAC Sample Rates
-
-The Sonic 1 sound driver plays DAC samples via Z80-driven PCM/DPCM routines. Sample rates are embedded in the source WAV files and used by the assembler to compute Z80 DJNZ loop counters (see `s1.sounddriver.asm` and `z80.asm`).
-
-### Native Sample Rates
-
-| Sample | Source File | Native Rate | Format |
-|--------|------------|-------------|--------|
-| dKick | `dac/dpcm/kick.wav` | 8,250 Hz | 8-bit mono DPCM |
-| dSnare | `dac/dpcm/snare.wav` | 24,000 Hz | 8-bit mono DPCM |
-| dTimpani | `dac/dpcm/timpani.wav` | 7,375 Hz | 8-bit mono DPCM |
-
-The timpani variants reuse `timpani.wav` at other playback rates.
-
-**What real hardware plays (2026-10-07).**  The Z80 driver's DPCM loop takes exactly
-301 + 26·(pitch − 1) T-states a byte (two samples) at 3,579,545 Hz — counted from the ROM's own
-code (`core/rom/dac.py`; `z80.asm` matches it instruction for instruction).  Wait states can only
-add to that.  On top of it the 68k's `UpdateMusic` stops the Z80 for the whole music update once
-a frame (`stopZ80`): the DAC holds for 3.8–6.4 % of the time, by song.  So the hardware rate is
-the cycle count less that share.
-
-The VGZ rips are **not** the yardstick for DAC pitch: their emulator runs the loop 1.7–2.8 %
-fast between the stalls (pitch-dependent; snare 24,440 Hz against the count's 23,784).  Their
-averaged rates (stalls included) land about 2–3 % above the hardware's, which is what put the
-timpani at D2 / C2 / A1 and kept the kick at C2 for a day.  `vgm_compare` therefore reads the DAC
-1–3 % flat against a rip, by design.
-
-| Sample | Driver pitch | Cycle count | Hardware at a 5 % stall | MOD note |
-|--------|--------------|-------------|-------------------------|----------|
-| dKick | 23 | 8,201 Hz | ~7,790 Hz | **B1** |
-| dSnare | 1 | 23,784 Hz | ~22,590 Hz | **F3** |
-| dTimpani | 27 | 7,328 Hz | ~6,960 Hz | **A1** |
-| dHiTimpani | 18 | 9,635 Hz | ~9,150 Hz | **D2** |
-| dMidTimpani | 21 | 8,720 Hz | ~8,280 Hz | **C2** |
-| dLowTimpani | 28 | 7,138 Hz | ~6,780 Hz | **A1** / **G#1** |
-| dVLowTimpani | 29 | 6,957 Hz | ~6,610 Hz | **G#1** |
-
-Each config states its notes **and the slot's finetune** (`sample_list`, an eighth of a semitone
-a step) from its own song's stall share, chosen so the worst sample on the slot is nearest (the
-smallest finetune within 4 cents of that): kick and snare within ±6 cents everywhere; timpani
-variants sharing a slot within ±21 (the high and mid are 173 cents apart, the low and very low 45).
-
-### Pitch-Correct MOD Notes
-
-The Amiga Paula chip plays samples at a rate determined by the note's period value
-(`3,546,895 / period` Hz, PAL, × 2^(finetune/96)).  Choose the note and finetune whose rate is
-nearest the hardware's.
-
-Since timpani variants only differ in pitch, they can share a single MOD instrument (e.g. instrument 3) and use different trigger notes. This saves sample slots.
-
-### Preparing Samples for MOD
-
-Pre-converted `.raw` files (`kick.raw`, `snare.raw`, `timpani.raw`) are already in `samples/`.
-Reference them directly in `sample_list` — no conversion step needed.
-
-MOD playback rate is controlled by the trigger note's period value, not a sample-rate header,
-so the `.raw` files contain raw 8-bit signed mono PCM with no header.
-
-## Example Configs
-
-### Minimal (CLI defaults plus YAML override)
-
-```yaml
-name: "Green Hill Zone"
-channels:
-  - source: FM1
-    mod_channel: 0
-    transpose: -36
-    instrument: 1
-```
-
-Unspecified channels are skipped. This converts only FM1.
-
-### Full Sonic 1 Song
-
-See [`configs/01_title_screen.yaml`](../configs/01_title_screen.yaml) for a complete example with all 9 channels, per-channel transpose, and DAC sample mappings.
-
-## merge — folding channels for the Amiga build
-
-The reference MOD keeps every SMPS channel. The Amiga port wants 3 or 4 channels with one left
-free for sound effects, so a config can name groups of channels that fold onto one:
-
-```yaml
-merge:
-  - primary: FM1          # the lead ...
-    followers: [FM5]      # ... and its detuned double
-  - primary: FM4
-    followers: [FM3]      # chord stabs: FM3 a third / fourth above FM4 on every note
-  - primary: DAC
-    followers: [PSG3]     # the hi-hat lands on the drum hits
-    cut_primary: true     # a hat over a drum's decay plays and cuts the tail (Green Hill)
-  - primary: FM5
-    followers: [FM4]
-    max_composites: 4     # optional memory budget: the 4 most-played chords; the rest play FM5 alone
-    fill_lost: true       # optional: the follower notes this group cannot fold go to the fill pool
-    fill_cut: true        # optional: a follower note the fold would cut short plays whole on a channel
-                          #   silent for all of it, when there is one (else it folds as before)
-merge_output_file: output/01_title_screen_4ch.mod   # optional
-merge_drop: [FM3, PSG1]                              # optional: left out of the merged build altogether
-merge_fill: [PSG2]                                   # optional: the fill pool — each note on whichever output
-                                                     #   channel is silent when it starts; lost where none is
-merge_fill_cut_after: {DAC: 2, FM2: 4}               # optional: a pool note may cut these channels' notes after
-                                                     #   that many ticks (a kick's decay, a bass note's second half)
-merge_max_synth_shift: 0                             # optional: render no sample above its root's pitch (half the bytes)
-merge_loop_timbre: true                              # optional: loops wait for the timbre to hold, as the reference build's do
-merge_tolerance: 1                                   # ticks a follower note-on may be off the primary's (default 1)
-```
-
-`python convert.py configs/01_title_screen.yaml --merged` then writes the reduced MOD: the
-followers are dropped, the remaining channels are packed onto MOD channels 0..n-1 in their
-configured order (set `num_mod_channels` to pad, e.g. to leave a fourth channel free), and the
-primary plays a **composite instrument** wherever a follower sounds with it. Composites take
-free instrument slots and are named `merge FM1+FM5` in the sample list. Nothing else in the
-config changes, and the plain `convert.py` run is unaffected, so the reference MOD, its
-baselines and audits stay the ground truth.
-
-- **Two FM voices** (FM1+FM5, FM4+FM3) are rendered together on the YM2612, one chip channel
-  per voice keyed at once, at the follower's interval, `smpsDetune` and level relative to the
-  primary's. One composite per distinct interval: the stabs need one per third, fourth and
-  fifth. The chip sums and clips them as the hardware does.
-- **Anything else** (DAC + PSG hi-hat, FM + PSG tone) is mixed from the finished samples at the
-  primary's playback rate, the follower at its `sample_list` volume and baked level. A sum that
-  passes full scale plays at volume 64 and is reported.  Where such a mix has an FM primary and
-  FM followers as well (FM + FM + PSG), those FM voices are rendered together on the YM2612 and
-  only the rest is mixed on top (`fm_on_chip`, on unless a group sets it `false`; see
-  § merge_patterns).
-- The primary's effects apply to the composite: its vibrato, note fill, `Cxx` and `EDx`.
-- A follower note that starts while the primary is silent is placed on the merged channel as
-  the follower's own note (its instrument, pitch and level), so two channels that never sound
-  at once can share a MOD channel outright. A drum or noise note sounds for its sample, not
-  its SMPS duration, so a hat two ticks after a kick's sample has ended is such a note.
-- `merge_tolerance` (ticks, default 1) lets a follower that starts a tick off the primary
-  still fold, and folds a grace note of that length onto the `smpsNoAttack` note it bends into,
-  so chords are matched on the pitches they land on. Green Hill's FM3 chord tone starts one
-  tick after FM4 and FM5; without this it counted as lost.
-- `max_composites: N` on a group keeps only its N most-played composite instruments (the
-  converter says which chords are left to the primary alone); the sample bytes are the
-  price of every distinct interval, so this is the memory budget for a chord channel.
-- `cut_primary: true` on a group lets a follower note that starts while the primary still
-  sounds play anyway, cutting the primary's tail; that is what a hi-hat does to a drum's decay
-  on a 4-channel Amiga, and it is how Green Hill's 262 hats ride its 172 drum hits. Off, those
-  notes are lost (`orphan`).
-- Instruments no note of the merged build plays are not rendered, so the merged MOD carries
-  only the samples it uses. `merge_max_synth_shift` (merged build only) caps how far above
-  its root's pitch a sample is rendered: the reference build renders at the busiest note, up
-  to an octave up, which doubles a sample's rate and bytes; `0` renders at the root's pitch
-  for half the size, at the cost of envelopes running twice as fast an octave up.
-- A mixed composite (a drum with its hi-hat) is mixed at, and triggered from, the note of the
-  layer that plays fastest, so the hat keeps its bandwidth instead of being resampled down to
-  the kick's rate.
-- A song with more independent voices than the Amiga has channels needs `merge_drop:` as
-  well: those channels are left out of the merged build (they still vote for their
-  instruments' levels, so the measured volumes hold). Which parts to drop is a musical
-  decision the survey cannot make; Green Hill Zone keeps drums, bass, lead and one harmony.
-- `merge_fill:` is the middle way: the **fill pool**. Each note of a pooled channel is placed
-  on whichever output channel is silent when it starts — the one that stays silent longest,
-  or one whose next note-on cuts it, never for less than a row — with its own instrument,
-  pitch and level; a note with no silent channel is lost, and the converter reports per
-  channel how many were placed where. A group's `fill_lost: true` sends the follower notes it
-  cannot fold (orphans) to the pool too. `merge_fill_cut_after: {channel:
-  ticks}` lets a channel's notes count as silent after that many ticks, so a chime may cut a
-  kick's decay or a bass note's second half, as a hand-made 4-channel cover would; a channel
-  absent there is never cut. A group's `fill_cut: true` sends the follower notes the fold
-  would cut short (a chime ring longer than the bass note it rides) to the pool as well, but
-  only for a channel silent for the whole note; Green Hill's PSG1 rings play whole on the
-  lead's channel while the lead rests (patterns 2–4) and fold into the bass mixes elsewhere. Green Hill's chime lines start on the bass and drum note-ons
-  almost every time, so the pool places 30 of 188; they fold onto the bass as bass+chime mixes
-  instead.
-- Composites share the 31 instrument slots with the instruments the merged build still plays;
-  the converter prints how many slots were free and how many the groups asked for. A PSG
-  instrument that only survives as a source of the mixes gives up its slot as well (its sample
-  is rendered for the mixer and kept out of the table). Over
-  budget, the least-played composites go (those whose primary instrument stays anyway first);
-  set each group's `max_composites` so the groups' budgets fit the free slots.
-- With `samples.sustain_loops` on in `settings.yaml` (the default for `--merged`), every looped sample
-  is cut to its loop and every FM note ends with a release slide; see `docs/pipeline.md`
-  § Sustain loops.
-
-## merge_patterns — folds that differ per pattern
-
-When the arrangement wants one fold in the verse and another in the bridge (Green Hill: the
-bass rides the drum channel through patterns 1–c and has its own channel in 0 and d–10), the
-groups are given per block of patterns instead:
-
-```yaml
-merge_patterns:
-  - patterns: "0"                 # hex, as Fast Tracker shows them: "0", "1-4", "d-10", "0, 5-c"
-    drop: [FM4, FM5, PSG1, PSG2]  # optional: their notes in these patterns are left out
-    groups:
-      - primary: DAC              # a group as in merge:, holding in these patterns only
-        followers: [PSG3]
-        cut_primary: true
-  - patterns: "1-4"
-    groups:
-      - primary: DAC
-        followers: [FM2, PSG3]
-        cut_primary: true
-      - primary: PSG1
-        followers: [FM3, FM4, FM5]
-```
-
-A group may add `mod_channel: 2` (a `channels:` number) or `mod_channel: FM2` (a source): its
-primary's notes take that column in the block's patterns, which must be free there: its owner
-folded, dropped or itself moved to another column (a group with no followers is a plain move) (Green Hill's chords ride the bass column while the bass rides the
-drums), so the finished MOD needs no more columns than the busiest pattern.  A note left ringing
-on the borrowed column when the block ends is cut there.
-
-A group with no followers and `fill: true` pools its channel's notes in the block's patterns:
-each goes to whichever column in use there is silent when it starts (a group's `cut_after: 8`
-lets a pooled note take that group's column once its note is 8 ticks old, cutting the tail;
-`merge_fill_cut_after` is the song-wide fallback), and is lost where none is; the channel has no
-column of its own in those patterns.  Green Hill's bridge arpeggio, 64 eighth notes, has no
-column of its own in a four-column bridge, so it is sprinkled between the drums, lead, bass
-and chords instead.
-
-A channel not named in a block keeps its own channel there.  A channel leaves the output only
-when it is a follower or dropped in every pattern the blocks name; otherwise it stays, its
-column empty in the patterns it folds in (its notes play on the primary's column) and its own
-elsewhere.  The output therefore has one channel per source that is live anywhere — Green
-Hill's table gives 8 — which is what a hand-finish in a tracker wants: every column keeps its
-meaning.  A fold lands on its primary's column.  Patterns the blocks do not name fold nothing
-and are reported; a channel in two groups of one pattern is an error; `merge:` groups may sit
-beside `merge_patterns:` (they hold in every pattern).  A YAML integer is a decimal pattern
-number; write strings for hex.
-
-A group may add `bank: true`: its mixed composites (kick+bass+hat, bass+chime and the like)
-share instrument slots as **sample banks**, every note starting with `9xx` at its sound's
-offset and cut where the sound ends, so eighteen drum mixes cost three slots instead of
-eighteen.  A melodic primary's notes give the attack row's slot to the `9xx` (a `Cxx` there
-moves a row later, an `EDx` is dropped); a looped mix goes last in its bank.
-`merge_bank_slots` (song level) is how many slots the composite fit holds back for them:
-leave it out (`auto`, the default) and the converter works it out, building again once the
-banks' sizes are known; a number pins it. A group's `mix_at: primary` makes its mixes at the
-primary's own note, so a looped primary keeps its loop and a lead under a chime costs a few KB
-instead of its whole note unrolled (the chime is resampled down into it).  A group's
-`mix_note: F2` caps the note its mixes are made at: a mix is made at its fastest layer's note
-(the hat's A3, 28 kHz) unless that is above the cap, so F2 (11 kHz) makes the drum mixes 2.5
-times smaller at the cost of the hat's treble above 5.5 kHz. `merge_twins: always` (song
-level; default `short`) gives every chord shape one mix even when slots are to spare: a
-composite whose shape (voices and intervals) another has plays that one, the one whose
-followers ring furthest, instead of a mix of its own that differs only in where a follower is
-cut (by default that happens only while the composites do not all fit). A group's
-`loop_mix: true` loops its long mixes where the sum settles, found in the finished mix as a
-single voice's sustain loop is, with an 80 ms crossfade (the layers beat, so the join lands on
-another phase of the beat); the group's `loop_drift_db` / `loop_min_ms` steer it.  Lossy: the
-chord's slow movement freezes in the loop.  Green Hill lofi: its two long chords, 30 KB each,
-loop from 1.35 and 1.4 s (drift 1 dB, loops of at least 300 ms).
-
-`fm_on_chip` (a group key, `merge:` or `merge_patterns:`; **on by default**, `fm_on_chip: false`
-turns it off for that group): a mix with an FM primary and FM followers renders those FM voices
-together on the YM2612 (each at its own track's detune and level, a follower keyed off at its
-fill), unlooped for the composite's longest run through it (`Composite.longest_played`: a note
-triggered above the mix's own note plays it faster), and mixes only the rest (a PSG, a drum) on
-top.  Off, the mix sums each voice's finished sample, whose sustain loop repeats a few tens of
-ms, so two detuned voices' chorus is rebuilt from loop repeats.  A mix with no FM follower is
-unaffected, and so is a chip composite (FM voices only), which is rendered on the chip anyway.
-The render takes the primary's loop away: `mix_at: primary` no longer keeps one, and a long mix
-loops only where `loop_mix` finds the sum settle, which for a chord of detuned chip voices is
-late.  Robotnik's FM1 (detune +3) + FM4 + PSG1 lead, mixed at B: a 42 KB looped mix → 50 KB
-unlooped, 3.2 s for its 2.1 s F# 7 semitones up.  Green Hill lofi's FM5+FM3+FM4+PSG1 chord
-(`mix_at: primary`, `loop_mix`): 5 KB looping at 0.17 s → 24 KB looping at 2.2 s, the build
-174 → 192 KB; `fm_on_chip: false` there keeps the old size. Details: `docs/pipeline.md` § Sample banks.
-
-`python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write`
-(`--bank` adds `bank: true` to every drum-primary group) writes the section from a fold table (`Pattern,Ch 1,...` header; cells `fold N` / `keep` /
-`drop` / blank; `fold N*` names that channel the fold's primary), choosing each fold's primary by measurement (drums first, then the fewest
-lost follower notes) and printing the counts per candidate; see `docs/pipeline.md` § Per-pattern
-folds.
-
-What folds cleanly is a property of the song. `python tools/merge_survey.py configs/<song>.yaml`
-lines up every pair of channels and prints, per pair, how many follower notes fold, how many play
-on their own (*solo*) and how many are lost (a follower note that starts while the primary
-sounds is an *orphan* and needs its own channel; one that keeps ringing under the primary's next
-note-on is *held*; one that ends sooner leaves the primary alone), then suggests groups. The converter prints the same counts for the groups it was
-given. Rules in `docs/pipeline.md` § Channel merging.
+## 8. settings.yaml
+
+Found as `--settings PATH`, else `settings.yaml` beside the config, else
+`configs/settings.yaml`.  A value it states is used by every CLI and tool.  With no file the
+code defaults apply — synthesis **off**.  `tests/settings.yaml` must state the same keys (the
+regression runner exits 2 otherwise); add a new key to both.
+
+### Top level
+
+| Key | Code default | Shipped | Meaning |
+|---|---|---|---|
+| `amiga_clock` | `3546895` | same | Paula clock: a note's rate is this / its period |
+| `fm_volume_scaling` | `baked` | `baked` | `baked`: the instrument's commonest level in its volume, `Cxx` elsewhere.  `absolute` (or `true`), `off` (or `false`): legacy |
+| `fm_pan_law_db` | `3.0` | `3` | dB a hard-panned FM note counts quieter |
+| `psg_volume_scaling` | `baked` | `baked` | `baked` or `absolute` |
+| `legato` | `retrigger` | `retrigger` | `smpsNoAttack` notes: `retrigger` (a note-on), `strict` (`3FF` where the sample allows), `loose` (`3FF` always).  `docs/pipeline.md` § Legato (`smpsNoAttack` before a note) |
+| `player` | `ft2` | `ft2` | Which player's vibrato depth `4xy` is fitted to: `ft2` or `pt2` |
+
+### `fm_synthesis:`
+
+| Key | Code default | Shipped | Meaning |
+|---|---|---|---|
+| `enabled` | `false` | `true` | Render FM instruments on the YM2612 (else load `sample_list` files) |
+| `mode` | `ym2612` | `ym2612` | Chip variant: `ym2612` or `ym3438` |
+| `clock_rate` | `7670454` | same | YM2612 clock (NTSC) |
+| `sustain_duration` | `1.5` | `auto` | Seconds a note is held before key-off; `auto` = each instrument's longest ring, 10 s cap (`docs/fm_synthesis.md` § Length: `sustain_duration: auto`) |
+| `release_padding` | `0.5` | `0.5` | Seconds rendered after key-off |
+| `detune_variants` | `true` | `true` | Render each `smpsAlterNote` detune as its own sample |
+| `threads` | `normal` | `normal` | Render threads: `normal` (cores − 1), `max`, or a number |
+
+### `psg_synthesis:`
+
+| Key | Code default | Shipped | Meaning |
+|---|---|---|---|
+| `enabled` | `false` | `true` | Render PSG instruments on the SN76489 |
+| `clock_rate` | `3579545` | same | SN76489 clock |
+| `sustain_duration` | `1.0` | `auto` | As for FM |
+| `release_padding` | `0.2` | `0.2` | As for FM |
+| `oversample` | `8` | `8` | Chip renders this many times the target rate, then resamples down |
+
+### `samples:`
+
+| Key | Code default | Shipped | Meaning |
+|---|---|---|---|
+| `max_sample_kb` | `128` | `64` | Largest sample: 128 = the format's 131070 bytes, 64 = original ProTracker's 65534 |
+| `sustain_loops` | `merged` | `all` | Which builds loop settled samples and end FM notes with release slides: `off`, `merged`, `all` |
+| `loop_drift_db` | `1.0` | `1` | § 5 |
+| `dither` | `shaped` | `shaped` | 8-bit quantisation: `shaped`, `flat`, `off` |
+| `dc_block` | `false` | `true` | 5 Hz high-pass on every render (the hardware's output is AC-coupled) |
+| `pt_zero_bytes` | `true` | `true` | Zero a one-shot sample's first word (ProTracker replays it after the sample ends) |
+| `compact_slots` | `merged` | `merged` | Renumber the used slots from 1: `off`, `merged`, `all` |
+| `names` | `source` | `source` | Sample names: `source` (what plays it, e.g. `F1/3/4/5 $05 C4-B5`) or `file` (the `sample_list` file name) |
+| `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | same | Brightness shelf on every render; 0 = off |
+| `resample_taps` | `32` | `32` | Resampler kernel width |
+| `render_cache` | off | `output/cache` | Directory (relative to the project root) caching chip renders by a hash of their inputs |
+
+---
+
+## 9. Spelling notes and pitfalls
+
+| Where | Accepts |
+|---|---|
+| `low`, `high`, `synth_root` | SMPS note names `C0`–`B7`: `Cs6`, `Db6`; no `#` |
+| `root` | MOD notes `C1`–`B3`: `Cs2`; no `#`, no flats |
+| `mod_note`, `mix_note` | MOD notes: `Fs3`, `F#3`, `Gb3` |
+| `voice_map` keys | `5` or `0x05` (not `$05`, not `08`) |
+| `psg_map` keys | `0xE7` |
+| `rom_song` | `"$81"`, `"0x81"`, `129` |
+
+- `channels.transpose` only acts on the transpose path; an entry with `root` ignores it.
+- `vibrato: 0x12` is decimal 18 in YAML: write `12` or `"1A"`.
+- A `merge_patterns` group written without its leading `- ` would merge into the group above;
+  the loader refuses the duplicate key that results.

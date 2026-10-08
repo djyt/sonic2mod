@@ -1,174 +1,126 @@
-# SMPS Assembly Format Reference
+# SMPS Assembly Format
 
-Reference for the Sonic 1 SMPS assembly format as parsed by `smps_parser.py`.
+The Sonic 1 disassembly's SMPS2ASM songs and SFX as `SmpsParser` (`core/smps/parser.py`) reads
+them.  The parser turns the lines into ops (`SmpsCode`); a ROM's bytecode (`core/rom/`) becomes the
+same ops, and one walk turns either into a song (`core/smps/code.py`).  What each byte does when
+the driver plays it: `docs/smps_driver.md`.
 
-For runtime driver behavior (what each byte does in hardware, timing system, FM operator order),
-see `docs/smps_driver.md`. For the SMPS→MOD conversion pipeline, see `docs/pipeline.md`.
+## Song structure
 
-## Song Structure
+1. A **header**: voice pointer, channel counts, tempo, one line per track.
+2. **Tracks**: labels followed by `dc.b` lines and effect macros.
+3. **Voices**: `smpsVc*` blocks after the voice label.
 
-An SMPS assembly file contains:
-1. A **song header** with voice pointer, channel counts, tempo, and per-channel headers
-2. **Channel data** sections (labels followed by `dc.b` note data and effect macros)
-3. **Voice definitions** (`smpsVc*` macros defining FM instrument parameters)
+`if FixMusicAndSFXDataBugs` blocks hold the disassembly's data fixes.  The parser takes the fixed
+branch by default; `SmpsParser(fix_data_bugs=False)` reads the game as shipped, as the VGZ rips
+play it.  Comments (`;`) are stripped.
 
-## Header Macros
+## Header macros
 
-### `smpsHeaderStartSong <version>`
-Declares driver version. Sonic 1 uses version `1`.
+| Macro | Operands |
+|-------|----------|
+| `smpsHeaderStartSong` | source driver (1 = Sonic 1)[, the file's SMPS2ASM version] — see § Voices |
+| `smpsHeaderVoice` | the voice label |
+| `smpsHeaderChan` | FM tracks **including the DAC**, PSG tracks: `$06, $03` = DAC + FM1–FM5, PSG1–3 |
+| `smpsHeaderTempo` | divider, modifier (`docs/smps_driver.md` § Timing System) |
+| `smpsHeaderDAC` | the DAC track's label |
+| `smpsHeaderFM` | label, pitch (signed semitones: the track's starting transposition, `$F4` = −12), volume (attenuation on the carriers) |
+| `smpsHeaderPSG` | label, pitch, volume, a byte the driver ignores, starting envelope (`fTone_05`) |
+| `smpsHeaderTempoSFX` | divider (SFX have no modifier) |
+| `smpsHeaderChanSFX` | track count |
+| `smpsHeaderSFXChannel` | channel (`cFM5`, `cPSG3` …), label, pitch, volume |
 
-### `smpsHeaderVoice <label>`
-Points to the voice (FM instrument) definition block.
+The three SFX macros set `SmpsSongHeader.is_sfx` and each track's `hw_channel`.
 
-### `smpsHeaderChan $<fm_count>, $<psg_count>`
-Number of FM and PSG channels. The total channel count in the header includes the DAC channel separately.
+## Track data (`dc.b`)
 
-Example: `smpsHeaderChan $06, $03` = 6 FM channels (including DAC as FM6), 3 PSG channels.
+| Token | Byte | Meaning |
+|-------|------|---------|
+| `$01`–`$7F` | $01–$7F | Duration in ticks |
+| `nRst` | $80 | Rest |
+| `nC0`–`nAs7` | $81–$DF | Notes, 12 an octave; `nMaxPSG` = `nA5` ($C6) |
+| `dKick`, `dSnare` … | $81–$8B | DAC samples, on the DAC track |
+| `smpsNoAttack` | $E7 | The one flag written inside `dc.b` (an `EQU`) |
 
-### `smpsHeaderTempo $<divider>, $<modifier>`
-- **divider**: Clock divider (typically $01)
-- **modifier**: Tempo modifier (e.g. $05)
+Enharmonic names alias: `nDb` = `nCs`, `nEb` = `nDs`, `nGb` = `nFs`, `nAb` = `nGs`, `nBb` = `nAs`,
+`nFb` = `nE`, `nEs` = `nF`, `nCb` = the octave below's `nB`, `nBs` = the next `nC`.
 
-### `smpsHeaderDAC <label>`
-Declares DAC channel data location.
+### Durations
 
-### `smpsHeaderFM <label>, $<pitch>, $<volume>`
-Declares FM channel data location with:
-- **pitch**: Signed byte pitch offset (e.g. $F4 = -12 semitones)
-- **volume**: Initial volume attenuation
-
-### `smpsHeaderPSG <label>, $<pitch>, $<volume>, $<mod>, <voice>`
-Declares PSG channel with additional:
-- **mod**: Frequency envelope byte (typically $00 in Sonic 1)
-- **voice**: PSG tone envelope (e.g. `fTone_05`)
-
-## Note Data (`dc.b` Lines)
-
-Channel data is encoded in `dc.b` (define constant byte) lines with comma-separated tokens.
-
-### Token Types
-
-| Token | Range | Meaning |
-|-------|-------|---------|
-| `nRst` | $80 | Rest (silence) |
-| `nC0`–`nAs7` | $81–$DF | Chromatic notes, 12 per octave |
-| `nMaxPSG` | $C6 | Maximum PSG frequency (= nA5 in Sonic 1) |
-| `dKick`, `dSnare`, etc. | $81–$8B | DAC drum samples |
-| `$xx` (< $80) | $01–$7F | Duration in ticks |
-| `smpsNoAttack` / `$E7` | $E7 | Tie — next note plays without re-attack |
-
-### Enharmonic Note Aliases
-
-Each octave provides aliases:
-- `nDb` = `nCs`, `nEb` = `nDs`, `nFb` = `nE`
-- `nF` = `nEs`, `nGb` = `nFs`, `nAb` = `nGs`
-- `nBb` = `nAs`, `nCb` = previous `nB`, `nBs` = next `nC`
-
-### Duration Persistence
-
-The last explicitly stated duration carries forward to subsequent notes that don't specify one.
+A duration byte after a note is that note's.  A note without one plays the last duration read:
 
 ```asm
-dc.b  nC3, $0C, nD3, nE3    ; C3 for $0C ticks, then D3 for $0C, then E3 for $0C
+dc.b  nC3, $0C, nD3, nE3    ; three notes of $0C
 ```
 
-### Standalone Duration Bytes
+The note waits for its duration across lines.  Anything else that comes next — a flag, `smpsCall`,
+`smpsReturn`, a loop — completes it with the saved duration, and applies from the next note
+(`FMDoNext` puts the non-duration byte back).  A label emits no byte, so a label between a note and
+its duration byte leaves the duration the note's (SndA3 Death: `nAb3` / label / `dc.b $01`).
 
-A duration byte not preceded by a note **implicitly re-triggers the last note** for that duration.
-It is not a wait or sustain — it is identical to writing the previous note byte again.
+### A duration with no note
 
-> *"Once either a note or a duration value is defined, you can omit repetition of those values;
-> however, you must always define a note before you can define a duration for the first time."*
-> — Sonic Retro SCHG: Music Hacking / Voice and Note Editing
+It re-keys the channel (`docs/smps_driver.md` § Note reads), so the parser makes it a note:
+`SmpsNote(note_value=<last note>, is_retrigger=True)`.  After `smpsNoAttack` it is the last note
+held instead (`is_rest=True, is_no_attack=True`).  On the DAC track it re-hits the last sample, and
+after a rest it is a rest.
 
-The driver calls `PSGDoNoteOn + PSGDoVolFX` (and the FM equivalent) on **every** `DurationTimeout`
-expiry regardless of whether the next data byte is a note or a duration. For PSG noise, this
-restores the channel volume from `$FF` (silenced by the previous note-cut) back to audible,
-producing a new hit.
+On FM and PSG tracks the parser re-keys the last note even after a rest, where the driver keeps
+resting (Credits PSG3: 32 loops of hi-hats the game does not play).
 
-```asm
-smpsNoteFill  $03
-dc.b  nMaxPSG, $0C    ; trigger nMaxPSG for 12 ticks (fill fires at tick 3)
-smpsNoteFill  $0C
-dc.b  $0C              ; re-trigger nMaxPSG for 12 ticks (fill=duration → never fires)
-smpsNoteFill  $03
-dc.b  $0C              ; re-trigger nMaxPSG for 12 ticks (fill fires at tick 3)
-```
+### smpsNoAttack
 
-This is equivalent to:
+It marks the next read: a note becomes `is_no_attack`, a duration a held note (above).  Every read
+clears it, a held duration too.
 
-```asm
-smpsNoteFill  $03
-dc.b  nMaxPSG, $0C
-smpsNoteFill  $0C
-dc.b  nMaxPSG, $0C    ; same note repeated explicitly
-smpsNoteFill  $03
-dc.b  nMaxPSG, $0C
-```
+## Walking a track
 
-**`smpsNoteFill` fill = duration edge case:** when fill value equals the duration (e.g. both `$0C`),
-`DurationTimeout` expiry takes the `PSGDoNext` path rather than `.notegoing`, so `NoteTimeoutUpdate`
-is never reached on that frame and the fill never fires. The note sustains the full duration.
+A label emits no byte, so a track runs on through the next label.  It ends at `smpsStop`,
+`smpsFade` or `smpsStopSpecial` (both end the track in the driver), or at an `smpsJump` back into
+code it has walked: its loop, which starts where **this** track's walk first reached the target
+(`loop_tick`, `loop_event_index`).
 
-## Effect Macros
+- **Fall-through.**  Title Screen and Invincibility FM5 are only `smpsAlterNote $03` above FM1's
+  label: a detuned double of FM1.  Star Light FM3 and FM4 run on into PSG1's and PSG2's code.
+- **`smpsJump` forward** into code not walked yet is followed (Labyrinth FM4 into FM3's).
+- **`smpsLoop slot, count, label`** is unrolled: the body (label to loop) is replayed `count − 1`
+  more times.
+- **`smpsCall label`** is inlined up to its `smpsReturn`.
+- A track that is only `smpsStop` (Title Screen PSG1, PSG2) has no events.
 
-### Channel Control
+## Effect macros
 
-| Macro | Bytes | Description |
-|-------|-------|-------------|
-| `smpsSetvoice $xx` | $EF, xx | Set FM voice/instrument |
-| `smpsAlterVol $xx` | $E6, xx | Add signed value to volume attenuation (FM channels) |
-| `smpsPSGAlterVol $xx` | $EC, xx | Add signed value to volume attenuation (PSG channels) — parsed identically to `smpsAlterVol` |
-| `smpsAlterNote $xx` | $E1, xx | **FNUM offset** (~10 cents/unit, NOT semitones) — sub-semitone detune only; does NOT affect voice_map range lookup or MOD pitch placement |
-| `smpsChangeTransposition $xx` | $E9, xx | **Semitone shift** — add signed value to channel pitch; cumulative; affects all subsequent notes and voice_map routing |
-| `smpsPan direction, amsfms` | $E0, xx | Set panning and AMS/FMS |
+What each does: `docs/smps_driver.md` § Coordination flags.  What the parser keeps:
 
-### Modulation
+| Macro (alias) | Bytes | Parser |
+|---------------|-------|--------|
+| `smpsSetvoice` (`smpsFMvoice`) | $EF xx | `SET_VOICE` |
+| `smpsAlterVol` | $E6 xx | `ALTER_VOL`, signed |
+| `smpsPSGAlterVol` | $EC xx | `ALTER_VOL` too |
+| `smpsAlterNote` (`smpsDetune`) | $E1 xx | `DETUNE`, signed |
+| `smpsAlterPitch` (`smpsChangeTransposition`) | $E9 xx | `CHANGE_TRANSPOSITION`, signed |
+| `smpsPan direction, amsfms` | $E0 xx | `PAN`, the $B4 byte (`panLeft` … `panCentre` + AMS/FMS) |
+| `smpsModSet wait, speed, change, step` | $F0 w s c n | `MOD_SET` |
+| `smpsModOn` / `smpsModOff` | $F1 / $F4 | `MOD_ON` / `MOD_OFF` |
+| `smpsNoteFill xx` | $E8 xx | `NOTE_FILL` (frames) |
+| `smpsChanTempoDiv xx` | $E5 xx | `CHAN_TEMPO_DIV`; the durations after it are multiplied |
+| `smpsSetTempoMod xx` | $EA xx | `SET_TEMPO_MOD` |
+| `smpsSetTempoDiv xx` | $EB xx | `SET_TEMPO_DIV` |
+| `smpsPSGform xx` | $F3 xx | `PSG_FORM` |
+| `smpsPSGvoice fTone_xx` | $F5 xx | `PSG_VOICE`, by name |
+| `smpsNop xx` | $E2 xx | `NOP` |
+| `smpsStop` / `smpsFade` / `smpsStopSpecial` | $F2 / $E4 / $EE | end the track |
+| `smpsJump` / `smpsLoop` / `smpsCall` / `smpsReturn` | $F6 / $F7 / $F8 / $E3 | § Walking a track |
+| `smpsClearPush`, `smpsWeirdD1LRR` (`smpsMaxRelRate`) | $ED / $F9 | not kept |
 
-| Macro | Bytes | Description |
-|-------|-------|-------------|
-| `smpsModSet $wait, $speed, $change, $steps` | $F0, w, s, c, n | Set modulation parameters |
-| `smpsModOn` | $F1 | Enable modulation |
-| `smpsModOff` | $F4 | Disable modulation |
-
-### Timing
-
-| Macro | Bytes | Description |
-|-------|-------|-------------|
-| `smpsNoteFill $xx` | $E8, xx | Set note fill — note cuts after xx ticks |
-
-### Flow Control
-
-| Macro | Bytes | Description |
-|-------|-------|-------------|
-| `smpsStop` | $F2 | End of channel data |
-| `smpsJump <label>` | $F6, addr | Jump to label (song loop point) |
-| `smpsLoop $idx, $count, <label>` | $F7, idx, cnt, addr | Loop back to label, count times |
-| `smpsCall <label>` | $F8, addr | Call subroutine at label |
-| `smpsReturn` | $E3 | Return from smpsCall |
-
-### PSG-Specific
-
-| Macro | Bytes | Description |
-|-------|-------|-------------|
-| `smpsPSGform $xx` | $F3, xx | Set PSG waveform |
-| `smpsPSGvoice <voice>` | $F5, xx | Set PSG tone envelope |
-
-### Ignored
-
-| Macro | Description |
-|-------|-------------|
-| `smpsNop $xx` | Game synchronization byte (no audio effect) |
-
-## Voice Definitions
-
-FM voices are defined using `smpsVc*` macros that set YM2612 register parameters:
+## Voices
 
 ```asm
-smpsVcAlgorithm     $02        ; FM synthesis algorithm (0–7)
-smpsVcFeedback      $07        ; Operator 1 feedback (0–7)
-smpsVcDetune        $00, $05, $00, $05   ; Per-operator detune
-smpsVcCoarseFreq    $02, $01, $08, $01   ; Per-operator frequency multiplier
+smpsVcAlgorithm     $02
+smpsVcFeedback      $07
+smpsVcUnusedBits    $00
+smpsVcDetune        $00, $05, $00, $05      ; operands: SMPS operators 1, 2, 3, 4
+smpsVcCoarseFreq    $02, $01, $08, $01
 smpsVcRateScale     $00, $00, $00, $00
 smpsVcAttackRate    $10, $1E, $1E, $1E
 smpsVcAmpMod        $00, $00, $00, $00
@@ -176,22 +128,13 @@ smpsVcDecayRate1    $0F, $1F, $1F, $1F
 smpsVcDecayRate2    $02, $00, $00, $00
 smpsVcDecayLevel    $01, $00, $00, $00
 smpsVcReleaseRate   $0F, $0F, $0F, $0F
-smpsVcTotalLevel    $01, $22, $24, $18   ; Per-operator volume
+smpsVcTotalLevel    $01, $22, $24, $18      ; assembles the voice's 25 bytes
 ```
 
-Four parameters per macro correspond to the four FM operators. These are parsed for reference but not directly mapped to MOD instruments (MOD uses PCM samples, not FM synthesis).
-
-## DAC Samples (Sonic 1)
-
-See `docs/smps_driver.md` §DAC Channel for the full table including native sample rates.
-
-## Edge Cases
-
-### FM5 Fall-Through
-FM5 may contain only an `smpsAlterNote` (FNUM detune) or `smpsChangeTransposition` effect, then fall through into FM1's data. The parser handles this by not stopping at label boundaries — only `smpsStop`/`smpsJump` terminate channel parsing.
-
-### Empty Channels
-PSG1 and PSG2 in some songs (e.g. Title Screen) contain only `smpsStop`. The parser produces channels with zero events.
-
-### Loop with Nested Effects
-Loop bodies may contain `smpsNoteFill` and other effects interleaved with `dc.b` duration bytes. The parser processes effects and data in order, maintaining state across loop iterations.
+Each `smpsVcAlgorithm` after the voice label starts the next voice (index 0, 1, …); the parser keeps
+the operands as written, and `SMPS_OP_TO_REG_OFFSET` places them (byte layout and operator order:
+`docs/smps_driver.md` § FM voices).  The SMPS2ASM version in `smpsHeaderStartSong` changes two
+encodings: version 0 (the default) assembles `smpsVcAmpMod` into bit 5 and sets bit 7 of the
+carriers' TL, version 1 (`smpsHeaderStartSong 1, 1`, six Sonic 1 files) uses bit 7 and sets no TL
+bits.  Neither matters here: every Sonic 1 voice has `smpsVcAmpMod $00`, and the chip reads 7 bits
+of TL.

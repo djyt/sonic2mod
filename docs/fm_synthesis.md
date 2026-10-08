@@ -1,616 +1,342 @@
-# YM2612 FM Synthesis Pipeline
+# YM2612 FM Synthesis
 
-How sonic2mod generates MOD sample data from Sonic 1 FM voice patches using Nuked-OPN2.
+How sonic2mod renders each FM instrument as an 8-bit MOD sample on Nuked-OPN2.
 
-Related docs: `docs/smps_driver.md` (SMPS voice format), `docs/pipeline.md` (conversion pipeline),
-`docs/yaml_config.md` (voice_map schema).
+Related: `docs/pipeline.md` (how notes are placed and played), `docs/smps_driver.md` (voice
+format), `docs/yaml_config.md` (every config and settings key), `docs/psg_synthesis.md` (the
+SN76489 counterpart).
 
 ---
 
 ## Overview
 
-When `synthesis.enabled: true`, sonic2mod renders each FM voice patch as 8-bit PCM and embeds
-the result directly into the MOD file as a sample. The Amiga then replays the PCM at the correct
-pitch via its period table — no FM chip needed at playback time.
-
-The pipeline:
-
 ```
-voice_map entry  →  render_note_raw()  →  OPN2 emulation  →  PCM mono  →  normalize  →  MOD sample
-(voice + root)       (synth pitch)        (Nuked-OPN2 DLL)   (resample)   (int8)
+catalogue entry → render_layers (chip, then resampled) → shelf, DC block → loop or cut → int8 (peak-normalised, dithered)
 ```
 
-All five pipeline segments must be complete before synthesis produces usable output:
-
-| Segment | File | Purpose |
-|---------|------|---------|
-| 1 | `ym2612/build.py` + `ym2612/wrapper.py` | Compile ym3438.c → DLL; ctypes OPN2 class |
-| 2 | `ym2612/voice.py` | SmpsVoice → YM2612 register writes |
-| 3 | `ym2612/renderer.py` | Voice + pitch → 8-bit PCM |
-| 4 | `ym2612/sample_generator.py` | voice_map → `{inst: (pcm, rate)}` dict |
-| 5 | `smps2mod.py` + `convert.py` | Install synthesized samples into ModFile |
+| File | Role |
+|------|------|
+| `ym2612/build.py`, `ym2612/wrapper.py` | Compile `ym3438.c` + `ym3438_batch.c` (`core.cbuild`); ctypes `OPN2` class |
+| `ym2612/voice.py` | `SmpsVoice` → YM2612 registers (`program_voice`) |
+| `ym2612/renderer.py` | Voices + pitch → PCM (`render_layers`, `render_note`) |
+| `ym2612/sample_generator.py` | The song's instrument catalogue → `{inst: (pcm, rate)}` (`generate_fm_samples`) |
+| `core/convert/smps2mod.py` | Calls the generator (handed in by `convert.py`) and installs the samples |
 
 ---
 
 ## Quick Start
 
-### 1. Enable synthesis
-
-```yaml
-# configs/settings.yaml
-synthesis:
-  enabled: true
-```
-
-### 2. Run smoke tests (verify DLL + pipeline)
+`fm_synthesis.enabled` is `true` in the shipped `configs/settings.yaml` (the code's default is
+`false`: samples then come from `sample_list` files).  The first render compiles the DLL, so
+gcc or MSVC must be on PATH.
 
 ```bash
-python ym2612/validate.py      # segment 1: A4 tone → output/validate_test.raw
-python ym2612/voice.py         # segment 2: voice 0, 100 ms → prints peak
-python ym2612/renderer.py      # segment 3: voice 1 at A3 → output/renderer_test.raw
-python ym2612/sample_generator.py  # segment 4: voice 1 at A3 → output/sample_gen_test.raw
-```
-
-### 3. Build and convert
-
-```bash
+python ym2612/validate.py           # A4 test tone → output/validate_test.raw; checks the C helpers
+python ym2612/voice.py              # Title Screen voice 0, 100 ms → prints the peak
+python ym2612/renderer.py           # voice 1 at A3 → output/renderer_test.raw
+python ym2612/sample_generator.py   # voice 1, root A3, through the generator → output/sample_gen_test.raw
 python convert.py configs/01_title_screen.yaml
 ```
 
-Synthesis runs automatically when `synthesis.enabled: true` and the DLL is compiled.
-Each voice_map entry with a `root` produces one synthesized MOD sample.
+Audacity: File > Import > Raw Data, signed 16-bit PCM, little-endian, mono, at the rate each
+script prints.
 
-### 4. Auditing in Audacity
-
-Load `.raw` smoke test files in Audacity:
-- **File > Import > Raw Data**
-- Encoding: **Signed 16-bit PCM**, byte order: **Little-endian**, channels: **1 (Mono)**
-- Sample rate: printed by each smoke test (typically 53,267 Hz or the target_rate value)
+Settings (`fm_synthesis:`, `samples:`, `amiga_clock`): `docs/yaml_config.md` § settings.yaml.
 
 ---
 
-## Settings Reference (`configs/settings.yaml`)
+## How a note becomes a sample
 
-```yaml
-fm_synthesis:
-  enabled: true             # Master switch; false = samples loaded from samples_dir instead
-  mode: ym2612              # "ym2612" (MD1/MD2 VA2) or "ym3438" (YM3438 accurate)
-  clock_rate: 7670454       # Mega Drive NTSC YM2612 master clock (Hz)
-  sustain_duration: auto    # Seconds note held on before key-off, or auto (see § sustain_duration: auto)
-  release_padding: 0.5      # Seconds captured after key-off (release tail)
-  detune_variants: true     # smpsAlterNote notes play a sample rendered at their FNUM offset
-  threads: normal           # Instruments rendered at once: normal (cores − 1), max (all cores), or a number
-```
+### The catalogue: what is rendered
 
-| Field | Type | Default | Notes |
-|-------|------|---------|-------|
-| `enabled` | bool | `false` | Set `true` to generate samples; requires gcc/MSVC |
-| `mode` | str | `"ym2612"` | `"ym2612"` = MD1/MD2 VA2 DAC behaviour (sign bias, ×3 level); `"ym3438"` = discrete YM3438. The renderer keeps the instance's mode across its per-note resets, and the batch helpers subtract the mode's own DC (72 / 0) so silence is 0 in both |
-| `clock_rate` | int | `7670454` | Do not change for Sonic 1 |
-| `amiga_clock` | int | `3546895` | **Top level** (shared with PSG; a section's own key is the fallback). PAL Amiga; 3579545 for NTSC (rare) |
-| `sustain_duration` | float or `auto` | `auto` (settings.yaml; `1.5` when the key is absent) | Seconds held before key-off. `auto` = each instrument its own longest ring, see below |
-| `release_padding` | float | `0.5` | Longer = more release tail; affects sample file size |
-| `detune_variants` | bool | `true` | Each `smpsAlterNote` detune an instrument plays is rendered on the chip with the offset: its majority detune in its own slot, every other in a free slot (`core/plan/detune.py`, docs/pipeline.md § Detune variants). `false`: every note plays the undetuned sample |
-| `threads` | str/int | `"normal"` | Render threads: `normal` = CPU cores − 1 (never below 1), `max` = all cores, or a count. Output is byte-identical whatever the value |
+`core.plan.instruments.fm_catalogue` lists every FM instrument and the entry it is rendered
+for; the generator and the sustain planner both read it.  An instrument is rendered once, for
+the **first** entry that names its slot, in this order:
 
-`samples:` holds what every sample shares, FM and PSG (`core.config._samples_section`; a key
-still at the top level counts, with a warning; an unknown key is an error):
+1. `voice_map` entries with `root` (voices the song defines);
+2. `channel_instrument_map` entries with `root`;
+3. rootless `channel_instrument_map` entries: rendered at C4 and played at C1's rate.
 
-| Field | Default | Notes |
-|-------|---------|-------|
-| `max_sample_kb` | `128` | Bytes one sample may hold: 128 = the format's 131070, 64 = original ProTracker's 65534 |
-| `pt_zero_bytes` | `true` | A one-shot sample's first word zeroed (`ModFile.zero_idle_words`, last step of `convert()`): ProTracker replays it once the sample ends, and (-126, 126) there buzzes until the next note. A looped sample replays its loop instead |
-| `dither` | `shaped` | How the 8-bit rounding error is spread (`core.audio.pcm.to_int8`): `shaped` (TPDF, first-order shaping, the noise toward Nyquist), `flat` (TPDF, even), `off` (rounding). A `voice_map` / `psg_map` / `psg_voice_map` entry or a merge group may say its own `dither:`; a composite without one takes its primary's entry's (`core.merge.composite_dither`, `FmInstrument.dither_mode`). Shaped noise suits a bright voice; a mellow one has no treble to hide it under (Green Hill $05 C4–B5, $06: 2–7 dB signal-to-noise above 6 kHz shaped, 8–14 flat, 12–19 off). `off` only on a sound that stays loud: a fading tail steps |
-| `dc_block` | `false` (`true` in the shipped settings) | Every FM / PSG render centred by a 5 Hz one-pole high-pass (`core.audio.pcm.dc_block`), before loops and quantising: the hardware's output is AC-coupled. Lopsided FM voices sat up to 24 of 127 off zero (a click at each note-on and cut, 1.5 dB of bits). 20 Hz read the bass voices 1-2 dB low against the VGZs. Drums off disk are left alone |
-| `sustain_loops` / `loop_drift_db` | `merged` / `1` | § Sustain loops |
-| `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | Brightness shelf (`core.audio.pcm.high_shelf`); 0 = off |
-| `resample_taps` | `32` | Resampler filter width (`core/audio/resample.py`) |
-| `render_cache` | `off` (`output/cache` in the shipped settings) | Every FM / PSG chip render kept on disk under a hash of its inputs, in a directory per hash of the emulator DLL and the Python a render runs through (`core/render_cache.py`); a conversion that renders the same note again reads it back. Output identical either way; renders other code made are removed. Credits 10.7 s → 1.7 s, the regression suite 14 s → 4 s |
+A later entry naming the same slot plays that sample (Credits folds its voices onto 31 slots),
+so its `root` must be written to play it in tune.  Detune variants
+(`fm_synthesis.detune_variants`, `docs/pipeline.md` § Detune variants) add a copy of an
+instrument in a free slot at another FNUM offset; the merged build drops what it no longer
+plays and adds its chip composites (§ Layers).
 
-**Clock rates explained:**
-- `clock_rate = 7670454` Hz → native synthesis rate = 7670454 / 6 / 24 ≈ **53,267 Hz**
-- `amiga_clock = 3546895` Hz → `target_rate = amiga_clock / period` where period is from PERIOD_TABLE
+### Pitch: synth_root, synth_shift, target_rate
 
-### `sustain_duration: auto`
+A note's MOD placement is `root + (key − low)` (`docs/pipeline.md` § `voice_map` routing).  The
+sample must sound the chip's pitch at every one of those notes:
 
-A synthesised sample does not loop: a note that outlasts its sample goes silent.  `auto`
-makes the sustain long enough for the song.  `SustainPlanner.resolve` calls
-`SustainPlanner._needs`, which walks every enabled FM channel with the same `DriverState` as the
-conversion and measures, per MOD instrument, the longest **ring** any of its notes needs:
-
-- A ring is a note plus the `smpsNoAttack` continuations after it (no `C00` is written for
-  those, so the sample keeps advancing).  A plain rest or the next note restarts the sample.
-  An `smpsNoAttack` *note* continues the ring only where `legato` (settings.yaml) writes it
-  as a `3FF`; under `legato: retrigger` it is a note-on and starts a ring of its own, on its
-  own instrument (until 2026-09-30 it did not: Drowning's FM3 trill, 240 legato notes,
-  measured one 10 s ring, an 83 KB sample for notes of a second; Green Hill's grace notes
-  gave the chord's whole ring to the grace note's instrument, and the chord's own sample was
-  keyed off partway through its notes).
-  In the merged build a ring also ends at the next note-on in the column's stream, a pooled or
-  spliced note included (Green Hill lofi's FM3 chords, 24 ticks in the song, are cut by the
-  FM5 arp after 8: `cut_after`), and at a note-on of the channel's that is folded elsewhere.
-  A ring's ends are taken where the row grid can put them (`_mod_span`): exact for a note
-  that starts and ends on a row, up to half a row (and a driver tick) out for one between rows,
-  the next row for a ring that ends inside its own.  Until 2026-10-07 a whole row was added to
-  every ring: Game Over's 4-row chords were rendered 5 rows long (−3.3 KB of its 41.8 KB lofi
-  build; −59 KB, 1.4 %, over every regression build, none larger).  The sustain loop's reference
-  (`loop_ref_by_instrument`, find_sustain_loop's `ref_n`) keeps the row of margin: the search
-  is sensitive to where the longest note ends, and measured from the tighter end it moved loops
-  (Game Over's long chord to 63 ms, +1 dB held for 0.95 s; Marble Zone's $00 +17 KB).  A loop
-  that would end past the tighter plain render is dropped, as before.
-- Its length is measured in the MOD's own time, summed over the tempo segments
-  (`smpsSetTempoMod` changes the BPM), after `smpsSetTempoDiv` re-timing.
-- It is measured at the sample's playback rate.  The sample is synthesised at the rate of
-  the **first** entry naming the instrument (`SustainPlanner._synthesis_roots`, the order
-  `generate_fm_samples` walks the maps); a note played above that root runs the sample
-  faster by root period / note period.  A positive `sample_list` finetune adds
-  2^(finetune / 96).  The MOD note is the one the conversion triggers (range lookup in the
-  config's `range_space`, `root + (key − low)`, or the channel transpose).
-
-Each instrument is rendered for its own need, capped at 10 s (`sustain_by_instrument` on
-the resolved settings; the largest of them becomes `sustain_duration`, for anything not
-measured).  Rendering every instrument for the song's longest ring cost the Title Screen's
-stab instruments six times the sample they play, and the ending unison note's variant set
-the length of every other sample.  A stated number still renders every instrument that
-long.  In the merged build an instrument the plan does not render sets nothing.  Independently,
-`generate_fm_samples` caps each instrument's sustain to what a sample may hold at its rate
-(`core.mod.limits.max_sustain_secs`: the `max_sample_kb` limit less the release).  `max_sample_kb`
-is a top-level key of `settings.yaml`: `128` is the format's own limit (131070 bytes, a
-16-bit word count, which Paula's length register shares and OpenMPT, the FT2 clone and
-ProTracker 2.3E+/3.x play), `64` is the original ProTracker editor's (65534 bytes, its
-four-hex-digit length field).  Where a note still outlasts its sample, `convert.py` prints a
-`sustain_short` warning naming the instrument, the seconds needed and the limit that applies
-(the setting, the 10 s cap, or the sample limit; the fix for the last is a lower `root`, which
-halves the bytes per second per octave).  PSG works the same way (`docs/psg_synthesis.md`).
-
-**The release padding is only what a note can reach** (`exact_sustain` on the resolved
-settings, `core.audio.loops.heard_padding`).  An instrument whose `auto` sustain holds every one of
-its notes, plays no channel's last note (that one rings out into the release, a jingle's
-final chord) and is no mix's source (a PSG chime under an FM lead rings as long as the lead,
-which only the FM pass measures), is cut where its notes stop being heard: at the sustain where the
-converter cuts notes (`C00`, the reference builds), or once a release slide has fallen
-48 dB (the merged build's `A0y` slides, at the voice's measured release rate), never past
-`release_padding` — and only for an instrument one of whose notes ends in a rest the converter
-writes as a slide (`slide_ends`): a note cut by a note-on has none, and on a column a merge
-group routes onto, a rest is a `C00`.  A sustain loop ending later is longer than that plain render and less
-faithful, so it is dropped (PSG: a loop past the sustain; noise: its envelope's length is
-bounded by the notes' own).  A stated `sustain_duration`, or a sample capped by the 10 s cap
-or `max_sample_kb`, keeps the whole padding: a note can outlast it.  All builds: 4.89 MB of
-MODs to 4.61 MB; rendered with the dither seed fixed, the reference builds are unchanged
-except where the legato fix corrects them, the merged ones play their plain renders where a
-loop used to freeze past the notes.
-Stage Clear's PSG instrument 9 is the known case: its PSG2 range plays the PSG1 sample two
-octaves up, so a 2.55 s note needs 13 s of it.  At `max_sample_kb: 64`, 17 instruments in
-six songs (Marble Zone, Spring Yard, Scrap Brain, Robotnik, Final Zone, Credits) warn as well.
-
-**Sustain loops** (`samples.sustain_loops` and `samples.loop_drift_db` in `settings.yaml`, `core/audio/loops.py`) make
-the length independent of the notes: an instrument whose envelope settles is rendered for a 4 s
-probe, cut where it settles plus one best-matching loop of the waveform (crossfaded closed, at
-most 1.2 s), and its notes end with a release slide at the voice's measured release rate instead
-of a `C00`.  `generate_fm_samples(loops=True, loops_out=, release_out=)` reports the loop and the
-release per instrument; the converter writes the loop into the sample header and drops the
-`sustain_short` warning for a looped instrument.  On by default for the `--merged` build only.
-Rules and the fidelity knob: `docs/pipeline.md` § Sustain loops.
-
----
-
-## Pitch: root, synth_root, and target_rate
-
-This is the most critical (and confusing) part of synthesis configuration.
-
-### Three pitch concepts
-
-| Concept | Where set | Controls |
-|---------|-----------|---------|
-| `root` | `voice_map` entry | **The sample's base note**: the MOD note at which playback sounds at `synth_root`, and the note where `low` plays when `synth_root` is derived; also determines `target_rate` |
-| `synth_root` | derived from the song; a `voice_map` entry may state it | **Rendering pitch** — the frequency the chip renders at: the chip pitch the instrument's notes play most often |
-| `low` | `voice_map` entry | **Source range start**; the chip pitch it plays at is what MOD note `root` sounds |
-
-### How they interact
-
-**target_rate** (the Amiga playback rate) is always computed from `root`:
-```python
-target_rate = round(amiga_clock / PERIOD_TABLE[root.value])
-```
-`synth_root` does NOT affect `target_rate`.  A sample rendered at `synth_root` and played at
-MOD note `m` therefore sounds at `synth_root + (m − root)` semitones.
-
-**synth_root is derived.**  Before anything is rendered, `core.plan.synth_roots.resolve_synth_roots`
-walks every channel with the `DriverState` and, for each rooted entry, finds D, the pitch the
-chip really plays for the entry's `low` note (`low` plus the pitch offset and every
-`smpsChangeTransposition`; for PSG through the driver's frequency table): with the sample at D
-and the placement `m = root + (key − low)`, every note sounds at its chip pitch.  It then renders
-higher than D where that serves the notes: envelopes run in real time on the chip but stretch
-with playback rate in a MOD, so the sample is rendered at the chip pitch the instrument's notes
-play most often (ties to the lower; at most an octave above D), and `synth_shift = synth_root − D`.
-The shift never moves a note: the generator gives the sample a rate 2^(synth_shift/12) higher
-than `root`'s playback rate, so MOD note `root` still sounds D, and every note keeps its place,
-its playback rate and its bandwidth.  (Placing the notes lower instead, which the converter did
-for one afternoon, halved the Chaos Emerald lead's playback rate to 4 kHz and lost everything
-above 2 kHz; the hardware has a fifth of that lead's energy between 3 and 6 kHz.)  The cost is
-the sample's size, 2^(synth_shift/12) times — hence the octave cap.  An instrument several
-entries share (Credits folds voices onto 31 slots, Stage Clear's PSG2 sits two octaves up its
-PSG1 sample) is rendered once, for the first entry that names it, and the pitch is chosen over
-all of them; a later entry's `root` is already written so that it plays the first entry's sample
-in tune.  A config never needs to state any of this; `convert.py` prints how many entries were
-derived.
-
-When an entry's `low` is played at several chip pitches (a voice used at two pitch offsets, or
-under an `smpsChangeTransposition`, inside one source range) the most-played pitch is used and a
-`synth_root_ambiguous` warning names the others: that entry needs `range_space: chip`
-(`tools/config_to_chip_space.py`) or a split.
-
-**Stating synth_root renders elsewhere in the range.**  A stated `synth_root` is the rendering
-pitch, wherever in the range you want it — the middle, say, so the sample is stretched at most
-half the range each way instead of a whole range upwards.  The entry's `synth_shift` is
-`synth_root − D`, the sample's rate is raised by 2^(synth_shift/12), and the placement is the
-usual `m = root + (key − low)`: the low note still plays at `root` and sounds D.
-
-```yaml
-voice_map:
-  5:
-    - low: G3          # chip pitches (range_space: chip); the range runs G3–B4
-      high: B4
-      mod_instrument: 7
-      root: C2         # the note where G3 sounds
-      synth_root: D4   # rendered at D4, the middle; the sample's rate is 2^(7/12) × C2's, notes stay put
-```
-
-**A `synth_root` name is a real pitch.**  `synth_root: A4` renders 440 Hz: `note_to_freq` gives the
-standard frequency and `freq_to_fnum_block` uses the chip's formula
-`fnum = f × 144 × 2^(21−block) / clock` (A4 → fnum 1083, block 4).  An SMPS FM note label is a
-real pitch too — the driver's table puts `nC0` at 16.35 Hz — so the chip pitch of a source note is
-simply `note + pitch_offset + smpsChangeTransposition`, and `tools/vgm_analyze.py` shows the same
-names.  (Before 2026-09-18 both `freq_to_fnum_block` and the analyzer used `2^(20−block)`: the
-synthesiser rendered an octave below the name and the analyzer read an octave high, so every
-config carried `synth_root` values one octave above the rule.  All 103 were lowered when the
-formulas were fixed.  On 2026-09-27 the 163 stated values were checked against the derivation:
-162 matched and Spring Yard's `fTone_06` was an octave high — its four notes in the PSG table
-were wrong until the derivation replaced it — and all were removed from the configs.)
-
-**Why the rendering pitch matters:** FM timbre changes with pitch.  A bass voice rendered three
-octaves too high has its modulation sidebands outside the audible range and comes out thin or
-near-silent, which is what a missing transposition used to do before the derivation.
-where:
-- `low` = SMPS source note (the `low` field)
-- `total_transpose` = header pitch_offset + accumulated smpsChangeTransposition
-- `chan_cfg.transpose` = channel's `transpose:` in YAML (which is already included in total_transpose
-  at conversion time, so subtract it to get the runtime delta from smpsChangeTransposition only)
-
-Example — GHZ voice $08 on FM3:
-- `low = C5` (SMPS semitone 60)
-- Header pitch_offset for FM3 = $F4 = -12
-- smpsChangeTransposition $E8 = -24 (cumulative before voice switch)
-- `total_transpose = -12 + (-24) = -36`
-- YAML `transpose: 0` (root handles placement) so `chan_cfg.transpose = 0`
-- `synth_root = 60 + (-36) - 0 = 24 = C2`
-
-### root placement quality
-
-A higher `root` value gives a higher `target_rate`, which means the Amiga sample is played back
-at a faster rate with more audio frequency resolution. Higher quality:
+- **D** — the pitch the chip plays for the entry's `low` (its byte plus the pitch offset and
+  every `smpsChangeTransposition`).  A sample rendered at D and played at `root`'s rate puts
+  every note in tune.
+- **`synth_root`** — the pitch actually rendered.  `core.plan.synth_roots.resolve_synth_roots`
+  derives it: the chip pitch the instrument's notes play most often (ties to the lower), at
+  most an octave above D (`merge_max_synth_shift` lowers the cap in the merged build).
+  Envelopes run in real time on the chip but stretch with playback rate in a MOD, so rendering
+  at the busiest note keeps the most notes at the hardware's attack and decay speed.
+- **`synth_shift`** = `synth_root − D`.  It goes into the sample's rate, never the placement:
 
 ```
-target_rate = amiga_clock / PERIOD_TABLE[root.value]
-# C1 (idx=0):  3546895 / 856 ≈  4144 Hz  (very low quality)
-# C2 (idx=12): 3546895 / 428 ≈  8287 Hz  (acceptable)
-# C3 (idx=24): 3546895 / 214 ≈ 16574 Hz  (good)
-# B3 (idx=35): 3546895 / 113 ≈ 31389 Hz  (near CD quality)
+target_rate = round(amiga_clock / PERIOD_TABLE[root] × 2^(synth_shift / 12))
 ```
 
-Choose the highest `root` whose full range `root + (high − low)` stays within C1–B3 (indices 0–35).
+MOD note `root` still sounds D, and every note keeps its place, playback rate and bandwidth;
+the cost is 2^(synth_shift/12) times the bytes, hence the octave cap.  (Placing notes lower
+instead halved the Chaos Emerald lead's rate to 4 kHz and lost its treble.)  A higher `root`
+gives every note a higher rate and more bandwidth (`docs/pipeline.md` § `root`
+placement).
 
----
+An instrument several entries share is rendered for the first; its pitch is chosen over all
+their notes.  A config never needs to state `synth_root`; one that does names the rendering
+pitch anywhere in the range (the middle, say, so the sample stretches at most half the range
+each way), and the same shift rule applies.  When an entry's `low` plays at several chip
+pitches (two pitch offsets, or an `smpsChangeTransposition`, under one source range), the
+most-played wins and `synth_root_ambiguous` warns: split the entry or use `range_space: chip`.
 
-## Quantisation
+### Frequency registers
 
-Every sample is peak-normalised to its full 8 bits and quantised with TPDF dither and
-first-order noise shaping, unless `dither:` says otherwise (`samples.dither`, § Settings) (`core.audio.pcm.to_int8`, the same treatment `sfx/amiga.py` gives the SFX
-exports; the dither sequence is seeded from the sample's length, so a render is byte-identical
-from run to run).  A decaying tail fades into a faint hiss instead of stepping through its last
-few levels.
+Pitch names are real pitches: `synth_root: A4` renders 440 Hz, and an SMPS FM label at pitch
+offset 0 is the chip's note (the driver's table puts `nC0` at 16.35 Hz).  `note_to_fnum_block`
+writes the registers the Sonic 1 driver writes for the note (`core.smps.driver_tables.FM_FREQUENCIES`,
+MOD index i = table index i + 13): fnum 644–1216, the block from the octave.  Rate scaling and
+DT1 read the key code (block and the fnum's top bits), so the same pitch written as another
+fnum/block pair has another envelope and detune.  Off the table, or at another clock,
+`freq_to_fnum_block` stands in: `fnum = f × 144 × 2^(21 − block) / clock` (A4 → 1083, block 4).
 
-Balance between instruments is not the sample's job: the `sample_list` volume carries each
-instrument's level, measured against the VGZ (`tools/vgm_compare.py --write-volumes`).  The
-old global normalisation (`normalize_samples: false`, removed 2026-09-27; the key warns and is
-ignored) scaled every instrument by the loudest one's peak, which cost quiet voices bits (Star
-Light voice $00 kept 5.6 of them) and pinned loud single-carrier voices at volume 64 with
-nowhere to go once a louder neighbour raised the scale.
+Rendering at the right pitch matters for timbre: a bass voice rendered octaves too high puts
+its modulation sidebands out of the audible range and comes out thin or near-silent.
 
----
+### Length: `sustain_duration: auto`
 
-## Carrier levels and the channel accumulator
+A sample without a sustain loop that a note outlasts goes silent.  With `auto`,
+`SustainPlanner.resolve` (`core/convert/sustain_plan.py`) renders each instrument for its own
+longest **ring**, measured by `_needs` with the same `DriverState` walk as the conversion:
 
-Each instrument is rendered at the level most of its notes play at.  The converter's
-`LevelPlanner.fm_render_levels` walks the song with the `DriverState` and finds, per MOD instrument,
-the (TL offset, pan) most of its notes carry — the same choice `LevelPlanner.levels` makes for the
-"baked" `sample_list` volume — and `program_voice` adds that TL offset to the carrier operators
-exactly as the driver's `SetVoice` does (`add.b`, modulo 256; the chip keeps 7 bits).  The
-sample therefore carries the level its `sample_list` volume stands for, and the `Cxx` law only
-handles the notes that differ from it.  Modulators are never touched.
+- A ring is a note plus the `smpsNoAttack` rests after it (no `C00` is written for those).  A
+  plain rest or the next note-on ends it.  An `smpsNoAttack` *note* continues it only where
+  `legato` writes it as `3FF`; under `retrigger` (the default) it starts a ring of its own.
+  In the merged build a ring also ends at the next note-on on its column, a pooled or spliced
+  note included, and at a note of the channel that is folded elsewhere.
+- Its ends are where the row grid can put them (`_mod_span`): exact on a row, up to half a row
+  and a driver tick out between rows, the next row for a ring that ends inside its own.
+- Its length is MOD time, summed over the tempo segments, after `smpsSetTempoDiv` re-timing.
+- It is scaled to the sample's own rate: root period / note period (the first entry's root),
+  divided by 2^(synth_shift/12), times 2^(finetune/96) for a positive `sample_list` finetune.
 
-That matters because the chip sums a channel's carriers into a 9-bit accumulator
-(`OPN2_ChGenerate` in Nuked: each operator's 14-bit output `>> 5`, the sum clamped to
-−256…255, in both chip modes).  One carrier at TL 0 fills it exactly and can never clip.  Two or
-more carriers at TL 0 overflow it — 55 Sonic 1 voices are built that way, every GHZ lead among
-them — and how much they overflow depends on the channel's volume, which the driver adds to the
-carriers before the sum.  Measured at C2, one second held, samples on the rail:
+Each instrument's need is capped at 10 s (`sustain_by_instrument`; the largest becomes
+`sustain_duration` for anything unmeasured).  A stated number renders every instrument that
+long.  The generator also caps each sustain to what fits `samples.max_sample_kb` at the
+sample's rate, less the release (`core.mod.limits.max_sustain_secs`).  Where a note still
+outlasts its sample, `sustain_short` names the instrument, the seconds needed and the limit
+(the setting, the 10 s cap, or the sample limit — a lower `root` halves the bytes per second
+per octave); a looped instrument never warns.
 
-| Voice, channel | Hardware, at the channel's volume | Rendered at TL 0 |
-|----------------|-----------------------------------|------------------|
-| GHZ $02 on FM1 (+18 TL) | 0 % | 36 % |
-| GHZ $02 on FM3 (+20 TL) | 0 % | 36 % |
-| GHZ $04 on FM4 (+8 TL) | 0 % | 23 % |
-| GHZ $02 on FM4 (+8 TL) | 6 % | 36 % |
-| GHZ $03 on FM4 (+8 TL) | 34 % | 59 % |
+### Where a sample ends
 
-So the level cannot be applied afterwards: scaling a TL-0 render down fixes the loudness but
-keeps a distortion the hardware does not have, and the old `headroom_db` / `carrier_balance`
-boosts (removed 2026-09-27; either key in `settings.yaml` warns and is ignored) did the opposite,
-attenuating every carrier by a fixed 6 dB plus 20·log10(carriers) dB whatever the channel played
-at, and throwing away 1–3 bits of resolution before the accumulator's shift.  Rendering at the
-channel's own TL is what the hardware does, and clips exactly as much.
+Every render is the sustain, a key-off, then `release_padding` seconds of release, with its
+silent tail trimmed.  An instrument whose `auto` sustain holds every note it plays
+(`exact_sustain`) is cut where its notes stop being heard (`core.audio.loops.heard_padding`):
+at the sustain where notes end in `C00`, or after the release slide's 48 dB fall where they
+end in a slide (`slide_ends`), never past `release_padding`.  Exempt, and keeping the whole
+padding: an instrument playing a channel's last note (it rings out), a mix source (the other
+chip's pass measures its rings), and any sample a stated sustain or a cap shortened.
 
-Flat-topped peaks on an algorithm 4–7 sample are therefore correct where the VGZ shows them
-too.  The SFX renderer (`sfx/`) has always written TL this way (`fm_send_voice`).
+### Sustain loops
 
----
+With `samples.sustain_loops` on for the build (code default `merged`, shipped `all`), the
+renderer probes 4 s (`PROBE_SECS`, within the sample limit); a voice whose envelope settles is
+cut where it settles plus one crossfaded loop (at most 1.2 s), and its notes end in release
+slides at the rate measured on the probe's tail (`release_out`) instead of `C00`.  A loop that
+would end past the plain render, or past where the notes stop being heard, is dropped.  Rules,
+`loop_drift_db` and `loop_decay`: `docs/pipeline.md` § Sample length, sustain loops and release slides.
 
-## Synthesis Pipeline Detail
+### Level: render level and the channel accumulator
 
-### Step 1 — OPN2 reset and voice programming
+Each instrument is rendered at the level most of its notes play at.
+`LevelPlanner.fm_render_levels` picks the (TL offset, pan) most of its notes carry — the same
+choice that sets its baked `sample_list` volume — and `program_voice(tl_offset=)` adds the TL
+offset (`smpsHeaderFM` volume + `smpsAlterVol`) to the carriers as `SetVoice` does (`add.b`,
+the chip reads 7 bits).  Modulators are untouched; other notes get `Cxx` (`docs/pipeline.md`
+§ Levels).
 
-```python
-opn2.reset()                 # keeps the instance's mode (OPN2(mode=settings.mode))
-program_voice(opn2, voice, channel=0, tl_offset=track_volume)
-```
+The level cannot be applied afterwards.  The chip sums a channel's carriers into a 9-bit
+accumulator (`OPN2_ChGenerate`: each operator's output `>> 5`, the sum clamped to −256…255).
+One carrier at TL 0 fills it exactly; two or more overflow it, by an amount that depends on the
+channel's volume.  GHZ voice $02 on FM1 (+18 TL) clips no samples on the hardware and 36 %
+rendered at TL 0.  Rendering at the channel's own TL clips exactly as much as the hardware, so
+flat-topped peaks on an algorithm 4–7 voice are correct where the VGZ shows them too.
 
-`program_voice()` writes 30 YM2612 registers:
-- 2 channel-level: `0xB0` (algorithm + feedback), `0xB4` (panning = L+R, AMS=0, PMS=0)
-- 7 per-operator × 4 operators: DT/MUL, TL, KS/AR, AM/DR, SR, SL/RR, SSG-EG (always 0x00)
+### Layers: chip composites
 
-`tl_offset` is the track volume (`smpsHeaderFM` volume + `smpsAlterVol`) most of the instrument's
-notes play at; it is added to the carriers' TL the way `SetVoice` does (§ Carrier levels).
+`render_layers` keys several voices together, layer i on YM2612 channel `channel + i` (up to
+six), and lets the chip sum them.  A layer is `(voice, semitones above the note, FNUM detune,
+carrier TL offset[, key-off seconds])`; a plain instrument is one layer at 0.  The merged
+build's FM composites (`docs/pipeline.md` § The merged build) use it: a follower's
+`smpsNoteFill` keys its layer off early, and a mix's FM members render together
+(`FmInstrument.render_secs`: a fixed length, never looped).  Two values go back to the
+converter (`peaks_out`): the first layer's peak alone, which a composite's volume is scaled
+from, and the speaker gain — layers on opposite speakers never meet on the hardware, so each
+side is rendered on its own and the mono render is scaled to their L/R power.
 
-### Step 2 — Frequency setup
+### Resampling
 
-```python
-fnum, block = note_to_fnum_block(synth_note_idx)   # the driver's FM_FREQUENCIES entry
-opn2.write_reg(0xA4 + ch, fnum_hi, bank)  # write high byte first (latches block+fnum[9:8])
-opn2.write_reg(0xA0 + ch, fnum_lo, bank)  # write low byte (triggers frequency load)
-```
+The chip runs at `clock / 144` (53 267 Hz).  `render_layers` resamples to the sample's rate
+with `core.audio.resample`: polyphase Kaiser-windowed sinc, 512 phases, `samples.resample_taps`
+taps (default 32) counted at the lower rate so the filter keeps its shape at any ratio, flat to
+85 % of Nyquist with the stopband over 70 dB down.
 
-The registers are the ones the Sonic 1 driver writes for that note (`core.smps.driver_tables.
-FM_FREQUENCIES`, index 1 = nC0, so MOD index i is table index i + 13): fnum 644–1216 with the
-block from the octave.  That matters beyond pitch — rate scaling and detune read the key code
-(block and the fnum's top bits), so A# and B written as fnum 574 one block up, as the old
-frequency formula did, sounded the same pitch with a different envelope and detune; 73 of the
-116 Sonic 1 voices use rate scaling and 77 detune.  Off the table, or at another clock,
-`freq_to_fnum_block` (`fnum = freq × 144 × 2^(20−block) / clock_rate`) stands in.
+### Conditioning and quantisation
 
-### Step 3 — Key-on → render → key-off
+Before a loop is searched for, each render gets the treble shelf (`samples.treble_shelf_db`,
+a merge group's on top; `core.audio.pcm.high_shelf`, 0 dB = off) and, with `samples.dc_block`,
+a 5 Hz one-pole high-pass (`dc_block`): the console's output is AC-coupled, and a lopsided
+voice otherwise clicks at every note-on and cut.
 
-```python
-opn2.key_on(channel)                    # all 4 operators, reg 0x28
-mono  = opn2.render_mono(ceil(native_rate * sustain_secs))    # array('i')
-opn2.key_off(channel)                   # releases note
-mono += opn2.render_mono(ceil(native_rate * release_secs))
-```
+Every sample is then peak-normalised to its own full 8 bits (`full_scale_int8` → `to_int8`):
+balance between instruments is the `sample_list` volume's job, measured against the VGZ
+(`tools/vgm_compare.py --write-volumes`).  `dither` (`samples.dither`, or an entry's or merge
+group's `dither:`; a composite takes its primary's):
 
-The chip is clocked 24 times per output sample, all 24 `mol`/`mor` values are accumulated and
-DC = 72 (24 × 3) subtracted to zero-centre the result.  `render_samples(n)` returns that as
-`[(L,R), ...]`; `render_mono(n)` folds each pair to `(L + R) // 2` in C (`OPN2_RenderBatchMono`
-in `ym3438_batch.c`) and returns an `array('i')`.  The note renderer uses `render_mono`: building
-400 000 tuples per sample used to cost a fifth of the emulation time itself.  The SFX driver
-(`sfx/render.py`) still uses the stereo call — it mixes L and R separately.
+- `shaped` — TPDF dither with first-order error feedback: the noise rises toward Nyquist,
+  under a bright voice's treble; a fading tail turns to hiss instead of stepping.
+- `flat` — TPDF, unshaped: less hiss on a mellow voice, which has no treble to hide it.
+- `off` — plain rounding: least noise on a sound that stays loud; a quiet tail steps.
 
-### Step 4 — Optional resample
+The dither sequence is seeded from the sample's length, so a render is byte-identical from
+run to run.  The merged build's mixer takes the unquantised renders (`raw_out`).
 
-```python
-if target_rate != native_rate:
-    mono = _resample(mono, native_rate, target_rate)   # core.audio.resample (polyphase windowed sinc)
-```
+### Threads and the render cache
 
-`_resample` is the polyphase Kaiser-windowed sinc the SFX renderer uses (`core/audio/resample.py`;
-32 taps of the lower rate, 512 phases, >70 dB stopband), rounded back to ints.  Until
-2026-09-30 the 32 taps were input samples whatever the ratio: at 53267 -> 11062 Hz the kernel
-spanned under seven output samples, -2.9 dB at 85 % of Nyquist and aliases only 19 dB down.  It replaced a box average, which
-rolled off 3.9 dB at the target's Nyquist and left aliases only ~6 dB down, with window-length
-jitter on non-integer ratios.
-
-### Step 5 — Normalization and int8 packing
-
-- `render_note()`: normalises the sample to ±127 and quantises it (dithered) before returning `bytes`.
-- `render_note_raw()`: returns the raw mono `array('i')`.
-- `generate_fm_samples()`: uses `render_note_raw()` for all instruments, then normalises and
-  quantises each to its full 8 bits in a second pass (§ Quantisation).
-
-### Concurrency
-
-`generate_fm_samples()` first decides every instrument's job (voice, synth pitch, target rate),
-then renders the jobs on a thread pool, one instrument per thread, `threads` at a time
-(`normal` = cores − 1, `max`, or a number).  ctypes releases the GIL for the batch call and Nuked-OPN2
-keeps all chip state in the per-instance struct, so the renders run truly in parallel; each
-worker thread owns its own `OPN2`.  The emulator's one global is the chip-type flag, which every
-reset writes with the same value.  Results are consumed in job order, so the MOD is
-byte-identical whatever the thread count.  GHZ (11 instruments) converts in about 1 s instead
-of 4.5 s; Credits (25 instruments, 10 s sustain) in about 2 s instead of 12.5 s.
-
-Final encoding: `core.audio.pcm.to_int8` — TPDF dither, first-order noise shaping, clamp, int8 stored as uint8.
+`generate_fm_samples` renders one instrument per thread, `fm_synthesis.threads` at a time
+(`SynthesisSettings.worker_threads`: `normal` = cores − 1, `max`, or a number).  Each thread
+owns its `OPN2`; ctypes releases the GIL for the batch call; results are consumed in job
+order, so the output never depends on the thread count.  With `samples.render_cache`, every
+chip render is kept on disk under a hash of its inputs, in a directory per hash of the DLL and
+the Python it runs through (`core/render_cache.py`); shelf, loops and quantising still run.
 
 ---
 
 ## OPN2 Emulator Internals
 
-### Architecture (Nuked-OPN2, `reference/Nuked-OPN2/ym3438.c`)
+Nuked-OPN2 (`reference/Nuked-OPN2/ym3438.c`) is cycle-accurate; `OPN2_Clock` advances one
+internal clock.  `OPN2(mode=)` selects the chip type, kept across resets: `ym2612` (MD1/MD2
+DAC: sign bias, ×3 level) or `ym3438`.  `convert.py` synthesises FM only in `ym2612` mode.
 
-Nuked-OPN2 is a cycle-accurate YM2612/YM3438 emulator by nukeykt. The `OPN2_Clock()` function
-advances the chip by one master clock cycle.
+**One sample = 24 clocks.**  The chip time-multiplexes its six channels; in YM2612 mode
+`mol`/`mor` carry audio × 3 at the six output clocks (`(cycles & 3) == 3`) and a sign-only ±3 at
+the other 18.  The batch helpers (`ym3438_batch.c`) sum all 24 values and subtract the mode's
+DC (72 in YM2612 mode, 0 in YM3438), so silence is 0.  Taking one clock's value instead
+captures the bias, not the audio.  `render_mono` folds L and R to `(L + R) // 2` in C.
 
-**24-clock period (one audio sample):**
+**Register writes.**  `write_reg(addr, data, bank)`: address to port `bank*2`, 24 clocks, data
+to port `bank*2+1`, 24 clocks — two samples of chip time per write, discarded (`sfx/render.py`
+keeps them with `begin_capture`).  Bank 0 holds channels 0–2, bank 1 channels 3–5,
+each at `channel % 3`.
 
-In YM2612 mode (`OPN2_SetChipType(0x01)`), the chip time-multiplexes 6 FM channels across 24
-internal clocks. At the 6 output-enable clocks where `(cycles & 3) == 3`, the `mol`/`mor` outputs
-contain `audio × 3`. At all other 18 clocks they carry `sign × 3` (≈ ±3 DC bias, not audio).
+**Voice.**  `program_voice` writes 30 registers: `0xB0` (feedback/algorithm), `0xB4` = `0xC0`
+(both speakers, AMS = PMS = 0), and per operator DT/MUL, TL, KS/AR, AM/D1R, D2R, D1L/RR and
+SSG-EG (0).  The SMPS operator order is reversed against the registers
+(`SMPS_OP_TO_REG_OFFSET`, `docs/smps_driver.md` § YM2612 register mapping).
 
-`render_samples()` **accumulates all 24 values per output sample** and subtracts DC = 72 (24 × 3):
-```python
-dc = 24 * 3   # = 72
-l_sum, r_sum = 0, 0
-for _ in range(24):
-    OPN2_Clock(chip, buf)
-    l_sum += buf[0]; r_sum += buf[1]
-out.append((l_sum - dc, r_sum - dc))
-```
-Taking only the final clock value captures DC bias, not audio. This was the original bug.
-
-### Register write protocol
-
-Each `write_reg(addr, data, bank)` call:
-1. `OPN2_Write(chip, bank*2,   addr)` — address latch port
-2. Clock 24× (pipeline flush)
-3. `OPN2_Write(chip, bank*2+1, data)` — data write port
-4. Clock 24× (pipeline flush)
-
-48 clocks total per register write = 2 audio samples of warmup. With 30 registers, voice
-programming consumes ~60 audio samples before the key-on.
-
-### Key-on register (0x28)
-
-```
-bits[6:4] = operator enable mask (OP4 OP3 OP2 OP1)
-bits[2:0] = channel bits (ch 0-2 → 0-2; ch 3-5 → 4-6)
-```
-
-`key_on(channel)` sends mask `0xF` (all operators). `key_off(channel)` sends mask `0x0`.
-
-### Bank mapping
-
-```
-Bank 0 (port 0/1): channels 0, 1, 2  → ch_in_bank = channel % 3
-Bank 1 (port 2/3): channels 3, 4, 5  → ch_in_bank = (channel - 3) % 3
-```
+**Key-on, `0x28`.**  Bits 7–4 the operator mask (OP4 OP3 OP2 OP1), bits 2–0 the channel
+(0–2 → 0–2, 3–5 → 4–6).  `key_on` sends mask `0xF`, `key_off` mask `0`.
 
 ---
 
-## Module API Reference
+## Module API
 
-### `ym2612/wrapper.py` — OPN2 class
-
-```python
-OPN2(mode="ym2612")         # builds DLL, resets chip; the mode is remembered on the instance
-opn2.reset(mode=None)       # full chip reset; None keeps the instance's mode, a string switches it
-opn2.write_reg(addr, data, bank=0)  # write YM register with flush
-opn2.key_on(channel, operators=0xF) # trigger key-on
-opn2.key_off(channel)                # release all operators
-opn2.render_samples(n) → list[tuple[int,int]]  # n stereo pairs (L,R)
-opn2.render_mono(n) → array('i')                 # the same n samples as (L + R) // 2, folded in C
-OPN2.NATIVE_RATE            # ≈ 53,267 Hz (class attribute)
-```
-
-### `ym2612/voice.py` — program_voice
+### `ym2612/wrapper.py`
 
 ```python
-program_voice(opn2, voice, channel, tl_offset=0)
+OPN2(mode="ym2612")                 # loads (building if needed) the DLL and resets the chip
+opn2.reset(mode=None)               # None keeps the instance's mode
+opn2.write_reg(addr, data, bank=0)
+opn2.key_on(channel, operators=0xF)
+opn2.key_off(channel)
+opn2.render_samples(n) -> list[tuple[int, int]]   # n (L, R) pairs
+opn2.render_mono(n) -> array('i')                 # the same, (L + R) // 2
+opn2.begin_capture() / end_capture() / take_capture()   # keep the write flushes' audio
+OPN2.NATIVE_RATE                    # 53 267; output_rate(clock_rate) for another clock
 ```
 
-Writes 30 YM2612 registers for the given `SmpsVoice`, `tl_offset` (the track volume) added to
-the carriers' TL as `SetVoice` does. Does NOT set frequency or key-on.
-
-### `ym2612/renderer.py` — render functions
+### `ym2612/voice.py`
 
 ```python
-render_note(voice, mod_note_index,
-            sustain_secs=1.5, release_secs=0.5,
-            target_rate=None, opn2=None, channel=0,
-            clock_rate=7670454, tl_offset=0)
-    → (bytes, int)   # 8-bit signed PCM, sample_rate_hz
-
-render_note_raw(voice, mod_note_index, ...)
-    → (array('i'), int)  # pre-normalized mono, sample_rate_hz
-
-note_to_fnum_block(mod_note_index, clock_rate=7670454) → (int, int)
-    # (fnum, block) the driver writes for the note (FM_FREQUENCIES); the formula off the table
-
-note_to_freq(mod_note_index) → float
-    # 440 × 2^((idx-45)/12); idx 0=C1, 35=B3, 45=A4(440Hz)
-
-freq_to_fnum_block(freq, clock_rate=7670454) → (int, int)
-    # (fnum, block) from a frequency; targets fnum in [512, 1023]
+program_voice(opn2, voice, channel, tl_offset=0)   # registers only: no frequency, no key-on
 ```
 
-`render_note` always resets the OPN2 internally at the start of each call.
-
-### `ym2612/sample_generator.py` — generate_fm_samples
+### `ym2612/renderer.py`
 
 ```python
-generate_fm_samples(song, config, synth, tl_offsets=None) → dict[int, tuple[bytes, int]]
-# Returns {mod_instrument_number: (pcm_bytes, target_rate_hz)}, each peak-normalised
-# tl_offsets: {instrument: track volume} to render at (the converter's LevelPlanner.fm_render_levels)
-# Only voice_map entries with entry.root set are included.
-# Renders on a thread pool, one instrument per thread, synth.worker_threads() at a time (the `threads` setting).
+render_layers(layers, mod_note_index, sustain_secs=1.5, release_secs=0.5, target_rate=None,
+              opn2=None, channel=0, clock_rate=7670454, taps=32) -> (array('i'), rate)
+render_note(voice, mod_note_index, sustain_secs=1.5, release_secs=0.5, target_rate=None,
+            opn2=None, channel=0, clock_rate=7670454, tl_offset=0) -> (bytes, rate)  # int8, peak-normalised
+render_note_raw(...same...) -> (array('i'), rate)
+note_to_fnum_block(mod_note_index, clock_rate=7670454) -> (fnum, block)   # the driver's table
+freq_to_fnum_block(freq, clock_rate=7670454) -> (fnum, block)             # fnum in 512–1023 where possible
+detuned_fnum_block(fnum, block, fnum_offset) -> (fnum, block)             # smpsAlterNote on the whole word
+note_to_freq(mod_note_index) -> float     # 440 × 2^((idx − 45) / 12); idx 0 = C1
 ```
 
-Processing order:
-1. `voice_map` entries with `root` (primary synthesis path)
-2. `channel_instrument_map` entries with `root`
-3. Rootless `channel_instrument_map` entries (synthesized at C5/C1)
+`mod_note_index` counts from C1 = 0.  `target_rate=None` keeps the native rate.  A passed
+`opn2` is reset (keeping its mode); none creates one.
 
-Already-synthesized instrument numbers (by `mod_instrument` value) are skipped to prevent
-overwriting. First entry wins if two ranges share `mod_instrument`.
+### `ym2612/sample_generator.py`
+
+```python
+generate_fm_samples(song, config, synth, verbose=False, tl_offsets=None, peaks_out=None,
+                    raw_out=None, loops=False, loops_out=None, release_out=None,
+                    cache_out=None, extra=()) -> dict[int, tuple[bytes, int]]
+```
+
+Returns `{instrument: (int8 PCM, rate)}` for every catalogue instrument plus `extra` (a mix's
+FM layers, under ids that are no slot).  `synth.sustain_duration` must already be resolved
+(`SustainPlanner.resolve`).  `tl_offsets`: `{instrument: track volume}` to render at.  The
+`*_out` dicts receive the peaks and speaker gain, the unquantised renders, the loops, the
+release rates and the cache hits.
 
 ---
 
 ## Common Mistakes
 
-### Silence or near-silence output
+### Silence or near-silence
 
-**Cause A:** `synth_root` not set on a transposed channel — synthesizing 2–3 octaves above
-the actual chip pitch. FM sideband frequencies fall outside the audible range.
-→ Compute `synth_root` as `low + total_transpose − chan_cfg.transpose`. See §synth_root above.
+- No gcc / MSVC on PATH, so `ym2612/ym3438.dll` cannot be built (`python ym2612/validate.py`
+  builds and tests it).
+- `fm_synthesis.enabled: false`, or `mode: ym3438` — either loads `sample_list` files instead.
+- A stated `synth_root` octaves away from the chip pitch: the sample is rendered there and
+  stretched.  Delete it; the derived one is the chip's.
 
-**Cause B:** `synthesis.enabled: false` in `configs/settings.yaml`.
-→ Set `enabled: true`.
+### "Overdriven guitar" distortion
 
-**Cause C:** DLL not compiled (`ym2612/ym3438.dll` missing).
-→ Run `python ym2612/build.py` or call `OPN2()` which auto-builds.
+The operator order is wrong: `SMPS_OP_TO_REG_OFFSET` must stay `(0x0C, 0x04, 0x08, 0x00)`
+(`docs/smps_driver.md` § YM2612 register mapping).
 
-### Distorted "overdriven guitar" sound
+### Flat-topped peaks
 
-**Cause:** Wrong `SMPS_OP_TO_REG_OFFSET` in `core/smps/driver_tables.py` — OP1 (TL≈$01, near max volume)
-placed in the self-feedback slot.
-→ Verify `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)` in `core/smps/driver_tables.py`. Do NOT change it.
+Two or more carriers overflowing the accumulator at the channel's level — the hardware does
+the same (§ Level).  A single-carrier voice cannot clip.
 
-### Thin/bright sound on bass voices
+### Wrong pitch
 
-**Cause:** `synth_root` too high — synthesizing at the SMPS byte pitch (e.g. C5) when the
-chip plays at C2 due to smpsChangeTransposition. FM algorithm produces different timbres at
-different octaves; bass voices synthesized at C5 lose their low-frequency character.
-→ Set `synth_root` to the actual chip pitch (typically `low + total_transpose`).
+`root` anchors `low` on the wrong MOD note (`docs/pipeline.md` § `voice_map` routing), or a
+range is played at several chip pitches (`synth_root_ambiguous`: split it or use
+`range_space: chip`).  `synth_root` cannot cause it: its shift is carried by the rate.
 
-### Clipping (flat waveform peaks)
+### A note goes silent before its end
 
-**Cause:** Algorithm 4/5/6/7 with two or more carriers at TL 0 overflows the chip's 9-bit channel
-accumulator.  That is hardware behaviour, not a synthesis fault: the VGZ has the same waveform
-(§ Carrier levels and the channel accumulator).  A single-carrier voice cannot clip in the sample.
+`sustain_short`: the sample is shorter than the note.  Use `auto`, turn on sustain loops, or,
+at the sample limit, lower `root` or raise `samples.max_sample_kb` to 128.
 
-### Wrong pitch in MOD
+### A range plays another range's sample
 
-**Cause A:** `root` set incorrectly — `low` is not anchored to the right MOD note.
-→ Verify: source `low` note should play at `root`. Output = root + (source − low).
+Two entries share a `mod_instrument`; the first one rendered wins.  Give a range that needs its
+own sample its own slot.
 
-**Cause B:** `synth_root` mismatch — sample sounds at a different pitch than expected.
-→ `synth_root` controls what frequency the sample sounds at; `root` controls where it is
-triggered in the MOD pattern. Both must agree for pitch to be correct.
+### Instrument levels inconsistent
 
-### Instruments silently skipped
-
-**Cause:** Two voice_map entries share the same `mod_instrument` value. The first one rendered
-wins; subsequent entries for the same slot are skipped.
-→ Assign unique `mod_instrument` values for each range that needs a distinct sample.
-
-### Relative volumes inconsistent between instruments
-
-**Cause:** every sample is peak-normalised, so the balance lives entirely in the `sample_list`
-volumes, and a hand-written one is a guess.
-→ Measure them: `python tools/vgm_compare.py <config> <vgz> --write-volumes`, re-convert, re-run.
+Every sample is peak-normalised, so the balance is the `sample_list` volumes'.  Measure them:
+`python tools/vgm_compare.py <config> <vgz> --write-volumes`, re-convert, re-run.

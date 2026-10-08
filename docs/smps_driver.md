@@ -1,89 +1,77 @@
 # Sonic 1 SMPS Driver Reference
 
-Technical reference for the Sonic 1 68k sound driver as relevant to sonic2mod.
-Sources: `reference/smps_drivers/sonic_1/s1.sounddriver.asm`, `reference/smps_drivers/sonic_1/_smps2asm_inc.asm`.
-
-See also: `docs/smps_format.md` (assembly syntax), `docs/pipeline.md` (conversion pipeline).
-
----
-
-## Coordination Flag Table ($E0–$F9)
-
-All bytes ≥ $E0 in channel data are coordination flags (effect commands). Bytes < $80 are durations, $80 = rest, $81–$DF = notes.
-
-| Byte | Macro (canonical) | Alias | Parameters | Hardware Effect | sonic2mod |
-|------|-------------------|-------|------------|-----------------|-----------|
-| $E0 | `smpsPan` | — | direction+amsfms | Set YM2612 panning (L/R/centre) + AMS/FMS LFO bits | parsed, informational only |
-| $E1 | `smpsDetune` | `smpsAlterNote` | signed byte | **FNUM offset** (raw frequency count, ~10 cents/unit) added to SMPS_Track.Detune | parsed, stored; NOT applied to pitch or range lookup |
-| $E2 | `smpsNop` | — | byte | Write game-sync flag to shared RAM; no audio effect | parsed, ignored |
-| $E3 | `smpsReturn` | — | — | Return from `smpsCall` subroutine (S1/S2 drivers) | terminates inline |
-| $E4 | `smpsFade` | — | — | Fade in previous song (1-Up jingle mechanism); `addq.w #8,sp`: the track ends here | ends the track (as `smpsStop`) |
-| $E5 | `smpsChanTempoDiv` | — | byte | Per-channel tempo divider | applied to durations at parse time and kept as an event (the global `$EB` re-timing needs it) |
-| $E6 | `smpsAlterVol` | — | signed byte | Add delta to SMPS_Track.Volume attenuation (cumulative) | → `Cxx` Set Volume |
-| $E7 | `smpsNoAttack` | — | — | Skip the next note's key-off (FM) / envelope restart (PSG): `FMNoteOn` writes the key-on regardless, which a keyed channel ignores; after a rest or once `smpsNoteFill` keyed off, the note attacks.  Note fill and modulation are not restarted.  Every note read clears it, a held standalone duration too | flagged on note |
-| $E8 | `smpsNoteFill` | — | byte | Set note-cut timeout (SMPS_Track.NoteTimeout) in **frames** | → `ECx` / `C00` Note Cut |
-| $E9 | `smpsChangeTransposition` | `smpsAlterPitch` | signed byte | **Semitone shift** — add to SMPS_Track.Transpose; all subsequent notes pitched accordingly | → updates `total_transpose`; affects note placement |
-| $EA | `smpsSetTempoMod` | — | byte | Set global tempo modifier (every track) and restart the TempoWait counter | → `Fxx` BPM change on that row; fills / vibrato / `EDx` use the new modifier |
-| $EB | `smpsSetTempoDiv` | — | byte | Set every track's tempo divider (applies to each note as it is read; last write wins over `$E5`) | every channel re-timed (`apply_global_tempo_div`); Credits' half-tempo passage |
-| $EC | `smpsPSGAlterVol` | — | signed byte | PSG volume attenuation delta | → `Cxx` Set Volume (same as smpsAlterVol) |
-| $ED | (S1 specific) | — | — | Clear "push block" sound flag | ignored |
-| $EE | `smpsStopSpecial` | — | — | Stop special SFX, resume interrupted music track; the track ends here (`addq.w #8,sp`) | ends the track (as `smpsStop`) |
-| $EF | `smpsFMvoice` | `smpsSetvoice` | voice index | Load FM voice at index into YM2612 registers | → instrument routing via `voice_map` |
-| $F0 | `smpsModSet` | — | wait, speed, change, step | Set modulation (vibrato) parameters; enables modulation flag | → `4xy` Vibrato |
-| $F1 | `smpsModOn` | — | — | Re-enable modulation (uses stored params) | → activates `4xy` |
-| $F2 | `smpsStop` | — | — | End of channel data | terminates parsing |
-| $F3 | `smpsPSGform` | — | byte | Set PSG noise/waveform register | → instrument switch via `psg_map` config |
-| $F4 | `smpsModOff` | — | — | Disable modulation | → clears vibrato state |
-| $F5 | `smpsPSGvoice` | — | label | Set PSG tone envelope index | → instrument switch via `psg_voice_map` config |
-| $F6 | `smpsJump` | — | address | Unconditional jump (song loop point) | → `Bxx` Position Jump (first occurrence only) |
-| $F7 | `smpsLoop` | — | index, count, address | Loop back to address count times | unrolled at parse time |
-| $F8 | `smpsCall` | — | address | Call subroutine at address | inlined at parse time |
-| $F9 | `smpsMaxRelRate` | — | — | Set D1L+RR to max for FM1 ops 3&4 | ignored |
-
-> **Note:** `smpsAlterNote` is a **backwards-compatibility alias** for `smpsDetune` (`$E1`). Similarly, `smpsAlterPitch` is an alias for `smpsChangeTransposition` (`$E9`). These are the same hardware commands.
+What the Sonic 1 sound driver (SMPS 68k Type 1b) and the two chips do with a song.  Sources:
+`reference/smps_drivers/sonic_1/s1.sounddriver.asm`, `z80.asm`, `_smps2asm_inc.asm`.  How the
+assembly is written and parsed: `docs/smps_format.md`.  What each effect becomes in a MOD:
+`docs/pipeline.md` § SMPS → MOD mapping.
 
 ---
 
-## smpsDetune ($E1) vs smpsChangeTransposition ($E9)
+## Coordination flags ($E0–$F9)
 
-This is the single most common source of confusion. They are fundamentally different.
+A track byte below $80 is a duration, $80 a rest, $81–$DF a note (on the DAC track, a sample), $E0 and
+up a flag (`CoordFlag` → `coordflagLookup`).
 
-### smpsDetune / smpsAlterNote ($E1) — FNUM offset
+| Byte | Macro (alias) | Operands | What the driver does |
+|------|---------------|----------|----------------------|
+| $E0 | `smpsPan` | direction + AMS/FMS | Writes $B4: speakers and LFO sensitivity.  Ignored on PSG |
+| $E1 | `smpsDetune` (`smpsAlterNote`) | signed | Sets `Detune`, added to every frequency write (§ Pitch) |
+| $E2 | `smpsNop` | byte | Stores a byte the game can read; no sound |
+| $E3 | `smpsReturn` | — | Returns from `smpsCall` |
+| $E4 | `smpsFade` | — | Restores the music the 1-Up interrupted and fades it in; the 1-Up's track ends |
+| $E5 | `smpsChanTempoDiv` | byte | This track's tempo divider |
+| $E6 | `smpsAlterVol` | signed | Adds to the track's attenuation and rewrites the carrier TLs (`SendVoiceTL`) |
+| $E7 | `smpsNoAttack` | — | Holds the next note (§ smpsNoAttack) |
+| $E8 | `smpsNoteFill` | frames | Key-off timeout for every note from here (§ smpsNoteFill) |
+| $E9 | `smpsChangeTransposition` (`smpsAlterPitch`) | signed | Adds semitones to `Transpose` (§ Pitch) |
+| $EA | `smpsSetTempoMod` | byte | New tempo modifier, its counter restarted (§ Timing System) |
+| $EB | `smpsSetTempoDiv` | byte | Every music track's tempo divider |
+| $EC | `smpsPSGAlterVol` | signed | Adds to a PSG track's attenuation; heard from the next volume write |
+| $ED | `smpsClearPush` | — | Lets the push-block SFX play again (SndA7) |
+| $EE | `smpsStopSpecial` | — | Ends the track and hands FM4 back to the music (SndD0 Waterfall) |
+| $EF | `smpsSetvoice` (`smpsFMvoice`) | voice | Loads an FM voice (`SetVoice`) |
+| $F0 | `smpsModSet` | wait, speed, change, step | Sets and enables modulation (§ smpsModSet) |
+| $F1 | `smpsModOn` | — | Enables modulation with the stored parameters (no Sonic 1 song uses it) |
+| $F2 | `smpsStop` | — | Ends the track: FM key-off, PSG silenced |
+| $F3 | `smpsPSGform` | byte | Turns the track into the noise channel (§ Noise) |
+| $F4 | `smpsModOff` | — | Disables modulation |
+| $F5 | `smpsPSGvoice` | `fTone_xx` | PSG volume envelope (§ PSG volume envelopes) |
+| $F6 | `smpsJump` | offset | Jumps |
+| $F7 | `smpsLoop` | slot, count, offset | Jumps back until the body has played `count` times |
+| $F8 | `smpsCall` | offset | Pushes the return address and jumps |
+| $F9 | `smpsMaxRelRate` (`smpsWeirdD1LRR`) | — | Writes $0F to FM1's $88 and $8C (D1L 0, RR 15 on two operators; Spring Yard) |
 
-```asm
-; In s1.sounddriver.asm (cfDetune handler):
-;   add.w d0, d6    ; d6 = FNUM; d0 = detune value
-;   → raw 11-bit FNUM register adjusted directly
-```
+---
 
-- The 11-bit FNUM value controls YM2612 pitch within the current block (octave).
-- At FNUM ≈ 720 (C4), adding 3 yields FNUM = 723 ≈ +10 cents (logarithmic).
-- **Effect is sub-semitone** — cannot shift by a full semitone or change octave.
-- Stored in `SMPS_Track.Detune`.
-- **sonic2mod**: parsed as an `smpsAlterNote` event and then ignored — `DriverState.apply` does not track it, and it reaches neither the semitone calculation nor the `voice_map` range lookup. For chorus-style detuning use a `channel_instrument_map` variant with `finetune:` instead.
-- Typical values: `$02`–`$04` (detuned unison for chorus). Larger values cause obvious pitch drift.
+## Pitch
 
-### smpsChangeTransposition / smpsAlterPitch ($E9) — semitone shift
+### Note tables
 
-```asm
-; In s1.sounddriver.asm (cfChangeTransposition handler):
-;   add.b d0, SMPS_Track.Transpose(a5)  ; d0 = signed delta
-;   → YM note table lookup uses Transpose as semitone offset
-```
+**FM.**  `FMSetFreq` takes `byte − $80 + Transpose`, masked to 7 bits, into `FMFrequencies`: eight
+octaves of twelve words, each `block << 11 | fnum` (the $A4/$A0 register pair).  A row runs B to A♯
+(fnum 606 … 1148) because index 0 is the rest, so `nC0` is index 1.  An FM label is the real
+pitch at transposition 0: `nA4` = fnum 1084, block 4 = 440.5 Hz.
 
-- Adds to `SMPS_Track.Transpose`. Cumulative — multiple calls stack.
-- **Effect is whole semitones** — can span multiple octaves.
-- Affects every subsequent note until changed again.
-- **sonic2mod**: updates `transpose` in the channel state. Included in `total_transpose`, which determines the final MOD note position. If a `voice_map` entry has no `root`, `total_transpose` controls pitch.
-- Common pattern in GHZ: FM channels shift by -24 or +24 semitones mid-song to reach different register ranges.
+**PSG.**  `PSGSetFreq` takes `byte − $81 + Transpose`, masked to 7 bits, into `PSGFrequencies`:
+70 SN76489 dividers.  Index *i* sounds C3 + *i* semitones (index 0 = 854 = 131 Hz), so a label
+sounds three octaves above its name at transposition 0, one below with the usual header $D0.
+The rows are transcribed Hz values, not exact octaves.  Index 69 is `nMaxPSG` (= `nA5`):
+divider 1, about 112 kHz, inaudible — the noise channel's trigger note.
 
-### Decision guide for voice_map
+The mask **wraps, it does not clamp**.  An index past the table reads the code that follows it:
+indices 125–127 (a note one to three semitones below the table) were measured from the Spring
+Yard and Credits rips as dividers 0, 922 and 540 (`PSG_FREQUENCIES_EXTENDED` in
+`core/smps/driver_tables.py`, which transcribes both tables).
 
-| Condition | Use |
-|-----------|-----|
-| Channel never uses $E9 | `root` safe — pitch is static |
-| Channel uses $E9 mid-song | Omit `root`; use `transpose` + `total_transpose` path |
-| Channel uses $E1 (detune) for chorus | Route to finetune variant instrument via `channel_instrument_map` |
+### smpsChangeTransposition ($E9) vs smpsDetune ($E1)
+
+They are unrelated.  **Transposition** is whole semitones: the signed byte adds to `Transpose`
+(the header's pitch byte is its starting value), cumulatively, and moves the table index of every
+later note.  **Detune** is a signed byte added to the frequency word after the lookup, on every
+write (`FMUpdateFreq`, `PSGUpdateFreq`), until changed.  On FM it is FNUM units: one unit is
+1.5 c at A♯ (fnum 1148) to 2.9 c at B (606), so `$03` is +4.5 … 8.5 c — never a semitone, and the
+note index never sees it.  On PSG it adds to the divider, so a positive detune **lowers** the pitch.
+How the converter routes either: `docs/pipeline.md` § Notes: range, transpose, routing.
 
 ---
 
@@ -91,257 +79,200 @@ This is the single most common source of confusion. They are fundamentally diffe
 
 ### Header
 
-```asm
-smpsHeaderTempo divider, modifier
-```
+`smpsHeaderTempo divider, modifier`: the divider goes to every track, the modifier (*m*) is the main
+tempo.  A duration byte is multiplied by the track's divider as it is read (`SetDuration`, a byte:
+the product wraps at 256); `smpsChanTempoDiv` changes one track's divider, `smpsSetTempoDiv` every
+track's, and the last write wins.
 
-- **`divider`**: Multiplies all raw duration bytes from the assembly at load time. Usually `$01` in Sonic 1 (no scaling). If `$06`, a `dc.b $01` note lasts 6 driver frames.
-- **`modifier`**: Frequency of the TempoWait interrupt. A value of `$05` means TempoWait fires every 5 frames.
+### TempoWait
 
-### TempoWait mechanism
-
-Each VBlank (60 Hz NTSC, 50 Hz PAL):
-1. Decrement the main tempo counter.
-2. If counter = 0: fire TempoWait — **add 1 to every track's DurationTimeout**, reset counter to `modifier`.
-3. Decrement every track's DurationTimeout. When 0: advance to next note event.
-
-Net effect: every `modifier` frames, one decrement is cancelled. Effective tick rate:
-The timeout is set to `modifier` when the song loads and again where `smpsSetTempoMod` is read
-(`cfSetTempo` writes both), so the holds fall on fixed frames from there: tick k of a segment is
-read on frame `k + k // (m−1)` after it (`core/smps/tempo.py`, the VGM lift reads them backwards).
+Each V-int the main tempo counter counts down from *m*; when it runs out, `TempoWait` adds 1 to
+every music track's `DurationTimeout` and reloads the counter.  So every *m*-th frame no track
+advances:
 
 ```
-effective_ticks_per_sec = fps × (modifier − 1) / modifier
+ticks per second = fps × (m − 1) / m        m = 3: 40 (NTSC), 33.3 (PAL);  m = 5: 48 / 40
 ```
 
-| modifier | NTSC eff. rate | PAL eff. rate |
-|----------|---------------|---------------|
-| 3        | 40 ticks/sec  | 33.3 ticks/sec |
-| 5        | 48 ticks/sec  | 40 ticks/sec  |
-| 7        | 51.4 ticks/sec| 42.9 ticks/sec |
-
-### BPM formula
-
-```
-BPM = fps × (modifier − 1) × speed × 2.5
-      ─────────────────────────────────────
-      modifier × divider × ticks_per_row
-```
-
-Where `speed` = MOD ticks-per-row (target_speed in YAML) and `ticks_per_row` = SMPS ticks per MOD row.
-
-When `speed == ticks_per_row` (simplest case):
-
-```
-BPM = fps × (modifier − 1) × 2.5 / (modifier × divider)
-```
-
-**Worked examples:**
-
-| Song | divider | modifier | fps | speed | tpr | BPM |
-|------|---------|----------|-----|-------|-----|-----|
-| Title Screen | 1 | 5 | 60 | 6 | 6 | **120** |
-| GHZ | 1 | 3 | 60 | 3 | 2 | **150** |
-
-Use `auto_bpm: true` in YAML to compute this automatically.
-
-### Choosing ticks_per_row
-
-`ticks_per_row` controls how many SMPS ticks map to one MOD row. Set it to the GCD of the note durations that appear in the song.
-
-| Common durations | GCD | ticks_per_row |
-|-----------------|-----|---------------|
-| $06, $0C, $18 | 6 | 6 |
-| $04, $08, $0C | 4 | 4 |
-| $04, $06, $0C | 2 | 2 |
+Ticks are unevenly spaced: tick *k* of a segment is read on frame `k + k // (m − 1)`
+(`core/smps/tempo.py`).  `smpsSetTempoMod` writes the tempo and its counter, so the holds start
+again from where it is read.  Only `DurationTimeout` is held: note fill, modulation and PSG
+envelopes count every frame.  SFX tracks are never held — one tick a frame.  The BPM this gives a
+MOD: `docs/pipeline.md` § Timing.
 
 ---
 
-## smpsModSet ($F0) — Vibrato Parameters
+## Note reads
+
+When a track's `DurationTimeout` runs out the driver clears `smpsNoAttack`, reads flags up to a
+note or duration, and then:
+
+- **FM** (`FMUpdateTrack`): `FMNoteOff` on the byte read (note, rest or duration), the frequency
+  written, `FMNoteOn` unless resting.  Every read re-keys the channel.
+- **PSG** (`PSGUpdateTrack`): `PSGDoNoteOn` writes the divider and `PSGDoVolFX` the volume — the
+  key-on, after a fill or rest silenced the channel.
+- Each read restarts the fill, the PSG envelope and the modulation (`FinishTrackUpdate`), unless
+  `smpsNoAttack` is set.
+
+A **duration byte with no note** takes the `.gotduration` path, skipping `FMSetFreq` /
+`PSGSetFreq`: it re-keys at the frequency the track already holds — a transposition changed since
+is not applied (SndA8 SS Goal).  After a rest that frequency is cleared (FM 0, PSG −1), so the
+track keeps resting: Credits PSG3's `nRst, $24` followed by 32 loops of bare `$03, $03, $06` is
+silent in the rip.  On the DAC track it re-hits the saved sample; after a rest, nothing.
+
+### smpsNoAttack ($E7)
+
+It skips the next note's key-off, not its key-on.  `FMNoteOn` still writes the key-on, which an
+already keyed channel ignores: after a rest, or once `smpsNoteFill` keyed the note off, the note
+attacks.  The fill, envelope and modulation carry on from the note before.  On FM the flag also
+blocks a fill's key-off during the held note (`FMNoteOff` checks it); on PSG, `SetPSGVolume` writes
+nothing while the flag is set and the fill has run out, so the held note stays silent.
+
+---
+
+## smpsModSet ($F0)
 
 ```asm
-smpsModSet wait, speed, change, step
-; Emits: $F0 wait speed change step
+smpsModSet wait, speed, change, step     ; $F0 wait speed change step
 ```
 
-| Parameter | Field | Meaning |
-|-----------|-------|---------|
-| `wait` | ModulationWait | V-int **frames** before modulation starts (not tempo ticks) |
-| `speed` | ModulationSpeed | **Frames** per step; reloaded from the data each step, never multiplied by the tempo divider |
-| `change` | ModulationDelta | Signed; added per step to the note's frequency word — FNUM on FM, SN76489 divider on PSG |
+| Operand | Field | Meaning |
+|---------|-------|---------|
+| `wait` | ModulationWait | Frames before modulation starts |
+| `speed` | ModulationSpeed | Frames per step, reloaded from the data each step |
+| `change` | ModulationDelta | Signed; added per step to the frequency word: FNUM on FM, divider on PSG |
 | `step` | ModulationSteps | Steps per half-swing — **halved for the first half-swing only** |
 
-> **Hardware quirk:** `smpsModSet` and every note start store `step / 2` (`lsr.b #1`), but when the
-> counter runs out `DoModulation` reloads it from the **original** byte (`move.b 3(a0),…`), negates
-> the delta and spends that update.  So with `$04`: 2 steps up, then 4 down, 4 up, … — a triangle
-> of `delta·step/2` either side of centre with a steady cycle of `2·speed·(step+1)` frames
-> (`$00,$01,$06,$04` → 10 frames = 6 Hz, ±12 FNUM; measured 5.99 Hz on the Title Screen).
-> An odd `step` leaves the triangle half a delta off-centre.
-
-**MOD mapping:** `4xy` Vibrato; x is derived from the cycle length and y per note from the swing
-relative to the note's FNUM / divider — formulas and measurements in `docs/pipeline.md` gotcha 4.
-MOD vibrato is sinusoidal where SMPS modulation is a triangle; peaks are matched.
-
-**smpsModOn ($F1):** Re-enables modulation using the most recently stored ModSet parameters.
-**smpsModOff ($F4):** Disables modulation. Next note will not vibrate.
+`smpsModSet` and every attack store `step / 2` (`lsr.b #1`), but when the counter runs out
+`DoModulation` reloads it from the **original** byte, negates the delta and spends that update.
+With `$04`: 2 steps up, then 4 down, 4 up, … — a triangle of `delta·step/2` either side of the note
+with a steady cycle of `2·speed·(step+1)` frames (`$00,$01,$06,$04`: 10 frames = 6 Hz, ±12 FNUM;
+5.99 Hz measured on the Title Screen).  An odd `step` leaves the triangle half a delta off-centre.
+No operand is multiplied by the tempo divider.  The `4xy` it becomes: `docs/pipeline.md` § Vibrato.
 
 ---
 
-## smpsNoteFill ($E8) — Note Cut Timeout
+## smpsNoteFill ($E8)
 
-```asm
-smpsNoteFill $0A   ; note silences after 10 frames (V-ints)
-```
+`smpsNoteFill n` keys every note off `n` **frames** after it attacks (FM key-off, PSG silence);
+0 turns it off.  It persists until changed: each attack reloads `NoteTimeout` from the stored
+value.  The duration still decides when the next note starts.
 
-- Sets `SMPS_Track.NoteTimeout` to the fill value.
-- Each driver frame: decrement NoteTimeout. When 0 → key-off (YM2612 release; PSG silence).
-- **Frames, not tempo ticks.** `TempoWait` only bumps `DurationTimeout`; `NoteTimeoutUpdate` (and
-  `DoModulation`) still run on the skipped frame. With `smpsHeaderTempo $01,$05` a duration byte
-  of 12 lasts 250 ms but a fill of 12 lasts 200 ms. Verified on the Title Screen VGZ
-  (`docs/audits/01_title_screen_audit.md`).
-- **NoteTimeout and duration run in parallel.** Duration controls when the *next note starts*; NoteTimeout controls when the *current note silences*.
-- `NoteTimeout` is reset to `NoteTimeoutMaster` (the last-set fill value) on every new note, even if `smpsNoteFill` is not repeated. The fill value persists until changed.
+- The fill counts frames, the duration ticks: with `smpsHeaderTempo $01,$05` a duration of 12
+  lasts 250 ms, a fill of 12 lasts 200 ms (verified on the Title Screen VGZ).
+- A fill equal to the duration fires when the modifier is > 1 (the note lasts
+  `duration × m/(m−1)` frames).  Only with no hold frame in the note does the next read win the tie.
+- The fill is never multiplied by the tempo divider.
 
-- **A fill equal to the duration byte still fires** when the tempo modifier is > 1: the note lasts
-  `duration × mod/(mod−1)` frames, the fill exactly `fill` frames.  (Only with no TempoWait frames
-  in the span does DurationTimeout win the tie.)
-- The fill byte is **not** multiplied by the tempo divider (`cfNoteTimeout` stores it raw;
-  `SetDuration` multiplies durations only).  Same for `ModulationWait` / `ModulationSpeed`.
-
-**sonic2mod mapping:** the fill is scaled to ticks (`× (mod−1)/mod`) and placed to the MOD tick —
-`ECx` inside a row, `C00` on a row boundary, on whichever row of the note it falls.  No cut when
-the fill outlasts the note.  See `docs/pipeline.md` gotchas 3 and 4b.
+How it becomes a cut: `docs/pipeline.md` § Note fill.
 
 ---
 
-## FM Voice Format
+## FM voices
 
-### SMPS binary layout (in-memory, as stored in .asm files)
+### Voice layout
 
-Operators are stored in **reversed order** compared to YM2612 hardware registers:
+25 bytes: `feedback << 3 | algorithm`, then six groups of four — DT/MUL, RS/AR, AM/D1R, D2R,
+D1L/RR, TL — each group in SMPS operator order 4, 3, 2, 1 (the `smpsVc*` operands reversed).
 
-```
-SMPS byte stream:  [Algorithm+Feedback] [OP4 params...] [OP3 params...] [OP2 params...] [OP1 params...]
-```
+### YM2612 register mapping
 
-Each operator block (6 parameter bytes) uses this per-register order:
-```
-(DT<<4)|CF,  (RS<<6)|AR,  AM|D1R,  D2R,  (DL<<4)|RR,  TL
-```
-
-### YM2612 register mapping (sonic2mod)
+`SetVoice` writes each group to operator offsets `$00, $08, $04, $0C` (`FMInstrumentOperatorTable`),
+so SMPS operator *n* is the chip's operator 5 − *n*:
 
 ```python
 # core/smps/driver_tables.py — read by ym2612/voice.py and sfx/chips.py
-SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)
-# SMPS OP1 → YM offset 0x0C
-# SMPS OP2 → YM offset 0x04
-# SMPS OP3 → YM offset 0x08
-# SMPS OP4 → YM offset 0x00
+SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)   # SMPS OP1..OP4 → chip OP4, OP3, OP2, OP1
 ```
 
-The S1 driver writes them to hardware offsets `0x00, 0x08, 0x04, 0x0C` from the FMInstrumentOperatorTable (reversed from SMPS storage), resulting in the mapping above.
+The order `(0x00, 0x08, 0x04, 0x0C)` puts SMPS operator 1 — chip OP4, a carrier in every
+algorithm — into OP1's feedback slot: an "overdriven guitar" distortion.
 
-> **Critical gotcha:** Using `(0x00, 0x08, 0x04, 0x0C)` instead places OP1 (often TL≈$01, near full volume) into the self-feedback slot, producing severe distortion ("overdriven guitar" sound).
+### Carriers by algorithm
 
-### Carrier operators by algorithm
+| Algorithm | Carrier offsets | Chip operators |
+|-----------|-----------------|----------------|
+| 0–3 | $0C | OP4 |
+| 4 | $08, $0C | OP2, OP4 |
+| 5, 6 | $04, $08, $0C | OP2, OP3, OP4 |
+| 7 | all | OP1–OP4 |
 
-Only carrier operators produce audio output. Carrier TL controls output volume.
-
-| Algorithm | Carriers (YM offsets) | Topology |
-|-----------|----------------------|----------|
-| 0 | 0x0C (OP4) | Single carrier; 3 modulators in series |
-| 1 | 0x0C (OP4) | Two-op parallel modulator + carrier |
-| 2 | 0x0C (OP4) | Three-op modulator + carrier |
-| 3 | 0x0C (OP4) | Two parallel + one carrier |
-| 4 | 0x04, 0x0C (OP2+OP4) | Two carriers; OP1→OP2, OP3→OP4 |
-| 5 | 0x04, 0x08, 0x0C (OP2+OP3+OP4) | Three carriers; OP1 modulates all |
-| 6 | 0x04, 0x08, 0x0C (OP2+OP3+OP4) | Three carriers + OP1 self-feedback |
-| 7 | 0x00, 0x04, 0x08, 0x0C (all) | Four carriers; pure additive synthesis |
-
-Algorithms 4–7 with several carriers at TL 0 overflow the chip's 9-bit channel accumulator; the synthesis reproduces that clipping unchanged (`docs/fm_synthesis.md` § Carrier levels and the channel accumulator).
-
-### smpsVcAmpMod note (SMPS2ASM version difference)
-
-In older SMPS2ASM (version 0): AM bit is stored in bits 6–7. In SMPS2ASM v1+: AM bit is the high bit (bit 7). sonic2mod reads raw bytes; the AM bit position depends on which assembler version created the file.
+`FMSlotMask` names them.  `SetVoice` adds the track's attenuation (header volume + `smpsAlterVol`)
+to the carrier TLs with `add.b` — modulo 256, the chip reading 7 bits.  `SendVoiceTL`, after
+`smpsAlterVol`, rewrites the carriers only, skips one whose sum carries past $FF, and does nothing
+while the attenuation is negative.  Several carriers at TL 0 overflow the chip's 9-bit channel
+accumulator; that clipping is the hardware's (`docs/fm_synthesis.md`).
 
 ---
 
 ## DAC Channel
 
-The DAC channel (driven by the Z80) plays PCM samples via the YM2612 DAC port.
+The Z80 plays DPCM samples through the YM2612's DAC (FM6).  The DAC track writes each sample byte
+to `zDAC_Sample`; it has no key-off, fill or modulation, and a rest does not stop a sample: it
+plays out.
 
-### Sample table (Sonic 1)
+### Sample table
 
-| Constant | Byte | Sample |
-|----------|------|--------|
-| `dKick` | $81 | Kick drum (pitch 23: ~7,790 Hz on hardware) |
-| `dSnare` | $82 | Snare (pitch 1: ~22,590 Hz) |
-| `dTimpani` | $83 | Timpani (pitch 27: ~6,960 Hz) |
-| `dHiTimpani` | $88 | Timpani at pitch 18 (~9,150 Hz on hardware) |
-| `dMidTimpani` | $89 | Timpani at pitch 21 (~8,280 Hz) |
-| `dLowTimpani` | $8A | Timpani at pitch 28 (~6,780 Hz) |
-| `dVLowTimpani` | $8B | Timpani at pitch 29 (~6,610 Hz) |
+| Constant | Byte | Sample | Driver pitch |
+|----------|------|--------|--------------|
+| `dKick` | $81 | kick | 23 |
+| `dSnare` | $82 | snare | 1 |
+| `dTimpani` | $83 | timpani | 27 |
+| `dHiTimpani` | $88 | timpani | 18 |
+| `dMidTimpani` | $89 | timpani | 21 |
+| `dLowTimpani` | $8A | timpani | 28 |
+| `dVLowTimpani` | $8B | timpani | 29 |
 
-Gaps ($84–$87) are unused in Sonic 1. The Z80 firmware reads the sample ID from shared RAM (`zDAC_Sample`) and plays it at the rate from its internal rate table: 301 + 26·(pitch − 1) T-states a byte, less the 68k's once-a-frame `stopZ80` (`docs/yaml_config.md` § DAC Sample Rates).
+$88–$8B are the 68k's: it writes the pitch from `DAC_sample_rate` into the timpani's table entry
+(`zTimpani_Pitch`) and plays $83.  The pitch stays, so a bare $83 afterwards plays at the last one
+(no Sonic 1 song plays $83 itself).  $84–$86 are not samples; from $87 the Z80 plays the SEGA voice.
 
-### Channel data format
+### DAC playback rates
 
-DAC data uses the same `dc.b` stream as FM/PSG channels:
-- Bytes < $80: duration in ticks
-- Bytes ≥ $80: sample ID (written to Z80 shared RAM)
-- Duration carries forward (same persistence rules as FM/PSG)
+The pitch is a loop counter.  Each sample's is computed from its source WAV's rate
+(`dpcmLoopCounter`): kick 8,250 Hz, snare 24,000, timpani 7,375; the timpani variants scale that
+rate by 1.30, 1.20, 0.97 and 0.95.
 
-The DAC channel does not support voice switching (`smpsSetvoice`) or modulation.
+**What real hardware plays.**  `zPlayPCMLoop` takes exactly `301 + 26·(pitch − 1)` Z80 cycles a
+byte (two samples) at 3,579,545 Hz — counted from the ROM's code (`core/rom/dac.py`; `z80.asm`
+matches it).  Wait states can only add to that.  On top of it the 68k stops the Z80 for the
+whole music update once a frame (`UpdateMusic`'s `stopZ80`): the DAC holds for 3.8–6.4 % of the
+time, by song.  The hardware rate is the cycle count less that share.
+
+The VGZ rips are not the yardstick: their emulator runs the loop 1.7–2.8 % fast between the
+stalls (snare 24,440 Hz against the count's 23,784), so their averaged rates land 2–3 % above the
+hardware's, and `vgm_compare` reads the DAC 1–3 % flat against a rip.
+
+| Sample | Pitch | Cycle count | Hardware at a 5 % stall | MOD note |
+|--------|-------|-------------|-------------------------|----------|
+| dKick | 23 | 8,201 Hz | ~7,790 Hz | B1 |
+| dSnare | 1 | 23,784 Hz | ~22,590 Hz | F3 |
+| dTimpani | 27 | 7,328 Hz | ~6,960 Hz | A1 |
+| dHiTimpani | 18 | 9,635 Hz | ~9,150 Hz | D2 |
+| dMidTimpani | 21 | 8,720 Hz | ~8,280 Hz | C2 |
+| dLowTimpani | 28 | 7,138 Hz | ~6,780 Hz | A1 |
+| dVLowTimpani | 29 | 6,957 Hz | ~6,610 Hz | G#1 |
+
+Choosing a config's note and finetune from these: `docs/yaml_config.md`.
 
 ---
 
 ## PSG Channels
 
-See also: `docs/psg_synthesis.md` (SN76489 synthesis pipeline, envelope tables, psg_map schema).
-
-Three SN76489 square-wave generators (PSG1–PSG3) plus a noise channel.
-
-### Note range
-
-PSG notes use the same byte range as FM ($81–$DF), but the driver applies a different frequency table (SN76489 uses a period register, not FNUM/block). `nMaxPSG` = `nA5` ($C6) in Sonic 1 — this is the highest frequency the SN76489 can reliably produce.
+Three SN76489 tone channels (PSG1–PSG3) and a noise channel, which PSG3's track drives once it is
+a noise track.  Pitch: § Note tables.  The synthesis: `docs/psg_synthesis.md`.
 
 ### PSG volume envelopes
 
-PSG channels use `fTone_01`–`fTone_09` (Sonic 1 has 9 envelopes). Set via `smpsPSGvoice`. These control amplitude shape (attack/decay), not timbre.
+`smpsPSGvoice fTone_0n` (or the header's voice) selects envelope `PSGn` of nine; 0 is none.  From
+each attack one step a frame is added to the track's attenuation (header volume +
+`smpsPSGAlterVol`), capped at $F (silence).  The `$80` terminator holds: `VolEnvHold` steps the
+index back and writes nothing, so the last value stays.  An envelope shapes the amplitude only.
 
-### PSG3 / Noise
+### Noise
 
-The third PSG channel can drive the SN76489 noise register via `smpsPSGform`:
-- `smpsPSGform $E7`: white noise at fixed rate
-- Other values: periodic noise or noise locked to PSG3 tone frequency
-
-In Sonic 1 songs, PSG3 typically plays a noise-based rhythm pattern using `nMaxPSG` as the trigger note and `smpsNoteFill` for note-cut timing.
-
-### PSGUpdateTrack retrigger on every DurationTimeout
-
-`PSGUpdateTrack` structure on every driver frame:
-
-```
-subq.b #1, DurationTimeout
-bne   .notegoing          ; still counting → go to .notegoing
-; ─── DurationTimeout expired ───
-bclr  #4                  ; clear some flag
-jsr   PSGDoNext           ; consume next data byte (note OR standalone duration)
-jsr   PSGDoNoteOn         ; write frequency to SN76489 (uses stored Freq)
-bra   PSGDoVolFX          ; restore volume (key-on if previously silenced)
-.notegoing:
-  ; NoteTimeoutUpdate, PSGUpdateVolFX, DoModulation, PSGUpdateFreq
-```
-
-**Key implication:** `PSGDoNoteOn` and `PSGDoVolFX` are called unconditionally after *every*
-`DurationTimeout` expiry, regardless of whether `PSGDoNext` read a note byte or a duration byte.
-For PSG noise, `PSGDoVolFX → SetPSGVolume` restores the channel volume from `$FF` (set by the
-preceding `PSGNoteOff`) back to the audible level — this is a full key-on / retrigger.
-
-This means **standalone `dc.b $XX` duration bytes produce real note retriggers**, not waits.
-See `docs/smps_format.md` § Standalone Duration Bytes for the format-level description.
-
-### smpsAlterNote on PSG
-
-`smpsAlterNote` on PSG channels adds to the SN76489 period counter, similar to YM2612 FNUM offset. Effect is sub-semitone detune — less commonly used than on FM.
+`smpsPSGform` (`cfSetPSGNoise`) sets the track's `VoiceControl` to $E0 for good — no flag turns it
+back — and writes its byte to the noise register: `$E0 | white << 2 | rate`.  Rates 0–2 are fixed
+clocks; rate 3 clocks the LFSR from tone channel 3, whose divider the track's notes now write.
+Every Sonic 1 noise track uses `$E7` (white, rate 3): `nMaxPSG` gives the fastest hiss, other
+notes pitch the noise.  `smpsPSGvoice` afterwards changes only the envelope.

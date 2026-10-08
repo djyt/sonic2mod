@@ -119,6 +119,19 @@ class Moonwalker(unittest.TestCase):
             self.assertEqual((Path(tmp) / "samples" / "dac81.raw").read_bytes(),
                              next(s.pcm for s in self.dac if s.name == "dac81"))
 
+    def test_a_variant_writes_beside_the_derived_output(self):
+        # configs/<sub>/<stem>.yaml read as `lofi` -> output/<sub>/<stem>_lofi.mod, not output_lofi.mod
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "configs" / "mw" / "81_sc.yaml"
+            path.parent.mkdir(parents=True)
+            path.write_text(f'input_file: "{_MOONWALKER.as_posix()}"\nrom_song: "$81"\n'
+                            f'samples_dir: "{Path(tmp).as_posix()}/samples"\n'
+                            'variants:\n  lofi: {name: "SC lofi"}\n', encoding="utf-8")
+            config = ConversionConfig.from_yaml(str(path), "lofi")
+            complete, _ = complete_config(config, path, _CLOCK, self.song)
+            self.assertTrue(Path(complete.output_file).as_posix().endswith("output/mw/81_sc_lofi.mod"))
+            self.assertEqual(complete.name, "SC lofi")
+
 
 if __name__ == "__main__":
     unittest.main()

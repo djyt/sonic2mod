@@ -31,7 +31,15 @@ from pathlib import Path
 
 from ..audio import db_to_gain
 from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db, psg_level_db
-from ..config import ChannelConfig, ConversionConfig, bpm_rounding_options, find_settings, load_settings, region_fps
+from ..config import (
+    ChannelConfig,
+    ConversionConfig,
+    bpm_rounding_options,
+    find_settings,
+    load_settings,
+    region_fps,
+    variant_output_file,
+)
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote
 from ..rom import DacSample
 from ..smps import SmpsSong, note_label, source_map, synth_note_name
@@ -91,6 +99,8 @@ def complete_config(config: ConversionConfig, config_path: str | Path, amiga_clo
         return config, None
     song = song or config.read_song()
     derivation = derive_config(config.stated(), song, config_path, amiga_clock, read_dac(config.input_file))
+    if config.variant is not None and "output_file" in derivation.derived:
+        derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)
     complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)
     samples = Path(complete.samples_dir)
     samples.mkdir(parents=True, exist_ok=True)

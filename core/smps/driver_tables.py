@@ -145,6 +145,15 @@ PSG_FREQUENCIES_EXTENDED = tuple(_PSG_MEASURED_TAIL.get(i, n) for i, n in enumer
 # 128 rather than clamping.  SndBC Teleport depends on this: its "invalid" $90
 # transpose lands on the same index as the corrected $10.
 
+FM_TABLE_NC0 = 1         # an FM table's index of nC0: index 0 is the rest's (FMSetFreq subtracts $80)
+C1_SEMITONE = 12         # nC1: where a MOD's note index 0 (C-1) plays, an octave above nC0
+
+
+def fm_table_index(semitone: int) -> int:
+    """Where an SMPS semitone (nC0 = 0) stands in an FM table."""
+    return semitone + FM_TABLE_NC0
+
+
 def fm_note_index(note_value: int, transpose: int) -> int:
     """SMPS note byte + track transpose -> index into FM_FREQUENCIES."""
     return ((note_value - 0x80) + transpose) & 0x7F

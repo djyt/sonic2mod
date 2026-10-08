@@ -53,12 +53,11 @@ from ..config import (
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..rom import DacSample
-from ..smps import FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
+from ..smps import C1_SEMITONE, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
 from ..source import read_dac
 from .driver_state import walk_channel
 
 MAX_INSTRUMENTS = 31
-_MOD_C1 = 12                 # synth_note_name's semitone for MOD C1
 _MOD_SPAN = 35               # C1 ... B3
 _MIN_WINDOW = 12             # narrowest window root_harmonics may cut
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
@@ -263,7 +262,7 @@ class _Deriver:
                 inst = self._take(kind, _WINDOW_FILE.format(file_stem(key), _pitch_name(lo)), key, (lo, hi))
                 root = min(self._lowest_root(lo), self._top - (hi - lo))
                 entries.append({"low": _pitch_name(lo), "high": _pitch_name(hi),
-                                "mod_instrument": inst, "root": synth_note_name(_MOD_C1 + root)})
+                                "mod_instrument": inst, "root": synth_note_name(C1_SEMITONE + root)})
             out[key] = entries
         return out
 

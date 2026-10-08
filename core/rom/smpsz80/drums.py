@@ -31,6 +31,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 
+from ...chips import split_freq_word
 from ...smps import CoordFlag, FmDrum, FmFrame, SmpsSongHeader, TempoSegment, signed_byte, tempo_schedule
 from ..flags import FlagKind, FlagSpec
 from ..image import RomError, RomImage
@@ -54,7 +55,6 @@ _INIT_DIVIDER = 2            # the init bytes: flags, channel, divider
 # The slide's octave wrap (Z80 $0262): fnum at or under the low edge drops a block, over the high
 # one rises one; the fnum moves by $280 either way
 _WRAP_LOW, _WRAP_HIGH, _WRAP_STEP = 0x27E, 0x4FE, 0x580
-_FNUM_MASK = 0x7FF
 _WORD_MASK = 0xFFFF
 
 # ld de,init / ex de,hl / ldi x3 / dec a / ld hl,records / call nn / ld bc,6 / ldir / call nn /
@@ -230,7 +230,7 @@ class _Stop(Exception):
 
 
 def _wrap(word: int) -> int:
-    fnum = word & _FNUM_MASK
+    fnum, _ = split_freq_word(word)
     if fnum <= _WRAP_LOW:
         return (word - _WRAP_STEP) & _WORD_MASK
     if fnum > _WRAP_HIGH:

@@ -7,10 +7,9 @@ from collections import Counter
 from collections.abc import Callable, Mapping
 
 from ..audio import pitch_name
-from ..chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
+from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from ..smps import Aspect, ChannelDiff, NoteDiff, SongDiff
 
-_FNUM_BITS = 11
 _KIND_ORDER = ("FM", "DAC", "PSG")
 
 
@@ -68,10 +67,7 @@ def _pitch(channel: str, word: object) -> str:
     """A frequency word with the note it sounds: 0x2C3B (A4)."""
     if not isinstance(word, int):
         return str(word)
-    if channel.startswith("FM"):
-        hz = fm_frequency_hz(word & ((1 << _FNUM_BITS) - 1), word >> _FNUM_BITS, MD_FM_CLOCK)
-    else:
-        hz = psg_frequency_hz(max(word, 1), MD_PSG_CLOCK)
+    hz = freq_word_hz(word) if channel.startswith("FM") else psg_frequency_hz(max(word, 1), MD_PSG_CLOCK)
     return f"{word:#06x} ({pitch_name(hz)})"
 
 

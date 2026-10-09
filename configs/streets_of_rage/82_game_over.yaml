@@ -3,3 +3,10 @@
 name: "Game Over"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$82"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 48, 6]   # VGZ: +2.4 dB at 64
+  - [2, "dac82.raw", 50, -3]   # VGZ: +2.2 dB at 64
+  - [4, "fm_v00_E3.raw", 19, 0]   # VGZ: -1.5 dB at 16
+  - [6, "fm_v01_A3.raw", 14, 0]   # VGZ: -1.6 dB at 12
+  - [7, "fm_v02_E4.raw", 9, 0]   # VGZ: +2.3 dB at 12

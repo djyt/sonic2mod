@@ -3,3 +3,13 @@
 name: "Beatnik on the Ship"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$85"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "fm_v01_F4.raw", 45, 0]   # VGZ: -2.2 dB at 35
+  - [3, "fm_v0c_B7.raw", 33, 0]   # VGZ: -4.0 dB at 21
+  - [4, "fm_v0d_A2.raw", 31, 0]   # VGZ: -4.2 dB at 19
+  - [7, "fm_v02_A2.raw", 35, 0]   # VGZ: -5.3 dB at 19
+  - [9, "fm_v04_B3.raw", 26, 0]   # VGZ: -3.2 dB at 18
+  - [11, "fm_v06_A5.raw", 10, 0]   # VGZ: -5.8 dB at 5
+  - [14, "psg_$00_D3.raw", 4, 0]   # VGZ: +1.1 dB at 5
+  - [16, "psg_noise_e7.raw", 4, 0]   # VGZ: +7.8 dB at 10

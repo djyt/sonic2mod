@@ -7706,7 +7706,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7762,7 +7762,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7819,7 +7819,7 @@ read_sonic1_asm_music:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7885,7 +7885,7 @@ read_sonic1_asm_music_shipped:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
   - --shipped
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7950,7 +7950,7 @@ read_sonic1_asm_sfx:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/sfx
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8045,7 +8045,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8103,7 +8103,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8160,7 +8160,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 0b197bd-dirty
+  commit: e1b7d98-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

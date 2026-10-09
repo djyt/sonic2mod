@@ -1081,17 +1081,17 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
 read_moonwalker:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_sonic1_asm_music:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -1114,7 +1114,7 @@ read_sonic1_asm_music:
     reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
     reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
 read_sonic1_asm_music_shipped:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -1137,7 +1137,7 @@ read_sonic1_asm_music_shipped:
     reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
     reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
 read_sonic1_asm_sfx:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     reference/smps_drivers/sonic_1/sfx/SndA0 - Jump.asm: eb1f6684f557
@@ -1190,17 +1190,17 @@ read_sonic1_asm_sfx:
     reference/smps_drivers/sonic_1/sfx/SndCF - Signpost.asm: 320b3c201a06
     reference/smps_drivers/sonic_1/sfx/SndD0 - Waterfall.asm: a4be70b95a7c
 read_sonic1_rom:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_sonic1_rom_shipped:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_streets_of_rage:
-  commit: 0b197bd-dirty
+  commit: e1b7d98
   date: '2026-10-09'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

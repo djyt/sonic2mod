@@ -48,7 +48,8 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 sys.path.insert(0, str(_ROOT))
 
-from core.audit import RipShelf, named
+from core.audit import named
+from core.ui import add_shelf_arguments, rip_shelf
 
 _CHANGE = re.compile(r"^\s+instrument\s+(\d+)\s+\((.*?)\s*\):\s+(\d+)\s+->\s+(\d+)\s+\(([-+0-9.]+) dB\)")
 
@@ -159,18 +160,11 @@ def main() -> None:
     ap.add_argument("--no-write", action="store_true", help="measure and report; leave the configs alone")
     ap.add_argument("--min-db", type=float, default=1.0,
                     help="report verify-pass instruments off by this much or more (default 1.0)")
-    ap.add_argument("--configs", help="config directory (default configs/, or the --vgz-dir's mirror)")
-    ap.add_argument("--vgz-dir", help="VGZ directory (default reference/vgz/ + the configs' subfolder)")
+    add_shelf_arguments(ap)
     ap.add_argument("--vgmplay", default=None, help="VGMPlay directory (passed to vgm_compare.py)")
-    ap.add_argument("--rips", metavar="FILE", help="YAML {config stem: rip file in --vgz-dir} (default: rips.yaml beside "
-                                                   "the configs, else by number); configs it leaves out are skipped")
     args = ap.parse_args()
 
-    try:
-        shelf = RipShelf.around(args.configs, args.vgz_dir, args.rips,
-                                config_root=_ROOT / "configs", rip_root=_ROOT / "reference" / "vgz")
-    except ValueError as e:
-        raise SystemExit(f"{e} (--vgz-dir / --configs)") from e
+    shelf = rip_shelf(args)
     configs = [c for c in shelf.config_files() if named(args.only, c)]
     if not configs:
         raise SystemExit("no configs matched")

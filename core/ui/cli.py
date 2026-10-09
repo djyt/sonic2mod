@@ -20,12 +20,15 @@ import argparse
 import io
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import NoReturn
 
 from rich.align import Align
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+
+from ..audit import CONFIG_ROOT, RIPS_MAP, RipShelf
 
 LABEL_W = 9                        # right-aligned label column width
 def _force_utf8_stdout() -> None:
@@ -78,6 +81,24 @@ def add_variant_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--variant", metavar="NAME",
                         help="read the config as its variant NAME: each `variants: {NAME: ...}` block laid "
                              "over the keys beside it (default output_file: <stem>_NAME.mod)")
+
+
+def add_shelf_arguments(parser: argparse.ArgumentParser) -> None:
+    """`--configs`, `--vgz-dir`, `--rips`: which configs and rips a rip tool pairs (rip_shelf)."""
+    parser.add_argument("--configs", metavar="DIR",
+                        help=f"the configs (default {CONFIG_ROOT.name}/, or the rips' mirror)")
+    parser.add_argument("--vgz-dir", metavar="DIR",
+                        help="the rips (default: the folder rips.yaml names, else the configs' mirror)")
+    parser.add_argument("--rips", metavar="FILE",
+                        help=f"YAML {{config stem: rip file}} (default: {RIPS_MAP} beside the configs, else by number)")
+
+
+def rip_shelf(args: argparse.Namespace, configs: Path | None = None, rips: Path | None = None) -> RipShelf:
+    """The shelf add_shelf_arguments' arguments name (`configs` / `rips`: a folder in their place)."""
+    try:
+        return RipShelf.around(configs or args.configs, rips or args.vgz_dir, args.rips)
+    except ValueError as e:
+        raise SystemExit(f"{e} (--vgz-dir / --configs)") from e
 
 
 def error_printer(console: Console) -> Callable[[str], NoReturn]:

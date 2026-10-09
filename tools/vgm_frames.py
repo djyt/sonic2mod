@@ -30,12 +30,11 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.audit import ChannelChoice, FrameAspect, FrameCheck, RipShelf, SongSource, check_frames, named, workers
+from core.audit import ChannelChoice, FrameAspect, FrameCheck, SongSource, check_frames, named, workers
 from core.config import find_settings, load_settings
+from core.ui import add_shelf_arguments, rip_shelf
 from core.vgm import load_frames
 
-VGZ_DIR = ROOT / "reference" / "vgz"
-CONFIG_DIR = ROOT / "configs"
 _DEFAULT_MISSES = 8               # misses listed per channel and aspect
 _KINDS = ("FM", "PSG")
 
@@ -90,8 +89,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("config", nargs="?", help="a song config: its misses listed")
     ap.add_argument("--all", action="store_true", help="every pair on the shelf (--configs), a line each")
-    ap.add_argument("--configs", metavar="DIR", help=f"the configs (default {CONFIG_DIR.relative_to(ROOT)}/)")
-    ap.add_argument("--vgz-dir", metavar="DIR", help="the rips (default: what rips.yaml names, else the configs' mirror)")
+    add_shelf_arguments(ap)
     ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name holds one")
     ap.add_argument("--channels", nargs="+", default=(), metavar="NAME", help="only these channels, or a prefix (FM, PSG)")
     ap.add_argument("--skip", nargs="+", default=(), metavar="NAME", help="leave these channels out (a prefix too)")
@@ -105,11 +103,7 @@ def main() -> None:
 
     channels = ChannelChoice(tuple(args.channels), tuple(args.skip))
     cache_dir = load_settings(args.settings or find_settings())[0].render_cache
-    configs = Path(args.config).parent if args.config else args.configs
-    try:
-        shelf = RipShelf.around(configs, args.vgz_dir, config_root=CONFIG_DIR, rip_root=VGZ_DIR)
-    except ValueError as e:
-        raise SystemExit(f"{e} (--vgz-dir / --configs)") from e
+    shelf = rip_shelf(args, configs=Path(args.config).parent if args.config else None)
 
     if args.config:
         config = Path(args.config)

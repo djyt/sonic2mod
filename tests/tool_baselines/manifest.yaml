@@ -708,7 +708,7 @@ compare_title_screen_merged:
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
 frames_golden_axe:
-  commit: c9d336a-dirty
+  commit: 06a40f6
   date: '2026-10-09'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
@@ -740,7 +740,7 @@ frames_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 frames_streets_of_rage:
-  commit: c9d336a-dirty
+  commit: 06a40f6
   date: '2026-10-09'
   inputs:
     configs/streets_of_rage/81_fighting_in_the_street.yaml: f941f242a67a

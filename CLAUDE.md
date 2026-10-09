@@ -169,6 +169,10 @@ python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the
 python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
 python tools/vgm_lift.py --all --configs configs/moonwalker                  # every Moonwalker pair
 python tools/vgm_lift.py --all --configs configs/streets_of_rage   # its rips.yaml names their folder (folder:)
+# No lift: every note's pitch (detune in), level and voice registers against the rip's frame log on
+# its frame - what the lift cannot read.  Any driver; tied notes counted apart (vibrato runs on)
+python tools/vgm_frames.py --all --configs configs/streets_of_rage
+python tools/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -237,7 +241,7 @@ python -m pytest tests -q                              # unit tests (merge rules
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD, `vgm_lift` (the Moonwalker
-pairs too) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+pairs too), `frames_<game>` (`vgm_frames` on Golden Axe's and Streets of Rage's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
 Moonwalker, Golden Axe, Streets of Rage) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 

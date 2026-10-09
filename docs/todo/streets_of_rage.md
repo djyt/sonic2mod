@@ -347,7 +347,7 @@ a song pass (the `run_out` precedent).
     and a legato slide, which this driver writes as a frequency alone (Sonic 1's re-keys; `$86`
     FM1 E3 -> F3 at 105).  With `note` compared, the slide also splits a length.  Reading
     detune and a key-less slide is the lift's work (vgz_conversion 1.3), not this phase's.
-  - **Against the frame logs** (a scratch check of `played_song` at each note's frame): FM pitch,
+  - **Against the frame logs** (`tools/vgm_frames.py`, made from the scratch check): FM pitch,
     level and voice registers exact at every key-on; a tied note's pitch differs only by the
     vibrato running through it (FM 1-18 units; the PSG's sweeps); PSG pitch and level as 2.1.
 

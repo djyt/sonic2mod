@@ -36,8 +36,12 @@ Status key: `[ ]` open, `[x]` done.
 
 ## 3. Plan
 
-- [ ] 1. Read snapshots (gates the refactors after it).
-- [ ] 2. Lazy driver registry; a games table apart from the drivers (findings 1, 2).
-- [ ] 3. `tests/cases.yaml`, coverage-recorded selection; Moonwalker and Golden Axe cases.
+- [x] 1. Read snapshots (gates the refactors after it): `tools/song_dump.py`, tool_regression
+  `read_*` (~2 s for every song of the four games).
+- [x] 2. Lazy driver registry (`load_driver`); `core/drivers/games.py` (findings 1, 2).
+- [x] 3. `tests/cases.yaml`, `tests/selection.py`; Moonwalker and Golden Axe three cases each.
+  A driver's folder moves only its game's cases.  Shared modules move every case: a module's
+  top level runs on import, and `core` imports its packages eagerly.  Finer, if wanted: line
+  level (diff hunks against executed statements).
 - [ ] 4. Findings 3, 4, 5, 7.
 - Later: Streets of Rage cases (decision 4 revisited, after its Phase 4).

@@ -99,7 +99,7 @@ def check_parse(sfx_dir: Path) -> None:
             check(stem, False, "file not found")
             continue
         song = SmpsParser(tables.SONIC1_RULES).parse_file(str(path))
-        got = [sum(e.note.duration for e in ch.events if e.is_note) for ch in song.channels]
+        got = [sum(e.note.duration for e in ch.events if e.note is not None) for ch in song.channels]
         check(f"{stem} ticks {expected}", got == expected, f"got {got}")
 
 

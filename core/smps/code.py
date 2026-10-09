@@ -32,6 +32,7 @@ from .song import (
     SmpsNote,
     SmpsSong,
     SmpsSongHeader,
+    SmpsVoice,
 )
 
 # Track bytes: durations below the rest (REST, song.py), notes after it to nAs7, flags above.
@@ -93,7 +94,7 @@ class SongCode:
 
     header: SmpsSongHeader
     code: SmpsCode
-    voices: list
+    voices: list[SmpsVoice]
     rules: PlaybackRules
     address: int | None = None                                   # a ROM's: the header's
     addresses: dict[str, int] = field(default_factory=dict)      # ... and each label's (voices too)
@@ -133,7 +134,7 @@ def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
     return effect_of(flag, operands)
 
 
-def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list, rules: PlaybackRules) -> SmpsSong:
+def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list[SmpsVoice], rules: PlaybackRules) -> SmpsSong:
     """Each of the header's channels walked from its label, by its driver's `rules`.  A DAC
     track's byte without a name (rules.dac_names) is a plain note."""
     pans = {v.index: v.pan for v in voices if v.pan is not None}

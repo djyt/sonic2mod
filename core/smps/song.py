@@ -90,7 +90,7 @@ class SmpsSongHeader:
     psg_count: int = 0
     tempo_divider: int = 1
     tempo_modifier: int = 5
-    channels: list = field(default_factory=list)  # list of SmpsChannelHeader
+    channels: list[SmpsChannelHeader] = field(default_factory=list)
     # True when parsed from smpsHeader*SFX* macros.  SFX have no tempo modifier byte and run
     # one tick per V-int unconditionally — the music (modifier-1)/modifier rate correction
     # must not be applied to them.
@@ -100,7 +100,7 @@ class SmpsSongHeader:
 @dataclass
 class SmpsChannel:
     header: SmpsChannelHeader
-    events: list = field(default_factory=list)  # list of SmpsEvent
+    events: list[SmpsEvent] = field(default_factory=list)
     rules: PlaybackRules = field(kw_only=True)  # its driver's: the song's
     has_jump: bool = False        # the channel ends in a jump back: a loop
     loop_tick: int | None = None  # the tick the jump returns to
@@ -191,8 +191,8 @@ class SmpsVoice:
 @dataclass
 class SmpsSong:
     header: SmpsSongHeader
-    channels: list = field(default_factory=list)  # list of SmpsChannel
-    voices: list = field(default_factory=list)     # list of SmpsVoice
+    channels: list[SmpsChannel] = field(default_factory=list)
+    voices: list[SmpsVoice] = field(default_factory=list)
     # The drum track's FM drum programs by DAC name (Type 0 FM's drum81 ...; core/smps/percussion.py);
     # empty where the drum track plays DAC samples
     fm_drums: dict[str, FmDrum] = field(default_factory=dict)

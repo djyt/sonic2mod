@@ -16,8 +16,10 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.drivers.reference import SONIC1_RULES
+from core.drivers.smps68k import MUCOM, SONIC1
 from core.smps import (
     NO_TEMPO_HOLDS,
+    ChannelType,
     CoordFlag,
     Op,
     OpKind,
@@ -47,11 +49,11 @@ _GHZ = _MUSIC / "Mus81 - GHZ.asm"
 
 
 class Flags(unittest.TestCase):
-    def test_a_flag_is_its_driver_byte(self):
-        self.assertEqual(CoordFlag.PAN, 0xE0)
-        self.assertEqual(CoordFlag.DETUNE, 0xE1)
-        self.assertEqual(CoordFlag.SET_VOICE, 0xEF)
-        self.assertEqual(CoordFlag.PSG_VOICE, 0xF5)
+    def test_a_flag_is_a_meaning_each_driver_maps_its_bytes_to(self):
+        sonic1, streets = SONIC1.flags[ChannelType.FM], MUCOM.flags[ChannelType.FM]
+        self.assertEqual([sonic1[b].flag for b in (0xE0, 0xE1, 0xEF)],
+                         [CoordFlag.PAN, CoordFlag.DETUNE, CoordFlag.SET_VOICE])
+        self.assertIs(streets[0xF0].flag, CoordFlag.SET_VOICE)          # another driver, another byte
 
     def test_names_are_the_smps2asm_macros_both_ways(self):
         self.assertEqual(flag_name(CoordFlag.ALTER_VOL), "smpsAlterVol")

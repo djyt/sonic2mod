@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import IntEnum, StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
@@ -39,30 +39,29 @@ class SmpsNote:
     run_out: bool = False
 
 
-class CoordFlag(IntEnum):
-    """The driver's coordination flags a song's events carry, by their byte (s1.sounddriver.asm
-    coordflagLookup; docs/smps_driver.md).  A parse and a VGM lift both produce these: the
-    SMPS2ASM macro names are core/smps/names.py's, for reading and printing assembly."""
+class CoordFlag(StrEnum):
+    """What a coordination flag does, as a song's events carry it: a meaning, no driver's byte.
+    Each driver maps its own bytes to these (core/drivers: Sonic 1's are s1.sounddriver.asm
+    coordflagLookup, docs/smps_driver.md; the Sonic 1 byte noted below); the SMPS2ASM macro names
+    are core/smps/names.py's, for reading and printing assembly."""
 
-    PAN = 0xE0                    # params: [the YM2612 B4 byte: L R AMS FMS]
-    DETUNE = 0xE1                 # [FNUM offset, signed]
-    NOP = 0xE2                    # [byte]
-    CHAN_TEMPO_DIV = 0xE5         # [divider]
-    ALTER_VOL = 0xE6              # [delta, signed]; $EC on a PSG channel
-    NOTE_FILL = 0xE8              # [frames]
-    CHANGE_TRANSPOSITION = 0xE9   # [semitones, signed]
-    SET_TEMPO_MOD = 0xEA          # [modifier]
-    SET_TEMPO_DIV = 0xEB          # [divider]
-    SET_VOICE = 0xEF              # [voice index]
-    MOD_SET = 0xF0                # [wait, speed, delta, steps]
-    MOD_ON = 0xF1
-    PSG_FORM = 0xF3               # [noise register byte]
-    MOD_OFF = 0xF4
-    PSG_VOICE = 0xF5              # [envelope name, fTone_01 ... fTone_09: the driver's table]
-
-    # No Sonic 1 byte: another driver's flag, valued past $FF
-    SET_VOL = 0x1F0               # [level]: the track's volume, absolute (Type 0 FM's $F0)
-    DAC_SAMPLE = 0x1F1            # [DAC byte]: what the drum track's notes play from here (Streets of Rage's $F0)
+    PAN = auto()                  # [the YM2612 B4 byte: L R AMS FMS]                Sonic 1 $E0
+    DETUNE = auto()               # [FNUM offset, signed]                            $E1
+    NOP = auto()                  # [byte]                                           $E2
+    CHAN_TEMPO_DIV = auto()       # [divider]                                        $E5
+    ALTER_VOL = auto()            # [delta, signed]                                  $E6 FM, $EC PSG
+    NOTE_FILL = auto()            # [frames]                                         $E8
+    CHANGE_TRANSPOSITION = auto() # [semitones, signed]                              $E9
+    SET_TEMPO_MOD = auto()        # [modifier]                                       $EA
+    SET_TEMPO_DIV = auto()        # [divider]                                        $EB
+    SET_VOICE = auto()            # [voice index]                                    $EF
+    MOD_SET = auto()              # [wait, speed, delta, steps]                      $F0
+    MOD_ON = auto()               #                                                  $F1
+    PSG_FORM = auto()             # [noise register byte]                            $F3
+    MOD_OFF = auto()              #                                                  $F4
+    PSG_VOICE = auto()            # [envelope name, fTone_01 ... : the driver's]     $F5
+    SET_VOL = auto()              # [level]: the track's volume, absolute            (Type 0 FM's $F0)
+    DAC_SAMPLE = auto()           # [DAC byte]: what the drum track's notes play     (Streets of Rage's $F0)
 
 
 @dataclass

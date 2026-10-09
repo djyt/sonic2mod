@@ -26,7 +26,7 @@ from core.rom.variant import DacSample
 from core.rom.z80 import Z80_RAM_BASE, z80_ram
 from core.smps import FIRST_NOTE
 
-from ..dpcm import LEA_A0, delta_table, pcm_table, pitch_table, pitched_copy, read_sample
+from ..dpcm import LEA_A0, Dpcm, PcmEntry, PcmTable, delta_table, pitch_table
 
 _LONG = 4
 _OPCODE = 2
@@ -41,8 +41,7 @@ def type1a_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
 
 
 class _Type1aDac:
-    _ENTRY = 12
-    _SIZE, _PITCH = 2, 11
+    _ENTRY = PcmEntry(12, size_at=2, pitch_at=11)
     _CYCLES = (235.6, 13.96)              # fitted to the rips (see above); counted: 207.5, 13
     _PITCHED_SAMPLE = 0x85                # $88-$8F play it
     _FIRST_PITCHED = 0x88
@@ -58,23 +57,18 @@ class _Type1aDac:
 
     def samples(self) -> list[DacSample]:
         z80 = z80_ram(self._rom)
-        table = pcm_table(z80)
-        deltas = delta_table(z80)
-        out = [read_sample(z80, table + i * self._ENTRY, self._SIZE, self._PITCH, FIRST_NOTE + i, deltas,
-                       self._CYCLES, self._names) for i in range(self._RAM_SAMPLES)]
+        table = PcmTable(z80, self._ENTRY, Dpcm(delta_table(z80), *self._CYCLES), self._names)
+        out = [table.sample(sound) for sound in range(FIRST_NOTE, FIRST_NOTE + self._RAM_SAMPLES)]
         by_sound = {s.sound: s for s in out}
 
-        def pitch_at(sound: int) -> int:
-            return table + (sound - FIRST_NOTE) * self._ENTRY + self._PITCH
-
-        pitched = pitch_table(self._rom, _MOVE_D1_ABS, pitch_at(self._PITCHED_SAMPLE), self._PITCHED, LEA_A0)
-        out += [pitched_copy(by_sound[self._PITCHED_SAMPLE], self._FIRST_PITCHED + i, pitch, self._CYCLES,
-                      self._names) for i, pitch in enumerate(pitched)]
+        pitched = pitch_table(self._rom, _MOVE_D1_ABS, table.pitch_address(self._PITCHED_SAMPLE), self._PITCHED, LEA_A0)
+        out += [table.pitched_copy(by_sound[self._PITCHED_SAMPLE], self._FIRST_PITCHED + i, pitch)
+                for i, pitch in enumerate(pitched)]
 
         # Two immediate writes: every $9x's pitch, then $90's own
-        usual, first = self._immediate_pitches(pitch_at(self._ALT_SAMPLE))
-        out += [pitched_copy(by_sound[self._ALT_SAMPLE], self._FIRST_ALT + i, first if i == 0 else usual,
-                      self._CYCLES, self._names) for i in range(self._ALT)]
+        usual, first = self._immediate_pitches(table.pitch_address(self._ALT_SAMPLE))
+        out += [table.pitched_copy(by_sound[self._ALT_SAMPLE], self._FIRST_ALT + i, first if i == 0 else usual)
+                for i in range(self._ALT)]
         return out
 
     def _immediate_pitches(self, pitch_at: int) -> tuple[int, int]:

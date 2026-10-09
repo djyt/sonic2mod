@@ -16,7 +16,7 @@ from core.rom.variant import DacSample
 from core.rom.z80 import z80_ram
 from core.smps import FIRST_NOTE
 
-from ..dpcm import delta_table, pcm_table, pitch_table, pitched_copy, read_sample
+from ..dpcm import Dpcm, PcmEntry, PcmTable, delta_table, pitch_table
 
 _MOVE_D0_ABS = bytes.fromhex("13C0")                    # move.b d0,(xxx).l
 _MOVE_PC_INDEXED = bytes.fromhex("103B")                # move.b d8(pc,d0.w),d0
@@ -28,8 +28,7 @@ def sonic1_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
 
 
 class _Sonic1Dac:
-    _ENTRY = 8
-    _SIZE, _PITCH = 2, 4
+    _ENTRY = PcmEntry(8, size_at=2, pitch_at=4)
     _CYCLES = (150.5, 13)                 # per sample: base, per pitch step (one djnz turn)
     _TIMPANI = 0x83
     _FIRST_PITCHED = 0x88
@@ -41,13 +40,10 @@ class _Sonic1Dac:
 
     def samples(self) -> list[DacSample]:
         z80 = z80_ram(self._rom)
-        table = pcm_table(z80)
-        deltas = delta_table(z80)
-        out = [read_sample(z80, table + i * self._ENTRY, self._SIZE, self._PITCH, FIRST_NOTE + i, deltas,
-                       self._CYCLES, self._names) for i in range(self._TIMPANI - FIRST_NOTE + 1)]
+        table = PcmTable(z80, self._ENTRY, Dpcm(delta_table(z80), *self._CYCLES), self._names)
+        out = [table.sample(sound) for sound in range(FIRST_NOTE, self._TIMPANI + 1)]
         timpani = out[-1]
-        pitch_at = table + (self._TIMPANI - FIRST_NOTE) * self._ENTRY + self._PITCH
-        pitches = pitch_table(self._rom, _MOVE_D0_ABS, pitch_at, self._PITCHED, _MOVE_PC_INDEXED)
-        out += [pitched_copy(timpani, self._FIRST_PITCHED + i, pitch, self._CYCLES, self._names)
-                for i, pitch in enumerate(pitches)]
+        pitches = pitch_table(self._rom, _MOVE_D0_ABS, table.pitch_address(self._TIMPANI), self._PITCHED,
+                              _MOVE_PC_INDEXED)
+        out += [table.pitched_copy(timpani, self._FIRST_PITCHED + i, pitch) for i, pitch in enumerate(pitches)]
         return out

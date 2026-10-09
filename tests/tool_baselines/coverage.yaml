@@ -8226,7 +8226,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: efbb44f-dirty
+  commit: b686baf-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8284,7 +8284,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: efbb44f-dirty
+  commit: 419edda-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8575,7 +8575,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: efbb44f-dirty
+  commit: b686baf-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8635,7 +8635,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: efbb44f-dirty
+  commit: b686baf-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

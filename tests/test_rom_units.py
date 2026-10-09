@@ -193,7 +193,8 @@ class Type1a(unittest.TestCase):
 
     def _song(self, fm: bytes):
         dac = bytes([0xF2])
-        return read_rom_code(_rom(_music([dac, fm])), 0x81, _index(), variant=TYPE1A)
+        # A hand-built ROM holds no driver code to read tables from: the rules as stated
+        return read_rom_code(_rom(_music([dac, fm])), 0x81, _index(), variant=dataclasses.replace(TYPE1A, rules_from_rom=None))
 
     def test_f9_returns_where_sonic1_writes_a_release_rate(self):
         fm_at = 6 + 8 + 1

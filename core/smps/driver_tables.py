@@ -1,6 +1,6 @@
 """What every SMPS driver here reads its tables by: note bytes to table indexes, the PSG
 envelope's form, the FM register layout, channel maps.  No driver's tables: those are each
-driver's (core/drivers; Sonic 1's in smps68k/sonic1/tables.py), and a song carries its own
+driver's (core/drivers; Sonic 1's in reference.py), and a song carries its own
 (PlaybackRules, rules.py).
 
 Line references are to `reference/smps_drivers/sonic_1/s1.sounddriver.asm`.

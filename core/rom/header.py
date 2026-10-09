@@ -40,19 +40,31 @@ class RomHeader:
     tracks: dict[int, ChannelType]     # each track's first byte -> the kind of track it starts
 
 
+_Plausible = Callable[[SoundMemory, int], bool]
+
+
 def read_index(memory: SoundMemory, slots: range, pointer: Callable[[int], int], first_id: int,
-               plausible: Callable[[SoundMemory, int], bool]) -> dict[int, int]:
+               plausible: _Plausible) -> dict[int, int]:
     """An index's entries by sound ID: the header each slot points at, up to the first slot that
     points at none."""
     entries: dict[int, int] = {}
     for at in slots:
         address = pointer(at)
-        if not memory.contains(address) or not plausible(memory, address):
+        if not _points_at(memory, address, plausible):
             break
         entries[first_id + len(entries)] = address
     if not entries:
         raise RomError(f"the index at ${slots.start:X} points at no header")
     return entries
+
+
+def is_index(memory: SoundMemory, slots: range, pointer: Callable[[int], int], plausible: _Plausible) -> bool:
+    """Every slot points at a plausible header: a table's first entries, when locating an index."""
+    return all(_points_at(memory, pointer(at), plausible) for at in slots)
+
+
+def _points_at(memory: SoundMemory, address: int, plausible: _Plausible) -> bool:
+    return memory.contains(address) and plausible(memory, address)
 
 
 def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> RomHeader:

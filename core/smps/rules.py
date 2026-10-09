@@ -1,6 +1,6 @@
 """PlaybackRules: what a song's driver does that the song is played by - its tables, envelopes,
 drum names and timing.  Each driver builds its own (core/drivers: Sonic 1's in
-smps68k/sonic1/tables.py); a song and each of its channels carry them.  Nothing below the drivers
+reference.py); a song and each of its channels carry them.  Nothing below the drivers
 holds a driver's tables or falls back to one: whatever plays a note asks the song.
 
     tables     fm_frequencies   the FM words by fm_note_index (1 = nC0)

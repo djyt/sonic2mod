@@ -11,18 +11,17 @@ its driver ($72914-$73C16) read with a disassembler (docs/todo/streets_of_rage.m
                 PSG entries ptr.w volume.b envelope.b (tone 3, tone 2, tone 1); no tempo: a tick a frame
     voice       25 bytes: DT/MUL TL KS/AR AM/D1R D2R D1L/RR (register order), FB/ALG last
     flags       one table per kind of track (the driver jumps through $73302 for FM and the drum
-                track, $73342 for the PSG); the grammar (mucom_grammar.py) reads the rest
+                track, $73342 for the PSG); the grammar (grammar.py) reads the rest
 """
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, partial
 
 from core.chips import OperatorReg
 from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, refuse
 from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
-from core.rom.memory import SoundMemory
 from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
 from core.smps import ChannelType, CoordFlag, PlaybackRules
 
@@ -49,7 +48,7 @@ _OCTAVES = 8
 _BLOCK_SHIFT = 11
 _PSG_ROWS_LIKE_SONIC = slice(2 * _SEMITONES, 7 * _SEMITONES)     # rows 2-6: C3-B7
 
-HEADER_MUCOM = HeaderLayout(
+_HEADER = HeaderLayout(
     fm_slots=(*[TrackSlot(ChannelType.FM, f"FM{n}") for n in range(1, 6)], TrackSlot(ChannelType.DAC)),
     sfx_channels=frozenset(),
     tempo=False,
@@ -58,7 +57,7 @@ HEADER_MUCOM = HeaderLayout(
     psg_slots=("PSG3", "PSG2", "PSG1"),
 )
 
-VOICE_MUCOM = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_AR, OperatorReg.AM_D1R,
+_VOICE_LAYOUT = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_AR, OperatorReg.AM_D1R,
                            OperatorReg.D2R, OperatorReg.D1L_RR),
                           feedback_last=True, operator_offsets=(0x00, 0x04, 0x08, 0x0C))
 
@@ -103,19 +102,19 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
 
 
 @lru_cache(maxsize=8)
-def locate_mucom(rom: RomImage) -> SoundIndex:
+def _locate(rom: RomImage) -> SoundIndex:
     """The song and SFX indexes and the envelopes, by the code that reads each."""
     _check_psg_rows(rom)
     memory = Relative68kMemory(rom)
     music_table = _table(rom, *_MUSIC_INDEX)
     slots = range(music_table, music_table + _MAX_SOUNDS * _LONG, _LONG)
-    music = read_index(memory, slots, rom.long, _FIRST_MUSIC, _is_music_header)
+    music = read_index(memory, slots, rom.long, _FIRST_MUSIC, partial(is_music_header, layout=_HEADER))
     sfx = pointers_before_data(rom, _table(rom, *_SFX_INDEX))
     envelopes = pointers_before_data(rom, _table(rom, *_ENVELOPES))
     return SoundIndex(music, {_FIRST_SFX + i: a for i, a in enumerate(sfx)}, envelopes)
 
 
-def fm_frequencies(rom: RomImage) -> tuple[int, ...]:
+def _fm_frequencies(rom: RomImage) -> tuple[int, ...]:
     """The FM frequency words by fm_note_index (1 = C0): the octave's words at blocks 0-7."""
     octave = [rom.word(_table(rom, *_FM_OCTAVE) + i * _WORD) for i in range(_SEMITONES)]
     return (0, *[block << _BLOCK_SHIFT | word for block in range(_OCTAVES) for word in octave])
@@ -137,22 +136,18 @@ def _check_psg_rows(rom: RomImage) -> None:
         raise RomError(f"PSG table ${table:X}: rows 2-6 are not Sonic 1's")
 
 
-def _is_music_header(memory: SoundMemory, address: int) -> bool:
-    return is_music_header(memory, address, HEADER_MUCOM)
-
-
 MUCOM = SmpsVariant(
     name=SmpsDriver.MUCOM,
     memory=Relative68kMemory,
-    locate=locate_mucom,
+    locate=_locate,
     flags={ChannelType.FM: _FM_FLAGS, ChannelType.PSG: _PSG_FLAGS, ChannelType.DAC: _DAC_FLAGS},
     envelope_commands={0x81: EnvelopeCommand.HOLD, 0x80: EnvelopeCommand.RESTART, 0x83: EnvelopeCommand.MUTE},
-    header=HEADER_MUCOM,
-    voice_layout=VOICE_MUCOM,
+    header=_HEADER,
+    voice_layout=_VOICE_LAYOUT,
     # Its FM octave and envelopes read from the ROM; Sonic 1's PSG rows (checked); Z80 $019B: 17 samples
     rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
                         psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
                         dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)}),
-    fm_frequencies=fm_frequencies,
+    fm_frequencies=_fm_frequencies,
     grammar=mucom_instruction,
 )

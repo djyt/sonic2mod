@@ -125,7 +125,7 @@ class SmpsChannel:
 
 # A YM2612 channel's operator count
 _OPERATORS = 4
-_BYTE = 0xFF
+_BYTE_MASK = 0xFF
 
 
 class VoiceField(StrEnum):
@@ -191,9 +191,9 @@ class SmpsVoice:
         carriers = self.carrier_registers
         regs: dict[int, int] = {}
         for op, off in enumerate(SMPS_OP_TO_REG_OFFSET):
-            tl = f[VoiceField.TOTAL_LEVEL][op] & _BYTE
+            tl = f[VoiceField.TOTAL_LEVEL][op] & _BYTE_MASK
             if OperatorReg.TL + off in carriers:
-                tl = (tl + tl_offset) & _BYTE
+                tl = (tl + tl_offset) & _BYTE_MASK
             regs[OperatorReg.DT_MUL + off] = (f[VoiceField.DETUNE][op] & 0x7) << 4 | f[VoiceField.MULTIPLE][op] & 0xF
             regs[OperatorReg.TL + off] = tl
             regs[OperatorReg.KS_AR + off] = (f[VoiceField.RATE_SCALE][op] & 0x3) << 6 | f[VoiceField.ATTACK_RATE][op] & 0x1F

@@ -40,7 +40,7 @@ from .rules import PlaybackRules
 from .song import MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
 from .voice_patch import VoicePatcher
 
-_BYTE = 0x100
+_BYTE_VALUES = 0x100
 _FM_PART = 3                    # channels per YM2612 part: a register's low bits name one of them
 
 
@@ -78,15 +78,15 @@ class DriverTrack:
                 self._gate = frames
                 return None
             case VolumeStep(step=step):
-                return self._volume(signed_byte(step % _BYTE))
+                return self._volume(signed_byte(step % _BYTE_VALUES))
             case AlterVolumeStep(delta=delta):
-                return self._volume(signed_byte((self._volume_step + delta) % _BYTE))
+                return self._volume(signed_byte((self._volume_step + delta) % _BYTE_VALUES))
             case Detune(offset=offset):
                 return self._detune(offset)
             case DetuneAdd(offset=offset):
                 return self._detune(self._detune_word + offset)
             case AlterVol(delta=delta) if self._level is not None:
-                self._level = signed_byte((self._level + delta) % _BYTE)
+                self._level = signed_byte((self._level + delta) % _BYTE_VALUES)
                 return SetVol(self._level)
             case PsgForm():
                 self._noise = True
@@ -120,7 +120,7 @@ class DriverTrack:
             raise ValueError(f"{self._header.channel_type} track '{self._header.label}': volume step "
                              f"{step}, which its driver has no level for")
         self._volume_step = step
-        self._level = signed_byte((level + self._header.volume) % _BYTE)
+        self._level = signed_byte((level + self._header.volume) % _BYTE_VALUES)
         return SetVol(self._level)
 
     def _detune(self, word: int) -> Detune:

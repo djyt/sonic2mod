@@ -46,7 +46,7 @@ from core.smps import (
 )
 
 _FIRST_FLAG = 0xF0
-_BYTE = 0xFF
+_BYTE_MASK = 0xFF
 _END = 0x00
 _REST_BIT = 0x80
 _DURATION_BITS = 0x7F
@@ -150,7 +150,7 @@ def loop_exit(memory: SoundMemory, address: int) -> Instruction:
 
 def detune(memory: SoundMemory, address: int) -> Instruction:
     """`$F2 lo hi mode`: the detune word, set (mode 0) or added to; the PSG's shifted to a divider
-    as it plays (PlaybackRules.psg_detune_shift)."""
+    as it plays (the PSG's TrackRules.detune_shift)."""
     word = _signed_le_word(memory, address + 1)
     if memory.byte(address + 3) != _DETUNE_SETS:
         return _effect(DetuneAdd(word), 4)
@@ -169,7 +169,7 @@ def register_write(memory: SoundMemory, address: int) -> Instruction:
 
 def psg_volume_down(memory: SoundMemory, address: int) -> Instruction:
     """`$FB n` on the PSG: n taken from the attenuation (neg.b, add.b)."""
-    return _effect(AlterVol(signed_byte(-memory.byte(address + 1) & _BYTE)), 2)
+    return _effect(AlterVol(signed_byte(-memory.byte(address + 1) & _BYTE_MASK)), 2)
 
 
 def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:

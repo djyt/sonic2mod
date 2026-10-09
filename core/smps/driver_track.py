@@ -4,7 +4,8 @@ The walk follows the code (labels, loops, jumps, calls) and builds notes from no
 bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answered here:
 
     effect(e)            the effect as the track plays it: a volume step a SetVol, a detune add a
-                         Detune; None for one the notes take (a gate)
+                         Detune, a register write the voice it leaves; None for one the notes take
+                         (a gate)
     note(value)          the note byte as it sounds: a drum track's selected sample, a noise note
                          on the tone it is clocked by
     cut(note, tied_next) the note as the driver keys it off: itself, or the part it holds and a rest
@@ -23,24 +24,31 @@ from .effects import (
     AlterVolumeStep,
     Detune,
     DetuneAdd,
+    DriverEffect,
     Gate,
+    PlayedEffect,
     PsgForm,
     SelectSample,
+    SetVoice,
     SetVol,
     SmpsEffect,
+    VoiceRegister,
     VolumeStep,
 )
 from .rules import PlaybackRules
 from .song import MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
+from .voice_patch import VoicePatcher
 
 _BYTE = 0x100
+_FM_PART = 3                    # channels per YM2612 part: a register's low bits name one of them
 
 
 class DriverTrack:
     """A track's state as its driver keeps it, read by its kind's TrackRules."""
 
-    def __init__(self, header: SmpsChannelHeader, rules: PlaybackRules):
+    def __init__(self, header: SmpsChannelHeader, rules: PlaybackRules, voices: VoicePatcher):
         self._header = header
+        self._voices = voices                      # the song's: a register write's patched copy
         self._rules = rules.track(header.channel_type)
         self._is_psg = header.channel_type == ChannelType.PSG
         self._volume_step = 0                      # the RAM starts cleared
@@ -50,6 +58,8 @@ class DriverTrack:
         self._noise = False                        # a PSG_FORM ran: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
+        self._voice: int | None = None             # the voice set last, and the registers written over it
+        self._patches: dict[int, int] = {}
 
     @property
     def jump_clears_tie(self) -> bool:
@@ -57,10 +67,10 @@ class DriverTrack:
 
     # --- effects ------------------------------------------------------------------------------
 
-    def effect(self, effect: SmpsEffect) -> SmpsEffect | None:
+    def effect(self, effect: SmpsEffect) -> PlayedEffect | None:
         """`effect` as the track plays it: a volume step a level (an AlterVol then moves that level
-        as the driver keeps it, unclamped), a detune add the detune; None: the notes take it (a
-        gate)."""
+        as the driver keeps it, unclamped), a detune add the detune, a register write the patched
+        voice; None: the notes take it (a gate)."""
         match effect:
             case Gate(frames=frames):
                 self._gate = frames
@@ -80,7 +90,26 @@ class DriverTrack:
                 self._noise = True
             case SelectSample(sound=sound):
                 self._dac_sample = sound
+            case SetVoice(index=index):
+                self._voice, self._patches = index, {}
+            case VoiceRegister(register=register, value=value):
+                return self._patched(register, value)
+        if isinstance(effect, DriverEffect):
+            raise ValueError(f"{self._header.label}: {effect} is no effect this track's driver plays")
+        assert isinstance(effect, PlayedEffect)
         return effect
+
+    def _patched(self, register: int, value: int) -> SetVoice:
+        """The voice set with `register` (as the track writes it: its channel in the low bits)
+        written over it, and every write since the voice was set."""
+        if self._voice is None or self._header.channel_type != ChannelType.FM:
+            raise ValueError(f"{self._header.label}: a register write with no FM voice set")
+        self._patches[register - self._channel_number()] = value
+        return SetVoice(self._voices.copy(self._voice, self._patches))
+
+    def _channel_number(self) -> int:
+        """The track's channel within its YM2612 part: what its register writes carry in their low bits."""
+        return (int(self._header.chip_channel.removeprefix("FM")) - 1) % _FM_PART
 
     def _volume(self, step: int) -> SetVol:
         """Volume step `step`: its level in the driver's table, the header volume added (add.b)."""

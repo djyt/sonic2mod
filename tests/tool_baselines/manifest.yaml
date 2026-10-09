@@ -1035,3 +1035,127 @@ pitch_title_screen:
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_baseline.mod: 20d42bc61cdb
     tests/settings.yaml: 268a59366905
+read_golden_axe:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
+read_moonwalker:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
+read_sonic1_asm_music:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
+    reference/smps_drivers/sonic_1/music/Mus82 - LZ.asm: 0a834d48c5c0
+    reference/smps_drivers/sonic_1/music/Mus83 - MZ.asm: 49873b8fd7f3
+    reference/smps_drivers/sonic_1/music/Mus84 - SLZ.asm: f63d0c08f192
+    reference/smps_drivers/sonic_1/music/Mus85 - SYZ.asm: 77c841df85b9
+    reference/smps_drivers/sonic_1/music/Mus86 - SBZ.asm: 03ba8c65f0c9
+    reference/smps_drivers/sonic_1/music/Mus87 - Invincibility.asm: c9399e4a6940
+    reference/smps_drivers/sonic_1/music/Mus88 - Extra Life.asm: 160a613a525d
+    reference/smps_drivers/sonic_1/music/Mus89 - Special Stage.asm: 6211c75f8147
+    reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm: bacd31e7cced
+    reference/smps_drivers/sonic_1/music/Mus8B - Ending.asm: 80e00bbcd0b2
+    reference/smps_drivers/sonic_1/music/Mus8C - Boss.asm: e13e9ba9ec52
+    reference/smps_drivers/sonic_1/music/Mus8D - FZ.asm: 8b1125b96028
+    reference/smps_drivers/sonic_1/music/Mus8E - Sonic Got Through.asm: 61ac7a971a48
+    reference/smps_drivers/sonic_1/music/Mus8F - Game Over.asm: 4d3d74724c03
+    reference/smps_drivers/sonic_1/music/Mus90 - Continue Screen.asm: cec085a906a8
+    reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm: 106cf62e8b16
+    reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
+    reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
+read_sonic1_asm_music_shipped:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
+    reference/smps_drivers/sonic_1/music/Mus82 - LZ.asm: 0a834d48c5c0
+    reference/smps_drivers/sonic_1/music/Mus83 - MZ.asm: 49873b8fd7f3
+    reference/smps_drivers/sonic_1/music/Mus84 - SLZ.asm: f63d0c08f192
+    reference/smps_drivers/sonic_1/music/Mus85 - SYZ.asm: 77c841df85b9
+    reference/smps_drivers/sonic_1/music/Mus86 - SBZ.asm: 03ba8c65f0c9
+    reference/smps_drivers/sonic_1/music/Mus87 - Invincibility.asm: c9399e4a6940
+    reference/smps_drivers/sonic_1/music/Mus88 - Extra Life.asm: 160a613a525d
+    reference/smps_drivers/sonic_1/music/Mus89 - Special Stage.asm: 6211c75f8147
+    reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm: bacd31e7cced
+    reference/smps_drivers/sonic_1/music/Mus8B - Ending.asm: 80e00bbcd0b2
+    reference/smps_drivers/sonic_1/music/Mus8C - Boss.asm: e13e9ba9ec52
+    reference/smps_drivers/sonic_1/music/Mus8D - FZ.asm: 8b1125b96028
+    reference/smps_drivers/sonic_1/music/Mus8E - Sonic Got Through.asm: 61ac7a971a48
+    reference/smps_drivers/sonic_1/music/Mus8F - Game Over.asm: 4d3d74724c03
+    reference/smps_drivers/sonic_1/music/Mus90 - Continue Screen.asm: cec085a906a8
+    reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm: 106cf62e8b16
+    reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
+    reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
+read_sonic1_asm_sfx:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    reference/smps_drivers/sonic_1/sfx/SndA0 - Jump.asm: eb1f6684f557
+    reference/smps_drivers/sonic_1/sfx/SndA1 - Lamppost.asm: 9ff9819723e5
+    reference/smps_drivers/sonic_1/sfx/SndA2.asm: 72a4e1366956
+    reference/smps_drivers/sonic_1/sfx/SndA3 - Death.asm: 4c2cdc5fd052
+    reference/smps_drivers/sonic_1/sfx/SndA4 - Skid.asm: 4da9fb4991d9
+    reference/smps_drivers/sonic_1/sfx/SndA5.asm: 3a536f587f4b
+    reference/smps_drivers/sonic_1/sfx/SndA6 - Hit Spikes.asm: 817f387f7551
+    reference/smps_drivers/sonic_1/sfx/SndA7 - Push Block.asm: 6efa2f98d19d
+    reference/smps_drivers/sonic_1/sfx/SndA8 - SS Goal.asm: fd1e29b29f17
+    reference/smps_drivers/sonic_1/sfx/SndA9 - SS Item.asm: bb2dbc227e1c
+    reference/smps_drivers/sonic_1/sfx/SndAA - Splash.asm: 40c52c6b8d0a
+    reference/smps_drivers/sonic_1/sfx/SndAB.asm: 9abb5a45fdbf
+    reference/smps_drivers/sonic_1/sfx/SndAC - Hit Boss.asm: 0f529cf5d7d3
+    reference/smps_drivers/sonic_1/sfx/SndAD - Get Bubble.asm: d3ed806edfcb
+    reference/smps_drivers/sonic_1/sfx/SndAE - Fireball.asm: d447c44ce66d
+    reference/smps_drivers/sonic_1/sfx/SndAF - Shield.asm: 969575c5c632
+    reference/smps_drivers/sonic_1/sfx/SndB0 - Saw.asm: 4ff6c7609c1f
+    reference/smps_drivers/sonic_1/sfx/SndB1 - Electric.asm: eb2c6699be3d
+    reference/smps_drivers/sonic_1/sfx/SndB2 - Drown Death.asm: 97d952a0dbb0
+    reference/smps_drivers/sonic_1/sfx/SndB3 - Flamethrower.asm: 5884ceec609c
+    reference/smps_drivers/sonic_1/sfx/SndB4 - Bumper.asm: 517bab2cf5cd
+    reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm: 7a4c014dbd15
+    reference/smps_drivers/sonic_1/sfx/SndB6 - Spikes Move.asm: ccc55a0d53fa
+    reference/smps_drivers/sonic_1/sfx/SndB7 - Rumbling.asm: a69bd124d0a0
+    reference/smps_drivers/sonic_1/sfx/SndB8.asm: 62b08fc1d207
+    reference/smps_drivers/sonic_1/sfx/SndB9 - Collapse.asm: 51162318f73f
+    reference/smps_drivers/sonic_1/sfx/SndBA - SS Glass.asm: 0fcb235f2a20
+    reference/smps_drivers/sonic_1/sfx/SndBB - Door.asm: 9d685fee27e9
+    reference/smps_drivers/sonic_1/sfx/SndBC - Teleport.asm: b773be6a8868
+    reference/smps_drivers/sonic_1/sfx/SndBD - ChainStomp.asm: 17ca442ab857
+    reference/smps_drivers/sonic_1/sfx/SndBE - Roll.asm: 17b885664d0d
+    reference/smps_drivers/sonic_1/sfx/SndBF - Get Continue.asm: 803529b6f450
+    reference/smps_drivers/sonic_1/sfx/SndC0 - Basaran Flap.asm: 78a2b6ea73c2
+    reference/smps_drivers/sonic_1/sfx/SndC1 - Break Item.asm: 27fd654cb887
+    reference/smps_drivers/sonic_1/sfx/SndC2 - Drown Warning.asm: bc1138af4f19
+    reference/smps_drivers/sonic_1/sfx/SndC3 - Giant Ring.asm: afa907ca2520
+    reference/smps_drivers/sonic_1/sfx/SndC4 - Bomb.asm: c0bf1e14893b
+    reference/smps_drivers/sonic_1/sfx/SndC5 - Cash Register.asm: 5a955655727d
+    reference/smps_drivers/sonic_1/sfx/SndC6 - Ring Loss.asm: ab562c2b1966
+    reference/smps_drivers/sonic_1/sfx/SndC7 - Chain Rising.asm: a7dd8e74bb4b
+    reference/smps_drivers/sonic_1/sfx/SndC8 - Burning.asm: 187f1678545a
+    reference/smps_drivers/sonic_1/sfx/SndC9 - Hidden Bonus.asm: d346d4601c79
+    reference/smps_drivers/sonic_1/sfx/SndCA - Enter SS.asm: fea77e1ae92b
+    reference/smps_drivers/sonic_1/sfx/SndCB - Wall Smash.asm: 24549f7fe974
+    reference/smps_drivers/sonic_1/sfx/SndCC - Spring.asm: d8f918f37514
+    reference/smps_drivers/sonic_1/sfx/SndCD - Switch.asm: 7f6f3b4d529e
+    reference/smps_drivers/sonic_1/sfx/SndCE - Ring Left Speaker.asm: 0d387473f777
+    reference/smps_drivers/sonic_1/sfx/SndCF - Signpost.asm: 320b3c201a06
+    reference/smps_drivers/sonic_1/sfx/SndD0 - Waterfall.asm: a4be70b95a7c
+read_sonic1_rom:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    input/roms/sonic_rev01.bin: c30832bccae0
+read_sonic1_rom_shipped:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    input/roms/sonic_rev01.bin: c30832bccae0
+read_streets_of_rage:
+  commit: 3cbcd9a-dirty
+  date: '2026-10-09'
+  inputs:
+    input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

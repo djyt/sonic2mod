@@ -125,14 +125,14 @@ def _load_cases() -> tuple[list[dict], list[str]]:
             by_name[tc["name"]] = tc
             base.append(tc)
             if _has_merge(tc["config"]):
-                merged.append(_case(group, f"{tc['name']}_merged", tc["config"], f"{tc['baseline']}_merged",
+                merged.append(_case(group, f"{tc['name']}_merged", tc["config"], f"{tc['stem']}_merged",
                                     tc["variant"], ["--merged"], f"{e['why']} — merged build"))
 
     rom = []
     for group, e in rom_entries:
         of = by_name[e["of"]]
         args = ["--input", e["input"], "--rom-song", str(e["rom_song"])]
-        tc = _case(group, e["name"], of["config"], of["baseline"], of["variant"], args,
+        tc = _case(group, e["name"], of["config"], of["stem"], of["variant"], args,
                    f"{of['description']}, read from the ROM ({e['rom_song']}) — {e['why']}", song=e["input"])
         tc["shares_baseline"] = of["name"]
         rom.append(tc)
@@ -149,6 +149,7 @@ def _case(group: str, name: str, config: str, baseline: str, variant: str | None
         "name": name,
         "group": group,
         "config": config,
+        "stem": baseline,
         "baseline": f"tests/baselines/{baseline}_baseline.mod",
         "variant": variant,
         "args": args,

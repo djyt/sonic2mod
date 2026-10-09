@@ -423,10 +423,20 @@ label** (`SmpsChannel.loop_event_index`), not every event at the label's tick: S
 `smpsPSGAlterVol $FF` just before its label would otherwise repeat each pass and walk the hi-hat to
 full volume.
 
+Tracks that loop at other lengths are in step again only after their periods' least common
+multiple (Streets of Rage $8F: 2304, 1728 and 4608 frames, 13824), so every track is replayed to
+the last jump target plus that period and the MOD loops back to the target.  A loop's period is
+the shortest its body repeats at (Green Hill's drums: 1024 ticks, a 512-tick bar twice); one
+under a quarter of the longest is a texture and sets none (its hi-hat).  A period past four
+times the longest loop is not unrolled: the song ends as before and `loop_drift` names the
+tracks out of step after the MOD's loop (Stealthy Steps' PSG3, 5173 against 5120).
+
 ### Leading rests
 
 The drum track's rests write nothing: the sample plays out, as on the chip, and an FM drum rings on
-(Type 0 FM); only a silent drum's hit stops it (`ChannelWriter._stop_ringing`).
+(Type 0 FM); only a silent drum's hit stops it (`ChannelWriter._stop_ringing`).  A driver whose rest
+stops the sample says so (`TrackRules.rest_cuts`: Streets of Rage's rests and gates play its empty
+`$85`), and its rests write `C00`.
 
 A channel whose first event is a rest gets `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, after
 every channel is converted): a song that loops to position 0 otherwise rings its last note through the

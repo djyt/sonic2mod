@@ -142,6 +142,8 @@ class SmpsToModConverter:
                             row=int(tick // self._timeline.ticks_per_row))
         for extended in prepared.loops_extended:
             self._diag.info(InfoKind.LOOP_EXTENDED, **extended)
+        if prepared.loops_drift:
+            self._diag.warn(WarningKind.LOOP_DRIFT, tracks=list(prepared.loops_drift))
 
     def _follow(self, song: SmpsSong) -> None:
         """Convert `song` from here on: the timeline and the planners that read it are its."""

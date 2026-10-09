@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, MD_PSG_CLOCK
 
-_WORD = 0x10000
+_WORD_VALUES = 0x10000
 
 
 def signed_byte(value: int) -> int:
@@ -23,7 +23,7 @@ def signed_byte(value: int) -> int:
 
 def signed_word(value: int) -> int:
     """A sum kept in a 16-bit word (add.w), two's complement."""
-    return (value + _WORD // 2) % _WORD - _WORD // 2
+    return (value + _WORD_VALUES // 2) % _WORD_VALUES - _WORD_VALUES // 2
 
 
 # ---------------------------------------------------------------------------

@@ -190,7 +190,7 @@ class SelectSample(PlayedEffect):
 
 @dataclass(frozen=True)
 class VolumeStep(DriverEffect):
-    """The track's volume as a step of its driver's table (PlaybackRules.volume_steps), the
+    """The track's volume as a step of its driver's table (TrackRules.volume_steps), the
     header volume added: the walk's SetVol."""
     flag = CoordFlag.VOLUME_STEP
     step: int

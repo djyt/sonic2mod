@@ -43,5 +43,7 @@ Status key: `[ ]` open, `[x]` done.
   A driver's folder moves only its game's cases.  Shared modules move every case: a module's
   top level runs on import, and `core` imports its packages eagerly.  Finer, if wanted: line
   level (diff hunks against executed statements).
-- [ ] 4. Findings 3, 4, 5, 7.
+- [x] 4. Findings 3 (each driver's `PlaybackRules` stated; Golden Axe has no PSG tables), 4
+  (`source` re-exports `SmpsDriver`; `ConversionConfig.read_dac`), 7.  Finding 5 kept: the DAC and
+  channel names are SMPS2ASM's (the asm dialect's vocabulary, like note names), not a driver's.
 - Later: Streets of Rage cases (decision 4 revisited, after its Phase 4).

@@ -4,7 +4,8 @@ streets_of_rage.md § 1.4).  Each instruction is read into the ops the SMPS walk
     d n        d $01-$7F frames, n octave (bits 4-6) | semitone   -> NOTE, DURATION
     $80|d      rest                                               -> NOTE $80, DURATION
     $00        end of track                                       -> STOP
-    $F0-$FF    a flag: the kind's table (variant.py), or a handler here
+    $F0-$FF    a flag: the kind's table (variant.py); those SMPS's vocabulary spells otherwise
+               are read here (read(...) in the tables)
 
 Notes as SMPS numbers ($81 = C0): FM octave o plays block o; a PSG row r plays octave r + 1 from
 row 2 (C3, Sonic 1's PSG table entry 0; rows 0-1 read row 2, rows 6-9 row 6).  A drum track's
@@ -17,7 +18,6 @@ need: it unrolls each loop from its `$F6`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from functools import partial
 
 from core.rom.grammar import Instruction, flag_instruction, track_label
@@ -60,16 +60,11 @@ _PSG_ROW_C3 = 2
 _PSG_TOP_ROW = 6
 _PSG_LAST_ROW = 9
 
-_LOOP_START, _LOOP_END, _LOOP_EXIT = 0xF5, 0xF6, 0xFE
-_DETUNE, _VIBRATO, _PAN = 0xF2, 0xF4, 0xF8
-_FORM = 0xF7                       # on the PSG: noise
-_SAMPLE = 0xF0                     # on the drum track: the sample its notes play
 
 _LOOP_END_LENGTH = 5               # $F6 x n back.w
+_LOOP_END = 0xF6                   # where a loop break lands past
 _PSG_DEPTH_SHIFT = 4               # the PSG adds the vibrato word >> 4 to its divider
 _DETUNE_SETS = 0                   # $F2's third byte: 0 sets, any other adds
-_VOLUME_DOWN = 0xFB                # on the PSG: att -= n
-_REGISTER = 0xFA                   # on FM and the drum track: a YM2612 register write
 _TIMERS = range(0x24, 0x27)        # Timer A, Timer B: MUCOM's tempo, which nothing here reads
 _OPERATOR_REGISTERS = range(0x30, 0xA0)
 
@@ -92,10 +87,6 @@ def mucom_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, k
     if byte < _FIRST_FLAG:
         note = Op(OpKind.NOTE, value=_note(memory, address + 1, kind))
         return Instruction((note, Op(OpKind.DURATION, value=byte)), 2, True)
-
-    handler = _HANDLERS[kind].get(byte) or _COMMON.get(byte)
-    if handler is not None:
-        return handler(memory, address)
     return flag_instruction(memory, address, variant, kind)
 
 
@@ -131,13 +122,13 @@ def _effect(effect: SmpsEffect, length: int) -> Instruction:
 
 # --- loops ---------------------------------------------------------------------------------
 
-def _loop_start(memory: SoundMemory, address: int) -> Instruction:
+def loop_start(memory: SoundMemory, address: int) -> Instruction:
     """`$F5 offset.w`: the body starts after it (its count is the closing `$F6`'s)."""
     body = address + 3
     return Instruction((), 3, True, target=body)
 
 
-def _loop_end(memory: SoundMemory, address: int) -> Instruction:
+def loop_end(memory: SoundMemory, address: int) -> Instruction:
     """`$F6 x n back.w`: n passes of the body that starts `back` before the word's end."""
     count = memory.byte(address + 2)
     body = address + 3 - _le_word(memory, address + 3)
@@ -145,7 +136,7 @@ def _loop_end(memory: SoundMemory, address: int) -> Instruction:
     return Instruction((op,), _LOOP_END_LENGTH, True, target=body)
 
 
-def _loop_exit(memory: SoundMemory, address: int) -> Instruction:
+def loop_exit(memory: SoundMemory, address: int) -> Instruction:
     """`$FE offset.w`: on the last pass, on past the loop's `$F6` (offset from the word's end + 2)."""
     after = address + 5 + _le_word(memory, address + 1)
     end = after - _LOOP_END_LENGTH
@@ -157,7 +148,7 @@ def _loop_exit(memory: SoundMemory, address: int) -> Instruction:
 
 # --- flags with operands the SMPS vocabulary spells differently ------------------------------
 
-def _detune(memory: SoundMemory, address: int) -> Instruction:
+def detune(memory: SoundMemory, address: int) -> Instruction:
     """`$F2 lo hi mode`: the detune word, set (mode 0) or added to; the PSG's shifted to a divider
     as it plays (PlaybackRules.psg_detune_shift)."""
     word = _signed_le_word(memory, address + 1)
@@ -166,7 +157,7 @@ def _detune(memory: SoundMemory, address: int) -> Instruction:
     return _effect(Detune(word), 4)
 
 
-def _register_write(memory: SoundMemory, address: int) -> Instruction:
+def register_write(memory: SoundMemory, address: int) -> Instruction:
     """`$FA r v`: an operator register patches the voice; a timer is inert.  Any other is refused."""
     register, value = memory.byte(address + 1), memory.byte(address + 2)
     if register in _TIMERS:
@@ -197,7 +188,7 @@ def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
     return _effect(ModSet(delay, speed, depth, steps), 2 + _VIBRATO_SET_BYTES)
 
 
-def _pan(memory: SoundMemory, address: int) -> Instruction:
+def pan(memory: SoundMemory, address: int) -> Instruction:
     """`$F8 n`: centre, left, right, centre."""
     n = memory.byte(address + 1)
     if n >= len(_PAN_B4):
@@ -205,27 +196,16 @@ def _pan(memory: SoundMemory, address: int) -> Instruction:
     return _effect(Pan(_PAN_B4[n]), 2)
 
 
-def _noise(memory: SoundMemory, address: int) -> Instruction:
+def noise(memory: SoundMemory, address: int) -> Instruction:
     """`$F7 x` on a PSG track: white noise clocked by tone 3 (the operand is not read)."""
     return _effect(PsgForm(_NOISE_FORM), 2)
 
 
-def _dac_sample(memory: SoundMemory, address: int) -> Instruction:
+def dac_sample(memory: SoundMemory, address: int) -> Instruction:
     """`$F0 n` on the drum track: its notes play sample $80 | n."""
     return _effect(SelectSample(_DAC_SAMPLE_BIT | memory.byte(address + 1)), 2)
 
 
-_Handler = Callable[[SoundMemory, int], Instruction]
-
-_COMMON: dict[int, _Handler] = {_LOOP_START: _loop_start, _LOOP_END: _loop_end, _LOOP_EXIT: _loop_exit}
-
 # Vibrato: FM words as written; the PSG's >> 4 (a divider, not an FNUM).  Each step's, where the
 # driver shifts the sum: Phase 5 checks the depth
-_FM_VIBRATO, _PSG_VIBRATO = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DEPTH_SHIFT)
-
-_HANDLERS: dict[ChannelType, dict[int, _Handler]] = {
-    ChannelType.FM: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _REGISTER: _register_write},
-    ChannelType.PSG: {_DETUNE: _detune, _VIBRATO: _PSG_VIBRATO, _FORM: _noise, _VOLUME_DOWN: psg_volume_down},
-    ChannelType.DAC: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _SAMPLE: _dac_sample,
-                      _REGISTER: _register_write},
-}
+fm_vibrato, psg_vibrato = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DEPTH_SHIFT)

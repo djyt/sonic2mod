@@ -85,6 +85,8 @@ def _rules(rules: PlaybackRules) -> Iterator[str]:
         value = getattr(rules, f.name)
         if isinstance(value, str):
             yield f"  {f.name}: {value}"
+        elif isinstance(value, frozenset):
+            yield f"  {f.name}: {sorted(value)}"           # set order follows the hash seed
         elif isinstance(value, (tuple, dict)) and len(value) > 4:
             yield f"  {f.name}: {len(value)} entries {_digest(repr(sorted(value.items()) if isinstance(value, dict) else value))}"
         else:

@@ -23,7 +23,7 @@ Each topic has one home; the others link to it.
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
-| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `binary_import.md` (ROM input), `streets_of_rage.md` (SoR driver analysis + plan), `user_improvements.md` |
+| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `binary_import.md` (ROM input), `streets_of_rage.md` (SoR driver analysis + plan), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
@@ -117,6 +117,8 @@ python convert.py configs/02_green_hill_zone.yaml --input input/roms/sonic_rev01
 # The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
 python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1
 python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
+# Every song of a ROM (or an asm folder) as read, walked and played, as text: what a reader change moved
+python tools/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
 
 # Render all 49 sound effects to 16-bit stereo WAV (no config needed)
 python sonic2wav.py --all
@@ -191,28 +193,37 @@ python tools/measure_volumes.py --configs configs/moonwalker      # the rips: it
 
 ## Regression Testing
 
-Baselines live in `tests/baselines/`.  Every song config is a case; every config with a `merge:`
-or `merge_patterns:` section is a second case, `<name>_merged`; variants (`_VARIANTS`) are cases
-too, and with the ROM in `input/roms/` four songs are converted from its bytecode (`<name>_rom`).
-A converter change is safe only once every case still produces a byte-identical MOD — cells **and** the sample table and data (length, volume, finetune, loop, MD5).
-Conversions run as parallel subprocesses: ~14 s with an empty render cache, ~4 s warm.
+Cases are data: **`tests/cases.yaml`**, by game.  Sonic stays complete (every song, its lofi variants,
+each config's `<name>_merged` build, four songs read from the ROM: `<name>_rom`); every other
+driver has a few, chosen by line coverage.  A song joins only for code no case runs yet.
+A case whose ROM is not in `input/roms/` is left out.
+A converter change is safe only once every case it can move still produces a byte-identical MOD —
+cells **and** the sample table and data (length, volume, finetune, loop, MD5).
+
+**Selection by what each case ran** (`tests/selection.py`): `--generate-baselines` records the
+project files each case executes (coverage.py, `pip install coverage`; render caches off, so
+generating is cold: ~30 s).  A plain run diffs the working tree with each case's baseline commit
+and runs only the cases a change can move: a driver's folder moves its game's cases, shared code
+(`core/smps`, `core/convert`, ...) moves every case that imports it.  `--all` runs everything.
 
 Every case converts with **`tests/settings.yaml`** (`convert.py --settings`), never
 `configs/settings.yaml`, so tuning a song by ear does not move the baselines.  It states every key
 the live file has (the runner exits 2 otherwise; add a new setting to both).
 `tests/baselines/manifest.yaml` records each baseline's commit, date and the hashes of its settings
-and config.
+and config; `coverage.yaml` what each case ran.
 
 ```bash
-python tests/regression.py --generate-baselines        # BEFORE a change, while the code is known-good
-python tests/regression.py                             # AFTER: diff every case
+python tests/regression.py --generate-baselines        # BEFORE a change, while the code is known-good (commit first)
+python tests/regression.py                             # AFTER: the cases the change can move
+python tests/regression.py --all                       # every case
+python tests/regression.py --only title_screen moonwalker            # cases or groups
 python tests/regression.py --generate-baselines --only title_screen   # accept one song's change
-python tests/regression.py --jobs 4                    # limit parallelism (-j 1: one at a time)
 python -m pytest tests -q                              # unit tests (merge rules, detune, vgm, rom, ...)
 ```
 
 **Workflow for any converter change:**
-1. Run `--generate-baselines` while code is known-good.
+1. Commit, then run `--generate-baselines` while code is known-good (a `-dirty` record selects
+   more than it needs to).
 2. Make the change.
 3. Run without flags — PASS means no regressions on channels, and no note the player cannot
    sound that the baseline sounds (`tools/mod_lint.py`: a `3xx` with no sample playing or a
@@ -221,27 +232,22 @@ python -m pytest tests -q                              # unit tests (merge rules
    a `3FF` where the sounding sample cannot reach the pitch, or a note on a slot the merged build
    stopped rendering, diffs like any intended change.
 
-A change to one config runs only that song's cases (`--only`).
-
-**The VGM tools have their own suite, `tests/tool_regression.py`**: `vgm_analyze` on all 19 VGZs,
-`vgm_pitch_audit` on every baseline MOD and `vgm_lift` (the Moonwalker pairs too, with its ROM), byte
-for byte, in about 10 s; `--with-renders` adds `vgm_compare`.
-Run it after any change to `core/vgm/`, `core/audit/`, `core/mod/timing.py` or a VGM tool.
+**The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
+`vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD, `vgm_lift` (the Moonwalker
+pairs too) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+Moonwalker, Golden Axe, Streets of Rage) as read, walked and played, no rendering — byte for byte;
+`--with-renders` adds `vgm_compare`.
 
 ```bash
-python tests/tool_regression.py                          # PASS / FAIL + diff
-python tests/tool_regression.py --with-renders           # vgm_compare too
-python tests/tool_regression.py --generate-baselines --only analyze_02_frames   # accept one change
+python tests/tool_regression.py                          # PASS / FAIL + diff (a read_ case names the songs that differ)
+python tests/tool_regression.py --all --with-renders     # everything, vgm_compare too
+python tests/tool_regression.py --generate-baselines --only read_golden_axe   # accept one change
 ```
 
-**Adding a new test case:** append a row to `_SONGS` in `tests/regression.py`:
-```python
-("20_my_song", "my_song", "my_song", "My Song — what makes it worth testing"),
-#  config stem   test name  baseline stem  description
-```
-To ignore a channel while deliberately changing it, add `"my_song": [8]` to `_CASE_OVERRIDES`
-(0-based MOD indices); it is normally empty.  `tools/mod_compare.py` diffs any two MODs
-(`compare_mods(a, b, ignore_channels=[8])`).
+**Adding a case:** a line in `tests/cases.yaml` (`name`, `config`, `variant`, `why`); its
+`--generate-baselines --only <name>`.  To ignore a channel while deliberately changing it, add
+`"my_song": [8]` to `_CASE_OVERRIDES` in `tests/regression.py` (0-based MOD indices); it is normally
+empty.  `tools/mod_compare.py` diffs any two MODs (`compare_mods(a, b, ignore_channels=[8])`).
 
 ## Rules that are easy to get wrong
 

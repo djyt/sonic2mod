@@ -85,9 +85,11 @@ def run_recorded(case: CaseRun, **run_args) -> tuple[subprocess.CompletedProcess
         env = {**os.environ, _RENDER_CACHE_ENV: _CACHE_OFF}
         result = subprocess.run(argv, cwd=ROOT, env=env, check=False, **run_args)
 
+        # Measured files include the source tree's unexecuted ones (no lines): not run
         cov = coverage.Coverage(data_file=str(data), config_file=str(rc))
         cov.combine([tmp], keep=True)
-        return result, sorted(_relative(f) for f in cov.get_data().measured_files() if _inside(f))
+        ran = cov.get_data()
+        return result, sorted(_relative(f) for f in ran.measured_files() if ran.lines(f) and _inside(f))
 
 
 def save_record(path: Path, ran: dict[str, tuple[CaseRun, list[str]]]) -> None:

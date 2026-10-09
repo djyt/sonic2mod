@@ -268,6 +268,33 @@ class Loops(unittest.TestCase):
         self.assertGreaterEqual(notes[-1][0] + 10, 100)
         self.assertEqual(song.loop_target_tick(), 10)
 
+    @staticmethod
+    def _looping(label: str, notes: list[int], length: int) -> SmpsChannel:
+        """A track that loops from tick 0 over `notes`, `length` ticks each."""
+        events = [SmpsEvent(SmpsNote(n, length), tick_position=i * length) for i, n in enumerate(notes)]
+        return SmpsChannel(SmpsChannelHeader("FM", label), events, has_jump=True, loop_tick=0, loop_event_index=0,
+                           rules=SONIC1_RULES)
+
+    def test_tracks_that_loop_at_other_lengths_unroll_to_their_common_period(self):
+        # 3 and 2 notes of 10 ticks: in step again after 60 (Streets of Rage $8F: 2304 / 1728 / 4608)
+        song = SmpsSong(SmpsSongHeader(), [self._looping("A", [0x90, 0x91, 0x92], 10),
+                                           self._looping("B", [0x93, 0x94], 10)], rules=SONIC1_RULES)
+        prepared = prepare_song(song)
+        self.assertEqual((prepared.song.end_tick(), prepared.loops_drift), (60, ()))
+
+    def test_a_loop_that_repeats_inside_its_body_sets_its_shorter_period(self):
+        # B's 40 ticks are one 20-tick bar twice (Green Hill's drums): A's 60 hold it, unrolled to 60
+        song = SmpsSong(SmpsSongHeader(), [self._looping("A", [0x90, 0x91, 0x92], 20),
+                                           self._looping("B", [0x93, 0x94, 0x93, 0x94], 10)], rules=SONIC1_RULES)
+        self.assertEqual(prepare_song(song).song.end_tick(), 60)
+
+    def test_a_period_too_long_to_unroll_leaves_the_odd_loop_out_of_step(self):
+        # 100 against 97 ticks: 9700 is past 4 loops; the song ends at 100 and B drifts
+        song = SmpsSong(SmpsSongHeader(), [self._looping("A", [0x90], 100), self._looping("B", [0x91], 97)],
+                        rules=SONIC1_RULES)
+        prepared = prepare_song(song)
+        self.assertEqual((prepared.song.end_tick(), prepared.loops_drift), (100, ("B",)))
+
 
 if __name__ == "__main__":
     unittest.main()

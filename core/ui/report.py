@@ -146,6 +146,12 @@ def _w_rest_no_slot(w: dict):
             "[cyan]num_mod_channels:[/cyan] one step up gives the tempo commands a channel")
 
 
+def _w_loop_drift(w: dict):
+    tracks = ", ".join(w['tracks'])
+    return ("patterns", f"{tracks}: a loop length whose common period with the song's is too long to unroll; "
+                        f"out of step after the MOD's loop", None)
+
+
 def _w_loop_no_slot(w: dict):
     eff, par = w['overwrote']
     what = f" (it replaced {eff:X}{par:02X})" if (eff, par) != (0, 0) else ""
@@ -277,6 +283,7 @@ _WARNINGS: dict[WarningKind, Callable[[dict], tuple[str, str, str | None]]] = {
     WarningKind.MISSING_SOURCE: _w_missing_source, WarningKind.RATE3_SYNTH_ROOT: _w_rate3,
     WarningKind.TEMPO_NO_SLOT: _w_tempo_no_slot, WarningKind.TEMPO_BPM_RANGE: _w_tempo_bpm_range,
     WarningKind.PATTERN_OVERFLOW: _w_pattern_overflow, WarningKind.REST_NO_SLOT: _w_rest_no_slot, WarningKind.LOOP_NO_SLOT: _w_loop_no_slot,
+    WarningKind.LOOP_DRIFT: _w_loop_drift,
     WarningKind.SUSTAIN_SHORT: _w_sustain_short, WarningKind.SAMPLE_TRUNCATED: _w_truncated,
     WarningKind.SAMPLE_FILE_MISSING: _w_sample_file_missing, WarningKind.VOICE_MISSING: _w_voice_missing,
     WarningKind.RENDER_LEVEL: _w_render_level,

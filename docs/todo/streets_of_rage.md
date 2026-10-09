@@ -397,12 +397,22 @@ a song pass (the `run_out` precedent).
     - the audit: a sweep's frame-by-frame steps are no note starts (a move counts from a pitch held
       over a frame), slides are no note-ons to pair with, a PSG sample's pitch is its table divider's
       (B7: divider 29, -42 c; Sonic's pitch audits moved 3-4 c).
+  - **Volumes (2026-10-09):** `measure_volumes.py --configs configs/streets_of_rage`, one write
+    pass: 193 volumes in 15 songs.  Left over 1 dB: FM3 voices of the special-mode songs (-28 /
+    -38 dB, Phase 5), noise samples rendered with one envelope and played with `$00` (+6-8 dB, the
+    `noise_envelopes` warning), and instruments whose channels disagree.
   - Left: `$8B` 56 notes -40 ... -70 c for a row: a tie re-struck for its level (`legato: retrigger`)
     restarts at the note's period, the slide catches up a row later; `$81` FM2 12 notes: a detune
     sweep (`DetuneAdd` in a loop, 19 detunes) with no free slot (`$87` `$88` `$90` warn too);
     single notes the audit pairs with a re-struck tie, and `$91`'s first second (the rip starts 39
     frames in).
-- [ ] 4.3 Unequal loops (`$8A` `$8C` `$8F` `$91`): loop extension or an LCM unroll.
+- [x] 4.3 Unequal loops (2026-10-09): `prepare_song` replays every track to the last loop start plus
+  the loops' common period, each loop's the shortest its body repeats at.  `$8F` (2304 / 1152 /
+  1728 / 4608 / 144) unrolls to 18852 frames (99 patterns), checked against the rip's frame log to
+  its end.  `$8A` (4608 / 1152 / 576), `$8C` (4608 from 1536 / 1792 / 2048, PSG3 128) and `$87`
+  (PSG1 21 frames late) were in step already; `$91` ends.  `$89`'s PSG3 (5173, the `$F6` quirk)
+  against 5120 is past four loops: warned (`loop_drift`), it drifts 53 frames a loop.  Sonic,
+  Moonwalker, Golden Axe unchanged (Green Hill's 1024-tick drum loop is a 512 bar twice).
 - [ ] 4.4 Listen in the FT2 clone; Amiga merged builds if wanted.
 
 ### Phase 5: chip features

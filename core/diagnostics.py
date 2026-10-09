@@ -31,6 +31,7 @@ class WarningKind(StrEnum):
     PATTERN_OVERFLOW = 'pattern_overflow'           # a channel ran past max_patterns
     REST_NO_SLOT = 'rest_no_slot'                   # a leading rest's C00 found no slot
     LOOP_NO_SLOT = 'loop_no_slot'                   # the loop's Bxx found no free slot
+    LOOP_DRIFT = 'loop_drift'                       # tracks' loops too far apart to unroll: out of step
     # merged build
     MERGE_LOST = 'merge_lost'                       # follower notes a fold loses or cuts
     MERGE_HEADROOM = 'merge_headroom'               # composites clamped past full scale

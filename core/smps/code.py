@@ -211,8 +211,7 @@ class _Walker:
         channel = self._channel
         start = self._header.label
         if start not in self._labels:
-            print(f"Warning: Label '{start}' not found")
-            return channel
+            raise ValueError(f"{self._header.channel_type} track: its label '{start}' is not in the code")
 
         # The channel's own start: tick 0 (its loop, if it jumps back here, is taken by tick)
         self._label_ticks.setdefault(start, 0)

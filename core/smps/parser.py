@@ -146,8 +146,7 @@ class SmpsParser:
             if m:
                 chan_name = m.group(1)
                 if chan_name not in SFX_CHANNEL_IDS:
-                    print(f"Warning: unknown SFX channel id '{chan_name}' — skipping")
-                    continue
+                    raise ValueError(f"smpsHeaderSFXChannel: unknown channel id '{chan_name}'")
                 chanid = SFX_CHANNEL_IDS[chan_name]
                 pitch_raw = int(m.group(3), 16)
                 if pitch_raw > 0x7F:

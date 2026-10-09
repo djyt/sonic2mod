@@ -154,6 +154,25 @@ def _w_loop_no_slot(w: dict):
             "[cyan]num_mod_channels:[/cyan] one step up gives it a channel")
 
 
+def _w_sample_file_missing(w: dict):
+    return ("samples", f"[bold]instrument {w['instrument']}[/bold]: {escape(w['path'])} not found; the slot is empty",
+            "fix the [cyan]sample_list:[/cyan] entry, or remove it")
+
+
+def _w_voice_missing(w: dict):
+    insts = ", ".join(str(i) for i in w['instruments'])
+    where = escape(w['extra_ctx'].split('[')[0])
+    return ("samples", f"[bold]{escape(w['extra_ctx'])}[/bold]: voice ${w['voice_idx']:02X} is not in the song "
+                       f"[dim](instrument {insts})[/dim]", f"remove the entry from [cyan]{where}[/cyan]")
+
+
+def _w_render_level(w: dict):
+    pan = " panned" if w['panned'] else ""
+    return ("samples", f"[bold]instrument {w['instrument']}[/bold] rendered at TL +{w['tl']}{pan} "
+                       f"({w['rendered_db']:+.2f} dB), baked at {w['baked_db']:+.2f} dB: the loop extension moved "
+                       f"its commonest level", None)
+
+
 def _w_sustain_short(w: dict):
     limit = {'mod': f"{w['max_kb']} KB at {w['rate'] / 1000:.1f} kHz", 'cap': "the 10 s auto cap",
              'setting': "sustain_duration"}[w['limit']]
@@ -259,6 +278,8 @@ _WARNINGS: dict[WarningKind, Callable[[dict], tuple[str, str, str | None]]] = {
     WarningKind.TEMPO_NO_SLOT: _w_tempo_no_slot, WarningKind.TEMPO_BPM_RANGE: _w_tempo_bpm_range,
     WarningKind.PATTERN_OVERFLOW: _w_pattern_overflow, WarningKind.REST_NO_SLOT: _w_rest_no_slot, WarningKind.LOOP_NO_SLOT: _w_loop_no_slot,
     WarningKind.SUSTAIN_SHORT: _w_sustain_short, WarningKind.SAMPLE_TRUNCATED: _w_truncated,
+    WarningKind.SAMPLE_FILE_MISSING: _w_sample_file_missing, WarningKind.VOICE_MISSING: _w_voice_missing,
+    WarningKind.RENDER_LEVEL: _w_render_level,
     WarningKind.NOISE_ENVELOPES: _w_noise_envelopes, WarningKind.SYNTH_ROOT_AMBIGUOUS: _w_synth_root_ambiguous,
     WarningKind.DETUNE_NO_SLOT: _w_detune_no_slot,
     WarningKind.MERGE_LOST: _w_merge_lost, WarningKind.MERGE_HEADROOM: _w_merge_headroom,

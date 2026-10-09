@@ -73,6 +73,7 @@ RENDER_DIR = ROOT / "output" / "compare" / "tool_regression"
 
 _HASH_CHARS = 12
 _DIFF_LINES = 40                  # diff lines printed per failing case
+_TRACEBACK = "Traceback (most recent call last)"
 _SECTIONS_LISTED = 12             # songs named per failing read_ case
 _COMPARE_START = "Config :"       # vgm_compare output compared from this line
 _MANIFEST_HEADER = "# Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.\n"
@@ -204,7 +205,8 @@ def _run(case: _Case, record: bool = False) -> _Case:
         lines = out.splitlines(keepends=True)
         start = next((i for i, line in enumerate(lines) if line.startswith(case.from_line)), 0)
         out = "".join(lines[start:])
-    case.output = out + f"[exit {r.returncode}]\n" + (f"[stderr]\n{r.stderr}" if r.returncode not in (0, 1) else "")
+    crashed = r.returncode not in (0, 1) or _TRACEBACK in r.stderr     # exit 1 is a verdict, a traceback is not
+    case.output = out + f"[exit {r.returncode}]\n" + (f"[stderr]\n{r.stderr}" if crashed else "")
     return case
 
 

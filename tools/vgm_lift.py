@@ -72,6 +72,14 @@ def _compare_config(rip: Path, config: Path, aspects: frozenset[Aspect], channel
     return _compare(rip, source, aspects, channels, lift, cache_dir)
 
 
+def _compare_job(rip: Path, config: Path, aspects: frozenset[Aspect], channels: ChannelChoice,
+                 lift: LiftOptions | None, cache_dir: str | None) -> tuple[SongSource | None, RipDiff]:
+    """_compare_config in a worker process: only core types cross back (a class defined in this
+    script does not pickle when coverage.py runs it as its own __main__: tests/selection.py)."""
+    result = _compare_config(rip, config, aspects, channels, lift, cache_dir)
+    return result.source, result.found
+
+
 def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], channels: ChannelChoice,
              lift: LiftOptions | None, cache_dir: str | None) -> _Result:
     """One rip lifted and compared (a worker's job)."""
@@ -239,8 +247,8 @@ def main() -> None:
     configs, rips = [c for c, _ in pairs], [r for _, r in pairs]
     n = len(pairs)
     with ProcessPoolExecutor(workers(n)) as pool:
-        results = list(pool.map(_compare_config, rips, configs, [aspects] * n, [channels] * n, [lift] * n,
-                                [cache_dir] * n))
+        jobs = pool.map(_compare_job, rips, configs, [aspects] * n, [channels] * n, [lift] * n, [cache_dir] * n)
+        results = [_Result(rip, source, found) for rip, (source, found) in zip(rips, jobs, strict=True)]
     for result in results:
         _print_line(result)
     trusted = sum(r.found.same_in(LIFTED_KINDS) for r in results)

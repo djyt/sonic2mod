@@ -217,10 +217,15 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
         return
     for v in plan.variants.values():
         base = cat.instruments.get(v.base)
-        if base is not None:
-            cat.instruments[v.inst] = dataclasses.replace(
-                base, inst=v.inst, layers=[dataclasses.replace(base.layers[0], fnum_offset=v.detune)],
-                context=f"{base.context} detune {v.detune:+d}")
+        if base is None:
+            continue
+        entry = base.entry
+        if v.rendered is not None:          # its own pitch class: the same `root`, another shift
+            moved = v.rendered - base.rendered_semitone
+            entry = dataclasses.replace(entry, synth_root=v.rendered, synth_shift=entry.synth_shift + moved)
+        cat.instruments[v.inst] = dataclasses.replace(
+            base, inst=v.inst, entry=entry, layers=[dataclasses.replace(base.layers[0], fnum_offset=v.detune)],
+            context=f"{base.context} detune {v.detune:+d}")
     for inst, detune in plan.own.items():
         base = cat.instruments.get(inst)
         if base is not None:

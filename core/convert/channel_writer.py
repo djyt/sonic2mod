@@ -28,7 +28,7 @@ from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents
 from ..smps import C1_SEMITONE, AlterVol, ChannelType, CoordFlag, ModSet, NoteFill, SetVol, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
-from .vibrato import VibratoSpeed, vibrato_depth
+from .vibrato import VibratoSpeed, modulation_slides, vibrato_depth
 
 _FINE_SLIDE_MAX = 0xF          # E1x / E2x move the period by at most 15 units
 _MAX_RELEASE_ROWS = 64         # a release still sounding this many rows on is cut (rate 0 rings forever)
@@ -234,6 +234,10 @@ class ChannelWriter:
         self._vibrato_change = 0   # raw SMPS delta byte (FNUM / PSG divider units); scaled per note
         self._vibrato_steps = 0    # raw SMPS steps byte
         self._vibrato_wait = 0     # ticks to delay before vibrato starts
+        self._mod_set: ModSet | None = None
+        self._mod_slides = False   # the modulation cycles too slowly for 4xy: slides (VibratoSpeed.too_slow)
+        self._mod_origin = 0       # where the modulation started: the last attack, or a ModSet / ModOn
+                                   # since (Streets of Rage $8B FM2: a ModSet on a tie starts it there)
         self._range_entry = None   # voice_map InstrumentRange matched on most recent note
 
         self._dac_map = {dac_cfg.name: dac_cfg for dac_cfg in ctx.config.dac_samples}
@@ -390,8 +394,12 @@ class ChannelWriter:
             self._vibrato_steps = eff.steps
             self._vibrato_speed = self._ctx.vibrato.speed(eff.speed, self._vibrato_steps, self._cfg.source,
                                                           event.tick_position)
+            self._mod_set = eff
+            self._mod_slides = self._ctx.vibrato.too_slow(eff.speed, eff.steps, event.tick_position)
+            self._mod_origin = event.tick_position
             self._vibrato_active = True
         elif kind == CoordFlag.MOD_ON:
+            self._mod_origin = event.tick_position
             self._vibrato_active = True
         elif kind == CoordFlag.MOD_OFF:
             self._vibrato_active = False
@@ -565,11 +573,15 @@ class ChannelWriter:
         if n.psg and not fill.placed:
             self._place_duration_cut(n)
         cxx_coord, slot_used = self._attack_commands(n, fill.slot_used)
-        vib_speed, vib_depth = self._vibrato_of(n)
+        vib_speed, vib_depth = (0, 0) if self._mod_slides else self._vibrato_of(n)
         if not slot_used:
             self._attack_level_or_vibrato(n, vib_speed, vib_depth)
         if n.vib_on and vib_speed > 0:
             self._continue_vibrato(n, vib_speed, vib_depth, fill, cxx_coord)
+        if not n.event.note.is_no_attack:
+            self._mod_origin = n.tick
+        if n.vib_on and self._mod_slides and not n.legato:
+            self._slide_modulation(n)
         self._write_decay(n, fill)
         self._cut_banked(n)
         return True
@@ -810,7 +822,8 @@ class ChannelWriter:
         # Depth is per note: the driver's swing is a fixed number of FNUM / divider units, so its
         # size in cents depends on the chip note it is added to.
         depth = vibrato_depth(self._vibrato_change, self._vibrato_steps, PERIOD_TABLE[n.mod_note.value],
-                              n.res.source + st.transpose, self._is_psg, st.psg_read, self._ctx.player)
+                              n.res.source + st.transpose, self._is_psg, st.psg_read,
+                              self._channel.rules.fm_frequencies, self._ctx.player)
         return (self._vibrato_speed if depth else 0), depth
 
     def _attack_level_or_vibrato(self, n: _Note, vib_speed: int, vib_depth: int) -> None:
@@ -824,6 +837,42 @@ class ChannelWriter:
         wait_ticks = self._vibrato_wait * self._timeline.ticks_per_frame_at(n.tick)
         if n.vib_on and vib_speed > 0 and wait_ticks <= self._timeline.ticks_per_row / 2:
             self._mod.set_effect(0x4, (vib_speed << 4) | vib_depth)
+
+    def _slide_modulation(self, n: _Note) -> None:
+        """A modulation too slow for 4xy as slides: each row with a free effect slot slides to the
+        chip's pitch at its end, until the note ends or is cut (Streets of Rage's sweeps).  A tie
+        written as a note (a level change) starts from the note's period again; its modulation
+        runs on from the attack."""
+        assert self._mod_set is not None
+        tpr = self._timeline.ticks_per_row
+        tpf = self._timeline.ticks_per_frame_at(n.tick)
+        end = n.tick + n.duration if n.cut_tick is None else min(n.tick + n.duration, n.cut_tick)
+
+        # The rows from the attack's on, those whose effect slot is free
+        rows = []
+        for start in _grid_rows(n.pattern * 64 + n.row, end, tpr):
+            pattern, row = self._timeline.pattern_row(start)
+            if pattern >= self._config.max_patterns:
+                break
+            self._mod.ensure_pattern(pattern)
+            if self._mod.effect_slot_free(pattern, row, self._col):
+                rows.append((start, min(start + tpr, end)))
+
+        slides = modulation_slides(self._mod_set, PERIOD_TABLE[n.mod_note.value], rows,
+                                   lambda tick: max(0.0, (tick - self._mod_origin) / tpf), self._modulation_cents(n),
+                                   self._config.target_speed - 1)
+        for start, effect, param in slides:
+            pattern, row = self._timeline.pattern_row(start)
+            self._mod.set_cursor(pattern, self._col, row)
+            self._mod.set_effect(effect, param)
+        self._mod.set_cursor(n.pattern, self._col, n.row)
+
+    def _modulation_cents(self, n: _Note):
+        """The pitch a modulation offset moves `n` by: added to its FNUM word, or its PSG divider."""
+        if not self._is_psg:
+            return lambda offset: detune_cents(n.res.chip, offset, self._channel.rules.fm_frequencies)
+        divider = self._st.psg_read[(n.res.source + self._st.transpose) & 0x7F]
+        return lambda offset: 1200 * math.log2(divider / max(1, divider + offset)) if divider > 0 else 0.0
 
     def _continue_vibrato(self, n: _Note, vib_speed: int, vib_depth: int, fill: _Fill,
                           cxx_coord: tuple[int, int] | None) -> None:

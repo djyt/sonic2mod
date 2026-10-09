@@ -38,6 +38,8 @@ def signed_word(value: int) -> int:
 # transpose lands on the same index as the corrected $10.
 
 FM_TABLE_NC0 = 1         # an FM table's index of nC0: index 0 is the rest's (FMSetFreq subtracts $80)
+PSG_TABLE_PITCH = 36     # the pitch (SMPS semitone) of a PSG table's index 0: C3
+_PSG_TABLE_NOTES = 69    # its chromatic entries, C3 up
 C1_SEMITONE = 12         # nC1: where a MOD's note index 0 (C-1) plays, an octave above nC0
 
 
@@ -66,14 +68,14 @@ def psg_index_semitone(index: int, psg_read: tuple[int, ...]) -> int:
     Marble Zone's five "data bug" notes, and Credits' G#3 where A2 was written.  Those come out
     of the driver's words past its table like any other divider (0 clocked as 1).
     """
-    if 0 <= index < 69:
-        return 36 + index
+    if 0 <= index < _PSG_TABLE_NOTES:
+        return PSG_TABLE_PITCH + index
     n = psg_read[index & 0x7F]
     if n > 1:
         return round(57 + 12 * math.log2((MD_PSG_CLOCK / (32.0 * n)) / 440.0))
     # The table is followed by code, not data; where the extrapolated table has nothing usable
     # the written pitch is the best guess (the audit will show what the hardware really did).
-    return 36 + index
+    return PSG_TABLE_PITCH + index
 
 
 def psg_tone2_divider(note_value: int, transpose: int, psg_read: tuple[int, ...]) -> int:

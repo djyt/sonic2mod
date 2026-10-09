@@ -210,7 +210,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
         detune = getattr(st.config, "detune_plan", None)     # core.plan.detune: the sample at this detune
         if detune is not None:
-            inst = detune.instrument_for(inst, st.detune)
+            inst = detune.instrument_for(inst, st.detune, chip)
     else:
         ranged = psg_range_entry(st.psg_entries, key)
         if ranged is not None:

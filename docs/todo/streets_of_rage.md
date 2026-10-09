@@ -381,8 +381,27 @@ a song pass (the `run_out` precedent).
     seek pair across a frame boundary (`$88` 8); hits past the walked first pass.
 
 ### Phase 4: convert
-- [ ] 4.1 `configs/streets_of_rage/`: 16 minimal configs and `rips.yaml`.
+- [x] 4.1 `configs/streets_of_rage/`: 16 minimal configs and `rips.yaml` (Phase 2.3); all 16 convert.
 - [ ] 4.2 `vgm_pitch_audit` clean; `measure_volumes.py --configs configs/streets_of_rage`.
+  - **Pitch (2026-10-09):** 15 rips, 8 clean but FM3 special mode (Phase 5: 7 songs, -200 / -300 c on
+    every FM3 note).  Fixed on the way:
+    - modulation that cycles too slowly for `4x1` (251 / 255 steps: sweeps, `$90` FM4 +8 FNUM a
+      frame) was a full-depth `41F`; now slides to the chip's pitch row by row
+      (`modulation_slides`), from the attack or a `ModSet` on a tie (`$8B` FM2).  Moonwalker's Beat It
+      sweeps too;
+    - `vibrato_depth` reads the song's FNUM, not 644 · 2^(pc/12): Sonic 1's B is 606, a block up, so
+      its B notes' `4xy` were half deep (Sonic / Moonwalker baselines: `4xy` depths only);
+    - a detune variant carries its interval at its render pitch: +195 is +336 c on F#, +266 c on A#.
+      Rendered in its notes' pitch class, notes further than 25 c from it a variant per class
+      (`$85` FM1 96 notes, `$84` FM2, `$83` FM3);
+    - the audit: a sweep's frame-by-frame steps are no note starts (a move counts from a pitch held
+      over a frame), slides are no note-ons to pair with, a PSG sample's pitch is its table divider's
+      (B7: divider 29, -42 c; Sonic's pitch audits moved 3-4 c).
+  - Left: `$8B` 56 notes -40 ... -70 c for a row: a tie re-struck for its level (`legato: retrigger`)
+    restarts at the note's period, the slide catches up a row later; `$81` FM2 12 notes: a detune
+    sweep (`DetuneAdd` in a loop, 19 detunes) with no free slot (`$87` `$88` `$90` warn too);
+    single notes the audit pairs with a re-struck tie, and `$91`'s first second (the rip starts 39
+    frames in).
 - [ ] 4.3 Unequal loops (`$8A` `$8C` `$8F` `$91`): loop extension or an LCM unroll.
 - [ ] 4.4 Listen in the FT2 clone; Amiga merged builds if wanted.
 

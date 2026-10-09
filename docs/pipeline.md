@@ -253,7 +253,7 @@ Ending's PSG2).
 | `smpsAlterVol` | $E6 | `Cxx` | FM TL offset, 0.75 dB/step; `Cxx` only where a note's level differs from its instrument's baked level (§ Levels) |
 | `smpsPSGAlterVol` | $EC | `Cxx` | PSG attenuation, 2 dB/step; same rule |
 | `smpsPan` | $E0 | (level) | MOD pan is per channel; a hard-panned FM note counts `fm_pan_law_db` (3 dB) quieter |
-| `smpsModSet` / `smpsModOn` / `smpsModOff` | $F0 / $F1 / $F4 | `4xy` / — | § Vibrato |
+| `smpsModSet` / `smpsModOn` / `smpsModOff` | $F0 / $F1 / $F4 | `4xy`, a slow one `1xx` / `2xx` / `E1x` / `E2x` / — | § Vibrato |
 | `smpsNoteFill` | $E8 | `ECx` / `C00` / release slide | § Note fill |
 | `smpsNoAttack` | $E7 | note-on or `3FF` | § Legato |
 | `smpsDetune` / `smpsAlterNote` | $E1 | (sample), `E1x` / `E2x` | § Detune variants |
@@ -316,8 +316,8 @@ the end of their ring (after `smpsNoAttack` continuations: `_ring_ticks`).
 
 The driver (`smps_driver.md` § smpsModSet) has a steady cycle of `2 · speed · (steps + 1)` frames and a
 swing of `delta · steps / 2` units of the note's own frequency word — the YM2612 FNUM of its pitch class
-(644 for C … 1216 for B) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on
-B.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.
+in the song's table (Sonic 1's: 644 for C … 1148 for A#, B 606 in the block above: a B swings as wide
+as a C) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on A#.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.
 `VibratoSpeed.speed` / `vibrato_depth`:
 
 ```
@@ -333,6 +333,14 @@ y     = the depth whose peak in the player is nearest the swing (_VIBRATO_PEAK)
 - A row carries `4xy` when modulation runs for at least half of it, the attack row included, from the
   `smpsModSet` wait (frames) on; the continuation stops at the release slide.
 - A per-entry `vibrato: XY` override wins; no shipped config needs one.
+- **A cycle too slow for `4x1`** (rounds to `x` 0: Streets of Rage's 251 steps, Moonwalker's 255) is a
+  sweep the note never sees turn, not a vibrato: `4x1` would wobble it ±the whole swing many times too
+  fast.  Each row with a free slot slides instead to the chip's pitch at its end
+  (`modulation_offset`: the wait, `delta` every `speed` frames, a turn after half the steps):
+  `1xx` / `2xx` on the row's later ticks, `E1x` / `E2x` under a period a tick; what the MOD reached is
+  carried, so a taken row is made up on the next.  The modulation runs from the attack or the
+  `smpsModSet` / `smpsModOn` after it (a tie runs it on: Dilapidated Town's FM2 chains), and a tie
+  re-struck for its level (`legato: retrigger`) slides back from the note's period on its next row.
 - Region-independent (both clocks scale with fps).  What remains is the 4-bit grid: one step of `x`
   is 0.4–0.6 Hz, one step of `y` 10–30 c.
 
@@ -460,6 +468,10 @@ every detune an instrument plays into a sample of its own:
 - every other detune is a **variant** in a free slot, the most played first, sharing the instrument's
   entry, level and `sample_list` volume / finetune;
 - one with no free slot plays the instrument's own sample (`detune_no_slot`: Credits);
+- a sample carries its detune's interval at the pitch it is rendered at.  Where that is more than a
+  finetune step off its notes' (Streets of Rage's +195: +336 c on F#, +266 c on A#), a variant is
+  rendered in its notes' commonest pitch class (the same `root`, another `synth_shift`), and notes the
+  detune moves more than 25 c from their sample's interval get a variant per pitch class;
 - `resolve_note` routes a note to its variant, so every pass sees it.  The plan is made on the song as
   parsed, before the loop extension, as the audit tools make it (`prepare_instruments`);
 - a **tie** after a detune change (Scrap Brain FM4's scoop: `smpsAlterNote $EC`, a note,

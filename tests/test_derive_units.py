@@ -17,7 +17,14 @@ ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_HERE))
 
-from roms import GOLDEN_AXE_ROM, MOONWALKER_ROM, needs_golden_axe, needs_moonwalker
+from roms import (
+    GOLDEN_AXE_ROM,
+    MOONWALKER_ROM,
+    STREETS_OF_RAGE_ROM,
+    needs_golden_axe,
+    needs_moonwalker,
+    needs_streets_of_rage,
+)
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings
 from core.drivers import dac_samples, read_rom_song
@@ -220,6 +227,27 @@ class GoldenAxe(unittest.TestCase):
 
     def test_the_drums_play_on_fm3(self):
         self.assertIn("FM3", {c["source"] for c in self.data["channels"]})
+
+
+@needs_streets_of_rage
+class StreetsOfRage(unittest.TestCase):
+    """Good Ending ($91): 13-frame rows, a noise track that plays two envelopes."""
+
+    @classmethod
+    def setUpClass(cls):
+        rom = RomImage.load(STREETS_OF_RAGE_ROM)
+        stated = {"name": "Good Ending", "input_file": str(STREETS_OF_RAGE_ROM), "rom_song": "$91"}
+        cls.data = derive_config(stated, read_rom_song(rom, 0x91), "configs/streets_of_rage/91_good_ending.yaml",
+                                 SampleSettings(), dac_samples(rom)).data
+
+    def test_a_speed_past_8_where_none_up_to_it_keeps_the_tempo(self):
+        # 13 frames a row: speed 7 is 80.77 BPM (81: +0.29 %), speed 13 is 150 exactly
+        self.assertEqual((self.data["ticks_per_row"], self.data["target_speed"]), (13, 13))
+
+    def test_each_envelope_a_noise_form_plays_has_a_slot(self):
+        noise = self.data["psg_map"][0xE7]
+        self.assertEqual(list(noise["envelopes"]), ["$00"])
+        self.assertNotEqual(noise["envelopes"]["$00"], noise["mod_instrument"])
 
 
 if __name__ == "__main__":

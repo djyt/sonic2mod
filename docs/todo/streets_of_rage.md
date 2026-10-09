@@ -401,6 +401,11 @@ a song pass (the `run_out` precedent).
     pass: 193 volumes in 15 songs.  Left over 1 dB: FM3 voices of the special-mode songs (-28 /
     -38 dB, Phase 5), noise samples rendered with one envelope and played with `$00` (+6-8 dB, the
     `noise_envelopes` warning), and instruments whose channels disagree.
+  - **Derived configs:** a speed past 8 where 2-8 miss the tempo (`$91`: 150 BPM at speed 13, was 81
+    at 7); a noise form's other envelopes a slot each (`$89` `$90` `$91`: `$00` beside `fTone_03`),
+    which the converter now renders (its synthesised PSG set missed `envelopes:` variants).  Every
+    song at its driver's exact tempo.  `$81` FM1's leading rest finds no row-0 slot (the loop goes
+    to row 0): a spare channel (`num_mod_channels`) would carry it.
   - Left: `$8B` 56 notes -40 ... -70 c for a row: a tie re-struck for its level (`legato: retrigger`)
     restarts at the note's period, the slide catches up a row later; `$81` FM2 12 notes: a detune
     sweep (`DetuneAdd` in a loop, 19 detunes) with no free slot (`$87` `$88` `$90` warn too);

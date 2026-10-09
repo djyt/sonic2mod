@@ -66,8 +66,11 @@ sample_list:                 # optional: volumes measured against the VGZ
 
 Derived: `name` (file stem), `output_file` (`output/` mirroring `configs/`),
 `range_space: chip`, `auto_bpm: true`, `channels` (every channel that plays, in header order),
-`ticks_per_row` and `target_speed`, `voice_map` / `psg_voice_map` (one rooted entry per window
-of the pitches each voice plays), `psg_map`, `dac_samples` (ROM input only) and `sample_list`
+`ticks_per_row` and `target_speed` (the speed whose whole BPM is nearest the driver's tempo, 2-8,
+up to 16 where none of those is within 0.1 %: Streets of Rage's 13-frame rows play at speed 13),
+`voice_map` / `psg_voice_map` (one rooted entry per window of the pitches each voice plays),
+`psg_map` (a slot per noise form, rendered with the envelope most of its notes play, and
+`envelopes:` a slot for each other one), `dac_samples` (ROM input only) and `sample_list`
 (starting volumes).
 
 A window's `root` sets every one of its notes' rates, and so how many harmonics fit below

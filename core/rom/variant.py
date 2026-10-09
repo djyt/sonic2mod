@@ -56,7 +56,7 @@ class DacSample:
 
 
 # The register offset (operator slot) of each of a group's four bytes, as SMPS stores them
-SMPS_OPERATOR_OFFSETS = (0x00, 0x08, 0x04, 0x0C)
+_SMPS_OPERATOR_OFFSETS = (0x00, 0x08, 0x04, 0x0C)
 
 
 @dataclass(frozen=True)
@@ -68,7 +68,7 @@ class VoiceLayout:
     groups: tuple[OperatorReg, ...]
     pan: bool = False
     feedback_last: bool = False
-    operator_offsets: tuple[int, ...] = SMPS_OPERATOR_OFFSETS
+    operator_offsets: tuple[int, ...] = _SMPS_OPERATOR_OFFSETS
 
     @property
     def size(self) -> int:

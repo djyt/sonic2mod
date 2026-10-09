@@ -1,4 +1,5 @@
-"""The source: Sonic 1 SMPS songs and the driver that plays them.
+"""The song as every reader leaves it (the IR) and the one walk that plays it: SMPS's vocabulary,
+whatever driver or file the song came from.
 
     song.py           SmpsSong and its parts (the parser's output)
     code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events

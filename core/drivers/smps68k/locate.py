@@ -16,10 +16,10 @@ at a plausible header; PSG_Index where the first envelope's bytes begin.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, partial
 
 from core.rom.envelopes import is_envelope
-from core.rom.header import is_music_header, is_sfx_header, read_index
+from core.rom.header import is_index, is_music_header, is_sfx_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import SoundIndex
@@ -94,26 +94,15 @@ def _is_go_block(rom: RomImage, memory: SoundMemory, at: int) -> bool:
         return False
 
     music_table, sfx_table, special_table, envelope_table = tables
-    return (_entries_are(rom, memory, music_table, _is_music_header)
-            and _entries_are(rom, memory, sfx_table, _is_sfx_header)
-            and _entries_are(rom, memory, special_table, _is_sfx_header, count=1)
-            and _entries_are(rom, memory, envelope_table, is_envelope))
+    def starts_index(table: int, plausible, count: int = _ENTRIES_CHECKED) -> bool:
+        return is_index(memory, range(table, table + count * _LONG, _LONG), rom.long, plausible)
+
+    return (starts_index(music_table, _is_music_header) and starts_index(sfx_table, _is_sfx_header)
+            and starts_index(special_table, _is_sfx_header, count=1) and starts_index(envelope_table, is_envelope))
 
 
-def _entries_are(rom: RomImage, memory: SoundMemory, table: int, plausible, count: int = _ENTRIES_CHECKED) -> bool:
-    for i in range(count):
-        address = rom.long(table + i * _LONG)
-        if not rom.contains(address) or not plausible(memory, address):
-            return False
-    return True
-
-
-def _is_music_header(memory: SoundMemory, address: int) -> bool:
-    return is_music_header(memory, address, HEADER_68K)
-
-
-def _is_sfx_header(memory: SoundMemory, address: int) -> bool:
-    return is_sfx_header(memory, address, HEADER_68K)
+_is_music_header = partial(is_music_header, layout=HEADER_68K)
+_is_sfx_header = partial(is_sfx_header, layout=HEADER_68K)
 
 
 def pointers_before_data(rom: RomImage, table: int) -> tuple[int, ...]:

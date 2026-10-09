@@ -4,7 +4,7 @@ streets_of_rage.md § 1.4).  Each instruction is read into the ops the SMPS walk
     d n        d $01-$7F frames, n octave (bits 4-6) | semitone   -> NOTE, DURATION
     $80|d      rest                                               -> NOTE $80, DURATION
     $00        end of track                                       -> STOP
-    $F0-$FF    a flag: the kind's table (mucom.py), or a handler here
+    $F0-$FF    a flag: the kind's table (variant.py), or a handler here
 
 Notes as SMPS numbers ($81 = C0): FM octave o plays block o; a PSG row r plays octave r + 1 from
 row 2 (C3, Sonic 1's PSG table entry 0; rows 0-1 read row 2, rows 6-9 row 6).  A drum track's
@@ -18,6 +18,7 @@ need: it unrolls each loop from its `$F6`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 
 from core.rom.grammar import Instruction, flag_instruction, track_label
 from core.rom.image import RomError
@@ -34,8 +35,8 @@ from core.smps import (
     SmpsEffect,
 )
 
-FIRST_FLAG = 0xF0
-END = 0x00
+_FIRST_FLAG = 0xF0
+_END = 0x00
 _REST_BIT = 0x80
 _DURATION_BITS = 0x7F
 
@@ -69,11 +70,11 @@ _VIBRATO_SET_BYTES = 5
 def mucom_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:
     """The instruction at `address`, read by a `kind` track."""
     byte = memory.byte(address)
-    if byte == END:
+    if byte == _END:
         return Instruction((Op(OpKind.STOP),), 1, False)
-    if byte & _REST_BIT and byte < FIRST_FLAG:
+    if byte & _REST_BIT and byte < _FIRST_FLAG:
         return Instruction((Op(OpKind.NOTE, value=REST), Op(OpKind.DURATION, value=byte & _DURATION_BITS)), 1, True)
-    if byte < FIRST_FLAG:
+    if byte < _FIRST_FLAG:
         note = Op(OpKind.NOTE, value=_note(memory, address + 1, kind))
         return Instruction((note, Op(OpKind.DURATION, value=byte)), 2, True)
 
@@ -141,27 +142,11 @@ def _loop_exit(memory: SoundMemory, address: int) -> Instruction:
 
 # --- flags with operands the SMPS vocabulary spells differently ------------------------------
 
-def _fm_detune(memory: SoundMemory, address: int) -> Instruction:
-    return _detune(memory, address, 0)
-
-
-def _psg_detune(memory: SoundMemory, address: int) -> Instruction:
-    return _detune(memory, address, _PSG_DETUNE_SHIFT)
-
-
 def _detune(memory: SoundMemory, address: int, shift: int) -> Instruction:
     """`$F2 lo hi mode`: an FNUM (PSG: divider) offset, set; one that adds is not read yet."""
     if memory.byte(address + 3) != _DETUNE_SETS:
         return Instruction((), 4, True, dropped="detune that adds")
     return _effect(CoordFlag.DETUNE, [_signed_le_word(memory, address + 1) >> shift], 4)
-
-
-def _fm_vibrato(memory: SoundMemory, address: int) -> Instruction:
-    return _vibrato(memory, address, 0)
-
-
-def _psg_vibrato(memory: SoundMemory, address: int) -> Instruction:
-    return _vibrato(memory, address, _PSG_DETUNE_SHIFT)
 
 
 def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
@@ -202,8 +187,12 @@ _Handler = Callable[[SoundMemory, int], Instruction]
 
 _COMMON: dict[int, _Handler] = {_LOOP_START: _loop_start, _LOOP_END: _loop_end, _LOOP_EXIT: _loop_exit}
 
+# FM words as written; the PSG's >> 4 (a divider, not an FNUM)
+_FM_DETUNE, _PSG_DETUNE = partial(_detune, shift=0), partial(_detune, shift=_PSG_DETUNE_SHIFT)
+_FM_VIBRATO, _PSG_VIBRATO = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DETUNE_SHIFT)
+
 _HANDLERS: dict[ChannelType, dict[int, _Handler]] = {
-    ChannelType.FM: {_DETUNE: _fm_detune, _VIBRATO: _fm_vibrato, _PAN: _pan},
-    ChannelType.PSG: {_DETUNE: _psg_detune, _VIBRATO: _psg_vibrato, _FORM: _noise},
-    ChannelType.DAC: {_DETUNE: _fm_detune, _VIBRATO: _fm_vibrato, _PAN: _pan, _SAMPLE: _dac_sample},
+    ChannelType.FM: {_DETUNE: _FM_DETUNE, _VIBRATO: _FM_VIBRATO, _PAN: _pan},
+    ChannelType.PSG: {_DETUNE: _PSG_DETUNE, _VIBRATO: _PSG_VIBRATO, _FORM: _noise},
+    ChannelType.DAC: {_DETUNE: _FM_DETUNE, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _SAMPLE: _dac_sample},
 }

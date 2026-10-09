@@ -146,7 +146,7 @@ def parse_synth_note(name: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# SMPS DAC sample names → byte values (Sonic 1)
+# SMPS2ASM's DAC sample names → byte values (_smps2asm_inc.asm: the asm dialect's, Sonic 1's samples)
 # ---------------------------------------------------------------------------
 
 SMPS_DAC_NAMES = {

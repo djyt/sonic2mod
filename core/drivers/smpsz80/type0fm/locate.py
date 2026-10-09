@@ -15,10 +15,10 @@ No PSG volume envelope table is located: no Type 0 FM song uses the PSG.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, partial
 
 from core.chips import split_freq_word
-from core.rom.header import is_music_header, is_sfx_header, read_index
+from core.rom.header import is_index, is_music_header, is_sfx_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.variant import SoundIndex
 from core.rom.z80 import z80_ram, z80_word
@@ -110,26 +110,16 @@ def _is_sound_header(memory: BankedZ80Memory, bank: int) -> bool:
         return False
     music_table = memory.header_pointer(bank, bank + _MUSIC_INDEX)
     sfx_table = memory.header_pointer(bank, bank + _SFX_INDEX)
-    return (_entries_are(memory, music_table, _is_music_header)
-            and _entries_are(memory, sfx_table, _is_sfx_header))
+    def starts_index(table: int, plausible) -> bool:
+        slots = range(table, table + _ENTRIES_CHECKED * _WORD, _WORD)
+        return memory.contains(table, len(slots) * _WORD) and is_index(
+            memory, slots, lambda at: memory.header_pointer(table, at), plausible)
+
+    return starts_index(music_table, _is_music_header) and starts_index(sfx_table, _is_sfx_header)
 
 
-def _entries_are(memory: BankedZ80Memory, table: int, plausible) -> bool:
-    if not memory.contains(table, _ENTRIES_CHECKED * _WORD):
-        return False
-    for i in range(_ENTRIES_CHECKED):
-        address = memory.header_pointer(table, table + i * _WORD)
-        if not memory.contains(address) or not plausible(memory, address):
-            return False
-    return True
-
-
-def _is_music_header(memory: BankedZ80Memory, address: int) -> bool:
-    return is_music_header(memory, address, HEADER_TYPE0)
-
-
-def _is_sfx_header(memory: BankedZ80Memory, address: int) -> bool:
-    return is_sfx_header(memory, address, HEADER_TYPE0)
+_is_music_header = partial(is_music_header, layout=HEADER_TYPE0)
+_is_sfx_header = partial(is_sfx_header, layout=HEADER_TYPE0)
 
 
 def _words(z80: bytes, at: int, count: int) -> tuple[int, ...]:

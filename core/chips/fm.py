@@ -51,6 +51,10 @@ class OperatorReg(IntEnum):
 
 REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
 TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
+FEEDBACK_ALGORITHM_MASK = 0x3F       # B0's bits the chip reads (a driver may write the voice's byte whole)
+# Each operator register's bits the chip reads
+REGISTER_MASKS: dict[int, int] = {OperatorReg.DT_MUL: 0x7F, OperatorReg.TL: TL_MASK, OperatorReg.KS_AR: 0xDF,
+                  OperatorReg.AM_D1R: 0x9F, OperatorReg.D2R: 0x1F, OperatorReg.D1L_RR: 0xFF, OperatorReg.SSG_EG: 0x0F}
 
 
 # A frequency word: block << 11 | FNUM, registers A4 (block, FNUM high bits) and A0 written

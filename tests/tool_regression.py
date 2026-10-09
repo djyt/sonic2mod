@@ -55,11 +55,13 @@ import yaml
 from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, variant_args
 from tests.roms import (
+    GOLDEN_AXE_RIPS,
     GOLDEN_AXE_ROM,
     MOONWALKER_RIPS,
     MOONWALKER_ROM,
     SONIC1_ASM,
     SONIC1_ROM,
+    STREETS_OF_RAGE_RIPS,
     STREETS_OF_RAGE_ROM,
 )
 from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
@@ -85,6 +87,12 @@ _MOONWALKER_CONFIGS = _CONFIG_DIR / "moonwalker"
 _MOONWALKER_DETAIL = "88_round_clear"
 _SECTION = "### "                 # song_dump's per-song header: a failing read_ case names its songs
 _SHIPPED = ["--shipped"]
+
+# frames_<name>: vgm_frames over a game's pairs (its ROM, its rips, its configs)
+_FRAMES = (
+    ("golden_axe", GOLDEN_AXE_ROM, GOLDEN_AXE_RIPS, _CONFIG_DIR / "golden_axe"),
+    ("streets_of_rage", STREETS_OF_RAGE_ROM, STREETS_OF_RAGE_RIPS, _CONFIG_DIR / "streets_of_rage"),
+)
 
 # read_<name>: song_dump's source and arguments
 _READS = (
@@ -164,6 +172,19 @@ def _lift_cases(vgzs: list[Path]) -> list[_Case]:
             _Case(f"lift_moonwalker_{_MOONWALKER_DETAIL}", [*tool, str(Path(configs) / f"{_MOONWALKER_DETAIL}.yaml")], inputs)]
 
 
+def _frame_cases() -> list[_Case]:
+    """vgm_frames on each game whose ROM and rips are here: every note's pitch, level and voice."""
+    cases = []
+    for name, rom, rips, configs in _FRAMES:
+        if not (rom.exists() and rips.exists()):
+            continue
+        shelf = RipShelf.load(configs, rips)
+        inputs = [rom, configs / RIPS_MAP, *sorted(rips.glob("*.vgz")), *shelf.config_files()]
+        cases.append(_Case(f"frames_{name}", ["tools/vgm_frames.py", "--all", "--configs",
+                                               configs.relative_to(ROOT).as_posix()], inputs))
+    return cases
+
+
 def _read_cases() -> list[_Case]:
     """song_dump on each game there is a source of."""
     cases = []
@@ -177,13 +198,13 @@ def _read_cases() -> list[_Case]:
 
 def _missing_sources() -> list[str]:
     """The ROMs, rips and asm some cases need that are not here."""
-    wanted = {MOONWALKER_RIPS, *(source for _, source, _ in _READS)}
+    wanted = {MOONWALKER_RIPS, *(source for _, source, _ in _READS), *(rips for _, _, rips, _ in _FRAMES)}
     return sorted(p.relative_to(ROOT).as_posix() for p in wanted if not p.exists())
 
 
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _read_cases()
+    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases()
     shelf = RipShelf.load(_CONFIG_DIR, VGZ_DIR)
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there

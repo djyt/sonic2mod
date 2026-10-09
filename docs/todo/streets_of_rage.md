@@ -382,7 +382,7 @@ a song pass (the `run_out` precedent).
 
 ### Phase 4: convert
 - [x] 4.1 `configs/streets_of_rage/`: 16 minimal configs and `rips.yaml` (Phase 2.3); all 16 convert.
-- [ ] 4.2 `vgm_pitch_audit` clean; `measure_volumes.py --configs configs/streets_of_rage`.
+- [x] 4.2 `vgm_pitch_audit` clean (bar Phase 5 and what is left below); `measure_volumes.py --configs configs/streets_of_rage`.
   - **Pitch (2026-10-09):** 15 rips, 8 clean but FM3 special mode (Phase 5: 7 songs, -200 / -300 c on
     every FM3 note).  Fixed on the way:
     - modulation that cycles too slowly for `4x1` (251 / 255 steps: sweeps, `$90` FM4 +8 FNUM a
@@ -418,7 +418,8 @@ a song pass (the `run_out` precedent).
   (PSG1 21 frames late) were in step already; `$91` ends.  `$89`'s PSG3 (5173, the `$F6` quirk)
   against 5120 is past four loops: warned (`loop_drift`), it drifts 53 frames a loop.  Sonic,
   Moonwalker, Golden Axe unchanged (Green Hill's 1024-tick drum loop is a 512 bar twice).
-- [ ] 4.4 Listen in the FT2 clone; Amiga merged builds if wanted.
+- [ ] 4.4 Listen in the FT2 clone (`output/streets_of_rage/`); Amiga merged builds if wanted.  Open for
+  the user: same-pitch ties re-struck for their level (`legato: retrigger`) or held with `Cxx`.
 
 ### Phase 5: chip features
 - [ ] 5.1 FM3 special mode: render FM3 with per-operator fnums.

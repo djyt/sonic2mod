@@ -13,3 +13,4 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [9, "psg_$00_C5.raw", 2, 0]   # VGZ: +2.0 dB at 3
   - [10, "psg_$00_B5.raw", 2, 0]   # VGZ: +2.1 dB at 3
   - [11, "psg_$00_A6.raw", 3, 0]   # VGZ: +1.4 dB at 4
+  - [13, "psg_noise_e7_$00.raw", 2, 0]   # VGZ: +7.8 dB at 6

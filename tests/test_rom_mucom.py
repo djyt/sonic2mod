@@ -139,6 +139,20 @@ class Grammar(unittest.TestCase):
         ch = _walk(bytes([0xF7, 0x01, 1, 0x55, 0x00]), ChannelType.PSG)
         self.assertEqual([n for _, n, _, _ in _notes(ch)], [MAX_PSG])
 
+    def test_the_gate_cuts_a_note_short_but_the_ones_the_driver_spares(self):
+        # Gate 2: C4 6 (cut: 4 and a rest of 2), D4 6 then a tie (spared), D4 6 tied (FM spares
+        # it, the PSG cuts it), C4 1 (no longer than the gate)
+        track = bytes([0xF3, 0x02, 6, 0x40, 6, 0x42, 0xFD, 6, 0x42, 1, 0x40, 0x00])
+        self.assertEqual([(t, d) for t, _, d, _ in _notes(_walk(track))], [(0, 4), (4, 2), (6, 6), (12, 6), (18, 1)])
+        self.assertEqual([(t, d) for t, _, d, _ in _notes(_walk(track, ChannelType.PSG))],
+                         [(0, 4), (4, 2), (6, 6), (12, 4), (16, 2), (18, 1)])
+
+    def test_a_rest_after_a_tie_keys_fm_off_a_frame_in_the_psg_at_once(self):
+        track = bytes([4, 0x40, 0xFD, 0x85, 0x00])
+        self.assertEqual([(t, n, d, tied) for t, n, d, tied in _notes(_walk(track))][1:],
+                         [(4, REST, 1, True), (5, REST, 4, False)])
+        self.assertEqual(_notes(_walk(track, ChannelType.PSG))[1:], [(4, REST, 5, False)])
+
     def test_the_jump_back_drops_an_fm_tie_the_psg_keeps(self):
         # C4 & / loop: D4 & / jump back.  The first pass ties D4; a replay's D4 attacks on FM (the
         # jump cleared the tie), stays tied on the PSG
@@ -183,6 +197,18 @@ class StreetsOfRage(unittest.TestCase):
         # The driver writes the carriers' TL from the volume as it loads a voice
         song = read_rom_song(self.rom, 0x81, self.index)
         self.assertTrue(all(voice.registers()[r] == 0 for voice in song.voices for r in voice.carrier_registers))
+
+    def test_a_register_write_plays_as_a_patched_voice(self):
+        # Beatnik on the Ship, FM1: $FA $6C $0F, $7C $11, $68 $0E, $78 $0F after setting voice 2
+        song = read_rom_song(self.rom, 0x85, self.index)
+        fm1 = source_map(song)["FM1"]
+        sets = [e.effect.index for e in fm1.events if e.effect is not None and e.effect.flag == CoordFlag.SET_VOICE]
+        voices = {v.index: v for v in song.voices}
+        patched = voices[sets[4]].registers()
+        self.assertEqual([patched[r] for r in (0x6C, 0x7C, 0x68, 0x78)], [0x0F, 0x11, 0x0E, 0x0F])
+        self.assertEqual(sets[:5], [sets[0], *range(sets[1], sets[1] + 4)])     # each write a new copy
+        with self.assertRaisesRegex(ValueError, "carrier's TL"):
+            voices[sets[0]].patched(voices[sets[0]].carrier_registers[0], 0x10)
 
     def test_a_jump_back_after_a_tie_attacks_on_the_replay(self):
         # You Became the Bad Guy!: FM1, FM4 and FM5 tie into their loop's first note on the first pass

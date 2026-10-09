@@ -707,6 +707,75 @@ compare_title_screen_merged:
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
+frames_golden_axe:
+  commit: 43807b0
+  date: '2026-10-09'
+  inputs:
+    configs/golden_axe/81_wilderness.yaml: 701580eb8960
+    configs/golden_axe/82_turtle_village_1.yaml: f68728200961
+    configs/golden_axe/83_turtle_village_2.yaml: 905d8ee71038
+    configs/golden_axe/84_path_of_fiend.yaml: 1f241f87e79c
+    configs/golden_axe/85_death_adder.yaml: b0dc62ead0a1
+    configs/golden_axe/86_battle_field.yaml: 950c0337ba01
+    configs/golden_axe/87_showdown.yaml: bf5c65055f2a
+    configs/golden_axe/88_game_over.yaml: 6637fadba2c1
+    configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
+    configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
+    configs/golden_axe/8c_old_map.yaml: 491af49f47e1
+    configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
+    configs/golden_axe/8e_sutakora_sassa.yaml: 1c512ab7d1df
+    configs/golden_axe/rips.yaml: b9a89d051ad4
+    input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    reference/vgz/golden_axe/02 - Wilderness.vgz: 2b5762a7949d
+    reference/vgz/golden_axe/03 - Battle Field.vgz: 68ef936c83fa
+    reference/vgz/golden_axe/04 - Theme of Thief.vgz: d052006fd9fd
+    reference/vgz/golden_axe/05 - Old Map.vgz: 7fe3470ec3ce
+    reference/vgz/golden_axe/06 - Turtle Village 1.vgz: 6c1abf0c4d82
+    reference/vgz/golden_axe/07 - Path of Fiend.vgz: 36798a511acb
+    reference/vgz/golden_axe/08 - Turtle Village 2.vgz: 3f5e3cb53dd4
+    reference/vgz/golden_axe/09 - Death Adder.vgz: dafde43bf095
+    reference/vgz/golden_axe/10 - Showdown.vgz: 3fbff6a44fe6
+    reference/vgz/golden_axe/11 - Conclusion.vgz: 9030b83ba012
+    reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
+    reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
+frames_streets_of_rage:
+  commit: 43807b0
+  date: '2026-10-09'
+  inputs:
+    configs/streets_of_rage/81_fighting_in_the_street.yaml: f941f242a67a
+    configs/streets_of_rage/82_game_over.yaml: 80d71479c35e
+    configs/streets_of_rage/83_the_street_of_rage.yaml: c3feef827593
+    configs/streets_of_rage/84_moon_beach.yaml: 82d34c776e0f
+    configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 6ff00a7d7b07
+    configs/streets_of_rage/86_violent_breathing.yaml: e5d5d4013792
+    configs/streets_of_rage/87_attack_the_barbarian.yaml: 141b6c403fb2
+    configs/streets_of_rage/88_the_last_soul.yaml: 36c08bd4f109
+    configs/streets_of_rage/89_stealthy_steps.yaml: ac916a5d1d6c
+    configs/streets_of_rage/8b_dilapidated_town.yaml: 2da8d03bdbea
+    configs/streets_of_rage/8c_keep_the_groovin.yaml: 44605e366cb8
+    configs/streets_of_rage/8d_level_clear.yaml: afee9cf72924
+    configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: 43ec38b08960
+    configs/streets_of_rage/90_big_boss.yaml: 0fd2762d7876
+    configs/streets_of_rage/91_good_ending.yaml: e004d55cb054
+    configs/streets_of_rage/rips.yaml: 40e91740b461
+    input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
+    reference/vgz/streets_of_rage_1/01 - The Street of Rage (1).vgz: 030883819fdb
+    reference/vgz/streets_of_rage_1/01 - The Street of Rage.vgz: 030883819fdb
+    reference/vgz/streets_of_rage_1/03 - Fighting in the Street.vgz: d6e204166f7b
+    reference/vgz/streets_of_rage_1/04 - Dilapidated Town.vgz: 5ae421154f38
+    reference/vgz/streets_of_rage_1/05 - Moon Beach.vgz: 5f8f54a82bef
+    reference/vgz/streets_of_rage_1/06 - Keep the Groovin'.vgz: 898537c626e7
+    reference/vgz/streets_of_rage_1/07 - Beatnik on the Ship.vgz: eefcddae01be
+    reference/vgz/streets_of_rage_1/08 - Stealthy Steps.vgz: 60c1b9fd0eec
+    reference/vgz/streets_of_rage_1/09 - Violent Breathing.vgz: f72214ef3a55
+    reference/vgz/streets_of_rage_1/10 - The Last Soul.vgz: fc88372faace
+    reference/vgz/streets_of_rage_1/11 - Level Clear.vgz: c4f821dee1e8
+    reference/vgz/streets_of_rage_1/12 - Attack the Barbarian.vgz: e5ddd9c91372
+    reference/vgz/streets_of_rage_1/13 - Big Boss.vgz: e7e46cc6ce47
+    reference/vgz/streets_of_rage_1/14 - Game Over.vgz: 69d88619531c
+    reference/vgz/streets_of_rage_1/15 - You Became the Bad Guy!.vgz: 382aa0e8280f
+    reference/vgz/streets_of_rage_1/16 - Good Ending.vgz: a8a2300985e6
 lift_02:
   commit: 46f1fce-dirty
   date: '2026-10-09'

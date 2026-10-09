@@ -15,11 +15,11 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .code import NO_ATTACK, REST, TRACK_BYTES, Op, OpKind, SongCode
+from .code import TRACK_BYTES, Op, OpKind, SongCode
 from .driver_tables import PAN_VALUES
 from .effects import CoordFlag
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES_REVERSE, flag_name, note_label, voice_macro
-from .song import ChannelType, SmpsChannelHeader, SmpsVoice, VoiceField
+from .song import NO_ATTACK, REST, ChannelType, SmpsChannelHeader, SmpsVoice, VoiceField
 
 _BYTES_PER_LINE = 12
 _PAN_SPEAKERS = 0xC0

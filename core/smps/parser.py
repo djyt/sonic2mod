@@ -6,8 +6,8 @@ driver's reading rules turn into the intermediate representation suitable for co
 
 import re
 
-from .code import NO_ATTACK, Op, OpKind, SmpsCode, signed_byte, song_from_code, track_byte
-from .driver_tables import PAN_VALUES
+from .code import Op, OpKind, SmpsCode, song_from_code, track_byte
+from .driver_tables import PAN_VALUES, signed_byte
 from .effects import (
     AlterVol,
     ChangeTransposition,
@@ -27,7 +27,7 @@ from .effects import (
 )
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_NOTE_NAMES, voice_field_from_macro
 from .rules import PlaybackRules
-from .song import ChannelType, SmpsChannelHeader, SmpsSongHeader, SmpsVoice
+from .song import NO_ATTACK, ChannelType, SmpsChannelHeader, SmpsSongHeader, SmpsVoice
 
 _PAN_LFO_MASK = 0x3F  # smpsPan's second operand: B4's AMS / FMS bits
 

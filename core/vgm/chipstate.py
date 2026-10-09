@@ -25,6 +25,7 @@ from ..chips import (
     CARRIER_OFFSETS_BY_ALG,
     MD_FM_CLOCK,
     MD_PSG_CLOCK,
+    OPERATOR_SLOT_OFFSETS,
     fm_frequency_hz,
     freq_word,
     psg_frequency_hz,
@@ -49,6 +50,7 @@ _REG_FNUM_HI = 0xA4
 _REG_ALGORITHM = 0xB0              # feedback << 3 | algorithm
 _REG_PAN = 0xB4                    # L R AMS PMS
 _CHANNELS_PER_PORT = 3
+_REGISTER_STRIDE = 0x10            # from one operator register's base to the next
 _KEY_SLOTS_SHIFT = 4
 _KEY_PORT1_BIT = 0x04
 _KEY_CHANNEL_MASK = 0x03
@@ -220,7 +222,7 @@ class ChipState:
     def fm_operator_regs(self, ch: int, first: int, last: int) -> bytes:
         """The channel's operator registers `first`..`last` (0x30..0x9F: four slots per register)."""
         return bytes(self._fm_channel_reg(ch, base, slot)
-                     for base in range(first, last + 1, 0x10) for slot in (0x00, 0x04, 0x08, 0x0C))
+                     for base in range(first, last + 1, _REGISTER_STRIDE) for slot in OPERATOR_SLOT_OFFSETS)
 
     def fm_global(self, reg: int) -> int:
         """A port-0 global register (0x22 LFO, 0x27 mode, 0x2B DAC enable)."""

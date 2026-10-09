@@ -49,12 +49,30 @@ class OperatorReg(IntEnum):
     SSG_EG = 0x90
 
 
+# An operator register: base | the operator's slot offset | the channel within its part.
+# 0x4D: TL (0x40), OP4's slot (0x0C), FM2 / FM5 (1)
+OPERATOR_SLOT_OFFSETS = (0x00, 0x04, 0x08, 0x0C)     # in register order: OP1, OP3, OP2, OP4
+_REG_BASE_BITS, _REG_SLOT_BITS, _REG_CHANNEL_BITS = 0xF0, 0x0C, 0x03
+
 REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
 TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
 FEEDBACK_ALGORITHM_MASK = 0x3F       # B0's bits the chip reads (a driver may write the voice's byte whole)
 # Each operator register's bits the chip reads
-REGISTER_MASKS: dict[int, int] = {OperatorReg.DT_MUL: 0x7F, OperatorReg.TL: TL_MASK, OperatorReg.KS_AR: 0xDF,
-                  OperatorReg.AM_D1R: 0x9F, OperatorReg.D2R: 0x1F, OperatorReg.D1L_RR: 0xFF, OperatorReg.SSG_EG: 0x0F}
+_REGISTER_MASKS = {OperatorReg.DT_MUL: 0x7F, OperatorReg.TL: TL_MASK, OperatorReg.KS_AR: 0xDF, OperatorReg.AM_D1R: 0x9F,
+                   OperatorReg.D2R: 0x1F, OperatorReg.D1L_RR: 0xFF, OperatorReg.SSG_EG: 0x0F}
+
+
+def split_operator_register(register: int) -> tuple[OperatorReg, int, int] | None:
+    """(base, slot offset, channel) of an operator register (0x30-0x9F); None for any other."""
+    base = register & _REG_BASE_BITS
+    if base not in _REGISTER_MASKS:
+        return None
+    return OperatorReg(base), register & _REG_SLOT_BITS, register & _REG_CHANNEL_BITS
+
+
+def operator_bits(register: int, value: int) -> int:
+    """`value` written to operator register `register` as the chip reads it."""
+    return value & _REGISTER_MASKS[OperatorReg(register & _REG_BASE_BITS)]
 
 
 # A frequency word: block << 11 | FNUM, registers A4 (block, FNUM high bits) and A0 written

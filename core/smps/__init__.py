@@ -81,6 +81,8 @@ from .effects import (
     pan_side,
 )
 from .names import (
+    FM_CHANNEL_NAMES,
+    PSG_CHANNEL_NAMES,
     SFX_CHANNEL_IDS,
     SMPS_DAC_NAMES,
     flag_from_macro,
@@ -125,6 +127,7 @@ __all__ = [
     "C1_SEMITONE",
     "FIRST_FLAG",
     "FIRST_NOTE",
+    "FM_CHANNEL_NAMES",
     "FM_SLOT_MASK",
     "HW_FM_CHANNEL",
     "LAST_NOTE",
@@ -132,6 +135,7 @@ __all__ = [
     "NO_TEMPO_HOLDS",
     "PAN_VALUES",
     "PSG_CHANNEL",
+    "PSG_CHANNEL_NAMES",
     "REGISTER_FIELDS",
     "REST",
     "SELECTED_SAMPLE",

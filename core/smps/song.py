@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
+from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg, split_operator_register
 from .driver_tables import SMPS_OP_TO_REG_OFFSET
 from .effects import PlayedEffect, SetTempoMod
 from .rules import PlaybackRules
@@ -153,7 +153,6 @@ REGISTER_FIELDS: dict[int, tuple[tuple[VoiceField, int, int], ...]] = {
     OperatorReg.D1L_RR: ((VoiceField.DECAY_LEVEL, 4, 0xF), (VoiceField.RELEASE_RATE, 0, 0xF)),
     OperatorReg.TL: ((VoiceField.TOTAL_LEVEL, 0, 0x7F),),
 }
-_GROUP_BITS, _OPERATOR_BITS, _CHANNEL_BITS = 0xF0, 0x0C, 0x03     # an operator register: base, slot, channel
 
 
 @dataclass
@@ -208,12 +207,13 @@ class SmpsVoice:
     def patched(self, register: int, value: int) -> SmpsVoice:
         """A copy with operator register `register` (channel 0) written `value`, as the chip reads
         it.  A carrier's TL is refused: it is the track volume's, not the voice's."""
-        fields_ = REGISTER_FIELDS.get(register & _GROUP_BITS)
-        if fields_ is None or register & _CHANNEL_BITS:
+        parts = split_operator_register(register)
+        fields_ = REGISTER_FIELDS.get(parts[0]) if parts else None
+        if parts is None or fields_ is None or parts[2]:
             raise ValueError(f"register ${register:02X}: not a voice's (channel 0)")
         if register in self.carrier_registers:
             raise ValueError(f"register ${register:02X}: a carrier's TL, the track volume's (not converted)")
-        slot = SMPS_OP_TO_REG_OFFSET.index(register & _OPERATOR_BITS)
+        slot = SMPS_OP_TO_REG_OFFSET.index(parts[1])
         operators = dict(self.operators)
         for field_, shift, mask in fields_:
             values = self.operator_values(field_)

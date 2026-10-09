@@ -192,6 +192,7 @@ SFX_CHANNEL_IDS = {
 
 
 FM_CHANNEL_NAMES = ("FM1", "FM2", "FM3", "FM4", "FM5", "FM6")     # the YM2612's channels, in order
+PSG_CHANNEL_NAMES = ("PSG1", "PSG2", "PSG3")                          # the SN76489's tone channels
 
 
 def source_names(song) -> list[str]:

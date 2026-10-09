@@ -4,7 +4,7 @@ each note's frame (core.vgm.frames), where the song says the note starts.
 The lift (rip_diff.py) reads notes back from the log, so it cannot see a detune, a voice or a slide
 that writes no key; this reads what the chip was given, for any driver:
 
-    pitch   FM: block << 11 | fnum, detune in; PSG: the tone divider (noise: tone 3's, 0 read as 1)
+    pitch   FM: the frequency word (block, fnum), detune in; PSG: the tone divider (noise: tone 3's, 0 read as 1)
     level   FM: the carriers' TL; PSG: the attenuation with the envelope's first step, which the
             driver adds on the key-on frame (clamped to silence; noise: the noise channel's)
     voice   FM: the feedback / algorithm and every operator register but the carriers' TL, the bits
@@ -27,8 +27,10 @@ from collections import Counter
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from ..chips import FEEDBACK_ALGORITHM_MASK, PSG_ATT_SILENT, REGISTER_MASKS
+from ..chips import FEEDBACK_ALGORITHM_MASK, PSG_ATT_SILENT, freq_word, operator_bits
 from ..smps import (
+    FM_CHANNEL_NAMES,
+    PSG_CHANNEL_NAMES,
     ChannelType,
     PlayedNote,
     PlayedSong,
@@ -38,14 +40,11 @@ from ..smps import (
     source_map,
     tempo_schedule,
 )
-from ..vgm import FrameLog
+from ..vgm import NOISE_CHANNEL, FrameLog
 from .rip_diff import ChannelChoice
 
 _EVERY_CHANNEL = ChannelChoice()
-_NOISE_TONE, _NOISE = 2, 3              # the PSG's tone 3 clocks the noise channel
-_OPERATOR_FIRST, _GROUP, _SLOT = 0x30, 0x10, 0x04     # a frame's operator bytes: 4 slots per register
-_SLOTS = 4
-_GROUP_BITS = 0xF0
+_NOISE_TONE = PSG_CHANNEL_NAMES.index("PSG3")      # the tone channel that clocks the noise
 
 
 class FrameAspect(StrEnum):
@@ -113,9 +112,9 @@ def _offset(notes: dict[str, list[tuple[int, PlayedNote]]], frames: FrameLog) ->
     found: Counter[int] = Counter()
     for name, sounding in notes.items():
         attacks = [frame for frame, note in sounding if note.attack]
-        if not name.startswith("FM") or not attacks:
+        if name not in FM_CHANNEL_NAMES or not attacks:
             continue
-        index = int(name.removeprefix("FM")) - 1
+        index = FM_CHANNEL_NAMES.index(name)
         key_on = next((f.index for f in frames.frames if any(f.fm[index].keys)), None)
         if key_on is not None:
             found[attacks[0] - key_on] += 1
@@ -125,19 +124,19 @@ def _offset(notes: dict[str, list[tuple[int, PlayedNote]]], frames: FrameLog) ->
 def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at: int,
                 first_steps: dict[str, int]) -> None:
     frame = frames.frames[at]
-    index = int(name.removeprefix("FM").removeprefix("PSG")) - 1
-    if name.startswith("FM"):
-        fm = frame.fm[index]
-        got = {FrameAspect.PITCH: fm.block << 11 | fm.fnum, FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls))}
+    if name in FM_CHANNEL_NAMES:
+        fm = frame.fm[FM_CHANNEL_NAMES.index(name)]
+        got = {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls))}
         levels = note.level if isinstance(note.level, tuple) else ()     # FM: the carriers' TLs
         want = {FrameAspect.PITCH: note.pitch, FrameAspect.LEVEL: tuple(sorted(levels))}
         if isinstance(note.voice, tuple):                                  # FM: (B0, ((register, byte) ...))
             feedback, timbre = note.voice
             want[FrameAspect.VOICE] = _chip_bits(feedback, dict(timbre))
-            got[FrameAspect.VOICE] = _chip_bits(fm.feedback_algorithm, {r: _operator(fm.operators, r) for r, _ in timbre})
+            got[FrameAspect.VOICE] = _chip_bits(fm.feedback_algorithm, {r: fm.operator(r) for r, _ in timbre})
     else:
+        index = PSG_CHANNEL_NAMES.index(name)
         noise = note.noise is not None
-        tone, level = frame.psg[_NOISE_TONE if noise else index], frame.psg[_NOISE if noise else index]
+        tone, level = frame.psg[_NOISE_TONE if noise else index], frame.psg[NOISE_CHANNEL if noise else index]
         got = {FrameAspect.PITCH: max(1, tone.period), FrameAspect.LEVEL: level.attenuation}
         level = note.level
         if isinstance(level, int) and isinstance(note.voice, str) and note.voice in first_steps:
@@ -155,10 +154,4 @@ def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog
 
 def _chip_bits(feedback: int, registers: dict[int, int]) -> tuple[int, dict[int, int]]:
     """A voice as the chip reads it: B0 and each operator register masked to their bits."""
-    return feedback & FEEDBACK_ALGORITHM_MASK, {r: v & REGISTER_MASKS[r & _GROUP_BITS] for r, v in registers.items()}
-
-
-def _operator(operators: bytes, register: int) -> int:
-    """A channel-0 operator register's byte in a frame's 28."""
-    group, slot = divmod(register - _OPERATOR_FIRST, _GROUP)
-    return operators[group * _SLOTS + slot // _SLOT]
+    return feedback & FEEDBACK_ALGORITHM_MASK, {r: operator_bits(r, v) for r, v in registers.items()}

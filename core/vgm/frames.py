@@ -20,6 +20,7 @@ from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from ..chips import OPERATOR_SLOT_OFFSETS, split_operator_register
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
 from .reader import VGM_SAMPLE_RATE, VgmLog, VgmOp, VgmWrite
 
@@ -30,6 +31,7 @@ _FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before 
 _DAC_REG = 0x2A
 _VOICE_FIRST = 0x30             # DT/MUL .. SSG-EG: the operator registers
 _VOICE_LAST = 0x9F
+_REGISTER_STRIDE = 0x10         # from one operator register's base to the next
 _REG_MODE = 0x27
 
 
@@ -50,6 +52,15 @@ class FmFrame:
     @property
     def keyed(self) -> bool:
         return self.slots != 0
+
+    def operator(self, register: int) -> int:
+        """Operator register `register` (channel 0's number: 0x30-0x9F) as the frame ends."""
+        parts = split_operator_register(register)
+        if parts is None:
+            raise ValueError(f"register ${register:02X}: no operator register")
+        base, slot, _ = parts
+        group = (base - _VOICE_FIRST) // _REGISTER_STRIDE
+        return self.operators[group * len(OPERATOR_SLOT_OFFSETS) + OPERATOR_SLOT_OFFSETS.index(slot)]
 
 
 @dataclass(frozen=True, slots=True)

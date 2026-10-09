@@ -16,7 +16,7 @@ from core.rom.voices import read_voices, voices_used
 from core.smps import PlaybackRules, SmpsSong, SongCode
 
 from .detect import detect_variant
-from .registry import data_fixes
+from .games import data_fixes
 
 
 def locate_sounds(rom: RomImage, variant: SmpsVariant | None = None) -> SoundIndex:

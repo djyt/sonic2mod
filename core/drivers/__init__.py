@@ -8,7 +8,8 @@ Grouped by family, one folder per driver:
         mucom/          Streets of Rage (Type 1b, MUCOM-style track code)
     smpsz80/            the driver on the Z80: the bank window, absolute little-endian pointers
         type0fm/        Golden Axe (Type 0 FM)
-    registry.py         every driver by name, the ROMs each is known in (SHA-1), their data fixes
+    registry.py         every driver by name, loaded on first use
+    games.py            every ROM known by its SHA-1: its game, driver and data fixes
     detect.py           the driver a ROM's songs read with: pinned, else the one that reads them all
     read.py             what a ROM holds: its index, each sound -> SongCode / SmpsSong, its DAC samples
 
@@ -20,18 +21,17 @@ relatively.  A new driver: docs/smps_variants.md § Adding a variant.
 """
 
 from .detect import detect_variant, first_failure
+from .games import data_fixes
 from .read import dac_samples, locate_sounds, read_rom_code, read_rom_song
-from .registry import DRIVERS, VARIANTS, data_fixes, pinned_variant
+from .registry import load_driver
 
 __all__ = [
-    "DRIVERS",
-    "VARIANTS",
     "dac_samples",
     "data_fixes",
     "detect_variant",
     "first_failure",
+    "load_driver",
     "locate_sounds",
-    "pinned_variant",
     "read_rom_code",
     "read_rom_song",
 ]

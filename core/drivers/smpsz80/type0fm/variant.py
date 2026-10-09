@@ -23,9 +23,6 @@ from .drums import drum_name, read_fm_drums
 from .layout import HEADER_TYPE0, KEY_RUN_OUT, TEMPO_PHASE, VOICE_TYPE0
 from .locate import fm_frequencies, locate_type0, sound_bank
 
-GOLDEN_AXE_REV_A_SHA1 = "2ce17105ca916fbbe3ac9ae3a2086e66b07996dd"
-
-
 # No handler of its own: one operand skipped
 _NO_OPS = (*range(0xE0, 0xE5), *range(0xE8, 0xEF), 0xF1, 0xF3, 0xF4, 0xF5, 0xFA, 0xFF)
 
@@ -70,5 +67,4 @@ TYPE0FM = SmpsVariant(
                   dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
     fm_frequencies=fm_frequencies,
     fm_drums=_fm_drums,
-    known_roms={GOLDEN_AXE_REV_A_SHA1: ()},
 )

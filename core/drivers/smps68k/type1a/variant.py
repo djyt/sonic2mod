@@ -16,9 +16,6 @@ from ..locate import locate_68k
 from ..memory import Relative68kMemory
 from .dac import type1a_dac
 
-MOONWALKER_REV_A_SHA1 = "70d9b760c87196af364492512104fa18c9d69cce"
-
-
 TYPE1A = SmpsVariant(
     name=SmpsDriver.TYPE1A,
     memory=Relative68kMemory,
@@ -50,5 +47,4 @@ TYPE1A = SmpsVariant(
     rules=replace(SONIC1_RULES, driver=SmpsDriver.TYPE1A,
                   dac_names={b: f"dac{b:02X}" for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
     dac=type1a_dac,
-    known_roms={MOONWALKER_REV_A_SHA1: ()},
 )

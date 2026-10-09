@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..drivers import VARIANTS, dac_samples, read_rom_song
+from ..drivers import dac_samples, load_driver, read_rom_song
 from ..drivers.names import DEFAULT_DRIVER, SmpsDriver
 from ..rom import DacSample, RomImage, SmpsVariant, is_rom_path
 from ..smps import SmpsParser, SmpsSong
@@ -33,7 +33,7 @@ def read_song(path: str | Path, options: LiftOptions | None = None, rom_song: in
 
     if driver not in (None, DEFAULT_DRIVER):
         raise ValueError(f"driver: {driver}: an asm or a rip is read as {DEFAULT_DRIVER}'s only")
-    rules = VARIANTS[DEFAULT_DRIVER].rules
+    rules = load_driver(DEFAULT_DRIVER).rules
     if is_vgm_path(path):
         return lift_song(load_frames(path), rules, options)
     return SmpsParser(rules, fix_data_bugs=fix_data_bugs).parse_file(str(path))
@@ -48,4 +48,4 @@ def read_dac(path: str | Path, driver: SmpsDriver | None = None) -> list[DacSamp
 
 def _variant(driver: SmpsDriver | None) -> SmpsVariant | None:
     """The variant a config's driver: names; None: the ROM's own (detected)."""
-    return VARIANTS[driver] if driver else None
+    return load_driver(driver) if driver else None

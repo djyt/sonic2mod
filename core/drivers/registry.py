@@ -1,25 +1,36 @@
-"""Every SMPS variant the ROM reader knows, by name, and the ROMs each is known in (by SHA-1)."""
+"""Every driver by name, each loaded on first use: a song reads with its driver alone, so a run
+imports one driver however many there are.  Detection (detect.py) loads them all.
+
+    name (names.py)  ->  (package under core/drivers, the SmpsVariant it builds)
+"""
 
 from __future__ import annotations
 
-from core.rom.fixes import RomFix
-from core.rom.image import RomImage
+import importlib
+from functools import cache
+
 from core.rom.variant import SmpsVariant
 
-from .smps68k import MUCOM, SONIC1, TYPE1A
-from .smpsz80 import TYPE0FM
+from .names import SmpsDriver
 
-DRIVERS = (SONIC1, TYPE1A, TYPE0FM, MUCOM)
+_PACKAGES: dict[SmpsDriver, tuple[str, str]] = {
+    SmpsDriver.SONIC1: ("smps68k.sonic1", "SONIC1"),
+    SmpsDriver.TYPE1A: ("smps68k.type1a", "TYPE1A"),
+    SmpsDriver.TYPE0FM: ("smpsz80.type0fm", "TYPE0FM"),
+    SmpsDriver.MUCOM: ("smps68k.mucom", "MUCOM"),
+}
 
-VARIANTS = {v.name: v for v in DRIVERS}
+assert set(_PACKAGES) == set(SmpsDriver), "a driver name without a package"
 
 
-def pinned_variant(rom: RomImage) -> SmpsVariant | None:
-    """The variant this exact ROM is known to use; None for any other ROM."""
-    return next((v for v in VARIANTS.values() if rom.sha1 in v.known_roms), None)
+@cache
+def load_driver(name: SmpsDriver) -> SmpsVariant:
+    package, attribute = _PACKAGES[name]
+    driver = getattr(importlib.import_module(f"{__package__}.{package}"), attribute)
+    assert driver.name == name, f"{package}.{attribute} is {driver.name}, not {name}"
+    return driver
 
 
-def data_fixes(rom: RomImage) -> tuple[RomFix, ...]:
-    """The data fixes known for this exact ROM; none for any other."""
-    variant = pinned_variant(rom)
-    return variant.known_roms[rom.sha1] if variant else ()
+def all_drivers() -> tuple[SmpsVariant, ...]:
+    """Every driver, in name order (names.py)."""
+    return tuple(load_driver(name) for name in SmpsDriver)

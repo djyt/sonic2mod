@@ -40,10 +40,11 @@ from core.drivers import (
     read_rom_song,
 )
 from core.drivers.reference import FM_FREQUENCIES, SONIC1_ENVELOPES, SONIC1_RULES
-from core.drivers.smps68k import SONIC1, TYPE1A
 from core.drivers.smps68k.memory import Relative68kMemory
-from core.drivers.smpsz80 import TYPE0FM
+from core.drivers.smps68k.sonic1 import SONIC1
+from core.drivers.smps68k.type1a import TYPE1A
 from core.drivers.smpsz80.memory import BankedZ80Memory, Z80RamMemory
+from core.drivers.smpsz80.type0fm import TYPE0FM
 from core.drivers.smpsz80.type0fm.drums import _Player, _wrap
 from core.drivers.smpsz80.type0fm.layout import HEADER_TYPE0, VOICE_TYPE0
 from core.drivers.smpsz80.type0fm.locate import fm_table, locate_type0, sound_bank

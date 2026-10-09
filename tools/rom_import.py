@@ -4,7 +4,7 @@ compare each with its asm, or write each as SMPS2ASM assembly.
 
 The comparison is two-fold: core.smps.parse_differences (every event, spelling included - the
 ROM and the asm are the same bytes, so nothing may differ) and, for music, compare_songs on what
-the driver plays.  Both sides read with the data fixes (core/drivers/registry.py: known for this exact ROM
+the driver plays.  Both sides read with the data fixes (core/drivers/games.py: known for this exact ROM
 only, as the asm's FixMusicAndSFXDataBugs), or with --shipped neither: the game as it was sold.
 
 Usage::
@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT))
 
 import yaml
 
-from core.drivers import VARIANTS, dac_samples, data_fixes, detect_variant, locate_sounds, read_rom_code
+from core.drivers import dac_samples, data_fixes, detect_variant, load_driver, locate_sounds, read_rom_code
 from core.drivers.names import SmpsDriver
 from core.drivers.reference import SONIC1_RULES
 from core.rom import RomError, RomImage, SmpsVariant, SoundIndex
@@ -169,7 +169,7 @@ def main() -> None:
 
     try:
         rom = RomImage.load(args.rom)
-        variant = VARIANTS[SmpsDriver(args.driver)] if args.driver else detect_variant(rom)
+        variant = load_driver(SmpsDriver(args.driver)) if args.driver else detect_variant(rom)
         index = locate_sounds(rom, variant)
     except (OSError, RomError) as e:
         sys.exit(f"error: {e}")

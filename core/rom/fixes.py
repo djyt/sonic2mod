@@ -1,6 +1,6 @@
 """Data fixes: a disassembly's data-bug fixes (Sonic 1's FixMusicAndSFXDataBugs), as byte edits to
-the one ROM each is known in.  A variant names its ROMs by SHA-1 with their fixes
-(SmpsVariant.known_roms); every edit checks the bytes it replaces.
+the one ROM each is known in (core/drivers/games.py: a game by SHA-1, with its fixes); every
+edit checks the bytes it replaces.
 
     same length     laid over the image before anything is read (headers, notes)
     other length    spliced by the track decoder: the original bytes read as the replacement

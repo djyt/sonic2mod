@@ -19,8 +19,8 @@ from roms import STREETS_OF_RAGE_ROM, needs_streets_of_rage
 
 from core.drivers import detect_variant, locate_sounds, read_rom_code, read_rom_song
 from core.drivers.reference import PSG_FREQUENCIES
-from core.drivers.smps68k import MUCOM
 from core.drivers.smps68k.memory import Relative68kMemory
+from core.drivers.smps68k.mucom import MUCOM
 from core.rom import RomImage
 from core.rom.grammar import track_label
 from core.rom.image import RomError

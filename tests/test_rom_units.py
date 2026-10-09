@@ -19,7 +19,15 @@ ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_HERE))
 
-from roms import MOONWALKER_ROM, needs_moonwalker
+from roms import (
+    GOLDEN_AXE_ROM,
+    MOONWALKER_ROM,
+    SONIC1_ASM,
+    SONIC1_ROM,
+    needs_golden_axe,
+    needs_moonwalker,
+    needs_sonic1_rom_and_asm,
+)
 
 from core.chips import OperatorReg
 from core.drivers import (
@@ -555,21 +563,17 @@ def _index():
     return SoundIndex(music={0x81: _SONG}, sfx={})
 
 
-_ROM_FILE = ROOT / "input" / "roms" / "sonic_rev01.bin"
-_ASM_DIR = ROOT / "reference" / "smps_drivers" / "sonic_1"
-
-
-@unittest.skipUnless(_ROM_FILE.exists() and _ASM_DIR.exists(), "needs input/roms/sonic_rev01.bin and reference/smps_drivers/sonic_1/")
+@needs_sonic1_rom_and_asm
 class SonicRev01(unittest.TestCase):
     """Every song and SFX of the ROM against the disassembly (data fixes off: the game as shipped)."""
 
     @classmethod
     def setUpClass(cls):
-        cls.rom = RomImage.load(_ROM_FILE)
+        cls.rom = RomImage.load(SONIC1_ROM)
         cls.index = locate_sounds(cls.rom)
 
     def _asm(self):
-        for path in sorted(glob.glob(str(_ASM_DIR / "music" / "*.asm")) + glob.glob(str(_ASM_DIR / "sfx" / "*.asm"))):
+        for path in sorted(glob.glob(str(SONIC1_ASM / "music" / "*.asm")) + glob.glob(str(SONIC1_ASM / "sfx" / "*.asm"))):
             yield int(re.search(r"(?:Mus|Snd)([0-9A-F]{2})", path).group(1), 16), path
 
     def test_the_indexes(self):
@@ -660,16 +664,13 @@ class Moonwalker(unittest.TestCase):
                          {0x81: 10739, 0x82: 6770, 0x84: 15193})     # the rips: 10765, ~6770, ~15190
 
 
-_GOLDEN_AXE = ROOT / "input" / "roms" / "Golden Axe (World) (Rev A).md"
-
-
-@unittest.skipUnless(_GOLDEN_AXE.exists(), "needs input/roms/Golden Axe (World) (Rev A).md")
+@needs_golden_axe
 class GoldenAxe(unittest.TestCase):
     """SMPS Z80 Type 0 FM, no disassembly: what docs/todo/binary_import.md's Phase 3 probe found."""
 
     @classmethod
     def setUpClass(cls):
-        cls.rom = RomImage.load(_GOLDEN_AXE)
+        cls.rom = RomImage.load(GOLDEN_AXE_ROM)
 
     def test_the_driver_and_its_bank(self):
         self.assertEqual(fm_table(z80_ram(self.rom)), 0x07D9)

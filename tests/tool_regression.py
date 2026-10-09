@@ -15,6 +15,11 @@ Cases, all 19 VGZs in reference/vgz/ (untracked, as the asm sources are):
     compare_<song>      vgm_compare on the same MOD (--with-renders; also each merged build)
     lift_all, lift_02   vgm_lift: every rip against its asm; Green Hill's every aspect
     lift_moonwalker_*   vgm_lift on the Moonwalker ROM's songs and rips (left out without them)
+    read_<game>         song_dump: every song of a game as read, walked and played (Sonic's asm and
+                        ROM, with and without data fixes; each ROM in tests/roms.py; left out without it)
+
+Run it after any change to `core/vgm/`, `core/audit/`, `core/mod/timing.py`, a VGM tool, or the
+readers and the walk (`core/smps/`, `core/rom/`, `core/drivers/`): the read_ cases are their snapshot.
 
 The MODs are tests/baselines/ (made with tests/settings.yaml, which these runs read too), so a
 converter change does not move these baselines; a regenerated conversion baseline may.  A
@@ -48,7 +53,14 @@ import yaml
 
 from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, _commit, variant_args
-from tests.roms import MOONWALKER_RIPS, MOONWALKER_ROM
+from tests.roms import (
+    GOLDEN_AXE_ROM,
+    MOONWALKER_RIPS,
+    MOONWALKER_ROM,
+    SONIC1_ASM,
+    SONIC1_ROM,
+    STREETS_OF_RAGE_ROM,
+)
 
 BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
@@ -57,6 +69,7 @@ RENDER_DIR = ROOT / "output" / "compare" / "tool_regression"
 
 _HASH_CHARS = 12
 _DIFF_LINES = 40                  # diff lines printed per failing case
+_SECTIONS_LISTED = 12             # songs named per failing read_ case
 _COMPARE_START = "Config :"       # vgm_compare output compared from this line
 _MANIFEST_HEADER = "# Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.\n"
 _CASE_TAG = slice(0, 2)           # a rip's number names its cases: "02 - Green Hill Zone.vgz" -> analyze_02_rows
@@ -65,6 +78,20 @@ _LIFT_DIFFS = "4"                 # ... its differences per channel
 _CONFIG_DIR = ROOT / "configs"
 _MOONWALKER_CONFIGS = _CONFIG_DIR / "moonwalker"
 _MOONWALKER_DETAIL = "88_round_clear"
+_SECTION = "### "                 # song_dump's per-song header: a failing read_ case names its songs
+_SHIPPED = ["--shipped"]
+
+# read_<name>: song_dump's source and arguments
+_READS = (
+    ("sonic1_asm_music", SONIC1_ASM / "music", []),
+    ("sonic1_asm_music_shipped", SONIC1_ASM / "music", _SHIPPED),
+    ("sonic1_asm_sfx", SONIC1_ASM / "sfx", []),
+    ("sonic1_rom", SONIC1_ROM, []),
+    ("sonic1_rom_shipped", SONIC1_ROM, _SHIPPED),
+    ("moonwalker", MOONWALKER_ROM, []),
+    ("golden_axe", GOLDEN_AXE_ROM, []),
+    ("streets_of_rage", STREETS_OF_RAGE_ROM, []),
+)
 
 
 @dataclass
@@ -127,9 +154,26 @@ def _lift_cases(vgzs: list[Path]) -> list[_Case]:
             _Case(f"lift_moonwalker_{_MOONWALKER_DETAIL}", [*tool, str(Path(configs) / f"{_MOONWALKER_DETAIL}.yaml")], inputs)]
 
 
+def _read_cases() -> list[_Case]:
+    """song_dump on each game there is a source of."""
+    cases = []
+    for name, source, args in _READS:
+        if not source.exists():
+            continue
+        inputs = sorted(source.glob("*.asm")) if source.is_dir() else [source]
+        cases.append(_Case(f"read_{name}", ["tools/song_dump.py", source.relative_to(ROOT).as_posix(), *args], inputs))
+    return cases
+
+
+def _missing_sources() -> list[str]:
+    """The ROMs, rips and asm some cases need that are not here."""
+    wanted = {MOONWALKER_RIPS, *(source for _, source, _ in _READS)}
+    return sorted(p.relative_to(ROOT).as_posix() for p in wanted if not p.exists())
+
+
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs)
+    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _read_cases()
     shelf = RipShelf.load(_CONFIG_DIR, VGZ_DIR)
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
@@ -228,6 +272,10 @@ def run(only: list[str] | None, with_renders: bool, jobs: int) -> bool:
         moved = [k for k, v in _input_hashes(case).items() if was.get(k) != v]
         if moved:
             print(f"    inputs changed since the baseline: {', '.join(moved)}")
+        sections = _changed_sections(want, case.output)
+        if sections:
+            print(f"    {len(sections)} song(s) differ: {', '.join(sections[:_SECTIONS_LISTED])}"
+                  + (" ..." if len(sections) > _SECTIONS_LISTED else ""))
         diff = list(difflib.unified_diff(want.splitlines(), case.output.splitlines(), "baseline", "now", lineterm="", n=1))
         for line in diff[:_DIFF_LINES]:
             print(f"    {line}")
@@ -236,6 +284,26 @@ def run(only: list[str] | None, with_renders: bool, jobs: int) -> bool:
 
     print(f"{len(cases) - failed} of {len(cases)} passed" + ("" if with_renders else " (vgm_compare skipped: --with-renders)"))
     return failed == 0
+
+
+def _sections(text: str) -> dict[str, str]:
+    """A song_dump output by song (the text before the first one under "")."""
+    out: dict[str, list[str]] = {"": []}
+    current = ""
+    for line in text.splitlines():
+        if line.startswith(_SECTION):
+            current = line[len(_SECTION):]
+            out[current] = []
+        out[current].append(line)
+    return {name: "\n".join(lines) for name, lines in out.items()}
+
+
+def _changed_sections(want: str, got: str) -> list[str]:
+    """The songs whose section differs; none for an output with no sections."""
+    was, now = _sections(want), _sections(got)
+    if len(was) == 1 and len(now) == 1:
+        return []
+    return [name or "(header)" for name in dict.fromkeys([*was, *now]) if was.get(name) != now.get(name)]
 
 
 def main() -> None:
@@ -253,9 +321,9 @@ def main() -> None:
         for c in _select(None, True):
             print(f"{c.name:<32} {'(renders) ' if c.renders else ''}{' '.join(c.argv)}")
         return
-    missing = [p.relative_to(ROOT).as_posix() for p in (MOONWALKER_ROM, MOONWALKER_RIPS) if not p.exists()]
+    missing = _missing_sources()
     if missing:
-        print(f"  note: no {' or '.join(missing)}: the lift_moonwalker cases are left out")
+        print(f"  note: no {', '.join(missing)}: the cases that read them are left out")
     if args.generate_baselines:
         generate(args.only, args.with_renders, args.jobs)
         return

@@ -17,7 +17,7 @@ ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_HERE))
 
-from roms import MOONWALKER_ROM, needs_moonwalker
+from roms import GOLDEN_AXE_ROM, MOONWALKER_ROM, needs_golden_axe, needs_moonwalker
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings
 from core.drivers import dac_samples, read_rom_song
@@ -198,17 +198,14 @@ class Moonwalker(unittest.TestCase):
             self.assertEqual(complete.name, "SC lofi")
 
 
-_GOLDEN_AXE = ROOT / "input" / "roms" / "Golden Axe (World) (Rev A).md"
-
-
-@unittest.skipUnless(_GOLDEN_AXE.exists(), "needs input/roms/Golden Axe (World) (Rev A).md")
+@needs_golden_axe
 class GoldenAxe(unittest.TestCase):
     """Type 0 FM: the drum track's FM drums get slots of their own; a silent one none."""
 
     @classmethod
     def setUpClass(cls):
-        cls.song = read_rom_song(RomImage.load(_GOLDEN_AXE), 0x81)       # Wilderness hits drum89 too
-        stated = {"name": "Wilderness", "input_file": str(_GOLDEN_AXE), "rom_song": "$81"}
+        cls.song = read_rom_song(RomImage.load(GOLDEN_AXE_ROM), 0x81)       # Wilderness hits drum89 too
+        stated = {"name": "Wilderness", "input_file": str(GOLDEN_AXE_ROM), "rom_song": "$81"}
         cls.data = derive_config(stated, cls.song, "configs/golden_axe/81_wilderness.yaml", SampleSettings()).data
 
     def test_each_hit_drum_has_a_slot_at_the_drum_root(self):

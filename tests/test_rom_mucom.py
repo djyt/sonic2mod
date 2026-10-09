@@ -199,7 +199,7 @@ class StreetsOfRage(unittest.TestCase):
         dropped = Counter()
         for sid in self.index.music:
             dropped.update(read_rom_code(self.rom, sid, self.index).dropped)
-        self.assertEqual(set(dropped), {"gate", "register write", "LFO", "FM3 special mode", "$F0 (no PSG effect)",
+        self.assertEqual(set(dropped), {"timer write", "LFO", "FM3 special mode", "$F0 (no PSG effect)",
                                         "$F8 (no PSG effect)", "$F1 (no DAC effect)", "$FB (no DAC effect)"})
 
     def test_envelope_3_ends_in_silence(self):

@@ -161,7 +161,7 @@ def _event(ev) -> str:
         return f"{ev.tick_position:6} {ev.effect.flag} {list(ev.effect.values)}"
     n = ev.note
     marks = [m for m, on in (("rest", n.is_rest), ("dac " + n.dac_name, n.is_dac), ("no-attack", n.is_no_attack),
-                             ("retrigger", n.is_retrigger), ("run-out", n.run_out)) if on]
+                             ("retrigger", n.is_retrigger), ("cut", n.cut)) if on]
     return f"{ev.tick_position:6} ${n.note_value:02X} {n.duration} {' '.join(marks)}".rstrip()
 
 

@@ -234,14 +234,14 @@ a song pass (the `run_out` precedent).
 | tick = frame | divider 1, `NO_TEMPO_HOLDS` | header | none |
 | FM / PSG volume steps | `PlaybackRules.volume_steps`; `VOLUME_STEP`, `ALTER_VOLUME_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
 | detune add | `DETUNE_ADD` -> `DETUNE` | walk | none |
-| gate | `GATE` -> note + rest, marked off-grid like `run_out` | song pass beside `run_out.py` | none |
+| gate | `GATE` -> note + rest, marked off-grid like `run_out` (`SmpsNote.cut`) | walk (it looks at the next byte) | none |
 | loop break, tie cleared on exit | `OpKind.LOOP_EXIT` | walk | none |
 | DAC sample by flag | `DAC_SAMPLE` -> DAC notes get the selected sample | walk | none |
 | DAC rest / gate cut | `PlaybackRules.dac_rest_cuts` | rules | `channel_writer._on_rest` |
 | noise leaves tone3 alone | noise notes keep the last tone note's pitch, else `nMaxPSG` (divider 0) | walk | none |
 | PSG row clamp | the decoder maps to Sonic's PSG index | decoder | none |
 | FM table, B7 | `fm_frequencies`, 97 entries | variant | none |
-| `$FA` voice patches | `VOICE_REG` -> a patched copy of the voice (deduplicated), `SET_VOICE` swapped | song pass | none |
+| `$FA` voice patches | `VOICE_REGISTER` -> a patched copy of the voice (deduplicated), `SET_VOICE` swapped | song pass (`voice_patch.py`) | none |
 | FM3 special mode | `FM3_OPS` [4 offsets] -> `TrackState`; instrument key | state + catalogue | render ch3 with `$27` = `$40` |
 | LFO | `LFO` [freq, AMS, FMS]; global `$22`: last writer | state + catalogue | `ym2612/voice.py` forces B4 `$C0` |
 | vibrato | `MOD_SET`, depth word, count + 1 | decoder | check the vibrato formula |
@@ -318,7 +318,24 @@ a song pass (the `run_out` precedent).
     FM onsets: every one but the logs' last frames (`vgm_lift`).
   - The lift snaps a rip note to the table and reads no detune (vgz_conversion 1.3): its `note`
     differs where a detune passes half a semitone (`$C3` = 195), and on FM3 in special mode.
-- [ ] 2.2 Song passes: gate, voice patches.
+- [x] 2.2 Gate and voice patches (2026-10-09), found in the driver's code:
+  - **Gate:** `$F3 n` `Gate`, applied in the walk (it looks at the byte after the note): the note
+    keyed off n frames before its end, the rest of it a rest, both `SmpsNote.cut` (was `run_out`,
+    the run-out's marker too): the row grid takes a cut note's onset, not its length nor the rest.
+    A note no longer than n plays whole.  Spared, per kind (`PlaybackRules`): FM and PSG a note
+    the next byte ties (`gate_sees_tie`); FM a tied note, its key-off waiting on the tie bit
+    (`gate_spares_tied`; the PSG's silences anyway, `$73A42`); the drum track's cuts every note.
+  - **A rest after a tie** keys FM off on its first frame (the key-off at the rest's read waits on
+    the tie bit, the next frame's does not), the PSG at once: `tied_rest_holds` (Sonic 1's holds
+    through the rest: left out).
+  - **Voice patches:** `$FA r v` `VoiceRegister` (r: the track's channel in its low bits);
+    `voice_patch.py` after the walk: a patched copy per voice and set of patches, a `SetVoice`
+    where the write was; the next voice set drops them.  The songs write D1R, D2R and D1L/RR
+    (203 writes); a carrier's TL (+ header volume, rewritten after each volume change) is refused,
+    none written.  Timers A / B (`$24`-`$26`, MUCOM's tempo) are inert: dropped ("timer write").
+  - Against the rips' frame logs (scratch): FM voice registers exact at every key-on of the 15
+    (1381 of `$85`'s differ without the patches).  `vgm_lift` FM onsets and lengths: every note
+    but the logs' last frames (`$87`, `$89`).
 - [ ] 2.3 Yardstick: `vgm_lift --all --configs configs/streets_of_rage` (pairs in `rips.yaml`).
   FM onsets, lengths and notes must equal the rips, as the throwaway player did.
 

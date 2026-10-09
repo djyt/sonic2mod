@@ -16,6 +16,8 @@ A few say what a driver does in its own terms, and the walk (code.py) resolves e
 effect it plays as, by the song's PlaybackRules: no event keeps one.
 
     VolumeStep, AlterVolumeStep -> SetVol        DetuneAdd -> Detune
+    Gate -> each note after it cut short, a rest after it
+    VoiceRegister -> SetVoice of a patched copy (voice_patch.py, after the walk)
 """
 
 from __future__ import annotations
@@ -52,6 +54,8 @@ class CoordFlag(StrEnum):
     VOLUME_STEP = auto()          # Streets of Rage's $F1
     ALTER_VOLUME_STEP = auto()    # its $FB on FM
     DETUNE_ADD = auto()           # its $F2 with a third byte
+    GATE = auto()                 # its $F3
+    VOICE_REGISTER = auto()       # its $FA on FM
 
 
 @dataclass(frozen=True)
@@ -193,6 +197,21 @@ class DetuneAdd(SmpsEffect):
     """Added to the track's detune word: the walk's Detune."""
     flag = CoordFlag.DETUNE_ADD
     offset: int                   # signed
+
+
+@dataclass(frozen=True)
+class Gate(SmpsEffect):
+    """Each note keyed off this many frames (track updates) before its end; 0: none."""
+    flag = CoordFlag.GATE
+    frames: int
+
+
+@dataclass(frozen=True)
+class VoiceRegister(SmpsEffect):
+    """A YM2612 operator register written over the track's voice until the next voice set."""
+    flag = CoordFlag.VOICE_REGISTER
+    register: int                 # as the track writes it: its channel's number in the low bits
+    value: int
 
 
 _BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {cls.flag: cls for cls in SmpsEffect.__subclasses__()}

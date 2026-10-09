@@ -103,7 +103,7 @@ adds composite instruments to the same catalogue.
 | Class | Holds |
 |---|---|
 | `SmpsSong` | `header`, `channels`, `voices`, `rules` (its driver's `PlaybackRules`; each channel carries the same), `fm_drums`, `dropped` (flags a ROM driver read and left out); `end_tick()`, `loop_target_tick()` |
-| `PlaybackRules` | `rules.py`: what a song's driver does that it is played by - `fm_frequencies`, `psg_frequencies`, `psg_read` (the 128 words a 7-bit index reads), `psg_envelopes`, `dac_names`, `tempo_phase`, `key_run_out`; what the walk resolves a driver's own effects by: `volume_steps`, `psg_detune_shift`, `jump_clears_tie`, `noise_writes_tone3`.  Built by each driver (`SmpsVariant.rules_from_rom` reads a ROM's tables in) (`core/drivers`); nothing below the drivers holds a driver's tables or falls back to one |
+| `PlaybackRules` | `rules.py`: what a song's driver does that it is played by - `fm_frequencies`, `psg_frequencies`, `psg_read` (the 128 words a 7-bit index reads), `psg_envelopes`, `dac_names`, `tempo_phase`, `key_run_out`; what the walk resolves a driver's own effects by: `volume_steps`, `psg_detune_shift`, `jump_clears_tie`, `noise_writes_tone3`, the gate's (`gate_spares_tied`, `gate_sees_tie`), `tied_rest_holds`.  Built by each driver (`core/drivers`; `SmpsVariant.rules_from_rom` reads a ROM's tables in); nothing below the drivers holds a driver's tables or falls back to one |
 | `SmpsSongHeader` | voice label, FM / PSG counts, tempo divider and modifier, channel headers, `is_sfx` |
 | `SmpsChannelHeader` | type, label, pitch offset, volume, PSG modulation byte, voice and `psg_voice_label`; SFX `hw_channel`; `chip_channel` where the driver's order is not header order (`source_names`) |
 | `SmpsChannel` | header, `events`, jump / loop info (`loop_tick`, `loop_event_index`, `loop_label`) |
@@ -134,7 +134,8 @@ How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
 | `driver_tables.py` | What every SMPS driver reads its tables by: `fm_note_index`, `psg_note_index`, `chip_pitch` / `psg_tone2_divider` (given the driver's `psg_read`), `PsgEnvelope`, `SMPS_OP_TO_REG_OFFSET`, pan values, channel maps.  No driver's tables: Sonic 1's are `core/drivers/reference.py` (`SONIC1_RULES`) |
 | `names.py` | Note labels and the two spellings (`semitone_to_note_name`: driver's `Es`; `synth_note_name`: config's `F`), `parse_smps_note`, `parse_synth_note`, DAC names, flag macro names, `source_names` |
 | `song_prep.py` | `prepare_song`: a new song as played (`smpsSetTempoDiv` re-timing, short loops replayed) and what changed; the song given is left as it is |
-| `run_out.py` | `apply_run_out`: a driver's key-on run-out (Type 0 FM: 256 frames) as the walk's last step - the held note cut, a rest after |
+| `run_out.py` | `apply_run_out`: a driver's key-on run-out (Type 0 FM: 256 frames) after the walk - the held note cut, a rest after (`SmpsNote.cut`, as a gate's: off the row grid) |
+| `voice_patch.py` | `apply_voice_patches`: a track's operator register writes (`VoiceRegister`, Streets of Rage's `$FA`) after the walk as patched copies of its voice, a `SetVoice` where each was written |
 | `percussion.py` | `FmDrum`, `FmFrame`: a drum track's FM drum as the chip plays it, frame by frame (`SmpsSong.fm_drums`) |
 | `tempo.py` | `TempoSegment`, `tempo_schedule`: the frame each tick is read on; `NO_TEMPO_HOLDS` (SFX, a driver's no-stall tempo) |
 | `track.py` | `TrackState`: one track's driver state as its flags leave it |

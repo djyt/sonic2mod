@@ -16,6 +16,10 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                jump_clears_tie  the kinds of track a jump drops a pending tie on
                noise_writes_tone3  a noise note writes its pitch to tone 3; False: tone 3 keeps the
                                 last tone note's (none: divider 0, nMaxPSG)
+               gate_spares_tied the kinds whose gate leaves a tied note whole (the key-off waits on the tie)
+               gate_sees_tie    the kinds whose gate leaves a note the next byte ties
+               tied_rest_holds  each kind's frames a rest after a tie holds the note before the key-off;
+                                a kind left out holds it through the rest (Sonic 1)
 """
 
 from __future__ import annotations
@@ -44,3 +48,6 @@ class PlaybackRules:
     psg_detune_shift: int = 0
     jump_clears_tie: frozenset[ChannelType] = frozenset()
     noise_writes_tone3: bool = True
+    gate_spares_tied: frozenset[ChannelType] = frozenset()
+    gate_sees_tie: frozenset[ChannelType] = frozenset()
+    tied_rest_holds: Mapping[ChannelType, int] = field(default_factory=dict)

@@ -14,20 +14,10 @@ width in the asm) are not the voice.
 
 from __future__ import annotations
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, OperatorReg
-from ..smps import SMPS_OP_TO_REG_OFFSET, SetVoice, SmpsCode, SmpsVoice, VoiceField
+from ..chips import CARRIER_OFFSETS_BY_ALG
+from ..smps import REGISTER_FIELDS, SMPS_OP_TO_REG_OFFSET, SetVoice, SmpsCode, SmpsVoice, VoiceField
 from .memory import SoundMemory
 from .variant import OPERATORS, VoiceLayout
-
-# Each register's fields: (field, shift, mask)
-_FIELDS: dict[OperatorReg, tuple[tuple[VoiceField, int, int], ...]] = {
-    OperatorReg.DT_MUL: ((VoiceField.DETUNE, 4, 0x7), (VoiceField.MULTIPLE, 0, 0xF)),
-    OperatorReg.KS_AR: ((VoiceField.RATE_SCALE, 6, 0x3), (VoiceField.ATTACK_RATE, 0, 0x1F)),
-    OperatorReg.AM_D1R: ((VoiceField.AMP_MOD, 7, 0x1), (VoiceField.DECAY_RATE_1, 0, 0x1F)),
-    OperatorReg.D2R: ((VoiceField.DECAY_RATE_2, 0, 0x1F),),
-    OperatorReg.D1L_RR: ((VoiceField.DECAY_LEVEL, 4, 0xF), (VoiceField.RELEASE_RATE, 0, 0xF)),
-    OperatorReg.TL: ((VoiceField.TOTAL_LEVEL, 0, 0x7F),),
-}
 
 
 def voices_used(code: SmpsCode) -> int:
@@ -51,7 +41,7 @@ def _voice(raw: bytes, index: int, layout: VoiceLayout) -> SmpsVoice:
     for group, register in enumerate(layout.groups):
         at = layout.groups_at + group * OPERATORS
         stored = raw[at:at + OPERATORS]
-        for field_, shift, mask in _FIELDS[register]:
+        for field_, shift, mask in REGISTER_FIELDS[register]:
             voice.operators[field_] = tuple((stored[k] >> shift) & mask for k in order)
     if not layout.carrier_tl:
         carriers = CARRIER_OFFSETS_BY_ALG[voice.algorithm]

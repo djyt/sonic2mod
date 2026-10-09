@@ -228,7 +228,8 @@ _FLAG_MACROS = {
     CoordFlag.SET_VOL: "smpsSetVol",        # not Sonic 1's SMPS2ASM: this project's spelling
     CoordFlag.DAC_SAMPLE: "smpsDacSample",  # likewise
     CoordFlag.VOLUME_STEP: "smpsVolStep", CoordFlag.ALTER_VOLUME_STEP: "smpsAlterVolStep",
-    CoordFlag.DETUNE_ADD: "smpsDetuneAdd",
+    CoordFlag.DETUNE_ADD: "smpsDetuneAdd", CoordFlag.GATE: "smpsGate",
+    CoordFlag.VOICE_REGISTER: "smpsVoiceRegister",
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

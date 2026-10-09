@@ -26,7 +26,7 @@ import contextlib
 import hashlib
 import sys
 from collections.abc import Iterator
-from dataclasses import fields
+from dataclasses import fields, is_dataclass
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -76,6 +76,9 @@ def dump_asm(folder: Path, fixed: bool, only: list[str] | None) -> Iterator[str]
         yield from _song(song, not song.header.is_sfx)
 
 
+_LISTED = 4                       # a rules field with more entries than this is hashed
+
+
 # --- sections --------------------------------------------------------------------------------
 
 def _rules(rules: PlaybackRules) -> Iterator[str]:
@@ -88,14 +91,14 @@ def _rules(rules: PlaybackRules) -> Iterator[str]:
 def _fields(rules, indent: str) -> Iterator[str]:
     for f in fields(rules):
         value = getattr(rules, f.name)
-        if f.name == "tracks":
-            for kind in sorted(value):
-                yield f"{indent}{f.name} {kind}"
-                yield from _fields(value[kind], indent + "  ")
-        elif isinstance(value, str):
+        if isinstance(value, str):
             yield f"{indent}{f.name}: {value}"
-        elif isinstance(value, (tuple, dict)) and len(value) > 4:
+        elif isinstance(value, (tuple, dict)) and len(value) > _LISTED:     # a table: hashed
             yield f"{indent}{f.name}: {len(value)} entries {_digest(repr(sorted(value.items()) if isinstance(value, dict) else value))}"
+        elif isinstance(value, dict) and value and all(is_dataclass(v) for v in value.values()):
+            for key in sorted(value):                   # a few rules by key (each kind of track's): nested
+                yield f"{indent}{f.name} {key}"
+                yield from _fields(value[key], indent + "  ")
         else:
             yield f"{indent}{f.name}: {value!r}"
 

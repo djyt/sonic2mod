@@ -25,7 +25,7 @@ from dataclasses import replace
 from functools import lru_cache, partial
 
 from core.chips import OperatorReg
-from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, refuse
+from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, read, refuse
 from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
@@ -35,7 +35,20 @@ from ...names import SmpsDriver
 from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
 from ..locate import pointers_before_data
 from ..memory import Relative68kMemory
-from .grammar import mucom_instruction
+from .grammar import (
+    dac_sample,
+    detune,
+    fm_vibrato,
+    loop_end,
+    loop_exit,
+    loop_start,
+    mucom_instruction,
+    noise,
+    pan,
+    psg_vibrato,
+    psg_volume_down,
+    register_write,
+)
 
 _LONG, _WORD = 4, 2
 _LEA_A0 = bytes.fromhex("41F9")                  # lea (xxx).l,a0
@@ -72,13 +85,21 @@ _VOICE_LAYOUT = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_
                            OperatorReg.D2R, OperatorReg.D1L_RR),
                           feedback_last=True, operator_offsets=(0x00, 0x04, 0x08, 0x0C), carrier_tl=False)
 
-# Read and left out for now: LFO, FM3 special mode (register writes: grammar.py)
+# The loops, the same on every kind of track ($F5 opens, $F6 closes, $FE leaves on the last pass)
+_LOOPS: dict[int, FlagSpec] = {0xF5: read(loop_start), 0xF6: read(loop_end), 0xFE: read(loop_exit)}
+
+# Read and left out for now: LFO, FM3 special mode
 _FM_FLAGS: dict[int, FlagSpec] = {
     0xF0: effect(CoordFlag.SET_VOICE),
     0xF1: effect(CoordFlag.VOLUME_STEP),
+    0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),
+    0xF4: read(fm_vibrato),
+    **_LOOPS,
     0xF7: drop("FM3 special mode", 4),
+    0xF8: read(pan),
     0xF9: refuse("pause toggle"),
+    0xFA: read(register_write),
     0xFB: effect(CoordFlag.ALTER_VOLUME_STEP),
     0xFC: drop("LFO", 3),
     0xFD: NO_ATTACK,
@@ -88,20 +109,31 @@ _FM_FLAGS: dict[int, FlagSpec] = {
 _PSG_FLAGS: dict[int, FlagSpec] = {
     0xF0: drop("$F0 (no PSG effect)", 1),
     0xF1: effect(CoordFlag.VOLUME_STEP),
+    0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),
+    0xF4: read(psg_vibrato),
+    **_LOOPS,
+    0xF7: read(noise),
     0xF8: drop("$F8 (no PSG effect)", 1),
     0xF9: effect(CoordFlag.PSG_VOICE),
     0xFA: effect(CoordFlag.PSG_VOICE),
+    0xFB: read(psg_volume_down),
     0xFC: refuse("$FC on a PSG track (hangs the driver)"),
     0xFD: NO_ATTACK,
     0xFF: JUMP,
 }
 
 _DAC_FLAGS: dict[int, FlagSpec] = {
+    0xF0: read(dac_sample),
     0xF1: drop("$F1 (no DAC effect)", 1),
+    0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),                # cuts the sample (Phase 3: a rest that cuts)
+    0xF4: read(fm_vibrato),
+    **_LOOPS,
     0xF7: refuse("$F7 on the drum track"),
+    0xF8: read(pan),
     0xF9: refuse("pause toggle"),
+    0xFA: read(register_write),
     0xFB: drop("$FB (no DAC effect)", 1),
     0xFC: drop("LFO", 3),
     0xFD: NO_ATTACK,

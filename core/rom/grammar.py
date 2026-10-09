@@ -58,6 +58,8 @@ def flag_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, ki
     spec = variant.flags[kind].get(byte)
     if spec is None:
         raise RomError(f"${address:X}: ${byte:02X} is no {variant.name} coordination flag")
+    if spec.read is not None:
+        return spec.read(memory, address)
     if spec.kind is FlagKind.REFUSE:
         raise RomError(f"${address:X}: ${byte:02X} {spec.what}: not converted")
     operands = list(memory.bytes_at(address + 1, _operand_count(memory, address, spec)))

@@ -25,7 +25,6 @@ from enum import StrEnum
 from pathlib import Path
 
 from ..config import ConversionConfig
-from ..drivers.names import SmpsDriver
 from ..smps import (
     Aspect,
     ChannelType,
@@ -41,7 +40,7 @@ from ..smps import (
     source_map,
     tempo_schedule,
 )
-from ..source import is_vgm_path, read_song
+from ..source import SmpsDriver, is_vgm_path, read_song
 from ..vgm import LIFTED_ASPECTS, VGM_SAMPLE_RATE, FrameLog, LiftOptions, VgmLiftError, lift_song
 
 

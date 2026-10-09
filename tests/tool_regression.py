@@ -1,7 +1,8 @@
 """Regression suite for the VGM tools: their output, byte for byte, against stored baselines.
 
-    python tests/tool_regression.py --generate-baselines     # while the tools are known-good
-    python tests/tool_regression.py                          # after a change: PASS / FAIL + diff
+    python tests/tool_regression.py --generate-baselines     # while the tools are known-good (records what each runs)
+    python tests/tool_regression.py                          # after a change: the cases it can move (tests/selection.py)
+    python tests/tool_regression.py --all                    # every case
     python tests/tool_regression.py --only analyze_02_frames pitch_title_screen
     python tests/tool_regression.py --with-renders           # vgm_compare too (VGMPlay + ffmpeg)
 
@@ -52,7 +53,7 @@ sys.path.insert(0, str(ROOT))
 import yaml
 
 from core.audit import RIPS_MAP, RipShelf
-from tests.regression import SETTINGS_FILE, TEST_CASES, _commit, variant_args
+from tests.regression import SETTINGS_FILE, TEST_CASES, variant_args
 from tests.roms import (
     GOLDEN_AXE_ROM,
     MOONWALKER_RIPS,
@@ -61,9 +62,12 @@ from tests.roms import (
     SONIC1_ROM,
     STREETS_OF_RAGE_ROM,
 )
+from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
 
 BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
+COVERAGE_FILE = BASELINES_DIR / "coverage.yaml"
+_RUNNER_FILES = ("tests/tool_regression.py", "tests/selection.py")      # a change to either runs every case
 VGZ_DIR = ROOT / "reference" / "vgz"
 RENDER_DIR = ROOT / "output" / "compare" / "tool_regression"
 
@@ -102,6 +106,11 @@ class _Case:
     from_line: str | None = None                # compare from the first line starting with this
     renders: bool = False                       # needs VGMPlay + ffmpeg
     output: str = field(default="", repr=False)
+    files: list[str] = field(default_factory=list, repr=False)   # what it ran, when recorded
+
+    @property
+    def run(self) -> CaseRun:
+        return CaseRun(self.name, tuple(self.argv), tuple(self.inputs))
 
 
 def _vgzs() -> list[Path]:
@@ -184,9 +193,12 @@ def all_cases() -> list[_Case]:
     return cases
 
 
-def _run(case: _Case) -> _Case:
-    r = subprocess.run([sys.executable, *case.argv], cwd=ROOT, capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", check=False)
+def _run(case: _Case, record: bool = False) -> _Case:
+    text = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
+    if record:
+        r, case.files = run_recorded(case.run, **text)
+    else:
+        r = subprocess.run([sys.executable, *case.argv], cwd=ROOT, check=False, **text)
     out = r.stdout
     if case.from_line is not None:
         lines = out.splitlines(keepends=True)
@@ -196,9 +208,9 @@ def _run(case: _Case) -> _Case:
     return case
 
 
-def _run_all(cases: list[_Case], jobs: int) -> list[_Case]:
+def _run_all(cases: list[_Case], jobs: int, record: bool = False) -> list[_Case]:
     with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
-        return list(pool.map(_run, cases))
+        return list(pool.map(lambda c: _run(c, record), cases))
 
 
 def _baseline_path(name: str) -> Path:
@@ -229,10 +241,15 @@ def _load_manifest() -> dict:
     return yaml.safe_load(MANIFEST_FILE.read_text(encoding="utf-8")) or {}
 
 
-def _select(only: list[str] | None, with_renders: bool) -> list[_Case]:
+def _select(only: list[str] | None, with_renders: bool, every: bool = True) -> list[_Case]:
+    """The cases named; else every case, or (not `every`) those the changes can move."""
     cases = [c for c in all_cases() if with_renders or not c.renders]
-    if not only:
+    if not only and every:
         return cases
+    if not only:
+        picked = select([c.run for c in cases], COVERAGE_FILE, _RUNNER_FILES)
+        report(picked, len(cases))
+        return [c for c in cases if c.name in picked.names]
     picked = [c for c in cases if c.name in only]
     missing = sorted(set(only) - {c.name for c in picked})
     if missing:
@@ -243,19 +260,21 @@ def _select(only: list[str] | None, with_renders: bool) -> list[_Case]:
 def generate(only: list[str] | None, with_renders: bool, jobs: int) -> None:
     BASELINES_DIR.mkdir(parents=True, exist_ok=True)
     manifest = _load_manifest()
-    made = {"commit": _commit(ROOT), "date": datetime.date.today().isoformat()}
-    for case in _run_all(_select(only, with_renders), jobs):
+    made = {"commit": head_commit(), "date": datetime.date.today().isoformat()}
+    cases = _run_all(_select(only, with_renders), jobs, record=True)
+    for case in cases:
         _write_baseline(case.name, case.output)
         manifest[case.name] = {**made, "inputs": _input_hashes(case)}
         print(f"  wrote {case.name}")
+    save_record(COVERAGE_FILE, {c.name: (c.run, c.files) for c in cases})
     text = yaml.safe_dump(manifest, sort_keys=True, default_flow_style=False)
     MANIFEST_FILE.write_text(_MANIFEST_HEADER + text, encoding="utf-8", newline="\n")
 
 
-def run(only: list[str] | None, with_renders: bool, jobs: int) -> bool:
+def run(only: list[str] | None, with_renders: bool, jobs: int, every: bool) -> bool:
     manifest = _load_manifest()
     failed = 0
-    cases = _run_all(_select(only, with_renders), jobs)
+    cases = _run_all(_select(only, with_renders, every), jobs)
     for case in cases:
         want = _read_baseline(case.name)
         if want is None:
@@ -310,6 +329,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--generate-baselines", action="store_true", help="write the baselines from the current tools")
     ap.add_argument("--only", nargs="+", metavar="CASE", help="these cases only")
+    ap.add_argument("--all", action="store_true", help="every case, not only those the changes can move")
     ap.add_argument("--with-renders", action="store_true", help="include the vgm_compare cases (VGMPlay + ffmpeg)")
     ap.add_argument("--jobs", "-j", type=int, default=os.cpu_count() or 1, help="parallel runs (default: one per CPU)")
     ap.add_argument("--list", action="store_true", help="list the cases and exit")
@@ -327,7 +347,7 @@ def main() -> None:
     if args.generate_baselines:
         generate(args.only, args.with_renders, args.jobs)
         return
-    sys.exit(0 if run(args.only, args.with_renders, args.jobs) else 1)
+    sys.exit(0 if run(args.only, args.with_renders, args.jobs, args.all) else 1)
 
 
 if __name__ == "__main__":

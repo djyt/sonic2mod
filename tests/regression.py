@@ -1,25 +1,28 @@
-"""Regression test suite for sonic2mod.
+"""Regression test suite for sonic2mod: every case of tests/cases.yaml converted and diffed, cell by
+cell and sample by sample, against its baseline MOD.
 
 Usage:
-  python tests/regression.py --generate-baselines
-      Run convert.py for each test case and save output as baseline.
-      Run BEFORE implementing any fix.
-
   python tests/regression.py
-      Run conversions, then diff against saved baselines.
-      Prints PASS/FAIL per test case.
+      The cases the working tree's changes can move (tests/selection.py: what each case ran when
+      its baseline was made), converted and diffed.  Prints why each one runs.
 
-  python tests/regression.py --generate-baselines --only title_screen
-      Restrict either mode to the named test case(s).  Use this to accept an
-      intended change in one song without rewriting the other baselines.
+  python tests/regression.py --all
+      Every case.
+
+  python tests/regression.py --only title_screen moonwalker
+      These cases, or groups (cases.yaml's: sonic1, sonic1_rom, moonwalker, golden_axe).
+
+  python tests/regression.py --generate-baselines [--only ...]
+      Convert and save the output as the baseline (all cases, or these).  Run BEFORE a change,
+      while the code is known-good.  Records what each case ran (coverage.py, chip render caches
+      off: slower than a run).
 
   python tests/regression.py --jobs 4
-      Conversions run as parallel subprocesses (default: one per CPU); --jobs 1
-      runs them one at a time.  Results are always printed in _SONGS order.
+      Conversions run as parallel subprocesses (default: one per CPU); --jobs 1 runs them one at
+      a time.  Results are always printed in cases.yaml order.
 
-With input/roms/sonic_rev01.bin present (it is not in git), Title Screen, Green Hill Zone, Marble
-Zone and Credits (the last two with the ROM's data fixes) are also converted from its bytecode (convert.py --input --rom-song): `<name>_rom` cases that
-share their asm case's baseline, which they must match byte for byte.
+A case whose ROM is not here (input/roms/, not in git) is left out.  A ROM case (`of:`) shares its
+asm case's baseline, which it must match byte for byte.
 
 Besides the cell-by-cell diff, every case runs tools/mod_lint.py on its output: a note a
 ProTracker player cannot sound (a tone portamento with no sample playing, a note on an empty
@@ -37,8 +40,10 @@ tests/baselines/manifest.yaml records what each baseline was made with:
       settings: 9b2e4f01c6aa    # hash of tests/settings.yaml's content
 
 A baseline made with other settings fails without a diff (regenerate it); a config changed since
-its baseline is named above the diff.
+its baseline is named above the diff.  tests/baselines/coverage.yaml records what each case ran.
 """
+
+from __future__ import annotations
 
 import argparse
 import contextlib
@@ -52,107 +57,108 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-# Add project root to path
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+ROOT = _HERE.parent
+sys.path.insert(0, str(ROOT))
 
 import yaml
 
 from core.config import apply_variant, load_settings, load_yaml
+from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
 from tools.mod_compare import compare_mods
 from tools.mod_lint import lint_mod
 
-BASELINES_DIR = _HERE.parent / "tests" / "baselines"
+BASELINES_DIR = ROOT / "tests" / "baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
-SETTINGS_FILE = _HERE.parent / "tests" / "settings.yaml"         # what every conversion here reads
-LIVE_SETTINGS_FILE = _HERE.parent / "configs" / "settings.yaml"  # the keys SETTINGS_FILE must state
+COVERAGE_FILE = BASELINES_DIR / "coverage.yaml"
+CASES_FILE = _HERE / "cases.yaml"
+SETTINGS_FILE = ROOT / "tests" / "settings.yaml"         # what every conversion here reads
+LIVE_SETTINGS_FILE = ROOT / "configs" / "settings.yaml"  # the keys SETTINGS_FILE must state
 AMIGA_CLOCK = load_settings(str(SETTINGS_FILE))[0].amiga_clock    # the rate a period plays at, for mod_lint
+
+# The runner's own code: a change to it runs every case
+_RUNNER_FILES = ("tests/regression.py", "tests/selection.py", "tools/mod_compare.py", "tools/mod_lint.py")
 
 _HASH_CHARS = 12
 _MANIFEST_HEADER = "# Written by tests/regression.py --generate-baselines: what each baseline was made with.\n"
-
-# (config stem, test name, baseline stem, description).  Every song config has an entry, and
-# every variant a config states (_VARIANTS): a refactor is only safe once all of them still
-# produce byte-identical MODs.
-# `ignore_channels` (0-based MOD indices) is added per case only while deliberately
-# changing that channel — see _CASE_OVERRIDES below.
-_SONGS = [
-    ("01_title_screen",      "title_screen",      "title_screen",      "Title Screen"),
-    ("02_green_hill_zone",   "green_hill_zone",   "ghz",               "Green Hill Zone"),
-    ("02_green_hill_zone",   "ghz_lofi",         "ghz_lofi",          "Green Hill Zone lofi — mix_at: primary, A2 banks, loop_drift_db 20, root-pitch samples, merge_twins: always"),
-    ("03_marble_zone",       "marble_zone",       "marble_zone",       "Marble Zone — pitched rate-3 noise"),
-    ("04_spring_yard_zone",  "spring_yard_zone",  "spring_yard_zone",  "Spring Yard Zone — notes below the PSG table"),
-    ("05_lab_zone",          "lab_zone",          "lab_zone",          "Labyrinth Zone — rootless PSG entry + channel transpose"),
-    ("06_star_light_zone",   "star_light_zone",   "star_light_zone",   "Star Light Zone — range_space: chip"),
-    ("07_scrap_brain_zone",  "scrap_brain_zone",  "scrap_brain_zone",  "Scrap Brain Zone — PSG3 noise envelope variants"),
-    ("08_special_stage",     "special_stage",     "special_stage",     "Special Stage"),
-    ("09_robotnik",          "robotnik",          "robotnik",          "Robotnik"),
-    ("09_robotnik",          "robotnik_lofi",     "robotnik_lofi",     "Robotnik lofi — loop_drift_db 12, bass mixes at C2"),
-    ("10_final_zone",        "final_zone",        "final_zone",        "Final Zone"),
-    ("11_stage_clear",       "stage_clear",       "stage_clear",       "Stage Clear — range_space: chip"),
-    ("11_stage_clear",       "stage_clear_lofi",  "stage_clear_lofi",  "Stage Clear lofi — lead and harmony mixes at F2"),
-    ("12_ending_theme",      "ending_theme",      "ending_theme",      "Ending — range_space: chip, PSG2 own instrument"),
-    ("13_credits",           "credits",           "credits",           "Credits — tempo steps, global divider, chip space, 31 instruments"),
-    ("14_invincibility",     "invincibility",     "invincibility",     "Invincibility — range_space: chip"),
-    ("14_invincibility",     "invincibility_lofi", "invincibility_lofi", "Invincibility lofi — hat at A2, the bass looped"),
-    ("15_1up",               "extra_life",        "extra_life",        "Extra Life"),
-    ("15_1up",               "extra_life_lofi",   "extra_life_lofi",   "Extra Life lofi — the bass pair on a sliding loop, harmony mixes at F2"),
-    ("16_chaos_emerald",     "chaos_emerald",     "chaos_emerald",     "Chaos Emerald"),
-    ("17_drowning",          "drowning",          "drowning",          "Drowning — mid-song smpsSetTempoMod"),
-    ("18_continue_screen",   "continue_screen",   "continue_screen",   "Continue — range_space: chip, key changes"),
-    ("18_continue_screen",   "continue_screen_lofi", "continue_screen_lofi", "Continue lofi — bass and lead sliding loops, chords at 12 dB"),
-    ("19_game_over",         "game_over",         "game_over",         "Game Over"),
-    ("19_game_over",         "game_over_lofi",    "game_over_lofi",    "Game Over lofi — bass and lead looped early, the bass at C2"),
-]
-
-# test name -> the config's variant the case converts (convert.py --variant)
-_VARIANTS: dict[str, str] = {"ghz_lofi": "lofi", "robotnik_lofi": "lofi", "invincibility_lofi": "lofi",
-                             "game_over_lofi": "lofi", "extra_life_lofi": "lofi",
-                             "stage_clear_lofi": "lofi",
-                             "continue_screen_lofi": "lofi"}
+_MERGE_KEYS = ("merge:", "merge_patterns:")
+_INPUT_FILE_KEY = "input_file"
+_DIFFS_SHOWN = 20
 
 # name -> channels to ignore (0-based MOD indices).  Normally empty; set an entry only
 # while deliberately changing that channel.
 _CASE_OVERRIDES: dict[str, list[int]] = {}
 
-TEST_CASES = [
-    {
+
+def _config_path(config: str) -> str:
+    return f"configs/{config}.yaml"
+
+
+def _has_merge(config: str) -> bool:
+    """The config has a `merge:` / `merge_patterns:` section: its reduced build is a case too."""
+    with open(ROOT / config, encoding="utf-8") as f:
+        return any(line.startswith(_MERGE_KEYS) for line in f)
+
+
+def _input_file(config: str) -> str | None:
+    """The song file a config converts (its input_file:)."""
+    with open(ROOT / config, encoding="utf-8") as f:
+        return (load_yaml(f) or {}).get(_INPUT_FILE_KEY)
+
+
+def _load_cases() -> tuple[list[dict], list[str]]:
+    """cases.yaml's cases, each config's merged build after them, the ROM cases last; and the names
+    of those left out (their ROM is not here).  Each: name, group, config, baseline, variant,
+    args, inputs, description, ignore_channels; a ROM case: shares_baseline."""
+    with open(CASES_FILE, encoding="utf-8") as f:
+        groups = yaml.safe_load(f)
+
+    base, merged, rom_entries = [], [], []
+    by_name: dict[str, dict] = {}
+    for group, entries in groups.items():
+        for e in entries:
+            if "of" in e:
+                rom_entries.append((group, e))
+                continue
+            tc = _case(group, e["name"], _config_path(e["config"]), e.get("baseline", e["name"]), e.get("variant"),
+                       [], e["why"])
+            by_name[tc["name"]] = tc
+            base.append(tc)
+            if _has_merge(tc["config"]):
+                merged.append(_case(group, f"{tc['name']}_merged", tc["config"], f"{tc['baseline']}_merged",
+                                    tc["variant"], ["--merged"], f"{e['why']} — merged build"))
+
+    rom = []
+    for group, e in rom_entries:
+        of = by_name[e["of"]]
+        args = ["--input", e["input"], "--rom-song", str(e["rom_song"])]
+        tc = _case(group, e["name"], of["config"], of["baseline"], of["variant"], args,
+                   f"{of['description']}, read from the ROM ({e['rom_song']}) — {e['why']}", song=e["input"])
+        tc["shares_baseline"] = of["name"]
+        rom.append(tc)
+
+    cases = base + merged + rom
+    here = [tc for tc in cases if all((ROOT / p).exists() for p in tc["inputs"])]
+    return here, [tc["name"] for tc in cases if tc not in here]
+
+
+def _case(group: str, name: str, config: str, baseline: str, variant: str | None, args: list[str],
+          description: str, song: str | None = None) -> dict:
+    song = song or _input_file(config)
+    return {
         "name": name,
-        "config": f"configs/{stem}.yaml",
+        "group": group,
+        "config": config,
         "baseline": f"tests/baselines/{baseline}_baseline.mod",
+        "variant": variant,
+        "args": args,
+        "inputs": [config, SETTINGS_FILE.relative_to(ROOT).as_posix(), *([song] if song else [])],
+        "description": description,
         "ignore_channels": _CASE_OVERRIDES.get(name, []),
-        "description": f"{desc} — all channels",
-        "variant": _VARIANTS.get(name),
-        "args": [],
     }
-    for stem, name, baseline, desc in _SONGS
-]
 
 
-def _has_merge(stem: str) -> bool:
-    """True when the config has a `merge:` / `merge_patterns:` section (the reduced build is a
-    test case too)."""
-    path = _HERE.parent / "configs" / f"{stem}.yaml"
-    try:
-        with open(path, encoding="utf-8") as f:
-            return any(line.startswith(("merge:", "merge_patterns:")) for line in f)
-    except OSError:
-        return False
-
-
-# The merged (channel-folded) build of every song that has merge groups: convert.py --merged
-TEST_CASES += [
-    {
-        "name": f"{name}_merged",
-        "config": f"configs/{stem}.yaml",
-        "baseline": f"tests/baselines/{baseline}_merged_baseline.mod",
-        "ignore_channels": _CASE_OVERRIDES.get(f"{name}_merged", []),
-        "description": f"{desc} — merged build",
-        "variant": _VARIANTS.get(name),
-        "args": ["--merged"],
-    }
-    for stem, name, baseline, desc in _SONGS if _has_merge(stem)
-]
+TEST_CASES, _LEFT_OUT = _load_cases()
 
 
 def variant_args(tc: dict) -> list[str]:
@@ -163,6 +169,17 @@ def variant_args(tc: dict) -> list[str]:
 def _convert_args(tc: dict) -> list[str]:
     """convert.py's arguments after the config for a case."""
     return [*variant_args(tc), *tc.get("args", [])]
+
+
+def _output_path(name: str) -> Path:
+    """The conversion's output, used by the regression tests alone."""
+    return ROOT / "output" / f"_regression_{name}.mod"
+
+
+def _run(tc: dict) -> CaseRun:
+    argv = ["convert.py", tc["config"], "--settings", SETTINGS_FILE.relative_to(ROOT).as_posix(), *_convert_args(tc),
+            "--output", _output_path(tc["name"]).relative_to(ROOT).as_posix()]
+    return CaseRun(tc["name"], tuple(argv), tuple(ROOT / p for p in tc["inputs"]))
 
 
 def _content_hash(path: Path, variant: str | None = None) -> str:
@@ -201,16 +218,6 @@ def _check_settings_complete() -> None:
     sys.exit(2)
 
 
-def _commit(root: Path) -> str:
-    """HEAD's short hash, with -dirty when tracked files have uncommitted changes."""
-    def git(*args: str) -> str:
-        return subprocess.run(["git", *args], cwd=str(root), capture_output=True, text=True,
-                              check=False).stdout.strip()
-
-    head = git("rev-parse", "--short", "HEAD") or "unknown"
-    return f"{head}-dirty" if git("status", "--porcelain", "--untracked-files=no") else head
-
-
 def _load_manifest() -> dict:
     """{case name: entry}; empty before the first generation."""
     if not MANIFEST_FILE.exists():
@@ -224,56 +231,47 @@ def _write_manifest(manifest: dict) -> None:
     MANIFEST_FILE.write_text(_MANIFEST_HEADER + text, encoding="utf-8", newline="\n")
 
 
-# Songs read from the ROM's bytecode (core.rom) must convert to their asm case's MOD byte for byte:
-# they share its baseline.  The ROM is not in git; without it these cases are left out.
-ROM_FILE = "input/roms/sonic_rev01.bin"
-# Marble Zone and Credits carry the ROM's data fixes (core/rom/fixes.py), as their asm does.
-_ROM_SONGS = [("title_screen", "$8A"), ("green_hill_zone", "$81"), ("marble_zone", "$83"), ("credits", "$91")]
-_HAS_ROM = (_HERE.parent / ROM_FILE).exists()
-_BY_NAME = {tc["name"]: tc for tc in TEST_CASES}
-TEST_CASES += [
-    {
-        **_BY_NAME[name],
-        "name": f"{name}_rom",
-        "description": f"{_BY_NAME[name]['description']}, read from the ROM ({sound})",
-        "args": ["--input", ROM_FILE, "--rom-song", sound],
-        "shares_baseline": name,
-    }
-    for name, sound in _ROM_SONGS if _HAS_ROM
-]
+# --- converting ------------------------------------------------------------------------------
 
-
-def _regression_output_path(root: Path, name: str) -> Path:
-    """Return a temporary output path used exclusively by the regression tests."""
-    return root / "output" / f"_regression_{name}.mod"
-
-
-def run_conversion(config: str, root: Path, output_override: Path | None = None,
-                   extra_args: list[str] | None = None) -> tuple[bool, str]:
-    """Run convert.py with the given config.  Returns (ok, failure_text)."""
-    cmd = [sys.executable, "convert.py", config, "--settings", str(SETTINGS_FILE), *(extra_args or [])]
-    if output_override is not None:
-        cmd += ["--output", str(output_override)]
-    result = None
+def _convert(tc: dict, record: bool) -> tuple[bool, str, list[str]]:
+    """Run convert.py for a case: (ok, failure text, the files it ran when `record`)."""
+    run = _run(tc)
+    text = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
+    result, files = None, []
     for _attempt in range(2):          # a parallel first run can trip over the chip DLL builds: once more
-        result = subprocess.run(
-            cmd,
-            cwd=str(root),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
+        if record:
+            result, files = run_recorded(run, **text)
+        else:
+            result = subprocess.run([sys.executable, *run.argv], cwd=ROOT, check=False, **text)
         if result.returncode == 0:
             break
     assert result is not None
     if result.returncode != 0:
-        text = f"  convert.py failed (exit {result.returncode}):\n"
-        text += (result.stdout[-2000:] if result.stdout else "") + "\n"
-        text += (result.stderr[-2000:] if result.stderr else "")
-        return False, text
-    return True, ""
+        failure = f"  convert.py failed (exit {result.returncode}):\n"
+        failure += (result.stdout[-2000:] if result.stdout else "") + "\n"
+        failure += (result.stderr[-2000:] if result.stderr else "")
+        return False, failure, files
+    return True, "", files
+
+
+def _ensure_native_libs() -> None:
+    """Build ym3438.dll / sn76489.dll once, before parallel conversions could race to."""
+    subprocess.run(
+        [sys.executable, "-c",
+         "import ym2612.build, sn76489.build; "
+         "ym2612.build.get_lib_path(); sn76489.build.get_lib_path()"],
+        cwd=str(ROOT), capture_output=True, check=False,
+    )
+
+
+def _convert_all(cases: list[dict], jobs: int, record: bool = False) -> dict[str, tuple[bool, str, list[str]]]:
+    """Convert every case, up to `jobs` at a time; {name: (ok, failure text, files run)}."""
+    _output_path("").parent.mkdir(parents=True, exist_ok=True)
+    if jobs > 1:
+        _ensure_native_libs()
+    with ThreadPoolExecutor(max_workers=max(1, min(jobs, len(cases)))) as pool:
+        futures = {tc["name"]: pool.submit(_convert, tc, record) for tc in cases}
+        return {name: f.result() for name, f in futures.items()}
 
 
 def _new_lint_issues(baseline_path: Path, tmp_path: Path, ignore_channels: list[int]) -> list[dict]:
@@ -286,189 +284,168 @@ def _new_lint_issues(baseline_path: Path, tmp_path: Path, ignore_channels: list[
     return [i for i in lint_mod(str(tmp_path), AMIGA_CLOCK) if i["channel"] not in ignore and key(i) not in known]
 
 
-def _ensure_native_libs(root: Path) -> None:
-    """Build ym3438.dll / sn76489.dll once, before parallel conversions could race to."""
-    subprocess.run(
-        [sys.executable, "-c",
-         "import ym2612.build, sn76489.build; "
-         "ym2612.build.get_lib_path(); sn76489.build.get_lib_path()"],
-        cwd=str(root), capture_output=True, check=False,
-    )
+# --- choosing cases --------------------------------------------------------------------------
 
-
-def convert_all(cases: list[dict], root: Path, jobs: int) -> dict[str, tuple[bool, str]]:
-    """Convert every case, up to ``jobs`` at a time; {name: (ok, failure_text)}."""
-    for tc in cases:
-        _regression_output_path(root, tc["name"]).parent.mkdir(parents=True, exist_ok=True)
-    if jobs > 1:
-        _ensure_native_libs(root)
-    with ThreadPoolExecutor(max_workers=max(1, min(jobs, len(cases)))) as pool:
-        futures = {
-            tc["name"]: pool.submit(run_conversion, tc["config"], root,
-                                    _regression_output_path(root, tc["name"]), _convert_args(tc))
-            for tc in cases
-        }
-        return {name: f.result() for name, f in futures.items()}
-
-
-def _select_cases(only: list[str] | None) -> list[dict]:
-    """Return the test cases named in ``only`` (all of them when it is empty)."""
-    if not only:
-        return TEST_CASES
-    known = {tc["name"] for tc in TEST_CASES}
+def _named(only: list[str]) -> list[dict]:
+    """The cases or groups named."""
+    known = {tc["name"] for tc in TEST_CASES} | {tc["group"] for tc in TEST_CASES}
     unknown = [n for n in only if n not in known]
     if unknown:
-        print(f"Unknown test case(s): {', '.join(unknown)}.  Known: {', '.join(sorted(known))}")
+        print(f"Unknown test case(s) or group(s): {', '.join(unknown)}.  Known: {', '.join(sorted(known))}")
         sys.exit(2)
-    return [tc for tc in TEST_CASES if tc["name"] in only]
+    return [tc for tc in TEST_CASES if tc["name"] in only or tc["group"] in only]
 
 
-def generate_baselines(root: Path, only: list[str] | None = None, jobs: int = 1):
+def _affected() -> list[dict]:
+    """The cases the working tree's changes can move."""
+    picked = select([_run(tc) for tc in TEST_CASES], COVERAGE_FILE, _RUNNER_FILES)
+    report(picked, len(TEST_CASES))
+    return [tc for tc in TEST_CASES if tc["name"] in picked.names]
+
+
+
+
+# --- generating and running ------------------------------------------------------------------
+
+def generate_baselines(cases: list[dict], jobs: int) -> None:
     BASELINES_DIR.mkdir(parents=True, exist_ok=True)
-    cases = [tc for tc in _select_cases(only) if "shares_baseline" not in tc]
-    print(f"Generating baselines ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
-    results = convert_all(cases, root, jobs)
+    print(f"Generating baselines ({len(cases)} conversions, recorded, {min(jobs, len(cases))} at a time)...")
+    results = _convert_all(cases, jobs, record=True)
     manifest = _load_manifest()
-    made = {"commit": _commit(root), "date": datetime.date.today().isoformat(),
+    made = {"commit": head_commit(), "date": datetime.date.today().isoformat(),
             "settings": _content_hash(SETTINGS_FILE)}
+    ran = {}
     for tc in cases:
         print(f"\n  [{tc['name']}] convert.py {tc['config']} {' '.join(_convert_args(tc))}".rstrip())
-        tmp_path = _regression_output_path(root, tc["name"])
-        ok, failure = results[tc["name"]]
+        tmp_path = _output_path(tc["name"])
+        ok, failure, files = results[tc["name"]]
         if not ok:
             print(failure)
             print("  SKIPPED (conversion failed)")
             tmp_path.unlink(missing_ok=True)
             continue
-        baseline_path = root / tc["baseline"]
         if not tmp_path.exists():
             print(f"  SKIPPED (output not found: {tmp_path})")
             continue
+        ran[tc["name"]] = (_run(tc), files)
+        if "shares_baseline" in tc:        # a ROM case: recorded, its baseline is the asm case's
+            tmp_path.unlink(missing_ok=True)
+            print(f"  Recorded (baseline: {tc['shares_baseline']}'s)")
+            continue
+
+        baseline_path = ROOT / tc["baseline"]
         shutil.copy2(tmp_path, baseline_path)
         tmp_path.unlink(missing_ok=True)
-        manifest[tc["name"]] = {**made, "config": _content_hash(root / tc["config"], tc.get("variant"))}
+        manifest[tc["name"]] = {**made, "config": _content_hash(ROOT / tc["config"], tc.get("variant"))}
         print(f"  Saved baseline: {baseline_path}")
         issues = lint_mod(str(baseline_path), AMIGA_CLOCK)
         if issues:
             print(f"  NOTE: {len(issues)} note(s) a player cannot sound (tools/mod_lint.py) — accepted into the baseline")
     _write_manifest(manifest)
+    save_record(COVERAGE_FILE, ran)
     print("\nBaselines generated.")
 
 
-def run_tests(root: Path, only: list[str] | None = None, jobs: int = 1):
-    cases = _select_cases(only)
-    print(f"Running regression tests ({len(cases)} conversions, {min(jobs, len(cases))} at a time)...")
-    if not _HAS_ROM:
-        print(f"  note: no {ROM_FILE}: the ROM cases are left out")
+def run_tests(cases: list[dict], jobs: int) -> bool:
+    print(f"Running regression tests ({len(cases)} conversions, {min(jobs, max(1, len(cases)))} at a time)...")
+    if not cases:
+        print("\nNothing to run.")
+        return True
     all_passed = True
-    results = convert_all(cases, root, jobs)
+    results = _convert_all(cases, jobs)
     manifest = _load_manifest()
     settings = _content_hash(SETTINGS_FILE)
     for tc in cases:
         print(f"\n  [{tc['name']}] {tc['description']}")
-        tmp_path = _regression_output_path(root, tc["name"])
-        baseline_path = root / tc["baseline"]
-        if not baseline_path.exists():
-            print(f"  SKIP — no baseline at {baseline_path}")
-            print("         Run with --generate-baselines first.")
-            tmp_path.unlink(missing_ok=True)
-            all_passed = False
-            continue
-
-        print(f"  convert.py {tc['config']} {' '.join(_convert_args(tc))}".rstrip())
-
-        # What the baseline was made with: under other settings every diff is noise
-        made = manifest.get(tc.get("shares_baseline", tc["name"]))
-        if made is None:
-            print("  note: no manifest entry (the baseline predates it)")
-        elif made.get("settings") != settings:
-            print(f"  FAIL — baseline made with other settings ({made.get('commit')}, {made.get('date')}): "
-                  "tests/settings.yaml changed; regenerate it")
-            tmp_path.unlink(missing_ok=True)
-            all_passed = False
-            continue
-        elif made.get("config") != _content_hash(root / tc["config"], tc.get("variant")):
-            print(f"  note: {tc['config']} changed since the baseline ({made.get('commit')}, {made.get('date')})")
-
-        ok, failure = results[tc["name"]]
-        if not ok:
-            print(failure)
-            print("  FAIL (conversion error)")
-            tmp_path.unlink(missing_ok=True)
-            all_passed = False
-            continue
-
+        tmp_path = _output_path(tc["name"])
         try:
-            if not tmp_path.exists():
-                print(f"  FAIL (output not found: {tmp_path})")
-                all_passed = False
-                continue
-
-            diffs = compare_mods(
-                baseline_path, tmp_path,
-                ignore_channels=tc.get("ignore_channels", []),
-            )
-            new_issues = _new_lint_issues(baseline_path, tmp_path, tc.get("ignore_channels", []))
-            if diffs:
-                print(f"  FAIL — {len(diffs)} difference(s):")
-                for d in diffs[:20]:
-                    print(f"    {d}")
-                if len(diffs) > 20:
-                    print(f"    ... and {len(diffs) - 20} more")
-                all_passed = False
-            if new_issues:
-                print(f"  FAIL — {len(new_issues)} note(s) the player cannot sound that the baseline sounds:")
-                for i in new_issues[:20]:
-                    print(f"    {i['type']} pat={i['pattern']} row={i['row']:02d} ch={i['channel']}: {i['detail']}")
-                if len(new_issues) > 20:
-                    print(f"    ... and {len(new_issues) - 20} more")
-                all_passed = False
-            if not diffs and not new_issues:
-                print("  PASS")
+            all_passed &= _check(tc, results[tc["name"]], manifest, settings, tmp_path)
         finally:
             tmp_path.unlink(missing_ok=True)
 
     print()
-    if all_passed:
-        print("All tests PASSED.")
-    else:
-        print("Some tests FAILED.")
-        sys.exit(1)
+    print("All tests PASSED." if all_passed else "Some tests FAILED.")
+    return all_passed
+
+
+def _check(tc: dict, result: tuple[bool, str, list[str]], manifest: dict, settings: str, tmp_path: Path) -> bool:
+    """One case's output against its baseline: printed, True when it passes."""
+    baseline_path = ROOT / tc["baseline"]
+    if not baseline_path.exists():
+        print(f"  SKIP — no baseline at {baseline_path}")
+        print("         Run with --generate-baselines first.")
+        return False
+    print(f"  convert.py {tc['config']} {' '.join(_convert_args(tc))}".rstrip())
+
+    # What the baseline was made with: under other settings every diff is noise
+    made = manifest.get(tc.get("shares_baseline", tc["name"]))
+    if made is None:
+        print("  note: no manifest entry (the baseline predates it)")
+    elif made.get("settings") != settings:
+        print(f"  FAIL — baseline made with other settings ({made.get('commit')}, {made.get('date')}): "
+              "tests/settings.yaml changed; regenerate it")
+        return False
+    elif made.get("config") != _content_hash(ROOT / tc["config"], tc.get("variant")):
+        print(f"  note: {tc['config']} changed since the baseline ({made.get('commit')}, {made.get('date')})")
+
+    ok, failure, _ = result
+    if not ok:
+        print(failure)
+        print("  FAIL (conversion error)")
+        return False
+    if not tmp_path.exists():
+        print(f"  FAIL (output not found: {tmp_path})")
+        return False
+
+    diffs = compare_mods(baseline_path, tmp_path, ignore_channels=tc["ignore_channels"])
+    new_issues = _new_lint_issues(baseline_path, tmp_path, tc["ignore_channels"])
+    if diffs:
+        print(f"  FAIL — {len(diffs)} difference(s):")
+        for d in diffs[:_DIFFS_SHOWN]:
+            print(f"    {d}")
+        if len(diffs) > _DIFFS_SHOWN:
+            print(f"    ... and {len(diffs) - _DIFFS_SHOWN} more")
+    if new_issues:
+        print(f"  FAIL — {len(new_issues)} note(s) the player cannot sound that the baseline sounds:")
+        for i in new_issues[:_DIFFS_SHOWN]:
+            print(f"    {i['type']} pat={i['pattern']} row={i['row']:02d} ch={i['channel']}: {i['detail']}")
+        if len(new_issues) > _DIFFS_SHOWN:
+            print(f"    ... and {len(new_issues) - _DIFFS_SHOWN} more")
+    if diffs or new_issues:
+        return False
+    print("  PASS")
+    return True
 
 
 def main():
     # convert.py's output (quoted on a failure) is UTF-8; a Windows console may not be
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
-    parser = argparse.ArgumentParser(description="sonic2mod regression test suite")
-    parser.add_argument(
-        "--generate-baselines",
-        action="store_true",
-        help="Generate baseline MODs from current code (run before implementing a fix)",
-    )
-    parser.add_argument(
-        "--only",
-        nargs="+",
-        metavar="NAME",
-        help="Restrict to these test case names (e.g. --only title_screen)",
-    )
-    parser.add_argument(
-        "--jobs", "-j",
-        type=int,
-        default=os.cpu_count() or 1,
-        metavar="N",
-        help="Run up to N conversions at once (default: CPU count; 1 = one at a time)",
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--generate-baselines", action="store_true",
+                        help="save the current output as the baselines and record what each case runs")
+    parser.add_argument("--only", nargs="+", metavar="NAME", help="these cases or groups (e.g. title_screen moonwalker)")
+    parser.add_argument("--all", action="store_true", help="every case, not only those the changes can move")
+    parser.add_argument("--jobs", "-j", type=int, default=os.cpu_count() or 1, metavar="N",
+                        help="up to N conversions at once (default: CPU count; 1 = one at a time)")
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be at least 1")
 
-    root = _HERE.parent  # project root
     _check_settings_complete()
-    if args.generate_baselines:
-        generate_baselines(root, args.only, args.jobs)
+    if _LEFT_OUT:
+        print(f"  note: no ROM for {', '.join(_LEFT_OUT)}: left out")
+    if args.only:
+        cases = _named(args.only)
+    elif args.all or args.generate_baselines:
+        cases = TEST_CASES
     else:
-        run_tests(root, args.only, args.jobs)
+        cases = _affected()
+
+    if args.generate_baselines:
+        generate_baselines(cases, args.jobs)
+    elif not run_tests(cases, args.jobs):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

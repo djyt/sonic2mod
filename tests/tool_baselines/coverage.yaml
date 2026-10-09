@@ -7706,7 +7706,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: 9b0c552-dirty
+  commit: 198a785-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7755,6 +7755,7 @@ read_golden_axe:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -7762,7 +7763,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: 9b0c552-dirty
+  commit: 198a785-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7812,6 +7813,7 @@ read_moonwalker:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -8045,7 +8047,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: 9b0c552-dirty
+  commit: 198a785-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8095,6 +8097,7 @@ read_sonic1_rom:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -8103,7 +8106,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: 9b0c552-dirty
+  commit: 198a785-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8153,6 +8156,7 @@ read_sonic1_rom_shipped:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -8160,7 +8164,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 9b0c552-dirty
+  commit: 198a785-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8207,6 +8211,7 @@ read_streets_of_rage:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

@@ -3,3 +3,16 @@
 name: "Violent Breathing"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$86"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [4, "fm_v00_Eb2.raw", 40, 0]   # VGZ: -3.5 dB at 27
+  - [5, "fm_v00_Eb3.raw", 40, 0]   # VGZ: -3.4 dB at 27
+  - [6, "fm_v01_F3.raw", 16, 0]   # VGZ: +0.9 dB at 18
+  - [8, "fm_v01_Eb5.raw", 16, 0]   # VGZ: +0.9 dB at 18
+  - [9, "fm_v02_Bb1.raw", 29, 0]   # VGZ: -6.2 dB at 14
+  - [10, "fm_v03_F3.raw", 14, 0]   # VGZ: +5.5 dB at 27
+  - [11, "fm_v03_Eb4.raw", 15, 0]   # VGZ: +5.4 dB at 27
+  - [12, "fm_v03_G5.raw", 7, 0]   # VGZ: +2.2 dB at 9
+  - [16, "psg_fTone_01_Bb5.raw", 7, 0]   # VGZ: -1.1 dB at 6
+  - [18, "psg_fTone_02_C4.raw", 9, 0]   # VGZ: -1.1 dB at 8
+  - [19, "psg_noise_e7.raw", 3, 0]   # VGZ: +7.9 dB at 8

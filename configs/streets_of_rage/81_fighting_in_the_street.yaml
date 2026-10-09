@@ -3,3 +3,16 @@
 name: "Fighting in the Street"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$81"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [5, "fm_v01_F4.raw", 13, 0]   # VGZ: -1.2 dB at 11
+  - [10, "fm_v03_F6.raw", 29, 0]   # VGZ: -2.0 dB at 23
+  - [11, "fm_v04_F2.raw", 18, 0]   # VGZ: -4.4 dB at 11
+  - [12, "fm_v04_Eb3.raw", 21, 0]   # VGZ: -5.7 dB at 11
+  - [13, "fm_v05_F3.raw", 17, 0]   # VGZ: -10.5 dB at 5
+  - [18, "fm_v08_Eb3.raw", 16, 0]   # VGZ: -6.1 dB at 8
+  - [19, "fm_v09_Eb2.raw", 47, 0]   # VGZ: -4.9 dB at 27
+  - [20, "fm_v09_Cs3.raw", 47, 0]   # VGZ: -4.7 dB at 27
+  - [21, "psg_fTone_02_C4.raw", 6, 0]   # VGZ: -1.2 dB at 5
+  - [22, "psg_fTone_02_Bb4.raw", 6, 0]   # VGZ: -1.9 dB at 5
+  - [23, "psg_noise_e7.raw", 3, 0]   # VGZ: +5.9 dB at 6

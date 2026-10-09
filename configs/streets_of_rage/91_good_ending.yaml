@@ -3,3 +3,13 @@
 name: "Good Ending"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$91"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 53, 6]   # VGZ: +1.6 dB at 64
+  - [3, "fm_v00_A1.raw", 35, 0]   # VGZ: -3.7 dB at 23
+  - [4, "fm_v00_G2.raw", 36, 0]   # VGZ: -4.0 dB at 23
+  - [5, "fm_v00_F3.raw", 37, 0]   # VGZ: -4.1 dB at 23
+  - [6, "fm_v01_F2.raw", 11, 0]   # VGZ: +1.8 dB at 14
+  - [9, "psg_$00_C5.raw", 2, 0]   # VGZ: +2.0 dB at 3
+  - [10, "psg_$00_B5.raw", 2, 0]   # VGZ: +2.1 dB at 3
+  - [11, "psg_$00_A6.raw", 3, 0]   # VGZ: +1.4 dB at 4

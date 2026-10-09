@@ -3,3 +3,10 @@
 name: "You Became the Bad Guy!"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$8F"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 42, 6]   # VGZ: +3.7 dB at 64
+  - [7, "fm_v02_Cs3.raw", 6, 0]   # VGZ: +2.9 dB at 9
+  - [12, "fm_v07_F4.raw", 38, 0]   # VGZ: -1.4 dB at 32
+  - [13, "fm_v08_B7.raw", 15, 0]   # VGZ: -3.5 dB at 10
+  - [17, "psg_$00_B7.raw", 3, 0]   # VGZ: +1.9 dB at 4

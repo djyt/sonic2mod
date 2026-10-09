@@ -3,3 +3,22 @@
 name: "Dilapidated Town"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$8B"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 50, 6]   # VGZ: +2.2 dB at 64
+  - [2, "dac82.raw", 42, -3]   # VGZ: +3.6 dB at 64
+  - [3, "fm_v00_D4.raw", 14, 0]   # VGZ: +2.1 dB at 18
+  - [4, "fm_v00_C5.raw", 20, 0]   # VGZ: +2.5 dB at 27
+  - [5, "fm_v00_D6.raw", 22, 0]   # VGZ: +1.9 dB at 27
+  - [10, "fm_v02_Bb2.raw", 4, 0]   # VGZ: -3.2 dB at 3
+  - [11, "fm_v02_B3.raw", 4, 0]   # VGZ: -2.9 dB at 3
+  - [12, "fm_v03_A3.raw", 13, 0]   # VGZ: -1.4 dB at 11
+  - [13, "fm_v03_G4.raw", 13, 0]   # VGZ: -1.2 dB at 11
+  - [14, "fm_v04_Bb4.raw", 6, 0]   # VGZ: +7.3 dB at 14
+  - [15, "fm_v05_B7.raw", 14, 0]   # VGZ: -2.2 dB at 11
+  - [16, "fm_v06_D4.raw", 64, 0]   # VGZ: -5.4 dB at 35
+  - [17, "fm_v07_B7.raw", 15, 0]   # VGZ: -4.3 dB at 9
+  - [18, "fm_v08_A4.raw", 16, 0]   # VGZ: -1.4 dB at 14
+  - [19, "fm_v08_G5.raw", 16, 0]   # VGZ: -0.9 dB at 14
+  - [23, "psg_$00_D4.raw", 6, 0]   # VGZ: -2.1 dB at 5
+  - [24, "psg_$00_D5.raw", 3, 0]   # VGZ: +3.2 dB at 4

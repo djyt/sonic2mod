@@ -468,14 +468,12 @@ class SmpsToModConverter:
 
     def _psg_synth_instruments(self) -> set[int]:
         """The PSG instruments that will be synthesized, so disk loading skips them (no spurious
-        "file not found" warnings)."""
-        insts: set[int] = set()
+        "file not found" warnings): every map entry's, a noise entry's `envelopes:` variants too."""
         if not (self.psg_synth and self.psg_synth.enabled):
-            return insts
-        if self.config.psg_map:
-            insts.update(e.mod_instrument for e in self.config.psg_map.values())
-        if self.config.psg_voice_map:
-            insts.update(e.mod_instrument for entries in self.config.psg_voice_map.values() for e in entries)
+            return set()
+        insts = {e.mod_instrument for e in self.config.psg_map.values()}
+        insts |= {i for e in self.config.psg_map.values() for i in e.envelopes.values()}
+        insts |= {e.mod_instrument for entries in self.config.psg_voice_map.values() for e in entries}
         return insts
 
     def _install_samples(self, synth: SynthesisSettings | None, psg_insts: set[int]) -> None:

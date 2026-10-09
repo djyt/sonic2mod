@@ -53,15 +53,28 @@ from ..config import (
 )
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
-from ..smps import C1_SEMITONE, ChannelType, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
+from ..smps import (
+    C1_SEMITONE,
+    ChannelType,
+    FmDrum,
+    SmpsSong,
+    note_label,
+    pan_is_hard,
+    psg_voice_name,
+    source_map,
+    synth_note_name,
+)
 from .driver_state import walk_channel
 
 MAX_INSTRUMENTS = 31
 _MOD_SPAN = 35               # C1 ... B3
 _MIN_WINDOW = 12             # narrowest window root_harmonics may cut
+_NO_ENVELOPE = psg_voice_name(0)     # "$00": a PSG note with no envelope
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
 _ROWS_PER_PATTERN = 64
 _MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
+_WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM within _BPM_CLOSE
+_BPM_CLOSE = 0.1               # % off the driver's tempo
 _FIRST_NOTE = 0x81           # the note byte of C0
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
 _FINETUNE_STEPS = 96         # finetune steps an octave
@@ -71,6 +84,7 @@ _FM_STEM = "fm_v{:02x}"                 # an FM voice's windows: fm_v04_C3.raw
 _TONE_STEM = "psg_{}"                   # a PSG envelope's: psg_$00_Cs3.raw
 _WINDOW_FILE = "{}_{}.raw"              # stem, lowest pitch
 _NOISE_FILE = "psg_noise_{:02x}.raw"    # psg_noise_e7.raw
+_NOISE_ENVELOPE_FILE = "psg_noise_{:02x}_{}.raw"     # psg_noise_e7_$00.raw: another envelope's
 _DAC_FILE = "{}.raw"                    # the ROM's sample name: dac81.raw; an FM drum's: drum81.raw
 _DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|(dac|drum)[0-9a-f]{2}\.raw")   # any of them
 
@@ -178,7 +192,7 @@ class _Deriver:
         self._dac_samples(dac_names)
         self._items("voice_map", self._windows(fm, ChannelType.FM, _FM_STEM.format))
         self._items("psg_voice_map", self._windows(tone, "tone", _TONE_STEM.format))
-        self._items("psg_map", {form: self._noise(form) for form in sorted(noise)})
+        self._items("psg_map", {form: self._noise(form, noise[form]) for form in sorted(noise)})
         self._sample_list()
         if self._next - 1 > MAX_INSTRUMENTS:
             raise ValueError(f"the derived config needs {self._next - 1} instruments, a MOD holds "
@@ -192,10 +206,11 @@ class _Deriver:
                 if any(e.note is not None and not e.note.is_rest for e in ch.events)]
 
     def _notes(self, sources: list[str]):
-        """Each FM voice's and PSG envelope's chip pitches, the noise forms, the DAC samples hit."""
+        """Each FM voice's and PSG envelope's chip pitches, each noise form's envelopes, the DAC
+        samples hit."""
         fm: dict[int, Counter] = defaultdict(Counter)
         tone: dict[str, Counter] = defaultdict(Counter)
-        noise: set[int] = set()
+        noise: dict[int, Counter] = defaultdict(Counter)
         dac: Counter = Counter()
         levels = self._levels
         bare = ConversionConfig()           # no maps: the walk tracks the driver's state only
@@ -209,11 +224,12 @@ class _Deriver:
                 if note.is_dac:
                     dac[note.dac_name] += 1
                 elif res is not None and st.noise_form is not None:
-                    noise.add(st.noise_form)
-                    levels[("noise", st.noise_form)][(None, (st.att, False))] += 1
+                    label = st.envelope or _NO_ENVELOPE
+                    noise[st.noise_form][label] += 1
+                    levels[("noise", (st.noise_form, label))][(None, (st.att, False))] += 1
                 elif res is not None and st.is_psg:
-                    tone[st.envelope or "$00"][res.chip] += 1
-                    levels[("tone", st.envelope or "$00")][(res.chip, (st.att, False))] += 1
+                    tone[st.envelope or _NO_ENVELOPE][res.chip] += 1
+                    levels[("tone", st.envelope or _NO_ENVELOPE)][(res.chip, (st.att, False))] += 1
                 elif res is not None and st.voice is not None:
                     fm[st.voice][res.chip] += 1
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
@@ -250,12 +266,17 @@ class _Deriver:
 
     def _tpr_options(self, grid: int) -> tuple[float, list[dict]]:
         """Ticks per row for `grid` and the speeds whose BPM fits.  Stored ticks hold the header's
-        tempo divider; ticks_per_row counts duration units (Timeline multiplies the divider back in)."""
+        tempo divider; ticks_per_row counts duration units (Timeline multiplies the divider back in).
+        Speeds 2-8, or up to 16 where none of those comes close: Good Ending's 13-frame rows are
+        150 BPM at speed 13, 80.77 at 7."""
         h = self._song.header
         divider = max(h.tempo_divider, 1)
         tpr = grid // divider if grid % divider == 0 else grid / divider
         fps = region_fps(self._stated.get("region", "ntsc"))
-        return tpr, bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
+        options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
+        if not options or abs(options[0]["error_pct"]) > _BPM_CLOSE:
+            options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps, speeds=_WIDE_SPEEDS) or options
+        return tpr, options
 
     def _grid_options(self, grid: int) -> tuple[float, list[dict]] | None:
         """`grid`'s ticks per row and speeds, if the song fits the pattern limit at it and some speed's
@@ -299,8 +320,14 @@ class _Deriver:
         span = min(self._top - self._floor, max(_MIN_WINDOW, self._top - self._lowest_root(pitch)))
         return min(span, self._max_window) if self._max_window else span
 
-    def _noise(self, form: int) -> dict:
-        return {"mod_instrument": self._take("noise", _NOISE_FILE.format(form), form), "root": _NOISE_ROOT}
+    def _noise(self, form: int, envelopes: Counter) -> dict:
+        """The form's slot, rendered with the envelope most of its notes play (the converter's
+        vote: derive_noise_envelopes), and a slot for each other envelope it plays with."""
+        own = max(envelopes, key=lambda label: envelopes[label])
+        entry = {"mod_instrument": self._take("noise", _NOISE_FILE.format(form), (form, own)), "root": _NOISE_ROOT}
+        others = {label: self._take("noise", _NOISE_ENVELOPE_FILE.format(form, label), (form, label))
+                  for label in envelopes if label != own}
+        return entry | ({"envelopes": others} if others else {})
 
     def _dac_samples(self, hit: Counter) -> None:
         """A slot per DAC sample hit (a pitched copy shares its sample's): the sample at the note and

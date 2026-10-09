@@ -10,8 +10,8 @@ The driver writes a channel only when a track reads its data, or a frame effect 
             vibrato) or the envelope restarts (the level rises), a rest where it falls silent.
             The noise track's period goes to tone channel 3.  A re-attack at the same pitch and
             level writes nothing - and sounds like nothing either.
-    DAC     the Z80 starts a sample when it gets to the 68k's request: a seek belongs to the
-            frame whose burst it follows.
+    DAC     the Z80 starts a sample when it gets to the 68k's request: a start (a seek, or bytes
+            resuming after a pause) belongs to the frame whose burst it follows.
 
 Pitch here is the nearest table note (pitch_offset 0); detune and voices come later (1.3-1.8).
 """
@@ -158,8 +158,7 @@ def psg_period_frames(fl: FrameLog, ch: int) -> list[int]:
 
 def dac_hits(fl: FrameLog) -> list[Hit]:
     """Every sample the Z80 started, on the frame that asked for it."""
-    return [Hit(fl.burst_frame(sample), dac=f"pcm {offset:#06x}")
-            for frame in fl.frames for offset, sample in zip(frame.dac.seeks, frame.dac.seek_samples, strict=True)]
+    return [Hit(fl.burst_frame(s.sample), dac=f"pcm {s.offset:#06x}") for frame in fl.frames for s in frame.dac.starts]
 
 
 def dac_used(fl: FrameLog) -> bool:

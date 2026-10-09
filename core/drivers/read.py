@@ -57,11 +57,11 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
 
 
 def _rules(variant: SmpsVariant, image: RomImage, memory: SoundMemory, index: SoundIndex) -> PlaybackRules:
-    """The variant's rules, with what this ROM's driver holds read from it: its FM table, its
-    PSG envelopes."""
+    """The variant's rules, with what this ROM's driver holds read from it: its tables, its PSG
+    envelopes."""
     rules = variant.rules
-    if variant.fm_frequencies:
-        rules = replace(rules, fm_frequencies=variant.fm_frequencies(image))
+    if variant.rules_from_rom:
+        rules = variant.rules_from_rom(image, rules)
     if index.envelopes:
         rules = replace(rules, psg_envelopes=read_envelopes(memory, index.envelopes, variant))
     return rules

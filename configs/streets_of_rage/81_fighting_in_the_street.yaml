@@ -1,0 +1,5 @@
+# Streets of Rage - Fighting in the Street.  A minimal config: everything else is derived from the ROM
+# (docs/todo/streets_of_rage.md); python convert.py <this> --show-config prints it.
+name: "Fighting in the Street"
+input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
+rom_song: "$81"

@@ -10,6 +10,8 @@ The rules: a note waits for the duration byte after it (a flag or a label comple
 saved one); a duration with no note re-keys the last note; smpsNoAttack marks the next read;
 smpsLoop is unrolled, smpsCall inlined, smpsJump ends the channel (a loop) or is followed (a
 forward jump into code not yet walked); a channel's loop starts where ITS walk reached the target.
+A driver's own volume steps and detune adds are resolved here, by the song's PlaybackRules
+(effects.py); so are its jump's tie and its noise's pitch.
 """
 
 from __future__ import annotations
@@ -19,7 +21,23 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from .driver_tables import psg_voice_name
-from .effects import ChanTempoDiv, CoordFlag, Pan, PsgVoice, SelectSample, SetVoice, SmpsEffect, effect_of
+from .effects import (
+    AlterVol,
+    AlterVolumeStep,
+    ChanTempoDiv,
+    CoordFlag,
+    Detune,
+    DetuneAdd,
+    Pan,
+    PsgForm,
+    PsgVoice,
+    SelectSample,
+    SetVoice,
+    SetVol,
+    SmpsEffect,
+    VolumeStep,
+    effect_of,
+)
 from .percussion import FmDrum
 from .rules import PlaybackRules
 from .run_out import apply_run_out
@@ -41,11 +59,19 @@ LAST_NOTE = 0xDF      # nAs7
 FIRST_FLAG = LAST_NOTE + 1     # $E0: coordination flags from here
 NO_ATTACK = 0xE7      # smpsNoAttack
 SELECTED_SAMPLE = 0x100   # a drum track's note that plays the sample DAC_SAMPLE chose (no SMPS byte)
+MAX_PSG = 0xC6        # nMaxPSG: the PSG table's last entry, divider 0 (the chip clocks it as 1)
+
+_BYTE, _WORD = 0x100, 0x10000
 
 
 def signed_byte(value: int) -> int:
     """A track byte as the driver adds it: two's complement ($F4 = -12)."""
     return value - 0x100 if value > 0x7F else value
+
+
+def _signed_word(value: int) -> int:
+    """A sum kept in a 16-bit word (add.w), two's complement."""
+    return (value + _WORD // 2) % _WORD - _WORD // 2
 
 
 class OpKind(Enum):
@@ -121,7 +147,8 @@ class SmpsCode:
 
 
 # Flags whose operand is a signed byte
-_SIGNED_FLAGS = frozenset({CoordFlag.DETUNE, CoordFlag.ALTER_VOL, CoordFlag.CHANGE_TRANSPOSITION})
+_SIGNED_FLAGS = frozenset({CoordFlag.DETUNE, CoordFlag.ALTER_VOL, CoordFlag.CHANGE_TRANSPOSITION,
+                           CoordFlag.ALTER_VOLUME_STEP})
 
 
 def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
@@ -209,6 +236,20 @@ class _Walker:
         self._passes: dict[str, int] = {}          # each loop being replayed (by its body's label): the pass
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
 
+        # The driver's track state the rules resolve effects with (rules.py)
+        self._rules = rules
+        self._volume_step = 0                      # the RAM starts cleared
+        self._level: int | None = None             # the level a volume step set, as the driver keeps it
+        self._detune_word = 0
+        self._noise = False                        # a PSG_FORM ran: notes are noise
+        self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
+
+        # A jump back's tie: labels first reached with a tie pending that their first note keeps
+        # (none read since), those since the last note, and the tie the jump left
+        self._tied_labels: set[str] = set()
+        self._open_labels: list[str] = []
+        self._jump_tie = False
+
         self._handlers = {
             OpKind.STOP: self._on_end, OpKind.RETURN: self._on_end,    # RETURN: only reached in a call
             OpKind.JUMP: self._on_jump, OpKind.LOOP: self._on_loop, OpKind.LOOP_EXIT: self._on_loop_exit,
@@ -233,7 +274,15 @@ class _Walker:
         if channel.has_jump and channel.loop_label:
             channel.loop_tick = self._label_ticks.get(channel.loop_label)
             channel.loop_event_index = self._label_events.get(channel.loop_label)
+            channel.replay_tie = self._replay_tie(channel.loop_label)
         return channel
+
+    def _replay_tie(self, label: str) -> bool | None:
+        """A replay's first note: tied by a tie the jump leaves; attacking where the first pass
+        took its tie from the code before `label`, which a replay does not run; else None."""
+        if self._jump_tie:
+            return True
+        return False if label in self._tied_labels else None
 
     def _walk(self, start: int, cur: _Cursor, seen: set[str], stop: int | None = None) -> None:
         """Walk ops from `start` (to `stop`, a loop body's end), appending events.  A note still
@@ -269,25 +318,29 @@ class _Walker:
         separate from its note:  SndA3 - Death: nAb3 / label / dc.b $01"""
         seen.add(op.name)
         if cur.pending is not None and self._label_precedes_duration(i):
-            self._mark_label(op.name, cur.tick, len(cur.channel.events) + 1)   # after the pending note
+            self._mark_label(op.name, cur, len(cur.channel.events) + 1)   # after the pending note
             return
         self._close_pending(cur)
-        self._mark_label(op.name, cur.tick, len(cur.channel.events))
+        self._mark_label(op.name, cur, len(cur.channel.events))
 
     def _on_end(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
         return None
 
     def _on_jump(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        if self._header.channel_type in self._rules.jump_clears_tie:
+            cur.no_attack = False
+
         # Back to code this channel walked (or an unknown target): the loop, the end
         if op.name in seen or op.name not in self._labels:
             cur.channel.has_jump = True
             cur.channel.loop_label = op.name
+            self._jump_tie = cur.no_attack
             return None
 
         # Forward into code not walked yet: followed, and the label is reached here, now - a later
         # jump back to it loops from this tick (Labyrinth FM4 into FM3's code)
         seen.add(op.name)
-        self._mark_label(op.name, cur.tick, len(cur.channel.events))
+        self._mark_label(op.name, cur, len(cur.channel.events))
         self._walk(self._labels[op.name] + 1, cur, seen)
         return None
 
@@ -335,10 +388,16 @@ class _Walker:
         return next((j for j in range(i, len(self._ops))
                      if self._ops[j].kind is OpKind.LOOP and self._ops[j].name == body), None)
 
-    def _mark_label(self, label: str, tick: int, event_index: int) -> None:
-        """The walk reached `label` at `tick`, before event `event_index`; the first time counts."""
-        self._label_ticks.setdefault(label, tick)
-        self._label_events.setdefault(label, event_index)
+    def _mark_label(self, label: str, cur: _Cursor, event_index: int) -> None:
+        """The walk reached `label` at the cursor's tick, before event `event_index`; the first
+        time counts."""
+        if label in self._label_ticks:
+            return
+        self._label_ticks[label] = cur.tick
+        self._label_events[label] = event_index
+        self._open_labels.append(label)
+        if cur.no_attack:
+            self._tied_labels.add(label)
 
     def _label_precedes_duration(self, i: int) -> bool:
         """True if the next byte-bearing op from `i` is a duration: a label between a note and
@@ -358,6 +417,7 @@ class _Walker:
             tempo_div = effect.divider
         if isinstance(effect, SelectSample):
             self._dac_sample = effect.sound
+        effect = self._resolved(effect)
         self._channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
 
         # A voice with its own pan byte: the driver writes B4 as it loads the voice
@@ -366,10 +426,47 @@ class _Walker:
             self._channel.events.append(SmpsEvent(effect=Pan(pan), tick_position=tick))
         return tempo_div
 
+    def _resolved(self, effect: SmpsEffect) -> SmpsEffect:
+        """`effect` as the track plays it: a volume step a level (an AlterVol then moves that level as
+        the driver keeps it, unclamped), a detune add the detune."""
+        match effect:
+            case VolumeStep(step=step):
+                return self._volume(signed_byte(step % _BYTE))
+            case AlterVolumeStep(delta=delta):
+                return self._volume(signed_byte((self._volume_step + delta) % _BYTE))
+            case Detune(offset=offset):
+                return self._detune(offset)
+            case DetuneAdd(offset=offset):
+                return self._detune(self._detune_word + offset)
+            case AlterVol(delta=delta) if self._level is not None:
+                self._level = signed_byte((self._level + delta) % _BYTE)
+                return SetVol(self._level)
+            case PsgForm():
+                self._noise = True
+        return effect
+
+    def _volume(self, step: int) -> SetVol:
+        """Volume step `step`: its level in the driver's table, the header volume added (add.b)."""
+        level = self._rules.volume_steps.get(self._header.channel_type, {}).get(step)
+        if level is None:
+            raise ValueError(f"{self._header.channel_type} track '{self._header.label}': volume step "
+                             f"{step}, which its driver has no level for")
+        self._volume_step = step
+        self._level = signed_byte((level + self._header.volume) % _BYTE)
+        return SetVol(self._level)
+
+    def _detune(self, word: int) -> Detune:
+        """The detune word `word` (add.w) as the track adds it: the PSG's shifted to a divider."""
+        self._detune_word = _signed_word(word)
+        if self._header.channel_type == ChannelType.PSG:
+            return Detune(self._detune_word >> self._rules.psg_detune_shift)
+        return Detune(self._detune_word)
+
     def _byte(self, cur: _Cursor, op: Op) -> None:
         """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample."""
         if op.kind is OpKind.NO_ATTACK:
             cur.no_attack = True
+            self._tied_labels.difference_update(self._open_labels)      # their first note ties itself
         elif op.kind is OpKind.DURATION:
             self._duration(cur, op.value * cur.tempo_div)
         else:
@@ -380,6 +477,8 @@ class _Walker:
         the driver plays nothing)."""
         if val == SELECTED_SAMPLE:
             val = REST if self._dac_sample is None else self._dac_sample
+        if val != REST and self._header.channel_type == ChannelType.PSG:
+            val = self._psg_note(val)
         if val == REST:
             note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
         elif cur.is_dac and val in self._dac_names:
@@ -388,6 +487,16 @@ class _Walker:
         else:
             note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
         self._open_note(cur, note)
+
+    def _psg_note(self, val: int) -> int:
+        """A PSG note as its divider plays: a noise note whose driver leaves tone 3 alone plays
+        the last tone note's (none: nMaxPSG)."""
+        if not self._noise:
+            self._tone_note = val
+            return val
+        if self._rules.noise_writes_tone3:
+            return val
+        return MAX_PSG if self._tone_note is None else self._tone_note
 
     def _duration(self, cur: _Cursor, duration: int) -> None:
         """A duration (already scaled by the tempo divider): the pending note's, or a note of its own."""
@@ -399,12 +508,14 @@ class _Walker:
         cur.channel.events.append(SmpsEvent(note=_standalone_note(cur, duration), tick_position=cur.tick))
         cur.tick += duration
         cur.no_attack = False           # every read clears it (the bclr before FMDoNext / PSGDoNext)
+        self._open_labels.clear()
 
     def _open_note(self, cur: _Cursor, note: SmpsNote | None) -> None:
         """Finalize the pending note; `note` (None: nothing) waits for its duration next."""
         self._close_pending(cur)
         cur.pending = note
         cur.no_attack = False
+        self._open_labels.clear()
 
     def _close_pending(self, cur: _Cursor) -> None:
         """Emit the pending note (if any) with the last duration."""

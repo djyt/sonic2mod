@@ -63,12 +63,15 @@ _SMPS_OPERATOR_OFFSETS = (0x00, 0x08, 0x04, 0x0C)
 class VoiceLayout:
     """How a driver stores an FM voice: the feedback / algorithm byte and, if `pan`, the B4 byte
     (L R AMS FMS) - first, or last if `feedback_last` - and four bytes for each operator register
-    in `groups` order, the register offset of each in `operator_offsets`."""
+    in `groups` order, the register offset of each in `operator_offsets`.  `carrier_tl` False: the
+    driver writes the carriers' TL from the track's volume as it loads the voice, so the voice's
+    own never play (read as 0)."""
 
     groups: tuple[OperatorReg, ...]
     pan: bool = False
     feedback_last: bool = False
     operator_offsets: tuple[int, ...] = _SMPS_OPERATOR_OFFSETS
+    carrier_tl: bool = True
 
     @property
     def size(self) -> int:
@@ -138,10 +141,11 @@ class SmpsVariant:
     envelope_commands: Mapping[int, EnvelopeCommand]
     header: HeaderLayout
     voice_layout: VoiceLayout
-    rules: PlaybackRules                                             # what its songs play by (the ROM's own FM
-                                                                     # table and envelopes read in their place)
+    rules: PlaybackRules                                             # what its songs play by (the ROM's own
+                                                                     # tables and envelopes read in their place)
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]] | None = None   # every sample a song can play
-    fm_frequencies: Callable[[RomImage], tuple[int, ...]] | None = None           # the FM table; None: the rules'
+    # The rules with the tables this ROM's driver holds read in (its FM table ...); None: as stated
+    rules_from_rom: Callable[[RomImage, PlaybackRules], PlaybackRules] | None = None
     # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
     # The track grammar: the instruction at an address (grammar.py; SMPS's for every variant so far)

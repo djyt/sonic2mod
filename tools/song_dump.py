@@ -114,6 +114,8 @@ def _song(song: SmpsSong, music: bool) -> Iterator[str]:
     yield "walk"
     for name, channel in names.items():
         loop = f" loop {channel.loop_tick} @{channel.loop_event_index}" if channel.has_jump else ""
+        if channel.replay_tie is not None:
+            loop += " replay tied" if channel.replay_tie else " replay attacks"
         yield f"  {name} {channel.header!r}{loop}"
         yield from (f"    {_event(ev)}" for ev in channel.events)
 

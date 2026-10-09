@@ -10,14 +10,24 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
     drums      dac_names        the drum track's bytes that play a sample, by name
     timing     tempo_phase      frames the first TempoWait hold comes late (core/smps/tempo.py)
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
+    the walk   volume_steps     each kind's level (FM: TL offset, PSG: attenuation) by VolumeStep,
+                                the step a signed byte
+               psg_detune_shift the PSG adds the detune word >> this to its divider
+               jump_clears_tie  the kinds of track a jump drops a pending tie on
+               noise_writes_tone3  a noise note writes its pitch to tone 3; False: tone 3 keeps the
+                                last tone note's (none: divider 0, nMaxPSG)
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .driver_tables import PsgEnvelope
+
+if TYPE_CHECKING:
+    from .song import ChannelType
 
 
 @dataclass(frozen=True)
@@ -30,3 +40,7 @@ class PlaybackRules:
     dac_names: Mapping[int, str]
     tempo_phase: int = 0
     key_run_out: int | None = None                # None: never
+    volume_steps: Mapping[ChannelType, Mapping[int, int]] = field(default_factory=dict)
+    psg_detune_shift: int = 0
+    jump_clears_tie: frozenset[ChannelType] = frozenset()
+    noise_writes_tone3: bool = True

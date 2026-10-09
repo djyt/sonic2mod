@@ -27,6 +27,7 @@ import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
 
+from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK
 from .driver_tables import fm_note_index, psg_note_index
 from .names import source_names
 from .song import SmpsNote, SmpsSong, SmpsVoice
@@ -221,7 +222,9 @@ def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int
         voice, level = st.envelope, st.att
     else:
         voice, level = _fm_voice(voices.get(st.voice) if st.voice is not None else None, st.tl)
-    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=base + st.detune,
+    # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider 0)
+    pitch = (base + st.detune) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,
                       noise=st.noise_form, dac="")

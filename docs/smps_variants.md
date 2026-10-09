@@ -101,11 +101,11 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 - **Voice:** 26 bytes: `$B0`, `$B4` (pan, AMS, FMS: setting the voice pans the track), TL x4,
   DT/MUL, RS/AR, AM/D1R, D2R, SL/RR.  Volume adds to the carriers' TL, as Sonic 1.
 - **Pitch:** its own FM table (Z80 `$07D9`, indexed from note `$80`): `$81` = C0 as Sonic 1, every
-  note above 6-18 cents flat (mostly -12).  `SmpsSong.fm_frequencies` carries it.  PSG table
+  note above 6-18 cents flat (mostly -12).  The song's rules carry it (`rules.fm_frequencies`).  PSG table
   `$074D` (no song uses the PSG).
 - **Tempo:** TempoWait as Sonic 1, but tempo 0 never stalls (Death Adder: `NO_TEMPO_HOLDS`), and
   the first hold comes **a frame late**: the counter is loaded as the song starts, after that
-  frame's tempo check (`$06CA` runs before `$043A`).  `tempo_phase` 1; FM1's key-ons on the rips'
+  frame's tempo check (`$06CA` runs before `$043A`).  `rules.tempo_phase` 1; FM1's key-ons on the rips'
   frames: Sutakora 128/128 (1/128 at Sonic 1's phase), Showdown 245/245, Wilderness 235/235.
   NTSC: V-int; PAL: YM timer B `$CB` (62.8 Hz).
 - **Run-out:** a note keyed 256 frames without an attacking read is keyed off (`$00E8`: the fill
@@ -142,7 +142,9 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
    song index, a song header and a voice.  Compare each table with Sonic 1's.
 2. Code: a folder in its family (`core/drivers/smps68k/<driver>/`, `smpsz80/<driver>/`):
    `variant.py`, the `SmpsVariant` (memory, locate, flags per kind of track, track grammar, header
-   and voice layouts, envelope commands, DAC, FM table, FM drums, the ROMs it is known in), and
+   and voice layouts, envelope commands, its `PlaybackRules` - Sonic 1's `SONIC1_RULES`
+   (`core/drivers/reference.py`) with what differs replaced - DAC, FM table, FM drums, the ROMs
+   it is known in), and
    whatever only this driver has; what two drivers of a family share moves up to the family
    folder.  Add it to `core/drivers/registry.py`'s `DRIVERS`.  A driver imports the framework
    absolutely (`core.rom.flags`), its family relatively.  Nothing outside its folder names it:

@@ -18,6 +18,7 @@ sys.path.insert(0, str(_HERE))
 from roms import STREETS_OF_RAGE_ROM, needs_streets_of_rage
 
 from core.drivers import detect_variant, locate_sounds, read_rom_code, read_rom_song
+from core.drivers.reference import PSG_FREQUENCIES
 from core.drivers.smps68k import MUCOM
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.rom import RomImage
@@ -25,7 +26,6 @@ from core.rom.grammar import track_label
 from core.rom.image import RomError
 from core.rom.tracks import decode_tracks
 from core.smps import (
-    PSG_FREQUENCIES,
     REST,
     ChannelType,
     CoordFlag,
@@ -44,7 +44,7 @@ def _walk(track: bytes, kind: ChannelType = ChannelType.FM):
     memory = Relative68kMemory(RomImage(_HEADER + track))
     code = decode_tracks(memory, {_AT: kind}, MUCOM).code
     header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=kind, label=track_label(_AT))])
-    return song_from_code(header, code, [], dac_names=MUCOM.dac_names).channels[0]
+    return song_from_code(header, code, [], MUCOM.rules).channels[0]
 
 
 def _notes(channel) -> list[tuple]:
@@ -154,7 +154,7 @@ class StreetsOfRage(unittest.TestCase):
 
     def test_envelope_3_ends_in_silence(self):
         song = read_rom_song(self.rom, 0x81, self.index)
-        self.assertEqual(song.psg_envelopes["fTone_03"].steps, (0, 0, 2, 3, 4, 5, 15))
+        self.assertEqual(song.rules.psg_envelopes["fTone_03"].steps, (0, 0, 2, 3, 4, 5, 15))
 
     def test_sfx_are_listed_not_read(self):
         with self.assertRaisesRegex(RomError, "music only"):

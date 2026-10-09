@@ -6,8 +6,10 @@ from __future__ import annotations
 from core.rom.fixes import RomFix
 from core.rom.flags import RETURN, STOP, EnvelopeCommand, drop, effect, every_kind
 from core.rom.variant import SmpsVariant
-from core.smps import SMPS_DAC_NAMES, CoordFlag, SmpsDriver
+from core.smps import CoordFlag
 
+from ...names import SmpsDriver
+from ...reference import SONIC1_RULES
 from ..common import FLAGS_68K, HEADER_68K, VOICE_68K
 from ..locate import locate_68k
 from ..memory import Relative68kMemory
@@ -43,7 +45,7 @@ SONIC1 = SmpsVariant(
     envelope_commands={0x80: EnvelopeCommand.HOLD},
     header=HEADER_68K,
     voice_layout=VOICE_68K,
-    dac_names={v: k for k, v in SMPS_DAC_NAMES.items()},
+    rules=SONIC1_RULES,
     dac=sonic1_dac,
     known_roms={SONIC1_REV01_SHA1: _REV01_FIXES},
 )

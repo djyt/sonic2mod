@@ -12,7 +12,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from ..chips import OperatorReg
-from ..smps import ChannelType, FmDrum, SmpsDriver, SmpsSongHeader
+from ..smps import ChannelType, FmDrum, PlaybackRules, SmpsSongHeader
 from .fixes import RomFix
 from .flags import EnvelopeCommand, FlagSpec
 from .grammar import Instruction, smps_instruction
@@ -123,8 +123,6 @@ class HeaderLayout:
     psg_entry: EntryLayout = SMPS_PSG_ENTRY
     psg_slots: tuple[str, ...] = ()          # each PSG entry's chip channel; () = header order (PSG1 first)
     never_holds: int | None = None           # the tempo byte that never stalls (Type 0 FM's 0)
-    tempo_phase: int = 0                     # frames the first hold comes late (Type 0 FM: 1)
-    key_run_out: int | None = None           # frames a note keys without an attacking read (Type 0 FM: 256)
 
     @property
     def entries_at(self) -> int:
@@ -134,16 +132,17 @@ class HeaderLayout:
 
 @dataclass(frozen=True, eq=False)     # one object per driver: compared by identity
 class SmpsVariant:
-    name: SmpsDriver
+    name: str                                                         # core.drivers.names.SmpsDriver
     memory: Callable[[RomImage], SoundMemory]
     locate: Callable[[RomImage], SoundIndex]
     flags: Mapping[ChannelType, Mapping[int, FlagSpec]]                 # each kind of track's flag table
     envelope_commands: Mapping[int, EnvelopeCommand]
     header: HeaderLayout
     voice_layout: VoiceLayout
-    dac_names: Mapping[int, str]                                     # the DAC track's bytes that play a sample
+    rules: PlaybackRules                                             # what its songs play by (the ROM's own FM
+                                                                     # table and envelopes read in their place)
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]] | None = None   # every sample a song can play
-    fm_frequencies: Callable[[RomImage], tuple[int, ...]] | None = None           # the FM table; None: Sonic 1's
+    fm_frequencies: Callable[[RomImage], tuple[int, ...]] | None = None           # the FM table; None: the rules'
     # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
     known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes

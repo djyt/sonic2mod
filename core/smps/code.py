@@ -18,9 +18,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from .driver_tables import DEFAULT_DRIVER, PsgEnvelope, SmpsDriver, psg_voice_name
-from .names import SMPS_DAC_NAMES_REVERSE
+from .driver_tables import psg_voice_name
 from .percussion import FmDrum
+from .rules import PlaybackRules
 from .run_out import apply_run_out
 from .song import (
     REST,
@@ -89,25 +89,21 @@ def track_byte(value: int) -> Op | None:
 
 @dataclass
 class SongCode:
-    """A song as a front end reads it, before the walk: header, code, voices."""
+    """A song as a front end reads it, before the walk: header, code, voices, and the rules its
+    driver plays it by."""
 
     header: SmpsSongHeader
     code: SmpsCode
     voices: list
+    rules: PlaybackRules
     address: int | None = None                                   # a ROM's: the header's
     addresses: dict[str, int] = field(default_factory=dict)      # ... and each label's (voices too)
-    driver: SmpsDriver = DEFAULT_DRIVER                          # the variant that reads it
     dropped: dict[str, int] = field(default_factory=dict)        # flags read and left out, by name
-    psg_envelopes: dict[str, PsgEnvelope] | None = None          # None: Sonic 1's
-    fm_frequencies: tuple[int, ...] | None = None                # None: Sonic 1's
     fm_drums: dict[str, FmDrum] = field(default_factory=dict)    # the drum track's FM programs
-    dac_names: dict[int, str] | None = None                      # None: Sonic 1's (dKick ...)
 
     def song(self) -> SmpsSong:
-        song = song_from_code(self.header, self.code, self.voices, self.psg_envelopes, self.dac_names)
+        song = song_from_code(self.header, self.code, self.voices, self.rules)
         song.dropped = dict(self.dropped)
-        if self.fm_frequencies is not None:
-            song.fm_frequencies = self.fm_frequencies
         song.fm_drums = dict(self.fm_drums)
         return song
 
@@ -138,17 +134,12 @@ def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
     return SmpsEffect(flag, list(operands))
 
 
-def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list,
-                   psg_envelopes: dict[str, PsgEnvelope] | None = None,
-                   dac_names: Mapping[int, str] | None = None) -> SmpsSong:
-    """Each of the header's channels walked from its label.  `psg_envelopes` / `dac_names`: the
-    driver's (None: Sonic 1's).  A DAC track's byte without a name is a plain note."""
-    names = SMPS_DAC_NAMES_REVERSE if dac_names is None else dac_names
+def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list, rules: PlaybackRules) -> SmpsSong:
+    """Each of the header's channels walked from its label, by its driver's `rules`.  A DAC
+    track's byte without a name (rules.dac_names) is a plain note."""
     pans = {v.index: v.pan for v in voices if v.pan is not None}
-    channels = [_Walker(code, ch_header, names, pans).walk(header.tempo_divider) for ch_header in header.channels]
-    song = SmpsSong(header=header, channels=channels, voices=voices)
-    if psg_envelopes is not None:
-        song.psg_envelopes = dict(psg_envelopes)
+    channels = [_Walker(code, ch_header, rules, pans).walk(header.tempo_divider) for ch_header in header.channels]
+    song = SmpsSong(header=header, channels=channels, voices=voices, rules=rules)
     apply_run_out(song)
     return song
 
@@ -198,14 +189,14 @@ _WalkState = tuple[int, int, SmpsNote | None, int, int, bool]
 class _Walker:
     """One channel's walk through the song's code."""
 
-    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, dac_names: Mapping[int, str],
+    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, rules: PlaybackRules,
                  voice_pans: Mapping[int, int]):
         self._ops = code.ops
-        self._dac_names = dac_names
+        self._dac_names = rules.dac_names
         self._voice_pans = voice_pans     # a voice that stores its B4 byte pans the track it is set on
         self._labels = code.labels
         self._header = header
-        self._channel = SmpsChannel(header=header)
+        self._channel = SmpsChannel(header=header, rules=rules)
         self._is_dac = header.channel_type == ChannelType.DAC
 
         # Where this channel's walk first reached each label (a jump back to one replays from

@@ -93,7 +93,7 @@ class WriterContext:
         pitch it is rendered at."""
         if self._sample_detunes is None:
             self._sample_detunes = {i.inst: detune_cents(C1_SEMITONE + i.synth_idx, i.layers[0].fnum_offset,
-                                                         self.song.fm_frequencies)
+                                                         self.song.rules.fm_frequencies)
                                     for i in fm_catalogue(self.song, self.config).instruments.values()
                                     if len(i.layers) == 1}
         return self._sample_detunes.get(inst, 0.0)
@@ -808,7 +808,7 @@ class ChannelWriter:
         # Depth is per note: the driver's swing is a fixed number of FNUM / divider units, so its
         # size in cents depends on the chip note it is added to.
         depth = vibrato_depth(self._vibrato_change, self._vibrato_steps, PERIOD_TABLE[n.mod_note.value],
-                              n.res.source + st.transpose, self._is_psg, self._ctx.player)
+                              n.res.source + st.transpose, self._is_psg, st.psg_read, self._ctx.player)
         return (self._vibrato_speed if depth else 0), depth
 
     def _attack_level_or_vibrato(self, n: _Note, vib_speed: int, vib_depth: int) -> None:
@@ -1132,7 +1132,7 @@ class ChannelWriter:
         if (pattern, row) == self._last_note_cell or self._router.borrowed(mod_chan, tick):
             return                      # the attack row's slide would retune the attack too
         self._mod.ensure_pattern(pattern)
-        want = detune_cents(self._last_chip, self._st.detune, self._ctx.song.fm_frequencies) - self._sounding_cents
+        want = detune_cents(self._last_chip, self._st.detune, self._ctx.song.rules.fm_frequencies) - self._sounding_cents
         moved = self._fine_slide(pattern, row, mod_chan, self._sounding_period, want)
         if moved is not None:
             self._sounding_period -= moved

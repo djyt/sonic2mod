@@ -24,7 +24,6 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 
 from ...chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, freq_word_hz, psg_frequency_hz
-from ...smps import FM_FREQUENCIES, PSG_FREQUENCIES
 from ..chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_SILENT
 from ..frames import Frame, FrameLog
 from ..notes import DEFAULT_MOD_CENTS
@@ -53,7 +52,7 @@ class Hit:
 # --- FM -------------------------------------------------------------------------------------
 
 
-def fm_hits(fl: FrameLog, ch: int, fm_frequencies: tuple[int, ...] = FM_FREQUENCIES) -> list[Hit]:
+def fm_hits(fl: FrameLog, ch: int, fm_frequencies: tuple[int, ...]) -> list[Hit]:
     """FM channel `ch`'s key writes: a note at each key-on, a rest at each key-off of a keyed
     channel.  A note is the entry of `fm_frequencies` (the driver's table) nearest its pitch."""
     table_hz = [_word_hz(word) for word in fm_frequencies]
@@ -102,7 +101,7 @@ def noise_mode(fl: FrameLog) -> bool:
     return any(f.psg[NOISE_CHANNEL].attenuation < PSG_SILENT for f in fl.frames)
 
 
-def psg_hits(fl: FrameLog, ch: int, noise: bool = False) -> list[Hit]:
+def psg_hits(fl: FrameLog, ch: int, psg_frequencies: tuple[int, ...], noise: bool = False) -> list[Hit]:
     """PSG track `ch`'s reads: a note at each period write that is not modulation, a rest where
     the channel is silenced without one.  `noise`: PSG3 in noise mode (its period goes to tone
     channel 3, its attenuation to the noise channel)."""
@@ -121,7 +120,7 @@ def psg_hits(fl: FrameLog, ch: int, noise: bool = False) -> list[Hit]:
         written_before = before is not None and before.psg[period_ch].period_writes
         moved = tone.period_writes and (not written_before or _jumps(prev_period, tone.period))
         if attack or moved:
-            hits.append(Hit(frame.index, _psg_note(tone.period), attack))
+            hits.append(Hit(frame.index, _psg_note(tone.period, psg_frequencies), attack))
         elif level.attenuations and level.attenuation >= PSG_SILENT and prev_level < PSG_SILENT:
             hits.append(Hit(frame.index))
         before = frame
@@ -135,13 +134,13 @@ def _jumps(before: int, after: int) -> bool:
     return abs(_CENTS_PER_OCTAVE * math.log2(before / after)) > DEFAULT_MOD_CENTS
 
 
-def _psg_note(period: int) -> int:
-    """The note byte whose PSGFrequencies divider is nearest the period."""
+def _psg_note(period: int, psg_frequencies: tuple[int, ...]) -> int:
+    """The note byte whose divider in the driver's table is nearest the period."""
     if period <= 0:
         return _PSG_FIRST_NOTE
     hz = psg_frequency_hz(period, MD_PSG_CLOCK)
-    index = min(range(len(PSG_FREQUENCIES)),
-                key=lambda i: abs(math.log2(hz / psg_frequency_hz(max(PSG_FREQUENCIES[i], 1), MD_PSG_CLOCK))))
+    index = min(range(len(psg_frequencies)),
+                key=lambda i: abs(math.log2(hz / psg_frequency_hz(max(psg_frequencies[i], 1), MD_PSG_CLOCK))))
     return _PSG_FIRST_NOTE + index
 
 

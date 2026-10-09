@@ -9,6 +9,7 @@ import re
 from .code import NO_ATTACK, Op, OpKind, SmpsCode, effect_from_bytes, song_from_code, track_byte
 from .driver_tables import PAN_VALUES
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_NOTE_NAMES, voice_field_from_macro
+from .rules import PlaybackRules
 from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsEffect, SmpsSongHeader, SmpsVoice
 
 _PAN_LFO_MASK = 0x3F  # smpsPan's second operand: B4's AMS / FMS bits
@@ -29,13 +30,15 @@ _FIX_DATA_BUGS = "FixMusicAndSFXDataBugs"
 # ---------------------------------------------------------------------------
 
 class SmpsParser:
-    def __init__(self, fix_data_bugs: bool = True):
-        """fix_data_bugs: the disassembly's FixMusicAndSFXDataBugs; False reads the songs as the
-        game shipped them (the ROM, every VGZ): Marble Zone PSG3's three notes off the PSG table,
+    def __init__(self, rules: PlaybackRules, fix_data_bugs: bool = True):
+        """rules: the rules of the driver the asm is written for (an SMPS2ASM disassembly: Sonic 1's).
+        fix_data_bugs: the disassembly's FixMusicAndSFXDataBugs; False reads the songs as the game
+        shipped them (the ROM, every VGZ): Marble Zone PSG3's three notes off the PSG table,
         Credits' three late rests and the smpsAlterVol that mutes the passage after them."""
         self.lines = []
         self.labels = {}           # label_name -> line_index
         self._symbols = {_FIX_DATA_BUGS: fix_data_bugs}
+        self._rules = rules
 
     def parse_file(self, filepath):
         """Parse an SMPS assembly file into a SmpsSong.
@@ -57,7 +60,7 @@ class SmpsParser:
 
         header = self._parse_header()
         voices = self._parse_voices(header.voice_label)
-        return song_from_code(header, self._code(), voices)
+        return song_from_code(header, self._code(), voices, self._rules)
 
     def _preprocess(self, text):
         """Strip comments, blank lines, normalize whitespace."""

@@ -102,7 +102,8 @@ adds composite instruments to the same catalogue.
 
 | Class | Holds |
 |---|---|
-| `SmpsSong` | `header`, `channels`, `voices`, `psg_envelopes`, `fm_frequencies` (the FM table notes play from: Sonic 1's, or a ROM driver's), `dropped` (flags a ROM driver read and left out); `end_tick()`, `loop_target_tick()` |
+| `SmpsSong` | `header`, `channels`, `voices`, `rules` (its driver's `PlaybackRules`; each channel carries the same), `fm_drums`, `dropped` (flags a ROM driver read and left out); `end_tick()`, `loop_target_tick()` |
+| `PlaybackRules` | `rules.py`: what a song's driver does that it is played by - `fm_frequencies`, `psg_frequencies`, `psg_read` (the 128 words a 7-bit index reads), `psg_envelopes`, `dac_names`, `tempo_phase`, `key_run_out`.  Built by each driver (`core/drivers`); nothing below the drivers holds a driver's tables or falls back to one |
 | `SmpsSongHeader` | voice label, FM / PSG counts, tempo divider and modifier, channel headers, `is_sfx` |
 | `SmpsChannelHeader` | type, label, pitch offset, volume, PSG modulation byte, voice and `psg_voice_label`; SFX `hw_channel`; `chip_channel` where the driver's order is not header order (`source_names`) |
 | `SmpsChannel` | header, `events`, jump / loop info (`loop_tick`, `loop_event_index`, `loop_label`) |
@@ -130,7 +131,7 @@ How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
 
 | Module | Role |
 |---|---|
-| `driver_tables.py` | Transcription of the Sonic 1 driver: FM / PSG frequency tables, `fm_note_index`, `psg_note_index`, `chip_pitch`, `psg_tone2_divider`, PSG envelopes (`SONIC1_ENVELOPES`), `SMPS_OP_TO_REG_OFFSET`, pan values, `SmpsDriver`.  Self-checks at import |
+| `driver_tables.py` | What every SMPS driver reads its tables by: `fm_note_index`, `psg_note_index`, `chip_pitch` / `psg_tone2_divider` (given the driver's `psg_read`), `PsgEnvelope`, `SMPS_OP_TO_REG_OFFSET`, pan values, channel maps.  No driver's tables: Sonic 1's are `core/drivers/reference.py` (`SONIC1_RULES`) |
 | `names.py` | Note labels and the two spellings (`semitone_to_note_name`: driver's `Es`; `synth_note_name`: config's `F`), `parse_smps_note`, `parse_synth_note`, DAC names, flag macro names, `source_names` |
 | `song_prep.py` | The song as played: `apply_global_tempo_div` (`smpsSetTempoDiv` re-timing), `extend_looping_channels` |
 | `run_out.py` | `apply_run_out`: a driver's key-on run-out (Type 0 FM: 256 frames) as the walk's last step - the held note cut, a rest after |

@@ -47,7 +47,7 @@ def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitc
             continue
         offset = fm.layers[0].fnum_offset
         out[inst] = InstrumentPitch(fm.root_idx, fm.root_semitone,
-                                    detune_cents(fm.rendered_semitone, offset, song.fm_frequencies) if offset else 0.0)
+                                    detune_cents(fm.rendered_semitone, offset, song.rules.fm_frequencies) if offset else 0.0)
     for inst, psg in psg_catalogue(config).items():
         if psg.entry.type == TONE and inst not in out:
             out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone, 0.0)

@@ -21,6 +21,7 @@ from roms import MOONWALKER_ROM, needs_moonwalker
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings
 from core.drivers import dac_samples, read_rom_song
+from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
 from core.plan import complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
@@ -76,7 +77,7 @@ class RowGrid(unittest.TestCase):
         ops = track("FM1", []) + track("FM2", [Op(OpKind.NOTE, value=REST), Op(OpKind.DURATION, value=1)])
         channels = [SmpsChannelHeader(channel_type=ChannelType.FM, label=name) for name in ("FM1", "FM2")]
         header = SmpsSongHeader(fm_count=2, tempo_modifier=NO_TEMPO_HOLDS, channels=channels)
-        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)])
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)], SONIC1_RULES)
         stated = {"name": "Grid", "input_file": "song.asm", "max_patterns": 1}
         self.assertEqual(derive_config(stated, song, Path("configs/grid.yaml"), _SETTINGS).data["ticks_per_row"], 7)
 

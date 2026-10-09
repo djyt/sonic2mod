@@ -15,6 +15,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import ConversionConfig, InstrumentRange, PsgInstrumentEntry, load_settings
+from core.drivers.reference import FM_FREQUENCIES
 from core.mod import ModNote
 from core.plan import (
     DetunePlan,
@@ -26,7 +27,6 @@ from core.plan import (
     prepare_instruments,
     sounding_pitches,
 )
-from core.smps import FM_FREQUENCIES
 
 _C2 = ModNote.C2.value          # MOD index 12
 ROOT = _HERE.parent
@@ -49,7 +49,7 @@ class RenderingPitch(unittest.TestCase):
 
 class Sounding(unittest.TestCase):
     def test_each_rooted_instrument_with_its_detune(self):
-        song = SimpleNamespace(voices=[SimpleNamespace(index=0)], fm_frequencies=FM_FREQUENCIES)
+        song = SimpleNamespace(voices=[SimpleNamespace(index=0)], rules=SimpleNamespace(fm_frequencies=FM_FREQUENCIES))
         cfg = ConversionConfig()
         cfg.voice_map = {
             0: [InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2, synth_root=64, synth_shift=4)],

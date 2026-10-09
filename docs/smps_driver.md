@@ -62,7 +62,7 @@ note.
 The mask **wraps, it does not clamp**.  An index past the table reads the code that follows it:
 indices 125–127 (a note one to three semitones below the table) were measured from the Spring
 Yard and Credits rips as dividers 0, 922 and 540 (`PSG_FREQUENCIES_EXTENDED` in
-`core/smps/driver_tables.py`, which transcribes both tables).
+`core/drivers/reference.py`, which transcribes both tables).
 
 ### smpsChangeTransposition ($E9) vs smpsDetune ($E1)
 

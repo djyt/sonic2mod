@@ -70,7 +70,7 @@ def check_tables() -> None:
     check("PSG7 envelope has 6 leading zeros",
           tables.PSG_ENVELOPES[6][:7] == (0, 0, 0, 0, 0, 0, 1),
           "the driver's table; a copy in settings.yaml once had 5")
-    from core.smps import PSG_ENVELOPES_BY_NAME
+    from core.drivers.reference import PSG_ENVELOPES_BY_NAME
     check("named envelopes are the driver tables minus the terminator",
           all(PSG_ENVELOPES_BY_NAME[f"fTone_{i + 1:02d}"] == t[:-1] and t[-1] == 0x80
               for i, t in enumerate(tables.PSG_ENVELOPES)))
@@ -98,7 +98,7 @@ def check_parse(sfx_dir: Path) -> None:
         if not path.is_file():
             check(stem, False, "file not found")
             continue
-        song = SmpsParser().parse_file(str(path))
+        song = SmpsParser(tables.SONIC1_RULES).parse_file(str(path))
         got = [sum(e.note.duration for e in ch.events if e.is_note) for ch in song.channels]
         check(f"{stem} ticks {expected}", got == expected, f"got {got}")
 

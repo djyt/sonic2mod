@@ -9,14 +9,18 @@ an FM drum program on FM3, drums.py; bits 4-6 a PSG drum: no song plays one).
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from core.rom.flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, every_kind, refuse
 from core.rom.image import RomImage
 from core.rom.variant import SmpsVariant
-from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, SmpsDriver, SmpsSongHeader
+from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, SmpsSongHeader
 
+from ...names import SmpsDriver
+from ...reference import SONIC1_RULES
 from ..memory import BankedZ80Memory
 from .drums import drum_name, read_fm_drums
-from .layout import HEADER_TYPE0, VOICE_TYPE0
+from .layout import HEADER_TYPE0, KEY_RUN_OUT, TEMPO_PHASE, VOICE_TYPE0
 from .locate import fm_frequencies, locate_type0, sound_bank
 
 GOLDEN_AXE_REV_A_SHA1 = "2ce17105ca916fbbe3ac9ae3a2086e66b07996dd"
@@ -60,7 +64,10 @@ TYPE0FM = SmpsVariant(
     envelope_commands={},          # no PSG envelope table located (no song uses the PSG)
     header=HEADER_TYPE0,
     voice_layout=VOICE_TYPE0,
-    dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)},
+    # Its own FM table (read from the driver); Sonic 1's PSG table and envelopes (no song uses the
+    # PSG); tempo: the first hold a frame late; a note keyed 256 frames is keyed off
+    rules=replace(SONIC1_RULES, driver=SmpsDriver.TYPE0FM, tempo_phase=TEMPO_PHASE, key_run_out=KEY_RUN_OUT,
+                  dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
     fm_frequencies=fm_frequencies,
     fm_drums=_fm_drums,
     known_roms={GOLDEN_AXE_REV_A_SHA1: ()},

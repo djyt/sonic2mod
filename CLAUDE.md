@@ -39,8 +39,9 @@ sonic2mod/
   core/        library; layers, each importing only those below it (diagnostics.py: any):
                ui → convert / audit → merge → plan → config → source → vgm / drivers → rom → smps / mod
                → chips / audio / render_cache / files.  Imports nothing from sfx/ or the chip packages
-    smps/        the IR (SmpsSong), parser, the shared song walk (code.py), driver tables, playback
-    drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs
+    smps/        the IR (SmpsSong, PlaybackRules), parser, the shared song walk (code.py), playback; no driver's tables
+    drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs;
+                 reference.py: Sonic 1's tables and SONIC1_RULES (an asm song's and a rip's)
     rom/ vgm/    the ROM framework (readers driven by a driver's description); VGM register logs and the lift
     source/      read_song(path): picks asm / ROM / VGM
     config/      ConversionConfig, settings.yaml, variants
@@ -261,6 +262,9 @@ One line each; the linked section has the cause and the detail.
   events after the label, not a flag written just before it.
 - Operator order: SMPS stores OP4..OP1, `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`
   (`core/smps/driver_tables.py`).  Wrong order = "overdriven guitar".
+
+- A song carries its driver's `PlaybackRules` (tables, envelopes, drum names, timing): read
+  `song.rules`, never a driver's table directly; nothing below `core/drivers` falls back to Sonic 1's.
 
 **Converting** (`docs/pipeline.md`)
 - One state machine decides what a note plays: `DriverState` + `resolve_note` via `walk_channel`

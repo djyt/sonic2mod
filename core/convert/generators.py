@@ -19,7 +19,7 @@ from typing import Protocol
 from ..audio import SustainLoop
 from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from ..plan import FmDrumInstrument, FmInstrument
-from ..smps import PsgEnvelope, SmpsSong
+from ..smps import PlaybackRules, SmpsSong
 
 
 class FmGenerator(Protocol):
@@ -39,10 +39,9 @@ class FmGenerator(Protocol):
 class PsgGenerator(Protocol):
     """sn76489.sample_generator.generate_psg_samples."""
 
-    def __call__(self, config: ConversionConfig, psg_synth: PsgSynthesisSettings, *,
+    def __call__(self, config: ConversionConfig, psg_synth: PsgSynthesisSettings, rules: PlaybackRules, *,
                  rate3_dividers: dict | None = ...,
                  noise_envelopes: dict | None = ...,
-                 psg_envelopes: Mapping[str, PsgEnvelope] | None = ...,
                  loops: bool = ...,
                  loops_out: dict[int, SustainLoop] | None = ...,
                  raw_out: dict[int, tuple] | None = ...,

@@ -18,6 +18,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
+from core.drivers.reference import SONIC1_RULES
 from sn76489.renderer import note_to_psg_n
 from sn76489.wrapper import SN76489
 
@@ -39,7 +40,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     tone_idx = 24
     freq_hz  = 440.0 * (2.0 ** ((tone_idx - 45) / 12.0))
-    n_val    = note_to_psg_n(tone_idx, clock_rate)
+    n_val    = note_to_psg_n(tone_idx, SONIC1_RULES.psg_frequencies, clock_rate)
 
     print(f"\nTest 1: PSG tone  note_idx={tone_idx}  freq={freq_hz:.1f} Hz  N={n_val}")
 

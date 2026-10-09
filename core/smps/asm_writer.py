@@ -49,7 +49,7 @@ def write_asm(song: SongCode, name: str, comment: str = "") -> str:
         ("a track that states its chip channel", any(c.chip_channel for c in song.header.channels)),
         ("a voice that stores its pan", any(v.pan is not None for v in song.voices))) if found]
     if unspellable:
-        raise ValueError(f"no SMPS2ASM spelling of {' or '.join(unspellable)} ({song.driver})")
+        raise ValueError(f"no SMPS2ASM spelling of {' or '.join(unspellable)} ({song.rules.driver})")
     return _Writer(song, name).text(comment)
 
 

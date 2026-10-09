@@ -18,13 +18,14 @@ from core.smps import SFX_CHANNEL_IDS, ChannelType
 
 _SFX_FM6 = 0x06                 # an SFX track's channel byte for FM6 (Sonic 1's SFX stop at FM5)
 
+TEMPO_PHASE = 1                 # the first hold a frame late
+KEY_RUN_OUT = 0x100             # frames a note keys without an attacking read
+
 HEADER_TYPE0 = HeaderLayout(
     fm_slots=(TrackSlot(ChannelType.DAC, "FM3"), TrackSlot(ChannelType.FM, "FM1"), TrackSlot(ChannelType.FM, "FM2"),
               TrackSlot(ChannelType.FM, "FM4"), TrackSlot(ChannelType.FM, "FM5"), TrackSlot(ChannelType.FM, "FM6")),
     sfx_channels=frozenset({*SFX_CHANNEL_IDS.values(), _SFX_FM6}),    # FM3-FM6 (no DAC), the PSG
     never_holds=0,
-    tempo_phase=1,
-    key_run_out=0x100,
 )
 
 VOICE_TYPE0 = VoiceLayout((OperatorReg.TL, OperatorReg.DT_MUL, OperatorReg.KS_AR, OperatorReg.AM_D1R,

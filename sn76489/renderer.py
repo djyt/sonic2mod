@@ -1,7 +1,7 @@
 """SN76489 PSG note renderer.
 
-Converts a MOD note index (or noise config) into 8-bit signed mono PCM bytes
-ready to insert into a ModSample.
+Renders a tone at the divider the driver writes (or a noise config) into 8-bit signed mono PCM
+bytes ready to insert into a ModSample.  note_to_psg_n finds a note's divider in a driver's table.
 
 Public API::
 
@@ -11,7 +11,7 @@ Public API::
         note_to_psg_n,
     )
 
-    pcm, rate = render_psg_tone(mod_note_index)
+    pcm, rate = render_psg_tone(note_to_psg_n(mod_note_index, psg_frequencies))
     pcm, rate = render_psg_noise(white=True, noise_rate=0)
 
 Usage (smoke test)::
@@ -33,9 +33,6 @@ if str(_HERE.parent) not in sys.path:
 from core.audio import DEFAULT_TAPS, normalize_int8, resample, write_raw16
 from core.audio import to_mono as _to_mono
 from core.config import DEFAULT_PSG_OVERSAMPLE
-from core.smps import (
-    PSG_FREQUENCIES,
-)
 from sn76489.wrapper import SN76489
 
 # Import PERIOD_TABLE for target_rate calculation
@@ -52,18 +49,18 @@ from sn76489.wrapper import SN76489
 DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
 
 
-def note_to_psg_n(mod_note_index: int, clock_rate: int = MD_PSG_CLOCK) -> int:
-    """MOD note index → the SN76489 10-bit divider N the Sonic 1 driver writes for that note.
+def note_to_psg_n(mod_note_index: int, psg_frequencies: tuple[int, ...], clock_rate: int = MD_PSG_CLOCK) -> int:
+    """MOD note index → the SN76489 10-bit divider N the driver writes for that note.
 
-    The driver's PSG table (core.smps.driver_tables.PSG_FREQUENCIES, index 0 = nC0 = 130.98 Hz = C3,
-    so MOD index i, C1 = 0, is table index i − 24) is what the hardware plays; it differs from
+    The driver's PSG table (`psg_frequencies`, PlaybackRules.psg_frequencies; index 0 = nC0 = C3,
+    so MOD index i, C1 = 0, is table index i − 24) is what the hardware plays; Sonic 1's differs from
     the rounded equal-temperament divider on 29 of its 70 entries, by up to 85 cents at the top.
     Off the table, or at another clock, the formula N = clock / (32 × freq) stands in.
     Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
     i = mod_note_index - 24
-    if clock_rate == MD_PSG_CLOCK and 0 <= i < len(PSG_FREQUENCIES) and PSG_FREQUENCIES[i]:
-        return PSG_FREQUENCIES[i]
+    if clock_rate == MD_PSG_CLOCK and 0 <= i < len(psg_frequencies) and psg_frequencies[i]:
+        return psg_frequencies[i]
     freq = 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
     n = round(clock_rate / (2.0 * freq * 16.0))
     return max(1, min(1023, n))
@@ -152,7 +149,7 @@ def _render_with_envelope(
 # ---------------------------------------------------------------------------
 
 def render_psg_tone_raw(
-    mod_note_index: int,
+    divider: int,
     sustain_secs: float = 1.0,
     release_secs: float = 0.2,
     clock_rate: int = MD_PSG_CLOCK,
@@ -166,7 +163,7 @@ def render_psg_tone_raw(
     """Render a PSG square-wave tone.  Returns (mono_list, rate) before int8 packing.
 
     Args:
-        mod_note_index: ModNote index 0–35 (0=C1, 35=B3).
+        divider:        the tone's 10-bit divider N (note_to_psg_n).
         sustain_secs:   Seconds the note is held.
         release_secs:   Seconds of silence (volume=15) captured after key-off.
         clock_rate:     SN76489 clock (Hz).  Default = NTSC MD 3,579,545.
@@ -182,8 +179,7 @@ def render_psg_tone_raw(
     chip_rate = rate * oversample
     sn = SN76489(clock_rate=clock_rate, sample_rate=chip_rate)
 
-    n = note_to_psg_n(mod_note_index, clock_rate)
-    sn.write_tone_freq(0, n)
+    sn.write_tone_freq(0, divider)
 
     sustain_n = int(chip_rate * sustain_secs)
     release_n = int(chip_rate * release_secs)
@@ -197,7 +193,7 @@ def render_psg_tone_raw(
 
 
 def render_psg_tone(
-    mod_note_index: int,
+    divider: int,
     sustain_secs: float = 1.0,
     release_secs: float = 0.2,
     clock_rate: int = MD_PSG_CLOCK,
@@ -209,7 +205,7 @@ def render_psg_tone(
         (pcm_bytes, sample_rate_hz)
     """
     mono, rate = render_psg_tone_raw(
-        mod_note_index, sustain_secs, release_secs, clock_rate, target_rate
+        divider, sustain_secs, release_secs, clock_rate, target_rate
     )
     return _normalize_int8(mono), rate
 
@@ -304,6 +300,7 @@ def render_psg_noise(
 
 def _smoke_test() -> None:
     """Render C4 tone and white noise; write 16-bit raw files for Audacity."""
+    from core.drivers.reference import SONIC1_RULES
 
     print("PSG renderer smoke test")
     print("=======================")
@@ -313,10 +310,10 @@ def _smoke_test() -> None:
     tone_idx = 24   # C3
 
     freq_hz = 440.0 * (2.0 ** ((tone_idx - 45) / 12.0))
-    n_val   = note_to_psg_n(tone_idx)
+    n_val   = note_to_psg_n(tone_idx, SONIC1_RULES.psg_frequencies)
     print(f"\nTone: note_idx={tone_idx}  freq={freq_hz:.1f} Hz  N={n_val}")
 
-    mono_tone, rate_tone = render_psg_tone_raw(tone_idx, sustain_secs=0.5, release_secs=0.1)
+    mono_tone, rate_tone = render_psg_tone_raw(n_val, sustain_secs=0.5, release_secs=0.1)
     peak_tone = max(abs(v) for v in mono_tone) if mono_tone else 0
     print(f"  Samples: {len(mono_tone)}  Rate: {rate_tone} Hz  Peak: {peak_tone}")
 

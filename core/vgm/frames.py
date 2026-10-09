@@ -28,6 +28,7 @@ NTSC_RATE = 60
 _BURST_GAP = 200                # samples: writes closer than this belong to one burst
 _PHASE_WINDOW = 16              # samples either side of a phase that count towards it
 _FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before the phase
+_DAC_PAUSE_DIVISOR = 4          # DAC bytes resuming after a quarter frame's silence: a sample started
 _DAC_REG = 0x2A
 _VOICE_FIRST = 0x30             # DT/MUL .. SSG-EG: the operator registers
 _VOICE_LAST = 0x9F
@@ -75,11 +76,19 @@ class PsgFrame:
 
 
 @dataclass(frozen=True, slots=True)
+class DacStart:
+    """A sample the Z80 started: at a seek, or where its bytes resume after a pause (a ripper
+    seeks only where the bank does not already hold the sample next)."""
+
+    offset: int                     # the PCM bank byte it starts on
+    sample: int                     # where in the log (the Z80 starts a sample late)
+
+
+@dataclass(frozen=True, slots=True)
 class DacFrame:
-    seeks: tuple[int, ...]          # PCM bank offsets seeked this frame (a sample starts)
-    seek_samples: tuple[int, ...]   # where each seek is in the log (the Z80 starts a sample late)
+    starts: tuple[DacStart, ...]    # the samples started this frame
     writes: int                     # DAC bytes written this frame
-    since_seek: int                 # DAC bytes written since the last seek, at the frame's end
+    since_start: int                # DAC bytes written since the last start, at the frame's end
     gaps: tuple[tuple[int, int], ...]   # (samples between consecutive DAC bytes, how often) this frame
 
 
@@ -98,7 +107,7 @@ class Frame:
     def active(self) -> bool:
         """Anything written this frame besides the DAC's byte stream."""
         return (any(f.keys or f.frequency_writes for f in self.fm)
-                or any(p.attenuations or p.period_writes for p in self.psg) or bool(self.dac.seeks))
+                or any(p.attenuations or p.period_writes for p in self.psg) or bool(self.dac.starts))
 
 
 @dataclass(frozen=True)
@@ -108,7 +117,7 @@ class FrameLog:
     origin: int                     # sample where frame 0's window opens (<= 0)
     phase: int                      # where a burst starts within a frame's 735 samples
     loop_sample: int | None         # where the log loops back to
-    pcm: bytes = b""                # the log's PCM bank: what DacFrame.seeks index
+    pcm: bytes = b""                # the log's PCM bank: what DacStart.offset indexes
     end_sample: int = 0             # where the log ends (and a looping one jumps back)
 
     def frame_of(self, sample: int) -> int:
@@ -172,16 +181,16 @@ class _FrameBuilder:
         self._frame_samples = frame_samples
         self._index = 0
         self._reset_events()
-        self._since_seek = 0
+        self._since_start = 0
         self._last_dac: int | None = None
+        self._pcm_at = 0                # the bank byte the next DAC write plays
 
     def _reset_events(self) -> None:
         self._keys: list[list[int]] = [[] for _ in range(FM_CHANNELS)]
         self._freq_writes = [0] * FM_CHANNELS
         self._atts: list[list[int]] = [[] for _ in range(PSG_TONE_CHANNELS + 1)]
         self._period_writes = [0] * PSG_TONE_CHANNELS
-        self._seeks: list[int] = []
-        self._seek_samples: list[int] = []
+        self._starts: list[DacStart] = []
         self._dac_writes = 0
         self._gaps: Counter[int] = Counter()
 
@@ -217,15 +226,23 @@ class _FrameBuilder:
         elif kind is ChangeKind.PSG_TONE:
             self._period_writes[ch] += 1
         elif kind is ChangeKind.PCM_SEEK:
-            # A new sample: the silence before it is no gap of the byte stream
-            self._seeks.append(change.value)
-            self._seek_samples.append(change.sample)
-            self._since_seek = 0
-            self._last_dac = None
+            self._pcm_at = change.value
+            self._start(change.sample)
+
+    def _start(self, sample: int) -> None:
+        """A new sample: the silence before it is no gap of the byte stream."""
+        self._starts.append(DacStart(self._pcm_at, sample))
+        self._since_start = 0
+        self._last_dac = None
 
     def _dac_write(self, sample: int) -> None:
+        # Bytes resuming after a pause, no seek: the bank holds the next sample where the last ended
+        if self._last_dac is not None and sample - self._last_dac > self._frame_samples // _DAC_PAUSE_DIVISOR:
+            self._start(sample)
+
         self._dac_writes += 1
-        self._since_seek += 1
+        self._since_start += 1
+        self._pcm_at += 1
         if self._last_dac is not None:
             self._gaps[sample - self._last_dac] += 1
         self._last_dac = sample
@@ -240,7 +257,7 @@ class _FrameBuilder:
                              tuple(self._atts[ch]), self._period_writes[ch] if ch < PSG_TONE_CHANNELS else 0,
                              s.noise if ch == NOISE_CHANNEL else None)
                     for ch in range(PSG_TONE_CHANNELS + 1))
-        dac = DacFrame(tuple(self._seeks), tuple(self._seek_samples), self._dac_writes, self._since_seek, tuple(sorted(self._gaps.items())))
+        dac = DacFrame(tuple(self._starts), self._dac_writes, self._since_start, tuple(sorted(self._gaps.items())))
         frame = Frame(self._index, self._origin + self._index * self._frame_samples, fm, psg, dac,
                       s.dac_enabled, s.lfo, s.fm_global(_REG_MODE))
         self._index += 1

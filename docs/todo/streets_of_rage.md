@@ -183,6 +183,8 @@ Checked with a throwaway player (tick = frame; loops, break, tie rules as above)
   tracks play again: the rip has tone1 and tone2 writes to the end, where the ROM's tracks stop.
 - **Unequal loop lengths:** `$8A`, `$8C`, `$8F`, `$91` loop tracks independently.
 - **Duplicate:** `$8D` = `$8E`.
+- **Gate on a rest:** the drum track's gate fires during a rest too and saves `$85` over the
+  sample the rest saved: the next note is silent until a `$F0` (3.3).  A driver bug: not simulated.
 
 ---
 
@@ -364,8 +366,19 @@ a song pass (the `run_out` precedent).
   their emulator's djnz as Sonic 1's: the count stands.  The 68k holds the Z80 1.6 % of
   each frame (11.6 of 735 samples, every rip alike): in the rate.  `$81` 12983 Hz, `$82` `$84`
   15381, `$83` 9464.
-- [ ] 3.3 Rests and gates cut: a field of the drum track's `TrackRules` (Sonic 1's default: a rest
-  lets the sample play out), read by the converter's rest; reconcile onsets with the rips' seeks.
+- [x] 3.3 Rests and gates cut (2026-10-09): `TrackRules.rest_cuts` (`$72AF2`: the sample saved to
+  `+$11`, `$85` written), read by `channel_writer._on_rest` (C00).  Onsets against the rips:
+  - **Starts without a seek:** a ripper seeks only where its bank does not hold the sample next;
+    the frame log now starts a sample where bytes resume after a quarter frame's pause too
+    (`DacStart`).  SoR: 8 of 15 equal on every drum onset (was 1).  Sonic 1 and Moonwalker gain
+    as much: Title, Ending, Continue equal; Smooth Criminal 79 -> 8, Beat It 113 -> 47.
+  - **Driver bug, not simulated:** the gate also fires on a rest and saves `$85` over the saved
+    sample, so a note after a rest longer than the gate plays nothing until the next `$F0`.  The
+    data writes `$F0` before such rests: the drums were meant.  The rips miss them: `$85` Beatnik
+    32 (every hit after 6400), `$89` Stealthy Steps 64, `$8B` Dilapidated Town 23.
+  - **Ripper artefacts, left:** a seek to the same sound's next bytes elsewhere in the bank
+    (`$87` 24, `$8B` 48); a cut the rip hears first, its bank recorded straight on (`$86` 6); a
+    seek pair across a frame boundary (`$88` 8); hits past the walked first pass.
 
 ### Phase 4: convert
 - [ ] 4.1 `configs/streets_of_rage/`: 16 minimal configs and `rips.yaml`.

@@ -29,9 +29,15 @@ from core.smps import (
     REST,
     SELECTED_SAMPLE,
     ChannelType,
-    CoordFlag,
+    Detune,
+    ModOff,
+    ModOn,
+    ModSet,
     Op,
     OpKind,
+    Pan,
+    PsgForm,
+    SelectSample,
     SmpsEffect,
 )
 
@@ -110,8 +116,8 @@ def _signed_le_word(memory: SoundMemory, at: int) -> int:
     return word - 0x10000 if word & 0x8000 else word
 
 
-def _effect(flag: CoordFlag, params: list, length: int) -> Instruction:
-    return Instruction((Op(OpKind.EFFECT, effect=SmpsEffect(flag, params)),), length, True)
+def _effect(effect: SmpsEffect, length: int) -> Instruction:
+    return Instruction((Op(OpKind.EFFECT, effect=effect),), length, True)
 
 
 # --- loops ---------------------------------------------------------------------------------
@@ -146,7 +152,7 @@ def _detune(memory: SoundMemory, address: int, shift: int) -> Instruction:
     """`$F2 lo hi mode`: an FNUM (PSG: divider) offset, set; one that adds is not read yet."""
     if memory.byte(address + 3) != _DETUNE_SETS:
         return Instruction((), 4, True, dropped="detune that adds")
-    return _effect(CoordFlag.DETUNE, [_signed_le_word(memory, address + 1) >> shift], 4)
+    return _effect(Detune(_signed_le_word(memory, address + 1) >> shift), 4)
 
 
 def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
@@ -154,15 +160,15 @@ def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
     cycle is count + 1 steps (the driver tests the count before it counts down)."""
     command = memory.byte(address + 1)
     if command == _VIBRATO_OFF:
-        return _effect(CoordFlag.MOD_OFF, [], 2)
+        return _effect(ModOff(), 2)
     if command == _VIBRATO_ON:
-        return _effect(CoordFlag.MOD_ON, [], 2)
+        return _effect(ModOn(), 2)
     if command != _VIBRATO_SET:
         raise RomError(f"${address:X}: $F4 ${command:02X} (one vibrato field changed): not converted")
     delay, speed = memory.byte(address + 2), memory.byte(address + 3)
     depth = _signed_le_word(memory, address + 4) >> shift
     steps = memory.byte(address + 6) + 1
-    return _effect(CoordFlag.MOD_SET, [delay, speed, depth, steps], 2 + _VIBRATO_SET_BYTES)
+    return _effect(ModSet(delay, speed, depth, steps), 2 + _VIBRATO_SET_BYTES)
 
 
 def _pan(memory: SoundMemory, address: int) -> Instruction:
@@ -170,17 +176,17 @@ def _pan(memory: SoundMemory, address: int) -> Instruction:
     n = memory.byte(address + 1)
     if n >= len(_PAN_B4):
         raise RomError(f"${address:X}: $F8 ${n:02X} reads past the driver's pan table")
-    return _effect(CoordFlag.PAN, [_PAN_B4[n]], 2)
+    return _effect(Pan(_PAN_B4[n]), 2)
 
 
 def _noise(memory: SoundMemory, address: int) -> Instruction:
     """`$F7 x` on a PSG track: white noise clocked by tone 3 (the operand is not read)."""
-    return _effect(CoordFlag.PSG_FORM, [_NOISE_FORM], 2)
+    return _effect(PsgForm(_NOISE_FORM), 2)
 
 
 def _dac_sample(memory: SoundMemory, address: int) -> Instruction:
     """`$F0 n` on the drum track: its notes play sample $80 | n."""
-    return _effect(CoordFlag.DAC_SAMPLE, [_DAC_SAMPLE_BIT | memory.byte(address + 1)], 2)
+    return _effect(SelectSample(_DAC_SAMPLE_BIT | memory.byte(address + 1)), 2)
 
 
 _Handler = Callable[[SoundMemory, int], Instruction]

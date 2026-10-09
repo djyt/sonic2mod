@@ -30,12 +30,11 @@ from core.smps import (
     NO_TEMPO_HOLDS,
     REST,
     ChannelType,
-    CoordFlag,
     Op,
     OpKind,
+    SetVoice,
     SmpsChannelHeader,
     SmpsCode,
-    SmpsEffect,
     SmpsSongHeader,
     SmpsVoice,
     parse_smps_note,
@@ -72,7 +71,7 @@ class RowGrid(unittest.TestCase):
         # A tick a frame; FM1 every 7, FM2 a frame behind it.  The exact grid (1) needs 5 patterns,
         # 1 is allowed: the grid that puts the most notes on rows is the beat's, 7
         def track(label: str, lead: list) -> list:
-            return [Op(OpKind.LABEL, name=label), Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [0])),
+            return [Op(OpKind.LABEL, name=label), Op(OpKind.EFFECT, effect=SetVoice(0)),
                     *lead, *[Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=7)] * 40, Op(OpKind.STOP)]
         ops = track("FM1", []) + track("FM2", [Op(OpKind.NOTE, value=REST), Op(OpKind.DURATION, value=1)])
         channels = [SmpsChannelHeader(channel_type=ChannelType.FM, label=name) for name in ("FM1", "FM2")]

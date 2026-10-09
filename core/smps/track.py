@@ -9,7 +9,22 @@ walk that compares a parse with a lift (playback.py) reads it as it is.
 from __future__ import annotations
 
 from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
-from .song import ChannelType, CoordFlag, SmpsChannel, SmpsEffect, pan_side
+from .effects import (
+    AlterVol,
+    ChangeTransposition,
+    Detune,
+    ModOff,
+    ModOn,
+    ModSet,
+    NoteFill,
+    Pan,
+    PsgForm,
+    PsgVoice,
+    SetVoice,
+    SetVol,
+    SmpsEffect,
+)
+from .song import ChannelType, SmpsChannel
 
 
 class TrackState:
@@ -45,47 +60,38 @@ class TrackState:
 
     def apply(self, effect: SmpsEffect) -> None:
         """Advance the state past one coordination flag."""
-        kind = effect.flag
-
-        if kind == CoordFlag.SET_VOICE:
-            self.voice = effect.params[0]
-
-        elif kind == CoordFlag.ALTER_VOL:
-            self._set_level((self.att if self.is_psg else self.tl) + effect.params[0])
-
-        elif kind == CoordFlag.SET_VOL:
-            self._set_level(effect.params[0])
-
-        elif kind == CoordFlag.PAN:
-            self.pan = pan_side(effect.params)
-            self.hard_panned = self.pan != "C"
-
-        elif kind == CoordFlag.DETUNE:
-            # SMPS_Track.Detune: added to the frequency word the driver writes (about 10 cents
-            # per unit on FM).  Not a semitone: it never moves a note or a range lookup; it is
-            # what a chorus pair's beating and a composite layer's FNUM offset come from.
-            self.detune = effect.params[0]
-
-        elif kind == CoordFlag.CHANGE_TRANSPOSITION:
-            self.transpose += effect.params[0]
-
-        elif kind == CoordFlag.PSG_FORM:
-            # cfSetPSGNoise: a noise channel from here on (nothing in Sonic 1 music turns it back)
-            self.noise_form = effect.params[0]
-
-        elif kind == CoordFlag.PSG_VOICE:
-            # cfSetPSGTone: VoiceIndex, in tone and noise mode alike
-            self.envelope = effect.params[0]
-
-        elif kind == CoordFlag.NOTE_FILL:
-            self.fill = effect.params[0]
-
-        elif kind == CoordFlag.MOD_SET:
-            self.modulation = tuple(effect.params)
-            self.modulation_on = True
-
-        elif kind in (CoordFlag.MOD_ON, CoordFlag.MOD_OFF):
-            self.modulation_on = kind == CoordFlag.MOD_ON
+        match effect:
+            case SetVoice(index=index):
+                self.voice = index
+            case AlterVol(delta=delta):
+                self._set_level((self.att if self.is_psg else self.tl) + delta)
+            case SetVol(level=level):
+                self._set_level(level)
+            case Pan():
+                self.pan = effect.side
+                self.hard_panned = self.pan != "C"
+            case Detune(offset=offset):
+                # SMPS_Track.Detune: added to the frequency word the driver writes (about 10 cents
+                # per unit on FM).  Not a semitone: it never moves a note or a range lookup; it is
+                # what a chorus pair's beating and a composite layer's FNUM offset come from.
+                self.detune = offset
+            case ChangeTransposition(semitones=semitones):
+                self.transpose += semitones
+            case PsgForm(noise=noise):
+                # cfSetPSGNoise: a noise channel from here on (nothing in Sonic 1 music turns it back)
+                self.noise_form = noise
+            case PsgVoice(envelope=envelope):
+                # cfSetPSGTone: VoiceIndex, in tone and noise mode alike
+                self.envelope = envelope
+            case NoteFill(frames=frames):
+                self.fill = frames
+            case ModSet():
+                self.modulation = effect.values
+                self.modulation_on = True
+            case ModOn():
+                self.modulation_on = True
+            case ModOff():
+                self.modulation_on = False
 
     def _set_level(self, level: int) -> None:
         """The track's attenuation (PSG) or TL offset (FM), clamped to what the chip reads."""

@@ -1,6 +1,7 @@
 """SMPS names: note labels (nC0..), real-pitch config names (A4), DAC samples, SFX channel ids, source channels."""
 
-from .song import ChannelType, CoordFlag, VoiceField
+from .effects import CoordFlag
+from .song import ChannelType, VoiceField
 
 # ---------------------------------------------------------------------------
 # SMPS Note Names → byte values

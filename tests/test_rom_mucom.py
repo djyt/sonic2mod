@@ -54,7 +54,7 @@ def _notes(channel) -> list[tuple]:
 
 
 def _effects(channel, flag: CoordFlag) -> list[list]:
-    return [e.effect.params for e in channel.events if e.effect is not None and e.effect.flag == flag]
+    return [list(e.effect.values) for e in channel.events if e.effect is not None and e.effect.flag == flag]
 
 
 class Grammar(unittest.TestCase):

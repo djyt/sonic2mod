@@ -7,13 +7,20 @@ used by analyze.py for Rich-formatted display.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import cast
 
 from .config import ConversionConfig
 from .smps import (
+    AlterVol,
+    ChangeTransposition,
     ChannelType,
     CoordFlag,
+    Pan,
+    PsgForm,
+    PsgVoice,
+    SetVoice,
+    SetVol,
     SmpsChannel,
+    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsSong,
@@ -304,7 +311,7 @@ class _ChannelWalk:
             if event.note is not None:
                 self._note(event.note, event.tick_position)
             elif event.effect is not None:
-                self._effect(event.effect.flag, event.effect.params, event.tick_position)
+                self._effect(event.effect, event.tick_position)
 
     def _settle_modal_levels(self) -> None:
         """Most common level per voice / PSG tone; ties go to the louder one, as in the converter."""
@@ -354,30 +361,26 @@ class _ChannelWalk:
         vs.note_count += 1
         _widen_range(vs, sem)
 
-    def _effect(self, kind: CoordFlag, params: list, tick: int) -> None:
+    def _effect(self, effect: SmpsEffect, tick: int) -> None:
         self.effect_count += 1
-        self.effect_counts[kind] = self.effect_counts.get(kind, 0) + 1
+        self.effect_counts[effect.flag] = self.effect_counts.get(effect.flag, 0) + 1
 
-        if kind == CoordFlag.SET_VOICE:
-            self._switch_voice(cast(int, params[0]))
-        elif kind == CoordFlag.PSG_VOICE:
-            self._switch_psg(str(params[0]))
-        elif kind == CoordFlag.PSG_FORM:
-            self._switch_psg(f"form ${params[0]:02X}")
-        elif kind == CoordFlag.ALTER_VOL:
-            self._volume += cast(int, params[0])
-        elif kind == CoordFlag.SET_VOL:
-            self._volume = cast(int, params[0])
-        elif kind == CoordFlag.PAN:
-            self._hard_pan = pan_is_hard(params)
-        elif kind == CoordFlag.CHANGE_TRANSPOSITION:
-            delta = params[0]
-            self._transpose += delta
-            self.transpose_events.append(TransposeEvent(
-                tick=tick,
-                delta=delta,
-                cumulative=self._transpose,
-            ))
+        match effect:
+            case SetVoice(index=index):
+                self._switch_voice(index)
+            case PsgVoice(envelope=envelope):
+                self._switch_psg(envelope)
+            case PsgForm(noise=noise):
+                self._switch_psg(f"form ${noise:02X}")
+            case AlterVol(delta=delta):
+                self._volume += delta
+            case SetVol(level=level):
+                self._volume = level
+            case Pan(b4=b4):
+                self._hard_pan = pan_is_hard(b4)
+            case ChangeTransposition(semitones=delta):
+                self._transpose += delta
+                self.transpose_events.append(TransposeEvent(tick=tick, delta=delta, cumulative=self._transpose))
 
     def _switch_voice(self, voice_idx: int) -> None:
         if voice_idx == self._voice_idx:

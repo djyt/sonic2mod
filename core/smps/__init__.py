@@ -2,6 +2,7 @@
 whatever driver or file the song came from.
 
     song.py           SmpsSong and its parts (the parser's output)
+    effects.py        CoordFlag and its effects, one frozen class per flag: SetVoice(index) ...
     code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events
     parser.py         SmpsParser: assembly -> SmpsCode -> SmpsSong
     asm_writer.py     write_asm: SongCode -> SMPS2ASM assembly (SmpsParser reads it back)
@@ -49,6 +50,30 @@ from .driver_tables import (
     psg_tone2_divider,
     psg_voice_name,
 )
+from .effects import (
+    AlterVol,
+    ChangeTransposition,
+    ChanTempoDiv,
+    CoordFlag,
+    Detune,
+    ModOff,
+    ModOn,
+    ModSet,
+    Nop,
+    NoteFill,
+    Pan,
+    PsgForm,
+    PsgVoice,
+    SelectSample,
+    SetTempoDiv,
+    SetTempoMod,
+    SetVoice,
+    SetVol,
+    SmpsEffect,
+    effect_of,
+    pan_is_hard,
+    pan_side,
+)
 from .names import (
     SFX_CHANNEL_IDS,
     SMPS_DAC_NAMES,
@@ -70,18 +95,14 @@ from .rules import PlaybackRules
 from .song import (
     REST,
     ChannelType,
-    CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsSong,
     SmpsSongHeader,
     SmpsVoice,
     VoiceField,
-    pan_is_hard,
-    pan_side,
 )
 from .song_prep import apply_global_tempo_div, extend_looping_channels
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
@@ -104,19 +125,36 @@ __all__ = [
     "SMPS_DAC_NAMES",
     "SMPS_OP_TO_REG_OFFSET",
     "TRACK_BYTES",
+    "AlterVol",
     "Aspect",
+    "ChanTempoDiv",
+    "ChangeTransposition",
     "ChannelDiff",
     "ChannelType",
     "CoordFlag",
+    "Detune",
     "FmDrum",
     "FmFrame",
+    "ModOff",
+    "ModOn",
+    "ModSet",
+    "Nop",
     "NoteDiff",
+    "NoteFill",
     "Op",
     "OpKind",
+    "Pan",
     "PlaybackRules",
     "PlayedNote",
     "PlayedSong",
     "PsgEnvelope",
+    "PsgForm",
+    "PsgVoice",
+    "SelectSample",
+    "SetTempoDiv",
+    "SetTempoMod",
+    "SetVoice",
+    "SetVol",
     "SmpsChannel",
     "SmpsChannelHeader",
     "SmpsCode",
@@ -137,6 +175,7 @@ __all__ = [
     "chip_pitch",
     "compare_songs",
     "effect_from_bytes",
+    "effect_of",
     "extend_looping_channels",
     "flag_from_macro",
     "flag_name",

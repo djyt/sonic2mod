@@ -15,7 +15,7 @@ width in the asm) are not the voice.
 from __future__ import annotations
 
 from ..chips import OperatorReg
-from ..smps import SMPS_OP_TO_REG_OFFSET, CoordFlag, OpKind, SmpsCode, SmpsVoice, VoiceField
+from ..smps import SMPS_OP_TO_REG_OFFSET, SetVoice, SmpsCode, SmpsVoice, VoiceField
 from .memory import SoundMemory
 from .variant import OPERATORS, VoiceLayout
 
@@ -33,8 +33,7 @@ _FIELDS: dict[OperatorReg, tuple[tuple[VoiceField, int, int], ...]] = {
 def voices_used(code: SmpsCode) -> int:
     """How many voices the bank holds as far as the code can tell: the highest smpsSetvoice, plus
     one.  The bank stores no count."""
-    used = [op.effect.params[0] for op in code.ops
-            if op.kind is OpKind.EFFECT and op.effect is not None and op.effect.flag == CoordFlag.SET_VOICE]
+    used = [op.effect.index for op in code.ops if isinstance(op.effect, SetVoice)]
     return max(used, default=-1) + 1
 
 

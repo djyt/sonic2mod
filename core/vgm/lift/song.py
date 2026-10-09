@@ -22,11 +22,10 @@ from dataclasses import dataclass
 from ...smps import (
     Aspect,
     ChannelType,
-    CoordFlag,
     PlaybackRules,
+    SetTempoMod,
     SmpsChannel,
     SmpsChannelHeader,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsSong,
@@ -164,7 +163,7 @@ def _mark_tempo_changes(channels: list[SmpsChannel], tempo: TempoMap) -> None:
     carrier = next((c for c in channels if c.header.channel_type == "FM"), channels[0])
     for tick, modifier in tempo.changes():
         i = _split(carrier, tick)
-        carrier.events.insert(i, SmpsEvent(effect=SmpsEffect(CoordFlag.SET_TEMPO_MOD, [modifier]), tick_position=tick))
+        carrier.events.insert(i, SmpsEvent(effect=SetTempoMod(modifier), tick_position=tick))
 
 
 def _mark_loop(channels: list[SmpsChannel], tick: int, end: int) -> None:

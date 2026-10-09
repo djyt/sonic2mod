@@ -334,7 +334,7 @@ class _Deriver:
     def _fm_drum(self, name: str, drum: FmDrum) -> dict:
         """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
         drum's own volume (its render is peak-normalised, as an FM voice's)."""
-        hard = drum.voice.pan is not None and pan_is_hard([drum.voice.pan])
+        hard = drum.voice.pan is not None and pan_is_hard(drum.voice.pan)
         slot = self._take(ChannelType.FM, _DAC_FILE.format(name),
                           volume=starting_volume(ChannelType.FM, drum.tl_offset, hard))
         return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}

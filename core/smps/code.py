@@ -19,16 +19,15 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from .driver_tables import psg_voice_name
+from .effects import ChanTempoDiv, CoordFlag, Pan, PsgVoice, SelectSample, SetVoice, SmpsEffect, effect_of
 from .percussion import FmDrum
 from .rules import PlaybackRules
 from .run_out import apply_run_out
 from .song import (
     REST,
     ChannelType,
-    CoordFlag,
     SmpsChannel,
     SmpsChannelHeader,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsSong,
@@ -128,10 +127,10 @@ def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
     """A flag from its operand bytes, as the song keeps it: signed where the driver adds it as
     signed, smpsPSGvoice's envelope by name."""
     if flag in _SIGNED_FLAGS:
-        return SmpsEffect(flag, [signed_byte(b) for b in operands])
+        return effect_of(flag, [signed_byte(b) for b in operands])
     if flag == CoordFlag.PSG_VOICE:
-        return SmpsEffect(flag, [psg_voice_name(operands[0])])
-    return SmpsEffect(flag, list(operands))
+        return PsgVoice(psg_voice_name(operands[0]))
+    return effect_of(flag, operands)
 
 
 def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list, rules: PlaybackRules) -> SmpsSong:
@@ -371,16 +370,16 @@ class _Walker:
         converter's smpsSetTempoDiv re-timing knows which divider each note was read with.  No
         flag's parameter is a duration to scale: smpsNoteFill and smpsModSet count V-int frames.
         """
-        if effect.flag == CoordFlag.CHAN_TEMPO_DIV:
-            tempo_div = effect.params[0]
-        if effect.flag == CoordFlag.DAC_SAMPLE:
-            self._dac_sample = effect.params[0]
+        if isinstance(effect, ChanTempoDiv):
+            tempo_div = effect.divider
+        if isinstance(effect, SelectSample):
+            self._dac_sample = effect.sound
         self._channel.events.append(SmpsEvent(effect=effect, tick_position=tick))
 
         # A voice with its own pan byte: the driver writes B4 as it loads the voice
-        pan = self._voice_pans.get(effect.params[0]) if effect.flag == CoordFlag.SET_VOICE else None
+        pan = self._voice_pans.get(effect.index) if isinstance(effect, SetVoice) else None
         if pan is not None:
-            self._channel.events.append(SmpsEvent(effect=SmpsEffect(CoordFlag.PAN, [pan]), tick_position=tick))
+            self._channel.events.append(SmpsEvent(effect=Pan(pan), tick_position=tick))
         return tempo_div
 
     def _byte(self, cur: _Cursor, op: Op) -> None:

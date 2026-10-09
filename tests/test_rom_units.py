@@ -61,8 +61,10 @@ from core.smps import (
     NO_TEMPO_HOLDS,
     ChannelType,
     CoordFlag,
+    Detune,
     OpKind,
     PsgEnvelope,
+    PsgVoice,
     SmpsParser,
     SongCode,
     VoiceField,
@@ -146,7 +148,7 @@ class Tracks(unittest.TestCase):
         dac = bytes([0xF0, 1, 2, 3, 4, 0xE9, 0xF4, 0xE6, 0x02, 0x80, 0x01, 0xF2])
         code = decode_tracks(_memory(_music([dac])), {_SONG + 10: ChannelType.DAC}, SONIC1).code
         effects = [op.effect for op in code.ops if op.kind is OpKind.EFFECT]
-        self.assertEqual([(e.flag, e.params) for e in effects],
+        self.assertEqual([(e.flag, list(e.values)) for e in effects],
                          [(CoordFlag.MOD_SET, [1, 2, 3, 4]), (CoordFlag.CHANGE_TRANSPOSITION, [-12]),
                           (CoordFlag.ALTER_VOL, [2])])
 
@@ -202,7 +204,7 @@ class Type1a(unittest.TestCase):
 
     def test_fb_transposes_and_fa_sets_the_tempo_divider(self):
         code = self._song(bytes([0xFB, 0x0C, 0xFA, 0x02, 0xA0, 0x01, 0xF2])).code
-        effects = [(op.effect.flag, op.effect.params) for op in code.ops if op.kind is OpKind.EFFECT]
+        effects = [(op.effect.flag, list(op.effect.values)) for op in code.ops if op.kind is OpKind.EFFECT]
         self.assertEqual(effects, [(CoordFlag.CHANGE_TRANSPOSITION, [12]), (CoordFlag.CHAN_TEMPO_DIV, [2])])
 
     def test_pan_animation_takes_four_more_operands_when_on_and_is_dropped(self):
@@ -443,7 +445,7 @@ class Type0Fm(unittest.TestCase):
         code = self._code(bytes([0xEF, 0x00, 0xF0, 0x10, 0xA0, 0x08, 0xFB, 0x0C, 0xE0, 0x55, 0xA0, 0x08, 0xF2]))
         song = code.song()
         fm1 = song.channels[1]
-        effects = [(e.effect.flag, e.effect.params) for e in fm1.events if e.effect is not None]
+        effects = [(e.effect.flag, list(e.effect.values)) for e in fm1.events if e.effect is not None]
         self.assertEqual(effects, [(CoordFlag.SET_VOICE, [0]), (CoordFlag.PAN, [0x80]), (CoordFlag.SET_VOL, [0x10]),
                                    (CoordFlag.CHANGE_TRANSPOSITION, [12])])
         self.assertEqual([(e.note.note_value, e.note.duration) for e in fm1.events if e.note is not None],
@@ -523,9 +525,9 @@ class Kosinski(unittest.TestCase):
 
 class Effects(unittest.TestCase):
     def test_psg_voice_is_named_as_the_music_files_name_it(self):
-        self.assertEqual(effect_from_bytes(CoordFlag.PSG_VOICE, [4]).params, ["fTone_04"])
-        self.assertEqual(effect_from_bytes(CoordFlag.PSG_VOICE, [0]).params, ["$00"])
-        self.assertEqual(effect_from_bytes(CoordFlag.DETUNE, [0xFD]).params, [-3])
+        self.assertEqual(effect_from_bytes(CoordFlag.PSG_VOICE, [4]), PsgVoice("fTone_04"))
+        self.assertEqual(effect_from_bytes(CoordFlag.PSG_VOICE, [0]), PsgVoice("$00"))
+        self.assertEqual(effect_from_bytes(CoordFlag.DETUNE, [0xFD]), Detune(-3))
 
 
 class Parser(unittest.TestCase):

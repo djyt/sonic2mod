@@ -29,7 +29,8 @@ from dataclasses import dataclass
 
 from ..smps import (
     ChannelType,
-    CoordFlag,
+    PsgForm,
+    PsgVoice,
     TrackState,
     chip_pitch,
     source_map,
@@ -91,12 +92,11 @@ class DriverState(TrackState):
     def apply(self, effect) -> None:
         """Advance the track state for one coordination flag, then the MOD routing it decides."""
         super().apply(effect)
-        kind = effect.flag
 
-        if kind == CoordFlag.PSG_FORM:
+        if isinstance(effect, PsgForm):
             # The form byte says white/periodic and the rate: its psg_map entry plays the noise.
             # The envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
-            form_byte = effect.params[0]
+            form_byte = effect.noise
             entry = self.config.psg_map.get(form_byte)
             if entry is not None:
                 self.psg_entry = entry
@@ -104,13 +104,13 @@ class DriverState(TrackState):
                 self.psg_label = f"form {form_byte:#04x}"
                 self.instrument = entry.envelopes.get(self.envelope, entry.mod_instrument)
 
-        elif kind == CoordFlag.PSG_VOICE:
+        elif isinstance(effect, PsgVoice):
             # cfSetPSGTone: VoiceIndex changes whatever mode the channel is in.  In noise mode
             # that only changes the envelope the noise plays with: the instrument stays the
             # psg_map entry's, or the variant its `envelopes:` names for this label (Scrap
             # Brain's fTone_08 hi-hat); psg_voice_map is not consulted (Credits' labels belong
             # to PSG1/PSG2).  In tone mode the label picks the psg_voice_map instrument.
-            label = effect.params[0]
+            label = effect.envelope
             if self.in_noise_mode:
                 if self.psg_entry is not None:
                     self.instrument = self.psg_entry.envelopes.get(label, self.psg_entry.mod_instrument)

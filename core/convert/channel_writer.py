@@ -25,7 +25,7 @@ from ..diagnostics import Diagnostics, WarningKind
 from ..merge import Composite, MergePlan
 from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume, note_rate
 from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
-from ..smps import C1_SEMITONE, ChannelType, CoordFlag, SmpsChannel, SmpsSong
+from ..smps import C1_SEMITONE, AlterVol, ChannelType, CoordFlag, ModSet, NoteFill, SetVol, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
 from .vibrato import VibratoSpeed, vibrato_depth
@@ -368,26 +368,25 @@ class ChannelWriter:
         affect note pitch or voice_map lookup."""
         eff = event.effect
         kind = eff.flag
-        if kind in (CoordFlag.ALTER_VOL, CoordFlag.SET_VOL):
+        if isinstance(eff, (AlterVol, SetVol)):
             # st.apply moved the TL offset / attenuation; the non-baked modes keep their own
             # MOD-volume accumulator on top of it: the channel volume less the TL steps the song
             # moved from its header volume (smpsAlterVol: by its delta; SET_VOL: to its level)
             if self._is_psg or self._fm_absolute:
                 self._current_volume = self._level_volume()
             elif not self._fm_baked:
-                if kind == CoordFlag.ALTER_VOL:
-                    moved = self._current_volume - eff.params[0]
-                else:                                   # SET_VOL: from the channel's header volume
-                    moved = self._cfg.volume - (eff.params[0] - self._channel.header.volume)
+                if isinstance(eff, AlterVol):
+                    moved = self._current_volume - eff.delta
+                else:                                   # SetVol: from the channel's header volume
+                    moved = self._cfg.volume - (eff.level - self._channel.header.volume)
                 self._current_volume = max(0, min(64, moved))
-        elif kind == CoordFlag.NOTE_FILL:
-            self._note_fill = eff.params[0]
-        elif kind == CoordFlag.MOD_SET:
-            # wait, speed, change, steps
-            self._vibrato_wait = eff.params[0]
-            self._vibrato_change = eff.params[2]   # raw delta; scaled to period units at placement
-            self._vibrato_steps = eff.params[3]
-            self._vibrato_speed = self._ctx.vibrato.speed(eff.params[1], self._vibrato_steps, self._cfg.source,
+        elif isinstance(eff, NoteFill):
+            self._note_fill = eff.frames
+        elif isinstance(eff, ModSet):
+            self._vibrato_wait = eff.wait
+            self._vibrato_change = eff.delta       # raw delta; scaled to period units at placement
+            self._vibrato_steps = eff.steps
+            self._vibrato_speed = self._ctx.vibrato.speed(eff.speed, self._vibrato_steps, self._cfg.source,
                                                           event.tick_position)
             self._vibrato_active = True
         elif kind == CoordFlag.MOD_ON:

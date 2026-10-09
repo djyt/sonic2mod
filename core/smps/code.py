@@ -242,6 +242,7 @@ class _Walker:
 
         # The driver's track state the rules resolve effects with (rules.py)
         self._rules = rules
+        self._track = rules.track(header.channel_type)
         self._volume_step = 0                      # the RAM starts cleared
         self._level: int | None = None             # the level a volume step set, as the driver keeps it
         self._detune_word = 0
@@ -332,7 +333,7 @@ class _Walker:
         return None
 
     def _on_jump(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
-        if self._header.channel_type in self._rules.jump_clears_tie:
+        if self._track.jump_clears_tie:
             cur.no_attack = False
 
         # Back to code this channel walked (or an unknown target): the loop, the end
@@ -408,29 +409,28 @@ class _Walker:
 
     def _cut(self, cur: _Cursor, i: int) -> None:
         """The note or rest a duration just completed, as the driver keys it off: a gated note at
-        its gate, a rest after a tie where the rules say (PlaybackRules.tied_rest_holds)."""
+        its gate, a rest after a tie where the rules say (TrackRules.tied_rest_holds)."""
         event = cur.channel.events[-1]
         note = event.note
         if note is None:
             return
-        kind = self._header.channel_type
         if not note.is_rest:
-            if self._gate and self._gated(note, kind, i):
+            if self._gate and self._gated(note, i):
                 self._split(cur, event, note.duration - self._gate, note)
             return
-        holds = self._rules.tied_rest_holds.get(kind)
+        holds = self._track.tied_rest_holds
         if note.is_no_attack and holds is not None and holds < note.duration:
             self._split(cur, event, holds, note)
 
-    def _gated(self, note: SmpsNote, kind: ChannelType, i: int) -> bool:
+    def _gated(self, note: SmpsNote, i: int) -> bool:
         """The gate keys `note` off: it outlasts the gate, and is not one the driver spares - a
         tied note where the key-off waits on the tie, one the next byte ties where the driver
         looks (it checks each frame; labels are no bytes)."""
         if note.duration <= self._gate:
             return False
-        if note.is_no_attack and kind in self._rules.gate_spares_tied:
+        if note.is_no_attack and self._track.gate_spares_tied:
             return False
-        return not (kind in self._rules.gate_sees_tie and self._next_op(i) is OpKind.NO_ATTACK)
+        return not (self._track.gate_sees_tie and self._next_op(i) is OpKind.NO_ATTACK)
 
     @staticmethod
     def _split(cur: _Cursor, event: SmpsEvent, held: int, note: SmpsNote) -> None:
@@ -500,7 +500,7 @@ class _Walker:
 
     def _volume(self, step: int) -> SetVol:
         """Volume step `step`: its level in the driver's table, the header volume added (add.b)."""
-        level = self._rules.volume_steps.get(self._header.channel_type, {}).get(step)
+        level = self._track.volume_steps.get(step)
         if level is None:
             raise ValueError(f"{self._header.channel_type} track '{self._header.label}': volume step "
                              f"{step}, which its driver has no level for")
@@ -511,9 +511,7 @@ class _Walker:
     def _detune(self, word: int) -> Detune:
         """The detune word `word` (add.w) as the track adds it: the PSG's shifted to a divider."""
         self._detune_word = _signed_word(word)
-        if self._header.channel_type == ChannelType.PSG:
-            return Detune(self._detune_word >> self._rules.psg_detune_shift)
-        return Detune(self._detune_word)
+        return Detune(self._detune_word >> self._track.detune_shift)
 
     def _byte(self, cur: _Cursor, op: Op) -> None:
         """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample."""
@@ -547,7 +545,7 @@ class _Walker:
         if not self._noise:
             self._tone_note = val
             return val
-        if self._rules.noise_writes_tone3:
+        if self._track.noise_writes_tone3:
             return val
         return MAX_PSG if self._tone_note is None else self._tone_note
 

@@ -97,7 +97,7 @@ from .names import (
 from .parser import SmpsParser
 from .percussion import FmDrum, FmFrame
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
-from .rules import PlaybackRules
+from .rules import PlaybackRules, TrackRules
 from .song import (
     REGISTER_FIELDS,
     REST,
@@ -181,6 +181,7 @@ __all__ = [
     "SongCode",
     "SongDiff",
     "TempoSegment",
+    "TrackRules",
     "TrackState",
     "VoiceField",
     "VoiceRegister",

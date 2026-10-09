@@ -79,18 +79,25 @@ def dump_asm(folder: Path, fixed: bool, only: list[str] | None) -> Iterator[str]
 # --- sections --------------------------------------------------------------------------------
 
 def _rules(rules: PlaybackRules) -> Iterator[str]:
-    """The tables a song plays by, hashed (the same for every song of a ROM)."""
+    """The tables a song plays by, hashed (the same for every song of a ROM); each kind of track's
+    rules under it."""
     yield "rules"
+    yield from _fields(rules, "  ")
+
+
+def _fields(rules, indent: str) -> Iterator[str]:
     for f in fields(rules):
         value = getattr(rules, f.name)
-        if isinstance(value, str):
-            yield f"  {f.name}: {value}"
-        elif isinstance(value, frozenset):
-            yield f"  {f.name}: {sorted(value)}"           # set order follows the hash seed
+        if f.name == "tracks":
+            for kind in sorted(value):
+                yield f"{indent}{f.name} {kind}"
+                yield from _fields(value[kind], indent + "  ")
+        elif isinstance(value, str):
+            yield f"{indent}{f.name}: {value}"
         elif isinstance(value, (tuple, dict)) and len(value) > 4:
-            yield f"  {f.name}: {len(value)} entries {_digest(repr(sorted(value.items()) if isinstance(value, dict) else value))}"
+            yield f"{indent}{f.name}: {len(value)} entries {_digest(repr(sorted(value.items()) if isinstance(value, dict) else value))}"
         else:
-            yield f"  {f.name}: {value!r}"
+            yield f"{indent}{f.name}: {value!r}"
 
 
 def _dac(rom: RomImage, variant) -> Iterator[str]:

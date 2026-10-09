@@ -46,6 +46,11 @@ Streets of Rage's facts are in `docs/todo/streets_of_rage.md` until its conversi
   | `$FD` | SSG-EG, 4 operands | - | no |
   | `$FE` | FM3 special mode, 8 operands | - | no |
 
+- **Carrier TL = the track volume** (not Sonic 1's voice TL + volume): loading a voice (`$61402`)
+  writes its 24 operator registers, then `$61478` writes each carrier's TL (Sonic 1's slot mask,
+  `$614C0`) from `$9(a3)` alone, as `$E6` does after changing it.  The voice's own carrier TLs never
+  play (`VoiceLayout.carrier_tl`); a volume with bit 7 set writes none.  Found by
+  `tools/vgm_frames.py`: an algorithm 5 voice's third carrier 27 TL quieter than every rip.
 - **PSG envelopes:** the ROM's six, ending `$83` (hold); `$80` restarts, `$85 nn` jumps to step nn;
   envelope 6 has no terminator and runs into 5.
 - **DAC:** a Z80 sample player copied uncompressed (code `$6166A`, samples `$61876`, to Z80
@@ -56,7 +61,8 @@ Streets of Rage's facts are in `docs/todo/streets_of_rage.md` until its conversi
 - **Tempos:** modifiers 3-32 and 255 (the title jingle).
 
 Against the rips (`tools/vgm_lift.py`): every song's FM plays as recorded, but FM5's first note,
-a tick late in 4 rips.
+a tick late in 4 rips.  Against their frame logs (`tools/vgm_frames.py`): every FM note's
+pitch, level and voice as recorded, but that note and the logs' loop and end frames.
 
 ---
 

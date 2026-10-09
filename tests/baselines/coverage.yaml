@@ -4861,7 +4861,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: 22c3e8c-dirty
+  commit: 67c8100-dirty
   files:
   - convert.py
   - core/__init__.py

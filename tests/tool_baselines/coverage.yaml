@@ -8284,7 +8284,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: 22c3e8c-dirty
+  commit: 67c8100-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

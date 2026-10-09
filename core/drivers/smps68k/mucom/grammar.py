@@ -41,6 +41,7 @@ from core.smps import (
     PsgForm,
     SelectSample,
     SmpsEffect,
+    VoiceRegister,
     signed_byte,
 )
 
@@ -68,6 +69,9 @@ _LOOP_END_LENGTH = 5               # $F6 x n back.w
 _PSG_DEPTH_SHIFT = 4               # the PSG adds the vibrato word >> 4 to its divider
 _DETUNE_SETS = 0                   # $F2's third byte: 0 sets, any other adds
 _VOLUME_DOWN = 0xFB                # on the PSG: att -= n
+_REGISTER = 0xFA                   # on FM and the drum track: a YM2612 register write
+_TIMERS = range(0x24, 0x27)        # Timer A, Timer B: MUCOM's tempo, which nothing here reads
+_OPERATOR_REGISTERS = range(0x30, 0xA0)
 
 _PAN_B4 = (0xC0, 0x80, 0x40, 0xC0)          # $7353A: $F8 n -> B4's speakers (0, 3 centre; 1 left; 2 right)
 _NOISE_FORM = 0xE7                           # the driver writes $E7: white noise at tone 3's rate
@@ -162,6 +166,16 @@ def _detune(memory: SoundMemory, address: int) -> Instruction:
     return _effect(Detune(word), 4)
 
 
+def _register_write(memory: SoundMemory, address: int) -> Instruction:
+    """`$FA r v`: an operator register patches the voice; a timer is inert.  Any other is refused."""
+    register, value = memory.byte(address + 1), memory.byte(address + 2)
+    if register in _TIMERS:
+        return Instruction((), 3, True, dropped="timer write")
+    if register not in _OPERATOR_REGISTERS:
+        raise RomError(f"${address:X}: $FA ${register:02X}: a register write not converted")
+    return _effect(VoiceRegister(register, value), 3)
+
+
 def psg_volume_down(memory: SoundMemory, address: int) -> Instruction:
     """`$FB n` on the PSG: n taken from the attenuation (neg.b, add.b)."""
     return _effect(AlterVol(signed_byte(-memory.byte(address + 1) & _BYTE)), 2)
@@ -210,7 +224,8 @@ _COMMON: dict[int, _Handler] = {_LOOP_START: _loop_start, _LOOP_END: _loop_end, 
 _FM_VIBRATO, _PSG_VIBRATO = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DEPTH_SHIFT)
 
 _HANDLERS: dict[ChannelType, dict[int, _Handler]] = {
-    ChannelType.FM: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan},
+    ChannelType.FM: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _REGISTER: _register_write},
     ChannelType.PSG: {_DETUNE: _detune, _VIBRATO: _PSG_VIBRATO, _FORM: _noise, _VOLUME_DOWN: psg_volume_down},
-    ChannelType.DAC: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _SAMPLE: _dac_sample},
+    ChannelType.DAC: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _SAMPLE: _dac_sample,
+                      _REGISTER: _register_write},
 }

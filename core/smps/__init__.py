@@ -59,6 +59,7 @@ from .effects import (
     CoordFlag,
     Detune,
     DetuneAdd,
+    Gate,
     ModOff,
     ModOn,
     ModSet,
@@ -73,6 +74,7 @@ from .effects import (
     SetVoice,
     SetVol,
     SmpsEffect,
+    VoiceRegister,
     VolumeStep,
     effect_of,
     pan_is_hard,
@@ -97,6 +99,7 @@ from .percussion import FmDrum, FmFrame
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .rules import PlaybackRules
 from .song import (
+    REGISTER_FIELDS,
     REST,
     ChannelType,
     SmpsChannel,
@@ -124,6 +127,7 @@ __all__ = [
     "NO_TEMPO_HOLDS",
     "PAN_VALUES",
     "PSG_CHANNEL",
+    "REGISTER_FIELDS",
     "REST",
     "SELECTED_SAMPLE",
     "SFX_CHANNEL_IDS",
@@ -142,6 +146,7 @@ __all__ = [
     "DetuneAdd",
     "FmDrum",
     "FmFrame",
+    "Gate",
     "ModOff",
     "ModOn",
     "ModSet",
@@ -178,6 +183,7 @@ __all__ = [
     "TempoSegment",
     "TrackState",
     "VoiceField",
+    "VoiceRegister",
     "VolumeStep",
     "align_songs",
     "chip_pitch",

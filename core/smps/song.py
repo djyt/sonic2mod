@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -35,9 +36,10 @@ class SmpsNote:
     # channel re-keys at its EXISTING frequency — which differs from re-deriving it if a
     # smpsChangeTransposition landed in between (SndA8 - SS Goal does exactly that).
     is_retrigger: bool = False
-    # Shaped by the driver's key-on run-out (core/smps/run_out.py): a note cut short, or the rest the
-    # cut leaves.  Off the song's own rhythm: the row grid (core.plan.derive) leaves it out
-    run_out: bool = False
+    # Keyed off by its driver before its written end (a run-out: core/smps/run_out.py; a gate: the
+    # walk): a note cut short, or the rest the cut leaves.  Off the song's own rhythm: the row grid
+    # (core.plan.derive) takes a cut note's onset, not its length nor the rest
+    cut: bool = False
 
 
 @dataclass
@@ -135,6 +137,18 @@ class VoiceField(StrEnum):
     TOTAL_LEVEL = "tl"
 
 
+# Each operator register's fields: (field, shift, mask) - the chip's bits; SSG-EG is no voice's
+REGISTER_FIELDS: dict[int, tuple[tuple[VoiceField, int, int], ...]] = {
+    OperatorReg.DT_MUL: ((VoiceField.DETUNE, 4, 0x7), (VoiceField.MULTIPLE, 0, 0xF)),
+    OperatorReg.KS_AR: ((VoiceField.RATE_SCALE, 6, 0x3), (VoiceField.ATTACK_RATE, 0, 0x1F)),
+    OperatorReg.AM_D1R: ((VoiceField.AMP_MOD, 7, 0x1), (VoiceField.DECAY_RATE_1, 0, 0x1F)),
+    OperatorReg.D2R: ((VoiceField.DECAY_RATE_2, 0, 0x1F),),
+    OperatorReg.D1L_RR: ((VoiceField.DECAY_LEVEL, 4, 0xF), (VoiceField.RELEASE_RATE, 0, 0xF)),
+    OperatorReg.TL: ((VoiceField.TOTAL_LEVEL, 0, 0x7F),),
+}
+_GROUP_BITS, _OPERATOR_BITS, _CHANNEL_BITS = 0xF0, 0x0C, 0x03     # an operator register: base, slot, channel
+
+
 @dataclass
 class SmpsVoice:
     index: int
@@ -183,6 +197,22 @@ class SmpsVoice:
             regs[OperatorReg.SSG_EG + off] = 0
         return regs
 
+
+    def patched(self, register: int, value: int) -> SmpsVoice:
+        """A copy with operator register `register` (channel 0) written `value`, as the chip reads
+        it.  A carrier's TL is refused: it is the track volume's, not the voice's."""
+        fields_ = REGISTER_FIELDS.get(register & _GROUP_BITS)
+        if fields_ is None or register & _CHANNEL_BITS:
+            raise ValueError(f"register ${register:02X}: not a voice's (channel 0)")
+        if register in self.carrier_registers:
+            raise ValueError(f"register ${register:02X}: a carrier's TL, the track volume's (not converted)")
+        slot = SMPS_OP_TO_REG_OFFSET.index(register & _OPERATOR_BITS)
+        operators = dict(self.operators)
+        for field_, shift, mask in fields_:
+            values = self.operator_values(field_)
+            values[slot] = (value >> shift) & mask
+            operators[field_] = tuple(values)
+        return dataclasses.replace(self, operators=operators)
 
     def chip_registers(self, tl_offset: int = 0) -> dict[int, int]:
         """registers() as the chip reads them: TL is 7 bits (SMPS2ASM sets bit 7 on the carriers,

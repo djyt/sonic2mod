@@ -66,11 +66,11 @@ def _cut(events: list[SmpsEvent], schedule: tuple[TempoSegment, ...], limit: int
         held = max(0, off_tick - ev.tick_position)
         if held:
             out.append(SmpsEvent(note=_with(note, held), tick_position=ev.tick_position))
-        out.append(SmpsEvent(note=SmpsNote(REST, note.duration - held, is_rest=True, run_out=True),
+        out.append(SmpsEvent(note=SmpsNote(REST, note.duration - held, is_rest=True, cut=True),
                              tick_position=ev.tick_position + held))
     return out
 
 
 def _with(note: SmpsNote, duration: int) -> SmpsNote:
     """`note` cut to `duration`."""
-    return dataclasses.replace(note, duration=duration, run_out=True)
+    return dataclasses.replace(note, duration=duration, cut=True)

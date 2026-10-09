@@ -229,10 +229,11 @@ class _Deriver:
         whole-number BPM is nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
-        # The song's own rhythm: a driver's run-out cut (core/smps/run_out.py) falls between rows (ECx)
+        # The song's own rhythm: where a driver cuts a note (a run-out, a gate) falls between rows
+        # (ECx); the note's onset is the song's
         notes = [(e.tick_position, e.note) for ch in self._song.channels for e in ch.events
-                 if e.note is not None and not e.note.run_out]
-        ticks = [tick for tick, _ in notes] + [note.duration for _, note in notes]
+                 if e.note is not None and not (e.note.cut and e.note.is_rest)]
+        ticks = [tick for tick, _ in notes] + [note.duration for _, note in notes if not note.cut]
         exact = math.gcd(*ticks) or 1
         starts = Counter(tick for tick, _ in notes)
 

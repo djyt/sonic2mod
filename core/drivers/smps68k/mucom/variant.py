@@ -72,14 +72,13 @@ _VOICE_LAYOUT = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_
                            OperatorReg.D2R, OperatorReg.D1L_RR),
                           feedback_last=True, operator_offsets=(0x00, 0x04, 0x08, 0x0C), carrier_tl=False)
 
-# Read and left out for now: gate, register writes, LFO, FM3 special mode
+# Read and left out for now: LFO, FM3 special mode (register writes: grammar.py)
 _FM_FLAGS: dict[int, FlagSpec] = {
     0xF0: effect(CoordFlag.SET_VOICE),
     0xF1: effect(CoordFlag.VOLUME_STEP),
-    0xF3: drop("gate", 1),
+    0xF3: effect(CoordFlag.GATE),
     0xF7: drop("FM3 special mode", 4),
     0xF9: refuse("pause toggle"),
-    0xFA: drop("register write", 2),
     0xFB: effect(CoordFlag.ALTER_VOLUME_STEP),
     0xFC: drop("LFO", 3),
     0xFD: NO_ATTACK,
@@ -89,7 +88,7 @@ _FM_FLAGS: dict[int, FlagSpec] = {
 _PSG_FLAGS: dict[int, FlagSpec] = {
     0xF0: drop("$F0 (no PSG effect)", 1),
     0xF1: effect(CoordFlag.VOLUME_STEP),
-    0xF3: drop("gate", 1),
+    0xF3: effect(CoordFlag.GATE),
     0xF8: drop("$F8 (no PSG effect)", 1),
     0xF9: effect(CoordFlag.PSG_VOICE),
     0xFA: effect(CoordFlag.PSG_VOICE),
@@ -100,10 +99,9 @@ _PSG_FLAGS: dict[int, FlagSpec] = {
 
 _DAC_FLAGS: dict[int, FlagSpec] = {
     0xF1: drop("$F1 (no DAC effect)", 1),
-    0xF3: drop("gate", 1),
+    0xF3: effect(CoordFlag.GATE),                # cuts the sample (Phase 3: a rest that cuts)
     0xF7: refuse("$F7 on the drum track"),
     0xF9: refuse("pause toggle"),
-    0xFA: drop("register write", 2),
     0xFB: drop("$FB (no DAC effect)", 1),
     0xFC: drop("LFO", 3),
     0xFD: NO_ATTACK,
@@ -173,12 +171,18 @@ MUCOM = SmpsVariant(
     voice_layout=_VOICE_LAYOUT,
     # Its FM octave, volume table and envelopes read from the ROM; Sonic 1's PSG rows (checked);
     # Z80 $019B: 17 samples.  $FF clears an FM or drum track's tie (bclr #5); in noise mode no
-    # tone 3 frequency is written
+    # tone 3 frequency is written.  The gate ($72BFE FM, $738BC PSG, $72A4E the drum track): FM and
+    # PSG look for a $FD after the note, FM's key-off ($731DE) waits on the tie bit; the drum
+    # track's cuts every note.  A rest keys FM off on its first frame (the key-off at its read
+    # waits on the tie bit), the PSG's at once ($7390A)
     rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
                         psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
                         dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)},
                         volume_steps={ChannelType.PSG: _PSG_VOLUME_STEPS}, psg_detune_shift=_PSG_DETUNE_SHIFT,
-                        jump_clears_tie=frozenset({ChannelType.FM, ChannelType.DAC}), noise_writes_tone3=False),
+                        jump_clears_tie=frozenset({ChannelType.FM, ChannelType.DAC}), noise_writes_tone3=False,
+                        gate_spares_tied=frozenset({ChannelType.FM}),
+                        gate_sees_tie=frozenset({ChannelType.FM, ChannelType.PSG}),
+                        tied_rest_holds={ChannelType.FM: 1, ChannelType.PSG: 0}),
     rules_from_rom=_rules_from_rom,
     grammar=mucom_instruction,
 )

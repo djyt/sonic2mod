@@ -306,7 +306,7 @@ class SfxDriver:
 
     def _coord_flag(self, t: SfxTrack, effect) -> None:
         kind = effect.flag
-        params = effect.params
+        params = effect.values
 
         if kind == CoordFlag.SET_VOICE:
             t.voice_index = params[0]

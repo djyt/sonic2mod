@@ -6,7 +6,8 @@
 
 import copy
 
-from .song import CoordFlag, SmpsSong
+from .effects import ChanTempoDiv, SetTempoDiv
+from .song import SmpsSong
 
 
 def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
@@ -22,7 +23,7 @@ def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
     depends on any earlier change), then the others.  Labels (loop targets) are not re-timed.
     """
     found = [ch for ch in song.channels
-             if any(ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_DIV for ev in ch.events)]
+             if any(isinstance(ev.effect, SetTempoDiv) for ev in ch.events)]
     if not found:
         return []
     header_div = song.header.tempo_divider
@@ -42,14 +43,14 @@ def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
                 ev.note.duration = round(d_raw * div)
                 act += ev.note.duration
                 continue
-            kind = ev.effect.flag
-            if kind == CoordFlag.CHAN_TEMPO_DIV:
-                own_parse = own_div = ev.effect.params[0]
-                own_tick = act
-            elif kind == CoordFlag.SET_TEMPO_DIV:
-                # Writes this track's divider too (cfSetTempoDividerAll covers every track).
-                own_div, own_tick = ev.effect.params[0], act
-                new_changes.append((act, ev.effect.params[0]))
+            match ev.effect:
+                case ChanTempoDiv(divider=divider):
+                    own_parse = own_div = divider
+                    own_tick = act
+                case SetTempoDiv(divider=divider):
+                    # Writes this track's divider too (cfSetTempoDividerAll covers every track).
+                    own_div, own_tick = divider, act
+                    new_changes.append((act, divider))
         return new_changes
 
     for ch in found:

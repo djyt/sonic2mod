@@ -109,7 +109,7 @@ adds composite instruments to the same catalogue.
 | `SmpsChannel` | header, `events`, jump / loop info (`loop_tick`, `loop_event_index`, `loop_label`) |
 | `SmpsEvent` | a note or an effect, with its tick |
 | `SmpsNote` | value, duration, rest / no-attack / retrigger flags |
-| `SmpsEffect` | a `CoordFlag` (a meaning, `StrEnum`: each driver maps its own bytes to it - Sonic 1's `$E0` and Streets of Rage's `$F8` are both `PAN`) and its parameters |
+| `SmpsEffect` | one frozen class per `CoordFlag` (a meaning, `StrEnum`: each driver maps its own bytes to it - Sonic 1's `$E0` and Streets of Rage's `$F8` are both `Pan`), its operands named (`SetVoice(index)`, `ModSet(wait, speed, delta, steps)`); read with `match` (`core/smps/effects.py`) |
 | `SmpsVoice` | algorithm, feedback, `operators` (each `VoiceField` as four ints in driver order), `pan` (a voice that stores B4: the walk pans its track on smpsSetvoice); `registers(tl_offset)` |
 
 ### Front ends

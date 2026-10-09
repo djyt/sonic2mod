@@ -17,8 +17,9 @@ from collections import Counter
 
 from .code import NO_ATTACK, REST, TRACK_BYTES, Op, OpKind, SongCode
 from .driver_tables import PAN_VALUES
+from .effects import CoordFlag
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES_REVERSE, flag_name, note_label, voice_macro
-from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsVoice, VoiceField
+from .song import ChannelType, SmpsChannelHeader, SmpsVoice, VoiceField
 
 _BYTES_PER_LINE = 12
 _PAN_SPEAKERS = 0xC0
@@ -202,7 +203,7 @@ class _Writer:
             return _macro("smpsLoop", f"{_hex(op.index)}, {_hex(op.value)}, {self._name_of(op.name)}")
 
         assert op.effect is not None
-        flag, params = op.effect.flag, op.effect.params
+        flag, params = op.effect.flag, op.effect.values
         if flag == CoordFlag.PAN:
             return _macro(flag_name(flag), f"{_PAN_NAMES[params[0] & _PAN_SPEAKERS]}, {_hex(params[0] & _PAN_LFO)}")
         if flag == CoordFlag.PSG_VOICE:

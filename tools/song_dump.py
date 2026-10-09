@@ -134,7 +134,7 @@ def _op(op: Op) -> str:
     if op.kind is OpKind.LABEL:
         return f"{op.name}:"
     if op.kind is OpKind.EFFECT and op.effect is not None:
-        return f"  {op.effect.flag} {op.effect.params}"
+        return f"  {op.effect.flag} {list(op.effect.values)}"
     if op.kind is OpKind.LOOP:
         return f"  LOOP {op.name} x{op.value} [{op.index}]"
     if op.kind in (OpKind.CALL, OpKind.JUMP, OpKind.LOOP_EXIT):
@@ -154,7 +154,7 @@ def _voice(v: SmpsVoice) -> str:
 
 def _event(ev) -> str:
     if ev.effect is not None:
-        return f"{ev.tick_position:6} {ev.effect.flag} {ev.effect.params}"
+        return f"{ev.tick_position:6} {ev.effect.flag} {list(ev.effect.values)}"
     n = ev.note
     marks = [m for m, on in (("rest", n.is_rest), ("dac " + n.dac_name, n.is_dac), ("no-attack", n.is_no_attack),
                              ("retrigger", n.is_retrigger), ("run-out", n.run_out)) if on]

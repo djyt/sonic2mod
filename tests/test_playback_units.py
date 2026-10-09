@@ -20,7 +20,6 @@ from core.smps import (
     PlayedNote,
     SmpsChannel,
     SmpsChannelHeader,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsParser,
@@ -30,6 +29,7 @@ from core.smps import (
     VoiceField,
     align_songs,
     compare_songs,
+    effect_of,
     played_song,
 )
 
@@ -70,7 +70,7 @@ def _held(duration: int = 8) -> SmpsEvent:
 
 
 def _flag(flag: CoordFlag, *params) -> SmpsEvent:
-    return SmpsEvent(effect=SmpsEffect(flag, list(params)))
+    return SmpsEvent(effect=effect_of(flag, params))
 
 
 class Voice(unittest.TestCase):

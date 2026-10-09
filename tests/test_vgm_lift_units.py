@@ -154,7 +154,7 @@ class Lift(unittest.TestCase):
         log = bursts(writes, frame_of_tick(segments, fm1[-1]) + 8)
         song = lift_song(frame_log(decode_vgm(log)), SONIC1_RULES)
         fm1 = next(c for c in song.channels if c.header.label == "FM1")
-        flags = [(ev.tick_position, ev.effect.params) for ev in fm1.events
+        flags = [(ev.tick_position, list(ev.effect.values)) for ev in fm1.events
                  if ev.effect is not None and ev.effect.flag is CoordFlag.SET_TEMPO_MOD]
         self.assertEqual((song.header.tempo_modifier, flags), (2, [(288, [3])]))
 

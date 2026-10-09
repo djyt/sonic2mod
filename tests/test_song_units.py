@@ -20,14 +20,17 @@ from core.drivers.smps68k.mucom import MUCOM
 from core.drivers.smps68k.sonic1 import SONIC1
 from core.smps import (
     NO_TEMPO_HOLDS,
+    AlterVol,
     ChannelType,
     CoordFlag,
     Op,
     OpKind,
+    Pan,
+    SetVoice,
+    SetVol,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsCode,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsParser,
@@ -70,17 +73,16 @@ class Flags(unittest.TestCase):
         self.assertTrue(all(isinstance(e.flag, CoordFlag) for e in effects))
 
 
-class Pan(unittest.TestCase):
+class Panning(unittest.TestCase):
     def test_pan_is_the_b4_byte(self):
-        self.assertEqual([pan_side([b]) for b in (0x80, 0x40, 0xC0, 0x00)], ["L", "R", "C", "C"])
-        self.assertTrue(pan_is_hard([0x80 | 0x12]))          # AMS / FMS bits do not move the speaker
-        self.assertFalse(pan_is_hard([0xC0]))
+        self.assertEqual([pan_side(b) for b in (0x80, 0x40, 0xC0, 0x00)], ["L", "R", "C", "C"])
+        self.assertTrue(pan_is_hard(0x80 | 0x12))          # AMS / FMS bits do not move the speaker
+        self.assertFalse(pan_is_hard(0xC0))
 
     @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_writes_the_byte(self):
         song = SmpsParser(SONIC1_RULES).parse_file(str(_GHZ))
-        pans = {ev.effect.params[0] for ch in song.channels for ev in ch.events
-                if ev.effect is not None and ev.effect.flag is CoordFlag.PAN}
+        pans = {ev.effect.b4 for ch in song.channels for ev in ch.events if isinstance(ev.effect, Pan)}
         self.assertEqual(pans, {0x40, 0x80, 0xC0})          # panRight, panLeft, panCenter (all , $00)
 
 
@@ -89,24 +91,24 @@ class OtherDrivers(unittest.TestCase):
 
     def test_set_vol_is_absolute_where_alter_vol_adds(self):
         fm = TrackState(is_psg=False, volume=8, psg_read=SONIC1_RULES.psg_read)
-        fm.apply(SmpsEffect(CoordFlag.ALTER_VOL, [4]))
+        fm.apply(AlterVol(4))
         self.assertEqual(fm.tl, 12)
-        fm.apply(SmpsEffect(CoordFlag.SET_VOL, [3]))
+        fm.apply(SetVol(3))
         self.assertEqual(fm.tl, 3)
         psg = TrackState(is_psg=True, volume=2, psg_read=SONIC1_RULES.psg_read)
-        psg.apply(SmpsEffect(CoordFlag.SET_VOL, [0x20]))
+        psg.apply(SetVol(0x20))
         self.assertEqual(psg.att, 15)                         # clamped as smpsAlterVol is
         self.assertEqual(flag_from_macro(flag_name(CoordFlag.SET_VOL)), CoordFlag.SET_VOL)
 
     def test_a_voice_with_its_own_pan_pans_the_track_it_is_set_on(self):
         # FM1: voice 0 (pan left in the voice), a note, voice 1 (no pan byte), a note
-        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [0])),
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SetVoice(0)),
                Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x08),
-               Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [1])),
+               Op(OpKind.EFFECT, effect=SetVoice(1)),
                Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x08), Op(OpKind.STOP)]
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
         song = song_from_code(header, SmpsCode(ops), [SmpsVoice(0, pan=0x80), SmpsVoice(1)], SONIC1_RULES)
-        effects = [(ev.effect.flag, ev.effect.params, ev.tick_position) for ev in song.channels[0].events
+        effects = [(ev.effect.flag, list(ev.effect.values), ev.tick_position) for ev in song.channels[0].events
                    if ev.effect is not None]
         self.assertEqual(effects, [(CoordFlag.SET_VOICE, [0], 0), (CoordFlag.PAN, [0x80], 0),
                                    (CoordFlag.SET_VOICE, [1], 8)])
@@ -229,7 +231,7 @@ class Loops(unittest.TestCase):
         """(span, body as (tick from the loop start, what plays)) of a looping channel."""
         end = max(ev.tick_position + (ev.note.duration if ev.note else 0) for ev in ch.events)
         body = [(ev.tick_position - ch.loop_tick,
-                 (ev.note.note_value, ev.note.duration, ev.note.is_rest) if ev.note else (ev.effect.flag, tuple(ev.effect.params)))
+                 (ev.note.note_value, ev.note.duration, ev.note.is_rest) if ev.note else (ev.effect.flag, ev.effect.values))
                 for ev in ch.events if ev.tick_position >= ch.loop_tick]
         return end - ch.loop_tick, body
 

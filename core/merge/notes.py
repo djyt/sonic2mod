@@ -17,6 +17,7 @@ from ..plan import FmLayer, walk_channel
 from ..smps import (
     ChannelType,
     CoordFlag,
+    NoteFill,
     source_map,
 )
 
@@ -118,8 +119,8 @@ class _NoteWalk:
             self._vib = True
         elif k == CoordFlag.MOD_OFF:
             self._vib = False
-        elif k == CoordFlag.NOTE_FILL:
-            self._fill = int(effect.params[0])
+        elif isinstance(effect, NoteFill):
+            self._fill = effect.frames
 
     def _on_note(self, note, tick: int, st, res) -> None:
         if note.is_rest:

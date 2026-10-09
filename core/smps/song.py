@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum, auto
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
 from .driver_tables import SMPS_OP_TO_REG_OFFSET
+from .effects import SetTempoMod, SmpsEffect
 from .rules import PlaybackRules
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, tempo_schedule
 
@@ -37,37 +38,6 @@ class SmpsNote:
     # Shaped by the driver's key-on run-out (core/smps/run_out.py): a note cut short, or the rest the
     # cut leaves.  Off the song's own rhythm: the row grid (core.plan.derive) leaves it out
     run_out: bool = False
-
-
-class CoordFlag(StrEnum):
-    """What a coordination flag does, as a song's events carry it: a meaning, no driver's byte.
-    Each driver maps its own bytes to these (core/drivers: Sonic 1's are s1.sounddriver.asm
-    coordflagLookup, docs/smps_driver.md; the Sonic 1 byte noted below); the SMPS2ASM macro names
-    are core/smps/names.py's, for reading and printing assembly."""
-
-    PAN = auto()                  # [the YM2612 B4 byte: L R AMS FMS]                Sonic 1 $E0
-    DETUNE = auto()               # [FNUM offset, signed]                            $E1
-    NOP = auto()                  # [byte]                                           $E2
-    CHAN_TEMPO_DIV = auto()       # [divider]                                        $E5
-    ALTER_VOL = auto()            # [delta, signed]                                  $E6 FM, $EC PSG
-    NOTE_FILL = auto()            # [frames]                                         $E8
-    CHANGE_TRANSPOSITION = auto() # [semitones, signed]                              $E9
-    SET_TEMPO_MOD = auto()        # [modifier]                                       $EA
-    SET_TEMPO_DIV = auto()        # [divider]                                        $EB
-    SET_VOICE = auto()            # [voice index]                                    $EF
-    MOD_SET = auto()              # [wait, speed, delta, steps]                      $F0
-    MOD_ON = auto()               #                                                  $F1
-    PSG_FORM = auto()             # [noise register byte]                            $F3
-    MOD_OFF = auto()              #                                                  $F4
-    PSG_VOICE = auto()            # [envelope name, fTone_01 ... : the driver's]     $F5
-    SET_VOL = auto()              # [level]: the track's volume, absolute            (Type 0 FM's $F0)
-    DAC_SAMPLE = auto()           # [DAC byte]: what the drum track's notes play     (Streets of Rage's $F0)
-
-
-@dataclass
-class SmpsEffect:
-    flag: CoordFlag
-    params: list = field(default_factory=list)
 
 
 @dataclass
@@ -238,8 +208,8 @@ class SmpsSong:
 
     def tempo_changes(self) -> list[tuple[int, int]]:
         """(tick, modifier) of every smpsSetTempoMod, in tick order."""
-        return sorted({(ev.tick_position, ev.effect.params[0]) for ch in self.channels for ev in ch.events
-                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
+        return sorted({(ev.tick_position, ev.effect.modifier) for ch in self.channels for ev in ch.events
+                       if isinstance(ev.effect, SetTempoMod)})
 
     def tempo_schedule(self) -> tuple[TempoSegment, ...]:
         """When the driver reads each tick (core/smps/tempo.py): the header's tempo at the driver's
@@ -255,21 +225,3 @@ class SmpsSong:
                    default=None)
 
 
-# --- effect parameters ---
-
-
-_PAN_SPEAKERS = 0xC0              # B4 bits 7 (left) and 6 (right)
-_PAN_LEFT = 0x80
-_PAN_RIGHT = 0x40
-
-
-def pan_side(params: list) -> str:
-    """The speaker a PAN flag's B4 byte sends the channel to: "L", "R", or "C" for both (or
-    neither, which the driver never writes for music)."""
-    speakers = params[0] & _PAN_SPEAKERS if params else _PAN_SPEAKERS
-    return {_PAN_LEFT: "L", _PAN_RIGHT: "R"}.get(speakers, "C")
-
-
-def pan_is_hard(params: list) -> bool:
-    """True for a channel panned hard left or right."""
-    return pan_side(params) != "C"

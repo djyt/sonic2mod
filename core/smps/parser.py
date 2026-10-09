@@ -6,11 +6,28 @@ driver's reading rules turn into the intermediate representation suitable for co
 
 import re
 
-from .code import NO_ATTACK, Op, OpKind, SmpsCode, effect_from_bytes, song_from_code, track_byte
+from .code import NO_ATTACK, Op, OpKind, SmpsCode, signed_byte, song_from_code, track_byte
 from .driver_tables import PAN_VALUES
+from .effects import (
+    AlterVol,
+    ChangeTransposition,
+    ChanTempoDiv,
+    Detune,
+    ModOff,
+    ModOn,
+    ModSet,
+    Nop,
+    NoteFill,
+    Pan,
+    PsgForm,
+    PsgVoice,
+    SetTempoDiv,
+    SetTempoMod,
+    SetVoice,
+)
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES, SMPS_NOTE_NAMES, voice_field_from_macro
 from .rules import PlaybackRules
-from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsEffect, SmpsSongHeader, SmpsVoice
+from .song import ChannelType, SmpsChannelHeader, SmpsSongHeader, SmpsVoice
 
 _PAN_LFO_MASK = 0x3F  # smpsPan's second operand: B4's AMS / FMS bits
 
@@ -272,17 +289,17 @@ class SmpsParser:
         # smpsSetvoice / smpsFMvoice
         m = re.match(r'(?:smpsSetvoice|smpsFMvoice)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.SET_VOICE, [int(m.group(1), 16)])
+            return SetVoice(int(m.group(1), 16))
 
         # smpsAlterVol / smpsPSGAlterVol
         m = re.match(r'(?:smpsAlterVol|smpsPSGAlterVol)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return effect_from_bytes(CoordFlag.ALTER_VOL, [int(m.group(1), 16)])
+            return AlterVol(signed_byte(int(m.group(1), 16)))
 
         # smpsAlterNote / smpsDetune
         m = re.match(r'(?:smpsAlterNote|smpsDetune)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return effect_from_bytes(CoordFlag.DETUNE, [int(m.group(1), 16)])
+            return Detune(signed_byte(int(m.group(1), 16)))
 
         # smpsModSet wait,speed,change,step
         m = re.match(
@@ -290,68 +307,63 @@ class SmpsParser:
             line
         )
         if m:
-            return SmpsEffect(CoordFlag.MOD_SET, [
-                int(m.group(1), 16),
-                int(m.group(2), 16),
-                int(m.group(3), 16),
-                int(m.group(4), 16),
-            ])
+            return ModSet(*(int(m.group(i), 16) for i in range(1, 5)))
 
         # smpsModOn
         if line.startswith('smpsModOn'):
-            return SmpsEffect(CoordFlag.MOD_ON, [])
+            return ModOn()
 
         # smpsModOff
         if line.startswith('smpsModOff'):
-            return SmpsEffect(CoordFlag.MOD_OFF, [])
+            return ModOff()
 
         # smpsNoteFill
         m = re.match(r'smpsNoteFill\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.NOTE_FILL, [int(m.group(1), 16)])
+            return NoteFill(int(m.group(1), 16))
 
         # smpsPan
         m = re.match(r'smpsPan\s+(.+)', line)
         if m:
-            return SmpsEffect(CoordFlag.PAN, [_pan_byte(m.group(1))])
+            return Pan(_pan_byte(m.group(1)))
 
         # smpsNop
         m = re.match(r'smpsNop\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.NOP, [int(m.group(1), 16)])
+            return Nop(int(m.group(1), 16))
 
         # smpsPSGform
         m = re.match(r'smpsPSGform\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.PSG_FORM, [int(m.group(1), 16)])
+            return PsgForm(int(m.group(1), 16))
 
         # smpsPSGvoice
         m = re.match(r'smpsPSGvoice\s+(.+)', line)
         if m:
-            return SmpsEffect(CoordFlag.PSG_VOICE, [m.group(1).strip()])
+            return PsgVoice(m.group(1).strip())
 
         # smpsChangeTransposition / smpsAlterPitch
         m = re.match(r'(?:smpsChangeTransposition|smpsAlterPitch)\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return effect_from_bytes(CoordFlag.CHANGE_TRANSPOSITION, [int(m.group(1), 16)])
+            return ChangeTransposition(signed_byte(int(m.group(1), 16)))
 
         # smpsChanTempoDiv
         m = re.match(r'smpsChanTempoDiv\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.CHAN_TEMPO_DIV, [int(m.group(1), 16)])
+            return ChanTempoDiv(int(m.group(1), 16))
 
         # smpsSetTempoMod ($EA, cfSetTempo): new tempo modifier for EVERY track, and the
         # TempoWait counter restarts.  The converter turns it into an Fxx BPM change.
         m = re.match(r'smpsSetTempoMod\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.SET_TEMPO_MOD, [int(m.group(1), 16)])
+            return SetTempoMod(int(m.group(1), 16))
 
         # smpsSetTempoDiv ($EB, cfSetTempoDividerAll): every track's duration divider, from the
         # note read after it.  Kept as an event; song_prep.apply_global_tempo_div re-times the
         # channels (Credits only).
         m = re.match(r'smpsSetTempoDiv\s+\$([0-9A-Fa-f]+)', line)
         if m:
-            return SmpsEffect(CoordFlag.SET_TEMPO_DIV, [int(m.group(1), 16)])
+            return SetTempoDiv(int(m.group(1), 16))
 
         return None
 

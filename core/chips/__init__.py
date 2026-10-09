@@ -14,8 +14,8 @@ from .fm import (
     FM_TL_SILENT,
     FREQ_WORD_MAX,
     MD_FM_CLOCK,
+    OPERATOR_SLOT_OFFSETS,
     REG_FEEDBACK_ALGORITHM,
-    REGISTER_MASKS,
     TL_MASK,
     TL_STEP_DB,
     OperatorReg,
@@ -24,7 +24,9 @@ from .fm import (
     fm_level_db,
     freq_word,
     freq_word_hz,
+    operator_bits,
     split_freq_word,
+    split_operator_register,
 )
 from .psg import (
     MD_PSG_CLOCK,
@@ -46,11 +48,11 @@ __all__ = [
     "FREQ_WORD_MAX",
     "MD_FM_CLOCK",
     "MD_PSG_CLOCK",
+    "OPERATOR_SLOT_OFFSETS",
     "PSG_ATT_SILENT",
     "PSG_DIVIDER_MASK",
     "PSG_SAMPLE_RATE",
     "PSG_STEP_DB",
-    "REGISTER_MASKS",
     "REG_FEEDBACK_ALGORITHM",
     "TL_MASK",
     "TL_STEP_DB",
@@ -60,7 +62,9 @@ __all__ = [
     "fm_level_db",
     "freq_word",
     "freq_word_hz",
+    "operator_bits",
     "psg_frequency_hz",
     "psg_level_db",
-    "split_freq_word"
+    "split_freq_word",
+    "split_operator_register"
 ]

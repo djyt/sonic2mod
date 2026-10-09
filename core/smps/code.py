@@ -32,6 +32,7 @@ from .effects import (
     SmpsEffect,
     effect_of,
 )
+from .names import track_names
 from .percussion import FmDrum
 from .rules import PlaybackRules
 from .run_out import apply_run_out
@@ -143,8 +144,10 @@ def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list[SmpsVoic
     track's byte without a name (rules.dac_names) is a plain note."""
     pans = {v.index: v.pan for v in voices if v.pan is not None}
     patcher = VoicePatcher(voices)
-    channels = [_Walker(code, ch_header, rules, pans, patcher).walk(header.tempo_divider)
-                for ch_header in header.channels]
+    channels = []
+    for ch_header, name in zip(header.channels, track_names(header.channels), strict=True):
+        driver = DriverTrack(ch_header, name, rules, patcher)
+        channels.append(_Walker(code, ch_header, rules, driver, pans).walk(header.tempo_divider))
     song = SmpsSong(header=header, channels=channels, voices=[*voices, *patcher.added], rules=rules)
     apply_run_out(song)
     return song
@@ -197,8 +200,8 @@ class _Walker:
                        jump back, a forward jump walked to its end, a loop's last pass left)
     """
 
-    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, rules: PlaybackRules,
-                 voice_pans: Mapping[int, int], voices: VoicePatcher):
+    def __init__(self, code: SmpsCode, header: SmpsChannelHeader, rules: PlaybackRules, driver: DriverTrack,
+                 voice_pans: Mapping[int, int]):
         self._ops = code.ops
         self._dac_names = rules.dac_names
         self._voice_pans = voice_pans     # a voice that stores its B4 byte pans the track it is set on
@@ -213,7 +216,7 @@ class _Walker:
         self._label_events: dict[str, int] = {}
 
         self._passes: dict[str, int] = {}          # each loop being replayed (by its body's label): the pass
-        self._driver = DriverTrack(header, rules, voices)   # what its driver does to its effects and notes
+        self._driver = driver                      # what its driver does to its effects and notes
 
         # A jump back's tie: labels first reached with a tie pending that their first note keeps
         # (none read since), those since the last note, and the tie the jump left

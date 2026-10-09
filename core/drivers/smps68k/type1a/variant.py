@@ -3,6 +3,8 @@ with a disassembler (docs/todo/binary_import.md, Phase 2)."""
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from core.rom.flags import RETURN, EnvelopeCommand, drop, effect, every_kind, refuse
 from core.rom.variant import SmpsVariant
 from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, PlaybackRules
@@ -39,7 +41,9 @@ TYPE1A = SmpsVariant(
     envelope_commands={0x83: EnvelopeCommand.HOLD, 0x80: EnvelopeCommand.RESTART,
                        0x85: EnvelopeCommand.JUMP},   # $61152
     header=HEADER_68K,
-    voice_layout=VOICE_68K,
+    # Sonic 1's voice bytes; but loading a voice ($61402) writes each carrier's TL from the track
+    # volume alone ($61478: the mask at $614C0, Sonic 1's), the voice's own never plays
+    voice_layout=replace(VOICE_68K, carrier_tl=False),
     # Sonic 1's FM and PSG tables (compared: the same); its PSG envelopes read from the ROM; every
     # note byte goes to the DAC (the 68k remaps $88-$97 to pitched samples)
     rules=PlaybackRules(driver=SmpsDriver.TYPE1A, fm_frequencies=FM_FREQUENCIES, psg_frequencies=PSG_FREQUENCIES,

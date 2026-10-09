@@ -55,14 +55,12 @@ class ModSample:
 
     def set_finetune(self, v: int):
         if v < -8 or v > 7:
-            print(f"Warning: Fine Tune {v} is invalid.")
-            return
+            raise ValueError(f"finetune {v}: not in -8..7")
         self._finetune = v & 0xf
 
     def set_volume(self, v):
         if v < 0 or v > 64:
-            print(f"Warning: Volume {v} is invalid.")
-            return
+            raise ValueError(f"volume {v}: not in 0..64")
         self._volume = int(v)
 
     def zero_idle_word(self) -> None:
@@ -88,6 +86,9 @@ class ModSample:
         return output
 
 
+MAX_INSTRUMENT = 0x1F           # a cell's instrument field (5 bits); 0 = none
+_MAX_SAMPLE_BYTES = 0xFFFF      # what sample_list loads
+
 # Bytes per pattern cell (4) × rows per pattern (64)
 _BYTES_PER_CELL = 4
 _ROWS_PER_PATTERN = 64
@@ -105,16 +106,16 @@ class ModPattern:
     def get_bytes(self): return self._data
 
     def set_entry(self, index: int, value: int):
-        if index < 0 or index > self._plen - 1:
-            print(f"Invalid index {index}")
-            return
+        self._check(index)
         self._data[index] = value
 
     def get_entry(self, index: int):
-        if index < 0 or index > self._plen - 1:
-            print(f"Invalid index {index}")
-            return 0
+        self._check(index)
         return self._data[index]
+
+    def _check(self, index: int) -> None:
+        if index < 0 or index > self._plen - 1:
+            raise IndexError(f"pattern byte {index}: not in 0..{self._plen - 1}")
 
 
 class ModFile:
@@ -233,23 +234,20 @@ class ModFile:
 
     def set_channel(self, chan: int):
         if chan < 0 or chan > self.CHANNELS - 1:
-            print(f"Error: Channel {chan} is invalid.")
-        else:
-            self._chan = chan
+            raise IndexError(f"channel {chan}: not in 0..{self.CHANNELS - 1}")
+        self._chan = chan
 
     def set_row(self, row: int):
-        if row < 0 or row > 63:
-            print(f"Error: Row {row} is invalid.")
-        else:
-            self._row = row
+        if row < 0 or row > _ROWS_PER_PATTERN - 1:
+            raise IndexError(f"row {row}: not in 0..{_ROWS_PER_PATTERN - 1}")
+        self._row = row
 
     def set_note(self, n: ModNote, inst: int | None = None):
         if inst is None:
             inst = self._inst
 
-        if inst < 0 or inst > 0x1f:
-            print(f"Error: Instrument {inst} is invalid.")
-            return
+        if inst < 0 or inst > MAX_INSTRUMENT:
+            raise IndexError(f"instrument {inst}: not in 0..{MAX_INSTRUMENT}")
         note_period = PERIOD_TABLE[n.value]
         index = self.get_index()
         value = (note_period << 16) + ((inst & 0xf) << 12) + ((inst >> 4) << 28)
@@ -264,8 +262,7 @@ class ModFile:
 
     def set_active_pattern(self, pattern: int):
         if pattern < 0 or pattern > self.MAX_POSITIONS:
-            print(f"Error: Pattern {pattern} does not exist.")
-            return
+            raise IndexError(f"pattern {pattern}: not in 0..{self.MAX_POSITIONS}")
         if pattern >= len(self.patterns):
             self.add_patterns(pattern - len(self.patterns) + 1)
         self._active_pattern = pattern
@@ -276,8 +273,7 @@ class ModFile:
         length = len(self.patterns)
         add = number_to_add + length
         if add > self.MAX_POSITIONS:
-            print("Warning: Exceeded 127 patterns. Truncating to 127.")
-            number_to_add = self.MAX_POSITIONS - length
+            raise IndexError(f"{add} patterns: past the MOD's {self.MAX_POSITIONS}")
         for i in range(number_to_add):
             self.patterns.append(ModPattern(self.CHANNELS))
             self.position_list[length + i] = length + i
@@ -285,8 +281,7 @@ class ModFile:
 
     def set_volume(self, vol: int):
         if vol < 0 or vol > 0x40:
-            print(f"Warning: Volume out of range (0-64) {vol}")
-            return
+            raise ValueError(f"Cxx volume {vol}: not in 0..64")
         index = self.get_index()
         pattern = self.patterns[self._active_pattern]
         pattern.set_entry(index + 2, 0xc + (pattern.get_entry(index + 2) & 0xf0))
@@ -395,9 +390,11 @@ class ModFile:
         for i in range(keep, self.MAX_POSITIONS + 1):
             self.position_list[i] = 0
 
-    def add_samples(self, working_dir: str, sample_list: list):
-        if sample_list is None: return
-        for entry in sample_list:
+    def add_samples(self, working_dir: str, sample_list: list) -> list[str]:
+        """Each sample_list entry's file into its slot; the paths not found (left empty).  A slot or
+        size the MOD cannot hold is a config error."""
+        missing: list[str] = []
+        for entry in sample_list or []:
             sample_index: int = entry[0]
             filename: str = entry[1]
             vol: int = entry[2]
@@ -407,23 +404,16 @@ class ModFile:
                 finetune: int = 0
             full_path = os.path.join(working_dir, filename)
 
-            if sample_index < 1 or sample_index > 0x1f:
-                print(f"Error: Instrument {sample_index} is invalid.")
-                continue
-
-            if vol < 0 or vol > 0x40:
-                print(f"Warning: Volume out of range (0-64). Setting to 64 {vol}")
-                vol = 64
-
+            if sample_index < 1 or sample_index > MAX_INSTRUMENT:
+                raise ValueError(f"sample_list: instrument {sample_index} is not in 1..{MAX_INSTRUMENT}")
             if not os.path.exists(full_path):
-                print(f"Warning: Sample file not found: {full_path}")
+                missing.append(full_path)
                 continue
 
             with open(full_path, "rb") as file:
                 data = file.read()
-                if len(data) > 0xffff:
-                    print(f"Error: {filename} is larger than 64K!")
-                    continue
+                if len(data) > _MAX_SAMPLE_BYTES:
+                    raise ValueError(f"sample_list: {filename} is {len(data)} bytes, past {_MAX_SAMPLE_BYTES}")
 
                 sample = ModSample(filename)
                 sample.data = data
@@ -431,6 +421,7 @@ class ModFile:
                 sample.length = (len(data) + 1) // 2      # whole words: an odd file's last byte kept
                 sample.set_finetune(finetune)
                 self.samples[sample_index - 1] = sample
+        return missing
 
     def create_placeholder_samples(self, count=10):
         """Create minimal placeholder samples for instruments 1-count.

@@ -499,7 +499,8 @@ class SmpsToModConverter:
     def _load_disk_samples(self, skip: set[int]) -> None:
         for entry in self.config.sample_list or []:
             if entry[SAMPLE_SLOT] not in skip:
-                self.mod.add_samples(self.config.samples_dir, [entry])
+                for path in self.mod.add_samples(self.config.samples_dir, [entry]):
+                    self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=entry[SAMPLE_SLOT], path=path)
 
     def _synthesize_fm(self, synth: SynthesisSettings) -> tuple[dict, set[int]]:
         """Every FM instrument rendered and installed → (the samples, the instruments of map
@@ -513,8 +514,7 @@ class SmpsToModConverter:
         missing: set[int] = set()
         for ctx, vi, insts in fm_catalogue(self.song, self.config).missing_voices:
             missing.update(insts)
-            print(f"Warning: {ctx} voice ${vi:02X} not defined in song "
-                  f"(inst {insts}) — remove this entry from {ctx.split('[')[0]}")
+            self._diag.warn(WarningKind.VOICE_MISSING, extra_ctx=ctx, voice_idx=vi, instruments=sorted(insts))
 
         # Each sample is rendered at the level most of its notes play at — the carriers carry the
         # channel volume as the driver's SetVoice writes it — so the chip clips a multi-carrier
@@ -703,9 +703,8 @@ class SmpsToModConverter:
                 if self._merge is not None and inst in self._merge.mix_only and inst in self._merge.instruments:
                     continue            # rendered for the mixer; the slot's baseline is its composite's
                 if base is not None and abs(fm_level_db(tl, pan, pan_law) - base) > 1e-9:
-                    print(f"Warning: instrument {inst} was rendered at TL +{tl}"
-                          f"{' panned' if pan else ''} ({fm_level_db(tl, pan, pan_law):+.2f} dB) but its "
-                          f"baked level is {base:+.2f} dB — the loop extension changed the modal level")
+                    self._diag.warn(WarningKind.RENDER_LEVEL, instrument=inst, tl=tl, panned=bool(pan),
+                                    rendered_db=fm_level_db(tl, pan, pan_law), baked_db=base)
         self._psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
             self._psg_baseline_db = self._levels.levels(ChannelType.PSG)

@@ -22,6 +22,9 @@ class WarningKind(StrEnum):
     NOISE_ENVELOPES = 'noise_envelopes'             # one noise sample for several envelopes
     SUSTAIN_SHORT = 'sustain_short'                 # a sample shorter than a note it plays
     SAMPLE_TRUNCATED = 'sample_truncated'           # a render cut to the sample limit
+    SAMPLE_FILE_MISSING = 'sample_file_missing'     # a sample_list file not on disk: the slot stays empty
+    VOICE_MISSING = 'voice_missing'                 # a map entry's voice the song does not define
+    RENDER_LEVEL = 'render_level'                   # a sample rendered at another level than it is baked at
     # tempo and patterns
     TEMPO_NO_SLOT = 'tempo_no_slot'                 # a tempo Fxx found no free effect slot
     TEMPO_BPM_RANGE = 'tempo_bpm_range'             # a tempo change outside BPM 32..255

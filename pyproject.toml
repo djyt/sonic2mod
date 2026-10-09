@@ -22,8 +22,10 @@ sonic2wav = "sonic2wav:main"
 
 [tool.setuptools]
 py-modules = ["convert", "analyze", "sonic2wav"]
-packages = ["core", "core.audio", "core.config", "core.convert", "core.merge", "core.mod", "core.plan",
-            "core.smps", "core.ui", "ym2612", "sn76489", "sfx"]
+
+# Found, not listed: a new driver folder (core/drivers/<family>/<driver>/) joins by itself
+[tool.setuptools.packages.find]
+include = ["core", "core.*", "ym2612", "sn76489", "sfx"]
 
 [tool.setuptools.package-data]
 ym2612 = ["*.dll", "*.so", "*.c"]

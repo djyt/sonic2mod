@@ -25,12 +25,12 @@ from enum import StrEnum
 from pathlib import Path
 
 from ..config import ConversionConfig
+from ..drivers.names import SmpsDriver
 from ..smps import (
     Aspect,
     ChannelType,
     PlayedNote,
     PlayedSong,
-    SmpsDriver,
     SmpsSong,
     SongDiff,
     TempoSegment,
@@ -143,7 +143,7 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
                      channels: ChannelChoice = _EVERY_CHANNEL, lift: LiftOptions | None = None) -> RipDiff:
     """Where `frames` (a rip) plays other than `song`, in `aspects` (default: what the lift reads)
     and the chosen channels both play.  `lift`: the lift's options instead of the song's tempo
-    (LiftOptions(): inferred, to judge the inference)."""
+    (LiftOptions(): inferred, to judge the inference).  The lift reads by the song's rules."""
     try:
         lifted, tempo = _lift(song, frames, lift)
     except VgmLiftError as e:
@@ -166,8 +166,7 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
 def _lift(song: SmpsSong, frames: FrameLog, options: LiftOptions | None) -> tuple[SmpsSong, LiftTempo]:
     """The rip lifted at `options`, else at the song's tempo, inferred where that fits no schedule."""
     if options is not None:
-        lifted = lift_song(frames, dataclasses.replace(options, tempo_phase=song.header.tempo_phase,
-                                                       fm_frequencies=song.fm_frequencies))
+        lifted = lift_song(frames, song.rules, options)
         stated = options.tempo_modifier is not None or options.tempo_divider is not None
         return lifted, _tempo(lifted, TempoSource.STATED if stated else TempoSource.INFERRED)
 
@@ -175,12 +174,12 @@ def _lift(song: SmpsSong, frames: FrameLog, options: LiftOptions | None) -> tupl
     refused = "none stated"
     if h.tempo_modifier:
         try:
-            lifted = lift_song(frames, LiftOptions(tempo_modifier=h.tempo_modifier, tempo_divider=h.tempo_divider or None,
-                                                   tempo_phase=h.tempo_phase, fm_frequencies=song.fm_frequencies))
+            lifted = lift_song(frames, song.rules,
+                               LiftOptions(tempo_modifier=h.tempo_modifier, tempo_divider=h.tempo_divider or None))
             return lifted, _tempo(lifted, TempoSource.SONG)
         except VgmLiftError as e:
             refused = str(e)
-    lifted = lift_song(frames, LiftOptions(tempo_phase=h.tempo_phase, fm_frequencies=song.fm_frequencies))
+    lifted = lift_song(frames, song.rules)
     return lifted, _tempo(lifted, TempoSource.INFERRED, refused)
 
 

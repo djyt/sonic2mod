@@ -954,7 +954,7 @@ python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every 
   rows (`ticks_per_row` × divider).
 - Aspects: by default what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects all` for
   every one - a lifted note's pitch is its table word, no detune yet).  The lift matches a note to the
-  song's own FM table (`LiftOptions.fm_frequencies`) and holds at its phase (`tempo_phase`).
+  song's own FM table and holds at its phase (`lift_song(frames, song.rules, ...)`).
 - A tie that changes nothing compared is one note on both sides: a rip shows a read only where the
   driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.
 - Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one

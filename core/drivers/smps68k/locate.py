@@ -23,8 +23,8 @@ from core.rom.header import is_music_header, is_sfx_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import SoundIndex
-from core.smps import FM_FREQUENCIES
 
+from ..reference import FM_FREQUENCIES
 from .common import HEADER_68K
 from .memory import Relative68kMemory
 

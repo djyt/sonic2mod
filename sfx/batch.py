@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from core.audio import gain_to_db
 from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK
 from core.drivers import locate_sounds, read_rom_song
+from core.drivers.reference import SONIC1_RULES
 from core.mod import PAL_AMIGA_CLOCK
 from core.rom import RomImage
 from core.smps import SmpsParser, SmpsSong
@@ -79,7 +80,7 @@ class SfxSource:
 
 
 def asm_sources(paths) -> list[SfxSource]:
-    return [SfxSource(output_name(p), p, lambda p=p: SmpsParser().parse_file(p)) for p in paths]
+    return [SfxSource(output_name(p), p, lambda p=p: SmpsParser(SONIC1_RULES).parse_file(p)) for p in paths]
 
 
 def rom_sources(rom_path: str) -> list[SfxSource]:

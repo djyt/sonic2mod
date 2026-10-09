@@ -31,6 +31,7 @@ from core.drivers import (
     read_rom_code,
     read_rom_song,
 )
+from core.drivers.reference import FM_FREQUENCIES, SONIC1_ENVELOPES, SONIC1_RULES
 from core.drivers.smps68k import SONIC1, TYPE1A
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smpsz80 import TYPE0FM
@@ -48,9 +49,7 @@ from core.rom.variant import EntryLayout, VoiceLayout
 from core.rom.voices import read_voices
 from core.rom.z80 import z80_ram
 from core.smps import (
-    FM_FREQUENCIES,
     NO_TEMPO_HOLDS,
-    SONIC1_ENVELOPES,
     ChannelType,
     CoordFlag,
     OpKind,
@@ -415,11 +414,11 @@ class Type0Fm(unittest.TestCase):
         head = read_music_header(memory, self._BANK, HEADER_TYPE0)
         tracks = decode_tracks(memory, head.tracks, TYPE0FM)
         voices = read_voices(memory, head.voices, 1, VOICE_TYPE0)
-        return SongCode(head.header, tracks.code, voices, driver=TYPE0FM.name, dropped=dict(tracks.dropped))
+        return SongCode(head.header, tracks.code, voices, TYPE0FM.rules, dropped=dict(tracks.dropped))
 
     def test_the_drums_play_on_fm3_and_tempo_0_never_holds(self):
         header = self._code(bytes([0xF2])).header
-        song = song_from_code(header, self._code(bytes([0xF2])).code, [])
+        song = song_from_code(header, self._code(bytes([0xF2])).code, [], TYPE0FM.rules)
         self.assertEqual([c.channel_type for c in header.channels], ["DAC", "FM", "FM"])
         self.assertEqual(source_names(song), ["FM3", "FM1", "FM2"])
         self.assertEqual((header.tempo_divider, header.tempo_modifier), (2, NO_TEMPO_HOLDS))
@@ -445,7 +444,7 @@ class Type0Fm(unittest.TestCase):
     def test_notes_play_from_the_songs_own_fm_table(self):
         code = self._code(bytes([0xEF, 0x00, 0xA0, 0x08, 0xF2]))           # $A0: table index $20
         table = tuple(range(0x1000, 0x1000 + 0x60))
-        code.fm_frequencies = table
+        code.rules = dataclasses.replace(code.rules, fm_frequencies=table)
         fm1 = played_song(code.song()).channels["FM1"]
         played = next(p for p in fm1 if not p.rest)
         self.assertEqual(played.note, table[0x20 - 12])                   # transposition -12
@@ -541,13 +540,13 @@ Song_DAC:
 """
 
     def test_the_data_fixes_read_both_conditional_forms(self):
-        fixed = SmpsParser().parse_text(self._CREDITS_LIKE).channels[0].events
-        shipped = SmpsParser(fix_data_bugs=False).parse_text(self._CREDITS_LIKE).channels[0].events
+        fixed = SmpsParser(SONIC1_RULES).parse_text(self._CREDITS_LIKE).channels[0].events
+        shipped = SmpsParser(SONIC1_RULES, fix_data_bugs=False).parse_text(self._CREDITS_LIKE).channels[0].events
         self.assertEqual((len(fixed), len(shipped)), (2, 6))
 
     def test_smpsFade_ends_the_track(self):
         text = self._CREDITS_LIKE.replace("\tsmpsStop", "\tsmpsFade\n\tdc.b\tnRst, $20")
-        self.assertEqual(len(SmpsParser().parse_text(text).channels[0].events), 2)
+        self.assertEqual(len(SmpsParser(SONIC1_RULES).parse_text(text).channels[0].events), 2)
 
 
 def _index():
@@ -581,7 +580,7 @@ class SonicRev01(unittest.TestCase):
         for sound, path in self._asm():
             for fixed in (True, False):
                 with self.subTest(path=Path(path).name, fixed=fixed):
-                    want = SmpsParser(fix_data_bugs=fixed).parse_file(path)
+                    want = SmpsParser(SONIC1_RULES, fix_data_bugs=fixed).parse_file(path)
                     got = read_rom_song(self.rom, sound, self.index, fix_data_bugs=fixed)
                     self.assertEqual(parse_differences(want, got), [])
 
@@ -599,11 +598,11 @@ class SonicRev01(unittest.TestCase):
         for sound, _ in self._asm():
             code = read_rom_code(self.rom, sound, self.index)
             with self.subTest(sound=f"${sound:02X}"):
-                back = SmpsParser().parse_text(write_asm(code, f"S{sound:02X}"))
+                back = SmpsParser(SONIC1_RULES).parse_text(write_asm(code, f"S{sound:02X}"))
                 self.assertEqual(parse_differences(code.song(), back), [])
 
     def test_the_roms_envelopes_are_the_transcribed_table(self):
-        self.assertEqual(read_rom_song(self.rom, 0x81, self.index).psg_envelopes, SONIC1_ENVELOPES)
+        self.assertEqual(read_rom_song(self.rom, 0x81, self.index).rules.psg_envelopes, SONIC1_ENVELOPES)
 
     def test_the_dac_samples_are_samples_raws(self):
         raws = {"dKick": "kick", "dSnare": "snare", "dTimpani": "timpani"}
@@ -647,9 +646,9 @@ class Moonwalker(unittest.TestCase):
 
     def test_its_own_envelopes_and_dac_names(self):
         song = read_rom_song(self.rom, 0x81, self.index)
-        self.assertEqual(len(song.psg_envelopes), 6)
-        self.assertNotEqual(song.psg_envelopes["fTone_03"], SONIC1_ENVELOPES["fTone_03"])
-        self.assertEqual(len(song.psg_envelopes["fTone_06"].steps), 16 + 41)     # runs on into envelope 5
+        self.assertEqual(len(song.rules.psg_envelopes), 6)
+        self.assertNotEqual(song.rules.psg_envelopes["fTone_03"], SONIC1_ENVELOPES["fTone_03"])
+        self.assertEqual(len(song.rules.psg_envelopes["fTone_06"].steps), 16 + 41)     # runs on into envelope 5
         dac = {e.note.dac_name for e in song.channels[0].events if e.note and not e.note.is_rest}
         self.assertTrue(dac and all(name.startswith("dac") for name in dac))
 
@@ -683,8 +682,8 @@ class GoldenAxe(unittest.TestCase):
         self.assertEqual(source_names(songs[0x81]), ["FM3", "FM1", "FM2", "FM4", "FM5", "FM6"])
         self.assertEqual(songs[0x85].header.tempo_modifier, NO_TEMPO_HOLDS)          # Death Adder: tempo 0
         self.assertTrue(all(v.pan is not None for v in songs[0x81].voices))
-        self.assertEqual(songs[0x81].fm_frequencies[1:3], (0x283, 0x2A4))             # nC0: Z80 $07D9
-        self.assertEqual(len(songs[0x81].fm_frequencies), len(FM_FREQUENCIES))
+        self.assertEqual(songs[0x81].rules.fm_frequencies[1:3], (0x283, 0x2A4))             # nC0: Z80 $07D9
+        self.assertEqual(len(songs[0x81].rules.fm_frequencies), len(FM_FREQUENCIES))
 
     def test_the_drum_kit(self):
         drums = read_rom_song(self.rom, 0x81).fm_drums                 # Wilderness: tempo 10

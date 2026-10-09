@@ -16,9 +16,9 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.config import InstrumentRange
+from core.drivers.reference import FM_FREQUENCIES
 from core.plan import DetunePlan, DetuneVariant, FmCatalogue, FmInstrument, FmLayer, detune_cents
 from core.plan.instruments import _add_detune_variants
-from core.smps import FM_FREQUENCIES
 
 _NC5 = 60          # SMPS semitone of nC5 (C0 = 0): fnum 644
 _NAS5 = 70         # nA#5: fnum 1148, the table's widest (its octave runs B 606 ... A# 1148)

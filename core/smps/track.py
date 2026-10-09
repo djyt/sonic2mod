@@ -1,6 +1,6 @@
 """One track's driver state (SMPS_Track) as its coordination flags leave it: what a note plays with.
 
-    header ──► TrackState.for_header ──apply(flag)──► ... ──► the state a note reads
+    channel ──► TrackState.for_channel ──apply(flag)──► ... ──► the state a note reads
 
 Config-free: the conversion's DriverState (core/plan) adds the MOD routing on top, and the song
 walk that compares a parse with a lift (playback.py) reads it as it is.
@@ -9,17 +9,18 @@ walk that compares a parse with a lift (playback.py) reads it as it is.
 from __future__ import annotations
 
 from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
-from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsEffect, pan_side
+from .song import ChannelType, CoordFlag, SmpsChannel, SmpsEffect, pan_side
 
 
 class TrackState:
     """Mutable track state, advanced one coordination flag at a time.  Unknown flags are ignored."""
 
     __slots__ = ("att", "detune", "envelope", "fill", "hard_panned", "is_psg", "modulation",
-                 "modulation_on", "noise_form", "pan", "tl", "transpose", "voice")
+                 "modulation_on", "noise_form", "pan", "psg_read", "tl", "transpose", "voice")
 
-    def __init__(self, *, is_psg: bool, transpose: int = 0, volume: int = 0) -> None:
+    def __init__(self, *, is_psg: bool, psg_read: tuple[int, ...], transpose: int = 0, volume: int = 0) -> None:
         self.is_psg = is_psg
+        self.psg_read = psg_read            # the driver's PSG words (PlaybackRules.psg_read): where a note lands
         self.transpose = transpose          # header pitch_offset + every smpsChangeTransposition
         self.tl = 0 if is_psg else volume   # YM2612 TL offset, 0-127
         self.att = volume if is_psg else 0  # SN76489 attenuation, 0-15
@@ -34,9 +35,11 @@ class TrackState:
         self.modulation_on = False          # smpsModSet / smpsModOn on, smpsModOff off
 
     @classmethod
-    def for_header(cls, header: SmpsChannelHeader) -> TrackState:
-        """A track as its header starts it: transpose, volume and PSG voice."""
-        st = cls(is_psg=header.channel_type == ChannelType.PSG, transpose=header.pitch_offset, volume=header.volume)
+    def for_channel(cls, channel: SmpsChannel) -> TrackState:
+        """A track as its header starts it (transpose, volume and PSG voice), by its driver's rules."""
+        header = channel.header
+        st = cls(is_psg=header.channel_type == ChannelType.PSG, psg_read=channel.rules.psg_read,
+                 transpose=header.pitch_offset, volume=header.volume)
         st.envelope = header.psg_voice_label or None
         return st
 

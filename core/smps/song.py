@@ -7,7 +7,8 @@ from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
-from .driver_tables import FM_FREQUENCIES, SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
+from .driver_tables import SMPS_OP_TO_REG_OFFSET
+from .rules import PlaybackRules
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, tempo_schedule
 
 if TYPE_CHECKING:
@@ -120,9 +121,6 @@ class SmpsSongHeader:
     psg_count: int = 0
     tempo_divider: int = 1
     tempo_modifier: int = 5
-    tempo_phase: int = 0       # frames the first TempoWait hold comes late (core/smps/tempo.py; Type 0 FM: 1)
-    key_run_out: int | None = None   # frames a note keys without an attacking read before the driver keys
-                                     # it off (core/smps/run_out.py; Type 0 FM: 256); None: never
     channels: list = field(default_factory=list)  # list of SmpsChannelHeader
     # True when parsed from smpsHeader*SFX* macros.  SFX have no tempo modifier byte and run
     # one tick per V-int unconditionally — the music (modifier-1)/modifier rate correction
@@ -134,6 +132,7 @@ class SmpsSongHeader:
 class SmpsChannel:
     header: SmpsChannelHeader
     events: list = field(default_factory=list)  # list of SmpsEvent
+    rules: PlaybackRules = field(kw_only=True)  # its driver's: the song's
     has_jump: bool = False        # the channel ends in a jump back: a loop
     loop_tick: int | None = None  # the tick the jump returns to
     # Index into `events` of the loop's first event.  A tick alone cannot say whether a
@@ -225,17 +224,13 @@ class SmpsSong:
     header: SmpsSongHeader
     channels: list = field(default_factory=list)  # list of SmpsChannel
     voices: list = field(default_factory=list)     # list of SmpsVoice
-    # The PSG envelopes smpsPSGvoice names (fTone_01 ...): the driver's own - Sonic 1's for an asm
-    # song or a VGM lift, a ROM's read from its PSG_Index
-    psg_envelopes: dict[str, PsgEnvelope] = field(default_factory=lambda: dict(SONIC1_ENVELOPES))
-    # The FM frequency words the driver plays notes with, by fm_note_index (index 1 = nC0): Sonic
-    # 1's, or a ROM driver's own (Golden Axe's, 8-16 cents flat)
-    fm_frequencies: tuple[int, ...] = FM_FREQUENCIES
     # The drum track's FM drum programs by DAC name (Type 0 FM's drum81 ...; core/smps/percussion.py);
     # empty where the drum track plays DAC samples
     fm_drums: dict[str, FmDrum] = field(default_factory=dict)
     # Flags read and left out (a ROM's driver: pan animation, queued sounds), by name
     dropped: dict[str, int] = field(default_factory=dict)
+    # What its driver plays it by: tables, envelopes, drum names, timing (each channel holds the same)
+    rules: PlaybackRules = field(kw_only=True)
 
     def end_tick(self) -> int:
         """The tick the last event of any channel ends at (a note's duration included)."""
@@ -252,7 +247,7 @@ class SmpsSong:
         phase, then each smpsSetTempoMod.  An SFX never holds."""
         modifier = self.header.tempo_modifier
         holds = modifier > 1 and not self.header.is_sfx
-        return tempo_schedule(modifier if holds else NO_TEMPO_HOLDS, self.tempo_changes(), self.header.tempo_phase)
+        return tempo_schedule(modifier if holds else NO_TEMPO_HOLDS, self.tempo_changes(), self.rules.tempo_phase)
 
     def loop_target_tick(self) -> int | None:
         """The tick the song loops back to: the latest smpsJump target over the channels;

@@ -7,7 +7,7 @@ again.  The rips agree: long FM1 notes in Death Adder, The Battle and Conclusion
 frames after their attack, and the 8 ties each of The Battle and Conclusion read after it are
 silent.  Sonic 1 has no run-out.
 
-The song states the limit (SmpsSongHeader.key_run_out); this pass, run on the walked song, cuts
+The song's driver states the limit (PlaybackRules.key_run_out); this pass, run on the walked song, cuts
 each FM note that outlasts it and makes the rest of what it held a rest.  Every pass after it -
 playback, the yardstick, the sample lengths, the converter's release - sees the key-off.  It
 runs before the loops are replayed and the global tempo divider applied: a replayed loop keeps
@@ -28,7 +28,7 @@ from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 
 def apply_run_out(song: SmpsSong) -> None:
     """Every FM channel's notes cut where the driver's run-out keys them off (none without one)."""
-    limit = song.header.key_run_out
+    limit = song.rules.key_run_out
     if not limit:
         return
     schedule = song.tempo_schedule()

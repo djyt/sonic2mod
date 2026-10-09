@@ -83,7 +83,7 @@ def derive_rate3_dividers(song: SmpsSong, config: ConversionConfig) -> dict[int,
             note_value, transpose = max(notes, key=lambda k: notes[k])
             if e.low is not None:                       # anchor never played: same transpose, the anchor note
                 note_value = e.low + 0x81
-        n = psg_tone2_divider(note_value, transpose)
+        n = psg_tone2_divider(note_value, transpose, song.rules.psg_read)
         out[inst] = {'n': n, 'note': _semitone_to_name(note_value - 0x81), 'transpose': transpose,
                      'used': e.tone2_n is None and e.synth_root is None}
     return out

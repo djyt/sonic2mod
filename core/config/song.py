@@ -4,8 +4,9 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..drivers.names import SmpsDriver
 from ..mod import ModFile
-from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsSong
+from ..smps import SmpsSong
 from ..source import LiftOptions, is_rom_path, is_vgm_path, read_song
 from .entries import (
     TWIN_MODES,
@@ -170,7 +171,7 @@ class ConversionConfig:
 
     @property
     def lift_options(self) -> LiftOptions:
-        return LiftOptions(self.driver or DEFAULT_DRIVER, self.tempo_modifier, self.tempo_divider)
+        return LiftOptions(self.tempo_modifier, self.tempo_divider)
 
     def read_song(self) -> SmpsSong:
         """The song `input_file` holds: assembly parsed, a ROM's song decoded, a VGM / VGZ rip lifted."""

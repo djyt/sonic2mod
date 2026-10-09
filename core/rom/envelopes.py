@@ -4,7 +4,7 @@ restarts, $85 nn jumps; Streets of Rage's $81 holds, $83 silences).  smpsPSGvoic
 envelope n (fTone_0n).  Where they are is the
 variant's locate (SoundIndex.envelopes).
 
-    Sonic 1 rev01   9 envelopes (= core.smps.SONIC1_ENVELOPES)
+    Sonic 1 rev01   9 envelopes (= core.drivers.reference.SONIC1_ENVELOPES)
     Moonwalker      6; envelope 6 has no command and runs on into envelope 5, as the driver reads it
 """
 

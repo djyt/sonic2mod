@@ -232,12 +232,12 @@ a song pass (the `run_out` precedent).
 | SoR fact | IR | Resolved in | Downstream |
 |---|---|---|---|
 | tick = frame | divider 1, `NO_TEMPO_HOLDS` | header | none |
-| FM / PSG volume steps | `SongCode.volume_steps`; `VOL_STEP`, `ALTER_VOL_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
+| FM / PSG volume steps | `PlaybackRules.volume_steps`; `VOL_STEP`, `ALTER_VOL_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
 | detune add | `DETUNE_ADD` -> `DETUNE` | walk | none |
 | gate | `GATE` -> note + rest, marked off-grid like `run_out` | song pass beside `run_out.py` | none |
 | loop break, tie cleared on exit | `OpKind.LOOP_EXIT` | walk | none |
 | DAC sample by flag | `DAC_SAMPLE` -> DAC notes get the selected sample | walk | none |
-| DAC rest / gate cut | `SmpsSongHeader.dac_rest_cuts` (from `HeaderLayout`) | header | `channel_writer._on_rest` |
+| DAC rest / gate cut | `PlaybackRules.dac_rest_cuts` | rules | `channel_writer._on_rest` |
 | noise leaves tone3 alone | noise notes keep the last tone note's pitch, else `nMaxPSG` (divider 0) | walk | none |
 | PSG row clamp | the decoder maps to Sonic's PSG index | decoder | none |
 | FM table, B7 | `fm_frequencies`, 97 entries | variant | none |
@@ -320,6 +320,13 @@ a song pass (the `run_out` precedent).
 - [x] 6.1 `$89`: plays as written without a fix (Phase 1).
 - [ ] 6.2 `docs/smps_variants.md` section (the facts of part 1, moved); `docs/architecture.md`;
   CLAUDE.md.
+
+### Playback rules (2026-10-09, before Phase 2)
+A driver's tables, envelopes, drum names and timing are one `PlaybackRules` (`core/smps/rules.py`)
+each song and channel carries; Sonic 1's are `core/drivers/reference.py` (`SONIC1_RULES`, shared
+by the drivers that read none of their own).  Nothing below `core/drivers` names a driver's table:
+the parser and the lift take rules, the chip renderers take a table or a divider.  Phase 2's
+facts (volume steps, DAC rests that cut) go in the rules.
 
 ### Test selection (the user, 2026-10-08)
 Hundreds of songs cannot each be a regression case.  Phase 0 uses a one-off snapshot of

@@ -60,8 +60,7 @@ def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -
         raise RomError(f"${address:X}: not a music header")
 
     fm_count, psg_count = memory.byte(address + _FM_COUNT_AT), memory.byte(address + _PSG_COUNT_AT)
-    header = SmpsSongHeader(fm_count=fm_count, psg_count=psg_count, tempo_phase=layout.tempo_phase,
-                            key_run_out=layout.key_run_out)
+    header = SmpsSongHeader(fm_count=fm_count, psg_count=psg_count)
     if layout.tempo:
         tempo = memory.byte(address + _MODIFIER_AT)
         header.tempo_divider = memory.byte(address + _DIVIDER_AT)

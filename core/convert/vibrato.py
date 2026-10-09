@@ -8,7 +8,6 @@
 from ..config import ConversionConfig
 from ..diagnostics import Diagnostics, InfoKind
 from ..plan import Timeline
-from ..smps import PSG_FREQUENCIES_EXTENDED
 
 # Sonic 1 base FNUM for note C, from the MakeFMFrequency table (644 for C ... 1216 for B).
 # The 11-bit FNUM is the same across all octave blocks — block just shifts the register.
@@ -32,7 +31,7 @@ _MIN_SWING = 0.7
 
 
 def vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: bool,
-                  player: str = "ft2") -> int:
+                  psg_read: tuple[int, ...], player: str = "ft2") -> int:
     """4xy depth nibble for one note in `player`'s replayer; 0 = too shallow to play.
 
     Driver: the accumulator swings delta * steps / 2 either side of its centre (first
@@ -49,7 +48,7 @@ def vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: 
     (Green Hill's y=1 notes half as deep).  Below 0.7 periods the smallest depth would
     overshoot the hardware by 3x or more: no vibrato.
     """
-    word = (PSG_FREQUENCIES_EXTENDED[chip_index & 0x7F] if is_psg
+    word = (psg_read[chip_index & 0x7F] if is_psg
             else S1_FNUM_BASE * 2 ** ((chip_index % 12) / 12))
     if word <= 0:
         return 0

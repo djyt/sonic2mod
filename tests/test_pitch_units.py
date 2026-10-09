@@ -15,7 +15,8 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import cents, hz_to_midi, midi_name, pitch_name
-from core.smps import FM_FREQUENCIES, FmFrame, SmpsVoice, VoiceField
+from core.drivers.reference import FM_FREQUENCIES
+from core.smps import FmFrame, SmpsVoice, VoiceField
 from ym2612.renderer import note_to_fnum_block, render_frames
 from ym2612.wrapper import output_rate
 
@@ -50,7 +51,7 @@ class Intervals(unittest.TestCase):
 
 class RenderedPitch(unittest.TestCase):
     def test_a_sample_renders_at_its_songs_table_word(self):
-        self.assertEqual(note_to_fnum_block(0), (FM_FREQUENCIES[13] & 0x7FF, FM_FREQUENCIES[13] >> 11))   # C1
+        self.assertEqual(note_to_fnum_block(0, fm_frequencies=FM_FREQUENCIES), (FM_FREQUENCIES[13] & 0x7FF, FM_FREQUENCIES[13] >> 11))   # C1
         golden_axe_c1 = 0xA7E                                       # 15.6 cents under Sonic 1's
         table = (*FM_FREQUENCIES[:13], golden_axe_c1, *FM_FREQUENCIES[14:])
         self.assertEqual(note_to_fnum_block(0, fm_frequencies=table), (0x27E, 1))

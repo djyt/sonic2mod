@@ -33,9 +33,10 @@ sys.path.insert(0, str(ROOT))
 import yaml
 
 from core.drivers import VARIANTS, dac_samples, data_fixes, detect_variant, locate_sounds, read_rom_code
+from core.drivers.names import SmpsDriver
+from core.drivers.reference import SONIC1_RULES
 from core.rom import RomError, RomImage, SmpsVariant, SoundIndex
 from core.smps import (
-    SmpsDriver,
     SmpsParser,
     SmpsSong,
     SongDiff,
@@ -91,7 +92,7 @@ def _compare(rom: RomImage, index: SoundIndex, ids: list[int], asm_dir: Path, ma
             continue
 
         got = read_rom_code(rom, sound_id, index, fixed, variant).song()
-        want = SmpsParser(fix_data_bugs=fixed).parse_file(str(asm))
+        want = SmpsParser(SONIC1_RULES, fix_data_bugs=fixed).parse_file(str(asm))
         found = parse_differences(want, got)
         diff = None if index.is_sfx(sound_id) else _played_diff(want, got)
         if not found and (diff is None or diff.ok):

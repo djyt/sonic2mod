@@ -13,16 +13,14 @@ frequency, which is the only case where the caller writes the frequency register
 
 from __future__ import annotations
 
-from core.smps import (
+from core.drivers.reference import (
     ENVELOPE_TERMINATOR,
     FM_FREQUENCIES,
     PSG_ENVELOPES,
     PSG_FREQUENCIES,
     PSG_FREQUENCIES_EXTENDED,
-    CoordFlag,
-    fm_note_index,
-    psg_note_index,
 )
+from core.smps import CoordFlag, fm_note_index, psg_note_index
 
 from .chips import (
     fm_key_off,

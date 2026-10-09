@@ -37,7 +37,6 @@ from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
 from core.smps import (
     C1_SEMITONE,
-    FM_FREQUENCIES,
     FmFrame,
     SmpsVoice,
     VoiceField,
@@ -64,10 +63,10 @@ def note_to_freq(mod_note_index: int) -> float:
     return 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
 
 
-def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK,
-                       fm_frequencies: tuple[int, ...] = FM_FREQUENCIES) -> tuple[int, int]:
+def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK, *,
+                       fm_frequencies: tuple[int, ...]) -> tuple[int, int]:
     """(fnum, block) the driver writes for this note: from `fm_frequencies`, its FM frequency
-    table (Sonic 1's, core.smps.driver_tables.FM_FREQUENCIES, unless a song has its own).
+    table (PlaybackRules.fm_frequencies, the song's).
 
     The table's index 1 = nC0, so MOD index i, C1 = 0, is table index i + 13; Sonic 1's runs
     fnum 644–1216 with the block from the octave.
@@ -204,7 +203,8 @@ def render_layers(
     channel: int = 0,
     clock_rate: int = MD_FM_CLOCK,
     taps: int = DEFAULT_TAPS,
-    fm_frequencies: tuple[int, ...] = FM_FREQUENCIES,
+    *,
+    fm_frequencies: tuple[int, ...],
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -232,7 +232,7 @@ def render_layers(
         keyoff = layer[4] if len(layer) > 4 else None
         ch = channel + i
         program_voice(opn2, voice, ch, tl_offset=tl_offset)
-        fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate, fm_frequencies)
+        fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate, fm_frequencies=fm_frequencies)
         if fnum_offset:
             fnum, block = detuned_fnum_block(fnum, block, fnum_offset)
         _set_freq(opn2, fnum, block, ch)
@@ -262,10 +262,12 @@ def _render_pipeline(
     channel: int = 0,
     clock_rate: int = MD_FM_CLOCK,
     tl_offset: int = 0,
+    *,
+    fm_frequencies: tuple[int, ...],
 ) -> tuple[array.array, int]:
     """One voice → (mono, out_rate) before int8 packing: render_layers with a single layer."""
     return render_layers([(voice, 0, 0, tl_offset)], mod_note_index, sustain_secs, release_secs,
-                         target_rate, opn2, channel, clock_rate)
+                         target_rate, opn2, channel, clock_rate, fm_frequencies=fm_frequencies)
 
 
 def render_note(
@@ -278,6 +280,8 @@ def render_note(
     channel: int = 0,
     clock_rate: int = MD_FM_CLOCK,
     tl_offset: int = 0,
+    *,
+    fm_frequencies: tuple[int, ...],
 ) -> tuple[bytes, int]:
     """Render one FM note to 8-bit signed mono PCM, peak-normalized to ±127.
 
@@ -292,13 +296,14 @@ def render_note(
         channel:         YM2612 channel 0–5 to use for rendering.
         clock_rate:      Master clock frequency (Hz); default = MD NTSC 7,670,454.
         tl_offset:       Track volume added to the carriers' TL (see program_voice); 0 = bare voice.
+        fm_frequencies:  the driver's FM table the note's (fnum, block) come from (PlaybackRules).
 
     Returns:
         (pcm_bytes, sample_rate_hz) — 8-bit signed mono PCM and its sample rate.
     """
     mono, out_rate = _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
-        target_rate, opn2, channel, clock_rate, tl_offset=tl_offset,
+        target_rate, opn2, channel, clock_rate, tl_offset=tl_offset, fm_frequencies=fm_frequencies,
     )
     return _normalize_int8(mono), out_rate
 
@@ -363,6 +368,8 @@ def render_note_raw(
     channel: int = 0,
     clock_rate: int = MD_FM_CLOCK,
     tl_offset: int = 0,
+    *,
+    fm_frequencies: tuple[int, ...],
 ) -> tuple[array.array, int]:
     """Like render_note but returns (mono, out_rate) before int8 packing.
 
@@ -371,7 +378,7 @@ def render_note_raw(
     """
     return _render_pipeline(
         voice, mod_note_index, sustain_secs, release_secs,
-        target_rate, opn2, channel, clock_rate, tl_offset=tl_offset,
+        target_rate, opn2, channel, clock_rate, tl_offset=tl_offset, fm_frequencies=fm_frequencies,
     )
 
 

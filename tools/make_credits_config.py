@@ -24,6 +24,7 @@ import yaml
 
 sys.path.insert(0, ".")
 from core.config import ChannelConfig, ConversionConfig
+from core.drivers.reference import SONIC1_RULES
 from core.plan import walk_channel
 from core.smps import CoordFlag, SmpsParser, VoiceField, semitone_to_note_name, source_map, synth_note_name
 
@@ -34,7 +35,7 @@ MOD_LO, MOD_SPAN = 12, 35          # MOD C1 in SMPS semitones; C1..B3
 
 with open(SKEL, encoding="utf-8") as fh:
     skel = yaml.safe_load(fh)
-song = SmpsParser().parse_file("reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm")
+song = SmpsParser(SONIC1_RULES).parse_file("reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm")
 voices = {v.index: v for v in song.voices}
 
 

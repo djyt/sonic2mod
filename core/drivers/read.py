@@ -3,14 +3,17 @@ and voices -> SmpsSong) and its DAC samples.  The variant is detected unless giv
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from core.rom.envelopes import read_envelopes
 from core.rom.fixes import apply_fixes
 from core.rom.header import read_music_header, read_sfx_header
 from core.rom.image import RomImage
+from core.rom.memory import SoundMemory
 from core.rom.tracks import decode_tracks
 from core.rom.variant import DacSample, SmpsVariant, SoundIndex
 from core.rom.voices import read_voices, voices_used
-from core.smps import FM_FREQUENCIES, SmpsSong, SongCode
+from core.smps import PlaybackRules, SmpsSong, SongCode
 
 from .detect import detect_variant
 from .registry import data_fixes
@@ -24,7 +27,7 @@ def locate_sounds(rom: RomImage, variant: SmpsVariant | None = None) -> SoundInd
 def dac_samples(rom: RomImage, variant: SmpsVariant | None = None) -> list[DacSample]:
     """Every DAC sample a song can play, its pitched copies after the samples."""
     variant = variant or detect_variant(rom)
-    return variant.dac(rom, variant.dac_names) if variant.dac else []
+    return variant.dac(rom, variant.rules.dac_names) if variant.dac else []
 
 
 def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
@@ -45,14 +48,23 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     if head.voices is not None:
         voices = read_voices(memory, head.voices, voices_used(tracks.code), variant.voice_layout)
         tracks.labels[head.header.voice_label] = head.voices
-    envelopes = read_envelopes(memory, index.envelopes, variant) if index.envelopes else None
-    fm_frequencies = variant.fm_frequencies(image) if variant.fm_frequencies else None
+    rules = _rules(variant, image, memory, index)
     drums = {}
     if variant.fm_drums and not index.is_sfx(sound_id):
-        drums = variant.fm_drums(image, head.header, fm_frequencies or FM_FREQUENCIES)
-    return SongCode(head.header, tracks.code, voices, address=address, addresses=tracks.labels,
-                    driver=variant.name, dropped=dict(tracks.dropped), psg_envelopes=envelopes,
-                    dac_names=dict(variant.dac_names), fm_frequencies=fm_frequencies, fm_drums=drums)
+        drums = variant.fm_drums(image, head.header, rules.fm_frequencies)
+    return SongCode(head.header, tracks.code, voices, rules, address=address, addresses=tracks.labels,
+                    dropped=dict(tracks.dropped), fm_drums=drums)
+
+
+def _rules(variant: SmpsVariant, image: RomImage, memory: SoundMemory, index: SoundIndex) -> PlaybackRules:
+    """The variant's rules, with what this ROM's driver holds read from it: its FM table, its
+    PSG envelopes."""
+    rules = variant.rules
+    if variant.fm_frequencies:
+        rules = replace(rules, fm_frequencies=variant.fm_frequencies(image))
+    if index.envelopes:
+        rules = replace(rules, psg_envelopes=read_envelopes(memory, index.envelopes, variant))
+    return rules
 
 
 def read_rom_song(rom: RomImage, sound_id: int, index: SoundIndex | None = None,

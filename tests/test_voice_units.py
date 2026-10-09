@@ -13,6 +13,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.drivers.reference import SONIC1_RULES
 from core.smps import SmpsParser, SmpsVoice, VoiceField, voice_field_from_macro
 
 _TITLE = _HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "music" / "Mus8A - Title Screen.asm"
@@ -34,7 +35,7 @@ class Voice(unittest.TestCase):
     @unittest.skipUnless(_TITLE.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_reads_fields(self):
         # Title Screen voice 0: smpsVcDetune $00, $05, $00, $05 / smpsVcCoarseFreq $02, $01, $08, $01
-        v = SmpsParser().parse_file(str(_TITLE)).voices[0]
+        v = SmpsParser(SONIC1_RULES).parse_file(str(_TITLE)).voices[0]
         self.assertEqual((v.algorithm, v.feedback), (2, 7))
         self.assertEqual(v.operators[VoiceField.DETUNE], (0, 5, 0, 5))
         self.assertEqual(v.operators[VoiceField.MULTIPLE], (2, 1, 8, 1))

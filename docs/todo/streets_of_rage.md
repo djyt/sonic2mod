@@ -326,7 +326,8 @@ A driver's tables, envelopes, drum names and timing are one `PlaybackRules` (`co
 each song and channel carries; Sonic 1's are `core/drivers/reference.py` (`SONIC1_RULES`, shared
 by the drivers that read none of their own).  Nothing below `core/drivers` names a driver's table:
 the parser and the lift take rules, the chip renderers take a table or a divider.  Phase 2's
-facts (volume steps, DAC rests that cut) go in the rules.
+facts (volume steps, DAC rests that cut) go in the rules.  `CoordFlag` is a meaning (a `StrEnum`), no
+driver's byte: Phase 2's new flags are names, not values parked past `$FF`.
 
 ### Test selection (the user, 2026-10-08)
 Hundreds of songs cannot each be a regression case.  Phase 0 uses a one-off snapshot of

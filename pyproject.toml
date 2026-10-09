@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "pyright", "vulture", "pytest", "coverage"]
+dev = ["ruff", "pyright", "vulture", "pytest", "coverage", "import-linter"]
 
 [project.scripts]
 sonic2mod = "convert:main"
@@ -112,3 +112,50 @@ exclude = ["reference", "output", "**/__pycache__"]
 # Relax rules that fire on intentionally dynamic code
 reportMissingModuleSource = false
 reportAttributeAccessIssue = false
+
+# Import rules (agents.md layering), checked by tests/test_layers_units.py (or lint-imports).
+# Each package imports only the layers below it; the bottom ones (song IR, MOD, chips, audio)
+# are the shared vocabulary.  Directly below only where it keeps drivers swappable: the layers
+# above reach a driver through core.source alone.
+[tool.importlinter]
+root_packages = ["core", "sfx", "ym2612", "sn76489"]
+
+[[tool.importlinter.contracts]]
+name = "core: each layer imports only those below it"
+type = "layers"
+layers = [
+    "core.ui",
+    "core.convert | core.audit",
+    "core.merge",
+    "core.plan",
+    "core.config",
+    "core.source",
+    "core.vgm | core.drivers",
+    "core.rom",
+    "core.smps | core.mod",
+    "core.chips | core.audio | core.render_cache",
+    "core.files",
+]
+
+[[tool.importlinter.contracts]]
+name = "drivers: reached through core.source alone"
+type = "forbidden"
+source_modules = ["core.ui", "core.convert", "core.audit", "core.merge", "core.plan", "core.config"]
+forbidden_modules = ["core.drivers"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "drivers: none imports another (a family's shared code is the family folder's)"
+type = "independence"
+modules = [
+    "core.drivers.smps68k.sonic1",
+    "core.drivers.smps68k.type1a",
+    "core.drivers.smps68k.mucom",
+    "core.drivers.smpsz80.type0fm",
+]
+
+[[tool.importlinter.contracts]]
+name = "core: no chip package, no SFX driver"
+type = "forbidden"
+source_modules = ["core"]
+forbidden_modules = ["sfx", "ym2612", "sn76489"]

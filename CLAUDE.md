@@ -38,7 +38,8 @@ sonic2mod/
   convert.py  analyze.py  sonic2wav.py   CLIs: conversion, song analysis, SFX → WAV
   core/        library; layers, each importing only those below it (diagnostics.py: any):
                ui → convert / audit → merge → plan → config → source → vgm / drivers → rom → smps / mod
-               → chips / audio / render_cache / files.  Imports nothing from sfx/ or the chip packages
+               → chips / audio / render_cache → files.  Imports nothing from sfx/ or the chip packages;
+               drivers only via source (import-linter: pyproject.toml)
     smps/        the IR (SmpsSong, PlaybackRules), parser, the shared song walk (code.py), playback; no driver's tables
     drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs;
                  reference.py: Sonic 1's tables and SONIC1_RULES (an asm song's and a rip's)
@@ -64,7 +65,7 @@ sonic2mod/
 
 ```bash
 pip install pyyaml rich   # external dependencies
-pip install ruff pyright vulture  # lint / type checking / dead code (optional; or pip install -e .[dev])
+pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
 ```
 
 Synthesis compiles `ym3438.c` / `sn76489.c` with gcc or MSVC on first use.
@@ -75,6 +76,7 @@ Synthesis compiles `ym3438.c` / `sn76489.c` with gcc or MSVC on first use.
 ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
+python -m pytest tests/test_layers_units.py -q   # import layers (pyproject.toml [tool.importlinter]; or lint-imports)
 ```
 
 ## Quick Usage

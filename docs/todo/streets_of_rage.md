@@ -232,12 +232,12 @@ a song pass (the `run_out` precedent).
 | SoR fact | IR | Resolved in | Downstream |
 |---|---|---|---|
 | tick = frame | divider 1, `NO_TEMPO_HOLDS` | header | none |
-| FM / PSG volume steps | `PlaybackRules.volume_steps`; `VOLUME_STEP`, `ALTER_VOLUME_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
+| FM / PSG volume steps | `TrackRules.volume_steps`; `VOLUME_STEP`, `ALTER_VOLUME_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
 | detune add | `DETUNE_ADD` -> `DETUNE` | walk | none |
 | gate | `GATE` -> note + rest, marked off-grid like `run_out` (`SmpsNote.cut`) | walk (it looks at the next byte) | none |
 | loop break, tie cleared on exit | `OpKind.LOOP_EXIT` | walk | none |
 | DAC sample by flag | `DAC_SAMPLE` -> DAC notes get the selected sample | walk | none |
-| DAC rest / gate cut | `PlaybackRules.dac_rest_cuts` | rules | `channel_writer._on_rest` |
+| DAC rest / gate cut | the drum track's `TrackRules` (a rest cuts the sample) | rules | `channel_writer._on_rest` |
 | noise leaves tone3 alone | noise notes keep the last tone note's pitch, else `nMaxPSG` (divider 0) | walk | none |
 | PSG row clamp | the decoder maps to Sonic's PSG index | decoder | none |
 | FM table, B7 | `fm_frequencies`, 97 entries | variant | none |
@@ -294,14 +294,14 @@ a song pass (the `run_out` precedent).
 ### Phase 2: the walk
 - [x] 2.1 IR flags and walk rules of 2.2 (2026-10-09), found in the driver's code:
   - **Volume:** `$F1` `VolumeStep`, FM `$FB` `AlterVolumeStep`, resolved in the walk to `SET_VOL` by
-    `PlaybackRules.volume_steps` (each kind's level by signed step), the header volume added
+    `TrackRules.volume_steps` (each kind's level by signed step), the header volume added
     (`add.b`).  FM: the table at `$73600` read by the code (`ext.w d3` / `move.b (pc,d3.w)`); songs
     step down to -4 (`$88`, `$8F`), which reads `36 33 30 2D` before it.  The step starts at 0
     (the RAM is cleared).  PSG: `$F1 v` att = (-v & 15) + header volume (`$FE` = -2); `$FB n`
     takes n from the att the walk holds, unclamped as the driver keeps it.  Voices: carrier TLs
     read as 0 (`VoiceLayout.carrier_tl`): loading a voice writes them from the volume.
   - **Detune add:** `$F2` with a third byte `DetuneAdd`; the walk keeps the word (`add.w`) and the
-    PSG's `>> 4` moved to `PlaybackRules.psg_detune_shift`: the driver shifts the sum (`$8B` PSG3
+    PSG's `>> 4` moved to the PSG's `TrackRules.detune_shift`: the driver shifts the sum (`$8B` PSG3
     adds 100 and -100: 0, not -1).  The vibrato depth still shifts each step (Phase 5.3).
   - **Noise:** in noise mode the driver writes no tone 3 frequency (`noise_writes_tone3`): a noise
     note plays the last tone note's divider, none: `nMaxPSG` (`MAX_PSG`, divider 0).
@@ -322,7 +322,7 @@ a song pass (the `run_out` precedent).
   - **Gate:** `$F3 n` `Gate`, applied in the walk (it looks at the byte after the note): the note
     keyed off n frames before its end, the rest of it a rest, both `SmpsNote.cut` (was `run_out`,
     the run-out's marker too): the row grid takes a cut note's onset, not its length nor the rest.
-    A note no longer than n plays whole.  Spared, per kind (`PlaybackRules`): FM and PSG a note
+    A note no longer than n plays whole.  Spared, per kind (`TrackRules`): FM and PSG a note
     the next byte ties (`gate_sees_tie`); FM a tied note, its key-off waiting on the tie bit
     (`gate_spares_tied`; the PSG's silences anyway, `$73A42`); the drum track's cuts every note.
   - **A rest after a tie** keys FM off on its first frame (the key-off at the rest's read waits on
@@ -356,7 +356,8 @@ a song pass (the `run_out` precedent).
   banks.
 - [ ] 3.2 Rates: cycle-count both output paths (literal, run), then fit to the rips (Moonwalker's
   method).
-- [ ] 3.3 Rests and gates cut; reconcile onsets with the rips' seeks.
+- [ ] 3.3 Rests and gates cut: a field of the drum track's `TrackRules` (Sonic 1's default: a rest
+  lets the sample play out), read by the converter's rest; reconcile onsets with the rips' seeks.
 
 ### Phase 4: convert
 - [ ] 4.1 `configs/streets_of_rage/`: 16 minimal configs and `rips.yaml`.
@@ -378,9 +379,11 @@ a song pass (the `run_out` precedent).
 A driver's tables, envelopes, drum names and timing are one `PlaybackRules` (`core/smps/rules.py`)
 each song and channel carries; Sonic 1's are `core/drivers/reference.py` (`SONIC1_RULES`, shared
 by the drivers that read none of their own).  Nothing below `core/drivers` names a driver's table:
-the parser and the lift take rules, the chip renderers take a table or a divider.  Phase 2's
-facts (volume steps, DAC rests that cut) go in the rules.  `CoordFlag` is a meaning (a `StrEnum`), no
-driver's byte: Phase 2's new flags are names, not values parked past `$FF`.
+the parser and the lift take rules, the chip renderers take a table or a divider.  How each kind
+of track reads (Phase 2's volume steps, gate, ties; Phase 3's DAC rests that cut) is its
+`TrackRules` (`PlaybackRules.tracks`), resolved by `core/smps/driver_track.py`.  `CoordFlag` is a
+meaning (a `StrEnum`), no driver's byte: Phase 2's new flags are names, not values parked past
+`$FF`; a driver's own (`DriverEffect`) never reaches an event.
 
 ### Test selection (the user, 2026-10-08)
 Hundreds of songs cannot each be a regression case.  Phase 0 uses a one-off snapshot of

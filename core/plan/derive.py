@@ -43,6 +43,7 @@ from ..config import (
     SAMPLE_VOLUME,
     ChannelConfig,
     ConversionConfig,
+    DacSample,
     SampleSettings,
     bpm_rounding_options,
     find_settings,
@@ -53,7 +54,6 @@ from ..config import (
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..smps import C1_SEMITONE, ChannelType, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
-from ..source import DacSample, read_dac
 from .driver_state import walk_channel
 
 MAX_INSTRUMENTS = 31
@@ -124,7 +124,7 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     if not config.is_minimal:
         return config, None
     song = song or config.read_song()
-    derivation = derive_config(config.stated(), song, config_path, settings, read_dac(config.input_file, config.driver))
+    derivation = derive_config(config.stated(), song, config_path, settings, config.read_dac())
     if config.variant is not None and "output_file" in derivation.derived:
         derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)
     complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)

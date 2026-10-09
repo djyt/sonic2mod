@@ -13,6 +13,19 @@ from dataclasses import dataclass
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, MD_PSG_CLOCK
 
+_WORD = 0x10000
+
+
+def signed_byte(value: int) -> int:
+    """A track byte as the driver adds it: two's complement ($F4 = -12)."""
+    return value - 0x100 if value > 0x7F else value
+
+
+def signed_word(value: int) -> int:
+    """A sum kept in a 16-bit word (add.w), two's complement."""
+    return (value + _WORD // 2) % _WORD - _WORD // 2
+
+
 # ---------------------------------------------------------------------------
 # Note index derivation
 # ---------------------------------------------------------------------------

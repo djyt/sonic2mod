@@ -20,7 +20,14 @@ if TYPE_CHECKING:
 # Intermediate representation data classes
 # ---------------------------------------------------------------------------
 
+# Track bytes: durations below the rest, notes after it to nAs7, flags above.
 REST = 0x80           # nRst: the note byte that rests
+FIRST_NOTE = 0x81     # nC0
+LAST_NOTE = 0xDF      # nAs7
+FIRST_FLAG = LAST_NOTE + 1     # $E0: coordination flags from here
+NO_ATTACK = 0xE7      # smpsNoAttack
+SELECTED_SAMPLE = 0x100   # a drum track's note that plays the sample DAC_SAMPLE chose (no SMPS byte)
+MAX_PSG = 0xC6        # nMaxPSG: the PSG table's last entry, divider 0 (the chip clocks it as 1)
 
 
 @dataclass

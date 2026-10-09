@@ -4,6 +4,8 @@ whatever driver or file the song came from.
     song.py           SmpsSong and its parts (the parser's output)
     effects.py        CoordFlag and its effects, one frozen class per flag: SetVoice(index) ...
     code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events
+    driver_track.py   DriverTrack: what a track's driver does to its effects and notes (TrackRules)
+    run_out.py, voice_patch.py   passes after the walk: a driver's run-out, register writes as voices
     parser.py         SmpsParser: assembly -> SmpsCode -> SmpsSong
     asm_writer.py     write_asm: SongCode -> SMPS2ASM assembly (SmpsParser reads it back)
     song_prep.py      prepare_song: a new song as the driver plays it (tempo dividers, short loops replayed)
@@ -18,18 +20,12 @@ whatever driver or file the song came from.
 
 from .asm_writer import write_asm
 from .code import (
-    FIRST_FLAG,
-    FIRST_NOTE,
-    LAST_NOTE,
-    MAX_PSG,
-    SELECTED_SAMPLE,
     TRACK_BYTES,
     Op,
     OpKind,
     SmpsCode,
     SongCode,
     effect_from_bytes,
-    signed_byte,
     song_from_code,
     track_byte,
 )
@@ -50,6 +46,7 @@ from .driver_tables import (
     psg_note_index,
     psg_tone2_divider,
     psg_voice_name,
+    signed_byte,
 )
 from .effects import (
     AlterVol,
@@ -99,8 +96,13 @@ from .percussion import FmDrum, FmFrame
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .rules import PlaybackRules, TrackRules
 from .song import (
+    FIRST_FLAG,
+    FIRST_NOTE,
+    LAST_NOTE,
+    MAX_PSG,
     REGISTER_FIELDS,
     REST,
+    SELECTED_SAMPLE,
     ChannelType,
     SmpsChannel,
     SmpsChannelHeader,

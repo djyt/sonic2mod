@@ -10,40 +10,34 @@ The rules: a note waits for the duration byte after it (a flag or a label comple
 saved one); a duration with no note re-keys the last note; smpsNoAttack marks the next read;
 smpsLoop is unrolled, smpsCall inlined, smpsJump ends the channel (a loop) or is followed (a
 forward jump into code not yet walked); a channel's loop starts where ITS walk reached the target.
-A driver's own volume steps, detune adds and gate are resolved here, by the song's PlaybackRules
-(effects.py); so are its jump's tie and its noise's pitch.
+What a driver does beyond that reading (volume steps, detune adds, a gate, a noise note's pitch,
+the tie a jump drops) its track answers: driver_track.py, by the song's PlaybackRules.
 """
 
 from __future__ import annotations
 
-import dataclasses
+import itertools
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from .driver_tables import psg_voice_name
+from .driver_tables import psg_voice_name, signed_byte
+from .driver_track import DriverTrack
 from .effects import (
-    AlterVol,
-    AlterVolumeStep,
     ChanTempoDiv,
     CoordFlag,
-    Detune,
-    DetuneAdd,
-    Gate,
     Pan,
-    PsgForm,
     PsgVoice,
-    SelectSample,
     SetVoice,
-    SetVol,
     SmpsEffect,
-    VolumeStep,
     effect_of,
 )
 from .percussion import FmDrum
 from .rules import PlaybackRules
 from .run_out import apply_run_out
 from .song import (
+    LAST_NOTE,
+    NO_ATTACK,
     REST,
     ChannelType,
     SmpsChannel,
@@ -55,26 +49,6 @@ from .song import (
     SmpsVoice,
 )
 from .voice_patch import apply_voice_patches
-
-# Track bytes: durations below the rest (REST, song.py), notes after it to nAs7, flags above.
-FIRST_NOTE = 0x81     # nC0
-LAST_NOTE = 0xDF      # nAs7
-FIRST_FLAG = LAST_NOTE + 1     # $E0: coordination flags from here
-NO_ATTACK = 0xE7      # smpsNoAttack
-SELECTED_SAMPLE = 0x100   # a drum track's note that plays the sample DAC_SAMPLE chose (no SMPS byte)
-MAX_PSG = 0xC6        # nMaxPSG: the PSG table's last entry, divider 0 (the chip clocks it as 1)
-
-_BYTE, _WORD = 0x100, 0x10000
-
-
-def signed_byte(value: int) -> int:
-    """A track byte as the driver adds it: two's complement ($F4 = -12)."""
-    return value - 0x100 if value > 0x7F else value
-
-
-def _signed_word(value: int) -> int:
-    """A sum kept in a 16-bit word (add.w), two's complement."""
-    return (value + _WORD // 2) % _WORD - _WORD // 2
 
 
 class OpKind(Enum):
@@ -238,17 +212,7 @@ class _Walker:
         self._label_events: dict[str, int] = {}
 
         self._passes: dict[str, int] = {}          # each loop being replayed (by its body's label): the pass
-        self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
-
-        # The driver's track state the rules resolve effects with (rules.py)
-        self._rules = rules
-        self._track = rules.track(header.channel_type)
-        self._volume_step = 0                      # the RAM starts cleared
-        self._level: int | None = None             # the level a volume step set, as the driver keeps it
-        self._detune_word = 0
-        self._gate = 0                             # frames before a note's end the driver keys it off
-        self._noise = False                        # a PSG_FORM ran: notes are noise
-        self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
+        self._driver = DriverTrack(header, rules)  # what the track's driver does to its effects and notes
 
         # A jump back's tie: labels first reached with a tie pending that their first note keeps
         # (none read since), those since the last note, and the tie the jump left
@@ -333,7 +297,7 @@ class _Walker:
         return None
 
     def _on_jump(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
-        if self._track.jump_clears_tie:
+        if self._driver.jump_clears_tie:
             cur.no_attack = False
 
         # Back to code this channel walked (or an unknown target): the loop, the end
@@ -386,7 +350,7 @@ class _Walker:
         """A track byte; the cursor carries a pending note across ops (and dc.b lines)."""
         self._byte(cur, op)
         if op.kind is OpKind.DURATION:
-            self._cut(cur, i)
+            self._keyed_off(cur, i)
         return i
 
     # --- helpers ---------------------------------------------------------------------------
@@ -407,40 +371,17 @@ class _Walker:
         if cur.no_attack:
             self._tied_labels.add(label)
 
-    def _cut(self, cur: _Cursor, i: int) -> None:
-        """The note or rest a duration just completed, as the driver keys it off: a gated note at
-        its gate, a rest after a tie where the rules say (TrackRules.tied_rest_holds)."""
+    def _keyed_off(self, cur: _Cursor, i: int) -> None:
+        """The note or rest a duration just completed, as its driver keys it off (labels are no
+        bytes: the byte after it is the next op's)."""
         event = cur.channel.events[-1]
-        note = event.note
-        if note is None:
+        if event.note is None:
             return
-        if not note.is_rest:
-            if self._gate and self._gated(note, i):
-                self._split(cur, event, note.duration - self._gate, note)
-            return
-        holds = self._track.tied_rest_holds
-        if note.is_no_attack and holds is not None and holds < note.duration:
-            self._split(cur, event, holds, note)
-
-    def _gated(self, note: SmpsNote, i: int) -> bool:
-        """The gate keys `note` off: it outlasts the gate, and is not one the driver spares - a
-        tied note where the key-off waits on the tie, one the next byte ties where the driver
-        looks (it checks each frame; labels are no bytes)."""
-        if note.duration <= self._gate:
-            return False
-        if note.is_no_attack and self._track.gate_spares_tied:
-            return False
-        return not (self._track.gate_sees_tie and self._next_op(i) is OpKind.NO_ATTACK)
-
-    @staticmethod
-    def _split(cur: _Cursor, event: SmpsEvent, held: int, note: SmpsNote) -> None:
-        """`event` keyed off after `held` ticks (0: at once): what is left of it a rest; both cut."""
-        rest = SmpsNote(note_value=REST, duration=note.duration - held, is_rest=True, cut=True)
-        if not held:
-            event.note = rest
-            return
-        event.note = dataclasses.replace(note, duration=held, cut=True)
-        cur.channel.events.append(SmpsEvent(note=rest, tick_position=event.tick_position + held))
+        played = self._driver.cut(event.note, self._next_op(i) is OpKind.NO_ATTACK)
+        event.note = played[0]
+        for before, note in itertools.pairwise(played):
+            tick = cur.channel.events[-1].tick_position + before.duration
+            cur.channel.events.append(SmpsEvent(note=note, tick_position=tick))
 
     def _next_op(self, i: int) -> OpKind | None:
         """The kind of the first op from `i` that is not a label."""
@@ -462,9 +403,7 @@ class _Walker:
         """
         if isinstance(effect, ChanTempoDiv):
             tempo_div = effect.divider
-        if isinstance(effect, SelectSample):
-            self._dac_sample = effect.sound
-        resolved = self._resolved(effect)
+        resolved = self._driver.effect(effect)
         if resolved is None:
             return tempo_div
         self._channel.events.append(SmpsEvent(effect=resolved, tick_position=tick))
@@ -474,44 +413,6 @@ class _Walker:
         if pan is not None:
             self._channel.events.append(SmpsEvent(effect=Pan(pan), tick_position=tick))
         return tempo_div
-
-    def _resolved(self, effect: SmpsEffect) -> SmpsEffect | None:
-        """`effect` as the track plays it: a volume step a level (an AlterVol then moves that level as
-        the driver keeps it, unclamped), a detune add the detune; None: the walk applies it (a
-        gate, to the notes)."""
-        match effect:
-            case Gate(frames=frames):
-                self._gate = frames
-                return None
-            case VolumeStep(step=step):
-                return self._volume(signed_byte(step % _BYTE))
-            case AlterVolumeStep(delta=delta):
-                return self._volume(signed_byte((self._volume_step + delta) % _BYTE))
-            case Detune(offset=offset):
-                return self._detune(offset)
-            case DetuneAdd(offset=offset):
-                return self._detune(self._detune_word + offset)
-            case AlterVol(delta=delta) if self._level is not None:
-                self._level = signed_byte((self._level + delta) % _BYTE)
-                return SetVol(self._level)
-            case PsgForm():
-                self._noise = True
-        return effect
-
-    def _volume(self, step: int) -> SetVol:
-        """Volume step `step`: its level in the driver's table, the header volume added (add.b)."""
-        level = self._track.volume_steps.get(step)
-        if level is None:
-            raise ValueError(f"{self._header.channel_type} track '{self._header.label}': volume step "
-                             f"{step}, which its driver has no level for")
-        self._volume_step = step
-        self._level = signed_byte((level + self._header.volume) % _BYTE)
-        return SetVol(self._level)
-
-    def _detune(self, word: int) -> Detune:
-        """The detune word `word` (add.w) as the track adds it: the PSG's shifted to a divider."""
-        self._detune_word = _signed_word(word)
-        return Detune(self._detune_word >> self._track.detune_shift)
 
     def _byte(self, cur: _Cursor, op: Op) -> None:
         """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample."""
@@ -524,12 +425,8 @@ class _Walker:
             self._note(cur, op.value)
 
     def _note(self, cur: _Cursor, val: int) -> None:
-        """A rest, note or (DAC channel) sample; SELECTED_SAMPLE the one DAC_SAMPLE chose (none yet:
-        the driver plays nothing)."""
-        if val == SELECTED_SAMPLE:
-            val = REST if self._dac_sample is None else self._dac_sample
-        if val != REST and self._header.channel_type == ChannelType.PSG:
-            val = self._psg_note(val)
+        """A rest, note or (DAC channel) sample, as the driver sounds the byte."""
+        val = self._driver.note(val)
         if val == REST:
             note = SmpsNote(note_value=val, duration=0, is_rest=True, is_no_attack=cur.no_attack)
         elif cur.is_dac and val in self._dac_names:
@@ -538,16 +435,6 @@ class _Walker:
         else:
             note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
         self._open_note(cur, note)
-
-    def _psg_note(self, val: int) -> int:
-        """A PSG note as its divider plays: a noise note whose driver leaves tone 3 alone plays
-        the last tone note's (none: nMaxPSG)."""
-        if not self._noise:
-            self._tone_note = val
-            return val
-        if self._track.noise_writes_tone3:
-            return val
-        return MAX_PSG if self._tone_note is None else self._tone_note
 
     def _duration(self, cur: _Cursor, duration: int) -> None:
         """A duration (already scaled by the tempo divider): the pending note's, or a note of its own."""

@@ -26,7 +26,7 @@ Streets of Rage's facts are in `docs/todo/streets_of_rage.md` until its conversi
   music, SFX `$67BC4` (49), speed-up, PSG_Index `$60020` (6 envelopes)).
 - **As Sonic 1:** song headers (relative pointers, DAC first, 6-byte PSG entries), 25-byte voices
   in the same register order, TempoWait (`$60BC0`), durations x divider, PSG pitch (`note - $81 +
-  transpose`, 69-entry table `$611F6`; an index past it reads the words after it in this ROM, not Sonic 1's: the Boss Theme's noise track plays index 92, `$00CE`, as its rip), FM pitch (a one-octave table at `$61024`, block = `(note -
+  transpose`, 69-entry table `$611F6`), FM pitch (a one-octave table at `$61024`, block = `(note -
   $80 + transpose) / 12`: Sonic 1's 96 words per block; only notes past the top wrap differently),
   modulation (`$F0`), note fill, jump / loop / call.
 - **Flags** (jump table `$61290`, 31 entries; `$FF` runs into `$E0`'s handler):

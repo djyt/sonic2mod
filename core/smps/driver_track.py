@@ -35,6 +35,7 @@ from .effects import (
     VoiceRegister,
     VolumeStep,
 )
+from .names import FM_CHANNEL_NAMES
 from .rules import PlaybackRules
 from .song import MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
 from .voice_patch import VoicePatcher
@@ -46,8 +47,9 @@ _FM_PART = 3                    # channels per YM2612 part: a register's low bit
 class DriverTrack:
     """A track's state as its driver keeps it, read by its kind's TrackRules."""
 
-    def __init__(self, header: SmpsChannelHeader, rules: PlaybackRules, voices: VoicePatcher):
+    def __init__(self, header: SmpsChannelHeader, name: str, rules: PlaybackRules, voices: VoicePatcher):
         self._header = header
+        self._name = name                          # the chip channel it plays on: "FM4" ...
         self._voices = voices                      # the song's: a register write's patched copy
         self._rules = rules.track(header.channel_type)
         self._is_psg = header.channel_type == ChannelType.PSG
@@ -109,7 +111,7 @@ class DriverTrack:
 
     def _channel_number(self) -> int:
         """The track's channel within its YM2612 part: what its register writes carry in their low bits."""
-        return (int(self._header.chip_channel.removeprefix("FM")) - 1) % _FM_PART
+        return FM_CHANNEL_NAMES.index(self._name) % _FM_PART
 
     def _volume(self, step: int) -> SetVol:
         """Volume step `step`: its level in the driver's table, the header volume added (add.b)."""

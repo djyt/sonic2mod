@@ -38,11 +38,11 @@ from core.smps import (
     SmpsSongHeader,
     SmpsVoice,
     TrackState,
-    extend_looping_channels,
     flag_from_macro,
     flag_name,
     pan_is_hard,
     pan_side,
+    prepare_song,
     song_from_code,
     source_names,
     tempo_schedule,
@@ -261,8 +261,9 @@ class Loops(unittest.TestCase):
                            [SmpsEvent(SmpsNote(0x91, 10), tick_position=0), SmpsEvent(SmpsNote(0x92, 10), tick_position=10)],
                            has_jump=True, loop_tick=10, loop_event_index=1, rules=SONIC1_RULES)
         song = SmpsSong(SmpsSongHeader(), [long, loop], rules=SONIC1_RULES)
-        extend_looping_channels(song)
-        notes = [(ev.tick_position, ev.note.note_value) for ev in loop.events]
+        prepared = prepare_song(song).song
+        notes = [(ev.tick_position, ev.note.note_value) for ev in prepared.channels[1].events]
+        self.assertEqual(len(loop.events), 2)                       # the song given is left as it is
         self.assertEqual(notes[:3], [(0, 0x91), (10, 0x92), (20, 0x92)])
         self.assertGreaterEqual(notes[-1][0] + 10, 100)
         self.assertEqual(song.loop_target_tick(), 10)

@@ -1,16 +1,36 @@
 """The parsed song re-timed and unrolled the way the driver plays it, before anything counts notes.
 
-    parsed song ──► apply_global_tempo_div (smpsSetTempoDiv re-times every track)
-                ──► extend_looping_channels (a short jump loop replayed to the song's end)
+    song ──► prepare_song ──► PreparedSong: a new song, and what changed
+                 _apply_global_tempo_div    smpsSetTempoDiv re-times every track
+                 _extend_looping_channels   a short jump loop replayed to the song's end
+
+The song given is left as it is.
 """
 
 import copy
+from dataclasses import dataclass
 
 from .effects import ChanTempoDiv, SetTempoDiv
 from .song import SmpsSong
 
 
-def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
+@dataclass(frozen=True)
+class PreparedSong:
+    song: SmpsSong
+    tempo_div_changes: tuple[tuple[int, int], ...]   # (tick, divider) of each smpsSetTempoDiv
+    loops_extended: tuple[dict, ...]                 # {label, before, after, span} per channel extended
+
+
+def prepare_song(song: SmpsSong) -> PreparedSong:
+    """`song` as the driver plays it, a new song: re-timed for smpsSetTempoDiv, short loop
+    bodies replayed to its end."""
+    prepared = copy.deepcopy(song)
+    changes = _apply_global_tempo_div(prepared)
+    extended = _extend_looping_channels(prepared)
+    return PreparedSong(prepared, tuple(changes), tuple(extended))
+
+
+def _apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
     """Re-time every channel for smpsSetTempoDiv (cfSetTempoDividerAll), which writes a new
     TempoDivider into EVERY track.  Returns the [(tick, divider)] changes found (Credits: $02
     then $01 in the DAC track, a half-tempo passage).
@@ -61,7 +81,7 @@ def apply_global_tempo_div(song: SmpsSong) -> list[tuple[int, int]]:
     return changes
 
 
-def extend_looping_channels(song: SmpsSong) -> list[dict]:
+def _extend_looping_channels(song: SmpsSong) -> list[dict]:
     """Extend channels whose event data ends early due to a compact smpsJump inner loop; one
     {label, before, after, span} per channel extended (events before and after, the body's ticks).
 

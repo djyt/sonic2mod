@@ -23,7 +23,6 @@ what plays; smpsSetTempoDiv neither, once song_prep has re-timed the song.
 
 from __future__ import annotations
 
-import copy
 import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
@@ -31,7 +30,7 @@ from enum import StrEnum
 from .driver_tables import fm_note_index, psg_note_index
 from .names import source_names
 from .song import SmpsNote, SmpsSong, SmpsVoice
-from .song_prep import apply_global_tempo_div, extend_looping_channels
+from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
 
@@ -103,10 +102,8 @@ class PlayedSong:
 
 
 def played_song(song: SmpsSong) -> PlayedSong:
-    """What `song` plays (a copy is prepared; `song` is left as it is)."""
-    song = copy.deepcopy(song)
-    apply_global_tempo_div(song)
-    extend_looping_channels(song)
+    """What `song` plays (`song` is left as it is)."""
+    song = prepare_song(song).song
 
     voices = {v.index: v for v in song.voices}
     changes, schedule = song.tempo_changes(), song.tempo_schedule()

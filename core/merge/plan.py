@@ -4,7 +4,6 @@ composites, unisons, solo and pool notes (build_merge_plan, _Planner)."""
 from __future__ import annotations
 
 import bisect
-import copy
 import dataclasses
 import math
 
@@ -12,7 +11,7 @@ from ..audio import db_to_gain, semitone_to_hz
 from ..config import MergeGroup, format_patterns
 from ..mod import PERIOD_TABLE
 from ..plan import FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
-from ..smps import apply_global_tempo_div, extend_looping_channels, source_map
+from ..smps import prepare_song, source_map
 from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
     NoteOn,
@@ -147,9 +146,7 @@ def prepare_merged_config(config, song=None) -> None:
 def _patterns_played(song, config) -> dict[str, frozenset]:
     """{source: the reference build's patterns its note-ons land in}, up to the loop's pattern,
     on a copy of `song` prepared as the converter prepares it (tempo dividers, loops replayed)."""
-    song = copy.deepcopy(song)
-    apply_global_tempo_div(song)
-    extend_looping_channels(song)
+    song = prepare_song(song).song
     timeline = Timeline(song, config)
     last = timeline.last_pattern()
     out = {}

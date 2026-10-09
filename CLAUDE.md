@@ -168,6 +168,7 @@ python tools/vgm_lift.py --all --aspects onset           # every rip, a line eac
 python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
 python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
 python tools/vgm_lift.py --all --configs configs/moonwalker                  # every Moonwalker pair
+python tools/vgm_lift.py --all --configs configs/streets_of_rage --vgz-dir reference/vgz/streets_of_rage_1
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into

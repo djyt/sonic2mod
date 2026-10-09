@@ -8,7 +8,7 @@ analyze_01_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -38,6 +38,7 @@ analyze_01_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -61,7 +62,7 @@ analyze_01_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -91,6 +92,7 @@ analyze_01_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -112,7 +114,7 @@ analyze_01_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -142,6 +144,7 @@ analyze_01_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -162,7 +165,7 @@ analyze_01_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -192,6 +195,7 @@ analyze_01_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -214,7 +218,7 @@ analyze_02_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -244,6 +248,7 @@ analyze_02_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -267,7 +272,7 @@ analyze_02_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -297,6 +302,7 @@ analyze_02_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -318,7 +324,7 @@ analyze_02_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -348,6 +354,7 @@ analyze_02_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -368,7 +375,7 @@ analyze_02_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -398,6 +405,7 @@ analyze_02_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -420,7 +428,7 @@ analyze_03_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -450,6 +458,7 @@ analyze_03_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -473,7 +482,7 @@ analyze_03_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -503,6 +512,7 @@ analyze_03_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -524,7 +534,7 @@ analyze_03_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -554,6 +564,7 @@ analyze_03_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -574,7 +585,7 @@ analyze_03_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -604,6 +615,7 @@ analyze_03_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -626,7 +638,7 @@ analyze_04_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -656,6 +668,7 @@ analyze_04_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -679,7 +692,7 @@ analyze_04_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -709,6 +722,7 @@ analyze_04_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -730,7 +744,7 @@ analyze_04_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -760,6 +774,7 @@ analyze_04_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -780,7 +795,7 @@ analyze_04_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -810,6 +825,7 @@ analyze_04_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -832,7 +848,7 @@ analyze_05_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -862,6 +878,7 @@ analyze_05_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -885,7 +902,7 @@ analyze_05_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -915,6 +932,7 @@ analyze_05_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -936,7 +954,7 @@ analyze_05_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -966,6 +984,7 @@ analyze_05_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -986,7 +1005,7 @@ analyze_05_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1016,6 +1035,7 @@ analyze_05_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1038,7 +1058,7 @@ analyze_06_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1068,6 +1088,7 @@ analyze_06_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1091,7 +1112,7 @@ analyze_06_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1121,6 +1142,7 @@ analyze_06_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1142,7 +1164,7 @@ analyze_06_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1172,6 +1194,7 @@ analyze_06_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1192,7 +1215,7 @@ analyze_06_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1222,6 +1245,7 @@ analyze_06_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1244,7 +1268,7 @@ analyze_07_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1274,6 +1298,7 @@ analyze_07_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1297,7 +1322,7 @@ analyze_07_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1327,6 +1352,7 @@ analyze_07_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1348,7 +1374,7 @@ analyze_07_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1378,6 +1404,7 @@ analyze_07_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1398,7 +1425,7 @@ analyze_07_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1428,6 +1455,7 @@ analyze_07_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1450,7 +1478,7 @@ analyze_08_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1480,6 +1508,7 @@ analyze_08_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1503,7 +1532,7 @@ analyze_08_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1533,6 +1562,7 @@ analyze_08_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1554,7 +1584,7 @@ analyze_08_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1584,6 +1614,7 @@ analyze_08_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1604,7 +1635,7 @@ analyze_08_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1634,6 +1665,7 @@ analyze_08_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1656,7 +1688,7 @@ analyze_09_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1686,6 +1718,7 @@ analyze_09_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1709,7 +1742,7 @@ analyze_09_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1739,6 +1772,7 @@ analyze_09_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1760,7 +1794,7 @@ analyze_09_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1790,6 +1824,7 @@ analyze_09_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1810,7 +1845,7 @@ analyze_09_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1840,6 +1875,7 @@ analyze_09_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1862,7 +1898,7 @@ analyze_10_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1892,6 +1928,7 @@ analyze_10_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1915,7 +1952,7 @@ analyze_10_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1945,6 +1982,7 @@ analyze_10_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -1966,7 +2004,7 @@ analyze_10_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1996,6 +2034,7 @@ analyze_10_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2016,7 +2055,7 @@ analyze_10_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2046,6 +2085,7 @@ analyze_10_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2068,7 +2108,7 @@ analyze_11_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2098,6 +2138,7 @@ analyze_11_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2121,7 +2162,7 @@ analyze_11_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2151,6 +2192,7 @@ analyze_11_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2172,7 +2214,7 @@ analyze_11_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2202,6 +2244,7 @@ analyze_11_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2222,7 +2265,7 @@ analyze_11_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2252,6 +2295,7 @@ analyze_11_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2274,7 +2318,7 @@ analyze_12_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2304,6 +2348,7 @@ analyze_12_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2327,7 +2372,7 @@ analyze_12_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2357,6 +2402,7 @@ analyze_12_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2378,7 +2424,7 @@ analyze_12_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2408,6 +2454,7 @@ analyze_12_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2428,7 +2475,7 @@ analyze_12_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2458,6 +2505,7 @@ analyze_12_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2480,7 +2528,7 @@ analyze_13_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2510,6 +2558,7 @@ analyze_13_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2533,7 +2582,7 @@ analyze_13_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2563,6 +2612,7 @@ analyze_13_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2584,7 +2634,7 @@ analyze_13_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2614,6 +2664,7 @@ analyze_13_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2634,7 +2685,7 @@ analyze_13_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2664,6 +2715,7 @@ analyze_13_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2686,7 +2738,7 @@ analyze_14_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2716,6 +2768,7 @@ analyze_14_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2739,7 +2792,7 @@ analyze_14_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2769,6 +2822,7 @@ analyze_14_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2790,7 +2844,7 @@ analyze_14_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2820,6 +2874,7 @@ analyze_14_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2840,7 +2895,7 @@ analyze_14_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2870,6 +2925,7 @@ analyze_14_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2892,7 +2948,7 @@ analyze_15_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2922,6 +2978,7 @@ analyze_15_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2945,7 +3002,7 @@ analyze_15_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2975,6 +3032,7 @@ analyze_15_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -2996,7 +3054,7 @@ analyze_15_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3026,6 +3084,7 @@ analyze_15_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3046,7 +3105,7 @@ analyze_15_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3076,6 +3135,7 @@ analyze_15_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3098,7 +3158,7 @@ analyze_16_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3128,6 +3188,7 @@ analyze_16_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3151,7 +3212,7 @@ analyze_16_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3181,6 +3242,7 @@ analyze_16_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3202,7 +3264,7 @@ analyze_16_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3232,6 +3294,7 @@ analyze_16_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3252,7 +3315,7 @@ analyze_16_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3282,6 +3345,7 @@ analyze_16_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3304,7 +3368,7 @@ analyze_17_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3334,6 +3398,7 @@ analyze_17_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3357,7 +3422,7 @@ analyze_17_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3387,6 +3452,7 @@ analyze_17_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3408,7 +3474,7 @@ analyze_17_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3438,6 +3504,7 @@ analyze_17_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3458,7 +3525,7 @@ analyze_17_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3488,6 +3555,7 @@ analyze_17_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3510,7 +3578,7 @@ analyze_18_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3540,6 +3608,7 @@ analyze_18_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3563,7 +3632,7 @@ analyze_18_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3593,6 +3662,7 @@ analyze_18_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3614,7 +3684,7 @@ analyze_18_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3644,6 +3714,7 @@ analyze_18_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3664,7 +3735,7 @@ analyze_18_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3694,6 +3765,7 @@ analyze_18_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3716,7 +3788,7 @@ analyze_19_frames:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3746,6 +3818,7 @@ analyze_19_frames:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3769,7 +3842,7 @@ analyze_19_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3799,6 +3872,7 @@ analyze_19_psg0:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3820,7 +3894,7 @@ analyze_19_rows:
   - all
   - --max-rows
   - '0'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3850,6 +3924,7 @@ analyze_19_rows:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3870,7 +3945,7 @@ analyze_19_volumes:
   - --chip
   - all
   - --volumes
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3900,6 +3975,7 @@ analyze_19_volumes:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/vgm/__init__.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
@@ -3921,7 +3997,7 @@ lift_02:
   - all
   - --diffs
   - '4'
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4010,6 +4086,7 @@ lift_02:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4034,7 +4111,7 @@ lift_all:
   argv:
   - tools/vgm_lift.py
   - --all
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4123,6 +4200,7 @@ lift_all:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4184,7 +4262,7 @@ lift_moonwalker_88_round_clear:
   argv:
   - tools/vgm_lift.py
   - configs\moonwalker\88_round_clear.yaml
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4273,6 +4351,7 @@ lift_moonwalker_88_round_clear:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4353,7 +4432,7 @@ lift_moonwalker_all:
   - --all
   - --configs
   - configs\moonwalker
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4442,6 +4521,7 @@ lift_moonwalker_all:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4526,7 +4606,7 @@ pitch_chaos_emerald:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4615,6 +4695,7 @@ pitch_chaos_emerald:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4648,7 +4729,7 @@ pitch_continue_screen:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4737,6 +4818,7 @@ pitch_continue_screen:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4772,7 +4854,7 @@ pitch_continue_screen_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4861,6 +4943,7 @@ pitch_continue_screen_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -4894,7 +4977,7 @@ pitch_credits:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4983,6 +5066,7 @@ pitch_credits:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5016,7 +5100,7 @@ pitch_drowning:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5105,6 +5189,7 @@ pitch_drowning:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5138,7 +5223,7 @@ pitch_ending_theme:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5227,6 +5312,7 @@ pitch_ending_theme:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5260,7 +5346,7 @@ pitch_extra_life:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5349,6 +5435,7 @@ pitch_extra_life:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5384,7 +5471,7 @@ pitch_extra_life_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5473,6 +5560,7 @@ pitch_extra_life_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5506,7 +5594,7 @@ pitch_final_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5595,6 +5683,7 @@ pitch_final_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5628,7 +5717,7 @@ pitch_game_over:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5717,6 +5806,7 @@ pitch_game_over:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5752,7 +5842,7 @@ pitch_game_over_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5841,6 +5931,7 @@ pitch_game_over_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5876,7 +5967,7 @@ pitch_ghz_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5965,6 +6056,7 @@ pitch_ghz_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -5998,7 +6090,7 @@ pitch_green_hill_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6087,6 +6179,7 @@ pitch_green_hill_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6120,7 +6213,7 @@ pitch_invincibility:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6209,6 +6302,7 @@ pitch_invincibility:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6244,7 +6338,7 @@ pitch_invincibility_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6333,6 +6427,7 @@ pitch_invincibility_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6366,7 +6461,7 @@ pitch_lab_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6455,6 +6550,7 @@ pitch_lab_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6488,7 +6584,7 @@ pitch_marble_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6577,6 +6673,7 @@ pitch_marble_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6610,7 +6707,7 @@ pitch_robotnik:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6699,6 +6796,7 @@ pitch_robotnik:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6734,7 +6832,7 @@ pitch_robotnik_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6823,6 +6921,7 @@ pitch_robotnik_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6856,7 +6955,7 @@ pitch_scrap_brain_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6945,6 +7044,7 @@ pitch_scrap_brain_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -6978,7 +7078,7 @@ pitch_special_stage:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7067,6 +7167,7 @@ pitch_special_stage:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -7100,7 +7201,7 @@ pitch_spring_yard_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7189,6 +7290,7 @@ pitch_spring_yard_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -7222,7 +7324,7 @@ pitch_stage_clear:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7311,6 +7413,7 @@ pitch_stage_clear:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -7346,7 +7449,7 @@ pitch_stage_clear_lofi:
   - --variant
   - lofi
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7435,6 +7538,7 @@ pitch_stage_clear_lofi:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -7468,7 +7572,7 @@ pitch_star_light_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7557,6 +7661,7 @@ pitch_star_light_zone:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -7590,7 +7695,7 @@ pitch_title_screen:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7679,6 +7784,7 @@ pitch_title_screen:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
   - core/ui/__init__.py
@@ -7706,7 +7812,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: 198a785-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7763,7 +7869,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: 198a785-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7821,7 +7927,7 @@ read_sonic1_asm_music:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7861,6 +7967,7 @@ read_sonic1_asm_music:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -7887,7 +7994,7 @@ read_sonic1_asm_music_shipped:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
   - --shipped
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7927,6 +8034,7 @@ read_sonic1_asm_music_shipped:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -7952,7 +8060,7 @@ read_sonic1_asm_sfx:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/sfx
-  commit: 9b0c552-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7992,6 +8100,7 @@ read_sonic1_asm_sfx:
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
+  - core/smps/voice_patch.py
   - tools/song_dump.py
   inputs:
     reference/smps_drivers/sonic_1/sfx/SndA0 - Jump.asm: eb1f6684f557
@@ -8047,7 +8156,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: 198a785-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8106,7 +8215,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: 198a785-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8164,7 +8273,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 198a785-dirty
+  commit: 46f1fce-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

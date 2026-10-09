@@ -1155,7 +1155,7 @@ read_golden_axe:
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
 read_moonwalker:
-  commit: 22c3e8c-dirty
+  commit: 67c8100-dirty
   date: '2026-10-09'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80

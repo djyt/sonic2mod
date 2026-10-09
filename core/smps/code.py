@@ -146,15 +146,16 @@ def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list[SmpsVoic
 
 @dataclass
 class _Cursor:
-    """A channel's note state as track bytes read and leave it."""
+    """One channel's walk state as the code leaves it; a nested walk (a call, a loop's replay, a
+    forward jump) carries on with the same one."""
     channel: SmpsChannel
     is_dac: bool
     tempo_div: int
-    tick: int
-    last_duration: int
-    no_attack: bool
-    pending: SmpsNote | None     # the note still waiting for its duration
-    last_note_value: int         # the last note read, 0 after a rest: what a standalone duration re-keys
+    tick: int = 0
+    last_duration: int = 0
+    no_attack: bool = False
+    pending: SmpsNote | None = None     # the note still waiting for its duration
+    last_note_value: int = 0            # the last note read, 0 after a rest: what a standalone duration re-keys
 
 
 def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
@@ -181,13 +182,14 @@ def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
     return SmpsNote(note_value=cur.last_note_value, duration=duration, is_retrigger=True)
 
 
-# What a walk hands back to the walk it was called from:
-# (tick, last_duration, pending note, last_note_value, tempo divider, smpsNoAttack pending)
-_WalkState = tuple[int, int, SmpsNote | None, int, int, bool]
-
-
 class _Walker:
-    """One channel's walk through the song's code."""
+    """One channel's walk through the song's code.
+
+        _walk          op by op from an index: a label marks its tick, any other op but a track
+                       byte completes a pending note, then the op's handler (_on_*) says where next
+        _on_*          the index to go on from, or None: this walk ends (STOP, RETURN, a loop's
+                       jump back, a forward jump walked to its end, a loop's last pass left)
+    """
 
     def __init__(self, code: SmpsCode, header: SmpsChannelHeader, rules: PlaybackRules,
                  voice_pans: Mapping[int, int]):
@@ -207,6 +209,13 @@ class _Walker:
         self._passes: dict[str, int] = {}          # each loop being replayed (by its body's label): the pass
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
 
+        self._handlers = {
+            OpKind.STOP: self._on_end, OpKind.RETURN: self._on_end,    # RETURN: only reached in a call
+            OpKind.JUMP: self._on_jump, OpKind.LOOP: self._on_loop, OpKind.LOOP_EXIT: self._on_loop_exit,
+            OpKind.CALL: self._on_call, OpKind.EFFECT: self._on_effect,
+            OpKind.NOTE: self._on_byte, OpKind.DURATION: self._on_byte, OpKind.NO_ATTACK: self._on_byte,
+        }
+
     def walk(self, tempo_divider: int) -> SmpsChannel:
         channel = self._channel
         start = self._header.label
@@ -215,7 +224,8 @@ class _Walker:
 
         # The channel's own start: tick 0 (its loop, if it jumps back here, is taken by tick)
         self._label_ticks.setdefault(start, 0)
-        self._walk(self._labels[start] + 1, 0, 0, False, seen={start}, tempo_div=tempo_divider)
+        cur = _Cursor(channel, self._is_dac, tempo_divider)
+        self._walk(self._labels[start] + 1, cur, seen={start})
 
         # The loop as a tick and an event index: where THIS channel reached its jump's target.
         # Another channel's walk past the same label (code shared by fall-through or a jump)
@@ -224,6 +234,101 @@ class _Walker:
             channel.loop_tick = self._label_ticks.get(channel.loop_label)
             channel.loop_event_index = self._label_events.get(channel.loop_label)
         return channel
+
+    def _walk(self, start: int, cur: _Cursor, seen: set[str], stop: int | None = None) -> None:
+        """Walk ops from `start` (to `stop`, a loop body's end), appending events.  A note still
+        pending at `stop` is left for the caller (the next pass may give it its duration)."""
+        i = start
+        while i < len(self._ops):
+            if stop is not None and i >= stop:
+                return
+
+            op = self._ops[i]
+            i += 1
+            if op.kind is OpKind.LABEL:
+                self._on_label(op, i, cur, seen)
+                continue
+
+            # Every other op but a track byte completes a pending note with the saved duration:
+            # FMDoNext reads a non-duration byte after a note and puts it back
+            if op.kind not in TRACK_BYTES:
+                self._close_pending(cur)
+            after = self._handlers[op.kind](op, i, cur, seen)
+            if after is None:
+                return
+            i = after
+
+        # The end of the code: the pending note still plays
+        self._close_pending(cur)
+
+    # --- the ops ---------------------------------------------------------------------------
+
+    def _on_label(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> None:
+        """A label records its tick.  A note still pending is finished first, so the label takes
+        the tick after it - unless the next byte is a duration, which a label (no bytes) cannot
+        separate from its note:  SndA3 - Death: nAb3 / label / dc.b $01"""
+        seen.add(op.name)
+        if cur.pending is not None and self._label_precedes_duration(i):
+            self._mark_label(op.name, cur.tick, len(cur.channel.events) + 1)   # after the pending note
+            return
+        self._close_pending(cur)
+        self._mark_label(op.name, cur.tick, len(cur.channel.events))
+
+    def _on_end(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        return None
+
+    def _on_jump(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        # Back to code this channel walked (or an unknown target): the loop, the end
+        if op.name in seen or op.name not in self._labels:
+            cur.channel.has_jump = True
+            cur.channel.loop_label = op.name
+            return None
+
+        # Forward into code not walked yet: followed, and the label is reached here, now - a later
+        # jump back to it loops from this tick (Labyrinth FM4 into FM3's code)
+        seen.add(op.name)
+        self._mark_label(op.name, cur.tick, len(cur.channel.events))
+        self._walk(self._labels[op.name] + 1, cur, seen)
+        return None
+
+    def _on_loop(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        """The first pass is behind; replay the body (target to here) count - 1 more times."""
+        if op.name not in self._labels:
+            return i
+        body = self._labels[op.name] + 1
+        for repeat in range(2, op.value + 1):
+            self._passes[op.name] = repeat
+            self._walk(body, cur, seen, stop=i - 1)
+            self._close_pending(cur)
+        self._passes.pop(op.name, None)
+        return i
+
+    def _on_loop_exit(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        """On its loop's last pass: out past the loop's end, a tie dropped (Streets of Rage's $FE)."""
+        end = self._loop_end(i, op.name)
+        if end is None or self._passes.get(op.name, 1) < self._ops[end].value:
+            return i
+        cur.no_attack = False
+        if op.name in self._passes:                 # the last replay ends here
+            return None
+        return end + 1                              # a loop of one pass: past its end
+
+    def _on_call(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        if op.name in self._labels:
+            self._walk(self._labels[op.name] + 1, cur, seen=set())
+        return i
+
+    def _on_effect(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        assert op.effect is not None
+        cur.tempo_div = self._effect(op.effect, cur.tick, cur.tempo_div)
+        return i
+
+    def _on_byte(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+        """A track byte; the cursor carries a pending note across ops (and dc.b lines)."""
+        self._byte(cur, op)
+        return i
+
+    # --- helpers ---------------------------------------------------------------------------
 
     def _loop_end(self, i: int, body: str) -> int | None:
         """The index of the LOOP op from `i` on that replays `body`: the loop a LOOP_EXIT leaves."""
@@ -241,128 +346,6 @@ class _Walker:
         while i < len(self._ops) and self._ops[i].kind is OpKind.LABEL:
             i += 1
         return i < len(self._ops) and self._ops[i].kind is OpKind.DURATION
-
-    def _finalize_pending(self, pending: SmpsNote | None, tick: int, last_duration: int,
-                          last_note_value: int) -> tuple[int, int]:
-        """Emit a pending note with the saved duration: (tick after it, last_note_value)."""
-        if pending is None:
-            return tick, last_note_value
-
-        pending.duration = last_duration
-        if pending.is_rest:
-            last_note_value = 0         # the driver clears the frequency: a bare duration rests on
-        elif not pending.is_dac:
-            last_note_value = pending.note_value
-        self._channel.events.append(SmpsEvent(note=pending, tick_position=tick))
-        return tick + pending.duration, last_note_value
-
-    def _walk(self, start: int, tick: int, last_duration: int, no_attack: bool, stop: int | None = None,
-              pending: SmpsNote | None = None, last_note_value: int = 0, seen: set[str] | None = None,
-              tempo_div: int = 1) -> _WalkState:
-        """Walk ops from `start` (to `stop`, a loop body's end), appending events.
-
-        pending: a note still waiting for a duration byte (it may follow on the next dc.b line).
-        last_note_value: the last note sounded, which a standalone duration re-keys.
-        tempo_div: smpsChanTempoDiv; durations are multiplied by it here, so ticks compare
-        across channels with different dividers.
-        """
-        seen = set() if seen is None else seen
-        channel = self._channel
-        i = start
-        while i < len(self._ops):
-            if stop is not None and i >= stop:
-                return tick, last_duration, pending, last_note_value, tempo_div, no_attack
-
-            op = self._ops[i]
-            i += 1
-
-            # A label records its tick.  A note still pending is finished first, so the label
-            # takes the tick after it - unless the next byte is a duration, which a label (no
-            # bytes) cannot separate from its note:  SndA3 - Death: nAb3 / label / dc.b $01
-            if op.kind is OpKind.LABEL:
-                seen.add(op.name)
-                if pending is not None and self._label_precedes_duration(i):
-                    self._mark_label(op.name, tick, len(channel.events) + 1)   # after the pending note
-                    continue
-                tick, last_note_value = self._finalize_pending(pending, tick, last_duration, last_note_value)
-                pending = None
-                self._mark_label(op.name, tick, len(channel.events))
-                continue
-
-            # Every other op but a track byte completes a pending note with the saved duration:
-            # FMDoNext reads a non-duration byte after a note and puts it back
-            if op.kind not in TRACK_BYTES:
-                tick, last_note_value = self._finalize_pending(pending, tick, last_duration, last_note_value)
-                pending = None
-
-            if op.kind is OpKind.STOP:
-                return tick, last_duration, None, last_note_value, tempo_div, no_attack
-
-            if op.kind is OpKind.RETURN:      # only reached while a call is inlined
-                return tick, last_duration, None, last_note_value, tempo_div, no_attack
-
-            if op.kind is OpKind.JUMP:
-                # Back to code this channel walked (or an unknown target): the loop, the end
-                if op.name in seen or op.name not in self._labels:
-                    channel.has_jump = True
-                    channel.loop_label = op.name
-                    return tick, last_duration, None, last_note_value, tempo_div, no_attack
-
-                # Forward into code not walked yet: followed, and the label is reached here, now -
-                # a later jump back to it loops from this tick (Labyrinth FM4 into FM3's code)
-                seen.add(op.name)
-                self._mark_label(op.name, tick, len(channel.events))
-                return self._walk(self._labels[op.name] + 1, tick, last_duration, no_attack,
-                                  last_note_value=last_note_value, seen=seen, tempo_div=tempo_div)
-
-            if op.kind is OpKind.LOOP:
-                # The first pass is behind; replay the body (target to here) count - 1 more times
-                if op.name not in self._labels:
-                    continue
-                body = self._labels[op.name] + 1
-                for repeat in range(2, op.value + 1):
-                    self._passes[op.name] = repeat
-                    tick, last_duration, body_pending, last_note_value, tempo_div, no_attack = self._walk(
-                        body, tick, last_duration, no_attack, stop=i - 1,
-                        last_note_value=last_note_value, seen=seen, tempo_div=tempo_div)
-                    tick, last_note_value = self._finalize_pending(body_pending, tick, last_duration, last_note_value)
-                self._passes.pop(op.name, None)
-                continue
-
-            if op.kind is OpKind.LOOP_EXIT:
-                # On its loop's last pass: out past the loop's end, a tie dropped (Streets of Rage's $FE)
-                end = self._loop_end(i, op.name)
-                if end is None or self._passes.get(op.name, 1) < self._ops[end].value:
-                    continue
-                no_attack = False
-                if op.name in self._passes:                 # the last replay ends here
-                    return tick, last_duration, None, last_note_value, tempo_div, no_attack
-                i = end + 1                                 # a loop of one pass: past its end
-                continue
-
-            if op.kind is OpKind.CALL:
-                if op.name not in self._labels:
-                    continue
-                tick, last_duration, pending, last_note_value, tempo_div, no_attack = self._walk(
-                    self._labels[op.name] + 1, tick, last_duration, no_attack,
-                    last_note_value=last_note_value, tempo_div=tempo_div)
-                continue
-
-            if op.kind is OpKind.EFFECT:
-                assert op.effect is not None
-                tempo_div = self._effect(op.effect, tick, tempo_div)
-                continue
-
-            # A track byte; the cursor carries a pending note across ops (and dc.b lines)
-            cur = _Cursor(channel, self._is_dac, tempo_div, tick, last_duration, no_attack, pending,
-                          last_note_value)
-            self._byte(cur, op)
-            tick, last_duration, no_attack, pending, last_note_value = (
-                cur.tick, cur.last_duration, cur.no_attack, cur.pending, cur.last_note_value)
-
-        # The end of the code: the pending note still plays
-        tick, last_note_value = self._finalize_pending(pending, tick, last_duration, last_note_value)
-        return tick, last_duration, None, last_note_value, tempo_div, no_attack
 
     def _effect(self, effect: SmpsEffect, tick: int, tempo_div: int) -> int:
         """Keep a flag as an event; the tempo divider it leaves.
@@ -424,7 +407,15 @@ class _Walker:
         cur.no_attack = False
 
     def _close_pending(self, cur: _Cursor) -> None:
-        """Emit the pending note with the last duration."""
-        cur.tick, cur.last_note_value = self._finalize_pending(cur.pending, cur.tick, cur.last_duration,
-                                                               cur.last_note_value)
+        """Emit the pending note (if any) with the last duration."""
+        pending = cur.pending
+        if pending is None:
+            return
+        pending.duration = cur.last_duration
+        if pending.is_rest:
+            cur.last_note_value = 0         # the driver clears the frequency: a bare duration rests on
+        elif not pending.is_dac:
+            cur.last_note_value = pending.note_value
+        cur.channel.events.append(SmpsEvent(note=pending, tick_position=cur.tick))
+        cur.tick += pending.duration
         cur.pending = None

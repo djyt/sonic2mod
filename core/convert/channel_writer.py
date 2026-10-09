@@ -285,7 +285,7 @@ class ChannelWriter:
     def _note_ons(self):
         """The note-on events this channel's output sounds (spliced ones included)."""
         return (ev for ev in self._channel.events
-                if ev.is_note and not ev.note.is_rest and self._router.plays_here(ev))
+                if ev.note is not None and not ev.note.is_rest and self._router.plays_here(ev))
 
     def _note_on_cells(self) -> set[tuple[int, int]]:
         """(pattern, row) of every note-on: the row it rounds to and the row it starts in."""
@@ -303,14 +303,15 @@ class ChannelWriter:
         ring_ticks: dict[int, int] = {}
         ringing = None
         for ev in self._channel.events:
-            if not ev.is_note:
+            note = ev.note
+            if note is None:
                 continue
-            if ev.note.is_rest and ev.note.is_no_attack and ringing is not None:
-                ring_ticks[id(ringing)] += ev.note.duration
+            if note.is_rest and note.is_no_attack and ringing is not None:
+                ring_ticks[id(ringing)] += note.duration
                 continue
-            ringing = None if ev.note.is_rest else ev
+            ringing = None if note.is_rest else ev
             if ringing is not None:
-                ring_ticks[id(ev)] = ev.note.duration
+                ring_ticks[id(ev)] = note.duration
         return ring_ticks
 
     # --- the walk -------------------------------------------------------------------------------
@@ -343,15 +344,15 @@ class ChannelWriter:
         never stops; the DAC plays its sample out, and a PSG note is cut at its duration."""
         if self._channel.has_jump or self._is_dac or self._is_psg or self._last_inst is None:
             return
-        notes = [ev for ev in self._channel.events if ev.is_note]
+        notes = [(ev, ev.note) for ev in self._channel.events if ev.note is not None]
         if not notes:
             return
-        last = notes[-1]
-        if last.note.is_rest and not last.note.is_no_attack:
+        last, note = notes[-1]
+        if note.is_rest and not note.is_no_attack:
             return                      # keyed off already
-        if not last.note.is_rest and not self._router.plays_here(last):
+        if not note.is_rest and not self._router.plays_here(last):
             return                      # folded onto another channel: it ends there
-        end = last.tick_position + last.note.duration
+        end = last.tick_position + note.duration
         pattern, row = self._timeline.pattern_row(end)
         if pattern >= self._config.max_patterns:
             return

@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "pyright", "vulture", "pytest"]
+dev = ["ruff", "pyright", "vulture", "pytest", "coverage"]
 
 [project.scripts]
 sonic2mod = "convert:main"

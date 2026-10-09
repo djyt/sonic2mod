@@ -11,6 +11,11 @@ core/smps/names.py's, for reading and printing assembly.  Read an effect by matc
 
 `values` gives the operands in order (what the asm writer prints); effect_of(flag, values) builds
 one from a flag and its operands.
+
+A few say what a driver does in its own terms, and the walk (code.py) resolves each into the
+effect it plays as, by the song's PlaybackRules: no event keeps one.
+
+    VolumeStep, AlterVolumeStep -> SetVol        DetuneAdd -> Detune
 """
 
 from __future__ import annotations
@@ -44,6 +49,9 @@ class CoordFlag(StrEnum):
     PSG_VOICE = auto()            # $F5
     SET_VOL = auto()              # Type 0 FM's $F0
     DAC_SAMPLE = auto()           # Streets of Rage's $F0
+    VOLUME_STEP = auto()          # Streets of Rage's $F1
+    ALTER_VOLUME_STEP = auto()    # its $FB on FM
+    DETUNE_ADD = auto()           # its $F2 with a third byte
 
 
 @dataclass(frozen=True)
@@ -163,6 +171,28 @@ class SetVol(SmpsEffect):
 class SelectSample(SmpsEffect):
     flag = CoordFlag.DAC_SAMPLE
     sound: int                    # the DAC byte the drum track's notes play
+
+
+@dataclass(frozen=True)
+class VolumeStep(SmpsEffect):
+    """The track's volume as a step of its driver's table (PlaybackRules.volume_steps), the
+    header volume added: the walk's SetVol."""
+    flag = CoordFlag.VOLUME_STEP
+    step: int
+
+
+@dataclass(frozen=True)
+class AlterVolumeStep(SmpsEffect):
+    """The track's volume step moved: the walk's SetVol."""
+    flag = CoordFlag.ALTER_VOLUME_STEP
+    delta: int                    # signed
+
+
+@dataclass(frozen=True)
+class DetuneAdd(SmpsEffect):
+    """Added to the track's detune word: the walk's Detune."""
+    flag = CoordFlag.DETUNE_ADD
+    offset: int                   # signed
 
 
 _BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {cls.flag: cls for cls in SmpsEffect.__subclasses__()}

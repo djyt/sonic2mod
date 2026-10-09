@@ -9,6 +9,8 @@ an FM drum program on FM3, drums.py; bits 4-6 a PSG drum: no song plays one).
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from core.rom.flags import CALL, JUMP, LOOP, NO_ATTACK, RETURN, STOP, FlagSpec, drop, effect, every_kind, refuse
 from core.rom.image import RomImage
 from core.rom.variant import SmpsVariant
@@ -42,6 +44,10 @@ _FLAGS: dict[int, FlagSpec] = {
 }
 
 
+def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
+    return replace(rules, fm_frequencies=fm_frequencies(rom))
+
+
 def _fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
     return read_fm_drums(rom, header, fm_frequencies, _FLAGS)
 
@@ -63,6 +69,6 @@ TYPE0FM = SmpsVariant(
     rules=PlaybackRules(driver=SmpsDriver.TYPE0FM, fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
                         dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)},
                         tempo_phase=TEMPO_PHASE, key_run_out=KEY_RUN_OUT),
-    fm_frequencies=fm_frequencies,
+    rules_from_rom=_rules_from_rom,
     fm_drums=_fm_drums,
 )

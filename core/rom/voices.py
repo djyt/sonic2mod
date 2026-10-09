@@ -14,7 +14,7 @@ width in the asm) are not the voice.
 
 from __future__ import annotations
 
-from ..chips import OperatorReg
+from ..chips import CARRIER_OFFSETS_BY_ALG, OperatorReg
 from ..smps import SMPS_OP_TO_REG_OFFSET, SetVoice, SmpsCode, SmpsVoice, VoiceField
 from .memory import SoundMemory
 from .variant import OPERATORS, VoiceLayout
@@ -53,4 +53,9 @@ def _voice(raw: bytes, index: int, layout: VoiceLayout) -> SmpsVoice:
         stored = raw[at:at + OPERATORS]
         for field_, shift, mask in _FIELDS[register]:
             voice.operators[field_] = tuple((stored[k] >> shift) & mask for k in order)
+    if not layout.carrier_tl:
+        carriers = CARRIER_OFFSETS_BY_ALG[voice.algorithm]
+        levels = voice.operators[VoiceField.TOTAL_LEVEL]
+        voice.operators[VoiceField.TOTAL_LEVEL] = tuple(0 if offset in carriers else tl
+                                                        for offset, tl in zip(SMPS_OP_TO_REG_OFFSET, levels, strict=True))
     return voice

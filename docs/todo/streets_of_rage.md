@@ -232,7 +232,7 @@ a song pass (the `run_out` precedent).
 | SoR fact | IR | Resolved in | Downstream |
 |---|---|---|---|
 | tick = frame | divider 1, `NO_TEMPO_HOLDS` | header | none |
-| FM / PSG volume steps | `PlaybackRules.volume_steps`; `VOL_STEP`, `ALTER_VOL_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
+| FM / PSG volume steps | `PlaybackRules.volume_steps`; `VOLUME_STEP`, `ALTER_VOLUME_STEP` -> `SET_VOL`; carrier TLs read as 0 | walk | none |
 | detune add | `DETUNE_ADD` -> `DETUNE` | walk | none |
 | gate | `GATE` -> note + rest, marked off-grid like `run_out` | song pass beside `run_out.py` | none |
 | loop break, tie cleared on exit | `OpKind.LOOP_EXIT` | walk | none |
@@ -292,8 +292,32 @@ a song pass (the `run_out` precedent).
   (16 passes) with no data fix: 6.1 is done by this.
 
 ### Phase 2: the walk
-- [ ] 2.1 IR flags and walk rules of 2.2: volume steps, detune add, noise pitch, the tie the
-  jump back drops.
+- [x] 2.1 IR flags and walk rules of 2.2 (2026-10-09), found in the driver's code:
+  - **Volume:** `$F1` `VolumeStep`, FM `$FB` `AlterVolumeStep`, resolved in the walk to `SET_VOL` by
+    `PlaybackRules.volume_steps` (each kind's level by signed step), the header volume added
+    (`add.b`).  FM: the table at `$73600` read by the code (`ext.w d3` / `move.b (pc,d3.w)`); songs
+    step down to -4 (`$88`, `$8F`), which reads `36 33 30 2D` before it.  The step starts at 0
+    (the RAM is cleared).  PSG: `$F1 v` att = (-v & 15) + header volume (`$FE` = -2); `$FB n`
+    takes n from the att the walk holds, unclamped as the driver keeps it.  Voices: carrier TLs
+    read as 0 (`VoiceLayout.carrier_tl`): loading a voice writes them from the volume.
+  - **Detune add:** `$F2` with a third byte `DetuneAdd`; the walk keeps the word (`add.w`) and the
+    PSG's `>> 4` moved to `PlaybackRules.psg_detune_shift`: the driver shifts the sum (`$8B` PSG3
+    adds 100 and -100: 0, not -1).  The vibrato depth still shifts each step (Phase 5.3).
+  - **Noise:** in noise mode the driver writes no tone 3 frequency (`noise_writes_tone3`): a noise
+    note plays the last tone note's divider, none: `nMaxPSG` (`MAX_PSG`, divider 0).
+  - **The jump's tie:** `$FF` clears an FM or drum track's tie (`jump_clears_tie`), not a PSG's.
+    `SmpsChannel.replay_tie`: a replay's first note tied or attacking where the jump leaves another
+    tie than the first pass reached the label with; loop extension applies it.  `$8F` FM1 / FM4 /
+    FM5 attack on each replay; its PSG2 / PSG3 stay tied.
+  - **The chip's bits:** a played pitch is the word the chip takes: `$8F` PSG1's detune pushes
+    dividers past 10 bits (1024-1031 wrap to 0-7, ultrasonic in the game too).
+  - Checked against the rips' frame logs (scratch, at each key-on frame): FM level exact on every
+    note of the 15 rips; FM pitch exact but FM3 under special mode (+100, Phase 5); PSG pitch
+    exact but 3 wrapped `$8F` notes (the rip reads 0 for 2 and 5); PSG level exact but where the
+    envelope is 0 (the att lands a frame after the key, `$91` PSG3) and the logs' last notes.
+    FM onsets: every one but the logs' last frames (`vgm_lift`).
+  - The lift snaps a rip note to the table and reads no detune (vgz_conversion 1.3): its `note`
+    differs where a detune passes half a semitone (`$C3` = 195), and on FM3 in special mode.
 - [ ] 2.2 Song passes: gate, voice patches.
 - [ ] 2.3 Yardstick: `vgm_lift --all --configs configs/streets_of_rage` (pairs in `rips.yaml`).
   FM onsets, lengths and notes must equal the rips, as the throwaway player did.

@@ -14,6 +14,7 @@ _PERIOD_DIVIDER = 32
 
 PSG_STEP_DB = 2.0                    # attenuation: dB per step
 PSG_ATT_SILENT = 15                  # attenuation at or above which nothing is heard
+PSG_DIVIDER_MASK = 0x3FF             # a tone divider is 10 bits: the chip drops the bits above
 
 
 def psg_frequency_hz(period: int, clock: int) -> float:

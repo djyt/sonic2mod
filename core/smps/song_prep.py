@@ -123,7 +123,9 @@ def _extend_looping_channels(song: SmpsSong) -> list[dict]:
         if loop_span <= 0:
             continue
 
-        # Synthesize additional iterations until we reach global_last_tick
+        # Synthesize additional iterations until we reach global_last_tick; each one's first
+        # note tied as the jump back leaves it (replay_tie)
+        first_note = next((ev for ev in loop_body if ev.note is not None), None)
         original_count = len(ch.events)
         offset = ch_last - loop_start_tick
         while (loop_start_tick + offset) < global_last_tick:
@@ -137,6 +139,8 @@ def _extend_looping_channels(song: SmpsSong) -> list[dict]:
                 if new_ev.note:
                     cap_dur = global_last_tick - new_tick
                     new_ev.note.duration = min(new_ev.note.duration, cap_dur)
+                    if ev is first_note and ch.replay_tie is not None:
+                        new_ev.note.is_no_attack = ch.replay_tie
                 ch.events.append(new_ev)
             offset += loop_span
 

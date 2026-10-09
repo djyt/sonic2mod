@@ -28,8 +28,10 @@ from core.smps import (
     FIRST_NOTE,
     REST,
     SELECTED_SAMPLE,
+    AlterVol,
     ChannelType,
     Detune,
+    DetuneAdd,
     ModOff,
     ModOn,
     ModSet,
@@ -39,9 +41,11 @@ from core.smps import (
     PsgForm,
     SelectSample,
     SmpsEffect,
+    signed_byte,
 )
 
 _FIRST_FLAG = 0xF0
+_BYTE = 0xFF
 _END = 0x00
 _REST_BIT = 0x80
 _DURATION_BITS = 0x7F
@@ -61,8 +65,9 @@ _FORM = 0xF7                       # on the PSG: noise
 _SAMPLE = 0xF0                     # on the drum track: the sample its notes play
 
 _LOOP_END_LENGTH = 5               # $F6 x n back.w
-_PSG_DETUNE_SHIFT = 4              # the PSG adds the word >> 4 to its divider
+_PSG_DEPTH_SHIFT = 4               # the PSG adds the vibrato word >> 4 to its divider
 _DETUNE_SETS = 0                   # $F2's third byte: 0 sets, any other adds
+_VOLUME_DOWN = 0xFB                # on the PSG: att -= n
 
 _PAN_B4 = (0xC0, 0x80, 0x40, 0xC0)          # $7353A: $F8 n -> B4's speakers (0, 3 centre; 1 left; 2 right)
 _NOISE_FORM = 0xE7                           # the driver writes $E7: white noise at tone 3's rate
@@ -148,11 +153,18 @@ def _loop_exit(memory: SoundMemory, address: int) -> Instruction:
 
 # --- flags with operands the SMPS vocabulary spells differently ------------------------------
 
-def _detune(memory: SoundMemory, address: int, shift: int) -> Instruction:
-    """`$F2 lo hi mode`: an FNUM (PSG: divider) offset, set; one that adds is not read yet."""
+def _detune(memory: SoundMemory, address: int) -> Instruction:
+    """`$F2 lo hi mode`: the detune word, set (mode 0) or added to; the PSG's shifted to a divider
+    as it plays (PlaybackRules.psg_detune_shift)."""
+    word = _signed_le_word(memory, address + 1)
     if memory.byte(address + 3) != _DETUNE_SETS:
-        return Instruction((), 4, True, dropped="detune that adds")
-    return _effect(Detune(_signed_le_word(memory, address + 1) >> shift), 4)
+        return _effect(DetuneAdd(word), 4)
+    return _effect(Detune(word), 4)
+
+
+def psg_volume_down(memory: SoundMemory, address: int) -> Instruction:
+    """`$FB n` on the PSG: n taken from the attenuation (neg.b, add.b)."""
+    return _effect(AlterVol(signed_byte(-memory.byte(address + 1) & _BYTE)), 2)
 
 
 def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
@@ -193,12 +205,12 @@ _Handler = Callable[[SoundMemory, int], Instruction]
 
 _COMMON: dict[int, _Handler] = {_LOOP_START: _loop_start, _LOOP_END: _loop_end, _LOOP_EXIT: _loop_exit}
 
-# FM words as written; the PSG's >> 4 (a divider, not an FNUM)
-_FM_DETUNE, _PSG_DETUNE = partial(_detune, shift=0), partial(_detune, shift=_PSG_DETUNE_SHIFT)
-_FM_VIBRATO, _PSG_VIBRATO = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DETUNE_SHIFT)
+# Vibrato: FM words as written; the PSG's >> 4 (a divider, not an FNUM).  Each step's, where the
+# driver shifts the sum: Phase 5 checks the depth
+_FM_VIBRATO, _PSG_VIBRATO = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DEPTH_SHIFT)
 
 _HANDLERS: dict[ChannelType, dict[int, _Handler]] = {
-    ChannelType.FM: {_DETUNE: _FM_DETUNE, _VIBRATO: _FM_VIBRATO, _PAN: _pan},
-    ChannelType.PSG: {_DETUNE: _PSG_DETUNE, _VIBRATO: _PSG_VIBRATO, _FORM: _noise},
-    ChannelType.DAC: {_DETUNE: _FM_DETUNE, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _SAMPLE: _dac_sample},
+    ChannelType.FM: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan},
+    ChannelType.PSG: {_DETUNE: _detune, _VIBRATO: _PSG_VIBRATO, _FORM: _noise, _VOLUME_DOWN: psg_volume_down},
+    ChannelType.DAC: {_DETUNE: _detune, _VIBRATO: _FM_VIBRATO, _PAN: _pan, _SAMPLE: _dac_sample},
 }

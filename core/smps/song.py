@@ -109,6 +109,9 @@ class SmpsChannel:
     # target) is inside the loop.  None: the loop is taken from loop_tick on.
     loop_event_index: int | None = None
     loop_label: str = ""          # the assembly's name for the target, for display; a lift has none
+    # Each replay's first note tied (True) or attacking (False) where the jump back leaves another
+    # tie state than the first pass reached it with; None: as on the first pass
+    replay_tie: bool | None = None
 
 
 # A YM2612 channel's operator count

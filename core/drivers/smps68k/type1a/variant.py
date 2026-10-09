@@ -3,14 +3,12 @@ with a disassembler (docs/todo/binary_import.md, Phase 2)."""
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from core.rom.flags import RETURN, EnvelopeCommand, drop, effect, every_kind, refuse
 from core.rom.variant import SmpsVariant
-from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag
+from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, PlaybackRules
 
 from ...names import SmpsDriver
-from ...reference import SONIC1_RULES
+from ...reference import FM_FREQUENCIES, PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
 from ..common import FLAGS_68K, HEADER_68K, VOICE_68K
 from ..locate import locate_68k
 from ..memory import Relative68kMemory
@@ -42,9 +40,10 @@ TYPE1A = SmpsVariant(
                        0x85: EnvelopeCommand.JUMP},   # $61152
     header=HEADER_68K,
     voice_layout=VOICE_68K,
-    # Sonic 1's tables (its PSG envelopes read from the ROM); every note byte goes to the DAC (the
-    # 68k remaps $88-$97 to pitched samples)
-    rules=replace(SONIC1_RULES, driver=SmpsDriver.TYPE1A,
-                  dac_names={b: f"dac{b:02X}" for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
+    # Sonic 1's FM and PSG tables (compared: the same); its PSG envelopes read from the ROM; every
+    # note byte goes to the DAC (the 68k remaps $88-$97 to pitched samples)
+    rules=PlaybackRules(driver=SmpsDriver.TYPE1A, fm_frequencies=FM_FREQUENCIES, psg_frequencies=PSG_FREQUENCIES,
+                        psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
+                        dac_names={b: f"dac{b:02X}" for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
     dac=type1a_dac,
 )

@@ -16,7 +16,6 @@ its driver ($72914-$73C16) read with a disassembler (docs/todo/streets_of_rage.m
 
 from __future__ import annotations
 
-from dataclasses import replace
 from functools import lru_cache
 
 from core.chips import OperatorReg
@@ -25,10 +24,10 @@ from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
-from core.smps import ChannelType, CoordFlag
+from core.smps import ChannelType, CoordFlag, PlaybackRules
 
 from ...names import SmpsDriver
-from ...reference import PSG_FREQUENCIES, SONIC1_RULES
+from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
 from ..locate import pointers_before_data
 from ..memory import Relative68kMemory
 from .grammar import mucom_instruction
@@ -150,8 +149,10 @@ MUCOM = SmpsVariant(
     envelope_commands={0x81: EnvelopeCommand.HOLD, 0x80: EnvelopeCommand.RESTART, 0x83: EnvelopeCommand.MUTE},
     header=HEADER_MUCOM,
     voice_layout=VOICE_MUCOM,
-    # Its FM octave and envelopes read from the ROM; Sonic 1's PSG rows; Z80 $019B: 17 samples
-    rules=replace(SONIC1_RULES, driver=SmpsDriver.MUCOM, dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)}),
+    # Its FM octave and envelopes read from the ROM; Sonic 1's PSG rows (checked); Z80 $019B: 17 samples
+    rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
+                        psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
+                        dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)}),
     fm_frequencies=fm_frequencies,
     grammar=mucom_instruction,
 )

@@ -1,7 +1,7 @@
 """Sonic 1's sound driver tables, regenerated from the driver source, and the rules its songs play
-by (SONIC1_RULES).  The reference: every driver here was compared with these and shares them where
-it reads none of its own (Moonwalker its FM and PSG tables, Golden Axe its PSG table and envelopes,
-Streets of Rage its PSG rows), so they stand beside the families rather than in sonic1/.
+by (SONIC1_RULES).  The reference: every driver here was compared with these, and one whose own
+match names them in its rules (Moonwalker its FM and PSG tables, Streets of Rage its PSG rows), so
+they stand beside the families rather than in sonic1/.  No driver inherits them unstated.
 
 Everything here is a transcription of `reference/smps_drivers/sonic_1/s1.sounddriver.asm`, not a
 recomputation from music theory.  That matters: the driver's note tables are what the hardware

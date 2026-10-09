@@ -1081,12 +1081,12 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: 9b0c552-dirty
+  commit: 198a785
   date: '2026-10-09'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
 read_moonwalker:
-  commit: 9b0c552-dirty
+  commit: 198a785
   date: '2026-10-09'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -1190,17 +1190,17 @@ read_sonic1_asm_sfx:
     reference/smps_drivers/sonic_1/sfx/SndCF - Signpost.asm: 320b3c201a06
     reference/smps_drivers/sonic_1/sfx/SndD0 - Waterfall.asm: a4be70b95a7c
 read_sonic1_rom:
-  commit: 9b0c552-dirty
+  commit: 198a785
   date: '2026-10-09'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_sonic1_rom_shipped:
-  commit: 9b0c552-dirty
+  commit: 198a785
   date: '2026-10-09'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_streets_of_rage:
-  commit: 9b0c552-dirty
+  commit: 198a785
   date: '2026-10-09'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

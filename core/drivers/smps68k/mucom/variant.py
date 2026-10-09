@@ -29,7 +29,7 @@ from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, eff
 from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
-from core.smps import ChannelType, CoordFlag, PlaybackRules
+from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules
 
 from ...names import SmpsDriver
 from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
@@ -124,8 +124,8 @@ def _locate(rom: RomImage) -> SoundIndex:
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
     """Its FM octave and FM volume table, read from the ROM."""
-    steps = {**rules.volume_steps, ChannelType.FM: _fm_volume_steps(rom)}
-    return replace(rules, fm_frequencies=_fm_frequencies(rom), volume_steps=steps)
+    fm = replace(rules.track(ChannelType.FM), volume_steps=_fm_volume_steps(rom))
+    return replace(rules, fm_frequencies=_fm_frequencies(rom), tracks={**rules.tracks, ChannelType.FM: fm})
 
 
 def _fm_frequencies(rom: RomImage) -> tuple[int, ...]:
@@ -161,6 +161,20 @@ def _check_psg_rows(rom: RomImage) -> None:
         raise RomError(f"PSG table ${table:X}: rows 2-6 are not Sonic 1's")
 
 
+# How each kind of track reads (the FM volume steps read from the ROM, _rules_from_rom):
+#   the jump ($7380C) clears an FM or drum track's tie (bclr #5), not a PSG's
+#   the gate ($72BFE FM, $738BC PSG, $72A4E the drum track): FM and PSG look for a $FD after the
+#     note; FM's key-off ($731DE) waits on the tie bit, the PSG's ($73A42) does not; the drum
+#     track cuts every note
+#   a rest after a tie keys FM off on its first frame (the key-off at its read waits on the tie
+#     bit), the PSG at once ($7390A)
+#   in noise mode no tone 3 frequency is written; the PSG adds the detune word >> 4
+_FM_TRACK = TrackRules(jump_clears_tie=True, gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1)
+_PSG_TRACK = TrackRules(volume_steps=_PSG_VOLUME_STEPS, detune_shift=_PSG_DETUNE_SHIFT, noise_writes_tone3=False,
+                        gate_sees_tie=True, tied_rest_holds=0)
+_DAC_TRACK = TrackRules(jump_clears_tie=True)
+
+
 MUCOM = SmpsVariant(
     name=SmpsDriver.MUCOM,
     memory=Relative68kMemory,
@@ -170,19 +184,11 @@ MUCOM = SmpsVariant(
     header=_HEADER,
     voice_layout=_VOICE_LAYOUT,
     # Its FM octave, volume table and envelopes read from the ROM; Sonic 1's PSG rows (checked);
-    # Z80 $019B: 17 samples.  $FF clears an FM or drum track's tie (bclr #5); in noise mode no
-    # tone 3 frequency is written.  The gate ($72BFE FM, $738BC PSG, $72A4E the drum track): FM and
-    # PSG look for a $FD after the note, FM's key-off ($731DE) waits on the tie bit; the drum
-    # track's cuts every note.  A rest keys FM off on its first frame (the key-off at its read
-    # waits on the tie bit), the PSG's at once ($7390A)
+    # Z80 $019B: 17 samples; each kind of track as above
     rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
                         psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
                         dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)},
-                        volume_steps={ChannelType.PSG: _PSG_VOLUME_STEPS}, psg_detune_shift=_PSG_DETUNE_SHIFT,
-                        jump_clears_tie=frozenset({ChannelType.FM, ChannelType.DAC}), noise_writes_tone3=False,
-                        gate_spares_tied=frozenset({ChannelType.FM}),
-                        gate_sees_tie=frozenset({ChannelType.FM, ChannelType.PSG}),
-                        tied_rest_holds={ChannelType.FM: 1, ChannelType.PSG: 0}),
+                        tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK, ChannelType.DAC: _DAC_TRACK}),
     rules_from_rom=_rules_from_rom,
     grammar=mucom_instruction,
 )

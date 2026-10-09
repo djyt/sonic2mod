@@ -40,7 +40,8 @@ from core.smps import (
 _HEADER = b"SEGA MEGA DRIVE ".rjust(0x110, b"\0").ljust(0x200, b"\0")
 _AT = 0x200                     # where a hand-built track starts
 # The ROM's first FM volume steps (the rest is read from it)
-_RULES = replace(MUCOM.rules, volume_steps={**MUCOM.rules.volume_steps, ChannelType.FM: {-1: 0x2D, 0: 0x36, 1: 0x33, 2: 0x30}})
+_FM = replace(MUCOM.rules.track(ChannelType.FM), volume_steps={-1: 0x2D, 0: 0x36, 1: 0x33, 2: 0x30})
+_RULES = replace(MUCOM.rules, tracks={**MUCOM.rules.tracks, ChannelType.FM: _FM})
 
 
 def _walk(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0):
@@ -189,7 +190,7 @@ class StreetsOfRage(unittest.TestCase):
         rules = read_rom_song(self.rom, 0x81, self.index).rules
         self.assertEqual(len(rules.fm_frequencies), 97)
         self.assertEqual(rules.fm_frequencies[1 + 57], 4 << 11 | 0x43C)          # A4: block 4
-        steps = rules.volume_steps[ChannelType.FM]
+        steps = rules.track(ChannelType.FM).volume_steps
         self.assertEqual([steps[s] for s in (-4, -1, 0, 1, 19, 20)], [0x36, 0x2D, 0x36, 0x33, 0x02, 0x00])
         self.assertEqual(PSG_FREQUENCIES[0], 0x356)
 

@@ -5,17 +5,22 @@ config, and what pitch each MOD instrument sounds once they are made.
                           variants the settings ask for (plan_detune_variants) - the converter's first
                           steps, and the audit tools' whole preparation, so the two cannot drift
     sounding_pitches      per MOD instrument: the note it is anchored at, the pitch that note sounds
-                          and its sample's detune, read from the catalogue the generators render from
+                          and its sample's cents off it (an FM detune; a PSG table divider off equal
+                          temperament), read from the catalogue the generators render from
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import NamedTuple
 
+from ..audio import semitone_to_hz
+from ..chips import MD_PSG_CLOCK, psg_frequency_hz
 from ..config import ConversionConfig
+from ..smps import PSG_TABLE_PITCH
 from .detune import DetunePlan, detune_cents, detune_variants_wanted, plan_detune_variants
-from .instruments import TONE, fm_catalogue, psg_catalogue
+from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
 from .synth_roots import resolve_synth_roots
 
 
@@ -50,5 +55,15 @@ def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitc
                                     detune_cents(fm.rendered_semitone, offset, song.rules.fm_frequencies) if offset else 0.0)
     for inst, psg in psg_catalogue(config).items():
         if psg.entry.type == TONE and inst not in out:
-            out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone, 0.0)
+            out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone,
+                                        _psg_divider_cents(psg.synth_idx + RENDER_INDEX_C1, song.rules.psg_frequencies))
     return out
+
+
+def _psg_divider_cents(semitone: int, psg_frequencies: tuple[int, ...]) -> float:
+    """Cents the driver's divider for a pitch sounds off equal temperament: the sample is
+    rendered with it (Streets of Rage's and Sonic 1's B7: divider 29, -42 c)."""
+    i = semitone - PSG_TABLE_PITCH
+    if not 0 <= i < len(psg_frequencies) or psg_frequencies[i] <= 0:
+        return 0.0
+    return 1200 * math.log2(psg_frequency_hz(psg_frequencies[i], MD_PSG_CLOCK) / semitone_to_hz(semitone))

@@ -79,6 +79,15 @@ class Shelf(unittest.TestCase):
         self.assertEqual([c.stem for c in shelf.config_files()], ["02_green_hill"])
         self.assertEqual(len(shelf.pairs()), 1)
 
+    def test_a_map_names_its_rips_folder_where_it_is_not_the_mirror(self):
+        # configs/sor -> vgz/sor_1, not vgz/sor; the folder is no config's stem
+        configs = self.configs / "sor"
+        configs.mkdir()
+        _touch(configs, "81_song.yaml")
+        (configs / "rips.yaml").write_text('folder: sor_1\n81_song: "03 - Song.vgz"\n', encoding="utf-8")
+        shelf = RipShelf.around(configs, None, config_root=self.configs, rip_root=self.rips)
+        self.assertEqual((shelf.rips, shelf.names), (self.rips / "sor_1", {"81_song": "03 - Song.vgz"}))
+
     def test_a_named_map_must_exist(self):
         with self.assertRaises(FileNotFoundError):
             RipShelf.load(self.configs, self.rips, self.configs / "missing.yaml")

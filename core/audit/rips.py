@@ -6,7 +6,8 @@
 A set whose rips are numbered in another order than its configs (Moonwalker's: game order, the
 configs sound-ID order) names each config's rip in a map beside the configs (RIPS_MAP: config
 stem -> rip file name); without one the number prefix pairs them.  Given one folder, the other
-mirrors it: configs/moonwalker <-> reference/vgz/moonwalker (RipShelf.around).
+mirrors it: configs/moonwalker <-> reference/vgz/moonwalker (RipShelf.around), unless the map
+names the rips' folder under the rips' root (RIPS_FOLDER: Streets of Rage's `streets_of_rage_1`).
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from ..config import load_yaml
 from ..vgm import is_vgm_path
 
 RIPS_MAP = "rips.yaml"
+RIPS_FOLDER = "folder"                      # a map's key, no config's stem: the rips' folder
 _CONFIG_GLOB = "[0-9a-f][0-9a-f]_*.yaml"    # a song config: its sound's number first
 _NUMBER = slice(0, 2)                       # "02 - Green Hill Zone.vgz" / "02_green_hill_zone.yaml" -> "02"
 
@@ -36,14 +38,10 @@ class RipShelf:
     def load(cls, configs: str | Path, rips: str | Path, names: str | Path | None = None) -> RipShelf:
         """The shelf; `names` the map (default: RIPS_MAP beside the configs, when there is one)."""
         configs, rips = Path(configs), Path(rips)
-        path = Path(names) if names else configs / RIPS_MAP
-        if not path.exists():
-            if names:
-                raise FileNotFoundError(path)
+        pairs = _read_map(configs, names)
+        if pairs is None:
             return cls(configs, rips)
-        with path.open(encoding="utf-8") as f:
-            pairs = load_yaml(f) or {}
-        return cls(configs, rips, {str(k): str(v) for k, v in pairs.items()})
+        return cls(configs, rips, {k: v for k, v in pairs.items() if k != RIPS_FOLDER})
 
     @classmethod
     def around(cls, configs: str | Path | None, rips: str | Path | None, names: str | Path | None = None, *,
@@ -55,7 +53,8 @@ class RipShelf:
         if configs is None:
             configs = _mirror(rips, rip_root, config_root) if rips else config_root
         if rips is None:
-            rips = _mirror(configs, config_root, rip_root)
+            folder = (_read_map(configs, names) or {}).get(RIPS_FOLDER)
+            rips = rip_root / folder if folder else _mirror(configs, config_root, rip_root)
         return cls.load(configs, rips, names)
 
     def rip_for(self, config: Path) -> Path | None:
@@ -91,6 +90,18 @@ def named(names: Iterable[str] | None, *paths: Path) -> bool:
     """A tool's --only: no names, or one a config's stem or a rip's name holds (02, green_hill)."""
     names = tuple(names or ())
     return not names or any(n in p.name for n in names for p in paths)
+
+
+def _read_map(configs: Path, names: str | Path | None) -> dict[str, str] | None:
+    """The map `names` (default: RIPS_MAP beside the configs), or None where there is none."""
+    path = Path(names) if names else configs / RIPS_MAP
+    if not path.exists():
+        if names:
+            raise FileNotFoundError(path)
+        return None
+    with path.open(encoding="utf-8") as f:
+        pairs = load_yaml(f) or {}
+    return {str(k): str(v) for k, v in pairs.items()}
 
 
 def _mirror(path: Path, here: Path, there: Path) -> Path:

@@ -336,9 +336,9 @@ a song pass (the `run_out` precedent).
   - Against the rips' frame logs (scratch): FM voice registers exact at every key-on of the 15
     (1381 of `$85`'s differ without the patches).  `vgm_lift` FM onsets and lengths: every note
     but the logs' last frames (`$87`, `$89`).
-- [x] 2.3 Yardstick (2026-10-09): `python tools/vgm_lift.py --all --configs configs/streets_of_rage
-  --vgz-dir reference/vgz/streets_of_rage_1` (the rips' folder is not the configs' mirror; pairs in
-  `rips.yaml`, Phase 4.1's 16 minimal configs made for it).
+- [x] 2.3 Yardstick (2026-10-09): `python tools/vgm_lift.py --all --configs configs/streets_of_rage`
+  (pairs in `rips.yaml`, which names the rips' folder, `streets_of_rage_1`: not the configs'
+  mirror; Phase 4.1's 16 minimal configs made for it).
   - **FM onsets and lengths** (`--aspects onset length`): equal on all 15 but the logs' last
     frames (`$87`, `$89`: notes the log cuts).
   - **FM notes:** the lift snaps a rip's frequency to the table and reads ties only from key

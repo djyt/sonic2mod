@@ -4,7 +4,8 @@ and voice registers on each note's frame (core/audit/frame_check.py).  For any d
 lift (vgm_lift.py) cannot read - a detune, a voice, a slide that writes no key - this sees.
 
 Attacking notes are judged; tied ones are counted apart (vibrato runs on through a tie).  The
-rip may start late: the offset is found from the FM channels' first key-ons.
+rip may start late: the offset is found from the FM channels' first key-ons; and its TempoWait
+holds a frame earlier than the song's phase ("holds 1 early": Sonic 1's Special Stage rip).
 
 Pairs as vgm_lift.py's (core/audit/rips.py): a config and its rip by number, or by the rips.yaml
 beside the configs.
@@ -69,7 +70,8 @@ def _print_line(title: str, check: FrameCheck | None) -> None:
         print(f"  {title}")
         return
     tied = _tally(check, True)
-    print(f"  {title:<34} offset {check.offset:>3}   {_tally(check, False)}" + (f"   (tied: {tied})" if tied else ""))
+    early = " holds 1 early" if check.holds_early else ""
+    print(f"  {title:<34} offset {check.offset:>3}{early}   {_tally(check, False)}" + (f"   (tied: {tied})" if tied else ""))
 
 
 def _print_misses(check: FrameCheck, limit: int) -> None:

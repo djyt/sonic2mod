@@ -4071,7 +4071,7 @@ frames_golden_axe:
   - --all
   - --configs
   - configs/golden_axe
-  commit: c9d336a-dirty
+  commit: 06a40f6-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4208,7 +4208,7 @@ frames_streets_of_rage:
   - --all
   - --configs
   - configs/streets_of_rage
-  commit: c9d336a-dirty
+  commit: 06a40f6-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py

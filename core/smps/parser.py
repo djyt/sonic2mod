@@ -359,7 +359,7 @@ class SmpsParser:
             return SetTempoMod(int(m.group(1), 16))
 
         # smpsSetTempoDiv ($EB, cfSetTempoDividerAll): every track's duration divider, from the
-        # note read after it.  Kept as an event; song_prep.apply_global_tempo_div re-times the
+        # note read after it.  Kept as an event; song_prep.prepare_song re-times the
         # channels (Credits only).
         m = re.match(r'smpsSetTempoDiv\s+\$([0-9A-Fa-f]+)', line)
         if m:

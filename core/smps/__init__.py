@@ -6,7 +6,7 @@ whatever driver or file the song came from.
     code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events
     parser.py         SmpsParser: assembly -> SmpsCode -> SmpsSong
     asm_writer.py     write_asm: SongCode -> SMPS2ASM assembly (SmpsParser reads it back)
-    song_prep.py      the song as the driver plays it (tempo-divider re-timing, short loops replayed)
+    song_prep.py      prepare_song: a new song as the driver plays it (tempo dividers, short loops replayed)
     driver_tables.py  the driver's frequency tables, note indices, envelopes, operator order
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
     track.py          TrackState: one track's driver state as its coordination flags leave it
@@ -104,7 +104,7 @@ from .song import (
     SmpsVoice,
     VoiceField,
 )
-from .song_prep import apply_global_tempo_div, extend_looping_channels
+from .song_prep import PreparedSong, prepare_song
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, tick_at_frame
 from .track import TrackState
 
@@ -147,6 +147,7 @@ __all__ = [
     "PlaybackRules",
     "PlayedNote",
     "PlayedSong",
+    "PreparedSong",
     "PsgEnvelope",
     "PsgForm",
     "PsgVoice",
@@ -171,12 +172,10 @@ __all__ = [
     "TrackState",
     "VoiceField",
     "align_songs",
-    "apply_global_tempo_div",
     "chip_pitch",
     "compare_songs",
     "effect_from_bytes",
     "effect_of",
-    "extend_looping_channels",
     "flag_from_macro",
     "flag_name",
     "fm_note_index",
@@ -190,6 +189,7 @@ __all__ = [
     "parse_smps_note",
     "parse_synth_note",
     "played_song",
+    "prepare_song",
     "psg_index_semitone",
     "psg_note_index",
     "psg_tone2_divider",

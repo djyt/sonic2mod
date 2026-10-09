@@ -88,7 +88,7 @@ seek).  `vgm_analyze.py --frames` prints it.
 ## Phase 1 — Sonic 1 driver lift (`driver: sonic1`)
 
 Each item produces part of the `SmpsSong`.  Accept each by IR comparison against the asm parse
-(after `extend_looping_channels`, since the VGZ is unrolled).
+(after `prepare_song`, since the VGZ is unrolled).
 
 **The yardstick (done 2026-10-03):** `core.smps.played_song` gives each note as the driver plays
 it - ticks, attack, the frequency word, the voice's registers, the carriers' TL, pan, modulation,

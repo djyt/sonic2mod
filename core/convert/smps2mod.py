@@ -39,9 +39,8 @@ from ..smps import (
     ChannelType,
     PsgEnvelope,
     SmpsSong,
-    apply_global_tempo_div,
-    extend_looping_channels,
     noise_envelope_frames,
+    prepare_song,
 )
 from ..smps import semitone_to_note_name as _semitone_to_name
 from ..smps import source_map as source_map_for
@@ -71,7 +70,6 @@ class SmpsToModConverter:
     def _start(self, song: SmpsSong, config: ConversionConfig,
                synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None) -> None:
         """A fresh conversion's state (convert() starts over with it)."""
-        self.song = song
         self.config = config
         # A merged build keeps the level-only loop rule unless the song opts in (merge_loop_timbre):
         # the timbre check grows the samples (Green Hill +56 KB, Title +16 KB, lofi +124 B), and
@@ -83,15 +81,13 @@ class SmpsToModConverter:
         self._player = synth.player if synth else "ft2"
         self.psg_synth = psg_synth
         self._song_prepared = False
-        self._timeline = Timeline(song, config)
         self.mod = ModFile(channels=config.mod_channel_count)
         # Structured warnings and informational messages collected during conversion.
         # Public: convert.py renders both after convert() returns.
         self._diag = Diagnostics()
         self.warnings = self._diag.warnings
         self.infos = self._diag.infos
-        self._vibrato = VibratoSpeed(self._timeline, config, self._diag)
-        self._sustain = SustainPlanner(song, config, synth, self._timeline, self._diag)
+        self._follow(song)
         self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see ModLayout.leading_rests
         # Sustain loops (core.audio.loops, settings.yaml `sustain_loops`): the loop each synthesised
         # sample was cut to, and how fast each FM instrument's level falls after key-off.
@@ -138,16 +134,21 @@ class SmpsToModConverter:
             return
         self._song_prepared = True
 
-        # smpsSetTempoDiv re-times every channel
-        for tick, div in apply_global_tempo_div(self.song):
+        prepared = prepare_song(self.song)
+        self._follow(prepared.song)
+        self._timeline.collect_segments()
+        for tick, div in prepared.tempo_div_changes:
             self._diag.info(InfoKind.TEMPO_DIV_CHANGE, tick=tick, divider=div,
                             row=int(tick // self._timeline.ticks_per_row))
-        self._timeline.collect_segments()
-
-        # Loop bodies too short to cover the song are replayed to its end
-        for extended in extend_looping_channels(self.song):
+        for extended in prepared.loops_extended:
             self._diag.info(InfoKind.LOOP_EXTENDED, **extended)
-        self._timeline.collect_segments()
+
+    def _follow(self, song: SmpsSong) -> None:
+        """Convert `song` from here on: the timeline and the planners that read it are its."""
+        self.song = song
+        self._timeline = Timeline(song, self.config)
+        self._vibrato = VibratoSpeed(self._timeline, self.config, self._diag)
+        self._sustain = SustainPlanner(song, self.config, self.synth, self._timeline, self._diag)
 
     @property
     def _layout(self) -> ModLayout:
@@ -357,9 +358,9 @@ class SmpsToModConverter:
         stated number is kept, except that a slot it holds back for nothing goes back to the
         composites the same way (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with
         five chords lost)."""
-        # The conversion edits the song and config (loop extension, spliced notes, composite
-        # entries): another pass needs them as they were
-        snapshot = copy.deepcopy((self.song, self.config)) if self.config.merge_active else None
+        # Another pass starts from the song as given (the conversion prepares a copy of it and
+        # splices into that) and the config as it was (the merge plan adds composite entries)
+        snapshot = (self.song, copy.deepcopy(self.config)) if self.config.merge_active else None
         mod = self._convert_once()
         if snapshot is None or self._merge is None or self._merged is None:
             return mod
@@ -368,7 +369,7 @@ class SmpsToModConverter:
             if not self._merged.idle_bank_slots:
                 return mod
             # Start over with the reserve the banks filled
-            song, config = copy.deepcopy(snapshot)
+            song, config = snapshot[0], copy.deepcopy(snapshot[1])
             retry = {'slots': list(self._merged.idle_bank_slots), 'reserve': config.merge_bank_slots,
                      'banks': len(self._merge.banks)}
             config.merge_bank_slots = retry['banks']
@@ -383,7 +384,7 @@ class SmpsToModConverter:
             want = bank_reserve_wanted(self._merge, self._merged.idle_bank_slots if self._merged else [])
             if want is None or want in tried or len(tried) >= _MAX_BANK_BUILDS:
                 break
-            song, config = copy.deepcopy(snapshot)
+            song, config = snapshot[0], copy.deepcopy(snapshot[1])
             config.merge_bank_slots = want
             self._start(song, config, self.synth, self.psg_synth)
             self._convert_once()

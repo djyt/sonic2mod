@@ -195,7 +195,7 @@ def main():
         f.write(output_bytes)
 
     print_report(console, Report(
-        config=config, song=song, converter=converter, output_path=config.output_file,
+        config=config, song=converter.song, converter=converter, output_path=config.output_file,
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
         synth=synth, psg_synth=psg_synth, bpm=bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
         derived=derived, stale=stale))

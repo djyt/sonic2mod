@@ -35,7 +35,7 @@ note plays (`architecture.md`) — so the passes cannot disagree.
 **One pass** (`_convert_once`):
 
 1. rendering pitches and detune variants (`prepare_instruments`), on the song as parsed;
-2. `prepare_song`: `apply_global_tempo_div`, then `extend_looping_channels`;
+2. `prepare_song`: a new song, tempo dividers applied, then short loops replayed (the song given is left as it is);
 3. merged build only: the merge plan (`build_merge_plan`);
 4. sustain needs (`SustainPlanner`);
 5. samples: FM rendered, disk samples loaded, DAC drums saturated, PSG rendered; merged: composites
@@ -151,7 +151,7 @@ behind after each change (Drowning ends 59 ms late).  The audit tools allow for 
 
 `cfSetTempoDividerAll` writes every track's divider, and the driver multiplies a duration by it when
 the note is read: a note begun before the change keeps its length, and the last write wins against a
-track's own `smpsChanTempoDiv`.  `apply_global_tempo_div` re-times every channel before anything
+track's own `smpsChanTempoDiv`.  `prepare_song` re-times every channel before anything
 reads ticks (the carrying channel first; the parser keeps `smpsChanTempoDiv` as an event so each
 note's divider is known).  Rows stay ticks: Credits' half-tempo passage has twice the rows at the
 same BPM.  Loop labels are not re-timed; no song that uses the flag loops.
@@ -410,7 +410,7 @@ every PSG note.
 ### Loop extension
 
 A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) has the loop body
-replayed to the song's last tick (`extend_looping_channels`).  The body is the events **after the jump
+replayed to the song's last tick (`prepare_song`).  The body is the events **after the jump
 label** (`SmpsChannel.loop_event_index`), not every event at the label's tick: Spring Yard PSG3's
 `smpsPSGAlterVol $FF` just before its label would otherwise repeat each pass and walk the hi-hat to
 full volume.

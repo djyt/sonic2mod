@@ -6,10 +6,6 @@ space.
     locate.py     the Go_ block, found by its tables' shape -> SoundIndex
     dpcm.py       the DPCM samples in a driver's Z80 code
     sonic1/  type1a/  mucom/      one folder per driver
+
+Nothing here imports a driver: each loads on first use (core/drivers/registry.py).
 """
-
-from .mucom import MUCOM
-from .sonic1 import SONIC1
-from .type1a import TYPE1A
-
-__all__ = ["MUCOM", "SONIC1", "TYPE1A"]

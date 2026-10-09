@@ -1,6 +1,6 @@
 """Which variant a ROM's songs are read with.
 
-A ROM known by its SHA-1 is pinned.  Any other is tried with every variant variants.py knows: the
+A ROM known by its SHA-1 (games.py) reads with its game's driver.  Any other is tried with every driver: the
 one that locates the songs and under which every song decodes - each flag known, no code starting
 inside an instruction, every pointer inside the ROM - is it.  None, or more than one, stops with
 what each attempt hit.  (Sonic 1's songs fail under Type 1a at the first $E3 return; 8 of
@@ -16,17 +16,19 @@ from core.rom.image import RomError, RomImage
 from core.rom.tracks import decode_tracks
 from core.rom.variant import SmpsVariant, SoundIndex
 
-from .registry import VARIANTS, pinned_variant
+from .games import known_game
+from .registry import all_drivers, load_driver
 
 
 @lru_cache(maxsize=8)
 def detect_variant(rom: RomImage) -> SmpsVariant:
-    pinned = pinned_variant(rom)
-    if pinned is not None:
-        return pinned
+    game = known_game(rom)
+    if game is not None:
+        return load_driver(game.driver)
 
-    failures = {variant.name: _failure(rom, variant) for variant in VARIANTS.values()}
-    fits = [VARIANTS[name] for name, failure in failures.items() if failure is None]
+    drivers = all_drivers()
+    failures = {driver.name: _failure(rom, driver) for driver in drivers}
+    fits = [driver for driver in drivers if failures[driver.name] is None]
     if len(fits) == 1:
         return fits[0]
 

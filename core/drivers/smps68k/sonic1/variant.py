@@ -1,9 +1,7 @@
-"""Sonic 1's driver: SMPS 68k Type 1b, modified (s1.sounddriver.asm coordflagLookup), and the data
-fixes its disassembly's FixMusicAndSFXDataBugs makes, as byte edits to rev01."""
+"""Sonic 1's driver: SMPS 68k Type 1b, modified (s1.sounddriver.asm coordflagLookup)."""
 
 from __future__ import annotations
 
-from core.rom.fixes import RomFix
 from core.rom.flags import RETURN, STOP, EnvelopeCommand, drop, effect, every_kind
 from core.rom.variant import SmpsVariant
 from core.smps import CoordFlag
@@ -14,17 +12,6 @@ from ..common import FLAGS_68K, HEADER_68K, VOICE_68K
 from ..locate import locate_68k
 from ..memory import Relative68kMemory
 from .dac import sonic1_dac
-
-SONIC1_REV01_SHA1 = "1f1e480f768237eb0c0e725b622b0d791f47a7a9"
-
-_REV01_FIXES = (
-    RomFix(0x754BA, bytes.fromhex("8006C1030306 80B524"), bytes.fromhex("8006B5030306 80A924"),
-           "Marble Zone PSG3: nE5 nE5 nE5 / nE4 an octave lower (off the PSG table as shipped)"),
-    RomFix(0x781BD, bytes.fromhex("808080E60C"), b"",
-           "Credits PSG2: three late rests and an FM-only smpsAlterVol $0C that mutes the passage"),
-    RomFix(0x791A0, bytes.fromhex("90"), bytes.fromhex("10"),
-           "SndBC Teleport FM5: transposition $90 -> $10"),
-)
 
 SONIC1 = SmpsVariant(
     name=SmpsDriver.SONIC1,
@@ -47,5 +34,4 @@ SONIC1 = SmpsVariant(
     voice_layout=VOICE_68K,
     rules=SONIC1_RULES,
     dac=sonic1_dac,
-    known_roms={SONIC1_REV01_SHA1: _REV01_FIXES},
 )

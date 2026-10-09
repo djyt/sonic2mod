@@ -143,10 +143,10 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 2. Code: a folder in its family (`core/drivers/smps68k/<driver>/`, `smpsz80/<driver>/`):
    `variant.py`, the `SmpsVariant` (memory, locate, flags per kind of track, track grammar, header
    and voice layouts, envelope commands, its `PlaybackRules` - Sonic 1's `SONIC1_RULES`
-   (`core/drivers/reference.py`) with what differs replaced - DAC, FM table, FM drums, the ROMs
-   it is known in), and
+   (`core/drivers/reference.py`) with what differs replaced - DAC, FM table, FM drums), and
    whatever only this driver has; what two drivers of a family share moves up to the family
-   folder.  Add it to `core/drivers/registry.py`'s `DRIVERS`.  A driver imports the framework
+   folder.  Name it in `core/drivers/names.py` and `registry.py` (loaded on first use; the family
+   `__init__` imports no driver); each ROM it is known in, with any data fixes, in `games.py`.  A driver imports the framework
    absolutely (`core.rom.flags`), its family relatively.  Nothing outside its folder names it:
    what the song itself must say goes in the IR (`core/smps`), what a reader needs in the
    variant's description - never a variant check.

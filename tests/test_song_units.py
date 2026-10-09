@@ -16,7 +16,8 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.drivers.reference import SONIC1_RULES
-from core.drivers.smps68k import MUCOM, SONIC1
+from core.drivers.smps68k.mucom import MUCOM
+from core.drivers.smps68k.sonic1 import SONIC1
 from core.smps import (
     NO_TEMPO_HOLDS,
     ChannelType,

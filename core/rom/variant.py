@@ -1,6 +1,6 @@
 """SmpsVariant: everything one SMPS driver differs by, as data and hooks the generic readers ask.
 Each driver's folder (core/drivers/<family>/<driver>/variant.py) builds one; core/drivers/registry.py
-lists them.
+loads them.
 
     readers   header.py tracks.py voices.py envelopes.py    ask the variant, never its name
     drivers   core/drivers/smps68k/ sonic1 type1a mucom, core/drivers/smpsz80/ type0fm   (the layer above)
@@ -9,11 +9,10 @@ lists them.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from ..chips import OperatorReg
 from ..smps import ChannelType, FmDrum, PlaybackRules, SmpsSongHeader
-from .fixes import RomFix
 from .flags import EnvelopeCommand, FlagSpec
 from .grammar import Instruction, smps_instruction
 from .image import RomError, RomImage
@@ -145,6 +144,5 @@ class SmpsVariant:
     fm_frequencies: Callable[[RomImage], tuple[int, ...]] | None = None           # the FM table; None: the rules'
     # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
-    known_roms: Mapping[str, tuple[RomFix, ...]] = field(default_factory=dict)   # SHA-1 -> its data fixes
     # The track grammar: the instruction at an address (grammar.py; SMPS's for every variant so far)
     grammar: Callable[[SoundMemory, int, SmpsVariant, ChannelType], Instruction] = smps_instruction

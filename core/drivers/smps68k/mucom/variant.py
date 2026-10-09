@@ -17,6 +17,7 @@ its driver ($72914-$73C16) read with a disassembler (docs/todo/streets_of_rage.m
     voice       25 bytes: DT/MUL TL KS/AR AM/D1R D2R D1L/RR (register order), FB/ALG last
     flags       one table per kind of track (the driver jumps through $73302 for FM and the drum
                 track, $73342 for the PSG); the grammar (grammar.py) reads the rest
+    DAC         the Z80 player's samples $81-$84 (dac.py)
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ from ...names import SmpsDriver
 from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
 from ..locate import pointers_before_data
 from ..memory import Relative68kMemory
+from .dac import mucom_dac
 from .grammar import (
     dac_sample,
     detune,
@@ -217,11 +219,12 @@ MUCOM = SmpsVariant(
     header=_HEADER,
     voice_layout=_VOICE_LAYOUT,
     # Its FM octave, volume table and envelopes read from the ROM; Sonic 1's PSG rows (checked);
-    # Z80 $019B: 17 samples; each kind of track as above
+    # the Z80 player's 17 commands ($81-$91); each kind of track as above
     rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
                         psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
                         dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)},
                         tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK, ChannelType.DAC: _DAC_TRACK}),
     rules_from_rom=_rules_from_rom,
     grammar=mucom_instruction,
+    dac=mucom_dac,
 )

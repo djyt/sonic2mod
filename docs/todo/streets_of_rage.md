@@ -352,10 +352,18 @@ a song pass (the `run_out` precedent).
     vibrato running through it (FM 1-18 units; the PSG's sweeps); PSG pitch and level as 2.1.
 
 ### Phase 3: DAC
-- [ ] 3.1 The Z80 program (2.1 item 7) and the sample decoder; `$81`-`$84` byte-equal to the rips'
-  banks.
-- [ ] 3.2 Rates: cycle-count both output paths (literal, run), then fit to the rips (Moonwalker's
-  method).
+- [x] 3.1 The sample decoder (2026-10-09; `mucom/dac.py`, the Z80 program Phase 0's): a
+  sample's own 16-byte delta table, nibble 0 a run of the last delta (table[0] steps).
+  `$81`-`$84` byte-equal to every rip bank that holds them (`$81` `$82` most, `$83` `$84` in
+  rips 06, 10, 12, 13).  `$85` is empty (the rests' cut); from `$86` voice clips,
+  not read.  First, `dpcm.py`: `PcmTable` (an entry layout) and `SampleFormat` (decode, cycles),
+  Sonic 1 and Moonwalker through them.
+- [x] 3.2 Rates: counted per output, a literal nibble 190 / 242 (high / low) + 13 a pitch step,
+  a run's step 219 + 13, its entry 23 / 75: `$81` 271.3 cycles, `$82` `$84` 229.0, `$83` 372.2.
+  The rips between stalls: pitch 1 equal (229.4-229.6), pitch 4 and 12 1.3 % and 2.7 % fast,
+  their emulator's djnz as Sonic 1's: the count stands.  The 68k holds the Z80 1.6 % of
+  each frame (11.6 of 735 samples, every rip alike): in the rate.  `$81` 12983 Hz, `$82` `$84`
+  15381, `$83` 9464.
 - [ ] 3.3 Rests and gates cut: a field of the drum track's `TrackRules` (Sonic 1's default: a rest
   lets the sample play out), read by the converter's rest; reconcile onsets with the rips' seeks.
 

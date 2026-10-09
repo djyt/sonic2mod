@@ -5,7 +5,8 @@ whatever driver or file the song came from.
     effects.py        CoordFlag and its effects, one frozen class per flag: SetVoice(index) ...
     code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events
     driver_track.py   DriverTrack: what a track's driver does to its effects and notes (TrackRules)
-    run_out.py, voice_patch.py   passes after the walk: a driver's run-out, register writes as voices
+    voice_patch.py    VoicePatcher: a song's voices with its tracks' register writes over them
+    run_out.py        apply_run_out: a driver's key-on run-out, after the walk
     parser.py         SmpsParser: assembly -> SmpsCode -> SmpsSong
     asm_writer.py     write_asm: SongCode -> SMPS2ASM assembly (SmpsParser reads it back)
     song_prep.py      prepare_song: a new song as the driver plays it (tempo dividers, short loops replayed)
@@ -56,6 +57,7 @@ from .effects import (
     CoordFlag,
     Detune,
     DetuneAdd,
+    DriverEffect,
     Gate,
     ModOff,
     ModOn,
@@ -63,6 +65,7 @@ from .effects import (
     Nop,
     NoteFill,
     Pan,
+    PlayedEffect,
     PsgForm,
     PsgVoice,
     SelectSample,
@@ -146,6 +149,7 @@ __all__ = [
     "CoordFlag",
     "Detune",
     "DetuneAdd",
+    "DriverEffect",
     "FmDrum",
     "FmFrame",
     "Gate",
@@ -159,6 +163,7 @@ __all__ = [
     "OpKind",
     "Pan",
     "PlaybackRules",
+    "PlayedEffect",
     "PlayedNote",
     "PlayedSong",
     "PreparedSong",

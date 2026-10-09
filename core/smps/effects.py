@@ -12,12 +12,13 @@ core/smps/names.py's, for reading and printing assembly.  Read an effect by matc
 `values` gives the operands in order (what the asm writer prints); effect_of(flag, values) builds
 one from a flag and its operands.
 
-A few say what a driver does in its own terms, and the walk (code.py) resolves each into the
-effect it plays as, by the song's PlaybackRules: no event keeps one.
+Two kinds.  A PlayedEffect is one a song's events keep (SmpsEvent.effect).  A DriverEffect says
+what one driver does in its own terms; the walk resolves each into what it plays as, by the
+song's PlaybackRules (driver_track.py), so no event can keep one:
 
     VolumeStep, AlterVolumeStep -> SetVol        DetuneAdd -> Detune
     Gate -> each note after it cut short, a rest after it
-    VoiceRegister -> SetVoice of a patched copy (voice_patch.py, after the walk)
+    VoiceRegister -> SetVoice of a patched copy (voice_patch.py)
 """
 
 from __future__ import annotations
@@ -60,7 +61,7 @@ class CoordFlag(StrEnum):
 
 @dataclass(frozen=True)
 class SmpsEffect:
-    """A coordination flag the song keeps as an event; each subclass one CoordFlag."""
+    """A coordination flag as read; each class below PlayedEffect and DriverEffect one CoordFlag."""
 
     flag: ClassVar[CoordFlag]
 
@@ -71,7 +72,17 @@ class SmpsEffect:
 
 
 @dataclass(frozen=True)
-class Pan(SmpsEffect):
+class PlayedEffect(SmpsEffect):
+    """A flag a song's events keep: what plays."""
+
+
+@dataclass(frozen=True)
+class DriverEffect(SmpsEffect):
+    """A flag in one driver's own terms: the walk resolves it, no event keeps one."""
+
+
+@dataclass(frozen=True)
+class Pan(PlayedEffect):
     flag = CoordFlag.PAN
     b4: int                       # the YM2612 B4 byte: L R AMS FMS
 
@@ -81,61 +92,61 @@ class Pan(SmpsEffect):
 
 
 @dataclass(frozen=True)
-class Detune(SmpsEffect):
+class Detune(PlayedEffect):
     flag = CoordFlag.DETUNE
     offset: int                   # added to the frequency word (PSG: the divider); signed
 
 
 @dataclass(frozen=True)
-class Nop(SmpsEffect):
+class Nop(PlayedEffect):
     flag = CoordFlag.NOP
     byte: int
 
 
 @dataclass(frozen=True)
-class ChanTempoDiv(SmpsEffect):
+class ChanTempoDiv(PlayedEffect):
     flag = CoordFlag.CHAN_TEMPO_DIV
     divider: int
 
 
 @dataclass(frozen=True)
-class AlterVol(SmpsEffect):
+class AlterVol(PlayedEffect):
     flag = CoordFlag.ALTER_VOL
     delta: int                    # signed
 
 
 @dataclass(frozen=True)
-class NoteFill(SmpsEffect):
+class NoteFill(PlayedEffect):
     flag = CoordFlag.NOTE_FILL
     frames: int
 
 
 @dataclass(frozen=True)
-class ChangeTransposition(SmpsEffect):
+class ChangeTransposition(PlayedEffect):
     flag = CoordFlag.CHANGE_TRANSPOSITION
     semitones: int                # signed
 
 
 @dataclass(frozen=True)
-class SetTempoMod(SmpsEffect):
+class SetTempoMod(PlayedEffect):
     flag = CoordFlag.SET_TEMPO_MOD
     modifier: int
 
 
 @dataclass(frozen=True)
-class SetTempoDiv(SmpsEffect):
+class SetTempoDiv(PlayedEffect):
     flag = CoordFlag.SET_TEMPO_DIV
     divider: int
 
 
 @dataclass(frozen=True)
-class SetVoice(SmpsEffect):
+class SetVoice(PlayedEffect):
     flag = CoordFlag.SET_VOICE
     index: int
 
 
 @dataclass(frozen=True)
-class ModSet(SmpsEffect):
+class ModSet(PlayedEffect):
     flag = CoordFlag.MOD_SET
     wait: int                     # frames before the first step
     speed: int                    # frames per step
@@ -144,41 +155,41 @@ class ModSet(SmpsEffect):
 
 
 @dataclass(frozen=True)
-class ModOn(SmpsEffect):
+class ModOn(PlayedEffect):
     flag = CoordFlag.MOD_ON
 
 
 @dataclass(frozen=True)
-class ModOff(SmpsEffect):
+class ModOff(PlayedEffect):
     flag = CoordFlag.MOD_OFF
 
 
 @dataclass(frozen=True)
-class PsgForm(SmpsEffect):
+class PsgForm(PlayedEffect):
     flag = CoordFlag.PSG_FORM
     noise: int                    # the noise register byte
 
 
 @dataclass(frozen=True)
-class PsgVoice(SmpsEffect):
+class PsgVoice(PlayedEffect):
     flag = CoordFlag.PSG_VOICE
     envelope: str                 # fTone_01 ... : the driver's envelope by name
 
 
 @dataclass(frozen=True)
-class SetVol(SmpsEffect):
+class SetVol(PlayedEffect):
     flag = CoordFlag.SET_VOL
     level: int                    # the track's volume, absolute
 
 
 @dataclass(frozen=True)
-class SelectSample(SmpsEffect):
+class SelectSample(PlayedEffect):
     flag = CoordFlag.DAC_SAMPLE
     sound: int                    # the DAC byte the drum track's notes play
 
 
 @dataclass(frozen=True)
-class VolumeStep(SmpsEffect):
+class VolumeStep(DriverEffect):
     """The track's volume as a step of its driver's table (PlaybackRules.volume_steps), the
     header volume added: the walk's SetVol."""
     flag = CoordFlag.VOLUME_STEP
@@ -186,35 +197,36 @@ class VolumeStep(SmpsEffect):
 
 
 @dataclass(frozen=True)
-class AlterVolumeStep(SmpsEffect):
+class AlterVolumeStep(DriverEffect):
     """The track's volume step moved: the walk's SetVol."""
     flag = CoordFlag.ALTER_VOLUME_STEP
     delta: int                    # signed
 
 
 @dataclass(frozen=True)
-class DetuneAdd(SmpsEffect):
+class DetuneAdd(DriverEffect):
     """Added to the track's detune word: the walk's Detune."""
     flag = CoordFlag.DETUNE_ADD
     offset: int                   # signed
 
 
 @dataclass(frozen=True)
-class Gate(SmpsEffect):
+class Gate(DriverEffect):
     """Each note keyed off this many frames (track updates) before its end; 0: none."""
     flag = CoordFlag.GATE
     frames: int
 
 
 @dataclass(frozen=True)
-class VoiceRegister(SmpsEffect):
+class VoiceRegister(DriverEffect):
     """A YM2612 operator register written over the track's voice until the next voice set."""
     flag = CoordFlag.VOICE_REGISTER
     register: int                 # as the track writes it: its channel's number in the low bits
     value: int
 
 
-_BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {cls.flag: cls for cls in SmpsEffect.__subclasses__()}
+_BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {
+    cls.flag: cls for kind in (PlayedEffect, DriverEffect) for cls in kind.__subclasses__()}
 assert set(_BY_FLAG) == set(CoordFlag), "a CoordFlag without its effect class"
 
 

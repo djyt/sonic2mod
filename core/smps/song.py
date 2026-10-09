@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
 from .driver_tables import SMPS_OP_TO_REG_OFFSET
-from .effects import SetTempoMod, SmpsEffect
+from .effects import PlayedEffect, SetTempoMod
 from .rules import PlaybackRules
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, tempo_schedule
 
@@ -53,7 +53,7 @@ class SmpsNote:
 class SmpsEvent:
     """Union of note or effect event."""
     note: SmpsNote | None = None
-    effect: SmpsEffect | None = None
+    effect: PlayedEffect | None = None
     tick_position: int = 0  # Cumulative tick position in the channel
 
     @property

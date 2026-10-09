@@ -109,7 +109,7 @@ adds composite instruments to the same catalogue.
 | `SmpsChannel` | header, `events`, jump / loop info (`loop_tick`, `loop_event_index`, `loop_label`) |
 | `SmpsEvent` | a note or an effect, with its tick |
 | `SmpsNote` | value, duration, rest / no-attack / retrigger flags |
-| `SmpsEffect` | one frozen class per `CoordFlag` (a meaning, `StrEnum`: each driver maps its own bytes to it - Sonic 1's `$E0` and Streets of Rage's `$F8` are both `Pan`), its operands named (`SetVoice(index)`, `ModSet(wait, speed, delta, steps)`); read with `match` (`core/smps/effects.py`).  A few say what one driver does in its own terms (`VolumeStep`, `AlterVolumeStep`, `DetuneAdd`): the walk resolves each by the rules (`SetVol`, `Detune`), and no event keeps one |
+| `SmpsEffect` | one frozen class per `CoordFlag` (a meaning, `StrEnum`: each driver maps its own bytes to it - Sonic 1's `$E0` and Streets of Rage's `$F8` are both `Pan`), its operands named (`SetVoice(index)`, `ModSet(wait, speed, delta, steps)`); read with `match` (`core/smps/effects.py`).  Two kinds: a `PlayedEffect` is one a song's events keep (`SmpsEvent.effect` is typed so); a `DriverEffect` says what one driver does in its own terms (`VolumeStep`, `AlterVolumeStep`, `DetuneAdd`, `Gate`, `VoiceRegister`) and the walk resolves it (`driver_track.py`: `SetVol`, `Detune`, cut notes, a patched voice's `SetVoice`), so no event can keep one |
 | `SmpsVoice` | algorithm, feedback, `operators` (each `VoiceField` as four ints in driver order), `pan` (a voice that stores B4: the walk pans its track on smpsSetvoice); `registers(tl_offset)` |
 
 ### Front ends
@@ -136,7 +136,7 @@ How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
 | `song_prep.py` | `prepare_song`: a new song as played (`smpsSetTempoDiv` re-timing, short loops replayed) and what changed; the song given is left as it is |
 | `driver_track.py` | `DriverTrack`: what a track's driver does beyond SMPS 68k Type 1's reading, asked by the walk - an effect as played (a volume step a `SetVol`, a detune add a `Detune`, a gate taken by the notes), a note byte as it sounds (the drum track's selected sample, a noise note's divider), a note as keyed off (a gate, a rest after a tie), whether a jump drops a tie; by its kind's `TrackRules`.  `code.py` keeps the code's control flow and note assembly |
 | `run_out.py` | `apply_run_out`: a driver's key-on run-out (Type 0 FM: 256 frames) after the walk - the held note cut, a rest after (`SmpsNote.cut`, as a gate's: off the row grid) |
-| `voice_patch.py` | `apply_voice_patches`: a track's operator register writes (`VoiceRegister`, Streets of Rage's `$FA`) after the walk as patched copies of its voice, a `SetVoice` where each was written |
+| `voice_patch.py` | `VoicePatcher`: the song's patched copies of its voices, one per voice and set of register writes (`VoiceRegister`, Streets of Rage's `$FA`); the walk sets one where each write was |
 | `percussion.py` | `FmDrum`, `FmFrame`: a drum track's FM drum as the chip plays it, frame by frame (`SmpsSong.fm_drums`) |
 | `tempo.py` | `TempoSegment`, `tempo_schedule`: the frame each tick is read on; `NO_TEMPO_HOLDS` (SFX, a driver's no-stall tempo) |
 | `track.py` | `TrackState`: one track's driver state as its flags leave it |

@@ -241,7 +241,7 @@ a song pass (the `run_out` precedent).
 | noise leaves tone3 alone | noise notes keep the last tone note's pitch, else `nMaxPSG` (divider 0) | walk | none |
 | PSG row clamp | the decoder maps to Sonic's PSG index | decoder | none |
 | FM table, B7 | `fm_frequencies`, 97 entries | variant | none |
-| `$FA` voice patches | `VOICE_REGISTER` -> a patched copy of the voice (deduplicated), `SET_VOICE` swapped | song pass (`voice_patch.py`) | none |
+| `$FA` voice patches | `VOICE_REGISTER` -> a patched copy of the voice (deduplicated), `SET_VOICE` swapped | walk (`voice_patch.py`) | none |
 | FM3 special mode | `FM3_OPS` [4 offsets] -> `TrackState`; instrument key | state + catalogue | render ch3 with `$27` = `$40` |
 | LFO | `LFO` [freq, AMS, FMS]; global `$22`: last writer | state + catalogue | `ym2612/voice.py` forces B4 `$C0` |
 | vibrato | `MOD_SET`, depth word, count + 1 | decoder | check the vibrato formula |
@@ -329,7 +329,7 @@ a song pass (the `run_out` precedent).
     the tie bit, the next frame's does not), the PSG at once: `tied_rest_holds` (Sonic 1's holds
     through the rest: left out).
   - **Voice patches:** `$FA r v` `VoiceRegister` (r: the track's channel in its low bits);
-    `voice_patch.py` after the walk: a patched copy per voice and set of patches, a `SetVoice`
+    `voice_patch.py`: a patched copy per voice and set of patches, the walk's `SetVoice`
     where the write was; the next voice set drops them.  The songs write D1R, D2R and D1L/RR
     (203 writes); a carrier's TL (+ header volume, rewritten after each volume change) is refused,
     none written.  Timers A / B (`$24`-`$26`, MUCOM's tempo) are inert: dropped ("timer write").

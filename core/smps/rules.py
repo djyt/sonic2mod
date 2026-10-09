@@ -40,6 +40,7 @@ class TrackRules:
     gate_spares_tied: bool = False          # the gate leaves a tied note whole (its key-off waits on the tie)
     gate_sees_tie: bool = False             # the gate leaves a note the next byte ties
     tied_rest_holds: int | None = None      # frames a rest after a tie holds the note; None: the whole rest
+    rest_cuts: bool = False                 # the drum track's rest (and gate) stops the sample; False: it plays out
 
 
 SONIC1_TRACK = TrackRules()

@@ -217,6 +217,7 @@ class ChannelWriter:
         self._channel = channel
         self._cfg = chan_cfg
         self._is_dac = channel.header.channel_type == ChannelType.DAC   # by the song: Type 0 FM's drums are FM3
+        self._rest_plays_out = self._is_dac and not channel.rules.track(ChannelType.DAC).rest_cuts
         self._is_psg = channel.header.channel_type == ChannelType.PSG
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._router = _ColumnRouter(ctx, chan_cfg.source, chan_cfg.mod_channel)
@@ -412,9 +413,10 @@ class ChannelWriter:
     def _on_rest(self, event) -> None:
         note, tick = event.note, event.tick_position
 
-        # The drum track's rest plays nothing new: the sample plays out (DACUpdateTrack returns on
-        # $80), and Type 0 FM lets an FM drum ring on FM3.  A follower's rest spliced in still cuts.
-        if self._is_dac and getattr(event, "merged", None) is None:
+        # The drum track's rest plays nothing new unless its driver's cuts: the sample plays out
+        # (Sonic 1's DACUpdateTrack returns on $80), Type 0 FM lets an FM drum ring on FM3, Streets
+        # of Rage's plays the empty sample.  A follower's rest spliced in still cuts.
+        if self._rest_plays_out and getattr(event, "merged", None) is None:
             return
 
         # is_no_attack=True marks an FM/DAC standalone-duration continuation — the YM2612

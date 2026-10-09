@@ -127,7 +127,7 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
     0xF0: read(dac_sample),
     0xF1: drop("$F1 (no DAC effect)", 1),
     0xF2: read(detune),
-    0xF3: effect(CoordFlag.GATE),                # cuts the sample (Phase 3: a rest that cuts)
+    0xF3: effect(CoordFlag.GATE),                # cuts the sample (rest_cuts)
     0xF4: read(fm_vibrato),
     **_LOOPS,
     0xF7: refuse("$F7 on the drum track"),
@@ -201,10 +201,11 @@ def _check_psg_rows(rom: RomImage) -> None:
 #   a rest after a tie keys FM off on its first frame (the key-off at its read waits on the tie
 #     bit), the PSG at once ($7390A)
 #   in noise mode no tone 3 frequency is written; the PSG adds the detune word >> 4
+#   the drum track's rest and gate play sample $85, which is empty: they cut the sample
 _FM_TRACK = TrackRules(jump_clears_tie=True, gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1)
 _PSG_TRACK = TrackRules(volume_steps=_PSG_VOLUME_STEPS, detune_shift=_PSG_DETUNE_SHIFT, noise_writes_tone3=False,
                         gate_sees_tie=True, tied_rest_holds=0)
-_DAC_TRACK = TrackRules(jump_clears_tie=True)
+_DAC_TRACK = TrackRules(jump_clears_tie=True, rest_cuts=True)
 
 
 MUCOM = SmpsVariant(

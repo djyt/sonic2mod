@@ -1,236 +1,236 @@
 # Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
-  commit: 0b197bd
+  commit: 9b0c552
   config: f8b2de11a558
   date: '2026-10-09'
   settings: 60be427da909
 continue_screen:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 89b48b298b01
   date: '2026-10-09'
   settings: 60be427da909
 continue_screen_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 4776c72e809e
   date: '2026-10-09'
   settings: 60be427da909
 continue_screen_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 4776c72e809e
   date: '2026-10-09'
   settings: 60be427da909
 continue_screen_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 89b48b298b01
   date: '2026-10-09'
   settings: 60be427da909
 credits:
-  commit: 0b197bd
+  commit: 9b0c552
   config: b78eed6650f9
   date: '2026-10-09'
   settings: 60be427da909
 drowning:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 3cbadaaf1a0b
   date: '2026-10-09'
   settings: 60be427da909
 ending_theme:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 4ecefa86008d
   date: '2026-10-09'
   settings: 60be427da909
 extra_life:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 7b352a8b3c07
   date: '2026-10-09'
   settings: 60be427da909
 extra_life_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 5fc47ab86d73
   date: '2026-10-09'
   settings: 60be427da909
 extra_life_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 5fc47ab86d73
   date: '2026-10-09'
   settings: 60be427da909
 extra_life_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 7b352a8b3c07
   date: '2026-10-09'
   settings: 60be427da909
 final_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 16a6559ab440
   date: '2026-10-09'
   settings: 60be427da909
 ga_conclusion:
-  commit: 0b197bd
+  commit: 9b0c552
   config: b099d914aa84
   date: '2026-10-09'
   settings: 60be427da909
 ga_the_battle:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 2df83b05093e
   date: '2026-10-09'
   settings: 60be427da909
 ga_theme_of_thief:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 5d1f007216c0
   date: '2026-10-09'
   settings: 60be427da909
 game_over:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 812f9be11cf4
   date: '2026-10-09'
   settings: 60be427da909
 game_over_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: a037bf7b91f7
   date: '2026-10-09'
   settings: 60be427da909
 game_over_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: a037bf7b91f7
   date: '2026-10-09'
   settings: 60be427da909
 game_over_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 812f9be11cf4
   date: '2026-10-09'
   settings: 60be427da909
 ghz_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 0b2cd99a94da
   date: '2026-10-09'
   settings: 60be427da909
 ghz_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 0b2cd99a94da
   date: '2026-10-09'
   settings: 60be427da909
 green_hill_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 1425e4e9f632
   date: '2026-10-09'
   settings: 60be427da909
 green_hill_zone_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 1425e4e9f632
   date: '2026-10-09'
   settings: 60be427da909
 invincibility:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 721d08ad2732
   date: '2026-10-09'
   settings: 60be427da909
 invincibility_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 3227e4388c9e
   date: '2026-10-09'
   settings: 60be427da909
 invincibility_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 3227e4388c9e
   date: '2026-10-09'
   settings: 60be427da909
 invincibility_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 721d08ad2732
   date: '2026-10-09'
   settings: 60be427da909
 lab_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 7b264983a9c9
   date: '2026-10-09'
   settings: 60be427da909
 marble_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 04a13098ad5c
   date: '2026-10-09'
   settings: 60be427da909
 mw_beat_it:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 8035cc0a3198
   date: '2026-10-09'
   settings: 60be427da909
 mw_mr_big:
-  commit: 0b197bd
+  commit: 9b0c552
   config: c53e3a25cf09
   date: '2026-10-09'
   settings: 60be427da909
 mw_title:
-  commit: 0b197bd
+  commit: 9b0c552
   config: f1f53ea283d8
   date: '2026-10-09'
   settings: 60be427da909
 robotnik:
-  commit: 0b197bd
+  commit: 9b0c552
   config: a67bba061bfb
   date: '2026-10-09'
   settings: 60be427da909
 robotnik_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 1ea0ec3e9458
   date: '2026-10-09'
   settings: 60be427da909
 robotnik_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 1ea0ec3e9458
   date: '2026-10-09'
   settings: 60be427da909
 robotnik_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: a67bba061bfb
   date: '2026-10-09'
   settings: 60be427da909
 scrap_brain_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 5770bf2b724b
   date: '2026-10-09'
   settings: 60be427da909
 special_stage:
-  commit: 0b197bd
+  commit: 9b0c552
   config: dc3c6682c2af
   date: '2026-10-09'
   settings: 60be427da909
 spring_yard_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 8afae760bf9c
   date: '2026-10-09'
   settings: 60be427da909
 stage_clear:
-  commit: 0b197bd
+  commit: 9b0c552
   config: bcde9b91c9ed
   date: '2026-10-09'
   settings: 60be427da909
 stage_clear_lofi:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 2469779b4a00
   date: '2026-10-09'
   settings: 60be427da909
 stage_clear_lofi_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 2469779b4a00
   date: '2026-10-09'
   settings: 60be427da909
 stage_clear_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: bcde9b91c9ed
   date: '2026-10-09'
   settings: 60be427da909
 star_light_zone:
-  commit: 0b197bd
+  commit: 9b0c552
   config: bc36413e3682
   date: '2026-10-09'
   settings: 60be427da909
 title_screen:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 78de6a668de6
   date: '2026-10-09'
   settings: 60be427da909
 title_screen_merged:
-  commit: 0b197bd
+  commit: 9b0c552
   config: 78de6a668de6
   date: '2026-10-09'
   settings: 60be427da909

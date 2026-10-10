@@ -126,7 +126,7 @@ The reference build keeps every SMPS channel on a MOD channel of its own.
 | `auto_bpm` | `false` | Derive the BPM from the SMPS tempo header (every shipped config sets it) |
 | `target_bpm` | `150` | BPM when `auto_bpm` is off; written as `Fxx` on row 0, not range-checked |
 | `target_speed` | `6` | MOD ticks per row.  Changes nothing in the row grid; choose it so the derived BPM is (nearly) whole — `convert.py` prints the better speed |
-| `region` | `ntsc` | `ntsc` (60 Hz) or `pal` (50 Hz) |
+| `region` | `ntsc` | the console, `ntsc` or `pal`: its V-int rate (60 / 50 Hz) or FM clock, whichever the driver's update runs on |
 
 Formulas, tempo changes and the speed choice: `docs/pipeline.md` § Timing.
 

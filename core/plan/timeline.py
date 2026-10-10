@@ -1,9 +1,10 @@
 """Where a driver tick lands in the MOD, and how long it lasts.
 
 The driver counts ticks; the MOD counts rows of `target_speed` MOD ticks at a BPM.  One row is
-`ticks_per_row` driver ticks.  A tempo modifier m holds every m-th V-int frame (TempoWait), so a
+`ticks_per_row` driver ticks.  A tempo modifier m holds every m-th frame (TempoWait), so a
 frame count (smpsNoteFill, smpsModSet) is m-1 / m ticks a frame, and smpsSetTempoMod changes m
-mid-song: the song is a list of tempo segments, each with its own BPM.
+mid-song: the song is a list of tempo segments, each with its own BPM.  A frame is one run of the
+driver's update: `fps` of them a second (core.smps.update_hz).
 
     tick ──► row = tick / ticks_per_row ──► (pattern, row) ──► (after mod_pattern_breaks) pattern
       └────► seconds: summed over the tempo segments the span crosses
@@ -13,7 +14,7 @@ import bisect
 
 from ..config import ConversionConfig
 from ..mod import shift_for_breaks
-from ..smps import SetTempoMod, SmpsSong, TempoSegment, frame_of_tick
+from ..smps import SetTempoMod, SmpsSong, TempoSegment, frame_of_tick, update_hz
 
 # A MOD BPM: ProTracker's Fxx reaches 32..255
 _MIN_BPM, _MAX_BPM = 32, 255
@@ -25,6 +26,7 @@ class Timeline:
         self._config = config
         self._segments: list[tuple[int, int]] = []
         self._schedule: tuple[TempoSegment, ...] | None = None
+        self.fps = update_hz(song.rules, config.region)     # the driver's frames a second
 
     @property
     def ticks_per_row(self) -> float:

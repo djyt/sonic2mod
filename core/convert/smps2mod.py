@@ -21,7 +21,6 @@ from ..config import (
     PsgSynthesisSettings,
     SynthesisSettings,
     rate3_synth_root_issues,
-    region_fps,
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
@@ -581,7 +580,7 @@ class SmpsToModConverter:
             return {}
         cache: dict[str, int] = {}
         psg_clock = self.psg_synth.clock_rate if self.psg_synth else MD_PSG_CLOCK
-        samples = generate_fm_drums(drums, synth, region_fps(self.config.region),
+        samples = generate_fm_drums(drums, synth, self._timeline.fps,
                                     drum_rings(self.song, self.config, self._timeline), cache_out=cache, psg_clock=psg_clock)
         if cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="FM drums", **cache)
@@ -668,7 +667,7 @@ class SmpsToModConverter:
             note = _MOD_NOTE_MAP.get(d.mod_note)
             if d.mod_instrument in files and note is not None and os.path.exists(path):
                 out[d.mod_instrument] = os.path.getsize(path) / note_rate(note.value, clock)
-        fps = self.config.fps
+        fps = self._timeline.fps
         for inst, d in derive_noise_envelopes(self.song, self.config).items():
             env = d['envelope']
             env = self.song.rules.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None

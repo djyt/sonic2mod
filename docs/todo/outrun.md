@@ -116,7 +116,7 @@ Which rip is which song: not yet matched.
 
 ### 2.1 Refactors (behaviour unchanged, every baseline byte-identical)
 
-1. [ ] **The update rate from the rules** (§3.3): a frame's length comes from the song's driver,
+1. [x] **The update rate from the rules** (§3.3): a frame's length comes from the song's driver,
    not the config's region alone.
 2. [ ] **The pointer load** in `core/rom/z80.py`: a copy to `$A00000` whose source and length are
    longs the 68k reads from ROM.
@@ -186,15 +186,16 @@ rate instead:
 | `core/convert/smps2mod.py:641` (noise sample lengths) | `config.fps` | the timeline's |
 | `core/convert/channel_writer/cells.py:90` (cut ticks) | `config.fps` | the timeline's |
 | `core/convert/smps2mod.py:561` (FM drums) | `region_fps(config.region)` | the timeline's |
-| `core/synth/fm_samples.py:140` (stepped renders: `frame_hz`) | `region_fps(config.region)` | passed in |
-| `core/synth/psg_samples.py:320` (envelope steps) | its own `50.0 if pal else 60.0` | passed in |
-| `core/merge/notes.py:100` | `region_fps(config.region)` | passed in |
+| `core/synth/fm_samples.py:140` (stepped renders: `frame_hz`) | `region_fps(config.region)` | `update_hz(song.rules, region)` |
+| `core/synth/psg_samples.py:320` (envelope steps) | its own `50.0 if pal else 60.0` | `update_hz(rules, region)` |
+| `core/merge/notes.py:100` | `region_fps(config.region)` | `update_hz(song.rules, region)` |
 | `core/plan/derive.py:285` (minimal configs' BPM options) | `region_fps(stated region)` | `update_hz(song.rules, region)` |
 | `core/analysis.py:210, 213` (`analyze.py`: both regions' BPM) | 60, 50 | each region's `update_hz` |
 
 - **Resolved once a conversion:** `Timeline(song, config)` has both, so it holds `fps`.  Sites with
-  a timeline read it there.  Renderers take the number as they already take `frame_hz` / `fps`.
-  `region_fps` survives only inside `update_hz`.
+  a timeline read it there; the generators and `channel_notes`, given the song's rules and the
+  config, ask `update_hz` themselves.  `region_fps` is gone: `update_hz` (`core/smps/clock.py`)
+  holds the regions' rates.
 - **int becomes float** (V-int: 60.0): the gates prove every MOD byte-identical
   (`regression.py --all`, `tool_regression.py --all`).
 - **Render cache:** PSG renders key on `fps`, stepped FM renders on `frame_hz`, so a Timer A song's

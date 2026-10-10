@@ -238,7 +238,7 @@ _FLAG_MACROS = {
     CoordFlag.DAC_SAMPLE: "smpsDacSample",  # likewise
     CoordFlag.VOLUME_STEP: "smpsVolStep", CoordFlag.ALTER_VOLUME_STEP: "smpsAlterVolStep",
     CoordFlag.DETUNE_ADD: "smpsDetuneAdd", CoordFlag.GATE: "smpsGate",
-    CoordFlag.VOICE_REGISTER: "smpsVoiceRegister",
+    CoordFlag.VOICE_REGISTER: "smpsVoiceRegister", CoordFlag.FM3_SPECIAL: "smpsFm3Special",
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

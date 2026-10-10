@@ -49,6 +49,14 @@ class FmLayer:
     pan: str = "C"           # the speaker its track plays on: "L", "R", "C" (both)
     pan_tl: int = 0          # TL steps of tl_offset that stand for its pan in the mono render
                              # (core.merge.fm_layer); the hardware's speakers play it without them
+    special_offset: int = 0  # channel 3's special mode: what its own frequency registers add over
+                             # the note (the voice's channel_fnum_offset), on top of the detune
+
+    @property
+    def sounding_offset(self) -> int:
+        """The FNUM offset the channel's frequency registers carry over the note: what a rip's
+        frame log reads as its pitch."""
+        return self.fnum_offset + self.special_offset
 
 
 @dataclass(slots=True)
@@ -171,14 +179,14 @@ class FmCatalogue:
 
 def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
     """Every FM instrument the config has synthesised, each with the entry it is rendered for."""
-    voices = {v.index for v in song.voices}
+    voices = {v.index: v for v in song.voices}
     cat = FmCatalogue()
 
     def add(entry: InstrumentRange, voice_idx: int, context: str, source_label: str = "") -> None:
         if entry.mod_instrument in cat.instruments:
             return
-        cat.instruments[entry.mod_instrument] = FmInstrument(
-            entry.mod_instrument, entry, [FmLayer(voice_idx)], context, source_label)
+        layer = FmLayer(voice_idx, special_offset=voices[voice_idx].channel_fnum_offset)
+        cat.instruments[entry.mod_instrument] = FmInstrument(entry.mod_instrument, entry, [layer], context, source_label)
 
     def rooted(voice_idx: int, ranges, context: str, source_label: str = "") -> None:
         if voice_idx not in voices:

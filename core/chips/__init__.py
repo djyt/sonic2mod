@@ -7,6 +7,10 @@ them: smps/ (the driver's tables) and vgm/ (the register log) are both built on 
 
 from .fm import (
     CARRIER_OFFSETS_BY_ALG,
+    CH3_CHANNEL,
+    CH3_FREQ_REGS,
+    CH3_OWN_SLOT,
+    CH3_SPECIAL_MODE,
     DEFAULT_FM_PAN_LAW_DB,
     FEEDBACK_ALGORITHM_MASK,
     FM_CHIP_MODES,
@@ -15,6 +19,7 @@ from .fm import (
     FREQ_WORD_MAX,
     MD_FM_CLOCK,
     OPERATOR_SLOT_OFFSETS,
+    REG_CH3_MODE,
     REG_FEEDBACK_ALGORITHM,
     TL_MASK,
     TL_STEP_DB,
@@ -40,6 +45,10 @@ from .psg import (
 
 __all__ = [
     "CARRIER_OFFSETS_BY_ALG",
+    "CH3_CHANNEL",
+    "CH3_FREQ_REGS",
+    "CH3_OWN_SLOT",
+    "CH3_SPECIAL_MODE",
     "DEFAULT_FM_PAN_LAW_DB",
     "FEEDBACK_ALGORITHM_MASK",
     "FM_CHIP_MODES",
@@ -53,6 +62,7 @@ __all__ = [
     "PSG_DIVIDER_MASK",
     "PSG_SAMPLE_RATE",
     "PSG_STEP_DB",
+    "REG_CH3_MODE",
     "REG_FEEDBACK_ALGORITHM",
     "TL_MASK",
     "TL_STEP_DB",

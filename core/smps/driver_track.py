@@ -4,8 +4,8 @@ The walk follows the code (labels, loops, jumps, calls) and builds notes from no
 bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answered here:
 
     effect(e)            the effect as the track plays it: a volume step a SetVol, a detune add a
-                         Detune, a register write the voice it leaves; None for one the notes take
-                         (a gate)
+                         Detune, a register write or channel 3's special mode the voice it leaves;
+                         None for one the notes take (a gate)
     note(value)          the note byte as it sounds: a drum track's selected sample, a noise note
                          on the tone it is clocked by
     cut(note, tied_next) the note as the driver keys it off: itself, or the part it holds and a rest
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from ..chips import CH3_CHANNEL
 from .driver_tables import signed_byte, signed_word
 from .effects import (
     AlterVol,
@@ -25,6 +26,7 @@ from .effects import (
     Detune,
     DetuneAdd,
     DriverEffect,
+    Fm3Special,
     Gate,
     PlayedEffect,
     PsgForm,
@@ -42,6 +44,7 @@ from .voice_patch import VoicePatcher
 
 _BYTE_VALUES = 0x100
 _FM_PART = 3                    # channels per YM2612 part: a register's low bits name one of them
+_SPECIAL_MODE_CHANNEL = FM_CHANNEL_NAMES[CH3_CHANNEL]
 
 
 class DriverTrack:
@@ -62,6 +65,7 @@ class DriverTrack:
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
         self._voice: int | None = None             # the voice set last, and the registers written over it
         self._patches: dict[int, int] = {}
+        self._fnum_offsets: tuple[int, ...] | None = None   # channel 3's special mode (Fm3Special)
 
     @property
     def jump_clears_tie(self) -> bool:
@@ -71,8 +75,8 @@ class DriverTrack:
 
     def effect(self, effect: SmpsEffect) -> PlayedEffect | None:
         """`effect` as the track plays it: a volume step a level (an AlterVol then moves that level
-        as the driver keeps it, unclamped), a detune add the detune, a register write the patched
-        voice; None: the notes take it (a gate)."""
+        as the driver keeps it, unclamped), a detune add the detune, a register write or special
+        mode the patched voice; None: the notes take it (a gate)."""
         match effect:
             case Gate(frames=frames):
                 self._gate = frames
@@ -94,8 +98,11 @@ class DriverTrack:
                 self._dac_sample = sound
             case SetVoice(index=index):
                 self._voice, self._patches = index, {}
+                return SetVoice(self._voices.copy(index, {}, self._fnum_offsets))
             case VoiceRegister(register=register, value=value):
                 return self._patched(register, value)
+            case Fm3Special(offsets=offsets):
+                return self._special_mode(offsets)
         if isinstance(effect, DriverEffect):
             raise ValueError(f"{self._header.label}: {effect} is no effect this track's driver plays")
         assert isinstance(effect, PlayedEffect)
@@ -107,7 +114,17 @@ class DriverTrack:
         if self._voice is None or self._header.channel_type != ChannelType.FM:
             raise ValueError(f"{self._header.label}: a register write with no FM voice set")
         self._patches[register - self._channel_number()] = value
-        return SetVoice(self._voices.copy(self._voice, self._patches))
+        return SetVoice(self._voices.copy(self._voice, self._patches, self._fnum_offsets))
+
+    def _special_mode(self, offsets: tuple[int, ...] | None) -> SetVoice | None:
+        """The voice set, its operators at `offsets` from the next note on (None: before any
+        voice).  Only channel 3 has the mode: the driver keys no other track's frequency in it."""
+        if self._name != _SPECIAL_MODE_CHANNEL:
+            raise ValueError(f"{self._header.label}: channel 3's special mode on {self._name}")
+        self._fnum_offsets = offsets
+        if self._voice is None:
+            return None
+        return SetVoice(self._voices.copy(self._voice, self._patches, offsets))
 
     def _channel_number(self) -> int:
         """The track's channel within its YM2612 part: what its register writes carry in their low bits."""

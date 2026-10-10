@@ -34,6 +34,7 @@ from core.smps import (
     CoordFlag,
     SmpsChannelHeader,
     SmpsSongHeader,
+    SmpsVoice,
     song_from_code,
     source_map,
 )
@@ -47,12 +48,20 @@ _FM = replace(MUCOM.rules.track(ChannelType.FM), volume_steps={-1: 0x2D, 0: 0x36
 _RULES = replace(MUCOM.rules, tracks={**MUCOM.rules.tracks, ChannelType.FM: _FM})
 
 
-def _walk(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0):
-    """A track's bytes, decoded and walked as one channel (its header volume `volume`)."""
+def _song(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0, chip_channel: str = "",
+          voices: tuple[SmpsVoice, ...] = ()):
+    """A track's bytes, decoded and walked as a song's one channel (its header volume `volume`,
+    on `chip_channel`)."""
     memory = Relative68kMemory(RomImage(_HEADER + track))
     code = decode_tracks(memory, {_AT: kind}, MUCOM).code
-    header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=kind, label=track_label(_AT), volume=volume)])
-    return song_from_code(header, code, [], _RULES).channels[0]
+    header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=kind, label=track_label(_AT), volume=volume,
+                                                        chip_channel=chip_channel)])
+    return song_from_code(header, code, list(voices), _RULES)
+
+
+def _walk(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0):
+    """A track's bytes, decoded and walked as one channel (its header volume `volume`)."""
+    return _song(track, kind, volume).channels[0]
 
 
 def _notes(channel) -> list[tuple]:
@@ -168,11 +177,37 @@ class Grammar(unittest.TestCase):
         track = bytes([4, 0x40, 0xFD, 4, 0x42, 0xFF, 0xFF, 0xFC])
         self.assertIs(_walk(track, ChannelType.PSG).replay_tie, False)
 
-    def test_f7_is_fm3_special_mode_on_fm_and_noise_on_the_psg(self):
-        fm = decode_tracks(Relative68kMemory(RomImage(_HEADER + bytes([0xF7, 0x64, 0, 0, 0, 0x00]))),
-                           {_AT: ChannelType.FM}, MUCOM)
-        self.assertEqual(fm.dropped, {"FM3 special mode": 1})
+    def test_f7_is_noise_on_the_psg(self):
         self.assertEqual(_effects(_walk(bytes([0xF7, 0x01, 0x00]), ChannelType.PSG), CoordFlag.PSG_FORM), [[0xE7]])
+
+
+class SpecialMode(unittest.TestCase):
+    """`$F7 a b c d` on FM3: each operator at the note's word plus its offset (OP4 first), as a
+    copy of the voice (core/smps/voice_patch.py)."""
+
+    _VOICES = (SmpsVoice(0, algorithm=3), SmpsVoice(1, algorithm=4))
+
+    def _voices_set(self, track: bytes, chip_channel: str = "FM3") -> list[SmpsVoice]:
+        song = _song(track, chip_channel=chip_channel, voices=self._VOICES)
+        voices = {v.index: v for v in song.voices}
+        return [voices[i] for [i] in _effects(song.channels[0], CoordFlag.SET_VOICE)]
+
+    def test_the_offsets_play_from_the_voice_set_and_across_the_next(self):
+        # voice 0, $F7 100 0 0 0, C4, voice 1, C4, $F7 0 0 0 0 (all 0: normal mode), C4
+        track = bytes([0xF0, 0x00, 0xF7, 0x64, 0, 0, 0, 1, 0x40, 0xF0, 0x01, 1, 0x40, 0xF7, 0, 0, 0, 0, 1, 0x40, 0x00])
+        voices = self._voices_set(track)
+        self.assertEqual([v.fnum_offsets for v in voices], [None, (100, 0, 0, 0), (100, 0, 0, 0), None])
+        self.assertEqual([v.algorithm for v in voices], [3, 3, 4, 4])
+        self.assertEqual([v.channel_fnum_offset for v in voices], [0, 100, 100, 0])
+
+    def test_one_copy_per_voice_and_offsets(self):
+        track = bytes([0xF0, 0x00, 0xF7, 0x64, 0, 0, 0, 1, 0x40, 0xF0, 0x00, 1, 0x40, 0x00])
+        first, second = self._voices_set(track)[1:]
+        self.assertIs(first, second)
+
+    def test_only_channel_3_has_the_mode(self):
+        with self.assertRaisesRegex(ValueError, "special mode on FM1"):
+            self._voices_set(bytes([0xF7, 0x64, 0, 0, 0, 0x00]), "FM1")
 
 
 @needs_streets_of_rage
@@ -229,7 +264,7 @@ class StreetsOfRage(unittest.TestCase):
         dropped = Counter()
         for sid in self.index.music:
             dropped.update(read_rom_code(self.rom, sid, self.index).dropped)
-        self.assertEqual(set(dropped), {"timer write", "LFO", "FM3 special mode", "$F0 (no PSG effect)",
+        self.assertEqual(set(dropped), {"timer write", "LFO", "$F0 (no PSG effect)",
                                         "$F8 (no PSG effect)", "$F1 (no DAC effect)", "$FB (no DAC effect)"})
 
     def test_envelope_3_ends_in_silence(self):

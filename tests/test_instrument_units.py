@@ -49,7 +49,7 @@ class RenderingPitch(unittest.TestCase):
 
 class Sounding(unittest.TestCase):
     def test_each_rooted_instrument_with_its_detune(self):
-        song = SimpleNamespace(voices=[SimpleNamespace(index=0)],
+        song = SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)],
                                rules=SimpleNamespace(fm_frequencies=FM_FREQUENCIES, psg_frequencies=PSG_FREQUENCIES))
         cfg = ConversionConfig()
         cfg.voice_map = {

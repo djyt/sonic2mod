@@ -488,7 +488,13 @@ every detune an instrument plays into a sample of its own:
   `smpsAlterNote $00`, `smpsNoAttack`, duration) is re-written by the driver at the new detune; the MOD
   note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference (only a row of its
   own with a free slot; `--verbose` counts them);
-- a merged chip composite renders each layer at its own track's detune.
+- a merged chip composite renders each layer at its own track's detune;
+- **channel 3's special mode** (Streets of Rage's `$F7`: each operator at the note's word plus its own
+  offset) is a copy of the voice that carries the offsets (`SmpsVoice.fnum_offsets`, made in the walk as
+  `$FA` patches are), rendered on channel 3 with `$27` = `$40`.  Its offsets count in the intervals above
+  (OP4's, the channel's own A2 / A6: what a rip reads as its pitch), so its notes get a variant per pitch
+  class at the instrument's own detune too (Moon Beach's FM3 drums: OP4 +100 FNUM is +254 c on C, +193 c
+  on F).
 
 Never stand in for a detune with `finetune: 1`: that moves every note of the slot, detuned or not.
 

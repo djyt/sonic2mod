@@ -33,7 +33,7 @@ class InstrumentPlan:
 class InstrumentPitch(NamedTuple):
     root: int                       # the MOD note (index, C1 = 0) the instrument is anchored at
     root_semitone: int              # the pitch that note sounds (SMPS semitone, C0 = 0)
-    cents: float                    # the sample's smpsAlterNote detune
+    cents: float                    # the sample's smpsAlterNote detune and special mode offset
 
 
 def prepare_instruments(song, config: ConversionConfig, synth) -> InstrumentPlan:
@@ -50,7 +50,7 @@ def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitc
     for inst, fm in fm_catalogue(song, config).instruments.items():
         if fm.root_idx is None:
             continue
-        offset = fm.layers[0].fnum_offset
+        offset = fm.layers[0].sounding_offset
         out[inst] = InstrumentPitch(fm.root_idx, fm.root_semitone,
                                     detune_cents(fm.rendered_semitone, offset, song.rules.fm_frequencies) if offset else 0.0)
     for inst, psg in psg_catalogue(config).items():

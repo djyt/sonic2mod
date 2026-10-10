@@ -26,6 +26,10 @@ on A#), it is rendered in the pitch class its notes play most instead (`rendered
 notes it moves by an interval more than 25 c from its sample's get a variant per pitch class
 (`pitch_class`; Moon Beach FM2's six $B3s among 248 $BA).
 
+Channel 3's special mode adds an FNUM offset of its own (the voice's, core.smps.SmpsVoice:
+Streets of Rage's OP4 at +100 on its FM3 drums): the intervals above count it with the detune,
+so its notes in another pitch class get a variant of their own at the instrument's own detune too.
+
 A tie (smpsNoAttack + a duration) re-writes the frequency with the Detune in force, so a
 scoop rises on its tie while the MOD note keeps its sample: the converter moves that note's
 period with E1x / E2x on the tie's row (SmpsToModConverter._fine_slide).
@@ -125,10 +129,11 @@ def plan_detune_variants(song, config) -> DetunePlan:
         if own:
             plan.own[inst] = own
         base = synthesised[inst]
+        special = base.layers[0].special_offset
         for d, n in per.items():
             played = chips[(inst, d)]
-            rendered = None if d == own else _rendered(base, d, _commonest(played), fm)
-            apart = _apart(base, d, rendered, played, fm)
+            rendered = None if d == own else _rendered(base, d + special, _commonest(played), fm)
+            apart = _apart(base, d + special, rendered, played, fm)
             rest = n - sum(sum(at.values()) for at in apart.values())
             if d != own and rest:
                 wanted.append((rest, inst, d, None, rendered))
@@ -157,7 +162,8 @@ def plan_detune_variants(song, config) -> DetunePlan:
 
 def _rendered(base, detune: int, played: int, fm_frequencies: tuple[int, ...]) -> int | None:
     """Where a variant is rendered: in its notes' commonest pitch class when its base's pitch
-    puts them more than a finetune step off; else None (its base's)."""
+    puts them more than a finetune step off; else None (its base's).  `detune`: the FNUM offset
+    its notes sound at (special mode's in)."""
     if base.root_idx is None:
         return None
     at_base = base.rendered_semitone

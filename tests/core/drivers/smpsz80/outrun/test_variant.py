@@ -14,12 +14,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT))
 
-from core.drivers import detect_variant, read_rom_code
+from core.drivers import detect_variant, read_rom_code, read_rom_song
 from core.drivers.smpsz80.memory import BankedZ80Memory
 from core.drivers.smpsz80.outrun import OUTRUN
+from core.drivers.smpsz80.outrun.dac import outrun_dac
 from core.drivers.smpsz80.outrun.locate import driver_tables, locate_outrun
 from core.rom import RomError, RomImage
-from core.smps import ChannelType, OpKind, SetVoice, TimerA, update_hz
+from core.smps import ChannelType, OpKind, Pan, SetVoice, TimerA, update_hz
 from core.smps.pitch_envelope import Restart
 from tests.roms import OUTRUN_ROM, needs_outrun
 
@@ -91,6 +92,19 @@ class OutRun(unittest.TestCase):
     def test_pitch_envelopes_two_and_five_are_detunes(self):
         envelopes = OUTRUN.rules_from_rom(self.rom, OUTRUN.rules).pitch_envelopes
         self.assertEqual((envelopes[2].steps, envelopes[5].steps), ((5, Restart()), (2, Restart())))
+
+    def test_eleven_samples_at_their_loops_rates(self):
+        samples = {s.sound: s for s in outrun_dac(self.rom, OUTRUN.rules.dac_names)}
+        self.assertEqual(sorted(samples), [*range(0x81, 0x87), 0x88, *range(0x8A, 0x8E)])     # $87, $89 empty
+        self.assertEqual((len(samples[0x81].pcm), samples[0x81].pitch), (1700, 18))         # DPCM: 2 a byte
+        self.assertAlmostEqual(samples[0x81].rate, 3_579_545 / (160 + 13 * 18))
+        self.assertAlmostEqual(samples[0x8B].rate, 3_579_545 / (171 + 13 * 11))              # raw PCM
+
+    def test_a_sample_pans_the_drum_track_as_it_starts(self):
+        song = read_rom_song(self.rom, 0x83)
+        dac = next(c for c in song.channels if c.header.channel_type is ChannelType.DAC)
+        first = next(i for i, e in enumerate(dac.events) if e.is_note and e.note.note_value == 0x83)
+        self.assertEqual(dac.events[first - 1].effect, Pan(0x40))                            # $83: right only
 
     def test_every_song_reads(self):
         dropped: Counter[str] = Counter()

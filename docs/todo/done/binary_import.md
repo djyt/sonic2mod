@@ -122,7 +122,7 @@ Game Over).  Rates from the play loop's cycles (301 + 26 (pitch - 1) per byte): 
 Note: `reference/smps_drivers/sonic_1/z80.asm` is not the ROM's driver - its loop plays only the high nibble.
 
 ### [x] 1.9 Regression
-`tests/test_rom_units.py` (hand-built bytes; with the ROM: all 68 sounds vs the asm, the asm round
+`tests/core/rom/`, `tests/core/drivers/smps68k/sonic1/test_variant.py` (hand-built bytes; with the ROM: all 68 sounds vs the asm, the asm round
 trip, the DAC samples).  `tests/regression.py`: `title_screen_rom`, `green_hill_zone_rom` share
 their asm baselines.
 

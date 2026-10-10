@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -162,7 +162,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -319,7 +319,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -477,7 +477,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -633,7 +633,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -788,7 +788,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -947,7 +947,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1102,7 +1102,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1257,7 +1257,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1412,7 +1412,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1569,7 +1569,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1727,7 +1727,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1883,7 +1883,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2038,7 +2038,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2193,7 +2193,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2346,7 +2346,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2499,7 +2499,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2652,7 +2652,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2809,7 +2809,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2967,7 +2967,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3123,7 +3123,7 @@ game_over_merged:
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3280,7 +3280,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3438,7 +3438,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3593,7 +3593,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3749,7 +3749,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3908,7 +3908,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4063,7 +4063,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4220,7 +4220,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4378,7 +4378,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4534,7 +4534,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4689,7 +4689,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4844,7 +4844,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5003,7 +5003,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5158,7 +5158,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5313,7 +5313,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5468,7 +5468,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5623,7 +5623,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5780,7 +5780,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5938,7 +5938,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6094,7 +6094,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6249,7 +6249,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6404,7 +6404,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6559,7 +6559,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6714,7 +6714,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6871,7 +6871,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7029,7 +7029,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7185,7 +7185,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7340,7 +7340,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7495,7 +7495,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7651,7 +7651,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7810,7 +7810,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: bd31b2e-dirty
+  commit: b2dcae6-dirty
   files:
   - convert.py
   - core/__init__.py

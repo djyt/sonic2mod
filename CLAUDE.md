@@ -63,8 +63,8 @@ sonic2mod/
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
   3rdparty/    vendored C emulators (nuked-opn2/, sn76489/);  build/: their compiled libraries (gitignored);
                prebuilt/: the Windows DLLs, used when no compiler is on PATH (tracked)
-  docs/  samples/  reference/ (gitignored)
-  input/       sonic_1/ (Sonic 1's asm songs, fold CSVs); roms/ (every game's ROMs, not in git)
+  docs/  reference/ (gitignored)
+  input/       sonic_1/ (Sonic 1's asm songs, fold CSVs, samples/: its DAC drums); roms/ (every game's ROMs, not in git)
   output/      a folder per game as configs/ (sonic_1/: MODs, sfx/, sfx8/); cache/, compare/ shared
 ```
 

@@ -4,7 +4,7 @@
 name: Game Over
 input_file: "input/sonic_1/Mus8F - Game Over.asm"
 output_file: output/sonic_1/19_game_over.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true
 target_speed: 9            # 213 BPM as before: a duration unit is 3 MOD ticks, so FM2's one-unit strum and the

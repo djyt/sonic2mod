@@ -70,5 +70,25 @@ class Kosinski(unittest.TestCase):
             z80_loads(_rom(code, bytes([0, 0, 0xFF, 0])))
 
 
+class Pointed(unittest.TestCase):
+    """OutRun's load: the source and length read from ROM longs."""
+
+    def _code(self, dest: int = 0) -> bytes:
+        """movea.l (ptrs).l,a0 / move.l (ptrs+4).l,d0 / subq.l #1,d0 / lea (z80_ram+dest).l,a1 / copy"""
+        ptrs = _DATA
+        return (bytes.fromhex("2079") + ptrs.to_bytes(4, "big") + bytes.fromhex("2039") + (ptrs + 4).to_bytes(4, "big")
+                + bytes.fromhex("5380 43F900A0") + dest.to_bytes(2, "big") + bytes.fromhex("12D8 51C8FFFC"))
+
+    def test_the_longs_name_the_program(self):
+        program = _DATA + 8
+        rom = _rom(self._code(dest=0x10), program.to_bytes(4, "big") + (3).to_bytes(4, "big") + b"xyz")
+        self.assertEqual([(load.dest, load.data) for load in z80_loads(rom)], [(0x10, b"xyz")])
+
+    def test_longs_naming_bytes_past_the_rom_are_no_load(self):
+        rom = _rom(self._code(), (0x7FFFF0).to_bytes(4, "big") + (3).to_bytes(4, "big"))
+        with self.assertRaisesRegex(RomError, "no load"):
+            z80_loads(rom)
+
+
 if __name__ == "__main__":
     unittest.main()

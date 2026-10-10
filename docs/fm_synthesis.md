@@ -28,7 +28,7 @@ catalogue entry → render_layers (chip, then resampled) → shelf, DC block →
 
 `fm_synthesis.enabled` is `true` in the shipped `configs/settings.yaml` (the code's default is
 `false`: samples then come from `sample_list` files).  The first render compiles the library into
-`build/`, so gcc or MSVC must be on PATH.
+`build/` with gcc or MSVC; with neither on PATH, Windows loads `prebuilt/ym3438.dll`.
 
 ```bash
 python tools/validate_ym2612.py    # in turn: the device (A4 test tone → output/validate_test.raw, the C helpers);
@@ -314,8 +314,8 @@ release rates and the cache hits.
 
 ### Silence or near-silence
 
-- No gcc / MSVC on PATH, so `build/ym3438.dll` cannot be built (`python tools/validate_ym2612.py`
-  builds and tests it).
+- No gcc / MSVC on PATH and no `prebuilt/` library for the platform, so `build/ym3438.dll` (`.so`)
+  cannot be built (`python tools/validate_ym2612.py` builds and tests it).
 - `fm_synthesis.enabled: false`, or `mode: ym3438` — either loads `sample_list` files instead.
 - A stated `synth_root` octaves away from the chip pitch: the sample is rendered there and
   stretched.  Delete it; the derived one is the chip's.

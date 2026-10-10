@@ -18,6 +18,7 @@ song's PlaybackRules (driver_track.py), so no event can keep one:
 
     VolumeStep, AlterVolumeStep -> SetVol        DetuneAdd -> Detune
     Gate -> each note after it cut short, a rest after it
+    Legato -> each note after it tied, as smpsNoAttack before it would
     VoiceRegister, Fm3Special -> SetVoice of a patched copy (voice_patch.py)
 """
 
@@ -59,6 +60,7 @@ class CoordFlag(StrEnum):
     VOICE_REGISTER = auto()       # its $FA on FM
     FM3_SPECIAL = auto()          # its $F7 on FM
     LFO = auto()                  # its $FC
+    LEGATO = auto()               # Space Harrier II's $EE
 
 
 @dataclass(frozen=True)
@@ -228,6 +230,18 @@ class Gate(DriverEffect):
     """Each note keyed off this many frames (track updates) before its end; 0: none."""
     flag = CoordFlag.GATE
     frames: int
+
+
+@dataclass(frozen=True)
+class Legato(DriverEffect):
+    """Every note ties to the one before, until switched off: no key-off at a read, as if each
+    read followed smpsNoAttack (a rest still keys off: the note after it attacks)."""
+    flag = CoordFlag.LEGATO
+    mode: int                     # the driver's byte: 1 on, anything else off
+
+    @property
+    def on(self) -> bool:
+        return self.mode == 1
 
 
 @dataclass(frozen=True)

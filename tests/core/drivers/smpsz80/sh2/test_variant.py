@@ -73,7 +73,7 @@ class SpaceHarrier2(unittest.TestCase):
         dropped = Counter()
         for code in self.codes.values():
             dropped.update(code.dropped)
-        self.assertEqual(set(dropped), {"follow-on song (each song converts alone)", "legato (Phase 2)",
+        self.assertEqual(set(dropped), {"follow-on song (each song converts alone)",
                                         "pitch envelope (Phase 2)", "FM3 special mode on (drums)"})
 
     def test_every_voice_a_song_sets_is_a_full_voice(self):

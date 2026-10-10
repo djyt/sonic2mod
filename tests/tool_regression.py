@@ -92,6 +92,7 @@ _MOONWALKER_CONFIGS = _CONFIG_DIR / "moonwalker"
 _MOONWALKER_DETAIL = "88_round_clear"
 _SECTION = "### "                 # song_dump's per-song header: a failing read_ case names its songs
 _SHIPPED = ["--shipped"]
+_POOLED = "--all"                 # a tool given it runs every rip in a process pool of its own
 
 # frames_<name>: vgm_frames over a game's pairs (its ROM, its rips, its configs)
 _FRAMES = (
@@ -241,8 +242,14 @@ def _run(case: _Case, record: bool = False) -> _Case:
 
 
 def _run_all(cases: list[_Case], jobs: int, record: bool = False) -> list[_Case]:
+    """Every case, `jobs` at a time; a case that runs its rips in a process pool of its own (--all)
+    after the rest, one at a time: a pool per parallel case runs out of memory."""
+    pooled = [c for c in cases if _POOLED in c.argv]
     with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
-        return list(pool.map(lambda c: _run(c, record), cases))
+        done = {c.name: c for c in pool.map(lambda c: _run(c, record), [c for c in cases if c not in pooled])}
+    for case in pooled:
+        done[case.name] = _run(case, record)
+    return [done[c.name] for c in cases]
 
 
 def _baseline_path(name: str) -> Path:

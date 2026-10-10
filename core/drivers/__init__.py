@@ -8,6 +8,8 @@ Grouped by family, one folder per driver:
         mucom/          Streets of Rage (Type 1b, MUCOM-style track code)
     smpsz80/            the driver on the Z80: the bank window, absolute little-endian pointers
         type0fm/        Golden Axe (Type 0 FM)
+        sh2/            Space Harrier II (an early SMPS Z80)
+        outrun/         OutRun (SMPS Z80 on Timer A)
     registry.py         every driver by name, loaded on first use
     games.py            every ROM known by its SHA-1: its game, driver and data fixes
     detect.py           the driver a ROM's songs read with: pinned, else the one that reads them all

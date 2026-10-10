@@ -10,6 +10,7 @@ bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answer
                          on the tone it is clocked by
     cut(note, tied_next) the note as the driver keys it off: itself, or the part it holds and a rest
     jump_clears_tie      a jump drops a pending tie
+    legato               every read ties, as if smpsNoAttack came before it (Legato on)
 
 A track whose driver states no TrackRules (Sonic 1's) passes everything through.
 """
@@ -28,6 +29,7 @@ from .effects import (
     DriverEffect,
     Fm3Special,
     Gate,
+    Legato,
     PlayedEffect,
     PsgForm,
     SelectSample,
@@ -60,6 +62,7 @@ class DriverTrack:
         self._level: int | None = None             # the level a volume step set, as the driver keeps it
         self._detune_word = 0
         self._gate = 0                             # frames before a note's end the driver keys it off
+        self._legato = False                       # every read ties (Legato)
         self._noise = False                        # a PSG_FORM ran: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
@@ -70,6 +73,10 @@ class DriverTrack:
     def jump_clears_tie(self) -> bool:
         return self._rules.jump_clears_tie
 
+    @property
+    def legato(self) -> bool:
+        return self._legato
+
     # --- effects ------------------------------------------------------------------------------
 
     def effect(self, effect: SmpsEffect) -> PlayedEffect | None:
@@ -79,6 +86,9 @@ class DriverTrack:
         match effect:
             case Gate(frames=frames):
                 self._gate = frames
+                return None
+            case Legato():
+                self._legato = effect.on
                 return None
             case VolumeStep(step=step):
                 return self._volume(signed_byte(step % _BYTE_VALUES))

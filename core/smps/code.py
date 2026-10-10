@@ -422,14 +422,22 @@ class _Walker:
         return tempo_div
 
     def _byte(self, cur: _Cursor, op: Op) -> None:
-        """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample."""
+        """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample.  Under the
+        driver's legato a read (a note, or a duration of its own) starts as smpsNoAttack leaves it."""
         if op.kind is OpKind.NO_ATTACK:
-            cur.no_attack = True
-            self._tied_labels.difference_update(self._open_labels)      # their first note ties itself
-        elif op.kind is OpKind.DURATION:
+            self._tie(cur)
+            return
+        if self._driver.legato and not (op.kind is OpKind.DURATION and cur.pending is not None):
+            self._tie(cur)
+        if op.kind is OpKind.DURATION:
             self._duration(cur, op.value * cur.tempo_div)
         else:
             self._note(cur, op.value)
+
+    def _tie(self, cur: _Cursor) -> None:
+        """The next read ties (smpsNoAttack)."""
+        cur.no_attack = True
+        self._tied_labels.difference_update(self._open_labels)      # their first note ties itself
 
     def _note(self, cur: _Cursor, val: int) -> None:
         """A rest, note or (DAC channel) sample, as the driver sounds the byte."""

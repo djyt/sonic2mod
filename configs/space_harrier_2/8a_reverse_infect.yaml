@@ -1,0 +1,5 @@
+# Space Harrier II - Reverse Infect.  A minimal config: everything else is derived from the ROM
+# (docs/todo/space_harrier_2.md); python convert.py <this> --show-config prints it.
+name: "Reverse Infect"
+input_file: "input/roms/Space Harrier II (World).md"
+rom_song: "$8A"

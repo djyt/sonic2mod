@@ -8,8 +8,8 @@ skips one ($F5 on FM).  The drum track reads its bytes as drums (a bitmask, Phas
 its flags are read here, what they do to the drums is the drum reader's.  It takes $7F for a drum
 where SMPS reads a duration (Z80 $0CDC); no song has a $7F.
 
-Read and dropped for now (reported by the reader): legato ($EE) and the pitch envelope ($F4), the
-plan's Phase 2; the drum track's own flags, Phase 3.  The follow-on song ($E9) is dropped: each
+Read and dropped for now (reported by the reader): the pitch envelope ($F4), the plan's Phase 2;
+the drum track's own flags, Phase 3.  The follow-on song ($E9) is dropped: each
 song converts alone.
 """
 
@@ -25,7 +25,7 @@ from core.rom.variant import SmpsVariant
 from core.smps import FIRST_NOTE, LAST_NOTE, ChannelType, CoordFlag, Op, OpKind, PlaybackRules, effect_from_bytes
 
 from ...names import SmpsDriver
-from ..program import driver_ram, fm_frequencies
+from ..program import driver_ram, fm_frequencies, psg_frequencies, psg_read
 from .header import HEADER_SH2, read_track_list
 from .locate import locate_sh2, sh2_memory
 from .memory import Sh2Memory
@@ -69,7 +69,7 @@ _FM_FLAGS: dict[int, FlagSpec] = {
     0xEB: refuse("AMS", 1),
     0xEC: refuse("FM3 special mode on an FM track"),
     0xED: refuse("FM3 special mode on an FM track"),
-    0xEE: drop("legato (Phase 2)", 1),
+    0xEE: effect(CoordFlag.LEGATO),
     0xEF: read(_set_voice),
     0xF0: effect(CoordFlag.SET_VOL),
     0xF1: effect(CoordFlag.SET_VOL),
@@ -104,7 +104,9 @@ _DRUM_FLAGS: dict[int, FlagSpec] = {
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
-    return replace(rules, fm_frequencies=fm_frequencies(driver_ram(rom)))
+    """Its FM and PSG tables, read from the driver."""
+    z80 = driver_ram(rom)
+    return replace(rules, fm_frequencies=fm_frequencies(z80), psg_frequencies=psg_frequencies(z80), psg_read=psg_read(z80))
 
 
 def drum_name(byte: int) -> str:
@@ -121,7 +123,8 @@ SH2 = SmpsVariant(
     envelope_commands={},          # the PSG envelopes are the drums' (Phase 3)
     header=HEADER_SH2,
     voice_layout=None,
-    # Its FM table read from the driver; no PSG music (the PSG table and envelopes: Phase 3)
+    # Its FM and PSG tables read from the driver (no PSG music: the drums' PSG half reads the PSG
+    # table); the PSG envelopes: Phase 3
     rules=PlaybackRules(driver=SmpsDriver.SH2, fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
                         dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
     rules_from_rom=_rules_from_rom,

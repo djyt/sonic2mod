@@ -1179,7 +1179,7 @@ frames_space_harrier_2:
   - --all
   - --configs
   - configs/space_harrier_2
-  commit: cd8d967-dirty
+  commit: 78be73c-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1218,6 +1218,7 @@ frames_space_harrier_2:
   - core/drivers/smpsz80/memory.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
+  - core/drivers/smpsz80/sh2/drums.py
   - core/drivers/smpsz80/sh2/envelopes.py
   - core/drivers/smpsz80/sh2/header.py
   - core/drivers/smpsz80/sh2/locate.py
@@ -6358,7 +6359,7 @@ read_space_harrier_2:
   argv:
   - tools/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 32383b7-dirty
+  commit: 78be73c-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -6422,7 +6423,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 32383b7-dirty
+  commit: 78be73c-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

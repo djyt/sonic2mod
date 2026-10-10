@@ -61,6 +61,7 @@ from ym2612.wrapper import OPN2, output_rate
 
 _CHANNELS = 6
 _HIGH_BYTE_REG = 4             # a frequency's high byte (block | fnum bits 8-10): 4 above its low byte's
+_QUARTER = 4
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +140,16 @@ def _set_special_freq(opn2: OPN2, fnum: int, block: int, offsets: Sequence[int])
     opn2.write_reg(REG_CH3_MODE, CH3_SPECIAL_MODE)
     for slot, offset in zip(SMPS_OP_TO_REG_OFFSET, offsets, strict=True):
         _write_freq(opn2, CH3_FREQ_REGS[slot], *detuned_fnum_block(fnum, block, offset))
+
+
+def _lfo_preroll(opn2: OPN2, layers: Sequence[tuple]) -> None:
+    """The LFO run a quarter cycle before key-on where it moves a level (AMS): its swing at its
+    middle, as a note that starts anywhere in the free-running cycle hears it on average.  At
+    step 0 the swing is at its quietest; a pitch swing (FMS) is at its centre there, so a voice
+    under FMS alone starts at step 0."""
+    lfo = next((layer[0].lfo for layer in layers if layer[0].lfo is not None), None)
+    if lfo is not None and lfo.ams:
+        opn2.render_mono(lfo.cycle_samples // _QUARTER)
 
 
 def _layer_channels(layers: Sequence[tuple], channel: int) -> list[int]:
@@ -274,6 +285,7 @@ def render_layers(
             _set_freq(opn2, fnum, block, ch)
         keyoffs.append(None if keyoff is None else math.ceil(native_rate * keyoff))
 
+    _lfo_preroll(opn2, layers)
     sustain_n = math.ceil(native_rate * sustain_secs)
     release_n = math.ceil(native_rate * release_secs)
     mono      = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)

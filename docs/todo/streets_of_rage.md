@@ -444,7 +444,11 @@ a song pass (the `run_out` precedent).
   mode and LFO (5.1's copies had been served their base voice's renders).  `$90` then needed 36
   slots: a minimal config plays the least played copies as their plain voice until it fits
   (`copy_no_slot`, 5 copies).  Banking its DAC samples frees 2 at most (3 samples, finetunes 6, 2,
-  -3: a bank has one).
+  -3: a bank has one).  Under AMS the render starts a quarter cycle in (Nuked's AM is at its
+  quietest on step 0: `$8B`'s copies measured -10 ... +8 dB).  Volumes: every copy from one
+  measured pass (stale rows of voices now copies dropped; AMS copies measured again after the
+  pre-roll).  Left: slots.  The copies come before the detune variants, so `$88`'s FM3 B notes
+  lose their pitch-class variant (130 notes +100 c) and `$90` more (706 / 901).
 - [ ] 5.3 Vibrato against `vgm_compare`'s vibrato rate and depth.
 
 ### Phase 6: close

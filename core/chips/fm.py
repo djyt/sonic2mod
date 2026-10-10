@@ -94,9 +94,14 @@ class FmLfo:
         return self.ams << _B4_AMS_SHIFT | self.fms
 
     @property
+    def cycle_samples(self) -> int:
+        """One cycle of the LFO in chip samples."""
+        return _LFO_STEPS * _LFO_STEP_SAMPLES[self.frequency]
+
+    @property
     def period_secs(self) -> float:
         """One cycle of the LFO, at the MD clock."""
-        return _LFO_STEPS * _LFO_STEP_SAMPLES[self.frequency] / FM_SAMPLE_RATE
+        return self.cycle_samples / FM_SAMPLE_RATE
 TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
 FEEDBACK_ALGORITHM_MASK = 0x3F       # B0's bits the chip reads (a driver may write the voice's byte whole)
 # Each operator register's bits the chip reads

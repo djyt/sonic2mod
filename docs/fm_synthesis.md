@@ -114,7 +114,8 @@ offset) to its own registers (OP1 `$AD`/`$A9`, OP2 `$AE`/`$AA`, OP3 `$AC`/`$A8`,
 `$A6`/`$A2`).  In a composite it takes channel 3 and the other layers the channels around it.
 
 A voice under the hardware LFO (`SmpsVoice.lfo`: Streets of Rage's `$FC`) writes `$22` (the chip's
-LFO frequency) and its sensitivities into B4.  The LFO starts with the note.
+LFO frequency) and its sensitivities into B4.  Under AMS the LFO runs a quarter cycle before
+key-on (its level swing at the middle); under FMS alone it starts with the note.
 
 ### Length: `sustain_duration: auto`
 

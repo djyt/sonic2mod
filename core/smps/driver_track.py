@@ -40,7 +40,7 @@ from .effects import (
 from .names import FM_CHANNEL_NAMES
 from .rules import PlaybackRules
 from .song import MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
-from .voice_patch import VoicePatcher
+from .voice_patch import NO_CHANGES, VoicePatcher
 
 _BYTE_VALUES = 0x100
 _FM_PART = 3                    # channels per YM2612 part: a register's low bits name one of them
@@ -63,9 +63,8 @@ class DriverTrack:
         self._noise = False                        # a PSG_FORM ran: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
-        self._voice: int | None = None             # the voice set last, and the registers written over it
-        self._patches: dict[int, int] = {}
-        self._fnum_offsets: tuple[int, ...] | None = None   # channel 3's special mode (Fm3Special)
+        self._voice: int | None = None             # the voice set last, and what the track plays it with
+        self._changes = NO_CHANGES
 
     @property
     def jump_clears_tie(self) -> bool:
@@ -97,8 +96,10 @@ class DriverTrack:
             case SelectSample(sound=sound):
                 self._dac_sample = sound
             case SetVoice(index=index):
-                self._voice, self._patches = index, {}
-                return SetVoice(self._voices.copy(index, {}, self._fnum_offsets))
+                # A voice set rewrites every register; the special mode stays
+                self._voice = index
+                self._changes = dataclasses.replace(self._changes, registers=())
+                return SetVoice(self._voices.copy(index, self._changes))
             case VoiceRegister(register=register, value=value):
                 return self._patched(register, value)
             case Fm3Special(offsets=offsets):
@@ -113,18 +114,18 @@ class DriverTrack:
         written over it, and every write since the voice was set."""
         if self._voice is None or self._header.channel_type != ChannelType.FM:
             raise ValueError(f"{self._header.label}: a register write with no FM voice set")
-        self._patches[register - self._channel_number()] = value
-        return SetVoice(self._voices.copy(self._voice, self._patches, self._fnum_offsets))
+        self._changes = self._changes.written(register - self._channel_number(), value)
+        return SetVoice(self._voices.copy(self._voice, self._changes))
 
     def _special_mode(self, offsets: tuple[int, ...] | None) -> SetVoice | None:
         """The voice set, its operators at `offsets` from the next note on (None: before any
         voice).  Only channel 3 has the mode: the driver keys no other track's frequency in it."""
         if self._name != _SPECIAL_MODE_CHANNEL:
             raise ValueError(f"{self._header.label}: channel 3's special mode on {self._name}")
-        self._fnum_offsets = offsets
+        self._changes = dataclasses.replace(self._changes, fnum_offsets=offsets)
         if self._voice is None:
             return None
-        return SetVoice(self._voices.copy(self._voice, self._patches, offsets))
+        return SetVoice(self._voices.copy(self._voice, self._changes))
 
     def _channel_number(self) -> int:
         """The track's channel within its YM2612 part: what its register writes carry in their low bits."""

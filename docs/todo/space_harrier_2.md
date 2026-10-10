@@ -83,7 +83,10 @@ Moved, with what the phases found, to `docs/smps_variants.md` § Early SMPS Z80:
 
 ### Phase 2: the walk
 - [x] 2.1 Legato `$EE` (`4cefe8e`): `Legato`, a DriverEffect; while on, each read starts as
-  smpsNoAttack leaves it (a rest still keys off).  34 ties in `$81`, 1 in `$94`, each held in the rip.
+  smpsNoAttack leaves it (a rest still keys off: its word, the table's entry 0, is 0, and a word
+  of 0 keys off, `$032C`).  The "34 ties held in `$81`, 1 in `$94`" first counted here were rests
+  the walk tied (a keyed-off channel keeps its pitch); fixed in Phase 4: Harrier Saga's FM4 rang
+  on from pattern `$18`.  No song ties a note under legato.
   Volume, transposition, divider and pan were Phase 1's; AMS / FMS / LFO: no song uses them.
 - [x] 2.2 Tempo holds: Sonic 1's TempoWait at phase 0 (the counter loaded as the song starts, the
   same frame's check after it): the tempo-3 songs' key-ons land 1.5 frames a tick, every one.

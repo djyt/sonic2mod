@@ -43,6 +43,7 @@ from ..config import (
     SAMPLE_VOLUME,
     ChannelConfig,
     ConversionConfig,
+    DacSample,
     SampleSettings,
     bpm_rounding_options,
     find_settings,
@@ -52,15 +53,28 @@ from ..config import (
 )
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
-from ..smps import C1_SEMITONE, ChannelType, FmDrum, SmpsSong, note_label, pan_is_hard, source_map, synth_note_name
-from ..source import DacSample, read_dac
+from ..smps import (
+    C1_SEMITONE,
+    ChannelType,
+    FmDrum,
+    SmpsSong,
+    note_label,
+    pan_is_hard,
+    psg_voice_name,
+    source_map,
+    synth_note_name,
+)
 from .driver_state import walk_channel
 
 MAX_INSTRUMENTS = 31
 _MOD_SPAN = 35               # C1 ... B3
 _MIN_WINDOW = 12             # narrowest window root_harmonics may cut
+_NO_ENVELOPE = psg_voice_name(0)     # "$00": a PSG note with no envelope
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
 _ROWS_PER_PATTERN = 64
+_MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
+_WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM within _BPM_CLOSE
+_BPM_CLOSE = 0.1               # % off the driver's tempo
 _FIRST_NOTE = 0x81           # the note byte of C0
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
 _FINETUNE_STEPS = 96         # finetune steps an octave
@@ -70,6 +84,7 @@ _FM_STEM = "fm_v{:02x}"                 # an FM voice's windows: fm_v04_C3.raw
 _TONE_STEM = "psg_{}"                   # a PSG envelope's: psg_$00_Cs3.raw
 _WINDOW_FILE = "{}_{}.raw"              # stem, lowest pitch
 _NOISE_FILE = "psg_noise_{:02x}.raw"    # psg_noise_e7.raw
+_NOISE_ENVELOPE_FILE = "psg_noise_{:02x}_{}.raw"     # psg_noise_e7_$00.raw: another envelope's
 _DAC_FILE = "{}.raw"                    # the ROM's sample name: dac81.raw; an FM drum's: drum81.raw
 _DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|(dac|drum)[0-9a-f]{2}\.raw")   # any of them
 
@@ -104,6 +119,8 @@ class Derivation:
     files: dict[str, bytes] = field(default_factory=dict)   # samples_dir files to write (DAC samples)
     stale: list[str] = field(default_factory=list)          # stated rows' files these settings do not
                                                             # cut (another max_window's, or stale): left out
+    folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # {voice copy: (the voice it plays
+                                                            # as, its notes)}: no slot for it
 
 
 def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
@@ -123,7 +140,7 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     if not config.is_minimal:
         return config, None
     song = song or config.read_song()
-    derivation = derive_config(config.stated(), song, config_path, settings, read_dac(config.input_file, config.driver))
+    derivation = derive_config(config.stated(), song, config_path, settings, config.read_dac())
     if config.variant is not None and "output_file" in derivation.derived:
         derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)
     complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)
@@ -175,9 +192,11 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        self._items("voice_map", self._windows(fm, ChannelType.FM, _FM_STEM.format))
+        fm = self._fold_copies(fm, MAX_INSTRUMENTS - (self._next - 1) - self._psg_slots(tone, noise))
+        voice_map = self._windows(fm, ChannelType.FM, _FM_STEM.format)
+        self._items("voice_map", voice_map | {copy: voice_map[plain] for copy, (plain, _) in self._out.folded.items()})
         self._items("psg_voice_map", self._windows(tone, "tone", _TONE_STEM.format))
-        self._items("psg_map", {form: self._noise(form) for form in sorted(noise)})
+        self._items("psg_map", {form: self._noise(form, noise[form]) for form in sorted(noise)})
         self._sample_list()
         if self._next - 1 > MAX_INSTRUMENTS:
             raise ValueError(f"the derived config needs {self._next - 1} instruments, a MOD holds "
@@ -191,10 +210,11 @@ class _Deriver:
                 if any(e.note is not None and not e.note.is_rest for e in ch.events)]
 
     def _notes(self, sources: list[str]):
-        """Each FM voice's and PSG envelope's chip pitches, the noise forms, the DAC samples hit."""
+        """Each FM voice's and PSG envelope's chip pitches, each noise form's envelopes, the DAC
+        samples hit."""
         fm: dict[int, Counter] = defaultdict(Counter)
         tone: dict[str, Counter] = defaultdict(Counter)
-        noise: set[int] = set()
+        noise: dict[int, Counter] = defaultdict(Counter)
         dac: Counter = Counter()
         levels = self._levels
         bare = ConversionConfig()           # no maps: the walk tracks the driver's state only
@@ -208,11 +228,12 @@ class _Deriver:
                 if note.is_dac:
                     dac[note.dac_name] += 1
                 elif res is not None and st.noise_form is not None:
-                    noise.add(st.noise_form)
-                    levels[("noise", st.noise_form)][(None, (st.att, False))] += 1
+                    label = st.envelope or _NO_ENVELOPE
+                    noise[st.noise_form][label] += 1
+                    levels[("noise", (st.noise_form, label))][(None, (st.att, False))] += 1
                 elif res is not None and st.is_psg:
-                    tone[st.envelope or "$00"][res.chip] += 1
-                    levels[("tone", st.envelope or "$00")][(res.chip, (st.att, False))] += 1
+                    tone[st.envelope or _NO_ENVELOPE][res.chip] += 1
+                    levels[("tone", st.envelope or _NO_ENVELOPE)][(res.chip, (st.att, False))] += 1
                 elif res is not None and st.voice is not None:
                     fm[st.voice][res.chip] += 1
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
@@ -221,36 +242,61 @@ class _Deriver:
     # --- sections ---------------------------------------------------------------------
 
     def _timing(self) -> None:
-        """Ticks per row: the grid every note starts and lasts on, coarsened until the song fits
-        the pattern limit and some speed's BPM fits 32-255; the speed whose whole-number BPM is
-        nearest the driver's tempo."""
+        """Ticks per row: the grid every note starts and lasts on.  Where that grid is too fine (the
+        pattern limit, or no speed's BPM in 32-255), the multiple of it that puts the most notes on
+        rows: the rest take EDx.  A 1-frame stagger between channels makes the exact grid 1 frame;
+        the beat's grid (7 frames) keeps all but the staggered notes on rows.  The speed whose
+        whole-number BPM is nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
-        # The song's own rhythm: a driver's run-out cut (core/smps/run_out.py) falls between rows (ECx)
-        notes = [e for ch in self._song.channels for e in ch.events if e.note is not None and not e.note.run_out]
-        ticks = [e.tick_position for e in notes] + [e.note.duration for e in notes]
-        grid = math.gcd(*ticks) or 1
-        end = self._song.end_tick()
-        limit = int(self._stated.get("max_patterns", 127))
-        while end / grid / _ROWS_PER_PATTERN > limit:
-            grid *= 2
+        # The song's own rhythm: where a driver cuts a note (a run-out, a gate) falls between rows
+        # (ECx); the note's onset is the song's
+        notes = [(e.tick_position, e.note) for ch in self._song.channels for e in ch.events
+                 if e.note is not None and not (e.note.cut and e.note.is_rest)]
+        ticks = [tick for tick, _ in notes] + [note.duration for _, note in notes if not note.cut]
+        exact = math.gcd(*ticks) or 1
+        starts = Counter(tick for tick, _ in notes)
 
-        # Stored ticks hold the header's tempo divider; ticks_per_row counts duration units
-        # (Timeline multiplies the divider back in).  A grid so fine that no speed's BPM fits
-        # 32-255 is coarsened: notes between rows take EDx
-        h = self._song.header
-        divider = max(h.tempo_divider, 1)
-        fps = region_fps(self._stated.get("region", "ntsc"))
-        while True:
-            tpr = grid // divider if grid % divider == 0 else grid / divider
-            options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
-            if options or h.tempo_modifier <= 1 or grid >= end:
-                break
-            grid *= 2
+        def on_rows(grid: int) -> int:
+            return sum(n for tick, n in starts.items() if tick % grid == 0)
+
+        fitting = [g for g in range(exact, _MAX_GRID_STEPS * exact + 1, exact) if self._grid_options(g) is not None]
+        grid = max(fitting, key=lambda g: (on_rows(g), -g)) if fitting else self._coarsened(exact)
+        tpr, options = self._grid_options(grid) or self._tpr_options(grid)
         self._out.data["ticks_per_row"] = tpr
         self._out.derived.append("ticks_per_row")
 
         self._default("target_speed", options[0]["speed"] if options else 6)
+
+    def _tpr_options(self, grid: int) -> tuple[float, list[dict]]:
+        """Ticks per row for `grid` and the speeds whose BPM fits.  Stored ticks hold the header's
+        tempo divider; ticks_per_row counts duration units (Timeline multiplies the divider back in).
+        Speeds 2-8, or up to 16 where none of those comes close: Good Ending's 13-frame rows are
+        150 BPM at speed 13, 80.77 at 7."""
+        h = self._song.header
+        divider = max(h.tempo_divider, 1)
+        tpr = grid // divider if grid % divider == 0 else grid / divider
+        fps = region_fps(self._stated.get("region", "ntsc"))
+        options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
+        if not options or abs(options[0]["error_pct"]) > _BPM_CLOSE:
+            options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps, speeds=_WIDE_SPEEDS) or options
+        return tpr, options
+
+    def _grid_options(self, grid: int) -> tuple[float, list[dict]] | None:
+        """`grid`'s ticks per row and speeds, if the song fits the pattern limit at it and some speed's
+        BPM fits (a tempo without one: any); else None."""
+        limit = int(self._stated.get("max_patterns", 127))
+        if self._song.end_tick() / grid / _ROWS_PER_PATTERN > limit:
+            return None
+        tpr, options = self._tpr_options(grid)
+        return (tpr, options) if options or self._song.header.tempo_modifier <= 1 else None
+
+    def _coarsened(self, grid: int) -> int:
+        """`grid` doubled until it fits, or reaches the song's end."""
+        end = self._song.end_tick()
+        while grid < end and self._grid_options(grid) is None:
+            grid *= 2
+        return grid
 
     def _windows(self, notes: dict, kind: str, file_stem) -> dict:
         """An entry per window of each voice's (envelope's) chip pitches."""
@@ -265,6 +311,31 @@ class _Deriver:
             out[key] = entries
         return out
 
+    def _fold_copies(self, fm: dict[int, Counter], slots: int) -> dict[int, Counter]:
+        """`fm` with copies folded onto their voices while its windows outnumber `slots`: the least
+        played copy (channel 3 special mode, the LFO: SmpsVoice.plain) plays as its voice, its notes
+        in that voice's windows (Derivation.folded)."""
+        voices = {v.index: v for v in self._song.voices}
+        fm = {key: Counter(pitches) for key, pitches in fm.items()}
+        while self._fm_slots(fm) > slots:
+            copies = [key for key in fm if voices[key].plain is not None]
+            if not copies:
+                break
+            copy = min(copies, key=lambda key: (fm[key].total(), key))
+            plain = voices[copy].plain
+            assert plain is not None
+            self._out.folded[copy] = (plain, fm[copy].total())
+            fm.setdefault(plain, Counter()).update(fm.pop(copy))       # a plain voice is no copy: never folded
+        return fm
+
+    def _fm_slots(self, fm: dict[int, Counter]) -> int:
+        return sum(len(_windows(list(pitches), self._max_span)) for pitches in fm.values())
+
+    def _psg_slots(self, tone: dict[str, Counter], noise: dict[int, Counter]) -> int:
+        """The slots the PSG's windows and noise forms take (each envelope a noise form plays with)."""
+        return sum(len(_windows(list(pitches), self._max_span)) for pitches in tone.values()) + \
+            sum(len(envelopes) for envelopes in noise.values())
+
     def _lowest_root(self, pitch: int) -> int:
         """First MOD note (0 = C1) from the floor keeping root_harmonics harmonics of `pitch` below
         Nyquist; past top_note when none does."""
@@ -278,8 +349,14 @@ class _Deriver:
         span = min(self._top - self._floor, max(_MIN_WINDOW, self._top - self._lowest_root(pitch)))
         return min(span, self._max_window) if self._max_window else span
 
-    def _noise(self, form: int) -> dict:
-        return {"mod_instrument": self._take("noise", _NOISE_FILE.format(form), form), "root": _NOISE_ROOT}
+    def _noise(self, form: int, envelopes: Counter) -> dict:
+        """The form's slot, rendered with the envelope most of its notes play (the converter's
+        vote: derive_noise_envelopes), and a slot for each other envelope it plays with."""
+        own = max(envelopes, key=lambda label: envelopes[label])
+        entry = {"mod_instrument": self._take("noise", _NOISE_FILE.format(form), (form, own)), "root": _NOISE_ROOT}
+        others = {label: self._take("noise", _NOISE_ENVELOPE_FILE.format(form, label), (form, label))
+                  for label in envelopes if label != own}
+        return entry | ({"envelopes": others} if others else {})
 
     def _dac_samples(self, hit: Counter) -> None:
         """A slot per DAC sample hit (a pitched copy shares its sample's): the sample at the note and
@@ -315,7 +392,7 @@ class _Deriver:
     def _fm_drum(self, name: str, drum: FmDrum) -> dict:
         """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
         drum's own volume (its render is peak-normalised, as an FM voice's)."""
-        hard = drum.voice.pan is not None and pan_is_hard([drum.voice.pan])
+        hard = drum.voice.pan is not None and pan_is_hard(drum.voice.pan)
         slot = self._take(ChannelType.FM, _DAC_FILE.format(name),
                           volume=starting_volume(ChannelType.FM, drum.tl_offset, hard))
         return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}

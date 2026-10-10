@@ -66,8 +66,11 @@ sample_list:                 # optional: volumes measured against the VGZ
 
 Derived: `name` (file stem), `output_file` (`output/` mirroring `configs/`),
 `range_space: chip`, `auto_bpm: true`, `channels` (every channel that plays, in header order),
-`ticks_per_row` and `target_speed`, `voice_map` / `psg_voice_map` (one rooted entry per window
-of the pitches each voice plays), `psg_map`, `dac_samples` (ROM input only) and `sample_list`
+`ticks_per_row` and `target_speed` (the speed whose whole BPM is nearest the driver's tempo, 2-8,
+up to 16 where none of those is within 0.1 %: Streets of Rage's 13-frame rows play at speed 13),
+`voice_map` / `psg_voice_map` (one rooted entry per window of the pitches each voice plays),
+`psg_map` (a slot per noise form, rendered with the envelope most of its notes play, and
+`envelopes:` a slot for each other one), `dac_samples` (ROM input only) and `sample_list`
 (starting volumes).
 
 A window's `root` sets every one of its notes' rates, and so how many harmonics fit below
@@ -78,6 +81,11 @@ that note; one that still cannot sits as high as it fits.  `samples.max_window` 
 window's span: a sample played d semitones from the pitch it was rendered at runs its envelope
 2^(d/12) times too fast or slow (`docs/todo/user_improvements.md` item 7).  A bass voice stays at E1; a lead moves
 up and its sample grows with its rate (§ 8).
+
+A MOD holds 31 instruments.  Where the windows need more, voice copies (channel 3's special mode,
+the hardware LFO: `docs/pipeline.md` § Hardware LFO) play as their plain voice on its windows, the
+least played first, until the song fits (`copy_no_slot`: Streets of Rage's Big Boss, 5 copies);
+a song that still does not fit is an error.
 
 A stated item replaces only the derived item it names: one voice's `voice_map` list, one
 `psg_map` form, one `sample_list` row.  A row naming a derived sample's file (`fm_v04_C3.raw`,

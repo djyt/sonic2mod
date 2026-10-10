@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
-from enum import IntEnum, StrEnum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg
-from .driver_tables import FM_FREQUENCIES, SMPS_OP_TO_REG_OFFSET, SONIC1_ENVELOPES, PsgEnvelope
+from ..chips import CARRIER_OFFSETS_BY_ALG, CH3_OWN_SLOT, TL_MASK, FmLfo, OperatorReg, split_operator_register
+from .driver_tables import SMPS_OP_TO_REG_OFFSET
+from .effects import PlayedEffect, SetTempoMod
+from .rules import PlaybackRules
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, tempo_schedule
 
 if TYPE_CHECKING:
@@ -17,7 +20,14 @@ if TYPE_CHECKING:
 # Intermediate representation data classes
 # ---------------------------------------------------------------------------
 
+# Track bytes: durations below the rest, notes after it to nAs7, flags above.
 REST = 0x80           # nRst: the note byte that rests
+FIRST_NOTE = 0x81     # nC0
+LAST_NOTE = 0xDF      # nAs7
+FIRST_FLAG = LAST_NOTE + 1     # $E0: coordination flags from here
+NO_ATTACK = 0xE7      # smpsNoAttack
+SELECTED_SAMPLE = 0x100   # a drum track's note that plays the sample DAC_SAMPLE chose (no SMPS byte)
+MAX_PSG = 0xC6        # nMaxPSG: the PSG table's last entry, divider 0 (the chip clocks it as 1)
 
 
 @dataclass
@@ -33,47 +43,17 @@ class SmpsNote:
     # channel re-keys at its EXISTING frequency — which differs from re-deriving it if a
     # smpsChangeTransposition landed in between (SndA8 - SS Goal does exactly that).
     is_retrigger: bool = False
-    # Shaped by the driver's key-on run-out (core/smps/run_out.py): a note cut short, or the rest the
-    # cut leaves.  Off the song's own rhythm: the row grid (core.plan.derive) leaves it out
-    run_out: bool = False
-
-
-class CoordFlag(IntEnum):
-    """The driver's coordination flags a song's events carry, by their byte (s1.sounddriver.asm
-    coordflagLookup; docs/smps_driver.md).  A parse and a VGM lift both produce these: the
-    SMPS2ASM macro names are core/smps/names.py's, for reading and printing assembly."""
-
-    PAN = 0xE0                    # params: [the YM2612 B4 byte: L R AMS FMS]
-    DETUNE = 0xE1                 # [FNUM offset, signed]
-    NOP = 0xE2                    # [byte]
-    CHAN_TEMPO_DIV = 0xE5         # [divider]
-    ALTER_VOL = 0xE6              # [delta, signed]; $EC on a PSG channel
-    NOTE_FILL = 0xE8              # [frames]
-    CHANGE_TRANSPOSITION = 0xE9   # [semitones, signed]
-    SET_TEMPO_MOD = 0xEA          # [modifier]
-    SET_TEMPO_DIV = 0xEB          # [divider]
-    SET_VOICE = 0xEF              # [voice index]
-    MOD_SET = 0xF0                # [wait, speed, delta, steps]
-    MOD_ON = 0xF1
-    PSG_FORM = 0xF3               # [noise register byte]
-    MOD_OFF = 0xF4
-    PSG_VOICE = 0xF5              # [envelope name, fTone_01 ... fTone_09: the driver's table]
-
-    # No Sonic 1 byte: another driver's flag, valued past $FF
-    SET_VOL = 0x1F0               # [level]: the track's volume, absolute (Type 0 FM's $F0)
-
-
-@dataclass
-class SmpsEffect:
-    flag: CoordFlag
-    params: list = field(default_factory=list)
+    # Keyed off by its driver before its written end (a run-out: core/smps/run_out.py; a gate: the
+    # walk): a note cut short, or the rest the cut leaves.  Off the song's own rhythm: the row grid
+    # (core.plan.derive) takes a cut note's onset, not its length nor the rest
+    cut: bool = False
 
 
 @dataclass
 class SmpsEvent:
     """Union of note or effect event."""
     note: SmpsNote | None = None
-    effect: SmpsEffect | None = None
+    effect: PlayedEffect | None = None
     tick_position: int = 0  # Cumulative tick position in the channel
 
     @property
@@ -119,10 +99,7 @@ class SmpsSongHeader:
     psg_count: int = 0
     tempo_divider: int = 1
     tempo_modifier: int = 5
-    tempo_phase: int = 0       # frames the first TempoWait hold comes late (core/smps/tempo.py; Type 0 FM: 1)
-    key_run_out: int | None = None   # frames a note keys without an attacking read before the driver keys
-                                     # it off (core/smps/run_out.py; Type 0 FM: 256); None: never
-    channels: list = field(default_factory=list)  # list of SmpsChannelHeader
+    channels: list[SmpsChannelHeader] = field(default_factory=list)
     # True when parsed from smpsHeader*SFX* macros.  SFX have no tempo modifier byte and run
     # one tick per V-int unconditionally — the music (modifier-1)/modifier rate correction
     # must not be applied to them.
@@ -132,7 +109,8 @@ class SmpsSongHeader:
 @dataclass
 class SmpsChannel:
     header: SmpsChannelHeader
-    events: list = field(default_factory=list)  # list of SmpsEvent
+    events: list[SmpsEvent] = field(default_factory=list)
+    rules: PlaybackRules = field(kw_only=True)  # its driver's: the song's
     has_jump: bool = False        # the channel ends in a jump back: a loop
     loop_tick: int | None = None  # the tick the jump returns to
     # Index into `events` of the loop's first event.  A tick alone cannot say whether a
@@ -140,11 +118,14 @@ class SmpsChannel:
     # target) is inside the loop.  None: the loop is taken from loop_tick on.
     loop_event_index: int | None = None
     loop_label: str = ""          # the assembly's name for the target, for display; a lift has none
+    # Each replay's first note tied (True) or attacking (False) where the jump back leaves another
+    # tie state than the first pass reached it with; None: as on the first pass
+    replay_tie: bool | None = None
 
 
 # A YM2612 channel's operator count
 _OPERATORS = 4
-_BYTE = 0xFF
+_BYTE_MASK = 0xFF
 
 
 class VoiceField(StrEnum):
@@ -163,6 +144,17 @@ class VoiceField(StrEnum):
     TOTAL_LEVEL = "tl"
 
 
+# Each operator register's fields: (field, shift, mask) - the chip's bits; SSG-EG is no voice's
+REGISTER_FIELDS: dict[int, tuple[tuple[VoiceField, int, int], ...]] = {
+    OperatorReg.DT_MUL: ((VoiceField.DETUNE, 4, 0x7), (VoiceField.MULTIPLE, 0, 0xF)),
+    OperatorReg.KS_AR: ((VoiceField.RATE_SCALE, 6, 0x3), (VoiceField.ATTACK_RATE, 0, 0x1F)),
+    OperatorReg.AM_D1R: ((VoiceField.AMP_MOD, 7, 0x1), (VoiceField.DECAY_RATE_1, 0, 0x1F)),
+    OperatorReg.D2R: ((VoiceField.DECAY_RATE_2, 0, 0x1F),),
+    OperatorReg.D1L_RR: ((VoiceField.DECAY_LEVEL, 4, 0xF), (VoiceField.RELEASE_RATE, 0, 0xF)),
+    OperatorReg.TL: ((VoiceField.TOTAL_LEVEL, 0, 0x7F),),
+}
+
+
 @dataclass
 class SmpsVoice:
     index: int
@@ -174,12 +166,28 @@ class SmpsVoice:
     # Register B4 (L R AMS FMS) where the driver stores it in the voice: setting the voice pans
     # the track (the walk writes a PAN after its smpsSetvoice).  None: Sonic 1's, pan by flag only
     pan: int | None = None
+    # Channel 3's special mode: each operator's offset to the note's frequency word, in the
+    # operators' order (a copy the walk makes: Fm3Special).  None: normal mode
+    fnum_offsets: tuple[int, ...] | None = None
+    # The hardware LFO the voice plays under (a copy the walk makes: core/smps/lfo.py).  None: none
+    lfo: FmLfo | None = None
+    # A copy in special mode or under the LFO: the voice it is without them (what it plays as when
+    # a MOD runs out of slots: core.plan.derive).  None: no such copy
+    plain: int | None = None
 
     def operator_values(self, field_: VoiceField) -> list[int]:
         """One field's four operator values; a field the voice leaves out, or a value it leaves
         out, reads as 0."""
         vals = list(self.operators.get(field_, ()))
         return (vals + [0] * _OPERATORS)[:_OPERATORS]
+
+    @property
+    def channel_fnum_offset(self) -> int:
+        """The offset channel 3's own frequency registers carry in special mode (OP4's): what
+        the chip's A2 / A6 hold over the note's word."""
+        if self.fnum_offsets is None:
+            return 0
+        return self.fnum_offsets[SMPS_OP_TO_REG_OFFSET.index(CH3_OWN_SLOT)]
 
     @property
     def feedback_algorithm(self) -> int:
@@ -199,9 +207,9 @@ class SmpsVoice:
         carriers = self.carrier_registers
         regs: dict[int, int] = {}
         for op, off in enumerate(SMPS_OP_TO_REG_OFFSET):
-            tl = f[VoiceField.TOTAL_LEVEL][op] & _BYTE
+            tl = f[VoiceField.TOTAL_LEVEL][op] & _BYTE_MASK
             if OperatorReg.TL + off in carriers:
-                tl = (tl + tl_offset) & _BYTE
+                tl = (tl + tl_offset) & _BYTE_MASK
             regs[OperatorReg.DT_MUL + off] = (f[VoiceField.DETUNE][op] & 0x7) << 4 | f[VoiceField.MULTIPLE][op] & 0xF
             regs[OperatorReg.TL + off] = tl
             regs[OperatorReg.KS_AR + off] = (f[VoiceField.RATE_SCALE][op] & 0x3) << 6 | f[VoiceField.ATTACK_RATE][op] & 0x1F
@@ -211,6 +219,23 @@ class SmpsVoice:
             regs[OperatorReg.SSG_EG + off] = 0
         return regs
 
+
+    def patched(self, register: int, value: int) -> SmpsVoice:
+        """A copy with operator register `register` (channel 0) written `value`, as the chip reads
+        it.  A carrier's TL is refused: it is the track volume's, not the voice's."""
+        parts = split_operator_register(register)
+        fields_ = REGISTER_FIELDS.get(parts[0]) if parts else None
+        if parts is None or fields_ is None or parts[2]:
+            raise ValueError(f"register ${register:02X}: not a voice's (channel 0)")
+        if register in self.carrier_registers:
+            raise ValueError(f"register ${register:02X}: a carrier's TL, the track volume's (not converted)")
+        slot = SMPS_OP_TO_REG_OFFSET.index(parts[1])
+        operators = dict(self.operators)
+        for field_, shift, mask in fields_:
+            values = self.operator_values(field_)
+            values[slot] = (value >> shift) & mask
+            operators[field_] = tuple(values)
+        return dataclasses.replace(self, operators=operators)
 
     def chip_registers(self, tl_offset: int = 0) -> dict[int, int]:
         """registers() as the chip reads them: TL is 7 bits (SMPS2ASM sets bit 7 on the carriers,
@@ -222,19 +247,15 @@ class SmpsVoice:
 @dataclass
 class SmpsSong:
     header: SmpsSongHeader
-    channels: list = field(default_factory=list)  # list of SmpsChannel
-    voices: list = field(default_factory=list)     # list of SmpsVoice
-    # The PSG envelopes smpsPSGvoice names (fTone_01 ...): the driver's own - Sonic 1's for an asm
-    # song or a VGM lift, a ROM's read from its PSG_Index
-    psg_envelopes: dict[str, PsgEnvelope] = field(default_factory=lambda: dict(SONIC1_ENVELOPES))
-    # The FM frequency words the driver plays notes with, by fm_note_index (index 1 = nC0): Sonic
-    # 1's, or a ROM driver's own (Golden Axe's, 8-16 cents flat)
-    fm_frequencies: tuple[int, ...] = FM_FREQUENCIES
+    channels: list[SmpsChannel] = field(default_factory=list)
+    voices: list[SmpsVoice] = field(default_factory=list)
     # The drum track's FM drum programs by DAC name (Type 0 FM's drum81 ...; core/smps/percussion.py);
     # empty where the drum track plays DAC samples
     fm_drums: dict[str, FmDrum] = field(default_factory=dict)
     # Flags read and left out (a ROM's driver: pan animation, queued sounds), by name
     dropped: dict[str, int] = field(default_factory=dict)
+    # What its driver plays it by: tables, envelopes, drum names, timing (each channel holds the same)
+    rules: PlaybackRules = field(kw_only=True)
 
     def end_tick(self) -> int:
         """The tick the last event of any channel ends at (a note's duration included)."""
@@ -243,15 +264,15 @@ class SmpsSong:
 
     def tempo_changes(self) -> list[tuple[int, int]]:
         """(tick, modifier) of every smpsSetTempoMod, in tick order."""
-        return sorted({(ev.tick_position, ev.effect.params[0]) for ch in self.channels for ev in ch.events
-                       if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD})
+        return sorted({(ev.tick_position, ev.effect.modifier) for ch in self.channels for ev in ch.events
+                       if isinstance(ev.effect, SetTempoMod)})
 
     def tempo_schedule(self) -> tuple[TempoSegment, ...]:
         """When the driver reads each tick (core/smps/tempo.py): the header's tempo at the driver's
         phase, then each smpsSetTempoMod.  An SFX never holds."""
         modifier = self.header.tempo_modifier
         holds = modifier > 1 and not self.header.is_sfx
-        return tempo_schedule(modifier if holds else NO_TEMPO_HOLDS, self.tempo_changes(), self.header.tempo_phase)
+        return tempo_schedule(modifier if holds else NO_TEMPO_HOLDS, self.tempo_changes(), self.rules.tempo_phase)
 
     def loop_target_tick(self) -> int | None:
         """The tick the song loops back to: the latest smpsJump target over the channels;
@@ -260,21 +281,3 @@ class SmpsSong:
                    default=None)
 
 
-# --- effect parameters ---
-
-
-_PAN_SPEAKERS = 0xC0              # B4 bits 7 (left) and 6 (right)
-_PAN_LEFT = 0x80
-_PAN_RIGHT = 0x40
-
-
-def pan_side(params: list) -> str:
-    """The speaker a PAN flag's B4 byte sends the channel to: "L", "R", or "C" for both (or
-    neither, which the driver never writes for music)."""
-    speakers = params[0] & _PAN_SPEAKERS if params else _PAN_SPEAKERS
-    return {_PAN_LEFT: "L", _PAN_RIGHT: "R"}.get(speakers, "C")
-
-
-def pan_is_hard(params: list) -> bool:
-    """True for a channel panned hard left or right."""
-    return pan_side(params) != "C"

@@ -6,6 +6,7 @@ VGM lift both produce.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import sys
 import unittest
@@ -14,15 +15,22 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.drivers.reference import SONIC1_RULES
+from core.drivers.smps68k.mucom import MUCOM
+from core.drivers.smps68k.sonic1 import SONIC1
 from core.smps import (
     NO_TEMPO_HOLDS,
+    AlterVol,
+    ChannelType,
     CoordFlag,
     Op,
     OpKind,
+    Pan,
+    SetVoice,
+    SetVol,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsCode,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsParser,
@@ -30,11 +38,11 @@ from core.smps import (
     SmpsSongHeader,
     SmpsVoice,
     TrackState,
-    extend_looping_channels,
     flag_from_macro,
     flag_name,
     pan_is_hard,
     pan_side,
+    prepare_song,
     song_from_code,
     source_names,
     tempo_schedule,
@@ -45,11 +53,11 @@ _GHZ = _MUSIC / "Mus81 - GHZ.asm"
 
 
 class Flags(unittest.TestCase):
-    def test_a_flag_is_its_driver_byte(self):
-        self.assertEqual(CoordFlag.PAN, 0xE0)
-        self.assertEqual(CoordFlag.DETUNE, 0xE1)
-        self.assertEqual(CoordFlag.SET_VOICE, 0xEF)
-        self.assertEqual(CoordFlag.PSG_VOICE, 0xF5)
+    def test_a_flag_is_a_meaning_each_driver_maps_its_bytes_to(self):
+        sonic1, streets = SONIC1.flags[ChannelType.FM], MUCOM.flags[ChannelType.FM]
+        self.assertEqual([sonic1[b].flag for b in (0xE0, 0xE1, 0xEF)],
+                         [CoordFlag.PAN, CoordFlag.DETUNE, CoordFlag.SET_VOICE])
+        self.assertIs(streets[0xF0].flag, CoordFlag.SET_VOICE)          # another driver, another byte
 
     def test_names_are_the_smps2asm_macros_both_ways(self):
         self.assertEqual(flag_name(CoordFlag.ALTER_VOL), "smpsAlterVol")
@@ -59,23 +67,22 @@ class Flags(unittest.TestCase):
 
     @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_a_parse_holds_flags_not_macro_text(self):
-        song = SmpsParser().parse_file(str(_GHZ))
+        song = SmpsParser(SONIC1_RULES).parse_file(str(_GHZ))
         effects = [ev.effect for ch in song.channels for ev in ch.events if ev.effect is not None]
         self.assertTrue(effects)
         self.assertTrue(all(isinstance(e.flag, CoordFlag) for e in effects))
 
 
-class Pan(unittest.TestCase):
+class Panning(unittest.TestCase):
     def test_pan_is_the_b4_byte(self):
-        self.assertEqual([pan_side([b]) for b in (0x80, 0x40, 0xC0, 0x00)], ["L", "R", "C", "C"])
-        self.assertTrue(pan_is_hard([0x80 | 0x12]))          # AMS / FMS bits do not move the speaker
-        self.assertFalse(pan_is_hard([0xC0]))
+        self.assertEqual([pan_side(b) for b in (0x80, 0x40, 0xC0, 0x00)], ["L", "R", "C", "C"])
+        self.assertTrue(pan_is_hard(0x80 | 0x12))          # AMS / FMS bits do not move the speaker
+        self.assertFalse(pan_is_hard(0xC0))
 
     @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_writes_the_byte(self):
-        song = SmpsParser().parse_file(str(_GHZ))
-        pans = {ev.effect.params[0] for ch in song.channels for ev in ch.events
-                if ev.effect is not None and ev.effect.flag is CoordFlag.PAN}
+        song = SmpsParser(SONIC1_RULES).parse_file(str(_GHZ))
+        pans = {ev.effect.b4 for ch in song.channels for ev in ch.events if isinstance(ev.effect, Pan)}
         self.assertEqual(pans, {0x40, 0x80, 0xC0})          # panRight, panLeft, panCenter (all , $00)
 
 
@@ -83,25 +90,25 @@ class OtherDrivers(unittest.TestCase):
     """What a driver other than Sonic 1's puts in a song (Type 0 FM: docs/todo/binary_import.md)."""
 
     def test_set_vol_is_absolute_where_alter_vol_adds(self):
-        fm = TrackState(is_psg=False, volume=8)
-        fm.apply(SmpsEffect(CoordFlag.ALTER_VOL, [4]))
+        fm = TrackState(is_psg=False, volume=8, psg_read=SONIC1_RULES.psg_read)
+        fm.apply(AlterVol(4))
         self.assertEqual(fm.tl, 12)
-        fm.apply(SmpsEffect(CoordFlag.SET_VOL, [3]))
+        fm.apply(SetVol(3))
         self.assertEqual(fm.tl, 3)
-        psg = TrackState(is_psg=True, volume=2)
-        psg.apply(SmpsEffect(CoordFlag.SET_VOL, [0x20]))
+        psg = TrackState(is_psg=True, volume=2, psg_read=SONIC1_RULES.psg_read)
+        psg.apply(SetVol(0x20))
         self.assertEqual(psg.att, 15)                         # clamped as smpsAlterVol is
         self.assertEqual(flag_from_macro(flag_name(CoordFlag.SET_VOL)), CoordFlag.SET_VOL)
 
     def test_a_voice_with_its_own_pan_pans_the_track_it_is_set_on(self):
         # FM1: voice 0 (pan left in the voice), a note, voice 1 (no pan byte), a note
-        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [0])),
-               Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x08),
-               Op(OpKind.EFFECT, effect=SmpsEffect(CoordFlag.SET_VOICE, [1])),
-               Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x08), Op(OpKind.STOP)]
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SetVoice(0)),
+               Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x08),
+               Op(OpKind.EFFECT, effect=SetVoice(1)),
+               Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x08), Op(OpKind.STOP)]
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
-        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(0, pan=0x80), SmpsVoice(1)])
-        effects = [(ev.effect.flag, ev.effect.params, ev.tick_position) for ev in song.channels[0].events
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(0, pan=0x80), SmpsVoice(1)], SONIC1_RULES)
+        effects = [(ev.effect.flag, list(ev.effect.values), ev.tick_position) for ev in song.channels[0].events
                    if ev.effect is not None]
         self.assertEqual(effects, [(CoordFlag.SET_VOICE, [0], 0), (CoordFlag.PAN, [0x80], 0),
                                    (CoordFlag.SET_VOICE, [1], 8)])
@@ -110,7 +117,7 @@ class OtherDrivers(unittest.TestCase):
         headers = [SmpsChannelHeader(channel_type="FM", label="drums", chip_channel="FM3"),
                    SmpsChannelHeader(channel_type="FM", label="a", chip_channel="FM1"),
                    SmpsChannelHeader(channel_type="FM", label="b", chip_channel="FM4")]
-        song = SmpsSong(header=SmpsSongHeader(channels=headers), channels=[SmpsChannel(header=h) for h in headers])
+        song = SmpsSong(header=SmpsSongHeader(channels=headers), channels=[SmpsChannel(header=h, rules=SONIC1_RULES) for h in headers], rules=SONIC1_RULES)
         self.assertEqual(source_names(song), ["FM3", "FM1", "FM4"])
 
     def test_a_late_first_hold_shifts_the_cycle_a_frame(self):
@@ -125,19 +132,26 @@ class OtherDrivers(unittest.TestCase):
     def test_a_note_held_past_the_run_out_is_keyed_off_there(self):
         # A run-out of 10 frames at a tick a frame: a 30-tick note plays 10, then rests; the tie
         # after it rests too, and its read frame does not count
-        header = SmpsSongHeader(fm_count=1, tempo_modifier=NO_TEMPO_HOLDS, key_run_out=10,
+        header = SmpsSongHeader(fm_count=1, tempo_modifier=NO_TEMPO_HOLDS,
                                 channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
-        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=4),
-               Op(OpKind.BYTE, value=0xE7), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=30), Op(OpKind.STOP)]
-        song = song_from_code(header, SmpsCode(ops), [])
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=4),
+               Op(OpKind.NO_ATTACK, value=0xE7), Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=30), Op(OpKind.STOP)]
+        song = song_from_code(header, SmpsCode(ops), [], dataclasses.replace(SONIC1_RULES, key_run_out=10))
         notes = [(ev.tick_position, ev.note.duration, ev.note.is_rest) for ev in song.channels[0].events if ev.note]
         self.assertEqual(notes, [(0, 4, False), (4, 7, False), (11, 23, True)])   # 10 counted frames + the tie's read
 
     def test_no_run_out_leaves_a_long_note_whole(self):
         header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
-        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.BYTE, value=0xA0), Op(OpKind.BYTE, value=0x7F), Op(OpKind.STOP)]
-        notes = [ev.note for ev in song_from_code(header, SmpsCode(ops), []).channels[0].events if ev.note]
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=0x7F), Op(OpKind.STOP)]
+        notes = [ev.note for ev in song_from_code(header, SmpsCode(ops), [], SONIC1_RULES).channels[0].events if ev.note]
         self.assertEqual([(n.duration, n.is_rest) for n in notes], [(0x7F, False)])
+
+    def test_a_note_past_smps_bytes_is_a_note(self):
+        # B7 ($E0) has no SMPS byte (flags start there); a grammar that names it as a NOTE plays it
+        header = SmpsSongHeader(fm_count=1, channels=[SmpsChannelHeader(channel_type="FM", label="FM1")])
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.NOTE, value=0xE0), Op(OpKind.DURATION, value=6), Op(OpKind.STOP)]
+        notes = [ev.note for ev in song_from_code(header, SmpsCode(ops), [], SONIC1_RULES).channels[0].events if ev.note]
+        self.assertEqual([(n.note_value, n.duration, n.is_rest) for n in notes], [(0xE0, 6, False)])
 
     def test_no_tempo_holds_reads_a_tick_every_frame(self):
         segment = tempo_schedule(NO_TEMPO_HOLDS)[0]
@@ -150,7 +164,7 @@ class NoAttack(unittest.TestCase):
     def test_a_held_duration_uses_up_the_flag(self):
         # GHZ FM4: `nG5, $28, smpsNoAttack, $3F`, flags, smpsCall: the call's first note (the
         # loop, tick 577) attacks - the driver clears the flag at every read
-        song = SmpsParser().parse_file(str(_GHZ))
+        song = SmpsParser(SONIC1_RULES).parse_file(str(_GHZ))
         fm4 = next(ch for ch in song.channels if ch.header.label.endswith("FM4"))
         first = next(ev.note for ev in fm4.events if ev.note is not None and ev.tick_position == 577)
         self.assertFalse(first.is_no_attack)
@@ -177,7 +191,7 @@ Song_Voices:
 
     def test_a_bare_duration_rekeys_the_note_but_rests_after_a_rest(self):
         # TrackSetRest clears the frequency: no note for a bare duration to re-key
-        fm1 = SmpsParser().parse_text(self._SONG).channels[1]
+        fm1 = SmpsParser(SONIC1_RULES).parse_text(self._SONG).channels[1]
         notes = [ev.note for ev in fm1.events if ev.note is not None]
         self.assertEqual([(n.is_rest, n.is_retrigger) for n in notes],
                          [(False, False), (False, True), (True, False), (True, False), (True, False)])
@@ -188,7 +202,7 @@ class Loops(unittest.TestCase):
 
     @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_the_parser_resolves_each_jump(self):
-        song = SmpsParser().parse_file(str(_GHZ))
+        song = SmpsParser(SONIC1_RULES).parse_file(str(_GHZ))
         loops = {ch.header.label[-4:]: (ch.loop_tick, ch.loop_event_index) for ch in song.channels if ch.has_jump}
         self.assertEqual(loops["_FM1"], (576, 94))
         self.assertEqual(loops["PSG3"], (48, 5))
@@ -200,14 +214,14 @@ class Loops(unittest.TestCase):
     def test_a_loop_starts_where_its_own_channel_reached_the_target(self):
         # Marble Zone PSG2 walks past PSG1's loop label 4 ticks later; PSG1's loop starts at its own
         # 120 (loop 1920 ticks = the VGZ's 1587600 samples), not PSG2's 124 (1916)
-        mz = SmpsParser().parse_file(str(_MUSIC / "Mus83 - MZ.asm"))
+        mz = SmpsParser(SONIC1_RULES).parse_file(str(_MUSIC / "Mus83 - MZ.asm"))
         psg1 = next(ch for ch in mz.channels if ch.header.label.endswith("PSG1"))
         self.assertEqual(psg1.loop_tick, 120)
 
     @unittest.skipUnless(_GHZ.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_a_forward_jump_into_shared_code_marks_the_loop_start(self):
         # Labyrinth FM4 jumps forward into FM3's code: its loop starts at its own jump, with an event
-        lz = SmpsParser().parse_file(str(_MUSIC / "Mus82 - LZ.asm"))
+        lz = SmpsParser(SONIC1_RULES).parse_file(str(_MUSIC / "Mus82 - LZ.asm"))
         fm4 = next(ch for ch in lz.channels if ch.header.label.endswith("FM4"))
         self.assertEqual(fm4.loop_tick, 96)
         self.assertIsNotNone(fm4.loop_event_index)
@@ -217,7 +231,7 @@ class Loops(unittest.TestCase):
         """(span, body as (tick from the loop start, what plays)) of a looping channel."""
         end = max(ev.tick_position + (ev.note.duration if ev.note else 0) for ev in ch.events)
         body = [(ev.tick_position - ch.loop_tick,
-                 (ev.note.note_value, ev.note.duration, ev.note.is_rest) if ev.note else (ev.effect.flag, tuple(ev.effect.params)))
+                 (ev.note.note_value, ev.note.duration, ev.note.is_rest) if ev.note else (ev.effect.flag, ev.effect.values))
                 for ev in ch.events if ev.tick_position >= ch.loop_tick]
         return end - ch.loop_tick, body
 
@@ -227,7 +241,7 @@ class Loops(unittest.TestCase):
         # song's must hold a body periodic in their common divisor (Green Hill's drums loop 1024
         # ticks of one 512-tick phrase against the song's 1536)
         for path in sorted(_MUSIC.glob("*.asm")):
-            song = SmpsParser().parse_file(str(path))
+            song = SmpsParser(SONIC1_RULES).parse_file(str(path))
             loops = [self._loop(ch) for ch in song.channels if ch.has_jump and ch.loop_tick is not None]
             if not loops:
                 continue
@@ -242,16 +256,44 @@ class Loops(unittest.TestCase):
 
     def test_a_loop_replays_from_its_event_without_labels(self):
         # A: one 100-tick note.  B: a 10-tick intro, then a 10-tick body that loops (as a lift makes it)
-        long = SmpsChannel(SmpsChannelHeader("FM", "A"), [SmpsEvent(SmpsNote(0x90, 100), tick_position=0)])
+        long = SmpsChannel(SmpsChannelHeader("FM", "A"), [SmpsEvent(SmpsNote(0x90, 100), tick_position=0)], rules=SONIC1_RULES)
         loop = SmpsChannel(SmpsChannelHeader("FM", "B"),
                            [SmpsEvent(SmpsNote(0x91, 10), tick_position=0), SmpsEvent(SmpsNote(0x92, 10), tick_position=10)],
-                           has_jump=True, loop_tick=10, loop_event_index=1)
-        song = SmpsSong(SmpsSongHeader(), [long, loop])
-        extend_looping_channels(song)
-        notes = [(ev.tick_position, ev.note.note_value) for ev in loop.events]
+                           has_jump=True, loop_tick=10, loop_event_index=1, rules=SONIC1_RULES)
+        song = SmpsSong(SmpsSongHeader(), [long, loop], rules=SONIC1_RULES)
+        prepared = prepare_song(song).song
+        notes = [(ev.tick_position, ev.note.note_value) for ev in prepared.channels[1].events]
+        self.assertEqual(len(loop.events), 2)                       # the song given is left as it is
         self.assertEqual(notes[:3], [(0, 0x91), (10, 0x92), (20, 0x92)])
         self.assertGreaterEqual(notes[-1][0] + 10, 100)
         self.assertEqual(song.loop_target_tick(), 10)
+
+    @staticmethod
+    def _looping(label: str, notes: list[int], length: int) -> SmpsChannel:
+        """A track that loops from tick 0 over `notes`, `length` ticks each."""
+        events = [SmpsEvent(SmpsNote(n, length), tick_position=i * length) for i, n in enumerate(notes)]
+        return SmpsChannel(SmpsChannelHeader("FM", label), events, has_jump=True, loop_tick=0, loop_event_index=0,
+                           rules=SONIC1_RULES)
+
+    def test_tracks_that_loop_at_other_lengths_unroll_to_their_common_period(self):
+        # 3 and 2 notes of 10 ticks: in step again after 60 (Streets of Rage $8F: 2304 / 1728 / 4608)
+        song = SmpsSong(SmpsSongHeader(), [self._looping("A", [0x90, 0x91, 0x92], 10),
+                                           self._looping("B", [0x93, 0x94], 10)], rules=SONIC1_RULES)
+        prepared = prepare_song(song)
+        self.assertEqual((prepared.song.end_tick(), prepared.loops_drift), (60, ()))
+
+    def test_a_loop_that_repeats_inside_its_body_sets_its_shorter_period(self):
+        # B's 40 ticks are one 20-tick bar twice (Green Hill's drums): A's 60 hold it, unrolled to 60
+        song = SmpsSong(SmpsSongHeader(), [self._looping("A", [0x90, 0x91, 0x92], 20),
+                                           self._looping("B", [0x93, 0x94, 0x93, 0x94], 10)], rules=SONIC1_RULES)
+        self.assertEqual(prepare_song(song).song.end_tick(), 60)
+
+    def test_a_period_too_long_to_unroll_leaves_the_odd_loop_out_of_step(self):
+        # 100 against 97 ticks: 9700 is past 4 loops; the song ends at 100 and B drifts
+        song = SmpsSong(SmpsSongHeader(), [self._looping("A", [0x90], 100), self._looping("B", [0x91], 97)],
+                        rules=SONIC1_RULES)
+        prepared = prepare_song(song)
+        self.assertEqual((prepared.song.end_tick(), prepared.loops_drift), (100, ("B",)))
 
 
 if __name__ == "__main__":

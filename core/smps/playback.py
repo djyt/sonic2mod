@@ -23,15 +23,15 @@ what plays; smpsSetTempoDiv neither, once song_prep has re-timed the song.
 
 from __future__ import annotations
 
-import copy
 import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
 
-from .driver_tables import PSG_FREQUENCIES_EXTENDED, fm_note_index, psg_note_index
+from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK
+from .driver_tables import fm_note_index, psg_note_index
 from .names import source_names
 from .song import SmpsNote, SmpsSong, SmpsVoice
-from .song_prep import apply_global_tempo_div, extend_looping_channels
+from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
 
@@ -103,24 +103,22 @@ class PlayedSong:
 
 
 def played_song(song: SmpsSong) -> PlayedSong:
-    """What `song` plays (a copy is prepared; `song` is left as it is)."""
-    song = copy.deepcopy(song)
-    apply_global_tempo_div(song)
-    extend_looping_channels(song)
+    """What `song` plays (`song` is left as it is)."""
+    song = prepare_song(song).song
 
     voices = {v.index: v for v in song.voices}
     changes, schedule = song.tempo_changes(), song.tempo_schedule()
     end = song.end_tick()
-    channels = {name: _played_channel(ch, voices, schedule, end, song.fm_frequencies)
+    channels = {name: _played_channel(ch, voices, schedule, end)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
     return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels,
-                      song.header.tempo_phase)
+                      song.rules.tempo_phase)
 
 
 
 def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],
-                    end: int, fm_frequencies: tuple[int, ...]) -> list[PlayedNote]:
-    st = TrackState.for_header(channel.header)
+                    end: int) -> list[PlayedNote]:
+    st = TrackState.for_channel(channel)
     played: list[PlayedNote] = []
     base: int | None = None            # the table word of the last note: a retrigger re-keys it
     resting = True                     # the last read was a rest (the driver cleared Freq)
@@ -166,7 +164,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         attack = not note.is_no_attack or not keyed
         keyed = True
         if not note.is_retrigger or base is None:
-            base = _table_word(note, st, fm_frequencies)
+            base = _table_word(note, st, channel.rules.fm_frequencies)
         sounded = _note(ev.tick_position, note, st, base, voices, attack)
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
@@ -214,17 +212,22 @@ def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[T
 def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:
     """The frequency word the driver reads for a note byte at the track's transposition."""
     if st.is_psg:
-        return PSG_FREQUENCIES_EXTENDED[psg_note_index(note.note_value, st.transpose)]
+        return st.psg_read[psg_note_index(note.note_value, st.transpose)]
     return fm_frequencies[fm_note_index(note.note_value, st.transpose)]
 
 
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
           attack: bool) -> PlayedNote:
+    fm = voices.get(st.voice) if st.voice is not None and not st.is_psg else None
     if st.is_psg:
         voice, level = st.envelope, st.att
     else:
-        voice, level = _fm_voice(voices.get(st.voice) if st.voice is not None else None, st.tl)
-    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=base + st.detune,
+        voice, level = _fm_voice(fm, st.tl)
+    # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider
+    # 0); channel 3's own registers in special mode carry its offset (OP4's)
+    special = fm.channel_fnum_offset if fm is not None else 0
+    pitch = (base + st.detune + special) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,
                       noise=st.noise_form, dac="")

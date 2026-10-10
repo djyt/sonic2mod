@@ -13,7 +13,9 @@ The authority on "is every note right": an audio window's pitch is unreliable on
 1-tick grace notes (GHZ FM3-FM5), which this is immune to.
 
     prepare_audit       the instruments as the converter prepared them (core.plan.prepare_instruments)
-    mod_pitch_timeline  per MOD channel, (seconds, Hz, instrument) at each note and E1x / E2x
+    mod_pitch_timeline  per MOD channel, (seconds, Hz, instrument, attack) at each note, and at
+                        each step of an E1x / E2x / 1xx / 2xx (attack False: only notes pair with
+                        a chip note's start)
     note_start_offset   how far the MOD lags the recording, from note starts
     audit_pitches       per channel ok / wrong / missing, and per instrument the verdict
 """
@@ -29,10 +31,13 @@ import numpy as np
 
 from ..audio import pitch_name, semitone_to_hz
 from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig, find_settings, load_settings
-from ..mod import PERIOD_TABLE, ModImage, edx_delay, timed_pass
+from ..mod import PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
 from ..plan import prepare_instruments, sounding_pitches
 from ..vgm import Segment
 
+_SLIDE_UP, _SLIDE_DOWN = 0x1, 0x2          # 1xx / 2xx
+_ATTACK = 3                                 # a timeline entry's: a note-on, not a slide's step
+_HELD = 0.025                               # s a pitch holds for a move from it to start a note (> a frame)
 
 def audit_settings(settings_path: str | Path | None, config_path: str | Path):
     """(SynthesisSettings, PsgSynthesisSettings) the MOD was converted with: `settings_path`, else the
@@ -50,7 +55,7 @@ def prepare_audit(cfg: ConversionConfig, settings_path: str | Path | None, confi
 
 
 def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict[int, list[tuple]], float]:
-    """Per MOD channel list of (time, Hz, instrument); follows Bxx/Dxx and stops at the loop."""
+    """Per MOD channel list of (time, Hz, instrument, attack); follows Bxx/Dxx and stops at the loop."""
     inst = sounding_pitches(song, cfg)
     finetune = {e[SAMPLE_SLOT]: (e[SAMPLE_FINETUNE] if len(e) > SAMPLE_FINETUNE else 0) for e in (cfg.sample_list or [])}
     known = set(PERIOD_TABLE)
@@ -67,13 +72,20 @@ def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict
         for c, (period, ins, eff, par) in enumerate(r.cells):
             if period in known and ins in inst:
                 sounding[c] = (period, ins)
-                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(period, ins), ins))
+                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(period, ins), ins, True))
+            if eff in (_SLIDE_UP, _SLIDE_DOWN) and par and c in sounding:
+                # 1xx / 2xx: the period moves by xx on each tick after the row's first (a sweep)
+                p, ins_s = sounding[c]
+                for tick in range(1, cfg.target_speed):
+                    p += -par if eff == _SLIDE_UP else par
+                    out[c].append((r.start + tick * TICK_SECS_AT_1_BPM / r.bpm, pitch(p, ins_s), ins_s, False))
+                sounding[c] = (p, ins_s)
             elif eff == 0xE and par >> 4 in (1, 2) and c in sounding:
                 # E1x / E2x: the sounding note's period moved (a tie retuned to a new detune)
                 p, ins_s = sounding[c]
                 p = p - (par & 15) if par >> 4 == 1 else p + (par & 15)
                 sounding[c] = (p, ins_s)
-                out[c].append((r.start, pitch(p, ins_s), ins_s))
+                out[c].append((r.start, pitch(p, ins_s), ins_s, False))
     return out, end
 
 
@@ -102,7 +114,8 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
                 prev = f
     ks = range(int(-0.5 / step), int(max_lag / step) + 1)
     lags = [k * step for k in ks]
-    scorer = _StartScorer(starts, {c: sorted(notes) for c, notes in mod.items()}, lags, step, drift)
+    scorer = _StartScorer(starts, {c: sorted(n for n in notes if n[_ATTACK]) for c, notes in mod.items()},
+                          lags, step, drift)
 
     # A repeating figure makes note starts alone ambiguous by its period (Drowning alternates
     # two notes every 200 ms), so a start only counts when the MOD note there has its pitch.
@@ -116,6 +129,18 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
         if best > 0:
             return best_lag
     return 0.0
+
+
+def _chip_starts(segments: list[Segment]) -> list[bool]:
+    """Which segments start a note: the channel was silent, or the pitch moved by more than 50
+    cents from one that held.  Anything else is a continuation: a vibrato step, a detune scoop,
+    a sweep's steps a frame apart (Streets of Rage $90 FM4: 8 FNUM units a frame)."""
+    out, prev, prev_t = [], None, None
+    for t, f in segments:
+        held = prev_t is not None and t - prev_t >= _HELD
+        out.append(f is not None and (prev is None or (held and abs(1200 * math.log2(f / prev)) > 50)))
+        prev, prev_t = f, t
+    return out
 
 
 def _same_pitch(f: float, hz: float) -> bool:
@@ -203,22 +228,16 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
     for src in sorted(chip):
         if src not in chan_map or not mod.get(chan_map[src]):
             continue
-        notes = mod[chan_map[src]]
+        timeline = mod[chan_map[src]]
+        notes = [n for n in timeline if n[_ATTACK]]         # what a chip note's start pairs with
         evs = [*chip[src], (vgm_end, None)]
         st: dict = {"ok": 0, "wrong": 0, "missing": 0, "short": 0, "wrong_notes": [], "missing_notes": []}
         run, j = offset, 0          # running MOD-minus-chip deviation (s); next unpaired MOD note
-        starts_t, pf = [], None     # chip note-start times, for looking ahead past a tempo step
-        for t, f in chip[src]:
-            if f is not None and (pf is None or abs(1200 * math.log2(f / pf)) > 50):
-                starts_t.append(t)
-            pf = f
+        starts = _chip_starts(chip[src])
+        starts_t = [t for (t, _), s in zip(chip[src], starts, strict=True) if s]   # for looking past a tempo step
         si = -1
-        prev_f = None
-        for (t0, f), (t1, _) in itertools.pairwise(evs):
-            # A note start = the channel was silent or the pitch moved by more than 50 cents;
-            # anything else (a vibrato step, a detune scoop) is a continuation.
-            is_start = f is not None and (prev_f is None or abs(1200 * math.log2(f / prev_f)) > 50)
-            prev_f = f
+        for i, ((t0, f), (t1, _)) in enumerate(itertools.pairwise(evs)):
+            is_start = starts[i]
             # A segment starting as the MOD's single pass ends is the recording going round its
             # loop; the last MOD note must not be judged against it.
             if f is None or t0 + run > mod_end - 0.03 or t1 - t0 < 1e-4:
@@ -248,7 +267,7 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
             hit = paired
             if hit is None:
                 mid = (t0 + t1) / 2 + run
-                for n in notes:
+                for n in timeline:
                     if n[0] > mid + 1e-6:
                         break
                     hit = n

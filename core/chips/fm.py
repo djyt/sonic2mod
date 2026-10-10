@@ -3,10 +3,12 @@
     pitch    f = fnum x (clock / 144) x 2^block / 2^21     (A4 = fnum 1083, block 4 at the MD clock)
     level    total level 0.75 dB a step, the carriers' TL sets the channel's level
     pan      B4 bits 7 (L) / 6 (R); a hard-panned note against a centred one: DEFAULT_FM_PAN_LAW_DB
+    LFO      $22 (global): enable | frequency; B4 bits 4-5 / 0-2: how far it moves a channel (FmLfo)
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import IntEnum
 
 # The NTSC Mega Drive's YM2612 clock: settings.yaml fm_synthesis clock_rate, which every renderer
@@ -49,8 +51,75 @@ class OperatorReg(IntEnum):
     SSG_EG = 0x90
 
 
+# An operator register: base | the operator's slot offset | the channel within its part.
+# 0x4D: TL (0x40), OP4's slot (0x0C), FM2 / FM5 (1)
+OPERATOR_SLOT_OFFSETS = (0x00, 0x04, 0x08, 0x0C)     # in register order: OP1, OP3, OP2, OP4
+_REG_BASE_BITS, _REG_SLOT_BITS, _REG_CHANNEL_BITS = 0xF0, 0x0C, 0x03
+
 REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
+
+# Channel 3's special mode ($27 bits 6-7 = 01): each operator at its own frequency.  The low byte's
+# register by operator slot offset (the high byte's is 4 above); OP4 plays the channel's own
+REG_CH3_MODE = 0x27
+CH3_SPECIAL_MODE = 0x40
+CH3_CHANNEL = 2
+CH3_OWN_SLOT = 0x0C
+CH3_FREQ_REGS = {0x00: 0xA9, 0x04: 0xA8, 0x08: 0xAA, CH3_OWN_SLOT: 0xA2}
+
+# The hardware LFO: one for the chip, a triangle of 128 steps.  A step lasts this many chip
+# samples by $22's frequency (Nuked's lfo_cycles + 1): 3.82 Hz ... 69.4 Hz at the MD clock
+REG_LFO = 0x22
+_LFO_ENABLE = 0x08
+_LFO_STEPS = 128
+_LFO_STEP_SAMPLES = (109, 78, 72, 68, 63, 45, 9, 6)
+_B4_AMS_SHIFT = 4
+
+
+@dataclass(frozen=True)
+class FmLfo:
+    """A channel under the hardware LFO: its rate ($22, the chip's) and how far it moves the
+    channel (B4): FMS its pitch, AMS the level of its operators with AM on."""
+    frequency: int               # 0-7
+    fms: int                     # 0-7: 0 ... +-80 cents
+    ams: int                     # 0-3: 0 ... 11.8 dB
+
+    @property
+    def register(self) -> int:
+        """$22: the LFO on, at this frequency."""
+        return _LFO_ENABLE | self.frequency
+
+    @property
+    def sensitivity(self) -> int:
+        """B4's bits 0-5."""
+        return self.ams << _B4_AMS_SHIFT | self.fms
+
+    @property
+    def cycle_samples(self) -> int:
+        """One cycle of the LFO in chip samples."""
+        return _LFO_STEPS * _LFO_STEP_SAMPLES[self.frequency]
+
+    @property
+    def period_secs(self) -> float:
+        """One cycle of the LFO, at the MD clock."""
+        return self.cycle_samples / FM_SAMPLE_RATE
 TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
+FEEDBACK_ALGORITHM_MASK = 0x3F       # B0's bits the chip reads (a driver may write the voice's byte whole)
+# Each operator register's bits the chip reads
+_REGISTER_MASKS = {OperatorReg.DT_MUL: 0x7F, OperatorReg.TL: TL_MASK, OperatorReg.KS_AR: 0xDF, OperatorReg.AM_D1R: 0x9F,
+                   OperatorReg.D2R: 0x1F, OperatorReg.D1L_RR: 0xFF, OperatorReg.SSG_EG: 0x0F}
+
+
+def split_operator_register(register: int) -> tuple[OperatorReg, int, int] | None:
+    """(base, slot offset, channel) of an operator register (0x30-0x9F); None for any other."""
+    base = register & _REG_BASE_BITS
+    if base not in _REGISTER_MASKS:
+        return None
+    return OperatorReg(base), register & _REG_SLOT_BITS, register & _REG_CHANNEL_BITS
+
+
+def operator_bits(register: int, value: int) -> int:
+    """`value` written to operator register `register` as the chip reads it."""
+    return value & _REGISTER_MASKS[OperatorReg(register & _REG_BASE_BITS)]
 
 
 # A frequency word: block << 11 | FNUM, registers A4 (block, FNUM high bits) and A0 written

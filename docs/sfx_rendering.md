@@ -20,7 +20,7 @@ python sfx/validate.py                          # self-check
 
 | Module | Role |
 |---|---|
-| `sfx/tables.py` | Re-exports `core/smps/driver_tables.py` (frequency tables, PSG envelopes, register and channel maps; they live in `core/` so the converter can reach them without importing the SFX driver) |
+| `sfx/tables.py` | Re-exports Sonic 1's tables (`core/drivers/reference.py`: frequency tables, PSG envelopes) and the SMPS register and channel maps (`core/smps/driver_tables.py`); they live in `core/` so the converter can reach them without importing the SFX driver |
 | `sfx/track.py` | `SfxTrack` — mirrors the `SMPS_Track` RAM struct field for field |
 | `sfx/chips.py` | Register writes mirroring `SetVoice`, `SendVoiceTL`, `FMUpdateFreq`, `PSGUpdateFreq` … |
 | `sfx/driver.py` | `SfxDriver` — the per-frame state machine |

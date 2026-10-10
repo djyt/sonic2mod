@@ -22,6 +22,7 @@ from pathlib import Path
 
 from ..mod import isolate_channel
 from ..render_cache import RenderCache, code_salt
+from .rips import RIP_ROOT
 
 SR = 44100                  # every render's rate
 
@@ -40,7 +41,7 @@ _VGMPLAY_EXES = ("VGMPlay64.exe", "VGMPlay.exe", "vgmplay")
 _VGMPLAY_BINARY_SUFFIXES = (".exe", ".dll")
 _CACHE_CHIP = "vgmplay"         # the render cache's directory for reference renders
 _WAV = ".wav"
-_VGMPLAY_DEFAULT = Path(__file__).resolve().parents[2] / "reference" / "vgz" / "vgmplay"
+_VGMPLAY_DEFAULT = RIP_ROOT / "vgmplay"
 
 
 def find_vgmplay(arg: str | None) -> Path:

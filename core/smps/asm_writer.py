@@ -15,10 +15,11 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .code import NO_ATTACK, REST, Op, OpKind, SongCode
+from .code import TRACK_BYTES, Op, OpKind, SongCode
 from .driver_tables import PAN_VALUES
+from .effects import CoordFlag
 from .names import SFX_CHANNEL_IDS, SMPS_DAC_NAMES_REVERSE, flag_name, note_label, voice_macro
-from .song import ChannelType, CoordFlag, SmpsChannelHeader, SmpsVoice, VoiceField
+from .song import NO_ATTACK, REST, ChannelType, SmpsChannelHeader, SmpsVoice, VoiceField
 
 _BYTES_PER_LINE = 12
 _PAN_SPEAKERS = 0xC0
@@ -49,7 +50,7 @@ def write_asm(song: SongCode, name: str, comment: str = "") -> str:
         ("a track that states its chip channel", any(c.chip_channel for c in song.header.channels)),
         ("a voice that stores its pan", any(v.pan is not None for v in song.voices))) if found]
     if unspellable:
-        raise ValueError(f"no SMPS2ASM spelling of {' or '.join(unspellable)} ({song.driver})")
+        raise ValueError(f"no SMPS2ASM spelling of {' or '.join(unspellable)} ({song.rules.driver})")
     return _Writer(song, name).text(comment)
 
 
@@ -161,7 +162,7 @@ class _Writer:
             tokens.clear()
 
         for i, op in enumerate(ops):
-            if op.kind is OpKind.BYTE:
+            if op.kind in TRACK_BYTES:
                 tokens.append(_byte(op.value, i in dac))
                 continue
             flush()
@@ -202,7 +203,7 @@ class _Writer:
             return _macro("smpsLoop", f"{_hex(op.index)}, {_hex(op.value)}, {self._name_of(op.name)}")
 
         assert op.effect is not None
-        flag, params = op.effect.flag, op.effect.params
+        flag, params = op.effect.flag, op.effect.values
         if flag == CoordFlag.PAN:
             return _macro(flag_name(flag), f"{_PAN_NAMES[params[0] & _PAN_SPEAKERS]}, {_hex(params[0] & _PAN_LFO)}")
         if flag == CoordFlag.PSG_VOICE:

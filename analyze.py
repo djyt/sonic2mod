@@ -887,7 +887,7 @@ class _Skeleton:
             # The LFSR is clocked by tone channel 2, whose divider the driver looks up in
             # PSGFrequencies from the channel's own note — not a chromatic extrapolation:
             # nMaxPSG (index 69) is divider 0 → N=1, not the ~7 kHz an "A8" would give.
-            tone2_n = psg_tone2_divider(0x81 + min_sem, transpose)
+            tone2_n = psg_tone2_divider(0x81 + min_sem, transpose, self._analysis.song.rules.psg_read)
             shift_hz = self._psg_synth.clock_rate / (32.0 * tone2_n)
             # root must satisfy Nyquist for the LFSR shift rate where that is achievable;
             # above it the highest-rate root is the best a MOD sample can do.

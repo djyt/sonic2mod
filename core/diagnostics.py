@@ -17,17 +17,22 @@ class WarningKind(StrEnum):
     MISSING_SOURCE = 'missing_source'               # a channel's source is not in the song
     SYNTH_ROOT_AMBIGUOUS = 'synth_root_ambiguous'   # an entry's low note plays at several chip pitches
     DETUNE_NO_SLOT = 'detune_no_slot'               # detune variants with no free slot
+    COPY_NO_SLOT = 'copy_no_slot'                   # voice copies (special mode, LFO) a minimal config plays as their voice
     # samples
     RATE3_SYNTH_ROOT = 'rate3_synth_root'           # a rate-3 synth_root outside the driver's PSG table
     NOISE_ENVELOPES = 'noise_envelopes'             # one noise sample for several envelopes
     SUSTAIN_SHORT = 'sustain_short'                 # a sample shorter than a note it plays
     SAMPLE_TRUNCATED = 'sample_truncated'           # a render cut to the sample limit
+    SAMPLE_FILE_MISSING = 'sample_file_missing'     # a sample_list file not on disk: the slot stays empty
+    VOICE_MISSING = 'voice_missing'                 # a map entry's voice the song does not define
+    RENDER_LEVEL = 'render_level'                   # a sample rendered at another level than it is baked at
     # tempo and patterns
     TEMPO_NO_SLOT = 'tempo_no_slot'                 # a tempo Fxx found no free effect slot
     TEMPO_BPM_RANGE = 'tempo_bpm_range'             # a tempo change outside BPM 32..255
     PATTERN_OVERFLOW = 'pattern_overflow'           # a channel ran past max_patterns
     REST_NO_SLOT = 'rest_no_slot'                   # a leading rest's C00 found no slot
     LOOP_NO_SLOT = 'loop_no_slot'                   # the loop's Bxx found no free slot
+    LOOP_DRIFT = 'loop_drift'                       # tracks' loops too far apart to unroll: out of step
     # merged build
     MERGE_LOST = 'merge_lost'                       # follower notes a fold loses or cuts
     MERGE_HEADROOM = 'merge_headroom'               # composites clamped past full scale

@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "pyright", "vulture", "pytest"]
+dev = ["ruff", "pyright", "vulture", "pytest", "coverage", "import-linter"]
 
 [project.scripts]
 sonic2mod = "convert:main"
@@ -22,8 +22,10 @@ sonic2wav = "sonic2wav:main"
 
 [tool.setuptools]
 py-modules = ["convert", "analyze", "sonic2wav"]
-packages = ["core", "core.audio", "core.config", "core.convert", "core.merge", "core.mod", "core.plan",
-            "core.smps", "core.ui", "ym2612", "sn76489", "sfx"]
+
+# Found, not listed: a new driver folder (core/drivers/<family>/<driver>/) joins by itself
+[tool.setuptools.packages.find]
+include = ["core", "core.*", "ym2612", "sn76489", "sfx"]
 
 [tool.setuptools.package-data]
 ym2612 = ["*.dll", "*.so", "*.c"]
@@ -112,3 +114,96 @@ exclude = ["reference", "output", "**/__pycache__"]
 # Relax rules that fire on intentionally dynamic code
 reportMissingModuleSource = false
 reportAttributeAccessIssue = false
+
+# Import rules (agents.md layering), checked by tests/test_layers_units.py (or lint-imports).
+# Each package imports only the layers below it; the bottom ones (song IR, MOD, chips, audio)
+# are the shared vocabulary.  Directly below only where it keeps drivers swappable: the layers
+# above reach a driver through core.source alone.  Type-hint-only imports (TYPE_CHECKING) are
+# not imports here: a back-reference for a hint is no cycle.
+[tool.importlinter]
+root_packages = ["core", "sfx", "ym2612", "sn76489"]
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "core: each layer imports only those below it"
+type = "layers"
+layers = [
+    "core.ui",
+    "core.convert | core.audit",
+    "core.merge",
+    "core.plan",
+    "core.config",
+    "core.source",
+    "core.vgm | core.drivers",
+    "core.rom",
+    "core.smps | core.mod",
+    "core.chips | core.audio | core.render_cache",
+    "core.files",
+]
+
+[[tool.importlinter.contracts]]
+name = "drivers: reached through core.source alone"
+type = "forbidden"
+source_modules = ["core.ui", "core.convert", "core.audit", "core.merge", "core.plan", "core.config"]
+forbidden_modules = ["core.drivers"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "drivers: none imports another (a family's shared code is the family folder's)"
+type = "independence"
+modules = [
+    "core.drivers.smps68k.sonic1",
+    "core.drivers.smps68k.type1a",
+    "core.drivers.smps68k.mucom",
+    "core.drivers.smpsz80.type0fm",
+]
+
+[[tool.importlinter.contracts]]
+name = "core: no chip package, no SFX driver"
+type = "forbidden"
+source_modules = ["core"]
+forbidden_modules = ["sfx", "ym2612", "sn76489"]
+
+[[tool.importlinter.contracts]]
+name = "drivers: a driver folder loaded by the registry alone (lazily)"
+type = "protected"
+protected_modules = ["core.drivers.smps68k", "core.drivers.smpsz80"]
+allowed_importers = ["core.drivers.registry"]
+as_packages = true
+
+[[tool.importlinter.contracts]]
+name = "drivers: Sonic 1's tables reach the pipeline only through a driver's rules"
+type = "protected"
+protected_modules = ["core.drivers.reference"]
+allowed_importers = ["core.drivers.smps68k", "core.drivers.smpsz80", "sfx", "ym2612", "sn76489"]
+as_packages = true
+
+[[tool.importlinter.contracts]]
+name = "drivers: the families independent (68k, Z80)"
+type = "independence"
+modules = ["core.drivers.smps68k", "core.drivers.smpsz80"]
+
+[[tool.importlinter.contracts]]
+name = "core: no import cycle between a package's modules"
+type = "acyclic_siblings"
+ancestors = ["core"]
+depth = 10
+
+[[tool.importlinter.contracts]]
+name = "core.smps: the song IR does not import the asm front end"
+type = "forbidden"
+source_modules = ["core.smps.song", "core.smps.code", "core.smps.playback", "core.smps.track", "core.smps.tempo",
+                  "core.smps.run_out", "core.smps.rules", "core.smps.percussion", "core.smps.driver_tables",
+                  "core.smps.song_prep", "core.smps.compare"]
+forbidden_modules = ["core.smps.parser", "core.smps.asm_writer"]
+
+[[tool.importlinter.contracts]]
+name = "core.rom: readers above the vocabulary above the image"
+type = "layers"
+containers = ["core.rom"]
+layers = ["header | tracks | voices | envelopes | z80", "variant", "grammar", "flags | fixes | memory | kosinski", "image"]
+
+[[tool.importlinter.contracts]]
+name = "chips: ym2612 and sn76489 independent"
+type = "independence"
+modules = ["ym2612", "sn76489"]

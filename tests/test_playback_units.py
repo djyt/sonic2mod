@@ -13,14 +13,13 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
+from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.smps import (
-    FM_FREQUENCIES,
     Aspect,
     CoordFlag,
     PlayedNote,
     SmpsChannel,
     SmpsChannelHeader,
-    SmpsEffect,
     SmpsEvent,
     SmpsNote,
     SmpsParser,
@@ -30,6 +29,7 @@ from core.smps import (
     VoiceField,
     align_songs,
     compare_songs,
+    effect_of,
     played_song,
 )
 
@@ -48,8 +48,8 @@ def _song(*events: SmpsEvent, kind: str = "FM", volume: int = 0, voices: list[Sm
     for ev in events:
         ev.tick_position = tick
         tick += ev.note.duration if ev.note else 0
-    channel = SmpsChannel(SmpsChannelHeader(kind, "A", volume=volume), list(events))
-    return SmpsSong(SmpsSongHeader(), [channel], voices if voices is not None else [_voice()])
+    channel = SmpsChannel(SmpsChannelHeader(kind, "A", volume=volume), list(events), rules=SONIC1_RULES)
+    return SmpsSong(SmpsSongHeader(), [channel], voices if voices is not None else [_voice()], rules=SONIC1_RULES)
 
 
 def _note(value: int = _C4, duration: int = 8, **kw) -> SmpsEvent:
@@ -70,7 +70,7 @@ def _held(duration: int = 8) -> SmpsEvent:
 
 
 def _flag(flag: CoordFlag, *params) -> SmpsEvent:
-    return SmpsEvent(effect=SmpsEffect(flag, list(params)))
+    return SmpsEvent(effect=effect_of(flag, params))
 
 
 class Voice(unittest.TestCase):
@@ -143,7 +143,7 @@ class Played(unittest.TestCase):
     def test_a_stopped_channel_rests_to_the_end(self):
         # smpsStop keys the channel off: silent while the others play on
         song = _song(_note())
-        song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)]))
+        song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)], rules=SONIC1_RULES))
         self.assertEqual([(n.tick, n.duration, n.rest) for n in played_song(song).channels["FM1"]],
                          [(0, 8, False), (8, 32, True)])
 
@@ -182,7 +182,7 @@ class Played(unittest.TestCase):
     def test_the_song_is_left_as_it_was(self):
         song = _song(_note())
         song.channels[0].has_jump, song.channels[0].loop_tick, song.channels[0].loop_event_index = True, 0, 0
-        song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)]))
+        song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)], rules=SONIC1_RULES))
         played_song(song)
         self.assertEqual(len(song.channels[0].events), 1)
 
@@ -267,7 +267,7 @@ class Compare(unittest.TestCase):
     @unittest.skipUnless(_MUSIC.exists(), "reference/smps_drivers/sonic_1/ sources not present")
     def test_every_song_plays_as_itself(self):
         for path in sorted(_MUSIC.glob("*.asm")):
-            played = played_song(SmpsParser().parse_file(str(path)))
+            played = played_song(SmpsParser(SONIC1_RULES).parse_file(str(path)))
             self.assertTrue(compare_songs(played, played).ok, path.name)
 
 

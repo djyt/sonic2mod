@@ -62,7 +62,7 @@ note.
 The mask **wraps, it does not clamp**.  An index past the table reads the code that follows it:
 indices 125–127 (a note one to three semitones below the table) were measured from the Spring
 Yard and Credits rips as dividers 0, 922 and 540 (`PSG_FREQUENCIES_EXTENDED` in
-`core/smps/driver_tables.py`, which transcribes both tables).
+`core/drivers/reference.py`, which transcribes both tables).
 
 ### smpsChangeTransposition ($E9) vs smpsDetune ($E1)
 
@@ -235,7 +235,7 @@ The pitch is a loop counter.  Each sample's is computed from its source WAV's ra
 rate by 1.30, 1.20, 0.97 and 0.95.
 
 **What real hardware plays.**  `zPlayPCMLoop` takes exactly `301 + 26·(pitch − 1)` Z80 cycles a
-byte (two samples) at 3,579,545 Hz — counted from the ROM's code (`core/rom/smps68k/dac.py`; `z80.asm`
+byte (two samples) at 3,579,545 Hz — counted from the ROM's code (`core/drivers/smps68k/dpcm.py`; `z80.asm`
 matches it).  Wait states can only add to that.  On top of it the 68k stops the Z80 for the
 whole music update once a frame (`UpdateMusic`'s `stopZ80`): the DAC holds for 3.8–6.4 % of the
 time, by song.  The hardware rate is the cycle count less that share.

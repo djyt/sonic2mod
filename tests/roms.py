@@ -7,8 +7,14 @@ import unittest
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
+SONIC1_ROM = _ROOT / "input" / "roms" / "sonic_rev01.bin"
+SONIC1_ASM = _ROOT / "reference" / "smps_drivers" / "sonic_1"
 MOONWALKER_ROM = _ROOT / "input" / "roms" / "Michael Jackson's Moonwalker (World) (Rev A).md"
 MOONWALKER_RIPS = _ROOT / "reference" / "vgz" / "moonwalker"
+GOLDEN_AXE_ROM = _ROOT / "input" / "roms" / "Golden Axe (World) (Rev A).md"
+GOLDEN_AXE_RIPS = _ROOT / "reference" / "vgz" / "golden_axe"
+STREETS_OF_RAGE_ROM = _ROOT / "input" / "roms" / "Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
+STREETS_OF_RAGE_RIPS = _ROOT / "reference" / "vgz" / "streets_of_rage_1"
 
 
 def _needs(*paths: Path):
@@ -19,3 +25,8 @@ def _needs(*paths: Path):
 
 needs_moonwalker = _needs(MOONWALKER_ROM)
 needs_moonwalker_rips = _needs(MOONWALKER_ROM, MOONWALKER_RIPS)
+needs_streets_of_rage = _needs(STREETS_OF_RAGE_ROM)
+needs_sonic1_rom_and_asm = _needs(SONIC1_ROM, SONIC1_ASM)
+needs_golden_axe = _needs(GOLDEN_AXE_ROM)
+needs_golden_axe_rips = _needs(GOLDEN_AXE_ROM, GOLDEN_AXE_RIPS)
+needs_streets_of_rage_rips = _needs(STREETS_OF_RAGE_ROM, STREETS_OF_RAGE_RIPS)

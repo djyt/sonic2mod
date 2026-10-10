@@ -39,9 +39,8 @@ from ..smps import (
     ChannelType,
     PsgEnvelope,
     SmpsSong,
-    apply_global_tempo_div,
-    extend_looping_channels,
     noise_envelope_frames,
+    prepare_song,
 )
 from ..smps import semitone_to_note_name as _semitone_to_name
 from ..smps import source_map as source_map_for
@@ -71,7 +70,6 @@ class SmpsToModConverter:
     def _start(self, song: SmpsSong, config: ConversionConfig,
                synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None) -> None:
         """A fresh conversion's state (convert() starts over with it)."""
-        self.song = song
         self.config = config
         # A merged build keeps the level-only loop rule unless the song opts in (merge_loop_timbre):
         # the timbre check grows the samples (Green Hill +56 KB, Title +16 KB, lofi +124 B), and
@@ -83,15 +81,13 @@ class SmpsToModConverter:
         self._player = synth.player if synth else "ft2"
         self.psg_synth = psg_synth
         self._song_prepared = False
-        self._timeline = Timeline(song, config)
         self.mod = ModFile(channels=config.mod_channel_count)
         # Structured warnings and informational messages collected during conversion.
         # Public: convert.py renders both after convert() returns.
         self._diag = Diagnostics()
         self.warnings = self._diag.warnings
         self.infos = self._diag.infos
-        self._vibrato = VibratoSpeed(self._timeline, config, self._diag)
-        self._sustain = SustainPlanner(song, config, synth, self._timeline, self._diag)
+        self._follow(song)
         self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see ModLayout.leading_rests
         # Sustain loops (core.audio.loops, settings.yaml `sustain_loops`): the loop each synthesised
         # sample was cut to, and how fast each FM instrument's level falls after key-off.
@@ -138,16 +134,23 @@ class SmpsToModConverter:
             return
         self._song_prepared = True
 
-        # smpsSetTempoDiv re-times every channel
-        for tick, div in apply_global_tempo_div(self.song):
+        prepared = prepare_song(self.song)
+        self._follow(prepared.song)
+        self._timeline.collect_segments()
+        for tick, div in prepared.tempo_div_changes:
             self._diag.info(InfoKind.TEMPO_DIV_CHANGE, tick=tick, divider=div,
                             row=int(tick // self._timeline.ticks_per_row))
-        self._timeline.collect_segments()
-
-        # Loop bodies too short to cover the song are replayed to its end
-        for extended in extend_looping_channels(self.song):
+        for extended in prepared.loops_extended:
             self._diag.info(InfoKind.LOOP_EXTENDED, **extended)
-        self._timeline.collect_segments()
+        if prepared.loops_drift:
+            self._diag.warn(WarningKind.LOOP_DRIFT, tracks=list(prepared.loops_drift))
+
+    def _follow(self, song: SmpsSong) -> None:
+        """Convert `song` from here on: the timeline and the planners that read it are its."""
+        self.song = song
+        self._timeline = Timeline(song, self.config)
+        self._vibrato = VibratoSpeed(self._timeline, self.config, self._diag)
+        self._sustain = SustainPlanner(song, self.config, self.synth, self._timeline, self._diag)
 
     @property
     def _layout(self) -> ModLayout:
@@ -357,9 +360,9 @@ class SmpsToModConverter:
         stated number is kept, except that a slot it holds back for nothing goes back to the
         composites the same way (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with
         five chords lost)."""
-        # The conversion edits the song and config (loop extension, spliced notes, composite
-        # entries): another pass needs them as they were
-        snapshot = copy.deepcopy((self.song, self.config)) if self.config.merge_active else None
+        # Another pass starts from the song as given (the conversion prepares a copy of it and
+        # splices into that) and the config as it was (the merge plan adds composite entries)
+        snapshot = (self.song, copy.deepcopy(self.config)) if self.config.merge_active else None
         mod = self._convert_once()
         if snapshot is None or self._merge is None or self._merged is None:
             return mod
@@ -368,7 +371,7 @@ class SmpsToModConverter:
             if not self._merged.idle_bank_slots:
                 return mod
             # Start over with the reserve the banks filled
-            song, config = copy.deepcopy(snapshot)
+            song, config = snapshot[0], copy.deepcopy(snapshot[1])
             retry = {'slots': list(self._merged.idle_bank_slots), 'reserve': config.merge_bank_slots,
                      'banks': len(self._merge.banks)}
             config.merge_bank_slots = retry['banks']
@@ -383,7 +386,7 @@ class SmpsToModConverter:
             want = bank_reserve_wanted(self._merge, self._merged.idle_bank_slots if self._merged else [])
             if want is None or want in tried or len(tried) >= _MAX_BANK_BUILDS:
                 break
-            song, config = copy.deepcopy(snapshot)
+            song, config = snapshot[0], copy.deepcopy(snapshot[1])
             config.merge_bank_slots = want
             self._start(song, config, self.synth, self.psg_synth)
             self._convert_once()
@@ -465,14 +468,12 @@ class SmpsToModConverter:
 
     def _psg_synth_instruments(self) -> set[int]:
         """The PSG instruments that will be synthesized, so disk loading skips them (no spurious
-        "file not found" warnings)."""
-        insts: set[int] = set()
+        "file not found" warnings): every map entry's, a noise entry's `envelopes:` variants too."""
         if not (self.psg_synth and self.psg_synth.enabled):
-            return insts
-        if self.config.psg_map:
-            insts.update(e.mod_instrument for e in self.config.psg_map.values())
-        if self.config.psg_voice_map:
-            insts.update(e.mod_instrument for entries in self.config.psg_voice_map.values() for e in entries)
+            return set()
+        insts = {e.mod_instrument for e in self.config.psg_map.values()}
+        insts |= {i for e in self.config.psg_map.values() for i in e.envelopes.values()}
+        insts |= {e.mod_instrument for entries in self.config.psg_voice_map.values() for e in entries}
         return insts
 
     def _install_samples(self, synth: SynthesisSettings | None, psg_insts: set[int]) -> None:
@@ -499,7 +500,8 @@ class SmpsToModConverter:
     def _load_disk_samples(self, skip: set[int]) -> None:
         for entry in self.config.sample_list or []:
             if entry[SAMPLE_SLOT] not in skip:
-                self.mod.add_samples(self.config.samples_dir, [entry])
+                for path in self.mod.add_samples(self.config.samples_dir, [entry]):
+                    self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=entry[SAMPLE_SLOT], path=path)
 
     def _synthesize_fm(self, synth: SynthesisSettings) -> tuple[dict, set[int]]:
         """Every FM instrument rendered and installed → (the samples, the instruments of map
@@ -513,8 +515,7 @@ class SmpsToModConverter:
         missing: set[int] = set()
         for ctx, vi, insts in fm_catalogue(self.song, self.config).missing_voices:
             missing.update(insts)
-            print(f"Warning: {ctx} voice ${vi:02X} not defined in song "
-                  f"(inst {insts}) — remove this entry from {ctx.split('[')[0]}")
+            self._diag.warn(WarningKind.VOICE_MISSING, extra_ctx=ctx, voice_idx=vi, instruments=sorted(insts))
 
         # Each sample is rendered at the level most of its notes play at — the carriers carry the
         # channel volume as the driver's SetVoice writes it — so the chip clips a multi-carrier
@@ -589,9 +590,8 @@ class SmpsToModConverter:
         psg_loops: dict[int, SustainLoop] = {}
         psg_cache: dict[str, int] = {}
         psg_samples = generate_psg_samples(
-            self.config, psg_synth, rate3_dividers={i: d['n'] for i, d in rate3.items()},
+            self.config, psg_synth, self.song.rules, rate3_dividers={i: d['n'] for i, d in rate3.items()},
             noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
-            psg_envelopes=self.song.psg_envelopes,
             loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops,
             raw_out=self._raw_renders, cache_out=psg_cache)
         if psg_cache:
@@ -655,7 +655,7 @@ class SmpsToModConverter:
         fps = self.config.fps
         for inst, d in derive_noise_envelopes(self.song, self.config).items():
             env = d['envelope']
-            env = self.song.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None
+            env = self.song.rules.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None
             frames = noise_envelope_frames(env)
             if frames is not None:
                 out[inst] = frames / fps
@@ -704,9 +704,8 @@ class SmpsToModConverter:
                 if self._merge is not None and inst in self._merge.mix_only and inst in self._merge.instruments:
                     continue            # rendered for the mixer; the slot's baseline is its composite's
                 if base is not None and abs(fm_level_db(tl, pan, pan_law) - base) > 1e-9:
-                    print(f"Warning: instrument {inst} was rendered at TL +{tl}"
-                          f"{' panned' if pan else ''} ({fm_level_db(tl, pan, pan_law):+.2f} dB) but its "
-                          f"baked level is {base:+.2f} dB — the loop extension changed the modal level")
+                    self._diag.warn(WarningKind.RENDER_LEVEL, instrument=inst, tl=tl, panned=bool(pan),
+                                    rendered_db=fm_level_db(tl, pan, pan_law), baked_db=base)
         self._psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
             self._psg_baseline_db = self._levels.levels(ChannelType.PSG)

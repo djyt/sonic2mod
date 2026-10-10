@@ -1,6 +1,7 @@
 """SMPS names: note labels (nC0..), real-pitch config names (A4), DAC samples, SFX channel ids, source channels."""
 
-from .song import ChannelType, CoordFlag, VoiceField
+from .effects import CoordFlag
+from .song import ChannelType, VoiceField
 
 # ---------------------------------------------------------------------------
 # SMPS Note Names → byte values
@@ -146,7 +147,7 @@ def parse_synth_note(name: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# SMPS DAC sample names → byte values (Sonic 1)
+# SMPS2ASM's DAC sample names → byte values (_smps2asm_inc.asm: the asm dialect's, Sonic 1's samples)
 # ---------------------------------------------------------------------------
 
 SMPS_DAC_NAMES = {
@@ -190,15 +191,24 @@ SFX_CHANNEL_IDS = {
 # ---------------------------------------------------------------------------
 
 
+FM_CHANNEL_NAMES = ("FM1", "FM2", "FM3", "FM4", "FM5", "FM6")     # the YM2612's channels, in order
+PSG_CHANNEL_NAMES = ("PSG1", "PSG2", "PSG3")                          # the SN76489's tone channels
+
+
 def source_names(song) -> list[str]:
     """"DAC", "FM1".."FMn", "PSG1".."PSGn" for a parsed song's channels, in header order; a
     channel that states its chip channel (Type 0 FM's FM1 FM2 FM4 FM5 FM6) is named by it."""
+    return track_names([ch.header for ch in song.channels])
+
+
+def track_names(headers: list) -> list[str]:
+    """source_names for a header's tracks (SmpsChannelHeader), before they are walked."""
     names: list[str] = []
     fm = psg = 0
-    for ch in song.channels:
-        kind = ch.header.channel_type
-        if ch.header.chip_channel:
-            names.append(ch.header.chip_channel)
+    for header in headers:
+        kind = header.channel_type
+        if header.chip_channel:
+            names.append(header.chip_channel)
         elif kind == ChannelType.DAC:
             names.append("DAC")
         elif kind == ChannelType.FM:
@@ -225,6 +235,11 @@ _FLAG_MACROS = {
     CoordFlag.SET_VOICE: "smpsSetvoice", CoordFlag.MOD_SET: "smpsModSet", CoordFlag.MOD_ON: "smpsModOn",
     CoordFlag.PSG_FORM: "smpsPSGform", CoordFlag.MOD_OFF: "smpsModOff", CoordFlag.PSG_VOICE: "smpsPSGvoice",
     CoordFlag.SET_VOL: "smpsSetVol",        # not Sonic 1's SMPS2ASM: this project's spelling
+    CoordFlag.DAC_SAMPLE: "smpsDacSample",  # likewise
+    CoordFlag.VOLUME_STEP: "smpsVolStep", CoordFlag.ALTER_VOLUME_STEP: "smpsAlterVolStep",
+    CoordFlag.DETUNE_ADD: "smpsDetuneAdd", CoordFlag.GATE: "smpsGate",
+    CoordFlag.VOICE_REGISTER: "smpsVoiceRegister", CoordFlag.FM3_SPECIAL: "smpsFm3Special",
+    CoordFlag.LFO: "smpsLfo",                # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

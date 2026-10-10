@@ -35,6 +35,11 @@ loop, and the sample can be cut there: its length no longer depends on the notes
      samples just before its start, so the jump lands on a matching waveform whatever
      the residual mismatch, and the sample is cut at the loop's end.
 
+A voice under the hardware LFO (`cycle`: its period) never repeats within one cycle: its pitch
+and, with AMS, its level move on every one.  Its envelope is measured over whole cycles, the
+loop spans a whole number of them (within a fundamental period, where the waveform closes), and
+the timbre check is off (the LFO moves the timbre itself).
+
 With `decay` (a voice's `loop_decay: slide`) the level need not have settled: the flat point is
 where the envelope starts to fall in a straight line (in dB, within `flat_db` of the line the
 reference span draws) and the timbre holds from there.  The samples from that point on are
@@ -127,9 +132,13 @@ def loop_error(x: Sequence[float], start: int, length: int, span: int) -> float:
 
 
 def _errors(x: Sequence[float], s: int, min_len: int, max_len: int, check: int,
-            period: float) -> list[tuple[float, int]]:
+            period: float, cycle: float = 0.0) -> list[tuple[float, int]]:
     """[(error, length)] for the even loop lengths in [min_len, max_len] at start `s`: every
-    one with numpy, else the fundamental's grid (k periods, two samples either way)."""
+    one with numpy, else the fundamental's grid (k periods, two samples either way).  With an
+    LFO `cycle`, only the lengths within a period of a whole number of cycles."""
+    if cycle:
+        return [(loop_error(x, s, length, check), length) for length in range(min_len, max_len + 1, 2)
+                if abs(length - max(1, round(length / cycle)) * cycle) <= period]
     try:
         import numpy as np
     except ImportError:
@@ -257,7 +266,7 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
                       min_loop_secs: float = MIN_LOOP_SECS, max_loop_secs: float = MAX_LOOP_SECS,
                       cross_secs: float = CROSS_SECS, max_error: float = MAX_ERROR,
                       timbre: bool = True, decay: bool = False,
-                      min_start_secs: float = 0.0) -> SustainLoop | None:
+                      min_start_secs: float = 0.0, cycle: float = 0.0) -> SustainLoop | None:
     """A sustain loop for a render of a note held for `sustain_n` samples at `rate` Hz whose
     fundamental period is `period` samples, or None where the envelope never settles (a
     decaying voice, one that has decayed to silence, or a sustain too short to judge).
@@ -282,12 +291,15 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
     beating pair is flat from its first window (its swing spans the band), and a loop that starts
     inside the attack replays a piece of it on every pass.
 
+    `cycle` (samples): the period of the hardware LFO the voice plays under; 0: none.
+
     The loop is not yet closed: apply_loop crossfades it and cuts the sample.
     """
     n = min(len(mono), sustain_n)
     if period <= 0 or n <= 0:
         return None
-    win = max(math.ceil(2 * period), 64)
+    win = max(math.ceil(2 * period), 64, math.ceil(cycle))
+    timbre = timbre and not cycle
     nwin = n // win
     span_w = max(4, int(span_secs * rate / win))
     if nwin < span_w + 4:
@@ -329,8 +341,8 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
 
     check = max(32, math.ceil(2 * period))
     cross = _even(cross_secs * rate)
-    min_len = max(4, _even(min_loop_secs * rate), 2 * cross)
-    max_len = _even(max_loop_secs * rate)
+    min_len = max(4, _even(min_loop_secs * rate), 2 * cross, _even(cycle - period))
+    max_len = max(_even(max_loop_secs * rate), _even(cycle + period))
     step = max(2, _even(period))
     best: SustainLoop | None = None
     best_score = math.inf
@@ -339,7 +351,7 @@ def find_sustain_loop(mono: Sequence[float], rate: int, period: float, sustain_n
         top = min(max_len, n - s - check, end_limit - s)
         if top < min_len:
             break
-        for e, length in _errors(x, s, min_len, top, check, period):
+        for e, length in _errors(x, s, min_len, top, check, period, cycle):
             # Bytes before the loop cost as much as bytes in it; the merged build keeps its old score
             score = e + LENGTH_PENALTY * (length + (s - flat_at if timbre else 0)) / rate
             if score < best_score:

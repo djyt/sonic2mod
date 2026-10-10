@@ -29,7 +29,8 @@ from dataclasses import dataclass
 
 from ..smps import (
     ChannelType,
-    CoordFlag,
+    PsgForm,
+    PsgVoice,
     TrackState,
     chip_pitch,
     source_map,
@@ -57,9 +58,9 @@ class DriverState(TrackState):
 
     __slots__ = ("config", "instrument", "psg_entries", "psg_entry", "psg_label")
 
-    def __init__(self, config, *, is_psg: bool, transpose: int = 0,
+    def __init__(self, config, *, is_psg: bool, psg_read: tuple[int, ...], transpose: int = 0,
                  volume: int = 0, instrument: int = 0):
-        super().__init__(is_psg=is_psg, transpose=transpose, volume=volume)
+        super().__init__(is_psg=is_psg, psg_read=psg_read, transpose=transpose, volume=volume)
         self.config = config
         self.instrument = instrument        # MOD instrument slot currently routed to
         self.psg_entry = None               # active PsgInstrumentEntry
@@ -72,6 +73,7 @@ class DriverState(TrackState):
         header = channel.header
         st = cls(config,
                  is_psg=header.channel_type == ChannelType.PSG,
+                 psg_read=channel.rules.psg_read,
                  transpose=header.pitch_offset,
                  volume=header.volume,
                  instrument=instrument)
@@ -90,12 +92,11 @@ class DriverState(TrackState):
     def apply(self, effect) -> None:
         """Advance the track state for one coordination flag, then the MOD routing it decides."""
         super().apply(effect)
-        kind = effect.flag
 
-        if kind == CoordFlag.PSG_FORM:
+        if isinstance(effect, PsgForm):
             # The form byte says white/periodic and the rate: its psg_map entry plays the noise.
             # The envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
-            form_byte = effect.params[0]
+            form_byte = effect.noise
             entry = self.config.psg_map.get(form_byte)
             if entry is not None:
                 self.psg_entry = entry
@@ -103,13 +104,13 @@ class DriverState(TrackState):
                 self.psg_label = f"form {form_byte:#04x}"
                 self.instrument = entry.envelopes.get(self.envelope, entry.mod_instrument)
 
-        elif kind == CoordFlag.PSG_VOICE:
+        elif isinstance(effect, PsgVoice):
             # cfSetPSGTone: VoiceIndex changes whatever mode the channel is in.  In noise mode
             # that only changes the envelope the noise plays with: the instrument stays the
             # psg_map entry's, or the variant its `envelopes:` names for this label (Scrap
             # Brain's fTone_08 hi-hat); psg_voice_map is not consulted (Credits' labels belong
             # to PSG1/PSG2).  In tone mode the label picks the psg_voice_map instrument.
-            label = effect.params[0]
+            label = effect.envelope
             if self.in_noise_mode:
                 if self.psg_entry is not None:
                     self.instrument = self.psg_entry.envelopes.get(label, self.psg_entry.mod_instrument)
@@ -133,7 +134,7 @@ class DriverState(TrackState):
         space = self.config.range_space if range_space is None else range_space
         if space != "chip":
             return source_semitone
-        return chip_pitch(source_semitone, self.transpose, self.is_psg)
+        return chip_pitch(source_semitone, self.transpose, self.is_psg, self.psg_read)
 
     def fm_ranges(self, source: str):
         """The range list the current voice routes through on this channel: its
@@ -199,7 +200,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     """
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
-    chip = chip_pitch(source_semitone, st.transpose, st.is_psg)
+    chip = chip_pitch(source_semitone, st.transpose, st.is_psg, st.psg_read)
     inst, raw, path, entry = st.instrument, None, "transpose", None
     if not st.is_psg:
         entry = st.fm_range_entry(source, key)
@@ -209,7 +210,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
         detune = getattr(st.config, "detune_plan", None)     # core.plan.detune: the sample at this detune
         if detune is not None:
-            inst = detune.instrument_for(inst, st.detune)
+            inst = detune.instrument_for(inst, st.detune, chip)
     else:
         ranged = psg_range_entry(st.psg_entries, key)
         if ranged is not None:

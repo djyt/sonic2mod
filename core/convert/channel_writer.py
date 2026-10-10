@@ -25,10 +25,10 @@ from ..diagnostics import Diagnostics, WarningKind
 from ..merge import Composite, MergePlan
 from ..mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModFile, ModNote, clamp_mod_volume, note_rate
 from ..plan import DetunePlan, DriverState, ResolvedNote, Timeline, detune_cents, fm_catalogue, walk_channel
-from ..smps import C1_SEMITONE, ChannelType, CoordFlag, SmpsChannel, SmpsSong
+from ..smps import C1_SEMITONE, AlterVol, ChannelType, CoordFlag, ModSet, NoteFill, SetVol, SmpsChannel, SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .level_plan import fm_tl_to_mod, psg_att_to_mod
-from .vibrato import VibratoSpeed, vibrato_depth
+from .vibrato import VibratoSpeed, modulation_slides, vibrato_depth
 
 _FINE_SLIDE_MAX = 0xF          # E1x / E2x move the period by at most 15 units
 _MAX_RELEASE_ROWS = 64         # a release still sounding this many rows on is cut (rate 0 rings forever)
@@ -93,7 +93,7 @@ class WriterContext:
         pitch it is rendered at."""
         if self._sample_detunes is None:
             self._sample_detunes = {i.inst: detune_cents(C1_SEMITONE + i.synth_idx, i.layers[0].fnum_offset,
-                                                         self.song.fm_frequencies)
+                                                         self.song.rules.fm_frequencies)
                                     for i in fm_catalogue(self.song, self.config).instruments.values()
                                     if len(i.layers) == 1}
         return self._sample_detunes.get(inst, 0.0)
@@ -217,6 +217,8 @@ class ChannelWriter:
         self._channel = channel
         self._cfg = chan_cfg
         self._is_dac = channel.header.channel_type == ChannelType.DAC   # by the song: Type 0 FM's drums are FM3
+        self._track = channel.rules.track(channel.header.channel_type)    # how its driver plays this kind
+        self._rest_plays_out = self._is_dac and not self._track.rest_cuts
         self._is_psg = channel.header.channel_type == ChannelType.PSG
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._router = _ColumnRouter(ctx, chan_cfg.source, chan_cfg.mod_channel)
@@ -233,6 +235,10 @@ class ChannelWriter:
         self._vibrato_change = 0   # raw SMPS delta byte (FNUM / PSG divider units); scaled per note
         self._vibrato_steps = 0    # raw SMPS steps byte
         self._vibrato_wait = 0     # ticks to delay before vibrato starts
+        self._mod_set: ModSet | None = None
+        self._mod_slides = False   # the modulation cycles too slowly for 4xy: slides (VibratoSpeed.too_slow)
+        self._mod_origin = 0       # where the modulation started: the last attack, or a ModSet / ModOn
+                                   # since (Streets of Rage $8B FM2: a ModSet on a tie starts it there)
         self._range_entry = None   # voice_map InstrumentRange matched on most recent note
 
         self._dac_map = {dac_cfg.name: dac_cfg for dac_cfg in ctx.config.dac_samples}
@@ -285,7 +291,7 @@ class ChannelWriter:
     def _note_ons(self):
         """The note-on events this channel's output sounds (spliced ones included)."""
         return (ev for ev in self._channel.events
-                if ev.is_note and not ev.note.is_rest and self._router.plays_here(ev))
+                if ev.note is not None and not ev.note.is_rest and self._router.plays_here(ev))
 
     def _note_on_cells(self) -> set[tuple[int, int]]:
         """(pattern, row) of every note-on: the row it rounds to and the row it starts in."""
@@ -303,14 +309,15 @@ class ChannelWriter:
         ring_ticks: dict[int, int] = {}
         ringing = None
         for ev in self._channel.events:
-            if not ev.is_note:
+            note = ev.note
+            if note is None:
                 continue
-            if ev.note.is_rest and ev.note.is_no_attack and ringing is not None:
-                ring_ticks[id(ringing)] += ev.note.duration
+            if note.is_rest and note.is_no_attack and ringing is not None:
+                ring_ticks[id(ringing)] += note.duration
                 continue
-            ringing = None if ev.note.is_rest else ev
+            ringing = None if note.is_rest else ev
             if ringing is not None:
-                ring_ticks[id(ev)] = ev.note.duration
+                ring_ticks[id(ev)] = note.duration
         return ring_ticks
 
     # --- the walk -------------------------------------------------------------------------------
@@ -343,15 +350,15 @@ class ChannelWriter:
         never stops; the DAC plays its sample out, and a PSG note is cut at its duration."""
         if self._channel.has_jump or self._is_dac or self._is_psg or self._last_inst is None:
             return
-        notes = [ev for ev in self._channel.events if ev.is_note]
+        notes = [(ev, ev.note) for ev in self._channel.events if ev.note is not None]
         if not notes:
             return
-        last = notes[-1]
-        if last.note.is_rest and not last.note.is_no_attack:
+        last, note = notes[-1]
+        if note.is_rest and not note.is_no_attack:
             return                      # keyed off already
-        if not last.note.is_rest and not self._router.plays_here(last):
+        if not note.is_rest and not self._router.plays_here(last):
             return                      # folded onto another channel: it ends there
-        end = last.tick_position + last.note.duration
+        end = last.tick_position + note.duration
         pattern, row = self._timeline.pattern_row(end)
         if pattern >= self._config.max_patterns:
             return
@@ -368,29 +375,32 @@ class ChannelWriter:
         affect note pitch or voice_map lookup."""
         eff = event.effect
         kind = eff.flag
-        if kind in (CoordFlag.ALTER_VOL, CoordFlag.SET_VOL):
+        if isinstance(eff, (AlterVol, SetVol)):
             # st.apply moved the TL offset / attenuation; the non-baked modes keep their own
             # MOD-volume accumulator on top of it: the channel volume less the TL steps the song
             # moved from its header volume (smpsAlterVol: by its delta; SET_VOL: to its level)
             if self._is_psg or self._fm_absolute:
                 self._current_volume = self._level_volume()
             elif not self._fm_baked:
-                if kind == CoordFlag.ALTER_VOL:
-                    moved = self._current_volume - eff.params[0]
-                else:                                   # SET_VOL: from the channel's header volume
-                    moved = self._cfg.volume - (eff.params[0] - self._channel.header.volume)
+                if isinstance(eff, AlterVol):
+                    moved = self._current_volume - eff.delta
+                else:                                   # SetVol: from the channel's header volume
+                    moved = self._cfg.volume - (eff.level - self._channel.header.volume)
                 self._current_volume = max(0, min(64, moved))
-        elif kind == CoordFlag.NOTE_FILL:
-            self._note_fill = eff.params[0]
-        elif kind == CoordFlag.MOD_SET:
-            # wait, speed, change, steps
-            self._vibrato_wait = eff.params[0]
-            self._vibrato_change = eff.params[2]   # raw delta; scaled to period units at placement
-            self._vibrato_steps = eff.params[3]
-            self._vibrato_speed = self._ctx.vibrato.speed(eff.params[1], self._vibrato_steps, self._cfg.source,
-                                                          event.tick_position)
+        elif isinstance(eff, NoteFill):
+            self._note_fill = eff.frames
+        elif isinstance(eff, ModSet):
+            self._vibrato_wait = eff.wait
+            self._vibrato_change = eff.delta       # raw delta; scaled to period units at placement
+            self._vibrato_steps = eff.steps
+            self._vibrato_speed = self._ctx.vibrato.speed(eff.speed, self._vibrato_steps, self._cfg.source,
+                                                          event.tick_position, self._track)
+            self._mod_set = eff
+            self._mod_slides = self._ctx.vibrato.too_slow(eff.speed, eff.steps, event.tick_position, self._track)
+            self._mod_origin = event.tick_position
             self._vibrato_active = True
         elif kind == CoordFlag.MOD_ON:
+            self._mod_origin = event.tick_position
             self._vibrato_active = True
         elif kind == CoordFlag.MOD_OFF:
             self._vibrato_active = False
@@ -412,9 +422,10 @@ class ChannelWriter:
     def _on_rest(self, event) -> None:
         note, tick = event.note, event.tick_position
 
-        # The drum track's rest plays nothing new: the sample plays out (DACUpdateTrack returns on
-        # $80), and Type 0 FM lets an FM drum ring on FM3.  A follower's rest spliced in still cuts.
-        if self._is_dac and getattr(event, "merged", None) is None:
+        # The drum track's rest plays nothing new unless its driver's cuts: the sample plays out
+        # (Sonic 1's DACUpdateTrack returns on $80), Type 0 FM lets an FM drum ring on FM3, Streets
+        # of Rage's plays the empty sample.  A follower's rest spliced in still cuts.
+        if self._rest_plays_out and getattr(event, "merged", None) is None:
             return
 
         # is_no_attack=True marks an FM/DAC standalone-duration continuation — the YM2612
@@ -563,11 +574,15 @@ class ChannelWriter:
         if n.psg and not fill.placed:
             self._place_duration_cut(n)
         cxx_coord, slot_used = self._attack_commands(n, fill.slot_used)
-        vib_speed, vib_depth = self._vibrato_of(n)
+        vib_speed, vib_depth = (0, 0) if self._mod_slides else self._vibrato_of(n)
         if not slot_used:
             self._attack_level_or_vibrato(n, vib_speed, vib_depth)
         if n.vib_on and vib_speed > 0:
             self._continue_vibrato(n, vib_speed, vib_depth, fill, cxx_coord)
+        if not n.event.note.is_no_attack:
+            self._mod_origin = n.tick
+        if n.vib_on and self._mod_slides and not n.legato:
+            self._slide_modulation(n)
         self._write_decay(n, fill)
         self._cut_banked(n)
         return True
@@ -808,7 +823,8 @@ class ChannelWriter:
         # Depth is per note: the driver's swing is a fixed number of FNUM / divider units, so its
         # size in cents depends on the chip note it is added to.
         depth = vibrato_depth(self._vibrato_change, self._vibrato_steps, PERIOD_TABLE[n.mod_note.value],
-                              n.res.source + st.transpose, self._is_psg, self._ctx.player)
+                              n.res.source + st.transpose, self._is_psg, st.psg_read,
+                              self._channel.rules.fm_frequencies, self._ctx.player, self._track)
         return (self._vibrato_speed if depth else 0), depth
 
     def _attack_level_or_vibrato(self, n: _Note, vib_speed: int, vib_depth: int) -> None:
@@ -822,6 +838,42 @@ class ChannelWriter:
         wait_ticks = self._vibrato_wait * self._timeline.ticks_per_frame_at(n.tick)
         if n.vib_on and vib_speed > 0 and wait_ticks <= self._timeline.ticks_per_row / 2:
             self._mod.set_effect(0x4, (vib_speed << 4) | vib_depth)
+
+    def _slide_modulation(self, n: _Note) -> None:
+        """A modulation too slow for 4xy as slides: each row with a free effect slot slides to the
+        chip's pitch at its end, until the note ends or is cut (Streets of Rage's sweeps).  A tie
+        written as a note (a level change) starts from the note's period again; its modulation
+        runs on from the attack."""
+        assert self._mod_set is not None
+        tpr = self._timeline.ticks_per_row
+        tpf = self._timeline.ticks_per_frame_at(n.tick)
+        end = n.tick + n.duration if n.cut_tick is None else min(n.tick + n.duration, n.cut_tick)
+
+        # The rows from the attack's on, those whose effect slot is free
+        rows = []
+        for start in _grid_rows(n.pattern * 64 + n.row, end, tpr):
+            pattern, row = self._timeline.pattern_row(start)
+            if pattern >= self._config.max_patterns:
+                break
+            self._mod.ensure_pattern(pattern)
+            if self._mod.effect_slot_free(pattern, row, self._col):
+                rows.append((start, min(start + tpr, end)))
+
+        slides = modulation_slides(self._mod_set, PERIOD_TABLE[n.mod_note.value], rows,
+                                   lambda tick: max(0.0, (tick - self._mod_origin) / tpf), self._modulation_cents(n),
+                                   self._config.target_speed - 1, self._track)
+        for start, effect, param in slides:
+            pattern, row = self._timeline.pattern_row(start)
+            self._mod.set_cursor(pattern, self._col, row)
+            self._mod.set_effect(effect, param)
+        self._mod.set_cursor(n.pattern, self._col, n.row)
+
+    def _modulation_cents(self, n: _Note):
+        """The pitch a modulation offset moves `n` by: added to its FNUM word, or its PSG divider."""
+        if not self._is_psg:
+            return lambda offset: detune_cents(n.res.chip, offset, self._channel.rules.fm_frequencies)
+        divider = self._st.psg_read[(n.res.source + self._st.transpose) & 0x7F]
+        return lambda offset: 1200 * math.log2(divider / max(1, divider + offset)) if divider > 0 else 0.0
 
     def _continue_vibrato(self, n: _Note, vib_speed: int, vib_depth: int, fill: _Fill,
                           cxx_coord: tuple[int, int] | None) -> None:
@@ -1132,7 +1184,7 @@ class ChannelWriter:
         if (pattern, row) == self._last_note_cell or self._router.borrowed(mod_chan, tick):
             return                      # the attack row's slide would retune the attack too
         self._mod.ensure_pattern(pattern)
-        want = detune_cents(self._last_chip, self._st.detune, self._ctx.song.fm_frequencies) - self._sounding_cents
+        want = detune_cents(self._last_chip, self._st.detune, self._ctx.song.rules.fm_frequencies) - self._sounding_cents
         moved = self._fine_slide(pattern, row, mod_chan, self._sounding_period, want)
         if moved is not None:
             self._sounding_period -= moved

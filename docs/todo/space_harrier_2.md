@@ -165,9 +165,18 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   sections), the rest `$C1` / `$AF`.  `vgm_lift` misreads the tempo-3 songs' holds as tempo
   changes: `vgm_frames` is the yardstick here.  With the rip glitches undone (merge of
   `rip_glitches`: `$81`'s five lost V-ints and `$96`'s one logged in rips.yaml), 19 of 20 play every
-  attacking note.  Left: `$98` FM4 - its part plays 768 frames later in the rip than the song
-  walks it (99 of 118 attacks at +768; the rip keys FM4 at frames 1, 257, 513, 641, 769 before):
-  the reader or the walk may miss FM4's opening part (Phase 4).
+  attacking note.  `$98` FM4 (Phase 4): its part played 768 frames later in the rip than the walk
+  had it.  The track opens on two rests and `$AE` before any duration byte, and the driver keeps a
+  duration in a byte it counts up to (`$024E`: `inc (ix+11) / ld a,(ix+10) / sub (ix+11)`), from
+  byte x divider by adds (`$0449`): none read yet (0) lasts 256 ticks, a product past 255 wraps.
+  `TrackRules.byte_durations`; the three notes at 256 put every FM4 attack on its rip's frame.
+- Found with it: the rip's FM4 voice differs in one register (100 attacks): OP1's SSG-EG (`$90`)
+  is `$FF`.  The `$F2` stop (`$06D3`) silences a track through the RR / TL list at `$0A95`
+  offset by `channel and 7` (2, 5 and 6 special-cased), so FM4's lands an operator slot high:
+  RR `$FF` on `$84`-`$90`, TL `$7F` on `$44`-`$50`.  No voice list writes `$90`, so it stays until
+  something clears it: Game Over's FM4 stop writes it (frame 385), and the Title Screen's rip
+  opens with the chip so (its frame-0 state).  Which song plays with it depends on what stopped
+  before: not converted (don't simulate bugs); to confirm with the user.
 
 ### Phase 3: drums (done 2026-10-10, `276699a`)
 - [x] 3.1 The drum model: an FmFrame's word per operator and key mask (special mode), an FmDrum's

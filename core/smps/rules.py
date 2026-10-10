@@ -46,6 +46,9 @@ class TrackRules:
     gate_sees_tie: bool = False             # the gate leaves a note the next byte ties
     tied_rest_holds: int | None = None      # frames a rest after a tie holds the note; None: the whole rest
     rest_cuts: bool = False                 # the drum track's rest (and gate) stops the sample; False: it plays out
+    byte_durations: bool = False            # a duration (byte x divider) is kept in a byte the track counts
+                                            # up to: a product past 255 wraps, and 0 - a note before any
+                                            # duration - lasts 256 ticks; False: the product as it is
 
 
 SONIC1_TRACK = TrackRules()

@@ -31,6 +31,7 @@ from core.smps import (
     OpKind,
     PlaybackRules,
     SmpsSongHeader,
+    TrackRules,
     effect_from_bytes,
 )
 
@@ -115,6 +116,12 @@ _DRUM_FLAGS: dict[int, FlagSpec] = {
 }
 
 
+# Every track counts a frame up to its duration, both bytes ($024E: inc (ix+11) / ld a,(ix+10) /
+# sub (ix+11)), from byte x divider by adds ($0449): a note before any duration (the record leaves
+# it 0) lasts 256 - $98's FM4 opens on three
+_TRACK = TrackRules(byte_durations=True)
+
+
 def _fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
     """Every drum byte's drums, as the driver plays them (drums.py): the same in every song."""
     return {drum_name(byte): drum for byte, drum in read_sh2_drums(rom).items()}
@@ -144,7 +151,8 @@ SH2 = SmpsVariant(
     # Its FM and PSG tables read from the driver (no PSG music: the drums' PSG half reads the PSG
     # table); the PSG envelopes: Phase 3
     rules=PlaybackRules(driver=SmpsDriver.SH2, fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
-                        dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
+                        dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)},
+                        tracks=dict.fromkeys(ChannelType, _TRACK)),
     rules_from_rom=_rules_from_rom,
     fm_drums=_fm_drums,
     music_header_reader=read_track_list,

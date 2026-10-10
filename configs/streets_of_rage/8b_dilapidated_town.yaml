@@ -7,14 +7,14 @@ rom_song: "$8B"
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [1, "dac81.raw", 50, 6]   # VGZ: +2.2 dB at 64
   - [2, "dac82.raw", 42, -3]   # VGZ: +3.6 dB at 64
-  - [3, "fm_v00_D4.raw", 14, 0]   # VGZ: +2.1 dB at 18
-  - [4, "fm_v00_C5.raw", 20, 0]   # VGZ: +2.5 dB at 27
-  - [5, "fm_v00_D6.raw", 22, 0]   # VGZ: +1.9 dB at 27
+  - [9, "fm_v0c_A3.raw", 17, 0]   # VGZ: +3.6 dB at 25
   - [10, "fm_v02_Bb2.raw", 4, 0]   # VGZ: -3.2 dB at 3
+  - [10, "fm_v0c_G4.raw", 15, 0]   # VGZ: +5.4 dB at 28
   - [11, "fm_v02_B3.raw", 4, 0]   # VGZ: -2.9 dB at 3
-  - [12, "fm_v03_A3.raw", 13, 0]   # VGZ: -1.4 dB at 11
-  - [13, "fm_v03_G4.raw", 13, 0]   # VGZ: -1.2 dB at 11
-  - [14, "fm_v04_Bb4.raw", 6, 0]   # VGZ: +7.3 dB at 14
+  - [11, "fm_v0d_Bb4.raw", 9, 0]   # VGZ: +4.3 dB at 14
+  - [12, "fm_v0e_D4.raw", 20, 0]   # VGZ: +4.9 dB at 36
+  - [13, "fm_v0f_D4.raw", 5, 0]   # VGZ: +7.7 dB at 12
+  - [14, "fm_v0f_C5.raw", 12, 0]   # VGZ: -4.5 dB at 7
   - [15, "fm_v05_B7.raw", 14, 0]   # VGZ: -2.2 dB at 11
   - [16, "fm_v06_D4.raw", 64, 0]   # VGZ: -5.4 dB at 35
   - [17, "fm_v07_B7.raw", 15, 0]   # VGZ: -4.3 dB at 9

@@ -113,19 +113,29 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   vulture, layers).
 - [x] 0.2 Merge main (`c254462`: chips in `core/chips/`, renderers in `core/synth/`); gates passed.
 
-### Phase 1: read the ROM
-- [ ] 1.1 `SmpsDriver` name (`smpsz80_sh2`? the family's name once a second game reads), folder
-  `core/drivers/smpsz80/<name>/`, pinned by SHA-1 in `games.py`.
-- [ ] 1.2 Locate by shape: the bank from the 9 writes, each table from the `ld hl,nn` that reads it;
-  `SoundIndex`, music `$81`-`$99`.  SFX: listed, not read (D4).
-- [ ] 1.3 Header reader: the track records -> `SmpsSongHeader` (chip channel from the channel
-  byte; FM3 + PSG3 sharing a pointer: one drum track); tempo from the table.  Confirm record byte 7
-  (FM: overwritten by the first `$EF`?).
-- [ ] 1.4 Flags (1 above), voices (register / value), FM and PSG tables (`rules_from_rom`).
-- [ ] 1.5 `rom_import.py` lists the songs; `tools/song_dump.py` reads every one; read snapshot
-  `read_space_harrier_2`.
-- [ ] 1.6 Tests: `tests/core/drivers/smpsz80/<name>/` (hand-built bytes; with the ROM: tables,
-  tracks, voices).
+### Phase 1: read the ROM (done 2026-10-10, `1f71fa0`)
+- [x] 1.1 `SmpsDriver.SH2` (`smpsz80_sh2`; renamed for the family once a second game reads),
+  `core/drivers/smpsz80/sh2/`, pinned by SHA-1 in `games.py`.
+- [x] 1.2 Locate by shape (`locate.py`): the bank from the run of 9 writes that maps inside the ROM
+  (the other maps `$C00000`, the PSG); the song loader's `ld hl` operands (tempos, index; as many
+  songs as the tempo table has bytes: 25); the voice flag's (voices).  SFX: not listed (Z80 RAM, D4).
+- [x] 1.3 Track lists (`header.py`): the slot decides how a track plays (slot 3 the drum track,
+  slot 7 its PSG half, checked to share its pointer); one divider per song; the tempo by song
+  (`Sh2Memory.tempo`).  Record byte 7 is never loaded at the start: 117 FM tracks set a voice before
+  their first note, 7 start with a rest.
+- [x] 1.4 Flags (`variant.py`): the table in 1; dropped and reported: legato, pitch envelope
+  (Phase 2), the follow-on song (D3), the drum track's own flags (Phase 3); unused ones refused.
+  Voices (`voices.py`): register lists through `core/rom/voices.py`'s `voice_from_registers`; voices
+  18 / 20 / 22 are patches, not voices: an `$EF` naming one is refused (none does); `$BC` in 73 / 74
+  is no register (no pan).  FM table from the driver (`program.py`).  No `$7F` drum byte in any song.
+- [x] 1.5 `rom_import.py` lists the 25 songs, `song_dump.py` reads, walks and plays each; read
+  snapshot `read_space_harrier_2`.
+- [x] 1.6 `tests/core/drivers/smpsz80/sh2/`: header, voices and flags on hand-built bytes; the
+  tables and every song with the ROM.
+- Found for later:
+  - `$81` sounds near B0 (fnum `$269`, block 1), not Sonic 1's C0: samples render at the table's
+    word, so the pitch is right, but note names in reports read 11 semitones low (check in 4.1).
+  - `$84` FM1 plays a note before any voice (it inherits the chip's): Phase 2.
 
 ### Phase 2: the walk
 - [ ] 2.1 Legato `$EE`, volume, transposition, divider, pan / AMS / FMS, LFO.

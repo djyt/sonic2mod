@@ -289,7 +289,7 @@ heard.
 ### Notes that start between rows (`EDx`)
 
 A note whose tick is off the row grid goes on the row it starts in, delayed with `EDx`
-(`ChannelWriter._note_cell`), instead of being rounded half a row early or late.
+(`Cells.note_cell`, `core/convert/channel_writer/cells.py`), instead of being rounded half a row early or late.
 
 - **The delay is measured in frames.**  Ticks are unevenly spaced (§ Frames versus ticks): on Green
   Hill (*m* = 3, two ticks a row) an odd tick is one frame (16.7 ms) after its row, not the 25 ms an
@@ -569,7 +569,7 @@ beat); `loop_decay: slide` below.
 ### Release slides
 
 A looped sample rings until something stops it, so with loops on every FM note ends with a volume
-slide at the voice's release rate instead of `C00` (`ChannelWriter._write_release`): `release_rate_db_s`
+slide at the voice's release rate instead of `C00` (`Fades.release`): `release_rate_db_s`
 fits the dB/s slope of the render's tail after key-off, and one `A0y` per row from the rest's (or the
 fill's) row takes the volume to where that slope is at the row's end — the chip's release is linear in
 dB, so each row's target is the last one's times a fixed ratio.  Rows whose share rounds to nothing are
@@ -589,7 +589,7 @@ them, the timbre check always on; a fall under 0.1 dB/s (`MIN_DECAY_DB_S`) is a 
 is flattened from the flat point (`flatten`), the loop found and closed in it, and the fall
 (`SustainLoop.decay_db`, `flat_at`) goes to the converter.
 
-`ChannelWriter._write_decay` writes the fall into each note: on every row it rings through after the
+`Fades.decay` writes the fall into each note: on every row it rings through after the
 attack row, a slide toward `volume × 10^(−fall × (t − t0) / 20)`, with *t0* and the fall at the rate
 the note's period plays the sample (a note above the root falls faster, as the unlooped sample did).
 `A0y` where the row's share is at least one `A01` (`speed − 1` units), else `EBx` (Game Over's bass falls
@@ -816,7 +816,7 @@ merge_patterns:
   primary's notes to that column in the group's patterns; the column must be free there (its owner
   folded, dropped or moved) — two sources on one column in a pattern is an error naming it.  A group
   with no followers and a `mod_channel` is a plain move.
-- `ChannelWriter` routes each note-on by its tick's reference pattern (`_ColumnRouter`); rests and cuts
+- `ChannelWriter` routes each note-on by its tick's reference pattern (`ColumnRouter`); rests and cuts
   follow the note to its column, a ring left on another column when the block changes is cut there,
   and a channel's own end in a column another channel borrows is a plain `C00`.
 - A group with no followers and `fill: true` pools its primary's notes in the block's patterns (the
@@ -861,7 +861,7 @@ to $FF00; `core/merge/banks.py`).  `pack_banks` runs once the mixes exist, most-
   (`merge_bank_dropped`); banks the slots could not hold are counted (`MergePlan.bank_overflow`).
 
 **In the output** every banked note starts with `9xx` (none at offset 0) and, unless the column's next
-note-on comes first, is cut once its sound is over (`ChannelWriter._cut_after`: the sound's seconds as
+note-on comes first, is cut once its sound is over (`Cells.cut_after`: the sound's seconds as
 frames, then ticks as a fill is; `C00` on a row, `ECx` inside one).  A melodic primary banks too; the
 `9xx` takes the attack row: a `Cxx` moves to the note's next free row, an `EDx` is dropped, a cut inside
 the attack row moves to the next row, and a no-attack note is re-triggered.  A banked sound's level is

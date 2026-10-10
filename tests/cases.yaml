@@ -12,35 +12,35 @@
 # choose by coverage (tests/selection.py records what each case runs).
 
 sonic1:     # every song: the reference driver
-  - {name: title_screen, config: 01_title_screen, why: Title Screen}
-  - {name: green_hill_zone, config: 02_green_hill_zone, baseline: ghz, why: Green Hill Zone}
-  - {name: ghz_lofi, config: 02_green_hill_zone, variant: lofi,
+  - {name: title_screen, config: sonic_1/01_title_screen, why: Title Screen}
+  - {name: green_hill_zone, config: sonic_1/02_green_hill_zone, baseline: ghz, why: Green Hill Zone}
+  - {name: ghz_lofi, config: sonic_1/02_green_hill_zone, variant: lofi,
      why: "Green Hill Zone lofi - mix_at: primary, A2 banks, loop_drift_db 20, root-pitch samples, merge_twins: always"}
-  - {name: marble_zone, config: 03_marble_zone, why: Marble Zone - pitched rate-3 noise}
-  - {name: spring_yard_zone, config: 04_spring_yard_zone, why: Spring Yard Zone - notes below the PSG table}
-  - {name: lab_zone, config: 05_lab_zone, why: Labyrinth Zone - rootless PSG entry + channel transpose}
-  - {name: star_light_zone, config: 06_star_light_zone, why: "Star Light Zone - range_space: chip"}
-  - {name: scrap_brain_zone, config: 07_scrap_brain_zone, why: Scrap Brain Zone - PSG3 noise envelope variants}
-  - {name: special_stage, config: 08_special_stage, why: Special Stage}
-  - {name: robotnik, config: 09_robotnik, why: Robotnik}
-  - {name: robotnik_lofi, config: 09_robotnik, variant: lofi, why: "Robotnik lofi - loop_drift_db 12, bass mixes at C2"}
-  - {name: final_zone, config: 10_final_zone, why: Final Zone}
-  - {name: stage_clear, config: 11_stage_clear, why: "Stage Clear - range_space: chip"}
-  - {name: stage_clear_lofi, config: 11_stage_clear, variant: lofi, why: Stage Clear lofi - lead and harmony mixes at F2}
-  - {name: ending_theme, config: 12_ending_theme, why: "Ending - range_space: chip, PSG2 own instrument"}
-  - {name: credits, config: 13_credits, why: "Credits - tempo steps, global divider, chip space, 31 instruments"}
-  - {name: invincibility, config: 14_invincibility, why: "Invincibility - range_space: chip"}
-  - {name: invincibility_lofi, config: 14_invincibility, variant: lofi, why: Invincibility lofi - hat at A2, the bass looped}
-  - {name: extra_life, config: 15_1up, why: Extra Life}
-  - {name: extra_life_lofi, config: 15_1up, variant: lofi,
+  - {name: marble_zone, config: sonic_1/03_marble_zone, why: Marble Zone - pitched rate-3 noise}
+  - {name: spring_yard_zone, config: sonic_1/04_spring_yard_zone, why: Spring Yard Zone - notes below the PSG table}
+  - {name: lab_zone, config: sonic_1/05_lab_zone, why: Labyrinth Zone - rootless PSG entry + channel transpose}
+  - {name: star_light_zone, config: sonic_1/06_star_light_zone, why: "Star Light Zone - range_space: chip"}
+  - {name: scrap_brain_zone, config: sonic_1/07_scrap_brain_zone, why: Scrap Brain Zone - PSG3 noise envelope variants}
+  - {name: special_stage, config: sonic_1/08_special_stage, why: Special Stage}
+  - {name: robotnik, config: sonic_1/09_robotnik, why: Robotnik}
+  - {name: robotnik_lofi, config: sonic_1/09_robotnik, variant: lofi, why: "Robotnik lofi - loop_drift_db 12, bass mixes at C2"}
+  - {name: final_zone, config: sonic_1/10_final_zone, why: Final Zone}
+  - {name: stage_clear, config: sonic_1/11_stage_clear, why: "Stage Clear - range_space: chip"}
+  - {name: stage_clear_lofi, config: sonic_1/11_stage_clear, variant: lofi, why: Stage Clear lofi - lead and harmony mixes at F2}
+  - {name: ending_theme, config: sonic_1/12_ending_theme, why: "Ending - range_space: chip, PSG2 own instrument"}
+  - {name: credits, config: sonic_1/13_credits, why: "Credits - tempo steps, global divider, chip space, 31 instruments"}
+  - {name: invincibility, config: sonic_1/14_invincibility, why: "Invincibility - range_space: chip"}
+  - {name: invincibility_lofi, config: sonic_1/14_invincibility, variant: lofi, why: Invincibility lofi - hat at A2, the bass looped}
+  - {name: extra_life, config: sonic_1/15_1up, why: Extra Life}
+  - {name: extra_life_lofi, config: sonic_1/15_1up, variant: lofi,
      why: Extra Life lofi - the bass pair on a sliding loop, harmony mixes at F2}
-  - {name: chaos_emerald, config: 16_chaos_emerald, why: Chaos Emerald}
-  - {name: drowning, config: 17_drowning, why: Drowning - mid-song smpsSetTempoMod}
-  - {name: continue_screen, config: 18_continue_screen, why: "Continue - range_space: chip, key changes"}
-  - {name: continue_screen_lofi, config: 18_continue_screen, variant: lofi,
+  - {name: chaos_emerald, config: sonic_1/16_chaos_emerald, why: Chaos Emerald}
+  - {name: drowning, config: sonic_1/17_drowning, why: Drowning - mid-song smpsSetTempoMod}
+  - {name: continue_screen, config: sonic_1/18_continue_screen, why: "Continue - range_space: chip, key changes"}
+  - {name: continue_screen_lofi, config: sonic_1/18_continue_screen, variant: lofi,
      why: Continue lofi - bass and lead sliding loops, chords at 12 dB}
-  - {name: game_over, config: 19_game_over, why: Game Over}
-  - {name: game_over_lofi, config: 19_game_over, variant: lofi, why: Game Over lofi - bass and lead looped early, the bass at C2}
+  - {name: game_over, config: sonic_1/19_game_over, why: Game Over}
+  - {name: game_over_lofi, config: sonic_1/19_game_over, variant: lofi, why: Game Over lofi - bass and lead looped early, the bass at C2}
 
 sonic1_rom:  # read from the ROM's bytecode: byte for byte the asm case's MOD
   - {name: title_screen_rom, of: title_screen, input: input/roms/sonic_rev01.bin, rom_song: $8A, why: the ROM reader}

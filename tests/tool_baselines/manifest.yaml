@@ -1,384 +1,384 @@
 # Written by tests/tool_regression.py --generate-baselines: the inputs of each baseline.
 analyze_01_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_01_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_01_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_01_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_02_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_02_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_02_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_02_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_03_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_03_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_03_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_03_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_04_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_04_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_04_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_04_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_05_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_05_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_05_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_05_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_06_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_06_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_06_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_06_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_07_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_07_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_07_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_07_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_08_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_08_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_08_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_08_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_09_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_09_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_09_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_09_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_10_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_10_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_10_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_10_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_11_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_11_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_11_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_11_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_12_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_12_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_12_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_12_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_13_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_13_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_13_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_13_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_14_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_14_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_14_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_14_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_15_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_15_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_15_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_15_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_16_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_16_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_16_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_16_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_17_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_17_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_17_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_17_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_18_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_18_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_18_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_18_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_19_frames:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 analyze_19_psg0:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 analyze_19_rows:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 analyze_19_volumes:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 compare_chaos_emerald:
   commit: 0bda3fa-dirty
   date: '2026-10-08'
@@ -708,7 +708,7 @@ compare_title_screen_merged:
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
 frames_golden_axe:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
@@ -740,25 +740,25 @@ frames_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 frames_streets_of_rage:
-  commit: 5adc013-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/streets_of_rage/81_fighting_in_the_street.yaml: e40200298744
-    configs/streets_of_rage/82_game_over.yaml: 5bd8ff7f22ca
-    configs/streets_of_rage/83_the_street_of_rage.yaml: 4701b0071509
-    configs/streets_of_rage/84_moon_beach.yaml: 709c9dfb248a
-    configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 2713424a8cb8
-    configs/streets_of_rage/86_violent_breathing.yaml: b18ea27e7436
-    configs/streets_of_rage/87_attack_the_barbarian.yaml: 97ba3a5b1d06
-    configs/streets_of_rage/88_the_last_soul.yaml: 8cbb4a4bf18b
-    configs/streets_of_rage/89_stealthy_steps.yaml: a8a1f9854d2f
-    configs/streets_of_rage/8b_dilapidated_town.yaml: 6e16f381284c
-    configs/streets_of_rage/8c_keep_the_groovin.yaml: 6e574670502d
-    configs/streets_of_rage/8d_level_clear.yaml: aeaf6d0ed6e0
-    configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: 42c2da49286c
-    configs/streets_of_rage/90_big_boss.yaml: fdbda61a6004
-    configs/streets_of_rage/91_good_ending.yaml: 6094f75d7844
-    configs/streets_of_rage/rips.yaml: 40e91740b461
+    configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be
+    configs/streets_of_rage/82_game_over.yaml: a8f4c13500eb
+    configs/streets_of_rage/83_the_street_of_rage.yaml: dcc414b998cf
+    configs/streets_of_rage/84_moon_beach.yaml: cbcedef7ed4a
+    configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 734ae3d10d09
+    configs/streets_of_rage/86_violent_breathing.yaml: 8d63f58fbbbe
+    configs/streets_of_rage/87_attack_the_barbarian.yaml: d0afbec92e50
+    configs/streets_of_rage/88_the_last_soul.yaml: 51eebbec3621
+    configs/streets_of_rage/89_stealthy_steps.yaml: 367584f1ba8e
+    configs/streets_of_rage/8b_dilapidated_town.yaml: 26f2d0150aa1
+    configs/streets_of_rage/8c_keep_the_groovin.yaml: a74f4536d900
+    configs/streets_of_rage/8d_level_clear.yaml: 93c02f6ec528
+    configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: d4b14e740c1d
+    configs/streets_of_rage/90_big_boss.yaml: 187efaff3a7b
+    configs/streets_of_rage/91_good_ending.yaml: 52c7c54466a2
+    configs/streets_of_rage/rips.yaml: b049c4668da6
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
     reference/vgz/streets_of_rage_1/01 - The Street of Rage (1).vgz: 030883819fdb
     reference/vgz/streets_of_rage_1/01 - The Street of Rage.vgz: 030883819fdb
@@ -777,54 +777,54 @@ frames_streets_of_rage:
     reference/vgz/streets_of_rage_1/15 - You Became the Bad Guy!.vgz: 382aa0e8280f
     reference/vgz/streets_of_rage_1/16 - Good Ending.vgz: a8a2300985e6
 lift_02:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 lift_all:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    configs/03_marble_zone.yaml: d8dd716ce0da
-    configs/04_spring_yard_zone.yaml: ec060b413733
-    configs/05_lab_zone.yaml: af4485b39d54
-    configs/06_star_light_zone.yaml: b692e0d08918
-    configs/07_scrap_brain_zone.yaml: 331bee95f256
-    configs/08_special_stage.yaml: d2d743df745a
-    configs/09_robotnik.yaml: f20a741e2978
-    configs/10_final_zone.yaml: 442bc2182d32
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    configs/12_ending_theme.yaml: fbca82b79aac
-    configs/13_credits.yaml: fd4e69be5011
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    configs/15_1up.yaml: 6474b8f799e1
-    configs/16_chaos_emerald.yaml: 5c39e0349d2c
-    configs/17_drowning.yaml: 82ba0527a820
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    configs/19_game_over.yaml: 5a82cd1b1034
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
+    configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
+    configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
+    configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
+    configs/sonic_1/08_special_stage.yaml: 986d25d7793a
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    configs/sonic_1/10_final_zone.yaml: c8329f9162cb
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
+    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
+    configs/sonic_1/17_drowning.yaml: 099aadef0ccc
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 lift_moonwalker_88_round_clear:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
@@ -883,7 +883,7 @@ lift_moonwalker_88_round_clear:
     reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
     reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 lift_moonwalker_all:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
@@ -942,225 +942,225 @@ lift_moonwalker_all:
     reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
     reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 pitch_chaos_emerald:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/16_chaos_emerald.yaml: 5c39e0349d2c
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
     tests/baselines/chaos_emerald_baseline.mod: 805db83fe9b8
     tests/settings.yaml: a79a8ba763a3
 pitch_continue_screen:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     tests/baselines/continue_screen_baseline.mod: 8009a4e32373
     tests/settings.yaml: a79a8ba763a3
 pitch_continue_screen_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     tests/baselines/continue_screen_lofi_baseline.mod: 91f43dbb2b74
     tests/settings.yaml: a79a8ba763a3
 pitch_credits:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/13_credits.yaml: fd4e69be5011
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
     tests/baselines/credits_baseline.mod: 1135bbba38b2
     tests/settings.yaml: a79a8ba763a3
 pitch_drowning:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/17_drowning.yaml: 82ba0527a820
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    configs/sonic_1/17_drowning.yaml: 099aadef0ccc
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
     tests/baselines/drowning_baseline.mod: e7a025e16221
     tests/settings.yaml: a79a8ba763a3
 pitch_ending_theme:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/12_ending_theme.yaml: fbca82b79aac
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
     tests/baselines/ending_theme_baseline.mod: 384ab8e6e655
     tests/settings.yaml: a79a8ba763a3
 pitch_extra_life:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
     tests/baselines/extra_life_baseline.mod: c147d9d7b299
     tests/settings.yaml: a79a8ba763a3
 pitch_extra_life_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
     tests/baselines/extra_life_lofi_baseline.mod: 2c7971b081fd
     tests/settings.yaml: a79a8ba763a3
 pitch_final_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/10_final_zone.yaml: 442bc2182d32
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    configs/sonic_1/10_final_zone.yaml: c8329f9162cb
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
     tests/baselines/final_zone_baseline.mod: c3297864e90f
     tests/settings.yaml: a79a8ba763a3
 pitch_game_over:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
     tests/baselines/game_over_baseline.mod: fc2d20ea2779
     tests/settings.yaml: a79a8ba763a3
 pitch_game_over_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
     tests/baselines/game_over_lofi_baseline.mod: fc6c8d40c8be
     tests/settings.yaml: a79a8ba763a3
 pitch_ghz_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
     tests/baselines/ghz_lofi_baseline.mod: 316901dc8b9c
     tests/settings.yaml: a79a8ba763a3
 pitch_green_hill_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
     tests/baselines/ghz_baseline.mod: 65031fe23adf
     tests/settings.yaml: a79a8ba763a3
 pitch_invincibility:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
     tests/baselines/invincibility_baseline.mod: 2bab90b7732a
     tests/settings.yaml: a79a8ba763a3
 pitch_invincibility_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
     tests/baselines/invincibility_lofi_baseline.mod: 1f5f8f71b55a
     tests/settings.yaml: a79a8ba763a3
 pitch_lab_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/05_lab_zone.yaml: af4485b39d54
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
     tests/baselines/lab_zone_baseline.mod: 12e4b32981e0
     tests/settings.yaml: a79a8ba763a3
 pitch_marble_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/03_marble_zone.yaml: d8dd716ce0da
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
     tests/baselines/marble_zone_baseline.mod: 24d6e748f5b8
     tests/settings.yaml: a79a8ba763a3
 pitch_robotnik:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
     tests/baselines/robotnik_baseline.mod: d7b43ca04dcc
     tests/settings.yaml: a79a8ba763a3
 pitch_robotnik_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
     tests/baselines/robotnik_lofi_baseline.mod: 1dea15654e5a
     tests/settings.yaml: a79a8ba763a3
 pitch_scrap_brain_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/07_scrap_brain_zone.yaml: 331bee95f256
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
     tests/baselines/scrap_brain_zone_baseline.mod: c97e5be79912
     tests/settings.yaml: a79a8ba763a3
 pitch_special_stage:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/08_special_stage.yaml: d2d743df745a
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    configs/sonic_1/08_special_stage.yaml: 986d25d7793a
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
     tests/baselines/special_stage_baseline.mod: 765f7ee8c30f
     tests/settings.yaml: a79a8ba763a3
 pitch_spring_yard_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/04_spring_yard_zone.yaml: ec060b413733
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
     tests/baselines/spring_yard_zone_baseline.mod: b174922126bb
     tests/settings.yaml: a79a8ba763a3
 pitch_stage_clear:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
     tests/baselines/stage_clear_baseline.mod: 86d457f54fc4
     tests/settings.yaml: a79a8ba763a3
 pitch_stage_clear_lofi:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
     tests/baselines/stage_clear_lofi_baseline.mod: 26888dd6bee9
     tests/settings.yaml: a79a8ba763a3
 pitch_star_light_zone:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/06_star_light_zone.yaml: b692e0d08918
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
     tests/baselines/star_light_zone_baseline.mod: 21e865d29aaa
     tests/settings.yaml: a79a8ba763a3
 pitch_title_screen:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: d38a358-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
 read_moonwalker:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_sonic1_asm_music:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -1183,7 +1183,7 @@ read_sonic1_asm_music:
     reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
     reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
 read_sonic1_asm_music_shipped:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -1206,7 +1206,7 @@ read_sonic1_asm_music_shipped:
     reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
     reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
 read_sonic1_asm_sfx:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     reference/smps_drivers/sonic_1/sfx/SndA0 - Jump.asm: eb1f6684f557
@@ -1259,17 +1259,17 @@ read_sonic1_asm_sfx:
     reference/smps_drivers/sonic_1/sfx/SndCF - Signpost.asm: 320b3c201a06
     reference/smps_drivers/sonic_1/sfx/SndD0 - Waterfall.asm: a4be70b95a7c
 read_sonic1_rom:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_sonic1_rom_shipped:
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_streets_of_rage:
-  commit: '6721124'
+  commit: f01fcc9-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

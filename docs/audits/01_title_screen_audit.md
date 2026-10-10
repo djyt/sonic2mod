@@ -1,12 +1,12 @@
 # Title Screen conversion audit (2026-09-17)
 
-Accuracy audit of `configs/01_title_screen.yaml` → `output/01_title_screen.mod` against the
-hardware recording `reference/vgz/01 - Title Theme.vgz`.  Method, numbers, what was changed
+Accuracy audit of `configs/sonic_1/01_title_screen.yaml` → `output/sonic_1/01_title_screen.mod` against the
+hardware recording `reference/vgz/sonic_1/01 - Title Theme.vgz`.  Method, numbers, what was changed
 and what is still open.  Reproduce with:
 
 ```bash
-python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
+python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
+python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
 ```
 
 (VGMPlay is picked up from `reference/vgz/vgmplay/`; setup in `docs/pipeline.md` § Verifying

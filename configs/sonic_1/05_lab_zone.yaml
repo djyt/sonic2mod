@@ -2,8 +2,8 @@
 # Labyrinth Zone Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Labyrinth Zone
-input_file: "input/Mus82 - LZ.asm"
-output_file: output/05_lab_zone.mod
+input_file: "input/sonic_1/Mus82 - LZ.asm"
+output_file: output/sonic_1/05_lab_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true

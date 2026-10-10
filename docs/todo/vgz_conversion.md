@@ -29,7 +29,7 @@ special mode, software-mixed PCM.  The lifter should fail loudly on these, not g
 
 ### The test bed we already have
 
-All 19 Sonic 1 songs exist both as asm (`reference/smps_drivers/sonic_1/music/`) and as VGZ (`reference/vgz/`).  Every
+All 19 Sonic 1 songs exist both as asm (`reference/smps_drivers/sonic_1/music/`) and as VGZ (`reference/vgz/sonic_1/`).  Every
 phase below is accepted by lifting a VGZ and comparing against the asm parse of the same song —
 IR to IR first, then MOD to MOD (`tools/mod_compare.py`, `tools/mod_render_diff.py`), then MOD to
 VGZ (`tools/vgm_pitch_audit.py`, `tools/vgm_compare.py`).  No other format conversion in this

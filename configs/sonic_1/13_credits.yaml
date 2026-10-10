@@ -23,8 +23,8 @@
 # -------------------------------------------------------------------------------------------------
 
 name: Credits
-input_file: "input/Mus91 - Credits.asm"
-output_file: output/13_credits.mod
+input_file: "input/sonic_1/Mus91 - Credits.asm"
+output_file: output/sonic_1/13_credits.mod
 samples_dir: "samples/"
 
 auto_bpm: true

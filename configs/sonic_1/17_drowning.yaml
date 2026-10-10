@@ -7,8 +7,8 @@
 # -------------------------------------------------------------------------------------------------
 
 name: Drowning
-input_file: "input/Mus92 - Drowning.asm"
-output_file: output/17_drowning.mod
+input_file: "input/sonic_1/Mus92 - Drowning.asm"
+output_file: output/sonic_1/17_drowning.mod
 samples_dir: "samples/"
 
 auto_bpm: true

@@ -2,8 +2,8 @@
 # TITLE SCREEN MUSIC Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: "Title Screen"
-input_file: "input/Mus8A - Title Screen.asm"
-output_file: "output/01_title_screen.mod"
+input_file: "input/sonic_1/Mus8A - Title Screen.asm"
+output_file: "output/sonic_1/01_title_screen.mod"
 samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -49,7 +49,7 @@ channels:
 # FM volumes bake in the smpsHeaderFM TL offsets (FM1 $0C, FM2 $09, FM3 $0D, FM4 $0C, FM5 $0E;
 # 0.75 dB per step) relative to FM2, so no per-note Cxx is needed:  32 × 10^(−steps×0.75/20).
 # FM3/FM4 end on voice $01 with smpsAlterVol −4/−3, which lands them exactly on FM2's $09, so
-# instrument 5 serves all three at 32.  Verified against reference/vgz with tools/vgm_compare.py.
+# instrument 5 serves all three at 32.  Verified against reference/vgz/sonic_1 with tools/vgm_compare.py.
 # -------------------------------------------------------------------------------------------------
 sample_list:
   # --- percussion ---

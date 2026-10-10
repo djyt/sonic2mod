@@ -4,7 +4,7 @@
 Usage:
     python convert.py configs/song.yaml [--output output/song.mod]
     python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config   # a minimal config, completed
-    python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged    # its `variants: lofi` blocks applied
+    python convert.py configs/sonic_1/02_green_hill_zone.yaml --variant lofi --merged    # its `variants: lofi` blocks applied
 """
 
 import argparse

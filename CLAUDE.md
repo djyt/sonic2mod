@@ -55,10 +55,12 @@ sonic2mod/
     audit/ ui/   VGZ audits' library; reports and CLI chrome
   ym2612/ sn76489/   chip wrappers (C emulators via ctypes) + sample generators
   sfx/         offline SFX driver
-  configs/     per-song YAML (+ settings.yaml); configs/moonwalker/ minimal configs
+  configs/     settings.yaml; per-song YAML a folder per game: sonic_1/, moonwalker/ (minimal configs), ...
   tools/       analysis and audit utilities (vgm_*, mod_*, merge_survey, fold_csv, rom_import, ...)
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
-  docs/  output/  samples/  input/ (ROMs, not in git)  reference/ (gitignored)
+  docs/  samples/  reference/ (gitignored)
+  input/       sonic_1/ (Sonic 1's asm songs, fold CSVs); roms/ (every game's ROMs, not in git)
+  output/      a folder per game as configs/ (sonic_1/: MODs, sfx/, sfx8/); cache/, compare/ shared
 ```
 
 ## Setup
@@ -83,31 +85,31 @@ python -m pytest tests/test_layers.py -q   # import layers (pyproject.toml [tool
 
 ```bash
 # Convert using YAML config (primary usage)
-python convert.py configs/01_title_screen.yaml
+python convert.py configs/sonic_1/01_title_screen.yaml
 
 # Override output path
-python convert.py configs/01_title_screen.yaml --output output/title_screen.mod
+python convert.py configs/sonic_1/01_title_screen.yaml --output output/sonic_1/title_screen.mod
 
 # Also list every composite, bank sound, loop extension and synthesis pitch (and each sample's
 # release rate and share of the song)
-python convert.py configs/02_green_hill_zone.yaml --merged --verbose
+python convert.py configs/sonic_1/02_green_hill_zone.yaml --merged --verbose
 
 # The Amiga build: fold the config's merge: groups (7 channels → 4 for the Title Screen) into
 # composite instruments and write merge_output_file (default <output>_merged.mod)
-python convert.py configs/01_title_screen.yaml --merged
+python convert.py configs/sonic_1/01_title_screen.yaml --merged
 # A variant of a config: its `variants: {lofi: ...}` blocks laid over the keys beside them (Green Hill's
-# smaller Amiga build; output output/02_green_hill_zone_lofi_merged.mod).  Every config tool takes --variant
-python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged
+# smaller Amiga build; output output/sonic_1/02_green_hill_zone_lofi_merged.mod).  Every config tool takes --variant
+python convert.py configs/sonic_1/02_green_hill_zone.yaml --variant lofi --merged
 # Which channel pairs of a song can fold (paired / solo / orphans / held / shorter per pair) + the YAML
-python tools/merge_survey.py configs/01_title_screen.yaml            # --all: every pair
+python tools/merge_survey.py configs/sonic_1/01_title_screen.yaml            # --all: every pair
 # Folds that differ per pattern: a table (rows = reference MOD patterns in hex, columns = Ch 1..N, cells
 # fold N / fold N* (this one leads) / keep / drop / blank) → merge_patterns: in the config; --write puts it there between markers
-python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write
+python tools/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv --write
 # Audit the merged build's samples: length vs longest note, loops, unused, banks (no config needed)
-python tools/mod_audit.py output/02_green_hill_zone_merged.mod
+python tools/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod
 # Audit the merged build: each MOD channel against the sum of its chip channels (balance, onsets);
 # a merge_patterns: config gets a column x pattern-block table (block level, primary's key-ons)
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --merged
+python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz" --merged
 
 # A minimal config (name, input_file, rom_song; no channels:) - everything else derived from the song
 python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config
@@ -115,7 +117,7 @@ python tools/vgm_compare.py configs/moonwalker/81_smooth_criminal.yaml "referenc
 # Golden Axe (SMPS Z80 Type 0 FM; docs/smps_variants.md): minimal configs, FM drums rendered from the ROM
 python convert.py configs/golden_axe/81_wilderness.yaml
 # Convert straight from the ROM's bytecode (input/roms/, not in git): config rom_song:, or override
-python convert.py configs/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
+python convert.py configs/sonic_1/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
 # The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
 python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1
 python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
@@ -129,7 +131,7 @@ python sonic2wav.py --all --dry-run          # parse + render + report, write no
 python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sfx/validate.py                       # tables, resampler, 8-bit chain, ticks, panning
 
-# Export signed 8-bit mono .raw + manifest.yaml for Amiga/Paula → output/sfx8/
+# Export signed 8-bit mono .raw + manifest.yaml for Amiga/Paula → output/sonic_1/sfx8/
 python sonic2wav.py --all --8bit
 python sonic2wav.py --all --8bit --max-rate 16574   # A500 target, ~half the size
 python sonic2wav.py --all --8bit --flat-rate 8287   # one rate for every sample
@@ -138,7 +140,7 @@ python sonic2wav.py --all --8bit --flat-rate 8287   # one rate for every sample
 python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm"
 
 # Analyse with config coverage diff
-python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm" --config configs/01_title_screen.yaml
+python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm" --config configs/sonic_1/01_title_screen.yaml
 
 # Verify: open output .mod in Fast Tracker 2 Clone (https://16-bits.org/ft2.php)
 # Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):
@@ -146,24 +148,24 @@ python ym2612/validate.py
 python sn76489/validate.py      # C3 tone + white noise → output/psg_{tone,noise}_test.raw
 
 # Analyse FM channels from a VGM/VGZ game recording (verify synth_root values)
-python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
+python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
 # Analyse SN76489 PSG noise channel (compare against title_screen.yaml output)
-python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip psg --channel NOISE
+python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
-python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
+python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
 # The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC sample starts (a seek, or bytes after a pause) per V-int
-python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
+python tools/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
-python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --list
+python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
 
 # The song as read (asm or ROM) against its rip, lifted (docs/todo/vgz_conversion.md Phase 1): differences per
 # channel and aspect, repeated ones grouped.  The lift takes the song's tempo; aspects default to what it reads
 # (onset length note; --aspects all).  Pairs by number or the rips.yaml beside the configs
-python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"
+python tools/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 python tools/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
 python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
 python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
@@ -180,12 +182,12 @@ python tools/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one
 # ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
 # Renders go to output/compare/<config>/; --skip-render reuses them.  Reference renders run in parallel and are
 # kept in samples.render_cache (output/cache/vgmplay/), keyed on the VGZ + VGMPlay.ini: a song is rendered once
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
+python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
 # Its "Per-instrument level error" table is what sample_list volumes are set from; --write-volumes applies
 # the suggestions to the config (then re-convert and re-run to verify)
-python tools/vgm_compare.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz" --write-volumes
+python tools/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --write-volumes
 # CI-style: JSON results + exit 1 when a threshold is exceeded (also --fail-unmatched N)
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
+python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
 
 # Every song at once (cores-1 in parallel): convert, one --write-volumes pass, re-convert, verify; prints the
 # volumes changed, what is still >= 1 dB off (ceiling / channels-disagree / 2-note ones marked) and the pitch

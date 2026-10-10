@@ -2,8 +2,8 @@
 # STAGE CLEAR Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Stage Clear
-input_file: "input/Mus8E - Sonic Got Through.asm"
-output_file: output/11_stage_clear.mod
+input_file: "input/sonic_1/Mus8E - Sonic Got Through.asm"
+output_file: output/sonic_1/11_stage_clear.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -12,7 +12,7 @@ ticks_per_row: 1
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
-# Variant lofi (convert.py --variant lofi --merged -> output/11_stage_clear_lofi_merged.mod): the merged
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/11_stage_clear_lofi_merged.mod): the merged
 # build 70 -> 41 KB.  The lead and harmony mixes at F2 (11 kHz, their treble above 5.5 kHz gone); at F2 the
 # held A6 lead mix also loops (0.36 s in: 14.7 -> 6.1 KB).  The drums and the bass + stabs as they are.
 # Left out: the lead at A2 (+9.7 KB, 1.4 dB of treble instead of 3.3); loop drift and merge_twins change

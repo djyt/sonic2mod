@@ -2,8 +2,8 @@
 # INVINCIBILITY Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Invincibility
-input_file: "input/Mus87 - Invincibility.asm"
-output_file: output/14_invincibility.mod
+input_file: "input/sonic_1/Mus87 - Invincibility.asm"
+output_file: output/sonic_1/14_invincibility.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -13,7 +13,7 @@ ticks_per_row: 3            # every 192-tick phrase fills one 64-row pattern (th
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
-# Variant lofi (convert.py --variant lofi --merged -> output/14_invincibility_lofi_merged.mod): the merged
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/14_invincibility_lofi_merged.mod): the merged
 # build 45 -> 23 KB.  The hat at A2 (14 kHz), no drum + hat mixes (the hats go to the fill pool), and the
 # bass looped where it settles; the snare and kick keep their own rates.  Left out: loop_drift_db 12
 # song-wide (the chord composites grow 3.9 KB and lose onsets), the bass at D1 (-0.3 KB for 1.7 dB of its

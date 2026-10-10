@@ -22,8 +22,8 @@ A pair is `clean` when nothing is lost.  The suggestion at the end takes the cle
 first, each channel in one group only, and prints the YAML to paste into the config; pairs
 with orphans are never suggested (that follower needs its own channel).
 
-    python tools/merge_survey.py configs/01_title_screen.yaml
-    python tools/merge_survey.py configs/01_title_screen.yaml --all     # every pair, not just the clean ones
+    python tools/merge_survey.py configs/sonic_1/01_title_screen.yaml
+    python tools/merge_survey.py configs/sonic_1/01_title_screen.yaml --all     # every pair, not just the clean ones
 """
 
 from __future__ import annotations

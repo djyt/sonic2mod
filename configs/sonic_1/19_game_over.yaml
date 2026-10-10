@@ -2,8 +2,8 @@
 # Song: Mus8F - Game Over.asm
 
 name: Game Over
-input_file: "input/Mus8F - Game Over.asm"
-output_file: output/19_game_over.mod
+input_file: "input/sonic_1/Mus8F - Game Over.asm"
+output_file: output/sonic_1/19_game_over.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -12,7 +12,7 @@ target_speed: 9            # 213 BPM as before: a duration unit is 3 MOD ticks, 
 ticks_per_row: 3           # a beat ($0C) 4 rows, a bar 16: the 7 bars in 2 patterns (was 6)
 region: ntsc
 
-# Variant lofi (convert.py --variant lofi --merged -> output/19_game_over_lofi_merged.mod): the merged
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/19_game_over_lofi_merged.mod): the merged
 # build 85 -> 41 KB.  The lead loops where it settles and the bass where its level starts to fall
 # (both played their 0.9 s / 2.7 s renders before looping at the very end), the fall written into
 # its notes as volume slides (loop_decay: slide); the bass at root A1 (chosen by ear over C2, 3.7 KB

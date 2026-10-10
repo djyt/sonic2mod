@@ -25,9 +25,9 @@ live in `docs/pipeline.md` (conversion), `docs/fm_synthesis.md` / `docs/psg_synt
 ## 1. Running a config
 
 ```bash
-python convert.py configs/01_title_screen.yaml              # the reference build: every channel
-python convert.py configs/01_title_screen.yaml --merged     # the Amiga build (§ 6)
-python convert.py configs/02_green_hill_zone.yaml --variant lofi --merged   # a variant (§ 7)
+python convert.py configs/sonic_1/01_title_screen.yaml              # the reference build: every channel
+python convert.py configs/sonic_1/01_title_screen.yaml --merged     # the Amiga build (§ 6)
+python convert.py configs/sonic_1/02_green_hill_zone.yaml --variant lofi --merged   # a variant (§ 7)
 ```
 
 | Flag | Effect |
@@ -104,7 +104,7 @@ freezes the result as a full config.
 ## 3. A full config: one MOD channel per SMPS channel
 
 The reference build keeps every SMPS channel on a MOD channel of its own.
-`configs/01_title_screen.yaml` is a complete example.
+`configs/sonic_1/01_title_screen.yaml` is a complete example.
 
 ### Song keys
 

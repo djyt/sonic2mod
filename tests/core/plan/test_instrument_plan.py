@@ -54,7 +54,7 @@ class Sounding(unittest.TestCase):
 
 class Prepare(unittest.TestCase):
     def test_roots_resolved_and_detune_planned_as_the_converter_does(self):
-        cfg = ConversionConfig.from_yaml(str(ROOT / "configs" / "01_title_screen.yaml"))
+        cfg = ConversionConfig.from_yaml(str(ROOT / "configs" / "sonic_1" / "01_title_screen.yaml"))
         synth, _psg = load_settings(str(ROOT / "tests" / "settings.yaml"))
         song = cfg.read_song()
         plan = prepare_instruments(song, cfg, synth)

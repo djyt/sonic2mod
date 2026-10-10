@@ -35,7 +35,7 @@ python ym2612/validate.py           # A4 test tone → output/validate_test.raw;
 python ym2612/voice.py              # Title Screen voice 0, 100 ms → prints the peak
 python ym2612/renderer.py           # voice 1 at A3 → output/renderer_test.raw
 python ym2612/sample_generator.py   # voice 1, root A3, through the generator → output/sample_gen_test.raw
-python convert.py configs/01_title_screen.yaml
+python convert.py configs/sonic_1/01_title_screen.yaml
 ```
 
 Audacity: File > Import > Raw Data, signed 16-bit PCM, little-endian, mono, at the rate each

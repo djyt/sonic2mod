@@ -5709,7 +5709,7 @@ read_space_harrier_2:
   argv:
   - tools/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 1f71fa0
+  commit: 4cefe8e-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

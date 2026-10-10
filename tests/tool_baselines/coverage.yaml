@@ -2973,7 +2973,7 @@ pitch_credits:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: d0bd6d8-dirty
+  commit: 9e7f08a-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2984,6 +2984,7 @@ pitch_credits:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -3058,6 +3059,7 @@ pitch_credits:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3083,12 +3085,13 @@ pitch_credits:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   - tools/vgm_pitch_audit.py
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
     tests/baselines/credits_baseline.mod: 1135bbba38b2
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: c9fe3405c560
 pitch_drowning:
   argv:
   - tools/vgm_pitch_audit.py

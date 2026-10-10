@@ -12,6 +12,8 @@ place): z80_loads keeps each apart.
     verified    lea (src).l,an / lea (z80_ram+n).l,a1 / move.w #len-1,d0 /        Space Harrier II (a2),
                 [bra loop] / loop: move.b (an)+,d1 / move.b d1,(a1) / cmp.b (a1),d1 /    Super Thunder Blade (a0)
                 bne *-2 / addq.w #1,a1 / dbra d0,loop       (each byte written until it reads back)
+    pointed     movea.l (p).l,a0 / move.l (q).l,d0 / subq.l #1,d0 /              OutRun
+                lea (z80_ram+n).l,a1 / move.b (a0)+,(a1)+ / dbra d0     (the source and length: longs at p, q)
 """
 
 from __future__ import annotations
@@ -56,6 +58,12 @@ _VERIFY_REST = bytes.fromhex("1281 B211 66FA 5249 51C8FFF4")   # move.b d1,(a1) 
 _BRA_B = 0x60                                    # bra.b: the displacement in the opcode's low byte
 _BRA_W = bytes.fromhex("6000")                   # bra.w: a word displacement after it
 
+# Pointed
+_MOVEA_A0 = bytes.fromhex("2079")                # movea.l (p).l,a0
+_MOVE_D0 = bytes.fromhex("2039")                 # move.l (q).l,d0
+_SUBQ_D0 = bytes.fromhex("5380")                 # subq.l #1,d0
+_COPY_A0 = bytes.fromhex("12D851C8FFFC")         # move.b (a0)+,(a1)+ / dbra d0,*-2
+
 
 @dataclass(frozen=True)
 class Z80Load:
@@ -76,7 +84,8 @@ class Z80Load:
 @lru_cache(maxsize=8)
 def z80_loads(rom: RomImage) -> tuple[Z80Load, ...]:
     """Every load of a Z80 program the ROM holds; RomError when it holds none."""
-    loads = tuple(Z80Load(*load) for load in (*_copied(rom), *_kosinski(rom), *_buffered(rom), *_verified(rom)))
+    found = (*_copied(rom), *_kosinski(rom), *_buffered(rom), *_verified(rom), *_pointed(rom))
+    loads = tuple(Z80Load(*load) for load in found)
     if not loads:
         raise RomError("no load of a Z80 program into Z80 RAM found")
     for load in loads:
@@ -179,6 +188,28 @@ def _verified(rom: RomImage) -> Iterator[tuple[int, int, bytes]]:
         src, count = rom.long(src_at + _OPCODE), rom.word(count_at + _OPCODE) + 1
         if rom.contains(src, count):
             yield src_at, rom.word(at + _OPCODE + _WORD), rom.bytes_at(src, count)
+
+
+def _pointed(rom: RomImage) -> Iterator[tuple[int, int, bytes]]:
+    """Each copy whose source and length the 68k reads from ROM longs."""
+    for at in rom.find_all(_COPY_A0):
+        dest_at = at - _LEA
+        sub_at = dest_at - _OPCODE
+        count_at = sub_at - _LEA
+        src_at = count_at - _LEA
+        if src_at < 0:
+            continue
+        shape = ((src_at, _MOVEA_A0), (count_at, _MOVE_D0), (sub_at, _SUBQ_D0), (dest_at, _LEA_Z80_A1_TOP))
+        if any(rom.bytes_at(a, len(opcode)) != opcode for a, opcode in shape):
+            continue
+
+        # The longs the loader reads: the program's address, its length
+        src_ptr, count_ptr = rom.long(src_at + _OPCODE), rom.long(count_at + _OPCODE)
+        if not (rom.contains(src_ptr, _LONG) and rom.contains(count_ptr, _LONG)):
+            continue
+        src, count = rom.long(src_ptr), rom.long(count_ptr)
+        if rom.contains(src, count):
+            yield src_at, rom.word(dest_at + _OPCODE + _WORD), rom.bytes_at(src, count)
 
 
 def _branch_target(rom: RomImage, at: int) -> int:

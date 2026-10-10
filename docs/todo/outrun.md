@@ -118,7 +118,7 @@ Which rip is which song: not yet matched.
 
 1. [x] **The update rate from the rules** (§3.3): a frame's length comes from the song's driver,
    not the config's region alone.
-2. [ ] **The pointer load** in `core/rom/z80.py`: a copy to `$A00000` whose source and length are
+2. [x] **The pointer load** in `core/rom/z80.py`: a copy to `$A00000` whose source and length are
    longs the 68k reads from ROM.
 3. [ ] **A one-octave FM table** in `smpsz80/program.py`: `_find_fm_table` wants a second octave a
    block up; build the note table from 12 words and a computed block.

@@ -67,11 +67,11 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
-from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))     # this checkout's core, not an installed one
 
 from core.audio import hz_to_midi, midi_name, pitch_name
+from core.audit.dac_stall import dac_stall
+from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, psg_frequency_hz
 from core.vgm import (
     DAC_NAME,
     DEFAULT_MOD_CENTS,
@@ -349,6 +349,10 @@ def main() -> None:
         help="Print per-channel amplitude stats and suggested sample_list volumes instead of event table",
     )
     ap.add_argument(
+        "--dac-stall", action="store_true", dest="dac_stall",
+        help="Print the share of the DAC's playing time its driver holds the loop (a config's dac_stall)",
+    )
+    ap.add_argument(
         "--frames", action="store_true",
         help="Print the log frame by frame (every channel written to in each V-int frame) instead of key-ons",
     )
@@ -369,6 +373,12 @@ def main() -> None:
         sys.exit(1)
 
     channel_filter = set(args.channel) if args.channel else None
+    if args.dac_stall:
+        stall = dac_stall(log)
+        print(f"File   : {path}")
+        print("DAC    : none" if stall is None else
+              f"DAC    : held {stall.share:.3f} of its playing time ({stall.plays} plays, {stall.bytes} bytes): dac_stall: {stall.share:.3f}")
+        return
     if args.frames:
         print(f"File   : {path}")
         if "track" in log.tags:

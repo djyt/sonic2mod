@@ -263,7 +263,8 @@ the rip marks every frame itself: each update ends by reloading the timer (`$25`
   `ConversionConfig.fps` removed; Phase 0, every MOD byte-identical before the driver work starts.
 - **T4 `$EA` / `$EB`:** refused until a song needs them; no rate segments now.
 - **T5 The DAC stall:** counted from the code: the update's common path, an estimate (its cost
-  varies a frame); the rips' DAC pauses a check.  Not a Z80 core, not left out.
+  varies a frame); the rips' DAC pauses a check.  Not a Z80 core, not left out.  Replaced by D3
+  (Phase 3): measured, the stall varies too much by song for one count.
 - **T6 Audits against slow rips:** `vgm_compare` measures the rip's frame length from its reset
   writes and scales the reference by it before aligning.  The rip's rate never enters a conversion.
 
@@ -323,10 +324,19 @@ the rip marks every frame itself: each update ends by reloading the timer (`$25`
   `$97`, an SFX the song starts with `$FF $02`; the rip's loop is the waves' alone).
 
 ### Phase 3: DAC
-- [ ] 3.1 `dac.py` on the shared `PcmTable` (2.1.4): the 13 samples, DPCM and PCM; each rate from
-  the cycles of its play loop (both poll Timer A between outputs), less the update's stall (§3.5,
-  T5).  The rips' rates and pauses a check.
-- [ ] 3.2 Each sample's pan as a `PAN` at its DAC notes.
+- [x] 3.1 `outrun/dac.py` on the shared `PcmTable` (2.1.4): the table at the DAC bank's Z80 $8000
+  (named by the code that reads it, `$01DC`), 13 entries (the first pointer's room), 11 with bytes
+  (`$87`, `$89` empty: no song plays them).  DPCM (Sonic 1's deltas, `$0063`) or raw PCM by the
+  flags' bit 0; the songs play DPCM alone (`$81`-`$86`, `$88`, `$8A`).  Each rate from its play
+  loop's cycles, counted: DPCM 160 + 13 x rate an output, PCM 171 + 13 x rate; the rips' bare loop
+  agrees within ~1 % (their emulator fast, as Sonic 1's).  The stall: D3 below, per song
+  (`dac_stall`, measured by `core/audit/dac_stall.py`, `vgm_analyze.py --dac-stall`): 0.349, 0.332,
+  0.389, 0.400 (Green Hill Zone, the method's check: 0.064, Sonic 1's 3.8-6.4 %).  Against the rips'
+  whole plays: within ~4 % (one share for every sample of a song: the rips' per sample spread).
+  A drum track's rest lets the sample play on (`$0AF4`); a standalone duration replays the last.
+- [x] 3.2 Each sample's pan (its flags' bits 4-7, written to B6 as it starts, `$0189`):
+  `PlaybackRules.dac_pans`, a `Pan` before a DAC note whose sample pans otherwise (`$83` right,
+  `$85` left).  Every song converts.
 
 ### Phase 4: convert and verify
 - [ ] 4.1 Minimal configs (`configs/outrun/`); every song converts; `vgm_lift`, `vgm_frames`,
@@ -343,3 +353,7 @@ the rip marks every frame itself: each update ends by reloading the timer (`$25`
 
 - **D2 Music only** (2026-10-10): the SFX (in Z80 RAM) are not read, as Space Harrier II's.  A song's
   own `$FF $02` (Last Wave's waves) is dropped with them.
+- **D3 The DAC stall, per song from its rip** (2026-10-10, replaces T5): rate = the loop's count x
+  (1 - the song's own stall share), as Sonic 1's (2026-10-07).  The rips' stall runs 33-50 % by song
+  and sample, mostly YM busy waits: one count from the code's common path would miss by up to ~13 %
+  in rate.  The count stays the ROM's; the rip supplies the stall alone.

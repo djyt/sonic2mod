@@ -127,6 +127,7 @@ The reference build keeps every SMPS channel on a MOD channel of its own.
 | `target_bpm` | `150` | BPM when `auto_bpm` is off; written as `Fxx` on row 0, not range-checked |
 | `target_speed` | `6` | MOD ticks per row.  Changes nothing in the row grid; choose it so the derived BPM is (nearly) whole — `convert.py` prints the better speed |
 | `region` | `ntsc` | the console, `ntsc` or `pal`: its V-int rate (60 / 50 Hz) or FM clock, whichever the driver's update runs on |
+| `dac_stall` | `0` | The share of the DAC's time its driver's update holds the play loop, measured from the song's rip (`tools/vgm_analyze.py RIP --dac-stall`): a minimal config's derived DAC notes play each sample's loop rate times 1 − it (OutRun's update runs inside the loop: 0.33–0.40) |
 
 Formulas, tempo changes and the speed choice: `docs/pipeline.md` § Timing.
 

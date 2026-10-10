@@ -37,6 +37,7 @@ from ..smps import (
     C1_SEMITONE,
     SMPS_OP_TO_REG_OFFSET,
     FmFrame,
+    OctaveWrap,
     SmpsVoice,
     fm_table_index,
 )
@@ -234,11 +235,14 @@ def _render_stepped(opn2: OPN2, sustain_n: int, release_n: int, channels, keyoff
     return mono[:total]
 
 
-def detuned_fnum_block(fnum: int, block: int, fnum_offset: int) -> tuple[int, int]:
+def detuned_fnum_block(fnum: int, block: int, fnum_offset: int, wrap: OctaveWrap | None = None) -> tuple[int, int]:
     """The frequency word the driver writes with an smpsAlterNote detune: the offset is added
-    to the whole block|fnum word (FMUpdateFreq), so it can carry into the block."""
-    word = max(0, min(FREQ_WORD_MAX, freq_word(fnum, block) + fnum_offset))
-    return split_freq_word(word)
+    to the whole block|fnum word (FMUpdateFreq), so it can carry into the block; `wrap`: the
+    driver's octave the sum is kept in (OutRun's)."""
+    word = freq_word(fnum, block) + fnum_offset
+    if wrap is not None:
+        word = wrap.wrapped(word)
+    return split_freq_word(max(0, min(FREQ_WORD_MAX, word)))
 
 
 def _normalize_int8(mono: Sequence[int]) -> bytes:
@@ -276,6 +280,7 @@ def render_layers(
     fm_frequencies: tuple[int, ...],
     envelopes: Sequence[tuple[int, ...] | None] = (),
     frame_hz: float = 60.0,
+    octave_wrap: OctaveWrap | None = None,
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -285,7 +290,8 @@ def render_layers(
     mode on channel 3), all are keyed on together and the chip sums them as the hardware does.
     One layer is an ordinary note render.  `envelopes`: a layer's pitch envelope as the offset
     each frame from key-on adds to its frequency word (core.smps.pitch_envelope), stepped at
-    `frame_hz` through the release too; () or None: none.
+    `frame_hz` through the release too; () or None: none.  `octave_wrap`: the driver's octave a
+    detuned word is kept in.
 
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
     used to be, so the callers' trim / peak / int8 steps are unchanged.
@@ -308,7 +314,7 @@ def render_layers(
         program_voice(opn2, voice, ch, tl_offset=tl_offset)
         fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate, fm_frequencies=fm_frequencies)
         if fnum_offset:
-            fnum, block = detuned_fnum_block(fnum, block, fnum_offset)
+            fnum, block = detuned_fnum_block(fnum, block, fnum_offset, octave_wrap)
         if voice.fnum_offsets is not None:
             _set_special_freq(opn2, fnum, block, voice.fnum_offsets)
         else:

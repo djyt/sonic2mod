@@ -30,7 +30,7 @@ from enum import StrEnum
 from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK
 from .driver_tables import fm_note_index, psg_note_index
 from .names import source_names
-from .rules import PlaybackRules
+from .rules import OctaveWrap, PlaybackRules
 from .song import SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
@@ -166,7 +166,8 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         keyed = True
         if not note.is_retrigger or base is None:
             base = _table_word(note, st, channel.rules.fm_frequencies)
-        sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules))
+        sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules),
+                        channel.rules.track(channel.header.channel_type).octave_wrap)
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
         # read that way leaves it sounding (NoteTimeout is spent)
@@ -225,7 +226,7 @@ def _first_step(st: TrackState, rules: PlaybackRules) -> int:
 
 
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
-          attack: bool, envelope_offset: int) -> PlayedNote:
+          attack: bool, envelope_offset: int, wrap: OctaveWrap | None) -> PlayedNote:
     fm = voices.get(st.voice) if st.voice is not None and not st.is_psg else None
     if st.is_psg:
         voice, level = st.envelope, st.att
@@ -235,7 +236,10 @@ def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int
     # 0); channel 3's own registers in special mode carry its offset (OP4's); the pitch envelope's
     # first step sounds with the key-on
     special = fm.channel_fnum_offset if fm is not None else 0
-    pitch = (base + st.detune + special + envelope_offset) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+    word = base + st.detune
+    if wrap is not None and not st.is_psg:
+        word = wrap.wrapped(word)                  # the driver's octave, before what it adds after
+    pitch = (word + special + envelope_offset) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
     return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,

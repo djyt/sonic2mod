@@ -20,9 +20,11 @@ as `vgm_analyze.py --frames` and `vgm_frames.py --glitches` print them):
         - {frame: 3080, frames: -1, why: "recorded in play: a V-int lost"}
       foreign:                      # another sound on these channels (from / to: frames; default: all)
         - {channels: [FM4], from: 120, to: 900, why: "a sound effect"}
+      unlogged:                     # writes the ripper left out: what the rip cannot show of a channel
+        - {channels: [PSG3], aspects: [pitch], why: "no tone 3 write logged"}
 
-The rip tools undo each glitch (core.vgm.realigned) and set foreign notes aside as known rip
-faults, out of the verdicts.  Only what the evidence shows goes here: `vgm_frames.py --glitches`
+The rip tools undo each glitch (core.vgm.realigned) and set foreign notes and unlogged aspects
+aside as known rip faults, out of the verdicts.  Only what the evidence shows goes here: `vgm_frames.py --glitches`
 prints candidates; a human confirms them.
 """
 
@@ -46,10 +48,12 @@ _CONFIG_GLOB = "[0-9a-f][0-9a-f]_*.yaml"    # a song config: its sound's number 
 _NUMBER = slice(0, 2)                       # "02 - Green Hill Zone.vgz" / "02_green_hill_zone.yaml" -> "02"
 
 # A mapping entry's keys
-_RIP, _GLITCHES, _FOREIGN = "rip", "glitches", "foreign"
-_ENTRY_KEYS = frozenset({_RIP, _GLITCHES, _FOREIGN})
+_RIP, _GLITCHES, _FOREIGN, _UNLOGGED = "rip", "glitches", "foreign", "unlogged"
+_ENTRY_KEYS = frozenset({_RIP, _GLITCHES, _FOREIGN, _UNLOGGED})
 _GLITCH_KEYS = frozenset({"frame", "frames", "why"})
 _FOREIGN_KEYS = frozenset({"channels", "from", "to", "why"})
+_UNLOGGED_KEYS = frozenset({"channels", "aspects", "why"})
+_ASPECTS = frozenset({"pitch", "level", "voice"})        # what frame_check reads of a note (FrameAspect)
 
 
 @dataclass(frozen=True)
@@ -72,14 +76,29 @@ class ForeignSound:
 
 
 @dataclass(frozen=True)
+class UnloggedWrites:
+    """Writes the ripper left out of the log (an optimiser's, dropping what it took for unheard):
+    `aspects` of `channels` the rip cannot show, for the whole rip."""
+
+    channels: tuple[str, ...]
+    aspects: tuple[str, ...]    # pitch, level, voice
+    why: str
+
+
+@dataclass(frozen=True)
 class RipFaults:
     """What a rip records that its song does not play."""
 
     glitches: tuple[RipGlitch, ...] = ()
     foreign: tuple[ForeignSound, ...] = ()
+    unlogged: tuple[UnloggedWrites, ...] = ()
 
     def __bool__(self) -> bool:
-        return bool(self.glitches or self.foreign)
+        return bool(self.glitches or self.foreign or self.unlogged)
+
+    def unlogged_aspect(self, channel: str, aspect: str) -> bool:
+        """The rip does not show `aspect` of `channel`: its writes went unlogged."""
+        return any(channel in u.channels and aspect in u.aspects for u in self.unlogged)
 
     def realign(self, frames: FrameLog) -> FrameLog:
         """`frames` (the rip's) with every glitch undone: in step with its song throughout."""
@@ -105,6 +124,7 @@ class RipFaults:
         for f in self.foreign:
             span = "" if f.first is None and f.last is None else f" frames {f.first or 0}-{'' if f.last is None else f.last}"
             out.append(f"{' '.join(f.channels)}{span}: another sound ({f.why})")
+        out += [f"{' '.join(u.channels)} {' '.join(u.aspects)}: not logged ({u.why})" for u in self.unlogged]
         return out
 
 
@@ -198,7 +218,7 @@ def _read_map(configs: Path, names: str | Path | None) -> dict[str, tuple[str, R
 
 
 def _entry(value: object) -> tuple[str, RipFaults]:
-    """A map entry: a rip's name, or {rip:, glitches:, foreign:}."""
+    """A map entry: a rip's name, or {rip:, glitches:, foreign:, unlogged:}."""
     if not isinstance(value, dict):
         return str(value), RipFaults()
     _check_keys(value, _ENTRY_KEYS)
@@ -216,7 +236,14 @@ def _entry(value: object) -> tuple[str, RipFaults]:
         first, last = f.get("from"), f.get("to")
         foreign.append(ForeignSound(tuple(str(c) for c in f["channels"]), str(f["why"]),
                                     None if first is None else int(first), None if last is None else int(last)))
-    return str(value[_RIP]), RipFaults(tuple(glitches), tuple(foreign))
+    unlogged = []
+    for u in value.get(_UNLOGGED) or ():
+        _check_keys(u, _UNLOGGED_KEYS)
+        aspects = tuple(str(a) for a in u["aspects"])
+        if not set(aspects) <= _ASPECTS:
+            raise ValueError(f"unlogged aspects {', '.join(sorted(set(aspects) - _ASPECTS))}: not {', '.join(sorted(_ASPECTS))}")
+        unlogged.append(UnloggedWrites(tuple(str(c) for c in u["channels"]), aspects, str(u["why"])))
+    return str(value[_RIP]), RipFaults(tuple(glitches), tuple(foreign), tuple(unlogged))
 
 
 def _check_keys(entry: object, keys: frozenset[str]) -> None:

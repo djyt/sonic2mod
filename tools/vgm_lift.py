@@ -46,7 +46,7 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.audit import ChannelChoice, RipDiff, RipFaults, SongSource, compare_with_rip, named, workers
+from core.audit import ChannelChoice, RipDiff, RipFaults, SongSource, compare_with_rip, frame_cut, named, workers
 from core.config import find_settings, load_settings, parse_number
 from core.smps import ALL_ASPECTS, Aspect
 from core.ui import add_shelf_arguments, kind_verdicts, modifier_text, rip_shelf, song_diff_lines
@@ -91,7 +91,8 @@ def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], c
         song = source.read()
     except ValueError as e:                     # a ROM no variant reads, a song it refuses, a bad asm
         return _Result(rip, source, RipDiff(None, error=f"not read: {e}"))
-    return _Result(rip, source, compare_with_rip(song, load_frames(rip, cache_dir), aspects, channels, lift, faults))
+    frames = load_frames(rip, cache_dir, frame_cut(song))      # cut as the song's driver's update runs
+    return _Result(rip, source, compare_with_rip(song, frames, aspects, channels, lift, faults))
 
 
 # --- pairs ----------------------------------------------------------------------

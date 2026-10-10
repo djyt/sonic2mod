@@ -5,8 +5,10 @@ The lift (rip_diff.py) reads notes back from the log, so it cannot see a detune,
 that writes no key; this reads what the chip was given, for any driver:
 
     pitch   FM: the frequency word (block, fnum), detune in; PSG: the tone divider (noise: tone 3's, 0 read as 1)
-    level   FM: the carriers' TL; PSG: the attenuation with the envelope's first step, which the
-            driver adds on the key-on frame (clamped to silence; noise: the noise channel's)
+    level   FM: the carriers' TL; PSG: the attenuation with the envelope's step on the frame (the
+            first on the key-on frame, and on a tie's where the driver starts it again: else the
+            step it plays on to from the attack; clamped to silence, a mute's silence; noise: the
+            noise channel's)
     voice   FM: the feedback / algorithm and every operator register but the carriers' TL, the bits
             the chip reads (a driver may write B0 with the voice's byte whole)
 
@@ -23,7 +25,8 @@ the song: Sonic 1's Special Stage and Chaos Emerald rips), so the phase that mat
 taken (FrameCheck.holds_early).  A drum track is not read (a DAC sample, or Type 0 FM's FM drums on FM3).
 
 The rip's own faults (rips.yaml, RipFaults) come first: its glitches undone (a V-int lost or
-gained), notes where another sound holds the channel set aside.  Attacks every rip misses the
+gained), notes where another sound holds the channel set aside, and aspects whose writes the
+ripper did not log.  Attacks every rip misses the
 same way are excused too; each is counted apart (FrameCheck.excused), not judged:
 
     log end     a note on the log's last frame, which the log ends inside (mid-burst)
@@ -34,6 +37,7 @@ same way are excused too; each is counted apart (FrameCheck.excused), not judged
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -44,6 +48,7 @@ from ..smps import (
     ChannelType,
     PlayedNote,
     PlayedSong,
+    PsgEnvelope,
     SmpsSong,
     frame_of_tick,
     played_song,
@@ -75,6 +80,7 @@ class Excuse(StrEnum):
     """Why a note is not judged: the rip's doing, not the song's."""
 
     FOREIGN = "another sound"
+    UNLOGGED = "not logged"
     LOG_END = "log end"
     RE_ENTRY = "re-entry"
 
@@ -189,27 +195,47 @@ def _check_at(song: SmpsSong, notes: NoteFrames, early: bool, frames: FrameLog, 
 def _check_offset(song: SmpsSong, notes: NoteFrames, early: bool, offset: int, frames: FrameLog,
                   channels: ChannelChoice, excuses: _Excuses) -> FrameCheck:
     check = FrameCheck(offset, early)
-    first_steps = {name: env.steps[0] for name, env in song.rules.psg_envelopes.items() if env.steps}
+    envelopes = song.rules.psg_envelopes
+    plays_on = not song.rules.track(ChannelType.PSG).tie_restarts_envelope
     for name, sounding in notes.items():
         if not channels.picks(name):
             continue
+        attacked: int | None = None                  # the frame the note a tie plays on attacked
         for frame, note in sounding:
+            if note.attack:
+                attacked = frame
             at = frame - check.offset
             if not 0 <= at < len(frames.frames):
                 continue
             if excuses.faults.foreign_at(name, at):
                 check.excused[name, Excuse.FOREIGN] += 1
                 continue
-            _judge(check, name, note, frames, at, first_steps, excuses)
+            since = frame - attacked if plays_on and attacked is not None else 0
+            _judge(check, name, note, frames, at, _PsgSteps(envelopes, since), excuses)
     return check
 
 
-def _judge(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at: int, first_steps: dict[str, int],
+@dataclass(frozen=True)
+class _PsgSteps:
+    """The PSG envelopes, and the frames since the note's attack: the step a note plays."""
+
+    envelopes: Mapping[str, PsgEnvelope]
+    since: int = 0
+
+    def step(self, voice: object) -> int | None:
+        envelope = self.envelopes.get(voice) if isinstance(voice, str) else None
+        if envelope is None or not envelope.steps:
+            return None
+        played = envelope.frames(self.since + 1)
+        return played[min(self.since, len(played) - 1)]      # a held envelope holds its last step
+
+
+def _judge(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at: int, steps: _PsgSteps,
            excuses: _Excuses) -> None:
     """`note` checked on frame `at`; an attack's misses excused where the log ends in its frame, or
     where it re-enters its channel's loop and the next frame has it whole."""
     before = len(check.misses)
-    _check_note(check, name, note, frames, at, first_steps)
+    _check_note(check, name, note, frames, at, steps, excuses.faults)
     if len(check.misses) == before or not note.attack:
         return
 
@@ -218,7 +244,7 @@ def _judge(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at:
         excuse = Excuse.LOG_END
     elif note.tick in excuses.re_entries.get(name, ()) and at + 1 < len(frames.frames):
         late = FrameCheck(check.offset)
-        _check_note(late, name, note, frames, at + 1, first_steps)
+        _check_note(late, name, note, frames, at + 1, steps)
         excuse = None if late.misses else Excuse.RE_ENTRY
     if excuse is not None:
         del check.misses[before:]
@@ -226,7 +252,7 @@ def _judge(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at:
 
 
 def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at: int,
-                first_steps: dict[str, int]) -> None:
+                steps: _PsgSteps, faults: RipFaults = _NO_FAULTS) -> None:
     frame = frames.frames[at]
     if name in FM_CHANNEL_NAMES:
         fm = frame.fm[FM_CHANNEL_NAMES.index(name)]
@@ -243,14 +269,18 @@ def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog
         tone, level = frame.psg[_NOISE_TONE if noise else index], frame.psg[NOISE_CHANNEL if noise else index]
         got = {FrameAspect.PITCH: max(1, tone.period), FrameAspect.LEVEL: level.attenuation}
         level = note.level
-        if isinstance(level, int) and isinstance(note.voice, str) and note.voice in first_steps:
-            level = min(PSG_ATT_SILENT, level + first_steps[note.voice])
+        step = steps.step(note.voice)
+        if isinstance(level, int) and step is not None:
+            level = min(PSG_ATT_SILENT, level + step)
         want = {FrameAspect.LEVEL: level}
-        if not (isinstance(level, int) and level >= PSG_ATT_SILENT):
-            want[FrameAspect.PITCH] = note.pitch
+        if not (isinstance(level, int) and level >= PSG_ATT_SILENT) and note.pitch is not None:
+            want[FrameAspect.PITCH] = max(1, note.pitch)          # as the chip reads a divider of 0
 
     tied = not note.attack
     for aspect, value in want.items():
+        if faults.unlogged_aspect(name, aspect):
+            check.excused[name, Excuse.UNLOGGED] += 1
+            continue
         check.checked[name, aspect, tied] += 1
         if value != got[aspect]:
             check.misses.append(FrameMiss(name, note.tick, tied, aspect, value, got[aspect]))

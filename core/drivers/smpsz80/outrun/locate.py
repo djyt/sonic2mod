@@ -9,10 +9,12 @@ writes into the driver's RAM before releasing it, not by one game's addresses.
     header     rst $20: ld hl,(base) / ld b,0 / jp - the word at the header + c (Z80 $0020): the
                music index the loader's c (4), the pitch and PSG envelopes their readers' (8, $A)
     music      cp n / jp c,loader: sounds $81 to n - 1; the index runs into data after its songs
+    Timer A    the word each update writes to $25 (its low 2 bits) and $24 (the rest) ($01A8)
     SFX        in Z80 RAM: not read (music only)
 
     OutRun   RAM $1C00-$1C07: 0F 00 00 80 5A 02 0F 80.  Songs bank $F0000, DAC bank $F8000; the header
-             at $8000: music $8479 (5 songs, $81-$85), pitch envelopes $800E, PSG envelopes $80C0
+             at $8000: music $8479 (5 songs, $81-$85), pitch envelopes $800E, PSG envelopes $80C0;
+             Timer A $25A (126.22 Hz)
 """
 
 from __future__ import annotations
@@ -81,6 +83,16 @@ _PITCH_ENVELOPES = code_pattern("""
     EF          rst $28
 """)
 
+# The update's reload of Timer A
+_TIMER_A = code_pattern("""
+    2A <w>      ld hl,(timer)
+    7D          ld a,l
+    E6 03       and 3
+    4F          ld c,a
+    3E 25       ld a,$25
+    DF          rst $18             YM part I write
+""")
+
 # Read twice: by a PSG track, and for the FM volume envelope no song sets (Z80 $041F)
 _PSG_ENVELOPES = code_pattern("""
     3D          dec a
@@ -102,6 +114,7 @@ class DriverTables:
     songs: int                   # the music IDs the dispatch loads: $81 on
     pitch_envelopes: int
     psg_envelopes: int
+    timer_a: int                 # the value the update reloads Timer A with
 
 
 @lru_cache(maxsize=8)
@@ -131,7 +144,8 @@ def driver_tables(rom: RomImage) -> DriverTables:
 
     return DriverTables(sound_bank, dac_bank, header, table(music_at), _songs(z80),
                         table(_offset(_PITCH_ENVELOPES, z80, "pitch envelope read")),
-                        table(_offset(_PSG_ENVELOPES, z80, "PSG envelope read")))
+                        table(_offset(_PSG_ENVELOPES, z80, "PSG envelope read")),
+                        _ram_word(ram, z80_word(one_match(_TIMER_A, z80, "Timer A load", _DRIVER).group(1), 0)))
 
 
 def outrun_memory(rom: RomImage) -> BankedZ80Memory:

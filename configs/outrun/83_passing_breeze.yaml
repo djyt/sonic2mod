@@ -1,0 +1,5 @@
+# OutRun - Passing Breeze.  A minimal config: everything else is derived from the ROM
+# (docs/todo/outrun.md); python convert.py <this> --show-config prints it.
+name: "Passing Breeze"
+input_file: "input/roms/OutRun (USA, Europe).md"
+rom_song: "$83"

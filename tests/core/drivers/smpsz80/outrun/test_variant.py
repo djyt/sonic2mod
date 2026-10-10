@@ -19,7 +19,7 @@ from core.drivers.smpsz80.memory import BankedZ80Memory
 from core.drivers.smpsz80.outrun import OUTRUN
 from core.drivers.smpsz80.outrun.locate import driver_tables, locate_outrun
 from core.rom import RomError, RomImage
-from core.smps import ChannelType, OpKind, SetVoice
+from core.smps import ChannelType, OpKind, SetVoice, TimerA, update_hz
 from core.smps.pitch_envelope import Restart
 from tests.roms import OUTRUN_ROM, needs_outrun
 
@@ -50,6 +50,13 @@ class Flags(unittest.TestCase):
         self.assertEqual(_read(bytes([0xEC, 0x02])).dropped, "PSG volume on an FM track (ignored)")
         self.assertEqual(_read(bytes([0xEC, 0x02]), ChannelType.PSG).ops[0].kind, OpKind.EFFECT)
 
+    def test_an_fm_track_keeps_its_detuned_word_in_the_octave(self):
+        wrap = OUTRUN.rules.track(ChannelType.FM).octave_wrap
+        assert wrap is not None
+        self.assertEqual(wrap.wrapped(0x2A80), 0x2505)      # fnum $280: down a block, fnum + $285 ($85's FM4)
+        self.assertEqual(wrap.wrapped(0x2509), 0x2A85)      # fnum $509: up a block, fnum - $284
+        self.assertEqual(wrap.wrapped(0x2A84), 0x2A84)
+
     def test_a_sound_played_is_dropped_the_other_meta_commands_refused(self):
         one = _read(bytes([0xFF, 0x02, 0x97]))
         self.assertEqual((one.ops, one.length), ((), 3))
@@ -75,6 +82,11 @@ class OutRun(unittest.TestCase):
     def test_five_songs_and_their_envelopes(self):
         self.assertEqual(self.index.music, {0x81: 0xF07F5, 0x82: 0xF1FC9, 0x83: 0xF38CA, 0x84: 0xF49AF, 0x85: 0xF4ECA})
         self.assertEqual(len(self.index.envelopes), 17)          # the 18th word names none
+
+    def test_clocked_by_timer_a_at_126_hz(self):
+        rules = OUTRUN.rules_from_rom(self.rom, OUTRUN.rules)
+        self.assertEqual(rules.update_clock, TimerA(0x25A))
+        self.assertAlmostEqual(update_hz(rules, "ntsc"), 126.225, places=3)
 
     def test_pitch_envelopes_two_and_five_are_detunes(self):
         envelopes = OUTRUN.rules_from_rom(self.rom, OUTRUN.rules).pitch_envelopes

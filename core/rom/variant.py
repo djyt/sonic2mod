@@ -69,13 +69,15 @@ class VoiceLayout:
     (L R AMS FMS) - first, or last if `feedback_last` - and four bytes for each operator register
     in `groups` order, the register offset of each in `operator_offsets`.  `carrier_tl` False: the
     driver writes the carriers' TL from the track's volume as it loads the voice, so the voice's
-    own never play (read as 0)."""
+    own never play (read as 0).  `volume_flags`: a TL byte's bit 7 marks an operator the track
+    volume is added to, its low 7 bits the level (OutRun's, Z80 $0D17)."""
 
     groups: tuple[OperatorReg, ...]
     pan: bool = False
     feedback_last: bool = False
     operator_offsets: tuple[int, ...] = _SMPS_OPERATOR_OFFSETS
     carrier_tl: bool = True
+    volume_flags: bool = False
 
     @property
     def size(self) -> int:

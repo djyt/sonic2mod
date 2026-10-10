@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -19,6 +19,7 @@ chaos_emerald:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -161,10 +162,11 @@ chaos_emerald:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/16_chaos_emerald.yaml: 702974097f19
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 continue_screen:
   argv:
   - convert.py
@@ -173,7 +175,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -185,6 +187,7 @@ continue_screen:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -327,10 +330,11 @@ continue_screen:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 continue_screen_lofi:
   argv:
   - convert.py
@@ -341,7 +345,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -353,6 +357,7 @@ continue_screen_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -495,10 +500,11 @@ continue_screen_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 continue_screen_lofi_merged:
   argv:
   - convert.py
@@ -510,7 +516,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -522,6 +528,7 @@ continue_screen_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -664,10 +671,11 @@ continue_screen_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 continue_screen_merged:
   argv:
   - convert.py
@@ -677,7 +685,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -689,6 +697,7 @@ continue_screen_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -831,10 +840,11 @@ continue_screen_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 credits:
   argv:
   - convert.py
@@ -843,7 +853,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -855,6 +865,7 @@ credits:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -997,10 +1008,11 @@ credits:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 credits_rom:
   argv:
   - convert.py
@@ -1013,7 +1025,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1025,6 +1037,7 @@ credits_rom:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -1167,10 +1180,11 @@ credits_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 drowning:
   argv:
   - convert.py
@@ -1179,7 +1193,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1191,6 +1205,7 @@ drowning:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -1333,10 +1348,11 @@ drowning:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/17_drowning.yaml: 81b857245faf
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 ending_theme:
   argv:
   - convert.py
@@ -1345,7 +1361,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1357,6 +1373,7 @@ ending_theme:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -1499,10 +1516,11 @@ ending_theme:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/12_ending_theme.yaml: ee21c3728278
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 extra_life:
   argv:
   - convert.py
@@ -1511,7 +1529,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1523,6 +1541,7 @@ extra_life:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -1665,10 +1684,11 @@ extra_life:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 extra_life_lofi:
   argv:
   - convert.py
@@ -1679,7 +1699,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1691,6 +1711,7 @@ extra_life_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -1833,10 +1854,11 @@ extra_life_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 extra_life_lofi_merged:
   argv:
   - convert.py
@@ -1848,7 +1870,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1860,6 +1882,7 @@ extra_life_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2002,10 +2025,11 @@ extra_life_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 extra_life_merged:
   argv:
   - convert.py
@@ -2015,7 +2039,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2027,6 +2051,7 @@ extra_life_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2169,10 +2194,11 @@ extra_life_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 final_zone:
   argv:
   - convert.py
@@ -2181,7 +2207,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2193,6 +2219,7 @@ final_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2335,10 +2362,11 @@ final_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/10_final_zone.yaml: 1816d8c10975
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 ga_conclusion:
   argv:
   - convert.py
@@ -2347,7 +2375,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2359,6 +2387,7 @@ ga_conclusion:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2500,10 +2529,11 @@ ga_conclusion:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 ga_the_battle:
   argv:
   - convert.py
@@ -2512,7 +2542,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2524,6 +2554,7 @@ ga_the_battle:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2665,10 +2696,11 @@ ga_the_battle:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 ga_theme_of_thief:
   argv:
   - convert.py
@@ -2677,7 +2709,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2689,6 +2721,7 @@ ga_theme_of_thief:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2830,10 +2863,11 @@ ga_theme_of_thief:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 game_over:
   argv:
   - convert.py
@@ -2842,7 +2876,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2854,6 +2888,7 @@ game_over:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -2996,10 +3031,11 @@ game_over:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 game_over_lofi:
   argv:
   - convert.py
@@ -3010,7 +3046,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3022,6 +3058,7 @@ game_over_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -3164,10 +3201,11 @@ game_over_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 game_over_lofi_merged:
   argv:
   - convert.py
@@ -3179,7 +3217,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3191,6 +3229,7 @@ game_over_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -3333,10 +3372,11 @@ game_over_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 game_over_merged:
   argv:
   - convert.py
@@ -3346,7 +3386,7 @@ game_over_merged:
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3358,6 +3398,7 @@ game_over_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -3500,10 +3541,11 @@ game_over_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 ghz_lofi:
   argv:
   - convert.py
@@ -3514,7 +3556,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3526,6 +3568,7 @@ ghz_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -3668,10 +3711,11 @@ ghz_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 ghz_lofi_merged:
   argv:
   - convert.py
@@ -3683,7 +3727,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3695,6 +3739,7 @@ ghz_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -3837,10 +3882,11 @@ ghz_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 green_hill_zone:
   argv:
   - convert.py
@@ -3849,7 +3895,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3861,6 +3907,7 @@ green_hill_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -4003,10 +4050,11 @@ green_hill_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 green_hill_zone_merged:
   argv:
   - convert.py
@@ -4016,7 +4064,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4028,6 +4076,7 @@ green_hill_zone_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -4170,10 +4219,11 @@ green_hill_zone_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 green_hill_zone_rom:
   argv:
   - convert.py
@@ -4186,7 +4236,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4198,6 +4248,7 @@ green_hill_zone_rom:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -4340,10 +4391,11 @@ green_hill_zone_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 invincibility:
   argv:
   - convert.py
@@ -4352,7 +4404,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4364,6 +4416,7 @@ invincibility:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -4506,10 +4559,11 @@ invincibility:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 invincibility_lofi:
   argv:
   - convert.py
@@ -4520,7 +4574,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4532,6 +4586,7 @@ invincibility_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -4674,10 +4729,11 @@ invincibility_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 invincibility_lofi_merged:
   argv:
   - convert.py
@@ -4689,7 +4745,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4701,6 +4757,7 @@ invincibility_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -4843,10 +4900,11 @@ invincibility_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 invincibility_merged:
   argv:
   - convert.py
@@ -4856,7 +4914,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4868,6 +4926,7 @@ invincibility_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -5010,10 +5069,11 @@ invincibility_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 lab_zone:
   argv:
   - convert.py
@@ -5022,7 +5082,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5034,6 +5094,7 @@ lab_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -5176,10 +5237,11 @@ lab_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/05_lab_zone.yaml: 28a70a07bc3d
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 marble_zone:
   argv:
   - convert.py
@@ -5188,7 +5250,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5200,6 +5262,7 @@ marble_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -5342,10 +5405,11 @@ marble_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 marble_zone_rom:
   argv:
   - convert.py
@@ -5358,7 +5422,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5370,6 +5434,7 @@ marble_zone_rom:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -5512,10 +5577,11 @@ marble_zone_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 mw_beat_it:
   argv:
   - convert.py
@@ -5524,7 +5590,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5536,6 +5602,7 @@ mw_beat_it:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -5678,10 +5745,11 @@ mw_beat_it:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 mw_mr_big:
   argv:
   - convert.py
@@ -5690,7 +5758,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5702,6 +5770,7 @@ mw_mr_big:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -5844,10 +5913,11 @@ mw_mr_big:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 mw_title:
   argv:
   - convert.py
@@ -5856,7 +5926,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5868,6 +5938,7 @@ mw_title:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -6010,10 +6081,11 @@ mw_title:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/moonwalker/86_title.yaml: a4e39f30e91d
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 robotnik:
   argv:
   - convert.py
@@ -6022,7 +6094,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6034,6 +6106,7 @@ robotnik:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -6176,10 +6249,11 @@ robotnik:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 robotnik_lofi:
   argv:
   - convert.py
@@ -6190,7 +6264,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6202,6 +6276,7 @@ robotnik_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -6344,10 +6419,11 @@ robotnik_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 robotnik_lofi_merged:
   argv:
   - convert.py
@@ -6359,7 +6435,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6371,6 +6447,7 @@ robotnik_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -6513,10 +6590,11 @@ robotnik_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 robotnik_merged:
   argv:
   - convert.py
@@ -6526,7 +6604,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6538,6 +6616,7 @@ robotnik_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -6680,10 +6759,11 @@ robotnik_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 scrap_brain_zone:
   argv:
   - convert.py
@@ -6692,7 +6772,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6704,6 +6784,7 @@ scrap_brain_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -6846,10 +6927,11 @@ scrap_brain_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/07_scrap_brain_zone.yaml: a5555800ac10
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 special_stage:
   argv:
   - convert.py
@@ -6858,7 +6940,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6870,6 +6952,7 @@ special_stage:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7012,10 +7095,11 @@ special_stage:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 spring_yard_zone:
   argv:
   - convert.py
@@ -7024,7 +7108,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7036,6 +7120,7 @@ spring_yard_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7178,10 +7263,11 @@ spring_yard_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 stage_clear:
   argv:
   - convert.py
@@ -7190,7 +7276,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7202,6 +7288,7 @@ stage_clear:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7344,10 +7431,11 @@ stage_clear:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 stage_clear_lofi:
   argv:
   - convert.py
@@ -7358,7 +7446,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7370,6 +7458,7 @@ stage_clear_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7512,10 +7601,11 @@ stage_clear_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 stage_clear_lofi_merged:
   argv:
   - convert.py
@@ -7527,7 +7617,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7539,6 +7629,7 @@ stage_clear_lofi_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7681,10 +7772,11 @@ stage_clear_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 stage_clear_merged:
   argv:
   - convert.py
@@ -7694,7 +7786,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7706,6 +7798,7 @@ stage_clear_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7848,10 +7941,11 @@ stage_clear_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 star_light_zone:
   argv:
   - convert.py
@@ -7860,7 +7954,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7872,6 +7966,7 @@ star_light_zone:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -8014,10 +8109,11 @@ star_light_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/06_star_light_zone.yaml: 04ab4d7aca07
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 title_screen:
   argv:
   - convert.py
@@ -8026,7 +8122,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8038,6 +8134,7 @@ title_screen:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -8180,10 +8277,11 @@ title_screen:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 title_screen_merged:
   argv:
   - convert.py
@@ -8193,7 +8291,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8205,6 +8303,7 @@ title_screen_merged:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -8347,10 +8446,11 @@ title_screen_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560
 title_screen_rom:
   argv:
   - convert.py
@@ -8363,7 +8463,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: 276699a-dirty
+  commit: 2d6c984-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8375,6 +8475,7 @@ title_screen_rom:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -8517,7 +8618,8 @@ title_screen_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 74f633303b09
+    tests/settings.yaml: c9fe3405c560

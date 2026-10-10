@@ -8,6 +8,11 @@
 # opening state and at the loop ($C0 $00): their ripper drops writes that change nothing (Step on
 # Beat's PSG1 / PSG2: a tone write where the divider changes, not every update) and, here, those to
 # a muted tone channel (tone 3 at $DF), which rate-3 noise still follows.
+#
+# Every rip, no fault kind (the tools allow for each): their frames run 125.84 a second, 0.30 % under
+# Timer A's 126.22 at the chip's clock (the resets' mean gap: FrameLog.fps); their DAC loop runs
+# 1-2 % fast against its cycle count ($81: 9228-9244 Hz against 9085), as Sonic 1's rips' does.
+# Each song's dac_stall is measured from its rip (the update's pauses are the hardware's).
 81_magical_sound_shower:
   rip: "01 - Magical Sound Shower.vgz"
   unlogged:

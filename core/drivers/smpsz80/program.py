@@ -50,8 +50,9 @@ def one_match(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) ->
 
 
 def one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> int:
-    """The one word (group 1) every match of `pattern` names: a table the driver may read in several places."""
-    found = {z80_word(match.group(1), 0) for match in pattern.finditer(z80)}
+    """The one value (group 1: a little-endian word, or a byte) every match of `pattern` names: a
+    table, or a header word, the driver may read in several places."""
+    found = {int.from_bytes(match.group(1), "little") for match in pattern.finditer(z80)}
     if len(found) != 1:
         raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
     return found.pop()

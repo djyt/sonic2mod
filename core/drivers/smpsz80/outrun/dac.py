@@ -26,7 +26,7 @@ from core.rom.variant import DacSample
 from core.rom.z80 import z80_word
 from core.smps import FIRST_NOTE
 
-from ..memory import BANK_SIZE
+from ..memory import window_view
 from ..program import driver_ram, one_match
 from .locate import driver_tables
 
@@ -35,7 +35,6 @@ _ENTRY = PcmEntry(6, size_at=2, pitch_at=4)
 _FLAGS_AT = 5
 _RAW_PCM = 0x01
 _PAN_BITS = 0xF0
-_WINDOW = 0x8000                 # the Z80 address the bank appears at
 
 # Cycles an output at rate 1, and each rate step (one djnz turn)
 _DPCM_CYCLES = (173, 13)
@@ -74,8 +73,7 @@ def dac_pans(rom: RomImage) -> dict[int, int]:
 
 def _table(rom: RomImage) -> tuple[int, bytes]:
     """The table's Z80 address, and the Z80's view of the DAC bank (its window at $8000)."""
-    bank = driver_tables(rom).dac_bank
-    memory = bytes(_WINDOW) + rom.bytes_at(bank, BANK_SIZE)
+    memory = window_view(rom, driver_tables(rom).dac_bank)
     table = z80_word(one_match(_SAMPLE_START, driver_ram(rom), "DAC sample start", _DRIVER).group(1), 0)
     return table, memory
 

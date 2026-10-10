@@ -33,7 +33,10 @@ class TrackRules:
 
     # VolumeStep: the level (FM: TL offset, PSG: attenuation) by step, a signed byte; none: no steps
     volume_steps: Mapping[int, int] = field(default_factory=dict)
-    detune_shift: int = 0                   # the track adds its detune word >> this (the PSG's: a divider)
+    word_shift: int = 0                     # the track adds its detune word, and its modulation's sum,
+                                            # >> this (the PSG's: a divider)
+    modulation_turn_pause: bool = True      # the modulation spends a step at each turn: its counter's
+                                            # reload adds nothing (Sonic 1); False: it moves too
     jump_clears_tie: bool = False           # a jump drops a pending tie
     noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
                                             # keeps the last tone note's (none: divider 0, nMaxPSG)

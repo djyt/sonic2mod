@@ -2,7 +2,7 @@
 
 Planned 2026-10-08, closed 2026-10-10.  Goal: `convert.py` reads Streets of Rage's songs from the
 ROM, as it reads Sonic 1, Moonwalker and Golden Axe (`binary_import.md`, `docs/smps_variants.md`).
-Done: every song converts from the ROM; left open by the user's close: 4.4, 5.3.
+Done: every song converts from the ROM; left open by the user's close: 4.4.
 
 Status key: `[ ]` open, `[x]` done.  Three parts: what the driver is (1), what the code must change
 first (2), the plan (3).
@@ -276,7 +276,14 @@ a song pass (the `run_out` precedent).
   measured pass (stale rows of voices now copies dropped; AMS copies measured again after the
   pre-roll).  Left: slots.  The copies come before the detune variants, so `$88`'s FM3 B notes
   lose their pitch-class variant (130 notes +100 c) and `$90` more (706 / 901).
-- [ ] 5.3 (left open at the close) Vibrato against `vgm_compare`'s vibrato rate and depth.
+- [x] 5.3 Vibrato (2026-10-10, after the close): `vgm_compare` on all 15.  Two misreadings fixed:
+  the driver's turn moves (Sonic 1's spends a silent step), so a half cycle is count + 1 moves
+  and the converter's + 1 counted it twice (`TrackRules.modulation_turn_pause`); the PSG adds
+  the depth words' sum >> 4, not each step's (`word_shift`, was `detune_shift`: Moon Beach's
+  -20 a step read -2, twice the chip's 1.25).  Rate mismatches 85 -> 7; the rip's frame log
+  agrees (PSG2 G#4: 266-272 every 10 frames, the MOD ±19 c).  Left (`docs/smps_variants.md`):
+  swings under 4x1, sweeps read as beats, speed-2 rows, and the LFO baked into samples (its rate
+  follows the note across a window, restarts with each re-struck tie).
 - Not taken: banking DAC samples outside the merged build (frees `$90` 2 slots at most).
 
 ### Phase 6: close

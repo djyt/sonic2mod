@@ -144,7 +144,7 @@ class DriverTrack:
     def _detune(self, word: int) -> Detune:
         """The detune word `word` (add.w) as the track adds it (the PSG's shifted to a divider)."""
         self._detune_word = signed_word(word)
-        return Detune(self._detune_word >> self._rules.detune_shift)
+        return Detune(self._detune_word >> self._rules.word_shift)
 
     # --- notes --------------------------------------------------------------------------------
 

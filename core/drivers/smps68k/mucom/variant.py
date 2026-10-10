@@ -40,16 +40,15 @@ from .dac import mucom_dac
 from .grammar import (
     dac_sample,
     detune,
-    fm_vibrato,
     loop_end,
     loop_exit,
     loop_start,
     mucom_instruction,
     noise,
     pan,
-    psg_vibrato,
     psg_volume_down,
     register_write,
+    vibrato,
 )
 
 _LONG, _WORD = 4, 2
@@ -65,7 +64,7 @@ _FM_OCTAVE = (bytes.fromhex("0240000F"), 0)      # andi.w #$F,d0 (the semitone)
 _PSG_ROWS = (bytes.fromhex("C0FC000C"), 4)       # mulu.w #12,d0 (the row)
 _FM_VOLUME = bytes.fromhex("4883177B")            # ext.w d3 / move.b (d8,pc,d3.w),... (the step)
 _PSG_VOLUME = 0xF                                 # neg.b d0 / andi.b #$F,d0: att by $F1's byte
-_PSG_DETUNE_SHIFT = 4                             # asr.w #4: the detune word to a divider
+_PSG_WORD_SHIFT = 4                               # asr.w #4: the detune word, the vibrato's sum to a divider
 _SIGNED_STEPS = range(-0x80, 0x80)                # a step is a signed byte (ext.w)
 _PSG_VOLUME_STEPS = {v: -v & _PSG_VOLUME for v in _SIGNED_STEPS}   # $F1 v on the PSG: every byte's att
 
@@ -95,7 +94,7 @@ _FM_FLAGS: dict[int, FlagSpec] = {
     0xF1: effect(CoordFlag.VOLUME_STEP),
     0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),
-    0xF4: read(fm_vibrato),
+    0xF4: read(vibrato),
     **_LOOPS,
     0xF7: effect(CoordFlag.FM3_SPECIAL, 4),     # operands A6, AC, AE, AD's: a voice's operator order
     0xF8: read(pan),
@@ -112,7 +111,7 @@ _PSG_FLAGS: dict[int, FlagSpec] = {
     0xF1: effect(CoordFlag.VOLUME_STEP),
     0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),
-    0xF4: read(psg_vibrato),
+    0xF4: read(vibrato),
     **_LOOPS,
     0xF7: read(noise),
     0xF8: drop("$F8 (no PSG effect)", 1),
@@ -129,7 +128,7 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
     0xF1: drop("$F1 (no DAC effect)", 1),
     0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),                # cuts the sample (rest_cuts)
-    0xF4: read(fm_vibrato),
+    0xF4: read(vibrato),
     **_LOOPS,
     0xF7: refuse("$F7 on the drum track"),
     0xF8: read(pan),
@@ -201,12 +200,14 @@ def _check_psg_rows(rom: RomImage) -> None:
 #     track cuts every note
 #   a rest after a tie keys FM off on its first frame (the key-off at its read waits on the tie
 #     bit), the PSG at once ($7390A)
-#   in noise mode no tone 3 frequency is written; the PSG adds the detune word >> 4
+#   in noise mode no tone 3 frequency is written; the PSG adds the detune word and the vibrato's sum >> 4
+#   the vibrato's counter reloads on a step that moves (no pause at a turn)
 #   the drum track's rest and gate play sample $85, which is empty: they cut the sample
-_FM_TRACK = TrackRules(jump_clears_tie=True, gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1)
-_PSG_TRACK = TrackRules(volume_steps=_PSG_VOLUME_STEPS, detune_shift=_PSG_DETUNE_SHIFT, noise_writes_tone3=False,
-                        gate_sees_tie=True, tied_rest_holds=0)
-_DAC_TRACK = TrackRules(jump_clears_tie=True, rest_cuts=True)
+_FM_TRACK = TrackRules(jump_clears_tie=True, gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1,
+                       modulation_turn_pause=False)
+_PSG_TRACK = TrackRules(volume_steps=_PSG_VOLUME_STEPS, word_shift=_PSG_WORD_SHIFT, noise_writes_tone3=False,
+                        gate_sees_tie=True, tied_rest_holds=0, modulation_turn_pause=False)
+_DAC_TRACK = TrackRules(jump_clears_tie=True, rest_cuts=True, modulation_turn_pause=False)
 
 
 MUCOM = SmpsVariant(

@@ -217,7 +217,8 @@ class ChannelWriter:
         self._channel = channel
         self._cfg = chan_cfg
         self._is_dac = channel.header.channel_type == ChannelType.DAC   # by the song: Type 0 FM's drums are FM3
-        self._rest_plays_out = self._is_dac and not channel.rules.track(ChannelType.DAC).rest_cuts
+        self._track = channel.rules.track(channel.header.channel_type)    # how its driver plays this kind
+        self._rest_plays_out = self._is_dac and not self._track.rest_cuts
         self._is_psg = channel.header.channel_type == ChannelType.PSG
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._router = _ColumnRouter(ctx, chan_cfg.source, chan_cfg.mod_channel)
@@ -393,9 +394,9 @@ class ChannelWriter:
             self._vibrato_change = eff.delta       # raw delta; scaled to period units at placement
             self._vibrato_steps = eff.steps
             self._vibrato_speed = self._ctx.vibrato.speed(eff.speed, self._vibrato_steps, self._cfg.source,
-                                                          event.tick_position)
+                                                          event.tick_position, self._track)
             self._mod_set = eff
-            self._mod_slides = self._ctx.vibrato.too_slow(eff.speed, eff.steps, event.tick_position)
+            self._mod_slides = self._ctx.vibrato.too_slow(eff.speed, eff.steps, event.tick_position, self._track)
             self._mod_origin = event.tick_position
             self._vibrato_active = True
         elif kind == CoordFlag.MOD_ON:
@@ -823,7 +824,7 @@ class ChannelWriter:
         # size in cents depends on the chip note it is added to.
         depth = vibrato_depth(self._vibrato_change, self._vibrato_steps, PERIOD_TABLE[n.mod_note.value],
                               n.res.source + st.transpose, self._is_psg, st.psg_read,
-                              self._channel.rules.fm_frequencies, self._ctx.player)
+                              self._channel.rules.fm_frequencies, self._ctx.player, self._track)
         return (self._vibrato_speed if depth else 0), depth
 
     def _attack_level_or_vibrato(self, n: _Note, vib_speed: int, vib_depth: int) -> None:
@@ -860,7 +861,7 @@ class ChannelWriter:
 
         slides = modulation_slides(self._mod_set, PERIOD_TABLE[n.mod_note.value], rows,
                                    lambda tick: max(0.0, (tick - self._mod_origin) / tpf), self._modulation_cents(n),
-                                   self._config.target_speed - 1)
+                                   self._config.target_speed - 1, self._track)
         for start, effect, param in slides:
             pattern, row = self._timeline.pattern_row(start)
             self._mod.set_cursor(pattern, self._col, row)

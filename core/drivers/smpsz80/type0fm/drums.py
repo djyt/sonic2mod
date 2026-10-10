@@ -35,7 +35,6 @@ from core.chips import split_freq_word
 from core.rom.flags import FlagKind, FlagSpec
 from core.rom.image import RomError, RomImage
 from core.rom.voices import read_voices
-from core.rom.z80 import z80_ram
 from core.smps import (
     FIRST_FLAG,
     REST,
@@ -49,6 +48,7 @@ from core.smps import (
 )
 
 from ..memory import Z80RamMemory
+from ..program import driver_ram
 from .layout import VOICE_TYPE0
 
 _MAX_FRAMES = 512            # ~8.5 s: past any hit's ring
@@ -77,7 +77,7 @@ def read_fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[i
                   flags: Mapping[int, FlagSpec]) -> dict[str, FmDrum]:
     """Every FM drum the drum track can name, by its DAC name (drum81 ...), as the song's tempo
     and FM table play it.  `flags`: the variant's, for the operands of the flags a program uses."""
-    z80 = z80_ram(rom)
+    z80 = driver_ram(rom)
     ram = Z80RamMemory(RomImage(z80))
     init, records, voices = _tables(z80)
     divider = ram.byte(init + _INIT_DIVIDER)

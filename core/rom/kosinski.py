@@ -11,6 +11,8 @@ the KENS project's code, LGPL 2.1).
 
 from __future__ import annotations
 
+from .image import RomError
+
 _WINDOW = 0x2000
 _SHORT_WINDOW = 0x100
 _DESCRIPTOR_BITS = 16
@@ -26,6 +28,8 @@ class _Reader:
         self._descriptor()
 
     def byte(self) -> int:
+        if self.at >= len(self._data):
+            raise RomError(f"${self.at:X}: a Kosinski stream running past the ROM")
         value = self._data[self.at]
         self.at += 1
         return value
@@ -44,7 +48,8 @@ class _Reader:
 
 
 def kosinski(data: bytes, start: int) -> tuple[bytes, int]:
-    """The stream at `start` decompressed, and the address after it."""
+    """The stream at `start` decompressed, and the address after it.  RomError where the bytes are
+    no stream: a copy from before the start, or no end marker before the ROM's end."""
     src = _Reader(data, start)
     out = bytearray()
     while True:
@@ -69,5 +74,7 @@ def kosinski(data: bytes, start: int) -> tuple[bytes, int]:
             count = (src.bit() << 1 | src.bit()) + 2
             offset = src.byte() - _SHORT_WINDOW
 
+        if -offset > len(out):
+            raise RomError(f"${src.at:X}: a Kosinski copy from before the stream's start")
         for _ in range(count):
             out.append(out[offset])

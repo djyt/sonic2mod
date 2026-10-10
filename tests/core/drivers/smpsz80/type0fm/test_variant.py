@@ -23,9 +23,10 @@ from core.drivers import (
 )
 from core.drivers.reference import FM_FREQUENCIES
 from core.drivers.smpsz80.memory import BankedZ80Memory
+from core.drivers.smpsz80.program import fm_table
 from core.drivers.smpsz80.type0fm import TYPE0FM
 from core.drivers.smpsz80.type0fm.layout import HEADER_TYPE0, VOICE_TYPE0
-from core.drivers.smpsz80.type0fm.locate import fm_table, locate_type0, sound_bank
+from core.drivers.smpsz80.type0fm.locate import locate_type0, sound_bank
 from core.rom import RomError, RomImage
 from core.rom.header import read_music_header
 from core.rom.tracks import decode_tracks

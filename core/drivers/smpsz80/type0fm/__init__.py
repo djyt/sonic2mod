@@ -2,7 +2,7 @@
 
     variant.py    the description: flags, the drum track
     layout.py     its header (track order, tempo 0) and 26-byte voice
-    locate.py     the driver (its FM table) and the bank (its sound header) -> SoundIndex
+    locate.py     the bank (its sound header) -> SoundIndex
     drums.py      the drum track's FM drum programs, run frame by frame
 """
 

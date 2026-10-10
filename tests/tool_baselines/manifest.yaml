@@ -740,7 +740,7 @@ frames_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 frames_space_harrier_2:
-  commit: 78be73c
+  commit: d1df820
   date: '2026-10-10'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: f5e8377d39a1
@@ -763,7 +763,7 @@ frames_space_harrier_2:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     configs/space_harrier_2/98_motion.yaml: b4808f4ca830
     configs/space_harrier_2/99_name_entry.yaml: ab4a9d374c28
-    configs/space_harrier_2/rips.yaml: 5384d011ffdc
+    configs/space_harrier_2/rips.yaml: f288a1315090
     input/roms/Space Harrier II (World).md: 356beab7e21e
     reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
     reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
@@ -855,7 +855,7 @@ glitches_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 glitches_space_harrier_2:
-  commit: cd8d967
+  commit: d1df820
   date: '2026-10-10'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: f5e8377d39a1
@@ -878,7 +878,7 @@ glitches_space_harrier_2:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     configs/space_harrier_2/98_motion.yaml: b4808f4ca830
     configs/space_harrier_2/99_name_entry.yaml: ab4a9d374c28
-    configs/space_harrier_2/rips.yaml: 5384d011ffdc
+    configs/space_harrier_2/rips.yaml: f288a1315090
     input/roms/Space Harrier II (World).md: 356beab7e21e
     reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
     reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
@@ -1430,7 +1430,7 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 78be73c
+  commit: d1df820
   date: '2026-10-10'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e

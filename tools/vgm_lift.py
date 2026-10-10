@@ -17,6 +17,10 @@ unless --input names one.  Rips live in reference/vgz/ under the configs' subfol
 The frame logs are kept in settings.yaml samples.render_cache (core.vgm.load_frames), and --all
 lifts the rips in parallel: a warm run of all 19 takes about four seconds.
 
+A rip's own faults, which its rips.yaml entry lists (core/audit/rips.py), are not the song's: its
+glitches (a V-int lost or gained) are undone before the lift; a channel another sound holds is not
+compared there ("another sound", "known rip faults": the differences set aside).
+
 Usage::
 
     python tools/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"            # one rip, its differences
@@ -42,7 +46,7 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.audit import ChannelChoice, RipDiff, SongSource, compare_with_rip, named, workers
+from core.audit import ChannelChoice, RipDiff, RipFaults, SongSource, compare_with_rip, named, workers
 from core.config import find_settings, load_settings, parse_number
 from core.smps import ALL_ASPECTS, Aspect
 from core.ui import add_shelf_arguments, kind_verdicts, modifier_text, rip_shelf, song_diff_lines
@@ -61,40 +65,41 @@ class _Result:
 
 
 def _compare_config(rip: Path, config: Path, aspects: frozenset[Aspect], channels: ChannelChoice,
-                    lift: LiftOptions | None, cache_dir: str | None) -> _Result:
+                    lift: LiftOptions | None, faults: RipFaults, cache_dir: str | None) -> _Result:
     """One pair lifted and compared (--all's job): a config that does not load is its own line."""
     try:
         source = SongSource.from_config(config, ROOT)
     except (OSError, ValueError) as e:
         return _Result(rip, None, RipDiff(None, error=f"{config.name}: {e}"))
-    return _compare(rip, source, aspects, channels, lift, cache_dir)
+    return _compare(rip, source, aspects, channels, lift, faults, cache_dir)
 
 
 def _compare_job(rip: Path, config: Path, aspects: frozenset[Aspect], channels: ChannelChoice,
-                 lift: LiftOptions | None, cache_dir: str | None) -> tuple[SongSource | None, RipDiff]:
+                 lift: LiftOptions | None, faults: RipFaults, cache_dir: str | None) -> tuple[SongSource | None, RipDiff]:
     """_compare_config in a worker process: only core types cross back (a class defined in this
     script does not pickle when coverage.py runs it as its own __main__: tests/selection.py)."""
-    result = _compare_config(rip, config, aspects, channels, lift, cache_dir)
+    result = _compare_config(rip, config, aspects, channels, lift, faults, cache_dir)
     return result.source, result.found
 
 
 def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], channels: ChannelChoice,
-             lift: LiftOptions | None, cache_dir: str | None) -> _Result:
-    """One rip lifted and compared (a worker's job)."""
+             lift: LiftOptions | None, faults: RipFaults, cache_dir: str | None) -> _Result:
+    """One rip lifted and compared (a worker's job); `faults`: the rip's own (rips.yaml)."""
     if source is None:
         return _Result(rip, source, RipDiff(None, error="no song to compare with (--input)"))
     try:
         song = source.read()
     except ValueError as e:                     # a ROM no variant reads, a song it refuses, a bad asm
         return _Result(rip, source, RipDiff(None, error=f"not read: {e}"))
-    return _Result(rip, source, compare_with_rip(song, load_frames(rip, cache_dir), aspects, channels, lift))
+    return _Result(rip, source, compare_with_rip(song, load_frames(rip, cache_dir), aspects, channels, lift, faults))
 
 
 # --- pairs ----------------------------------------------------------------------
 
 
-def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None]:
-    """The rip and its song from the paths named: a rip, a config or both, and --input."""
+def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None, RipFaults]:
+    """The rip, its song and its faults (rips.yaml) from the paths named: a rip, a config or
+    both, and --input."""
     rips = [Path(p) for p in args.paths if is_vgm_path(p)]
     configs = [Path(p) for p in args.paths if Path(p).suffix.lower() in _CONFIG_SUFFIXES]
     if len(rips) > 1 or len(configs) > 1 or len(rips) + len(configs) != len(args.paths):
@@ -107,11 +112,13 @@ def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None]:
         rip = rip_shelf(args, configs=config.parent).rip_for(config)
         if rip is None:
             raise SystemExit(f"{config}: no rip pairs with it (name one, or --rips)")
+    shelf = rip_shelf(args, configs=config.parent) if config else rip_shelf(args, rips=rip.parent)
+    config = config or shelf.config_for(rip)
+    faults = shelf.faults_for(config) if config else RipFaults()
     if args.input:
         rom_song = parse_number(args.rom_song, "--rom-song") if args.rom_song else None
-        return rip, SongSource(Path(args.input), rom_song)
-    config = config or rip_shelf(args, rips=rip.parent).config_for(rip)
-    return rip, _source(config) if config else None
+        return rip, SongSource(Path(args.input), rom_song), faults
+    return rip, _source(config) if config else None, faults
 
 
 def _source(config: Path) -> SongSource:
@@ -139,9 +146,13 @@ def _tempo(found: RipDiff) -> str:
 
 
 def _unshared(found: RipDiff) -> str:
-    """The channels one side plays: not compared."""
+    """The channels one side plays, and those another sound holds (rips.yaml): not compared; the
+    differences set aside where another sound holds a channel for a while."""
     parts = [f"only the song: {' '.join(found.only_song)}"] if found.only_song else []
     parts += [f"only the rip: {' '.join(found.only_rip)}"] if found.only_rip else []
+    parts += [f"another sound: {' '.join(found.foreign_channels)}"] if found.foreign_channels else []
+    aside = " ".join(f"{name} {n}" for name, n in sorted(found.foreign.items()))
+    parts += [f"known rip faults: {aside}"] if aside else []
     return "; ".join(parts)
 
 
@@ -221,19 +232,21 @@ def main() -> None:
 
     # One pair: every difference
     if args.paths:
-        rip, source = _one_pair(args)
-        result = _compare(rip, source, aspects, channels, lift, cache_dir)
+        rip, source, faults = _one_pair(args)
+        result = _compare(rip, source, aspects, channels, lift, faults, cache_dir)
         _print_song(result, args.diffs)
         sys.exit(0 if result.found.ok else 1)
 
     # Every pair: a line each, lifted in parallel
-    pairs = [(c, r) for c, r in rip_shelf(args).pairs() if named(args.only, c, r)]
+    shelf = rip_shelf(args)
+    pairs = [(c, r) for c, r in shelf.pairs() if named(args.only, c, r)]
     if not pairs:
         raise SystemExit("no rip pairs with a config")
     configs, rips = [c for c, _ in pairs], [r for _, r in pairs]
     n = len(pairs)
     with ProcessPoolExecutor(workers(n)) as pool:
-        jobs = pool.map(_compare_job, rips, configs, [aspects] * n, [channels] * n, [lift] * n, [cache_dir] * n)
+        jobs = pool.map(_compare_job, rips, configs, [aspects] * n, [channels] * n, [lift] * n,
+                        [shelf.faults_for(c) for c in configs], [cache_dir] * n)
         results = [_Result(rip, source, found) for rip, (source, found) in zip(rips, jobs, strict=True)]
     for result in results:
         _print_line(result)

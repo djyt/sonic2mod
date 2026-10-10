@@ -15,11 +15,16 @@ A tie that changes nothing compared (smpsNoAttack at the same note, by default; 
 compared the same level, voice ... too) is merged into the note before it on both sides: it is heard as one
 note, and a rip shows the read only where the driver writes the frequency on reads alone (Sonic
 1's does; Type 0 FM writes it every frame).
+
+The rip's own faults (rips.yaml, RipFaults) are not the song's: its glitches are undone before the
+lift, a channel another sound holds throughout is not compared, and the differences where one
+holds a channel for a while are set aside, counted (RipDiff.foreign).
 """
 
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -27,6 +32,7 @@ from pathlib import Path
 from ..config import ConversionConfig
 from ..smps import (
     Aspect,
+    ChannelDiff,
     ChannelType,
     PlayedNote,
     PlayedSong,
@@ -42,6 +48,7 @@ from ..smps import (
 )
 from ..source import SmpsDriver, is_vgm_path, read_song
 from ..vgm import LIFTED_ASPECTS, VGM_SAMPLE_RATE, FrameLog, LiftOptions, VgmLiftError, lift_song
+from .rips import RipFaults
 
 
 @dataclass(frozen=True)
@@ -88,6 +95,7 @@ class ChannelChoice:
 
 
 _EVERY_CHANNEL = ChannelChoice()
+_NO_FAULTS = RipFaults()
 
 
 class TempoSource(StrEnum):
@@ -122,6 +130,8 @@ class RipDiff:
     kinds: dict[str, ChannelType] = field(default_factory=dict)     # each compared channel's
     schedule: tuple[TempoSegment, ...] = ()                 # the song's: when each tick plays
     fps: float = 0.0                                        # the rip's frames a second
+    foreign: dict[str, int] = field(default_factory=dict)   # known rip faults: differences set aside, per channel
+    foreign_channels: list[str] = field(default_factory=list)   # ... channels another sound holds throughout
 
     @property
     def ok(self) -> bool:
@@ -139,27 +149,63 @@ class RipDiff:
 
 
 def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect] = LIFTED_ASPECTS,
-                     channels: ChannelChoice = _EVERY_CHANNEL, lift: LiftOptions | None = None) -> RipDiff:
+                     channels: ChannelChoice = _EVERY_CHANNEL, lift: LiftOptions | None = None,
+                     faults: RipFaults = _NO_FAULTS) -> RipDiff:
     """Where `frames` (a rip) plays other than `song`, in `aspects` (default: what the lift reads)
     and the chosen channels both play.  `lift`: the lift's options instead of the song's tempo
-    (LiftOptions(): inferred, to judge the inference).  The lift reads by the song's rules."""
+    (LiftOptions(): inferred, to judge the inference).  The lift reads by the song's rules.
+    `faults`: the rip's own (rips.yaml), undone or set aside."""
+    frames = faults.realign(frames)
     try:
         lifted, tempo = _lift(song, frames, lift)
     except VgmLiftError as e:
         return RipDiff(None, error=f"not lifted: {e}")
 
-    # The channels both play, as chosen; ties that change nothing compared merged
-    want, got = _merge_ties(played_song(song), aspects), _merge_ties(played_song(lifted), aspects)
+    # The channels both play, as chosen, less those another sound holds throughout; ties that
+    # change nothing compared merged
+    played = played_song(lifted)
+    want, got = _merge_ties(played_song(song), aspects), _merge_ties(played, aspects)
     playing_want, playing_got = _playing(want, channels), _playing(got, channels)
-    shared = playing_want & playing_got
+    foreign = (playing_want | playing_got) & faults.foreign_throughout()
+    shared = (playing_want & playing_got) - foreign
     want, got = _only(want, shared), _only(got, shared)
 
     offset = align_songs(want, got)
     kinds = {name: channel.header.channel_type for name, channel in source_map(song).items() if name in shared}
-    return RipDiff(compare_songs(want, got, aspects, offset), offset, tempo,
-                   sorted(playing_want - shared), sorted(playing_got - shared), kinds=kinds,
-                   schedule=tempo_schedule(want.modifier, want.tempo_changes, want.tempo_phase),
-                   fps=VGM_SAMPLE_RATE / frames.frame_samples)
+    diff = compare_songs(want, got, aspects, offset)
+    aside = _set_aside(diff, faults, _rip_frame(played, frames, offset)) if faults.foreign else {}
+    return RipDiff(diff, offset, tempo, sorted(playing_want - shared - foreign), sorted(playing_got - shared - foreign),
+                   kinds=kinds, schedule=tempo_schedule(want.modifier, want.tempo_changes, want.tempo_phase),
+                   fps=VGM_SAMPLE_RATE / frames.frame_samples, foreign=aside, foreign_channels=sorted(foreign))
+
+
+def _rip_frame(lifted: PlayedSong, frames: FrameLog, offset: int) -> Callable[[int], int]:
+    """A song tick's frame in the (realigned) rip: the lift's ticks from its first note, which
+    plays on the rip's first frame that writes anything."""
+    schedule = tempo_schedule(lifted.modifier, lifted.tempo_changes, lifted.tempo_phase)
+    first = min((n.tick for notes in lifted.channels.values() for n in notes if not n.rest), default=0)
+    start = next((f.index for f in frames.frames if f.active), 0) - frame_of_tick(schedule, first)
+    return lambda tick: start + frame_of_tick(schedule, max(tick - offset, 0))
+
+
+def _set_aside(diff: SongDiff, faults: RipFaults, rip_frame: Callable[[int], int]) -> dict[str, int]:
+    """The differences on frames another sound holds taken out of `diff`: how many, per channel."""
+    aside: dict[str, int] = {}
+    for i, channel in enumerate(diff.channels):
+        def mine(tick: int, name: str = channel.name) -> bool:
+            return not faults.foreign_at(name, rip_frame(tick))
+
+        clean = ChannelDiff(channel.name, channel.notes, [t for t in channel.missing if mine(t)],
+                            [t for t in channel.extra if mine(t)], [d for d in channel.changed if mine(d.tick)])
+        dropped = _differences(channel) - _differences(clean)
+        if dropped:
+            aside[channel.name] = dropped
+            diff.channels[i] = clean
+    return aside
+
+
+def _differences(channel: ChannelDiff) -> int:
+    return len(channel.missing) + len(channel.extra) + len(channel.changed)
 
 
 def _lift(song: SmpsSong, frames: FrameLog, options: LiftOptions | None) -> tuple[SmpsSong, LiftTempo]:

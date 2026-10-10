@@ -1,6 +1,14 @@
 # Which rip in reference/vgz/space_harrier_2/ each config converts (by every FM channel's opening
 # notes: docs/todo/space_harrier_2.md 2.5).  $82-$86 have no rip: the stage theme ($81) from other points.
-81_harrier_saga: "02 - Harrier Saga (Stage Theme).vgz"
+# Glitches (core/audit/rips.py): found by vgm_frames.py --glitches, each checked in the writes.
+81_harrier_saga:
+  rip: "02 - Harrier Saga (Stage Theme).vgz"
+  glitches:                 # each: the burst before (every channel re-keyed) overruns its frame
+    - {frame: 3074, frames: -1, why: "burst at 3073 (202 writes) runs into 3074: its V-int lost"}
+    - {frame: 4803, frames: -1, why: "burst at 4802 (207 writes) runs into 4803: its V-int lost"}
+    - {frame: 7876, frames: -1, why: "burst at 7875 (172 writes) runs into 7876: its V-int lost"}
+    - {frame: 9413, frames: -1, why: "burst at 9412 (209 writes) runs into 9413: its V-int lost"}
+    - {frame: 10950, frames: -1, why: "burst at 10949 (202 writes) runs into 10950: its V-int lost"}
 87_an_omen: "13 - An Omen (Boss 11 - Love Face).vgz"
 88_outsider: "12 - Outsider (Boss 10 - Bins Been).vgz"
 89_mega_chance: "14 - Mega Chance (Boss 12 - Cthugha).vgz"
@@ -16,7 +24,10 @@
 93_nuclear_shock: "03 - Nuclear Shock (Boss 1 - Trimuller).vgz"
 94_winners_flight: "17 - Winner's Flight (Bonus Stage).vgz"
 95_an_epitaph: "19 - An Epitaph (Ending Theme).vgz"
-96_illusion: "16 - Illusion (Staff Roll).vgz"
+96_illusion:
+  rip: "16 - Illusion (Staff Roll).vgz"
+  glitches:
+    - {frame: 1634, frames: -1, why: "burst at 1633 (180 writes, every channel re-keyed) runs into 1634: its V-int lost"}
 97_game_over: "20 - A (Game Over).vgz"
 98_motion: "01 - Motion (Title Screen).vgz"
 99_name_entry: "18 - Name Entry.vgz"

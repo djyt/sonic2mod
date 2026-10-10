@@ -260,7 +260,7 @@ the next reset.  So:
 ## 4. Plan
 
 ### Phase 0: refactors
-- [ ] 0.1 2.1 items 1-4 (item 1: §3.3, T1-T3); gates (regression, tool regression, pytest, ruff, pyright, vulture, layers).
+- [x] 0.1 2.1 items 1-4 (item 1: §3.3, T1-T3); gates (regression, tool regression, pytest, ruff, pyright, vulture, layers).  Done 2026-10-10 on branch `outrun`; also split `smps2mod.py` (`convert/samples.py`) and `analyze.py` (`core/analysis/skeleton.py`).
 
 ### Phase 1: read the ROM
 - [ ] 1.1 `SmpsDriver.OUTRUN` (`smpsz80_outrun`), `core/drivers/smpsz80/outrun/`, pinned by SHA-1

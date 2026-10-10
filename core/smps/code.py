@@ -158,6 +158,9 @@ def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list[SmpsVoic
     return song
 
 
+_BOTH_SIDES = 0xC0                      # B4 as a track starts: L and R
+
+
 @dataclass
 class _Cursor:
     """One channel's walk state as the code leaves it; a nested walk (a call, a loop's replay, a
@@ -170,6 +173,7 @@ class _Cursor:
     no_attack: bool = False
     pending: SmpsNote | None = None     # the note still waiting for its duration
     last_note_value: int = 0            # the last note read, 0 after a rest: what a standalone duration re-keys
+    pan: int = _BOTH_SIDES              # the B4 byte the channel plays at (a sample's own pan: rules.dac_pans)
 
 
 def _standalone_note(cur: _Cursor, duration: int) -> SmpsNote:
@@ -209,6 +213,7 @@ class _Walker:
                  voice_pans: Mapping[int, int]):
         self._ops = code.ops
         self._dac_names = rules.dac_names
+        self._dac_pans = rules.dac_pans
         self._voice_pans = voice_pans     # a voice that stores its B4 byte pans the track it is set on
         self._labels = code.labels
         self._header = header
@@ -378,6 +383,8 @@ class _Walker:
     def _on_effect(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
         assert op.effect is not None
         cur.tempo_div = self._effect(op.effect, cur.tick, cur.tempo_div)
+        if isinstance(op.effect, Pan):
+            cur.pan = op.effect.b4
         return i
 
     def _on_byte(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
@@ -493,9 +500,20 @@ class _Walker:
         elif cur.is_dac and val in self._dac_names:
             note = SmpsNote(note_value=val, duration=0, is_dac=True,
                             dac_name=self._dac_names[val], is_no_attack=cur.no_attack)
+            self._sample_pan(cur, val)
         else:
             note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
         self._open_note(cur, note)
+
+    def _sample_pan(self, cur: _Cursor, val: int) -> None:
+        """A sample with its own pan writes B4 as it starts (OutRun's $0189): a Pan before its note,
+        where it pans otherwise than the channel does."""
+        pan = self._dac_pans.get(val)
+        if pan is None or pan == cur.pan:
+            return
+        self._close_pending(cur)                    # the note before keeps its pan
+        self._channel.events.append(SmpsEvent(effect=Pan(pan), tick_position=cur.tick))
+        cur.pan = pan
 
     def _duration(self, cur: _Cursor, duration: int) -> None:
         """A duration (already scaled by the tempo divider): the pending note's, or a note of its own."""

@@ -52,6 +52,7 @@ from core.smps import (
 from ...names import SmpsDriver
 from ..pitch_envelopes import EnvelopeBytes, read_envelope_table
 from ..program import driver_ram, fm_frequencies, psg_frequencies, psg_read
+from .dac import dac_pans, outrun_dac
 from .layout import HEADER_OUTRUN, TEMPO_PHASE, VOICE_OUTRUN
 from .locate import driver_tables, locate_outrun, outrun_memory
 
@@ -173,12 +174,12 @@ _PSG_TRACK = TrackRules(tie_restarts_envelope=False)
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
-    """Its FM and PSG tables, its frequency envelopes and its clock, read from the driver."""
+    """Its FM and PSG tables, its frequency envelopes, its clock and its samples' pans, read from the driver."""
     z80 = driver_ram(rom)
     tables = driver_tables(rom)
     envelopes = read_envelope_table(outrun_memory(rom), tables.pitch_envelopes, _PITCH_ENVELOPE_BYTES)
     return replace(rules, fm_frequencies=fm_frequencies(z80), psg_frequencies=psg_frequencies(z80), psg_read=psg_read(z80),
-                   pitch_envelopes=envelopes, update_clock=TimerA(tables.timer_a))
+                   pitch_envelopes=envelopes, update_clock=TimerA(tables.timer_a), dac_pans=dac_pans(rom))
 
 
 def dac_name(byte: int) -> str:
@@ -200,4 +201,5 @@ OUTRUN = SmpsVariant(
                         dac_names={b: dac_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)}, tempo_phase=TEMPO_PHASE,
                         tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK}),
     rules_from_rom=_rules_from_rom,
+    dac=outrun_dac,
 )

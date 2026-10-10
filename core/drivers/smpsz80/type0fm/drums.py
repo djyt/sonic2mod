@@ -30,7 +30,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from core.chips import split_freq_word
 from core.rom.flags import FlagKind, FlagSpec
 from core.rom.image import RomError, RomImage
 from core.rom.pattern import code_pattern
@@ -41,6 +40,7 @@ from core.smps import (
     CoordFlag,
     FmDrum,
     FmFrame,
+    OctaveWrap,
     SmpsSongHeader,
     TempoSegment,
     signed_byte,
@@ -64,7 +64,7 @@ _INIT_DIVIDER = 2            # the init bytes: flags, channel, divider
 
 # The slide's octave wrap (Z80 $0262): fnum at or under the low edge drops a block, over the high
 # one rises one; the fnum moves by $280 either way
-_WRAP_LOW, _WRAP_HIGH, _WRAP_STEP = 0x27E, 0x4FE, 0x580
+_SLIDE_WRAP = OctaveWrap(low=0x27E, high=0x4FE, drop=0x280, rise=0x280)
 _WORD_MASK = 0xFFFF
 
 _READ_DRUM = code_pattern("""
@@ -162,7 +162,7 @@ class _Player:
             self._keyed = False
             return
         if self._slide is not None:
-            self._word = _wrap((self._word + self._slide) & _WORD_MASK)
+            self._word = _SLIDE_WRAP.wrapped((self._word + self._slide) & _WORD_MASK)
 
     def _read(self) -> tuple[int, bool]:
         """The track's next note: (frames until the next read, whether it keys on)."""
@@ -249,15 +249,6 @@ class _Stop(Exception):
     def __init__(self, why: str):
         super().__init__(why)
         self.why = why
-
-
-def _wrap(word: int) -> int:
-    fnum, _ = split_freq_word(word)
-    if fnum <= _WRAP_LOW:
-        return (word - _WRAP_STEP) & _WORD_MASK
-    if fnum > _WRAP_HIGH:
-        return (word + _WRAP_STEP) & _WORD_MASK
-    return word
 
 
 def drum_name(note: int) -> str:

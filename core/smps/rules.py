@@ -22,12 +22,40 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ..chips import split_freq_word
 from .clock import VINT, UpdateClock
 from .driver_tables import PsgEnvelope
 from .pitch_envelope import PitchEnvelope
 
 if TYPE_CHECKING:
     from .song import ChannelType
+
+
+_BLOCK = 0x800                  # a frequency word's block, one step
+_WORD_MASK = 0xFFFF
+
+
+@dataclass(frozen=True)
+class OctaveWrap:
+    """A driver keeping an FM track's fnum within an octave as it adds the detune: at or under `low`
+    the word drops a block and the fnum gains `drop`, over `high` it rises one and loses `rise`.
+
+        OutRun (Z80 $0563)              $283  $508   +$285  -$284
+        Golden Axe's drum slides ($0262)  $27E  $4FE   +$280  -$280
+    """
+
+    low: int
+    high: int
+    drop: int
+    rise: int
+
+    def wrapped(self, word: int) -> int:
+        fnum, _ = split_freq_word(word)
+        if fnum <= self.low:
+            return (word - _BLOCK + self.drop) & _WORD_MASK
+        if fnum > self.high:
+            return (word + _BLOCK - self.rise) & _WORD_MASK
+        return word
 
 
 @dataclass(frozen=True)
@@ -51,6 +79,9 @@ class TrackRules:
     byte_durations: bool = False            # a duration (byte x divider) is kept in a byte the track counts
                                             # up to: a product past 255 wraps, and 0 - a note before any
                                             # duration - lasts 256 ticks; False: the product as it is
+    octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
+    tie_restarts_envelope: bool = True      # a tied read starts the PSG envelope again (Streets of Rage's
+                                            # rips); False: it plays on from the attack (OutRun's, $0391)
 
 
 SONIC1_TRACK = TrackRules()

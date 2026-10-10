@@ -48,6 +48,7 @@ from core.audit import (
     RipFaults,
     SongSource,
     check_frames,
+    frame_cut,
     named,
     scan_glitches,
     workers,
@@ -66,7 +67,8 @@ def _check(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
     try:
         source = SongSource.from_config(config, ROOT)
         title = f"{rip.stem} {source.sound}".rstrip()
-        return title, check_frames(source.read(), load_frames(rip, cache_dir), channels, faults)
+        song = source.read()
+        return title, check_frames(song, load_frames(rip, cache_dir, frame_cut(song)), channels, faults)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", None
 
@@ -76,8 +78,9 @@ def _scan(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
     """One pair scanned for glitches (a worker's job): its title, and a line per candidate."""
     try:
         source = SongSource.from_config(config, ROOT)
-        frames = load_frames(rip, cache_dir)
-        scan = scan_glitches(source.read(), frames, channels, faults)
+        song = source.read()
+        frames = load_frames(rip, cache_dir, frame_cut(song))
+        scan = scan_glitches(song, frames, channels, faults)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", []
 

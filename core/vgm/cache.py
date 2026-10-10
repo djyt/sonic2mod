@@ -16,7 +16,7 @@ from functools import cache
 from pathlib import Path
 
 from ..render_cache import RenderCache, code_salt
-from .frames import FrameLog, frame_log
+from .frames import FrameCut, FrameLog, frame_log
 from .reader import decode_vgm
 
 _KIND = "vgm_frames"
@@ -30,16 +30,18 @@ def _salt() -> str:
     return code_salt(_CODE)
 
 
-def load_frames(path: str | Path, cache_dir: str | Path | None = None) -> FrameLog:
-    """The frame log of the VGM / VGZ at `path`, from `cache_dir` when it holds it."""
+def load_frames(path: str | Path, cache_dir: str | Path | None = None, cut: FrameCut = FrameCut.VINT) -> FrameLog:
+    """The frame log of the VGM / VGZ at `path`, cut as its driver's update runs, from `cache_dir`
+    when it holds it."""
     raw = Path(path).read_bytes()
     store = RenderCache(cache_dir, _KIND, _salt() if cache_dir else "")
-    key = store.key((hashlib.sha256(raw).hexdigest(),))
+    digest = hashlib.sha256(raw).hexdigest()
+    key = store.key((digest,) if cut is FrameCut.VINT else (digest, cut.value))
 
     blob = store.get_bytes(key, _SUFFIX)
     if blob is not None:
         return pickle.loads(blob)
 
-    frames = frame_log(decode_vgm(raw))
+    frames = frame_log(decode_vgm(raw), cut=cut)
     store.put_bytes(key, pickle.dumps(frames, pickle.HIGHEST_PROTOCOL), _SUFFIX)
     return frames

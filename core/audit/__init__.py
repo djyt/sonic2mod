@@ -33,7 +33,7 @@ from .render import (
     render_vgm_channels,
     workers,
 )
-from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip
+from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip, frame_cut
 from .rips import CONFIG_ROOT, DEFAULT_SET, RIP_ROOT, RIPS_MAP, ForeignSound, RipFaults, RipGlitch, RipShelf, named
 from .signal import (
     VIB_MIN_NOTE,
@@ -87,6 +87,7 @@ __all__ = [
     "db",
     "envelope_offset",
     "find_vgmplay",
+    "frame_cut",
     "group_masks",
     "harmonic_cents",
     "instrument_levels",

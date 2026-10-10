@@ -107,7 +107,7 @@ from .parser import SmpsParser
 from .percussion import ALL_OPERATORS, FmDrum, FmFrame, PsgDrumFrame
 from .pitch_envelope import PitchEnvelope
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
-from .rules import PlaybackRules, TrackRules
+from .rules import OctaveWrap, PlaybackRules, TrackRules
 from .song import (
     FIRST_FLAG,
     FIRST_NOTE,
@@ -177,6 +177,7 @@ __all__ = [
     "Nop",
     "NoteDiff",
     "NoteFill",
+    "OctaveWrap",
     "Op",
     "OpKind",
     "Pan",

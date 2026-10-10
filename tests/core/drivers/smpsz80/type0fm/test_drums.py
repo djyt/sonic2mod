@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from core.drivers.smpsz80.memory import Z80RamMemory
 from core.drivers.smpsz80.type0fm import TYPE0FM
-from core.drivers.smpsz80.type0fm.drums import _Player, _wrap
+from core.drivers.smpsz80.type0fm.drums import _SLIDE_WRAP, _Player
 from core.rom import RomImage
 from core.smps import (
     NO_TEMPO_HOLDS,
@@ -55,9 +55,9 @@ class FmDrums(unittest.TestCase):
         self.assertEqual([f[2] for f in frames].count(True), 1)
 
     def test_a_slide_wraps_the_octave_as_the_driver_does(self):
-        self.assertEqual(_wrap(0x227E), 0x1CFE)      # fnum $27E: down a block, fnum + $280
-        self.assertEqual(_wrap(0x24FF), 0x2A7F)      # fnum $4FF: up a block, fnum - $280
-        self.assertEqual(_wrap(0x2400), 0x2400)
+        self.assertEqual(_SLIDE_WRAP.wrapped(0x227E), 0x1CFE)      # fnum $27E: down a block, fnum + $280
+        self.assertEqual(_SLIDE_WRAP.wrapped(0x24FF), 0x2A7F)      # fnum $4FF: up a block, fnum - $280
+        self.assertEqual(_SLIDE_WRAP.wrapped(0x2400), 0x2400)
 
 
 if __name__ == "__main__":

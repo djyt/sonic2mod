@@ -456,6 +456,9 @@ class _Walker:
         word, the table's entry 0, is 0, and a word of 0 keys off, $032C); under a pan animation it
         steps the pan."""
         if op.kind is OpKind.NO_ATTACK:
+            # A flag after a note: the driver reads no duration past it, the note keeps the last
+            # one, and the duration after the flag is a tie (OutRun's $85: $BB $E7 $3C, Z80 $0341)
+            self._close_pending(cur)
             self._tie(cur)
             return
         reads = not (op.kind is OpKind.DURATION and cur.pending is not None)

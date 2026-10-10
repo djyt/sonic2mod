@@ -1,0 +1,5 @@
+# OutRun - Magical Sound Shower.  A minimal config: everything else is derived from the ROM
+# (docs/todo/outrun.md); python convert.py <this> --show-config prints it.
+name: "Magical Sound Shower"
+input_file: "input/roms/OutRun (USA, Europe).md"
+rom_song: "$81"

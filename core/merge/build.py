@@ -221,9 +221,9 @@ class MergedBuild:
     def bake_volumes(self, fm_baseline: dict[int, float], psg_baseline: dict[int, float],
                      gained: dict[str, set[int]]) -> None:
         """The volumes measured for the reference build moved to the merged build's levels:
-        the chip composites' and the instruments unison chords play louder."""
+        the chip composites' and every instrument whose commonest level moved."""
         self._bake_chip_composites(fm_baseline)
-        self._bake_unisons(fm_baseline, psg_baseline, gained)
+        self._bake_moved_levels(fm_baseline, psg_baseline, gained)
 
     def _bake_chip_composites(self, fm_baseline: dict[int, float]) -> None:
         """A chip composite's volume stands for its primary's baked level in the REFERENCE build
@@ -239,19 +239,24 @@ class MergedBuild:
                 continue
             self._set_sample_volume(c.entry, db_to_mod_volume(c.entry[SAMPLE_VOLUME], base_c - base_p))
 
-    def _bake_unisons(self, fm_baseline: dict[int, float], psg_baseline: dict[int, float],
-                      gained: dict[str, set[int]]) -> None:
-        """An instrument unison chords play louder (core.merge.unison_gain_db) is baked at the
-        level most of its notes now play, gain included; its volume moves from the reference
-        build's by the difference.  No Cxx: every Green Hill FM4+FM5 unison starts between rows,
-        and a Cxx there lands a row late, after an attack at the old level."""
+    def _bake_moved_levels(self, fm_baseline: dict[int, float], psg_baseline: dict[int, float],
+                           gained: dict[str, set[int]]) -> None:
+        """An instrument is baked at the level most of its notes play in this build; where that
+        is not the reference build's (what its volume was measured for), the volume moves by the
+        difference.  A unison chord's gain (core.merge.unison_gain_db) is one such move: no Cxx,
+        since every Green Hill FM4+FM5 unison starts between rows and a Cxx there lands a row
+        late, after an attack at the old level.  Folds are another: Space Harrier II's FM5
+        plays its $4B voice mostly in chord composites, so FM4's solo notes, 4.4 dB louder, set
+        the level, and at the old volume they played 4.4 dB quiet."""
         over = []
         for kind, baseline in ((ChannelType.FM, fm_baseline), (ChannelType.PSG, psg_baseline)):
             ref = self._baselines.get(kind, {})
-            for inst in sorted(gained.get(kind, ())):
-                if inst in self._plan.instruments or inst not in ref or inst not in baseline:
+            for inst in sorted(baseline):
+                if inst in self._plan.instruments or inst not in ref:
                     continue
                 db = baseline[inst] - ref[inst]
+                if abs(db) < 1e-9:
+                    continue
                 for e in self._config.sample_list or []:
                     if e[SAMPLE_SLOT] != inst:
                         continue
@@ -261,7 +266,8 @@ class MergedBuild:
                         over.append((inst, headroom_db(want)))
                     vol = db_to_mod_volume(was, db)
                     self._set_sample_volume(e, vol)
-                    self._diag.info(InfoKind.MERGE_UNISON_VOLUME, instrument=inst, volume=vol, db=db)
+                    self._diag.info(InfoKind.MERGE_UNISON_VOLUME, instrument=inst, volume=vol, db=db,
+                                    unison=inst in gained.get(kind, ()))
         if over:
             self._diag.warn(WarningKind.MERGE_HEADROOM, channel='merge unison', instruments=over)
 

@@ -11,7 +11,7 @@ from ..audio import db_to_gain, semitone_to_hz
 from ..config import MergeGroup, format_patterns
 from ..mod import PERIOD_TABLE
 from ..plan import FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
-from ..smps import prepare_song, source_map
+from ..smps import ChannelType, prepare_song, source_map
 from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
     NoteOn,
@@ -61,10 +61,11 @@ def prepare_merged_config(config, song=None) -> None:
     claims: dict[str, list[tuple[frozenset | None, str]]] = {}
     for i, g in enumerate(config.merge):
         ctx = f"merge[{i}]" if g.patterns is None else f"merge_patterns {g.label}{g.where}"
-        if not g.followers and g.mod_channel is None and not g.fill:
+        if not g.followers and g.mod_channel is None and not g.fill and not g.bank_drums:
             raise ValueError(f"{ctx}: no followers for primary {g.primary} (a group without followers "
-                             f"needs a mod_channel, which moves the channel to another column, or "
-                             f"fill: true, which sprinkles its notes over the silent columns)")
+                             f"needs a mod_channel, which moves the channel to another column, "
+                             f"fill: true, which sprinkles its notes over the silent columns, or "
+                             f"bank_drums: true, which banks its drums)")
         if g.primary in g.followers:
             raise ValueError(f"{ctx}: {g.primary} follows itself")
         for src in (g.primary, *g.followers):
@@ -335,13 +336,20 @@ class _Planner:
     # --- folding ----------------------------------------------------------------------------------
 
     def fold(self, gn: GroupNotes) -> None:
-        """Every primary note a follower sounds with: a unison, or a composite."""
+        """Every primary note a follower sounds with: a unison, or a composite.  With
+        `bank_drums`, a drum hit no follower sounds with is a composite of its own, the drum
+        alone (no layers), so it plays from a bank."""
         g, p_notes, _p_rests, followers = gn
         matched = {f: match_onsets(p_notes, f_notes, self.tol) for f, f_notes, _ in followers}
         for t in sorted(p_notes):
             p = p_notes[t]
             present = [f_notes[matched[f][t]] for f, f_notes, _ in followers if t in matched[f]]
             if not present:
+                if g.bank_drums:
+                    if p.kind != ChannelType.DAC:
+                        raise ValueError(f"merge group {g.label}{g.where}: bank_drums needs a drum primary "
+                                         f"({g.primary} plays {p.kind.value} notes)")
+                    self._place(g, p, self._composite_for(g, p, [], False, None), False)
                 continue
             spec = self.cat.instruments.get(p.instrument)
             chip = spec is not None and all(chip_pair(p, fn) for fn in present)
@@ -508,11 +516,14 @@ class _Planner:
         # mixer directly (`mix_only`).  A drum comes off disk into its slot, so it stays pinned;
         # an FM source's slot can hold a pcm composite only, since the FM catalogue keeps one
         # entry per slot and a chip composite there would displace the source before it rendered
+        # A bank_drums group's drums play from banks only: the converter keeps them aside for the
+        # mixer, so their slots are free - offered last, where the bank reserve takes them first
         reserve = (int(getattr(config, "merge_bank_slots", 0))
                    if any(c.banked for c in plan.composites.values()) else 0)
+        banked_drums = {c.primary for c in plan.composites.values() if c.group.bank_drums and not c.key.layers}
         unused = fit_composites(plan, self.song, config, self.free,
-                                 drums={d.mod_instrument for d in config.dac_samples},
-                                 fm_slots=set(self.cat.instruments), reserve=reserve)
+                                 drums={d.mod_instrument for d in config.dac_samples} - banked_drums,
+                                 fm_slots=set(self.cat.instruments), reserve=reserve, last=banked_drums)
         stand_in(plan)
         self._measure_heard()
         for c in plan.composites.values():         # fm_on_chip: rendered for every note's run through it

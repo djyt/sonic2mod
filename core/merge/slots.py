@@ -12,7 +12,7 @@ from .notes import CompositeKey
 
 def fit_composites(plan: MergePlan, song, config, free: list[int],
                     drums: set[int] = frozenset(), fm_slots: set[int] = frozenset(),  # type: ignore[assignment]
-                    reserve: int = 0) -> set[int]:
+                    reserve: int = 0, last: set[int] = frozenset()) -> set[int]:  # type: ignore[assignment]
     """Give every composite a MOD instrument slot - a never-named slot, or one of an instrument
     the merged build no longer plays - dropping composites while they do not all fit.
 
@@ -22,12 +22,13 @@ def fit_composites(plan: MergePlan, song, config, free: list[int],
     played anyway (no new slot needed), then the least played.  A drum's slot (`drums`) is never
     reused; an FM mix source's (`fm_slots`) only by a pcm composite.  A banked composite takes
     no slot here (`core.merge.banks` packs them once mixed); `reserve` slots are held back for the
-    banks, and whatever the fit leaves free is theirs too (`plan.spare_slots`).  Returns the
-    instruments left unused by the final plan."""
+    banks, and whatever the fit leaves free is theirs too (`plan.spare_slots`).  The `last` slots
+    are offered after the others, so the reserve (the list's tail) takes them first: a banked
+    drum's slot becomes a bank.  Returns the instruments left unused by the final plan."""
     while True:
         unused = _unused_instruments(plan, song, config)
         sources = plan.pcm_sources                          # of the composites still in the plan
-        slots = free + sorted(unused - (sources & drums))
+        slots = free + sorted(unused - (sources & drums), key=lambda s: (s in last, s))
         pcm_only = (unused & sources & fm_slots) - drums
         usable = slots[:max(0, len(slots) - reserve)]
         comps = sorted((c for c in plan.composites.values() if not c.banked), key=lambda c: (-c.notes, c.inst))

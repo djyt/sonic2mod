@@ -3727,7 +3727,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 90c5f34-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4064,7 +4064,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: 2d6c984-dirty
+  commit: 90c5f34-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4745,7 +4745,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 90c5f34-dirty
   files:
   - convert.py
   - core/__init__.py

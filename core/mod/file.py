@@ -395,32 +395,11 @@ class ModFile:
         size the MOD cannot hold is a config error."""
         missing: list[str] = []
         for entry in sample_list or []:
-            sample_index: int = entry[0]
-            filename: str = entry[1]
-            vol: int = entry[2]
-            try:
-                finetune: int = entry[3]
-            except IndexError:
-                finetune: int = 0
-            full_path = os.path.join(working_dir, filename)
-
-            if sample_index < 1 or sample_index > MAX_INSTRUMENT:
-                raise ValueError(f"sample_list: instrument {sample_index} is not in 1..{MAX_INSTRUMENT}")
-            if not os.path.exists(full_path):
-                missing.append(full_path)
+            sample = read_sample(working_dir, entry)
+            if sample is None:
+                missing.append(os.path.join(working_dir, entry[1]))
                 continue
-
-            with open(full_path, "rb") as file:
-                data = file.read()
-                if len(data) > _MAX_SAMPLE_BYTES:
-                    raise ValueError(f"sample_list: {filename} is {len(data)} bytes, past {_MAX_SAMPLE_BYTES}")
-
-                sample = ModSample(filename)
-                sample.data = data
-                sample.set_volume(vol)
-                sample.length = (len(data) + 1) // 2      # whole words: an odd file's last byte kept
-                sample.set_finetune(finetune)
-                self.samples[sample_index - 1] = sample
+            self.samples[entry[0] - 1] = sample
         return missing
 
     def create_placeholder_samples(self, count=10):
@@ -434,6 +413,30 @@ class ModFile:
             sample.length = 1  # 1 word = 2 bytes
             sample.set_volume(64)
             self.samples[i - 1] = sample
+
+
+def read_sample(working_dir: str, entry: list) -> ModSample | None:
+    """A sample_list entry's file as a sample, with its volume and finetune; None where the file
+    is not found.  A slot or size the MOD cannot hold is a config error."""
+    sample_index: int = entry[0]
+    filename: str = entry[1]
+    vol: int = entry[2]
+    finetune: int = entry[3] if len(entry) > 3 else 0
+    if sample_index < 1 or sample_index > MAX_INSTRUMENT:
+        raise ValueError(f"sample_list: instrument {sample_index} is not in 1..{MAX_INSTRUMENT}")
+    full_path = os.path.join(working_dir, filename)
+    if not os.path.exists(full_path):
+        return None
+    with open(full_path, "rb") as file:
+        data = file.read()
+    if len(data) > _MAX_SAMPLE_BYTES:
+        raise ValueError(f"sample_list: {filename} is {len(data)} bytes, past {_MAX_SAMPLE_BYTES}")
+    sample = ModSample(filename)
+    sample.data = data
+    sample.set_volume(vol)
+    sample.length = (len(data) + 1) // 2      # whole words: an odd file's last byte kept
+    sample.set_finetune(finetune)
+    return sample
 
 
 def shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> int:

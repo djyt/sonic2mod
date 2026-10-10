@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import sys
 import unittest
 from pathlib import Path
@@ -18,6 +17,8 @@ from core.drivers import (
 )
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
+from core.drivers.smpsz80.memory import BankedZ80Memory
+from core.drivers.smpsz80.outrun import OUTRUN
 from core.rom import RomError, RomImage
 from core.rom.tracks import decode_tracks
 from core.smps import (
@@ -64,6 +65,32 @@ def _index():
     return SoundIndex(music={0x81: _SONG}, sfx={})
 
 
+class SharedCode(unittest.TestCase):
+    """Code an FM and a PSG track both call, read with OutRun's tables (which differ by kind)."""
+
+    _BANK = 0x8000
+    _SUB = 0x8010                  # the phrase both call (Z80 address)
+
+    def _decode(self, phrase: bytes):
+        fm, psg = 0x8000, 0x8008
+        call = bytes([0xF8]) + self._SUB.to_bytes(2, "little") + bytes([0xF2])
+        bank = bytearray(0x20)
+        bank[fm - self._BANK:fm - self._BANK + 4] = call
+        bank[psg - self._BANK:psg - self._BANK + 4] = call
+        bank[self._SUB - self._BANK:self._SUB - self._BANK + len(phrase)] = phrase
+        rom = bytearray(_HEADER.ljust(2 * self._BANK, b"\0"))
+        rom[self._BANK:self._BANK + len(bank)] = bank
+        memory = BankedZ80Memory(RomImage(bytes(rom)), self._BANK)
+        return decode_tracks(memory, {self._BANK: ChannelType.FM, self._BANK + 8: ChannelType.PSG}, OUTRUN)
+
+    def test_notes_read_alike_by_both_are_shared(self):
+        self.assertIn("loc_08010", self._decode(bytes([0xAC, 0x0F, 0xF9])).labels)      # $85's phrase
+
+    def test_a_flag_each_kind_reads_its_own_way_is_refused(self):
+        with self.assertRaisesRegex(RomError, "read differently by each"):
+            self._decode(bytes([0xE6, 0x02, 0xAC, 0x0F, 0xF9]))       # FM volume: a PSG track ignores it
+
+
 class Tracks(unittest.TestCase):
     def test_a_backward_jump_is_the_loop(self):
         # DAC: rest $10, stop.  FM1: note $0C, jump back to its own note
@@ -105,14 +132,6 @@ class Tracks(unittest.TestCase):
     def test_an_unknown_flag_names_its_address(self):
         with self.assertRaisesRegex(RomError, r"\$20A: \$FB"):
             decode_tracks(_memory(_music([bytes([0xFB])])), {_SONG + 10: ChannelType.FM}, SONIC1)
-
-    def test_code_two_kinds_share_needs_one_flag_table(self):
-        psg = {**SONIC1.flags[ChannelType.PSG]}
-        variant = dataclasses.replace(SONIC1, flags={**SONIC1.flags, ChannelType.PSG: psg})
-        memory = _memory(_music([bytes([0x80, 0x01, 0xF2])]))
-        with self.assertRaisesRegex(RomError, r"\$20C: code shared by PSG and FM tracks"):
-            decode_tracks(memory, {_SONG + 10: ChannelType.FM, _SONG + 12: ChannelType.PSG}, variant)
-        decode_tracks(memory, {_SONG + 10: ChannelType.FM, _SONG + 12: ChannelType.PSG}, SONIC1)
 
     def test_smpsFade_and_smpsStopSpecial_end_the_track(self):
         for flag in (0xE4, 0xEE):

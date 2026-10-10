@@ -61,6 +61,7 @@ from tests.roms import (
     GOLDEN_AXE_ROM,
     MOONWALKER_RIPS,
     MOONWALKER_ROM,
+    OUTRUN_ROM,
     SONIC1_ASM,
     SONIC1_ROM,
     SPACE_HARRIER_2_RIPS,
@@ -112,6 +113,7 @@ _READS = (
     ("golden_axe", GOLDEN_AXE_ROM, []),
     ("streets_of_rage", STREETS_OF_RAGE_ROM, []),
     ("space_harrier_2", SPACE_HARRIER_2_ROM, []),
+    ("outrun", OUTRUN_ROM, []),
 )
 
 

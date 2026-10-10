@@ -99,9 +99,9 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 | legato `$EE` | persistent tie: `NO_ATTACK` before each note while on | walk | none |
 | alter / set volume | `ALTER_VOL`, `SET_VOL` | decoder | none |
 | pan, AMS / FMS, LFO | `PAN`, `LFO` (Streets of Rage's) | decoder | none |
-| pitch envelope | new: `PitchEnvelope` effect, the table in `PlaybackRules` | walk | channel_writer (decision D1) |
-| pan animation | decision D2 | - | - |
-| follow-on song `$E9` | decision D3 | - | - |
+| pitch envelope | new: `PitchEnvelope` effect, the table in `PlaybackRules` | walk | baked: an instrument per (voice, envelope), rendered with it (D1) |
+| pan animation | the next pan step at each note read (`$0489`) -> `PAN` | walk | `8xx`, the lowest effect (D2) |
+| follow-on song `$E9` | dropped: each song converts alone (D3) | decoder | none |
 | FM / PSG drums | the drum model (2.1.5) | drum reader | render |
 
 ---
@@ -117,7 +117,7 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 - [ ] 1.1 `SmpsDriver` name (`smpsz80_sh2`? the family's name once a second game reads), folder
   `core/drivers/smpsz80/<name>/`, pinned by SHA-1 in `games.py`.
 - [ ] 1.2 Locate by shape: the bank from the 9 writes, each table from the `ld hl,nn` that reads it;
-  `SoundIndex`, music `$81`-`$99`.  SFX: listed, not read (music first, decision D4).
+  `SoundIndex`, music `$81`-`$99`.  SFX: listed, not read (D4).
 - [ ] 1.3 Header reader: the track records -> `SmpsSongHeader` (chip channel from the channel
   byte; FM3 + PSG3 sharing a pointer: one drum track); tempo from the table.  Confirm record byte 7
   (FM: overwritten by the first `$EF`?).
@@ -130,8 +130,13 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 ### Phase 2: the walk
 - [ ] 2.1 Legato `$EE`, volume, transposition, divider, pan / AMS / FMS, LFO.
 - [ ] 2.2 Tempo holds: the phase against the rips' key-on frames (Golden Axe's was a frame late).
-- [ ] 2.3 Pitch envelopes (D1): the IR effect, the walk, the converter.
-- [ ] 2.4 Yardstick: `configs/space_harrier_2/` minimal configs, `rips.yaml` (20 rips to `$81`-`$99`);
+- [ ] 2.3 Pitch envelopes, baked (D1): the IR effect and the walk; the instrument catalogue keys
+  on the envelope, the FM render applies it frame by frame from the note's attack.  Check:
+  does a legato note restart it (`$0459` clears the step on every read)?  Its depth grows each
+  pass, so a sample may not loop early: rendered as long as its longest note.
+- [ ] 2.4 Pan animation (D2): `8xx` on the note's row, below every other effect (CLAUDE.md's
+  priority list gains it last).
+- [ ] 2.5 Yardstick: `configs/space_harrier_2/` minimal configs, `rips.yaml` (20 rips to `$81`-`$99`);
   `vgm_lift`, `vgm_frames` (pitch, level, voice at every key-on).
 
 ### Phase 3: drums
@@ -147,11 +152,9 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   tool_regression.
 - [ ] 4.3 `docs/smps_variants.md` § Space Harrier II (section 1 moves there); CLAUDE.md index.
 
-### Decisions (the user's)
-- **D1 Pitch envelopes:** MOD effects (`1xx` / `2xx` / `4xy` a row, as vibrato is now) or baked
-  into each note's sample (exact, more samples).
-- **D2 Pan animation:** drop, or `8xx` per row.
-- **D3 `$E9` follow-on:** each song alone, or a song's MOD runs on into the one it queues.
-- **D4 SFX:** music only (as Streets of Rage), or SFX through `sonic2wav.py` too.
-- **D5 The family:** after Space Harrier II, which game next (a plan each); most load their
-  driver in shapes `z80.py` does not know yet (Altered Beast: an unrolled copy).
+### Decisions (the user's, 2026-10-10)
+- **D1 Pitch envelopes:** baked into each note's sample.
+- **D2 Pan animation:** `8xx`, the lowest-priority effect.
+- **D3 `$E9` follow-on:** each song alone.
+- **D4 SFX:** music only.
+- **D5 The family:** no further games yet.

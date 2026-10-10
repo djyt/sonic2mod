@@ -7437,7 +7437,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: 32383b7-dirty
+  commit: 4afd5d2-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7473,6 +7473,7 @@ read_golden_axe:
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7498,7 +7499,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: 32383b7-dirty
+  commit: 4afd5d2-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7534,6 +7535,7 @@ read_moonwalker:
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7797,7 +7799,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: 32383b7-dirty
+  commit: 4afd5d2-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7833,6 +7835,7 @@ read_sonic1_rom:
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7859,7 +7862,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: 32383b7-dirty
+  commit: 4afd5d2-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7895,6 +7898,7 @@ read_sonic1_rom_shipped:
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7920,7 +7924,7 @@ read_space_harrier_2:
   argv:
   - tools/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 1acd2ab-dirty
+  commit: 4afd5d2-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7959,6 +7963,7 @@ read_space_harrier_2:
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7984,7 +7989,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 78be73c-dirty
+  commit: 4afd5d2-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8021,6 +8026,7 @@ read_streets_of_rage:
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py

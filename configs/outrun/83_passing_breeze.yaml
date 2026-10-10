@@ -1,0 +1,20 @@
+# OutRun - Passing Breeze.  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/outrun.md); python convert.py <this> --show-config prints it.
+name: "Passing Breeze"
+input_file: "input/roms/OutRun (USA, Europe).md"
+rom_song: "$83"
+dac_stall: 0.389       # the update's share of the DAC's time, from the rip (vgm_analyze.py --dac-stall)
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [4, "dac85.raw", 24, -2]   # VGZ: +8.4 dB at 64
+  - [7, "fm_v00_Fs3.raw", 14, 0]   # VGZ: +2.4 dB at 19
+  - [8, "fm_v00_E4.raw", 16, 0]   # VGZ: +1.4 dB at 19
+  - [9, "fm_v00_D5.raw", 16, 0]   # VGZ: +1.7 dB at 19
+  - [15, "fm_v04_F3.raw", 28, 0]   # VGZ: +2.8 dB at 38
+  - [16, "fm_v04_E4.raw", 33, 0]   # VGZ: +1.1 dB at 38
+  - [19, "fm_v05_A4.raw", 22, 0]   # VGZ: -1.4 dB at 19
+  - [20, "fm_v06_Ab3.raw", 8, 0]   # VGZ: +3.1 dB at 11
+  - [21, "fm_v06_Ab4.raw", 14, 0]   # VGZ: +4.4 dB at 23
+  - [22, "fm_v06_Ab5.raw", 13, 0]   # VGZ: +4.8 dB at 23
+  - [23, "psg_noise_e7.raw", 2, 0]   # VGZ: +8.2 dB at 4
+  - [24, "psg_noise_e7_fTone_16.raw", 2, 0]   # VGZ: +8.3 dB at 4

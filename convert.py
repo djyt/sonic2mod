@@ -28,6 +28,7 @@ from core.config import (
 from core.convert import SmpsToModConverter
 from core.merge import prepare_merged_config
 from core.plan import complete_config
+from core.smps import update_hz
 from core.ui import Report, add_variant_argument, branding, cli_console, error_printer, print_report
 
 console = cli_console()
@@ -156,7 +157,7 @@ def main():
     # tempo that leaves the song, and which target_speed would leave it closer.
     bpm: dict = {}
     if config.auto_bpm:
-        fps = config.fps
+        fps = update_hz(song.rules, config.region)
         config.target_bpm = derive_bpm(song.header.tempo_divider, song.header.tempo_modifier,
                                        config.ticks_per_row, config.target_speed, fps)
         exact = exact_bpm(song.header.tempo_divider, song.header.tempo_modifier,

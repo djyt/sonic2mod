@@ -21,11 +21,11 @@ _PROGRAM = 0x80
 _FM_TABLE = 0x10             # the driver's FM table, at this Z80 address
 
 
-def _program(with_table: bool) -> bytes:
+def _program(with_table: bool, octaves: int = 2) -> bytes:
     program = bytearray(b"\x55" * _PROGRAM)
     if with_table:
-        octaves = b"".join(w.to_bytes(2, "little") for w in FM_FREQUENCIES[:24])
-        program[_FM_TABLE:_FM_TABLE + len(octaves)] = octaves
+        table = b"".join(w.to_bytes(2, "little") for w in FM_FREQUENCIES[:12 * octaves])
+        program[_FM_TABLE:_FM_TABLE + len(table)] = table
     return bytes(program)
 
 
@@ -47,6 +47,12 @@ class DriverRam(unittest.TestCase):
         ram = driver_ram(_rom(_program(False), _program(True), _program(False)))
         self.assertEqual(fm_table(ram), _FM_TABLE)
         self.assertEqual(fm_frequencies(ram)[1:13], FM_FREQUENCIES[:12])   # $81: the octave's first
+
+    def test_an_octave_alone_plays_every_note_its_block_computed(self):
+        # OutRun's: the driver or's the note's octave into the block
+        ram = driver_ram(_rom(_program(True, octaves=1)))
+        self.assertEqual(fm_table(ram), _FM_TABLE)
+        self.assertEqual(fm_frequencies(ram)[1:], FM_FREQUENCIES[:95])
 
     def test_two_programs_with_a_table_are_refused(self):
         with self.assertRaisesRegex(RomError, "2 Z80 programs hold an FM table"):

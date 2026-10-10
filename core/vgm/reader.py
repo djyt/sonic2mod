@@ -12,6 +12,10 @@ What the writes do to the chips is chipstate.py's.
 
 A 0x8n command writes the next PCM bank byte to YM2612 register 0x2A, so it is logged as that
 write: the DAC stream is ordinary FM writes, the bank pointer is the reader's.
+
+retimed: the same file with every wait scaled (a rip whose timer ran slow, put on its driver's
+clock: core.audit.rip_scale), each command as it was; command_span is both directions' one
+reading of a command's length and wait.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ _GZIP_MAGIC = b"\x1f\x8b"
 _GD3_MAGIC = b"Gd3 "
 
 # Header fields (VGM spec 1.71): byte offsets.  Offsets marked "rel" count from their own position.
+_H_EOF = 0x04               # rel
 _H_VERSION = 0x08
 _H_PSG_CLOCK = 0x0C
 _H_GD3 = 0x14               # rel
@@ -58,6 +63,12 @@ _CMD_PCM_SEEK = 0xE0
 _NTSC_FRAME = 735
 _PAL_FRAME = 882
 _PCM_BLOCK_TYPE = 0x00      # YM2612 PCM data, what 0x8n and 0xE0 read
+_DAC_WRITE = 0x80           # 0x8n: the DAC byte, then n samples' wait
+_LOW_NIBBLE = 0x0F
+_SHORT_WAIT = 0x70          # 0x7n: n + 1 samples
+_SHORT_WAITS = 16
+_LONGEST_WAIT = 0xFFFF      # 0x61's word
+_DAC_STREAMS = range(0x90, 0x96)    # stream control: its rates are Hz, not waits (not retimed)
 _DAC_REG = 0x2A
 _DAC_SILENCE = 0x80         # a byte read past the bank's end (a broken rip)
 
@@ -128,6 +139,102 @@ def is_vgm_path(path: str | Path) -> bool:
 def vgm_bytes(path: str | Path) -> bytes:
     """A .vgm or .vgz file's VGM bytes (gunzipped when compressed, whatever the suffix)."""
     return _gunzipped(Path(path).read_bytes())
+
+
+def command_span(data: bytes, pos: int) -> tuple[int, int]:
+    """(bytes, samples waited) of the command at `pos`."""
+    cmd = data[pos]
+    if cmd in (_CMD_FM_PORT0, _CMD_FM_PORT1):
+        return _spanned(data, pos, 3), 0
+    if cmd == _CMD_PSG:
+        return _spanned(data, pos, 2), 0
+    if cmd >> 4 == _DAC_WRITE >> 4:
+        return 1, cmd & _LOW_NIBBLE
+    if cmd == _CMD_PCM_SEEK:
+        return _spanned(data, pos, 5), 0
+    if cmd >> 4 == _SHORT_WAIT >> 4:
+        return 1, (cmd & _LOW_NIBBLE) + 1
+    if cmd == _CMD_WAIT:
+        return _spanned(data, pos, 3), struct.unpack_from("<H", data, pos + 1)[0]
+    if cmd in (_CMD_WAIT_NTSC, _CMD_WAIT_PAL):
+        return 1, _NTSC_FRAME if cmd == _CMD_WAIT_NTSC else _PAL_FRAME
+    if cmd == _CMD_DATA_BLOCK:
+        _spanned(data, pos, 7)
+        return _spanned(data, pos, 7 + (_u32(data, pos + 3) & _BLOCK_SIZE_MASK)), 0
+    if cmd in _SKIP_LENGTHS:
+        return _spanned(data, pos, _SKIP_LENGTHS[cmd]), 0
+    raise VgmError(f"unknown VGM command {cmd:#04x} at {pos:#x}")
+
+
+def _spanned(data: bytes, pos: int, length: int) -> int:
+    if pos + length > len(data):
+        raise VgmError(f"command {data[pos]:#04x} at {pos:#x} runs past the end of the file")
+    return length
+
+
+def retimed(raw: bytes, scale: float) -> bytes:
+    """The VGM (or VGZ) `raw` with every wait scaled by `scale`, uncompressed: each command as it
+    was, the waits re-emitted to reach the scaled time (a 0x8n's folded back into it where it
+    fits), the header's total, loop and GD3 fields moved with them."""
+    data = _gunzipped(raw)
+    if data[:4] != _MAGIC:
+        raise VgmError("not a VGM file (bad magic bytes)")
+    start = _data_start(data, _u32(data, _H_VERSION))
+    loop_at = _rel_offset(data, _H_LOOP)
+    out = bytearray(data[:start])
+    old = new = 0                               # samples: the original's, the retimed's
+    loop_pos = loop_sample = None
+
+    pos = start
+    while pos < len(data) and data[pos] != _CMD_END:
+        if pos == loop_at:
+            loop_pos, loop_sample = len(out), new
+        cmd = data[pos]
+        if cmd in _DAC_STREAMS:
+            raise VgmError(f"DAC stream command {cmd:#04x} at {pos:#x}: its rate is not a wait, not retimed")
+        length, wait = command_span(data, pos)
+        if cmd >> 4 == _DAC_WRITE >> 4:
+            out.append(_DAC_WRITE)
+        elif not wait:
+            out += data[pos:pos + length]
+        old += wait
+        new = _wait_to(out, new, round(old * scale), folds=cmd >> 4 == _DAC_WRITE >> 4)
+        pos += length
+
+    # The end, and what follows it (the GD3 tag)
+    gd3 = _rel_offset(data, _H_GD3)
+    out.append(_CMD_END)
+    tail_at = len(out)
+    out += data[pos + 1:] if pos < len(data) else b""
+    _put_u32(out, _H_TOTAL_SAMPLES, new)
+    _put_u32(out, _H_EOF, len(out) - _H_EOF)
+    if gd3 is not None:
+        _put_u32(out, _H_GD3, tail_at + (gd3 - (pos + 1)) - _H_GD3)
+    if loop_pos is not None and loop_sample is not None:
+        _put_u32(out, _H_LOOP, loop_pos - _H_LOOP)
+        _put_u32(out, _H_LOOP_SAMPLES, new - loop_sample)
+    return bytes(out)
+
+
+def _wait_to(out: bytearray, now: int, target: int, folds: bool) -> int:
+    """Waits from `now` to `target` appended (`folds`: the last byte a 0x80 that can carry up to 15);
+    returns `target`."""
+    left = target - now
+    if folds and 0 < left <= _LOW_NIBBLE:
+        out[-1] = _DAC_WRITE | left
+        return target
+    while left > 0:
+        step = min(left, _LONGEST_WAIT)
+        if step <= _SHORT_WAITS:
+            out.append(_SHORT_WAIT | (step - 1))
+        else:
+            out += bytes([_CMD_WAIT]) + struct.pack("<H", step)
+        left -= step
+    return target
+
+
+def _put_u32(out: bytearray, at: int, value: int) -> None:
+    struct.pack_into("<I", out, at, value)
 
 
 def _gunzipped(raw: bytes) -> bytes:
@@ -203,72 +310,39 @@ class _Decoder:
                 log.loop_sample = self._sample
             if data[pos] == _CMD_END:
                 break
-            pos = self._command(pos)
+            length, wait = command_span(data, pos)
+            self._command(pos)
+            self._sample += wait
+            pos += length
 
         log.pcm = bytes(self._pcm)
         log.end_sample = self._sample
         return log
 
-    def _need(self, pos: int, length: int) -> None:
-        if pos + length > len(self._data):
-            raise VgmError(f"command {self._data[pos]:#04x} at {pos:#x} runs past the end of the file")
-
     def _write(self, op: VgmOp, port: int, reg: int, value: int) -> None:
         self._log.writes.append(VgmWrite(self._sample, op, port, reg, value))
 
-    def _command(self, pos: int) -> int:
-        """Decode the command at `pos`; returns the next command's offset."""
+    def _command(self, pos: int) -> None:
+        """What the command at `pos` writes, at the current sample (its wait: command_span's)."""
         data = self._data
         cmd = data[pos]
-
-        # Chip writes
         if cmd in (_CMD_FM_PORT0, _CMD_FM_PORT1):
-            self._need(pos, 3)
             self._write(VgmOp.FM, cmd - _CMD_FM_PORT0, data[pos + 1], data[pos + 2])
-            return pos + 3
-        if cmd == _CMD_PSG:
-            self._need(pos, 2)
+        elif cmd == _CMD_PSG:
             self._write(VgmOp.PSG, 0, 0, data[pos + 1])
-            return pos + 2
-
-        # The DAC: 0x8n writes the bank's next byte to 0x2A, then waits n
-        if cmd >> 4 == 0x8:
+        elif cmd >> 4 == _DAC_WRITE >> 4:
+            # The DAC: the bank's next byte to 0x2A, then the wait
             byte = self._pcm[self._pcm_pos] if self._pcm_pos < len(self._pcm) else _DAC_SILENCE
             self._write(VgmOp.FM, 0, _DAC_REG, byte)
             self._pcm_pos += 1
-            self._sample += cmd & 0x0F
-            return pos + 1
-        if cmd == _CMD_PCM_SEEK:
-            self._need(pos, 5)
+        elif cmd == _CMD_PCM_SEEK:
             self._pcm_pos = _u32(data, pos + 1)
             self._write(VgmOp.PCM_SEEK, 0, 0, self._pcm_pos)
-            return pos + 5
+        elif cmd == _CMD_DATA_BLOCK:
+            self._data_block(pos)
 
-        # Waits
-        if cmd >> 4 == 0x7:
-            self._sample += (cmd & 0x0F) + 1
-            return pos + 1
-        if cmd == _CMD_WAIT:
-            self._need(pos, 3)
-            self._sample += struct.unpack_from("<H", data, pos + 1)[0]
-            return pos + 3
-        if cmd in (_CMD_WAIT_NTSC, _CMD_WAIT_PAL):
-            self._sample += _NTSC_FRAME if cmd == _CMD_WAIT_NTSC else _PAL_FRAME
-            return pos + 1
-
-        if cmd == _CMD_DATA_BLOCK:
-            return self._data_block(pos)
-        if cmd in _SKIP_LENGTHS:
-            self._need(pos, _SKIP_LENGTHS[cmd])
-            return pos + _SKIP_LENGTHS[cmd]
-        raise VgmError(f"unknown VGM command {cmd:#04x} at {pos:#x}")
-
-    def _data_block(self, pos: int) -> int:
+    def _data_block(self, pos: int) -> None:
         """0x67 0x66 tt ssssssss data: type-0 blocks append to the PCM bank."""
-        self._need(pos, 7)
-        block_type = self._data[pos + 2]
         size = _u32(self._data, pos + 3) & _BLOCK_SIZE_MASK
-        self._need(pos, 7 + size)
-        if block_type == _PCM_BLOCK_TYPE:
+        if self._data[pos + 2] == _PCM_BLOCK_TYPE:
             self._pcm += self._data[pos + 7:pos + 7 + size]
-        return pos + 7 + size

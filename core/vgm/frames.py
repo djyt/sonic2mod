@@ -1,4 +1,5 @@
-"""The log cut into V-int frames: per frame, every channel's state and the writes made to it.
+"""The log cut into frames, one run of the driver's update each: per frame, every channel's state and
+the writes made to it.
 
 The driver runs once per V-int and writes its registers in one burst; the burst starts at the
 same place in every frame (the log's phase), jittered a few samples by the DAC writes the Z80
@@ -12,19 +13,37 @@ phase, so a whole burst lands in one frame:
 
 The phase is the commonest burst start (mod the frame), found from the writes themselves; the
 first frame is the one holding the log's first write.  This table is what the lift reads.
+
+A driver on Timer A (OutRun's) cuts the log itself: each update ends by resetting the timer's flag
+($27, bit 4), so a frame is the writes up to and including a reset.  Its frames follow the updates
+the driver ran, however late each began (it polls the timer) and whichever overflows a long update
+swallowed:
+
+    writes   ...   burst  $25 $24 $27 | DAC bytes ...   burst  $25 $24 $27 | ...
+                           frame n    |                  frame n + 1       |
 """
 
 from __future__ import annotations
 
+import bisect
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
+from enum import Enum
 
 from ..chips import OPERATOR_SLOT_OFFSETS, split_operator_register
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
 from .reader import VGM_SAMPLE_RATE, VgmLog, VgmOp, VgmWrite
 
 NTSC_RATE = 60
+
+
+class FrameCut(Enum):
+    """Where a log's frames are cut: what runs its driver's update."""
+
+    VINT = "V-int"              # a fixed period, at the bursts' phase
+    TIMER_A = "Timer A"         # after each Timer A reset ($27 bit 4): the update's last write
+
 _BURST_GAP = 200                # samples: writes closer than this belong to one burst
 _PHASE_WINDOW = 16              # samples either side of a phase that count towards it
 _FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before the phase
@@ -34,6 +53,7 @@ _VOICE_FIRST = 0x30             # DT/MUL .. SSG-EG: the operator registers
 _VOICE_LAST = 0x9F
 _REGISTER_STRIDE = 0x10         # from one operator register's base to the next
 _REG_MODE = 0x27
+_RESET_A = 0x10                 # $27's bit 4: Timer A's flag reset
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,14 +133,18 @@ class Frame:
 @dataclass(frozen=True)
 class FrameLog:
     frames: list[Frame]
-    frame_samples: int              # 735 NTSC, 882 PAL
+    frame_samples: int              # 735 NTSC, 882 PAL; a log cut at resets: its mean, rounded
     origin: int                     # sample where frame 0's window opens (<= 0)
     phase: int                      # where a burst starts within a frame's 735 samples
     loop_sample: int | None         # where the log loops back to
     pcm: bytes = b""                # the log's PCM bank: what DacStart.offset indexes
     end_sample: int = 0             # where the log ends (and a looping one jumps back)
+    cuts: tuple[int, ...] = ()      # cut at the driver's resets: each frame's last sample (the
+                                    # last frame's, to the log's end, none); empty: a fixed cut
 
     def frame_of(self, sample: int) -> int:
+        if self.cuts:
+            return bisect.bisect_left(self.cuts, sample)
         return (sample - self.origin) // self.frame_samples
 
     def burst_frame(self, sample: int) -> int:
@@ -133,12 +157,26 @@ class FrameLog:
         return None if self.loop_sample is None else self.frame_of(self.loop_sample)
 
     def seconds(self, frame: int) -> float:
+        if self.cuts:
+            return (self.cuts[frame - 1] if frame else 0) / VGM_SAMPLE_RATE
         return (self.origin + frame * self.frame_samples) / VGM_SAMPLE_RATE
 
+    @property
+    def fps(self) -> float:
+        """The rip's frames a second: a cut log's measured over its resets (a ripper's timer runs
+        at its own rate: OutRun's rips 0.29 % slow)."""
+        timed = [c for c in self.cuts if c > 0]           # a ripper's pre-roll updates all log at 0
+        if len(timed) < 2:
+            return VGM_SAMPLE_RATE / self.frame_samples
+        return VGM_SAMPLE_RATE * (len(timed) - 1) / (timed[-1] - timed[0])
 
-def frame_log(log: VgmLog, state: ChipState | None = None) -> FrameLog:
-    """`log` cut into frames (`state`: the chips to replay into, with the log's clocks by default)."""
+
+def frame_log(log: VgmLog, state: ChipState | None = None, cut: FrameCut = FrameCut.VINT) -> FrameLog:
+    """`log` cut into frames (`state`: the chips to replay into, with the log's clocks by default),
+    one each run of its driver's update."""
     state = state or ChipState.for_log(log)
+    if cut is FrameCut.TIMER_A:
+        return _cut_at_resets(log, state)
     frame_samples = VGM_SAMPLE_RATE // (log.header.rate or NTSC_RATE)
     phase = _burst_phase(log.writes, frame_samples)
     lead = phase - frame_samples // _FRAME_LEAD_DIVISOR
@@ -146,6 +184,22 @@ def frame_log(log: VgmLog, state: ChipState | None = None) -> FrameLog:
 
     builder = _FrameBuilder(state, origin, frame_samples)
     return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm, log.end_sample)
+
+
+def _cut_at_resets(log: VgmLog, state: ChipState) -> FrameLog:
+    """`log` cut after each Timer A reset."""
+    cuts = tuple(w.sample for w in log.writes if _is_reset(w))
+    if not cuts:
+        raise ValueError("a Timer A driver's log with no Timer A reset ($27 bit 4)")
+    timed = [c for c in cuts if c > 0]
+    mean = round((timed[-1] - timed[0]) / (len(timed) - 1)) if len(timed) > 1 else VGM_SAMPLE_RATE // NTSC_RATE
+
+    builder = _FrameBuilder(state, 0, mean, cuts)
+    return FrameLog(list(builder.run(log)), mean, 0, 0, log.loop_sample, log.pcm, log.end_sample, cuts)
+
+
+def _is_reset(w: VgmWrite) -> bool:
+    return w.op is VgmOp.FM and w.port == 0 and w.reg == _REG_MODE and bool(w.value & _RESET_A)
 
 
 def _is_dac_byte(w: VgmWrite) -> bool:
@@ -173,12 +227,14 @@ def _burst_phase(writes: list[VgmWrite], frame_samples: int) -> int:
 
 
 class _FrameBuilder:
-    """Replays the log, closing a Frame each time a write falls past the current one."""
+    """Replays the log, closing a Frame each time a write falls past the current one (`cuts`: at
+    each reset instead, the frame after the last to the log's end)."""
 
-    def __init__(self, state: ChipState, origin: int, frame_samples: int) -> None:
+    def __init__(self, state: ChipState, origin: int, frame_samples: int, cuts: tuple[int, ...] = ()) -> None:
         self._state = state
         self._origin = origin
         self._frame_samples = frame_samples
+        self._cuts = cuts
         self._index = 0
         self._reset_events()
         self._since_start = 0
@@ -195,6 +251,9 @@ class _FrameBuilder:
         self._gaps: Counter[int] = Counter()
 
     def run(self, log: VgmLog) -> Iterator[Frame]:
+        if self._cuts:
+            yield from self._run_cut(log)
+            return
         writes = log.writes
         for i, w in enumerate(writes):
             # Close every frame before this write's
@@ -202,18 +261,30 @@ class _FrameBuilder:
             while self._index < index:
                 yield self._close()
 
-            # The DAC's byte stream, most of a log's writes, is only counted: no state reads 0x2A
-            if w.reg == _DAC_REG and w.port == 0 and w.op is VgmOp.FM:
-                self._dac_write(w.sample)
-                continue
-            change = self._state.apply(w, writes[i + 1] if i + 1 < len(writes) else None)
-            if change is not None:
-                self._record(change)
+            self._apply(w, writes[i + 1] if i + 1 < len(writes) else None)
 
         # Frames to the log's end
         last = (max(log.end_sample - 1, 0) - self._origin) // self._frame_samples
         while self._index <= last:
             yield self._close()
+
+    def _run_cut(self, log: VgmLog) -> Iterator[Frame]:
+        """A frame closed at each reset, after it: the reset is its update's last write."""
+        writes = log.writes
+        for i, w in enumerate(writes):
+            self._apply(w, writes[i + 1] if i + 1 < len(writes) else None)
+            if _is_reset(w):
+                yield self._close()
+        yield self._close()
+
+    def _apply(self, w: VgmWrite, after: VgmWrite | None) -> None:
+        # The DAC's byte stream, most of a log's writes, is only counted: no state reads 0x2A
+        if w.reg == _DAC_REG and w.port == 0 and w.op is VgmOp.FM:
+            self._dac_write(w.sample)
+            return
+        change = self._state.apply(w, after)
+        if change is not None:
+            self._record(change)
 
     def _record(self, change: Change) -> None:
         state, kind, ch = self._state, change.kind, change.channel
@@ -258,9 +329,14 @@ class _FrameBuilder:
                              s.noise if ch == NOISE_CHANNEL else None)
                     for ch in range(PSG_TONE_CHANNELS + 1))
         dac = DacFrame(tuple(self._starts), self._dac_writes, self._since_start, tuple(sorted(self._gaps.items())))
-        frame = Frame(self._index, self._origin + self._index * self._frame_samples, fm, psg, dac,
-                      s.dac_enabled, s.lfo, s.fm_global(_REG_MODE))
+        frame = Frame(self._index, self._window(), fm, psg, dac, s.dac_enabled, s.lfo, s.fm_global(_REG_MODE))
         self._index += 1
         self._reset_events()
         return frame
+
+    def _window(self) -> int:
+        """Where this frame's window opens: after the reset before it, or its fixed start."""
+        if self._cuts:
+            return self._cuts[self._index - 1] if self._index else 0
+        return self._origin + self._index * self._frame_samples
 

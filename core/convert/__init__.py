@@ -2,6 +2,7 @@
 
     smps2mod.py        SmpsToModConverter: song -> ModFile
     level_plan.py      baked levels, FM render levels
+    samples.py         one pass's samples: rendered, loaded, kept aside for the mixer
     sustain_plan.py    how long each sample holds
     vibrato.py         smpsModSet -> 4xy
     channel_writer/    one channel into MOD cells

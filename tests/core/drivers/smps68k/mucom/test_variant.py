@@ -62,7 +62,7 @@ class StreetsOfRage(unittest.TestCase):
         patched = voices[sets[4]].registers()
         self.assertEqual([patched[r] for r in (0x6C, 0x7C, 0x68, 0x78)], [0x0F, 0x11, 0x0E, 0x0F])
         self.assertEqual(sets[:5], [sets[0], *range(sets[1], sets[1] + 4)])     # each write a new copy
-        with self.assertRaisesRegex(ValueError, "carrier's TL"):
+        with self.assertRaisesRegex(ValueError, "the track volume"):
             voices[sets[0]].patched(voices[sets[0]].carrier_registers[0], 0x10)
 
     def test_a_jump_back_after_a_tie_attacks_on_the_replay(self):

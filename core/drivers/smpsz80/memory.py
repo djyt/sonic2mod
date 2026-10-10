@@ -15,6 +15,12 @@ BANK_SIZE = 0x8000
 _WINDOW = 0x8000           # the Z80 address the bank appears at
 
 
+def window_view(image: RomImage, bank: int) -> bytes:
+    """Z80 addresses $0000-$FFFF as a driver mapping `bank` reads them: the bank in the window, zeros
+    below it (a table that names its bytes by Z80 address: OutRun's DAC samples)."""
+    return bytes(_WINDOW) + image.bytes_at(bank, BANK_SIZE)
+
+
 class BankedZ80Memory(SoundMemory):
     _BYTE_ORDER = "little"
 

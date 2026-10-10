@@ -164,6 +164,21 @@ mw_title:
   config: f1f53ea283d8
   date: '2026-10-10'
   settings: febf8cd9dd04
+or_last_wave:
+  commit: 51dc230
+  config: 3b2d0c4fd17a
+  date: '2026-10-10'
+  settings: febf8cd9dd04
+or_passing_breeze:
+  commit: 51dc230
+  config: 1bdab532db74
+  date: '2026-10-10'
+  settings: febf8cd9dd04
+or_step_on_beat:
+  commit: 51dc230
+  config: 5fe881fa69ff
+  date: '2026-10-10'
+  settings: febf8cd9dd04
 robotnik:
   commit: 2d6c984
   config: d8d9d0b21a0d

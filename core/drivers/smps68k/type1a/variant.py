@@ -6,12 +6,12 @@ from __future__ import annotations
 from dataclasses import replace
 
 from core.rom.flags import RETURN, EnvelopeCommand, drop, effect, every_kind, refuse
-from core.rom.variant import SmpsVariant
+from core.rom.variant import SMPS_VOICE, SmpsVariant
 from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, PlaybackRules
 
 from ...names import SmpsDriver
 from ...reference import FM_FREQUENCIES, PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
-from ..common import FLAGS_68K, HEADER_68K, VOICE_68K
+from ..common import FLAGS_68K, HEADER_68K
 from ..locate import locate_68k
 from ..memory import Relative68kMemory
 from .dac import type1a_dac
@@ -43,7 +43,7 @@ TYPE1A = SmpsVariant(
     header=HEADER_68K,
     # Sonic 1's voice bytes; but loading a voice ($61402) writes each carrier's TL from the track
     # volume alone ($61478: the mask at $614C0, Sonic 1's), the voice's own never plays
-    voice_layout=replace(VOICE_68K, carrier_tl=False),
+    voice_layout=replace(SMPS_VOICE, carrier_tl=False),
     # Sonic 1's FM and PSG tables (compared: the same); its PSG envelopes read from the ROM; every
     # note byte goes to the DAC (the 68k remaps $88-$97 to pitched samples)
     rules=PlaybackRules(driver=SmpsDriver.TYPE1A, fm_frequencies=FM_FREQUENCIES, psg_frequencies=PSG_FREQUENCIES,

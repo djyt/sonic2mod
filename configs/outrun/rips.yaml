@@ -1,0 +1,39 @@
+# Which rip in reference/vgz/outrun/ each config converts (by every FM channel's opening
+# pitches: docs/todo/done/outrun.md 2.4).  Faults (core/audit/rips.py): each proven in the writes and
+# the driver's code.
+#
+# Tone 3 unlogged (every rip with a noise track): the noise track ($F3 $E7: rate 3, tone 3's divider)
+# plays $C6 / $C7, past the PSG table (Z80 $0A9D: its 0 terminator, then $0003), and the driver
+# writes tone 3 every update ($0EAE, no noise skip): 0, 3, 0 ...  The rips log tone 3 only in their
+# opening state and at the loop ($C0 $00): their ripper drops writes that change nothing (Step on
+# Beat's PSG1 / PSG2: a tone write where the divider changes, not every update) and, here, those to
+# a muted tone channel (tone 3 at $DF), which rate-3 noise still follows.
+#
+# Every rip, no fault kind (the tools allow for each): their frames run 0.21-0.30 % under Timer A's
+# 126.22 at the chip's clock (Passing Breeze 125.84: the resets' mean gap, FrameLog.fps; the audits
+# retime each onto the driver's clock, core.audit.rip_on_song_clock); their DAC loop runs
+# 1-2 % fast against its cycle count ($81: 9228-9244 Hz against 9085), as Sonic 1's rips' does.
+# Each song's dac_stall is measured from its rip (the update's pauses are the hardware's).
+81_magical_sound_shower:
+  rip: "01 - Magical Sound Shower.vgz"
+  unlogged:
+    - {channels: [PSG3], aspects: [pitch], why: "tone 3's divider: the ripper drops writes to a muted tone channel"}
+82_splash_wave:
+  rip: "02 - Splash Wave.vgz"
+  unlogged:
+    - {channels: [PSG3], aspects: [pitch], why: "tone 3's divider: the ripper drops writes to a muted tone channel"}
+83_passing_breeze:
+  rip: "03 - Passing Breeze.vgz"
+  unlogged:
+    - {channels: [PSG3], aspects: [pitch], why: "tone 3's divider: the ripper drops writes to a muted tone channel"}
+# Last Wave's FM5 is sound $97, an SFX (one track, channel 5: its header Z80 $1366), which the song
+# starts itself ($FF $02 $97) and which is not converted (music only): the waves.  It plays on after
+# the music stops (tick 8580), and the rip's loop (tick 8842) is the waves' alone.
+84_last_wave:
+  rip: "04 - Last Wave.vgz"
+  foreign:
+    - {channels: [FM5], why: "sound $97 (the waves), started by the song's $FF $02 $97: an SFX, not converted"}
+85_step_on_beat:
+  rip: "05 - Step on Beat.vgz"
+  unlogged:
+    - {channels: [PSG3], aspects: [pitch], why: "tone 3's divider: the ripper drops writes to a muted tone channel"}

@@ -48,7 +48,6 @@ from ..config import (
     bpm_rounding_options,
     find_settings,
     load_settings,
-    region_fps,
     variant_output_file,
 )
 from ..files import write_shared
@@ -65,6 +64,7 @@ from ..smps import (
     psg_voice_name,
     source_map,
     synth_note_name,
+    update_hz,
 )
 from .driver_state import walk_channel
 
@@ -301,7 +301,7 @@ class _Deriver:
         h = self._song.header
         divider = max(h.tempo_divider, 1)
         tpr = grid // divider if grid % divider == 0 else grid / divider
-        fps = region_fps(self._stated.get("region", "ntsc"))
+        fps = update_hz(self._song.rules, self._stated.get("region", "ntsc"))
         options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
         if not options or abs(options[0]["error_pct"]) > _BPM_CLOSE:
             options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps, speeds=_WIDE_SPEEDS) or options
@@ -397,6 +397,7 @@ class _Deriver:
         if "dac_samples" in self._stated or not hit:
             return
         by_sound = {s.sound: s for s in self._dac.values()}
+        played = 1.0 - float(self._stated.get("dac_stall", 0.0))      # the share the update leaves the loop
         slots: dict[int, int] = {}
         entries = []
         for name in sorted(hit):
@@ -412,10 +413,10 @@ class _Deriver:
             if base.sound not in slots:
                 file = _DAC_FILE.format(base.name)
                 slots[base.sound] = self._take(ChannelType.DAC, file)
-                self._rows[-1][SAMPLE_FINETUNE] = self._nearest(base.rate)[1]
+                self._rows[-1][SAMPLE_FINETUNE] = self._nearest(base.rate * played)[1]
                 self._out.files[file] = base.pcm
             finetune = next(r[SAMPLE_FINETUNE] for r in self._rows if r[SAMPLE_SLOT] == slots[base.sound])
-            note, _ = self._nearest(sample.rate, (finetune,))
+            note, _ = self._nearest(sample.rate * played, (finetune,))
             entries.append({"name": name, "mod_instrument": slots[base.sound], "mod_note": note})
         self._out.data["dac_samples"] = entries
         self._out.derived.append("dac_samples")

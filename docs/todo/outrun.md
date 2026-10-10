@@ -122,7 +122,7 @@ Which rip is which song: not yet matched.
    longs the 68k reads from ROM.
 3. [x] **A one-octave FM table** in `smpsz80/program.py`: `_find_fm_table` wants a second octave a
    block up; build the note table from 12 words and a computed block.
-4. [ ] **`PcmTable` beyond Z80 RAM** (`core/drivers/smps68k/dpcm.py`): it reads the table and the
+4. [x] **`PcmTable` beyond Z80 RAM** (was `core/drivers/smps68k/dpcm.py`, now `core/rom/pcm.py`): it reads the table and the
    samples from Z80 RAM, finds the table by `ld iy,nn` and plays every sample in one format.
    OutRun's are in a ROM bank, the table at its start, and each entry's flags choose raw PCM or
    DPCM.  Take the memory and the table's address as arguments, a format per entry; a raw PCM
@@ -213,7 +213,7 @@ rate instead:
 
 The play loop polls Timer A between outputs (`ld a,($4000) / bit 0,a / call nz,$0038`).  While the
 update runs, no byte is output.  So a sample's rate is two counts from the code:
-- **the loop:** Z80 clock / cycles an output (`dpcm.py`'s model), exact;
+- **the loop:** Z80 clock / cycles an output (`core/rom/pcm.py`'s model), exact;
 - **the stall:** the update's cycles x 126.22 a second.  This stands where the 68k's bus hold does on
   Sonic 1 and Streets of Rage (`mucom/dac.py` `_STALL`), but it is far larger.  Passing Breeze's rip
   pauses the DAC a mean 138 VGM samples (3.1 ms, ~11 000 Z80 cycles) each 350-sample frame: **~40 %

@@ -18,6 +18,7 @@ from .effects import (
     ModSet,
     NoteFill,
     Pan,
+    PanStep,
     PsgForm,
     PsgVoice,
     SetPitchEnvelope,
@@ -69,6 +70,9 @@ class TrackState:
                 self._set_level((self.att if self.is_psg else self.tl) + delta)
             case SetVol(level=level):
                 self._set_level(level)
+            case PanStep():
+                # A pan animation's step: the MOD pans it (8xx), so the level stays the track's
+                self.pan = effect.side
             case Pan():
                 self.pan = effect.side
                 self.hard_panned = self.pan != "C"

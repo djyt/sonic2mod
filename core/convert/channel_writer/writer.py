@@ -10,7 +10,7 @@ from ...diagnostics import WarningKind
 from ...merge import Composite
 from ...mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModNote, note_rate
 from ...plan import DriverState, ResolvedNote, detune_cents, walk_channel
-from ...smps import AlterVol, ChannelType, NoteFill, SetVol, SmpsChannel
+from ...smps import AlterVol, ChannelType, NoteFill, PanStep, SetVol, SmpsChannel
 from .cells import Cells
 from .context import WriterContext
 from .fades import Fades
@@ -19,6 +19,9 @@ from .modulation import Modulation
 from .note import FillCut, NoteOn
 from .note_warnings import warn_resolution
 from .router import ColumnRouter
+
+# A pan's 8xx: FT2's panning, 00 left .. 80 centre .. FF right
+_PANNING = {"L": 0x00, "C": 0x80, "R": 0xFF}
 
 
 @dataclass
@@ -69,6 +72,7 @@ class ChannelWriter:
 
         # MOD-emission state, which the driver knows nothing about
         self._note_fill = 0
+        self._pan_steps: list[tuple[int, str]] = []       # (tick, side) of each pan animation step
         self._range_entry = None   # voice_map InstrumentRange matched on most recent note
         self._levels = Levels(ctx, channel, chan_cfg, self._st)
         self._modulation = Modulation(ctx, self._cells, channel, chan_cfg.source, self._track)
@@ -137,8 +141,10 @@ class ChannelWriter:
                 self._on_rest(event)
                 continue
             if not self._on_note(event, res):
+                self._write_pan_steps()
                 return
         self._on_stop()
+        self._write_pan_steps()
 
     def _on_stop(self) -> None:
         """smpsStop keys the track off (StopTrack → FMNoteOff): an FM note still ringing at the
@@ -172,12 +178,27 @@ class ChannelWriter:
         has no MOD equivalent; smpsAlterNote is a raw FNUM offset (~10 cents) that does not
         affect note pitch or voice_map lookup."""
         eff = event.effect
-        if isinstance(eff, (AlterVol, SetVol)):
+        if isinstance(eff, PanStep):
+            self._pan_steps.append((event.tick_position, eff.side))
+        elif isinstance(eff, (AlterVol, SetVol)):
             self._levels.on_change(eff, self._st)
         elif isinstance(eff, NoteFill):
             self._note_fill = eff.frames
         else:
             self._modulation.apply(eff, event.tick_position)
+
+    def _write_pan_steps(self) -> None:
+        """Each pan animation step as 8xx on its row, where no other effect is (D2: the lowest of
+        all); a step to the pan last written writes nothing."""
+        written = None
+        for tick, side in self._pan_steps:
+            pattern, row = self._timeline.pattern_row(tick)
+            if side == written or not self._cells.in_song(pattern):
+                continue
+            col = self._router.current(tick)
+            if self._cells.free(pattern, row, col):
+                self._cells.put(pattern, row, col, 0x8, _PANNING[side])
+                written = side
 
     def _on_folded(self, tick: int) -> None:
         """This note plays on its group's primary channel in this pattern (merge_patterns), or

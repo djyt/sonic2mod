@@ -27,6 +27,7 @@ from .effects import (
     ChanTempoDiv,
     CoordFlag,
     Pan,
+    PanStep,
     PsgVoice,
     SetPitchEnvelope,
     SetVoice,
@@ -227,6 +228,7 @@ class _Walker:
         self._tied_labels: set[str] = set()
         self._open_labels: list[str] = []
         self._jump_tie = False
+        self._pan_step = 0                         # the pan animation's next step (header.pan_steps)
 
         self._handlers = {
             OpKind.STOP: self._on_end, OpKind.RETURN: self._on_end,    # RETURN: only reached in a call
@@ -426,16 +428,28 @@ class _Walker:
 
     def _byte(self, cur: _Cursor, op: Op) -> None:
         """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample.  Under the
-        driver's legato a read (a note, or a duration of its own) starts as smpsNoAttack leaves it."""
+        driver's legato a read (a note, or a duration of its own) starts as smpsNoAttack leaves it;
+        under a pan animation it steps the pan."""
         if op.kind is OpKind.NO_ATTACK:
             self._tie(cur)
             return
-        if self._driver.legato and not (op.kind is OpKind.DURATION and cur.pending is not None):
+        reads = not (op.kind is OpKind.DURATION and cur.pending is not None)
+        if self._driver.legato and reads:
             self._tie(cur)
+        if reads and op.kind is OpKind.DURATION and self._header.pan_steps:
+            self._step_pan(cur.tick)          # a bare duration's note starts here
         if op.kind is OpKind.DURATION:
             self._duration(cur, op.value * cur.tempo_div)
         else:
             self._note(cur, op.value)
+            if self._header.pan_steps:
+                self._step_pan(cur.tick)      # the note read waits at cur.tick for its duration
+
+    def _step_pan(self, tick: int) -> None:
+        """A read steps the pan animation: its pan from the read's note on."""
+        steps = self._header.pan_steps
+        self._channel.events.append(SmpsEvent(effect=PanStep(steps[self._pan_step % len(steps)]), tick_position=tick))
+        self._pan_step += 1
 
     def _tie(self, cur: _Cursor) -> None:
         """The next read ties (smpsNoAttack)."""

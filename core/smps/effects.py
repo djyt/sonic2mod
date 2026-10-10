@@ -62,6 +62,7 @@ class CoordFlag(StrEnum):
     LFO = auto()                  # its $FC
     LEGATO = auto()               # Space Harrier II's $EE
     PITCH_ENVELOPE = auto()       # its $F4
+    PAN_STEP = auto()             # its pan animation (a track flag): a step each read
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,13 @@ class Pan(PlayedEffect):
     @property
     def side(self) -> str:
         return pan_side(self.b4)
+
+
+@dataclass(frozen=True)
+class PanStep(Pan):
+    """A pan animation's step: the pan a read sets (Space Harrier II's track flag bit 6).  A Pan to
+    everything that reads one; the MOD writes it as 8xx where no other effect is (D2)."""
+    flag = CoordFlag.PAN_STEP
 
 
 @dataclass(frozen=True)
@@ -279,8 +287,12 @@ class Fm3Special(DriverEffect):
         return offsets if any(offsets) else None
 
 
+def _subclasses(kind: type) -> list[type]:
+    return [sub for cls in kind.__subclasses__() for sub in (cls, *_subclasses(cls))]
+
+
 _BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {
-    cls.flag: cls for kind in (PlayedEffect, DriverEffect) for cls in kind.__subclasses__()}
+    cls.flag: cls for kind in (PlayedEffect, DriverEffect) for cls in _subclasses(kind)}
 assert set(_BY_FLAG) == set(CoordFlag), "a CoordFlag without its effect class"
 
 

@@ -1,13 +1,13 @@
 # Green Hill Zone conversion audit (2026-09-18)
 
-Accuracy audit of `configs/02_green_hill_zone.yaml` → `output/02_green_hill_zone.mod` against
-`reference/vgz/02 - Green Hill Zone.vgz`.  Same method as `docs/audits/01_title_screen_audit.md`, plus a
+Accuracy audit of `configs/sonic_1/02_green_hill_zone.yaml` → `output/sonic_1/02_green_hill_zone.mod` against
+`reference/vgz/sonic_1/02 - Green Hill Zone.vgz`.  Same method as `docs/audits/01_title_screen_audit.md`, plus a
 symbolic pitch check that turned out to be necessary for this song.  Reproduce with:
 
 ```bash
-python convert.py configs/02_green_hill_zone.yaml
-python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz"
-python tools/vgm_compare.py    configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz"
+python convert.py configs/sonic_1/02_green_hill_zone.yaml
+python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+python tools/vgm_compare.py    configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 ```
 
 ---

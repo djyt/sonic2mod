@@ -22,7 +22,7 @@ rendered through libopenmpt, does not see these.  Speed and tempo follow the
 `Fxx` commands; `Bxx`/`Dxx` end the pass (one pass through the song is walked, plus the
 loop's first pattern once more with the end-of-song state, which is what a player does).
 
-    python tools/mod_lint.py output/02_green_hill_zone.mod
+    python tools/mod_lint.py output/sonic_1/02_green_hill_zone.mod
     python tools/mod_lint.py a.mod b.mod        # every file; exit 1 if any issue
 
 As a library: `lint_mod(path, amiga_clock) -> list[dict]` (each with 'type', 'pattern', 'row', 'channel',

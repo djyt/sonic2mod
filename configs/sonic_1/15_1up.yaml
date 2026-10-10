@@ -3,8 +3,8 @@
 # synth_root is not stated: the converter renders each entry at the pitch the chip plays for its low note.
 # -------------------------------------------------------------------------------------------------
 name: 1-Up (Extra Life)
-input_file: "input/Mus88 - Extra Life.asm"
-output_file: output/15_1up.mod
+input_file: "input/sonic_1/Mus88 - Extra Life.asm"
+output_file: output/sonic_1/15_1up.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -12,7 +12,7 @@ target_speed: 9            # 180 BPM: a MOD tick is 0.83 frames, as at 1 tick pe
 ticks_per_row: 3           # every duration is a multiple of $03: one row each, the jingle 28 rows of one pattern
 region: ntsc
 
-# Variant lofi (convert.py --variant lofi --merged -> output/15_1up_lofi_merged.mod): the merged build
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/15_1up_lofi_merged.mod): the merged build
 # 50 -> 30 KB.  The bass pair on a sliding loop (its level falls for as long as a note holds: looped early,
 # the fall in volume slides) and the harmony mixes at F2 (11 kHz, its treble above 5.5 kHz gone).  The
 # harmony never loops (its FM and PSG envelopes never settle together); the timpani as it is.  Left out:

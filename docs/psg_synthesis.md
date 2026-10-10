@@ -37,7 +37,7 @@ The first render compiles the DLL, so gcc or MSVC must be on PATH.
 python sn76489/validate.py           # C3 tone + white noise → output/psg_{tone,noise}_test.raw
 python sn76489/renderer.py           # the same through the renderer
 python sn76489/sample_generator.py   # periodic noise + white noise with fTone_04 → output/psg_sample_gen_test_*.raw
-python convert.py configs/01_title_screen.yaml
+python convert.py configs/sonic_1/01_title_screen.yaml
 ```
 
 Audacity: File > Import > Raw Data, signed 16-bit PCM, little-endian, mono, at the printed rate.

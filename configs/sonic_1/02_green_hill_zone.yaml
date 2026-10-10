@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------------------------
 # GREEN HILL ZONE Conversion Script
 #
-# Variant lofi (convert.py --variant lofi --merged -> output/02_green_hill_zone_lofi_merged.mod): the
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/02_green_hill_zone_lofi_merged.mod): the
 # 4-channel merged build squeezed to 168 KB (171,762 bytes): mixes made at the primary's note so
 # looped leads, bass and chords keep their loops (mix_at: primary), drum banks and the hat at A2 (they
 # sound 61 % of the song: 9 KB buys the hat treble to 7 kHz), chime mixes at F2, loops allowed to
@@ -11,11 +11,11 @@
 # lead mixes looped where they settle at 3 dB (loop_mix), spent on $A, the lead fills, 7 semitones up.
 # 193 KB before the 3 dB loops, the A2 hat and the 5-c cap (2026-10-07).  Each change sits in a
 # `variants: lofi:` block beside the keys it replaces.
-# Where the bytes go: python tools/mod_audit.py output/02_green_hill_zone_lofi_merged.mod --banks
+# Where the bytes go: python tools/mod_audit.py output/sonic_1/02_green_hill_zone_lofi_merged.mod --banks
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
-input_file: "input/Mus81 - GHZ.asm"
-output_file: "output/02_green_hill_zone.mod"
+input_file: "input/sonic_1/Mus81 - GHZ.asm"
+output_file: "output/sonic_1/02_green_hill_zone.mod"
 samples_dir: "samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
@@ -71,7 +71,7 @@ channels:
 # -------------------------------------------------------------------------------------------------
 #
 # Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements (L/R power) against
-# reference/vgz/02 - Green Hill Zone.vgz, relative to FM2 = inst 3/4 at 32; see docs/audits/02_ghz_audit.md.
+# reference/vgz/sonic_1/02 - Green Hill Zone.vgz, relative to FM2 = inst 3/4 at 32; see docs/audits/02_ghz_audit.md.
 # With fm_volume_scaling: baked a volume here is the level of the instrument's MOST COMMON
 # (channel TL, pan) combination; the converter adds Cxx only for notes at any other level.
 sample_list:

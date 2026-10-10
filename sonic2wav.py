@@ -8,7 +8,7 @@ Usage:
     python sonic2wav.py --all
     python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
     python sonic2wav.py --rom input/roms/sonic_rev01.bin
-    python sonic2wav.py --all --out output/sfx --rate native
+    python sonic2wav.py --all --out output/sonic_1/sfx --rate native
 """
 
 import argparse
@@ -41,8 +41,8 @@ from ym2612.wrapper import output_rate
 console = cli_console()
 
 DEFAULT_SFX_DIR = os.path.join("reference", "smps_drivers", "sonic_1", "sfx")
-DEFAULT_OUT_DIR = os.path.join("output", "sfx")
-DEFAULT_OUT_DIR_8BIT = os.path.join("output", "sfx8")
+DEFAULT_OUT_DIR = os.path.join("output", "sonic_1", "sfx")
+DEFAULT_OUT_DIR_8BIT = os.path.join("output", "sonic_1", "sfx8")
 
 
 from core.version import get_version as _get_version

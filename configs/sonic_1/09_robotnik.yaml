@@ -2,8 +2,8 @@
 # ROBOTNIK Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Robotnik
-input_file: "input/Mus8C - Boss.asm"
-output_file: output/09_robotnik.mod
+input_file: "input/sonic_1/Mus8C - Boss.asm"
+output_file: output/sonic_1/09_robotnik.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -12,7 +12,7 @@ ticks_per_row: 3           # $03 = 1 row, a beat 4, a bar 16: four bars to a pat
                            # the DAC's $01/$05 start between rows and take EDx
 region: ntsc
 
-# Variant lofi (convert.py --variant lofi --merged -> output/09_robotnik_lofi_merged.mod): the merged
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/09_robotnik_lofi_merged.mod): the merged
 # build 150 -> 59 KB.  Loops allowed to freeze 12 dB early (20 froze FM5's arpeggio 30 ms into its
 # attack for 4.7 KB), the bass + counter-melody mixes at C2 (8.3 kHz).  The drums and the lead mix as
 # the merged build has them (the lead at F2 saves 1.8 KB).  merge_max_synth_shift: 0 saves nothing

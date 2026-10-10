@@ -41,23 +41,23 @@ Once installed, run the following commands from the repo root:
 **Convert a song:**
 
 ```bash
-sonic2mod configs/02_green_hill_zone.yaml
+sonic2mod configs/sonic_1/02_green_hill_zone.yaml
 ```
 
 Or using Python directly:
 
 ```bash
-python convert.py configs/02_green_hill_zone.yaml
+python convert.py configs/sonic_1/02_green_hill_zone.yaml
 ```
 
-Output `.mod` files are written to `output/` and can be opened in [Fast Tracker 2 Clone](https://16-bits.org/ft2.php).
+Output `.mod` files are written to `output/sonic_1/` (each game its own folder) and can be opened in [Fast Tracker 2 Clone](https://16-bits.org/ft2.php).
 
 That's it - nice and easy. The complexity comes if you want to extend the tool further really. 
 
 
 ## Sonic Music
 
-Pre-configured conversions are in `configs/`
+Pre-configured conversions are in `configs/sonic_1/`
 
 | Config | Song |
 |--------|------|
@@ -93,11 +93,11 @@ explained per song in `docs/audits/`.
 
 ```bash
 # Symbolic, no rendering, exits 1 on a wrong or missing note. Run this first.
-python tools/vgm_pitch_audit.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz"
+python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 
 # Rendered audit: per-note pitch and level, channel balance, onset timing, vibrato rate and
 # depth, noise spectrum, DAC rate.  --write-volumes applies its volume suggestions to the config.
-python tools/vgm_compare.py configs/02_green_hill_zone.yaml "reference/vgz/02 - Green Hill Zone.vgz"
+python tools/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 ```
 
 The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPlay and an ffmpeg
@@ -118,13 +118,13 @@ python tests/regression.py                        # after — PASS means nothing
 
 Example: Create a config file from the Green Hill Zone assembly:
 ```bash
-sonic2mod-analyze "input/Mus81 - GHZ.asm"
+sonic2mod-analyze "input/sonic_1/Mus81 - GHZ.asm"
 ```
 
 With an existing config to show coverage:
 
 ```bash
-sonic2mod-analyze "input/Mus81 - GHZ.asm" --config configs/02_green_hill_zone.yaml
+sonic2mod-analyze "input/sonic_1/Mus81 - GHZ.asm" --config configs/sonic_1/02_green_hill_zone.yaml
 ```
 
 The analyzer isn't perfect, makes mistakes and bad decisions. Like us all. Expect to hand-tweak its output in certain cases to get the best possible results. 
@@ -146,7 +146,7 @@ Or using Python directly:
 python sonic2wav.py --all
 ```
 
-Output `.wav` files are written to `output/sfx/` as 16-bit stereo 44.1 kHz — stereo because hard panning is real design intent in Sonic 1 (`B5_Ring.wav` is right-only, and `CE_Ring_Left_Speaker.wav` is its left-channel twin).
+Output `.wav` files are written to `output/sonic_1/sfx/` as 16-bit stereo 44.1 kHz — stereo because hard panning is real design intent in Sonic 1 (`B5_Ring.wav` is right-only, and `CE_Ring_Left_Speaker.wav` is its left-channel twin).
 
 Render a single effect, or check what would be produced without writing anything:
 
@@ -163,7 +163,7 @@ Useful options: `--rate native` writes at the chip's own 53267 Hz and skips resa
 python sonic2wav.py --all --8bit
 ```
 
-Writes signed 8-bit mono `.raw` files to `output/sfx8/` alongside a `manifest.yaml` giving each sample's rate, the note to trigger it at, the suggested MOD volume and its repeat points.
+Writes signed 8-bit mono `.raw` files to `output/sonic_1/sfx8/` alongside a `manifest.yaml` giving each sample's rate, the note to trigger it at, the suggested MOD volume and its repeat points.
 
 Eight bits needs roughly the opposite treatment to the 16-bit set. Each sample is DC-corrected, resampled once straight from the chip rate, peak-normalised, and dithered with noise shaping — then the volume column restores the composed balance. Normalising per sample rather than globally is worth a median 1.5 bits, and 3.1 bits on the quietest effect.
 

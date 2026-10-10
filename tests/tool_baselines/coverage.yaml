@@ -2,13 +2,13 @@
 analyze_01_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\01 - Title Theme.vgz
+  - reference\vgz\sonic_1\01 - Title Theme.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -29,6 +29,7 @@ analyze_01_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -52,18 +53,18 @@ analyze_01_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_01_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\01 - Title Theme.vgz
+  - reference\vgz\sonic_1\01 - Title Theme.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -84,6 +85,7 @@ analyze_01_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -107,16 +109,16 @@ analyze_01_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_01_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\01 - Title Theme.vgz
+  - reference\vgz\sonic_1\01 - Title Theme.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -137,6 +139,7 @@ analyze_01_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -160,15 +163,15 @@ analyze_01_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_01_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\01 - Title Theme.vgz
+  - reference\vgz\sonic_1\01 - Title Theme.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -189,6 +192,7 @@ analyze_01_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -212,17 +216,17 @@ analyze_01_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
 analyze_02_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -243,6 +247,7 @@ analyze_02_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -266,18 +271,18 @@ analyze_02_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_02_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -298,6 +303,7 @@ analyze_02_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -321,16 +327,16 @@ analyze_02_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_02_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -351,6 +357,7 @@ analyze_02_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -374,15 +381,15 @@ analyze_02_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_02_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -403,6 +410,7 @@ analyze_02_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -426,17 +434,17 @@ analyze_02_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 analyze_03_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\03 - Marble Zone.vgz
+  - reference\vgz\sonic_1\03 - Marble Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -457,6 +465,7 @@ analyze_03_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -480,18 +489,18 @@ analyze_03_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_03_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\03 - Marble Zone.vgz
+  - reference\vgz\sonic_1\03 - Marble Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -512,6 +521,7 @@ analyze_03_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -535,16 +545,16 @@ analyze_03_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_03_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\03 - Marble Zone.vgz
+  - reference\vgz\sonic_1\03 - Marble Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -565,6 +575,7 @@ analyze_03_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -588,15 +599,15 @@ analyze_03_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_03_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\03 - Marble Zone.vgz
+  - reference\vgz\sonic_1\03 - Marble Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -617,6 +628,7 @@ analyze_03_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -640,17 +652,17 @@ analyze_03_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
 analyze_04_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\04 - Spring Yard Zone.vgz
+  - reference\vgz\sonic_1\04 - Spring Yard Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -671,6 +683,7 @@ analyze_04_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -694,18 +707,18 @@ analyze_04_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_04_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\04 - Spring Yard Zone.vgz
+  - reference\vgz\sonic_1\04 - Spring Yard Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -726,6 +739,7 @@ analyze_04_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -749,16 +763,16 @@ analyze_04_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_04_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\04 - Spring Yard Zone.vgz
+  - reference\vgz\sonic_1\04 - Spring Yard Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -779,6 +793,7 @@ analyze_04_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -802,15 +817,15 @@ analyze_04_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_04_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\04 - Spring Yard Zone.vgz
+  - reference\vgz\sonic_1\04 - Spring Yard Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -831,6 +846,7 @@ analyze_04_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -854,17 +870,17 @@ analyze_04_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
 analyze_05_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\05 - Labyrinth Zone.vgz
+  - reference\vgz\sonic_1\05 - Labyrinth Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -885,6 +901,7 @@ analyze_05_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -908,18 +925,18 @@ analyze_05_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_05_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\05 - Labyrinth Zone.vgz
+  - reference\vgz\sonic_1\05 - Labyrinth Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -940,6 +957,7 @@ analyze_05_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -963,16 +981,16 @@ analyze_05_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_05_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\05 - Labyrinth Zone.vgz
+  - reference\vgz\sonic_1\05 - Labyrinth Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -993,6 +1011,7 @@ analyze_05_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1016,15 +1035,15 @@ analyze_05_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_05_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\05 - Labyrinth Zone.vgz
+  - reference\vgz\sonic_1\05 - Labyrinth Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1045,6 +1064,7 @@ analyze_05_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1068,17 +1088,17 @@ analyze_05_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
 analyze_06_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\06 - Star Light Zone.vgz
+  - reference\vgz\sonic_1\06 - Star Light Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1099,6 +1119,7 @@ analyze_06_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1122,18 +1143,18 @@ analyze_06_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_06_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\06 - Star Light Zone.vgz
+  - reference\vgz\sonic_1\06 - Star Light Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1154,6 +1175,7 @@ analyze_06_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1177,16 +1199,16 @@ analyze_06_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_06_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\06 - Star Light Zone.vgz
+  - reference\vgz\sonic_1\06 - Star Light Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1207,6 +1229,7 @@ analyze_06_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1230,15 +1253,15 @@ analyze_06_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_06_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\06 - Star Light Zone.vgz
+  - reference\vgz\sonic_1\06 - Star Light Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1259,6 +1282,7 @@ analyze_06_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1282,17 +1306,17 @@ analyze_06_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
 analyze_07_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\07 - Scrap Brain Zone.vgz
+  - reference\vgz\sonic_1\07 - Scrap Brain Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1313,6 +1337,7 @@ analyze_07_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1336,18 +1361,18 @@ analyze_07_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_07_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\07 - Scrap Brain Zone.vgz
+  - reference\vgz\sonic_1\07 - Scrap Brain Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1368,6 +1393,7 @@ analyze_07_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1391,16 +1417,16 @@ analyze_07_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_07_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\07 - Scrap Brain Zone.vgz
+  - reference\vgz\sonic_1\07 - Scrap Brain Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1421,6 +1447,7 @@ analyze_07_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1444,15 +1471,15 @@ analyze_07_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_07_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\07 - Scrap Brain Zone.vgz
+  - reference\vgz\sonic_1\07 - Scrap Brain Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1473,6 +1500,7 @@ analyze_07_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1496,17 +1524,17 @@ analyze_07_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
 analyze_08_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\08 - Special Stage.vgz
+  - reference\vgz\sonic_1\08 - Special Stage.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1527,6 +1555,7 @@ analyze_08_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1550,18 +1579,18 @@ analyze_08_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_08_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\08 - Special Stage.vgz
+  - reference\vgz\sonic_1\08 - Special Stage.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1582,6 +1611,7 @@ analyze_08_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1605,16 +1635,16 @@ analyze_08_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_08_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\08 - Special Stage.vgz
+  - reference\vgz\sonic_1\08 - Special Stage.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1635,6 +1665,7 @@ analyze_08_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1658,15 +1689,15 @@ analyze_08_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_08_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\08 - Special Stage.vgz
+  - reference\vgz\sonic_1\08 - Special Stage.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1687,6 +1718,7 @@ analyze_08_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1710,17 +1742,17 @@ analyze_08_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
 analyze_09_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\09 - Robotnik.vgz
+  - reference\vgz\sonic_1\09 - Robotnik.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1741,6 +1773,7 @@ analyze_09_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1764,18 +1797,18 @@ analyze_09_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_09_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\09 - Robotnik.vgz
+  - reference\vgz\sonic_1\09 - Robotnik.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1796,6 +1829,7 @@ analyze_09_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1819,16 +1853,16 @@ analyze_09_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_09_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\09 - Robotnik.vgz
+  - reference\vgz\sonic_1\09 - Robotnik.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1849,6 +1883,7 @@ analyze_09_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1872,15 +1907,15 @@ analyze_09_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_09_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\09 - Robotnik.vgz
+  - reference\vgz\sonic_1\09 - Robotnik.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1901,6 +1936,7 @@ analyze_09_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1924,17 +1960,17 @@ analyze_09_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
 analyze_10_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\10 - Final Zone.vgz
+  - reference\vgz\sonic_1\10 - Final Zone.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1955,6 +1991,7 @@ analyze_10_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -1978,18 +2015,18 @@ analyze_10_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_10_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\10 - Final Zone.vgz
+  - reference\vgz\sonic_1\10 - Final Zone.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2010,6 +2047,7 @@ analyze_10_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2033,16 +2071,16 @@ analyze_10_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_10_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\10 - Final Zone.vgz
+  - reference\vgz\sonic_1\10 - Final Zone.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2063,6 +2101,7 @@ analyze_10_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2086,15 +2125,15 @@ analyze_10_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_10_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\10 - Final Zone.vgz
+  - reference\vgz\sonic_1\10 - Final Zone.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2115,6 +2154,7 @@ analyze_10_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2138,17 +2178,17 @@ analyze_10_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
 analyze_11_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\11 - Stage Clear.vgz
+  - reference\vgz\sonic_1\11 - Stage Clear.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2169,6 +2209,7 @@ analyze_11_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2192,18 +2233,18 @@ analyze_11_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_11_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\11 - Stage Clear.vgz
+  - reference\vgz\sonic_1\11 - Stage Clear.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2224,6 +2265,7 @@ analyze_11_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2247,16 +2289,16 @@ analyze_11_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_11_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\11 - Stage Clear.vgz
+  - reference\vgz\sonic_1\11 - Stage Clear.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2277,6 +2319,7 @@ analyze_11_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2300,15 +2343,15 @@ analyze_11_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_11_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\11 - Stage Clear.vgz
+  - reference\vgz\sonic_1\11 - Stage Clear.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2329,6 +2372,7 @@ analyze_11_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2352,17 +2396,17 @@ analyze_11_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
 analyze_12_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\12 - Ending Theme.vgz
+  - reference\vgz\sonic_1\12 - Ending Theme.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2383,6 +2427,7 @@ analyze_12_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2406,18 +2451,18 @@ analyze_12_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_12_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\12 - Ending Theme.vgz
+  - reference\vgz\sonic_1\12 - Ending Theme.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2438,6 +2483,7 @@ analyze_12_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2461,16 +2507,16 @@ analyze_12_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_12_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\12 - Ending Theme.vgz
+  - reference\vgz\sonic_1\12 - Ending Theme.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2491,6 +2537,7 @@ analyze_12_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2514,15 +2561,15 @@ analyze_12_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_12_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\12 - Ending Theme.vgz
+  - reference\vgz\sonic_1\12 - Ending Theme.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2543,6 +2590,7 @@ analyze_12_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2566,17 +2614,17 @@ analyze_12_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
 analyze_13_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\13 - Staff Roll.vgz
+  - reference\vgz\sonic_1\13 - Staff Roll.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2597,6 +2645,7 @@ analyze_13_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2620,18 +2669,18 @@ analyze_13_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_13_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\13 - Staff Roll.vgz
+  - reference\vgz\sonic_1\13 - Staff Roll.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2652,6 +2701,7 @@ analyze_13_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2675,16 +2725,16 @@ analyze_13_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_13_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\13 - Staff Roll.vgz
+  - reference\vgz\sonic_1\13 - Staff Roll.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2705,6 +2755,7 @@ analyze_13_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2728,15 +2779,15 @@ analyze_13_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_13_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\13 - Staff Roll.vgz
+  - reference\vgz\sonic_1\13 - Staff Roll.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2757,6 +2808,7 @@ analyze_13_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2780,17 +2832,17 @@ analyze_13_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
 analyze_14_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\14 - Invincibility.vgz
+  - reference\vgz\sonic_1\14 - Invincibility.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2811,6 +2863,7 @@ analyze_14_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2834,18 +2887,18 @@ analyze_14_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_14_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\14 - Invincibility.vgz
+  - reference\vgz\sonic_1\14 - Invincibility.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2866,6 +2919,7 @@ analyze_14_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2889,16 +2943,16 @@ analyze_14_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_14_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\14 - Invincibility.vgz
+  - reference\vgz\sonic_1\14 - Invincibility.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2919,6 +2973,7 @@ analyze_14_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2942,15 +2997,15 @@ analyze_14_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_14_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\14 - Invincibility.vgz
+  - reference\vgz\sonic_1\14 - Invincibility.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2971,6 +3026,7 @@ analyze_14_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -2994,17 +3050,17 @@ analyze_14_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
 analyze_15_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\15 - 1-up.vgz
+  - reference\vgz\sonic_1\15 - 1-up.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3025,6 +3081,7 @@ analyze_15_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3048,18 +3105,18 @@ analyze_15_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_15_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\15 - 1-up.vgz
+  - reference\vgz\sonic_1\15 - 1-up.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3080,6 +3137,7 @@ analyze_15_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3103,16 +3161,16 @@ analyze_15_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_15_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\15 - 1-up.vgz
+  - reference\vgz\sonic_1\15 - 1-up.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3133,6 +3191,7 @@ analyze_15_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3156,15 +3215,15 @@ analyze_15_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_15_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\15 - 1-up.vgz
+  - reference\vgz\sonic_1\15 - 1-up.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3185,6 +3244,7 @@ analyze_15_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3208,17 +3268,17 @@ analyze_15_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
 analyze_16_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\16 - Chaos Emerald.vgz
+  - reference\vgz\sonic_1\16 - Chaos Emerald.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3239,6 +3299,7 @@ analyze_16_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3262,18 +3323,18 @@ analyze_16_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_16_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\16 - Chaos Emerald.vgz
+  - reference\vgz\sonic_1\16 - Chaos Emerald.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3294,6 +3355,7 @@ analyze_16_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3317,16 +3379,16 @@ analyze_16_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_16_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\16 - Chaos Emerald.vgz
+  - reference\vgz\sonic_1\16 - Chaos Emerald.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3347,6 +3409,7 @@ analyze_16_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3370,15 +3433,15 @@ analyze_16_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_16_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\16 - Chaos Emerald.vgz
+  - reference\vgz\sonic_1\16 - Chaos Emerald.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3399,6 +3462,7 @@ analyze_16_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3422,17 +3486,17 @@ analyze_16_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
 analyze_17_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\17 - Drowning.vgz
+  - reference\vgz\sonic_1\17 - Drowning.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3453,6 +3517,7 @@ analyze_17_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3476,18 +3541,18 @@ analyze_17_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_17_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\17 - Drowning.vgz
+  - reference\vgz\sonic_1\17 - Drowning.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3508,6 +3573,7 @@ analyze_17_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3531,16 +3597,16 @@ analyze_17_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_17_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\17 - Drowning.vgz
+  - reference\vgz\sonic_1\17 - Drowning.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3561,6 +3627,7 @@ analyze_17_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3584,15 +3651,15 @@ analyze_17_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_17_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\17 - Drowning.vgz
+  - reference\vgz\sonic_1\17 - Drowning.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3613,6 +3680,7 @@ analyze_17_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3636,17 +3704,17 @@ analyze_17_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
 analyze_18_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\18 - Continue.vgz
+  - reference\vgz\sonic_1\18 - Continue.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3667,6 +3735,7 @@ analyze_18_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3690,18 +3759,18 @@ analyze_18_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_18_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\18 - Continue.vgz
+  - reference\vgz\sonic_1\18 - Continue.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3722,6 +3791,7 @@ analyze_18_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3745,16 +3815,16 @@ analyze_18_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_18_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\18 - Continue.vgz
+  - reference\vgz\sonic_1\18 - Continue.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3775,6 +3845,7 @@ analyze_18_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3798,15 +3869,15 @@ analyze_18_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_18_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\18 - Continue.vgz
+  - reference\vgz\sonic_1\18 - Continue.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3827,6 +3898,7 @@ analyze_18_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3850,17 +3922,17 @@ analyze_18_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
 analyze_19_frames:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\19 - Game Over.vgz
+  - reference\vgz\sonic_1\19 - Game Over.vgz
   - --frames
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3881,6 +3953,7 @@ analyze_19_frames:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3904,18 +3977,18 @@ analyze_19_frames:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 analyze_19_psg0:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\19 - Game Over.vgz
+  - reference\vgz\sonic_1\19 - Game Over.vgz
   - --chip
   - psg
   - --psg-mod-cents
   - '0'
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3936,6 +4009,7 @@ analyze_19_psg0:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -3959,16 +4033,16 @@ analyze_19_psg0:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 analyze_19_rows:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\19 - Game Over.vgz
+  - reference\vgz\sonic_1\19 - Game Over.vgz
   - --chip
   - all
   - --max-rows
   - '0'
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3989,6 +4063,7 @@ analyze_19_rows:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -4012,15 +4087,15 @@ analyze_19_rows:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 analyze_19_volumes:
   argv:
   - tools/vgm_analyze.py
-  - reference\vgz\19 - Game Over.vgz
+  - reference\vgz\sonic_1\19 - Game Over.vgz
   - --chip
   - all
   - --volumes
-  commit: b2dcae6-dirty
+  commit: 6512f6f-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4041,6 +4116,7 @@ analyze_19_volumes:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -4064,7 +4140,7 @@ analyze_19_volumes:
   - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 frames_golden_axe:
   argv:
   - tools/vgm_frames.py

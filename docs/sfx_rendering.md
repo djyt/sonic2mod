@@ -9,7 +9,7 @@ emulators: SFX are built almost entirely from per-frame vibrato sweeps and volum
 grid destroys.  What the driver does is `docs/smps_driver.md`; this page is how `sfx/` copies it.
 
 ```bash
-python sonic2wav.py --all                       # all 49 → output/sfx/
+python sonic2wav.py --all                       # all 49 → output/sonic_1/sfx/
 python sonic2wav.py --rom input/roms/sonic_rev01.bin   # the same 49 read from the ROM
 python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sonic2wav.py --all --dry-run             # parse + render, report, write nothing
@@ -76,7 +76,7 @@ composed balance stays (the ring sits well below the death jingle).
 ## 8-bit Amiga export (`--8bit`)
 
 ```bash
-python sonic2wav.py --all --8bit                      # -> output/sfx8/ + manifest.yaml
+python sonic2wav.py --all --8bit                      # -> output/sonic_1/sfx8/ + manifest.yaml
 python sonic2wav.py --all --8bit --max-rate 16574     # A500 target, about half the size
 python sonic2wav.py --all --8bit --flat-rate 8287     # one rate for everything
 ```

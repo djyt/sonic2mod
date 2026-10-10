@@ -955,7 +955,8 @@ way.
 
 `reference/vgz/` is untracked: it holds the VGZ rips and VGMPlay.
 
-1. Put the rips in `reference/vgz/`.
+1. Put the rips in `reference/vgz/<game>/`, the folder its configs have under `configs/` (Sonic 1's:
+   `reference/vgz/sonic_1/`).
 2. Unzip a **VGMPlay 0.51.x** Windows build (<https://github.com/ValleyBell/vgmplay-libvgm>) into
    `reference/vgz/vgmplay/` (`VGMPlay64.exe` or `VGMPlay.exe`, `VGMPlay.ini`, `zlib1.dll`).  The 0.51 line
    is required: the tool patches `VGMPlay.ini` with `Core = NUKE` / `MuteMask = …`, which 0.40.x lays out
@@ -966,8 +967,8 @@ way.
 ### Running it
 
 ```bash
-python convert.py configs/01_title_screen.yaml
-python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
+python convert.py configs/sonic_1/01_title_screen.yaml
+python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
 python tools/vgm_compare.py <cfg> <vgz> --skip-render     # reuse output/compare/<cfg>/*.wav
 ```
 

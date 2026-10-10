@@ -1,6 +1,6 @@
 # Star Light Zone — accuracy audit against the VGZ (2026-09-18)
 
-`configs/06_star_light_zone.yaml` against `reference/vgz/06 - Star Light Zone.vgz`, method as in
+`configs/sonic_1/06_star_light_zone.yaml` against `reference/vgz/sonic_1/06 - Star Light Zone.vgz`, method as in
 `02_ghz_audit.md`.  The config moved to `range_space: chip`; one volume set from the measurement.
 
 ## Result

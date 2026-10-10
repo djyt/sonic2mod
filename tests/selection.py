@@ -10,7 +10,7 @@ tests/tool_regression.py select their cases with it.
                  a file it executed changed              core/drivers/smpsz80/...  -> Golden Axe's cases
                  an input's hash changed                 its config, a ROM, a rip, a baseline MOD
                  its arguments changed                   tests/cases.yaml
-                 a non-Python file changed beside code it executed     ym2612/ym3438_batch.c
+                 a non-Python file changed beside code it executed     core/chips/ym2612/ym3438_batch.c
              and every case when a change cannot be placed: the runner's own code,
              configs/settings.yaml, any other file no rule covers.  A Python file no case executed
              moves none (a new module moves only through the file that imports it); docs, notes

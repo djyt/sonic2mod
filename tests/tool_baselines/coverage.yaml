@@ -8,49 +8,8 @@ analyze_01_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
@@ -64,49 +23,8 @@ analyze_01_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
@@ -118,49 +36,8 @@ analyze_01_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
@@ -171,49 +48,8 @@ analyze_01_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
@@ -226,49 +62,8 @@ analyze_02_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
@@ -282,49 +77,8 @@ analyze_02_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
@@ -336,49 +90,8 @@ analyze_02_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
@@ -389,49 +102,8 @@ analyze_02_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
@@ -444,49 +116,8 @@ analyze_03_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
@@ -500,49 +131,8 @@ analyze_03_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
@@ -554,49 +144,8 @@ analyze_03_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
@@ -607,49 +156,8 @@ analyze_03_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
@@ -662,49 +170,8 @@ analyze_04_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
@@ -718,49 +185,8 @@ analyze_04_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
@@ -772,49 +198,8 @@ analyze_04_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
@@ -825,49 +210,8 @@ analyze_04_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
@@ -880,49 +224,8 @@ analyze_05_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
@@ -936,49 +239,8 @@ analyze_05_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
@@ -990,49 +252,8 @@ analyze_05_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
@@ -1043,49 +264,8 @@ analyze_05_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
@@ -1098,49 +278,8 @@ analyze_06_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
@@ -1154,49 +293,8 @@ analyze_06_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
@@ -1208,49 +306,8 @@ analyze_06_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
@@ -1261,49 +318,8 @@ analyze_06_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
@@ -1316,49 +332,8 @@ analyze_07_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
@@ -1372,49 +347,8 @@ analyze_07_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
@@ -1426,49 +360,8 @@ analyze_07_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
@@ -1479,49 +372,8 @@ analyze_07_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
@@ -1534,49 +386,8 @@ analyze_08_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
@@ -1590,49 +401,8 @@ analyze_08_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
@@ -1644,49 +414,8 @@ analyze_08_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
@@ -1697,49 +426,8 @@ analyze_08_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
@@ -1752,49 +440,8 @@ analyze_09_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
@@ -1808,49 +455,8 @@ analyze_09_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
@@ -1862,49 +468,8 @@ analyze_09_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
@@ -1915,49 +480,8 @@ analyze_09_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
@@ -1970,49 +494,8 @@ analyze_10_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
@@ -2026,49 +509,8 @@ analyze_10_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
@@ -2080,49 +522,8 @@ analyze_10_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
@@ -2133,49 +534,8 @@ analyze_10_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
@@ -2188,49 +548,8 @@ analyze_11_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
@@ -2244,49 +563,8 @@ analyze_11_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
@@ -2298,49 +576,8 @@ analyze_11_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
@@ -2351,49 +588,8 @@ analyze_11_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
@@ -2406,49 +602,8 @@ analyze_12_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
@@ -2462,49 +617,8 @@ analyze_12_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
@@ -2516,49 +630,8 @@ analyze_12_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
@@ -2569,49 +642,8 @@ analyze_12_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
@@ -2624,49 +656,8 @@ analyze_13_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
@@ -2680,49 +671,8 @@ analyze_13_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
@@ -2734,49 +684,8 @@ analyze_13_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
@@ -2787,49 +696,8 @@ analyze_13_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
@@ -2842,49 +710,8 @@ analyze_14_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
@@ -2898,49 +725,8 @@ analyze_14_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
@@ -2952,49 +738,8 @@ analyze_14_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
@@ -3005,49 +750,8 @@ analyze_14_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
@@ -3060,49 +764,8 @@ analyze_15_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
@@ -3116,49 +779,8 @@ analyze_15_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
@@ -3170,49 +792,8 @@ analyze_15_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
@@ -3223,49 +804,8 @@ analyze_15_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
@@ -3278,49 +818,8 @@ analyze_16_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
@@ -3334,49 +833,8 @@ analyze_16_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
@@ -3388,49 +846,8 @@ analyze_16_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
@@ -3441,49 +858,8 @@ analyze_16_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
@@ -3496,49 +872,8 @@ analyze_17_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
@@ -3552,49 +887,8 @@ analyze_17_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
@@ -3606,49 +900,8 @@ analyze_17_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
@@ -3659,49 +912,8 @@ analyze_17_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
@@ -3714,49 +926,8 @@ analyze_18_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
@@ -3770,49 +941,8 @@ analyze_18_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
@@ -3824,49 +954,8 @@ analyze_18_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
@@ -3877,49 +966,8 @@ analyze_18_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
@@ -3932,49 +980,8 @@ analyze_19_frames:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
@@ -3988,49 +995,8 @@ analyze_19_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
@@ -4042,49 +1008,8 @@ analyze_19_rows:
   - all
   - --max-rows
   - '0'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
@@ -4095,49 +1020,8 @@ analyze_19_volumes:
   - --chip
   - all
   - --volumes
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
-  - core/__init__.py
-  - core/audio/__init__.py
-  - core/audio/gain.py
-  - core/audio/loops.py
-  - core/audio/pcm.py
-  - core/audio/pitch.py
-  - core/audio/resample.py
-  - core/chips/__init__.py
-  - core/chips/fm.py
-  - core/chips/psg.py
-  - core/files.py
-  - core/render_cache.py
-  - core/smps/__init__.py
-  - core/smps/asm_writer.py
-  - core/smps/code.py
-  - core/smps/compare.py
-  - core/smps/driver_tables.py
-  - core/smps/driver_track.py
-  - core/smps/effects.py
-  - core/smps/lfo.py
-  - core/smps/names.py
-  - core/smps/parser.py
-  - core/smps/percussion.py
-  - core/smps/playback.py
-  - core/smps/rules.py
-  - core/smps/run_out.py
-  - core/smps/song.py
-  - core/smps/song_prep.py
-  - core/smps/tempo.py
-  - core/smps/track.py
-  - core/smps/voice_patch.py
-  - core/vgm/__init__.py
-  - core/vgm/cache.py
-  - core/vgm/chipstate.py
-  - core/vgm/frames.py
-  - core/vgm/lift/__init__.py
-  - core/vgm/lift/song.py
-  - core/vgm/lift/tempo.py
-  - core/vgm/lift/tracks.py
-  - core/vgm/notes.py
-  - core/vgm/reader.py
   - tools/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
@@ -4147,7 +1031,7 @@ frames_golden_axe:
   - --all
   - --configs
   - configs/golden_axe
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4291,7 +1175,7 @@ frames_streets_of_rage:
   - --all
   - --configs
   - configs/streets_of_rage
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4445,7 +1329,7 @@ lift_02:
   - all
   - --diffs
   - '4'
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4562,7 +1446,7 @@ lift_all:
   argv:
   - tools/vgm_lift.py
   - --all
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4716,7 +1600,7 @@ lift_moonwalker_88_round_clear:
   argv:
   - tools/vgm_lift.py
   - configs\moonwalker\88_round_clear.yaml
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4889,7 +1773,7 @@ lift_moonwalker_all:
   - --all
   - --configs
   - configs\moonwalker
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5066,7 +1950,7 @@ pitch_chaos_emerald:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5192,7 +2076,7 @@ pitch_continue_screen:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5320,7 +2204,7 @@ pitch_continue_screen_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5446,7 +2330,7 @@ pitch_credits:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5572,7 +2456,7 @@ pitch_drowning:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5698,7 +2582,7 @@ pitch_ending_theme:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5824,7 +2708,7 @@ pitch_extra_life:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5952,7 +2836,7 @@ pitch_extra_life_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6078,7 +2962,7 @@ pitch_final_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6204,7 +3088,7 @@ pitch_game_over:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6332,7 +3216,7 @@ pitch_game_over_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6460,7 +3344,7 @@ pitch_ghz_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6586,7 +3470,7 @@ pitch_green_hill_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6712,7 +3596,7 @@ pitch_invincibility:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6840,7 +3724,7 @@ pitch_invincibility_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6966,7 +3850,7 @@ pitch_lab_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7092,7 +3976,7 @@ pitch_marble_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7218,7 +4102,7 @@ pitch_robotnik:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7346,7 +4230,7 @@ pitch_robotnik_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7472,7 +4356,7 @@ pitch_scrap_brain_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7598,7 +4482,7 @@ pitch_special_stage:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7724,7 +4608,7 @@ pitch_spring_yard_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7850,7 +4734,7 @@ pitch_stage_clear:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7978,7 +4862,7 @@ pitch_stage_clear_lofi:
   - --variant
   - lofi
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8104,7 +4988,7 @@ pitch_star_light_zone:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8230,7 +5114,7 @@ pitch_title_screen:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8350,7 +5234,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8409,7 +5293,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8469,7 +5353,7 @@ read_sonic1_asm_music:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8538,7 +5422,7 @@ read_sonic1_asm_music_shipped:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
   - --shipped
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8606,7 +5490,7 @@ read_sonic1_asm_sfx:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/sfx
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8704,7 +5588,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8765,7 +5649,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8825,7 +5709,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

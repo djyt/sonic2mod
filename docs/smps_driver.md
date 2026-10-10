@@ -182,7 +182,7 @@ D1L/RR, TL — each group in SMPS operator order 4, 3, 2, 1 (the `smpsVc*` opera
 so SMPS operator *n* is the chip's operator 5 − *n*:
 
 ```python
-# core/smps/driver_tables.py — read by ym2612/voice.py and sfx/chips.py
+# core/smps/driver_tables.py — read by core/synth/fm_voice.py and sfx/chips.py
 SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)   # SMPS OP1..OP4 → chip OP4, OP3, OP2, OP1
 ```
 

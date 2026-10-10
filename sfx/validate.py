@@ -16,13 +16,14 @@ import math
 import sys
 from pathlib import Path
 
-from core.chips import MD_PSG_CLOCK
-
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import gain_to_db
+from core.chips import MD_PSG_CLOCK
+from core.chips.sn76489 import SN76489
+from core.chips.ym2612 import OPN2
 from core.smps import (
     SmpsParser,
 )
@@ -30,8 +31,6 @@ from sfx import tables
 from sfx.batch import asm_sources, render_one
 from sfx.render import NATIVE_RATE
 from sfx.resample import resample
-from sn76489.wrapper import SN76489
-from ym2612.wrapper import OPN2
 
 # Channel tick totals, derived independently from the assembly byte stream.
 EXPECTED_TICKS = {

@@ -1,15 +1,15 @@
 """Compile a bundled C emulator to a platform shared library, with caching.
 
-Both chip packages ship a C core from `reference/` and need the same thing: build
-it on first use, rebuild it when the source changes, and work with either gcc or
-MSVC.  Describe the library once with :class:`CLibrary` and call
-:meth:`CLibrary.get_lib_path`.
+Both chip devices (core/chips/ym2612, core/chips/sn76489) wrap a C core vendored in `3rdparty/`
+and need the same thing: build it on first use into `build/` (untracked), rebuild it when a
+source changes, and work with either gcc or MSVC.  Describe the library once with
+:class:`CLibrary` and call :meth:`CLibrary.get_lib_path`.
 
     _LIB = CLibrary(
         name="ym3438",
-        out_dir=Path(__file__).parent,
-        sources=[_ROOT / "reference" / "Nuked-OPN2" / "ym3438.c"],
-        include=_ROOT / "reference" / "Nuked-OPN2",
+        out_dir=BUILD_DIR,
+        sources=[THIRD_PARTY / "nuked-opn2" / "ym3438.c"],
+        include=THIRD_PARTY / "nuked-opn2",
     )
     lib_path = _LIB.get_lib_path()
 """
@@ -21,6 +21,10 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[2]
+THIRD_PARTY = _ROOT / "3rdparty"            # the vendored C emulators
+BUILD_DIR = _ROOT / "build"                 # their compiled libraries (untracked)
 
 _NO_COMPILER = (
     "No C compiler found on PATH.\n"
@@ -92,6 +96,7 @@ class CLibrary:
             hint = f"\n{self.missing_hint}" if self.missing_hint else ""
             raise FileNotFoundError(f"C source not found: {missing[0]}{hint}")
 
+        self.out_dir.mkdir(parents=True, exist_ok=True)
         print(f"Building {self.lib_name}...")
         if shutil.which("gcc"):
             subprocess.run(self._gcc_cmd(), check=True)

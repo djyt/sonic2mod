@@ -50,8 +50,8 @@ class SfxDriver:
         """
         Args:
             song:     SmpsSong parsed from an SFX .asm (header.is_sfx must be True).
-            opn2:     ym2612.wrapper.OPN2 instance, already reset.
-            sn:       sn76489.wrapper.SN76489 instance, already reset.
+            opn2:     core.chips.ym2612.OPN2 instance, already reset.
+            sn:       core.chips.sn76489.SN76489 instance, already reset.
             psg_oob:  "extend" or "clamp" — how to treat PSG note indices past the
                       end of the 70-entry driver table.
         """

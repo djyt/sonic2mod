@@ -16,7 +16,7 @@ holds.  What the conversion decides is `docs/pipeline.md`; the config keys are
 6. [The converter](#6-the-converter-coreconvert)
 7. [The merged build](#7-the-merged-build-coremerge)
 8. [The MOD file](#8-the-mod-file-coremod)
-9. [Chips, audio and sample rendering](#9-chips-audio-and-sample-rendering)
+9. [Chips, synthesis and audio](#9-chips-synthesis-and-audio)
 10. [Verification](#10-verification-coreaudit-tools-tests)
 11. [Reporting and CLIs](#11-reporting-and-clis)
 
@@ -55,9 +55,9 @@ holds.  What the conversion decides is `docs/pipeline.md`; the config keys are
 ### Rendering a sample
 
 ```
- config maps ─→ instrument catalogue ─→ generate_fm_samples  (ym2612/)  ─┐
- (voice_map,     (plan/instruments.py)   generate_psg_samples (sn76489/) ─┴→ {slot: (pcm, rate)}
-  psg maps)                                                               └→ loop, release rate
+ config maps ─→ instrument catalogue ─→ generate_fm_samples  (synth/) ─→ OPN2    (chips/ym2612/)  ─┐
+ (voice_map,     (plan/instruments.py)   generate_psg_samples (synth/) ─→ SN76489 (chips/sn76489/) ─┴→ {slot: (pcm, rate)}
+  psg maps)                                                                                          └→ loop, release rate
 ```
 
 The merged build (§ 7) adds a merge plan between planning and writing: it folds channels and
@@ -71,11 +71,10 @@ adds composite instruments to the same catalogue.
  convert.py  analyze.py  sonic2wav.py            CLIs (thin)
  tools/                                          analysis and audit utilities
  sfx/                                            the offline SFX driver
- ym2612/  sn76489/                               chip wrappers + sample generators
  ─────────────────────────────────────────────── core/ imports none of the above
  core/  ui
         convert   audit
-        merge
+        merge     synth
         plan
         config
         source
@@ -88,11 +87,15 @@ adds composite instruments to the same catalogue.
   `chips`, `files` and `diagnostics` import nothing in `core`; `render_cache` only `files`.
 - A package's `__init__.py` exports what other packages import (`from ..smps import SmpsSong`);
   its own modules import each other directly.  A module can move inside its package unseen.
-- `core/` never imports `ym2612/`, `sn76489/` or `sfx/`.  The converter receives the two sample
-  generators from `convert.py` as `SampleGenerators(fm=…, psg=…)`
-  (`core/convert/generators.py`); a converter given none raises if asked to synthesise.
-- `ym2612/` and `sn76489/` import `core` (plan, config, smps, chips, mod, audio, cbuild,
-  render_cache), never each other.  `sfx/` imports `core` and both chip wrappers.
+- `core/` never imports `sfx/`.
+- The chips are kept as MAME keeps devices (`src/devices/sound/`): `core/chips/ym2612/` and
+  `core/chips/sn76489/` are the emulators alone (registers in, samples out), above their facts
+  (`fm.py`, `psg.py`) and importing nothing else of `core`; their C cores are vendored in
+  `3rdparty/` (MAME's `3rdparty/`) and compiled into `build/` on first use (`core/chips/cbuild.py`).
+  Anything may drive a device: `core/synth` for the converter, `sfx/` for the SFX driver.
+- `core/synth` drives the devices with a song's voices and envelopes (the instrument catalogue
+  from `plan`, levels from `config`, voice layout from `smps`); `core/convert` calls its
+  generators directly.  `synth` and `merge` are independent.
 
 ---
 
@@ -226,7 +229,6 @@ the song and config, until the slots reserved for sample banks match what the ba
 | Module | Role |
 |---|---|
 | `smps2mod.py` | `SmpsToModConverter`.  Public to the config tools: `prepare_song()`, `level_baselines()`, `pan_law_db`, `pattern_of_tick()`, `last_pattern()`, `tick_span_secs()`, `sample_secs()`; to the CLI: `convert()`, `warnings`, `infos`, `sample_sources()` |
-| `generators.py` | `FmGenerator`, `PsgGenerator`, `FmDrumGenerator` protocols; `SampleGenerators` |
 | `fm_drums.py` | `drum_rings`: how long each FM drum is heard (a hit to the drum track's next): its render's cap |
 | `level_plan.py` | `LevelPlanner`: baked levels per instrument, FM render levels; `fm_tl_to_mod`, `psg_att_to_mod`, `modal_level` |
 | `sustain_plan.py` | `SustainPlanner`: `sustain_duration: auto` per instrument, `sustain_short` warnings |
@@ -259,7 +261,7 @@ every pass sees composites and spliced notes the same way.
 ```
 
 FM composites are catalogue entries (`FmInstrument` with one layer per voice) rendered by
-`ym2612.renderer.render_layers`; other composites are mixed from the generators' unquantised
+`core.synth.fm_render.render_layers`; other composites are mixed from the generators' unquantised
 renders.  Rules: `docs/pipeline.md` § The merged build.
 
 ---
@@ -306,12 +308,20 @@ limits.
 
 ---
 
-## 9. Chips, audio and sample rendering
+## 9. Chips, synthesis and audio
 
 | Module | Role |
 |---|---|
 | `core/chips/fm.py` | YM2612 facts: clock, sample rate, carriers by algorithm, `fm_frequency_hz`, the level law (`TL_STEP_DB` 0.75, pan law, `fm_level_db`) |
 | `core/chips/psg.py` | SN76489 facts: clock, `psg_frequency_hz`, `PSG_STEP_DB` 2.0, `psg_level_db` |
+| `core/chips/ym2612/` | The YM2612 device: `wrapper.py` (`OPN2`, `output_rate`), `build.py` (Nuked-OPN2 + `ym3438_batch.c` → `build/ym3438.dll`) |
+| `core/chips/sn76489/` | The SN76489 device: `wrapper.py` (`SN76489`), `build.py` (VGMPlay's core → `build/sn76489.dll`) |
+| `core/chips/cbuild.py` | `CLibrary`: compile a device's C core (`3rdparty/`) with gcc / MSVC into `build/`, rebuilt when a source is newer |
+| `core/synth/fm_voice.py` | `program_voice`: an `SmpsVoice` → YM2612 registers (the SMPS operator order) |
+| `core/synth/fm_render.py` | `render_note`, `render_layers` (composites), `render_frames` (FM drum tracks) → PCM |
+| `core/synth/fm_samples.py` | `generate_fm_samples`, `generate_fm_drums`: every FM instrument of the catalogue, threaded, through the render cache |
+| `core/synth/psg_render.py` | `render_psg_tone_raw`, `render_psg_noise_raw`; `note_to_psg_n` (the driver's table) |
+| `core/synth/psg_samples.py` | `generate_psg_samples`: every PSG instrument of the catalogue |
 | `core/audio/gain.py` | `db_to_gain`, `gain_to_db`, `power_to_db` |
 | `core/audio/pcm.py` | Mono / int8 helpers: dithered quantiser (`to_int8`, `full_scale_int8`), `dc_block`, `high_shelf`, `saturate`, `limit_peaks` |
 | `core/audio/resample.py` | Polyphase windowed-sinc resampler (FM, PSG, SFX) |
@@ -319,9 +329,6 @@ limits.
 | `core/audio/pitch.py` | Hz ↔ MIDI and semitones from C0 (`semitone_to_hz`), note names, cents |
 | `core/render_cache.py` | `RenderCache`: chip renders on disk by a hash of their inputs and of the code |
 | `core/files.py` | `write_atomic`, `write_shared`: files parallel conversions share (the cache, a minimal config's DAC samples), never read half-written |
-| `core/cbuild.py` | `CLibrary`: compile a C emulator with gcc / MSVC, rebuilt when a source is newer |
-| `ym2612/` | `build.py` (Nuked-OPN2 → DLL), `wrapper.py` (`OPN2`), `voice.py` (`program_voice`), `renderer.py` (`render_note`, `render_layers`), `sample_generator.py` (`generate_fm_samples`), `validate.py` |
-| `sn76489/` | `build.py`, `wrapper.py` (`SN76489`), `renderer.py`, `sample_generator.py` (`generate_psg_samples`), `validate.py` |
 | `sfx/` | The offline SFX driver behind `sonic2wav.py`: `docs/sfx_rendering.md` |
 
 Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
@@ -336,10 +343,10 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 | `core/audit/render.py`, `signal.py`, `levels.py`, `onsets.py` | `vgm_compare`'s per-channel renders (VGMPlay, ffmpeg + libopenmpt), measures, per-instrument levels, onset matching |
 | `core/audit/rip_diff.py` | `compare_with_rip(song, frames, aspects, ChannelChoice, lift)` → `RipDiff`: a song (`SongSource`: asm, or ROM + sound, as shipped) against its rip lifted at the song's tempo (`LiftTempo`) - `tools/vgm_lift.py` |
 | `core/audit/rips.py` | `RipShelf`: a config's rip and a rip's config, by number or the `rips.yaml` beside the configs; one folder given, the other mirrors it (`around`); `named`, the tools' `--only` (`vgm_lift`, `measure_volumes`, `tool_regression`) |
-| `tools/` | `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `measure_volumes`, `rom_import`, `mod_compare`, `mod_lint`, `mod_audit`, `mod_render_diff`, `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config`, `release` |
+| `tools/` | `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `measure_volumes`, `rom_import`, `mod_compare`, `mod_lint`, `mod_audit`, `mod_render_diff`, `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config`, `release`; `validate_ym2612`, `validate_sn76489` (each device, then `core/synth` through it) |
 | `tests/regression.py` | Every config (and its merged build, variants, ROM cases) converted and compared with a baseline MOD, cells and samples |
 | `tests/tool_regression.py` | The VGM tools' output, byte for byte |
-| `tests/core/`, `tests/ym2612/` | Unit tests, mirroring the code: `tests/<package>/test_<module>.py` tests `<package>/<module>.py` (`python -m pytest tests -q`).  The folders are no packages: pytest imports by path (`--import-mode=importlib`, pyproject.toml), so `tests/core` never stands in for `core` |
+| `tests/core/` | Unit tests, mirroring the code: `tests/<package>/test_<module>.py` tests `<package>/<module>.py` (`python -m pytest tests -q`).  The folders are no packages: pytest imports by path (`--import-mode=importlib`, pyproject.toml), so `tests/core` never stands in for `core` |
 | `tests/test_layers.py`, `tests/test_selection.py` | The import layers (pyproject.toml); `tests/selection.py`'s placement rules |
 
 How to run them: `CLAUDE.md` § Regression Testing; the VGZ workflow: `docs/pipeline.md`

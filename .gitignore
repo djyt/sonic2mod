@@ -8,3 +8,4 @@ input/roms
 *__pycache__*
 *.code-workspace
 docs/todo.txt
+/build

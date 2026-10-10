@@ -7,7 +7,7 @@ Convert Sonic The Hedgehog 1 SMPS assembly music files from the Sega Megadrive t
 ## Requirements
 
 - Python 3.11+
-- GCC or MSVC on PATH *(only needed if recompiling the synthesis DLLs — pre-compiled Windows binaries are included)*
+- GCC or MSVC on PATH *(the synthesis libraries are compiled from `3rdparty/` into `build/` on first use)*
 
 
 ## Installation
@@ -174,7 +174,7 @@ See `docs/sfx_rendering.md` for the driver details, the 8-bit chain, and the han
 
 ## FM/PSG Synthesis
 
-Cycle-accurate YM2612 (FM) and SN76489 (PSG) synthesis is enabled by default. These have been pre-compiled for Windows and included as a DLL file. However, if you're using Linux or a Mac you'll need GCC or MSVC installed and in your path. 
+Cycle-accurate YM2612 (FM) and SN76489 (PSG) synthesis is enabled by default. The emulators' C sources are in `3rdparty/` and are compiled into `build/` the first time they're needed, on Windows, Linux or Mac, so you'll need GCC or MSVC installed and in your path.
 
 I chose to leave both of these emulators as C for performance, ease of future upgrading, and the high chance of introducing bugs if I was to convert them to Python!
 
@@ -190,8 +190,8 @@ psg_synthesis:
 Smoke tests (generate a basic sample):
 
 ```bash
-python ym2612/validate.py
-python sn76489/validate.py
+python tools/validate_ym2612.py
+python tools/validate_sn76489.py
 ```
 
 

@@ -8,7 +8,7 @@ at NATIVE_RATE.
 
 from __future__ import annotations
 
-from ym2612.wrapper import OPN2
+from core.chips.ym2612 import OPN2
 
 from .chips import psg_silence_all
 from .driver import SfxDriver
@@ -77,7 +77,7 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
                    scaled by its own full scale.  1.0 means one full-scale PSG
                    channel matches one full-scale FM channel.
         psg_oob:   "extend" or "clamp" for PSG note indices past the driver table.
-        native_rate: the YM2612's output rate at its clock (ym2612.wrapper.output_rate), which
+        native_rate: the YM2612's output rate at its clock (core.chips.ym2612.output_rate), which
                    `sn` must have been built at too.
     """
     opn2.reset("ym2612")

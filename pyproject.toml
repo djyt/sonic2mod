@@ -25,11 +25,7 @@ py-modules = ["convert", "analyze", "sonic2wav"]
 
 # Found, not listed: a new driver folder (core/drivers/<family>/<driver>/) joins by itself
 [tool.setuptools.packages.find]
-include = ["core", "core.*", "ym2612", "sn76489", "sfx"]
-
-[tool.setuptools.package-data]
-ym2612 = ["*.dll", "*.so", "*.c"]
-sn76489 = ["*.dll", "*.so", "*.c"]
+include = ["core", "core.*", "sfx"]
 
 [tool.ruff]
 line-length = 120
@@ -86,7 +82,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "ym2612", "sn76489", "sfx"]
+known-first-party = ["core", "sfx"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -103,9 +99,9 @@ addopts = ["--import-mode=importlib"]
 # Code nothing uses: `python -m vulture`.  vulture_whitelist.py lists what is used in ways it
 # cannot see (unittest classes, ModNote members); each other finding is dead code, or a name
 # reached through getattr / YAML that belongs in the whitelist too
-paths = ["core", "ym2612", "sn76489", "sfx", "tools", "tests", "convert.py", "analyze.py", "sonic2wav.py",
+paths = ["core", "sfx", "tools", "tests", "convert.py", "analyze.py", "sonic2wav.py",
          "vulture_whitelist.py"]
-exclude = ["reference/"]
+exclude = ["reference/", "3rdparty/", "build/"]
 min_confidence = 60
 
 [tool.pyright]
@@ -115,19 +111,20 @@ typeCheckingMode = "basic"
 executionEnvironments = [
     { root = ".", pythonVersion = "3.11" },
 ]
-include = ["core", "convert.py", "analyze.py", "sonic2wav.py", "ym2612", "sn76489", "sfx", "tools"]
-exclude = ["reference", "output", "**/__pycache__"]
+include = ["core", "convert.py", "analyze.py", "sonic2wav.py", "sfx", "tools"]
+exclude = ["reference", "3rdparty", "build", "output", "**/__pycache__"]
 # Relax rules that fire on intentionally dynamic code
 reportMissingModuleSource = false
 reportAttributeAccessIssue = false
 
 # Import rules (agents.md layering), checked by tests/test_layers.py (or lint-imports).
 # Each package imports only the layers below it; the bottom ones (song IR, MOD, chips, audio)
-# are the shared vocabulary.  Directly below only where it keeps drivers swappable: the layers
+# are the shared vocabulary.  As in MAME, a chip is a device (core/chips/<chip>: the emulator and its
+# facts) that any driver can drive; core/synth drives it with a song's voices for the converter.  Directly below only where it keeps drivers swappable: the layers
 # above reach a driver through core.source alone.  Type-hint-only imports (TYPE_CHECKING) are
 # not imports here: a back-reference for a hint is no cycle.
 [tool.importlinter]
-root_packages = ["core", "sfx", "ym2612", "sn76489"]
+root_packages = ["core", "sfx"]
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
@@ -136,7 +133,7 @@ type = "layers"
 layers = [
     "core.ui",
     "core.convert | core.audit",
-    "core.merge",
+    "core.merge | core.synth",
     "core.plan",
     "core.config",
     "core.source",
@@ -150,7 +147,7 @@ layers = [
 [[tool.importlinter.contracts]]
 name = "drivers: reached through core.source alone"
 type = "forbidden"
-source_modules = ["core.ui", "core.convert", "core.audit", "core.merge", "core.plan", "core.config"]
+source_modules = ["core.ui", "core.convert", "core.audit", "core.merge", "core.synth", "core.plan", "core.config"]
 forbidden_modules = ["core.drivers"]
 allow_indirect_imports = true
 
@@ -165,10 +162,10 @@ modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "core: no chip package, no SFX driver"
+name = "core: no SFX driver"
 type = "forbidden"
 source_modules = ["core"]
-forbidden_modules = ["sfx", "ym2612", "sn76489"]
+forbidden_modules = ["sfx"]
 
 [[tool.importlinter.contracts]]
 name = "drivers: a driver folder loaded by the registry alone (lazily)"
@@ -181,7 +178,7 @@ as_packages = true
 name = "drivers: Sonic 1's tables reach the pipeline only through a driver's rules"
 type = "protected"
 protected_modules = ["core.drivers.reference"]
-allowed_importers = ["core.drivers.smps68k", "core.drivers.smpsz80", "sfx", "ym2612", "sn76489"]
+allowed_importers = ["core.drivers.smps68k", "core.drivers.smpsz80", "sfx"]
 as_packages = true
 
 [[tool.importlinter.contracts]]
@@ -216,6 +213,7 @@ containers = ["core.convert.channel_writer"]
 layers = ["writer", "router | levels | modulation | fades | note_warnings", "note", "cells", "context"]
 
 [[tool.importlinter.contracts]]
-name = "chips: ym2612 and sn76489 independent"
-type = "independence"
-modules = ["ym2612", "sn76489"]
+name = "chips: a device above its chip's facts"
+type = "layers"
+containers = ["core.chips"]
+layers = ["ym2612 | sn76489", "fm | psg | cbuild"]

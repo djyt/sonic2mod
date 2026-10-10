@@ -1,6 +1,6 @@
 """Register-level chip writes, mirroring the Sonic 1 driver's output routines.
 
-These deliberately do NOT reuse `ym2612.voice.program_voice` or the SN76489
+These deliberately do NOT reuse `core.synth.fm_voice.program_voice` or the SN76489
 wrapper's convenience writers, because both differ from the driver in ways that
 matter on a continuous timeline:
 

@@ -14,10 +14,10 @@ sys.path.insert(0, str(ROOT))
 
 from tests.selection import _placed
 
-_GA = {"files": ["convert.py", "core/smps/code.py", "core/drivers/smpsz80/type0fm/variant.py", "ym2612/renderer.py"],
+_GA = {"files": ["convert.py", "core/smps/code.py", "core/drivers/smpsz80/type0fm/variant.py", "core/chips/ym2612/wrapper.py"],
        "inputs": {"configs/golden_axe/89_the_battle.yaml": "x"}}
 _SONIC = {"files": ["convert.py", "core/smps/code.py", "core/drivers/smps68k/sonic1/variant.py"]}
-_CODE_DIRS = {"", "core/smps", "core/drivers/smpsz80/type0fm", "core/drivers/smps68k/sonic1", "ym2612"}
+_CODE_DIRS = {"", "core/smps", "core/drivers/smpsz80/type0fm", "core/drivers/smps68k/sonic1", "core/chips/ym2612"}
 _RUNNER = {"tests/regression.py"}
 
 
@@ -35,8 +35,8 @@ class Placement(unittest.TestCase):
         self.assertTrue(_moves(_SONIC, "core/smps/code.py")[0])
 
     def test_a_c_source_moves_the_cases_that_ran_beside_it(self):
-        self.assertTrue(_moves(_GA, "ym2612/ym3438_batch.c")[0])
-        self.assertEqual(_moves(_SONIC, "ym2612/ym3438_batch.c"), ("", False))
+        self.assertTrue(_moves(_GA, "core/chips/ym2612/ym3438_batch.c")[0])
+        self.assertEqual(_moves(_SONIC, "core/chips/ym2612/ym3438_batch.c"), ("", False))
 
     def test_what_moves_nothing(self):
         for path in ("docs/pipeline.md", "core/new_module.py", "configs/moonwalker/81_smooth_criminal.yaml",

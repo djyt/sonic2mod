@@ -190,27 +190,27 @@ scrap_brain_zone:
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_an_epitaph:
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   config: 6b69fc6115a9
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_game_over:
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   config: 3af9f9666998
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_harrier_saga:
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   config: ef99a6f6b879
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_machine_henge:
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   config: 94c9ea98e379
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_motion:
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   config: 0acc01d046ad
   date: '2026-10-10'
   settings: febf8cd9dd04

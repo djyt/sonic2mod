@@ -6940,7 +6940,7 @@ sh2_an_epitaph:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_an_epitaph.mod
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7110,7 +7110,7 @@ sh2_game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_game_over.mod
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7280,7 +7280,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_harrier_saga.mod
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7450,7 +7450,7 @@ sh2_machine_henge:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_machine_henge.mod
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7620,7 +7620,7 @@ sh2_motion:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_motion.mod
-  commit: caba851-dirty
+  commit: 7cfe533-dirty
   files:
   - convert.py
   - core/__init__.py

@@ -144,7 +144,7 @@ class SmpsVariant:
     flags: Mapping[ChannelType, Mapping[int, FlagSpec]]                 # each kind of track's flag table
     envelope_commands: Mapping[int, EnvelopeCommand]
     header: HeaderLayout
-    voice_layout: VoiceLayout
+    voice_layout: VoiceLayout | None                                 # None: its own voice_reader reads them
     rules: PlaybackRules                                             # what its songs play by (the ROM's own
                                                                      # tables and envelopes read in their place)
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]] | None = None   # every sample a song can play
@@ -159,3 +159,7 @@ class SmpsVariant:
     music_header_reader: Callable[[SoundMemory, int], RomHeader] | None = None
     sfx_header_reader: Callable[[SoundMemory, int], RomHeader] | None = None
     voice_reader: Callable[[SoundMemory, int, int], list[SmpsVoice]] | None = None
+
+    def __post_init__(self) -> None:
+        if self.voice_layout is None and self.voice_reader is None:
+            raise ValueError(f"{self.name}: no voice layout and no voice reader")

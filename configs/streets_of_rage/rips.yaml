@@ -1,4 +1,4 @@
-# Which rip each config converts (docs/todo/streets_of_rage.md 1.10; every FM key-on on its frame).
+# Which rip each config converts (docs/smps_variants.md § Streets of Rage; every FM key-on on its frame).
 # $8A has no rip in the pack; $8E is $8D.  The rips are not in this folder's mirror:
 folder: streets_of_rage_1          # under reference/vgz/
 81_fighting_in_the_street: "03 - Fighting in the Street.vgz"

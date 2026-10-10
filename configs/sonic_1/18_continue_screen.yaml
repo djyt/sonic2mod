@@ -2,8 +2,8 @@
 # Song: Mus90 - Continue Screen.asm
 
 name: Continue Screen
-input_file: "input/Mus90 - Continue Screen.asm"
-output_file: output/18_continue_screen.mod
+input_file: "input/sonic_1/Mus90 - Continue Screen.asm"
+output_file: output/sonic_1/18_continue_screen.mod
 samples_dir: "samples/"
 
 auto_bpm: true
@@ -14,7 +14,7 @@ ticks_per_row: 3           # a beat ($0C) 4 rows, a bar 16, a pattern four bars.
 region: ntsc
 range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
 
-# Variant lofi (convert.py --variant lofi --merged -> output/18_continue_screen_lofi_merged.mod): the merged
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/18_continue_screen_lofi_merged.mod): the merged
 # build 107 -> 33 KB.  The bass and the lead on sliding loops (both fall for as long as a note holds and
 # looped only at the end of their 2.4 s / 0.9 s renders), the lead's loop past its attack peak; the chord
 # composites loop where they settle to within 12 dB.  The drums as they are.  Left out: the chords at 6 dB

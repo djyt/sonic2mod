@@ -1,6 +1,6 @@
 # Spring Yard Zone — accuracy audit against the VGZ (2026-09-18)
 
-`configs/04_spring_yard_zone.yaml` against `reference/vgz/04 - Spring Yard Zone.vgz`, method as in
+`configs/sonic_1/04_spring_yard_zone.yaml` against `reference/vgz/sonic_1/04 - Spring Yard Zone.vgz`, method as in
 `02_ghz_audit.md` and `03_mz_audit.md`.
 
 ## Result: clean; no config change

@@ -1,6 +1,6 @@
 # Special Stage — accuracy audit against the VGZ (2026-09-18)
 
-`configs/08_special_stage.yaml` against `reference/vgz/08 - Special Stage.vgz`, method as in
+`configs/sonic_1/08_special_stage.yaml` against `reference/vgz/sonic_1/08 - Special Stage.vgz`, method as in
 `02_ghz_audit.md`.  No change needed.
 
 | Check | Result |

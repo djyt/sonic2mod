@@ -26,8 +26,8 @@ a VGMPlay build there on a fresh checkout; see docs/pipeline.md).
 
 Usage::
 
-    python tools/vgm_compare.py configs/01_title_screen.yaml "reference/vgz/01 - Title Theme.vgz"
-    python tools/vgm_compare.py configs/01_title_screen.yaml ref.vgz --mod output/x.mod --ref FM2
+    python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
+    python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml ref.vgz --mod output/x.mod --ref FM2
     python tools/vgm_compare.py cfg.yaml ref.vgz --skip-render     # reuse WAVs in the workdir
     python tools/vgm_compare.py cfg.yaml ref.vgz --merged          # the merged build: each MOD channel
                                                                    # against the sum of its source channels

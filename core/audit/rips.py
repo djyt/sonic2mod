@@ -1,7 +1,7 @@
 """Which rip records which song: a config's VGM / VGZ, and a rip's config.
 
-    configs/02_green_hill_zone.yaml             reference/vgz/02 - Green Hill Zone.vgz       by number
-    configs/moonwalker/81_smooth_criminal.yaml  reference/vgz/moonwalker/03 - Smooth ...vgz  by rips.yaml
+    configs/sonic_1/02_green_hill_zone.yaml     reference/vgz/sonic_1/02 - Green Hill Zone.vgz  by number
+    configs/moonwalker/81_smooth_criminal.yaml  reference/vgz/moonwalker/03 - Smooth ...vgz     by rips.yaml
 
 A set whose rips are numbered in another order than its configs (Moonwalker's: game order, the
 configs sound-ID order) names each config's rip in a map beside the configs (RIPS_MAP: config
@@ -23,6 +23,7 @@ from ..vgm import is_vgm_path
 _PROJECT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = _PROJECT / "configs"                  # the song configs, a folder per game below
 RIP_ROOT = _PROJECT / "reference" / "vgz"           # their rips, mirrored
+DEFAULT_SET = "sonic_1"                     # the folder pair a rip tool given neither reads: the reference driver's
 RIPS_MAP = "rips.yaml"
 RIPS_FOLDER = "folder"                      # a map's key, no config's stem: the rips' folder
 _CONFIG_GLOB = "[0-9a-f][0-9a-f]_*.yaml"    # a song config: its sound's number first
@@ -50,11 +51,11 @@ class RipShelf:
     def around(cls, configs: str | Path | None, rips: str | Path | None, names: str | Path | None = None, *,
                config_root: Path = CONFIG_ROOT, rip_root: Path = RIP_ROOT) -> RipShelf:
         """The shelf from the folders given, the one left out mirroring the other under its root
-        (neither: the roots); ValueError when a folder given is not under its root."""
+        (neither: DEFAULT_SET's); ValueError when a folder given is not under its root."""
         configs = Path(configs) if configs else None
         rips = Path(rips) if rips else None
         if configs is None:
-            configs = _mirror(rips, rip_root, config_root) if rips else config_root
+            configs = _mirror(rips, rip_root, config_root) if rips else config_root / DEFAULT_SET
         if rips is None:
             folder = (_read_map(configs, names) or {}).get(RIPS_FOLDER)
             rips = rip_root / folder if folder else _mirror(configs, config_root, rip_root)

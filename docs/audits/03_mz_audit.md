@@ -1,12 +1,12 @@
 # Marble Zone — accuracy audit against the VGZ (2026-09-18)
 
-`configs/03_marble_zone.yaml` against `reference/vgz/03 - Marble Zone.vgz`, with the tools as they
+`configs/sonic_1/03_marble_zone.yaml` against `reference/vgz/sonic_1/03 - Marble Zone.vgz`, with the tools as they
 stood after todo items 1–6, 9–12 and 14 (frame-timed fills, the vibrato formula, `EDx`, baked levels,
 derived rate-3 noise, tempo changes) and the Credits work.  Method as in `02_ghz_audit.md`:
 
 ```
-python tools/vgm_pitch_audit.py configs/03_marble_zone.yaml "reference/vgz/03 - Marble Zone.vgz"
-python tools/vgm_compare.py    configs/03_marble_zone.yaml "reference/vgz/03 - Marble Zone.vgz"
+python tools/vgm_pitch_audit.py configs/sonic_1/03_marble_zone.yaml "reference/vgz/sonic_1/03 - Marble Zone.vgz"
+python tools/vgm_compare.py    configs/sonic_1/03_marble_zone.yaml "reference/vgz/sonic_1/03 - Marble Zone.vgz"
 ```
 
 ## Result: clean, one volume set by hand

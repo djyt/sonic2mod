@@ -6,8 +6,8 @@
 # -------------------------------------------------------------------------------------------------
 
 name: Chaos Emerald
-input_file: "input/Mus93 - Get Emerald.asm"
-output_file: output/16_chaos_emerald.mod
+input_file: "input/sonic_1/Mus93 - Get Emerald.asm"
+output_file: output/sonic_1/16_chaos_emerald.mod
 samples_dir: "samples/"
 
 auto_bpm: true

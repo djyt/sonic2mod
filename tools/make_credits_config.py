@@ -1,9 +1,9 @@
-"""Build configs/13_credits.yaml in chip-pitch space (range_space: chip), 31 instruments.
+"""Build configs/sonic_1/13_credits.yaml in chip-pitch space (range_space: chip), 31 instruments.
 
 Usage::
 
-    python analyze.py "reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm" --write output/credits_skeleton.yaml
-    python tools/make_credits_config.py output/credits_skeleton.yaml
+    python analyze.py "reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm" --write output/sonic_1/credits_skeleton.yaml
+    python tools/make_credits_config.py output/sonic_1/credits_skeleton.yaml
 
 Re-running keeps the volumes (and their VGZ / by-hand comments) of the existing config.
 
@@ -28,8 +28,8 @@ from core.drivers.reference import SONIC1_RULES
 from core.plan import walk_channel
 from core.smps import PsgVoice, SmpsParser, VoiceField, semitone_to_note_name, source_map, synth_note_name
 
-SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/credits_skeleton.yaml"
-OUT = "configs/13_credits.yaml"
+SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/sonic_1/credits_skeleton.yaml"
+OUT = "configs/sonic_1/13_credits.yaml"
 MOD_LO, MOD_SPAN = 12, 35          # MOD C1 in SMPS semitones; C1..B3
 
 
@@ -225,8 +225,8 @@ lines = [
     "# -------------------------------------------------------------------------------------------------",
     "",
     "name: Credits",
-    'input_file: "input/Mus91 - Credits.asm"',
-    "output_file: output/13_credits.mod",
+    'input_file: "input/sonic_1/Mus91 - Credits.asm"',
+    "output_file: output/sonic_1/13_credits.mod",
     'samples_dir: "samples/"',
     "",
     "auto_bpm: true",

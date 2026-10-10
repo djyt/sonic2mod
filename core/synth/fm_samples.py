@@ -40,11 +40,11 @@ from ..chips import MD_PSG_CLOCK, fm_frequency_hz
 from ..chips.sn76489.build import get_lib_path as get_psg_lib_path
 from ..chips.ym2612 import OPN2
 from ..chips.ym2612.build import get_lib_path
-from ..config import ConversionConfig, SynthesisSettings
+from ..config import ConversionConfig, SynthesisSettings, region_fps
 from ..mod import max_sustain_secs
 from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from ..render_cache import RenderCache, code_salt
-from ..smps import FmDrum, SmpsSong, SmpsVoice
+from ..smps import FmDrum, PitchEnvelope, SmpsSong, SmpsVoice
 from . import psg_render
 from .fm_render import note_to_fnum_block, note_to_freq, render_frames, render_layers
 from .psg_render import render_psg_frames
@@ -59,6 +59,8 @@ class _RenderJob:
     spec: FmInstrument
     layers: list[tuple]   # (voice, semitones, FNUM detune, carrier TL, key-off secs or None)
     target_rate: int
+    envelopes: tuple[PitchEnvelope | None, ...] = ()   # each layer's pitch envelope (None: none)
+    frame_hz: float = 60.0                               # the frames they step at
 
     @property
     def inst(self) -> int:
@@ -123,6 +125,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
             print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
 
     jobs: list[_RenderJob] = []
+    envelopes = song.rules.pitch_envelopes
     for spec in [*cat.instruments.values(), *extra]:
         base_tl = tl_offsets.get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
@@ -132,7 +135,9 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
             _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate, fm_frequencies=song.rules.fm_frequencies)
             print(f"  [synth] inst={spec.inst} voice=${spec.layers[0].voice_idx:02X} "
                   f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
-        jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock)))
+        stepped = tuple(envelopes[lay.pitch_envelope] if lay.pitch_envelope else None for lay in spec.layers)
+        jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock),
+                               stepped if any(stepped) else (), region_fps(config.region)))
     return jobs
 
 
@@ -165,7 +170,7 @@ class _FmRenderer:
         # A loop ending past where the notes stop being heard is longer than the plain render,
         # and less faithful: none
         loop = (self._loop(job, mono, rate, period, sustain, sustain_n)
-                if self._loops and job.spec.render_secs is None else None)
+                if self._loops and job.spec.render_secs is None and not job.envelopes else None)
         heard_n = self._heard_n(job, rate, sustain, release)
         if loop is not None and heard_n is not None and loop.end > heard_n:
             loop = None
@@ -196,28 +201,37 @@ class _FmRenderer:
         if self._verbose and sustain < want:
             print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
                   f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
-        return sustain, probe_secs(sustain, fits) if self._loops else sustain
+        # A pitch envelope deepens each pass: no loop settles, the sample is played whole
+        return sustain, probe_secs(sustain, fits) if self._loops and not job.envelopes else sustain
 
     def _render_at(self, job: _RenderJob, sustain: float, layers: list[tuple] | None = None):
         """The job's layers (or `layers`) rendered for `sustain`: settings.yaml's shelf, a merge
         group's own on top, centred as the hardware's AC-coupled output plays it."""
         synth, spec = self._synth, job.spec
         mono, rate = self._chip_render(layers if layers is not None else job.layers, spec.synth_idx, sustain,
-                                       job.target_rate)
+                                       job.target_rate, job)
         shelves = [(synth.treble_shelf_hz, synth.treble_shelf_db),
                    (spec.treble_shelf_hz or synth.treble_shelf_hz, spec.treble_shelf_db or 0.0)]
         return condition_render(mono, rate, shelves, synth.dc_block), rate
 
-    def _chip_render(self, layers: list[tuple], synth_idx: int, sustain: float, target_rate: int):
-        """render_layers, or the render an earlier conversion cached (core/render_cache.py)."""
+    def _chip_render(self, layers: list[tuple], synth_idx: int, sustain: float, target_rate: int,
+                     job: _RenderJob | None = None):
+        """render_layers, or the render an earlier conversion cached (core/render_cache.py); a
+        job's pitch envelopes stepped over the whole render."""
         synth = self._synth
         inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
                   synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps,
                   self._fm_frequencies)
+        stepped: tuple = ()
+        if job is not None and job.envelopes:
+            frames = math.ceil((sustain + synth.release_padding) * job.frame_hz) + 1
+            stepped = tuple(e.offsets(frames) if e is not None else None for e in job.envelopes)
+            inputs += (stepped, job.frame_hz)
         return self._cache.through(inputs, lambda: render_layers(
             layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
             opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps,
-            fm_frequencies=self._fm_frequencies))
+            fm_frequencies=self._fm_frequencies, envelopes=stepped,
+            frame_hz=job.frame_hz if job is not None else 60.0))
 
     def _loop(self, job: _RenderJob, mono: Sequence[float], rate: int, period: float, sustain: float,
               sustain_n: int) -> SustainLoop | None:

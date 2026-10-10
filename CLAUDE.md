@@ -254,7 +254,7 @@ python -m pytest tests/core/merge -q                   # one package's unit test
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD (against its own game's rips), `vgm_lift` (the Moonwalker
-pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's and Space Harrier II's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's, Space Harrier II's and OutRun's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
 Moonwalker, Golden Axe, Streets of Rage, Space Harrier II, OutRun) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 

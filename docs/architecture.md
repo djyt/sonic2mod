@@ -183,7 +183,7 @@ The song read through its config.  **One state machine decides what a note plays
 
 Every pass walks this way — the conversion, the level and sustain planners, the noise
 derivations, `resolve_synth_roots`, `core/merge` — so none can disagree about a note.  Only
-MOD-emission state (note fill, vibrato, cursor) belongs to `ChannelWriter`.  `core/analysis.py`
+MOD-emission state (note fill, vibrato, cursor) belongs to `ChannelWriter`.  `core/analysis/song.py`
 keeps its own loop on purpose: it describes a song with no config.
 
 | Module | Role |
@@ -371,7 +371,7 @@ warning is one enum member, one function, one entry.
 | CLI | Does | Reference |
 |---|---|---|
 | `convert.py` | config → MOD (`from_yaml` → `read_song` → `complete_config` if minimal → `--merged` → `derive_bpm` → `load_settings` → `convert()` → write → `print_report`) | `docs/yaml_config.md` § Running a config |
-| `analyze.py` | A song with no config (Rich tables, `--config` coverage diff, `--write` YAML skeleton) | `CLAUDE.md` § Quick Usage |
+| `analyze.py` | A song with no config (Rich tables, `--config` coverage diff, `--write` YAML skeleton: `core/analysis/skeleton.py`) | `CLAUDE.md` § Quick Usage |
 | `sonic2wav.py` | SFX → WAV / 8-bit raw | `docs/sfx_rendering.md` |
 
 `core/ui/cli.py` holds the shared chrome (`cli_console`, `branding`, `add_variant_argument`);

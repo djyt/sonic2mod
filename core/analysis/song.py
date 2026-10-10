@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .config import ConversionConfig
-from .smps import (
+from ..config import ConversionConfig
+from ..smps import (
     AlterVol,
     ChangeTransposition,
     ChannelType,
@@ -201,7 +201,7 @@ def analyze_song(song: SmpsSong, file_path: str,
     Returns:
         SongAnalysis with per-channel ChannelAnalysis objects.
     """
-    from .config import derive_bpm
+    from ..config import derive_bpm
 
     # Derive BPM for both regions
     # Use default ticks_per_row=6, speed=6 (common Sonic 1 defaults)

@@ -8712,7 +8712,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: d38a358-dirty
+  commit: 6721124-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

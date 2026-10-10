@@ -1269,7 +1269,7 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_streets_of_rage:
-  commit: d38a358-dirty
+  commit: '6721124'
   date: '2026-10-10'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

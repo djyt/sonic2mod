@@ -740,7 +740,7 @@ frames_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 frames_space_harrier_2:
-  commit: cd8d967
+  commit: 78be73c
   date: '2026-10-10'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: f5e8377d39a1
@@ -1430,12 +1430,12 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 32383b7
+  commit: 78be73c
   date: '2026-10-10'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: 32383b7
+  commit: 78be73c
   date: '2026-10-10'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

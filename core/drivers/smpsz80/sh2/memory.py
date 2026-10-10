@@ -23,6 +23,7 @@ class DriverTables:
     index: int         # a track list's address per song from $81
     songs: int
     voices: int        # a register list's address per voice
+    pitch_envelopes: int   # an envelope's address per pitch envelope from 1
 
 
 class Sh2Memory(BankedZ80Memory):

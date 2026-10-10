@@ -241,6 +241,7 @@ _FLAG_MACROS = {
     CoordFlag.VOICE_REGISTER: "smpsVoiceRegister", CoordFlag.FM3_SPECIAL: "smpsFm3Special",
     CoordFlag.LFO: "smpsLfo",                # likewise
     CoordFlag.LEGATO: "smpsLegato",          # likewise
+    CoordFlag.PITCH_ENVELOPE: "smpsPitchEnvelope",   # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

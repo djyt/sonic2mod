@@ -43,7 +43,7 @@ def _memory(records: list[bytes], tempo: int = 0) -> Sh2Memory:
     bank[_CODE:_CODE + 7] = bytes([0xF2] * 7)
     rom = bytearray(_HEADER.ljust(2 * _BANK, b"\0"))
     rom[_BANK:_BANK + len(bank)] = bank
-    return Sh2Memory(RomImage(bytes(rom)), DriverTables(_BANK, _BANK + _TEMPOS, _BANK + _INDEX, 1, _BANK + _VOICES))
+    return Sh2Memory(RomImage(bytes(rom)), DriverTables(_BANK, _BANK + _TEMPOS, _BANK + _INDEX, 1, _BANK + _VOICES, _BANK))
 
 
 def _song(changes: dict[int, bytes] | None = None) -> list[bytes]:

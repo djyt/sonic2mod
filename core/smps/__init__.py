@@ -72,6 +72,7 @@ from .effects import (
     PsgForm,
     PsgVoice,
     SelectSample,
+    SetPitchEnvelope,
     SetTempoDiv,
     SetTempoMod,
     SetVoice,
@@ -101,6 +102,7 @@ from .names import (
 )
 from .parser import SmpsParser
 from .percussion import FmDrum, FmFrame
+from .pitch_envelope import PitchEnvelope
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .rules import PlaybackRules, TrackRules
 from .song import (
@@ -172,6 +174,7 @@ __all__ = [
     "Op",
     "OpKind",
     "Pan",
+    "PitchEnvelope",
     "PlaybackRules",
     "PlayedEffect",
     "PlayedNote",
@@ -181,6 +184,7 @@ __all__ = [
     "PsgForm",
     "PsgVoice",
     "SelectSample",
+    "SetPitchEnvelope",
     "SetTempoDiv",
     "SetTempoMod",
     "SetVoice",

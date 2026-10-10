@@ -8,8 +8,7 @@ skips one ($F5 on FM).  The drum track reads its bytes as drums (a bitmask, Phas
 its flags are read here, what they do to the drums is the drum reader's.  It takes $7F for a drum
 where SMPS reads a duration (Z80 $0CDC); no song has a $7F.
 
-Read and dropped for now (reported by the reader): the pitch envelope ($F4), the plan's Phase 2;
-the drum track's own flags, Phase 3.  The follow-on song ($E9) is dropped: each
+Read and dropped for now (reported by the reader): the drum track's own flags, the plan's Phase 3.  The follow-on song ($E9) is dropped: each
 song converts alone.
 """
 
@@ -26,6 +25,7 @@ from core.smps import FIRST_NOTE, LAST_NOTE, ChannelType, CoordFlag, Op, OpKind,
 
 from ...names import SmpsDriver
 from ..program import driver_ram, fm_frequencies, psg_frequencies, psg_read
+from .envelopes import read_pitch_envelopes
 from .header import HEADER_SH2, read_track_list
 from .locate import locate_sh2, sh2_memory
 from .memory import Sh2Memory
@@ -73,7 +73,7 @@ _FM_FLAGS: dict[int, FlagSpec] = {
     0xEF: read(_set_voice),
     0xF0: effect(CoordFlag.SET_VOL),
     0xF1: effect(CoordFlag.SET_VOL),
-    0xF4: drop("pitch envelope (Phase 2)", 1),
+    0xF4: effect(CoordFlag.PITCH_ENVELOPE),
     0xF5: drop("$F5 on FM (a PSG envelope)", 1),
     0xFC: refuse("slide mode", 1),
     0xFD: refuse("raw-frequency mode", 1),
@@ -104,9 +104,10 @@ _DRUM_FLAGS: dict[int, FlagSpec] = {
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
-    """Its FM and PSG tables, read from the driver."""
+    """Its FM and PSG tables and its pitch envelopes, read from the driver."""
     z80 = driver_ram(rom)
-    return replace(rules, fm_frequencies=fm_frequencies(z80), psg_frequencies=psg_frequencies(z80), psg_read=psg_read(z80))
+    return replace(rules, fm_frequencies=fm_frequencies(z80), psg_frequencies=psg_frequencies(z80), psg_read=psg_read(z80),
+                   pitch_envelopes=read_pitch_envelopes(sh2_memory(rom)))
 
 
 def drum_name(byte: int) -> str:

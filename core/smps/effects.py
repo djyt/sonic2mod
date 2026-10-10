@@ -61,6 +61,7 @@ class CoordFlag(StrEnum):
     FM3_SPECIAL = auto()          # its $F7 on FM
     LFO = auto()                  # its $FC
     LEGATO = auto()               # Space Harrier II's $EE
+    PITCH_ENVELOPE = auto()       # its $F4
 
 
 @dataclass(frozen=True)
@@ -195,6 +196,14 @@ class Lfo(PlayedEffect):
     frequency: int                # $22's, 0-7
     fms: int                      # B4's pitch sensitivity, 0-7
     ams: int                      # B4's level sensitivity, 0-3
+
+
+@dataclass(frozen=True)
+class SetPitchEnvelope(PlayedEffect):
+    """The pitch envelope each note plays from its read on (PlaybackRules.pitch_envelopes,
+    core/smps/pitch_envelope.py); 0: none."""
+    flag = CoordFlag.PITCH_ENVELOPE
+    index: int
 
 
 @dataclass(frozen=True)

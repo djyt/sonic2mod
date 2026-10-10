@@ -14,11 +14,13 @@ Attacking notes and tied ones are counted apart: vibrato runs on through a tie, 
 pitch is the song's and the vibrato so far, its level the envelope's step so far.  A silent PSG
 note's pitch is not judged (the driver need not write it, and nothing hears it).
 
-Where the rip's song began is the rip's: the offset is the commonest difference, over the FM
+Where the rip's song began is the rip's: the offset is near the commonest difference, over the FM
 channels (whichever are checked), between a channel's first attack in the song and its first key-on
-in the rip; and TempoWait's holds may fall a frame earlier than the song's phase says (the
-counter's state when the game started the song: Sonic 1's Special Stage and Chaos Emerald rips),
-so the phase that matches more notes is taken (FrameCheck.holds_early).  A drum track is not read (a DAC sample, or Type 0 FM's FM drums on FM3).
+in the rip - within _OFFSET_REACH of it, the one that matches the most notes (a rip may key a
+channel before its song starts: Space Harrier II's Mind Quake one frame early); and TempoWait's
+holds may fall a frame earlier than the song's phase says (the counter's state when the game started
+the song: Sonic 1's Special Stage and Chaos Emerald rips), so the phase that matches more notes is
+taken (FrameCheck.holds_early).  A drum track is not read (a DAC sample, or Type 0 FM's FM drums on FM3).
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ from .rip_diff import ChannelChoice
 
 _EVERY_CHANNEL = ChannelChoice()
 _NOISE_TONE = PSG_CHANNEL_NAMES.index("PSG3")      # the tone channel that clocks the noise
+_OFFSET_REACH = 2                                   # frames either side of the first key-ons' offset tried
 
 
 class FrameAspect(StrEnum):
@@ -87,15 +90,29 @@ def check_frames(song: SmpsSong, frames: FrameLog, channels: ChannelChoice = _EV
     played = played_song(song)
     melodic = {name for name, ch in source_map(song).items() if ch.header.channel_type != ChannelType.DAC}
     checks = [_check_at(song, played, early, melodic, frames, channels) for early in (False, True)]
-    return min(checks, key=lambda c: sum(not m.tied for m in c.misses))
+    return min(checks, key=_attack_misses)
+
+
+def _attack_misses(check: FrameCheck) -> int:
+    return sum(not m.tied for m in check.misses)
 
 
 def _check_at(song: SmpsSong, played: PlayedSong, early: bool, melodic: set[str], frames: FrameLog,
               channels: ChannelChoice) -> FrameCheck:
+    """At one hold phase: the offset near the first key-ons' that matches the most notes (the
+    nearest of equals)."""
     schedule = tempo_schedule(played.modifier, played.tempo_changes, played.tempo_phase - early)
     notes = {name: [(frame_of_tick(schedule, n.tick), n) for n in ns if not n.rest]
              for name, ns in played.channels.items() if name in melodic}
-    check = FrameCheck(_offset(notes, frames), early)
+    estimate = _offset(notes, frames)
+    nearest_first = sorted(range(estimate - _OFFSET_REACH, estimate + _OFFSET_REACH + 1), key=lambda o: abs(o - estimate))
+    checks = [_check_offset(song, notes, early, offset, frames, channels) for offset in nearest_first]
+    return min(checks, key=_attack_misses)
+
+
+def _check_offset(song: SmpsSong, notes: dict[str, list[tuple[int, PlayedNote]]], early: bool, offset: int,
+                  frames: FrameLog, channels: ChannelChoice) -> FrameCheck:
+    check = FrameCheck(offset, early)
     first_steps = {name: env.steps[0] for name, env in song.rules.psg_envelopes.items() if env.steps}
     for name, sounding in notes.items():
         if not channels.picks(name):

@@ -30,6 +30,7 @@ from enum import StrEnum
 from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK
 from .driver_tables import fm_note_index, psg_note_index
 from .names import source_names
+from .rules import PlaybackRules
 from .song import SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
@@ -165,7 +166,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         keyed = True
         if not note.is_retrigger or base is None:
             base = _table_word(note, st, channel.rules.fm_frequencies)
-        sounded = _note(ev.tick_position, note, st, base, voices, attack)
+        sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules))
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
         # read that way leaves it sounding (NoteTimeout is spent)
@@ -216,17 +217,25 @@ def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...])
     return fm_frequencies[fm_note_index(note.note_value, st.transpose)]
 
 
+def _first_step(st: TrackState, rules: PlaybackRules) -> int:
+    """The pitch envelope's offset on the read frame: the word the key-on sounds (0: none)."""
+    if not st.pitch_envelope:
+        return 0
+    return rules.pitch_envelopes[st.pitch_envelope].offsets(1)[0]
+
+
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
-          attack: bool) -> PlayedNote:
+          attack: bool, envelope_offset: int) -> PlayedNote:
     fm = voices.get(st.voice) if st.voice is not None and not st.is_psg else None
     if st.is_psg:
         voice, level = st.envelope, st.att
     else:
         voice, level = _fm_voice(fm, st.tl)
     # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider
-    # 0); channel 3's own registers in special mode carry its offset (OP4's)
+    # 0); channel 3's own registers in special mode carry its offset (OP4's); the pitch envelope's
+    # first step sounds with the key-on
     special = fm.channel_fnum_offset if fm is not None else 0
-    pitch = (base + st.detune + special) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+    pitch = (base + st.detune + special + envelope_offset) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
     return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,

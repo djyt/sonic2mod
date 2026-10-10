@@ -127,7 +127,7 @@ adds composite instruments to the same catalogue.
 | `vgm/` | `reader.py` (`read_vgm` → `VgmLog`), `chipstate.py` (`ChipState.replay`: registers write by write), `frames.py` (`frame_log`: per V-int frame, every channel's state), `notes.py` (`note_starts`, `pitch_segments`), `cache.py` (`load_frames`, cached) |
 | `vgm/lift/` | `lift_song(frames, LiftOptions)` → `SmpsSong`: `tracks.py` (hits by frame), `tempo.py` (`infer_tempo`; a given modifier is where the song starts), `song.py` (`LIFTED_ASPECTS`: what a lift states).  Work in progress: `docs/todo/vgz_conversion.md` |
 | `source/load.py` | `read_song(path, options, rom_song, driver, fix_data_bugs)`: picks the front end by suffix; `read_dac(path)` |
-| `audit/frame_check.py` | `check_frames`: a song against its rip's frame log on each note's frame, no lift - pitch (detune in), carriers' TL / attenuation with the envelope's first step, voice registers (the chip's bits); the rip's offset from the FM key-ons and its hold phase (the song's, or a frame early); drum tracks and silent PSG pitches left out.  `tools/vgm_frames.py` |
+| `audit/frame_check.py` | `check_frames`: a song against its rip's frame log on each note's frame, no lift - pitch (detune in), carriers' TL / attenuation with the envelope's first step, voice registers (the chip's bits); the rip's offset (within 2 frames of the FM key-ons', the one that matches the most notes) and its hold phase (the song's, or a frame early); drum tracks and silent PSG pitches left out.  `tools/vgm_frames.py` |
 | `smps/asm_writer.py` | `write_asm`: a `SongCode` back to SMPS2ASM text the parser reads into the same song |
 
 How the asm is spelled and how the parser reads it: `docs/smps_format.md`.

@@ -167,11 +167,22 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   sections), the rest `$C1` / `$AF`.  `vgm_lift` misreads the tempo-3 songs' holds as tempo
   changes: `vgm_frames` is the yardstick here.
 
-### Phase 3: drums
-- [ ] 3.1 Refactor 2.1.5 (Golden Axe byte-identical).
-- [ ] 3.2 The drum reader: each drum byte's FM units and PSG part, frame by frame, from the
-  records and the selection code (`$0CC0`, `$0DFE`; read it exactly: `$0D2C` loads `$0BF0` either way).
-- [ ] 3.3 Against the rips' FM3 / PSG3 / noise frames: every hit.
+### Phase 3: drums (done 2026-10-10, `276699a`)
+- [x] 3.1 The drum model: an FmFrame's word per operator and key mask (special mode), an FmDrum's
+  PSG part frame by frame; `render_frames` plays them, `render_psg_frames` the PSG part,
+  `generate_fm_drums` mixes it in (`fm_synthesis.drum_psg_db`).  Golden Axe byte-identical but for
+  one fix found here: `render_frames` dropped each register write's chip time (2 samples a write),
+  so drum frames ran 0.45 % short and sharp (1.8 % with four operators); its three cases' drum
+  samples changed, nothing else.
+- [x] 3.2 `sh2/drums.py`: each drum byte played as the driver does, every table found by the code
+  that reads it; D6 and D7 as heard; a register a list leaves out keeps what the other lists write
+  (OP2's D1L/RR `$4F`, every rip's).
+- [x] 3.3 Against the rips (a scratch check, each hit's own operators): keys, OP4's word and the PSG
+  part on every frame of every hit, but `$81` (drifting) and `$96` (a frame off from the start),
+  and 7 PSG frames in `$8A` / `$90`.
+- Open: `drum_psg_db` is unmeasured (0: a full PSG channel = one full carrier); measure it when
+  VGMPlay is back (Phase 4), else by ear.  A drum hit cuts the last on the drum track's MOD
+  channel, where the chip lets a unit ring on under a hit that does not retrigger it.
 
 ### Phase 4: convert and verify
 - [ ] 4.1 Every song converts; `vgm_pitch_audit`, `vgm_compare`, `measure_volumes --configs

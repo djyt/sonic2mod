@@ -57,7 +57,7 @@ sonic2mod/
   sfx/         offline SFX driver
   configs/     per-song YAML (+ settings.yaml); configs/moonwalker/ minimal configs
   tools/       analysis and audit utilities (vgm_*, mod_*, merge_survey, fold_csv, rom_import, ...)
-  tests/       regression suites + unit tests
+  tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
   docs/  output/  samples/  input/ (ROMs, not in git)  reference/ (gitignored)
 ```
 
@@ -76,7 +76,7 @@ Synthesis compiles `ym3438.c` / `sn76489.c` with gcc or MSVC on first use.
 ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
-python -m pytest tests/test_layers_units.py -q   # import layers (pyproject.toml [tool.importlinter]; or lint-imports)
+python -m pytest tests/test_layers.py -q   # import layers (pyproject.toml [tool.importlinter]; or lint-imports)
 ```
 
 ## Quick Usage
@@ -226,6 +226,7 @@ python tests/regression.py --all                       # every case
 python tests/regression.py --only title_screen moonwalker            # cases or groups
 python tests/regression.py --generate-baselines --only title_screen   # accept one song's change
 python -m pytest tests -q                              # unit tests (merge rules, detune, vgm, rom, ...)
+python -m pytest tests/core/merge -q                   # one package's unit tests
 ```
 
 **Workflow for any converter change:**

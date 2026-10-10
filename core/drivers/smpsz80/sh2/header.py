@@ -7,7 +7,7 @@ the driver's track RAM (Z80 $1839, a $30-byte slot each, in order; the SFX slots
       +2 divider        durations x it (every track of a song alike)
       +3 pointer.w      a Z80 address, little-endian
       +5 transposition  signed
-      +6 pitch envelope (2.3; 0: none)
+      +6 pitch envelope (0: none; envelopes.py)
       +7 voice          not loaded as the song starts: a track sets its own ($EF)
       +8 volume         added to the carriers' TL
 
@@ -48,7 +48,7 @@ _DRUM_PSG = "PSG3"
 _MUSIC_SLOTS = len(HEADER_SH2.fm_slots) + 1
 
 _RECORD = 9
-_FLAGS, _CHANNEL, _DIVIDER, _POINTER, _TRANSPOSITION, _VOLUME = 0, 1, 2, 3, 5, 8
+_FLAGS, _CHANNEL, _DIVIDER, _POINTER, _TRANSPOSITION, _PITCH_ENVELOPE, _VOLUME = 0, 1, 2, 3, 5, 6, 8
 _PLAYS = 0x80
 _NEVER_HOLDS = 0                       # tempo 0: the counter never runs out
 
@@ -106,7 +106,8 @@ def read_track_list(memory: SoundMemory, address: int) -> RomHeader:
         tracks[start] = expected.channel_type
         header.channels.append(SmpsChannelHeader(channel_type=expected.channel_type, label=track_label(start),
                                                  chip_channel=chip, pitch_offset=signed_byte(memory.byte(at + _TRANSPOSITION)),
-                                                 volume=memory.byte(at + _VOLUME)))
+                                                 volume=memory.byte(at + _VOLUME),
+                                                 pitch_envelope=memory.byte(at + _PITCH_ENVELOPE)))
     header.fm_count = len(header.channels)
     return RomHeader(header, memory.tables.voices, tracks)
 

@@ -8,9 +8,11 @@ in the driver the 68k loads (../program.py), not by one game's addresses.
              ld hl,INDEX: a tempo byte, then a track list's address, per song from $81.  The tempo
              table runs into the index: as many songs as it has bytes
     voices   the voice flag's: ld (ix+7),a / push de / ld hl,VOICES / call
+    pitch envelopes   ex de,hl / ld hl,ENVELOPES / call: the FM's and the PSG's frequency updates
     SFX      in Z80 RAM, from $A0: not read (music only)
 
-    Space Harrier II   bank $10000; tempos $87E3, index $87FC (25 songs, $81-$99), voices $883A
+    Space Harrier II   bank $10000; tempos $87E3, index $87FC (25 songs, $81-$99), voices $883A,
+                       pitch envelopes $863B
 """
 
 from __future__ import annotations
@@ -41,6 +43,7 @@ _FIRST_BANK_BIT = 15
 _SONG_LOADER = re.compile(rb"\xD6\x81\xF8\xF5\xCD..\xF1\x06\x00\x4F\x21(..)\x09\xF5\x7E\x32..\x32..\x11..\x21(..)",
                           re.DOTALL)
 _SET_VOICE = re.compile(rb"\xDD\x77\x07\xD5\x21(..)\xCD", re.DOTALL)
+_PITCH_ENVELOPES = re.compile(rb"\xEB\x21(..)\xCD", re.DOTALL)
 
 
 @lru_cache(maxsize=8)
@@ -51,10 +54,11 @@ def driver_tables(rom: RomImage) -> DriverTables:
     window = BankedZ80Memory(rom, bank)
     tempos, index = (window.rom_address(z80_word(operand, 0)) for operand in _one(_SONG_LOADER, z80, "song loader").groups())
     voices = window.rom_address(z80_word(_one(_SET_VOICE, z80, "voice flag").group(1), 0))
+    envelopes = window.rom_address(_one_operand(_PITCH_ENVELOPES, z80, "pitch envelope table"))
     songs = index - tempos
     if not 0 < songs <= _FIRST_SFX - _FIRST_MUSIC:
         raise RomError(f"tempos ${tempos:X}, index ${index:X}: not a tempo per song before the index")
-    return DriverTables(bank, tempos, index, songs, voices)
+    return DriverTables(bank, tempos, index, songs, voices, envelopes)
 
 
 def sh2_memory(image: RomImage) -> Sh2Memory:
@@ -100,6 +104,14 @@ def _bank_run(z80: bytes, at: int) -> int | None:
     if len(bits) < _BANK_BITS or z80[at:at + len(_BANK_WRITE)] == _BANK_WRITE:
         return None
     return sum(bit << (_FIRST_BANK_BIT + i) for i, bit in enumerate(bits))
+
+
+def _one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str) -> int:
+    """The one table every read of `pattern` names (a driver may read it in several places)."""
+    found = {z80_word(match.group(1), 0) for match in pattern.finditer(z80)}
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not a Space Harrier II driver")
+    return found.pop()
 
 
 def _one(pattern: re.Pattern[bytes], z80: bytes, what: str) -> re.Match[bytes]:

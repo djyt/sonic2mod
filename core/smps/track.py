@@ -20,6 +20,7 @@ from .effects import (
     Pan,
     PsgForm,
     PsgVoice,
+    SetPitchEnvelope,
     SetVoice,
     SetVol,
     SmpsEffect,
@@ -31,7 +32,7 @@ class TrackState:
     """Mutable track state, advanced one coordination flag at a time.  Unknown flags are ignored."""
 
     __slots__ = ("att", "detune", "envelope", "fill", "hard_panned", "is_psg", "modulation",
-                 "modulation_on", "noise_form", "pan", "psg_read", "tl", "transpose", "voice")
+                 "modulation_on", "noise_form", "pan", "pitch_envelope", "psg_read", "tl", "transpose", "voice")
 
     def __init__(self, *, is_psg: bool, psg_read: tuple[int, ...], transpose: int = 0, volume: int = 0) -> None:
         self.is_psg = is_psg
@@ -48,6 +49,7 @@ class TrackState:
         self.fill = 0                       # smpsNoteFill frames, 0 = off
         self.modulation: tuple[int, ...] | None = None   # smpsModSet (wait, speed, delta, steps)
         self.modulation_on = False          # smpsModSet / smpsModOn on, smpsModOff off
+        self.pitch_envelope = 0             # SetPitchEnvelope's index (PlaybackRules.pitch_envelopes); 0 none
 
     @classmethod
     def for_channel(cls, channel: SmpsChannel) -> TrackState:
@@ -92,6 +94,8 @@ class TrackState:
                 self.modulation_on = True
             case ModOff():
                 self.modulation_on = False
+            case SetPitchEnvelope(index=index):
+                self.pitch_envelope = index
 
     def _set_level(self, level: int) -> None:
         """The track's attenuation (PSG) or TL offset (FM), clamped to what the chip reads."""

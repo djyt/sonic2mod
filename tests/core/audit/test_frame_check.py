@@ -37,8 +37,10 @@ class StreetsOfRage(unittest.TestCase):
         self.assertEqual(fm, 78)                    # every FM attack's voice read
 
     def test_the_offset_where_the_rip_starts_late(self):
+        # The first key-ons say 39; 38 matches every attacking note (39: 48 PSG levels off)
         song = read_rom_song(RomImage.load(STREETS_OF_RAGE_ROM), 0x91, fix_data_bugs=False)
-        self.assertEqual(check_frames(song, load_frames(STREETS_OF_RAGE_RIPS / "16 - Good Ending.vgz")).offset, 39)
+        check = check_frames(song, load_frames(STREETS_OF_RAGE_RIPS / "16 - Good Ending.vgz"))
+        self.assertEqual((check.offset, check.ok), (38, True))
 
 
 @needs_golden_axe_rips

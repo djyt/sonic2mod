@@ -26,7 +26,7 @@ class SpaceHarrier2(unittest.TestCase):
 
     def test_the_bank_and_the_tables(self):
         # Of the two 9-write runs, $10000's: the other maps $C00000 (the PSG, through the window)
-        self.assertEqual(driver_tables(self.rom), DriverTables(0x10000, 0x107E3, 0x107FC, 25, 0x1083A))
+        self.assertEqual(driver_tables(self.rom), DriverTables(0x10000, 0x107E3, 0x107FC, 25, 0x1083A, 0x1063B))
 
     def test_the_music_index(self):
         index = locate_sh2(self.rom)

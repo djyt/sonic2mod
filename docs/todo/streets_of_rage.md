@@ -441,7 +441,10 @@ a song pass (the `run_out` precedent).
   loop spans whole LFO cycles (`find_sustain_loop(cycle=)`: `$8B`'s $0C loops 150 ms, one cycle at
   6.6 Hz, not 31 ms).  Not modelled: a jump clears B4's RAM copy (pan and LFO) for the next voice
   set; every song writes `$FC` at its loop's start.  The render cache now keys a voice's special
-  mode and LFO (5.1's copies had been served their base voice's renders).
+  mode and LFO (5.1's copies had been served their base voice's renders).  `$90` then needed 36
+  slots: a minimal config plays the least played copies as their plain voice until it fits
+  (`copy_no_slot`, 5 copies).  Banking its DAC samples frees 2 at most (3 samples, finetunes 6, 2,
+  -3: a bank has one).
 - [ ] 5.3 Vibrato against `vgm_compare`'s vibrato rate and depth.
 
 ### Phase 6: close

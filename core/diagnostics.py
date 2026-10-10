@@ -17,6 +17,7 @@ class WarningKind(StrEnum):
     MISSING_SOURCE = 'missing_source'               # a channel's source is not in the song
     SYNTH_ROOT_AMBIGUOUS = 'synth_root_ambiguous'   # an entry's low note plays at several chip pitches
     DETUNE_NO_SLOT = 'detune_no_slot'               # detune variants with no free slot
+    COPY_NO_SLOT = 'copy_no_slot'                   # voice copies (special mode, LFO) a minimal config plays as their voice
     # samples
     RATE3_SYNTH_ROOT = 'rate3_synth_root'           # a rate-3 synth_root outside the driver's PSG table
     NOISE_ENVELOPES = 'noise_envelopes'             # one noise sample for several envelopes

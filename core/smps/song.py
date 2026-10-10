@@ -171,6 +171,9 @@ class SmpsVoice:
     fnum_offsets: tuple[int, ...] | None = None
     # The hardware LFO the voice plays under (a copy the walk makes: core/smps/lfo.py).  None: none
     lfo: FmLfo | None = None
+    # A copy in special mode or under the LFO: the voice it is without them (what it plays as when
+    # a MOD runs out of slots: core.plan.derive).  None: no such copy
+    plain: int | None = None
 
     def operator_values(self, field_: VoiceField) -> list[int]:
         """One field's four operator values; a field the voice leaves out, or a value it leaves

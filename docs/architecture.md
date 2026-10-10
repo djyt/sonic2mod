@@ -234,6 +234,7 @@ the song and config, until the slots reserved for sample banks match what the ba
 | `smps2mod.py` | `SmpsToModConverter`.  Public to the config tools: `prepare_song()`, `level_baselines()`, `pan_law_db`, `pattern_of_tick()`, `last_pattern()`, `tick_span_secs()`, `sample_secs()`; to the CLI: `convert()`, `warnings`, `infos`, `sample_sources()` |
 | `fm_drums.py` | `drum_rings`: how long each FM drum is heard (a hit to the drum track's next): its render's cap |
 | `level_plan.py` | `LevelPlanner`: baked levels per instrument, FM render levels; `fm_tl_to_mod`, `psg_att_to_mod`, `modal_level` |
+| `samples.py` | `SampleInstaller`: one pass's samples - FM, FM drums and PSG rendered, the rest loaded, the DAC drums saturated, mix-only sources kept aside; their loops, release rates, rates and unquantised renders for the rest of the pass |
 | `sustain_plan.py` | `SustainPlanner`: `sustain_duration: auto` per instrument, `sustain_short` warnings |
 | `channel_writer/` | `ChannelWriter` (`writer.py`): one channel's cells — note-ons, cuts, `3FF`, `9xx`, `Cxx`; `ColumnRouter` per-pattern columns, `Levels` volumes, `Modulation` `4xy` / slides, `Fades` release / decay slides, `Cells` row addressing, `EDx` placement, `E1x` / `E2x` |
 | `vibrato.py` | `VibratoSpeed`, `vibrato_depth`: `smpsModSet` → `4xy` |

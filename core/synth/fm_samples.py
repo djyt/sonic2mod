@@ -1,4 +1,4 @@
-"""YM2612 sample generator — Segment 4 of the YM2612 synthesis pipeline.
+"""YM2612 sample generator: every FM instrument of a song, rendered (fm_render) for the MOD.
 
 Renders every FM instrument in the song's catalogue (core.plan.instruments.fm_catalogue: the
 entry each MOD instrument is rendered for, and its layers) with render_layers, and returns
@@ -6,33 +6,23 @@ entry each MOD instrument is rendered for, and its layers) with render_layers, a
 
 Public API::
 
-    from ym2612.sample_generator import generate_fm_samples
+    from core.synth import generate_fm_samples
 
     samples = generate_fm_samples(song, config, synth)
     # samples = {inst_num: (pcm_bytes, target_rate_hz), ...}
-
-Usage (smoke test)::
-
-    python ym2612/sample_generator.py
 """
 
 from __future__ import annotations
 
-import dataclasses
 import functools
 import math
-import sys
 import threading
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-_HERE = Path(__file__).parent
-if str(_HERE.parent) not in sys.path:
-    sys.path.insert(0, str(_HERE.parent))
-
-from core.audio import (
+from ..audio import (
     SustainLoop,
     apply_loop,
     condition_render,
@@ -40,21 +30,20 @@ from core.audio import (
     find_sustain_loop,
     full_scale_int8,
     heard_padding,
-    int8_to_raw16,
     peak,
     probe_secs,
     release_rate_db_s,
 )
-from core.audio import trim_trailing_silence as _trim_trailing_silence
-from core.chips import fm_frequency_hz
-from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, find_settings, load_settings
-from core.mod import max_sustain_secs
-from core.plan import FmDrumInstrument, FmInstrument, fm_catalogue
-from core.render_cache import RenderCache, code_salt
-from core.smps import SmpsSong, SmpsVoice, VoiceField
-from ym2612.build import get_lib_path
-from ym2612.renderer import note_to_fnum_block, note_to_freq, render_frames, render_layers
-from ym2612.wrapper import OPN2
+from ..audio import trim_trailing_silence as _trim_trailing_silence
+from ..chips import fm_frequency_hz
+from ..chips.ym2612 import OPN2
+from ..chips.ym2612.build import get_lib_path
+from ..config import ConversionConfig, SynthesisSettings
+from ..mod import max_sustain_secs
+from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
+from ..render_cache import RenderCache, code_salt
+from ..smps import SmpsSong, SmpsVoice
+from .fm_render import note_to_fnum_block, note_to_freq, render_frames, render_layers
 
 # ---------------------------------------------------------------------------
 # Render jobs and worker chips
@@ -89,10 +78,11 @@ _worker = threading.local()
 @functools.cache
 def _render_salt() -> str:
     """What a chip render depends on besides its inputs: the emulator and the Python it runs through
-    (this package, the resampler and PCM helpers, the driver's tables, the voice's operator bytes)."""
-    core = _HERE.parent / "core"
-    return code_salt([Path(get_lib_path()), *_HERE.glob("*.py"), core / "audio" / "resample.py",
-                      core / "audio" / "pcm.py", core / "smps" / "driver_tables.py", core / "smps" / "song.py"])
+    (the device, the FM renderer, the resampler and PCM helpers, the driver's tables, the voice's operator bytes)."""
+    core = Path(__file__).resolve().parent.parent
+    return code_salt([Path(get_lib_path()), *(core / "chips" / "ym2612").glob("*.py"), *(core / "synth").glob("fm_*.py"),
+                      core / "audio" / "resample.py", core / "audio" / "pcm.py", core / "smps" / "driver_tables.py",
+                      core / "smps" / "song.py"])
 
 
 def _voice_key(voice: SmpsVoice) -> tuple:
@@ -454,88 +444,3 @@ def generate_fm_drums(
 # ---------------------------------------------------------------------------
 # Smoke test
 # ---------------------------------------------------------------------------
-
-def _smoke_test() -> None:
-    """Render voice 1 (FM2 bass) from Title Screen using a minimal fake config."""
-
-    # Replicate voice 1 from renderer.py smoke test
-    voice1 = SmpsVoice(
-        index=1,
-        algorithm=0x00,
-        feedback=0x04,
-        operators={
-            VoiceField.DETUNE:      (0x03, 0x03, 0x03, 0x03),
-            VoiceField.MULTIPLE:  (0x01, 0x00, 0x05, 0x06),
-            VoiceField.RATE_SCALE:   (0x02, 0x02, 0x03, 0x03),
-            VoiceField.ATTACK_RATE:  (0x1F, 0x1F, 0x1F, 0x1F),
-            VoiceField.AMP_MOD:      (0x00, 0x00, 0x00, 0x00),
-            VoiceField.DECAY_RATE_1:  (0x06, 0x09, 0x06, 0x07),
-            VoiceField.DECAY_RATE_2:  (0x08, 0x06, 0x06, 0x07),
-            VoiceField.DECAY_LEVEL:  (0x0F, 0x01, 0x01, 0x02),
-            VoiceField.RELEASE_RATE: (0x0F, 0x0F, 0x0F, 0x0F),
-            VoiceField.TOTAL_LEVEL:  (0x00, 0x13, 0x37, 0x19),
-        },
-    )
-
-    # Minimal fake SmpsSong
-    from core.drivers.reference import SONIC1_RULES
-    from core.smps import SmpsSong, SmpsSongHeader
-    fake_song = SmpsSong(
-        header=SmpsSongHeader(voice_label="test"),
-        voices=[voice1],
-        rules=SONIC1_RULES,
-    )
-
-    # Minimal ConversionConfig with voice_map for voice 1: the Title Screen's bass range, rendered
-    # at its low note (a real conversion derives synth_root from the song first)
-    from core.mod import ModNote
-    from core.smps import parse_smps_note
-    fake_config = ConversionConfig()
-    fake_config.voice_map = {
-        1: [
-            InstrumentRange(low=parse_smps_note("A2"), high=parse_smps_note("D4"), mod_instrument=5,
-                            root=ModNote.A1),
-        ]
-    }
-
-    synth = dataclasses.replace(load_settings(find_settings())[0], sustain_duration=1.5)   # a fixed hold, not auto
-
-    print("Smoke test — generate_fm_samples(voice=1/FM2-bass, A2-D4 at root A1)...")
-    print(f"  amiga_clock = {synth.amiga_clock}")
-    print(f"  sustain     = {synth.sustain_duration}s, release = {synth.release_padding}s")
-    print()
-
-    samples = generate_fm_samples(fake_song, fake_config, synth, verbose=True)
-
-    if not samples:
-        print("  ERROR: no samples generated")
-        sys.exit(1)
-
-    print()
-    print(f"  Generated {len(samples)} instrument(s)")
-    for inst_num, (pcm, rate) in samples.items():
-        print(f"    instrument {inst_num}: {len(pcm)} bytes @ {rate} Hz")
-
-    # Write instrument 5 as 16-bit raw for Audacity
-    if 5 in samples:
-        pcm, rate = samples[5]
-        out_path = Path(__file__).parent.parent / "output" / "sample_gen_test.raw"
-        n = int8_to_raw16(out_path, pcm)
-
-        print()
-        print(f"  Written: {out_path}  ({n} bytes, 16-bit for Audacity)")
-        print()
-        print("Load in Audacity:  File > Import > Raw Data")
-        print("  Encoding  : Signed 16-bit PCM")
-        print("  Byte order: Little-endian")
-        print("  Channels  : 1 (Mono)")
-        print(f"  Sample rate: {rate}")
-        print()
-        print("  SUCCESS")
-    else:
-        print("  WARNING: instrument 5 not in output")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    _smoke_test()

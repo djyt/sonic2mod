@@ -1,11 +1,11 @@
-"""SN76489 PSG note renderer.
+"""SN76489 PSG note renderer: a divider or a noise mode through the chip (core.chips.sn76489) to PCM.
 
 Renders a tone at the divider the driver writes (or a noise config) into 8-bit signed mono PCM
 bytes ready to insert into a ModSample.  note_to_psg_n finds a note's divider in a driver's table.
 
 Public API::
 
-    from sn76489.renderer import (
+    from core.synth.psg_render import (
         render_psg_tone, render_psg_tone_raw,
         render_psg_noise, render_psg_noise_raw,
         note_to_psg_n,
@@ -13,30 +13,15 @@ Public API::
 
     pcm, rate = render_psg_tone(note_to_psg_n(mod_note_index, psg_frequencies))
     pcm, rate = render_psg_noise(white=True, noise_rate=0)
-
-Usage (smoke test)::
-
-    python sn76489/renderer.py
 """
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-from core.chips import MD_PSG_CLOCK
-
-_HERE = Path(__file__).parent
-if str(_HERE.parent) not in sys.path:
-    sys.path.insert(0, str(_HERE.parent))
-
-from core.audio import DEFAULT_TAPS, normalize_int8, resample, write_raw16
-from core.audio import to_mono as _to_mono
-from core.config import DEFAULT_PSG_OVERSAMPLE
-from sn76489.wrapper import SN76489
-
-# Import PERIOD_TABLE for target_rate calculation
-
+from ..audio import DEFAULT_TAPS, normalize_int8, resample
+from ..audio import to_mono as _to_mono
+from ..chips import MD_PSG_CLOCK
+from ..chips.sn76489 import SN76489
+from ..config import DEFAULT_PSG_OVERSAMPLE
 
 # ---------------------------------------------------------------------------
 # Public helper
@@ -297,58 +282,3 @@ def render_psg_noise(
 # ---------------------------------------------------------------------------
 # Smoke test
 # ---------------------------------------------------------------------------
-
-def _smoke_test() -> None:
-    """Render C4 tone and white noise; write 16-bit raw files for Audacity."""
-    from core.drivers.reference import SONIC1_RULES
-
-    print("PSG renderer smoke test")
-    print("=======================")
-
-    # --- Tone: C4 ---
-    # ModNote index 0=C1, 12=C2, 24=C3, 36=B3 (out of range); use 24 = C3 (261.6 Hz)
-    tone_idx = 24   # C3
-
-    freq_hz = 440.0 * (2.0 ** ((tone_idx - 45) / 12.0))
-    n_val   = note_to_psg_n(tone_idx, SONIC1_RULES.psg_frequencies)
-    print(f"\nTone: note_idx={tone_idx}  freq={freq_hz:.1f} Hz  N={n_val}")
-
-    mono_tone, rate_tone = render_psg_tone_raw(n_val, sustain_secs=0.5, release_secs=0.1)
-    peak_tone = max(abs(v) for v in mono_tone) if mono_tone else 0
-    print(f"  Samples: {len(mono_tone)}  Rate: {rate_tone} Hz  Peak: {peak_tone}")
-
-    out_dir = Path(__file__).parent.parent / "output"
-    out_dir.mkdir(exist_ok=True)
-
-    # Write as 16-bit
-    path_tone = out_dir / "psg_tone_test.raw"
-    n_tone = write_raw16(path_tone, mono_tone)
-    print(f"  Written: {path_tone}  ({n_tone} bytes, 16-bit signed mono)")
-
-    # --- Noise: white, rate 0 ---
-    print("\nNoise: white=True  rate=0")
-    mono_noise, rate_noise = render_psg_noise_raw(white=True, noise_rate=0,
-                                                   sustain_secs=0.3, release_secs=0.05)
-    peak_noise = max(abs(v) for v in mono_noise) if mono_noise else 0
-    print(f"  Samples: {len(mono_noise)}  Rate: {rate_noise} Hz  Peak: {peak_noise}")
-
-    path_noise = out_dir / "psg_noise_test.raw"
-    n_noise = write_raw16(path_noise, mono_noise)
-    print(f"  Written: {path_noise}  ({n_noise} bytes, 16-bit signed mono)")
-
-    print()
-    if peak_tone > 0 and peak_noise > 0:
-        print("SUCCESS")
-        print()
-        print("Load in Audacity:  File > Import > Raw Data")
-        print("  Encoding   : Signed 16-bit PCM")
-        print("  Byte order : Little-endian")
-        print("  Channels   : 1 (Mono)")
-        print(f"  Sample rate: {rate_tone}")
-    else:
-        print("WARNING: one or both peaks are 0 — silence produced")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    _smoke_test()

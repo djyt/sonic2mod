@@ -145,7 +145,7 @@ octave, output is byte-identical.  The FM pitches quoted above — `synth_root: 
 "synthesised at C5" — are in the old convention, one octave above what the config says now.  The
 PSG `synth_root: A8` is unaffected.)*
 
-`tools/vgm_analyze._fnum_to_hz` and `ym2612/renderer.freq_to_fnum_block` both use
+`tools/vgm_analyze._fnum_to_hz` and `core/synth/fm_render.freq_to_fnum_block` both use
 `2^(20−block)`.  The chip — and the driver's own `MakeFMFrequency(f) = f·2^21/fs` — is
 `2^(21−block)`.  The analyzer therefore reports every FM pitch an octave high and the synthesiser
 renders an octave below the `synth_root` name; configs tuned from one against the other sound

@@ -90,6 +90,12 @@ class VoiceLayout:
         return len(self.groups) * OPERATORS if self.feedback_last else 0
 
 
+# SMPS's 25 bytes (Sonic 1's, OutRun's): feedback / algorithm, then each register's four operator
+# bytes, TL last
+SMPS_VOICE = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.KS_AR, OperatorReg.AM_D1R, OperatorReg.D2R,
+                          OperatorReg.D1L_RR, OperatorReg.TL))
+
+
 @dataclass(frozen=True)
 class TrackSlot:
     """A music header's DAC / FM entry: what the driver's track table makes of it."""

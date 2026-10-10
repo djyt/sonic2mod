@@ -28,12 +28,12 @@ Golden Axe song (its volume byte is not read).
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 
 from core.chips import split_freq_word
 from core.rom.flags import FlagKind, FlagSpec
 from core.rom.image import RomError, RomImage
+from core.rom.pattern import code_pattern
 from core.rom.voices import read_voices
 from core.smps import (
     FIRST_FLAG,
@@ -67,10 +67,22 @@ _INIT_DIVIDER = 2            # the init bytes: flags, channel, divider
 _WRAP_LOW, _WRAP_HIGH, _WRAP_STEP = 0x27E, 0x4FE, 0x580
 _WORD_MASK = 0xFFFF
 
-# ld de,init / ex de,hl / ldi x3 / dec a / ld hl,records / call nn / ld bc,6 / ldir / call nn /
-# ld a,(nn) / ld hl,voices / call
-_READ_DRUM = re.compile(rb"\x11(..)\xEB\xED\xA0\xED\xA0\xED\xA0\x3D\x21(..)\xCD..\x01\x06\x00\xED\xB0\xCD.."
-                        rb"\x3A..\x21(..)\xCD", re.DOTALL)
+_READ_DRUM = code_pattern("""
+    11 <w>      ld de,init
+    EB          ex de,hl
+    ED A0       ldi
+    ED A0       ldi
+    ED A0       ldi
+    3D          dec a
+    21 <w>      ld hl,records
+    CD ? ?      call
+    01 06 00    ld bc,6
+    ED B0       ldir
+    CD ? ?      call
+    3A ? ?      ld a,(nn)
+    21 <w>      ld hl,voices
+    CD          call
+""")
 
 
 def read_fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...],

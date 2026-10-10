@@ -10,6 +10,7 @@ these readers are driven by.
     variant.py  flags.py     the vocabulary: SmpsVariant, VoiceLayout, SoundIndex, DacSample;
     memory.py  fixes.py      flag specs; SoundMemory (how a driver reads pointers); RomFix
     image.py                 RomImage: the header, big-endian reads by address
+    pattern.py               code_pattern: a run of code to find, written as a listing
 
     image / memory / flags / fixes / grammar / variant  <-  readers
 """

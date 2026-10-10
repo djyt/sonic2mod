@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -128,6 +128,7 @@ chaos_emerald:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -163,7 +164,7 @@ chaos_emerald:
   inputs:
     configs/sonic_1/16_chaos_emerald.yaml: 702974097f19
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 continue_screen:
   argv:
   - convert.py
@@ -172,7 +173,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -293,6 +294,7 @@ continue_screen:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -328,7 +330,7 @@ continue_screen:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 continue_screen_lofi:
   argv:
   - convert.py
@@ -339,7 +341,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -460,6 +462,7 @@ continue_screen_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -495,7 +498,7 @@ continue_screen_lofi:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 continue_screen_lofi_merged:
   argv:
   - convert.py
@@ -507,7 +510,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -628,6 +631,7 @@ continue_screen_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -663,7 +667,7 @@ continue_screen_lofi_merged:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 continue_screen_merged:
   argv:
   - convert.py
@@ -673,7 +677,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -794,6 +798,7 @@ continue_screen_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -829,7 +834,7 @@ continue_screen_merged:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 credits:
   argv:
   - convert.py
@@ -838,7 +843,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -959,6 +964,7 @@ credits:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -994,7 +1000,7 @@ credits:
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 credits_rom:
   argv:
   - convert.py
@@ -1007,7 +1013,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1128,6 +1134,7 @@ credits_rom:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -1163,7 +1170,7 @@ credits_rom:
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 drowning:
   argv:
   - convert.py
@@ -1172,7 +1179,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1293,6 +1300,7 @@ drowning:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -1328,7 +1336,7 @@ drowning:
   inputs:
     configs/sonic_1/17_drowning.yaml: 81b857245faf
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 ending_theme:
   argv:
   - convert.py
@@ -1337,7 +1345,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1458,6 +1466,7 @@ ending_theme:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -1493,7 +1502,7 @@ ending_theme:
   inputs:
     configs/sonic_1/12_ending_theme.yaml: ee21c3728278
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 extra_life:
   argv:
   - convert.py
@@ -1502,7 +1511,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1623,6 +1632,7 @@ extra_life:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -1658,7 +1668,7 @@ extra_life:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 extra_life_lofi:
   argv:
   - convert.py
@@ -1669,7 +1679,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1790,6 +1800,7 @@ extra_life_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -1825,7 +1836,7 @@ extra_life_lofi:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 extra_life_lofi_merged:
   argv:
   - convert.py
@@ -1837,7 +1848,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1958,6 +1969,7 @@ extra_life_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -1993,7 +2005,7 @@ extra_life_lofi_merged:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 extra_life_merged:
   argv:
   - convert.py
@@ -2003,7 +2015,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2124,6 +2136,7 @@ extra_life_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -2159,7 +2172,7 @@ extra_life_merged:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 final_zone:
   argv:
   - convert.py
@@ -2168,7 +2181,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2289,6 +2302,7 @@ final_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -2324,7 +2338,7 @@ final_zone:
   inputs:
     configs/sonic_1/10_final_zone.yaml: 1816d8c10975
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 ga_conclusion:
   argv:
   - convert.py
@@ -2333,7 +2347,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2396,6 +2410,7 @@ ga_conclusion:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/type0fm/__init__.py
   - core/drivers/smpsz80/type0fm/drums.py
   - core/drivers/smpsz80/type0fm/layout.py
@@ -2452,6 +2467,7 @@ ga_conclusion:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -2487,7 +2503,7 @@ ga_conclusion:
   inputs:
     configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 ga_the_battle:
   argv:
   - convert.py
@@ -2496,7 +2512,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2559,6 +2575,7 @@ ga_the_battle:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/type0fm/__init__.py
   - core/drivers/smpsz80/type0fm/drums.py
   - core/drivers/smpsz80/type0fm/layout.py
@@ -2615,6 +2632,7 @@ ga_the_battle:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -2650,7 +2668,7 @@ ga_the_battle:
   inputs:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 ga_theme_of_thief:
   argv:
   - convert.py
@@ -2659,7 +2677,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2722,6 +2740,7 @@ ga_theme_of_thief:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/type0fm/__init__.py
   - core/drivers/smpsz80/type0fm/drums.py
   - core/drivers/smpsz80/type0fm/layout.py
@@ -2778,6 +2797,7 @@ ga_theme_of_thief:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -2813,7 +2833,7 @@ ga_theme_of_thief:
   inputs:
     configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 game_over:
   argv:
   - convert.py
@@ -2822,7 +2842,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2943,6 +2963,7 @@ game_over:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -2978,7 +2999,7 @@ game_over:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 game_over_lofi:
   argv:
   - convert.py
@@ -2989,7 +3010,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3110,6 +3131,7 @@ game_over_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3145,7 +3167,7 @@ game_over_lofi:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 game_over_lofi_merged:
   argv:
   - convert.py
@@ -3157,7 +3179,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3278,6 +3300,7 @@ game_over_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3313,7 +3336,7 @@ game_over_lofi_merged:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 game_over_merged:
   argv:
   - convert.py
@@ -3323,7 +3346,7 @@ game_over_merged:
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3444,6 +3467,7 @@ game_over_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3479,7 +3503,7 @@ game_over_merged:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 ghz_lofi:
   argv:
   - convert.py
@@ -3490,7 +3514,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3611,6 +3635,7 @@ ghz_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3646,7 +3671,7 @@ ghz_lofi:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 ghz_lofi_merged:
   argv:
   - convert.py
@@ -3658,7 +3683,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3779,6 +3804,7 @@ ghz_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3814,7 +3840,7 @@ ghz_lofi_merged:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 green_hill_zone:
   argv:
   - convert.py
@@ -3823,7 +3849,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3944,6 +3970,7 @@ green_hill_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -3979,7 +4006,7 @@ green_hill_zone:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 green_hill_zone_merged:
   argv:
   - convert.py
@@ -3989,7 +4016,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4110,6 +4137,7 @@ green_hill_zone_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -4145,7 +4173,7 @@ green_hill_zone_merged:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 green_hill_zone_rom:
   argv:
   - convert.py
@@ -4158,7 +4186,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4279,6 +4307,7 @@ green_hill_zone_rom:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -4314,7 +4343,7 @@ green_hill_zone_rom:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 invincibility:
   argv:
   - convert.py
@@ -4323,7 +4352,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4444,6 +4473,7 @@ invincibility:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -4479,7 +4509,7 @@ invincibility:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 invincibility_lofi:
   argv:
   - convert.py
@@ -4490,7 +4520,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4611,6 +4641,7 @@ invincibility_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -4646,7 +4677,7 @@ invincibility_lofi:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 invincibility_lofi_merged:
   argv:
   - convert.py
@@ -4658,7 +4689,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4779,6 +4810,7 @@ invincibility_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -4814,7 +4846,7 @@ invincibility_lofi_merged:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 invincibility_merged:
   argv:
   - convert.py
@@ -4824,7 +4856,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4945,6 +4977,7 @@ invincibility_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -4980,7 +5013,7 @@ invincibility_merged:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 lab_zone:
   argv:
   - convert.py
@@ -4989,7 +5022,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5110,6 +5143,7 @@ lab_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -5145,7 +5179,7 @@ lab_zone:
   inputs:
     configs/sonic_1/05_lab_zone.yaml: 28a70a07bc3d
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 marble_zone:
   argv:
   - convert.py
@@ -5154,7 +5188,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5275,6 +5309,7 @@ marble_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -5310,7 +5345,7 @@ marble_zone:
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 marble_zone_rom:
   argv:
   - convert.py
@@ -5323,7 +5358,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5444,6 +5479,7 @@ marble_zone_rom:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -5479,7 +5515,7 @@ marble_zone_rom:
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 mw_beat_it:
   argv:
   - convert.py
@@ -5488,7 +5524,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5609,6 +5645,7 @@ mw_beat_it:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -5644,7 +5681,7 @@ mw_beat_it:
   inputs:
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 mw_mr_big:
   argv:
   - convert.py
@@ -5653,7 +5690,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5774,6 +5811,7 @@ mw_mr_big:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -5809,7 +5847,7 @@ mw_mr_big:
   inputs:
     configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 mw_title:
   argv:
   - convert.py
@@ -5818,7 +5856,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5939,6 +5977,7 @@ mw_title:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -5974,7 +6013,7 @@ mw_title:
   inputs:
     configs/moonwalker/86_title.yaml: a4e39f30e91d
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 robotnik:
   argv:
   - convert.py
@@ -5983,7 +6022,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6104,6 +6143,7 @@ robotnik:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -6139,7 +6179,7 @@ robotnik:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 robotnik_lofi:
   argv:
   - convert.py
@@ -6150,7 +6190,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6271,6 +6311,7 @@ robotnik_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -6306,7 +6347,7 @@ robotnik_lofi:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 robotnik_lofi_merged:
   argv:
   - convert.py
@@ -6318,7 +6359,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6439,6 +6480,7 @@ robotnik_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -6474,7 +6516,7 @@ robotnik_lofi_merged:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 robotnik_merged:
   argv:
   - convert.py
@@ -6484,7 +6526,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6605,6 +6647,7 @@ robotnik_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -6640,7 +6683,7 @@ robotnik_merged:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 scrap_brain_zone:
   argv:
   - convert.py
@@ -6649,7 +6692,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6770,6 +6813,7 @@ scrap_brain_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -6805,7 +6849,7 @@ scrap_brain_zone:
   inputs:
     configs/sonic_1/07_scrap_brain_zone.yaml: a5555800ac10
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 special_stage:
   argv:
   - convert.py
@@ -6814,7 +6858,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6935,6 +6979,7 @@ special_stage:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -6970,7 +7015,7 @@ special_stage:
   inputs:
     configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 spring_yard_zone:
   argv:
   - convert.py
@@ -6979,7 +7024,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7100,6 +7145,7 @@ spring_yard_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7135,7 +7181,7 @@ spring_yard_zone:
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 stage_clear:
   argv:
   - convert.py
@@ -7144,7 +7190,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7265,6 +7311,7 @@ stage_clear:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7300,7 +7347,7 @@ stage_clear:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 stage_clear_lofi:
   argv:
   - convert.py
@@ -7311,7 +7358,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7432,6 +7479,7 @@ stage_clear_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7467,7 +7515,7 @@ stage_clear_lofi:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 stage_clear_lofi_merged:
   argv:
   - convert.py
@@ -7479,7 +7527,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7600,6 +7648,7 @@ stage_clear_lofi_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7635,7 +7684,7 @@ stage_clear_lofi_merged:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 stage_clear_merged:
   argv:
   - convert.py
@@ -7645,7 +7694,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7766,6 +7815,7 @@ stage_clear_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7801,7 +7851,7 @@ stage_clear_merged:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 star_light_zone:
   argv:
   - convert.py
@@ -7810,7 +7860,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7931,6 +7981,7 @@ star_light_zone:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7966,7 +8017,7 @@ star_light_zone:
   inputs:
     configs/sonic_1/06_star_light_zone.yaml: 04ab4d7aca07
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 title_screen:
   argv:
   - convert.py
@@ -7975,7 +8026,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8096,6 +8147,7 @@ title_screen:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -8131,7 +8183,7 @@ title_screen:
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 title_screen_merged:
   argv:
   - convert.py
@@ -8141,7 +8193,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8262,6 +8314,7 @@ title_screen_merged:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -8297,7 +8350,7 @@ title_screen_merged:
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09
 title_screen_rom:
   argv:
   - convert.py
@@ -8310,7 +8363,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: d0bd6d8-dirty
+  commit: 276699a-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8431,6 +8484,7 @@ title_screen_rom:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -8466,4 +8520,4 @@ title_screen_rom:
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: 74f633303b09

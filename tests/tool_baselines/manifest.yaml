@@ -1150,7 +1150,7 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: 2d56755
+  commit: 276699a-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -1269,7 +1269,7 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 2d56755
+  commit: 276699a-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e

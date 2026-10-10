@@ -4,7 +4,7 @@
 name: Continue Screen
 input_file: "input/sonic_1/Mus90 - Continue Screen.asm"
 output_file: output/sonic_1/18_continue_screen.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true
 target_speed: 5            # 214.29 BPM, written 214 (0.13 % slow, ~12 ms by the end of a song played once):

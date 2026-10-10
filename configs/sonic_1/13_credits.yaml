@@ -25,7 +25,7 @@
 name: Credits
 input_file: "input/sonic_1/Mus91 - Credits.asm"
 output_file: output/sonic_1/13_credits.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true
 target_speed: 2

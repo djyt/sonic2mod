@@ -136,7 +136,7 @@ def _write(rom: RomImage, index: SoundIndex, ids: list[int], out_dir: Path, fixe
 
 
 def _write_dac(rom: RomImage, out_dir: Path, variant: SmpsVariant) -> None:
-    """Each DAC sample as signed 8-bit .raw (what samples/ holds), and a manifest of their rates;
+    """Each DAC sample as signed 8-bit .raw (what input/sonic_1/samples/ holds), and a manifest of their rates;
     a pitched copy (Sonic 1's $88-$8B timpani, Moonwalker's $88-$97) shares its sample's file."""
     out_dir.mkdir(parents=True, exist_ok=True)
     samples = dac_samples(rom, variant)

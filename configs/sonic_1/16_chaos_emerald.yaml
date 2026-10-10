@@ -8,7 +8,7 @@
 name: Chaos Emerald
 input_file: "input/sonic_1/Mus93 - Get Emerald.asm"
 output_file: output/sonic_1/16_chaos_emerald.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true
 target_speed: 4             # 250 BPM exactly; speed 3 gave 187.5 → 188 (+0.27 %)

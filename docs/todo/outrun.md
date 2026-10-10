@@ -235,14 +235,17 @@ is decision T5.
 
 `core/vgm/frames.py` cuts a log into fixed V-int windows (`VGM_SAMPLE_RATE // header.rate`: 735)
 at the commonest burst phase.  A Timer A rip's frame is 349.4 samples, not a whole number.  But
-the rip marks every frame itself: each update reloads the timer (`$25`, `$24`, then `$27 = $1F`,
-called from `$01A8` early in the update).  Its register writes follow 225-325 samples later, before
-the next reset.  So:
-- **a frame log for a Timer A driver is cut at each `$27` reset write** (frame n = from reset n to
-  reset n + 1), not at a fixed period.  `FrameLog.frame_of` becomes a lookup in the frame starts;
-  V-int logs keep the fixed cut.  The tools that read frames (`vgm_frames`, `vgm_lift`, glitches,
-  realign) work unchanged on frames.  Choosing the cut needs the driver (the rips' tools know it
-  from the config's song).
+the rip marks every frame itself: each update ends by reloading the timer (`$25`, `$24`, then
+`$27 = $1F`, from `$01A8` after the tracks: corrected in Phase 2, the probe had it first).  So:
+- **a frame log for a Timer A driver is cut after each `$27` reset write** (frame n = the writes
+  after reset n - 1 up to reset n; `FrameCut.TIMER_A`, `FrameLog.cuts`), by the writes' order, not
+  their samples (a ripper logs its pre-roll updates all at sample 0: Last Wave's 512).  V-int logs
+  keep the fixed cut.  The tools that read frames (`vgm_frames`, `vgm_lift`, glitches) work on
+  frames unchanged; `core.audit.frame_cut(song)` picks the cut from the song's clock (`core/vgm`
+  knows no driver).  Realigning a cut log is not needed: the frames are the updates the driver
+  ran, whenever each began.  An update longer than a frame swallows the next overflow (the reset
+  clears the flag: ~700-sample gaps as a song loads), and late polls jitter the resets (458 then
+  244); neither moves a frame against the song.  No rip shows a glitch (`--glitches`).
 - **The rips run slow.**  Passing Breeze: a mean 350.39 samples a frame against the chip's 349.38
   (0.29 %, ~0.9 s over the song).  Likely the ripping emulator's (a timer stepped per scan line
   would round 124.6 lines up to 125: 350.6), not the hardware's.  The chip's own behaviour on these
@@ -287,14 +290,37 @@ the next reset.  So:
 - [x] 1.4 `rom_import.py`, `song_dump.py`; read snapshot `read_outrun`; unit tests.
 
 ### Phase 2: timing and pitch
-- [ ] 2.1 `update_clock = TimerA(value)` from the ROM's init write (§3.2), `$EA` / `$EB` refused;
-  the TempoWait phase read from the code, the rips of `$83` and `$84` (the songs with a tempo) a
-  check.
-- [ ] 2.2 Frame logs cut at the Timer A reset writes for a Timer A driver (§3.6); `vgm_frames` and
-  `vgm_lift` on the 5 rips.
-- [ ] 2.3 The note labels from the frequency each table word plays (`$81` = `$284`, block 0);
-  `vgm_pitch_audit` a check.
-- [ ] 2.4 Match the songs to the rips; `rips.yaml`.
+- [x] 2.1 `update_clock = TimerA(value)` from the word the update reloads Timer A from (`$01A8`:
+  `ld hl,($1C04)`, the 68k's write `$025A`), `$EA` / `$EB` refused.  Tempo: the queue loads a song
+  after the update's tempo check, its tracks read in the same update (the counter at 1): the first
+  hold at frame m, `tempo_phase` 1 (Type 0 FM's).  `$83`'s rip: phase 1 matches every note at the
+  song's own phase, phase 0 misses 349; `$84`'s cannot tell.
+- [x] 2.2 Frame logs cut after the Timer A reset writes (§3.6); the rips run at 125.84 frames a
+  second (0.30 % under the chip's 126.22).  `vgm_frames`: every attacking note of all 5 songs as its
+  rip's frame (FM pitch, level, voice; PSG level; PSG3's pitch unlogged, below), the tied ones too.
+  `vgm_lift`: FM the same in 4; `$83` FM3's last note cut by the log's end; the DAC: Phase 3; PSG
+  "unfinished", as every game's lift.  What the frame check found, read in the driver and modelled:
+  - a flag between a note and its duration ends the note: `$BB $E7 $3C` is `$BB` at the last
+    duration, then a tie of `$3C` (`$0341`; `$85` a note late from there).  The walk's, for every
+    driver (`core/smps/code.py`): Sonic 1's `FMDoNext` reads the same way.  No other case moved.
+  - FM: the word and its detune kept within an octave (`$0563`): `TrackRules.octave_wrap`
+    (`OctaveWrap`, Golden Axe's drum slides on it too), in playback and in the renders.
+  - FM: a TL byte's bit 7 marks the operators the track volume reaches (`$0D17`):
+    `VoiceLayout.volume_flags`, `SmpsVoice.volume_slots`.  The carriers in every voice but `$32`
+    (`$83`, `$85`), which marks OP1 too.
+  - PSG: a tie plays the envelopes on from the attack (`$0391`: a tie skips the resets):
+    `TrackRules.tie_restarts_envelope` (Streets of Rage's rips: a tie restarts them).
+  The checker read the rip's divider 0 as 1 but not the song's (now both: Streets of Rage's `$8F`
+  one miss fewer), and a tied PSG note at the first step, not at the step it plays.
+- [x] 2.3 The labels stay SMPS names, as Space Harrier II's (the samples render at the table's
+  word, so the MOD sounds the table's pitch; the pitch audit adds the word's cents): `$81` names C0
+  and sounds C#0.  `vgm_pitch_audit` on `$84`: every FM note within 35 cents.  The others convert
+  once their DAC samples are read (Phase 3).
+- [x] 2.4 Matched by every FM channel's first 40 pitches: rip order is song order (`$81` Magical
+  Sound Shower ... `$85` Step on Beat).  `configs/outrun/`: minimal configs, `rips.yaml` with the
+  rips' proven faults: PSG3's tone writes unlogged (a new fault kind, `unlogged`: the ripper drops
+  writes to a muted tone channel, which rate-3 noise follows), Last Wave's FM5 the waves (sound
+  `$97`, an SFX the song starts with `$FF $02`; the rip's loop is the waves' alone).
 
 ### Phase 3: DAC
 - [ ] 3.1 `dac.py` on the shared `PcmTable` (2.1.4): the 13 samples, DPCM and PCM; each rate from
@@ -315,5 +341,5 @@ the next reset.  So:
   no source found classes the Mega Drive port's driver.  Renamed for its SMPS class if one is found
   (ValleyBell's SMPS research, SMPSPlay), or for the family once a second game reads with it.
 
-### Decisions (open)
-- SFX (in Z80 RAM): music only, as Space Harrier II (D4 there)?
+- **D2 Music only** (2026-10-10): the SFX (in Z80 RAM) are not read, as Space Harrier II's.  A song's
+  own `$FF $02` (Last Wave's waves) is dropped with them.

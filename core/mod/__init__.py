@@ -10,6 +10,7 @@
 
 from .file import (
     PAL_AMIGA_CLOCK,
+    ROWS_PER_PATTERN,
     ModFile,
     ModImage,
     ModSample,
@@ -34,6 +35,7 @@ __all__ = [
     "MOD_NOTE_MAP",
     "PAL_AMIGA_CLOCK",
     "PERIOD_TABLE",
+    "ROWS_PER_PATTERN",
     "TICK_SECS_AT_1_BPM",
     "ModFile",
     "ModImage",

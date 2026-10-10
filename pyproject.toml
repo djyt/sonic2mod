@@ -210,6 +210,12 @@ containers = ["core.rom"]
 layers = ["header | tracks | voices | envelopes | z80", "variant", "grammar", "flags | fixes | memory | kosinski", "image"]
 
 [[tool.importlinter.contracts]]
+name = "core.convert.channel_writer: the walk above its parts above the cells"
+type = "layers"
+containers = ["core.convert.channel_writer"]
+layers = ["writer", "router | levels | modulation | fades | note_warnings", "note", "cells", "context"]
+
+[[tool.importlinter.contracts]]
 name = "chips: ym2612 and sn76489 independent"
 type = "independence"
 modules = ["ym2612", "sn76489"]

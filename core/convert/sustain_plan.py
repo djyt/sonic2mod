@@ -53,7 +53,7 @@ class SustainPlanner:
 
     def _slides_after(self, chan_cfg, start: int, rest: int, merge: MergePlan | None) -> bool:
         """Whether the rest at `rest` ending a note that started at `start` is written as a
-        release slide, as core.convert.channel_writer writes it (ChannelWriter.borrowed): in the
+        release slide, as core.convert.channel_writer writes it (ColumnRouter.borrowed): in the
         merged build, not on a column another channel's group routes notes onto there (a C00
         then; a slide would sit on their notes).  A group routing this channel's own notes there
         is no borrow: Green Hill lofi's FM3 chords (mod_channel: 3) end in slides, and their

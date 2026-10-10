@@ -51,6 +51,13 @@ class DetunePlanTest(unittest.TestCase):
         self.assertEqual(self.plan.base_of(23), 9)
         self.assertEqual(self.plan.base_of(5), 5)
 
+    def test_a_pitch_envelope_is_a_variant_of_its_own(self):
+        # Space Harrier II: the same detune under another envelope plays its own sample
+        self.plan.add(DetuneVariant(inst=25, base=9, detune=3, notes=5, envelope=2))
+        self.assertEqual(self.plan.instrument_for(9, 3, _NC5, envelope=2), 25)
+        self.assertEqual(self.plan.instrument_for(9, 3, _NC5), 9)
+        self.assertEqual(self.plan.instrument_for(9, 3, _NC5, envelope=1), 9)      # unplanned: the base
+
     def test_variant_shares_its_base_level(self):
         self.assertEqual(self.plan.share_base({9: -6.0, 4: 0.0}), {9: -6.0, 4: 0.0, 23: -6.0, 24: -6.0})
 

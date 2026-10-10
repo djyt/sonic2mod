@@ -196,6 +196,44 @@ def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels, keyof
     return sustain + opn2.render_mono(release_n)
 
 
+def _render_stepped(opn2: OPN2, sustain_n: int, release_n: int, channels, keyoffs,
+                    stepped: Sequence[tuple[int, int, tuple[int, ...]]], frame_samples: float) -> array.array:
+    """As _render_raw_mono, each of `stepped`'s channels (channel, word, envelope) at its word plus
+    its envelope's step every frame from key-on, the release included; the first frame's step is
+    written before the key-on (the driver's read writes it, then keys).  A register write's chip
+    time stays in the render."""
+    total = sustain_n + release_n
+    stops = sorted((min(sustain_n, k if k is not None else sustain_n), ch)
+                   for ch, k in zip(channels, [*keyoffs, *[None] * len(channels)], strict=False))
+    mono = array.array('i')
+    at = 0.0
+    frame = 0
+    opn2.begin_capture()
+    try:
+        while len(mono) < total:
+            for ch, word, envelope in stepped:
+                step = envelope[min(frame, len(envelope) - 1)]
+                _set_freq(opn2, *split_freq_word(max(0, min(FREQ_WORD_MAX, word + step))), ch)
+            if frame == 0:
+                for ch in channels:
+                    opn2.key_on(ch)
+            mono += _captured(opn2)
+            at += frame_samples
+            end = min(total, round(at))
+            while stops and stops[0][0] < end:
+                stop, ch = stops.pop(0)
+                mono += opn2.render_mono(max(0, stop - len(mono)))
+                opn2.key_off(ch)
+                mono += _captured(opn2)
+            mono += opn2.render_mono(max(0, end - len(mono)))
+            frame += 1
+    finally:
+        opn2.end_capture()
+    for _, ch in stops:
+        opn2.key_off(ch)
+    return mono[:total]
+
+
 def detuned_fnum_block(fnum: int, block: int, fnum_offset: int) -> tuple[int, int]:
     """The frequency word the driver writes with an smpsAlterNote detune: the offset is added
     to the whole block|fnum word (FMUpdateFreq), so it can carry into the block."""
@@ -236,6 +274,8 @@ def render_layers(
     taps: int = DEFAULT_TAPS,
     *,
     fm_frequencies: tuple[int, ...],
+    envelopes: Sequence[tuple[int, ...] | None] = (),
+    frame_hz: float = 60.0,
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -243,7 +283,9 @@ def render_layers(
     with an optional fifth element, seconds after key-on to key that layer off (None: with the
     others); layer i is programmed on YM2612 channel `channel` + i (a voice in channel 3's special
     mode on channel 3), all are keyed on together and the chip sums them as the hardware does.
-    One layer is an ordinary note render.
+    One layer is an ordinary note render.  `envelopes`: a layer's pitch envelope as the offset
+    each frame from key-on adds to its frequency word (core.smps.pitch_envelope), stepped at
+    `frame_hz` through the release too; () or None: none.
 
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
     used to be, so the callers' trim / peak / int8 steps are unchanged.
@@ -259,6 +301,7 @@ def render_layers(
 
     channels = _layer_channels(layers, channel)
     keyoffs = []
+    words = []
     for ch, layer in zip(channels, layers, strict=True):
         voice, semitones, fnum_offset, tl_offset = layer[:4]
         keyoff = layer[4] if len(layer) > 4 else None
@@ -271,11 +314,18 @@ def render_layers(
         else:
             _set_freq(opn2, fnum, block, ch)
         keyoffs.append(None if keyoff is None else math.ceil(native_rate * keyoff))
+        words.append(freq_word(fnum, block))
 
     _lfo_preroll(opn2, layers)
     sustain_n = math.ceil(native_rate * sustain_secs)
     release_n = math.ceil(native_rate * release_secs)
-    mono      = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
+    stepped = [(ch, word, env) for ch, word, env in zip(channels, words, envelopes or (), strict=False) if env]
+    if any(layers[channels.index(ch)][0].fnum_offsets is not None for ch, _, _ in stepped):
+        raise ValueError("a pitch envelope on a voice in channel 3's special mode: not rendered")
+    if stepped:
+        mono = _render_stepped(opn2, sustain_n, release_n, channels, keyoffs, stepped, native_rate / frame_hz)
+    else:
+        mono = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
 
     if target_rate is not None and target_rate != native_rate:
         mono     = _resample(mono, native_rate, target_rate, taps)

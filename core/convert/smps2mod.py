@@ -664,9 +664,9 @@ class SmpsToModConverter:
         plan = self._instrument_plan.detune
         if plan is None:
             return None
-        if plan.own or plan.variants:
-            self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own),
-                            variants=[(v.inst, v.base, v.detune, v.notes) for v in plan.variants.values()])
+        if plan.own or plan.own_envelopes or plan.variants:
+            self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own), own_envelopes=dict(plan.own_envelopes),
+                            variants=[(v.inst, v.base, v.detune, v.envelope, v.notes) for v in plan.variants.values()])
         if plan.unplaced:
             self._diag.warn(WarningKind.DETUNE_NO_SLOT, channel='FM', unplaced=dict(plan.unplaced))
         return plan

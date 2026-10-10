@@ -116,12 +116,12 @@ last.  Loading a voice writes B4 from the track's pan, then the volume.  `$FA` w
 RR, some TL) last until the next voice.  `$FA $26 $C6` (Timer B, MUCOM's tempo) is inert: nothing
 reads the timer.
 
-### 1.7 Chip features the converter has never rendered
+### 1.7 Chip features the converter had never rendered
 
 - **FM3 special mode** (`$F7`): 6 songs (`$84 $88 $89 $8C $8D $90`; `$83` writes zeros only), FM3
   track: operator 4 at +100 fnum.  The rips' FM3 frequency writes confirm it (rendered: 5.1).
-- **Hardware LFO** (`$FC`): 22 settings nonzero (e.g. freq 4 FMS 2 AMS 3; freq 7 FMS 7 = 72 Hz).
-  `$22` is global: the last writer sets it for every channel.
+- **Hardware LFO** (`$FC`): 22 settings nonzero (e.g. freq 4 FMS 2 AMS 3; freq 7 FMS 7 = 69 Hz).
+  `$22` is global: the last writer sets it for every channel (rendered: 5.2).
 
 ### 1.8 PSG
 
@@ -433,7 +433,15 @@ a song pass (the `run_out` precedent).
   of slots: 128 notes play the base sample (`detune_no_slot`).  Volumes: the copies' rows by hand
   from one measured pass (copies renumber the `$FA` ones: 6 rows carried to their new names).
   Left: FM3's one-frame G2 hit (gate 6 of 7, `$84 $8D $90`) -27 ... -30 dB, not the mode.
-- [ ] 5.2 LFO: render with `$22` and B4.  Loop a sample on a whole number of LFO periods.
+- [x] 5.2 LFO (2026-10-10): `$FC f p a` is `Lfo(frequency, fms, ams)`, kept on the track;
+  `core/smps/lfo.py` gives each attacking FM note a voice copy under its LFO (`SmpsVoice.lfo`):
+  the track's sensitivity at the frequency the last `$FC` of any track wrote (header order within
+  a frame).  It matters in `$88` (FM5's freq 2 under FM2 / FM4's FMS 6) and `$8B` (FM4's `$FC 0 0
+  0` takes FM5 to freq 0).  Rendered with `$22` and B4, the LFO from the note's start; a sustain
+  loop spans whole LFO cycles (`find_sustain_loop(cycle=)`: `$8B`'s $0C loops 150 ms, one cycle at
+  6.6 Hz, not 31 ms).  Not modelled: a jump clears B4's RAM copy (pan and LFO) for the next voice
+  set; every song writes `$FC` at its loop's start.  The render cache now keys a voice's special
+  mode and LFO (5.1's copies had been served their base voice's renders).
 - [ ] 5.3 Vibrato against `vgm_compare`'s vibrato rate and depth.
 
 ### Phase 6: close

@@ -96,8 +96,12 @@ def _render_salt() -> str:
 
 
 def _voice_key(voice: SmpsVoice) -> tuple:
-    """What of a voice program_voice writes: algorithm, feedback and the operator macros."""
-    return voice.algorithm, voice.feedback, tuple(sorted(voice.operators.items()))
+    """What of a voice the renderer writes: algorithm, feedback, the operator macros, and channel
+    3's special mode offsets and the LFO where it has them (a plain voice's key as it was: the
+    renders cached for it stay valid)."""
+    key = (voice.algorithm, voice.feedback, tuple(sorted(voice.operators.items())))
+    chip = (voice.fnum_offsets, voice.lfo)
+    return key + chip if any(v is not None for v in chip) else key
 
 
 def _thread_opn2(mode: str) -> OPN2:
@@ -231,10 +235,12 @@ class _FmRenderer:
         if spec.start_ms is not None:
             min_loop["min_start_secs"] = spec.start_ms / 1000.0
         ref = min(synth.loop_ref_by_instrument.get(job.inst, sustain), sustain_n / rate)
+        lfo = next((layer[0].lfo for layer in job.layers if layer[0].lfo is not None), None)
         return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * ref),
                                  max_end=min(plain_n, sustain_n),
                                  flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
-                                 timbre=synth.loop_timbre, decay=spec.decay_mode == "slide", **min_loop)
+                                 timbre=synth.loop_timbre, decay=spec.decay_mode == "slide",
+                                 cycle=lfo.period_secs * rate if lfo is not None else 0.0, **min_loop)
 
     def _heard_n(self, job: _RenderJob, rate: int, sustain: float, release: float | None) -> int | None:
         """Where a sample whose sustain holds every note stops being heard: at its sustain where

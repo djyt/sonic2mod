@@ -32,6 +32,7 @@ from .effects import (
     SmpsEffect,
     effect_of,
 )
+from .lfo import apply_lfo
 from .names import track_names
 from .percussion import FmDrum
 from .rules import PlaybackRules
@@ -140,14 +141,16 @@ def effect_from_bytes(flag: CoordFlag, operands: list[int]) -> SmpsEffect:
 
 
 def song_from_code(header: SmpsSongHeader, code: SmpsCode, voices: list[SmpsVoice], rules: PlaybackRules) -> SmpsSong:
-    """Each of the header's channels walked from its label, by its driver's `rules`.  A DAC
-    track's byte without a name (rules.dac_names) is a plain note."""
+    """Each of the header's channels walked from its label, by its driver's `rules`, then its
+    notes' voices under the hardware LFO (lfo.py) and its key-on run-out.  A DAC track's byte
+    without a name (rules.dac_names) is a plain note."""
     pans = {v.index: v.pan for v in voices if v.pan is not None}
     patcher = VoicePatcher(voices)
     channels = []
     for ch_header, name in zip(header.channels, track_names(header.channels), strict=True):
         driver = DriverTrack(ch_header, name, rules, patcher)
         channels.append(_Walker(code, ch_header, rules, driver, pans).walk(header.tempo_divider))
+    apply_lfo(channels, patcher)
     song = SmpsSong(header=header, channels=channels, voices=[*voices, *patcher.added], rules=rules)
     apply_run_out(song)
     return song

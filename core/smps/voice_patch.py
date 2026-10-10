@@ -20,6 +20,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 
+from ..chips import FmLfo
 from .song import SmpsVoice
 
 
@@ -28,6 +29,7 @@ class VoiceChanges:
     """What a track plays its voice with beyond the voice's own bytes."""
     registers: tuple[tuple[int, int], ...] = ()     # (channel 0 register, byte) written over it, by register
     fnum_offsets: tuple[int, ...] | None = None     # channel 3's special mode; None: normal
+    lfo: FmLfo | None = None                        # the hardware LFO it plays under; None: none
 
     def written(self, register: int, value: int) -> VoiceChanges:
         """These changes and `register` written `value`."""
@@ -36,7 +38,7 @@ class VoiceChanges:
 
     def applied(self, voice: SmpsVoice) -> SmpsVoice:
         """A copy of `voice` playing with these changes."""
-        voice = dataclasses.replace(voice, fnum_offsets=self.fnum_offsets)
+        voice = dataclasses.replace(voice, fnum_offsets=self.fnum_offsets, lfo=self.lfo)
         for register, value in self.registers:
             voice = voice.patched(register, value)
         return voice
@@ -51,6 +53,7 @@ class VoicePatcher:
     def __init__(self, voices: list[SmpsVoice]):
         self._voices = {v.index: v for v in voices}
         self._copies: dict[tuple[int, VoiceChanges], int] = {}
+        self._made: dict[int, tuple[int, VoiceChanges]] = {}    # {copy: (its voice, its changes)}
         self.added: list[SmpsVoice] = []            # the copies, in the order made
 
     def copy(self, base: int, changes: VoiceChanges) -> int:
@@ -63,5 +66,11 @@ class VoicePatcher:
             voice.index = max(self._voices) + 1
             self._voices[voice.index] = voice
             self._copies[key] = voice.index
+            self._made[voice.index] = key
             self.added.append(voice)
         return self._copies[key]
+
+    def under_lfo(self, index: int, lfo: FmLfo | None) -> int:
+        """Voice `index` (a copy or not) played under `lfo` (None: under none)."""
+        base, changes = self._made.get(index, (index, NO_CHANGES))
+        return self.copy(base, dataclasses.replace(changes, lfo=lfo))

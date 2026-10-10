@@ -18,6 +18,7 @@ sys.path.insert(0, str(_HERE))
 
 from roms import STREETS_OF_RAGE_RIPS, STREETS_OF_RAGE_ROM, needs_streets_of_rage, needs_streets_of_rage_rips
 
+from core.chips import FmLfo
 from core.drivers import detect_variant, locate_sounds, read_rom_code, read_rom_song
 from core.drivers.reference import PSG_FREQUENCIES
 from core.drivers.smps68k.memory import Relative68kMemory
@@ -32,6 +33,7 @@ from core.smps import (
     REST,
     ChannelType,
     CoordFlag,
+    SetVoice,
     SmpsChannelHeader,
     SmpsSongHeader,
     SmpsVoice,
@@ -56,6 +58,19 @@ def _song(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0, chi
     code = decode_tracks(memory, {_AT: kind}, MUCOM).code
     header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=kind, label=track_label(_AT), volume=volume,
                                                         chip_channel=chip_channel)])
+    return song_from_code(header, code, list(voices), _RULES)
+
+
+def _tracks(*tracks: bytes, voices: tuple[SmpsVoice, ...] = ()):
+    """FM tracks' bytes, one after the other, walked as a song's FM1, FM2 ..."""
+    at, starts, image = _AT, [], b""
+    for track in tracks:
+        starts.append(at)
+        image += track
+        at += len(track)
+    code = decode_tracks(Relative68kMemory(RomImage(_HEADER + image)), dict.fromkeys(starts, ChannelType.FM), MUCOM).code
+    header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=ChannelType.FM, label=track_label(a))
+                                      for a in starts])
     return song_from_code(header, code, list(voices), _RULES)
 
 
@@ -181,6 +196,40 @@ class Grammar(unittest.TestCase):
         self.assertEqual(_effects(_walk(bytes([0xF7, 0x01, 0x00]), ChannelType.PSG), CoordFlag.PSG_FORM), [[0xE7]])
 
 
+class HardwareLfo(unittest.TestCase):
+    """`$FC f p a`: the chip's LFO frequency (every track's), this track's FMS and AMS; each note's
+    voice a copy under the LFO it plays with (core/smps/lfo.py)."""
+
+    _VOICES = (SmpsVoice(0), SmpsVoice(1))
+
+    def _lfos(self, song, channel: int) -> list[tuple[int, FmLfo | None]]:
+        """(tick, LFO) of each note the channel attacks."""
+        voices = {v.index: v for v in song.voices}
+        voice, out = None, []
+        for ev in song.channels[channel].events:
+            if isinstance(ev.effect, SetVoice):
+                voice = voices[ev.effect.index]
+            if ev.note is not None and not ev.note.is_rest:
+                out.append((ev.tick_position, voice.lfo if voice is not None else None))
+        return out
+
+    def test_a_note_plays_at_the_last_frequency_any_track_wrote(self):
+        # FM1: voice 0, LFO 4 (FMS 6), C4 at 0 and at 10.  FM2: rest 5, voice 1, LFO 2 (FMS 3, AMS 2), C4
+        song = _tracks(bytes([0xF0, 0x00, 0xFC, 0x04, 0x06, 0x00, 10, 0x40, 10, 0x40, 0x00]),
+                       bytes([0x85, 0xF0, 0x01, 0xFC, 0x02, 0x03, 0x02, 10, 0x40, 0x00]), voices=self._VOICES)
+        self.assertEqual(self._lfos(song, 0), [(0, FmLfo(4, 6, 0)), (10, FmLfo(2, 6, 0))])
+        self.assertEqual(self._lfos(song, 1), [(5, FmLfo(2, 3, 2))])
+
+    def test_no_sensitivity_plays_no_lfo_and_a_later_track_writes_after_the_note(self):
+        # FM1: LFO 4 with nothing to move, C4.  FM2 writes LFO 7 on the same frame: after FM1's read
+        song = _tracks(bytes([0xF0, 0x00, 0xFC, 0x04, 0x00, 0x00, 10, 0x40, 0x00]),
+                       bytes([0xF0, 0x01, 0xFC, 0x07, 0x01, 0x00, 10, 0x40, 0x00]), voices=self._VOICES)
+        self.assertEqual(self._lfos(song, 0), [(0, None)])
+        song = _tracks(bytes([0xF0, 0x00, 0xFC, 0x04, 0x02, 0x00, 10, 0x40, 0x00]),
+                       bytes([0xF0, 0x01, 0xFC, 0x07, 0x01, 0x00, 10, 0x40, 0x00]), voices=self._VOICES)
+        self.assertEqual(self._lfos(song, 0), [(0, FmLfo(4, 2, 0))])
+
+
 class SpecialMode(unittest.TestCase):
     """`$F7 a b c d` on FM3: each operator at the note's word plus its offset (OP4 first), as a
     copy of the voice (core/smps/voice_patch.py)."""
@@ -204,6 +253,12 @@ class SpecialMode(unittest.TestCase):
         track = bytes([0xF0, 0x00, 0xF7, 0x64, 0, 0, 0, 1, 0x40, 0xF0, 0x00, 1, 0x40, 0x00])
         first, second = self._voices_set(track)[1:]
         self.assertIs(first, second)
+
+    def test_a_voice_and_its_special_mode_render_apart(self):
+        # The render cache keys a copy on its offsets: the base voice's render is not the copy's
+        from ym2612.sample_generator import _voice_key
+        plain, copy = self._voices_set(bytes([0xF0, 0x00, 0xF7, 0x64, 0, 0, 0, 1, 0x40, 0x00]))
+        self.assertNotEqual(_voice_key(plain), _voice_key(copy))
 
     def test_only_channel_3_has_the_mode(self):
         with self.assertRaisesRegex(ValueError, "special mode on FM1"):
@@ -264,7 +319,7 @@ class StreetsOfRage(unittest.TestCase):
         dropped = Counter()
         for sid in self.index.music:
             dropped.update(read_rom_code(self.rom, sid, self.index).dropped)
-        self.assertEqual(set(dropped), {"timer write", "LFO", "$F0 (no PSG effect)",
+        self.assertEqual(set(dropped), {"timer write", "$F0 (no PSG effect)",
                                         "$F8 (no PSG effect)", "$F1 (no DAC effect)", "$FB (no DAC effect)"})
 
     def test_envelope_3_ends_in_silence(self):

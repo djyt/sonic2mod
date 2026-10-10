@@ -28,7 +28,7 @@ _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
     sys.path.insert(0, str(_HERE.parent))
 
-from core.chips import REG_FEEDBACK_ALGORITHM
+from core.chips import REG_FEEDBACK_ALGORITHM, REG_LFO
 from core.smps import SmpsVoice, VoiceField
 from ym2612.wrapper import OPN2
 
@@ -47,6 +47,9 @@ from ym2612.wrapper import OPN2
 # A lone carrier at TL 0 fills the accumulator exactly and can never clip.
 
 
+_BOTH_SPEAKERS = 0xC0
+
+
 def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0) -> None:
     """Program a SMPS voice onto a YM2612 channel.
 
@@ -63,9 +66,13 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0
     bank       = channel // 3
     ch_in_bank = channel % 3
 
-    # Channel-level registers
+    # Channel-level registers: both speakers, and the LFO a voice plays under (its rate is the chip's)
     opn2.write_reg(REG_FEEDBACK_ALGORITHM + ch_in_bank, voice.feedback_algorithm, bank=bank)
-    opn2.write_reg(0xB4 + ch_in_bank, 0xC0, bank=bank)  # L=1, R=1, AMS=0, PMS=0
+    sensitivity = 0
+    if voice.lfo is not None:
+        opn2.write_reg(REG_LFO, voice.lfo.register)
+        sensitivity = voice.lfo.sensitivity
+    opn2.write_reg(0xB4 + ch_in_bank, _BOTH_SPEAKERS | sensitivity, bank=bank)
 
     # The operators, as the driver writes them (the track volume on the carriers)
     for reg, value in voice.registers(tl_offset).items():

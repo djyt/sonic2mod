@@ -90,7 +90,6 @@ _VOICE_LAYOUT = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_
 # The loops, the same on every kind of track ($F5 opens, $F6 closes, $FE leaves on the last pass)
 _LOOPS: dict[int, FlagSpec] = {0xF5: read(loop_start), 0xF6: read(loop_end), 0xFE: read(loop_exit)}
 
-# Read and left out for now: LFO
 _FM_FLAGS: dict[int, FlagSpec] = {
     0xF0: effect(CoordFlag.SET_VOICE),
     0xF1: effect(CoordFlag.VOLUME_STEP),
@@ -103,7 +102,7 @@ _FM_FLAGS: dict[int, FlagSpec] = {
     0xF9: refuse("pause toggle"),
     0xFA: read(register_write),
     0xFB: effect(CoordFlag.ALTER_VOLUME_STEP),
-    0xFC: drop("LFO", 3),
+    0xFC: effect(CoordFlag.LFO, 3),
     0xFD: NO_ATTACK,
     0xFF: JUMP,
 }
@@ -137,7 +136,7 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
     0xF9: refuse("pause toggle"),
     0xFA: read(register_write),
     0xFB: drop("$FB (no DAC effect)", 1),
-    0xFC: drop("LFO", 3),
+    0xFC: effect(CoordFlag.LFO, 3),             # $22 is the chip's: the drum track sets it for FM too
     0xFD: NO_ATTACK,
     0xFF: JUMP,
 }

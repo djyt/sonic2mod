@@ -161,9 +161,11 @@ def _op(op: Op) -> str:
 
 
 def _voice(v: SmpsVoice) -> str:
-    """Index, algorithm, feedback, B4, then each field's four operators: `tl(0, 19, 45, 36)`."""
+    """Index, algorithm, feedback, B4, then each field's four operators: `tl(0, 19, 45, 36)`; a
+    copy's special mode offsets and LFO after them."""
     operators = " ".join(f"{field_.value}{values}" for field_, values in v.operators.items())
-    return f"{v.index} alg {v.algorithm} fb {v.feedback} pan {v.pan} {operators}"
+    chip = "".join(f" {name} {value}" for name, value in (("fnum", v.fnum_offsets), ("lfo", v.lfo)) if value is not None)
+    return f"{v.index} alg {v.algorithm} fb {v.feedback} pan {v.pan} {operators}{chip}"
 
 
 def _event(ev) -> str:

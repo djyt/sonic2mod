@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, CH3_OWN_SLOT, TL_MASK, OperatorReg, split_operator_register
+from ..chips import CARRIER_OFFSETS_BY_ALG, CH3_OWN_SLOT, TL_MASK, FmLfo, OperatorReg, split_operator_register
 from .driver_tables import SMPS_OP_TO_REG_OFFSET
 from .effects import PlayedEffect, SetTempoMod
 from .rules import PlaybackRules
@@ -169,6 +169,8 @@ class SmpsVoice:
     # Channel 3's special mode: each operator's offset to the note's frequency word, in the
     # operators' order (a copy the walk makes: Fm3Special).  None: normal mode
     fnum_offsets: tuple[int, ...] | None = None
+    # The hardware LFO the voice plays under (a copy the walk makes: core/smps/lfo.py).  None: none
+    lfo: FmLfo | None = None
 
     def operator_values(self, field_: VoiceField) -> list[int]:
         """One field's four operator values; a field the voice leaves out, or a value it leaves

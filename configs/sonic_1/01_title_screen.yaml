@@ -4,7 +4,7 @@
 name: "Title Screen"
 input_file: "input/sonic_1/Mus8A - Title Screen.asm"
 output_file: "output/sonic_1/01_title_screen.mod"
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc                # NTSC (60 Hz) or PAL (50 Hz)

@@ -527,7 +527,7 @@ def _settings() -> tuple[SynthesisSettings, PsgSynthesisSettings]:
 
 
 def _dac_file(name: str) -> str:
-    """A DAC sample's file: Sonic 1's samples/ names (dKick -> kick.raw), else its own (dac81.raw)."""
+    """A DAC sample's file: Sonic 1's input/sonic_1/samples/ names (dKick -> kick.raw), else its own (dac81.raw)."""
     if len(name) > 1 and name[0] == "d" and name[1].isupper():
         return f"{name[1:].lower()}.raw"
     return f"{name}.raw"
@@ -771,7 +771,7 @@ class _Skeleton:
             f"name: {stem}",
             f"input_file: {self._analysis.file_path}",
             f"output_file: output/{stem.replace(' ', '_')}.mod",
-            "samples_dir: \"samples/\"",
+            "samples_dir: \"input/sonic_1/samples/\"",
             "",
             "auto_bpm: true",
             f"target_speed: {speed}",

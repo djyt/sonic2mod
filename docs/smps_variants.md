@@ -182,7 +182,7 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
 | `$F1 v` | volume step v | att (-v & 15) + header volume | - | `VolumeStep` -> `SetVol` |
 | `$F2 lo hi m` | detune word: m 0 sets, else adds | the word >> 4 | - | `Detune`, `DetuneAdd` |
 | `$F3 n` | gate: key off n frames before the end | same | cuts the sample | `Gate` -> note + rest (`cut`) |
-| `$F4 0 d s w c` | vibrato: delay, speed, depth word, count | depth >> 4 | - | `ModSet` (count + 1) |
+| `$F4 0 d s w c` | vibrato: delay, speed, depth word, count | the sum >> 4 | - | `ModSet` (count + 1) |
 | `$F4 1` / `2` | vibrato off / on | same | - | `ModOff`, `ModOn` |
 | `$F5` / `$F6 x n o` / `$FE o` | loop start / end, n passes / leave on the last pass | same | same | label, `LOOP`, `LOOP_EXIT` |
 | `$F7 a b c d` | FM3 special mode: OP4, OP3, OP2, OP1 FNUM offsets | white noise at tone 3's rate | - | `Fm3Special`, `PsgForm` |
@@ -197,7 +197,7 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
 - **Volume:** FM carrier TL = table[step] + header volume (`add.b`), absolute: a voice's own carrier
   TLs never play (`VoiceLayout.carrier_tl`).  A `$FB` in a loop crescendos.  PSG: att + envelope
   step, clamped to 15.
-- **Detune:** added to the 14-bit block|fnum word, the PSG's sum >> 4 (`detune_shift`); up to +195,
+- **Detune:** added to the 14-bit block|fnum word, the PSG's sum >> 4 (`word_shift`); up to +195,
   several semitones (detune variants per pitch class: `docs/pipeline.md`).  A word past the PSG's
   10 bits wraps (`$8F` PSG1).
 - **Ties and the gate:** every note keys off, then on; after `$FD` neither: a new pitch slides
@@ -205,8 +205,10 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
   note the next byte ties (`gate_sees_tie`) nor, on FM, a tied note (`gate_spares_tied`); a note
   no longer than n plays whole.  A rest after a tie keys FM off a frame in, the PSG at once
   (`tied_rest_holds`).  A jump drops an FM or drum track's tie, not a PSG's (`replay_tie`).
-- **Vibrato:** SMPS's shape; the count is tested before it counts down (a half cycle is count + 1
-  steps).  Cycles too slow for `4x1` play as slides.
+- **Vibrato:** SMPS's shape, but the count is tested before it counts down and the turn's step
+  moves too: a half cycle is count + 1 moves, no pause (`modulation_turn_pause`; Sonic 1's turn
+  adds nothing).  The PSG adds the depth words' sum >> 4 (`word_shift`), not each step's.  Cycles
+  too slow for `4x1` play as slides.
 - **Voices:** 25 bytes, DT/MUL TL KS/AR AM/D1R D2R D1L/RR in register order, FB/ALG last.  `$FA`
   writes (D1R, D2R, D1L/RR; 203 in the songs) last until the next voice: a patched copy
   (`voice_patch.py`).  `$FA $24`-`$26` (MUCOM's timers) are inert.
@@ -249,8 +251,14 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
 - Volumes measured (`measure_volumes.py --configs configs/streets_of_rage`, one pass).  Left: FM3's
   one-frame G2 hits (gate 6 of 7) -27 ... -30 dB; noise samples played with another envelope.
 
-**Not done:** the SFX; the vibrato against `vgm_compare`'s rate and depth (Phase 5.3); listening
-and Amiga merged builds (4.4).
+- Vibrato (`vgm_compare`, 15 rips): rate mismatches 85 -> 7 once the turns and the PSG's sum were
+  read as above (Moon Beach's PSG: 6 Hz, was played at 4.8, twice as deep).  Left: swings under the
+  MOD's smallest 4xy (0.7 periods: PSG and FMS 2, 5-8 c), slow sweeps the estimator reads as
+  beats (played as slides), rows whose effect slot a `Cxx` / `Axy` takes at speed 2 (`$8C`).  A
+  hardware LFO is baked into its copy's sample, so its rate follows the note across a window and
+  restarts with each re-struck tie (`legato: retrigger`: `$8B` FM4).
+
+**Not done:** the SFX; listening and Amiga merged builds (4.4).
 
 ---
 

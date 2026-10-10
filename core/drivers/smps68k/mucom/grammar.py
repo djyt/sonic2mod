@@ -18,8 +18,6 @@ need: it unrolls each loop from its `$F6`.
 
 from __future__ import annotations
 
-from functools import partial
-
 from core.rom.grammar import Instruction, flag_instruction, track_label
 from core.rom.image import RomError
 from core.rom.memory import SoundMemory
@@ -63,7 +61,6 @@ _PSG_LAST_ROW = 9
 
 _LOOP_END_LENGTH = 5               # $F6 x n back.w
 _LOOP_END = 0xF6                   # where a loop break lands past
-_PSG_DEPTH_SHIFT = 4               # the PSG adds the vibrato word >> 4 to its divider
 _DETUNE_SETS = 0                   # $F2's third byte: 0 sets, any other adds
 _TIMERS = range(0x24, 0x27)        # Timer A, Timer B: MUCOM's tempo, which nothing here reads
 _OPERATOR_REGISTERS = range(0x30, 0xA0)
@@ -150,7 +147,7 @@ def loop_exit(memory: SoundMemory, address: int) -> Instruction:
 
 def detune(memory: SoundMemory, address: int) -> Instruction:
     """`$F2 lo hi mode`: the detune word, set (mode 0) or added to; the PSG's shifted to a divider
-    as it plays (the PSG's TrackRules.detune_shift)."""
+    as it plays (the PSG's TrackRules.word_shift)."""
     word = _signed_le_word(memory, address + 1)
     if memory.byte(address + 3) != _DETUNE_SETS:
         return _effect(DetuneAdd(word), 4)
@@ -172,9 +169,10 @@ def psg_volume_down(memory: SoundMemory, address: int) -> Instruction:
     return _effect(AlterVol(signed_byte(-memory.byte(address + 1) & _BYTE_MASK)), 2)
 
 
-def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
+def vibrato(memory: SoundMemory, address: int) -> Instruction:
     """`$F4 0 delay speed depth.w count`, `$F4 1` off, `$F4 2` on.  SMPS's modulation, but a half
-    cycle is count + 1 steps (the driver tests the count before it counts down)."""
+    cycle is count + 1 steps that each move, the turn's too (TrackRules.modulation_turn_pause);
+    the PSG adds the depth words' sum >> 4 (TrackRules.word_shift)."""
     command = memory.byte(address + 1)
     if command == _VIBRATO_OFF:
         return _effect(ModOff(), 2)
@@ -183,7 +181,7 @@ def _vibrato(memory: SoundMemory, address: int, shift: int) -> Instruction:
     if command != _VIBRATO_SET:
         raise RomError(f"${address:X}: $F4 ${command:02X} (one vibrato field changed): not converted")
     delay, speed = memory.byte(address + 2), memory.byte(address + 3)
-    depth = _signed_le_word(memory, address + 4) >> shift
+    depth = _signed_le_word(memory, address + 4)
     steps = memory.byte(address + 6) + 1
     return _effect(ModSet(delay, speed, depth, steps), 2 + _VIBRATO_SET_BYTES)
 
@@ -205,7 +203,3 @@ def dac_sample(memory: SoundMemory, address: int) -> Instruction:
     """`$F0 n` on the drum track: its notes play sample $80 | n."""
     return _effect(SelectSample(_DAC_SAMPLE_BIT | memory.byte(address + 1)), 2)
 
-
-# Vibrato: FM words as written; the PSG's >> 4 (a divider, not an FNUM).  Each step's, where the
-# driver shifts the sum: Phase 5 checks the depth
-fm_vibrato, psg_vibrato = partial(_vibrato, shift=0), partial(_vibrato, shift=_PSG_DEPTH_SHIFT)

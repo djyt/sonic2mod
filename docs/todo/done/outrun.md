@@ -1,5 +1,8 @@
 # OutRun: an SMPS Z80 on Timer A
 
+**CLOSED 2026-10-10** (branch `outrun`): every phase done.  What the driver is and how it plays:
+`docs/smps_variants.md` § OutRun; this is the plan and its history.
+
 Probed 2026-10-10.  Goal: `convert.py` reads OutRun's songs from the ROM, as it reads Sonic 1,
 Moonwalker, Golden Axe, Streets of Rage and Space Harrier II (`docs/smps_variants.md`).
 
@@ -339,12 +342,17 @@ the rip marks every frame itself: each update ends by reloading the timer (`$25`
   `$85` left).  Every song converts.
 
 ### Phase 4: convert and verify
-- [ ] 4.1 Minimal configs (`configs/outrun/`); every song converts; `vgm_lift`, `vgm_frames`,
-  `vgm_pitch_audit`, `vgm_compare` (the rip's frame length allowed for, T6), `measure_volumes
-  --configs configs/outrun`.  A difference is
-  read against the code before either side is changed; a rip's own glitches go in `rips.yaml`.
-- [ ] 4.2 Cases in `tests/cases.yaml` (chosen by coverage).
-- [ ] 4.3 `docs/smps_variants.md` § OutRun (section 1 moves there); CLAUDE.md index.
+- [x] 4.1 Minimal configs (`configs/outrun/`); every song converts.  T6: a rip off its driver's clock
+  is retimed onto it (`core.vgm.retimed`: each wait scaled; `core.audit.rip_on_song_clock`, the rip's
+  measured frames a second over the driver's: 0.9970-0.9979) before `vgm_compare` and
+  `vgm_pitch_audit` align; the audit's lag is decided by the song's opening 30 s (over a whole song,
+  the drift allowance let Splash Wave's arpeggio lock a note off).  `vgm_pitch_audit` /
+  `vgm_compare`: 13 825 of 13 825 notes right.  `measure_volumes`: 69 volumes in 4 songs (Last Wave
+  within 1 dB); left: DAC drums at the 64 ceiling, few-note instruments, Passing Breeze's FM 1-1.6 dB
+  under its median (one pass, by design).  Splash Wave's `dac8A` -20 dB is one measured hit.
+- [x] 4.2 Cases by coverage: Step on Beat (the common path), Passing Breeze (+116 lines), Last
+  Wave (+66); their `pitch_` cases audit clean.
+- [x] 4.3 `docs/smps_variants.md` § OutRun; CLAUDE.md index; this plan in `done/`.
 
 ### Decisions (the user's, 2026-10-10; timing: T1-T6 in §3.7)
 - **D1 The driver's name:** `smpsz80_outrun`, after the game, as Space Harrier II's `smpsz80_sh2`:

@@ -11,6 +11,7 @@ each fact was found.  Sonic 1 itself is `docs/smps_driver.md`; how the reader is
 | `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/drivers/smpsz80/type0fm/` |
 | `smps68k_mucom` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/drivers/smps68k/mucom/` |
 | `smpsz80_sh2` (early, Golden Axe's ancestor) | SMPS Z80 | Space Harrier II | `core/drivers/smpsz80/sh2/` |
+| `smpsz80_outrun` (Golden Axe's layout, Sonic 1's flags, on Timer A) | SMPS Z80 | OutRun | `core/drivers/smpsz80/outrun/` |
 
 A ROM known by its SHA-1 is pinned to its variant; any other is tried with each (`detect.py`).
 
@@ -362,6 +363,82 @@ theme's other sections, have none)
 **Not done:** the SFX; listening (the pitch envelopes' approximations: a sample rendered at one
 pitch carries the envelope scaled to the notes it plays elsewhere; a tie under legato does not
 restart it).
+
+---
+
+## SMPS Z80 on Timer A: OutRun
+
+`GM 00004052-00` (USA, Europe), SHA-1 `95d2055f…`.  Golden Axe's layout (the sound header at its
+bank's start, word pointers, `$FB` transposition, `$FC` / `$FD` / `$FE`, a handler then `inc de`
+dispatch) with a Sonic-style flag set, Sonic 1's voices and DPCM, a DAC track, and a clock of its
+own: YM2612 Timer A, not V-int.  No disassembly: read from its Z80 driver with `z80dis`.  The plan
+and its history: `docs/todo/done/outrun.md`.
+
+**Where things are** (`smpsz80/outrun/locate.py`: each by the code that reads it, or by what the
+68k writes into the driver's RAM before releasing it)
+- **Program:** ROM `$F60A8`, `$13B2` bytes, to Z80 `$0000`, copied through pointers (`movea.l
+  ($EFFF8),a0 / move.l ($EFFFC),d0`: the pointed copy, `core/rom/z80.py`).  Its FM table is one
+  octave (`$0AA1`): the driver splits note - `$81` into octave (the block) and semitone (`$0319`).
+- **RAM words:** the 68k writes `$A01C00`-`$A01C07` (`0F 00 00 80 5A 02 0F 80`): the songs' bank and
+  the DAC's (each read by a bank routine: bit 7 of the high byte A15, the low byte A16-A23), the
+  sound header's address, Timer A.  Songs bank `$F0000`, DAC bank `$F8000`.
+- **Sound header** (bank `$F0000`, Z80 `$8000`): `+4` music index (`$81`-`$85`), `+8` frequency
+  envelopes, `+$A` PSG envelopes (17).  SFX in Z80 RAM: not read (music only).
+- **Songs:** SMPS headers, the DAC track first, FM1-FM6 in header order (FM3 a normal channel).
+
+**How it plays** (`outrun/variant.py`, `outrun/layout.py`)
+- **Clock:** the update runs at each Timer A overflow, polled between DAC bytes: `$25A`, 126.22 Hz
+  NTSC (`PlaybackRules.update_clock`, `core/smps/clock.py`).  A frame is one update; the MOD's BPM
+  and every render step follow the rate.  `$EA` / `$EB` (Timer A set / add) refused: no song.
+- **Tempo:** TempoWait's (`$0997`), 0 never holds; the first hold a frame late (`tempo_phase` 1:
+  the queue loads a song after the update's tempo check).
+- **Flags** (operands from each handler, a table per kind of track):
+
+  | byte | OutRun | music uses |
+  |------|--------|-----------|
+  | `$E0` | pan, AMS / FMS (`$B4`); a PSG track writes nothing | 120 |
+  | `$E1` `$E2` `$E7` | detune, communication byte, no attack | |
+  | `$E6` / `$EC` | FM / PSG volume: the other kind of track ignores it | 355 / 2 |
+  | `$EF n` | voice n; bit 7: from another song's table (refused) | 175 |
+  | `$F2` `$E3` `$F6`-`$F9` | stop, jump, loop, call, return | |
+  | `$F3` `$F5` | PSG noise form, PSG voice (an FM track ignores `$F5`) | 7, 129 |
+  | `$F4 n` | frequency envelope n (0 none) | 2 |
+  | `$FA` `$FB` | divider, transposition (add) | -, 90 |
+  | `$FF n` | 8 sub-commands; `02 s` plays sound s: dropped (Last Wave's waves) | 1 |
+  | `$E4` `$E8` `$E9` `$ED` `$EE` `$F0` `$F1` `$FC`-`$FE` | refused: no song | - |
+
+- **A flag after a note** ends it: `$BB $E7 $3C` is `$BB` at the last duration, a tie of `$3C`
+  after (`$0341`).  The walk's, for every driver.
+- **FM word:** the word plus the detune kept within an octave (`$0563`: at or under fnum `$283` a
+  block down, over `$508` a block up): `TrackRules.octave_wrap`, in playback and renders.
+- **Voices:** 25 bytes, Sonic 1's (`SMPS_VOICE`); a TL byte's bit 7 marks an operator the track
+  volume is added to (`$0D17`): the carriers, and in voice `$32` OP1 too (`SmpsVoice.volume_slots`).
+- **Envelopes:** PSG (`$80` restart, `$81` hold, `$83` mute, others jump); frequency envelopes
+  (`$80` restart, `$81` `$83` hold, `$82 n` jump, `$84 n` scale, from `$85` negative; the scaled
+  offset kept whole: `smpsz80/pitch_envelopes.py`).  A tie plays both on from the attack (`$0391`).
+- **Pitch:** `$81` plays `$284` at block 0, C#0 in Sonic 1's table; names stay SMPS names, as Space
+  Harrier II's (samples render at the table's word).
+
+**DAC** (`outrun/dac.py`)
+- 13 entries at the DAC bank's start (`$01DC`), 11 with bytes: pointer, length, rate, flags (bit 0
+  raw PCM, else Sonic 1's DPCM; bits 4-7 written to B6 as the sample starts: each sample's own pan,
+  `PlaybackRules.dac_pans`).  The songs play DPCM alone.  A rest lets the sample play on.
+- Rate: the play loop's count (DPCM 160 + 13 x rate an output, PCM 171 + 13 x rate) less the
+  update's stall, which runs inside the loop: 33-40 % of the time, by song.  Each config's
+  `dac_stall` is its rip's (`vgm_analyze.py --dac-stall`, `core/audit/dac_stall.py`).
+
+**Against the rips** (`configs/outrun/`, `rips.yaml`: all 5 songs)
+- The rips' frames are cut after each Timer A reset write (`FrameCut.TIMER_A`: the reset ends each
+  update); they run 0.21-0.30 % slow, so the audits retime them onto the driver's clock first
+  (`core.vgm.retimed`, `core.audit.rip_on_song_clock`).
+- `vgm_frames`: every note of all 5 songs on its frame (FM pitch, level, voice; PSG level).
+  `vgm_pitch_audit`, `vgm_compare`: every FM and PSG tone note right (13 825).
+  `measure_volumes`: one pass, 69 volumes; left are DAC drums at the 64 ceiling and few-note
+  instruments.
+- Rip faults: PSG3's tone writes unlogged (the noise follows tone 3, muted), Last Wave's FM5 the
+  SFX it starts; their DAC loop 1-2 % fast against the count, as Sonic 1's rips'.
+
+**Not done:** the SFX; listening.
 
 ---
 

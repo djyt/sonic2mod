@@ -1,5 +1,5 @@
 # OutRun - Last Wave.  A minimal config: everything else is derived from the ROM
-# (docs/todo/outrun.md); python convert.py <this> --show-config prints it.
+# (docs/todo/done/outrun.md); python convert.py <this> --show-config prints it.
 name: "Last Wave"
 input_file: "input/roms/OutRun (USA, Europe).md"
 rom_song: "$84"

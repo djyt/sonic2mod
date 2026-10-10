@@ -1,6 +1,6 @@
 """OutRun's SMPS Z80 driver (smpsz80_outrun): Golden Axe's layout (the sound header at its bank's
 start, the dispatch) with Sonic 1's flags, voices and DPCM, a DAC track, and Timer A for a clock.
-No disassembly: its flag table at Z80 $0B25, read with a disassembler (docs/todo/outrun.md).
+No disassembly: its flag table at Z80 $0B25, read with a disassembler (docs/todo/done/outrun.md).
 
 A handler starts at the first operand, and the dispatch steps one byte past where it leaves off: a
 flag with no operand steps back ($E7).  $FF reads a sub-command's own operands ($0B65).  A track's

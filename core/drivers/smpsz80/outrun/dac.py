@@ -12,7 +12,7 @@ $01DC) and played between Timer A polls by the main loop ($0082).
     empty    a length of 0 ($87, $89) plays nothing a song names: not read
 
 The update runs inside the loop (the poll calls it): the rips play each sample slower than its
-loop by 33-50 % (docs/todo/outrun.md 3.1).
+loop by 33-50 % (docs/todo/done/outrun.md 3.1).
 """
 
 from __future__ import annotations

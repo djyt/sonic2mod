@@ -506,8 +506,10 @@ that channel (FMS its pitch, AMS the level of operators with AM on).  Streets of
 writes both, so a note plays at the frequency the last `$FC` of any track wrote (`$88`: FM5's
 `$FC 2 3 2` slows FM2's and FM4's vibrato; `$8B`: FM4's `$FC 0 0 0` drops FM5's to 3.8 Hz).
 `core/smps/lfo.py`, a pass over the walked song, gives each attacking FM note a copy of its voice under
-its LFO (`SmpsVoice.lfo`); the sample is rendered with it (B4 and `$22`), the LFO from its start, as a
-MOD sample cannot follow the chip's free-running phase.  Its sustain loop spans whole LFO cycles
+its LFO (`SmpsVoice.lfo`); the sample is rendered with it (B4 and `$22`).  A MOD sample cannot follow
+the chip's free-running phase: under AMS the render starts a quarter cycle in, the level swing at its
+middle (as a note starting anywhere hears it on average; at step 0 it is at its quietest), under FMS
+alone at step 0, the pitch at its centre.  Its sustain loop spans whole LFO cycles
 (`core/audio/loops.py`, `cycle`).
 
 ---

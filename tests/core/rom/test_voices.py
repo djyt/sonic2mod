@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 import unittest
 from pathlib import Path
@@ -17,7 +18,7 @@ from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
 from core.rom import RomImage
 from core.rom.variant import VoiceLayout
-from core.rom.voices import read_voices
+from core.rom.voices import bank_voices, read_voices
 from core.smps import (
     VoiceField,
 )
@@ -65,6 +66,15 @@ class Voices(unittest.TestCase):
         self.assertEqual((voice.algorithm, voice.feedback), (2, 7))
         self.assertEqual([regs[OperatorReg.DT_MUL + off] for off in (0, 4, 8, 12)], [1, 2, 3, 4])
         self.assertEqual([regs[OperatorReg.TL + off] for off in (0, 4, 8, 12)], [0x11, 0x12, 0x13, 0x14])
+
+    def test_a_drivers_own_reader_is_asked_first(self):
+        # Space Harrier II's voices are register / value lists, no records: its variant reads them
+        memory = _memory(bytes(SONIC1.voice_layout.size))
+        asked = []
+        variant = dataclasses.replace(SONIC1, voice_reader=lambda _m, address, count: asked.append((address, count)) or [])
+        self.assertEqual(bank_voices(memory, _SONG, 3, variant), [])
+        self.assertEqual(asked, [(_SONG, 3)])
+        self.assertEqual(bank_voices(memory, _SONG, 1, SONIC1), read_voices(memory, _SONG, 1, SONIC1.voice_layout))
 
 
 if __name__ == "__main__":

@@ -57,6 +57,7 @@ OPERATOR_SLOT_OFFSETS = (0x00, 0x04, 0x08, 0x0C)     # in register order: OP1, O
 _REG_BASE_BITS, _REG_SLOT_BITS, _REG_CHANNEL_BITS = 0xF0, 0x0C, 0x03
 
 REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
+REG_PAN = 0xB4                       # L R AMS FMS
 
 # Channel 3's special mode ($27 bits 6-7 = 01): each operator at its own frequency.  The low byte's
 # register by operator slot offset (the high byte's is 4 above); OP4 plays the channel's own

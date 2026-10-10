@@ -45,7 +45,7 @@ class SoundIndex:
 class DacSample:
     sound: int        # the DAC track's byte: $81 dKick
     name: str
-    pcm: bytes        # signed 8-bit, as samples/*.raw hold it
+    pcm: bytes        # signed 8-bit, as input/sonic_1/samples/*.raw hold it
     pitch: int        # the play loop's counter
     rate: float       # Hz
     of: int = 0       # a pitched copy: the byte whose sample it plays (Sonic 1's $88 -> $83)

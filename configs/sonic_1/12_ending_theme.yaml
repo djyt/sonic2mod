@@ -4,7 +4,7 @@
 name: Ending Theme
 input_file: "input/sonic_1/Mus8B - Ending.asm"
 output_file: output/sonic_1/12_ending_theme.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true
 target_speed: 3

@@ -1,33 +1,27 @@
-"""YM2612 note renderer — Segment 3 of the YM2612 synthesis pipeline.
+"""YM2612 note renderer: a voice and a note through the chip (core.chips.ym2612) to PCM.
 
 Converts a SmpsVoice + MOD note index into 8-bit signed mono PCM bytes
 ready to insert into a ModSample.
 
 Public API::
 
-    from ym2612.renderer import render_note, note_to_freq, freq_to_fnum_block
+    from core.synth.fm_render import render_note, note_to_freq, freq_to_fnum_block
 
     pcm_bytes, sample_rate = render_note(voice, mod_note_index)
 
     # With explicit OPN2 instance (reused across calls to avoid DLL reload):
     opn2 = OPN2()
     pcm_bytes, rate = render_note(voice, 12, opn2=opn2)  # C2
-
-Usage (smoke test)::
-
-    python ym2612/renderer.py
 """
 
 from __future__ import annotations
 
 import array
 import math
-import struct
-import sys
 from collections.abc import Sequence
-from pathlib import Path
 
-from core.chips import (
+from ..audio import DEFAULT_TAPS, normalize_int8, resample
+from ..chips import (
     CH3_CHANNEL,
     CH3_FREQ_REGS,
     CH3_SPECIAL_MODE,
@@ -37,23 +31,15 @@ from core.chips import (
     freq_word,
     split_freq_word,
 )
-
-_HERE = Path(__file__).parent
-if str(_HERE.parent) not in sys.path:
-    sys.path.insert(0, str(_HERE.parent))
-
-from core.audio import DEFAULT_TAPS, normalize_int8, resample
-from core.audio import to_mono as _to_mono
-from core.smps import (
+from ..chips.ym2612 import OPN2, output_rate
+from ..smps import (
     C1_SEMITONE,
     SMPS_OP_TO_REG_OFFSET,
     FmFrame,
     SmpsVoice,
-    VoiceField,
     fm_table_index,
 )
-from ym2612.voice import program_voice
-from ym2612.wrapper import OPN2, output_rate
+from .fm_voice import program_voice
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -432,96 +418,3 @@ def render_note_raw(
 # ---------------------------------------------------------------------------
 # Smoke test
 # ---------------------------------------------------------------------------
-
-def _smoke_test() -> None:
-    """Render Title Screen voice 1 (FM2 bass) at A3, write output/renderer_test.raw."""
-
-    # Title Screen voice 1 — FM2 bass channel (algorithm 0, feedback 4)
-    # Mus8A - Title Screen.asm lines 126-142.
-    # Plays bass notes like nA3, nG3, nD4 in-game; algorithm 0 (series FM) gives
-    # an organ/synth-bass character — much cleaner than voice 0's feedback=7 buzz.
-    voice = SmpsVoice(
-        index=1,
-        algorithm=0x00,
-        feedback=0x04,
-        operators={
-            VoiceField.DETUNE:      (0x03, 0x03, 0x03, 0x03),
-            VoiceField.MULTIPLE:  (0x01, 0x00, 0x05, 0x06),
-            VoiceField.RATE_SCALE:   (0x02, 0x02, 0x03, 0x03),
-            VoiceField.ATTACK_RATE:  (0x1F, 0x1F, 0x1F, 0x1F),
-            VoiceField.AMP_MOD:      (0x00, 0x00, 0x00, 0x00),
-            VoiceField.DECAY_RATE_1:  (0x06, 0x09, 0x06, 0x07),
-            VoiceField.DECAY_RATE_2:  (0x08, 0x06, 0x06, 0x07),
-            VoiceField.DECAY_LEVEL:  (0x0F, 0x01, 0x01, 0x02),
-            VoiceField.RELEASE_RATE: (0x0F, 0x0F, 0x0F, 0x0F),
-            VoiceField.TOTAL_LEVEL:  (0x00, 0x13, 0x37, 0x19),
-        },
-    )
-
-    # A3 (mod_note_index 33 = 220 Hz).
-    # In-game FM2 plays nA3 (SMPS) → A1 with default −36 transpose; we render at
-    # A3 here for cleaner mid-range audibility in the smoke test.
-    mod_note    = 33      # A3 = 220 Hz
-    sustain     = 1.5
-    release     = 0.5
-    native_rate = OPN2.NATIVE_RATE
-    sustain_n   = int(native_rate * sustain)
-    release_n   = int(native_rate * release)
-
-    freq        = note_to_freq(mod_note)
-    fnum, block = freq_to_fnum_block(freq)
-
-    print(f"Smoke test — render_note(voice=1/FM2-bass, note=A3, sustain={sustain}s, release={release}s)...")
-    print(f"  freq    = {freq:.2f} Hz   fnum={fnum}  block={block}")
-    print(f"  sustain = {sustain_n} native samples")
-    print(f"  release = {release_n} native samples")
-
-    # Run the internal pipeline manually to expose the pre-normalisation peak
-    opn2 = OPN2(mode="ym2612")
-    program_voice(opn2, voice, 0)
-    _set_freq(opn2, fnum, block, 0)
-    raw  = _render_raw(opn2, sustain_n, release_n, 0)
-    mono = _to_mono(raw)
-
-    pre_peak = max(abs(v) for v in mono) if mono else 0
-    print(f"  peak (pre-norm): {pre_peak}")
-
-    pcm = _normalize_int8(mono)
-    rate = native_rate
-
-    print(f"  Output  : {len(pcm)} bytes at {rate} Hz (8-bit, for MOD use)")
-
-    # Write renderer_test.raw as true 16-bit mono (same method as validate_test.raw).
-    # Scale the pre-normalized mono values directly to int16 — NOT upscaled 8-bit,
-    # which would introduce staircase quantization distortion in Audacity.
-    out_path = Path(__file__).parent.parent / "output" / "renderer_test.raw"
-    out_path.parent.mkdir(exist_ok=True)
-
-    scale16 = 32767.0 / pre_peak if pre_peak else 1.0
-    raw16 = bytearray(len(mono) * 2)
-    for i, v in enumerate(mono):
-        val = max(-32768, min(32767, round(v * scale16)))
-        struct.pack_into('<h', raw16, i * 2, val)
-    out_path.write_bytes(bytes(raw16))
-
-    print(f"  Written : {out_path}  ({len(raw16)} bytes, 16-bit for Audacity)")
-    print()
-
-    if pre_peak > 0:
-        print("  SUCCESS")
-        print()
-        print("Load in Audacity:  File > Import > Raw Data")
-        print("  Encoding  : Signed 16-bit PCM")
-        print("  Byte order: Little-endian")
-        print("  Channels  : 1 (Mono)")
-        print(f"  Sample rate: {rate}")
-        print()
-        print("  Voice 1 = FM2 bass (algorithm 0 series FM, feedback 4).")
-        print("  Expect a synth-organ / bass character with clear attack and decay.")
-    else:
-        print("  WARNING: peak is 0 — silence produced")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    _smoke_test()

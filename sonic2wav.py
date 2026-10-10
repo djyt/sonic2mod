@@ -19,6 +19,7 @@ from rich import box
 from rich.padding import Padding
 from rich.table import Table
 
+from core.chips.ym2612 import output_rate
 from core.config import find_settings, load_settings
 from core.ui import LABEL_W as _LABEL_W
 from core.ui import branding, cli_console, error_printer, row_printer
@@ -36,7 +37,6 @@ from sfx.batch import (
     write_all,
 )
 from sfx.render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS
-from ym2612.wrapper import output_rate
 
 console = cli_console()
 

@@ -259,8 +259,8 @@ def _ensure_native_libs() -> None:
     """Build ym3438.dll / sn76489.dll once, before parallel conversions could race to."""
     subprocess.run(
         [sys.executable, "-c",
-         "import ym2612.build, sn76489.build; "
-         "ym2612.build.get_lib_path(); sn76489.build.get_lib_path()"],
+         "import core.chips.ym2612.build as fm, core.chips.sn76489.build as psg; "
+         "fm.get_lib_path(); psg.get_lib_path()"],
         cwd=str(ROOT), capture_output=True, check=False,
     )
 

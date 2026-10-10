@@ -35,8 +35,7 @@ collects one (L, R) pair per batch, yielding exactly ``n`` samples.
 import array
 import ctypes
 
-from core.chips import FM_CHIP_MODES, MD_FM_CLOCK
-
+from ..fm import FM_CHIP_MODES, MD_FM_CLOCK
 from .build import get_lib_path
 
 # ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ With `convert.py --merged`, the followers are dropped from the output and the pr
 channel plays **composite instruments** wherever a follower sounds with it: one MOD
 instrument per distinct (primary instrument, follower voice, interval, detune, level)
 combination, rendered on the YM2612 with one channel per voice keyed together
-(`ym2612.renderer.render_layers`), so the chip sums and clips them exactly as the hardware
+(`core.synth.fm_render.render_layers`), so the chip sums and clips them exactly as the hardware
 does.  A pair that is not two FM voices (DAC + PSG hi-hat, FM + PSG tone) is mixed from the
 two finished samples instead, the follower resampled by the period ratio of the two notes.
 

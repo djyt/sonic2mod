@@ -470,6 +470,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `sustain_duration` | `1.5` | `auto` | Seconds a note is held before key-off; `auto` = each instrument's longest ring, 10 s cap (`docs/fm_synthesis.md` § Length: `sustain_duration: auto`) |
 | `release_padding` | `0.5` | `0.5` | Seconds rendered after key-off |
 | `detune_variants` | `true` | `true` | Render each `smpsAlterNote` detune as its own sample |
+| `drum_psg_db` | `-5.7` | `-5.7` | An FM drum's PSG part (Space Harrier II's noise drums) in dB against its FM part; 0: a full PSG channel = one TL 0 carrier.  Measured on the rips (VGMPlay mixes the PSG at half the YM2612's volume) |
 | `threads` | `normal` | `normal` | Render threads: `normal` (cores − 1), `max`, or a number |
 
 ### `psg_synthesis:`

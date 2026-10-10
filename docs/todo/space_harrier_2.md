@@ -182,9 +182,12 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 - [x] 3.3 Against the rips (a scratch check, each hit's own operators): keys, OP4's word and the PSG
   part on every frame of every hit, but `$81` (drifting) and `$96` (a frame off from the start),
   and 7 PSG frames in `$8A` / `$90`.
-- Open: `drum_psg_db` is unmeasured (0: a full PSG channel = one full carrier); measure it when
-  VGMPlay is back (Phase 4), else by ear.  A drum hit cuts the last on the drum track's MOD
-  channel, where the chip lets a unit ring on under a hit that does not retrigger it.
+- `drum_psg_db` measured (Phase 4): -5.7 dB.  Each rip's FM3 alone against its PSG3 + noise alone
+  (VGMPlay), the energy of every hit to the next against ours at 0 dB: 19 songs, -5.2 to -6.9 dB,
+  median -5.69 - VGMPlay's mix (the SN76496 at half the YM2612's volume, -6.0 dB) less the 0.3 dB
+  our TL 0 carrier's 789 misses by.
+- Open: a drum hit cuts the last on the drum track's MOD channel, where the chip lets a unit ring
+  on under a hit that does not retrigger it.
 
 ### Phase 4: convert and verify
 - [ ] 4.1 Every song converts; `vgm_pitch_audit`, `vgm_compare`, `measure_volumes --configs

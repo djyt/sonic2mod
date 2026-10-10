@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
 from core.rom import RomImage
-from core.rom.header import read_music_header, read_sfx_header
+from core.rom.header import RomHeader, music_header, read_music_header, read_sfx_header, sfx_header
 from core.rom.variant import EntryLayout
 from core.smps import (
     NO_TEMPO_HOLDS,
@@ -76,6 +76,16 @@ class Headers(unittest.TestCase):
         self.assertTrue(head.header.is_sfx)
         self.assertEqual((ch.channel_type, ch.hw_channel, ch.pitch_offset, ch.volume), ("PSG", 0xC0, -12, 2))
         self.assertIsNone(head.voices)
+
+    def test_a_drivers_own_reader_is_asked_first(self):
+        # Space Harrier II's track lists are no SMPS header: its variant reads them
+        memory = _memory(_music([b"\xF2"]))
+        own = RomHeader(read_music_header(memory, _SONG, SONIC1.header).header, None, {})
+        variant = dataclasses.replace(SONIC1, music_header_reader=lambda _m, _a: own,
+                                      sfx_header_reader=lambda _m, _a: own)
+        self.assertIs(music_header(memory, _SONG, variant), own)
+        self.assertIs(sfx_header(memory, _SONG, variant), own)
+        self.assertEqual(music_header(memory, _SONG, SONIC1), read_music_header(memory, _SONG, SONIC1.header))
 
 
 if __name__ == "__main__":

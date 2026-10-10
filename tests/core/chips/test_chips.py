@@ -22,6 +22,7 @@ from core.chips import (
     carrier_names,
     fm_frequency_hz,
     fm_level_db,
+    keyed_carriers,
     psg_frequency_hz,
     psg_level_db,
 )
@@ -39,6 +40,12 @@ class Facts(unittest.TestCase):
         self.assertEqual(CARRIER_OFFSETS_BY_ALG[4], (0x08, 0x0C))
         self.assertEqual(CARRIER_OFFSETS_BY_ALG[7], (0x00, 0x08, 0x04, 0x0C))
         self.assertEqual(carrier_names(4), ["OP2", "OP4"])
+
+    def test_the_carriers_a_key_mask_sounds(self):
+        self.assertEqual(keyed_carriers(4, 0b0011), (0x08,))          # OP1-OP2: OP2's pair alone
+        self.assertEqual(keyed_carriers(4, 0b1111), (0x08, 0x0C))
+        self.assertEqual(keyed_carriers(7, 0b0100), (0x04,))          # OP3
+        self.assertEqual(keyed_carriers(0, 0b0111), ())               # OP4 unkeyed: silent
 
     def test_level_laws(self):
         self.assertEqual(fm_level_db(2, hard_panned=True), -4.5)       # 0.75 dB a step, 3 dB pan law

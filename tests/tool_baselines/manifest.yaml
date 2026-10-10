@@ -708,7 +708,7 @@ compare_title_screen_merged:
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
 frames_golden_axe:
-  commit: d0bd6d8-dirty
+  commit: cd8d967
   date: '2026-10-10'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
@@ -724,7 +724,7 @@ frames_golden_axe:
     configs/golden_axe/8c_old_map.yaml: 491af49f47e1
     configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
     configs/golden_axe/8e_sutakora_sassa.yaml: 1c512ab7d1df
-    configs/golden_axe/rips.yaml: b9a89d051ad4
+    configs/golden_axe/rips.yaml: 210eb5c734ad
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
     reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
     reference/vgz/golden_axe/02 - Wilderness.vgz: 2b5762a7949d
@@ -739,8 +739,169 @@ frames_golden_axe:
     reference/vgz/golden_axe/11 - Conclusion.vgz: 9030b83ba012
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
+frames_space_harrier_2:
+  commit: 1acd2ab-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
+    configs/space_harrier_2/87_an_omen.yaml: 09339311b850
+    configs/space_harrier_2/88_outsider.yaml: ffbcc4772f45
+    configs/space_harrier_2/89_mega_chance.yaml: a8964d868285
+    configs/space_harrier_2/8a_reverse_infect.yaml: 0f71ea61d7d1
+    configs/space_harrier_2/8b_the_stairs_to_z.yaml: 6cbda5ae331b
+    configs/space_harrier_2/8c_neo.yaml: f9df7097eb1f
+    configs/space_harrier_2/8d_perspective.yaml: 9e8a49f9d9ff
+    configs/space_harrier_2/8e_jelly_syndrome.yaml: 0f21710b8fe9
+    configs/space_harrier_2/8f_machine_henge.yaml: a0fb45673ccc
+    configs/space_harrier_2/90_handcuff.yaml: 226a91caf625
+    configs/space_harrier_2/91_mind_quake.yaml: 26dd4fc98968
+    configs/space_harrier_2/92_giga.yaml: 7a04b802db2f
+    configs/space_harrier_2/93_nuclear_shock.yaml: 22b49627380c
+    configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
+    configs/space_harrier_2/95_an_epitaph.yaml: 3898a657da05
+    configs/space_harrier_2/96_illusion.yaml: a6fe056530bb
+    configs/space_harrier_2/97_game_over.yaml: a45e11506721
+    configs/space_harrier_2/98_motion.yaml: 31261d44d549
+    configs/space_harrier_2/99_name_entry.yaml: 88821a515305
+    configs/space_harrier_2/rips.yaml: f288a1315090
+    input/roms/Space Harrier II (World).md: 356beab7e21e
+    reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
+    reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
+    reference/vgz/space_harrier_2/03 - Nuclear Shock (Boss 1 - Trimuller).vgz: '848692316552'
+    reference/vgz/space_harrier_2/04 - Mind Quake (Boss 2 - Paranoia).vgz: 5f6d0ba56188
+    reference/vgz/space_harrier_2/05 - Neo (Boss 3 - Brizard).vgz: 279a5db09cad
+    reference/vgz/space_harrier_2/06 - Giga (Boss 4 - Neo Dom).vgz: c88f4f148dc3
+    reference/vgz/space_harrier_2/07 - The Stairs to Z (Boss 5 - Mantichora).vgz: 3ba133b8ce4f
+    reference/vgz/space_harrier_2/08 - Handcuff (Boss 6 - Wizard).vgz: e0f62dfc5727
+    reference/vgz/space_harrier_2/09 - Perspective (Boss 7 - Medusa).vgz: 3a33b18c7df6
+    reference/vgz/space_harrier_2/10 - Machine Henge (Boss 8 - Neo Tomos).vgz: 35ea9c762bdb
+    reference/vgz/space_harrier_2/11 - Jelly Syndrome (Boss 9 - Cragon).vgz: c63c768bdd28
+    reference/vgz/space_harrier_2/12 - Outsider (Boss 10 - Bins Been).vgz: 827a37d6ae89
+    reference/vgz/space_harrier_2/13 - An Omen (Boss 11 - Love Face).vgz: a3123d166d51
+    reference/vgz/space_harrier_2/14 - Mega Chance (Boss 12 - Cthugha).vgz: 5908bfc2edd8
+    reference/vgz/space_harrier_2/15 - Reverse Infect (Final Boss - Dark Harrier).vgz: 8c636b100642
+    reference/vgz/space_harrier_2/16 - Illusion (Staff Roll).vgz: f6122727ffa9
+    reference/vgz/space_harrier_2/17 - Winner's Flight (Bonus Stage).vgz: b8da6e9bcf5a
+    reference/vgz/space_harrier_2/18 - Name Entry.vgz: 9a403244eb8c
+    reference/vgz/space_harrier_2/19 - An Epitaph (Ending Theme).vgz: acdbae48986e
+    reference/vgz/space_harrier_2/20 - A (Game Over).vgz: a0aece5a54c5
 frames_streets_of_rage:
-  commit: d0bd6d8-dirty
+  commit: cd8d967
+  date: '2026-10-10'
+  inputs:
+    configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be
+    configs/streets_of_rage/82_game_over.yaml: a8f4c13500eb
+    configs/streets_of_rage/83_the_street_of_rage.yaml: dcc414b998cf
+    configs/streets_of_rage/84_moon_beach.yaml: cbcedef7ed4a
+    configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 734ae3d10d09
+    configs/streets_of_rage/86_violent_breathing.yaml: 8d63f58fbbbe
+    configs/streets_of_rage/87_attack_the_barbarian.yaml: d0afbec92e50
+    configs/streets_of_rage/88_the_last_soul.yaml: 51eebbec3621
+    configs/streets_of_rage/89_stealthy_steps.yaml: 367584f1ba8e
+    configs/streets_of_rage/8b_dilapidated_town.yaml: 26f2d0150aa1
+    configs/streets_of_rage/8c_keep_the_groovin.yaml: a74f4536d900
+    configs/streets_of_rage/8d_level_clear.yaml: 93c02f6ec528
+    configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: d4b14e740c1d
+    configs/streets_of_rage/90_big_boss.yaml: 187efaff3a7b
+    configs/streets_of_rage/91_good_ending.yaml: 52c7c54466a2
+    configs/streets_of_rage/rips.yaml: b049c4668da6
+    input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
+    reference/vgz/streets_of_rage_1/01 - The Street of Rage (1).vgz: 030883819fdb
+    reference/vgz/streets_of_rage_1/01 - The Street of Rage.vgz: 030883819fdb
+    reference/vgz/streets_of_rage_1/03 - Fighting in the Street.vgz: d6e204166f7b
+    reference/vgz/streets_of_rage_1/04 - Dilapidated Town.vgz: 5ae421154f38
+    reference/vgz/streets_of_rage_1/05 - Moon Beach.vgz: 5f8f54a82bef
+    reference/vgz/streets_of_rage_1/06 - Keep the Groovin'.vgz: 898537c626e7
+    reference/vgz/streets_of_rage_1/07 - Beatnik on the Ship.vgz: eefcddae01be
+    reference/vgz/streets_of_rage_1/08 - Stealthy Steps.vgz: 60c1b9fd0eec
+    reference/vgz/streets_of_rage_1/09 - Violent Breathing.vgz: f72214ef3a55
+    reference/vgz/streets_of_rage_1/10 - The Last Soul.vgz: fc88372faace
+    reference/vgz/streets_of_rage_1/11 - Level Clear.vgz: c4f821dee1e8
+    reference/vgz/streets_of_rage_1/12 - Attack the Barbarian.vgz: e5ddd9c91372
+    reference/vgz/streets_of_rage_1/13 - Big Boss.vgz: e7e46cc6ce47
+    reference/vgz/streets_of_rage_1/14 - Game Over.vgz: 69d88619531c
+    reference/vgz/streets_of_rage_1/15 - You Became the Bad Guy!.vgz: 382aa0e8280f
+    reference/vgz/streets_of_rage_1/16 - Good Ending.vgz: a8a2300985e6
+glitches_golden_axe:
+  commit: cd8d967
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/81_wilderness.yaml: 701580eb8960
+    configs/golden_axe/82_turtle_village_1.yaml: f68728200961
+    configs/golden_axe/83_turtle_village_2.yaml: 905d8ee71038
+    configs/golden_axe/84_path_of_fiend.yaml: 1f241f87e79c
+    configs/golden_axe/85_death_adder.yaml: b0dc62ead0a1
+    configs/golden_axe/86_battle_field.yaml: 950c0337ba01
+    configs/golden_axe/87_showdown.yaml: bf5c65055f2a
+    configs/golden_axe/88_game_over.yaml: 6637fadba2c1
+    configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
+    configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
+    configs/golden_axe/8c_old_map.yaml: 491af49f47e1
+    configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
+    configs/golden_axe/8e_sutakora_sassa.yaml: 1c512ab7d1df
+    configs/golden_axe/rips.yaml: 210eb5c734ad
+    input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    reference/vgz/golden_axe/02 - Wilderness.vgz: 2b5762a7949d
+    reference/vgz/golden_axe/03 - Battle Field.vgz: 68ef936c83fa
+    reference/vgz/golden_axe/04 - Theme of Thief.vgz: d052006fd9fd
+    reference/vgz/golden_axe/05 - Old Map.vgz: 7fe3470ec3ce
+    reference/vgz/golden_axe/06 - Turtle Village 1.vgz: 6c1abf0c4d82
+    reference/vgz/golden_axe/07 - Path of Fiend.vgz: 36798a511acb
+    reference/vgz/golden_axe/08 - Turtle Village 2.vgz: 3f5e3cb53dd4
+    reference/vgz/golden_axe/09 - Death Adder.vgz: dafde43bf095
+    reference/vgz/golden_axe/10 - Showdown.vgz: 3fbff6a44fe6
+    reference/vgz/golden_axe/11 - Conclusion.vgz: 9030b83ba012
+    reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
+    reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
+glitches_space_harrier_2:
+  commit: d1df820
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/81_harrier_saga.yaml: f5e8377d39a1
+    configs/space_harrier_2/87_an_omen.yaml: 39bca64fe5ee
+    configs/space_harrier_2/88_outsider.yaml: 64af1f949d21
+    configs/space_harrier_2/89_mega_chance.yaml: 584dcc79e585
+    configs/space_harrier_2/8a_reverse_infect.yaml: 3962689ddbf5
+    configs/space_harrier_2/8b_the_stairs_to_z.yaml: d1f1dd43cade
+    configs/space_harrier_2/8c_neo.yaml: f72b0cbe5d16
+    configs/space_harrier_2/8d_perspective.yaml: f50c7cd80bfb
+    configs/space_harrier_2/8e_jelly_syndrome.yaml: bce5ec0a8518
+    configs/space_harrier_2/8f_machine_henge.yaml: 22542b09be60
+    configs/space_harrier_2/90_handcuff.yaml: 23d01a6e392b
+    configs/space_harrier_2/91_mind_quake.yaml: 49b66658a7dd
+    configs/space_harrier_2/92_giga.yaml: 29cc04de79b7
+    configs/space_harrier_2/93_nuclear_shock.yaml: 935a8c544a05
+    configs/space_harrier_2/94_winners_flight.yaml: 193c60c8941f
+    configs/space_harrier_2/95_an_epitaph.yaml: 783df61bb313
+    configs/space_harrier_2/96_illusion.yaml: eea2e5ec51e5
+    configs/space_harrier_2/97_game_over.yaml: a45e11506721
+    configs/space_harrier_2/98_motion.yaml: b4808f4ca830
+    configs/space_harrier_2/99_name_entry.yaml: ab4a9d374c28
+    configs/space_harrier_2/rips.yaml: f288a1315090
+    input/roms/Space Harrier II (World).md: 356beab7e21e
+    reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
+    reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
+    reference/vgz/space_harrier_2/03 - Nuclear Shock (Boss 1 - Trimuller).vgz: '848692316552'
+    reference/vgz/space_harrier_2/04 - Mind Quake (Boss 2 - Paranoia).vgz: 5f6d0ba56188
+    reference/vgz/space_harrier_2/05 - Neo (Boss 3 - Brizard).vgz: 279a5db09cad
+    reference/vgz/space_harrier_2/06 - Giga (Boss 4 - Neo Dom).vgz: c88f4f148dc3
+    reference/vgz/space_harrier_2/07 - The Stairs to Z (Boss 5 - Mantichora).vgz: 3ba133b8ce4f
+    reference/vgz/space_harrier_2/08 - Handcuff (Boss 6 - Wizard).vgz: e0f62dfc5727
+    reference/vgz/space_harrier_2/09 - Perspective (Boss 7 - Medusa).vgz: 3a33b18c7df6
+    reference/vgz/space_harrier_2/10 - Machine Henge (Boss 8 - Neo Tomos).vgz: 35ea9c762bdb
+    reference/vgz/space_harrier_2/11 - Jelly Syndrome (Boss 9 - Cragon).vgz: c63c768bdd28
+    reference/vgz/space_harrier_2/12 - Outsider (Boss 10 - Bins Been).vgz: 827a37d6ae89
+    reference/vgz/space_harrier_2/13 - An Omen (Boss 11 - Love Face).vgz: a3123d166d51
+    reference/vgz/space_harrier_2/14 - Mega Chance (Boss 12 - Cthugha).vgz: 5908bfc2edd8
+    reference/vgz/space_harrier_2/15 - Reverse Infect (Final Boss - Dark Harrier).vgz: 8c636b100642
+    reference/vgz/space_harrier_2/16 - Illusion (Staff Roll).vgz: f6122727ffa9
+    reference/vgz/space_harrier_2/17 - Winner's Flight (Bonus Stage).vgz: b8da6e9bcf5a
+    reference/vgz/space_harrier_2/18 - Name Entry.vgz: 9a403244eb8c
+    reference/vgz/space_harrier_2/19 - An Epitaph (Ending Theme).vgz: acdbae48986e
+    reference/vgz/space_harrier_2/20 - A (Game Over).vgz: a0aece5a54c5
+glitches_streets_of_rage:
+  commit: cd8d967
   date: '2026-10-10'
   inputs:
     configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be
@@ -966,13 +1127,13 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 91f43dbb2b74
     tests/settings.yaml: a79a8ba763a3
 pitch_credits:
-  commit: d0bd6d8-dirty
+  commit: 9e7f08a-dirty
   date: '2026-10-10'
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
     tests/baselines/credits_baseline.mod: 1135bbba38b2
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: c9fe3405c560
 pitch_drowning:
   commit: d0bd6d8-dirty
   date: '2026-10-10'
@@ -1013,6 +1174,30 @@ pitch_final_zone:
     reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
     tests/baselines/final_zone_baseline.mod: c3297864e90f
     tests/settings.yaml: a79a8ba763a3
+pitch_ga_conclusion:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
+    reference/vgz/golden_axe/11 - Conclusion.vgz: 9030b83ba012
+    tests/baselines/ga_conclusion_baseline.mod: 67b6a7825dd7
+    tests/settings.yaml: c9fe3405c560
+pitch_ga_the_battle:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    tests/baselines/ga_the_battle_baseline.mod: 2cef3822df6d
+    tests/settings.yaml: c9fe3405c560
+pitch_ga_theme_of_thief:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
+    reference/vgz/golden_axe/04 - Theme of Thief.vgz: d052006fd9fd
+    tests/baselines/ga_theme_of_thief_baseline.mod: 0c3801796287
+    tests/settings.yaml: c9fe3405c560
 pitch_game_over:
   commit: d0bd6d8-dirty
   date: '2026-10-10'
@@ -1077,6 +1262,30 @@ pitch_marble_zone:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
     tests/baselines/marble_zone_baseline.mod: 24d6e748f5b8
     tests/settings.yaml: a79a8ba763a3
+pitch_mw_beat_it:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
+    reference/vgz/moonwalker/06 - Beat It.vgz: 0119f4ed1be1
+    tests/baselines/mw_beat_it_baseline.mod: 47640452b4a1
+    tests/settings.yaml: c9fe3405c560
+pitch_mw_mr_big:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
+    reference/vgz/moonwalker/15 - Mr. Big.vgz: 2704df0bf870
+    tests/baselines/mw_mr_big_baseline.mod: bf4d1b8eb2cb
+    tests/settings.yaml: c9fe3405c560
+pitch_mw_title:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/moonwalker/86_title.yaml: a4e39f30e91d
+    reference/vgz/moonwalker/01 - Title Screen.vgz: b71f7a4780e4
+    tests/baselines/mw_title_baseline.mod: 647589fc720e
+    tests/settings.yaml: c9fe3405c560
 pitch_robotnik:
   commit: d0bd6d8-dirty
   date: '2026-10-10'
@@ -1101,6 +1310,46 @@ pitch_scrap_brain_zone:
     reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
     tests/baselines/scrap_brain_zone_baseline.mod: c97e5be79912
     tests/settings.yaml: a79a8ba763a3
+pitch_sh2_an_epitaph:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/95_an_epitaph.yaml: 3898a657da05
+    reference/vgz/space_harrier_2/19 - An Epitaph (Ending Theme).vgz: acdbae48986e
+    tests/baselines/sh2_an_epitaph_baseline.mod: e07ec30574ad
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_game_over:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/97_game_over.yaml: a45e11506721
+    reference/vgz/space_harrier_2/20 - A (Game Over).vgz: a0aece5a54c5
+    tests/baselines/sh2_game_over_baseline.mod: 228b8741668c
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_harrier_saga:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
+    reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
+    tests/baselines/sh2_harrier_saga_baseline.mod: 61c4fd242549
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_motion:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/98_motion.yaml: 31261d44d549
+    reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
+    tests/baselines/sh2_motion_baseline.mod: 9bc42d31902f
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_winners_flight:
+  commit: a7b1557-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
+    reference/vgz/space_harrier_2/17 - Winner's Flight (Bonus Stage).vgz: b8da6e9bcf5a
+    tests/baselines/sh2_winners_flight_baseline.mod: 0be5da5f0701
+    tests/settings.yaml: c9fe3405c560
 pitch_special_stage:
   commit: d0bd6d8-dirty
   date: '2026-10-10'
@@ -1150,17 +1399,17 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
 read_moonwalker:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_sonic1_asm_music:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -1183,7 +1432,7 @@ read_sonic1_asm_music:
     reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
     reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
 read_sonic1_asm_music_shipped:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     reference/smps_drivers/sonic_1/music/Mus81 - GHZ.asm: eb1e02ed826c
@@ -1206,7 +1455,7 @@ read_sonic1_asm_music_shipped:
     reference/smps_drivers/sonic_1/music/Mus92 - Drowning.asm: 15581ae26473
     reference/smps_drivers/sonic_1/music/Mus93 - Get Emerald.asm: 77a5b5dda397
 read_sonic1_asm_sfx:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     reference/smps_drivers/sonic_1/sfx/SndA0 - Jump.asm: eb1f6684f557
@@ -1259,17 +1508,22 @@ read_sonic1_asm_sfx:
     reference/smps_drivers/sonic_1/sfx/SndCF - Signpost.asm: 320b3c201a06
     reference/smps_drivers/sonic_1/sfx/SndD0 - Waterfall.asm: a4be70b95a7c
 read_sonic1_rom:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_sonic1_rom_shipped:
-  commit: d0bd6d8-dirty
+  commit: 32383b7
   date: '2026-10-10'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
+read_space_harrier_2:
+  commit: 1acd2ab-dirty
+  date: '2026-10-10'
+  inputs:
+    input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: d0bd6d8-dirty
+  commit: 78be73c
   date: '2026-10-10'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

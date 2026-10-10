@@ -16,7 +16,7 @@ It does NOT set frequency or trigger key-on — call those separately::
 
 from __future__ import annotations
 
-from ..chips import REG_FEEDBACK_ALGORITHM, REG_LFO
+from ..chips import REG_FEEDBACK_ALGORITHM, REG_LFO, REG_PAN
 from ..chips.ym2612 import OPN2
 from ..smps import SmpsVoice
 
@@ -60,7 +60,7 @@ def program_voice(opn2: OPN2, voice: SmpsVoice, channel: int, tl_offset: int = 0
     if voice.lfo is not None:
         opn2.write_reg(REG_LFO, voice.lfo.register)
         sensitivity = voice.lfo.sensitivity
-    opn2.write_reg(0xB4 + ch_in_bank, _BOTH_SPEAKERS | sensitivity, bank=bank)
+    opn2.write_reg(REG_PAN + ch_in_bank, _BOTH_SPEAKERS | sensitivity, bank=bank)
 
     # The operators, as the driver writes them (the track volume on the carriers)
     for reg, value in voice.registers(tl_offset).items():

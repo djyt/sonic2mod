@@ -7,6 +7,9 @@ are the driver's (SoundMemory.header_pointer: Sonic 1 relative to the header, ..
             PSG tracks:      ptr.w ...  (psg_entry: SMPS pitch.b volume.b mod.b envelope.b)
     SFX     voices.w  divider.b count.b
             each track:      $80 channel.b ptr.w pitch.b volume.b
+
+A driver whose headers are laid out otherwise reads them itself (SmpsVariant.music_header_reader,
+sfx_header_reader); music_header / sfx_header ask it first.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ from ..smps import NO_TEMPO_HOLDS, ChannelType, SmpsChannelHeader, SmpsSongHeade
 from .grammar import track_label
 from .image import RomError
 from .memory import SoundMemory
-from .variant import HeaderLayout
+from .variant import HeaderLayout, SmpsVariant
 
 _FM_COUNT_AT, _PSG_COUNT_AT = 2, 3
 _DIVIDER_AT, _MODIFIER_AT = 4, 5
@@ -65,6 +68,20 @@ def is_index(memory: SoundMemory, slots: range, pointer: Callable[[int], int], p
 
 def _points_at(memory: SoundMemory, address: int, plausible: _Plausible) -> bool:
     return memory.contains(address) and plausible(memory, address)
+
+
+def music_header(memory: SoundMemory, address: int, variant: SmpsVariant) -> RomHeader:
+    """A song's header: its driver's own reader's where it has one, else SMPS's."""
+    if variant.music_header_reader:
+        return variant.music_header_reader(memory, address)
+    return read_music_header(memory, address, variant.header)
+
+
+def sfx_header(memory: SoundMemory, address: int, variant: SmpsVariant) -> RomHeader:
+    """An SFX's header: its driver's own reader's where it has one, else SMPS's."""
+    if variant.sfx_header_reader:
+        return variant.sfx_header_reader(memory, address)
+    return read_sfx_header(memory, address, variant.header)
 
 
 def read_music_header(memory: SoundMemory, address: int, layout: HeaderLayout) -> RomHeader:

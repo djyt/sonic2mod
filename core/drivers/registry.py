@@ -18,6 +18,7 @@ _PACKAGES: dict[SmpsDriver, tuple[str, str]] = {
     SmpsDriver.TYPE1A: ("smps68k.type1a", "TYPE1A"),
     SmpsDriver.TYPE0FM: ("smpsz80.type0fm", "TYPE0FM"),
     SmpsDriver.MUCOM: ("smps68k.mucom", "MUCOM"),
+    SmpsDriver.SH2: ("smpsz80.sh2", "SH2"),
 }
 
 assert set(_PACKAGES) == set(SmpsDriver), "a driver name without a package"

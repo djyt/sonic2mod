@@ -51,6 +51,7 @@ class FmLayer:
                              # (core.merge.fm_layer); the hardware's speakers play it without them
     special_offset: int = 0  # channel 3's special mode: what its own frequency registers add over
                              # the note (the voice's channel_fnum_offset), on top of the detune
+    pitch_envelope: int = 0  # the pitch envelope the render steps (PlaybackRules.pitch_envelopes); 0: none
 
     @property
     def sounding_offset(self) -> int:
@@ -231,13 +232,15 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
         if v.rendered is not None:          # its own pitch class: the same `root`, another shift
             moved = v.rendered - base.rendered_semitone
             entry = dataclasses.replace(entry, synth_root=v.rendered, synth_shift=entry.synth_shift + moved)
+        layer = dataclasses.replace(base.layers[0], fnum_offset=v.detune, pitch_envelope=v.envelope)
+        envelope = f" envelope {v.envelope}" if v.envelope else ""
         cat.instruments[v.inst] = dataclasses.replace(
-            base, inst=v.inst, entry=entry, layers=[dataclasses.replace(base.layers[0], fnum_offset=v.detune)],
-            context=f"{base.context} detune {v.detune:+d}")
-    for inst, detune in plan.own.items():
+            base, inst=v.inst, entry=entry, layers=[layer], context=f"{base.context} detune {v.detune:+d}{envelope}")
+    for inst in {*plan.own, *plan.own_envelopes}:
         base = cat.instruments.get(inst)
         if base is not None:
-            base.layers = [dataclasses.replace(base.layers[0], fnum_offset=detune)]
+            base.layers = [dataclasses.replace(base.layers[0], fnum_offset=plan.own.get(inst, 0),
+                                               pitch_envelope=plan.own_envelopes.get(inst, 0))]
 
 
 def free_slots(config, song) -> list[int]:

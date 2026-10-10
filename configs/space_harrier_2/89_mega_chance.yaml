@@ -1,0 +1,11 @@
+# Space Harrier II - Mega Chance.  A minimal config: everything else is derived from the ROM
+# (docs/todo/space_harrier_2.md); python convert.py <this> --show-config prints it.
+name: "Mega Chance"
+input_file: "input/roms/Space Harrier II (World).md"
+rom_song: "$89"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "drum85.raw", 35, 0]   # VGZ: +5.1 dB at 64
+  - [3, "drum89.raw", 43, 0]   # VGZ: +3.4 dB at 64
+  - [7, "fm_v39_E3.raw", 13, 0]   # VGZ: -5.6 dB at 7
+  - [8, "fm_v39_D4.raw", 15, 0]   # VGZ: -6.8 dB at 7

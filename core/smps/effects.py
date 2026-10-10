@@ -18,6 +18,7 @@ song's PlaybackRules (driver_track.py), so no event can keep one:
 
     VolumeStep, AlterVolumeStep -> SetVol        DetuneAdd -> Detune
     Gate -> each note after it cut short, a rest after it
+    Legato -> each note after it tied, as smpsNoAttack before it would
     VoiceRegister, Fm3Special -> SetVoice of a patched copy (voice_patch.py)
 """
 
@@ -59,6 +60,9 @@ class CoordFlag(StrEnum):
     VOICE_REGISTER = auto()       # its $FA on FM
     FM3_SPECIAL = auto()          # its $F7 on FM
     LFO = auto()                  # its $FC
+    LEGATO = auto()               # Space Harrier II's $EE
+    PITCH_ENVELOPE = auto()       # its $F4
+    PAN_STEP = auto()             # its pan animation (a track flag): a step each read
 
 
 @dataclass(frozen=True)
@@ -91,6 +95,13 @@ class Pan(PlayedEffect):
     @property
     def side(self) -> str:
         return pan_side(self.b4)
+
+
+@dataclass(frozen=True)
+class PanStep(Pan):
+    """A pan animation's step: the pan a read sets (Space Harrier II's track flag bit 6).  A Pan to
+    everything that reads one; the MOD writes it as 8xx where no other effect is (D2)."""
+    flag = CoordFlag.PAN_STEP
 
 
 @dataclass(frozen=True)
@@ -196,6 +207,14 @@ class Lfo(PlayedEffect):
 
 
 @dataclass(frozen=True)
+class SetPitchEnvelope(PlayedEffect):
+    """The pitch envelope each note plays from its read on (PlaybackRules.pitch_envelopes,
+    core/smps/pitch_envelope.py); 0: none."""
+    flag = CoordFlag.PITCH_ENVELOPE
+    index: int
+
+
+@dataclass(frozen=True)
 class SelectSample(PlayedEffect):
     flag = CoordFlag.DAC_SAMPLE
     sound: int                    # the DAC byte the drum track's notes play
@@ -231,6 +250,18 @@ class Gate(DriverEffect):
 
 
 @dataclass(frozen=True)
+class Legato(DriverEffect):
+    """Every note ties to the one before, until switched off: no key-off at a read, as if each
+    read followed smpsNoAttack (a rest still keys off: the note after it attacks)."""
+    flag = CoordFlag.LEGATO
+    mode: int                     # the driver's byte: 1 on, anything else off
+
+    @property
+    def on(self) -> bool:
+        return self.mode == 1
+
+
+@dataclass(frozen=True)
 class VoiceRegister(DriverEffect):
     """A YM2612 operator register written over the track's voice until the next voice set."""
     flag = CoordFlag.VOICE_REGISTER
@@ -256,8 +287,12 @@ class Fm3Special(DriverEffect):
         return offsets if any(offsets) else None
 
 
+def _subclasses(kind: type) -> list[type]:
+    return [sub for cls in kind.__subclasses__() for sub in (cls, *_subclasses(cls))]
+
+
 _BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {
-    cls.flag: cls for kind in (PlayedEffect, DriverEffect) for cls in kind.__subclasses__()}
+    cls.flag: cls for kind in (PlayedEffect, DriverEffect) for cls in _subclasses(kind)}
 assert set(_BY_FLAG) == set(CoordFlag), "a CoordFlag without its effect class"
 
 

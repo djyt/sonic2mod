@@ -90,6 +90,10 @@ class SmpsChannelHeader:
     # The chip channel a music track plays on ("FM3"), where its driver's order is not header
     # order (Sonic 1's: DAC, FM1.., PSG1..); "" = header order.  core/smps/names.py source_names
     chip_channel: str = ""
+    # The pitch envelope the track starts with (SetPitchEnvelope's index; 0: none)
+    pitch_envelope: int = 0
+    # A pan animation: the B4 bytes the track's reads step through, again and again; (): none
+    pan_steps: tuple[int, ...] = ()
 
 
 @dataclass

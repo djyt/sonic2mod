@@ -26,6 +26,7 @@ from ..chips import (
     MD_FM_CLOCK,
     MD_PSG_CLOCK,
     OPERATOR_SLOT_OFFSETS,
+    REG_PAN,
     fm_frequency_hz,
     freq_word,
     psg_frequency_hz,
@@ -48,7 +49,6 @@ _REG_TL = 0x40
 _REG_FNUM_LO = 0xA0
 _REG_FNUM_HI = 0xA4
 _REG_ALGORITHM = 0xB0              # feedback << 3 | algorithm
-_REG_PAN = 0xB4                    # L R AMS PMS
 _CHANNELS_PER_PORT = 3
 _REGISTER_STRIDE = 0x10            # from one operator register's base to the next
 _KEY_SLOTS_SHIFT = 4
@@ -209,7 +209,7 @@ class ChipState:
 
     def fm_pan(self, ch: int) -> int:
         """Register B4: L R AMS PMS."""
-        return self._fm_channel_reg(ch, _REG_PAN)
+        return self._fm_channel_reg(ch, REG_PAN)
 
     def fm_tl(self, ch: int, slot_offset: int) -> int:
         """Total level of the operator at register offset `slot_offset` (0x00 / 0x04 / 0x08 / 0x0C)."""

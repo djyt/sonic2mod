@@ -7,10 +7,12 @@
     onsets.py   key-ons / audio onsets paired one to one
     rip_diff.py a song (asm / ROM) against its rip lifted, note by note (no audio)
     frame_check.py  a song against its rip's frame log on each note's frame: pitch, level, voice (no lift)
-    rips.py     which rip records which config's song
+    glitch_scan.py  where a rip's driver lost or gained a V-int: every channel a frame off from there
+    rips.py     which rip records which config's song, and the rip's own faults
 """
 
-from .frame_check import FrameAspect, FrameCheck, FrameMiss, check_frames
+from .frame_check import Excuse, FrameAspect, FrameCheck, FrameMiss, check_frames
+from .glitch_scan import ChannelMove, GlitchCandidate, GlitchScan, scan_glitches
 from .levels import LEVEL_MAX_ERR, LEVEL_MAX_SPREAD, instrument_levels, mod_note_events, suggest_volumes, write_volumes
 from .onsets import OnsetMatch, audio_onsets, keyon_onsets, onset_match
 from .pitch import (
@@ -32,7 +34,7 @@ from .render import (
     workers,
 )
 from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip
-from .rips import CONFIG_ROOT, DEFAULT_SET, RIP_ROOT, RIPS_MAP, RipShelf, named
+from .rips import CONFIG_ROOT, DEFAULT_SET, RIP_ROOT, RIPS_MAP, ForeignSound, RipFaults, RipGlitch, RipShelf, named
 from .signal import (
     VIB_MIN_NOTE,
     band_profile,
@@ -60,12 +62,19 @@ __all__ = [
     "VGM_CHANNELS",
     "VIB_MIN_NOTE",
     "ChannelChoice",
+    "ChannelMove",
+    "Excuse",
+    "ForeignSound",
     "FrameAspect",
     "FrameCheck",
     "FrameMiss",
+    "GlitchCandidate",
+    "GlitchScan",
     "LiftTempo",
     "OnsetMatch",
     "RipDiff",
+    "RipFaults",
+    "RipGlitch",
     "RipShelf",
     "SongSource",
     "TempoSource",
@@ -96,6 +105,7 @@ __all__ = [
     "render_mod_channels",
     "render_vgm_channels",
     "rms",
+    "scan_glitches",
     "seg_at",
     "spectrum",
     "suggest_volumes",

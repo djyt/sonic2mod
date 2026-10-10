@@ -749,8 +749,12 @@ def detail_lines(infos: list[dict]) -> list[str]:
             own = ", ".join(f"inst {i} {d:+d}" for i, d in sorted(info['own'].items()))
             if own:
                 out.append(f"detune rendered into the sample: {own}")
-            for inst, base, d, n in info['variants']:
-                out.append(f"detune variant inst {inst}: inst {base} at {d:+d} FNUM [dim]({n} notes)[/dim]")
+            envelopes = ", ".join(f"inst {i} {e}" for i, e in sorted(info.get('own_envelopes', {}).items()))
+            if envelopes:
+                out.append(f"pitch envelope rendered into the sample: {envelopes}")
+            for inst, base, d, e, n in info['variants']:
+                envelope = f", pitch envelope {e}" if e else ""
+                out.append(f"detune variant inst {inst}: inst {base} at {d:+d} FNUM{envelope} [dim]({n} notes)[/dim]")
         elif t == InfoKind.DETUNE_TIES:
             out.append(f"ties retuned to their new detune: {info['placed']} E1x / E2x"
                        + (f" [dim]({info['skipped']} rows had no free effect slot)[/dim]" if info['skipped'] else ""))

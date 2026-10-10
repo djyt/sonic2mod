@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 import unittest
 from pathlib import Path
@@ -17,7 +18,7 @@ from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
 from core.rom import RomImage
 from core.rom.variant import VoiceLayout
-from core.rom.voices import read_voices
+from core.rom.voices import bank_voices, read_voices
 from core.smps import (
     VoiceField,
 )
@@ -26,6 +27,8 @@ _HEADER = b"SEGA MEGA DRIVE ".rjust(0x110, b"\0").ljust(0x200, b"\0")
 
 
 _SONG = 0x200          # where the hand-built songs start
+_SONIC1_VOICES = SONIC1.voice_layout
+assert _SONIC1_VOICES is not None
 
 
 def _rom(song: bytes) -> RomImage:
@@ -45,7 +48,7 @@ class Voices(unittest.TestCase):
                      0, 0, 0, 0x85,             # AM/D1R: op1 AM, D1R 5
                      0, 0, 0, 0, 0x0F, 0x1F, 0x2F, 0x3F,
                      0x80, 0x10, 0x20, 0x9F])   # TL: bit 7 dropped
-        voice = read_voices(_memory(raw), _SONG, 1, SONIC1.voice_layout)[0]
+        voice = read_voices(_memory(raw), _SONG, 1, _SONIC1_VOICES)[0]
         self.assertEqual((voice.algorithm, voice.feedback), (2, 7))
         self.assertEqual(voice.operators[VoiceField.MULTIPLE], (4, 3, 2, 1))
         self.assertEqual(voice.operators[VoiceField.DETUNE], (1, 0, 0, 7))
@@ -65,6 +68,15 @@ class Voices(unittest.TestCase):
         self.assertEqual((voice.algorithm, voice.feedback), (2, 7))
         self.assertEqual([regs[OperatorReg.DT_MUL + off] for off in (0, 4, 8, 12)], [1, 2, 3, 4])
         self.assertEqual([regs[OperatorReg.TL + off] for off in (0, 4, 8, 12)], [0x11, 0x12, 0x13, 0x14])
+
+    def test_a_drivers_own_reader_is_asked_first(self):
+        # Space Harrier II's voices are register / value lists, no records: its variant reads them
+        memory = _memory(bytes(_SONIC1_VOICES.size))
+        asked = []
+        variant = dataclasses.replace(SONIC1, voice_reader=lambda _m, address, count: asked.append((address, count)) or [])
+        self.assertEqual(bank_voices(memory, _SONG, 3, variant), [])
+        self.assertEqual(asked, [(_SONG, 3)])
+        self.assertEqual(bank_voices(memory, _SONG, 1, SONIC1), read_voices(memory, _SONG, 1, _SONIC1_VOICES))
 
 
 if __name__ == "__main__":

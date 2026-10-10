@@ -5,8 +5,8 @@ config, and what pitch each MOD instrument sounds once they are made.
                           variants the settings ask for (plan_detune_variants) - the converter's first
                           steps, and the audit tools' whole preparation, so the two cannot drift
     sounding_pitches      per MOD instrument: the note it is anchored at, the pitch that note sounds
-                          and its sample's cents off it (an FM detune; a PSG table divider off equal
-                          temperament), read from the catalogue the generators render from
+                          and its sample's cents off it (the driver's table word or divider off equal
+                          temperament, an FM detune), read from the catalogue the generators render from
 """
 
 from __future__ import annotations
@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from ..audio import semitone_to_hz
-from ..chips import MD_PSG_CLOCK, psg_frequency_hz
+from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from ..config import ConversionConfig
-from ..smps import PSG_TABLE_PITCH
+from ..smps import PSG_TABLE_PITCH, fm_table_index
 from .detune import DetunePlan, detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
 from .synth_roots import resolve_synth_roots
@@ -33,7 +33,8 @@ class InstrumentPlan:
 class InstrumentPitch(NamedTuple):
     root: int                       # the MOD note (index, C1 = 0) the instrument is anchored at
     root_semitone: int              # the pitch that note sounds (SMPS semitone, C0 = 0)
-    cents: float                    # the sample's smpsAlterNote detune and special mode offset
+    cents: float                    # the sample off that pitch: its table word, smpsAlterNote detune and
+                                    # special mode offset
 
 
 def prepare_instruments(song, config: ConversionConfig, synth) -> InstrumentPlan:
@@ -51,13 +52,25 @@ def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitc
         if fm.root_idx is None:
             continue
         offset = fm.layers[0].sounding_offset
+        table = song.rules.fm_frequencies
+        cents = _fm_word_cents(fm.rendered_semitone, table)
         out[inst] = InstrumentPitch(fm.root_idx, fm.root_semitone,
-                                    detune_cents(fm.rendered_semitone, offset, song.rules.fm_frequencies) if offset else 0.0)
+                                    cents + (detune_cents(fm.rendered_semitone, offset, table) if offset else 0.0))
     for inst, psg in psg_catalogue(config).items():
         if psg.entry.type == TONE and inst not in out:
             out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone,
                                         _psg_divider_cents(psg.synth_idx + RENDER_INDEX_C1, song.rules.psg_frequencies))
     return out
+
+
+def _fm_word_cents(semitone: int, fm_frequencies: tuple[int, ...]) -> float:
+    """Cents the driver's word for a pitch sounds off equal temperament: the sample is rendered
+    with it (Golden Axe's -16 c; Space Harrier II's table plays each note 11 semitones and 26 c
+    above the name SMPS gives it)."""
+    i = fm_table_index(semitone)
+    if not 0 <= i < len(fm_frequencies) or fm_frequencies[i] <= 0:
+        return 0.0
+    return 1200 * math.log2(freq_word_hz(fm_frequencies[i]) / semitone_to_hz(semitone))
 
 
 def _psg_divider_cents(semitone: int, psg_frequencies: tuple[int, ...]) -> float:

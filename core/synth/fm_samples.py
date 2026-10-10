@@ -26,6 +26,7 @@ from ..audio import (
     SustainLoop,
     apply_loop,
     condition_render,
+    db_to_gain,
     fade_end,
     find_sustain_loop,
     full_scale_int8,
@@ -35,15 +36,18 @@ from ..audio import (
     release_rate_db_s,
 )
 from ..audio import trim_trailing_silence as _trim_trailing_silence
-from ..chips import fm_frequency_hz
+from ..chips import MD_PSG_CLOCK, fm_frequency_hz
+from ..chips.sn76489.build import get_lib_path as get_psg_lib_path
 from ..chips.ym2612 import OPN2
 from ..chips.ym2612.build import get_lib_path
-from ..config import ConversionConfig, SynthesisSettings
+from ..config import ConversionConfig, SynthesisSettings, region_fps
 from ..mod import max_sustain_secs
 from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from ..render_cache import RenderCache, code_salt
-from ..smps import SmpsSong, SmpsVoice
+from ..smps import FmDrum, PitchEnvelope, SmpsSong, SmpsVoice
+from . import psg_render
 from .fm_render import note_to_fnum_block, note_to_freq, render_frames, render_layers
+from .psg_render import render_psg_frames
 
 # ---------------------------------------------------------------------------
 # Render jobs and worker chips
@@ -55,6 +59,8 @@ class _RenderJob:
     spec: FmInstrument
     layers: list[tuple]   # (voice, semitones, FNUM detune, carrier TL, key-off secs or None)
     target_rate: int
+    envelopes: tuple[PitchEnvelope | None, ...] = ()   # each layer's pitch envelope (None: none)
+    frame_hz: float = 60.0                               # the frames they step at
 
     @property
     def inst(self) -> int:
@@ -119,6 +125,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
             print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
 
     jobs: list[_RenderJob] = []
+    envelopes = song.rules.pitch_envelopes
     for spec in [*cat.instruments.values(), *extra]:
         base_tl = tl_offsets.get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
@@ -128,7 +135,9 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
             _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate, fm_frequencies=song.rules.fm_frequencies)
             print(f"  [synth] inst={spec.inst} voice=${spec.layers[0].voice_idx:02X} "
                   f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
-        jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock)))
+        stepped = tuple(envelopes[lay.pitch_envelope] if lay.pitch_envelope else None for lay in spec.layers)
+        jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock),
+                               stepped if any(stepped) else (), region_fps(config.region)))
     return jobs
 
 
@@ -161,7 +170,7 @@ class _FmRenderer:
         # A loop ending past where the notes stop being heard is longer than the plain render,
         # and less faithful: none
         loop = (self._loop(job, mono, rate, period, sustain, sustain_n)
-                if self._loops and job.spec.render_secs is None else None)
+                if self._loops and job.spec.render_secs is None and not job.envelopes else None)
         heard_n = self._heard_n(job, rate, sustain, release)
         if loop is not None and heard_n is not None and loop.end > heard_n:
             loop = None
@@ -192,28 +201,37 @@ class _FmRenderer:
         if self._verbose and sustain < want:
             print(f"  Instrument {job.inst}: sustain capped at {sustain:.2f} s "
                   f"({synth.max_sample_kb} KiB sample limit at {job.target_rate} Hz)")
-        return sustain, probe_secs(sustain, fits) if self._loops else sustain
+        # A pitch envelope deepens each pass: no loop settles, the sample is played whole
+        return sustain, probe_secs(sustain, fits) if self._loops and not job.envelopes else sustain
 
     def _render_at(self, job: _RenderJob, sustain: float, layers: list[tuple] | None = None):
         """The job's layers (or `layers`) rendered for `sustain`: settings.yaml's shelf, a merge
         group's own on top, centred as the hardware's AC-coupled output plays it."""
         synth, spec = self._synth, job.spec
         mono, rate = self._chip_render(layers if layers is not None else job.layers, spec.synth_idx, sustain,
-                                       job.target_rate)
+                                       job.target_rate, job)
         shelves = [(synth.treble_shelf_hz, synth.treble_shelf_db),
                    (spec.treble_shelf_hz or synth.treble_shelf_hz, spec.treble_shelf_db or 0.0)]
         return condition_render(mono, rate, shelves, synth.dc_block), rate
 
-    def _chip_render(self, layers: list[tuple], synth_idx: int, sustain: float, target_rate: int):
-        """render_layers, or the render an earlier conversion cached (core/render_cache.py)."""
+    def _chip_render(self, layers: list[tuple], synth_idx: int, sustain: float, target_rate: int,
+                     job: _RenderJob | None = None):
+        """render_layers, or the render an earlier conversion cached (core/render_cache.py); a
+        job's pitch envelopes stepped over the whole render."""
         synth = self._synth
         inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
                   synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps,
                   self._fm_frequencies)
+        stepped: tuple = ()
+        if job is not None and job.envelopes:
+            frames = math.ceil((sustain + synth.release_padding) * job.frame_hz) + 1
+            stepped = tuple(e.offsets(frames) if e is not None else None for e in job.envelopes)
+            inputs += (stepped, job.frame_hz)
         return self._cache.through(inputs, lambda: render_layers(
             layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
             opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps,
-            fm_frequencies=self._fm_frequencies))
+            fm_frequencies=self._fm_frequencies, envelopes=stepped,
+            frame_hz=job.frame_hz if job is not None else 60.0))
 
     def _loop(self, job: _RenderJob, mono: Sequence[float], rate: int, period: float, sustain: float,
               sustain_n: int) -> SustainLoop | None:
@@ -399,12 +417,18 @@ def _fm_cache(synth: SynthesisSettings) -> RenderCache:
     return RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
 
 
+# An FM drum's PSG part mixed in at the cores' own scales: a PSG channel at attenuation 0 peaks at
+# 4096, one FM carrier at TL 0 at 789 (a sine through the OPN2 render) - equal, before drum_psg_db
+_PSG_TO_FM = 789 / 4096
+
+
 def generate_fm_drums(
     drums: Sequence[FmDrumInstrument],
     synth: SynthesisSettings,
     frame_hz: float,
     ring_secs: Mapping[int, float],
     cache_out: dict[str, int] | None = None,
+    psg_clock: int = MD_PSG_CLOCK,
 ) -> dict:
     """Each FM drum's program rendered whole (render_frames) -> {instrument: (int8 PCM, rate)}.
 
@@ -413,7 +437,8 @@ def generate_fm_drums(
     past its ring; a program that never stops is rendered for its ring, up to the frames it was
     run for (core/drivers/smpsz80/type0fm/drums.py), where it ends still keyed.  Each sample is
     conditioned (shelf, DC block) and quantised to its full 8 bits like any FM render: its level is
-    the sample_list volume's job.
+    the sample_list volume's job.  A drum's PSG part is rendered beside it, cut alike, and mixed
+    in (synth.drum_psg_db, at `psg_clock`).
     """
     cache = _fm_cache(synth)
     out = {}
@@ -430,15 +455,36 @@ def generate_fm_drums(
 
         inputs = ("fm_drum", _voice_key(d.drum.voice), d.drum.tl_offset, frames, frame_hz, tail, rate,
                   synth.mode, synth.clock_rate, synth.resample_taps)
-        mono, rate = cache.through(inputs, lambda d=d, frames=frames, tail=tail, rate=rate: render_frames(
-            d.drum.voice, d.drum.tl_offset, frames, frame_hz, tail, rate, _thread_opn2(synth.mode),
-            synth.clock_rate, synth.resample_taps))
+        psg = d.drum.psg[:len(frames)] if ring is not None else d.drum.psg
+        if psg:
+            inputs += (psg, synth.drum_psg_db, psg_clock, _psg_salt())
+        mono, rate = cache.through(inputs, lambda d=d, frames=frames, psg=psg, tail=tail, rate=rate: _render_drum(
+            d.drum, frames, psg, frame_hz, tail, rate, synth, psg_clock))
         shelves = [(synth.treble_shelf_hz, synth.treble_shelf_db)]
         mono = _trim_trailing_silence(condition_render(mono, rate, shelves, synth.dc_block))
         out[d.inst] = (full_scale_int8(mono, synth.dither), rate)
     if cache_out is not None and cache.enabled:
         cache_out.update(hits=cache.hits, misses=cache.misses)
     return out
+
+
+def _render_drum(drum: FmDrum, frames, psg, frame_hz: float, tail: float, rate: int, synth: SynthesisSettings,
+                 psg_clock: int):
+    """The drum's FM frames, with its PSG part summed in where it has one."""
+    mono, rate = render_frames(drum.voice, drum.tl_offset, frames, frame_hz, tail, rate, _thread_opn2(synth.mode),
+                               synth.clock_rate, synth.resample_taps)
+    if not psg:
+        return mono, rate
+    noise, _ = render_psg_frames(psg, frame_hz, tail, rate, psg_clock)
+    gain = _PSG_TO_FM * db_to_gain(synth.drum_psg_db)
+    length = max(len(mono), len(noise))
+    fm = list(mono) + [0] * (length - len(mono))
+    return [f + gain * (noise[i] if i < len(noise) else 0) for i, f in enumerate(fm)], rate
+
+
+def _psg_salt() -> str:
+    """What a drum's PSG part depends on besides its inputs: the PSG emulator and its renderer."""
+    return code_salt([Path(get_psg_lib_path()), Path(psg_render.__file__)])
 
 
 # ---------------------------------------------------------------------------

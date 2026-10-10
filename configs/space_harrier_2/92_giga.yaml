@@ -1,0 +1,13 @@
+# Space Harrier II - Giga.  A minimal config: everything else is derived from the ROM
+# (docs/todo/space_harrier_2.md); python convert.py <this> --show-config prints it.
+name: "Giga"
+input_file: "input/roms/Space Harrier II (World).md"
+rom_song: "$92"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "drum85.raw", 31, 0]   # VGZ: +6.4 dB at 64
+  - [3, "drum89.raw", 39, 0]   # VGZ: +4.3 dB at 64
+  - [5, "fm_v0c_Cs2.raw", 9, 0]   # VGZ: -4.7 dB at 5
+  - [6, "fm_v0c_B2.raw", 9, 0]   # VGZ: -5.0 dB at 5
+  - [7, "fm_v3e_Fs3.raw", 7, 0]   # VGZ: +0.8 dB at 8
+  - [10, "fm_v47_B3.raw", 10, 0]   # VGZ: -1.8 dB at 8

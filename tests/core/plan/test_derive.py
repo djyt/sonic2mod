@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings, load_settings
+from core.config.bpm import exact_bpm
 from core.drivers import dac_samples, read_rom_song
 from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
@@ -41,9 +42,11 @@ from core.smps import (
 from tests.roms import (
     GOLDEN_AXE_ROM,
     MOONWALKER_ROM,
+    SPACE_HARRIER_2_ROM,
     STREETS_OF_RAGE_ROM,
     needs_golden_axe,
     needs_moonwalker,
+    needs_space_harrier_2,
     needs_streets_of_rage,
 )
 
@@ -92,6 +95,21 @@ class RowGrid(unittest.TestCase):
         song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)], SONIC1_RULES)
         stated = {"name": "Grid", "input_file": "song.asm", "max_patterns": 1}
         self.assertEqual(derive_config(stated, song, Path("configs/grid.yaml"), _SETTINGS).data["ticks_per_row"], 7)
+
+    def test_a_grid_too_coarse_for_any_bpm_is_divided(self):
+        # Long notes only (Space Harrier II's Game Over): a 96-tick grid is 1.6 s a row, below 32
+        # BPM at any speed; the largest part of it that fits, the driver's tempo exactly
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SetVoice(0)),
+               *[Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=96)] * 4, Op(OpKind.STOP)]
+        header = SmpsSongHeader(fm_count=1, tempo_modifier=NO_TEMPO_HOLDS,
+                                channels=[SmpsChannelHeader(channel_type=ChannelType.FM, label="FM1")])
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)], SONIC1_RULES)
+        data = derive_config({"name": "Long", "input_file": "song.asm"}, song, Path("configs/long.yaml"), _SETTINGS).data
+        tpr, speed = data["ticks_per_row"], data["target_speed"]
+        self.assertEqual(96 % tpr, 0)
+        bpm = exact_bpm(header.tempo_divider, header.tempo_modifier, tpr, speed, 60)
+        self.assertEqual((tpr, speed), (48, 16))
+        self.assertAlmostEqual(bpm, 50, places=6)                       # the driver's tempo exactly
 
 
 @needs_moonwalker
@@ -228,6 +246,30 @@ class GoldenAxe(unittest.TestCase):
 
     def test_the_drums_play_on_fm3(self):
         self.assertIn("FM3", {c["source"] for c in self.data["channels"]})
+
+
+@needs_space_harrier_2
+class SpaceHarrier2(unittest.TestCase):
+    def test_a_window_is_at_the_level_the_conversion_bakes(self):
+        # An Epitaph's voice $53 G3-E4: FM6 (track volume 40) and FM1 (8, a pitch envelope
+        # variant voting as its base) nearly tie as read; with the loops replayed, as the level
+        # planner counts, FM1's level is the commoner.  Counted as read, the window took FM6's
+        # (volume 2) and FM6's notes a C00 against FM1's baseline
+        song = read_rom_song(RomImage.load(SPACE_HARRIER_2_ROM), 0x95)
+        stated = {"name": "An Epitaph", "input_file": str(SPACE_HARRIER_2_ROM), "rom_song": "$95"}
+        # Windows of 9 semitones (configs/settings.yaml's): G3-E4 a window of its own
+        settings = replace(load_settings(str(ROOT / "tests" / "settings.yaml"))[0], max_window=9)
+        data = derive_config(stated, song, "configs/space_harrier_2/95_an_epitaph.yaml", settings).data
+        rows = {row[1]: row[2] for row in data["sample_list"]}
+        self.assertEqual(rows["fm_v53_G3.raw"], starting_volume("FM", 8))
+
+    def test_a_drum_keying_a_quiet_pair_starts_at_its_level(self):
+        # drum81 keys OP1-OP2 alone: OP2 at TL 28, 22 steps below OP4, which drum85 keys too
+        song = read_rom_song(RomImage.load(SPACE_HARRIER_2_ROM), 0x87)
+        stated = {"name": "An Omen", "input_file": str(SPACE_HARRIER_2_ROM), "rom_song": "$87"}
+        data = derive_config(stated, song, "configs/space_harrier_2/87_an_omen.yaml", SampleSettings()).data
+        rows = {row[1]: row[2] for row in data["sample_list"]}
+        self.assertEqual((rows["drum81.raw"], rows["drum85.raw"]), (starting_volume("FM", 22), 64))
 
 
 @needs_streets_of_rage

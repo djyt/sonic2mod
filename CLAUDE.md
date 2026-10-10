@@ -17,13 +17,13 @@ Each topic has one home; the others link to it.
 | `docs/yaml_config.md` | **Every config key** — song config (minimal configs, channels, the instrument maps, sample shaping, merge keys, variants) and `settings.yaml` (code default vs shipped value) |
 | `docs/smps_driver.md` | **Sonic 1 driver and hardware** — coord flags, detune vs transposition, TempoWait, modulation / note fill in frames, voice layout and operator order, DAC sample rates, PSG |
 | `docs/smps_format.md` | Assembly syntax and how the parser reads it |
-| `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code): what each differs from Sonic 1 by, how it was found, how to add a variant |
+| `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code), Space Harrier II (early Z80): what each differs from Sonic 1 by, how it was found, how to add a variant |
 | `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, the device and core/synth API |
 | `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
-| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
+| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `3rdparty/` | Vendored C emulators the chip devices compile (in git): `nuked-opn2/` (cycle-accurate YM2612/YM3438), `sn76489/` (VGMPlay's PSG) |
@@ -182,6 +182,9 @@ python tools/vgm_lift.py --all --configs configs/streets_of_rage   # its rips.ya
 # its frame - what the lift cannot read.  Any driver; tied notes counted apart (vibrato runs on)
 python tools/vgm_frames.py --all --configs configs/streets_of_rage
 python tools/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
+# A rip's own glitches (a V-int lost: every channel a frame late from there on): candidates, with evidence.
+# Confirmed ones go in rips.yaml by hand ({rip:, glitches:, foreign:}); every rip tool then undoes them
+python tools/vgm_frames.py --all --glitches --configs configs/space_harrier_2
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -250,9 +253,9 @@ python -m pytest tests/core/merge -q                   # one package's unit test
    stopped rendering, diffs like any intended change.
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
-`vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD, `vgm_lift` (the Moonwalker
-pairs too), `frames_<game>` (`vgm_frames` on Golden Axe's and Streets of Rage's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
-Moonwalker, Golden Axe, Streets of Rage) as read, walked and played, no rendering — byte for byte;
+`vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD (against its own game's rips), `vgm_lift` (the Moonwalker
+pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's and Space Harrier II's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+Moonwalker, Golden Axe, Streets of Rage, Space Harrier II) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 
 ```bash
@@ -274,7 +277,9 @@ One line each; the linked section has the cause and the detail.
 - **Don't simulate bugs.**  Where a song's data or its driver misbehaves (a note past a frequency
   table reads stray code bytes, an overflow, a data error), convert what was meant, not the
   glitch: data fixes on, a past-table PSG note on the plausible continuation.  A rip that shows the
-  glitch is evidence of the bug, not a target to match.
+  glitch is evidence of the bug, not a target to match.  Except a bug that shapes an instrument's
+  sound on every play, which the songs were written against: played as heard (Space Harrier II's
+  drums, docs/todo/space_harrier_2.md D6 D7).
 - Notes are bytes $81–$DF (C0–A#7).  FM labels are real pitches: `nA4` at pitch offset 0 = 440 Hz
   (`f = fnum × (clock/144) × 2^block / 2^21`, A4 = fnum 1083, block 4).  A PSG `nC0` is C3.
 - A standalone duration byte **re-keys the last note** at its frequency; after `smpsNoAttack` it is a

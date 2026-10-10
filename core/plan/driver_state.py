@@ -178,6 +178,7 @@ class ResolvedNote:
     chip: int                # the real pitch the chip plays (chip_pitch)
     total_transpose: int     # driver transpose + the channel config's transpose
     detune: int = 0          # the track's smpsDetune in force (raw FNUM / divider units)
+    pitch_envelope: int = 0  # the track's pitch envelope in force (SetPitchEnvelope); 0: none
     gain_db: float = 0.0     # merged build: dB a unison chord folded into this note adds to its
                              #   level (core.merge.unison_gain_db); the note's level is the
                              #   track's plus this
@@ -210,7 +211,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
         detune = getattr(st.config, "detune_plan", None)     # core.plan.detune: the sample at this detune
         if detune is not None:
-            inst = detune.instrument_for(inst, st.detune, chip)
+            inst = detune.instrument_for(inst, st.detune, chip, st.pitch_envelope)
     else:
         ranged = psg_range_entry(st.psg_entries, key)
         if ranged is not None:
@@ -225,7 +226,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     if raw is None:
         raw = source_semitone + total
     return ResolvedNote(inst, max(0, min(35, raw)), raw, path, entry,
-                        source_semitone, key, chip, total, st.detune)
+                        source_semitone, key, chip, total, st.detune, st.pitch_envelope)
 
 
 def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):

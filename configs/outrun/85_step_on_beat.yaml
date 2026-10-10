@@ -4,3 +4,27 @@ name: "Step on Beat"
 input_file: "input/roms/OutRun (USA, Europe).md"
 rom_song: "$85"
 dac_stall: 0.4       # the update's share of the DAC's time, from the rip (vgm_analyze.py --dac-stall)
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 37, -2]   # VGZ: +4.7 dB at 64
+  - [2, "dac82.raw", 49, 0]   # VGZ: +2.4 dB at 64
+  - [3, "fm_v00_A0.raw", 23, 0]   # VGZ: -1.7 dB at 19
+  - [4, "fm_v00_G1.raw", 24, 0]   # VGZ: -1.8 dB at 19
+  - [5, "fm_v00_F2.raw", 24, 0]   # VGZ: -2.2 dB at 19
+  - [6, "fm_v02_F4.raw", 12, 0]   # VGZ: -4.4 dB at 7
+  - [7, "fm_v02_Eb5.raw", 12, 0]   # VGZ: -4.9 dB at 7
+  - [8, "fm_v02_D6.raw", 12, 0]   # VGZ: -4.9 dB at 7
+  - [9, "fm_v03_A4.raw", 21, 0]   # VGZ: +2.4 dB at 27
+  - [10, "fm_v03_G5.raw", 21, 0]   # VGZ: +2.2 dB at 27
+  - [13, "fm_v05_G3.raw", 10, 0]   # VGZ: +1.7 dB at 12
+  - [14, "fm_v05_F4.raw", 10, 0]   # VGZ: +1.6 dB at 12
+  - [15, "fm_v07_A3.raw", 9, 0]   # VGZ: -2.4 dB at 7
+  - [16, "fm_v07_G4.raw", 10, 0]   # VGZ: -2.9 dB at 7
+  - [19, "fm_v09_Ab4.raw", 33, 0]   # VGZ: -1.7 dB at 27
+  - [20, "fm_v09_Fs5.raw", 31, 0]   # VGZ: -1.1 dB at 27
+  - [21, "fm_v09_E6.raw", 31, 0]   # VGZ: -1.1 dB at 27
+  - [22, "psg_fTone_17_D4.raw", 1, 0]   # VGZ: +7.9 dB at 2
+  - [23, "psg_fTone_17_C5.raw", 1, 0]   # VGZ: +7.9 dB at 2
+  - [24, "psg_fTone_17_Bb5.raw", 1, 0]   # VGZ: +3.8 dB at 2
+  - [25, "psg_noise_e7.raw", 2, 0]   # VGZ: +9.5 dB at 6
+  - [26, "psg_noise_e7_fTone_16.raw", 2, 0]   # VGZ: +8.7 dB at 6

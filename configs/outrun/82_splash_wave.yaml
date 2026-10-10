@@ -4,3 +4,21 @@ name: "Splash Wave"
 input_file: "input/roms/OutRun (USA, Europe).md"
 rom_song: "$82"
 dac_stall: 0.332       # the update's share of the DAC's time, from the rip (vgm_analyze.py --dac-stall)
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [3, "dac83.raw", 54, -4]   # VGZ: +1.4 dB at 64
+  - [4, "dac84.raw", 55, 3]   # VGZ: +1.4 dB at 64
+  - [8, "fm_v00_D4.raw", 25, 0]   # VGZ: +3.5 dB at 38
+  - [9, "fm_v00_C5.raw", 36, 0]   # VGZ: +3.4 dB at 54
+  - [10, "fm_v01_D4.raw", 39, 0]   # VGZ: +2.8 dB at 54
+  - [11, "fm_v01_C5.raw", 39, 0]   # VGZ: +2.9 dB at 54
+  - [12, "fm_v01_Bb5.raw", 40, 0]   # VGZ: +2.6 dB at 54
+  - [13, "fm_v01_Ab6.raw", 39, 0]   # VGZ: +2.9 dB at 54
+  - [14, "fm_v02_C2.raw", 23, 0]   # VGZ: -2.2 dB at 18
+  - [15, "fm_v02_B2.raw", 23, 0]   # VGZ: -2.2 dB at 18
+  - [16, "fm_v02_A3.raw", 24, 0]   # VGZ: -2.5 dB at 18
+  - [17, "fm_v02_G4.raw", 24, 0]   # VGZ: -2.5 dB at 18
+  - [18, "fm_v03_C3.raw", 18, 0]   # VGZ: +2.6 dB at 25
+  - [19, "fm_v03_Bb3.raw", 13, 0]   # VGZ: +1.8 dB at 16
+  - [21, "psg_noise_e7.raw", 2, 0]   # VGZ: +8.0 dB at 4
+  - [22, "psg_noise_e7_fTone_16.raw", 2, 0]   # VGZ: +7.8 dB at 4

@@ -923,7 +923,9 @@ def main() -> None:
         vgm_names = [n for n in vgm_names if n in VGM_CHANNELS]
 
     if not args.skip_render:
-        if args.reuse_vgm and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
+        # A retimed reference renders through the render cache (keyed on its bytes): the workdir's
+        # renders may be the rip's own
+        if args.reuse_vgm and scale == 1.0 and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
             print("Reusing reference renders in the workdir")
         else:
             vgmplay = find_vgmplay(args.vgmplay)

@@ -1318,6 +1318,30 @@ pitch_mw_title:
     reference/vgz/moonwalker/01 - Title Screen.vgz: b71f7a4780e4
     tests/baselines/mw_title_baseline.mod: 647589fc720e
     tests/settings.yaml: c9fe3405c560
+pitch_or_last_wave:
+  commit: 5acb9d1
+  date: '2026-10-10'
+  inputs:
+    configs/outrun/84_last_wave.yaml: 461bffceed41
+    reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
+    tests/baselines/or_last_wave_baseline.mod: 86a299cd3581
+    tests/settings.yaml: c9fe3405c560
+pitch_or_passing_breeze:
+  commit: 5acb9d1
+  date: '2026-10-10'
+  inputs:
+    configs/outrun/83_passing_breeze.yaml: 7e4ddef7a903
+    reference/vgz/outrun/03 - Passing Breeze.vgz: 573997e6ac5e
+    tests/baselines/or_passing_breeze_baseline.mod: 29076957718f
+    tests/settings.yaml: c9fe3405c560
+pitch_or_step_on_beat:
+  commit: 5acb9d1
+  date: '2026-10-10'
+  inputs:
+    configs/outrun/85_step_on_beat.yaml: e5f63550aaa9
+    reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
+    tests/baselines/or_step_on_beat_baseline.mod: 20164bfc9f40
+    tests/settings.yaml: c9fe3405c560
 pitch_robotnik:
   commit: d0bd6d8-dirty
   date: '2026-10-10'

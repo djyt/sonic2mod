@@ -2,6 +2,7 @@
 /output
 reference/vgz
 reference/sega_retro
+reference/ric
 reference/smps_drivers
 input/roms
 *.egg-info/

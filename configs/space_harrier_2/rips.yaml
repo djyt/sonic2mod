@@ -29,5 +29,8 @@
   glitches:
     - {frame: 1634, frames: -1, why: "burst at 1633 (180 writes, every channel re-keyed) runs into 1634: its V-int lost"}
 97_game_over: "20 - A (Game Over).vgz"
-98_motion: "01 - Motion (Title Screen).vgz"
+98_motion:
+  rip: "01 - Motion (Title Screen).vgz"
+  glitches:
+    - {frame: 3458, frames: -1, why: "burst at 3457 (146 writes, every channel re-keyed) runs into 3458: its V-int lost"}
 99_name_entry: "18 - Name Entry.vgz"

@@ -170,6 +170,12 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   duration in a byte it counts up to (`$024E`: `inc (ix+11) / ld a,(ix+10) / sub (ix+11)`), from
   byte x divider by adds (`$0449`): none read yet (0) lasts 256 ticks, a product past 255 wraps.
   `TrackRules.byte_durations`; the three notes at 256 put every FM4 attack on its rip's frame.
+  The jump back leaves 18 (6 x 3), so the second pass plays them at 18 (the rip: frames 3217,
+  3235, 3253): the walk now walks a second pass where a jump leaves another duration than the
+  label's opening notes took, and loops on it (`code.py` `_replay_differs`; no other game's song
+  has one).  Its loop, 2502 ticks against FM2 / FM5's 3456, drifts on the hardware too: the MOD
+  cannot unroll it (the converter's warning).  The longer walk reached a lost V-int at 3458
+  (rips.yaml).  879 attacks, every pitch and level as the rip.
 - Found with it: the rip's FM4 voice differs in one register (100 attacks): OP1's SSG-EG (`$90`)
   is `$FF`.  The `$F2` stop (`$06D3`) silences a track through the RR / TL list at `$0A95`
   offset by `channel and 7` (2, 5 and 6 special-cased), so FM4's lands an operator slot high:

@@ -58,12 +58,14 @@ class SpaceHarrier2(unittest.TestCase):
         self.assertEqual((check.offset, check.ok), (-1, True))
 
     def test_another_sound_is_set_aside(self):
-        # Title's FM4 set aside as if another sound held it: each of its attacks excused
-        held = RipFaults(foreign=(ForeignSound(("FM4",), "test"),))
+        # Title's FM4 set aside as if another sound held it: each of its attacks excused (its
+        # rip's glitch undone)
+        faults = self._SHELF.faults_for(ROOT / "configs" / "space_harrier_2" / "98_motion.yaml")
+        held = RipFaults(faults.glitches, (ForeignSound(("FM4",), "test"),))
         check = self._check(0x98, "01 - Motion (Title Screen).vgz", held)
         self.assertTrue(check.ok)
         self.assertNotIn("FM4", {name for name, _, _ in check.checked})
-        self.assertEqual(self._excused(check), {Excuse.FOREIGN: 100})
+        self.assertEqual(self._excused(check), {Excuse.FOREIGN: 200})
 
 
 @needs_streets_of_rage_rips

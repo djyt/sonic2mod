@@ -92,5 +92,34 @@ Song_Voices:
                          [(False, False), (False, True), (True, False), (True, False), (True, False)])
 
 
+class SecondPass(unittest.TestCase):
+    _SONG = """
+Song_Header:
+	smpsHeaderStartSong 1
+	smpsHeaderVoice     Song_Voices
+	smpsHeaderChan      $02, $00
+	smpsHeaderTempo     $01, $03
+	smpsHeaderDAC       Song_DAC
+	smpsHeaderFM        Song_FM1, $00, $00
+Song_DAC:
+	smpsStop
+Song_FM1:
+	dc.b	nC4, $18
+Song_Loop:
+	dc.b	nD4, nE4, $0C
+	smpsJump Song_Loop
+Song_Voices:
+"""
+
+    def test_a_replay_whose_opening_duration_differs_is_walked_and_loops(self):
+        # The first pass's nD4 takes the $18 before the label; the jump leaves $0C, so the
+        # replays play nD4 at $0C: a second pass, the loop
+        fm1 = SmpsParser(SONIC1_RULES).parse_text(self._SONG).channels[1]
+        notes = [(ev.tick_position, ev.note.note_value, ev.note.duration) for ev in fm1.events if ev.note is not None]
+        nc4, nd4, ne4 = 0xB1, 0xB3, 0xB5
+        self.assertEqual(notes, [(0, nc4, 24), (24, nd4, 24), (48, ne4, 12), (60, nd4, 12), (72, ne4, 12)])
+        self.assertEqual((fm1.loop_tick, fm1.loop_event_index), (60, 3))
+
+
 if __name__ == "__main__":
     unittest.main()

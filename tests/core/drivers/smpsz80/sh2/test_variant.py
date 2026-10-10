@@ -86,10 +86,13 @@ class SpaceHarrier2(unittest.TestCase):
 
     def test_a_note_before_any_duration_lasts_256_ticks(self):
         # $98's FM4 opens on two rests and $AE with no duration byte: 256 ticks each (the rip keys
-        # them at frames 1, 257, 513), then its first duration (24 x divider 3)
+        # them at frames 1, 257, 513), then its first duration (24 x divider 3).  The jump back
+        # leaves 18 (6 x 3): the second pass plays them at 18 (frames 3217, 3235, 3253), the loop
         fm4 = source_map(self.codes[0x98].song())["FM4"]
         notes = [(e.tick_position, e.note.duration) for e in fm4.events if e.note is not None]
         self.assertEqual(notes[:5], [(0, 256), (256, 256), (512, 256), (768, 72), (840, 162)])
+        again = [n for n in notes if n[0] >= fm4.loop_tick]
+        self.assertEqual((fm4.loop_tick, again[:5]), (3216, [(3216, 18), (3234, 18), (3252, 18), (3270, 72), (3342, 162)]))
 
     def test_every_voice_a_song_sets_is_a_full_voice(self):
         for sid, code in self.codes.items():

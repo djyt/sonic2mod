@@ -92,6 +92,8 @@ class SmpsChannelHeader:
     chip_channel: str = ""
     # The pitch envelope the track starts with (SetPitchEnvelope's index; 0: none)
     pitch_envelope: int = 0
+    # A pan animation: the B4 bytes the track's reads step through, again and again; (): none
+    pan_steps: tuple[int, ...] = ()
 
 
 @dataclass

@@ -9,6 +9,9 @@ in the driver the 68k loads (../program.py), not by one game's addresses.
              table runs into the index: as many songs as it has bytes
     voices   the voice flag's: ld (ix+7),a / push de / ld hl,VOICES / call
     pitch envelopes   ex de,hl / ld hl,ENVELOPES / call: the FM's and the PSG's frequency updates
+    pan animation     ld a,(ix+$18) / ld hl,ANIMATIONS / call: a list per animation (Z80 RAM); the
+             driver never sets $18, so every track plays the first: B4 bytes from $40, then
+             a command - 0 again from the start (the one list's); the others are not read
     SFX      in Z80 RAM, from $A0: not read (music only)
 
     Space Harrier II   bank $10000; tempos $87E3, index $87FC (25 songs, $81-$99), voices $883A,
@@ -44,6 +47,9 @@ _SONG_LOADER = re.compile(rb"\xD6\x81\xF8\xF5\xCD..\xF1\x06\x00\x4F\x21(..)\x09\
                           re.DOTALL)
 _SET_VOICE = re.compile(rb"\xDD\x77\x07\xD5\x21(..)\xCD", re.DOTALL)
 _PITCH_ENVELOPES = re.compile(rb"\xEB\x21(..)\xCD", re.DOTALL)
+_PAN_ANIMATIONS = re.compile(rb"\xDD\x7E\x18\x21(..)\xCD", re.DOTALL)
+_FIRST_PAN = 0x40                 # an animation's byte: a pan from here, a command below
+_AGAIN = 0x00                     # its command: from the start
 
 
 @lru_cache(maxsize=8)
@@ -58,7 +64,7 @@ def driver_tables(rom: RomImage) -> DriverTables:
     songs = index - tempos
     if not 0 < songs <= _FIRST_SFX - _FIRST_MUSIC:
         raise RomError(f"tempos ${tempos:X}, index ${index:X}: not a tempo per song before the index")
-    return DriverTables(bank, tempos, index, songs, voices, envelopes)
+    return DriverTables(bank, tempos, index, songs, voices, envelopes, _pan_steps(z80))
 
 
 def sh2_memory(image: RomImage) -> Sh2Memory:
@@ -104,6 +110,19 @@ def _bank_run(z80: bytes, at: int) -> int | None:
     if len(bits) < _BANK_BITS or z80[at:at + len(_BANK_WRITE)] == _BANK_WRITE:
         return None
     return sum(bit << (_FIRST_BANK_BIT + i) for i, bit in enumerate(bits))
+
+
+def _pan_steps(z80: bytes) -> tuple[int, ...]:
+    """The first pan animation's B4 bytes, played again and again."""
+    table = _one_operand(_PAN_ANIMATIONS, z80, "pan animation table")
+    at = z80_word(z80, table)
+    steps = []
+    while z80[at] >= _FIRST_PAN:
+        steps.append(z80[at])
+        at += 1
+    if z80[at] != _AGAIN or not steps:
+        raise RomError(f"Z80 ${at:04X}: a pan animation ending in command ${z80[at]:02X}: not read")
+    return tuple(steps)
 
 
 def _one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str) -> int:

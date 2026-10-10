@@ -242,6 +242,7 @@ _FLAG_MACROS = {
     CoordFlag.LFO: "smpsLfo",                # likewise
     CoordFlag.LEGATO: "smpsLegato",          # likewise
     CoordFlag.PITCH_ENVELOPE: "smpsPitchEnvelope",   # likewise
+    CoordFlag.PAN_STEP: "smpsPanStep",       # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

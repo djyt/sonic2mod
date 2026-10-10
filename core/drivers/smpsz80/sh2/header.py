@@ -2,7 +2,7 @@
 the driver's track RAM (Z80 $1839, a $30-byte slot each, in order; the SFX slots after).
 
     count.b, then per track 9 bytes:
-      +0 flags          bit 7: plays; bit 6: pan animation (docs/todo/space_harrier_2.md 2.4)
+      +0 flags          bit 7: plays; bit 6: pan animation (locate.py: its steps)
       +1 channel        FM $00-$02, $04-$06; PSG $80 $A0 $C0
       +2 divider        durations x it (every track of a song alike)
       +3 pointer.w      a Z80 address, little-endian
@@ -50,6 +50,7 @@ _MUSIC_SLOTS = len(HEADER_SH2.fm_slots) + 1
 _RECORD = 9
 _FLAGS, _CHANNEL, _DIVIDER, _POINTER, _TRANSPOSITION, _PITCH_ENVELOPE, _VOLUME = 0, 1, 2, 3, 5, 6, 8
 _PLAYS = 0x80
+_PAN_ANIMATION = 0x40
 _NEVER_HOLDS = 0                       # tempo 0: the counter never runs out
 
 # Each channel byte's chip channel: FM $00-$02 and $04-$06 (bit 2: the chip's second part), the
@@ -104,10 +105,12 @@ def read_track_list(memory: SoundMemory, address: int) -> RomHeader:
         if not memory.byte(at + _FLAGS) & _PLAYS:
             continue
         tracks[start] = expected.channel_type
+        animated = memory.byte(at + _FLAGS) & _PAN_ANIMATION
         header.channels.append(SmpsChannelHeader(channel_type=expected.channel_type, label=track_label(start),
                                                  chip_channel=chip, pitch_offset=signed_byte(memory.byte(at + _TRANSPOSITION)),
                                                  volume=memory.byte(at + _VOLUME),
-                                                 pitch_envelope=memory.byte(at + _PITCH_ENVELOPE)))
+                                                 pitch_envelope=memory.byte(at + _PITCH_ENVELOPE),
+                                                 pan_steps=memory.tables.pan_steps if animated else ()))
     header.fm_count = len(header.channels)
     return RomHeader(header, memory.tables.voices, tracks)
 

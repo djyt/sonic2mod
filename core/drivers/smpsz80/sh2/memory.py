@@ -24,6 +24,7 @@ class DriverTables:
     songs: int
     voices: int        # a register list's address per voice
     pitch_envelopes: int   # an envelope's address per pitch envelope from 1
+    pan_steps: tuple[int, ...] = ()   # the pan animation a track's flag turns on: B4 bytes, a read each
 
 
 class Sh2Memory(BankedZ80Memory):

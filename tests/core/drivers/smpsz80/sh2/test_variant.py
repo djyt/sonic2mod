@@ -19,7 +19,7 @@ from core.drivers.smpsz80.sh2 import SH2
 from core.drivers.smpsz80.sh2.locate import locate_sh2
 from core.drivers.smpsz80.sh2.memory import DriverTables, Sh2Memory
 from core.rom import RomError, RomImage
-from core.smps import NO_TEMPO_HOLDS, ChannelType, OpKind, SetVoice, source_names
+from core.smps import NO_TEMPO_HOLDS, ChannelType, OpKind, PanStep, SetVoice, source_map, source_names
 from tests.roms import SPACE_HARRIER_2_ROM, needs_space_harrier_2
 
 _HEADER = b"SEGA MEGA DRIVE ".rjust(0x110, b"\0").ljust(0x200, b"\0")
@@ -75,6 +75,14 @@ class SpaceHarrier2(unittest.TestCase):
             dropped.update(code.dropped)
         self.assertEqual(set(dropped), {"follow-on song (each song converts alone)",
                                         "FM3 special mode on (drums)"})
+
+    def test_a_pan_animation_steps_at_every_read(self):
+        # $8B's FM4 record has flag bit 6: centre, left, centre, right, each read (rests too)
+        fm4 = source_map(self.codes[0x8B].song())["FM4"]
+        steps = [e for e in fm4.events if isinstance(e.effect, PanStep)]
+        reads = [e for e in fm4.events if e.note is not None]
+        self.assertEqual([s.effect.side for s in steps[:5]], ["C", "L", "C", "R", "C"])
+        self.assertEqual([s.tick_position for s in steps[:8]], [r.tick_position for r in reads[:8]])
 
     def test_every_voice_a_song_sets_is_a_full_voice(self):
         for sid, code in self.codes.items():

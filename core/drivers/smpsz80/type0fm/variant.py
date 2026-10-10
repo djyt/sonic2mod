@@ -18,9 +18,10 @@ from core.smps import FIRST_NOTE, LAST_NOTE, CoordFlag, FmDrum, PlaybackRules, S
 
 from ...names import SmpsDriver
 from ..memory import BankedZ80Memory
+from ..program import driver_ram, fm_frequencies
 from .drums import drum_name, read_fm_drums
 from .layout import HEADER_TYPE0, KEY_RUN_OUT, TEMPO_PHASE, VOICE_TYPE0
-from .locate import fm_frequencies, locate_type0, sound_bank
+from .locate import locate_type0, sound_bank
 
 # No handler of its own: one operand skipped
 _NO_OPS = (*range(0xE0, 0xE5), *range(0xE8, 0xEF), 0xF1, 0xF3, 0xF4, 0xF5, 0xFA, 0xFF)
@@ -45,7 +46,7 @@ _FLAGS: dict[int, FlagSpec] = {
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
-    return replace(rules, fm_frequencies=fm_frequencies(rom))
+    return replace(rules, fm_frequencies=fm_frequencies(driver_ram(rom)))
 
 
 def _fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:

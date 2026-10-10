@@ -1,8 +1,7 @@
 """Where an SMPS Z80 Type 0 FM driver keeps its sounds - found by the shape of its tables, not by
 one game's bytes.
 
-    driver     Z80 RAM as the 68k's copy loops fill it (core/rom/z80.py), holding an FM table:
-               12 little-endian words a semitone apart, then the same notes with the block one up
+    driver     the Z80 program holding an FM table (../program.py)
     bank       the 32 KB ROM bank the driver maps at Z80 $8000, its sound header at the start
     header     words: +0 priorities  +4 music index  +6 SFX index  +8 pitch envelopes
     indexes    a word per sound: music from $81, SFX $90-$B9 (the driver's queue dispatch)
@@ -17,13 +16,12 @@ from __future__ import annotations
 
 from functools import lru_cache, partial
 
-from core.chips import split_freq_word
 from core.rom.header import is_index, is_music_header, is_sfx_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.variant import SoundIndex
-from core.rom.z80 import z80_ram, z80_word
 
 from ..memory import BANK_SIZE, BankedZ80Memory
+from ..program import driver_ram
 from .layout import HEADER_TYPE0
 
 _FIRST_MUSIC = 0x81
@@ -34,13 +32,6 @@ _MUSIC_INDEX = 4             # the sound header's words
 _SFX_INDEX = 6
 _WORD = 2
 _ENTRIES_CHECKED = 3
-
-# The FM table: an octave of fnums a semitone apart (2^(1/12) = 1.059), the next octave's within
-# the drift of a hand-tuned table (Golden Axe: $283 then $27E)
-_OCTAVE = 12
-_NOTES = 0x60                # $80-$DF: rest and the 95 notes, as Sonic 1's table
-_SEMITONE = (1.04, 1.08)
-_OCTAVE_DRIFT = 0.02
 
 
 @lru_cache(maxsize=8)
@@ -64,44 +55,12 @@ def locate_type0(rom: RomImage) -> SoundIndex:
 @lru_cache(maxsize=8)
 def sound_bank(rom: RomImage) -> int:
     """The one bank whose start is a sound header, behind a Z80 driver with an FM table."""
-    fm_table(z80_ram(rom))
+    driver_ram(rom)
     found = [bank for bank in range(0, len(rom.data), BANK_SIZE) if _is_sound_header(BankedZ80Memory(rom, bank), bank)]
     if len(found) != 1:
         where = ", ".join(f"${b:X}" for b in found)
         raise RomError(f"{len(found)} banks start with a sound header{': ' + where if where else ''}, not one")
     return found[0]
-
-
-def fm_frequencies(rom: RomImage) -> tuple[int, ...]:
-    """The driver's FM table as it indexes it: note byte - $80, so the word before the first
-    octave stands at $80 (a rest: never read), $81 is the octave's first."""
-    z80 = z80_ram(rom)
-    start = fm_table(z80) - _WORD
-    return _words(z80, start, _NOTES)
-
-
-def fm_table(z80: bytes) -> int:
-    """The Z80 address of the driver's FM frequency table: its first octave."""
-    for at in range(len(z80) - 2 * _OCTAVE * _WORD):
-        if _is_fm_octave(z80, at):
-            return at
-    raise RomError("Z80 driver: no FM frequency table (an octave of little-endian fnums)")
-
-
-def _is_fm_octave(z80: bytes, at: int) -> bool:
-    """Twelve words a semitone apart in one block, then the same notes a block up."""
-    words = _words(z80, at, 2 * _OCTAVE)
-    low, high = words[:_OCTAVE], words[_OCTAVE:]
-    low_split, high_split = [split_freq_word(w) for w in low], [split_freq_word(w) for w in high]
-    block = low_split[0][1]
-    if any(b != block for _, b in low_split) or any(b != block + 1 for _, b in high_split):
-        return False
-
-    fnums = [f for f, _ in low_split]
-    lo, hi = _SEMITONE
-    if not all(fnums[i] and lo < fnums[i + 1] / fnums[i] < hi for i in range(_OCTAVE - 1)):
-        return False
-    return all(abs(h / f - 1) < _OCTAVE_DRIFT for (h, _), f in zip(high_split, fnums, strict=True))
 
 
 def _is_sound_header(memory: BankedZ80Memory, bank: int) -> bool:
@@ -121,7 +80,3 @@ def _is_sound_header(memory: BankedZ80Memory, bank: int) -> bool:
 _is_music_header = partial(is_music_header, layout=HEADER_TYPE0)
 _is_sfx_header = partial(is_sfx_header, layout=HEADER_TYPE0)
 
-
-def _words(z80: bytes, at: int, count: int) -> tuple[int, ...]:
-    """`count` little-endian words of Z80 RAM from `at`."""
-    return tuple(z80_word(z80, i) for i in range(at, at + count * _WORD, _WORD))

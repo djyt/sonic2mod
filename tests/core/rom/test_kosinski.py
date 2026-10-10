@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from core.rom import RomImage
+from core.rom import RomError, RomImage
 from core.rom.kosinski import kosinski
 from core.rom.z80 import z80_ram
 
@@ -31,6 +31,15 @@ class Kosinski(unittest.TestCase):
         out, end = kosinski(data, 0)
         self.assertEqual(out, b"ABABABA")
         self.assertEqual(end, len(data))
+
+    def test_a_copy_from_before_the_start_is_no_stream(self):
+        # descriptor bits 0 0 0 0: an inline copy of 2 from -1, with nothing written yet
+        with self.assertRaisesRegex(RomError, "before the stream's start"):
+            kosinski(bytes([0, 0, 0xFF]), 0)
+
+    def test_a_stream_without_its_end_marker_is_none(self):
+        with self.assertRaisesRegex(RomError, "past the ROM"):
+            kosinski(bytes([0xFF, 0xFF, 0x41]), 0)
 
     def test_a_blob_unpacked_to_68k_ram_then_copied_to_the_z80(self):
         # Streets of Rage's load: lea src,a0 / lea buf,a1 / jsr KosDec / lea z80_ram+$10,a1 /

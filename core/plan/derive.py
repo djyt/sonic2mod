@@ -119,6 +119,8 @@ class Derivation:
     files: dict[str, bytes] = field(default_factory=dict)   # samples_dir files to write (DAC samples)
     stale: list[str] = field(default_factory=list)          # stated rows' files these settings do not
                                                             # cut (another max_window's, or stale): left out
+    folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # {voice copy: (the voice it plays
+                                                            # as, its notes)}: no slot for it
 
 
 def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
@@ -190,7 +192,9 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        self._items("voice_map", self._windows(fm, ChannelType.FM, _FM_STEM.format))
+        fm = self._fold_copies(fm, MAX_INSTRUMENTS - (self._next - 1) - self._psg_slots(tone, noise))
+        voice_map = self._windows(fm, ChannelType.FM, _FM_STEM.format)
+        self._items("voice_map", voice_map | {copy: voice_map[plain] for copy, (plain, _) in self._out.folded.items()})
         self._items("psg_voice_map", self._windows(tone, "tone", _TONE_STEM.format))
         self._items("psg_map", {form: self._noise(form, noise[form]) for form in sorted(noise)})
         self._sample_list()
@@ -306,6 +310,31 @@ class _Deriver:
                                 "mod_instrument": inst, "root": synth_note_name(C1_SEMITONE + root)})
             out[key] = entries
         return out
+
+    def _fold_copies(self, fm: dict[int, Counter], slots: int) -> dict[int, Counter]:
+        """`fm` with copies folded onto their voices while its windows outnumber `slots`: the least
+        played copy (channel 3 special mode, the LFO: SmpsVoice.plain) plays as its voice, its notes
+        in that voice's windows (Derivation.folded)."""
+        voices = {v.index: v for v in self._song.voices}
+        fm = {key: Counter(pitches) for key, pitches in fm.items()}
+        while self._fm_slots(fm) > slots:
+            copies = [key for key in fm if voices[key].plain is not None]
+            if not copies:
+                break
+            copy = min(copies, key=lambda key: (fm[key].total(), key))
+            plain = voices[copy].plain
+            assert plain is not None
+            self._out.folded[copy] = (plain, fm[copy].total())
+            fm.setdefault(plain, Counter()).update(fm.pop(copy))       # a plain voice is no copy: never folded
+        return fm
+
+    def _fm_slots(self, fm: dict[int, Counter]) -> int:
+        return sum(len(_windows(list(pitches), self._max_span)) for pitches in fm.values())
+
+    def _psg_slots(self, tone: dict[str, Counter], noise: dict[int, Counter]) -> int:
+        """The slots the PSG's windows and noise forms take (each envelope a noise form plays with)."""
+        return sum(len(_windows(list(pitches), self._max_span)) for pitches in tone.values()) + \
+            sum(len(envelopes) for envelopes in noise.values())
 
     def _lowest_root(self, pitch: int) -> int:
         """First MOD note (0 = C1) from the floor keeping root_harmonics harmonics of `pitch` below

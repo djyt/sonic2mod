@@ -10,6 +10,7 @@ import dataclasses
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -26,7 +27,7 @@ from roms import (
     needs_streets_of_rage,
 )
 
-from core.config import ChannelConfig, ConversionConfig, SampleSettings
+from core.config import ChannelConfig, ConversionConfig, SampleSettings, load_settings
 from core.drivers import dac_samples, read_rom_song
 from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
@@ -248,6 +249,21 @@ class StreetsOfRage(unittest.TestCase):
         noise = self.data["psg_map"][0xE7]
         self.assertEqual(list(noise["envelopes"]), ["$00"])
         self.assertNotEqual(noise["envelopes"]["$00"], noise["mod_instrument"])
+
+    def test_voice_copies_past_the_slots_play_as_their_voice(self):
+        # Big Boss ($90), windows of 9 (the shipped max_window): its special mode and LFO copies need 36 slots;
+        # the least played copies play as their plain voice, on its windows
+        rom = RomImage.load(STREETS_OF_RAGE_ROM)
+        song = read_rom_song(rom, 0x90)
+        out = derive_config({"name": "Big Boss", "input_file": str(STREETS_OF_RAGE_ROM), "rom_song": "$90"}, song,
+                            "configs/streets_of_rage/90_big_boss.yaml", replace(load_settings(str(_HERE / "settings.yaml"))[0], max_window=9),
+                            dac_samples(rom))
+        voices = {v.index: v for v in song.voices}
+        self.assertLessEqual(len(out.data["sample_list"]), 31)
+        self.assertTrue(out.folded)
+        for copy, (plain, _) in out.folded.items():
+            self.assertEqual(voices[copy].plain, plain)
+            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][plain])
 
 
 if __name__ == "__main__":

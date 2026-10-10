@@ -82,6 +82,11 @@ window's span: a sample played d semitones from the pitch it was rendered at run
 2^(d/12) times too fast or slow (`docs/todo/user_improvements.md` item 7).  A bass voice stays at E1; a lead moves
 up and its sample grows with its rate (§ 8).
 
+A MOD holds 31 instruments.  Where the windows need more, voice copies (channel 3's special mode,
+the hardware LFO: `docs/pipeline.md` § Hardware LFO) play as their plain voice on its windows, the
+least played first, until the song fits (`copy_no_slot`: Streets of Rage's Big Boss, 5 copies);
+a song that still does not fit is an error.
+
 A stated item replaces only the derived item it names: one voice's `voice_map` list, one
 `psg_map` form, one `sample_list` row.  A row naming a derived sample's file (`fm_v04_C3.raw`,
 `psg_noise_e7.raw`, `dac81.raw`) replaces that sample's row wherever its slot is now: a setting

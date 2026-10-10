@@ -72,6 +72,7 @@ _PSG_MAP_KEYS = _PSG_KEYS | {"envelopes"}
 _CHANNEL_KEYS = frozenset({"source", "mod_channel", "transpose", "instrument", "volume", "enabled"})
 _DAC_KEYS = frozenset({"name", "mod_instrument", "mod_note", "saturate_db", "merge_saturate_db"})
 _GROUP_KEYS = frozenset({"primary", "followers", "cut_primary", "max_composites", "fill_lost", "fill_cut", "bank",
+                         "bank_drums",
                          "mod_channel", "mix_note", "fill", "cut_after", "mix_at", "loop_mix", "fm_on_chip",
                          "treble_shelf_db", "treble_shelf_hz", "limit_db"}) | _SAMPLE_KEYS
 _BLOCK_KEYS = frozenset({"patterns", "groups", "drop"})
@@ -205,6 +206,9 @@ class MergeGroup:
     bank: bool = False          # this group's mixed composites share MOD instruments as sample banks,
                                 # each sound chosen with 9xx (core/merge/banks.py), which takes the note's
                                 # effect slot (a melodic note's attack-row Cxx moves a row later)
+    bank_drums: bool = False    # a drum primary's own hits go into the banks too (each drum a sound, chosen
+                                # with 9xx), so its drums' slots are free for composites; implies `bank`.
+                                # Needs no followers
     mod_channel: int | str | None = None   # merge_patterns only: the column the primary's notes take
                                 # in the group's patterns — a channels: mod_channel number, or a source
                                 # name (FM2: that channel's column), which must be folded or dropped
@@ -345,6 +349,7 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
     if fill and (followers or g.get('mod_channel') is not None or patterns is None):
         raise ValueError(f"{ctx}: fill: true is for a merge_patterns group with no followers and no mod_channel "
                          f"(the channel's notes go wherever a column is silent)")
+    bank_drums = bool(g.get('bank_drums', False))
     target = g.get('mod_channel')
     if target is not None and not isinstance(target, (int, str)):
         raise ValueError(f"{ctx}: mod_channel is a channels: mod_channel number or a source name (got {target!r})")
@@ -355,8 +360,8 @@ def _parse_merge_group(g, ctx: str, patterns=None) -> "MergeGroup":
                       int(_mc) if _mc is not None else None,
                       bool(g.get('fill_lost', False)),
                       bool(g.get('fill_cut', False)),
-                      bool(g.get('bank', False)),
-                      mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
+                      bool(g.get('bank', False)) or bank_drums,
+                      bank_drums=bank_drums, mod_channel=target, mix_note=mix_note, patterns=patterns, fill=fill,
                       cut_after=cut_after, mix_at=(str(mix_at).lower() if mix_at is not None else None),
                       loop_drift_db=_opt(g, 'loop_drift_db', lambda v: _drift_db(v, ctx)),
                       loop_min_ms=_opt(g, 'loop_min_ms', lambda v: _loop_min_ms(v, ctx)),

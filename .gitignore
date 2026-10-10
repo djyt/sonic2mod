@@ -1,9 +1,6 @@
 /.claude
 /output
-reference/vgz
-reference/sega_retro
-reference/ric
-reference/smps_drivers
+reference/*
 input/roms
 *.egg-info/
 *__pycache__*

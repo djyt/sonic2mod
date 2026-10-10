@@ -787,7 +787,8 @@ def detail_lines(infos: list[dict]) -> list[str]:
         elif t == InfoKind.DAC_SATURATED:
             out.append(f"{info['name']} (inst {info['instrument']}): soft-clipped, body {info['db']:+g} dB at the same peak")
         elif t == InfoKind.MERGE_UNISON_VOLUME:
-            out.append(f"[dim]unison: inst {info['instrument']} baked {info['db']:+.1f} dB (volume {info['volume']})[/dim]")
+            why = "unison" if info.get('unison', True) else "level moved"
+            out.append(f"[dim]{why}: inst {info['instrument']} baked {info['db']:+.1f} dB (volume {info['volume']})[/dim]")
     return out
 
 

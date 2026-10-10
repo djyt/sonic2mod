@@ -21,10 +21,22 @@ from core.rom.grammar import Instruction
 from core.rom.image import RomError, RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import SmpsVariant
-from core.smps import FIRST_NOTE, LAST_NOTE, ChannelType, CoordFlag, Op, OpKind, PlaybackRules, effect_from_bytes
+from core.smps import (
+    FIRST_NOTE,
+    LAST_NOTE,
+    ChannelType,
+    CoordFlag,
+    FmDrum,
+    Op,
+    OpKind,
+    PlaybackRules,
+    SmpsSongHeader,
+    effect_from_bytes,
+)
 
 from ...names import SmpsDriver
 from ..program import driver_ram, fm_frequencies, psg_frequencies, psg_read
+from .drums import read_sh2_drums
 from .envelopes import read_pitch_envelopes
 from .header import HEADER_SH2, read_track_list
 from .locate import locate_sh2, sh2_memory
@@ -103,6 +115,11 @@ _DRUM_FLAGS: dict[int, FlagSpec] = {
 }
 
 
+def _fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
+    """Every drum byte's drums, as the driver plays them (drums.py): the same in every song."""
+    return {drum_name(byte): drum for byte, drum in read_sh2_drums(rom).items()}
+
+
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
     """Its FM and PSG tables and its pitch envelopes, read from the driver."""
     z80 = driver_ram(rom)
@@ -129,6 +146,7 @@ SH2 = SmpsVariant(
     rules=PlaybackRules(driver=SmpsDriver.SH2, fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
                         dac_names={b: drum_name(b) for b in range(FIRST_NOTE, LAST_NOTE + 1)}),
     rules_from_rom=_rules_from_rom,
+    fm_drums=_fm_drums,
     music_header_reader=read_track_list,
     voice_reader=read_sh2_voices,
 )

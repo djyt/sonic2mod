@@ -27,6 +27,7 @@ from ..chips import (
     CH3_SPECIAL_MODE,
     FREQ_WORD_MAX,
     MD_FM_CLOCK,
+    OPERATOR_SLOT_OFFSETS,
     REG_CH3_MODE,
     freq_word,
     split_freq_word,
@@ -359,36 +360,58 @@ def render_frames(
 ) -> tuple[array.array, int]:
     """A track as the driver plays it frame by frame (an FM drum program, core.smps.percussion) ->
     (mono, out_rate): the voice at `tl_offset`, then each frame's frequency word and key state
-    held for 1 / frame_hz seconds, then `tail_secs` more (a release, after the last frame's)."""
+    held for 1 / frame_hz seconds, then `tail_secs` more (a release, after the last frame's).
+    Frames with a word per operator play channel 3 in special mode, each operator keyed by the
+    frame's mask (Space Harrier II's drums: two operator pairs, two drums)."""
     native_rate = output_rate(clock_rate)
     if opn2 is None:
         opn2 = OPN2(mode="ym2612")
     else:
         opn2.reset()
-    channel = 0
+    special = any(f.slots is not None for f in frames)
+    channel = CH3_CHANNEL if special else 0
     program_voice(opn2, voice, channel, tl_offset=tl_offset)
+    if special:
+        opn2.write_reg(REG_CH3_MODE, CH3_SPECIAL_MODE)
 
     mono = array.array('i')
-    keyed = False
+    keys = 0                                     # the operators keyed
     at = 0.0                                     # where the next frame starts, in native samples
-    for frame in frames:
-        if frame.attack and keyed:
-            opn2.key_off(channel)
-            mono += opn2.render_mono(_RETRIGGER_GAP)
-        _set_freq(opn2, *split_freq_word(frame.word), channel)
-        if frame.attack:
-            opn2.key_on(channel)
-        elif keyed and not frame.keyed:
-            opn2.key_off(channel)
-        keyed = frame.keyed
+    opn2.begin_capture()                         # a write takes two samples of chip time: they stay in the frame
+    try:
+        for frame in frames:
+            wanted = frame.keys if frame.keyed else 0
+            if frame.attack and keys:
+                opn2.key_off(channel)
+                mono += _captured(opn2) + opn2.render_mono(_RETRIGGER_GAP)
+            if frame.slots is not None:
+                for slot, word in zip(OPERATOR_SLOT_OFFSETS, frame.slots, strict=True):
+                    _write_freq(opn2, CH3_FREQ_REGS[slot], *split_freq_word(word))
+            else:
+                _set_freq(opn2, *split_freq_word(frame.word), channel)
+            if frame.attack:
+                opn2.key_on(channel, wanted)
+            elif keys & ~wanted and wanted:
+                opn2.key_on(channel, wanted)             # some operators off: the mask keeps the rest on
+            elif keys & ~wanted:
+                opn2.key_off(channel)
+            keys = wanted
 
-        at += native_rate / frame_hz
-        mono += opn2.render_mono(round(at) - len(mono))
+            mono += _captured(opn2)
+            at += native_rate / frame_hz
+            mono += opn2.render_mono(max(0, round(at) - len(mono)))
+    finally:
+        opn2.end_capture()
     mono += opn2.render_mono(math.ceil(native_rate * tail_secs))
 
     if target_rate is not None and target_rate != native_rate:
         return _resample(mono, native_rate, target_rate, taps), target_rate
     return mono, native_rate
+
+
+def _captured(opn2: OPN2) -> array.array:
+    """The audio the register writes since the last call clocked, folded to mono as render_mono does."""
+    return array.array('i', ((left + right) // 2 for left, right in opn2.take_capture()))
 
 
 def render_note_raw(

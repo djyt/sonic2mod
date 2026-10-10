@@ -84,6 +84,19 @@ class RenderedFrames(unittest.TestCase):
         self.assertGreater(held, 0)
         self.assertLess(tail, held / 100)                               # released: nothing left
 
+    def test_special_mode_plays_each_operator_at_its_word_keyed_by_its_mask(self):
+        # Algorithm 7, OP4 alone audible: its word is FM3's own (slot +C); keyed with OP1 / OP2
+        # only (Space Harrier II's unit A) it is silent, with OP4 in the mask it sounds
+        voice = SmpsVoice(0, algorithm=7, operators={**self._VOICE.operators, VoiceField.TOTAL_LEVEL: (0, 127, 127, 127)})
+        word = FM_FREQUENCIES[13 + 33]                                  # A3
+        slots = (0, 0, 0, word)                                         # OP1 OP3 OP2 OP4
+        for keys, sounds in ((0b0011, False), (0b1000, True)):
+            frames = [FmFrame(word, True, True, slots, keys)] + [FmFrame(word, True, False, slots, keys)] * 60
+            mono, rate = render_frames(voice, 0, frames, 60.0)
+            self.assertEqual(max(abs(x) for x in mono) > 0, sounds)
+            if sounds:
+                self.assertAlmostEqual(_hz(mono, rate) / freq_word_hz(word), 1.0, delta=0.005)
+
 
 if __name__ == "__main__":
     unittest.main()

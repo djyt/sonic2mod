@@ -33,7 +33,7 @@ _KEYS = {
     None: {"fm_synthesis", "psg_synthesis", "samples", "amiga_clock", "fm_volume_scaling", "fm_pan_law_db",
            "psg_volume_scaling", "legato", "player"},
     "fm_synthesis": {"enabled", "mode", "clock_rate", "sustain_duration", "release_padding", "detune_variants",
-                     "threads"},
+                     "threads", "drum_psg_db"},
     "psg_synthesis": {"enabled", "clock_rate", "sustain_duration", "release_padding", "oversample"},
     "samples": set(SAMPLE_KEYS),
 }
@@ -335,6 +335,7 @@ class SynthesisSettings(SampleSettings):
     release_padding: float = 0.5
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.plan.detune)
+    drum_psg_db: float = 0.0          # an FM drum's PSG part against its FM part (0: a full PSG channel = one full carrier)
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = DEFAULT_FM_PAN_LAW_DB   # "baked" mode: a hard-panned note is this many dB below a centred one
@@ -408,6 +409,7 @@ class SynthesisSettings(SampleSettings):
             release_padding=s.get("release_padding", cls.release_padding),
             threads=s.get("threads", cls.threads),
             detune_variants=bool(s.get("detune_variants", cls.detune_variants)),
+            drum_psg_db=float(s.get("drum_psg_db", cls.drum_psg_db)),
             fm_volume_scaling=data.get("fm_volume_scaling", cls.fm_volume_scaling),
             fm_pan_law_db=float(data.get("fm_pan_law_db", cls.fm_pan_law_db)),
             legato=_legato(data, cls.legato, filepath),

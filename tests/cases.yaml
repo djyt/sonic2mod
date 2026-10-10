@@ -60,7 +60,7 @@ golden_axe:  # SMPS Z80 Type 0 FM, minimal configs; chosen by line coverage over
 
 space_harrier_2:  # early SMPS Z80, minimal configs; chosen by line coverage over its 20 songs (2026-10-10)
   - {name: sh2_an_epitaph, config: space_harrier_2/95_an_epitaph, why: "the driver's common path (pitch envelopes, drums with their PSG part)"}
-  - {name: sh2_harrier_saga, config: space_harrier_2/81_harrier_saga, why: "55 lines no other Space Harrier II song runs (legato ties retuned, volume and register flags)"}
-  - {name: sh2_game_over, config: space_harrier_2/97_game_over, why: "46 more (a song that stops, a row grid divided)"}
-  - {name: sh2_motion, config: space_harrier_2/98_motion, why: "23 more (a jump's second pass, loops out of step)"}
-  - {name: sh2_machine_henge, config: space_harrier_2/8f_machine_henge, why: "16 more (the pan animation's 8xx)"}
+  - {name: sh2_game_over, config: space_harrier_2/97_game_over, why: "48 lines no other Space Harrier II song runs (a song that stops, a row grid divided)"}
+  - {name: sh2_motion, config: space_harrier_2/98_motion, why: "30 more (a jump's second pass, loops out of step)"}
+  - {name: sh2_winners_flight, config: space_harrier_2/94_winners_flight, why: "27 more (the pan animation's 8xx, legato)"}
+  - {name: sh2_harrier_saga, config: space_harrier_2/81_harrier_saga, why: "10 more (alter volume, transposition; legato's rests key off)"}

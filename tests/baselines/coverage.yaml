@@ -7280,7 +7280,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_harrier_saga.mod
-  commit: 7cfe533-dirty
+  commit: 1acd2ab-dirty
   files:
   - convert.py
   - core/__init__.py

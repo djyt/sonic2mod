@@ -15,7 +15,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import cents, hz_to_midi, midi_name, pitch_name
-from core.chips import freq_word_hz
+from core.chips import FmLfo, freq_word_hz
 from core.drivers.reference import FM_FREQUENCIES
 from core.smps import FmFrame, SmpsVoice, VoiceField
 from ym2612.renderer import note_to_fnum_block, render_frames, render_layers
@@ -70,6 +70,23 @@ class RenderedPitch(unittest.TestCase):
                                ([(silent, 0, 0, 0), (special, 0, 0, 0)], 100)):
             mono, rate = render_layers(layers, 33, sustain_secs=0.5, release_secs=0.0, fm_frequencies=FM_FREQUENCIES)
             self.assertAlmostEqual(_hz(mono, rate) / freq_word_hz(word + offset), 1.0, delta=0.005)
+
+
+    def test_a_voice_under_the_lfo_plays_its_tremolo(self):
+        # One carrier with AM on, AMS 3 (11.8 dB) at LFO frequency 6 (46 Hz): its level swings;
+        # without the LFO it holds (A5: a window of 2.5 ms holds two cycles)
+        operators = {VoiceField.ATTACK_RATE: (31, 31, 31, 31), VoiceField.MULTIPLE: (1, 1, 1, 1),
+                     VoiceField.AMP_MOD: (1, 1, 1, 1), VoiceField.TOTAL_LEVEL: (0, 127, 127, 127)}
+        swings = []
+        for lfo in (None, FmLfo(6, 0, 3)):
+            voice = SmpsVoice(0, algorithm=7, operators=operators, lfo=lfo)
+            mono, rate = render_layers([(voice, 0, 0, 0)], 57, sustain_secs=0.5, release_secs=0.0,
+                                       fm_frequencies=FM_FREQUENCIES)
+            window = rate // 400
+            peaks = [max(abs(v) for v in mono[i:i + window]) for i in range(len(mono) // 2, len(mono) - window, window)]
+            swings.append(20 * math.log10(max(peaks) / min(peaks)))
+        self.assertLess(swings[0], 1.0)
+        self.assertGreater(swings[1], 6.0)
 
 
 def _hz(mono, rate: int) -> float:

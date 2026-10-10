@@ -257,6 +257,7 @@ Ending's PSG2).
 | `smpsNoteFill` | $E8 | `ECx` / `C00` / release slide | § Note fill |
 | `smpsNoAttack` | $E7 | note-on or `3FF` | § Legato |
 | `smpsDetune` / `smpsAlterNote` | $E1 | (sample), `E1x` / `E2x` | § Detune variants |
+| Streets of Rage's `$F7` (FM3) / `$FC` | | (sample) | channel 3's special mode, the hardware LFO: voice copies (§ Detune variants, § Hardware LFO) |
 | `smpsChangeTransposition` | $E9 | (placement) | adds to the driver transpose |
 | `smpsSetvoice` | $EF | (routing) | picks the `voice_map` list |
 | `smpsPSGform` / `smpsPSGvoice` | $F3 / $F5 | (routing) | `psg_map` / `psg_voice_map` (`psg_synthesis.md`) |
@@ -497,6 +498,17 @@ every detune an instrument plays into a sample of its own:
   on F).
 
 Never stand in for a detune with `finetune: 1`: that moves every note of the slot, detuned or not.
+
+### Hardware LFO
+
+The YM2612 has one LFO: `$22` sets its frequency for every channel, a channel's B4 how far it moves
+that channel (FMS its pitch, AMS the level of operators with AM on).  Streets of Rage's `$FC f p a`
+writes both, so a note plays at the frequency the last `$FC` of any track wrote (`$88`: FM5's
+`$FC 2 3 2` slows FM2's and FM4's vibrato; `$8B`: FM4's `$FC 0 0 0` drops FM5's to 3.8 Hz).
+`core/smps/lfo.py`, a pass over the walked song, gives each attacking FM note a copy of its voice under
+its LFO (`SmpsVoice.lfo`); the sample is rendered with it (B4 and `$22`), the LFO from its start, as a
+MOD sample cannot follow the chip's free-running phase.  Its sustain loop spans whole LFO cycles
+(`core/audio/loops.py`, `cycle`).
 
 ---
 

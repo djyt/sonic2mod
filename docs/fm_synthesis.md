@@ -113,6 +113,9 @@ channel 3, the only one with the mode: `$27` = `$40`, then each operator's word 
 offset) to its own registers (OP1 `$AD`/`$A9`, OP2 `$AE`/`$AA`, OP3 `$AC`/`$A8`, OP4 the channel's
 `$A6`/`$A2`).  In a composite it takes channel 3 and the other layers the channels around it.
 
+A voice under the hardware LFO (`SmpsVoice.lfo`: Streets of Rage's `$FC`) writes `$22` (the chip's
+LFO frequency) and its sensitivities into B4.  The LFO starts with the note.
+
 ### Length: `sustain_duration: auto`
 
 A sample without a sustain loop that a note outlasts goes silent.  With `auto`,
@@ -154,7 +157,8 @@ With `samples.sustain_loops` on for the build (code default `merged`, shipped `a
 renderer probes 4 s (`PROBE_SECS`, within the sample limit); a voice whose envelope settles is
 cut where it settles plus one crossfaded loop (at most 1.2 s), and its notes end in release
 slides at the rate measured on the probe's tail (`release_out`) instead of `C00`.  A loop that
-would end past the plain render, or past where the notes stop being heard, is dropped.  Rules,
+would end past the plain render, or past where the notes stop being heard, is dropped.  A voice
+under the hardware LFO loops on whole LFO cycles, its envelope measured over a cycle.  Rules,
 `loop_drift_db` and `loop_decay`: `docs/pipeline.md` § Sample length, sustain loops and release slides.
 
 ### Level: render level and the channel accumulator

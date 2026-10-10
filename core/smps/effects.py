@@ -58,6 +58,7 @@ class CoordFlag(StrEnum):
     GATE = auto()                 # its $F3
     VOICE_REGISTER = auto()       # its $FA on FM
     FM3_SPECIAL = auto()          # its $F7 on FM
+    LFO = auto()                  # its $FC
 
 
 @dataclass(frozen=True)
@@ -181,6 +182,17 @@ class PsgVoice(PlayedEffect):
 class SetVol(PlayedEffect):
     flag = CoordFlag.SET_VOL
     level: int                    # the track's volume, absolute
+
+
+@dataclass(frozen=True)
+class Lfo(PlayedEffect):
+    """The hardware LFO: the chip's frequency (every channel under it takes it), and how far
+    it moves this track (0, 0: not at all).  The walk sets each note's voice a copy under the
+    LFO it plays with (core/smps/lfo.py)."""
+    flag = CoordFlag.LFO
+    frequency: int                # $22's, 0-7
+    fms: int                      # B4's pitch sensitivity, 0-7
+    ams: int                      # B4's level sensitivity, 0-3
 
 
 @dataclass(frozen=True)

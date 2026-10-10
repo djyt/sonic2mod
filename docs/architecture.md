@@ -339,7 +339,8 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 | `tools/` | `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `measure_volumes`, `rom_import`, `mod_compare`, `mod_lint`, `mod_audit`, `mod_render_diff`, `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config`, `release` |
 | `tests/regression.py` | Every config (and its merged build, variants, ROM cases) converted and compared with a baseline MOD, cells and samples |
 | `tests/tool_regression.py` | The VGM tools' output, byte for byte |
-| `tests/test_*.py` | Unit tests (`python -m pytest tests -q`) |
+| `tests/core/`, `tests/ym2612/` | Unit tests, mirroring the code: `tests/<package>/test_<module>.py` tests `<package>/<module>.py` (`python -m pytest tests -q`).  The folders are no packages: pytest imports by path (`--import-mode=importlib`, pyproject.toml), so `tests/core` never stands in for `core` |
+| `tests/test_layers.py`, `tests/test_selection.py` | The import layers (pyproject.toml); `tests/selection.py`'s placement rules |
 
 How to run them: `CLAUDE.md` § Regression Testing; the VGZ workflow: `docs/pipeline.md`
 § Verifying against a VGZ.
@@ -353,7 +354,7 @@ The converter reports through `Diagnostics` (`core/diagnostics.py`): `diag.warn(
 `converter.infos` (dicts whose `type` is the kind).  `core/ui/report.py` prints the report —
 header, Checks, Channels (merged: Columns), Samples (read back from the written file), Merge,
 and with `--verbose` Details.  Every `WarningKind` has an entry in `_WARNINGS` returning
-`(check, headline, fix)`; `tests/test_diagnostics_units.py` checks none is missing.  A new
+`(check, headline, fix)`; `tests/core/test_diagnostics.py` checks none is missing.  A new
 warning is one enum member, one function, one entry.
 
 | CLI | Does | Reference |

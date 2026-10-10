@@ -155,7 +155,7 @@ spans' frames (1920 ticks at modifier 9 = 2160 frames = the VGZ's 1587600 sample
 loop is one frame longer than 1728 ticks' 2073 - at modifier 6 a span of ticks holds 345 or 346
 TempoWait frames depending on where it starts, so a loop's length in frames is not a function of its
 ticks alone.  Every channel's loop now starts where it reached its own target
-(`tests/test_song_units.py` checks all songs' loops agree with the song's period).
+(`tests/core/smps/test_song.py` checks all songs' loops agree with the song's period).
 
 ### [ ] 1.3 FM notes (simplest form done 2026-10-03: key-ons and FNUMs → note bytes + durations)
 Done: notes at the nearest table entry, durations, ties, rests; fill key-offs as note + rest; each
@@ -251,12 +251,12 @@ explained) against `samples/`.
   gets a starter config.
 
 ### [ ] 1.11 Regression
-Started: `tests/test_vgm_lift_units.py` covers tempo inference, attacks / ties / rests and loops;
-`tests/test_rip_diff_units.py` the yardstick; `tests/tool_regression.py` keeps `vgm_lift`'s output
+Started: `tests/core/vgm/lift/` covers tempo inference, attacks / ties / rests and loops;
+`tests/core/audit/test_rip_diff.py` the yardstick; `tests/tool_regression.py` keeps `vgm_lift`'s output
 (`lift_*`, the Moonwalker pairs with its ROM).  No VGZ
 case in `tests/regression.py` yet.
 Add a VGZ case per song that has a lifted config (start with Title Screen and GHZ) to
-`tests/regression.py`; `tests/test_vgm_lift_units.py` for the inference primitives (tempo hold,
+`tests/regression.py`; `tests/core/vgm/lift/` for the inference primitives (tempo hold,
 tie/legato/retrigger, envelope match, modulation fit) with hand-built frame logs.
 
 **Phase 1 done when:** all 19 VGZs lift to an IR that matches the asm parse (differences listed and

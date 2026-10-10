@@ -112,7 +112,7 @@ a song pass (the `run_out` precedent).
   its tie state back (no Sonic / Moonwalker / Golden Axe song changes), DAC notes play the
   selected sample.
 - [x] 1.3 `rom_import.py`: the 17 index entries read; the 48 SFX listed "not read (music only)".
-- [x] 1.4 `tests/test_rom_mucom.py`: the grammar on hand-built bytes; with the ROM: tables, every
+- [x] 1.4 `tests/core/drivers/smps68k/mucom/`: the grammar on hand-built bytes; with the ROM: tables, every
   song on its chip channels, what is dropped, envelope 3, `$89`'s loop.
 - Read through the real path, every FM key-on of the 15 rips is on its frame.  Not yet: the
   jump back clears a tie (`$8F` FM1 / FM4 / FM5: the note at the loop target attacks on each

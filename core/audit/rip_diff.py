@@ -39,7 +39,6 @@ from ..smps import (
     SmpsSong,
     SongDiff,
     TempoSegment,
-    TimerA,
     align_songs,
     compare_songs,
     frame_of_tick,
@@ -48,7 +47,7 @@ from ..smps import (
     tempo_schedule,
 )
 from ..source import SmpsDriver, is_vgm_path, read_song
-from ..vgm import LIFTED_ASPECTS, FrameCut, FrameLog, LiftOptions, VgmLiftError, lift_song
+from ..vgm import LIFTED_ASPECTS, FrameLog, LiftOptions, VgmLiftError, lift_song
 from .rips import RipFaults
 
 
@@ -178,11 +177,6 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
     return RipDiff(diff, offset, tempo, sorted(playing_want - shared - foreign), sorted(playing_got - shared - foreign),
                    kinds=kinds, schedule=tempo_schedule(want.modifier, want.tempo_changes, want.tempo_phase),
                    fps=frames.fps, foreign=aside, foreign_channels=sorted(foreign))
-
-
-def frame_cut(song: SmpsSong) -> FrameCut:
-    """How `song`'s rips are cut into frames: as its driver's update runs."""
-    return FrameCut.TIMER_A if isinstance(song.rules.update_clock, TimerA) else FrameCut.VINT
 
 
 def _rip_frame(lifted: PlayedSong, frames: FrameLog, offset: int) -> Callable[[int], int]:

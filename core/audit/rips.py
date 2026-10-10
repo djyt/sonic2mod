@@ -36,7 +36,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config import load_yaml
-from ..vgm import FrameLog, is_vgm_path, realigned
+from ..smps import SmpsSong, TimerA
+from ..vgm import FrameCut, FrameLog, is_vgm_path, realigned
 
 _PROJECT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = _PROJECT / "configs"                  # the song configs, a folder per game below
@@ -193,6 +194,11 @@ class RipShelf:
 
     def _rip_files(self) -> list[Path]:
         return sorted(p for p in self.rips.glob("*") if is_vgm_path(p))
+
+
+def frame_cut(song: SmpsSong) -> FrameCut:
+    """How `song`'s rips are cut into frames: as its driver's update runs."""
+    return FrameCut.TIMER_A if isinstance(song.rules.update_clock, TimerA) else FrameCut.VINT
 
 
 def named(names: Iterable[str] | None, *paths: Path) -> bool:

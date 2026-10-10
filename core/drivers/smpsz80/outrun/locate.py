@@ -19,7 +19,6 @@ writes into the driver's RAM before releasing it, not by one game's addresses.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from functools import lru_cache, partial
 
@@ -31,7 +30,7 @@ from core.rom.variant import SoundIndex
 from core.rom.z80 import Z80_RAM_BASE, Z80_RAM_SIZE, z80_word
 
 from ..memory import BankedZ80Memory
-from ..program import driver_ram, one_match
+from ..program import driver_ram, one_match, one_operand
 from .layout import HEADER_OUTRUN
 
 _DRIVER = "OutRun"
@@ -128,7 +127,8 @@ def driver_tables(rom: RomImage) -> DriverTables:
         raise RomError(f"Z80 driver: {len(banks)} bank routines, not two: not {_DRIVER}'s driver")
     base = z80_word(one_match(_HEADER_WORD, z80, "header word read", _DRIVER).group(1), 0)
     header_z80 = _ram_word(ram, base)
-    music_at = _offset(_MUSIC_LOADER, z80, "music loader")
+    loader = one_match(_MUSIC_LOADER, z80, "music loader", _DRIVER)
+    music_at = loader.group(1)[0]
 
     # The songs' bank: the one whose window holds a sound header there
     sound = [bank for bank in banks if _holds_header(BankedZ80Memory(rom, bank), header_z80, music_at)]
@@ -142,9 +142,9 @@ def driver_tables(rom: RomImage) -> DriverTables:
     def table(offset: int) -> int:
         return memory.header_pointer(header, header + offset)
 
-    return DriverTables(sound_bank, dac_bank, header, table(music_at), _songs(z80),
-                        table(_offset(_PITCH_ENVELOPES, z80, "pitch envelope read")),
-                        table(_offset(_PSG_ENVELOPES, z80, "PSG envelope read")),
+    return DriverTables(sound_bank, dac_bank, header, table(music_at), _songs(z80, loader.start()),
+                        table(one_operand(_PITCH_ENVELOPES, z80, "pitch envelope read", _DRIVER)),
+                        table(one_operand(_PSG_ENVELOPES, z80, "PSG envelope read", _DRIVER)),
                         _ram_word(ram, z80_word(one_match(_TIMER_A, z80, "Timer A load", _DRIVER).group(1), 0)))
 
 
@@ -160,14 +160,6 @@ def locate_outrun(rom: RomImage) -> SoundIndex:
     slots = range(tables.music_index, tables.music_index + tables.songs * _WORD, _WORD)
     music = read_index(memory, slots, partial(memory.header_pointer, tables.music_index), _FIRST_MUSIC, _is_music_header)
     return SoundIndex(music, {}, _psg_envelopes(memory, tables.psg_envelopes))
-
-
-def _offset(pattern: re.Pattern[bytes], z80: bytes, what: str) -> int:
-    """The header word every read of `pattern` takes (its ld c,n)."""
-    found = {match.group(1)[0] for match in pattern.finditer(z80)}
-    if len(found) != 1:
-        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {_DRIVER}'s driver")
-    return found.pop()
 
 
 def _ram_written(rom: RomImage) -> dict[int, int]:
@@ -207,9 +199,8 @@ def _holds_header(memory: BankedZ80Memory, header_z80: int, music_at: int) -> bo
     return memory.contains(first) and _is_music_header(memory, first)
 
 
-def _songs(z80: bytes) -> int:
-    """The music IDs the sound dispatch sends to the loader: $81 up to its cp's."""
-    loader = one_match(_MUSIC_LOADER, z80, "music loader", _DRIVER).start()
+def _songs(z80: bytes, loader: int) -> int:
+    """The music IDs the sound dispatch sends to the loader at `loader`: $81 up to its cp's."""
     low, high = loader.to_bytes(_WORD, "little")
     dispatch = code_pattern(f"""
         FE <b>              cp n

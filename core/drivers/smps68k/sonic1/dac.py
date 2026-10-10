@@ -12,11 +12,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from core.rom.image import RomImage
+from core.rom.pcm import Dpcm, PcmEntry, PcmTable, delta_table, one_format
 from core.rom.variant import DacSample
 from core.rom.z80 import z80_ram
 from core.smps import FIRST_NOTE
 
-from ..dpcm import Dpcm, PcmEntry, PcmTable, delta_table, pitch_table
+from ..dac import pcm_table, pitch_table
 
 _MOVE_D0_ABS = bytes.fromhex("13C0")                    # move.b d0,(xxx).l
 _MOVE_PC_INDEXED = bytes.fromhex("103B")                # move.b d8(pc,d0.w),d0
@@ -40,7 +41,7 @@ class _Sonic1Dac:
 
     def samples(self) -> list[DacSample]:
         z80 = z80_ram(self._rom)
-        table = PcmTable(z80, self._ENTRY, Dpcm(delta_table(z80), *self._CYCLES), self._names)
+        table = PcmTable(z80, pcm_table(z80), self._ENTRY, one_format(Dpcm(delta_table(z80), *self._CYCLES)), self._names)
         out = [table.sample(sound) for sound in range(FIRST_NOTE, self._TIMPANI + 1)]
         timpani = out[-1]
         pitches = pitch_table(self._rom, _MOVE_D0_ABS, table.pitch_address(self._TIMPANI), self._PITCHED,

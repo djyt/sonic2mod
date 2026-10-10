@@ -17,10 +17,11 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 
 from core.rom.image import RomError, RomImage
+from core.rom.pcm import ACCUMULATOR, SIGN, PcmEntry, PcmTable, one_format
 from core.rom.variant import DacSample
 from core.rom.z80 import z80_ram
 
-from ..dpcm import ACCUMULATOR, SIGN, PcmEntry, PcmTable
+from ..dac import pcm_table
 
 _ENTRY = PcmEntry(5, size_at=2, pitch_at=4)
 _MUSIC = range(0x81, 0x85)
@@ -37,12 +38,13 @@ _STALL = 0.016                            # the 68k's share of each frame (11.6 
 
 def mucom_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
     """The samples a Streets of Rage song can play ($81-$84)."""
-    table = PcmTable(z80_ram(rom), _ENTRY, _RunDpcm(), names)
+    z80 = z80_ram(rom)
+    table = PcmTable(z80, pcm_table(z80), _ENTRY, one_format(_RunDpcm()), names)
     return [table.sample(sound) for sound in _MUSIC]
 
 
 class _RunDpcm:
-    """A sample's own delta table, nibble 0 a run of its last delta (dpcm.SampleFormat)."""
+    """A sample's own delta table, nibble 0 a run of its last delta (core.rom.pcm.SampleFormat)."""
 
     def decode(self, data: bytes) -> bytes:
         deltas, out = data[:_DELTAS], bytearray()

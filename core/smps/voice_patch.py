@@ -18,31 +18,48 @@ and writes it again after each volume change, which no voice says (no song in th
 from __future__ import annotations
 
 import dataclasses
+from dataclasses import dataclass
 
 from .song import SmpsVoice
 
-_Key = tuple[int, tuple[tuple[int, int], ...], tuple[int, ...] | None]
+
+@dataclass(frozen=True)
+class VoiceChanges:
+    """What a track plays its voice with beyond the voice's own bytes."""
+    registers: tuple[tuple[int, int], ...] = ()     # (channel 0 register, byte) written over it, by register
+    fnum_offsets: tuple[int, ...] | None = None     # channel 3's special mode; None: normal
+
+    def written(self, register: int, value: int) -> VoiceChanges:
+        """These changes and `register` written `value`."""
+        registers = dict(self.registers) | {register: value}
+        return dataclasses.replace(self, registers=tuple(sorted(registers.items())))
+
+    def applied(self, voice: SmpsVoice) -> SmpsVoice:
+        """A copy of `voice` playing with these changes."""
+        voice = dataclasses.replace(voice, fnum_offsets=self.fnum_offsets)
+        for register, value in self.registers:
+            voice = voice.patched(register, value)
+        return voice
+
+
+NO_CHANGES = VoiceChanges()
 
 
 class VoicePatcher:
-    """A song's voices and the patched copies its tracks' register writes make."""
+    """A song's voices and the patched copies its tracks' changes make."""
 
     def __init__(self, voices: list[SmpsVoice]):
         self._voices = {v.index: v for v in voices}
-        self._copies: dict[_Key, int] = {}
+        self._copies: dict[tuple[int, VoiceChanges], int] = {}
         self.added: list[SmpsVoice] = []            # the copies, in the order made
 
-    def copy(self, base: int, patches: dict[int, int], fnum_offsets: tuple[int, ...] | None = None) -> int:
-        """The index of voice `base` with `patches` (channel 0 register: byte) written over it,
-        playing at `fnum_offsets` (channel 3's special mode; None: normal); `base` itself where
-        there is neither."""
-        if not patches and fnum_offsets is None:
+    def copy(self, base: int, changes: VoiceChanges) -> int:
+        """The index of voice `base` played with `changes`: `base` itself for none."""
+        if changes == NO_CHANGES:
             return base
-        key = (base, tuple(sorted(patches.items())), fnum_offsets)
+        key = (base, changes)
         if key not in self._copies:
-            voice = dataclasses.replace(self._voices[base], fnum_offsets=fnum_offsets)
-            for register, value in patches.items():
-                voice = voice.patched(register, value)
+            voice = changes.applied(self._voices[base])
             voice.index = max(self._voices) + 1
             self._voices[voice.index] = voice
             self._copies[key] = voice.index

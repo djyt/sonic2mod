@@ -8,6 +8,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
@@ -21,6 +22,9 @@ from core.merge import (
     MixLayerKey,
     bank_reserve_wanted,
 )
+from core.merge.build import MergedBuild
+from core.mod import ModFile, ModSample
+from core.smps import ChannelType
 
 
 class BankReserve(unittest.TestCase):
@@ -47,6 +51,28 @@ class BankReserve(unittest.TestCase):
 
     def test_nothing_to_change(self):
         self.assertIsNone(self._want(2, [], [4]))
+
+
+class MovedLevels(unittest.TestCase):
+    """An instrument whose commonest level moved in the merged build keeps every note's volume:
+    its sample volume moves by what its baseline did."""
+
+    def test_the_volume_follows_the_baseline(self):
+        g = MergeGroup("FM5", ["FM6"])
+        plan = MergePlan([g])
+        entry = [19, "fm_v4b_B3.raw", 6, 0]
+        cfg = SimpleNamespace(sample_list=[entry, [6, "fm_v0b.raw", 10, 0]])
+        mod = ModFile(4)
+        mod.samples[18] = ModSample("b3")
+        infos = []
+        diag = SimpleNamespace(info=lambda kind, **kw: infos.append(kw), warn=lambda *a, **kw: None)
+        ref = {ChannelType.FM: {19: -10.0, 6: -8.0}}
+        build = MergedBuild(plan, mod, cfg, None, None, diag, ref, None)
+        build.bake_volumes({19: -5.5, 6: -8.0}, {}, {})          # FM4's louder notes set 19's level now
+        self.assertEqual(entry[2], 10)                           # 6 x 4.5 dB
+        self.assertEqual(mod.samples[18].volume, 10)
+        self.assertEqual(cfg.sample_list[1][2], 10)              # unmoved
+        self.assertEqual([(i['instrument'], i['unison']) for i in infos], [(19, False)])
 
 
 if __name__ == "__main__":

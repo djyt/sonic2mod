@@ -115,10 +115,15 @@ class SustainPlanner:
                  if merge is not None else {})
         needs: dict[int, tuple[float, tuple[int, int] | None]] = {}
         self._loop_refs[kind] = {}
-        for chan_cfg, channel in enabled_channels(self._song, self._config, (kind,)):
+        # The merged build splices a follower's solo notes onto its primary's column, whatever chip
+        # that is: an FM note on the drum column (Space Harrier II's FM4 over its drums) is counted
+        # there, every other note-on of that column ending its ring
+        kinds = (kind,) if merge is None else tuple(ChannelType)
+        for chan_cfg, channel in enabled_channels(self._song, self._config, kinds):
             if merge is not None and not chan_cfg.enabled:
                 continue            # a follower: its notes play as composites (credited above) or
                                     # spliced onto a live channel (counted there), or not at all
+            foreign = channel.header.channel_type != kind
             rings: list = []        # [start tick, ring ticks, instrument, out idx, ends in a slide] or None
             # A smpsNoAttack note is a 3FF (the sample rings on) unless `legato: retrigger`
             # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
@@ -134,6 +139,11 @@ class SustainPlanner:
                     rings.append(None)          # folded away here: nothing of its own sounds
                     continue
                 note = event.note
+                merged = getattr(event, "merged", None)
+                if foreign and not note.is_rest and (merged is None or merged.kind != kind):
+                    _cut_ring(rings, event.tick_position)       # another chip's note: not this pass's
+                    rings.append(None)
+                    continue
                 if note.is_rest:
                     if note.is_no_attack and rings and rings[-1] is not None:
                         rings[-1][1] += note.duration       # continuation: no C00, keeps advancing

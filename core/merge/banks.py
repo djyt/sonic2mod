@@ -69,6 +69,11 @@ def _region(c: Composite, sound: int, looped: bool, pad_secs: float, amiga_clock
     return -(-(sound + math.ceil(rate * pad_secs)) // ALIGN) * ALIGN
 
 
+def _drum_alone(c: Composite) -> bool:
+    """A `bank_drums` group's drum hit with no follower: the drum's own sound in a bank."""
+    return c.group.bank_drums and not c.key.layers
+
+
 def _loss_db(banks: list[Bank], volume: dict[int, int]) -> float:
     """dB of 8-bit range the layout costs, over every note: a member quieter than its bank's
     loudest is scaled down into its bytes."""
@@ -180,8 +185,9 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
     banks = (by_volume if len(by_volume) <= len(first) and _loss_db(by_volume, volume) < _loss_db(first, volume)
              else first)
 
-    # The slots hold the banks with the most notes; the others' members are dropped
-    banks.sort(key=lambda b: -sum(c.notes for c in b.members))
+    # The slots hold the banks with the most notes; the others' members are dropped.  A bank_drums
+    # drum (the drum alone, no layers) comes first: its own slot may be a composite's now
+    banks.sort(key=lambda b: (not any(_drum_alone(c) for c in b.members), -sum(c.notes for c in b.members)))
     kept = banks[:len(slots)]
     plan.bank_overflow = [sum(c.notes for c in b.members) for b in banks[len(slots):]]
     for bank in banks[len(slots):]:

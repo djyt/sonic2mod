@@ -272,7 +272,7 @@ renders.  Rules: `docs/pipeline.md` § The merged build.
 
 | Module | Role |
 |---|---|
-| `file.py` | `ModFile` (writer: samples, patterns, positions, cell helpers, `narrow_to`, `compact_samples`, `trim_to_pattern`, `zero_idle_words`), `apply_pattern_breaks`, `row_to_bcd`; the one reader `read_mod` → `ModImage` (`play_rows`: one pass in play order), `isolate_channel` |
+| `file.py` | `ModFile` (writer: samples, patterns, positions, cell helpers, `narrow_to`, `compact_samples`, `trim_to_pattern`, `zero_idle_words`), `apply_pattern_breaks`, `row_to_bcd`, `read_sample` (a `sample_list` file as a sample); the one reader `read_mod` → `ModImage` (`play_rows`: one pass in play order), `isolate_channel` |
 | `notes.py` | `PERIOD_TABLE` (C1–B3), `note_rate` / `period_rate` (a note's playback rate), `ModNote`, `MOD_NOTE_MAP` (config spellings) |
 | `volume.py` | dB → MOD volume: `db_to_mod_volume`, `clamp_mod_volume`, `headroom_db` |
 | `limits.py` | `MAX_MOD_SAMPLE_BYTES`, `sample_limit_bytes`, `max_sustain_secs` |

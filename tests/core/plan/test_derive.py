@@ -42,9 +42,11 @@ from core.smps import (
 from tests.roms import (
     GOLDEN_AXE_ROM,
     MOONWALKER_ROM,
+    SPACE_HARRIER_2_ROM,
     STREETS_OF_RAGE_ROM,
     needs_golden_axe,
     needs_moonwalker,
+    needs_space_harrier_2,
     needs_streets_of_rage,
 )
 
@@ -244,6 +246,22 @@ class GoldenAxe(unittest.TestCase):
 
     def test_the_drums_play_on_fm3(self):
         self.assertIn("FM3", {c["source"] for c in self.data["channels"]})
+
+
+@needs_space_harrier_2
+class SpaceHarrier2(unittest.TestCase):
+    def test_a_window_is_at_the_level_the_conversion_bakes(self):
+        # An Epitaph's voice $53 G3-E4: FM6 (track volume 40) and FM1 (8, a pitch envelope
+        # variant voting as its base) nearly tie as read; with the loops replayed, as the level
+        # planner counts, FM1's level is the commoner.  Counted as read, the window took FM6's
+        # (volume 2) and FM6's notes a C00 against FM1's baseline
+        song = read_rom_song(RomImage.load(SPACE_HARRIER_2_ROM), 0x95)
+        stated = {"name": "An Epitaph", "input_file": str(SPACE_HARRIER_2_ROM), "rom_song": "$95"}
+        # Windows of 9 semitones (configs/settings.yaml's): G3-E4 a window of its own
+        settings = replace(load_settings(str(ROOT / "tests" / "settings.yaml"))[0], max_window=9)
+        data = derive_config(stated, song, "configs/space_harrier_2/95_an_epitaph.yaml", settings).data
+        rows = {row[1]: row[2] for row in data["sample_list"]}
+        self.assertEqual(rows["fm_v53_G3.raw"], starting_volume("FM", 8))
 
 
 @needs_streets_of_rage

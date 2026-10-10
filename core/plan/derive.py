@@ -60,6 +60,7 @@ from ..smps import (
     SmpsSong,
     note_label,
     pan_is_hard,
+    prepare_song,
     psg_voice_name,
     source_map,
     synth_note_name,
@@ -164,7 +165,9 @@ class _Deriver:
     def __init__(self, stated: dict, song: SmpsSong, out: Derivation, settings: SampleSettings,
                  dac: list[DacSample]):
         self._stated = stated
-        self._song = song
+        # The song as the conversion plays it (loops replayed to its end, tempo dividers applied):
+        # its notes are the ones the level planner counts, so both pick the same baked level
+        self._song = prepare_song(song).song
         self._out = out
         self._clock = settings.amiga_clock
         self._harmonics = settings.root_harmonics

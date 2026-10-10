@@ -451,13 +451,16 @@ class _Walker:
 
     def _byte(self, cur: _Cursor, op: Op) -> None:
         """One track byte: smpsNoAttack, a duration, or a note / rest / DAC sample.  Under the
-        driver's legato a read (a note, or a duration of its own) starts as smpsNoAttack leaves it;
-        under a pan animation it steps the pan."""
+        driver's legato a read that sounds (a note, or a duration of its own after one) starts as
+        smpsNoAttack leaves it - a rest keys off all the same (Space Harrier II: a rest's frequency
+        word, the table's entry 0, is 0, and a word of 0 keys off, $032C); under a pan animation it
+        steps the pan."""
         if op.kind is OpKind.NO_ATTACK:
             self._tie(cur)
             return
         reads = not (op.kind is OpKind.DURATION and cur.pending is not None)
-        if self._driver.legato and reads:
+        sounds = op.value != REST if op.kind is OpKind.NOTE else cur.last_note_value != 0
+        if self._driver.legato and reads and sounds:
             self._tie(cur)
         if reads and op.kind is OpKind.DURATION and self._header.pan_steps:
             self._step_pan(cur.tick)          # a bare duration's note starts here

@@ -182,6 +182,9 @@ python tools/vgm_lift.py --all --configs configs/streets_of_rage   # its rips.ya
 # its frame - what the lift cannot read.  Any driver; tied notes counted apart (vibrato runs on)
 python tools/vgm_frames.py --all --configs configs/streets_of_rage
 python tools/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
+# A rip's own glitches (a V-int lost: every channel a frame late from there on): candidates, with evidence.
+# Confirmed ones go in rips.yaml by hand ({rip:, glitches:, foreign:}); every rip tool then undoes them
+python tools/vgm_frames.py --all --glitches --configs configs/space_harrier_2
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -251,7 +254,7 @@ python -m pytest tests/core/merge -q                   # one package's unit test
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD, `vgm_lift` (the Moonwalker
-pairs too), `frames_<game>` (`vgm_frames` on Golden Axe's and Streets of Rage's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's and Space Harrier II's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
 Moonwalker, Golden Axe, Streets of Rage) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 

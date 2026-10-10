@@ -3,6 +3,7 @@
     reader.py     the container: commands -> timestamped chip writes (VgmLog)
     chipstate.py  YM2612 + SN76489 registers replayed over the writes (ChipState, Change)
     frames.py     the log cut into V-int frames: each channel's state and writes per frame (FrameLog)
+    realign.py    a frame log with the V-ints its driver lost or gained undone (realigned)
     notes.py      where notes start (NoteStart), each channel's pitch timeline (pitch_segments)
     cache.py      a rip's frame log kept on disk (load_frames)
     lift/         the frame log lifted back into the SmpsSong the driver played (lift_song)
@@ -46,6 +47,7 @@ from .reader import (
     read_vgm,
     vgm_bytes,
 )
+from .realign import realigned
 
 __all__ = [
     "DAC_CHANNEL",
@@ -88,5 +90,6 @@ __all__ = [
     "note_starts",
     "pitch_segments",
     "read_vgm",
+    "realigned",
     "vgm_bytes"
 ]

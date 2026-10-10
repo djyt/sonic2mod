@@ -136,8 +136,9 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 - `vgm_pitch_audit`: all 13 songs, 14345 notes right.
 - `vgm_lift --skip FM3`: FM matches exactly on The Battle, Battle Field, Turtle Village 2,
   Showdown, Conclusion, Sutakora and Game Over; the rest differ at the first note and the loop.
-  Path of Fiend matches to 38 s, where the rip's hold cycle shifts a frame (a lost or extra
-  V-int: the rip's or the hardware's).  Death Adder: one tie to another pitch the lift cannot see.
+  Path of Fiend matches to 38 s, where the rip loses a V-int (frame 2304: the burst before re-keys
+  every channel and runs past its frame); `rips.yaml` logs it, the rip tools undo it
+  (`docs/pipeline.md` § The rip's own faults).  Death Adder: one tie to another pitch the lift cannot see.
 
 ---
 

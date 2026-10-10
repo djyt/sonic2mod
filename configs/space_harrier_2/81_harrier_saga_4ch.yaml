@@ -1,0 +1,41 @@
+# Space Harrier II - Harrier Saga, the 4-channel Amiga build (convert.py <this> --merged).
+# 81_harrier_saga.yaml's minimal config plus the merge below; a file of its own so the song's
+# regression case keeps one build.  Keep sample_list in step with that config's.
+name: "Harrier Saga"
+input_file: "input/roms/Space Harrier II (World).md"
+rom_song: "$81"
+output_file: "output/space_harrier_2/81_harrier_saga_4ch.mod"
+merge_output_file: "output/space_harrier_2/81_harrier_saga_merged.mod"
+
+sample_list:   # volumes set from the VGZ (81_harrier_saga.yaml's); the rest is derived
+  - [1, "drum81.raw", 13, 0]
+  - [2, "drum85.raw", 35, 0]
+  - [3, "drum89.raw", 45, 0]
+  - [4, "drum8D.raw", 47, 0]
+  - [5, "drum9D.raw", 47, 0]
+  - [8, "fm_v0c_Eb2.raw", 18, 0]
+  - [9, "fm_v0c_Cs3.raw", 19, 0]
+  - [14, "fm_v32_Fs3.raw", 29, 0]
+  - [15, "fm_v32_F4.raw", 28, 0]
+  - [16, "fm_v47_C4.raw", 18, 0]
+  - [17, "fm_v47_Bb4.raw", 17, 0]
+  - [19, "fm_v4b_B3.raw", 6, 0]
+  - [20, "fm_v4b_A4.raw", 6, 0]
+  - [21, "fm_v4d_Bb3.raw", 21, 0]
+
+# -------------------------------------------------------------------------------------------------
+# Amiga build: 6 channels -> 4.  FM5 and FM6 play one rhythm a third to a fifth apart (591 of 592
+# notes together: tools/merge_survey.py), rendered as chip composites.  FM4's 16th-note arpeggio
+# (patterns $0C-$17, $25-$31, $49-$55) rides the drum column: 507 of its 768 notes land on a hit
+# and are mixed with it, the other 261 play on their own and cut the drum's tail (a drum hit is
+# ~0.1 s).  The drums, alone and mixed, play from sample banks (9xx), which frees their five slots
+# for the chords.  In the fill pool FM4 found a silent column for only 149 of its notes, and folded
+# onto the chords it would re-key them every 16th.
+# -------------------------------------------------------------------------------------------------
+merge:
+  - primary: FM3
+    followers: [FM4]
+    cut_primary: true
+    bank_drums: true
+  - primary: FM5
+    followers: [FM6]

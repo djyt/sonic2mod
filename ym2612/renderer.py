@@ -27,7 +27,16 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from core.chips import FREQ_WORD_MAX, MD_FM_CLOCK, freq_word, split_freq_word
+from core.chips import (
+    CH3_CHANNEL,
+    CH3_FREQ_REGS,
+    CH3_SPECIAL_MODE,
+    FREQ_WORD_MAX,
+    MD_FM_CLOCK,
+    REG_CH3_MODE,
+    freq_word,
+    split_freq_word,
+)
 
 _HERE = Path(__file__).parent
 if str(_HERE.parent) not in sys.path:
@@ -37,6 +46,7 @@ from core.audio import DEFAULT_TAPS, normalize_int8, resample
 from core.audio import to_mono as _to_mono
 from core.smps import (
     C1_SEMITONE,
+    SMPS_OP_TO_REG_OFFSET,
     FmFrame,
     SmpsVoice,
     VoiceField,
@@ -49,6 +59,8 @@ from ym2612.wrapper import OPN2, output_rate
 # Constants
 # ---------------------------------------------------------------------------
 
+_CHANNELS = 6
+_HIGH_BYTE_REG = 4             # a frequency's high byte (block | fnum bits 8-10): 4 above its low byte's
 
 
 # ---------------------------------------------------------------------------
@@ -111,13 +123,34 @@ def freq_to_fnum_block(freq: float, clock_rate: int = MD_FM_CLOCK) -> tuple[int,
 
 def _set_freq(opn2: OPN2, fnum: int, block: int, channel: int) -> None:
     """Write frequency registers 0xA4 / 0xA0 for the given channel."""
-    bank       = channel // 3
-    ch_in_bank = channel % 3
-    fnum_hi    = (block << 3) | (fnum >> 8)
-    fnum_lo    = fnum & 0xFF
-    # Write high byte first to latch block+fnum[9:8], then low byte triggers load
-    opn2.write_reg(0xA4 + ch_in_bank, fnum_hi, bank=bank)
-    opn2.write_reg(0xA0 + ch_in_bank, fnum_lo, bank=bank)
+    _write_freq(opn2, 0xA0 + channel % 3, fnum, block, bank=channel // 3)
+
+
+def _write_freq(opn2: OPN2, low_reg: int, fnum: int, block: int, bank: int = 0) -> None:
+    """One frequency: the high byte first (it latches block and fnum bits 8-10), then the low
+    byte at `low_reg`, which loads both."""
+    opn2.write_reg(low_reg + _HIGH_BYTE_REG, (block << 3) | (fnum >> 8), bank=bank)
+    opn2.write_reg(low_reg, fnum & 0xFF, bank=bank)
+
+
+def _set_special_freq(opn2: OPN2, fnum: int, block: int, offsets: Sequence[int]) -> None:
+    """Channel 3 in special mode: each operator at the note's frequency word plus its offset
+    (`offsets` in a voice's operator order), as the driver writes them."""
+    opn2.write_reg(REG_CH3_MODE, CH3_SPECIAL_MODE)
+    for slot, offset in zip(SMPS_OP_TO_REG_OFFSET, offsets, strict=True):
+        _write_freq(opn2, CH3_FREQ_REGS[slot], *detuned_fnum_block(fnum, block, offset))
+
+
+def _layer_channels(layers: Sequence[tuple], channel: int) -> list[int]:
+    """The chip channel each layer plays on: `channel` up, but a voice in special mode on
+    channel 3, the only one that has the mode (the others skip it)."""
+    special = [i for i, layer in enumerate(layers) if layer[0].fnum_offsets is not None]
+    if not special:
+        return [channel + i for i in range(len(layers))]
+    if len(special) > 1:
+        raise ValueError(f"{len(special)} layers in channel 3's special mode: one channel has it")
+    free = iter(ch for ch in range(channel, _CHANNELS) if ch != CH3_CHANNEL)
+    return [CH3_CHANNEL if i in special else next(free) for i in range(len(layers))]
 
 
 def _render_raw(opn2: OPN2, sustain_n: int, release_n: int, channel: int) -> list:
@@ -210,8 +243,9 @@ def render_layers(
 
     Each layer is (voice, semitones above `mod_note_index`, FNUM detune, carrier TL offset)
     with an optional fifth element, seconds after key-on to key that layer off (None: with the
-    others); layer i is programmed on YM2612 channel `channel` + i, all are keyed on together
-    and the chip sums them as the hardware does.  One layer is an ordinary note render.
+    others); layer i is programmed on YM2612 channel `channel` + i (a voice in channel 3's special
+    mode on channel 3), all are keyed on together and the chip sums them as the hardware does.
+    One layer is an ordinary note render.
 
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
     used to be, so the callers' trim / peak / int8 steps are unchanged.
@@ -225,18 +259,19 @@ def render_layers(
     else:
         opn2.reset()          # keeps the instance's mode (the settings' fm_synthesis.mode)
 
-    channels = []
+    channels = _layer_channels(layers, channel)
     keyoffs = []
-    for i, layer in enumerate(layers):
+    for ch, layer in zip(channels, layers, strict=True):
         voice, semitones, fnum_offset, tl_offset = layer[:4]
         keyoff = layer[4] if len(layer) > 4 else None
-        ch = channel + i
         program_voice(opn2, voice, ch, tl_offset=tl_offset)
         fnum, block = note_to_fnum_block(mod_note_index + semitones, clock_rate, fm_frequencies=fm_frequencies)
         if fnum_offset:
             fnum, block = detuned_fnum_block(fnum, block, fnum_offset)
-        _set_freq(opn2, fnum, block, ch)
-        channels.append(ch)
+        if voice.fnum_offsets is not None:
+            _set_special_freq(opn2, fnum, block, voice.fnum_offsets)
+        else:
+            _set_freq(opn2, fnum, block, ch)
         keyoffs.append(None if keyoff is None else math.ceil(native_rate * keyoff))
 
     sustain_n = math.ceil(native_rate * sustain_secs)

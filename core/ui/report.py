@@ -208,7 +208,7 @@ def _w_synth_root_ambiguous(w: dict):
 
 def _w_detune_no_slot(w: dict):
     parts = ", ".join(f"inst {inst} {d:+d} ×{n}" for (inst, d), n in sorted(w['unplaced'].items(), key=lambda kv: -kv[1]))
-    return ("pitch", f"{len(w['unplaced'])} smpsAlterNote detunes have no free slot and play their "
+    return ("pitch", f"{len(w['unplaced'])} detune variants (smpsAlterNote, FM3 special mode) have no free slot and play their "
                      f"instrument's own sample: {parts}", "free an instrument slot")
 
 

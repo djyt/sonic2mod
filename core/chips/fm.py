@@ -55,6 +55,14 @@ OPERATOR_SLOT_OFFSETS = (0x00, 0x04, 0x08, 0x0C)     # in register order: OP1, O
 _REG_BASE_BITS, _REG_SLOT_BITS, _REG_CHANNEL_BITS = 0xF0, 0x0C, 0x03
 
 REG_FEEDBACK_ALGORITHM = 0xB0        # feedback << 3 | algorithm
+
+# Channel 3's special mode ($27 bits 6-7 = 01): each operator at its own frequency.  The low byte's
+# register by operator slot offset (the high byte's is 4 above); OP4 plays the channel's own
+REG_CH3_MODE = 0x27
+CH3_SPECIAL_MODE = 0x40
+CH3_CHANNEL = 2
+CH3_OWN_SLOT = 0x0C
+CH3_FREQ_REGS = {0x00: 0xA9, 0x04: 0xA8, 0x08: 0xAA, CH3_OWN_SLOT: 0xA2}
 TL_MASK = 0x7F                       # the 7 bits of a TL register the chip reads
 FEEDBACK_ALGORITHM_MASK = 0x3F       # B0's bits the chip reads (a driver may write the voice's byte whole)
 # Each operator register's bits the chip reads

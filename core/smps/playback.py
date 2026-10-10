@@ -218,12 +218,15 @@ def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...])
 
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
           attack: bool) -> PlayedNote:
+    fm = voices.get(st.voice) if st.voice is not None and not st.is_psg else None
     if st.is_psg:
         voice, level = st.envelope, st.att
     else:
-        voice, level = _fm_voice(voices.get(st.voice) if st.voice is not None else None, st.tl)
-    # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider 0)
-    pitch = (base + st.detune) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+        voice, level = _fm_voice(fm, st.tl)
+    # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider
+    # 0); channel 3's own registers in special mode carry its offset (OP4's)
+    special = fm.channel_fnum_offset if fm is not None else 0
+    pitch = (base + st.detune + special) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
     return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,

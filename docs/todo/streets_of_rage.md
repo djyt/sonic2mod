@@ -118,8 +118,8 @@ reads the timer.
 
 ### 1.7 Chip features the converter has never rendered
 
-- **FM3 special mode** (`$F7`): 7 songs (`$83 $84 $88 $89 $8C $8D $90`), FM3 track: operator 4 at
-  +100 fnum.  The rips' FM3 frequency writes confirm it.
+- **FM3 special mode** (`$F7`): 6 songs (`$84 $88 $89 $8C $8D $90`; `$83` writes zeros only), FM3
+  track: operator 4 at +100 fnum.  The rips' FM3 frequency writes confirm it (rendered: 5.1).
 - **Hardware LFO** (`$FC`): 22 settings nonzero (e.g. freq 4 FMS 2 AMS 3; freq 7 FMS 7 = 72 Hz).
   `$22` is global: the last writer sets it for every channel.
 
@@ -422,7 +422,17 @@ a song pass (the `run_out` precedent).
   the user: same-pitch ties re-struck for their level (`legato: retrigger`) or held with `Cxx`.
 
 ### Phase 5: chip features
-- [ ] 5.1 FM3 special mode: render FM3 with per-operator fnums.
+- [x] 5.1 FM3 special mode (2026-10-10): `$F7`'s four bytes (A6, AC, AE, AD: OP4, OP3, OP2, OP1, a
+  voice's operator order) are `Fm3Special`; the walk sets a copy of the voice carrying them
+  (`SmpsVoice.fnum_offsets`, voice_patch.py), so it is an instrument of its own.  The driver keeps
+  the mode once set (bit 2, never cleared); all 0 sounds as normal mode.  Only `64 00 00 00` (OP4
+  +100) and `00 00 00 00` are used, on FM3 drums: `$84 $88 $89 $8C $8D $90` (`$83` writes zeros
+  only).  Rendered on channel 3 with `$27` = `$40`; playback's pitch adds OP4's offset (the channel's
+  A2 / A6).  `vgm_frames`: the 2440 FM3 pitch misses are gone.  The offsets count in the detune
+  variants' intervals: a variant per pitch class (+100 is +254 c on C, +193 c on F).  `$90` is short
+  of slots: 128 notes play the base sample (`detune_no_slot`).  Volumes: the copies' rows by hand
+  from one measured pass (copies renumber the `$FA` ones: 6 rows carried to their new names).
+  Left: FM3's one-frame G2 hit (gate 6 of 7, `$84 $8D $90`) -27 ... -30 dB, not the mode.
 - [ ] 5.2 LFO: render with `$22` and B4.  Loop a sample on a whole number of LFO periods.
 - [ ] 5.3 Vibrato against `vgm_compare`'s vibrato rate and depth.
 

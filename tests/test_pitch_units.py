@@ -15,9 +15,10 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
 from core.audio import cents, hz_to_midi, midi_name, pitch_name
+from core.chips import freq_word_hz
 from core.drivers.reference import FM_FREQUENCIES
 from core.smps import FmFrame, SmpsVoice, VoiceField
-from ym2612.renderer import note_to_fnum_block, render_frames
+from ym2612.renderer import note_to_fnum_block, render_frames, render_layers
 from ym2612.wrapper import output_rate
 
 
@@ -55,6 +56,27 @@ class RenderedPitch(unittest.TestCase):
         golden_axe_c1 = 0xA7E                                       # 15.6 cents under Sonic 1's
         table = (*FM_FREQUENCIES[:13], golden_axe_c1, *FM_FREQUENCIES[14:])
         self.assertEqual(note_to_fnum_block(0, fm_frequencies=table), (0x27E, 1))
+
+    def test_a_voice_in_special_mode_plays_each_operator_at_its_offset(self):
+        # Only OP4 sounds (algorithm 7, the others at TL 127): +100 FNUM on it is its pitch,
+        # also as the second layer of a composite (it moves to channel 3)
+        voice = SmpsVoice(0, algorithm=7, operators={VoiceField.ATTACK_RATE: (31, 31, 31, 31),
+                                                     VoiceField.MULTIPLE: (1, 1, 1, 1),
+                                                     VoiceField.TOTAL_LEVEL: (0, 127, 127, 127)})
+        special = SmpsVoice(1, algorithm=7, operators=voice.operators, fnum_offsets=(100, 0, 0, 0))
+        silent = SmpsVoice(2, algorithm=7, operators={VoiceField.TOTAL_LEVEL: (127, 127, 127, 127)})
+        word = FM_FREQUENCIES[13 + 33]                                  # A3
+        for layers, offset in (([(voice, 0, 0, 0)], 0), ([(special, 0, 0, 0)], 100),
+                               ([(silent, 0, 0, 0), (special, 0, 0, 0)], 100)):
+            mono, rate = render_layers(layers, 33, sustain_secs=0.5, release_secs=0.0, fm_frequencies=FM_FREQUENCIES)
+            self.assertAlmostEqual(_hz(mono, rate) / freq_word_hz(word + offset), 1.0, delta=0.005)
+
+
+def _hz(mono, rate: int) -> float:
+    """A sine's frequency by its rising zero crossings (the attack's first tenth skipped)."""
+    start = len(mono) // 10
+    rising = [i for i in range(start + 1, len(mono)) if mono[i - 1] < 0 <= mono[i]]
+    return (len(rising) - 1) * rate / (rising[-1] - rising[0])
 
 
 

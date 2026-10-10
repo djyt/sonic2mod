@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, TL_MASK, OperatorReg, split_operator_register
+from ..chips import CARRIER_OFFSETS_BY_ALG, CH3_OWN_SLOT, TL_MASK, OperatorReg, split_operator_register
 from .driver_tables import SMPS_OP_TO_REG_OFFSET
 from .effects import PlayedEffect, SetTempoMod
 from .rules import PlaybackRules
@@ -166,12 +166,23 @@ class SmpsVoice:
     # Register B4 (L R AMS FMS) where the driver stores it in the voice: setting the voice pans
     # the track (the walk writes a PAN after its smpsSetvoice).  None: Sonic 1's, pan by flag only
     pan: int | None = None
+    # Channel 3's special mode: each operator's offset to the note's frequency word, in the
+    # operators' order (a copy the walk makes: Fm3Special).  None: normal mode
+    fnum_offsets: tuple[int, ...] | None = None
 
     def operator_values(self, field_: VoiceField) -> list[int]:
         """One field's four operator values; a field the voice leaves out, or a value it leaves
         out, reads as 0."""
         vals = list(self.operators.get(field_, ()))
         return (vals + [0] * _OPERATORS)[:_OPERATORS]
+
+    @property
+    def channel_fnum_offset(self) -> int:
+        """The offset channel 3's own frequency registers carry in special mode (OP4's): what
+        the chip's A2 / A6 hold over the note's word."""
+        if self.fnum_offsets is None:
+            return 0
+        return self.fnum_offsets[SMPS_OP_TO_REG_OFFSET.index(CH3_OWN_SLOT)]
 
     @property
     def feedback_algorithm(self) -> int:

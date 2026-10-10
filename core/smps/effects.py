@@ -18,7 +18,7 @@ song's PlaybackRules (driver_track.py), so no event can keep one:
 
     VolumeStep, AlterVolumeStep -> SetVol        DetuneAdd -> Detune
     Gate -> each note after it cut short, a rest after it
-    VoiceRegister -> SetVoice of a patched copy (voice_patch.py)
+    VoiceRegister, Fm3Special -> SetVoice of a patched copy (voice_patch.py)
 """
 
 from __future__ import annotations
@@ -57,6 +57,7 @@ class CoordFlag(StrEnum):
     DETUNE_ADD = auto()           # its $F2 with a third byte
     GATE = auto()                 # its $F3
     VOICE_REGISTER = auto()       # its $FA on FM
+    FM3_SPECIAL = auto()          # its $F7 on FM
 
 
 @dataclass(frozen=True)
@@ -223,6 +224,24 @@ class VoiceRegister(DriverEffect):
     flag = CoordFlag.VOICE_REGISTER
     register: int                 # as the track writes it: its channel's number in the low bits
     value: int
+
+
+@dataclass(frozen=True)
+class Fm3Special(DriverEffect):
+    """YM2612 channel 3's special mode: each operator plays the note's frequency word plus its
+    own offset, from the next note; all 0 sounds as normal mode.  Operands in a voice's operator
+    order (SMPS_OP_TO_REG_OFFSET): OP4, OP3, OP2, OP1."""
+    flag = CoordFlag.FM3_SPECIAL
+    op4: int                      # the channel's own A2 / A6
+    op3: int
+    op2: int
+    op1: int
+
+    @property
+    def offsets(self) -> tuple[int, ...] | None:
+        """The offsets in a voice's operator order; None: all 0, normal mode."""
+        offsets = (self.op4, self.op3, self.op2, self.op1)
+        return offsets if any(offsets) else None
 
 
 _BY_FLAG: dict[CoordFlag, type[SmpsEffect]] = {

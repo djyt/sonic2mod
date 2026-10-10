@@ -108,6 +108,11 @@ fnum/block pair has another envelope and detune.  Off the table, or at another c
 Rendering at the right pitch matters for timbre: a bass voice rendered octaves too high puts
 its modulation sidebands out of the audible range and comes out thin or near-silent.
 
+A voice in channel 3's special mode (`SmpsVoice.fnum_offsets`: Streets of Rage's `$F7`) renders on
+channel 3, the only one with the mode: `$27` = `$40`, then each operator's word (the note's plus its
+offset) to its own registers (OP1 `$AD`/`$A9`, OP2 `$AE`/`$AA`, OP3 `$AC`/`$A8`, OP4 the channel's
+`$A6`/`$A2`).  In a composite it takes channel 3 and the other layers the channels around it.
+
 ### Length: `sustain_duration: auto`
 
 A sample without a sustain loop that a note outlasts goes silent.  With `auto`,

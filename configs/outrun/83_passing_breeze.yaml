@@ -3,3 +3,4 @@
 name: "Passing Breeze"
 input_file: "input/roms/OutRun (USA, Europe).md"
 rom_song: "$83"
+dac_stall: 0.389       # the update's share of the DAC's time, from the rip (vgm_analyze.py --dac-stall)

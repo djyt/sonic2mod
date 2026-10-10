@@ -397,6 +397,7 @@ class _Deriver:
         if "dac_samples" in self._stated or not hit:
             return
         by_sound = {s.sound: s for s in self._dac.values()}
+        played = 1.0 - float(self._stated.get("dac_stall", 0.0))      # the share the update leaves the loop
         slots: dict[int, int] = {}
         entries = []
         for name in sorted(hit):
@@ -412,10 +413,10 @@ class _Deriver:
             if base.sound not in slots:
                 file = _DAC_FILE.format(base.name)
                 slots[base.sound] = self._take(ChannelType.DAC, file)
-                self._rows[-1][SAMPLE_FINETUNE] = self._nearest(base.rate)[1]
+                self._rows[-1][SAMPLE_FINETUNE] = self._nearest(base.rate * played)[1]
                 self._out.files[file] = base.pcm
             finetune = next(r[SAMPLE_FINETUNE] for r in self._rows if r[SAMPLE_SLOT] == slots[base.sound])
-            note, _ = self._nearest(sample.rate, (finetune,))
+            note, _ = self._nearest(sample.rate * played, (finetune,))
             entries.append({"name": name, "mod_instrument": slots[base.sound], "mod_note": note})
         self._out.data["dac_samples"] = entries
         self._out.derived.append("dac_samples")

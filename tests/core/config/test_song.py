@@ -58,6 +58,11 @@ class Values(unittest.TestCase):
             _config(region="secam")
         self.assertEqual((_config(region="PAL").region, _config(range_space="Chip").range_space), ("pal", "chip"))
 
+    def test_dac_stall_is_a_share_of_the_time(self):
+        self.assertEqual(_config(dac_stall=0.35).dac_stall, 0.35)
+        with self.assertRaisesRegex(ValueError, "dac_stall"):
+            _config(dac_stall=1.2)
+
 
 class Numbers(unittest.TestCase):
     def test_one_spelling_for_every_number_key(self):

@@ -89,6 +89,9 @@ def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict
     return out, end
 
 
+_OPENING_SECS = 30.0            # the chip note starts that decide where the song starts
+
+
 def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]], chan_map: dict[str, int],
                 max_lag: float = 3.0, step: float = 0.005, drift: float = 0.006) -> float:
     """Seconds the MOD lags the recording: the lag at which most chip note starts meet a MOD note.
@@ -102,7 +105,9 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
     drifting song pulls the lag towards a neighbouring note that fits the later notes better
     (Drowning: +170 ms, every 200 ms note judged against the next).  Closer still counts for
     more: notes delayed by EDx sit a few ms off the rest, and a plain count would tie over a
-    20 ms range of lags.
+    20 ms range of lags.  The opening alone decides (_OPENING_SECS of chip starts): over a long
+    song the allowance lets a lag partway along the drift outscore the start (OutRun's Splash
+    Wave, 339 s at 0.14 % off: -260 ms, every note of its arpeggio judged against the next).
     """
     starts: list[tuple[int, float, float]] = []
     for src, evs in chip.items():
@@ -112,6 +117,9 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
                 if f is not None and (prev is None or abs(1200 * math.log2(f / prev)) > 50):
                     starts.append((chan_map[src], t, f))
                 prev = f
+    if starts:
+        opening = min(t for _, t, _ in starts) + _OPENING_SECS
+        starts = [s for s in starts if s[1] < opening]
     ks = range(int(-0.5 / step), int(max_lag / step) + 1)
     lags = [k * step for k in ks]
     scorer = _StartScorer(starts, {c: sorted(n for n in notes if n[_ATTACK]) for c, notes in mod.items()},

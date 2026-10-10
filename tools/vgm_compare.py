@@ -87,6 +87,7 @@ from core.audit import (
     prepare_audit,
     render_mod_channels,
     render_vgm_channels,
+    rip_on_song_clock,
     rms,
     seg_at,
     spectrum,
@@ -878,6 +879,14 @@ def main() -> None:
     workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + (f"_{args.variant}" if args.variant else "")
                                                                 + ("_merged" if args.merged else "")))
 
+    # A rip whose timer ran off its driver's (OutRun's: 0.30 % slow) is compared retimed onto the
+    # driver's clock (T6): rendered and read from the retimed copy
+    rip, scale = rip_on_song_clock(vgz, song, cfg.region)
+    if scale != 1.0:
+        workdir.mkdir(parents=True, exist_ok=True)
+        vgz = workdir / f"{vgz.stem}.retimed.vgm"
+        vgz.write_bytes(rip)
+        print(f"VGM retimed x{scale:.5f} onto the driver's clock: {vgz}")
     reference = _Reference.read(vgz)
     notes = reference.notes
     noise_used = any(n.channel == "NOISE" for n in notes)

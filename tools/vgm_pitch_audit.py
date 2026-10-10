@@ -34,11 +34,11 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
 
-from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit
+from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit, rip_on_song_clock
 from core.mod import read_mod
 from core.plan import load_config
 from core.ui import add_variant_argument, print_audit
-from core.vgm import pitch_segments, read_vgm
+from core.vgm import decode_vgm, pitch_segments
 
 
 def main() -> None:
@@ -64,7 +64,10 @@ def main() -> None:
     cfg = load_config(args.config, args.settings, variant=args.variant)
     song = prepare_audit(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
-    chip, vgm_end = pitch_segments(read_vgm(args.vgz))
+    rip, scale = rip_on_song_clock(args.vgz, song, cfg.region)     # a rip whose timer ran off its driver's: retimed
+    if scale != 1.0:
+        print(f"VGM retimed x{scale:.5f} onto the driver's clock (its frames {scale - 1:+.2%} off)")
+    chip, vgm_end = pitch_segments(decode_vgm(rip))
     mod, mod_end = mod_pitch_timeline(read_mod(mod_path), cfg, song)
     chan_map = {c.source: c.mod_channel for c in cfg.channels}
     if args.offset is None:

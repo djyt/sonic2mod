@@ -120,7 +120,7 @@ Which rip is which song: not yet matched.
    not the config's region alone.
 2. [x] **The pointer load** in `core/rom/z80.py`: a copy to `$A00000` whose source and length are
    longs the 68k reads from ROM.
-3. [ ] **A one-octave FM table** in `smpsz80/program.py`: `_find_fm_table` wants a second octave a
+3. [x] **A one-octave FM table** in `smpsz80/program.py`: `_find_fm_table` wants a second octave a
    block up; build the note table from 12 words and a computed block.
 4. [ ] **`PcmTable` beyond Z80 RAM** (`core/drivers/smps68k/dpcm.py`): it reads the table and the
    samples from Z80 RAM, finds the table by `ld iy,nn` and plays every sample in one format.

@@ -5237,7 +5237,7 @@ read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: 2d56755-dirty
+  commit: 276699a-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -5720,7 +5720,7 @@ read_space_harrier_2:
   argv:
   - tools/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 2d56755-dirty
+  commit: 276699a-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -5737,6 +5737,7 @@ read_space_harrier_2:
   - core/drivers/smpsz80/memory.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
+  - core/drivers/smpsz80/sh2/drums.py
   - core/drivers/smpsz80/sh2/envelopes.py
   - core/drivers/smpsz80/sh2/header.py
   - core/drivers/smpsz80/sh2/locate.py

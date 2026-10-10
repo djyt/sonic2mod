@@ -11,6 +11,7 @@ bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answer
     cut(note, tied_next) the note as the driver keys it off: itself, or the part it holds and a rest
     jump_clears_tie      a jump drops a pending tie
     legato               every read ties, as if smpsNoAttack came before it (Legato on)
+    duration(ticks)      a duration (byte x divider) as the track counts it
 
 A track whose driver states no TrackRules (Sonic 1's) passes everything through.
 """
@@ -155,6 +156,13 @@ class DriverTrack:
         """The detune word `word` (add.w) as the track adds it (the PSG's shifted to a divider)."""
         self._detune_word = signed_word(word)
         return Detune(self._detune_word >> self._rules.word_shift)
+
+    def duration(self, ticks: int) -> int:
+        """A duration (byte x divider; 0: none read yet) as the track counts it: its low byte,
+        0 lasting 256 ticks, where TrackRules.byte_durations."""
+        if not self._rules.byte_durations:
+            return ticks
+        return (ticks - 1) % _BYTE_VALUES + 1
 
     # --- notes --------------------------------------------------------------------------------
 

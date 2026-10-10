@@ -245,7 +245,7 @@ class _Walker:
 
         # The channel's own start: tick 0 (its loop, if it jumps back here, is taken by tick)
         self._label_ticks.setdefault(start, 0)
-        cur = _Cursor(channel, self._is_dac, tempo_divider)
+        cur = _Cursor(channel, self._is_dac, tempo_divider, last_duration=self._driver.duration(0))
         if self._header.pitch_envelope:
             channel.events.append(SmpsEvent(effect=SetPitchEnvelope(self._header.pitch_envelope), tick_position=0))
         self._walk(self._labels[start] + 1, cur, seen={start})
@@ -439,7 +439,7 @@ class _Walker:
         if reads and op.kind is OpKind.DURATION and self._header.pan_steps:
             self._step_pan(cur.tick)          # a bare duration's note starts here
         if op.kind is OpKind.DURATION:
-            self._duration(cur, op.value * cur.tempo_div)
+            self._duration(cur, self._driver.duration(op.value * cur.tempo_div))
         else:
             self._note(cur, op.value)
             if self._header.pan_steps:

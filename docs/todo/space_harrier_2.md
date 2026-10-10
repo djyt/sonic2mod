@@ -11,63 +11,7 @@ Status key: `[ ]` open, `[x]` done.  Three parts: what the driver is (1), what t
 
 ## 1. Analysis (probe 2026-10-10)
 
-`GM 00004002-01` (World), SHA-1 `db4285e4…`.  No disassembly: read from its Z80 driver with
-z80dis.  20 rips: `reference/vgz/space_harrier_2/`.  Moves to `docs/smps_variants.md` when done.
-
-**Family.**  Golden Axe's ancestor: same note grammar, `$EF` voice, `$F0` set volume, `$F2` stop,
-`$F6`-`$F9`, `$FB`, `$FC` slide mode, `$FD` raw frequency, a drum track on FM3.  Little shared code
-(117 bytes).  Its register / value voice loader (`cp $83 / ret z / cp $B0`) is also in Super Thunder
-Blade, Zoom!, Alex Kidd in the Enchanted Castle, Altered Beast, Super Hang-On and Rambo III; the
-flag dispatch matches byte for byte only in Alex Kidd's.
-
-**Where things are**
-- **Programs:** the 68k loads one of three to Z80 `$0000` (verified copy, `core/rom/z80.py`): the
-  driver (ROM `$16A6C`, `$14F6` bytes) and two PCM voice players (`$14724`, `$15904`).
-- **Bank:** ROM `$10000` at Z80 `$8000`, set by 9 writes to `$6000`; pointers little-endian.  The
-  PSG is written through the bank window (`$C00011`).
-- **Tables (bank):** music index `$87FC` (songs `$81`-`$99`), tempo `$87E3`, priorities `$87A4`,
-  pitch envelopes `$863B`, voices `$883A`.  **(driver):** FM `$098F`, PSG `$08FD`, flag jumps `$05B7`,
-  SFX index `$14BF` (`$A0`-`$B8`).
-- **Queue:** `$1804`-`$1806`.  Track RAM `$1839`: 11 tracks of `$30` (7 music, 4 SFX).
-
-**Songs.**  No SMPS header: a count byte, then 9-byte track records copied into track RAM (flags,
-channel, divider, pointer, transposition, pitch envelope, voice / envelope, volume).  Every song:
-FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No PSG tone music.
-
-**How it plays**
-- **Durations:** byte x divider.  **Tempo:** every n frames ($1802) each music track holds a frame;
-  0 never holds (most songs; 3 in `$8C`, `$93`, `$95`, `$99`).
-- **Flags:**
-
-  | byte | Space Harrier II | music uses |
-  |------|------------------|------------|
-  | `$E0`-`$E6`, `$F3` | PSG noise form (operand ORed with `$E0`) | drums |
-  | `$E7` | LFO (`$22`) | - |
-  | `$E8` | a driver byte (`$1808`: stops the music when set) | - |
-  | `$E9` | the song the 68k queues next (`$1809`) | 40 |
-  | `$EA` `$EB` `$FF` | FMS, AMS, pan (`$B4`) | 52 (`$FF`) |
-  | `$EC` `$ED` | FM3 special mode on / off, no operand | drums |
-  | `$EE` | legato on (1) / off: no key-off between notes | 96 |
-  | `$EF` | voice | 618 |
-  | `$F0` `$F1` | set volume | 8 |
-  | `$F4` | pitch envelope | 12 |
-  | `$F5` | PSG envelope (PSG tracks) | drums |
-  | `$FA` | divider | drums |
-  | `$FB` | transposition (add) | 60 |
-  | `$FC` `$FD` | slide mode, raw frequency mode | drums |
-  | `$FE` | alter volume | 68 |
-
-  Track flag bit 6 (record byte 0 `$C0`): pan animation (table Z80 `$0482`).
-- **Voices:** (register, value) pairs, channel-0 registers, `$83` ends.  Carriers take the volume.
-- **Pitch:** its own FM table, block in bits 11-13 (fnum `$269`-`$48C`, ~30 cents sharp of
-  Sonic 1's).
-- **Pitch envelopes:** per-frame fnum offsets; `$80` restart, `$84 n` multiplier += n, `$85 n` jump
-  to step n, `$81`-`$83` hold.  Envelopes 1-3 scoop, then loop a vibrato whose depth grows each pass.
-  49 tracks start with one.
-- **Drums:** the drum byte is a bitmask.  FM: two units on FM3 in special mode, each an operator
-  pair with its own frequency sweep (records Z80 `$0BE6`-`$0C18`; bits 3 / 0 one unit, bit 2 the
-  other, bit 5 a variant).  PSG: a tone 3 sweep and noise 7 (`$0E61`, bits 0-3).  The rips' frame
-  logs show both.
+Moved, with what the phases found, to `docs/smps_variants.md` § Early SMPS Z80: Space Harrier II.
 
 ---
 
@@ -123,7 +67,7 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   slot 7 its PSG half, checked to share its pointer); one divider per song; the tempo by song
   (`Sh2Memory.tempo`).  Record byte 7 is never loaded at the start: 117 FM tracks set a voice before
   their first note, 7 start with a rest.
-- [x] 1.4 Flags (`variant.py`): the table in 1; dropped and reported: legato, pitch envelope
+- [x] 1.4 Flags (`variant.py`): the table in `docs/smps_variants.md`; dropped and reported: legato, pitch envelope
   (Phase 2), the follow-on song (D3), the drum track's own flags (Phase 3); unused ones refused.
   Voices (`voices.py`): register lists through `core/rom/voices.py`'s `voice_from_registers`; voices
   18 / 20 / 22 are patches, not voices: an `$EF` naming one is refused (none does); `$BC` in 73 / 74
@@ -204,12 +148,29 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 - Open: a drum hit cuts the last on the drum track's MOD channel, where the chip lets a unit ring
   on under a hit that does not retrigger it.
 
-### Phase 4: convert and verify
-- [ ] 4.1 Every song converts; `vgm_pitch_audit`, `vgm_compare`, `measure_volumes --configs
-  configs/space_harrier_2`.
-- [ ] 4.2 Cases in `tests/cases.yaml` (chosen by coverage), `frames_space_harrier_2` in
-  tool_regression.
-- [ ] 4.3 `docs/smps_variants.md` § Space Harrier II (section 1 moves there); CLAUDE.md index.
+### Phase 4: convert and verify (2026-10-10)
+- [x] 4.1 Every song converts.
+  - `drum_psg_db` measured (above); `$98`'s FM4 (2.5).
+  - `vgm_pitch_audit`: every FM note read wrong, as if each sounded at its SMPS name; this table
+    plays each 11 semitones and 26 c above it.  `sounding_pitches` now adds the table word's cents
+    (as the PSG divider's): 7422 of 7424 right.  The other two were Game Over's: three long notes
+    made a 96-tick grid, 2.3 BPM at any speed, clamped to 32 (13.6x fast); derive now divides a
+    grid too coarse for any BPM (`_refined`): all 7424.
+  - `measure_volumes`: two derive fixes first.  A window's volume came from the song as read and
+    the converter's baked level from the prepared one (loops replayed): near a tie they chose
+    apart, An Epitaph's FM6 at `C00`; derive now counts the prepared song.  Every FM drum derived
+    64; one keying only a quiet pair (drum81) measured 13-19 dB loud: it now starts that far below
+    its voice (`keyed_carriers`).  Then one pass: 147 volumes, pitch 20/20 in `vgm_compare`.
+  - Left (to hear or later): drum81's level varies by song (+3 to +9 dB in `$8C` `$95` `$99`); a
+    voice's quieter channels play a sample rendered at its loudest's level (An Epitaph's FM6, ~7 dB
+    quiet: one render level per instrument); `$98`'s FM4 SSG-EG (above: not converted, to confirm);
+    loops out of step where the tracks' loop lengths share no short period (`$98` FM2 / FM5, the
+    drum track in `$8D` `$92`: the hardware drifts too); the pitch envelope approximations (2.3).
+- [x] 4.2 Five cases in `tests/cases.yaml`, by line coverage over the 20 songs (An Epitaph, Harrier
+  Saga, Game Over, Motion, Machine Henge).  `frames_` / `glitches_` / `read_space_harrier_2` in
+  tool_regression; its pitch audits now run every game's cases against their own rips (Moonwalker,
+  Golden Axe and Space Harrier II: every note right).
+- [x] 4.3 `docs/smps_variants.md` § Early SMPS Z80: Space Harrier II; CLAUDE.md index.
 
 ### Decisions (the user's, 2026-10-10)
 - **D1 Pitch envelopes:** baked into each note's sample.

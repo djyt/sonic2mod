@@ -8,15 +8,11 @@ import copy
 import dataclasses
 import math
 import os
-from collections.abc import Iterable
 
-from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
-from ..chips import DEFAULT_FM_PAN_LAW_DB, MD_PSG_CLOCK, fm_level_db
+from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db
 from ..config import (
     SAMPLE_FILE,
-    SAMPLE_FINETUNE,
     SAMPLE_SLOT,
-    SAMPLE_VOLUME,
     ConversionConfig,
     PsgSynthesisSettings,
     SynthesisSettings,
@@ -24,13 +20,12 @@ from ..config import (
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
-from ..mod import MAX_MOD_SAMPLE_BYTES, ModFile, ModSample, apply_pattern_breaks, note_rate, read_sample
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
+from ..mod import ModFile, apply_pattern_breaks, note_rate
 from ..plan import (
     DetunePlan,
     Timeline,
     derive_noise_envelopes,
-    derive_rate3_dividers,
     fm_catalogue,
     fm_drum_catalogue,
     prepare_instruments,
@@ -45,12 +40,11 @@ from ..smps import (
 )
 from ..smps import semitone_to_note_name as _semitone_to_name
 from ..smps import source_map as source_map_for
-from ..synth import generate_fm_drums, generate_fm_samples, generate_psg_samples
 from .channel_writer import ChannelWriter, EmissionStats, WriterContext
-from .fm_drums import drum_rings
 from .layout import ModLayout
 from .level_plan import LevelPlanner
 from .sample_names import sample_names
+from .samples import SampleInstaller, psg_synth_instruments
 from .sustain_plan import SustainPlanner
 from .vibrato import VibratoSpeed
 
@@ -86,19 +80,11 @@ class SmpsToModConverter:
         self.infos = self._diag.infos
         self._follow(song)
         self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see ModLayout.leading_rests
-        # Sustain loops (core.audio.loops, settings.yaml `sustain_loops`): the loop each synthesised
-        # sample was cut to, and how fast each FM instrument's level falls after key-off.
-        self._loops: dict[int, SustainLoop] = {}
-        self._release: dict[int, float | None] = {}
-        self._release_slides = False       # end FM notes with a volume slide instead of C00
         self._merge: MergePlan | None = None   # the merged build's plan; set by convert() (_build_merge_plan)
         self._detune: DetunePlan | None = None   # the detune variants; set by convert() (_plan_detune)
-        self._mix_sources: dict[int, ModSample] = {}   # mix-only sources whose slot a composite holds
-        self._raw_renders: dict[int, tuple] = {}       # {instrument: (render values, rate)} before 8-bit
-        self._sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
+        self._samples: SampleInstaller | None = None   # the pass's samples; set by convert()
         self._played: dict[int, set] = {}              # {instrument: sources whose notes play it}
         self._slot_map: dict[int, int] = {}            # {old slot: new slot} of every slot ModFile.compact_samples kept
-                                                       #   quantisation: what the composite mixer mixes from
         self._emission = EmissionStats()   # what the channel writers counted (bank cuts, tie retunes)
         self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
         self._merged: MergedBuild | None = None  # the merged build's samples; set with the plan
@@ -180,44 +166,6 @@ class SmpsToModConverter:
             baselines[ChannelType.PSG] = self._levels.levels(ChannelType.PSG)
         return baselines
 
-    # --- global duration divider (smpsSetTempoDiv, $EB) -------------------------------------
-    # --- mid-song tempo changes (smpsSetTempoMod, $EA) --------------------------------------
-    def _install_synthesized_samples(self, samples_dict: dict, sample_list, prefix: str,
-                                     max_bytes: int = MAX_MOD_SAMPLE_BYTES) -> None:
-        """Install synthesized PCM samples into mod.samples and apply sample_list overrides.
-        `max_bytes` is the settings' sample limit (max_sample_kb); a longer sample is cut."""
-        for inst_num, (pcm_orig, rate) in samples_dict.items():
-            self._sample_rates[inst_num] = rate
-            self.mod.samples[inst_num - 1] = self._make_sample(inst_num, pcm_orig, prefix,
-                                                               self._loops.get(inst_num), max_bytes)
-
-    def _make_sample(self, inst_num: int, pcm_orig: bytes, prefix: str, loop: SustainLoop | None,
-                     max_bytes: int = MAX_MOD_SAMPLE_BYTES, original: bool = False) -> ModSample:
-        """A ModSample for a synthesised PCM: cut to the limit, its loop header, and the
-        sample_list volume and finetune for the instrument - the last entry naming the slot (a
-        composite's, appended by the plan) unless `original` asks for the first (the source the
-        slot was named for, kept aside for the mixer)."""
-        sample_list = self.config.sample_list or []
-        entries = [e for e in sample_list if e[SAMPLE_SLOT] == inst_num]
-        entry = (entries[0] if original else entries[-1]) if entries else None
-        pcm_data = pcm_orig[:max_bytes]
-        if len(pcm_orig) > max_bytes:
-            # The generators cap the sustain to the limit; this is a last resort.
-            self._diag.warn(WarningKind.SAMPLE_TRUNCATED, channel=prefix, extra_ctx=f'instrument {inst_num}',
-                            instrument=inst_num, bytes=len(pcm_orig), max_bytes=max_bytes)
-        if len(pcm_data) % 2:                   # a MOD sample is whole words: evened with a zero
-            pcm_data += b"\0"
-        sample = ModSample(entry[SAMPLE_FILE] if entry else f"{prefix}_inst{inst_num}")
-        sample.data = pcm_data
-        sample.length = len(pcm_data) // 2
-        sample.set_volume(entry[SAMPLE_VOLUME] if entry and len(entry) > SAMPLE_VOLUME else 64)
-        if entry and len(entry) > SAMPLE_FINETUNE and entry[SAMPLE_FINETUNE] != 0:
-            sample.set_finetune(entry[SAMPLE_FINETUNE])
-        if loop is not None and loop.end <= len(pcm_data) and loop.length >= 4:
-            sample.repeat = loop.start // 2
-            sample.repeat_length = loop.length // 2
-        return sample
-
     def sample_sources(self) -> dict[int, dict]:
         """{instrument: what its slot holds} for the report (core/ui/report.py), once converted:
         `kind` (FM, PSG, noise, DAC, chip, mix, bank), `source` (the voice and range, the envelope,
@@ -256,44 +204,16 @@ class SmpsToModConverter:
             for b in self._merge.banks:
                 groups = sorted({m.group.label for m in b.members})
                 out[b.slot] = {'kind': 'bank', 'source': f"{len(b.members)} sounds · {', '.join(groups)}"}
+        rates = self._samples.sample_rates if self._samples else {}
+        release = self._samples.release if self._samples else {}
         for inst, d in out.items():
-            if inst in self._sample_rates and d['kind'] in ('FM', 'PSG', 'noise', 'chip', 'drum'):
-                d['rate'] = self._sample_rates[inst]     # a mix or a bank took its slot's number over
-            if inst in self._release and self._release[inst] != float('inf'):
-                d['release'] = self._release[inst]
+            if inst in rates and d['kind'] in ('FM', 'PSG', 'noise', 'chip', 'drum'):
+                d['rate'] = rates[inst]                  # a mix or a bank took its slot's number over
+            if inst in release and release[inst] != float('inf'):
+                d['release'] = release[inst]
         if self._slot_map:                               # the slots as the written MOD numbers them
             out = {self._slot_map[i]: d for i, d in out.items() if i in self._slot_map}
         return out
-
-    @property
-    def _dither(self) -> str:
-        """settings.yaml samples.dither: the quantisation of samples no entry or group overrides."""
-        return self.synth.dither if self.synth else DEFAULT_DITHER
-
-    def _entry_dithers(self) -> dict[int, str]:
-        """{instrument: dither} for every synthesised instrument whose entry says `dither:` (the
-        catalogues: what the generators render from); a mix falls back to its primary's."""
-        out = {i.inst: i.dither_mode for i in fm_catalogue(self.song, self.config).instruments.values()
-               if i.dither_mode}
-        out.update({i.inst: i.entry.dither for i in psg_catalogue(self.config).values() if i.entry.dither})
-        return out
-
-    def _saturate_dac_samples(self) -> None:
-        """Each `dac_samples` drum with a saturate_db (merge_saturate_db in the merged build)
-        soft-clipped (core.audio.pcm.saturate) and requantised to its full 8 bits: the same peak and
-        volume, a louder body.  Before the mixes, which are built from it: the shaped values go to
-        `_raw_renders` as a render's do, so a mix quantises the drum once, not its bytes again."""
-        clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
-        for d in self.config.dac_samples:
-            db = d.saturation_db(self.config.merge_active)
-            sample = self._mix_sources.get(d.mod_instrument) or self.mod.samples[d.mod_instrument - 1]
-            if not db or sample is None or not sample.data:
-                continue
-            shaped = saturate(signed8(sample.data), db)
-            sample.data = full_scale_int8(shaped, self._dither)   # a silent drum stays silent
-            note = _MOD_NOTE_MAP.get(d.mod_note)
-            self._raw_renders[d.mod_instrument] = (shaped, note_rate(note.value, clock) if note else None)
-            self._diag.info(InfoKind.DAC_SATURATED, instrument=d.mod_instrument, name=d.name, db=db)
 
     def convert(self) -> ModFile:
         """The finished MOD: the song converted, then laid out.
@@ -406,7 +326,7 @@ class SmpsToModConverter:
         # sample rendered at that offset.  Planned on the song as written, as the audit tools
         # plan it, and before the merge plan takes the slots left free.
         self._detune = self._plan_detune()
-        psg_insts = self._psg_synth_instruments()
+        psg_insts = psg_synth_instruments(self.config, self.psg_synth)
 
         # The song's ticks as the MOD plays them: tempo dividers applied, loops replayed
         self.prepare_song()
@@ -425,15 +345,15 @@ class SmpsToModConverter:
         psg_synth = self._sustain.resolve(self.psg_synth, 'PSG', self._merge) if self.psg_synth else None
 
         # Load or synthesize samples (a merge composite is rendered or mixed, never loaded)
-        self._install_samples(synth, psg_insts)
-        self._saturate_dac_samples()
-        self._synthesize_psg(psg_synth)
+        samples = self._samples = SampleInstaller(self.mod, self.song, self.config, self.synth, self.psg_synth,
+                                                  self._timeline, self._diag, self._sustain, self._merge, self._merged)
+        samples.install(synth, psg_synth, psg_insts, self._levels, self._fm_volume_mode == "baked")
         self._sustain.flush_pending()      # kinds that were not synthesised
 
         # The composites mixed from finished samples (DAC + hi-hat), now that every sample is in
         if self._merged is not None:
-            self._merged.mix(synth, psg_synth, self._mix_sources, self._release, self._raw_renders,
-                             self._dither, self._entry_dithers())
+            self._merged.mix(synth, psg_synth, samples.mix_sources, samples.release, samples.raw_renders,
+                             samples.dither, samples.entry_dithers())
 
         self._convert_all_channels()
         self._report_emission()
@@ -462,188 +382,6 @@ class SmpsToModConverter:
                 self._diag.warn(WarningKind.SYNTH_ROOT_AMBIGUOUS, channel='map', extra_ctx=r['context'], **r)
         if derived or stated:
             self._diag.info(InfoKind.SYNTH_ROOTS, derived=derived, stated=stated)
-
-    def _psg_synth_instruments(self) -> set[int]:
-        """The PSG instruments that will be synthesized, so disk loading skips them (no spurious
-        "file not found" warnings): every map entry's, a noise entry's `envelopes:` variants too."""
-        if not (self.psg_synth and self.psg_synth.enabled):
-            return set()
-        insts = {e.mod_instrument for e in self.config.psg_map.values()}
-        insts |= {i for e in self.config.psg_map.values() for i in e.envelopes.values()}
-        insts |= {e.mod_instrument for entries in self.config.psg_voice_map.values() for e in entries}
-        return insts
-
-    def _install_samples(self, synth: SynthesisSettings | None, psg_insts: set[int]) -> None:
-        """The FM samples synthesised and the rest loaded from disk; placeholders without a
-        sample_list.  What the PSG renders (psg_insts) and a merge composite (rendered or
-        mixed) are never loaded."""
-        merge_insts = (self._merge.instruments | self._merge.unused) if self._merge is not None else set()
-        if synth and synth.enabled:
-            fm_samples, missing = self._synthesize_fm(synth)
-            drums = self._synthesize_fm_drums(synth)
-            # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
-            self._load_disk_samples(set(fm_samples) | set(drums) | psg_insts | missing | merge_insts)
-            self._load_aside_drums(set(drums))
-            return
-        if self.config.sample_list:
-            self._load_disk_samples(psg_insts | merge_insts)
-            self._load_aside_drums(set())
-            return
-
-        # Placeholder samples, as many as the channels and DAC instruments name
-        max_inst = max((ch.instrument for ch in self.config.channels), default=10)
-        for dac in self.config.dac_samples:
-            max_inst = max(max_inst, dac.mod_instrument)
-        self.mod.create_placeholder_samples(max_inst)
-
-    def _load_disk_samples(self, skip: set[int]) -> None:
-        for entry in self.config.sample_list or []:
-            if entry[SAMPLE_SLOT] not in skip:
-                for path in self.mod.add_samples(self.config.samples_dir, [entry]):
-                    self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=entry[SAMPLE_SLOT], path=path)
-
-    def _load_aside_drums(self, rendered: set[int]) -> None:
-        """A drum off disk whose slot a composite holds (a `bank_drums` group's: it plays from a
-        bank only) read for the mixer, not into its slot: the slot's first sample_list entry, the
-        file it was named for (`rendered`: FM drums, kept aside as they render).  A render under
-        the slot's number is the composite's (a chip composite renders there): the mixer, which
-        prefers a source's render to its bytes, must take the drum's bytes."""
-        aside = self._mix_only_aside({d.mod_instrument for d in self.config.dac_samples}) - rendered
-        for inst in sorted(aside):
-            entry = next(e for e in self.config.sample_list or [] if e[SAMPLE_SLOT] == inst)
-            sample = read_sample(self.config.samples_dir, entry)
-            if sample is None:
-                self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=inst,
-                                path=os.path.join(self.config.samples_dir, entry[SAMPLE_FILE]))
-                continue
-            self._mix_sources[inst] = sample
-            self._raw_renders.pop(inst, None)
-
-    def _synthesize_fm(self, synth: SynthesisSettings) -> tuple[dict, set[int]]:
-        """Every FM instrument rendered and installed → (the samples, the instruments of map
-        entries whose voice the song does not define)."""
-        # Warn about map entries whose voice index doesn't exist in the song, and collect their
-        # instruments to suppress spurious "file not found" warnings.
-        missing: set[int] = set()
-        for ctx, vi, insts in fm_catalogue(self.song, self.config).missing_voices:
-            missing.update(insts)
-            self._diag.warn(WarningKind.VOICE_MISSING, extra_ctx=ctx, voice_idx=vi, instruments=sorted(insts))
-
-        # Each sample is rendered at the level most of its notes play at — the carriers carry the
-        # channel volume as the driver's SetVoice writes it — so the chip clips a multi-carrier
-        # voice as much as the hardware does at that level and no more.
-        self._fm_render_levels = (self._levels.fm_render_levels()
-                                  if self._fm_volume_mode == "baked" else {})
-        fm_peaks: dict[int, tuple[int, int, float]] = {}
-        # Sustain loops (settings.yaml `sustain_loops`): a settled voice's sample is cut to a loop
-        # and its notes end with a release slide (core.convert.channel_writer) instead of a C00.
-        fm_loops = synth.loops_for(self.config.merge_active)
-        self._release_slides = fm_loops
-        fm_cache: dict[str, int] = {}
-        tl_offsets = {inst: lv[0] for inst, lv in self._fm_render_levels.items()}
-        # fm_on_chip: a mix's FM layers rendered together for the mixer, at the level its notes
-        # play: the composite's own, as a chip composite is rendered.  The primary's is no
-        # fallback where every one of its notes folds (it votes for nothing): Robotnik's lead
-        # FM1+FM4 was rendered at TL 0 for 18, clipped, and the mix read 2.4 dB loud
-        chip_bases = {c.chip_base.inst: c for c in self._merge.composites.values()
-                      if c.chip_base is not None} if self._merge is not None else {}
-        for i, c in chip_bases.items():
-            tl_offsets[i] = tl_offsets.get(c.inst, tl_offsets.get(c.primary, 0))
-        fm_samples = generate_fm_samples(
-            self.song, self.config, synth, tl_offsets=tl_offsets,
-            peaks_out=fm_peaks, loops=fm_loops, loops_out=self._loops, release_out=self._release,
-            raw_out=self._raw_renders, cache_out=fm_cache,
-            extra=[c.chip_base for c in chip_bases.values() if c.chip_base is not None])
-        if fm_cache:
-            self._diag.info(InfoKind.RENDER_CACHE, chip="FM", **fm_cache)
-        self._sustain.flush('FM', self._loops)
-        if self._merged is not None:
-            self._merged.scale_chip_volumes(fm_peaks)
-
-        # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer (as a
-        # PSG one is in _synthesize_psg); the slot's loop entry is the composite's.  A drum's slot
-        # here holds the composite's own render (FM drums render apart: _synthesize_fm_drums)
-        drum_slots = {d.mod_instrument for d in self.config.dac_samples}
-        aside = (self._mix_only_aside(fm_samples) - drum_slots) | (set(chip_bases) & set(fm_samples))
-        self._install_synthesized_samples({i: v for i, v in fm_samples.items() if i not in aside},
-                                          self.config.sample_list, "fm", synth.max_sample_bytes)
-        for i in aside:
-            self._mix_sources[i] = self._make_sample(i, fm_samples[i][0], "fm", self._loops.pop(i, None),
-                                                     synth.max_sample_bytes, original=True)
-        return fm_samples, missing
-
-    def _synthesize_fm_drums(self, synth: SynthesisSettings) -> dict:
-        """The drum track's FM drums rendered whole into their dac_samples slots (none where it
-        plays DAC samples)."""
-        drums = list(fm_drum_catalogue(self.song, self.config).values())
-        if not drums:
-            return {}
-        cache: dict[str, int] = {}
-        psg_clock = self.psg_synth.clock_rate if self.psg_synth else MD_PSG_CLOCK
-        samples = generate_fm_drums(drums, synth, self._timeline.fps,
-                                    drum_rings(self.song, self.config, self._timeline), cache_out=cache, psg_clock=psg_clock)
-        if cache:
-            self._diag.info(InfoKind.RENDER_CACHE, chip="FM drums", **cache)
-        # A drum whose slot a composite holds (bank_drums) is kept aside for the mixer
-        aside = self._mix_only_aside(samples)
-        self._install_synthesized_samples({i: v for i, v in samples.items() if i not in aside},
-                                          self.config.sample_list, "drum", synth.max_sample_bytes)
-        for i in aside:
-            self._mix_sources[i] = self._make_sample(i, samples[i][0], "drum", None, synth.max_sample_bytes,
-                                                     original=True)
-            self._raw_renders.pop(i, None)
-        return samples
-
-    def _synthesize_psg(self, psg_synth: PsgSynthesisSettings | None) -> None:
-        """Every PSG instrument rendered and installed, with the rate-3 dividers and noise
-        envelopes the song implies."""
-        if not (psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map)):
-            return
-        rate3 = derive_rate3_dividers(self.song, self.config)
-        noise_env = derive_noise_envelopes(self.song, self.config)
-        self._report_noise(rate3, noise_env)
-        psg_loops: dict[int, SustainLoop] = {}
-        psg_cache: dict[str, int] = {}
-        psg_samples = generate_psg_samples(
-            self.config, psg_synth, self.song.rules, rate3_dividers={i: d['n'] for i, d in rate3.items()},
-            noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
-            loops=psg_synth.loops_for(self.config.merge_active), loops_out=psg_loops,
-            raw_out=self._raw_renders, cache_out=psg_cache)
-        if psg_cache:
-            self._diag.info(InfoKind.RENDER_CACHE, chip="PSG", **psg_cache)
-
-        # A mix-only source whose slot a composite holds is kept aside for the mixer; the slot's
-        # loop entry stays the composite's
-        aside = self._mix_only_aside(psg_samples)
-        self._loops.update({i: lp for i, lp in psg_loops.items() if i not in aside})
-        self._sustain.flush('PSG', self._loops)
-        direct = {i: v for i, v in psg_samples.items() if i not in aside}
-        self._install_synthesized_samples(direct, self.config.sample_list, "psg", psg_synth.max_sample_bytes)
-        for i in aside:
-            self._mix_sources[i] = self._make_sample(i, psg_samples[i][0], "psg", psg_loops.get(i),
-                                                     psg_synth.max_sample_bytes, original=True)
-
-    def _mix_only_aside(self, samples: Iterable[int]) -> set[int]:
-        """Of `samples` (instruments, or a dict of renders by instrument), the ones that are only a
-        mix's source, whose slot a composite holds."""
-        if self._merge is None:
-            return set()
-        return {i for i in samples if i in self._merge.mix_only and i in self._merge.instruments}
-
-    def _report_noise(self, rate3: dict[int, dict], noise_env: dict[int, dict]) -> None:
-        """The derived rate-3 dividers and noise envelopes as infos; a sample standing in for
-        several envelopes as a warning."""
-        for inst, d in sorted(rate3.items()):
-            if d['used']:
-                self._diag.info(InfoKind.RATE3_DIVIDER, instrument=inst, **d)
-        for inst, d in sorted(noise_env.items()):
-            if d['envelope'] is not None:
-                self._diag.info(InfoKind.NOISE_ENVELOPE, instrument=inst, envelope=d['envelope'],
-                                derived=d['derived'], notes=d['counts'].get(d['envelope'], 0))
-            others = {k: n for k, n in d['counts'].items() if k != d['envelope']}
-            if others:
-                self._diag.warn(WarningKind.NOISE_ENVELOPES, channel='PSG', extra_ctx=f'instrument {inst}',
-                                instrument=inst, envelope=d['envelope'], others=others)
 
     def _report_emission(self) -> None:
         """What the channel writers counted: banked notes, tie retunes."""
@@ -712,7 +450,8 @@ class SmpsToModConverter:
             # walk now says is each instrument's baseline; the two must agree or the Cxx law
             # would be measured from a level the sample does not carry.
             pan_law = self.pan_law_db
-            for inst, (tl, pan) in getattr(self, '_fm_render_levels', {}).items():
+            render_levels = self._samples.fm_render_levels if self._samples else {}
+            for inst, (tl, pan) in render_levels.items():
                 base = self._fm_baseline_db.get(inst)
                 if inst in self._gained.get(ChannelType.FM, ()):
                     continue            # a unison chord's gain is in the baseline, not in the render
@@ -730,14 +469,16 @@ class SmpsToModConverter:
             self._merged.bake_volumes(self._fm_baseline_db, self._psg_baseline_db, self._gained)
 
         # Convert each configured channel
+        samples = self._samples
+        assert samples is not None
         ctx = WriterContext(
             mod=self.mod, config=self.config, song=self.song, synth=self.synth, timeline=self._timeline,
             diag=self._diag, vibrato=self._vibrato, merge=self._merge, detune=self._detune,
             fm_volume_mode=self._fm_volume_mode, psg_volume_mode=self._psg_volume_mode, pan_law_db=self.pan_law_db,
-            fm_baseline_db=self._fm_baseline_db, psg_baseline_db=self._psg_baseline_db, release=self._release,
-            release_slides=self._release_slides, player=self._player, leading_rests=self._leading_rest_channels,
+            fm_baseline_db=self._fm_baseline_db, psg_baseline_db=self._psg_baseline_db, release=samples.release,
+            release_slides=samples.release_slides, player=self._player, leading_rests=self._leading_rest_channels,
             stats=self._emission, played=self._played,
-            decay={i: (lp.flat_at, lp.decay_db) for i, lp in self._loops.items() if lp.decay_db})
+            decay={i: (lp.flat_at, lp.decay_db) for i, lp in samples.loops.items() if lp.decay_db})
         for chan_cfg in self.config.channels:
             if not chan_cfg.enabled:
                 continue

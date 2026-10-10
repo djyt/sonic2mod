@@ -215,11 +215,14 @@ def _missing_sources() -> list[str]:
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
     cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases()
-    shelf = RipShelf.load(_SONIC1_CONFIGS, VGZ_DIR)
+    shelves: dict[Path, RipShelf] = {}      # each game's: its configs' folder and its rips
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
             continue
-        vgz = shelf.rip_for(ROOT / tc["config"])
+        folder = (ROOT / tc["config"]).parent
+        if folder not in shelves:
+            shelves[folder] = RipShelf.around(folder, None)
+        vgz = shelves[folder].rip_for(ROOT / tc["config"])
         if vgz is not None:
             cases += _song_cases(tc, vgz)
     return cases

@@ -25,11 +25,12 @@ from functools import lru_cache, partial
 
 from core.rom.header import read_index
 from core.rom.image import RomError, RomImage
+from core.rom.pattern import code_pattern
 from core.rom.variant import SoundIndex
 from core.rom.z80 import z80_word
 
 from ..memory import BankedZ80Memory
-from ..program import driver_ram
+from ..program import driver_ram, one_match, one_operand
 from .header import is_track_list
 from .memory import DriverTables, Sh2Memory
 
@@ -43,13 +44,42 @@ _BANK_WRITE = bytes.fromhex("320060")
 _BANK_BITS = 9
 _FIRST_BANK_BIT = 15
 
-_SONG_LOADER = re.compile(rb"\xD6\x81\xF8\xF5\xCD..\xF1\x06\x00\x4F\x21(..)\x09\xF5\x7E\x32..\x32..\x11..\x21(..)",
-                          re.DOTALL)
-_SET_VOICE = re.compile(rb"\xDD\x77\x07\xD5\x21(..)\xCD", re.DOTALL)
-_PITCH_ENVELOPES = re.compile(rb"\xEB\x21(..)\xCD", re.DOTALL)
-_PAN_ANIMATIONS = re.compile(rb"\xDD\x7E\x18\x21(..)\xCD", re.DOTALL)
+_SONG_LOADER = code_pattern("""
+    D6 81       sub $81
+    F8          ret m
+    F5          push af
+    CD ? ?      call
+    F1          pop af
+    06 00       ld b,0
+    4F          ld c,a
+    21 <w>      ld hl,tempos
+    09          add hl,bc
+    F5          push af
+    7E          ld a,(hl)
+    32 ? ?      ld (nn),a
+    32 ? ?      ld (nn),a
+    11 ? ?      ld de,nn
+    21 <w>      ld hl,index
+""")
+_SET_VOICE = code_pattern("""
+    DD 77 07    ld (ix+7),a
+    D5          push de
+    21 <w>      ld hl,voices
+    CD          call
+""")
+_PITCH_ENVELOPES = code_pattern("""
+    EB          ex de,hl
+    21 <w>      ld hl,envelopes
+    CD          call
+""")
+_PAN_ANIMATIONS = code_pattern("""
+    DD 7E 18    ld a,(ix+$18)
+    21 <w>      ld hl,animations
+    CD          call
+""")
 _FIRST_PAN = 0x40                 # an animation's byte: a pan from here, a command below
 _AGAIN = 0x00                     # its command: from the start
+_DRIVER = "Space Harrier II"
 
 
 @lru_cache(maxsize=8)
@@ -126,15 +156,8 @@ def _pan_steps(z80: bytes) -> tuple[int, ...]:
 
 
 def _one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str) -> int:
-    """The one table every read of `pattern` names (a driver may read it in several places)."""
-    found = {z80_word(match.group(1), 0) for match in pattern.finditer(z80)}
-    if len(found) != 1:
-        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not a Space Harrier II driver")
-    return found.pop()
+    return one_operand(pattern, z80, what, _DRIVER)
 
 
 def _one(pattern: re.Pattern[bytes], z80: bytes, what: str) -> re.Match[bytes]:
-    found = list(pattern.finditer(z80))
-    if len(found) != 1:
-        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not a Space Harrier II driver")
-    return found[0]
+    return one_match(pattern, z80, what, _DRIVER)

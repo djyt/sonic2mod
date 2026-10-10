@@ -8,6 +8,7 @@ an FM table, and that table.  Found by shape, not by one game's addresses.
       octave   the octave alone: the driver splits note byte - $81 into octave (or'ed into the
                block) and semitone (OutRun: Z80 $0319)
     PSG table  10-bit dividers falling a semitone a note, from note $81, ended by a 0 word
+    code       the driver's tables named by the code that reads them (one_match, one_operand)
 
     Golden Axe (Rev A)      one program: ROM $1D2F0 -> Z80 $0000, FM table Z80 $07D9
     Space Harrier II        three at Z80 $0000 (the driver, two PCM voice players): ROM $16A6C,
@@ -17,6 +18,7 @@ an FM table, and that table.  Found by shape, not by one game's addresses.
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 
 from core.chips import freq_word, split_freq_word
@@ -37,6 +39,22 @@ _OCTAVE_DRIFT = 0.02
 _PSG_DIVIDER_BITS = 0x3FF
 _PSG_SEMITONE = (0.92, 0.97)
 _PSG_READ = 0x80             # the words a 7-bit note index reads: the table, then what lies past it
+
+
+def one_match(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> re.Match[bytes]:
+    """The one place the driver's code reads as `pattern`; RomError (not `driver`'s) for none or several."""
+    found = list(pattern.finditer(z80))
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
+    return found[0]
+
+
+def one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> int:
+    """The one word (group 1) every match of `pattern` names: a table the driver may read in several places."""
+    found = {z80_word(match.group(1), 0) for match in pattern.finditer(z80)}
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
+    return found.pop()
 
 
 @lru_cache(maxsize=8)

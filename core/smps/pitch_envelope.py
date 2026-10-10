@@ -1,12 +1,13 @@
 """A driver's pitch envelope: from a note's read, one step a frame, each step's offset added to the
 note's frequency word (the note's own word, not the last step's sum).  Space Harrier II's
 (docs/todo/space_harrier_2.md 2.3): a scoop into the note, then a vibrato whose depth grows each
-pass.
+pass; OutRun's: detunes, delayed vibratos, one that deepens.
 
     steps      offsets (signed: added to the FM word) and commands, which take no frame:
                Restart   back to step 0
                Jump      to a step
-               Scale     the scale grows by n: each offset after it is the offset x (1 + scale)
+               Scale     the scale grows by n: each offset after it is the offset x (1 + scale),
+                         in a byte (byte_scale: Space Harrier II's) or whole (OutRun's word)
                Hold      the envelope stops: the word stays where the last step left it
 
 The read frame plays step 0; every read starts again (a tie under legato too).  A driver reads
@@ -47,11 +48,11 @@ Step = int | Restart | Jump | Scale | Hold
 @dataclass(frozen=True)
 class PitchEnvelope:
     steps: tuple[Step, ...]
+    byte_scale: bool = True        # the scaled offset kept in a byte, its sign kept; False: whole
 
     def offsets(self, frames: int) -> tuple[int, ...]:
-        """The offset each of the first `frames` frames from the read adds to the word.  The scale
-        multiplies in a byte, as the driver does (an offset's low byte times 1 + scale, its sign
-        kept)."""
+        """The offset each of the first `frames` frames from the read adds to the word, scaled as
+        the driver multiplies."""
         out: list[int] = []
         at, scale, last = 0, 0, 0
         while len(out) < frames:
@@ -68,7 +69,7 @@ class PitchEnvelope:
                     case Hold():
                         return (*out, *[last] * (frames - len(out)))
                     case int():
-                        last = _scaled(step, scale)
+                        last = _scaled(step, scale) if self.byte_scale else step * (1 + scale)
                         at += 1
                         break
             else:

@@ -138,16 +138,34 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
   - `$84` FM1 plays a note before any voice (it inherits the chip's): Phase 2.
 
 ### Phase 2: the walk
-- [ ] 2.1 Legato `$EE`, volume, transposition, divider, pan / AMS / FMS, LFO.
-- [ ] 2.2 Tempo holds: the phase against the rips' key-on frames (Golden Axe's was a frame late).
-- [ ] 2.3 Pitch envelopes, baked (D1): the IR effect and the walk; the instrument catalogue keys
-  on the envelope, the FM render applies it frame by frame from the note's attack.  Check:
-  does a legato note restart it (`$0459` clears the step on every read)?  Its depth grows each
-  pass, so a sample may not loop early: rendered as long as its longest note.
-- [ ] 2.4 Pan animation (D2): `8xx` on the note's row, below every other effect (CLAUDE.md's
-  priority list gains it last).
-- [ ] 2.5 Yardstick: `configs/space_harrier_2/` minimal configs, `rips.yaml` (20 rips to `$81`-`$99`);
-  `vgm_lift`, `vgm_frames` (pitch, level, voice at every key-on).
+- [x] 2.1 Legato `$EE` (`4cefe8e`): `Legato`, a DriverEffect; while on, each read starts as
+  smpsNoAttack leaves it (a rest still keys off).  34 ties in `$81`, 1 in `$94`, each held in the rip.
+  Volume, transposition, divider and pan were Phase 1's; AMS / FMS / LFO: no song uses them.
+- [x] 2.2 Tempo holds: Sonic 1's TempoWait at phase 0 (the counter loaded as the song starts, the
+  same frame's check after it): the tempo-3 songs' key-ons land 1.5 frames a tick, every one.
+- [ ] 2.3 Pitch envelopes, baked (D1).
+  - [x] Read, walked, played (`2d56755`): `core/smps/pitch_envelope.py` (steps, played a frame at
+    a time from each read), `SetPitchEnvelope`, `PlaybackRules.pitch_envelopes`, the header's
+    starting envelope; the played pitch is the read frame's.  Every rip's FM pitch, frame by frame
+    after each read, as the envelopes say (3 and 4 on every frame; 1 and 2 but where a rip drifts).
+  - [ ] Baked: the catalogue keys on the envelope (a variant per envelope, split by pitch class
+    where its depth in cents differs: an fnum offset's cents depend on where the note sits in the
+    octave, the detune variants' metric), the FM render steps it a frame at a time
+    (`render_layers` writes the frequency once today), no early loop (the depth grows), the
+    render cache keyed on it, levels shared with the base (`base_of` / `share_base`).  A tie under
+    legato restarts the envelope, which a MOD tie cannot: decide then.  Needs Phase 3: no song
+    converts while its drums have no samples.
+- [ ] 2.4 Pan animation (D2): the record's flag bit 6; each read (`$03DE` -> `$0489`) steps the
+  table at Z80 `$0482` (one list: C L C R, then again) and writes B4.  The walk can emit the pans;
+  `8xx` is the converter's (after Phase 3).
+- [x] 2.5 Yardstick (`4cefe8e`): `configs/space_harrier_2/` (20 minimal configs), `rips.yaml`.
+  `vgm_frames --all --configs configs/space_harrier_2`: 6 of 20 every attacking note; 11 more miss
+  only the logs' loop re-entry (one note a channel).  Left: `$81` (the stage theme, recorded in
+  play: drifts a frame at a time from 51 s, lost frames), `$98` FM4 (the rip holds another sound
+  there: SSG-EG set, two pitches), `$96` FM1 (a frame ahead of the other channels from the start).
+  The follow-on bytes (`$E9`) are resume points: `$81`-`$86` name each other (the stage theme's
+  sections), the rest `$C1` / `$AF`.  `vgm_lift` misreads the tempo-3 songs' holds as tempo
+  changes: `vgm_frames` is the yardstick here.
 
 ### Phase 3: drums
 - [ ] 3.1 Refactor 2.1.5 (Golden Axe byte-identical).

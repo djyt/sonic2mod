@@ -8,11 +8,10 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [3, "fm_v00_A2.raw", 63, 0]   # VGZ: -2.9 dB at 45
   - [4, "fm_v0d_B7.raw", 20, 0]   # VGZ: -4.5 dB at 12
   - [5, "fm_v11_B7.raw", 24, 0]   # VGZ: -5.9 dB at 12
-  - [6, "fm_v02_C3.raw", 20, 0]   # VGZ: +1.4 dB at 23
-  - [7, "fm_v15_Ab2.raw", 32, 0]   # VGZ: +3.1 dB at 45
-  - [8, "fm_v03_C3.raw", 14, 0]   # VGZ: -3.1 dB at 10
-  - [9, "fm_v03_C4.raw", 12, 0]   # VGZ: -1.2 dB at 10
-  - [10, "fm_v05_A1.raw", 31, 0]   # VGZ: -2.6 dB at 23
+  - [6, "fm_v15_C3.raw", 18, 0]   # VGZ: +2.3 dB at 23
+  - [7, "fm_v16_C3.raw", 13, 0]   # VGZ: -2.3 dB at 10
+  - [9, "fm_v17_Ab2.raw", 32, 0]   # VGZ: +3.0 dB at 45
+  - [10, "fm_v18_A1.raw", 31, 0]   # VGZ: -2.7 dB at 23
   - [11, "fm_v06_Eb1.raw", 19, 0]   # VGZ: +1.5 dB at 23
   - [12, "fm_v06_D2.raw", 18, 0]   # VGZ: +2.0 dB at 23
   - [13, "fm_v06_C3.raw", 19, 0]   # VGZ: +1.5 dB at 23

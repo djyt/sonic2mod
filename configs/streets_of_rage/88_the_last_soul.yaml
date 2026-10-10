@@ -7,22 +7,21 @@ rom_song: "$88"
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [1, "dac81.raw", 54, 6]   # VGZ: -0.7 dB at 64
   - [3, "dac84.raw", 37, -3]   # VGZ: +2.5 dB at 64
-  - [5, "fm_v0a_Ab7.raw", 31, 0]   # VGZ: -3.3 dB at 27
-  - [6, "fm_v0b_B4.raw", 7, 0]   # VGZ: +5.4 dB at 16
-  - [7, "fm_v0c_Cs5.raw", 12, 0]   # VGZ: +0.5 dB at 16
-  - [8, "fm_v0c_B5.raw", 12, 0]   # VGZ: +0.4 dB at 16
-  - [11, "fm_v11_Fs2.raw", 23, 0]   # VGZ: +0.6 dB at 32
-  - [12, "fm_v11_E3.raw", 22, 0]   # VGZ: +0.9 dB at 32
-  - [13, "fm_v12_G7.raw", 4, 0]   # VGZ: -9.1 dB at 2
-  - [17, "fm_v04_E2.raw", 25, 0]   # VGZ: +0.0 dB at 32
-  - [18, "fm_v04_Fs3.raw", 11, 0]   # VGZ: +0.3 dB at 14
-  - [19, "fm_v04_E4.raw", 19, 0]   # VGZ: +1.1 dB at 27
-  - [20, "fm_v05_Cs4.raw", 16, 0]   # VGZ: -3.3 dB at 14
-  - [21, "fm_v05_B4.raw", 10, 0]   # VGZ: -4.5 dB at 8
-  - [22, "fm_v06_C6.raw", 3, 0]   # VGZ: +0.6 dB at 4
-  - [23, "fm_v06_B7.raw", 22, 0]   # VGZ: -5.1 dB at 16
-  - [24, "fm_v07_B7.raw", 23, 0]   # VGZ: -0.7 dB at 27
-  - [25, "fm_v08_Ab7.raw", 45, 0]   # VGZ: -5.2 dB at 32
+  - [5, "fm_v0b_B4.raw", 7, 0]   # VGZ: +5.4 dB at 16
+  - [6, "fm_v0c_Cs5.raw", 12, 0]   # VGZ: +0.5 dB at 16
+  - [7, "fm_v0c_B5.raw", 12, 0]   # VGZ: +0.4 dB at 16
+  - [10, "fm_v11_Fs2.raw", 23, 0]   # VGZ: +0.6 dB at 32
+  - [11, "fm_v11_E3.raw", 22, 0]   # VGZ: +0.9 dB at 32
+  - [12, "fm_v13_Ab7.raw", 40, 0]   # VGZ: -1.9 dB at 32
+  - [16, "fm_v16_G7.raw", 4, 0]   # VGZ: -6.6 dB at 2
+  - [19, "fm_v04_E2.raw", 25, 0]   # VGZ: +0.0 dB at 32
+  - [20, "fm_v04_Fs3.raw", 11, 0]   # VGZ: +0.3 dB at 14
+  - [21, "fm_v04_E4.raw", 19, 0]   # VGZ: +1.1 dB at 27
+  - [22, "fm_v05_Cs4.raw", 16, 0]   # VGZ: -3.3 dB at 14
+  - [23, "fm_v05_B4.raw", 10, 0]   # VGZ: -4.5 dB at 8
+  - [24, "fm_v06_C6.raw", 3, 0]   # VGZ: +0.6 dB at 4
+  - [25, "fm_v06_B7.raw", 22, 0]   # VGZ: -5.1 dB at 16
+  - [26, "fm_v07_B7.raw", 23, 0]   # VGZ: -0.7 dB at 27
   - [27, "psg_fTone_03_Cs4.raw", 4, 0]   # VGZ: -0.9 dB at 5
   - [28, "psg_fTone_03_B4.raw", 4, 0]   # VGZ: +0.0 dB at 5
   - [29, "psg_noise_e7.raw", 2, 0]   # VGZ: +7.0 dB at 6

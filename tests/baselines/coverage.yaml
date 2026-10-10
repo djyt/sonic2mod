@@ -2,12 +2,12 @@
 chaos_emerald:
   argv:
   - convert.py
-  - configs/16_chaos_emerald.yaml
+  - configs/sonic_1/16_chaos_emerald.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -37,7 +37,16 @@ chaos_emerald:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -152,18 +161,18 @@ chaos_emerald:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/16_chaos_emerald.yaml: 5c39e0349d2c
-    input/Mus93 - Get Emerald.asm: 77a5b5dda397
+    configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
+    input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
     tests/settings.yaml: a79a8ba763a3
 continue_screen:
   argv:
   - convert.py
-  - configs/18_continue_screen.yaml
+  - configs/sonic_1/18_continue_screen.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -193,7 +202,16 @@ continue_screen:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -308,20 +326,20 @@ continue_screen:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    input/Mus90 - Continue Screen.asm: cec085a906a8
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 continue_screen_lofi:
   argv:
   - convert.py
-  - configs/18_continue_screen.yaml
+  - configs/sonic_1/18_continue_screen.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -351,7 +369,16 @@ continue_screen_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -466,13 +493,13 @@ continue_screen_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    input/Mus90 - Continue Screen.asm: cec085a906a8
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 continue_screen_lofi_merged:
   argv:
   - convert.py
-  - configs/18_continue_screen.yaml
+  - configs/sonic_1/18_continue_screen.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -480,7 +507,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -510,7 +537,16 @@ continue_screen_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -625,19 +661,19 @@ continue_screen_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    input/Mus90 - Continue Screen.asm: cec085a906a8
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 continue_screen_merged:
   argv:
   - convert.py
-  - configs/18_continue_screen.yaml
+  - configs/sonic_1/18_continue_screen.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -667,7 +703,16 @@ continue_screen_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -782,18 +827,18 @@ continue_screen_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    input/Mus90 - Continue Screen.asm: cec085a906a8
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 credits:
   argv:
   - convert.py
-  - configs/13_credits.yaml
+  - configs/sonic_1/13_credits.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -823,7 +868,16 @@ credits:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -938,13 +992,13 @@ credits:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/13_credits.yaml: fd4e69be5011
-    input/Mus91 - Credits.asm: 106cf62e8b16
+    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
     tests/settings.yaml: a79a8ba763a3
 credits_rom:
   argv:
   - convert.py
-  - configs/13_credits.yaml
+  - configs/sonic_1/13_credits.yaml
   - --settings
   - tests/settings.yaml
   - --input
@@ -953,7 +1007,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -983,7 +1037,16 @@ credits_rom:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -1098,18 +1161,18 @@ credits_rom:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/13_credits.yaml: fd4e69be5011
+    configs/sonic_1/13_credits.yaml: 33967a29b9b9
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3
 drowning:
   argv:
   - convert.py
-  - configs/17_drowning.yaml
+  - configs/sonic_1/17_drowning.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1139,7 +1202,16 @@ drowning:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -1254,18 +1326,18 @@ drowning:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/17_drowning.yaml: 82ba0527a820
-    input/Mus92 - Drowning.asm: 15581ae26473
+    configs/sonic_1/17_drowning.yaml: 099aadef0ccc
+    input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
     tests/settings.yaml: a79a8ba763a3
 ending_theme:
   argv:
   - convert.py
-  - configs/12_ending_theme.yaml
+  - configs/sonic_1/12_ending_theme.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1295,7 +1367,16 @@ ending_theme:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -1410,18 +1491,18 @@ ending_theme:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/12_ending_theme.yaml: fbca82b79aac
-    input/Mus8B - Ending.asm: 80e00bbcd0b2
+    configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
+    input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
     tests/settings.yaml: a79a8ba763a3
 extra_life:
   argv:
   - convert.py
-  - configs/15_1up.yaml
+  - configs/sonic_1/15_1up.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1451,7 +1532,16 @@ extra_life:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -1566,20 +1656,20 @@ extra_life:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    input/Mus88 - Extra Life.asm: 160a613a525d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 extra_life_lofi:
   argv:
   - convert.py
-  - configs/15_1up.yaml
+  - configs/sonic_1/15_1up.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1609,7 +1699,16 @@ extra_life_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -1724,13 +1823,13 @@ extra_life_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    input/Mus88 - Extra Life.asm: 160a613a525d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 extra_life_lofi_merged:
   argv:
   - convert.py
-  - configs/15_1up.yaml
+  - configs/sonic_1/15_1up.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -1738,7 +1837,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1768,7 +1867,16 @@ extra_life_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -1883,19 +1991,19 @@ extra_life_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    input/Mus88 - Extra Life.asm: 160a613a525d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 extra_life_merged:
   argv:
   - convert.py
-  - configs/15_1up.yaml
+  - configs/sonic_1/15_1up.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1925,7 +2033,16 @@ extra_life_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2040,18 +2157,18 @@ extra_life_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    input/Mus88 - Extra Life.asm: 160a613a525d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 final_zone:
   argv:
   - convert.py
-  - configs/10_final_zone.yaml
+  - configs/sonic_1/10_final_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2081,7 +2198,16 @@ final_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2196,8 +2322,8 @@ final_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/10_final_zone.yaml: 442bc2182d32
-    input/Mus8D - FZ.asm: 8b1125b96028
+    configs/sonic_1/10_final_zone.yaml: c8329f9162cb
+    input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
     tests/settings.yaml: a79a8ba763a3
 ga_conclusion:
   argv:
@@ -2207,7 +2333,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2237,7 +2363,16 @@ ga_conclusion:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2361,7 +2496,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2391,7 +2526,16 @@ ga_the_battle:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2515,7 +2659,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2545,7 +2689,16 @@ ga_theme_of_thief:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2664,12 +2817,12 @@ ga_theme_of_thief:
 game_over:
   argv:
   - convert.py
-  - configs/19_game_over.yaml
+  - configs/sonic_1/19_game_over.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2699,7 +2852,16 @@ game_over:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2814,20 +2976,20 @@ game_over:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    input/Mus8F - Game Over.asm: 4d3d74724c03
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 game_over_lofi:
   argv:
   - convert.py
-  - configs/19_game_over.yaml
+  - configs/sonic_1/19_game_over.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2857,7 +3019,16 @@ game_over_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -2972,13 +3143,13 @@ game_over_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    input/Mus8F - Game Over.asm: 4d3d74724c03
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 game_over_lofi_merged:
   argv:
   - convert.py
-  - configs/19_game_over.yaml
+  - configs/sonic_1/19_game_over.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -2986,7 +3157,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3016,7 +3187,16 @@ game_over_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -3131,19 +3311,19 @@ game_over_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    input/Mus8F - Game Over.asm: 4d3d74724c03
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 game_over_merged:
   argv:
   - convert.py
-  - configs/19_game_over.yaml
+  - configs/sonic_1/19_game_over.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3173,7 +3353,16 @@ game_over_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -3288,20 +3477,20 @@ game_over_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    input/Mus8F - Game Over.asm: 4d3d74724c03
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 ghz_lofi:
   argv:
   - convert.py
-  - configs/02_green_hill_zone.yaml
+  - configs/sonic_1/02_green_hill_zone.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3331,7 +3520,16 @@ ghz_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -3446,13 +3644,13 @@ ghz_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    input/Mus81 - GHZ.asm: eb1e02ed826c
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 ghz_lofi_merged:
   argv:
   - convert.py
-  - configs/02_green_hill_zone.yaml
+  - configs/sonic_1/02_green_hill_zone.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -3460,7 +3658,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3490,7 +3688,16 @@ ghz_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -3605,18 +3812,18 @@ ghz_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    input/Mus81 - GHZ.asm: eb1e02ed826c
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 green_hill_zone:
   argv:
   - convert.py
-  - configs/02_green_hill_zone.yaml
+  - configs/sonic_1/02_green_hill_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3646,7 +3853,16 @@ green_hill_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -3761,19 +3977,19 @@ green_hill_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    input/Mus81 - GHZ.asm: eb1e02ed826c
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 green_hill_zone_merged:
   argv:
   - convert.py
-  - configs/02_green_hill_zone.yaml
+  - configs/sonic_1/02_green_hill_zone.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3803,7 +4019,16 @@ green_hill_zone_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -3918,13 +4143,13 @@ green_hill_zone_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    input/Mus81 - GHZ.asm: eb1e02ed826c
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 green_hill_zone_rom:
   argv:
   - convert.py
-  - configs/02_green_hill_zone.yaml
+  - configs/sonic_1/02_green_hill_zone.yaml
   - --settings
   - tests/settings.yaml
   - --input
@@ -3933,7 +4158,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3963,7 +4188,16 @@ green_hill_zone_rom:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -4078,18 +4312,18 @@ green_hill_zone_rom:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3
 invincibility:
   argv:
   - convert.py
-  - configs/14_invincibility.yaml
+  - configs/sonic_1/14_invincibility.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4119,7 +4353,16 @@ invincibility:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -4234,20 +4477,20 @@ invincibility:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    input/Mus87 - Invincibility.asm: c9399e4a6940
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 invincibility_lofi:
   argv:
   - convert.py
-  - configs/14_invincibility.yaml
+  - configs/sonic_1/14_invincibility.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4277,7 +4520,16 @@ invincibility_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -4392,13 +4644,13 @@ invincibility_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    input/Mus87 - Invincibility.asm: c9399e4a6940
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 invincibility_lofi_merged:
   argv:
   - convert.py
-  - configs/14_invincibility.yaml
+  - configs/sonic_1/14_invincibility.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -4406,7 +4658,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4436,7 +4688,16 @@ invincibility_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -4551,19 +4812,19 @@ invincibility_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    input/Mus87 - Invincibility.asm: c9399e4a6940
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 invincibility_merged:
   argv:
   - convert.py
-  - configs/14_invincibility.yaml
+  - configs/sonic_1/14_invincibility.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4593,7 +4854,16 @@ invincibility_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -4708,18 +4978,18 @@ invincibility_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    input/Mus87 - Invincibility.asm: c9399e4a6940
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 lab_zone:
   argv:
   - convert.py
-  - configs/05_lab_zone.yaml
+  - configs/sonic_1/05_lab_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4749,7 +5019,16 @@ lab_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -4864,18 +5143,18 @@ lab_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/05_lab_zone.yaml: af4485b39d54
-    input/Mus82 - LZ.asm: 0a834d48c5c0
+    configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
+    input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
     tests/settings.yaml: a79a8ba763a3
 marble_zone:
   argv:
   - convert.py
-  - configs/03_marble_zone.yaml
+  - configs/sonic_1/03_marble_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4905,7 +5184,16 @@ marble_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5020,13 +5308,13 @@ marble_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/03_marble_zone.yaml: d8dd716ce0da
-    input/Mus83 - MZ.asm: 49873b8fd7f3
+    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
     tests/settings.yaml: a79a8ba763a3
 marble_zone_rom:
   argv:
   - convert.py
-  - configs/03_marble_zone.yaml
+  - configs/sonic_1/03_marble_zone.yaml
   - --settings
   - tests/settings.yaml
   - --input
@@ -5035,7 +5323,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5065,7 +5353,16 @@ marble_zone_rom:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5180,7 +5477,7 @@ marble_zone_rom:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/03_marble_zone.yaml: d8dd716ce0da
+    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3
 mw_beat_it:
@@ -5191,7 +5488,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5221,7 +5518,16 @@ mw_beat_it:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5347,7 +5653,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5377,7 +5683,16 @@ mw_mr_big:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5503,7 +5818,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5533,7 +5848,16 @@ mw_title:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5654,12 +5978,12 @@ mw_title:
 robotnik:
   argv:
   - convert.py
-  - configs/09_robotnik.yaml
+  - configs/sonic_1/09_robotnik.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5689,7 +6013,16 @@ robotnik:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5804,20 +6137,20 @@ robotnik:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    input/Mus8C - Boss.asm: e13e9ba9ec52
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 robotnik_lofi:
   argv:
   - convert.py
-  - configs/09_robotnik.yaml
+  - configs/sonic_1/09_robotnik.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5847,7 +6180,16 @@ robotnik_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -5962,13 +6304,13 @@ robotnik_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    input/Mus8C - Boss.asm: e13e9ba9ec52
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 robotnik_lofi_merged:
   argv:
   - convert.py
-  - configs/09_robotnik.yaml
+  - configs/sonic_1/09_robotnik.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -5976,7 +6318,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6006,7 +6348,16 @@ robotnik_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -6121,19 +6472,19 @@ robotnik_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    input/Mus8C - Boss.asm: e13e9ba9ec52
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 robotnik_merged:
   argv:
   - convert.py
-  - configs/09_robotnik.yaml
+  - configs/sonic_1/09_robotnik.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6163,7 +6514,16 @@ robotnik_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -6278,18 +6638,18 @@ robotnik_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    input/Mus8C - Boss.asm: e13e9ba9ec52
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 scrap_brain_zone:
   argv:
   - convert.py
-  - configs/07_scrap_brain_zone.yaml
+  - configs/sonic_1/07_scrap_brain_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6319,7 +6679,16 @@ scrap_brain_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -6434,18 +6803,18 @@ scrap_brain_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/07_scrap_brain_zone.yaml: 331bee95f256
-    input/Mus86 - SBZ.asm: 03ba8c65f0c9
+    configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
+    input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
     tests/settings.yaml: a79a8ba763a3
 special_stage:
   argv:
   - convert.py
-  - configs/08_special_stage.yaml
+  - configs/sonic_1/08_special_stage.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6475,7 +6844,16 @@ special_stage:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -6590,18 +6968,18 @@ special_stage:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/08_special_stage.yaml: d2d743df745a
-    input/Mus89 - Special Stage.asm: 6211c75f8147
+    configs/sonic_1/08_special_stage.yaml: 986d25d7793a
+    input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
     tests/settings.yaml: a79a8ba763a3
 spring_yard_zone:
   argv:
   - convert.py
-  - configs/04_spring_yard_zone.yaml
+  - configs/sonic_1/04_spring_yard_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6631,7 +7009,16 @@ spring_yard_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -6746,18 +7133,18 @@ spring_yard_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/04_spring_yard_zone.yaml: ec060b413733
-    input/Mus85 - SYZ.asm: 77c841df85b9
+    configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
+    input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
     tests/settings.yaml: a79a8ba763a3
 stage_clear:
   argv:
   - convert.py
-  - configs/11_stage_clear.yaml
+  - configs/sonic_1/11_stage_clear.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6787,7 +7174,16 @@ stage_clear:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -6902,20 +7298,20 @@ stage_clear:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    input/Mus8E - Sonic Got Through.asm: 61ac7a971a48
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 stage_clear_lofi:
   argv:
   - convert.py
-  - configs/11_stage_clear.yaml
+  - configs/sonic_1/11_stage_clear.yaml
   - --settings
   - tests/settings.yaml
   - --variant
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6945,7 +7341,16 @@ stage_clear_lofi:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -7060,13 +7465,13 @@ stage_clear_lofi:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    input/Mus8E - Sonic Got Through.asm: 61ac7a971a48
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 stage_clear_lofi_merged:
   argv:
   - convert.py
-  - configs/11_stage_clear.yaml
+  - configs/sonic_1/11_stage_clear.yaml
   - --settings
   - tests/settings.yaml
   - --variant
@@ -7074,7 +7479,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7104,7 +7509,16 @@ stage_clear_lofi_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -7219,19 +7633,19 @@ stage_clear_lofi_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    input/Mus8E - Sonic Got Through.asm: 61ac7a971a48
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 stage_clear_merged:
   argv:
   - convert.py
-  - configs/11_stage_clear.yaml
+  - configs/sonic_1/11_stage_clear.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7261,7 +7675,16 @@ stage_clear_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -7376,18 +7799,18 @@ stage_clear_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    input/Mus8E - Sonic Got Through.asm: 61ac7a971a48
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 star_light_zone:
   argv:
   - convert.py
-  - configs/06_star_light_zone.yaml
+  - configs/sonic_1/06_star_light_zone.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7417,7 +7840,16 @@ star_light_zone:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -7532,18 +7964,18 @@ star_light_zone:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/06_star_light_zone.yaml: b692e0d08918
-    input/Mus84 - SLZ.asm: f63d0c08f192
+    configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
+    input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
     tests/settings.yaml: a79a8ba763a3
 title_screen:
   argv:
   - convert.py
-  - configs/01_title_screen.yaml
+  - configs/sonic_1/01_title_screen.yaml
   - --settings
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7573,7 +8005,16 @@ title_screen:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -7688,19 +8129,19 @@ title_screen:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
-    input/Mus8A - Title Screen.asm: bacd31e7cced
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
     tests/settings.yaml: a79a8ba763a3
 title_screen_merged:
   argv:
   - convert.py
-  - configs/01_title_screen.yaml
+  - configs/sonic_1/01_title_screen.yaml
   - --settings
   - tests/settings.yaml
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7730,7 +8171,16 @@ title_screen_merged:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -7845,13 +8295,13 @@ title_screen_merged:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
-    input/Mus8A - Title Screen.asm: bacd31e7cced
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
     tests/settings.yaml: a79a8ba763a3
 title_screen_rom:
   argv:
   - convert.py
-  - configs/01_title_screen.yaml
+  - configs/sonic_1/01_title_screen.yaml
   - --settings
   - tests/settings.yaml
   - --input
@@ -7860,7 +8310,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7890,7 +8340,16 @@ title_screen_rom:
   - core/config/settings.py
   - core/config/song.py
   - core/convert/__init__.py
-  - core/convert/channel_writer.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/generators.py
   - core/convert/layout.py
@@ -8005,6 +8464,6 @@ title_screen_rom:
   - ym2612/voice.py
   - ym2612/wrapper.py
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3

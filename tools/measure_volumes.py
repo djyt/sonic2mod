@@ -2,7 +2,7 @@
 
 Usage:
   python tools/measure_volumes.py
-      Every config in configs/ against the VGZ with the same number prefix in reference/vgz/,
+      Every config in configs/sonic_1/ against the VGZ with the same number prefix in reference/vgz/sonic_1/,
       cores - 1 songs at a time.
   python tools/measure_volumes.py --only green_hill special_stage
       Restrict to configs whose stem contains any of the names.

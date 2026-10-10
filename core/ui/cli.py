@@ -28,7 +28,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from ..audit import CONFIG_ROOT, RIPS_MAP, RipShelf
+from ..audit import CONFIG_ROOT, DEFAULT_SET, RIPS_MAP, RipShelf
 
 LABEL_W = 9                        # right-aligned label column width
 def _force_utf8_stdout() -> None:
@@ -86,7 +86,7 @@ def add_variant_argument(parser: argparse.ArgumentParser) -> None:
 def add_shelf_arguments(parser: argparse.ArgumentParser) -> None:
     """`--configs`, `--vgz-dir`, `--rips`: which configs and rips a rip tool pairs (rip_shelf)."""
     parser.add_argument("--configs", metavar="DIR",
-                        help=f"the configs (default {CONFIG_ROOT.name}/, or the rips' mirror)")
+                        help=f"the configs (default {CONFIG_ROOT.name}/{DEFAULT_SET}/, or the rips' mirror)")
     parser.add_argument("--vgz-dir", metavar="DIR",
                         help="the rips (default: the folder rips.yaml names, else the configs' mirror)")
     parser.add_argument("--rips", metavar="FILE",

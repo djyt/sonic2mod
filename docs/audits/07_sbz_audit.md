@@ -1,6 +1,6 @@
 # Scrap Brain Zone — accuracy audit against the VGZ (2026-09-18)
 
-`configs/07_scrap_brain_zone.yaml` against `reference/vgz/07 - Scrap Brain Zone.vgz`, method as in
+`configs/sonic_1/07_scrap_brain_zone.yaml` against `reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz`, method as in
 `02_ghz_audit.md`.  One config fix; one converter rule corrected back in the config's favour.
 
 ## Result

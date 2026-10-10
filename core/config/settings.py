@@ -433,8 +433,8 @@ _REPO_SETTINGS = _ROOT / "configs" / "settings.yaml"
 
 
 def find_settings(config_path: str | None = None) -> str | None:
-    """The global settings file: settings.yaml beside the song config (both live in configs/), else
-    configs/settings.yaml; None when neither exists."""
+    """The global settings file: settings.yaml beside the song config, else the one above
+    every game's folder, configs/settings.yaml; None when neither exists."""
     beside = [Path(config_path).resolve().parent / "settings.yaml"] if config_path else []
     for path in [*beside, _REPO_SETTINGS]:
         if path.exists():

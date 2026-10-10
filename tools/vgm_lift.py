@@ -19,7 +19,7 @@ lifts the rips in parallel: a warm run of all 19 takes about four seconds.
 
 Usage::
 
-    python tools/vgm_lift.py "reference/vgz/02 - Green Hill Zone.vgz"            # one rip, its differences
+    python tools/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"            # one rip, its differences
     python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml               # a config: its rip
     python tools/vgm_lift.py rip.vgz --input "input/roms/X.md" --rom-song '$88'   # any song
     python tools/vgm_lift.py --all                                               # every rip, a line each

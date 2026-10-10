@@ -2,8 +2,8 @@
 # Final Zone Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Final Zone
-input_file: "input/Mus8D - FZ.asm"
-output_file: output/10_final_zone.mod
+input_file: "input/sonic_1/Mus8D - FZ.asm"
+output_file: output/sonic_1/10_final_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true

@@ -20,8 +20,8 @@ The voice_map, psg_voice_map and channel_instrument_map sections are rewritten (
 are replaced by "# was low X" notes); everything else in the file is kept.  Run the pitch audit
 afterwards:
 
-    python tools/config_to_chip_space.py configs/12_ending_theme.yaml
-    python tools/vgm_pitch_audit.py configs/12_ending_theme.yaml "reference/vgz/12 - Ending Theme.vgz"
+    python tools/config_to_chip_space.py configs/sonic_1/12_ending_theme.yaml
+    python tools/vgm_pitch_audit.py configs/sonic_1/12_ending_theme.yaml "reference/vgz/sonic_1/12 - Ending Theme.vgz"
 """
 
 from __future__ import annotations

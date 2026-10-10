@@ -32,7 +32,7 @@ from .render import (
     workers,
 )
 from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip
-from .rips import CONFIG_ROOT, RIP_ROOT, RIPS_MAP, RipShelf, named
+from .rips import CONFIG_ROOT, DEFAULT_SET, RIP_ROOT, RIPS_MAP, RipShelf, named
 from .signal import (
     VIB_MIN_NOTE,
     band_profile,
@@ -51,6 +51,7 @@ from .signal import (
 
 __all__ = [
     "CONFIG_ROOT",
+    "DEFAULT_SET",
     "LEVEL_MAX_ERR",
     "LEVEL_MAX_SPREAD",
     "RIPS_MAP",

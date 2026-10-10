@@ -6,7 +6,7 @@
     python tests/tool_regression.py --only analyze_02_frames pitch_title_screen
     python tests/tool_regression.py --with-renders           # vgm_compare too (VGMPlay + ffmpeg)
 
-Cases, all 19 VGZs in reference/vgz/ (untracked, as the asm sources are):
+Cases, all 19 VGZs in reference/vgz/sonic_1/ (untracked, as the asm sources are):
 
     analyze_NN_rows     vgm_analyze --chip all --max-rows 0          key-on rows, every chip
     analyze_NN_psg0     vgm_analyze --chip psg --psg-mod-cents 0     every PSG period write
@@ -70,7 +70,7 @@ BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
 COVERAGE_FILE = BASELINES_DIR / "coverage.yaml"
 _RUNNER_FILES = ("tests/tool_regression.py", "tests/selection.py")      # a change to either runs every case
-VGZ_DIR = ROOT / "reference" / "vgz"
+VGZ_DIR = ROOT / "reference" / "vgz" / "sonic_1"
 RENDER_DIR = ROOT / "output" / "compare" / "tool_regression"
 
 _HASH_CHARS = 12
@@ -83,6 +83,7 @@ _CASE_TAG = slice(0, 2)           # a rip's number names its cases: "02 - Green 
 _LIFT_DETAIL = "02"               # the rip vgm_lift prints in full
 _LIFT_DIFFS = "4"                 # ... its differences per channel
 _CONFIG_DIR = ROOT / "configs"
+_SONIC1_CONFIGS = _CONFIG_DIR / "sonic_1"
 _MOONWALKER_CONFIGS = _CONFIG_DIR / "moonwalker"
 _MOONWALKER_DETAIL = "88_round_clear"
 _SECTION = "### "                 # song_dump's per-song header: a failing read_ case names its songs
@@ -155,7 +156,7 @@ def _song_cases(tc: dict, vgz: Path) -> list[_Case]:
 def _lift_cases(vgzs: list[Path]) -> list[_Case]:
     """vgm_lift: the Sonic rips against their asm; the Moonwalker ROM's songs against their rips."""
     tool = ["tools/vgm_lift.py"]
-    cases = [_Case("lift_all", [*tool, "--all"], [*vgzs, *RipShelf.load(_CONFIG_DIR, VGZ_DIR).config_files()])]
+    cases = [_Case("lift_all", [*tool, "--all"], [*vgzs, *RipShelf.load(_SONIC1_CONFIGS, VGZ_DIR).config_files()])]
     detail = next((v for v in vgzs if v.name.startswith(_LIFT_DETAIL)), None)
     if detail is not None:
         cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)), "--aspects", "all",
@@ -205,7 +206,7 @@ def _missing_sources() -> list[str]:
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
     cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases()
-    shelf = RipShelf.load(_CONFIG_DIR, VGZ_DIR)
+    shelf = RipShelf.load(_SONIC1_CONFIGS, VGZ_DIR)
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
             continue

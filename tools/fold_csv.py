@@ -3,7 +3,7 @@
 
 The table is a CSV with one row per pattern of the reference MOD and one column per MOD
 channel, saying which channels share a channel in that pattern (Green Hill's is
-`input/02_ghz_fold.csv`):
+`input/sonic_1/02_ghz_fold.csv`):
 
     Pattern,Ch 1,Ch 2,Ch 3,Ch 4,Ch 5,Ch 6,Ch 7,Ch 8,Ch 9
     ,DAC Drums,Lead,Bass,,,,,,Hi-Hat                  <- an optional row of names (blank pattern cell)
@@ -34,8 +34,8 @@ block it wrote last time.  The config is the source of truth: the table is the q
 draft the folds, and the block can be edited by hand afterwards (a re-run with `--write`
 replaces it from the table again).
 
-    python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv
-    python tools/fold_csv.py configs/02_green_hill_zone.yaml input/02_ghz_fold.csv --write
+    python tools/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv
+    python tools/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv --write
 """
 
 from __future__ import annotations

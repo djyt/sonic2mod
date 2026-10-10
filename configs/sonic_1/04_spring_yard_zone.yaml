@@ -2,8 +2,8 @@
 # SPRING YARD ZONE Conversion Script
 # -------------------------------------------------------------------------------------------------
 name: Spring Yard Zone
-input_file: "input/Mus85 - SYZ.asm"
-output_file: output/04_spring_yard_zone.mod
+input_file: "input/sonic_1/Mus85 - SYZ.asm"
+output_file: output/sonic_1/04_spring_yard_zone.mod
 samples_dir: "samples/"
 
 auto_bpm: true

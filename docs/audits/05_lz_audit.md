@@ -1,6 +1,6 @@
 # Labyrinth Zone — accuracy audit against the VGZ (2026-09-18)
 
-`configs/05_lab_zone.yaml` against `reference/vgz/05 - Labyrinth Zone.vgz`, method as in
+`configs/sonic_1/05_lab_zone.yaml` against `reference/vgz/sonic_1/05 - Labyrinth Zone.vgz`, method as in
 `02_ghz_audit.md`.  Two config fixes, one audit-tool fix.
 
 ## Result

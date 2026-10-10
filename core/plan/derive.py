@@ -245,8 +245,9 @@ class _Deriver:
         """Ticks per row: the grid every note starts and lasts on.  Where that grid is too fine (the
         pattern limit, or no speed's BPM in 32-255), the multiple of it that puts the most notes on
         rows: the rest take EDx.  A 1-frame stagger between channels makes the exact grid 1 frame;
-        the beat's grid (7 frames) keeps all but the staggered notes on rows.  The speed whose
-        whole-number BPM is nearest the driver's tempo."""
+        the beat's grid (7 frames) keeps all but the staggered notes on rows.  Where it is too
+        coarse (no speed's BPM reaches 32: Space Harrier II's Game Over, three long notes), the
+        largest part of it that fits.  The speed whose whole-number BPM is nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
         # The song's own rhythm: where a driver cuts a note (a run-out, a gate) falls between rows
@@ -261,6 +262,8 @@ class _Deriver:
             return sum(n for tick, n in starts.items() if tick % grid == 0)
 
         fitting = [g for g in range(exact, _MAX_GRID_STEPS * exact + 1, exact) if self._grid_options(g) is not None]
+        if not fitting:
+            fitting = self._refined(exact)
         grid = max(fitting, key=lambda g: (on_rows(g), -g)) if fitting else self._coarsened(exact)
         tpr, options = self._grid_options(grid) or self._tpr_options(grid)
         self._out.data["ticks_per_row"] = tpr
@@ -290,6 +293,13 @@ class _Deriver:
             return None
         tpr, options = self._tpr_options(grid)
         return (tpr, options) if options or self._song.header.tempo_modifier <= 1 else None
+
+    def _refined(self, grid: int) -> list[int]:
+        """The largest part of `grid` (a divisor) at which some speed's BPM fits, where `grid` is
+        too coarse for any: [] if none (or `grid` is not too coarse)."""
+        if self._tpr_options(grid)[1]:
+            return []
+        return next(([g] for g in range(grid // 2, 0, -1) if grid % g == 0 and self._grid_options(g) is not None), [])
 
     def _coarsened(self, grid: int) -> int:
         """`grid` doubled until it fits, or reaches the song's end."""

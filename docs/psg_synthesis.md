@@ -22,21 +22,23 @@ catalogue entry → render_psg_tone_raw / render_psg_noise_raw → shelf, DC blo
 
 | File | Role |
 |------|------|
-| `sn76489/build.py`, `sn76489/wrapper.py` | Compile `reference/SN76489/sn76489.c` + `panning.c` (`core.cbuild`); ctypes `SN76489` class |
-| `sn76489/renderer.py` | Note or noise form → PCM (`render_psg_tone_raw`, `render_psg_noise_raw`) |
-| `sn76489/sample_generator.py` | The config's PSG catalogue → `{inst: (pcm, rate)}` (`generate_psg_samples`) |
+| `core/chips/sn76489/build.py`, `core/chips/sn76489/wrapper.py` | The device: compile `3rdparty/sn76489/sn76489.c` + `panning.c` into `build/` (`core.chips.cbuild`); ctypes `SN76489` class |
+| `core/synth/psg_render.py` | Note or noise form → PCM (`render_psg_tone_raw`, `render_psg_noise_raw`) |
+| `core/synth/psg_samples.py` | The config's PSG catalogue → `{inst: (pcm, rate)}` (`generate_psg_samples`) |
 
 ---
 
 ## Quick Start
 
 `psg_synthesis.enabled` is `true` in the shipped `configs/settings.yaml` (code default `false`).
-The first render compiles the DLL, so gcc or MSVC must be on PATH.
+The first render compiles the library into `build/` with gcc or MSVC; with neither on PATH,
+Windows loads `prebuilt/sn76489.dll`.
 
 ```bash
-python sn76489/validate.py           # C3 tone + white noise → output/psg_{tone,noise}_test.raw
-python sn76489/renderer.py           # the same through the renderer
-python sn76489/sample_generator.py   # periodic noise + white noise with fTone_04 → output/psg_sample_gen_test_*.raw
+python tools/validate_sn76489.py   # in turn: the device (C3 tone + white noise → output/psg_{tone,noise}_test.raw);
+                                   # psg_render (the same → output/psg_render_{tone,noise}_test.raw);
+                                   # generate_psg_samples (periodic noise + white noise with fTone_04
+                                   # → output/psg_sample_gen_test_*.raw)
 python convert.py configs/sonic_1/01_title_screen.yaml
 ```
 
@@ -159,7 +161,7 @@ tone:noise balance is the `sample_list` volumes'.
 
 ## SN76489 Emulator Internals
 
-`reference/SN76489/sn76489.c` (VGMPlay), configured for the Mega Drive: `FB_SEGAVDP = 0x0009`
+`3rdparty/sn76489/sn76489.c` (VGMPlay), configured for the Mega Drive: `FB_SEGAVDP = 0x0009`
 (16-bit LFSR feedback), `SRW_SEGAVDP = 16`, `boost_noise = 1`.  `PSGVolumeValues[16]`: 2 dB per
 attenuation step, 4096 at 0, silence at 15.  `SN76489_Update` writes stereo int32, about ±4096
 per channel.
@@ -178,7 +180,7 @@ per channel.
 
 ## Module API
 
-### `sn76489/wrapper.py`
+### `core/chips/sn76489/wrapper.py`
 
 ```python
 SN76489(clock_rate=3579545, sample_rate=44100)   # the output rate is fixed at construction
@@ -191,7 +193,7 @@ sn.render_samples(n) -> list[tuple[int, int]]
 sn.shutdown()
 ```
 
-### `sn76489/renderer.py`
+### `core/synth/psg_render.py`
 
 ```python
 note_to_psg_n(mod_note_index, clock_rate=3579545) -> int            # idx 0 = C1, 24 = C3
@@ -206,7 +208,7 @@ render_psg_tone(...) / render_psg_noise(...) -> (bytes, rate)       # int8, peak
 
 `target_rate=None` renders at 44 100 Hz.  `envelope` is the per-frame step list.
 
-### `sn76489/sample_generator.py`
+### `core/synth/psg_samples.py`
 
 ```python
 generate_psg_samples(config, psg_synth, rules, verbose=False, rate3_dividers=None, noise_envelopes=None,

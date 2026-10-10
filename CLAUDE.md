@@ -18,15 +18,15 @@ Each topic has one home; the others link to it.
 | `docs/smps_driver.md` | **Sonic 1 driver and hardware** — coord flags, detune vs transposition, TempoWait, modulation / note fill in frames, voice layout and operator order, DAC sample rates, PSG |
 | `docs/smps_format.md` | Assembly syntax and how the parser reads it |
 | `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code): what each differs from Sonic 1 by, how it was found, how to add a variant |
-| `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, ym2612/ API |
-| `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, sn76489/ API |
+| `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, the device and core/synth API |
+| `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
 | `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
-| `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
+| `3rdparty/` | Vendored C emulators the chip devices compile (in git): `nuked-opn2/` (cycle-accurate YM2612/YM3438), `sn76489/` (VGMPlay's PSG) |
 | `reference/mml2mod-master/` | Reference MML-to-MOD converter (origin of the MOD writer) |
 
 ## Project Structure
@@ -37,9 +37,9 @@ Full module map: `docs/architecture.md`.
 sonic2mod/
   convert.py  analyze.py  sonic2wav.py   CLIs: conversion, song analysis, SFX → WAV
   core/        library; layers, each importing only those below it (diagnostics.py: any):
-               ui → convert / audit → merge → plan → config → source → vgm / drivers → rom → smps / mod
-               → chips / audio / render_cache → files.  Imports nothing from sfx/ or the chip packages;
-               drivers only via source (import-linter: pyproject.toml)
+               ui → convert / audit → merge / synth → plan → config → source → vgm / drivers → rom → smps / mod
+               → chips / audio / render_cache → files.  Imports nothing from sfx/; drivers only via source
+               (import-linter: pyproject.toml)
     smps/        the IR (SmpsSong, PlaybackRules), parser, the shared song walk (code.py), playback; no driver's tables
     drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs;
                  reference.py: Sonic 1's tables and SONIC1_RULES (an asm song's and a rip's)
@@ -49,15 +49,20 @@ sonic2mod/
     plan/        DriverState walk (resolve_note), instrument catalogue, synth roots, detune, timeline,
                  minimal-config derivation
     merge/       the merged build: pairing, fill pool, composites, mixes, banks
+    synth/       the converter's sample rendering: voices / envelopes through the chip devices → PCM
+                 (fm_voice, fm_render, fm_samples, psg_render, psg_samples)
     convert/     SmpsToModConverter and its planners / writers
     mod/         MOD writer and reader, notes, volume, timing, sample audit
-    chips/ audio/  chip facts and level laws; gain, PCM, resampler, sustain loops
+    chips/       the chips as MAME keeps devices: facts and level laws (fm.py, psg.py); the emulators
+                 ym2612/ (OPN2) and sn76489/ (SN76489), C cores through ctypes; cbuild.py compiles them
+    audio/       gain, PCM, resampler, sustain loops
     audit/ ui/   VGZ audits' library; reports and CLI chrome
-  ym2612/ sn76489/   chip wrappers (C emulators via ctypes) + sample generators
   sfx/         offline SFX driver
   configs/     settings.yaml; per-song YAML a folder per game: sonic_1/, moonwalker/ (minimal configs), ...
   tools/       analysis and audit utilities (vgm_*, mod_*, merge_survey, fold_csv, rom_import, ...)
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
+  3rdparty/    vendored C emulators (nuked-opn2/, sn76489/);  build/: their compiled libraries (gitignored);
+               prebuilt/: the Windows DLLs, used when no compiler is on PATH (tracked)
   docs/  samples/  reference/ (gitignored)
   input/       sonic_1/ (Sonic 1's asm songs, fold CSVs); roms/ (every game's ROMs, not in git)
   output/      a folder per game as configs/ (sonic_1/: MODs, sfx/, sfx8/); cache/, compare/ shared
@@ -70,7 +75,9 @@ pip install pyyaml rich   # external dependencies
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
 ```
 
-Synthesis compiles `ym3438.c` / `sn76489.c` with gcc or MSVC on first use.
+Synthesis compiles `3rdparty/`'s `ym3438.c` / `sn76489.c` into `build/` with gcc or MSVC on first use; with
+no compiler on PATH it loads `prebuilt/`'s DLLs.  After changing a C source (or `ym3438_batch.c`), copy the
+rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 
 ## Linting
 
@@ -143,9 +150,9 @@ python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm
 python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm" --config configs/sonic_1/01_title_screen.yaml
 
 # Verify: open output .mod in Fast Tracker 2 Clone (https://16-bits.org/ft2.php)
-# Smoke-test synthesis pipeline (writes output/validate_test.raw — load in Audacity):
-python ym2612/validate.py
-python sn76489/validate.py      # C3 tone + white noise → output/psg_{tone,noise}_test.raw
+# Smoke-test each chip device, then core/synth through it (16-bit .raw files in output/ — load in Audacity):
+python tools/validate_ym2612.py       # A4 tone → validate_test.raw; voice, renderer_test.raw, sample_gen_test.raw
+python tools/validate_sn76489.py      # C3 tone + white noise → psg_{tone,noise}_test.raw; psg_render_*, psg_sample_gen_*
 
 # Analyse FM channels from a VGM/VGZ game recording (verify synth_root values)
 python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip fm --channel FM1 FM2

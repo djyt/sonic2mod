@@ -1,51 +1,41 @@
-"""SN76489 PSG sample generator.
+"""SN76489 PSG sample generator: every PSG instrument of a song, rendered (psg_render) for the MOD.
 
 Reads the song config's psg_map and renders each PsgInstrumentEntry to
 8-bit signed mono PCM ready for insertion into a ModSample.
 
 Public API::
 
-    from sn76489.sample_generator import generate_psg_samples
+    from core.synth import generate_psg_samples
 
     samples = generate_psg_samples(config, psg_synth, song.rules)
     # {inst_num: (pcm_bytes, sample_rate_hz), ...}
-
-Usage (smoke test)::
-
-    python sn76489/sample_generator.py
 """
 
 from __future__ import annotations
 
 import functools
 import math
-import sys
 import warnings
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-_HERE = Path(__file__).parent
-if str(_HERE.parent) not in sys.path:
-    sys.path.insert(0, str(_HERE.parent))
-
-from core.audio import (
+from ..audio import (
     SustainLoop,
     apply_loop,
     condition_render,
     find_sustain_loop,
     full_scale_int8,
-    int8_to_raw16,
     peak,
     probe_secs,
 )
-from core.audio import trim_trailing_silence as _trim_trailing_silence
-from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
-from core.mod import ModNote, max_sustain_secs
-from core.plan import PsgInstrument, psg_catalogue
-from core.render_cache import RenderCache, code_salt
-from core.smps import PlaybackRules, PsgEnvelope, noise_envelope_frames
-from sn76489.build import get_lib_path
-from sn76489.renderer import (
+from ..audio import trim_trailing_silence as _trim_trailing_silence
+from ..chips.sn76489.build import get_lib_path
+from ..config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
+from ..mod import max_sustain_secs
+from ..plan import PsgInstrument, psg_catalogue
+from ..render_cache import RenderCache, code_salt
+from ..smps import PlaybackRules, PsgEnvelope, noise_envelope_frames
+from .psg_render import (
     note_to_psg_n,
     render_psg_noise_raw,
     render_psg_tone_raw,
@@ -55,10 +45,10 @@ from sn76489.renderer import (
 @functools.cache
 def _render_salt() -> str:
     """What a chip render depends on besides its inputs: the emulator and the Python it runs through
-    (this package, the resampler and PCM helpers, the driver's tables)."""
-    core = _HERE.parent / "core"
-    return code_salt([Path(get_lib_path()), *_HERE.glob("*.py"), core / "audio" / "resample.py",
-                      core / "audio" / "pcm.py", core / "smps" / "driver_tables.py"])
+    (the device, the PSG renderer, the resampler and PCM helpers, the driver's tables)."""
+    core = Path(__file__).resolve().parent.parent
+    return code_salt([Path(get_lib_path()), *(core / "chips" / "sn76489").glob("*.py"), *(core / "synth").glob("psg_*.py"),
+                      core / "audio" / "resample.py", core / "audio" / "pcm.py", core / "smps" / "driver_tables.py"])
 
 
 def _cached_render(cache: RenderCache, render, **kwargs) -> tuple[list, int]:
@@ -354,64 +344,3 @@ def generate_psg_samples(
 # ---------------------------------------------------------------------------
 # Smoke test
 # ---------------------------------------------------------------------------
-
-def _smoke_test() -> None:
-    """Render one tone and one noise entry from a minimal fake config."""
-
-    import dataclasses
-
-    from core.config import PsgInstrumentEntry, find_settings, load_settings
-
-    psg_synth = dataclasses.replace(load_settings(find_settings())[1],   # settings.yaml, a short fixed hold
-                                    enabled=True, sustain_duration=0.5, release_padding=0.1)
-
-    fake_config = ConversionConfig()
-    # psg_map is a dict keyed by form byte; type is auto-inferred in production,
-    # but can be set explicitly when constructing entries directly.
-    fake_config.psg_map = {
-        0xE0: PsgInstrumentEntry(
-            mod_instrument=14,
-            type="periodic_noise",
-            root=ModNote.C3,
-        ),
-        0xE7: PsgInstrumentEntry(
-            mod_instrument=15,
-            type="white_noise",
-            noise_rate=0,
-            root=ModNote.C2,
-            envelope="fTone_04",
-            base_volume=0,
-        ),
-    }
-
-    print("Smoke test — generate_psg_samples(tone@C3, white_noise@C2 w/ PSG4 envelope)...")
-    print(f"  clock_rate    = {psg_synth.clock_rate}")
-    print(f"  amiga_clock   = {psg_synth.amiga_clock}")
-    print(f"  sustain       = {psg_synth.sustain_duration}s")
-    print()
-
-    from core.drivers.reference import SONIC1_RULES
-    samples = generate_psg_samples(fake_config, psg_synth, SONIC1_RULES, verbose=True)
-
-    if not samples:
-        print("  ERROR: no samples generated")
-        sys.exit(1)
-
-    print(f"\n  Generated {len(samples)} instrument(s)")
-    for inst_num, (pcm, rate) in samples.items():
-        print(f"    instrument {inst_num}: {len(pcm)} bytes @ {rate} Hz")
-
-    out_dir = Path(__file__).parent.parent / "output"
-    out_dir.mkdir(exist_ok=True)
-
-    for inst_num, (pcm, _) in samples.items():
-        out_path = out_dir / f"psg_sample_gen_test_{inst_num}.raw"
-        n = int8_to_raw16(out_path, pcm)
-        print(f"  Written: {out_path}  ({n} bytes, 16-bit for Audacity)")
-
-    print()
-    print("SUCCESS")
-
-
-if __name__ == "__main__":
-    _smoke_test()

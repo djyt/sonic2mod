@@ -191,7 +191,7 @@ lifting `smpsNoteFill`, `smpsAlterNote`.
   indices, so an asm-made config's `voice_map` applies to the VGZ unchanged — the key to comparing
   MODs in the test bed, and useful for hacks that reuse Sonic 1's bank.
 - Pan from `B4` → `smpsPan`.  `B4` AMS/PMS ≠ 0, `0x22` LFO on, SSG-EG (`0x90–0x9F`) ≠ 0 or FM3
-  special mode (`0x27` bit 6) → error: not a Sonic 1 song, and `ym2612/voice.py` renders none of it.
+  special mode (`0x27` bit 6) → error: not a Sonic 1 song, and `core/synth/fm_voice.py` renders none of it.
 **Accept:** every lifted voice equals an asm voice (param for param); `LevelPlanner.levels` gives the
 same baked levels.
 

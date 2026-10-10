@@ -705,7 +705,7 @@ another pitch plays the same composite.
 
 **Chip composites** — every follower an FM voice paired with an FM primary: key `("fm", primary
 instrument, (voice, semitones, detune, TL, fill, sides)...)`, an `FmInstrument` with one `FmLayer` per
-voice in the instrument catalogue, rendered by `ym2612.renderer.render_layers`: each layer on its own
+voice in the instrument catalogue, rendered by `core.synth.fm_render.render_layers`: each layer on its own
 YM2612 channel at the composite's rendering pitch plus its interval, its track's detune added to the
 frequency word as `FMUpdateFreq` does, its carrier TL the follower's track level relative to the
 primary's (a hard pan counts 4 steps), a follower keyed off at its fill (`FmLayer.keyoff_secs`).  The

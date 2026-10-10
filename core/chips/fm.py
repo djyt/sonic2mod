@@ -36,6 +36,7 @@ CARRIER_OFFSETS_BY_ALG: tuple[tuple[int, ...], ...] = (
     (0x00, 0x08, 0x04, 0x0C),
 )
 _OPERATOR_NAME_BY_OFFSET = {0x00: "OP1", 0x04: "OP3", 0x08: "OP2", 0x0C: "OP4"}
+_KEY_BIT_BY_OFFSET = {0x00: 0, 0x08: 1, 0x04: 2, 0x0C: 3}       # register $28's bits 4-7: OP1-OP4
 _ALGORITHM_MASK = 0x7
 
 
@@ -153,6 +154,12 @@ def fm_frequency_hz(fnum: int, block: int, clock: int) -> float:
 def carrier_names(algorithm: int) -> list[str]:
     """An algorithm's carrier operators, OP1 first: algorithm 4 -> ['OP2', 'OP4']."""
     return sorted(_OPERATOR_NAME_BY_OFFSET[off] for off in CARRIER_OFFSETS_BY_ALG[algorithm & _ALGORITHM_MASK])
+
+
+def keyed_carriers(algorithm: int, keys: int) -> tuple[int, ...]:
+    """The carriers a key mask sounds (bits 0-3: OP1-OP4, as register $28's 4-7), as operator
+    register offsets: channel 3's special mode keys some operators alone."""
+    return tuple(off for off in CARRIER_OFFSETS_BY_ALG[algorithm & _ALGORITHM_MASK] if keys >> _KEY_BIT_BY_OFFSET[off] & 1)
 
 
 def fm_level_db(tl_offset: int, hard_panned: bool = False, pan_law_db: float = DEFAULT_FM_PAN_LAW_DB) -> float:

@@ -111,7 +111,7 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 ### Phase 0: refactors
 - [x] 0.1 2.1 items 1-4; gates passed (regression, tool regression, pytest, ruff, pyright,
   vulture, layers).
-- [ ] 0.2 Merge main (chips moved to `core/chips/`, renderers to `core/synth/`).
+- [x] 0.2 Merge main (`c254462`: chips in `core/chips/`, renderers in `core/synth/`); gates passed.
 
 ### Phase 1: read the ROM
 - [ ] 1.1 `SmpsDriver` name (`smpsz80_sh2`? the family's name once a second game reads), folder

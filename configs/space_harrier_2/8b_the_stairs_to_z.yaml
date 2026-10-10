@@ -3,3 +3,12 @@
 name: "The Stairs to Z"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$8B"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 14, 0]   # VGZ: -2.1 dB at 11
+  - [2, "drum85.raw", 38, 0]   # VGZ: +4.4 dB at 64
+  - [4, "drum89.raw", 49, 0]   # VGZ: +2.4 dB at 64
+  - [8, "fm_v26_Ab2.raw", 12, 0]   # VGZ: +4.2 dB at 19
+  - [9, "fm_v26_Fs3.raw", 7, 0]   # VGZ: +8.4 dB at 19
+  - [12, "fm_v4d_Ab3.raw", 15, 0]   # VGZ: -9.4 dB at 5
+  - [13, "fm_v4d_Fs4.raw", 15, 0]   # VGZ: -9.4 dB at 5

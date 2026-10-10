@@ -3,3 +3,13 @@
 name: "Nuclear Shock"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$93"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "drum85.raw", 21, 0]   # VGZ: +9.9 dB at 64
+  - [3, "drum89.raw", 25, 0]   # VGZ: +8.1 dB at 64
+  - [4, "drum8D.raw", 27, 0]   # VGZ: +7.5 dB at 64
+  - [5, "fm_v0b_B1.raw", 5, 0]   # VGZ: +6.5 dB at 10
+  - [6, "fm_v0b_A2.raw", 5, 0]   # VGZ: +6.2 dB at 10
+  - [10, "fm_v30_Bb2.raw", 4, 0]   # VGZ: -5.4 dB at 2
+  - [11, "fm_v30_Ab3.raw", 4, 0]   # VGZ: -5.3 dB at 2
+  - [12, "fm_v30_Fs4.raw", 4, 0]   # VGZ: -5.3 dB at 2

@@ -3,3 +3,14 @@
 name: "Name Entry"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$99"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 5, 0]   # VGZ: +7.3 dB at 11
+  - [2, "drum85.raw", 45, 0]   # VGZ: +3.1 dB at 64
+  - [3, "drum89.raw", 47, 0]   # VGZ: +2.6 dB at 64
+  - [6, "fm_v36_F1.raw", 14, 0]   # VGZ: -4.9 dB at 8
+  - [7, "fm_v36_A2.raw", 14, 0]   # VGZ: -5.0 dB at 8
+  - [8, "fm_v36_G3.raw", 15, 0]   # VGZ: -5.5 dB at 8
+  - [9, "fm_v36_F4.raw", 16, 0]   # VGZ: -6.0 dB at 8
+  - [10, "fm_v48_B2.raw", 19, 0]   # VGZ: -7.6 dB at 8
+  - [11, "fm_v48_A3.raw", 20, 0]   # VGZ: -8.0 dB at 8

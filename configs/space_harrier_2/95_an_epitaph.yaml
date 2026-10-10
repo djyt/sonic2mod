@@ -3,3 +3,11 @@
 name: "An Epitaph"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$95"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 4, 0]   # VGZ: +4.8 dB at 11
+  - [2, "drum84.raw", 47, 0]   # VGZ: -1.8 dB at 64
+  - [5, "fm_v4d_D2.raw", 24, 0]   # VGZ: -15.3 dB at 7
+  - [7, "fm_v53_B1.raw", 4, 0]   # VGZ: +0.2 dB at 7
+  - [8, "fm_v53_A2.raw", 4, 0]   # VGZ: +0.1 dB at 7
+  - [9, "fm_v53_G3.raw", 17, 0]   # VGZ: +2.3 dB at 38

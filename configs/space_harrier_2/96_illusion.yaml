@@ -3,3 +3,12 @@
 name: "Illusion"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$96"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 15, 0]   # VGZ: -2.5 dB at 11
+  - [2, "drum85.raw", 37, 0]   # VGZ: +4.7 dB at 64
+  - [3, "drum89.raw", 47, 0]   # VGZ: +2.7 dB at 64
+  - [4, "drum8D.raw", 49, 0]   # VGZ: +2.4 dB at 64
+  - [7, "fm_v48_Bb2.raw", 12, 0]   # VGZ: -7.6 dB at 5
+  - [8, "fm_v48_Ab3.raw", 11, 0]   # VGZ: -7.1 dB at 5
+  - [9, "fm_v48_G4.raw", 13, 0]   # VGZ: -8.0 dB at 5

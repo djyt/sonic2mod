@@ -3,3 +3,15 @@
 name: "Winner's Flight"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$94"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "drum85.raw", 32, 0]   # VGZ: +6.1 dB at 64
+  - [3, "drum89.raw", 39, 0]   # VGZ: +4.2 dB at 64
+  - [4, "drum8D.raw", 41, 0]   # VGZ: +3.9 dB at 64
+  - [5, "fm_v0b_B1.raw", 8, 0]   # VGZ: +1.6 dB at 10
+  - [6, "fm_v0b_A2.raw", 8, 0]   # VGZ: +1.6 dB at 10
+  - [7, "fm_v3e_A2.raw", 9, 0]   # VGZ: -0.6 dB at 8
+  - [8, "fm_v3e_G3.raw", 9, 0]   # VGZ: -0.8 dB at 8
+  - [11, "fm_v4b_G4.raw", 7, 0]   # VGZ: +0.8 dB at 8
+  - [12, "fm_v4c_C3.raw", 7, 0]   # VGZ: -10.3 dB at 2
+  - [13, "fm_v4c_B3.raw", 5, 0]   # VGZ: -7.5 dB at 2

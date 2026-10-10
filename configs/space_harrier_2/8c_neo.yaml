@@ -3,3 +3,11 @@
 name: "Neo"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$8C"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 5, 0]   # VGZ: +7.5 dB at 11
+  - [2, "drum85.raw", 40, 0]   # VGZ: +4.1 dB at 64
+  - [3, "drum89.raw", 48, 0]   # VGZ: +2.4 dB at 64
+  - [5, "fm_v26_G2.raw", 10, 0]   # VGZ: +4.0 dB at 16
+  - [8, "fm_v45_A2.raw", 9, 0]   # VGZ: -1.2 dB at 8
+  - [9, "fm_v45_G3.raw", 9, 0]   # VGZ: -1.0 dB at 8

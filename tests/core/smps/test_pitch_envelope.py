@@ -31,6 +31,10 @@ class Offsets(unittest.TestCase):
         # 100 x 3 = 300: the low byte 44, as the driver adds it; a negative offset keeps its sign
         self.assertEqual(PitchEnvelope((Scale(2), 100, -1)).offsets(2), (44, -3))
 
+    def test_the_scale_kept_whole(self):
+        # OutRun's: the offset times 1 + the scale added to the word
+        self.assertEqual(PitchEnvelope((Scale(2), 100, -1), byte_scale=False).offsets(2), (300, -3))
+
     def test_an_envelope_of_commands_alone_is_refused(self):
         with self.assertRaisesRegex(ValueError, "without an offset"):
             PitchEnvelope((Scale(1), Jump(0))).offsets(1)

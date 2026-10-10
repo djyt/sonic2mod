@@ -83,11 +83,11 @@ class Cells:
     def cut_after(self, col: int, tick: int, secs: float, next_row: int) -> bool:
         """Cut the note that started at `tick` `secs` later: `C00` on the row the cut falls
         on, `ECx` inside it, unless the channel's next note-on (`next_row`) is there first.
-        Seconds are V-int frames at the region's frame rate, then driver ticks as a note fill is
+        Seconds are frames at the driver's frame rate, then driver ticks as a note fill is
         (ticks_per_frame_at), so a tempo change is honoured.  Returns whether one was written."""
         speed = self._config.target_speed
         tpr = self._timeline.ticks_per_row
-        cut_ticks = secs * self._config.fps * self._timeline.ticks_per_frame_at(tick)
+        cut_ticks = secs * self._timeline.fps * self._timeline.ticks_per_frame_at(tick)
         cut_abs = max(round(tick * speed / tpr) + 1, round((tick + cut_ticks) * speed / tpr))
         row_total, sub = divmod(cut_abs, speed)
         if row_total >= next_row or row_total >= self.end:

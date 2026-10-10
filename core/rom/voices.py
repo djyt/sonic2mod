@@ -19,10 +19,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, REG_FEEDBACK_ALGORITHM, REG_PAN
+from ..chips import CARRIER_OFFSETS_BY_ALG, REG_FEEDBACK_ALGORITHM, REG_PAN, OperatorReg
 from ..smps import REGISTER_FIELDS, SMPS_OP_TO_REG_OFFSET, SetVoice, SmpsCode, SmpsVoice, VoiceField
 from .memory import SoundMemory
 from .variant import OPERATORS, SmpsVariant, VoiceLayout
+
+_VOLUME_FLAG = 0x80                # a TL byte's bit 7 (VoiceLayout.volume_flags)
 
 
 def voices_used(code: SmpsCode) -> int:
@@ -71,6 +73,9 @@ def _voice(raw: bytes, index: int, layout: VoiceLayout) -> SmpsVoice:
         for offset, byte in zip(layout.operator_offsets, raw[at:at + OPERATORS], strict=True):
             registers[register + offset] = byte
     voice = voice_from_registers(index, registers, layout.groups)
+    if layout.volume_flags:
+        voice.volume_slots = tuple(off for off in layout.operator_offsets
+                                   if registers[OperatorReg.TL + off] & _VOLUME_FLAG)
     if not layout.carrier_tl:
         carriers = CARRIER_OFFSETS_BY_ALG[voice.algorithm]
         levels = voice.operators[VoiceField.TOTAL_LEVEL]

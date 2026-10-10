@@ -64,3 +64,8 @@ space_harrier_2:  # early SMPS Z80, minimal configs; chosen by line coverage ove
   - {name: sh2_motion, config: space_harrier_2/98_motion, why: "30 more (a jump's second pass, loops out of step)"}
   - {name: sh2_winners_flight, config: space_harrier_2/94_winners_flight, why: "27 more (the pan animation's 8xx, legato)"}
   - {name: sh2_harrier_saga, config: space_harrier_2/81_harrier_saga, why: "10 more (alter volume, transposition; legato's rests key off)"}
+
+outrun:  # SMPS Z80 on Timer A, minimal configs; chosen by line coverage over its 5 songs (2026-10-10)
+  - {name: or_step_on_beat, config: outrun/85_step_on_beat, why: "the driver's common path (Timer A, DAC with its stall and pans, PSG tones, the octave wrap)"}
+  - {name: or_passing_breeze, config: outrun/83_passing_breeze, why: "116 lines no other OutRun song runs (a tempo, voice $32's volume slots, sustain loops)"}
+  - {name: or_last_wave, config: outrun/84_last_wave, why: "66 more (no DAC, no PSG, an SFX the song starts dropped)"}

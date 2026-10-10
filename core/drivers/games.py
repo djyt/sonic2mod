@@ -39,6 +39,7 @@ _GAMES = (
     Game("2ce17105ca916fbbe3ac9ae3a2086e66b07996dd", "Golden Axe (Rev A)", SmpsDriver.TYPE0FM),
     Game("731cdf182fe647e4977477ba4dd2e2b46b9b878a", "Streets of Rage (Rev A)", SmpsDriver.MUCOM),
     Game("db4285e4ffb69aa9f1ca68c4103fbfd0843f7b86", "Space Harrier II", SmpsDriver.SH2),
+    Game("95d2055ffd679ab19f0d4ca0af62a0d565bc258e", "OutRun (USA, Europe)", SmpsDriver.OUTRUN),
 )
 
 _BY_SHA1 = {game.sha1: game for game in _GAMES}

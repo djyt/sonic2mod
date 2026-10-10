@@ -87,6 +87,7 @@ from core.audit import (
     prepare_audit,
     render_mod_channels,
     render_vgm_channels,
+    rip_on_song_clock,
     rms,
     seg_at,
     spectrum,
@@ -878,6 +879,14 @@ def main() -> None:
     workdir = Path(args.workdir or Path("output") / "compare" / (Path(args.config).stem + (f"_{args.variant}" if args.variant else "")
                                                                 + ("_merged" if args.merged else "")))
 
+    # A rip whose timer ran off its driver's (OutRun's: 0.30 % slow) is compared retimed onto the
+    # driver's clock (T6): rendered and read from the retimed copy
+    rip, scale = rip_on_song_clock(vgz, song, cfg.region)
+    if scale != 1.0:
+        workdir.mkdir(parents=True, exist_ok=True)
+        vgz = workdir / f"{vgz.stem}.retimed.vgm"
+        vgz.write_bytes(rip)
+        print(f"VGM retimed x{scale:.5f} onto the driver's clock: {vgz}")
     reference = _Reference.read(vgz)
     notes = reference.notes
     noise_used = any(n.channel == "NOISE" for n in notes)
@@ -914,7 +923,9 @@ def main() -> None:
         vgm_names = [n for n in vgm_names if n in VGM_CHANNELS]
 
     if not args.skip_render:
-        if args.reuse_vgm and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
+        # A retimed reference renders through the render cache (keyed on its bytes): the workdir's
+        # renders may be the rip's own
+        if args.reuse_vgm and scale == 1.0 and all((workdir / f"vgm_{n}.wav").exists() for n in ["FULL", *vgm_names]):
             print("Reusing reference renders in the workdir")
         else:
             vgmplay = find_vgmplay(args.vgmplay)

@@ -61,6 +61,8 @@ from tests.roms import (
     GOLDEN_AXE_ROM,
     MOONWALKER_RIPS,
     MOONWALKER_ROM,
+    OUTRUN_RIPS,
+    OUTRUN_ROM,
     SONIC1_ASM,
     SONIC1_ROM,
     SPACE_HARRIER_2_RIPS,
@@ -99,6 +101,7 @@ _FRAMES = (
     ("golden_axe", GOLDEN_AXE_ROM, GOLDEN_AXE_RIPS, _CONFIG_DIR / "golden_axe"),
     ("streets_of_rage", STREETS_OF_RAGE_ROM, STREETS_OF_RAGE_RIPS, _CONFIG_DIR / "streets_of_rage"),
     ("space_harrier_2", SPACE_HARRIER_2_ROM, SPACE_HARRIER_2_RIPS, _CONFIG_DIR / "space_harrier_2"),
+    ("outrun", OUTRUN_ROM, OUTRUN_RIPS, _CONFIG_DIR / "outrun"),
 )
 
 # read_<name>: song_dump's source and arguments
@@ -112,6 +115,7 @@ _READS = (
     ("golden_axe", GOLDEN_AXE_ROM, []),
     ("streets_of_rage", STREETS_OF_RAGE_ROM, []),
     ("space_harrier_2", SPACE_HARRIER_2_ROM, []),
+    ("outrun", OUTRUN_ROM, []),
 )
 
 

@@ -22,7 +22,7 @@ from .chipstate import (
     noise_rate,
     noise_white,
 )
-from .frames import DacFrame, FmFrame, Frame, FrameLog, PsgFrame, frame_log
+from .frames import DacFrame, FmFrame, Frame, FrameCut, FrameLog, PsgFrame, frame_log
 from .lift import LIFTED_ASPECTS, LIFTED_KINDS, LiftOptions, VgmLiftError, lift_song
 from .notes import (
     DAC_NAME,
@@ -45,6 +45,7 @@ from .reader import (
     decode_vgm,
     is_vgm_path,
     read_vgm,
+    retimed,
     vgm_bytes,
 )
 from .realign import realigned
@@ -68,6 +69,7 @@ __all__ = [
     "DacFrame",
     "FmFrame",
     "Frame",
+    "FrameCut",
     "FrameLog",
     "LiftOptions",
     "NoteStart",
@@ -91,5 +93,6 @@ __all__ = [
     "pitch_segments",
     "read_vgm",
     "realigned",
+    "retimed",
     "vgm_bytes"
 ]

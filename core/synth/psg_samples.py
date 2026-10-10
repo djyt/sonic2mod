@@ -34,7 +34,7 @@ from ..config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
 from ..mod import max_sustain_secs
 from ..plan import PsgInstrument, psg_catalogue
 from ..render_cache import RenderCache, code_salt
-from ..smps import PlaybackRules, PsgEnvelope, noise_envelope_frames
+from ..smps import PlaybackRules, PsgEnvelope, noise_envelope_frames, update_hz
 from .psg_render import (
     note_to_psg_n,
     render_psg_noise_raw,
@@ -317,7 +317,7 @@ def generate_psg_samples(
     if not config.psg_map and not config.psg_voice_map:
         return {}
 
-    fps = 50.0 if config.region.lower() == 'pal' else 60.0
+    fps = update_hz(rules, config.region)
 
     # One render per catalogue instrument: each psg_map entry's own instrument, then its
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).

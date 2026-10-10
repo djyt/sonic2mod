@@ -40,11 +40,11 @@ from ..chips import MD_PSG_CLOCK, fm_frequency_hz
 from ..chips.sn76489.build import get_lib_path as get_psg_lib_path
 from ..chips.ym2612 import OPN2
 from ..chips.ym2612.build import get_lib_path
-from ..config import ConversionConfig, SynthesisSettings, region_fps
+from ..config import ConversionConfig, SynthesisSettings
 from ..mod import max_sustain_secs
 from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from ..render_cache import RenderCache, code_salt
-from ..smps import FmDrum, PitchEnvelope, SmpsSong, SmpsVoice
+from ..smps import ChannelType, FmDrum, OctaveWrap, PitchEnvelope, SmpsSong, SmpsVoice, update_hz
 from . import psg_render
 from .fm_render import note_to_fnum_block, note_to_freq, render_frames, render_layers
 from .psg_render import render_psg_frames
@@ -97,7 +97,8 @@ def _voice_key(voice: SmpsVoice) -> tuple:
     renders cached for it stay valid)."""
     key = (voice.algorithm, voice.feedback, tuple(sorted(voice.operators.items())))
     chip = (voice.fnum_offsets, voice.lfo)
-    return key + chip if any(v is not None for v in chip) else key
+    key = key + chip if any(v is not None for v in chip) else key
+    return key if voice.volume_slots is None else (*key, voice.volume_slots)
 
 
 def _thread_opn2(mode: str) -> OPN2:
@@ -126,6 +127,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
 
     jobs: list[_RenderJob] = []
     envelopes = song.rules.pitch_envelopes
+    frame_hz = update_hz(song.rules, config.region)
     for spec in [*cat.instruments.values(), *extra]:
         base_tl = tl_offsets.get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
@@ -137,7 +139,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
                   f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
         stepped = tuple(envelopes[lay.pitch_envelope] if lay.pitch_envelope else None for lay in spec.layers)
         jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock),
-                               stepped if any(stepped) else (), region_fps(config.region)))
+                               stepped if any(stepped) else (), frame_hz))
     return jobs
 
 
@@ -146,10 +148,11 @@ class _FmRenderer:
     release rate and audible end.  Thread-safe: each thread renders on its own OPN2."""
 
     def __init__(self, synth: SynthesisSettings, cache: RenderCache, loops: bool, verbose: bool,
-                 fm_frequencies: tuple[int, ...]):
+                 fm_frequencies: tuple[int, ...], octave_wrap: OctaveWrap | None = None):
         assert isinstance(synth.sustain_duration, float), "sustain_duration must be resolved before synthesis"
         self._synth = synth
         self._fm_frequencies = fm_frequencies    # the song's: the fnum each note is rendered at
+        self._octave_wrap = octave_wrap          # ... and the octave its driver keeps a detune in
         self._sustain = synth.sustain_duration      # the setting, where `auto` resolved no instrument's own
         self._cache = cache
         self._loops = loops
@@ -227,11 +230,13 @@ class _FmRenderer:
             frames = math.ceil((sustain + synth.release_padding) * job.frame_hz) + 1
             stepped = tuple(e.offsets(frames) if e is not None else None for e in job.envelopes)
             inputs += (stepped, job.frame_hz)
+        if self._octave_wrap is not None:
+            inputs += (self._octave_wrap,)
         return self._cache.through(inputs, lambda: render_layers(
             layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
             opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps,
             fm_frequencies=self._fm_frequencies, envelopes=stepped,
-            frame_hz=job.frame_hz if job is not None else 60.0))
+            frame_hz=job.frame_hz if job is not None else 60.0, octave_wrap=self._octave_wrap))
 
     def _loop(self, job: _RenderJob, mono: Sequence[float], rate: int, period: float, sustain: float,
               sustain_n: int) -> SustainLoop | None:
@@ -381,7 +386,8 @@ def generate_fm_samples(
     # keeps its own OPN2 (see _thread_opn2).  The results are byte-identical to a serial
     # render and are consumed in job order, so the MOD does not depend on scheduling.
     cache = _fm_cache(synth)
-    renderer = _FmRenderer(synth, cache, loops, verbose, song.rules.fm_frequencies)
+    renderer = _FmRenderer(synth, cache, loops, verbose, song.rules.fm_frequencies,
+                           song.rules.track(ChannelType.FM).octave_wrap)
     rendered: list[_Rendered] = []
     if jobs:
         with ThreadPoolExecutor(max_workers=min(len(jobs), synth.worker_threads())) as pool:

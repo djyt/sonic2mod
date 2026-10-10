@@ -178,6 +178,9 @@ class SmpsVoice:
     # A copy in special mode or under the LFO: the voice it is without them (what it plays as when
     # a MOD runs out of slots: core.plan.derive).  None: no such copy
     plain: int | None = None
+    # The operator slots (register offsets) the track volume is added to, where the voice marks
+    # them itself (OutRun's: a TL byte's bit 7).  None: the algorithm's carriers
+    volume_slots: tuple[int, ...] | None = None
 
     def operator_values(self, field_: VoiceField) -> list[int]:
         """One field's four operator values; a field the voice leaves out, or a value it leaves
@@ -200,19 +203,28 @@ class SmpsVoice:
 
     @property
     def carrier_registers(self) -> tuple[int, ...]:
-        """The carriers' TL registers (channel 0), in the driver's FMInstrumentTLTable order."""
+        """The carriers' TL registers (channel 0), in the driver's FMInstrumentTLTable order: what
+        the channel's level is."""
         return tuple(OperatorReg.TL + off for off in CARRIER_OFFSETS_BY_ALG[self.algorithm & 0x7])
+
+    @property
+    def volume_registers(self) -> tuple[int, ...]:
+        """The TL registers (channel 0) the track volume is added to: the carriers', or the slots
+        the voice marks (OutRun's $32 marks a modulator too)."""
+        if self.volume_slots is None:
+            return self.carrier_registers
+        return tuple(OperatorReg.TL + off for off in self.volume_slots)
 
     def registers(self, tl_offset: int = 0) -> dict[int, int]:
         """The operator registers 0x30-0x9F of channel 0 as the driver writes the voice, operator
-        by operator: the track volume `tl_offset` added to the carriers' TL (add.b: modulo 256;
+        by operator: the track volume `tl_offset` added to the volume's TLs (add.b: modulo 256;
         the chip reads 7 bits), SSG-EG off."""
         f = {name: self.operator_values(name) for name in VoiceField}
-        carriers = self.carrier_registers
+        scaled = self.volume_registers
         regs: dict[int, int] = {}
         for op, off in enumerate(SMPS_OP_TO_REG_OFFSET):
             tl = f[VoiceField.TOTAL_LEVEL][op] & _BYTE_MASK
-            if OperatorReg.TL + off in carriers:
+            if OperatorReg.TL + off in scaled:
                 tl = (tl + tl_offset) & _BYTE_MASK
             regs[OperatorReg.DT_MUL + off] = (f[VoiceField.DETUNE][op] & 0x7) << 4 | f[VoiceField.MULTIPLE][op] & 0xF
             regs[OperatorReg.TL + off] = tl
@@ -226,13 +238,13 @@ class SmpsVoice:
 
     def patched(self, register: int, value: int) -> SmpsVoice:
         """A copy with operator register `register` (channel 0) written `value`, as the chip reads
-        it.  A carrier's TL is refused: it is the track volume's, not the voice's."""
+        it.  A TL the track volume is added to is refused: it is the volume's, not the voice's."""
         parts = split_operator_register(register)
         fields_ = REGISTER_FIELDS.get(parts[0]) if parts else None
         if parts is None or fields_ is None or parts[2]:
             raise ValueError(f"register ${register:02X}: not a voice's (channel 0)")
-        if register in self.carrier_registers:
-            raise ValueError(f"register ${register:02X}: a carrier's TL, the track volume's (not converted)")
+        if register in self.volume_registers:
+            raise ValueError(f"register ${register:02X}: a TL the track volume is added to (not converted)")
         slot = SMPS_OP_TO_REG_OFFSET.index(parts[1])
         operators = dict(self.operators)
         for field_, shift, mask in fields_:

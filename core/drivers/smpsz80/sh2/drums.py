@@ -30,6 +30,7 @@ from functools import lru_cache
 
 from core.chips import CH3_FREQ_REGS
 from core.rom.image import RomError, RomImage
+from core.rom.pattern import code_pattern
 from core.rom.voices import voice_from_registers
 from core.smps import FmDrum, FmFrame, PsgDrumFrame
 
@@ -45,14 +46,41 @@ _BIT5 = 0x20
 
 # The drum read's dispatch ($0CF4): bit 3 -> unit A's first handler, else bit 0 -> its second;
 # then bit 2 -> unit B's handler
-_DISPATCH = re.compile(rb"\xCB\x5F\x28\x05\xCD(..)\x18\x05\xCB\x47\xC4(..)\xDD\x7E\x11\xCB\x57\xC4(..)", re.DOTALL)
+_DISPATCH = code_pattern("""
+    CB 5F       bit 3,a
+    28 05       jr z,+5
+    CD <w>      call                unit A's first handler
+    18 05       jr +5
+    CB 47       bit 0,a
+    C4 <w>      call nz             unit A's second
+    DD 7E 11    ld a,(ix+$11)
+    CB 57       bit 2,a
+    C4 <w>      call nz             unit B's
+""")
 _BIT3, _BIT0, _BIT2 = 0x08, 0x01, 0x04
-# A unit A handler: ld de,unit / ld hl,record / bit 5,a / jr z / ld hl,bit 5's record
-_HANDLER_A = re.compile(rb"\x11(..)\x21(..)\xCB\x6F\x28.\x21(..)", re.DOTALL)
-# Unit B's: ld de,unit / ld hl,record / bit 5,a / ld hl,record / jr nz,+0 - the second, always
-_HANDLER_B = re.compile(rb"\x11(..)\x21(..)\xCB\x6F\x21(..)\x20\x00", re.DOTALL)
-# The frame update ($0D61): ld iy,unit / ld hl,registers / call ... / ld hl,registers / ld iy,unit
-_UPDATE = re.compile(rb"\xFD\x21(..)\x21(..)\xCD..\x21(..)\xFD\x21(..)", re.DOTALL)
+_HANDLER_A = code_pattern("""
+    11 <w>      ld de,unit
+    21 <w>      ld hl,record
+    CB 6F       bit 5,a
+    28 ?        jr z
+    21 <w>      ld hl,record        bit 5's
+""")
+# Unit B's: the second record, always
+_HANDLER_B = code_pattern("""
+    11 <w>      ld de,unit
+    21 <w>      ld hl,record
+    CB 6F       bit 5,a
+    21 <w>      ld hl,record
+    20 00       jr nz,+0
+""")
+# The frame update ($0D61)
+_UPDATE = code_pattern("""
+    FD 21 <w>   ld iy,unit
+    21 <w>      ld hl,registers
+    CD ? ?      call
+    21 <w>      ld hl,registers
+    FD 21 <w>   ld iy,unit
+""")
 
 _RECORD = 10
 _VOICE, _X_HIGH, _X_LOW, _Y_HIGH, _Y_LOW, _X_STEP, _Y_STEP, _FRAMES = 1, 3, 4, 5, 6, 7, 8, 9
@@ -61,14 +89,46 @@ _KEY_OF_SLOT = {0x00: 0b0001, 0x08: 0b0010, 0x04: 0b0100, 0x0C: 0b1000}    # OP1
 _SLOT_INDEX = {0x00: 0, 0x04: 1, 0x08: 2, 0x0C: 3}     # FmFrame.slots' order (OPERATOR_SLOT_OFFSETS)
 _OWN_SLOT = 0x0C                                        # OP4: the channel's own word
 
-# The PSG part's dispatch ($0E61): push de / bit 3 / jr nz / bit 1 / jr nz / bit 0 / jr nz / bit 2 / jr nz
-_PSG_DISPATCH = re.compile(rb"\xD5\xCB\x5F\x20(.)\xCB\x4F\x20(.)\xCB\x47\x20(.)\xCB\x57\x20(.)", re.DOTALL)
-# bits 3 and 1: ld hl,divider / ld de,step+tone byte / ex af / ld a,envelope / ld b,volume / ld c,noise
-_PSG_TONE = re.compile(rb"\x21(..)\x11(..)\x08\x3E(.)\x06(.)\x0E(.)", re.DOTALL)
-# bits 0 and 2: ld hl / ld de / ld c / (bit 2's same again) / ex af / ld a,envelope / ld b,volume
-_PSG_NOISE = re.compile(rb"\x21(..)\x11(..)\x0E(.)\xCB\x57\x28\x08.{8}\x08\x3E(.)\x06(.)", re.DOTALL)
+# The PSG part's dispatch ($0E61)
+_PSG_DISPATCH = code_pattern("""
+    D5          push de
+    CB 5F       bit 3,a
+    20 <b>      jr nz
+    CB 4F       bit 1,a
+    20 <b>      jr nz
+    CB 47       bit 0,a
+    20 <b>      jr nz
+    CB 57       bit 2,a
+    20 <b>      jr nz
+""")
+# Bits 3 and 1
+_PSG_TONE = code_pattern("""
+    21 <w>      ld hl,divider
+    11 <w>      ld de,step          and the tone byte
+    08          ex af,af'
+    3E <b>      ld a,envelope
+    06 <b>      ld b,volume
+    0E <b>      ld c,noise
+""")
+# Bits 0 and 2
+_PSG_NOISE = code_pattern("""
+    21 <w>      ld hl,divider
+    11 <w>      ld de,step
+    0E <b>      ld c,noise
+    CB 57       bit 2,a
+    28 08       jr z,+8
+    ?8          bit 2's: the same again
+    08          ex af,af'
+    3E <b>      ld a,envelope
+    06 <b>      ld b,volume
+""")
 _PSG_BITS = (0x08, 0x02, 0x01)    # in the dispatch's order; bit 2 plays bit 0's
-_ENVELOPES = re.compile(rb"\x0D\xFA..\x21(..)\xCD", re.DOTALL)   # dec c / jp m / ld hl,envelopes / call
+_ENVELOPES = code_pattern("""
+    0D          dec c
+    FA ? ?      jp m
+    21 <w>      ld hl,envelopes
+    CD          call
+""")
 
 _SILENT = 15
 _TONE_ABOVE_NOISE = 2             # tone 3 sounds this many steps quieter than the noise

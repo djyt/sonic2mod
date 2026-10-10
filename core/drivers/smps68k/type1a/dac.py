@@ -22,11 +22,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from core.rom.image import RomError, RomImage
+from core.rom.pcm import Dpcm, PcmEntry, PcmTable, delta_table, one_format
 from core.rom.variant import DacSample
 from core.rom.z80 import Z80_RAM_BASE, z80_ram
 from core.smps import FIRST_NOTE
 
-from ..dpcm import LEA_A0, Dpcm, PcmEntry, PcmTable, delta_table, pitch_table
+from ..dac import LEA_A0, pcm_table, pitch_table
 
 _LONG = 4
 _OPCODE = 2
@@ -57,7 +58,7 @@ class _Type1aDac:
 
     def samples(self) -> list[DacSample]:
         z80 = z80_ram(self._rom)
-        table = PcmTable(z80, self._ENTRY, Dpcm(delta_table(z80), *self._CYCLES), self._names)
+        table = PcmTable(z80, pcm_table(z80), self._ENTRY, one_format(Dpcm(delta_table(z80), *self._CYCLES)), self._names)
         out = [table.sample(sound) for sound in range(FIRST_NOTE, FIRST_NOTE + self._RAM_SAMPLES)]
         by_sound = {s.sound: s for s in out}
 

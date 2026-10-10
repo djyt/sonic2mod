@@ -34,7 +34,20 @@ from .render import (
     workers,
 )
 from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip
-from .rips import CONFIG_ROOT, DEFAULT_SET, RIP_ROOT, RIPS_MAP, ForeignSound, RipFaults, RipGlitch, RipShelf, named
+from .rips import (
+    CONFIG_ROOT,
+    DEFAULT_SET,
+    RIP_ROOT,
+    RIPS_MAP,
+    ForeignSound,
+    RipFaults,
+    RipGlitch,
+    RipShelf,
+    frame_cut,
+    named,
+    rip_on_song_clock,
+    rip_scale,
+)
 from .signal import (
     VIB_MIN_NOTE,
     band_profile,
@@ -87,6 +100,7 @@ __all__ = [
     "db",
     "envelope_offset",
     "find_vgmplay",
+    "frame_cut",
     "group_masks",
     "harmonic_cents",
     "instrument_levels",
@@ -104,6 +118,8 @@ __all__ = [
     "reference_render_key",
     "render_mod_channels",
     "render_vgm_channels",
+    "rip_on_song_clock",
+    "rip_scale",
     "rms",
     "scan_glitches",
     "seg_at",

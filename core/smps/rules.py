@@ -9,7 +9,9 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
     envelopes  psg_envelopes    by smpsPSGvoice name (fTone_01 ...)
                pitch_envelopes  by SetPitchEnvelope's index (1 ...): a driver's frequency envelopes
     drums      dac_names        the drum track's bytes that play a sample, by name
-    timing     tempo_phase      frames the first TempoWait hold comes late (core/smps/tempo.py)
+               dac_pans         the B4 byte a sample writes to FM6 as it starts, by byte (OutRun's)
+    timing     update_clock     what runs the update: a frame's length in seconds (core/smps/clock.py)
+               tempo_phase      frames the first TempoWait hold comes late (core/smps/tempo.py)
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
                from Sonic 1's (track(kind); a kind left out reads as Sonic 1's)
@@ -21,11 +23,40 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ..chips import split_freq_word
+from .clock import VINT, UpdateClock
 from .driver_tables import PsgEnvelope
 from .pitch_envelope import PitchEnvelope
 
 if TYPE_CHECKING:
     from .song import ChannelType
+
+
+_BLOCK = 0x800                  # a frequency word's block, one step
+_WORD_MASK = 0xFFFF
+
+
+@dataclass(frozen=True)
+class OctaveWrap:
+    """A driver keeping an FM track's fnum within an octave as it adds the detune: at or under `low`
+    the word drops a block and the fnum gains `drop`, over `high` it rises one and loses `rise`.
+
+        OutRun (Z80 $0563)              $283  $508   +$285  -$284
+        Golden Axe's drum slides ($0262)  $27E  $4FE   +$280  -$280
+    """
+
+    low: int
+    high: int
+    drop: int
+    rise: int
+
+    def wrapped(self, word: int) -> int:
+        fnum, _ = split_freq_word(word)
+        if fnum <= self.low:
+            return (word - _BLOCK + self.drop) & _WORD_MASK
+        if fnum > self.high:
+            return (word + _BLOCK - self.rise) & _WORD_MASK
+        return word
 
 
 @dataclass(frozen=True)
@@ -49,6 +80,9 @@ class TrackRules:
     byte_durations: bool = False            # a duration (byte x divider) is kept in a byte the track counts
                                             # up to: a product past 255 wraps, and 0 - a note before any
                                             # duration - lasts 256 ticks; False: the product as it is
+    octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
+    tie_restarts_envelope: bool = True      # a tied read starts the PSG envelope again (Streets of Rage's
+                                            # rips); False: it plays on from the attack (OutRun's, $0391)
 
 
 SONIC1_TRACK = TrackRules()
@@ -66,6 +100,8 @@ class PlaybackRules:
     key_run_out: int | None = None                # None: never
     tracks: Mapping[ChannelType, TrackRules] = field(default_factory=dict)
     pitch_envelopes: Mapping[int, PitchEnvelope] = field(default_factory=dict)
+    update_clock: UpdateClock = VINT
+    dac_pans: Mapping[int, int] = field(default_factory=dict)    # none: the track's pan alone
 
     def track(self, kind: ChannelType) -> TrackRules:
         """How a `kind` track reads; Sonic 1's where the driver states none."""

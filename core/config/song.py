@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..mod import ModFile
-from ..smps import SmpsSong
+from ..smps import REGIONS, SmpsSong
 from ..source import DacSample, LiftOptions, SmpsDriver, is_rom_path, is_vgm_path, read_dac, read_song
 from .entries import (
     TWIN_MODES,
@@ -27,22 +27,10 @@ _KEYS = frozenset({
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_output_file",
     "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "loop_drift_db",
-    "treble_shelf_db",
+    "treble_shelf_db", "dac_stall",
 })
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
-
-# Console region (`region:`) -> V-int frames a second: what the tempo, note fills and modulation count in
-REGION_FPS = {"ntsc": 60, "pal": 50}
-
-
-def region_fps(region: str) -> int:
-    """V-int frames a second for a `region:` value (ntsc | pal, any case)."""
-    fps = REGION_FPS.get(str(region).lower())
-    if fps is None:
-        raise ValueError(f"region must be one of {', '.join(REGION_FPS)} (got {region!r})")
-    return fps
-
 
 def variant_output_file(path: str, variant: str) -> str:
     """Where a variant writes when it states no output_file: <stem>_<variant><ext>."""
@@ -64,8 +52,8 @@ def _range_space(data: dict, filepath) -> str:
 def _region(data: dict, filepath) -> str:
     """`region:`, lower-cased; an unknown one is an error."""
     region = str(data.get("region", "ntsc")).lower()
-    if region not in REGION_FPS:
-        raise ValueError(f"{filepath}: region must be one of {', '.join(REGION_FPS)} (got {data['region']!r})")
+    if region not in REGIONS:
+        raise ValueError(f"{filepath}: region must be one of {', '.join(REGIONS)} (got {data['region']!r})")
     return region
 
 
@@ -97,7 +85,7 @@ class ConversionConfig:
     # free effect slot.
     num_mod_channels: int | None = None
     auto_bpm: bool = False        # Derive BPM from SMPS tempo header
-    region: str = "ntsc"          # "ntsc" (60 Hz) or "pal" (50 Hz)
+    region: str = "ntsc"          # the console: "ntsc" or "pal" (its frame rate: core.smps.update_hz)
     # What voice_map / psg_voice_map low/high (and root's anchor) are compared with:
     #   "source" - the SMPS note byte (default; what every config before Credits uses)
     #   "chip"   - the real pitch the chip plays: byte + pitch_offset + smpsChangeTransposition
@@ -149,6 +137,9 @@ class ConversionConfig:
     loop_drift_db: float | None = None
     # Song-level override of settings.yaml treble_shelf_db (a brightness shelf; None: the settings')
     treble_shelf_db: float | None = None
+    # The share of the DAC's time its driver's update holds the play loop (measured from the song's
+    # rip: core/audit/dac_stall.py): a derived DAC note plays its loop's rate times 1 - it.  0: none
+    dac_stall: float = 0.0
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -246,11 +237,6 @@ class ConversionConfig:
         return config
 
     @property
-    def fps(self) -> int:
-        """V-int frames a second of the config's region."""
-        return region_fps(self.region)
-
-    @property
     def is_minimal(self) -> bool:
         """No `channels:` section: everything the config leaves out is derived from the song."""
         return "channels" not in self._data
@@ -317,3 +303,6 @@ class ConversionConfig:
             self.loop_drift_db = max(0.0, float(data['loop_drift_db']))
         if data.get('treble_shelf_db') is not None:
             self.treble_shelf_db = float(data['treble_shelf_db'])
+        self.dac_stall = float(data.get('dac_stall', 0.0))
+        if not 0.0 <= self.dac_stall < 1.0:
+            raise ValueError(f"dac_stall: {self.dac_stall} is not a share of the time (0 to under 1)")

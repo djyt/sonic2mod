@@ -4,6 +4,7 @@
     level    total level 0.75 dB a step, the carriers' TL sets the channel's level
     pan      B4 bits 7 (L) / 6 (R); a hard-panned note against a centred one: DEFAULT_FM_PAN_LAW_DB
     LFO      $22 (global): enable | frequency; B4 bits 4-5 / 0-2: how far it moves a channel (FmLfo)
+    timer A  $24 (bits 9-2) / $25 (bits 1-0): overflows every 144 x (1024 - value) clocks
 """
 
 from __future__ import annotations
@@ -14,8 +15,16 @@ from enum import IntEnum
 # The NTSC Mega Drive's YM2612 clock: settings.yaml fm_synthesis clock_rate, which every renderer
 # reads; this is the fallback, and what the Sonic 1 driver's tables were computed for
 MD_FM_CLOCK = 7_670_454
+MD_PAL_FM_CLOCK = 7_600_489          # the PAL Mega Drive's
 _CLOCK_DIVIDER = 144                 # one output sample per 144 clocks
 FM_SAMPLE_RATE = MD_FM_CLOCK // _CLOCK_DIVIDER     # 53267 (== OPN2.NATIVE_RATE)
+
+_TIMER_A_STEPS = 1024                # a 10-bit counter, counting up from its value to the overflow
+
+
+def timer_a_hz(value: int, clock: int = MD_FM_CLOCK) -> float:
+    """Timer A's overflows a second at `value`: $25A (OutRun's) is 126.22 Hz at the MD clock."""
+    return clock / (_CLOCK_DIVIDER * (_TIMER_A_STEPS - value))
 
 # The chip variants Nuked-OPN2 emulates (settings.yaml fm_synthesis.mode): the Mega Drive's YM2612,
 # whose DAC adds a sign bias, or a discrete YM3438

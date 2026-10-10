@@ -178,7 +178,7 @@ Cycle-accurate YM2612 (FM) and SN76489 (PSG) synthesis is enabled by default. Th
 
 I chose to leave both of these emulators as C for performance, ease of future upgrading, and the high chance of introducing bugs if I was to convert them to Python!
 
-To disable synthesis and use pre-rendered `.raw` sample files from `samples/` that you have provided instead, set in `configs/settings.yaml`:
+To disable synthesis and use pre-rendered `.raw` sample files that you have provided instead (read from the config's `samples_dir`, e.g. `input/sonic_1/samples/`, which holds Sonic 1's DAC drums), set in `configs/settings.yaml`:
 
 ```yaml
 fm_synthesis:

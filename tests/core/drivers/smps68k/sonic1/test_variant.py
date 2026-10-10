@@ -84,7 +84,7 @@ class SonicRev01(unittest.TestCase):
         raws = {"dKick": "kick", "dSnare": "snare", "dTimpani": "timpani"}
         for s in dac_samples(self.rom):
             if s.name in raws:
-                self.assertEqual(s.pcm, (ROOT / "samples" / f"{raws[s.name]}.raw").read_bytes(), s.name)
+                self.assertEqual(s.pcm, (ROOT / "input" / "sonic_1" / "samples" / f"{raws[s.name]}.raw").read_bytes(), s.name)
         self.assertEqual([s.pitch for s in dac_samples(self.rom)], [23, 1, 27, 0x12, 0x15, 0x1C, 0x1D])
 
 

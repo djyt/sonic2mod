@@ -4,7 +4,7 @@
 name: Invincibility
 input_file: "input/sonic_1/Mus87 - Invincibility.asm"
 output_file: output/sonic_1/14_invincibility.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true
 target_speed: 4

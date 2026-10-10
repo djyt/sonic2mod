@@ -4,7 +4,7 @@
 name: "Special Stage"
 input_file: "input/sonic_1/Mus89 - Special Stage.asm"
 output_file: output/sonic_1/08_special_stage.mod
-samples_dir: "samples/"
+samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc

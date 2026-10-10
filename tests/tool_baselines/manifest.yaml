@@ -1159,7 +1159,7 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 91f43dbb2b74
     tests/settings.yaml: a79a8ba763a3
 pitch_credits:
-  commit: 9e7f08a-dirty
+  commit: 94d52f2
   date: '2026-10-10'
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
@@ -1303,7 +1303,7 @@ pitch_mw_beat_it:
     tests/baselines/mw_beat_it_baseline.mod: 47640452b4a1
     tests/settings.yaml: c9fe3405c560
 pitch_mw_mr_big:
-  commit: 143e94c-dirty
+  commit: 94d52f2
   date: '2026-10-10'
   inputs:
     configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f

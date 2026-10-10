@@ -3244,7 +3244,7 @@ pitch_credits:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 9e7f08a-dirty
+  commit: 94d52f2-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3282,7 +3282,7 @@ pitch_credits:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3315,12 +3315,14 @@ pitch_credits:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5532,7 +5534,7 @@ pitch_mw_mr_big:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 143e94c-dirty
+  commit: 94d52f2-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5570,7 +5572,7 @@ pitch_mw_mr_big:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/type1a/__init__.py
@@ -5603,12 +5605,14 @@ pitch_mw_mr_big:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py

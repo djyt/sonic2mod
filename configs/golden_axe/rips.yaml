@@ -3,7 +3,10 @@
 81_wilderness: "02 - Wilderness.vgz"
 82_turtle_village_1: "06 - Turtle Village 1.vgz"
 83_turtle_village_2: "08 - Turtle Village 2.vgz"
-84_path_of_fiend: "07 - Path of Fiend.vgz"
+84_path_of_fiend:
+  rip: "07 - Path of Fiend.vgz"
+  glitches:
+    - {frame: 2304, frames: -1, why: "burst at 2303 (164 writes, every channel re-keyed) runs into 2304: its V-int lost"}
 85_death_adder: "09 - Death Adder.vgz"
 86_battle_field: "03 - Battle Field.vgz"
 87_showdown: "10 - Showdown.vgz"

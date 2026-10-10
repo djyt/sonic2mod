@@ -63,3 +63,15 @@ def bursts(writes: dict[int, bytes], frames: int, loop_frame: int | None = None)
             now = start
     commands += wait(frames * FRAME - now)
     return vgm(bytes(commands), loop_at)
+
+
+def fm_notes(notes: dict[int, list[int]], frames: int, fnum_block: tuple[int, int] = (1083, 4),
+             late_from: int | None = None, late: tuple[int, ...] = ()) -> bytes:
+    """A log of FM1-3 keyed (off, frequency, on) on their frames of `notes`; the channels of `late`
+    a frame later from frame `late_from` on (their driver missed a V-int)."""
+    writes: dict[int, bytes] = {}
+    for ch, at in notes.items():
+        for frame in at:
+            moved = frame + (late_from is not None and frame >= late_from and ch in late)
+            writes[moved] = writes.get(moved, b"") + key(ch, False) + fm_freq(ch, *fnum_block) + key(ch, True)
+    return bursts(writes, frames)

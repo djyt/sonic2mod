@@ -16,6 +16,7 @@ GOLDEN_AXE_RIPS = _ROOT / "reference" / "vgz" / "golden_axe"
 STREETS_OF_RAGE_ROM = _ROOT / "input" / "roms" / "Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 STREETS_OF_RAGE_RIPS = _ROOT / "reference" / "vgz" / "streets_of_rage_1"
 SPACE_HARRIER_2_ROM = _ROOT / "input" / "roms" / "Space Harrier II (World).md"
+SPACE_HARRIER_2_RIPS = _ROOT / "reference" / "vgz" / "space_harrier_2"
 
 
 def _needs(*paths: Path):
@@ -32,3 +33,4 @@ needs_golden_axe = _needs(GOLDEN_AXE_ROM)
 needs_golden_axe_rips = _needs(GOLDEN_AXE_ROM, GOLDEN_AXE_RIPS)
 needs_streets_of_rage_rips = _needs(STREETS_OF_RAGE_ROM, STREETS_OF_RAGE_RIPS)
 needs_space_harrier_2 = _needs(SPACE_HARRIER_2_ROM)
+needs_space_harrier_2_rips = _needs(SPACE_HARRIER_2_ROM, SPACE_HARRIER_2_RIPS)

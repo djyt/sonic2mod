@@ -18,6 +18,8 @@ Cases, all 19 VGZs in reference/vgz/sonic_1/ (untracked, as the asm sources are)
     lift_moonwalker_*   vgm_lift on the Moonwalker ROM's songs and rips (left out without them)
     read_<game>         song_dump: every song of a game as read, walked and played (Sonic's asm and
                         ROM, with and without data fixes; each ROM in tests/roms.py; left out without it)
+    frames_<game>       vgm_frames on a game's pairs: every note's registers on its frame
+    glitches_<game>     vgm_frames --glitches: where every channel moves a frame against the song
 
 Run it after any change to `core/vgm/`, `core/audit/`, `core/mod/timing.py`, a VGM tool, or the
 readers and the walk (`core/smps/`, `core/rom/`, `core/drivers/`): the read_ cases are their snapshot.
@@ -61,6 +63,7 @@ from tests.roms import (
     MOONWALKER_ROM,
     SONIC1_ASM,
     SONIC1_ROM,
+    SPACE_HARRIER_2_RIPS,
     SPACE_HARRIER_2_ROM,
     STREETS_OF_RAGE_RIPS,
     STREETS_OF_RAGE_ROM,
@@ -94,6 +97,7 @@ _SHIPPED = ["--shipped"]
 _FRAMES = (
     ("golden_axe", GOLDEN_AXE_ROM, GOLDEN_AXE_RIPS, _CONFIG_DIR / "golden_axe"),
     ("streets_of_rage", STREETS_OF_RAGE_ROM, STREETS_OF_RAGE_RIPS, _CONFIG_DIR / "streets_of_rage"),
+    ("space_harrier_2", SPACE_HARRIER_2_ROM, SPACE_HARRIER_2_RIPS, _CONFIG_DIR / "space_harrier_2"),
 )
 
 # read_<name>: song_dump's source and arguments
@@ -176,15 +180,17 @@ def _lift_cases(vgzs: list[Path]) -> list[_Case]:
 
 
 def _frame_cases() -> list[_Case]:
-    """vgm_frames on each game whose ROM and rips are here: every note's pitch, level and voice."""
+    """vgm_frames on each game whose ROM and rips are here: every note's pitch, level and voice;
+    and its glitch scan."""
     cases = []
     for name, rom, rips, configs in _FRAMES:
         if not (rom.exists() and rips.exists()):
             continue
         shelf = RipShelf.load(configs, rips)
         inputs = [rom, configs / RIPS_MAP, *sorted(rips.glob("*.vgz")), *shelf.config_files()]
-        cases.append(_Case(f"frames_{name}", ["tools/vgm_frames.py", "--all", "--configs",
-                                               configs.relative_to(ROOT).as_posix()], inputs))
+        folder = configs.relative_to(ROOT).as_posix()
+        cases.append(_Case(f"frames_{name}", ["tools/vgm_frames.py", "--all", "--configs", folder], inputs))
+        cases.append(_Case(f"glitches_{name}", ["tools/vgm_frames.py", "--all", "--glitches", "--configs", folder], inputs))
     return cases
 
 

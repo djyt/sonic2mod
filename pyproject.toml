@@ -93,6 +93,12 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 
+[tool.pytest.ini_options]
+# tests/ mirrors the code (tests/core/audit/test_pitch.py beside tests/core/audio/test_pitch.py): its
+# folders are no packages, so a module is imported by its path, not its file name; and tests/core
+# cannot stand in for core where a runner puts tests/ first on sys.path
+addopts = ["--import-mode=importlib"]
+
 [tool.vulture]
 # Code nothing uses: `python -m vulture`.  vulture_whitelist.py lists what is used in ways it
 # cannot see (unittest classes, ModNote members); each other finding is dead code, or a name
@@ -115,7 +121,7 @@ exclude = ["reference", "output", "**/__pycache__"]
 reportMissingModuleSource = false
 reportAttributeAccessIssue = false
 
-# Import rules (agents.md layering), checked by tests/test_layers_units.py (or lint-imports).
+# Import rules (agents.md layering), checked by tests/test_layers.py (or lint-imports).
 # Each package imports only the layers below it; the bottom ones (song IR, MOD, chips, audio)
 # are the shared vocabulary.  Directly below only where it keeps drivers swappable: the layers
 # above reach a driver through core.source alone.  Type-hint-only imports (TYPE_CHECKING) are

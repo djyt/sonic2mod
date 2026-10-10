@@ -263,6 +263,14 @@ class SpaceHarrier2(unittest.TestCase):
         rows = {row[1]: row[2] for row in data["sample_list"]}
         self.assertEqual(rows["fm_v53_G3.raw"], starting_volume("FM", 8))
 
+    def test_a_drum_keying_a_quiet_pair_starts_at_its_level(self):
+        # drum81 keys OP1-OP2 alone: OP2 at TL 28, 22 steps below OP4, which drum85 keys too
+        song = read_rom_song(RomImage.load(SPACE_HARRIER_2_ROM), 0x87)
+        stated = {"name": "An Omen", "input_file": str(SPACE_HARRIER_2_ROM), "rom_song": "$87"}
+        data = derive_config(stated, song, "configs/space_harrier_2/87_an_omen.yaml", SampleSettings()).data
+        rows = {row[1]: row[2] for row in data["sample_list"]}
+        self.assertEqual((rows["drum81.raw"], rows["drum85.raw"]), (starting_volume("FM", 22), 64))
+
 
 @needs_streets_of_rage
 class StreetsOfRage(unittest.TestCase):

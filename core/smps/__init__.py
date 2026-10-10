@@ -102,7 +102,7 @@ from .names import (
     voice_field_from_macro,
 )
 from .parser import SmpsParser
-from .percussion import FmDrum, FmFrame, PsgDrumFrame
+from .percussion import ALL_OPERATORS, FmDrum, FmFrame, PsgDrumFrame
 from .pitch_envelope import PitchEnvelope
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
 from .rules import PlaybackRules, TrackRules
@@ -130,6 +130,7 @@ from .track import TrackState
 
 __all__ = [
     "ALL_ASPECTS",
+    "ALL_OPERATORS",
     "C1_SEMITONE",
     "FIRST_FLAG",
     "FIRST_NOTE",

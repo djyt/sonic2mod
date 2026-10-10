@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from ..audio import db_to_gain, semitone_to_hz
-from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db, psg_level_db
+from ..chips import DEFAULT_FM_PAN_LAW_DB, TL_MASK, OperatorReg, fm_level_db, keyed_carriers, psg_level_db
 from ..config import (
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
@@ -54,6 +54,7 @@ from ..config import (
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..smps import (
+    ALL_OPERATORS,
     C1_SEMITONE,
     ChannelType,
     FmDrum,
@@ -93,6 +94,24 @@ _DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|(dac|drum)[0-9a-f]{2
 _FM_SCALE = 76.0
 _PSG_SCALE = 16.0
 _FULL = 64
+
+
+def _drum_level(drum: FmDrum) -> int:
+    """The TL offset an FM drum sounds at: its volume, and as much below its voice as the
+    loudest carrier its hit keys is below the voice's loudest.  A drum keying only a quiet pair
+    sounds that pair (Space Harrier II's drum81: OP1-OP2, OP2 at TL 28 where OP4 is at 6)."""
+    keys = 0
+    for frame in drum.frames:
+        if frame.keyed:
+            keys |= frame.keys
+    registers = drum.voice.registers()
+    algorithm = drum.voice.algorithm
+
+    def loudest(mask: int) -> int | None:
+        return min((registers[OperatorReg.TL + off] & TL_MASK for off in keyed_carriers(algorithm, mask)), default=None)
+
+    keyed, voice = loudest(keys), loudest(ALL_OPERATORS)
+    return drum.tl_offset + (keyed - voice if keyed is not None and voice is not None else 0)
 
 
 def starting_volume(kind: str, level: int = 0, hard_panned: bool = False,
@@ -404,10 +423,10 @@ class _Deriver:
 
     def _fm_drum(self, name: str, drum: FmDrum) -> dict:
         """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
-        drum's own volume (its render is peak-normalised, as an FM voice's)."""
+        loudest carrier it keys (its render is peak-normalised, as an FM voice's)."""
         hard = drum.voice.pan is not None and pan_is_hard(drum.voice.pan)
         slot = self._take(ChannelType.FM, _DAC_FILE.format(name),
-                          volume=starting_volume(ChannelType.FM, drum.tl_offset, hard))
+                          volume=starting_volume(ChannelType.FM, _drum_level(drum), hard))
         return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}
 
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:

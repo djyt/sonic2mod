@@ -1174,6 +1174,30 @@ pitch_final_zone:
     reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
     tests/baselines/final_zone_baseline.mod: c3297864e90f
     tests/settings.yaml: a79a8ba763a3
+pitch_ga_conclusion:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
+    reference/vgz/golden_axe/11 - Conclusion.vgz: 9030b83ba012
+    tests/baselines/ga_conclusion_baseline.mod: 67b6a7825dd7
+    tests/settings.yaml: c9fe3405c560
+pitch_ga_the_battle:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    tests/baselines/ga_the_battle_baseline.mod: 2cef3822df6d
+    tests/settings.yaml: c9fe3405c560
+pitch_ga_theme_of_thief:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
+    reference/vgz/golden_axe/04 - Theme of Thief.vgz: d052006fd9fd
+    tests/baselines/ga_theme_of_thief_baseline.mod: 0c3801796287
+    tests/settings.yaml: c9fe3405c560
 pitch_game_over:
   commit: d0bd6d8-dirty
   date: '2026-10-10'
@@ -1238,6 +1262,30 @@ pitch_marble_zone:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
     tests/baselines/marble_zone_baseline.mod: 24d6e748f5b8
     tests/settings.yaml: a79a8ba763a3
+pitch_mw_beat_it:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
+    reference/vgz/moonwalker/06 - Beat It.vgz: 0119f4ed1be1
+    tests/baselines/mw_beat_it_baseline.mod: 47640452b4a1
+    tests/settings.yaml: c9fe3405c560
+pitch_mw_mr_big:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
+    reference/vgz/moonwalker/15 - Mr. Big.vgz: 2704df0bf870
+    tests/baselines/mw_mr_big_baseline.mod: bf4d1b8eb2cb
+    tests/settings.yaml: c9fe3405c560
+pitch_mw_title:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/moonwalker/86_title.yaml: a4e39f30e91d
+    reference/vgz/moonwalker/01 - Title Screen.vgz: b71f7a4780e4
+    tests/baselines/mw_title_baseline.mod: 647589fc720e
+    tests/settings.yaml: c9fe3405c560
 pitch_robotnik:
   commit: d0bd6d8-dirty
   date: '2026-10-10'
@@ -1262,6 +1310,46 @@ pitch_scrap_brain_zone:
     reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
     tests/baselines/scrap_brain_zone_baseline.mod: c97e5be79912
     tests/settings.yaml: a79a8ba763a3
+pitch_sh2_an_epitaph:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/95_an_epitaph.yaml: 3898a657da05
+    reference/vgz/space_harrier_2/19 - An Epitaph (Ending Theme).vgz: acdbae48986e
+    tests/baselines/sh2_an_epitaph_baseline.mod: e07ec30574ad
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_game_over:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/97_game_over.yaml: a45e11506721
+    reference/vgz/space_harrier_2/20 - A (Game Over).vgz: a0aece5a54c5
+    tests/baselines/sh2_game_over_baseline.mod: 228b8741668c
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_harrier_saga:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
+    reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
+    tests/baselines/sh2_harrier_saga_baseline.mod: 61c4fd242549
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_machine_henge:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/8f_machine_henge.yaml: a0fb45673ccc
+    reference/vgz/space_harrier_2/10 - Machine Henge (Boss 8 - Neo Tomos).vgz: 35ea9c762bdb
+    tests/baselines/sh2_machine_henge_baseline.mod: ac400bd20056
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_motion:
+  commit: 143e94c-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/98_motion.yaml: 31261d44d549
+    reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
+    tests/baselines/sh2_motion_baseline.mod: 9bc42d31902f
+    tests/settings.yaml: c9fe3405c560
 pitch_special_stage:
   commit: d0bd6d8-dirty
   date: '2026-10-10'

@@ -779,7 +779,9 @@ The driver keys a follower off at its `smpsNoteFill` while the primary plays on 
 67 ms pluck under every kick), so the fill is part of every follower key: a chip layer is keyed off
 early, a pcm layer cut with its release (above).  A **solo** note keeps its own fill, and a PSG solo note
 ends at its duration on whatever column it lands; an FM solo note on a PSG primary rings into its
-rest's release.  The source instruments' sustain needs count the notes they play inside composites,
+rest's release.  A solo note spliced onto another chip's column (an FM note on the drum column) counts
+toward its own instrument's sustain in its own chip's pass, every other note-on of that column ending its
+ring.  The source instruments' sustain needs count the notes they play inside composites,
 and skip followers' own walks and a live channel's folded notes.
 
 ### Per-pattern folds (`merge_patterns:`)
@@ -867,6 +869,16 @@ frames, then ticks as a fill is; `C00` on a row, `ECx` inside one).  A melodic p
 the attack row moves to the next row, and a no-attack note is re-triggered.  A banked sound's level is
 measured under its own id (`Composite.bank_id`), and its release slide takes its primary's rate.
 
+**`bank_drums: true`** (a drum primary's group; implies `bank`, needs no followers) puts the drums
+themselves in the banks: a hit no follower sounds with is a composite of the drum alone (no layers),
+banked with the mixes, so no note plays a drum's own slot.  The slot fit then offers those slots after
+every other one, so the bank reserve takes them first (a drum's slot becomes a bank) and composites
+the rest.  The converter keeps such a drum aside for the mixer (`_mix_sources`: read off disk, or its FM
+drum render) instead of installing it.  A bank holding a lone drum is packed before any other: were it
+dropped, its hits would fall back to a slot that holds something else now.  Space Harrier II's Harrier
+Saga (`configs/space_harrier_2/81_harrier_saga_4ch.yaml`): five drum slots become two banks, and its
+FM4 arpeggio rides the drum column as drum + FM4 mixes, so all six channels fit four.
+
 **`merge_bank_slots`** — slots the composite fit holds back for the banks (the banks also take any slot
 the fit leaves free).  `auto` (the default): the conversion runs again with the reserve the banks
 turned out to need (`bank_reserve_wanted`, up to four builds) — fewer where a held slot sat empty while
@@ -880,7 +892,8 @@ Composites share the 31 slots with the instruments the merged build still plays.
 `fit_composites`:
 
 - **Offered:** slots nothing in the config names, then those of instruments no note of the merged build
-  plays.  A drum's slot is never reused (it is loaded from disk).  A mix source's slot can be: its sample
+  plays.  A drum's slot is never reused (it is loaded from disk), except a `bank_drums` group's (§ Sample
+  banks), offered after every other slot so the bank reserve takes it first.  A mix source's slot can be: its sample
   is rendered anyway and kept aside for the mixer (`MergePlan.mix_only`, `_mix_sources`); an FM source's
   slot takes only a pcm composite (the FM catalogue holds one entry per slot).
 - **Order:** each group's `max_composites` first, then the most-played composites first.
@@ -900,7 +913,10 @@ Three rules keep one sound out of two slots:
   across speakers: +6 dB for an equal pair on one side, +3 dB for left + right).  The gain is baked into
   the instrument's level (`ResolvedNote.gain_db`), its `sample_list` volume moved accordingly
   (`merge_unison_volume`); a `Cxx` instead would land a row late on every delayed note.  A detuned
-  unison beats, so it stays a composite.
+  unison beats, so it stays a composite.  Any instrument whose commonest level moves in the merged
+  build has its volume moved the same way (`MergedBuild._bake_moved_levels`, reported as "level
+  moved"), so every note keeps the reference build's volume: Space Harrier II's FM5 plays its $4B voice
+  mostly in chord composites, and FM4's solo notes, 4.5 dB louder, became the instrument's level.
 - **Twins give up their slot first** (`same_shape_twins`).  Composites of one shape (same voices and
   intervals, differing only in fill or level) are twins; the one whose followers ring furthest (`_reach`:
   fewest cut, then the latest cuts), then the most played, is kept, if it can play every note of the

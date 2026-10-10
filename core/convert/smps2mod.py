@@ -7,6 +7,8 @@ timing, and effects.
 import copy
 import dataclasses
 import math
+import os
+from collections.abc import Iterable
 
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
 from ..chips import DEFAULT_FM_PAN_LAW_DB, MD_PSG_CLOCK, fm_level_db
@@ -23,7 +25,7 @@ from ..config import (
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
-from ..mod import MAX_MOD_SAMPLE_BYTES, ModFile, ModSample, apply_pattern_breaks, note_rate
+from ..mod import MAX_MOD_SAMPLE_BYTES, ModFile, ModSample, apply_pattern_breaks, note_rate, read_sample
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..plan import (
     DetunePlan,
@@ -285,7 +287,7 @@ class SmpsToModConverter:
         clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
         for d in self.config.dac_samples:
             db = d.saturation_db(self.config.merge_active)
-            sample = self.mod.samples[d.mod_instrument - 1]
+            sample = self._mix_sources.get(d.mod_instrument) or self.mod.samples[d.mod_instrument - 1]
             if not db or sample is None or not sample.data:
                 continue
             shaped = saturate(signed8(sample.data), db)
@@ -482,9 +484,11 @@ class SmpsToModConverter:
             drums = self._synthesize_fm_drums(synth)
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             self._load_disk_samples(set(fm_samples) | set(drums) | psg_insts | missing | merge_insts)
+            self._load_aside_drums(set(drums))
             return
         if self.config.sample_list:
             self._load_disk_samples(psg_insts | merge_insts)
+            self._load_aside_drums(set())
             return
 
         # Placeholder samples, as many as the channels and DAC instruments name
@@ -498,6 +502,23 @@ class SmpsToModConverter:
             if entry[SAMPLE_SLOT] not in skip:
                 for path in self.mod.add_samples(self.config.samples_dir, [entry]):
                     self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=entry[SAMPLE_SLOT], path=path)
+
+    def _load_aside_drums(self, rendered: set[int]) -> None:
+        """A drum off disk whose slot a composite holds (a `bank_drums` group's: it plays from a
+        bank only) read for the mixer, not into its slot: the slot's first sample_list entry, the
+        file it was named for (`rendered`: FM drums, kept aside as they render).  A render under
+        the slot's number is the composite's (a chip composite renders there): the mixer, which
+        prefers a source's render to its bytes, must take the drum's bytes."""
+        aside = self._mix_only_aside({d.mod_instrument for d in self.config.dac_samples}) - rendered
+        for inst in sorted(aside):
+            entry = next(e for e in self.config.sample_list or [] if e[SAMPLE_SLOT] == inst)
+            sample = read_sample(self.config.samples_dir, entry)
+            if sample is None:
+                self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=inst,
+                                path=os.path.join(self.config.samples_dir, entry[SAMPLE_FILE]))
+                continue
+            self._mix_sources[inst] = sample
+            self._raw_renders.pop(inst, None)
 
     def _synthesize_fm(self, synth: SynthesisSettings) -> tuple[dict, set[int]]:
         """Every FM instrument rendered and installed → (the samples, the instruments of map
@@ -541,8 +562,10 @@ class SmpsToModConverter:
             self._merged.scale_chip_volumes(fm_peaks)
 
         # An FM source of a pcm mix whose slot a composite holds is kept aside for the mixer (as a
-        # PSG one is in _synthesize_psg); the slot's loop entry is the composite's
-        aside = self._mix_only_aside(fm_samples) | (set(chip_bases) & set(fm_samples))
+        # PSG one is in _synthesize_psg); the slot's loop entry is the composite's.  A drum's slot
+        # here holds the composite's own render (FM drums render apart: _synthesize_fm_drums)
+        drum_slots = {d.mod_instrument for d in self.config.dac_samples}
+        aside = (self._mix_only_aside(fm_samples) - drum_slots) | (set(chip_bases) & set(fm_samples))
         self._install_synthesized_samples({i: v for i, v in fm_samples.items() if i not in aside},
                                           self.config.sample_list, "fm", synth.max_sample_bytes)
         for i in aside:
@@ -562,7 +585,14 @@ class SmpsToModConverter:
                                     drum_rings(self.song, self.config, self._timeline), cache_out=cache, psg_clock=psg_clock)
         if cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="FM drums", **cache)
-        self._install_synthesized_samples(samples, self.config.sample_list, "drum", synth.max_sample_bytes)
+        # A drum whose slot a composite holds (bank_drums) is kept aside for the mixer
+        aside = self._mix_only_aside(samples)
+        self._install_synthesized_samples({i: v for i, v in samples.items() if i not in aside},
+                                          self.config.sample_list, "drum", synth.max_sample_bytes)
+        for i in aside:
+            self._mix_sources[i] = self._make_sample(i, samples[i][0], "drum", None, synth.max_sample_bytes,
+                                                     original=True)
+            self._raw_renders.pop(i, None)
         return samples
 
     def _synthesize_psg(self, psg_synth: PsgSynthesisSettings | None) -> None:
@@ -594,8 +624,9 @@ class SmpsToModConverter:
             self._mix_sources[i] = self._make_sample(i, psg_samples[i][0], "psg", psg_loops.get(i),
                                                      psg_synth.max_sample_bytes, original=True)
 
-    def _mix_only_aside(self, samples: dict) -> set[int]:
-        """The rendered instruments that are only a mix's source, whose slot a composite holds."""
+    def _mix_only_aside(self, samples: Iterable[int]) -> set[int]:
+        """Of `samples` (instruments, or a dict of renders by instrument), the ones that are only a
+        mix's source, whose slot a composite holds."""
         if self._merge is None:
             return set()
         return {i for i in samples if i in self._merge.mix_only and i in self._merge.instruments}
@@ -629,7 +660,6 @@ class SmpsToModConverter:
         note's duration, says how long a note is heard: the drums (their file on disk, played
         at their mod_note) and the noise instruments (their envelope, then the ramp to
         silence).  What core.merge bounds a note's sounding span with."""
-        import os
         clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
         files = {e[SAMPLE_SLOT]: e[SAMPLE_FILE] for e in (self.config.sample_list or [])}
         out: dict[int, float] = {}

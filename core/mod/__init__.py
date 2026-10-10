@@ -1,6 +1,6 @@
 """The MOD format: what a ProTracker file holds and how a sample plays in it.
 
-    file.py          ModFile writer, read_mod reader, pattern breaks
+    file.py          ModFile writer, read_mod reader, read_sample (a sample_list file), pattern breaks
     notes.py         PERIOD_TABLE, note_rate / period_rate, ModNote (C1..B3), MOD_NOTE_MAP
     volume.py        dB -> MOD volume (0..64)
     limits.py        bytes a sample may hold, the sustain that fits
@@ -17,6 +17,7 @@ from .file import (
     apply_pattern_breaks,
     isolate_channel,
     read_mod,
+    read_sample,
     row_to_bcd,
     shift_for_breaks,
 )
@@ -53,6 +54,7 @@ __all__ = [
     "note_rate",
     "period_rate",
     "read_mod",
+    "read_sample",
     "row_to_bcd",
     "sample_limit_bytes",
     "shift_for_breaks",

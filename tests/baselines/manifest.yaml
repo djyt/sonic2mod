@@ -105,7 +105,7 @@ ghz_lofi:
   date: '2026-10-10'
   settings: febf8cd9dd04
 ghz_lofi_merged:
-  commit: 2d6c984
+  commit: 90c5f34-dirty
   config: a35b6f958452
   date: '2026-10-10'
   settings: febf8cd9dd04
@@ -115,7 +115,7 @@ green_hill_zone:
   date: '2026-10-10'
   settings: febf8cd9dd04
 green_hill_zone_merged:
-  commit: 2d6c984
+  commit: 90c5f34-dirty
   config: 82e96cc64ff9
   date: '2026-10-10'
   settings: febf8cd9dd04
@@ -130,7 +130,7 @@ invincibility_lofi:
   date: '2026-10-10'
   settings: febf8cd9dd04
 invincibility_lofi_merged:
-  commit: 2d6c984
+  commit: 90c5f34-dirty
   config: c189e967145b
   date: '2026-10-10'
   settings: febf8cd9dd04

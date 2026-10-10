@@ -374,12 +374,13 @@ follower or dropped in every pattern the blocks name.  `merge:` groups may sit b
 | Key | Default | Meaning |
 |---|---|---|
 | `primary` | required | The channel whose column, fill and vibrato the fold uses |
-| `followers` | `[]` | Channels folded onto it (empty only with `mod_channel` or `fill`) |
+| `followers` | `[]` | Channels folded onto it (empty only with `mod_channel`, `fill` or `bank_drums`) |
 | `cut_primary` | `false` | A follower note over the primary's tail plays and cuts it |
 | `max_composites` | none | Keep the N most-played composites; the rest use a same-shape stand-in or the primary alone |
 | `fill_lost` | `false` | Follower notes the fold cannot place go to the fill pool |
 | `fill_cut` | `false` | Follower notes the fold would cut short go to the pool, whole notes only |
 | `bank` | `false` | The group's mixes share slots as sample banks, chosen with `9xx` |
+| `bank_drums` | `false` | A drum primary's lone hits play from the banks too, each drum a sound, so its drums' slots go to composites; implies `bank` |
 | `mix_note` | fastest layer's | Cap on the note a mix is made at (bytes vs treble) |
 | `mix_at` | — | `primary`: mix at the primary's own note so its loop survives |
 | `fm_on_chip` | `true` | FM primary + FM followers in a mix are rendered together on the chip |

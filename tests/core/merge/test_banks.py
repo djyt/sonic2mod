@@ -158,6 +158,27 @@ class MelodicBanks(unittest.TestCase):
         self.assertEqual(plan.bank_overflow, [2, 1])                    # notes of each bank left out
 
 
+class DrumBanks(unittest.TestCase):
+    def test_a_bank_of_drums_alone_is_kept_first(self):
+        # bank_drums: a drum hit's slot may be a composite's now, so its bank goes in before a
+        # bank with more notes
+        g = MergeGroup("FM3", ["FM4"], bank=True, bank_drums=True)
+        drum = Composite(-1, CompositeKey(MIX, 1, ()), g, base=24, banked=True, notes=2, entry=[-1, "a", 64, 0])
+        mix = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(18, -11, 1.0, None),)), g, base=24, banked=True,
+                        notes=9, entry=[-2, "b", 64, 0])
+        plan = MergePlan([g], composites={drum.key: drum, mix.key: mix})
+        plan.ticks = {("FM3", 0): -1, ("FM3", 8): -2}
+
+        class Cfg:
+            sample_list: ClassVar[list] = [drum.entry, mix.entry]
+        samples = {-1: _sample(bytes([50] * 3000)), -2: _sample(bytes([50] * 3000))}
+        dropped = pack_banks(plan, Cfg, ModFile(4), samples, [4], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK,
+                             raw={})
+        self.assertEqual([d['notes'] for d in dropped], [9])
+        self.assertEqual(drum.inst, 4)
+        self.assertEqual(plan.regions[("FM3", 0)], (0, 3000))
+
+
 class BankAlignment(unittest.TestCase):
     def test_a_short_raw_member_keeps_the_next_sound_on_its_boundary(self):
         g = MergeGroup("DAC", ["PSG3"], bank=True)

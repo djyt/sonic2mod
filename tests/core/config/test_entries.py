@@ -30,6 +30,11 @@ class ConfigLoading(unittest.TestCase):
         with self.assertRaises(ValueError):
             _parse_merge_group({"primary": "FM3", "followers": ["FM4"], "loop_min_ms": 0}, "t")
 
+    def test_bank_drums_banks_and_needs_no_followers(self):
+        g = _parse_merge_group({"primary": "FM3", "bank_drums": True}, "t")
+        self.assertEqual((g.followers, g.bank_drums, g.bank), ([], True, True))
+        self.assertFalse(_parse_merge_group({"primary": "DAC", "followers": ["PSG3"], "bank": True}, "t").bank_drums)
+
     def test_sample_settings_read_from_samples(self):
         import tempfile
 

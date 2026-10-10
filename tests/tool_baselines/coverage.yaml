@@ -1179,7 +1179,7 @@ frames_space_harrier_2:
   - --all
   - --configs
   - configs/space_harrier_2
-  commit: 78be73c-dirty
+  commit: d1df820-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1316,7 +1316,7 @@ frames_space_harrier_2:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     configs/space_harrier_2/98_motion.yaml: b4808f4ca830
     configs/space_harrier_2/99_name_entry.yaml: ab4a9d374c28
-    configs/space_harrier_2/rips.yaml: 5384d011ffdc
+    configs/space_harrier_2/rips.yaml: f288a1315090
     input/roms/Space Harrier II (World).md: 356beab7e21e
     reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
     reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
@@ -1649,7 +1649,7 @@ glitches_space_harrier_2:
   - --glitches
   - --configs
   - configs/space_harrier_2
-  commit: cd8d967-dirty
+  commit: d1df820-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1688,6 +1688,7 @@ glitches_space_harrier_2:
   - core/drivers/smpsz80/memory.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
+  - core/drivers/smpsz80/sh2/drums.py
   - core/drivers/smpsz80/sh2/envelopes.py
   - core/drivers/smpsz80/sh2/header.py
   - core/drivers/smpsz80/sh2/locate.py
@@ -1785,7 +1786,7 @@ glitches_space_harrier_2:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     configs/space_harrier_2/98_motion.yaml: b4808f4ca830
     configs/space_harrier_2/99_name_entry.yaml: ab4a9d374c28
-    configs/space_harrier_2/rips.yaml: 5384d011ffdc
+    configs/space_harrier_2/rips.yaml: f288a1315090
     input/roms/Space Harrier II (World).md: 356beab7e21e
     reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
     reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
@@ -6359,7 +6360,7 @@ read_space_harrier_2:
   argv:
   - tools/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 78be73c-dirty
+  commit: d1df820-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

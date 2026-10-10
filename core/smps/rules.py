@@ -9,7 +9,8 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
     envelopes  psg_envelopes    by smpsPSGvoice name (fTone_01 ...)
                pitch_envelopes  by SetPitchEnvelope's index (1 ...): a driver's frequency envelopes
     drums      dac_names        the drum track's bytes that play a sample, by name
-    timing     tempo_phase      frames the first TempoWait hold comes late (core/smps/tempo.py)
+    timing     update_clock     what runs the update: a frame's length in seconds (core/smps/clock.py)
+               tempo_phase      frames the first TempoWait hold comes late (core/smps/tempo.py)
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
                from Sonic 1's (track(kind); a kind left out reads as Sonic 1's)
@@ -21,6 +22,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .clock import VINT, UpdateClock
 from .driver_tables import PsgEnvelope
 from .pitch_envelope import PitchEnvelope
 
@@ -66,6 +68,7 @@ class PlaybackRules:
     key_run_out: int | None = None                # None: never
     tracks: Mapping[ChannelType, TrackRules] = field(default_factory=dict)
     pitch_envelopes: Mapping[int, PitchEnvelope] = field(default_factory=dict)
+    update_clock: UpdateClock = VINT
 
     def track(self, kind: ChannelType) -> TrackRules:
         """How a `kind` track reads; Sonic 1's where the driver states none."""

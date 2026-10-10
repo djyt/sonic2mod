@@ -2,6 +2,7 @@
 whatever driver or file the song came from.
 
     song.py           SmpsSong and its parts (the parser's output)
+    clock.py          what a driver's update runs on (V-int, Timer A); update_hz: a frame's rate
     effects.py        CoordFlag and its effects, one frozen class per flag: SetVoice(index) ...
     code.py           SmpsCode: a song's track code as ops; song_from_code, the one walk to events
     driver_track.py   DriverTrack: what a track's driver does to its effects and notes (TrackRules)
@@ -20,6 +21,7 @@ whatever driver or file the song came from.
 """
 
 from .asm_writer import write_asm
+from .clock import REGIONS, VINT, TimerA, UpdateClock, VInt, update_hz
 from .code import (
     TRACK_BYTES,
     Op,
@@ -144,6 +146,7 @@ __all__ = [
     "PSG_CHANNEL",
     "PSG_CHANNEL_NAMES",
     "PSG_TABLE_PITCH",
+    "REGIONS",
     "REGISTER_FIELDS",
     "REST",
     "SELECTED_SAMPLE",
@@ -151,6 +154,7 @@ __all__ = [
     "SMPS_DAC_NAMES",
     "SMPS_OP_TO_REG_OFFSET",
     "TRACK_BYTES",
+    "VINT",
     "AlterVol",
     "AlterVolumeStep",
     "Aspect",
@@ -206,8 +210,11 @@ __all__ = [
     "SongCode",
     "SongDiff",
     "TempoSegment",
+    "TimerA",
     "TrackRules",
     "TrackState",
+    "UpdateClock",
+    "VInt",
     "VoiceField",
     "VoiceRegister",
     "VolumeStep",
@@ -243,6 +250,7 @@ __all__ = [
     "tempo_schedule",
     "tick_at_frame",
     "track_byte",
+    "update_hz",
     "voice_field_from_macro",
     "write_asm",
 ]

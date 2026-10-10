@@ -4,10 +4,10 @@
 
 
 
-def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps=60):
+def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float = 60.0):
     """Derive MOD BPM from SMPS tempo parameters.
 
-    The SMPS driver runs on VBlank. A tempo counter decrements each frame;
+    The SMPS driver runs once a frame. A tempo counter decrements each frame;
     when it hits 0, TempoWait fires — resetting the counter to `modifier`
     and adding +1 to all tracks' DurationTimeout (cancelling that frame's
     decrement). Effective tick rate = fps * (modifier - 1) / modifier.
@@ -24,7 +24,7 @@ def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps=60):
         tempo_modifier: SMPS header modifier (TempoWait fires every N frames)
         ticks_per_row: SMPS ticks per MOD row
         speed: MOD speed (ticks per row in ProTracker)
-        fps: Frame rate — 60 for NTSC, 50 for PAL
+        fps: the driver's frames a second (core.smps.update_hz: 60 NTSC V-int)
 
     Returns:
         Integer BPM clamped to 32–255
@@ -35,14 +35,14 @@ def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps=60):
     return max(32, min(255, round(bpm)))
 
 
-def exact_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps=60) -> float:
+def exact_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float = 60.0) -> float:
     """derive_bpm() before rounding and clamping (nan when the tempo cannot be derived)."""
     if tempo_modifier <= 1 or tempo_divider < 1:
         return float("nan")
     return fps * (tempo_modifier - 1) * speed * 2.5 / (tempo_modifier * tempo_divider * ticks_per_row)
 
 
-def bpm_rounding_options(tempo_divider, tempo_modifier, ticks_per_row, fps=60,
+def bpm_rounding_options(tempo_divider, tempo_modifier, ticks_per_row, fps: float = 60.0,
                          speeds=(2, 3, 4, 5, 6, 7, 8)) -> list[dict]:
     """How far the whole-number MOD BPM is from the driver's tempo, for each candidate speed.
 

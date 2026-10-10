@@ -56,7 +56,7 @@ class Values(unittest.TestCase):
             _config(range_space="chips")
         with self.assertRaisesRegex(ValueError, "region"):
             _config(region="secam")
-        self.assertEqual((_config(region="PAL").fps, _config(range_space="Chip").range_space), (50, "chip"))
+        self.assertEqual((_config(region="PAL").region, _config(range_space="Chip").range_space), ("pal", "chip"))
 
 
 class Numbers(unittest.TestCase):

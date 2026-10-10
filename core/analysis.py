@@ -27,6 +27,7 @@ from .smps import (
     pan_is_hard,
     semitone_to_note_name,  # noqa: F401 — re-exported for analyze.py
     source_names,
+    update_hz,
 )
 
 # ---------------------------------------------------------------------------
@@ -207,10 +208,10 @@ def analyze_song(song: SmpsSong, file_path: str,
     tpr = config.ticks_per_row if config else 6.0
     spd = config.target_speed if config else 6
     bpm_ntsc = derive_bpm(
-        song.header.tempo_divider, song.header.tempo_modifier, tpr, spd, fps=60
+        song.header.tempo_divider, song.header.tempo_modifier, tpr, spd, fps=update_hz(song.rules, "ntsc")
     )
     bpm_pal = derive_bpm(
-        song.header.tempo_divider, song.header.tempo_modifier, tpr, spd, fps=50
+        song.header.tempo_divider, song.header.tempo_modifier, tpr, spd, fps=update_hz(song.rules, "pal")
     )
 
     # Build config channel lookup if config provided

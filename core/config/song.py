@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..mod import ModFile
-from ..smps import SmpsSong
+from ..smps import REGIONS, SmpsSong
 from ..source import DacSample, LiftOptions, SmpsDriver, is_rom_path, is_vgm_path, read_dac, read_song
 from .entries import (
     TWIN_MODES,
@@ -32,18 +32,6 @@ _KEYS = frozenset({
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
 
-# Console region (`region:`) -> V-int frames a second: what the tempo, note fills and modulation count in
-REGION_FPS = {"ntsc": 60, "pal": 50}
-
-
-def region_fps(region: str) -> int:
-    """V-int frames a second for a `region:` value (ntsc | pal, any case)."""
-    fps = REGION_FPS.get(str(region).lower())
-    if fps is None:
-        raise ValueError(f"region must be one of {', '.join(REGION_FPS)} (got {region!r})")
-    return fps
-
-
 def variant_output_file(path: str, variant: str) -> str:
     """Where a variant writes when it states no output_file: <stem>_<variant><ext>."""
     stem, ext = os.path.splitext(path)
@@ -64,8 +52,8 @@ def _range_space(data: dict, filepath) -> str:
 def _region(data: dict, filepath) -> str:
     """`region:`, lower-cased; an unknown one is an error."""
     region = str(data.get("region", "ntsc")).lower()
-    if region not in REGION_FPS:
-        raise ValueError(f"{filepath}: region must be one of {', '.join(REGION_FPS)} (got {data['region']!r})")
+    if region not in REGIONS:
+        raise ValueError(f"{filepath}: region must be one of {', '.join(REGIONS)} (got {data['region']!r})")
     return region
 
 
@@ -97,7 +85,7 @@ class ConversionConfig:
     # free effect slot.
     num_mod_channels: int | None = None
     auto_bpm: bool = False        # Derive BPM from SMPS tempo header
-    region: str = "ntsc"          # "ntsc" (60 Hz) or "pal" (50 Hz)
+    region: str = "ntsc"          # the console: "ntsc" or "pal" (its frame rate: core.smps.update_hz)
     # What voice_map / psg_voice_map low/high (and root's anchor) are compared with:
     #   "source" - the SMPS note byte (default; what every config before Credits uses)
     #   "chip"   - the real pitch the chip plays: byte + pitch_offset + smpsChangeTransposition
@@ -244,11 +232,6 @@ class ConversionConfig:
         config._read_source(data)
         config._data = dict(data)
         return config
-
-    @property
-    def fps(self) -> int:
-        """V-int frames a second of the config's region."""
-        return region_fps(self.region)
 
     @property
     def is_minimal(self) -> bool:

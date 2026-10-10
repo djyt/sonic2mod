@@ -48,7 +48,6 @@ from ..config import (
     bpm_rounding_options,
     find_settings,
     load_settings,
-    region_fps,
     variant_output_file,
 )
 from ..files import write_shared
@@ -65,6 +64,7 @@ from ..smps import (
     psg_voice_name,
     source_map,
     synth_note_name,
+    update_hz,
 )
 from .driver_state import walk_channel
 
@@ -301,7 +301,7 @@ class _Deriver:
         h = self._song.header
         divider = max(h.tempo_divider, 1)
         tpr = grid // divider if grid % divider == 0 else grid / divider
-        fps = region_fps(self._stated.get("region", "ntsc"))
+        fps = update_hz(self._song.rules, self._stated.get("region", "ntsc"))
         options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps)
         if not options or abs(options[0]["error_pct"]) > _BPM_CLOSE:
             options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps, speeds=_WIDE_SPEEDS) or options

@@ -11,7 +11,6 @@ from typing import NamedTuple
 
 from ..audio import db_to_gain, power_to_db
 from ..chips import TL_STEP_DB
-from ..config import region_fps
 from ..mod import MOD_NOTE_MAP
 from ..plan import FmLayer, walk_channel
 from ..smps import (
@@ -19,6 +18,7 @@ from ..smps import (
     CoordFlag,
     NoteFill,
     source_map,
+    update_hz,
 )
 
 PAN_TL_STEPS = 4      # a hard-panned layer: the pan law's -3 dB as carrier TL steps (0.75 dB each)
@@ -74,7 +74,8 @@ def channel_notes(song, config, source: str, pan_law_db: float,
     note-on ticks), which is what a chord is folded on.
     """
     chan_cfg = next(c for c in config.channels if c.source == source)
-    walker = _NoteWalk(config, source_map(song)[source], pan_law_db, sample_secs or {}, tick_secs, grace)
+    fps = update_hz(song.rules, getattr(config, "region", "ntsc"))
+    walker = _NoteWalk(config, source_map(song)[source], fps, pan_law_db, sample_secs or {}, tick_secs, grace)
     plan, config.merge_plan = config.merge_plan, None
     try:
         walker.walk(chan_cfg)
@@ -87,7 +88,7 @@ class _NoteWalk:
     """channel_notes' walk: the modulation and note fill in force, and the note a continuation
     or a grace note's target extends."""
 
-    def __init__(self, config, channel, pan_law_db: float, sample_secs: dict[int, float], tick_secs,
+    def __init__(self, config, channel, fps: float, pan_law_db: float, sample_secs: dict[int, float], tick_secs,
                  grace: int) -> None:
         self._config = config
         self._channel = channel
@@ -97,7 +98,7 @@ class _NoteWalk:
         self._tick_secs = tick_secs
         self._grace = grace
         self._dac_map = {d.name: d for d in config.dac_samples}
-        self._fps = float(region_fps(getattr(config, "region", "ntsc")))
+        self._fps = fps                                   # the driver's frames a second
         self.notes: dict[int, NoteOn] = {}
         self.rests: list[int] = []
         self._vib = False

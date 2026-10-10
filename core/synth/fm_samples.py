@@ -40,11 +40,11 @@ from ..chips import MD_PSG_CLOCK, fm_frequency_hz
 from ..chips.sn76489.build import get_lib_path as get_psg_lib_path
 from ..chips.ym2612 import OPN2
 from ..chips.ym2612.build import get_lib_path
-from ..config import ConversionConfig, SynthesisSettings, region_fps
+from ..config import ConversionConfig, SynthesisSettings
 from ..mod import max_sustain_secs
 from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from ..render_cache import RenderCache, code_salt
-from ..smps import FmDrum, PitchEnvelope, SmpsSong, SmpsVoice
+from ..smps import FmDrum, PitchEnvelope, SmpsSong, SmpsVoice, update_hz
 from . import psg_render
 from .fm_render import note_to_fnum_block, note_to_freq, render_frames, render_layers
 from .psg_render import render_psg_frames
@@ -126,6 +126,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
 
     jobs: list[_RenderJob] = []
     envelopes = song.rules.pitch_envelopes
+    frame_hz = update_hz(song.rules, config.region)
     for spec in [*cat.instruments.values(), *extra]:
         base_tl = tl_offsets.get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
@@ -137,7 +138,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
                   f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
         stepped = tuple(envelopes[lay.pitch_envelope] if lay.pitch_envelope else None for lay in spec.layers)
         jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock),
-                               stepped if any(stepped) else (), region_fps(config.region)))
+                               stepped if any(stepped) else (), frame_hz))
     return jobs
 
 

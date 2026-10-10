@@ -117,7 +117,7 @@ BPM = fps × (m − 1) × speed × 2.5 / (m × divider × ticks_per_row)        
 | Special Stage | 2 | 8 | 6 | 2 | 196.875 → 197 |
 
 `auto_bpm: true` computes it (`derive_bpm`: rounded, clamped to 32–255; 150 when the modifier is
-≤ 1); `region` picks the fps.  Otherwise `target_bpm` is used as written.  The speed `Fxx` is
+≤ 1) at the driver's frame rate (`update_hz`: its update clock on the `region`'s console).  Otherwise `target_bpm` is used as written.  The speed `Fxx` is
 written only when `target_speed` is not 6.
 
 **The BPM is a whole number.**  A rounded BPM drifts against the hardware: Special Stage at speed 3

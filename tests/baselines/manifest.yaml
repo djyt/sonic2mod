@@ -200,18 +200,18 @@ sh2_game_over:
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_harrier_saga:
-  commit: 1acd2ab-dirty
+  commit: a7b1557-dirty
   config: ef99a6f6b879
-  date: '2026-10-10'
-  settings: febf8cd9dd04
-sh2_machine_henge:
-  commit: 7cfe533-dirty
-  config: 94c9ea98e379
   date: '2026-10-10'
   settings: febf8cd9dd04
 sh2_motion:
   commit: 7cfe533-dirty
   config: 0acc01d046ad
+  date: '2026-10-10'
+  settings: febf8cd9dd04
+sh2_winners_flight:
+  commit: a7b1557-dirty
+  config: 38bbf08c007c
   date: '2026-10-10'
   settings: febf8cd9dd04
 special_stage:

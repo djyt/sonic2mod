@@ -1334,14 +1334,6 @@ pitch_sh2_harrier_saga:
     reference/vgz/space_harrier_2/02 - Harrier Saga (Stage Theme).vgz: 060885c9eba1
     tests/baselines/sh2_harrier_saga_baseline.mod: 61c4fd242549
     tests/settings.yaml: c9fe3405c560
-pitch_sh2_machine_henge:
-  commit: 143e94c-dirty
-  date: '2026-10-10'
-  inputs:
-    configs/space_harrier_2/8f_machine_henge.yaml: a0fb45673ccc
-    reference/vgz/space_harrier_2/10 - Machine Henge (Boss 8 - Neo Tomos).vgz: 35ea9c762bdb
-    tests/baselines/sh2_machine_henge_baseline.mod: ac400bd20056
-    tests/settings.yaml: c9fe3405c560
 pitch_sh2_motion:
   commit: 143e94c-dirty
   date: '2026-10-10'
@@ -1349,6 +1341,14 @@ pitch_sh2_motion:
     configs/space_harrier_2/98_motion.yaml: 31261d44d549
     reference/vgz/space_harrier_2/01 - Motion (Title Screen).vgz: 4ac916a8ceaf
     tests/baselines/sh2_motion_baseline.mod: 9bc42d31902f
+    tests/settings.yaml: c9fe3405c560
+pitch_sh2_winners_flight:
+  commit: a7b1557-dirty
+  date: '2026-10-10'
+  inputs:
+    configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
+    reference/vgz/space_harrier_2/17 - Winner's Flight (Bonus Stage).vgz: b8da6e9bcf5a
+    tests/baselines/sh2_winners_flight_baseline.mod: 0be5da5f0701
     tests/settings.yaml: c9fe3405c560
 pitch_special_stage:
   commit: d0bd6d8-dirty

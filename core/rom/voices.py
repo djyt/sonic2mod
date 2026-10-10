@@ -10,6 +10,9 @@ SmpsVoice keeps each field's four values in SMPS2ASM's operand order (SMPS_OP_TO
 slots +C +4 +8 +0), so each group is reordered from the layout's.  Each field is read as the chip reads its register: the bits no
 field owns (SMPS2ASM's AM at bit 5, TL's bit 7 on the carriers, an AR or D2R written past its
 width in the asm) are not the voice.
+
+A driver whose voices are no such records reads them itself (SmpsVariant.voice_reader); bank_voices
+asks it first.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from __future__ import annotations
 from ..chips import CARRIER_OFFSETS_BY_ALG
 from ..smps import REGISTER_FIELDS, SMPS_OP_TO_REG_OFFSET, SetVoice, SmpsCode, SmpsVoice, VoiceField
 from .memory import SoundMemory
-from .variant import OPERATORS, VoiceLayout
+from .variant import OPERATORS, SmpsVariant, VoiceLayout
 
 
 def voices_used(code: SmpsCode) -> int:
@@ -25,6 +28,14 @@ def voices_used(code: SmpsCode) -> int:
     one.  The bank stores no count."""
     used = [op.effect.index for op in code.ops if isinstance(op.effect, SetVoice)]
     return max(used, default=-1) + 1
+
+
+def bank_voices(memory: SoundMemory, address: int, count: int, variant: SmpsVariant) -> list[SmpsVoice]:
+    """`count` voices of the bank at `address`: its driver's own reader's where it has one, else
+    records of its VoiceLayout."""
+    if variant.voice_reader:
+        return variant.voice_reader(memory, address, count)
+    return read_voices(memory, address, count, variant.voice_layout)
 
 
 def read_voices(memory: SoundMemory, address: int, count: int, layout: VoiceLayout) -> list[SmpsVoice]:

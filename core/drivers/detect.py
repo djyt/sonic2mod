@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from core.rom.header import read_music_header
+from core.rom.header import music_header
 from core.rom.image import RomError, RomImage
 from core.rom.tracks import decode_tracks
 from core.rom.variant import SmpsVariant, SoundIndex
@@ -41,7 +41,7 @@ def first_failure(rom: RomImage, index: SoundIndex, variant: SmpsVariant) -> str
     memory = variant.memory(rom)
     for sound_id, address in sorted(index.music.items()):
         try:
-            decode_tracks(memory, read_music_header(memory, address, variant.header).tracks, variant)
+            decode_tracks(memory, music_header(memory, address, variant).tracks, variant)
         except RomError as e:
             return f"${sound_id:02X}: {e}"
     return None

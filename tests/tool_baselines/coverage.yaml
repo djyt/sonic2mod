@@ -7557,6 +7557,69 @@ read_moonwalker:
   - tools/song_dump.py
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
+read_outrun:
+  argv:
+  - tools/song_dump.py
+  - input/roms/OutRun (USA, Europe).md
+  commit: 684f035-dirty
+  files:
+  - core/__init__.py
+  - core/chips/__init__.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/reference.py
+  - core/drivers/registry.py
+  - core/drivers/smpsz80/__init__.py
+  - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/outrun/__init__.py
+  - core/drivers/smpsz80/outrun/layout.py
+  - core/drivers/smpsz80/outrun/locate.py
+  - core/drivers/smpsz80/outrun/variant.py
+  - core/drivers/smpsz80/pitch_envelopes.py
+  - core/drivers/smpsz80/program.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - tools/song_dump.py
+  inputs:
+    input/roms/OutRun (USA, Europe).md: 231f52844398
 read_sonic1_asm_music:
   argv:
   - tools/song_dump.py
@@ -7924,7 +7987,7 @@ read_space_harrier_2:
   argv:
   - tools/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 4afd5d2-dirty
+  commit: 684f035-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -7939,6 +8002,7 @@ read_space_harrier_2:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/pitch_envelopes.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
   - core/drivers/smpsz80/sh2/drums.py
@@ -7957,6 +8021,7 @@ read_space_harrier_2:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py

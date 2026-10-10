@@ -1408,6 +1408,11 @@ read_moonwalker:
   date: '2026-10-10'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
+read_outrun:
+  commit: 684f035
+  date: '2026-10-10'
+  inputs:
+    input/roms/OutRun (USA, Europe).md: 231f52844398
 read_sonic1_asm_music:
   commit: 32383b7
   date: '2026-10-10'
@@ -1518,7 +1523,7 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 4afd5d2
+  commit: 684f035
   date: '2026-10-10'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e

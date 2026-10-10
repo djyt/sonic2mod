@@ -8,7 +8,7 @@ analyze_01_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -64,7 +64,7 @@ analyze_01_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -118,7 +118,7 @@ analyze_01_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -171,7 +171,7 @@ analyze_01_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -226,7 +226,7 @@ analyze_02_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -282,7 +282,7 @@ analyze_02_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -336,7 +336,7 @@ analyze_02_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -389,7 +389,7 @@ analyze_02_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -444,7 +444,7 @@ analyze_03_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -500,7 +500,7 @@ analyze_03_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -554,7 +554,7 @@ analyze_03_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -607,7 +607,7 @@ analyze_03_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -662,7 +662,7 @@ analyze_04_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -718,7 +718,7 @@ analyze_04_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -772,7 +772,7 @@ analyze_04_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -825,7 +825,7 @@ analyze_04_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -880,7 +880,7 @@ analyze_05_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -936,7 +936,7 @@ analyze_05_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -990,7 +990,7 @@ analyze_05_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1043,7 +1043,7 @@ analyze_05_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1098,7 +1098,7 @@ analyze_06_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1154,7 +1154,7 @@ analyze_06_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1208,7 +1208,7 @@ analyze_06_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1261,7 +1261,7 @@ analyze_06_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1316,7 +1316,7 @@ analyze_07_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1372,7 +1372,7 @@ analyze_07_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1426,7 +1426,7 @@ analyze_07_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1479,7 +1479,7 @@ analyze_07_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1534,7 +1534,7 @@ analyze_08_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1590,7 +1590,7 @@ analyze_08_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1644,7 +1644,7 @@ analyze_08_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1697,7 +1697,7 @@ analyze_08_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1752,7 +1752,7 @@ analyze_09_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1808,7 +1808,7 @@ analyze_09_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1862,7 +1862,7 @@ analyze_09_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1915,7 +1915,7 @@ analyze_09_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -1970,7 +1970,7 @@ analyze_10_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2026,7 +2026,7 @@ analyze_10_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2080,7 +2080,7 @@ analyze_10_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2133,7 +2133,7 @@ analyze_10_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2188,7 +2188,7 @@ analyze_11_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2244,7 +2244,7 @@ analyze_11_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2298,7 +2298,7 @@ analyze_11_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2351,7 +2351,7 @@ analyze_11_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2406,7 +2406,7 @@ analyze_12_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2462,7 +2462,7 @@ analyze_12_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2516,7 +2516,7 @@ analyze_12_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2569,7 +2569,7 @@ analyze_12_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2624,7 +2624,7 @@ analyze_13_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2680,7 +2680,7 @@ analyze_13_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2734,7 +2734,7 @@ analyze_13_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2787,7 +2787,7 @@ analyze_13_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2842,7 +2842,7 @@ analyze_14_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2898,7 +2898,7 @@ analyze_14_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -2952,7 +2952,7 @@ analyze_14_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3005,7 +3005,7 @@ analyze_14_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3060,7 +3060,7 @@ analyze_15_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3116,7 +3116,7 @@ analyze_15_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3170,7 +3170,7 @@ analyze_15_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3223,7 +3223,7 @@ analyze_15_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3278,7 +3278,7 @@ analyze_16_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3334,7 +3334,7 @@ analyze_16_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3388,7 +3388,7 @@ analyze_16_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3441,7 +3441,7 @@ analyze_16_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3496,7 +3496,7 @@ analyze_17_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3552,7 +3552,7 @@ analyze_17_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3606,7 +3606,7 @@ analyze_17_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3659,7 +3659,7 @@ analyze_17_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3714,7 +3714,7 @@ analyze_18_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3770,7 +3770,7 @@ analyze_18_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3824,7 +3824,7 @@ analyze_18_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3877,7 +3877,7 @@ analyze_18_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3932,7 +3932,7 @@ analyze_19_frames:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -3988,7 +3988,7 @@ analyze_19_psg0:
   - '0'
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4042,7 +4042,7 @@ analyze_19_rows:
   - all
   - --max-rows
   - '0'
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4095,7 +4095,7 @@ analyze_19_volumes:
   - --chip
   - all
   - --volumes
-  commit: 6512f6f-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4147,7 +4147,7 @@ frames_golden_axe:
   - --all
   - --configs
   - configs/golden_axe
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4226,6 +4226,7 @@ frames_golden_axe:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -4290,7 +4291,7 @@ frames_streets_of_rage:
   - --all
   - --configs
   - configs/streets_of_rage
-  commit: 5adc013-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4403,22 +4404,22 @@ frames_streets_of_rage:
   - core/vgm/reader.py
   - tools/vgm_frames.py
   inputs:
-    configs/streets_of_rage/81_fighting_in_the_street.yaml: e40200298744
-    configs/streets_of_rage/82_game_over.yaml: 5bd8ff7f22ca
-    configs/streets_of_rage/83_the_street_of_rage.yaml: 4701b0071509
-    configs/streets_of_rage/84_moon_beach.yaml: 709c9dfb248a
-    configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 2713424a8cb8
-    configs/streets_of_rage/86_violent_breathing.yaml: b18ea27e7436
-    configs/streets_of_rage/87_attack_the_barbarian.yaml: 97ba3a5b1d06
-    configs/streets_of_rage/88_the_last_soul.yaml: 8cbb4a4bf18b
-    configs/streets_of_rage/89_stealthy_steps.yaml: a8a1f9854d2f
-    configs/streets_of_rage/8b_dilapidated_town.yaml: 6e16f381284c
-    configs/streets_of_rage/8c_keep_the_groovin.yaml: 6e574670502d
-    configs/streets_of_rage/8d_level_clear.yaml: aeaf6d0ed6e0
-    configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: 42c2da49286c
-    configs/streets_of_rage/90_big_boss.yaml: fdbda61a6004
-    configs/streets_of_rage/91_good_ending.yaml: 6094f75d7844
-    configs/streets_of_rage/rips.yaml: 40e91740b461
+    configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be
+    configs/streets_of_rage/82_game_over.yaml: a8f4c13500eb
+    configs/streets_of_rage/83_the_street_of_rage.yaml: dcc414b998cf
+    configs/streets_of_rage/84_moon_beach.yaml: cbcedef7ed4a
+    configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 734ae3d10d09
+    configs/streets_of_rage/86_violent_breathing.yaml: 8d63f58fbbbe
+    configs/streets_of_rage/87_attack_the_barbarian.yaml: d0afbec92e50
+    configs/streets_of_rage/88_the_last_soul.yaml: 51eebbec3621
+    configs/streets_of_rage/89_stealthy_steps.yaml: 367584f1ba8e
+    configs/streets_of_rage/8b_dilapidated_town.yaml: 26f2d0150aa1
+    configs/streets_of_rage/8c_keep_the_groovin.yaml: a74f4536d900
+    configs/streets_of_rage/8d_level_clear.yaml: 93c02f6ec528
+    configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: d4b14e740c1d
+    configs/streets_of_rage/90_big_boss.yaml: 187efaff3a7b
+    configs/streets_of_rage/91_good_ending.yaml: 52c7c54466a2
+    configs/streets_of_rage/rips.yaml: b049c4668da6
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
     reference/vgz/streets_of_rage_1/01 - The Street of Rage (1).vgz: 030883819fdb
     reference/vgz/streets_of_rage_1/01 - The Street of Rage.vgz: 030883819fdb
@@ -4439,12 +4440,12 @@ frames_streets_of_rage:
 lift_02:
   argv:
   - tools/vgm_lift.py
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --aspects
   - all
   - --diffs
   - '4'
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4525,6 +4526,7 @@ lift_02:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -4555,12 +4557,12 @@ lift_02:
   - core/vgm/reader.py
   - tools/vgm_lift.py
   inputs:
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 lift_all:
   argv:
   - tools/vgm_lift.py
   - --all
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4641,6 +4643,7 @@ lift_all:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -4671,49 +4674,49 @@ lift_all:
   - core/vgm/reader.py
   - tools/vgm_lift.py
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    configs/03_marble_zone.yaml: d8dd716ce0da
-    configs/04_spring_yard_zone.yaml: ec060b413733
-    configs/05_lab_zone.yaml: af4485b39d54
-    configs/06_star_light_zone.yaml: b692e0d08918
-    configs/07_scrap_brain_zone.yaml: 331bee95f256
-    configs/08_special_stage.yaml: d2d743df745a
-    configs/09_robotnik.yaml: f20a741e2978
-    configs/10_final_zone.yaml: 442bc2182d32
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    configs/12_ending_theme.yaml: fbca82b79aac
-    configs/13_credits.yaml: fd4e69be5011
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    configs/15_1up.yaml: 6474b8f799e1
-    configs/16_chaos_emerald.yaml: 5c39e0349d2c
-    configs/17_drowning.yaml: 82ba0527a820
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    configs/19_game_over.yaml: 5a82cd1b1034
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
+    configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
+    configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
+    configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
+    configs/sonic_1/08_special_stage.yaml: 986d25d7793a
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    configs/sonic_1/10_final_zone.yaml: c8329f9162cb
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
+    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
+    configs/sonic_1/17_drowning.yaml: 099aadef0ccc
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 lift_moonwalker_88_round_clear:
   argv:
   - tools/vgm_lift.py
   - configs\moonwalker\88_round_clear.yaml
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4794,6 +4797,7 @@ lift_moonwalker_88_round_clear:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -4885,7 +4889,7 @@ lift_moonwalker_all:
   - --all
   - --configs
   - configs\moonwalker
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -4966,6 +4970,7 @@ lift_moonwalker_all:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5054,14 +5059,14 @@ lift_moonwalker_all:
 pitch_chaos_emerald:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/16_chaos_emerald.yaml
-  - reference\vgz\16 - Chaos Emerald.vgz
+  - configs/sonic_1/16_chaos_emerald.yaml
+  - reference\vgz\sonic_1\16 - Chaos Emerald.vgz
   - --mod
   - tests/baselines/chaos_emerald_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5142,6 +5147,7 @@ pitch_chaos_emerald:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5172,21 +5178,21 @@ pitch_chaos_emerald:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/16_chaos_emerald.yaml: 5c39e0349d2c
-    reference/vgz/16 - Chaos Emerald.vgz: be334122a641
+    configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
+    reference/vgz/sonic_1/16 - Chaos Emerald.vgz: be334122a641
     tests/baselines/chaos_emerald_baseline.mod: 805db83fe9b8
     tests/settings.yaml: a79a8ba763a3
 pitch_continue_screen:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/18_continue_screen.yaml
-  - reference\vgz\18 - Continue.vgz
+  - configs/sonic_1/18_continue_screen.yaml
+  - reference\vgz\sonic_1\18 - Continue.vgz
   - --mod
   - tests/baselines/continue_screen_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5267,6 +5273,7 @@ pitch_continue_screen:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5297,15 +5304,15 @@ pitch_continue_screen:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     tests/baselines/continue_screen_baseline.mod: 8009a4e32373
     tests/settings.yaml: a79a8ba763a3
 pitch_continue_screen_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/18_continue_screen.yaml
-  - reference\vgz\18 - Continue.vgz
+  - configs/sonic_1/18_continue_screen.yaml
+  - reference\vgz\sonic_1\18 - Continue.vgz
   - --mod
   - tests/baselines/continue_screen_lofi_baseline.mod
   - --settings
@@ -5313,7 +5320,7 @@ pitch_continue_screen_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5394,6 +5401,7 @@ pitch_continue_screen_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5424,21 +5432,21 @@ pitch_continue_screen_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/18_continue_screen.yaml: c030bfe88cfe
-    reference/vgz/18 - Continue.vgz: bc4a60482c1e
+    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     tests/baselines/continue_screen_lofi_baseline.mod: 91f43dbb2b74
     tests/settings.yaml: a79a8ba763a3
 pitch_credits:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/13_credits.yaml
-  - reference\vgz\13 - Staff Roll.vgz
+  - configs/sonic_1/13_credits.yaml
+  - reference\vgz\sonic_1\13 - Staff Roll.vgz
   - --mod
   - tests/baselines/credits_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5519,6 +5527,7 @@ pitch_credits:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5549,21 +5558,21 @@ pitch_credits:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/13_credits.yaml: fd4e69be5011
-    reference/vgz/13 - Staff Roll.vgz: 0c03c5a787bb
+    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
     tests/baselines/credits_baseline.mod: 1135bbba38b2
     tests/settings.yaml: a79a8ba763a3
 pitch_drowning:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/17_drowning.yaml
-  - reference\vgz\17 - Drowning.vgz
+  - configs/sonic_1/17_drowning.yaml
+  - reference\vgz\sonic_1\17 - Drowning.vgz
   - --mod
   - tests/baselines/drowning_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5644,6 +5653,7 @@ pitch_drowning:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5674,21 +5684,21 @@ pitch_drowning:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/17_drowning.yaml: 82ba0527a820
-    reference/vgz/17 - Drowning.vgz: 9e6de56087b0
+    configs/sonic_1/17_drowning.yaml: 099aadef0ccc
+    reference/vgz/sonic_1/17 - Drowning.vgz: 9e6de56087b0
     tests/baselines/drowning_baseline.mod: e7a025e16221
     tests/settings.yaml: a79a8ba763a3
 pitch_ending_theme:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/12_ending_theme.yaml
-  - reference\vgz\12 - Ending Theme.vgz
+  - configs/sonic_1/12_ending_theme.yaml
+  - reference\vgz\sonic_1\12 - Ending Theme.vgz
   - --mod
   - tests/baselines/ending_theme_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5769,6 +5779,7 @@ pitch_ending_theme:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5799,21 +5810,21 @@ pitch_ending_theme:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/12_ending_theme.yaml: fbca82b79aac
-    reference/vgz/12 - Ending Theme.vgz: 2e46ef36c30d
+    configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
+    reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
     tests/baselines/ending_theme_baseline.mod: 384ab8e6e655
     tests/settings.yaml: a79a8ba763a3
 pitch_extra_life:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/15_1up.yaml
-  - reference\vgz\15 - 1-up.vgz
+  - configs/sonic_1/15_1up.yaml
+  - reference\vgz\sonic_1\15 - 1-up.vgz
   - --mod
   - tests/baselines/extra_life_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -5894,6 +5905,7 @@ pitch_extra_life:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -5924,15 +5936,15 @@ pitch_extra_life:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
     tests/baselines/extra_life_baseline.mod: c147d9d7b299
     tests/settings.yaml: a79a8ba763a3
 pitch_extra_life_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/15_1up.yaml
-  - reference\vgz\15 - 1-up.vgz
+  - configs/sonic_1/15_1up.yaml
+  - reference\vgz\sonic_1\15 - 1-up.vgz
   - --mod
   - tests/baselines/extra_life_lofi_baseline.mod
   - --settings
@@ -5940,7 +5952,7 @@ pitch_extra_life_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6021,6 +6033,7 @@ pitch_extra_life_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6051,21 +6064,21 @@ pitch_extra_life_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/15_1up.yaml: 6474b8f799e1
-    reference/vgz/15 - 1-up.vgz: ea16fa64631d
+    configs/sonic_1/15_1up.yaml: bef552b8a959
+    reference/vgz/sonic_1/15 - 1-up.vgz: ea16fa64631d
     tests/baselines/extra_life_lofi_baseline.mod: 2c7971b081fd
     tests/settings.yaml: a79a8ba763a3
 pitch_final_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/10_final_zone.yaml
-  - reference\vgz\10 - Final Zone.vgz
+  - configs/sonic_1/10_final_zone.yaml
+  - reference\vgz\sonic_1\10 - Final Zone.vgz
   - --mod
   - tests/baselines/final_zone_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6146,6 +6159,7 @@ pitch_final_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6176,21 +6190,21 @@ pitch_final_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/10_final_zone.yaml: 442bc2182d32
-    reference/vgz/10 - Final Zone.vgz: 032195e2d42b
+    configs/sonic_1/10_final_zone.yaml: c8329f9162cb
+    reference/vgz/sonic_1/10 - Final Zone.vgz: 032195e2d42b
     tests/baselines/final_zone_baseline.mod: c3297864e90f
     tests/settings.yaml: a79a8ba763a3
 pitch_game_over:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/19_game_over.yaml
-  - reference\vgz\19 - Game Over.vgz
+  - configs/sonic_1/19_game_over.yaml
+  - reference\vgz\sonic_1\19 - Game Over.vgz
   - --mod
   - tests/baselines/game_over_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6271,6 +6285,7 @@ pitch_game_over:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6301,15 +6316,15 @@ pitch_game_over:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
     tests/baselines/game_over_baseline.mod: fc2d20ea2779
     tests/settings.yaml: a79a8ba763a3
 pitch_game_over_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/19_game_over.yaml
-  - reference\vgz\19 - Game Over.vgz
+  - configs/sonic_1/19_game_over.yaml
+  - reference\vgz\sonic_1\19 - Game Over.vgz
   - --mod
   - tests/baselines/game_over_lofi_baseline.mod
   - --settings
@@ -6317,7 +6332,7 @@ pitch_game_over_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6398,6 +6413,7 @@ pitch_game_over_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6428,15 +6444,15 @@ pitch_game_over_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/19_game_over.yaml: 5a82cd1b1034
-    reference/vgz/19 - Game Over.vgz: a6a8d7a60226
+    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
     tests/baselines/game_over_lofi_baseline.mod: fc6c8d40c8be
     tests/settings.yaml: a79a8ba763a3
 pitch_ghz_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/02_green_hill_zone.yaml
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - configs/sonic_1/02_green_hill_zone.yaml
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --mod
   - tests/baselines/ghz_lofi_baseline.mod
   - --settings
@@ -6444,7 +6460,7 @@ pitch_ghz_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6525,6 +6541,7 @@ pitch_ghz_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6555,21 +6572,21 @@ pitch_ghz_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
     tests/baselines/ghz_lofi_baseline.mod: 316901dc8b9c
     tests/settings.yaml: a79a8ba763a3
 pitch_green_hill_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/02_green_hill_zone.yaml
-  - reference\vgz\02 - Green Hill Zone.vgz
+  - configs/sonic_1/02_green_hill_zone.yaml
+  - reference\vgz\sonic_1\02 - Green Hill Zone.vgz
   - --mod
   - tests/baselines/ghz_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6650,6 +6667,7 @@ pitch_green_hill_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6680,21 +6698,21 @@ pitch_green_hill_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/02_green_hill_zone.yaml: 3a8821bf14a2
-    reference/vgz/02 - Green Hill Zone.vgz: febd2f055ce1
+    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
     tests/baselines/ghz_baseline.mod: 65031fe23adf
     tests/settings.yaml: a79a8ba763a3
 pitch_invincibility:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/14_invincibility.yaml
-  - reference\vgz\14 - Invincibility.vgz
+  - configs/sonic_1/14_invincibility.yaml
+  - reference\vgz\sonic_1\14 - Invincibility.vgz
   - --mod
   - tests/baselines/invincibility_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6775,6 +6793,7 @@ pitch_invincibility:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6805,15 +6824,15 @@ pitch_invincibility:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
     tests/baselines/invincibility_baseline.mod: 2bab90b7732a
     tests/settings.yaml: a79a8ba763a3
 pitch_invincibility_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/14_invincibility.yaml
-  - reference\vgz\14 - Invincibility.vgz
+  - configs/sonic_1/14_invincibility.yaml
+  - reference\vgz\sonic_1\14 - Invincibility.vgz
   - --mod
   - tests/baselines/invincibility_lofi_baseline.mod
   - --settings
@@ -6821,7 +6840,7 @@ pitch_invincibility_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -6902,6 +6921,7 @@ pitch_invincibility_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -6932,21 +6952,21 @@ pitch_invincibility_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/14_invincibility.yaml: 0d6b27c1df4a
-    reference/vgz/14 - Invincibility.vgz: fa07f63cdc17
+    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    reference/vgz/sonic_1/14 - Invincibility.vgz: fa07f63cdc17
     tests/baselines/invincibility_lofi_baseline.mod: 1f5f8f71b55a
     tests/settings.yaml: a79a8ba763a3
 pitch_lab_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/05_lab_zone.yaml
-  - reference\vgz\05 - Labyrinth Zone.vgz
+  - configs/sonic_1/05_lab_zone.yaml
+  - reference\vgz\sonic_1\05 - Labyrinth Zone.vgz
   - --mod
   - tests/baselines/lab_zone_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7027,6 +7047,7 @@ pitch_lab_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7057,21 +7078,21 @@ pitch_lab_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/05_lab_zone.yaml: af4485b39d54
-    reference/vgz/05 - Labyrinth Zone.vgz: b7a213ec0819
+    configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
+    reference/vgz/sonic_1/05 - Labyrinth Zone.vgz: b7a213ec0819
     tests/baselines/lab_zone_baseline.mod: 12e4b32981e0
     tests/settings.yaml: a79a8ba763a3
 pitch_marble_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/03_marble_zone.yaml
-  - reference\vgz\03 - Marble Zone.vgz
+  - configs/sonic_1/03_marble_zone.yaml
+  - reference\vgz\sonic_1\03 - Marble Zone.vgz
   - --mod
   - tests/baselines/marble_zone_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7152,6 +7173,7 @@ pitch_marble_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7182,21 +7204,21 @@ pitch_marble_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/03_marble_zone.yaml: d8dd716ce0da
-    reference/vgz/03 - Marble Zone.vgz: f5de0f09459f
+    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
     tests/baselines/marble_zone_baseline.mod: 24d6e748f5b8
     tests/settings.yaml: a79a8ba763a3
 pitch_robotnik:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/09_robotnik.yaml
-  - reference\vgz\09 - Robotnik.vgz
+  - configs/sonic_1/09_robotnik.yaml
+  - reference\vgz\sonic_1\09 - Robotnik.vgz
   - --mod
   - tests/baselines/robotnik_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7277,6 +7299,7 @@ pitch_robotnik:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7307,15 +7330,15 @@ pitch_robotnik:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
     tests/baselines/robotnik_baseline.mod: d7b43ca04dcc
     tests/settings.yaml: a79a8ba763a3
 pitch_robotnik_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/09_robotnik.yaml
-  - reference\vgz\09 - Robotnik.vgz
+  - configs/sonic_1/09_robotnik.yaml
+  - reference\vgz\sonic_1\09 - Robotnik.vgz
   - --mod
   - tests/baselines/robotnik_lofi_baseline.mod
   - --settings
@@ -7323,7 +7346,7 @@ pitch_robotnik_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7404,6 +7427,7 @@ pitch_robotnik_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7434,21 +7458,21 @@ pitch_robotnik_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/09_robotnik.yaml: f20a741e2978
-    reference/vgz/09 - Robotnik.vgz: 6ca329646d5b
+    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
     tests/baselines/robotnik_lofi_baseline.mod: 1dea15654e5a
     tests/settings.yaml: a79a8ba763a3
 pitch_scrap_brain_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/07_scrap_brain_zone.yaml
-  - reference\vgz\07 - Scrap Brain Zone.vgz
+  - configs/sonic_1/07_scrap_brain_zone.yaml
+  - reference\vgz\sonic_1\07 - Scrap Brain Zone.vgz
   - --mod
   - tests/baselines/scrap_brain_zone_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7529,6 +7553,7 @@ pitch_scrap_brain_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7559,21 +7584,21 @@ pitch_scrap_brain_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/07_scrap_brain_zone.yaml: 331bee95f256
-    reference/vgz/07 - Scrap Brain Zone.vgz: b537b7c837b2
+    configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
+    reference/vgz/sonic_1/07 - Scrap Brain Zone.vgz: b537b7c837b2
     tests/baselines/scrap_brain_zone_baseline.mod: c97e5be79912
     tests/settings.yaml: a79a8ba763a3
 pitch_special_stage:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/08_special_stage.yaml
-  - reference\vgz\08 - Special Stage.vgz
+  - configs/sonic_1/08_special_stage.yaml
+  - reference\vgz\sonic_1\08 - Special Stage.vgz
   - --mod
   - tests/baselines/special_stage_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7654,6 +7679,7 @@ pitch_special_stage:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7684,21 +7710,21 @@ pitch_special_stage:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/08_special_stage.yaml: d2d743df745a
-    reference/vgz/08 - Special Stage.vgz: df7ed997e893
+    configs/sonic_1/08_special_stage.yaml: 986d25d7793a
+    reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
     tests/baselines/special_stage_baseline.mod: 765f7ee8c30f
     tests/settings.yaml: a79a8ba763a3
 pitch_spring_yard_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/04_spring_yard_zone.yaml
-  - reference\vgz\04 - Spring Yard Zone.vgz
+  - configs/sonic_1/04_spring_yard_zone.yaml
+  - reference\vgz\sonic_1\04 - Spring Yard Zone.vgz
   - --mod
   - tests/baselines/spring_yard_zone_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7779,6 +7805,7 @@ pitch_spring_yard_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7809,21 +7836,21 @@ pitch_spring_yard_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/04_spring_yard_zone.yaml: ec060b413733
-    reference/vgz/04 - Spring Yard Zone.vgz: e1acf6e2ee63
+    configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
+    reference/vgz/sonic_1/04 - Spring Yard Zone.vgz: e1acf6e2ee63
     tests/baselines/spring_yard_zone_baseline.mod: b174922126bb
     tests/settings.yaml: a79a8ba763a3
 pitch_stage_clear:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/11_stage_clear.yaml
-  - reference\vgz\11 - Stage Clear.vgz
+  - configs/sonic_1/11_stage_clear.yaml
+  - reference\vgz\sonic_1\11 - Stage Clear.vgz
   - --mod
   - tests/baselines/stage_clear_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7904,6 +7931,7 @@ pitch_stage_clear:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -7934,15 +7962,15 @@ pitch_stage_clear:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
     tests/baselines/stage_clear_baseline.mod: 86d457f54fc4
     tests/settings.yaml: a79a8ba763a3
 pitch_stage_clear_lofi:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/11_stage_clear.yaml
-  - reference\vgz\11 - Stage Clear.vgz
+  - configs/sonic_1/11_stage_clear.yaml
+  - reference\vgz\sonic_1\11 - Stage Clear.vgz
   - --mod
   - tests/baselines/stage_clear_lofi_baseline.mod
   - --settings
@@ -7950,7 +7978,7 @@ pitch_stage_clear_lofi:
   - --variant
   - lofi
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8031,6 +8059,7 @@ pitch_stage_clear_lofi:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8061,21 +8090,21 @@ pitch_stage_clear_lofi:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/11_stage_clear.yaml: 0d94ec807e50
-    reference/vgz/11 - Stage Clear.vgz: 0fa1b8c88a86
+    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
     tests/baselines/stage_clear_lofi_baseline.mod: 26888dd6bee9
     tests/settings.yaml: a79a8ba763a3
 pitch_star_light_zone:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/06_star_light_zone.yaml
-  - reference\vgz\06 - Star Light Zone.vgz
+  - configs/sonic_1/06_star_light_zone.yaml
+  - reference\vgz\sonic_1\06 - Star Light Zone.vgz
   - --mod
   - tests/baselines/star_light_zone_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8156,6 +8185,7 @@ pitch_star_light_zone:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8186,21 +8216,21 @@ pitch_star_light_zone:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/06_star_light_zone.yaml: b692e0d08918
-    reference/vgz/06 - Star Light Zone.vgz: e9ed80dc2124
+    configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
+    reference/vgz/sonic_1/06 - Star Light Zone.vgz: e9ed80dc2124
     tests/baselines/star_light_zone_baseline.mod: 21e865d29aaa
     tests/settings.yaml: a79a8ba763a3
 pitch_title_screen:
   argv:
   - tools/vgm_pitch_audit.py
-  - configs/01_title_screen.yaml
-  - reference\vgz\01 - Title Theme.vgz
+  - configs/sonic_1/01_title_screen.yaml
+  - reference\vgz\sonic_1\01 - Title Theme.vgz
   - --mod
   - tests/baselines/title_screen_baseline.mod
   - --settings
   - tests\settings.yaml
   - --list
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8281,6 +8311,7 @@ pitch_title_screen:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8311,15 +8342,15 @@ pitch_title_screen:
   - core/vgm/reader.py
   - tools/vgm_pitch_audit.py
   inputs:
-    configs/01_title_screen.yaml: afb827f38539
-    reference/vgz/01 - Title Theme.vgz: fafa5cc83333
+    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
   argv:
   - tools/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: d38a358-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8378,7 +8409,7 @@ read_moonwalker:
   argv:
   - tools/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8419,6 +8450,7 @@ read_moonwalker:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8437,7 +8469,7 @@ read_sonic1_asm_music:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8468,6 +8500,7 @@ read_sonic1_asm_music:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8505,7 +8538,7 @@ read_sonic1_asm_music_shipped:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/music
   - --shipped
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8536,6 +8569,7 @@ read_sonic1_asm_music_shipped:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8572,7 +8606,7 @@ read_sonic1_asm_sfx:
   argv:
   - tools/song_dump.py
   - reference/smps_drivers/sonic_1/sfx
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8603,6 +8637,7 @@ read_sonic1_asm_sfx:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8669,7 +8704,7 @@ read_sonic1_rom:
   argv:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8710,6 +8745,7 @@ read_sonic1_rom:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8729,7 +8765,7 @@ read_sonic1_rom_shipped:
   - tools/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: b2dcae6-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py
@@ -8770,6 +8806,7 @@ read_sonic1_rom_shipped:
   - core/smps/driver_tables.py
   - core/smps/driver_track.py
   - core/smps/effects.py
+  - core/smps/lfo.py
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
@@ -8788,7 +8825,7 @@ read_streets_of_rage:
   argv:
   - tools/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 6721124-dirty
+  commit: f01fcc9-dirty
   files:
   - core/__init__.py
   - core/chips/__init__.py

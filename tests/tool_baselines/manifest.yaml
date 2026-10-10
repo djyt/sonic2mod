@@ -740,7 +740,7 @@ frames_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 frames_outrun:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     configs/outrun/81_magical_sound_shower.yaml: 000eebe3fb1e
@@ -802,7 +802,7 @@ frames_space_harrier_2:
     reference/vgz/space_harrier_2/19 - An Epitaph (Ending Theme).vgz: acdbae48986e
     reference/vgz/space_harrier_2/20 - A (Game Over).vgz: a0aece5a54c5
 frames_streets_of_rage:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be
@@ -871,7 +871,7 @@ glitches_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 glitches_outrun:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     configs/outrun/81_magical_sound_shower.yaml: 000eebe3fb1e
@@ -1431,7 +1431,7 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -1441,7 +1441,7 @@ read_moonwalker:
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_outrun:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -1555,12 +1555,12 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: 256cb8b-dirty
+  commit: da21de0
   date: '2026-10-10'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

@@ -740,23 +740,23 @@ frames_golden_axe:
     reference/vgz/golden_axe/12 - Sutakora, Sassa!.vgz: f7220402da74
     reference/vgz/golden_axe/13 - Game Over.vgz: 5e7862413123
 frames_streets_of_rage:
-  commit: 69d8e49
+  commit: 5adc013-dirty
   date: '2026-10-10'
   inputs:
     configs/streets_of_rage/81_fighting_in_the_street.yaml: e40200298744
     configs/streets_of_rage/82_game_over.yaml: 5bd8ff7f22ca
-    configs/streets_of_rage/83_the_street_of_rage.yaml: 48c0897be5f5
+    configs/streets_of_rage/83_the_street_of_rage.yaml: 4701b0071509
     configs/streets_of_rage/84_moon_beach.yaml: 709c9dfb248a
     configs/streets_of_rage/85_beatnik_on_the_ship.yaml: 2713424a8cb8
     configs/streets_of_rage/86_violent_breathing.yaml: b18ea27e7436
     configs/streets_of_rage/87_attack_the_barbarian.yaml: 97ba3a5b1d06
-    configs/streets_of_rage/88_the_last_soul.yaml: ae50c2a9b149
-    configs/streets_of_rage/89_stealthy_steps.yaml: 4886adf0a894
-    configs/streets_of_rage/8b_dilapidated_town.yaml: 20764680e57c
-    configs/streets_of_rage/8c_keep_the_groovin.yaml: '416015500273'
+    configs/streets_of_rage/88_the_last_soul.yaml: 8cbb4a4bf18b
+    configs/streets_of_rage/89_stealthy_steps.yaml: a8a1f9854d2f
+    configs/streets_of_rage/8b_dilapidated_town.yaml: 6e16f381284c
+    configs/streets_of_rage/8c_keep_the_groovin.yaml: 6e574670502d
     configs/streets_of_rage/8d_level_clear.yaml: aeaf6d0ed6e0
     configs/streets_of_rage/8f_you_became_the_bad_guy.yaml: 42c2da49286c
-    configs/streets_of_rage/90_big_boss.yaml: 25a7ac4e83e1
+    configs/streets_of_rage/90_big_boss.yaml: fdbda61a6004
     configs/streets_of_rage/91_good_ending.yaml: 6094f75d7844
     configs/streets_of_rage/rips.yaml: 40e91740b461
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
@@ -1150,7 +1150,7 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: be7f1d0a0fc9
     tests/settings.yaml: a79a8ba763a3
 read_golden_axe:
-  commit: 69d8e49
+  commit: d38a358-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -1269,7 +1269,7 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_streets_of_rage:
-  commit: 69d8e49
+  commit: d38a358-dirty
   date: '2026-10-10'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

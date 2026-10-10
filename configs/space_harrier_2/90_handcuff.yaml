@@ -3,3 +3,13 @@
 name: "Handcuff"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$90"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 14, 0]   # VGZ: -1.9 dB at 11
+  - [2, "drum85.raw", 38, 0]   # VGZ: +4.5 dB at 64
+  - [3, "drum89.raw", 48, 0]   # VGZ: +2.5 dB at 64
+  - [4, "drum8D.raw", 51, 0]   # VGZ: +2.0 dB at 64
+  - [7, "fm_v45_Ab2.raw", 9, 0]   # VGZ: -1.3 dB at 8
+  - [8, "fm_v45_Fs3.raw", 8, 0]   # VGZ: -1.3 dB at 7
+  - [9, "fm_v47_Cs3.raw", 11, 0]   # VGZ: -2.8 dB at 8
+  - [10, "fm_v47_B3.raw", 13, 0]   # VGZ: -4.4 dB at 8

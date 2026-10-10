@@ -3,3 +3,12 @@
 name: "An Omen"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$87"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 8, 0]   # VGZ: +3.1 dB at 11
+  - [2, "drum85.raw", 19, 0]   # VGZ: +10.4 dB at 64
+  - [3, "drum89.raw", 24, 0]   # VGZ: +8.4 dB at 64
+  - [6, "fm_v0c_B2.raw", 6, 0]   # VGZ: -1.1 dB at 5
+  - [7, "fm_v32_Fs3.raw", 8, 0]   # VGZ: -3.6 dB at 5
+  - [9, "fm_v47_Ab1.raw", 3, 0]   # VGZ: +5.7 dB at 6
+  - [10, "fm_v47_Fs2.raw", 3, 0]   # VGZ: +4.7 dB at 6

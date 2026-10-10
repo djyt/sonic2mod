@@ -3,3 +3,12 @@
 name: "Mind Quake"
 input_file: "input/roms/Space Harrier II (World).md"
 rom_song: "$91"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [2, "drum85.raw", 30, 0]   # VGZ: +6.5 dB at 64
+  - [3, "drum89.raw", 39, 0]   # VGZ: +4.4 dB at 64
+  - [4, "fm_v0c_Cs2.raw", 9, 0]   # VGZ: -4.6 dB at 5
+  - [5, "fm_v0c_B2.raw", 9, 0]   # VGZ: -5.1 dB at 5
+  - [6, "fm_v50_A2.raw", 12, 0]   # VGZ: -3.2 dB at 8
+  - [7, "fm_v50_Ab3.raw", 7, 0]   # VGZ: +1.5 dB at 8
+  - [10, "fm_v54_B3.raw", 7, 0]   # VGZ: +0.9 dB at 8

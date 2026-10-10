@@ -1,5 +1,5 @@
 """Streets of Rage's driver (SMPS 68k with MUCOM-style track code): the grammar on hand-built
-bytes, then the ROM when it is present (docs/todo/streets_of_rage.md).
+bytes, then the ROM when it is present (docs/smps_variants.md).
 
     python -m pytest tests/test_rom_mucom.py -q
 """

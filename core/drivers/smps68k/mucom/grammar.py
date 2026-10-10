@@ -1,5 +1,5 @@
-"""Streets of Rage's track grammar: SMPS 68k's engine reading MUCOM-style code (docs/todo/
-streets_of_rage.md § 1.4).  Each instruction is read into the ops the SMPS walk knows.
+"""Streets of Rage's track grammar: SMPS 68k's engine reading MUCOM-style code
+(docs/smps_variants.md § Streets of Rage).  Each instruction is read into the ops the SMPS walk knows.
 
     d n        d $01-$7F frames, n octave (bits 4-6) | semitone   -> NOTE, DURATION
     $80|d      rest                                               -> NOTE $80, DURATION

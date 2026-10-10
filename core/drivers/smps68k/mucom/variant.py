@@ -1,5 +1,5 @@
 """SMPS 68k Type 1b with MUCOM-style track code: Streets of Rage (Bare Knuckle).  No disassembly:
-its driver ($72914-$73C16) read with a disassembler (docs/todo/streets_of_rage.md).
+its driver ($72914-$73C16) read with a disassembler (docs/smps_variants.md).
 
     tables      found by the code that reads them (each a lea after the instruction below)
                 music index   subi.b #$81,d0 ... lea   $7288C   17 absolute longs from $81

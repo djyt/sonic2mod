@@ -1,5 +1,5 @@
 # Streets of Rage - Big Boss.  A minimal config: everything else is derived from the ROM
-# (docs/todo/streets_of_rage.md); python convert.py <this> --show-config prints it.
+# (docs/smps_variants.md); python convert.py <this> --show-config prints it.
 name: "Big Boss"
 input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
 rom_song: "$90"

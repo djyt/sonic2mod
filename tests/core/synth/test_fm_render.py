@@ -49,6 +49,18 @@ class RenderedPitch(unittest.TestCase):
             self.assertAlmostEqual(_hz(mono, rate) / freq_word_hz(word + offset), 1.0, delta=0.005)
 
 
+    def test_a_pitch_envelope_steps_the_word_a_frame_at_a_time(self):
+        # 30 frames at the note's word, then 30 at +200 FNUM: each half sounds its pitch
+        voice = SmpsVoice(0, algorithm=7, operators={VoiceField.ATTACK_RATE: (31, 31, 31, 31),
+                                                     VoiceField.MULTIPLE: (1, 1, 1, 1),
+                                                     VoiceField.TOTAL_LEVEL: (0, 127, 127, 127)})
+        word = FM_FREQUENCIES[13 + 33]                                  # A3
+        mono, rate = render_layers([(voice, 0, 0, 0)], 33, sustain_secs=1.0, release_secs=0.0, fm_frequencies=FM_FREQUENCIES,
+                                   envelopes=[(0,) * 30 + (200,) * 30], frame_hz=60.0)
+        half = len(mono) // 2
+        self.assertAlmostEqual(_hz(mono[:half], rate) / freq_word_hz(word), 1.0, delta=0.005)
+        self.assertAlmostEqual(_hz(mono[half:], rate) / freq_word_hz(word + 200), 1.0, delta=0.005)
+
     def test_a_voice_under_the_lfo_plays_its_tremolo(self):
         # One carrier with AM on, AMS 3 (11.8 dB) at LFO frequency 6 (46 Hz): its level swings;
         # without the LFO it holds (A5: a window of 2.5 ms holds two cycles)
@@ -83,6 +95,19 @@ class RenderedFrames(unittest.TestCase):
         tail = max(abs(x) for x in mono[-100:])
         self.assertGreater(held, 0)
         self.assertLess(tail, held / 100)                               # released: nothing left
+
+    def test_special_mode_plays_each_operator_at_its_word_keyed_by_its_mask(self):
+        # Algorithm 7, OP4 alone audible: its word is FM3's own (slot +C); keyed with OP1 / OP2
+        # only (Space Harrier II's unit A) it is silent, with OP4 in the mask it sounds
+        voice = SmpsVoice(0, algorithm=7, operators={**self._VOICE.operators, VoiceField.TOTAL_LEVEL: (0, 127, 127, 127)})
+        word = FM_FREQUENCIES[13 + 33]                                  # A3
+        slots = (0, 0, 0, word)                                         # OP1 OP3 OP2 OP4
+        for keys, sounds in ((0b0011, False), (0b1000, True)):
+            frames = [FmFrame(word, True, True, slots, keys)] + [FmFrame(word, True, False, slots, keys)] * 60
+            mono, rate = render_frames(voice, 0, frames, 60.0)
+            self.assertEqual(max(abs(x) for x in mono) > 0, sounds)
+            if sounds:
+                self.assertAlmostEqual(_hz(mono, rate) / freq_word_hz(word), 1.0, delta=0.005)
 
 
 if __name__ == "__main__":

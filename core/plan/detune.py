@@ -61,6 +61,7 @@ class DetuneVariant:
     notes: int               # notes that play it
     rendered: int | None = None   # the pitch (SMPS semitone) it is rendered at; None: its base's
     pitch_class: int | None = None   # the notes it plays: this pitch class; None: the rest
+    envelope: int = 0        # the pitch envelope it is rendered with (core.smps.pitch_envelope); 0: none
 
 
 @dataclass
@@ -68,13 +69,17 @@ class DetunePlan:
     """Which sample each (instrument, detune) note plays.  Set on `config.detune_plan` by the
     converter; read by core.plan.driver_state.resolve_note and core.plan.instruments.fm_catalogue."""
     own: dict[int, int] = field(default_factory=dict)        # {instrument: its sample's detune}, nonzero only
-    variants: dict[tuple[int, int, int | None], DetuneVariant] = field(default_factory=dict)   # (base, detune, class) ->
+    own_envelopes: dict[int, int] = field(default_factory=dict)   # {instrument: its sample's envelope}, nonzero only
+    # (base, detune, envelope, class) ->
+    variants: dict[tuple[int, int, int, int | None], DetuneVariant] = field(default_factory=dict)
     unplaced: dict[tuple[int, int], int] = field(default_factory=dict)  # (base, detune) -> notes with no slot
     _bases: dict[int, int] = field(default_factory=dict)   # {variant slot: base}
 
-    def instrument_for(self, inst: int, detune: int, chip: int) -> int:
-        """The slot a note of `inst` at `detune` plays (`chip`: the pitch the chip plays)."""
-        v = self.variants.get((inst, detune, chip % _SEMITONES)) or self.variants.get((inst, detune, None))
+    def instrument_for(self, inst: int, detune: int, chip: int, envelope: int = 0) -> int:
+        """The slot a note of `inst` at `detune` and pitch `envelope` plays (`chip`: the pitch the
+        chip plays)."""
+        v = (self.variants.get((inst, detune, envelope, chip % _SEMITONES))
+             or self.variants.get((inst, detune, envelope, None)))
         return v.inst if v is not None else inst
 
     def base_of(self, inst: int) -> int:
@@ -91,7 +96,7 @@ class DetunePlan:
         return out
 
     def add(self, v: DetuneVariant) -> None:
-        self.variants[(v.base, v.detune, v.pitch_class)] = v
+        self.variants[(v.base, v.detune, v.envelope, v.pitch_class)] = v
         self._bases[v.inst] = v.base
 
 
@@ -110,42 +115,46 @@ def plan_detune_variants(song, config) -> DetunePlan:
     config.detune_plan = None                      # walked undetuned: every note names its base
     synthesised = fm_catalogue(song, config).instruments
 
-    counts: dict[int, dict[int, int]] = {}
-    chips: dict[tuple[int, int], dict[int, int]] = {}      # (instrument, detune) -> {chip pitch: notes}
+    counts: dict[int, dict[tuple[int, int], int]] = {}         # instrument -> {(detune, envelope): notes}
+    chips: dict[tuple[int, tuple[int, int]], dict[int, int]] = {}   # (instrument, its pair) -> {chip pitch: notes}
     for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM,)):
         for _event, _st, res in walk_channel(channel, config, chan_cfg):
             if res is None or res.instrument not in synthesised:
                 continue
+            pair = (res.detune, res.pitch_envelope)
             per = counts.setdefault(res.instrument, {})
-            per[res.detune] = per.get(res.detune, 0) + 1
-            at = chips.setdefault((res.instrument, res.detune), {})
+            per[pair] = per.get(pair, 0) + 1
+            at = chips.setdefault((res.instrument, pair), {})
             at[res.chip] = at.get(res.chip, 0) + 1
 
     plan = DetunePlan()
     fm = song.rules.fm_frequencies
-    wanted: list[tuple[int, int, int, int | None, int | None]] = []   # (notes, base, detune, class, rendered)
+    wanted: list[tuple[int, int, int, int, int | None, int | None]] = []   # (notes, base, detune, envelope, class, rendered)
     for inst, per in counts.items():
-        own = max(per, key=lambda d: (per[d], -abs(d), d))
-        if own:
-            plan.own[inst] = own
+        # The most played pair; ties: the smaller detune, then no envelope
+        own = max(per, key=lambda pair: (per[pair], -abs(pair[0]), pair[0], -pair[1]))
+        if own[0]:
+            plan.own[inst] = own[0]
+        if own[1]:
+            plan.own_envelopes[inst] = own[1]
         base = synthesised[inst]
         special = base.layers[0].special_offset
-        for d, n in per.items():
-            played = chips[(inst, d)]
-            rendered = None if d == own else _rendered(base, d + special, _commonest(played), fm)
+        for (d, e), n in per.items():
+            played = chips[(inst, (d, e))]
+            rendered = None if (d, e) == own else _rendered(base, d + special, _commonest(played), fm)
             apart = _apart(base, d + special, rendered, played, fm)
             rest = n - sum(sum(at.values()) for at in apart.values())
-            if d != own and rest:
-                wanted.append((rest, inst, d, None, rendered))
-            wanted += [(sum(at.values()), inst, d, pc, _in_class(base, pc)) for pc, at in apart.items()]
+            if (d, e) != own and rest:
+                wanted.append((rest, inst, d, e, None, rendered))
+            wanted += [(sum(at.values()), inst, d, e, pc, _in_class(base, pc)) for pc, at in apart.items()]
 
-    # The most played first: a song short of slots loses its rarest detunes
+    # The most played first: a song short of slots loses its rarest
     slots = free_slots(config, song)
-    for notes, inst, d, pc, rendered in sorted(wanted, key=lambda w: (-w[0], w[1], w[2], -1 if w[3] is None else w[3])):
+    for notes, inst, d, e, pc, rendered in sorted(wanted, key=lambda w: (-w[0], w[1], w[2], w[3], -1 if w[4] is None else w[4])):
         if not slots:
             plan.unplaced[(inst, d)] = plan.unplaced.get((inst, d), 0) + notes
             continue
-        plan.add(DetuneVariant(slots.pop(0), inst, d, notes, rendered, pc))
+        plan.add(DetuneVariant(slots.pop(0), inst, d, notes, rendered, pc, e))
 
     entries = {e[SAMPLE_SLOT]: e for e in (config.sample_list or [])}
     if plan.variants and config.sample_list is None:
@@ -153,7 +162,8 @@ def plan_detune_variants(song, config) -> DetunePlan:
     for v in plan.variants.values():
         base = entries.get(v.base)
         at = "" if v.pitch_class is None else f"@{v.pitch_class}"
-        name = f"{_stem(base[SAMPLE_FILE]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{at}"[:_NAME_CHARS]
+        envelope = f" pe{v.envelope}" if v.envelope else ""
+        name = f"{_stem(base[SAMPLE_FILE]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{envelope}{at}"[:_NAME_CHARS]
         config.sample_list.append([v.inst, name, *(base[SAMPLE_VOLUME:] if base else [])])
 
     config.detune_plan = plan

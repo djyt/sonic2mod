@@ -1,0 +1,14 @@
+# Space Harrier II - Machine Henge.  A minimal config: everything else is derived from the ROM
+# (docs/todo/space_harrier_2.md); python convert.py <this> --show-config prints it.
+name: "Machine Henge"
+input_file: "input/roms/Space Harrier II (World).md"
+rom_song: "$8F"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "drum81.raw", 14, 0]   # VGZ: -1.9 dB at 11
+  - [2, "drum85.raw", 38, 0]   # VGZ: +4.4 dB at 64
+  - [3, "drum89.raw", 47, 0]   # VGZ: +2.6 dB at 64
+  - [8, "fm_v36_Cs3.raw", 10, 0]   # VGZ: -6.2 dB at 5
+  - [9, "fm_v36_B3.raw", 15, 0]   # VGZ: -5.7 dB at 8
+  - [10, "fm_v4a_Ab2.raw", 18, 0]   # VGZ: -0.9 dB at 16
+  - [11, "fm_v4a_Fs3.raw", 9, 0]   # VGZ: +5.1 dB at 16

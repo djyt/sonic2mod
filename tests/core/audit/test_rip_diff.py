@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from core.audit import ChannelChoice, SongSource, TempoSource, compare_with_rip
+from core.audit import ChannelChoice, ForeignSound, RipFaults, RipGlitch, SongSource, TempoSource, compare_with_rip
 from core.audit.rip_diff import _merge_ties
 from core.drivers.reference import SONIC1_RULES
 from core.smps import (
@@ -27,7 +27,7 @@ from core.smps import (
 )
 from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song, load_frames
 from tests.roms import MOONWALKER_RIPS, MOONWALKER_ROM, needs_moonwalker_rips
-from tests.vgm_build import bursts, fm_freq, key
+from tests.vgm_build import BURST, FRAME, bursts, fm_freq, fm_notes, key
 
 
 def _beat(lengths: list[int], bars: int) -> list[int]:
@@ -105,6 +105,40 @@ class RipCompare(unittest.TestCase):
         song = lift_song(frames, SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
         found = compare_with_rip(song, frames, channels=ChannelChoice(skip=("FM1",)))
         self.assertEqual(([c.name for c in found.diff.channels], found.only_rip), (["FM2"], []))
+
+
+class KnownFaults(unittest.TestCase):
+    """The rip's own faults (rips.yaml): a glitch undone before the lift, another sound set aside."""
+
+    _STALL = 60                 # the frame the driver stops at, three V-ints lost (two ticks at m = 3)
+    _EXTRA = (21, 22)           # frames another sound keys FM2 on
+
+    def _log(self, lost: int = 0, extra: tuple[int, ...] = ()):
+        frame = TempoSegment(0, 0, _MODIFIER).frame_of
+        notes = {0: [frame(t) for t in _beat([2, 4, 6], 6)], 1: [frame(t) for t in _beat([4], 18)] + list(extra)}
+        notes = {ch: [f + lost * (f >= self._STALL) for f in at] for ch, at in notes.items()}
+        return frame_log(decode_vgm(fm_notes(notes, frame(80) + lost, _A4)))
+
+    def setUp(self):
+        self.song = lift_song(self._log(), SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
+
+    def test_lost_v_ints_undone(self):
+        rip = self._log(lost=3)
+        self.assertFalse(compare_with_rip(self.song, rip).ok)
+        first_late = rip.frame_of((self._STALL + 3) * FRAME + BURST)
+        found = compare_with_rip(self.song, rip, faults=RipFaults((RipGlitch(first_late, -3, "stalled"),)))
+        self.assertTrue(found.ok)
+
+    def test_another_sound_throughout_is_not_compared(self):
+        found = compare_with_rip(self.song, self._log(extra=self._EXTRA), faults=RipFaults(foreign=(ForeignSound(("FM2",), "sfx"),)))
+        self.assertEqual((found.ok, found.foreign_channels, [c.name for c in found.diff.channels]), (True, ["FM2"], ["FM1"]))
+
+    def test_another_sound_for_a_while_is_set_aside(self):
+        rip = self._log(extra=self._EXTRA)
+        self.assertFalse(compare_with_rip(self.song, rip).ok)
+        found = compare_with_rip(self.song, rip, faults=RipFaults(foreign=(ForeignSound(("FM2",), "sfx", 15, 30),)))
+        self.assertTrue(found.ok)
+        self.assertGreater(found.foreign["FM2"], 0)
 
 
 class Ties(unittest.TestCase):

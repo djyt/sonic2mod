@@ -7,12 +7,12 @@ from dataclasses import replace
 
 from core.rom.envelopes import read_envelopes
 from core.rom.fixes import apply_fixes
-from core.rom.header import read_music_header, read_sfx_header
+from core.rom.header import music_header, sfx_header
 from core.rom.image import RomImage
 from core.rom.memory import SoundMemory
 from core.rom.tracks import decode_tracks
 from core.rom.variant import DacSample, SmpsVariant, SoundIndex
-from core.rom.voices import read_voices, voices_used
+from core.rom.voices import bank_voices, voices_used
 from core.smps import PlaybackRules, SmpsSong, SongCode
 
 from .detect import detect_variant
@@ -40,13 +40,13 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     address = index.address(sound_id)
     image, splices = apply_fixes(rom, data_fixes(rom) if fix_data_bugs else ())
     memory = variant.memory(image)
-    read_header = read_sfx_header if index.is_sfx(sound_id) else read_music_header
-    head = read_header(memory, address, variant.header)
+    read_header = sfx_header if index.is_sfx(sound_id) else music_header
+    head = read_header(memory, address, variant)
 
     tracks = decode_tracks(memory, head.tracks, variant, splices)
     voices = []
     if head.voices is not None:
-        voices = read_voices(memory, head.voices, voices_used(tracks.code), variant.voice_layout)
+        voices = bank_voices(memory, head.voices, voices_used(tracks.code), variant)
         tracks.labels[head.header.voice_label] = head.voices
     rules = _rules(variant, image, memory, index)
     drums = {}

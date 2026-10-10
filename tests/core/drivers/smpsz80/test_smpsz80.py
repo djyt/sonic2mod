@@ -15,7 +15,8 @@ sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import FM_FREQUENCIES
 from core.drivers.smpsz80.memory import BankedZ80Memory
-from core.drivers.smpsz80.type0fm.locate import fm_table, locate_type0, sound_bank
+from core.drivers.smpsz80.program import fm_table
+from core.drivers.smpsz80.type0fm.locate import locate_type0, sound_bank
 from core.rom import RomError, RomImage
 from core.rom.z80 import z80_ram
 

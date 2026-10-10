@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from ..audio import db_to_gain, semitone_to_hz
-from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db, psg_level_db
+from ..chips import DEFAULT_FM_PAN_LAW_DB, TL_MASK, OperatorReg, fm_level_db, keyed_carriers, psg_level_db
 from ..config import (
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
@@ -54,12 +54,14 @@ from ..config import (
 from ..files import write_shared
 from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
 from ..smps import (
+    ALL_OPERATORS,
     C1_SEMITONE,
     ChannelType,
     FmDrum,
     SmpsSong,
     note_label,
     pan_is_hard,
+    prepare_song,
     psg_voice_name,
     source_map,
     synth_note_name,
@@ -92,6 +94,24 @@ _DERIVED_FILE = re.compile(r"(fm_v[0-9a-f]{2}_|psg_).*\.raw|(dac|drum)[0-9a-f]{2
 _FM_SCALE = 76.0
 _PSG_SCALE = 16.0
 _FULL = 64
+
+
+def _drum_level(drum: FmDrum) -> int:
+    """The TL offset an FM drum sounds at: its volume, and as much below its voice as the
+    loudest carrier its hit keys is below the voice's loudest.  A drum keying only a quiet pair
+    sounds that pair (Space Harrier II's drum81: OP1-OP2, OP2 at TL 28 where OP4 is at 6)."""
+    keys = 0
+    for frame in drum.frames:
+        if frame.keyed:
+            keys |= frame.keys
+    registers = drum.voice.registers()
+    algorithm = drum.voice.algorithm
+
+    def loudest(mask: int) -> int | None:
+        return min((registers[OperatorReg.TL + off] & TL_MASK for off in keyed_carriers(algorithm, mask)), default=None)
+
+    keyed, voice = loudest(keys), loudest(ALL_OPERATORS)
+    return drum.tl_offset + (keyed - voice if keyed is not None and voice is not None else 0)
 
 
 def starting_volume(kind: str, level: int = 0, hard_panned: bool = False,
@@ -164,7 +184,9 @@ class _Deriver:
     def __init__(self, stated: dict, song: SmpsSong, out: Derivation, settings: SampleSettings,
                  dac: list[DacSample]):
         self._stated = stated
-        self._song = song
+        # The song as the conversion plays it (loops replayed to its end, tempo dividers applied):
+        # its notes are the ones the level planner counts, so both pick the same baked level
+        self._song = prepare_song(song).song
         self._out = out
         self._clock = settings.amiga_clock
         self._harmonics = settings.root_harmonics
@@ -245,8 +267,9 @@ class _Deriver:
         """Ticks per row: the grid every note starts and lasts on.  Where that grid is too fine (the
         pattern limit, or no speed's BPM in 32-255), the multiple of it that puts the most notes on
         rows: the rest take EDx.  A 1-frame stagger between channels makes the exact grid 1 frame;
-        the beat's grid (7 frames) keeps all but the staggered notes on rows.  The speed whose
-        whole-number BPM is nearest the driver's tempo."""
+        the beat's grid (7 frames) keeps all but the staggered notes on rows.  Where it is too
+        coarse (no speed's BPM reaches 32: Space Harrier II's Game Over, three long notes), the
+        largest part of it that fits.  The speed whose whole-number BPM is nearest the driver's tempo."""
         if "ticks_per_row" in self._stated:
             return
         # The song's own rhythm: where a driver cuts a note (a run-out, a gate) falls between rows
@@ -261,6 +284,8 @@ class _Deriver:
             return sum(n for tick, n in starts.items() if tick % grid == 0)
 
         fitting = [g for g in range(exact, _MAX_GRID_STEPS * exact + 1, exact) if self._grid_options(g) is not None]
+        if not fitting:
+            fitting = self._refined(exact)
         grid = max(fitting, key=lambda g: (on_rows(g), -g)) if fitting else self._coarsened(exact)
         tpr, options = self._grid_options(grid) or self._tpr_options(grid)
         self._out.data["ticks_per_row"] = tpr
@@ -290,6 +315,13 @@ class _Deriver:
             return None
         tpr, options = self._tpr_options(grid)
         return (tpr, options) if options or self._song.header.tempo_modifier <= 1 else None
+
+    def _refined(self, grid: int) -> list[int]:
+        """The largest part of `grid` (a divisor) at which some speed's BPM fits, where `grid` is
+        too coarse for any: [] if none (or `grid` is not too coarse)."""
+        if self._tpr_options(grid)[1]:
+            return []
+        return next(([g] for g in range(grid // 2, 0, -1) if grid % g == 0 and self._grid_options(g) is not None), [])
 
     def _coarsened(self, grid: int) -> int:
         """`grid` doubled until it fits, or reaches the song's end."""
@@ -391,10 +423,10 @@ class _Deriver:
 
     def _fm_drum(self, name: str, drum: FmDrum) -> dict:
         """An FM drum's slot, rendered at samples.drum_root: its volume the FM level law's at the
-        drum's own volume (its render is peak-normalised, as an FM voice's)."""
+        loudest carrier it keys (its render is peak-normalised, as an FM voice's)."""
         hard = drum.voice.pan is not None and pan_is_hard(drum.voice.pan)
         slot = self._take(ChannelType.FM, _DAC_FILE.format(name),
-                          volume=starting_volume(ChannelType.FM, drum.tl_offset, hard))
+                          volume=starting_volume(ChannelType.FM, _drum_level(drum), hard))
         return {"name": name, "mod_instrument": slot, "mod_note": self._drum_root}
 
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:

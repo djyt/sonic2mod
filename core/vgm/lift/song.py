@@ -102,7 +102,8 @@ def lift_song(frames: FrameLog, rules: PlaybackRules, options: LiftOptions | Non
 
 
 def _tracks(fl: FrameLog, rules: PlaybackRules) -> list[tuple[SmpsChannelHeader, list[Hit]]]:
-    """(header, hits) of every track: the DAC, FM1 up to the last FM channel used, PSG1-3."""
+    """(header, hits) of every track: the DAC, FM1 up to the last FM channel used, PSG1-3 (where the
+    driver has a PSG table)."""
     tracks: list[tuple[SmpsChannelHeader, list[Hit]]] = []
     fm_channels = _DAC_FM_CHANNELS if dac_used(fl) else _DAC_FM_CHANNELS + 1
     if dac_used(fl):
@@ -112,6 +113,9 @@ def _tracks(fl: FrameLog, rules: PlaybackRules) -> list[tuple[SmpsChannelHeader,
     used = max((ch + 1 for ch, hits in enumerate(fm) if hits), default=0)
     tracks += [(SmpsChannelHeader(ChannelType.FM, f"FM{ch + 1}"), fm[ch]) for ch in range(used)]
 
+    # A driver with no PSG table plays no PSG music (Golden Axe's): what a rip's PSG holds is not the song's
+    if not rules.psg_frequencies:
+        return tracks
     noise = noise_mode(fl)
     for ch in range(PSG_TONE_CHANNELS):
         last = ch == PSG_TONE_CHANNELS - 1

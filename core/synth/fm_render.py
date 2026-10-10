@@ -27,6 +27,7 @@ from ..chips import (
     CH3_SPECIAL_MODE,
     FREQ_WORD_MAX,
     MD_FM_CLOCK,
+    OPERATOR_SLOT_OFFSETS,
     REG_CH3_MODE,
     freq_word,
     split_freq_word,
@@ -195,6 +196,44 @@ def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels, keyof
     return sustain + opn2.render_mono(release_n)
 
 
+def _render_stepped(opn2: OPN2, sustain_n: int, release_n: int, channels, keyoffs,
+                    stepped: Sequence[tuple[int, int, tuple[int, ...]]], frame_samples: float) -> array.array:
+    """As _render_raw_mono, each of `stepped`'s channels (channel, word, envelope) at its word plus
+    its envelope's step every frame from key-on, the release included; the first frame's step is
+    written before the key-on (the driver's read writes it, then keys).  A register write's chip
+    time stays in the render."""
+    total = sustain_n + release_n
+    stops = sorted((min(sustain_n, k if k is not None else sustain_n), ch)
+                   for ch, k in zip(channels, [*keyoffs, *[None] * len(channels)], strict=False))
+    mono = array.array('i')
+    at = 0.0
+    frame = 0
+    opn2.begin_capture()
+    try:
+        while len(mono) < total:
+            for ch, word, envelope in stepped:
+                step = envelope[min(frame, len(envelope) - 1)]
+                _set_freq(opn2, *split_freq_word(max(0, min(FREQ_WORD_MAX, word + step))), ch)
+            if frame == 0:
+                for ch in channels:
+                    opn2.key_on(ch)
+            mono += _captured(opn2)
+            at += frame_samples
+            end = min(total, round(at))
+            while stops and stops[0][0] < end:
+                stop, ch = stops.pop(0)
+                mono += opn2.render_mono(max(0, stop - len(mono)))
+                opn2.key_off(ch)
+                mono += _captured(opn2)
+            mono += opn2.render_mono(max(0, end - len(mono)))
+            frame += 1
+    finally:
+        opn2.end_capture()
+    for _, ch in stops:
+        opn2.key_off(ch)
+    return mono[:total]
+
+
 def detuned_fnum_block(fnum: int, block: int, fnum_offset: int) -> tuple[int, int]:
     """The frequency word the driver writes with an smpsAlterNote detune: the offset is added
     to the whole block|fnum word (FMUpdateFreq), so it can carry into the block."""
@@ -235,6 +274,8 @@ def render_layers(
     taps: int = DEFAULT_TAPS,
     *,
     fm_frequencies: tuple[int, ...],
+    envelopes: Sequence[tuple[int, ...] | None] = (),
+    frame_hz: float = 60.0,
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -242,7 +283,9 @@ def render_layers(
     with an optional fifth element, seconds after key-on to key that layer off (None: with the
     others); layer i is programmed on YM2612 channel `channel` + i (a voice in channel 3's special
     mode on channel 3), all are keyed on together and the chip sums them as the hardware does.
-    One layer is an ordinary note render.
+    One layer is an ordinary note render.  `envelopes`: a layer's pitch envelope as the offset
+    each frame from key-on adds to its frequency word (core.smps.pitch_envelope), stepped at
+    `frame_hz` through the release too; () or None: none.
 
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
     used to be, so the callers' trim / peak / int8 steps are unchanged.
@@ -258,6 +301,7 @@ def render_layers(
 
     channels = _layer_channels(layers, channel)
     keyoffs = []
+    words = []
     for ch, layer in zip(channels, layers, strict=True):
         voice, semitones, fnum_offset, tl_offset = layer[:4]
         keyoff = layer[4] if len(layer) > 4 else None
@@ -270,11 +314,18 @@ def render_layers(
         else:
             _set_freq(opn2, fnum, block, ch)
         keyoffs.append(None if keyoff is None else math.ceil(native_rate * keyoff))
+        words.append(freq_word(fnum, block))
 
     _lfo_preroll(opn2, layers)
     sustain_n = math.ceil(native_rate * sustain_secs)
     release_n = math.ceil(native_rate * release_secs)
-    mono      = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
+    stepped = [(ch, word, env) for ch, word, env in zip(channels, words, envelopes or (), strict=False) if env]
+    if any(layers[channels.index(ch)][0].fnum_offsets is not None for ch, _, _ in stepped):
+        raise ValueError("a pitch envelope on a voice in channel 3's special mode: not rendered")
+    if stepped:
+        mono = _render_stepped(opn2, sustain_n, release_n, channels, keyoffs, stepped, native_rate / frame_hz)
+    else:
+        mono = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
 
     if target_rate is not None and target_rate != native_rate:
         mono     = _resample(mono, native_rate, target_rate, taps)
@@ -359,36 +410,58 @@ def render_frames(
 ) -> tuple[array.array, int]:
     """A track as the driver plays it frame by frame (an FM drum program, core.smps.percussion) ->
     (mono, out_rate): the voice at `tl_offset`, then each frame's frequency word and key state
-    held for 1 / frame_hz seconds, then `tail_secs` more (a release, after the last frame's)."""
+    held for 1 / frame_hz seconds, then `tail_secs` more (a release, after the last frame's).
+    Frames with a word per operator play channel 3 in special mode, each operator keyed by the
+    frame's mask (Space Harrier II's drums: two operator pairs, two drums)."""
     native_rate = output_rate(clock_rate)
     if opn2 is None:
         opn2 = OPN2(mode="ym2612")
     else:
         opn2.reset()
-    channel = 0
+    special = any(f.slots is not None for f in frames)
+    channel = CH3_CHANNEL if special else 0
     program_voice(opn2, voice, channel, tl_offset=tl_offset)
+    if special:
+        opn2.write_reg(REG_CH3_MODE, CH3_SPECIAL_MODE)
 
     mono = array.array('i')
-    keyed = False
+    keys = 0                                     # the operators keyed
     at = 0.0                                     # where the next frame starts, in native samples
-    for frame in frames:
-        if frame.attack and keyed:
-            opn2.key_off(channel)
-            mono += opn2.render_mono(_RETRIGGER_GAP)
-        _set_freq(opn2, *split_freq_word(frame.word), channel)
-        if frame.attack:
-            opn2.key_on(channel)
-        elif keyed and not frame.keyed:
-            opn2.key_off(channel)
-        keyed = frame.keyed
+    opn2.begin_capture()                         # a write takes two samples of chip time: they stay in the frame
+    try:
+        for frame in frames:
+            wanted = frame.keys if frame.keyed else 0
+            if frame.attack and keys:
+                opn2.key_off(channel)
+                mono += _captured(opn2) + opn2.render_mono(_RETRIGGER_GAP)
+            if frame.slots is not None:
+                for slot, word in zip(OPERATOR_SLOT_OFFSETS, frame.slots, strict=True):
+                    _write_freq(opn2, CH3_FREQ_REGS[slot], *split_freq_word(word))
+            else:
+                _set_freq(opn2, *split_freq_word(frame.word), channel)
+            if frame.attack:
+                opn2.key_on(channel, wanted)
+            elif keys & ~wanted and wanted:
+                opn2.key_on(channel, wanted)             # some operators off: the mask keeps the rest on
+            elif keys & ~wanted:
+                opn2.key_off(channel)
+            keys = wanted
 
-        at += native_rate / frame_hz
-        mono += opn2.render_mono(round(at) - len(mono))
+            mono += _captured(opn2)
+            at += native_rate / frame_hz
+            mono += opn2.render_mono(max(0, round(at) - len(mono)))
+    finally:
+        opn2.end_capture()
     mono += opn2.render_mono(math.ceil(native_rate * tail_secs))
 
     if target_rate is not None and target_rate != native_rate:
         return _resample(mono, native_rate, target_rate, taps), target_rate
     return mono, native_rate
+
+
+def _captured(opn2: OPN2) -> array.array:
+    """The audio the register writes since the last call clocked, folded to mono as render_mono does."""
+    return array.array('i', ((left + right) // 2 for left, right in opn2.take_capture()))
 
 
 def render_note_raw(

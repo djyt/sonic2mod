@@ -14,6 +14,11 @@ fm_synthesis:
   detune_variants: true     # An smpsAlterNote / smpsDetune note plays its instrument rendered at that
                             # FNUM offset, in a free slot (core/plan/detune.py).  false: the instrument's
                             # own sample, at its pitch
+  drum_psg_db: -5.7         # An FM drum's PSG part (Space Harrier II's noise drums), in dB against its FM
+                            # part: 0 puts a PSG channel at full volume level with one FM carrier at TL 0.
+                            # Measured: Space Harrier II's 19 rips with drums, FM3 alone against PSG3 +
+                            # noise alone (VGMPlay), -5.2 to -6.9 dB, median -5.7 (VGMPlay mixes the
+                            # SN76496 at half the YM2612's volume)
   threads: normal           # FM instruments render in parallel, one per thread: 
                             # "normal" : CPU cores - 1
                             # "max"    : every core, 

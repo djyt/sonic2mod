@@ -990,8 +990,8 @@ python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every 
 ```
 
 - Pairs: a config and its rip share a number, or the `rips.yaml` beside the configs maps config stem
-  to rip (`core/audit/rips.py`; `measure_volumes.py` pairs the same way).  Rips sit in `reference/vgz/`
-  under the configs' subfolder.  `--input FILE [--rom-song ID]` names any song.
+  to rip (`core/audit/rips.py`; `measure_volumes.py` pairs the same way), and may log the rip's own
+  faults (below).  Rips sit in `reference/vgz/` under the configs' subfolder.  `--input FILE [--rom-song ID]` names any song.
 - Both sides as shipped (data bugs kept).  The lift takes the song's tempo modifier (where it starts:
   tempo changes are still found) and divider; inferred only where it fits no schedule, said so
   (`--infer-tempo` to judge the inference).  The divider is spelling: durations are ticks on both
@@ -1008,8 +1008,54 @@ python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every 
   (lift unfinished)`.  FM is what the lift reads in full (`LIFTED_KINDS`): its verdict is the song's;
   a DAC or PSG difference may be the lift's (vgz_conversion.md 1.6-1.8).  `--all` ends with both
   counts (Sonic: 13 of 19 FM same · 3 on every channel).
-- A rip is only as good as its emulator and ripper: a whole song off from one point on (Golden Axe's
-  Path of Fiend at 38 s) is a frame the rip lost or gained, which the lift reads as a tempo change.
+- A rip is only as good as its emulator and ripper: a whole song off from one point on is a frame the
+  rip lost or gained (a glitch, below), which the lift would read as a tempo change; a rip's
+  `rips.yaml` entry has it undone first.
+
+### The rip's own faults (`rips.yaml`, `tools/vgm_frames.py --glitches`)
+
+A rip records its emulator's run, not only the song.  What is the rip's, not the song's, is logged
+per rip in the `rips.yaml` beside the configs (`core/audit/rips.py`): the entry, a plain rip name
+otherwise, becomes a mapping.  Frames are the rip's (FrameLog indices, as `vgm_analyze.py --frames`
+and `--glitches` print them):
+
+```yaml
+84_path_of_fiend:
+  rip: "07 - Path of Fiend.vgz"
+  glitches:                     # a V-int lost (-1) or gained (+1): every channel off from `frame` on
+    - {frame: 2304, frames: -1, why: "burst at 2303 (164 writes, every channel re-keyed) runs into 2304: its V-int lost"}
+  foreign:                      # another sound on these channels; from / to: frames (default: all)
+    - {channels: [FM4], from: 120, to: 900, why: "..."}
+```
+
+- Glitch: the driver missed a V-int (or ran twice in one), so every channel keys a frame late (early)
+  from there on, for good.  Seen so far (Space Harrier II's stage theme, five times; its staff roll;
+  Golden Axe's Path of Fiend): a burst that re-keys every channel and loads their voices runs past
+  its frame into the next V-int's time, and that V-int is lost.  `vgm_frames` and `vgm_lift` read the
+  log with each glitch undone (`core/vgm/realign.py`: the frame before a lost V-int merged into its
+  own, a held frame inserted for a gained one), so the song after it is still checked.
+- Foreign: another sound on a channel (a sound effect, a voice left keyed).  `vgm_frames` sets its
+  notes aside ("excused: another sound"); `vgm_lift` does not compare a channel held throughout
+  ("another sound: FM4") and sets aside the differences on its frames ("known rip faults: FM4 3").
+- Two misses every rip shows alike are no glitch: `vgm_frames` excuses them, counted apart
+  ("excused: log end 4, re-entry 2").  **Log end**: a note on the log's last frame, which the log
+  ends inside, mid-burst.  **Re-entry**: a channel's first note back in its loop keyed a frame late, as
+  the next frame has it (the re-entry's burst overruns its frame; this time the next V-int is kept).
+- Finding glitches: `python tools/vgm_frames.py --all --glitches --configs configs/<game>` follows each
+  FM channel's key-ons (on their frame, at the note's pitch) from where the rip starts, and moves a
+  channel when two attacks running land only on another offset.  Moves of one shift whose windows
+  overlap are one candidate: a **glitch** when every channel playing across it moved (two at least;
+  one silent across several glitches moves by their sum), else the song's (one channel alone, or
+  from a channel's first attack).  Each candidate prints its frame, seconds and each moved channel's
+  attacks on time before / after; `[rips.yaml]` once logged.  The scan prints, never writes: a
+  glitch goes into `rips.yaml` once its writes are read (`vgm_analyze.py --frames` around it).
+- `vgm_frames` alone cannot see a glitch: it judges the registers on a note's frame, and a frame late
+  they mostly still hold the note.  Path of Fiend "matched" every note at offset -1 with its glitch in
+  place; with it undone, at its true offset 0.
+- Left out (2026-10-10): Sonic 1's Game Over moves FM1 and FM4 a frame at 6.8 s (frame 406, after 26
+  silent frames; 6 attacks after): two channels, too little to log.  Space Harrier II's title (`$98`)
+  FM4 is no other sound: its part plays 768 frames later in the rip than the song walks it (99 of 118
+  attacks land there), and its OP1 SSG-EG holds `$FF` from before the song.
 
 ### Pitch verdict (`tools/vgm_pitch_audit.py`)
 

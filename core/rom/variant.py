@@ -10,13 +10,17 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ..chips import OperatorReg
-from ..smps import ChannelType, FmDrum, PlaybackRules, SmpsSongHeader
+from ..smps import ChannelType, FmDrum, PlaybackRules, SmpsSongHeader, SmpsVoice
 from .flags import EnvelopeCommand, FlagSpec
 from .grammar import Instruction, smps_instruction
 from .image import RomError, RomImage
 from .memory import SoundMemory
+
+if TYPE_CHECKING:
+    from .header import RomHeader
 
 OPERATORS = 4
 
@@ -140,7 +144,7 @@ class SmpsVariant:
     flags: Mapping[ChannelType, Mapping[int, FlagSpec]]                 # each kind of track's flag table
     envelope_commands: Mapping[int, EnvelopeCommand]
     header: HeaderLayout
-    voice_layout: VoiceLayout
+    voice_layout: VoiceLayout | None                                 # None: its own voice_reader reads them
     rules: PlaybackRules                                             # what its songs play by (the ROM's own
                                                                      # tables and envelopes read in their place)
     dac: Callable[[RomImage, Mapping[int, str]], list[DacSample]] | None = None   # every sample a song can play
@@ -150,3 +154,12 @@ class SmpsVariant:
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
     # The track grammar: the instruction at an address (grammar.py; SMPS's for every variant so far)
     grammar: Callable[[SoundMemory, int, SmpsVariant, ChannelType], Instruction] = smps_instruction
+    # Its own readers, where its data is not SMPS's; None: header.py's by `header`, voices.py's by
+    # `voice_layout`.  A song's / an SFX's header at an address; `count` voices of the bank at one
+    music_header_reader: Callable[[SoundMemory, int], RomHeader] | None = None
+    sfx_header_reader: Callable[[SoundMemory, int], RomHeader] | None = None
+    voice_reader: Callable[[SoundMemory, int, int], list[SmpsVoice]] | None = None
+
+    def __post_init__(self) -> None:
+        if self.voice_layout is None and self.voice_reader is None:
+            raise ValueError(f"{self.name}: no voice layout and no voice reader")

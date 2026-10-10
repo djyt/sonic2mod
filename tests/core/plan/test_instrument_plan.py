@@ -6,6 +6,7 @@ each instrument's sounding pitch, roots resolved and detune planned.
 
 from __future__ import annotations
 
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -14,6 +15,8 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
+from core.audio import semitone_to_hz
+from core.chips import freq_word_hz
 from core.config import ConversionConfig, InstrumentRange, PsgInstrumentEntry, load_settings
 from core.drivers.reference import FM_FREQUENCIES, PSG_FREQUENCIES
 from core.mod import ModNote
@@ -24,14 +27,24 @@ from core.plan import (
     prepare_instruments,
     sounding_pitches,
 )
+from core.smps import fm_table_index
 
 _C2 = ModNote.C2.value          # MOD index 12
 
 
+def _word_cents(semitone: int, table: tuple[int, ...]) -> float:
+    """Cents `table`'s word for `semitone` sounds off equal temperament."""
+    return 1200 * math.log2(freq_word_hz(table[fm_table_index(semitone)]) / semitone_to_hz(semitone))
+
+
+def _song(fm_frequencies: tuple[int, ...]) -> SimpleNamespace:
+    return SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)],
+                           rules=SimpleNamespace(fm_frequencies=fm_frequencies, psg_frequencies=PSG_FREQUENCIES))
+
+
 class Sounding(unittest.TestCase):
     def test_each_rooted_instrument_with_its_detune(self):
-        song = SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)],
-                               rules=SimpleNamespace(fm_frequencies=FM_FREQUENCIES, psg_frequencies=PSG_FREQUENCIES))
+        song = _song(FM_FREQUENCIES)
         cfg = ConversionConfig()
         cfg.voice_map = {
             0: [InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2, synth_root=64, synth_shift=4)],
@@ -46,10 +59,19 @@ class Sounding(unittest.TestCase):
         got = sounding_pitches(song, cfg)
         self.assertEqual(sorted(got), [3, 5, 7, 23])
         self.assertEqual((got[3].root, got[3].root_semitone), (_C2, 60))
-        self.assertAlmostEqual(got[3].cents, detune_cents(64, 3, FM_FREQUENCIES))
-        self.assertAlmostEqual(got[23].cents, detune_cents(64, -20, FM_FREQUENCIES))
+        word = _word_cents(64, FM_FREQUENCIES)                  # Sonic 1's E5: +4 c
+        self.assertAlmostEqual(got[3].cents, word + detune_cents(64, 3, FM_FREQUENCIES))
+        self.assertAlmostEqual(got[23].cents, word + detune_cents(64, -20, FM_FREQUENCIES))
         self.assertEqual((got[5].root, got[5].root_semitone, got[5].cents), (_C2, 24, 0.0))   # below the table
         self.assertAlmostEqual(got[7].cents, -41.6, places=1)     # the driver's B7: divider 29
+
+    def test_a_table_that_plays_its_notes_off_their_names(self):
+        # Space Harrier II's table plays each note 11 semitones above its name: here, one above
+        table = (*FM_FREQUENCIES[1:], FM_FREQUENCIES[-1])
+        cfg = ConversionConfig()
+        cfg.voice_map = {0: [InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2, synth_root=64)]}
+        got = sounding_pitches(_song(table), cfg)
+        self.assertAlmostEqual(got[3].cents, 100 + _word_cents(65, FM_FREQUENCIES))
 
 
 class Prepare(unittest.TestCase):

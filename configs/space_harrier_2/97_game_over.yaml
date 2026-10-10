@@ -1,0 +1,5 @@
+# Space Harrier II - A (Game Over).  A minimal config: everything else is derived from the ROM
+# (docs/todo/space_harrier_2.md); python convert.py <this> --show-config prints it.
+name: "A (Game Over)"
+input_file: "input/roms/Space Harrier II (World).md"
+rom_song: "$97"

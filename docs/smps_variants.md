@@ -10,6 +10,7 @@ each fact was found.  Sonic 1 itself is `docs/smps_driver.md`; how the reader is
 | `smps68k_type1a` | SMPS 68k | Michael Jackson's Moonwalker | `core/drivers/smps68k/type1a/` |
 | `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/drivers/smpsz80/type0fm/` |
 | `smps68k_mucom` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/drivers/smps68k/mucom/` |
+| `smpsz80_sh2` (early, Golden Axe's ancestor) | SMPS Z80 | Space Harrier II | `core/drivers/smpsz80/sh2/` |
 
 A ROM known by its SHA-1 is pinned to its variant; any other is tried with each (`detect.py`).
 
@@ -136,8 +137,9 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
 - `vgm_pitch_audit`: all 13 songs, 14345 notes right.
 - `vgm_lift --skip FM3`: FM matches exactly on The Battle, Battle Field, Turtle Village 2,
   Showdown, Conclusion, Sutakora and Game Over; the rest differ at the first note and the loop.
-  Path of Fiend matches to 38 s, where the rip's hold cycle shifts a frame (a lost or extra
-  V-int: the rip's or the hardware's).  Death Adder: one tie to another pitch the lift cannot see.
+  Path of Fiend matches to 38 s, where the rip loses a V-int (frame 2304: the burst before re-keys
+  every channel and runs past its frame); `rips.yaml` logs it, the rip tools undo it
+  (`docs/pipeline.md` § The rip's own faults).  Death Adder: one tie to another pitch the lift cannot see.
 
 ---
 
@@ -259,6 +261,107 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
   restarts with each re-struck tie (`legato: retrigger`: `$8B` FM4).
 
 **Not done:** the SFX; listening and Amiga merged builds (4.4).
+
+---
+
+## Early SMPS Z80: Space Harrier II
+
+`GM 00004002-01` (World), SHA-1 `db4285e4…`.  Golden Axe's ancestor: its note grammar, `$EF`
+voice, `$F0` set volume, `$F2` stop, `$F6`-`$F9`, `$FB`, `$FC` slide mode, `$FD` raw frequency and a
+drum track on FM3, with little code shared (117 bytes).  Its register / value voice loader
+(`cp $83 / ret z / cp $B0`) is also in Super Thunder Blade, Zoom!, Alex Kidd in the Enchanted
+Castle, Altered Beast, Super Hang-On and Rambo III; the flag dispatch matches byte for byte only in
+Alex Kidd's.  No disassembly: read from its Z80 driver with `z80dis`.  The plan and its history:
+`docs/todo/space_harrier_2.md`.
+
+**Where things are** (`smpsz80/sh2/locate.py`: each table by the code that reads it)
+- **Programs:** the 68k copies one of three to Z80 `$0000` and reads each byte back (the verified
+  copy, `core/rom/z80.py`): the driver (ROM `$16A6C`, `$14F6` bytes; `smpsz80/program.py`
+  `driver_ram`: the load with an FM table) and two PCM voice players.
+- **Bank:** ROM `$10000` at Z80 `$8000`, by the run of 9 writes to `$6000` that maps inside the ROM
+  (the other maps `$C00000`: the PSG is written through the bank window).  Pointers little-endian.
+- **Tables (bank):** music index `$87FC` (songs `$81`-`$99`: as many as the tempo table has bytes),
+  tempo `$87E3`, pitch envelopes `$863B`, voices `$883A`.  **(driver):** FM `$098F`, PSG `$08FD`,
+  flag jumps `$05B7`, pan animations `$0482`.
+- **Songs:** no SMPS header: a count byte, then 9-byte track records copied into track RAM `$1839`
+  (`$30` each; 7 music, 4 SFX): flags (bit 7 plays, bit 6 pan animation), channel, divider,
+  pointer, transposition, pitch envelope, voice (never loaded at the start), volume.  Every song
+  is FM1-FM6 and PSG3; slot 3 is the drum track (FM3), slot 7 its PSG half, sharing its pointer
+  (`sh2/header.py`).  No PSG tone music; SFX not read (music only).
+
+**How it plays** (`sh2/variant.py`)
+- **Durations:** byte x divider, built by adds into a byte (`$0449`), which the track counts a frame
+  up to (`$024E`): 0 - a note before any duration byte - lasts 256 ticks, a product past 255 wraps
+  (`TrackRules.byte_durations`).  `$98`'s FM4 opens on three such notes, and on its loop the jump
+  leaves 18: the walk walks a second pass where a jump leaves another duration than the label's
+  opening notes took, and loops on it (`core/smps/code.py`).
+- **Tempo:** every n frames each music track holds one (`$1802`), Sonic 1's TempoWait at phase 0;
+  0 never holds (all but `$8C`, `$93`, `$95`, `$99`: 3).
+- **Flags:**
+
+  | byte | Space Harrier II | music uses |
+  |------|------------------|------------|
+  | `$E0`-`$E6`, `$F3` | PSG noise form (operand ORed with `$E0`) | drums |
+  | `$E7` | LFO (`$22`) | - |
+  | `$E8` | a driver byte (`$1808`: stops the music when set) | - |
+  | `$E9` | the song the 68k queues next: dropped, each song converts alone | 40 |
+  | `$EA` `$EB` `$FF` | FMS, AMS, pan (`$B4`) | 52 (`$FF`) |
+  | `$EC` `$ED` | FM3 special mode on / off | drums |
+  | `$EE` | legato on (1) / off: each read ties, a rest still keys off | 96 |
+  | `$EF` | voice | 618 |
+  | `$F0` `$F1` | set volume | 8 |
+  | `$F4` | pitch envelope | 12 |
+  | `$F5` | PSG envelope (PSG tracks) | drums |
+  | `$FA` | divider | drums |
+  | `$FB` | transposition (add) | 60 |
+  | `$FC` `$FD` | slide mode, raw frequency mode | drums |
+  | `$FE` | alter volume | 68 |
+
+- **Voices:** (register, value) pairs, channel-0 registers, `$83` ends (`sh2/voices.py`); the
+  carriers take the volume.  Voices 18 / 20 / 22 are patches, not voices: an `$EF` naming one is
+  refused (none does).
+- **Pitch:** its own FM table, the block in bits 11-13: each note sounds 11 semitones and 26 cents
+  above its SMPS name (`$81` near B0).  Samples render at the table's word, so the MOD is right;
+  note names in configs and reports are SMPS names, and the pitch audit adds the word's cents
+  (`core/plan/instrument_plan.py`).
+- **Pitch envelopes** (`sh2/envelopes.py`, `core/smps/pitch_envelope.py`): per-frame offsets from
+  each read; `$80` restart, `$84 n` scale += n, `$85 n` jump to step n, `$81`-`$83` hold.
+  Envelopes 1-3 scoop, then loop a vibrato that deepens each pass; 49 tracks start with one.
+  Baked: the detune plan keys a sample on (detune, envelope), rendered with the envelope stepped
+  a frame at a time, never looped.
+- **Pan animation:** record flag bit 6; each read steps the first list (C L C R, again and again:
+  the driver sets no other) - `PanStep`, written as `8xx` where no other effect is.
+
+**Drums** (`sh2/drums.py`)
+- The drum byte is a bitmask.  FM: two units on FM3 in special mode, each an operator pair with
+  its own frequency sweep (unit A OP1-OP2: bit 3 record `$0BFA`, else bit 0 `$0C0E`, bit 5 the next
+  record; unit B OP3-OP4: bit 2, `$0BF0`).  Each frame op X's low byte += its step, op Y's high
+  byte = op X's low byte + step.  PSG: bit 3 a noise-only part, bits 0-2 tone 3 at a sweep with
+  noise 7 (`$E7`) clocked by it, tone 3 two attenuation steps under the noise unless bit 3.
+- Two bugs played as heard: the drums sound so on every play, and the songs were written against
+  them (the exception to "don't simulate bugs").  Unit B reads `$0BF0` where the code meant `$0BE6`
+  without bit 5, which no song sets; the op-Y step lands in the high byte, so OP2 / OP4 jump a
+  block on frame 2.
+- A hit is rendered whole as a one-shot, its PSG part mixed in at `fm_synthesis.drum_psg_db`
+  (-5.7 dB, measured on 19 rips: VGMPlay mixes the SN76496 at half the YM2612's volume).  A drum
+  keying only part of its voice starts its derived volume that far below (drum81: OP1-OP2 alone).
+
+**Against the rips** (`configs/space_harrier_2/`, `rips.yaml`: 20 rips; `$82`-`$86`, the stage
+theme's other sections, have none)
+- `vgm_frames`: every FM attack's pitch, level and voice on its rip's frame in 19 songs (`$81`'s
+  five lost V-ints, `$96`'s and `$98`'s one logged in rips.yaml and undone); every drum hit's keys,
+  OP4 word and PSG part.  `$98`'s FM4 voice differs in OP1's SSG-EG: the `$F2` stop (`$06D3`)
+  silences a track through its RR / TL list offset by `channel and 7`, so FM4's lands an operator
+  slot high (`$90` = `$FF`), and no voice clears it; which song plays with it depends on what
+  stopped before, so it is not converted.
+- `vgm_pitch_audit`: all 20 songs, 7424 FM notes right.  `measure_volumes`: one pass, 147
+  volumes; left are drums with too few hits to measure, and voices whose quieter channels play a
+  sample rendered at a louder one's level (An Epitaph's FM6, ~7 dB).
+- `vgm_lift` misreads the tempo-3 songs' holds as tempo changes: `vgm_frames` is the yardstick.
+
+**Not done:** the SFX; listening (the pitch envelopes' approximations: a sample rendered at one
+pitch carries the envelope scaled to the notes it plays elsewhere; a tie under legato does not
+restart it).
 
 ---
 

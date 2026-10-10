@@ -9,7 +9,7 @@ import dataclasses
 import math
 
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
-from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db
+from ..chips import DEFAULT_FM_PAN_LAW_DB, MD_PSG_CLOCK, fm_level_db
 from ..config import (
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
@@ -557,8 +557,9 @@ class SmpsToModConverter:
         if not drums:
             return {}
         cache: dict[str, int] = {}
+        psg_clock = self.psg_synth.clock_rate if self.psg_synth else MD_PSG_CLOCK
         samples = generate_fm_drums(drums, synth, region_fps(self.config.region),
-                                    drum_rings(self.song, self.config, self._timeline), cache_out=cache)
+                                    drum_rings(self.song, self.config, self._timeline), cache_out=cache, psg_clock=psg_clock)
         if cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="FM drums", **cache)
         self._install_synthesized_samples(samples, self.config.sample_list, "drum", synth.max_sample_bytes)
@@ -663,9 +664,9 @@ class SmpsToModConverter:
         plan = self._instrument_plan.detune
         if plan is None:
             return None
-        if plan.own or plan.variants:
-            self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own),
-                            variants=[(v.inst, v.base, v.detune, v.notes) for v in plan.variants.values()])
+        if plan.own or plan.own_envelopes or plan.variants:
+            self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own), own_envelopes=dict(plan.own_envelopes),
+                            variants=[(v.inst, v.base, v.detune, v.envelope, v.notes) for v in plan.variants.values()])
         if plan.unplaced:
             self._diag.warn(WarningKind.DETUNE_NO_SLOT, channel='FM', unplaced=dict(plan.unplaced))
         return plan

@@ -335,7 +335,7 @@ class SynthesisSettings(SampleSettings):
     release_padding: float = 0.5
     threads: int | str = "normal"     # Render threads: "normal" (cores − 1), "max" (all cores), or a count
     detune_variants: bool = True      # an smpsAlterNote note plays a sample rendered at its FNUM offset (core.plan.detune)
-    drum_psg_db: float = 0.0          # an FM drum's PSG part against its FM part (0: a full PSG channel = one full carrier)
+    drum_psg_db: float = -5.7         # an FM drum's PSG part against its FM part (0: a full PSG channel = one full carrier)
     # FM level model — see fm_volume_mode.  "baked" | True ("absolute") | False ("off").
     fm_volume_scaling: bool | str = "baked"
     fm_pan_law_db: float = DEFAULT_FM_PAN_LAW_DB   # "baked" mode: a hard-panned note is this many dB below a centred one

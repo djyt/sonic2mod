@@ -77,7 +77,10 @@ Which rip is which song: not yet matched.
   `$B6` (FM6's pan, AMS / FMS) as each sample starts (`$0194`): the pan is the sample's.
   The rate is a `djnz` loop inside the polling loop: count its Z80 cycles, the time the updates
   take between outputs included (as Sonic 1's, `docs/smps_driver.md`).
-- **Flags** (operands: what the handler reads; the dispatch steps one past it):
+- **Flags** (operands: what the handler reads; the dispatch steps one past it).  Checked with
+  z80dis (Phase 1.3): `$E8` multiplies by the divider (`$03A7`), `$E9` and `$F1` read two, `$EF`
+  a second when bit 7 is set (on a PSG track too), `$F4` is a frequency envelope (the probe's
+  "modulation off"), `$E6` / `$E0` / `$EF` do nothing on a PSG track, `$EC` / `$F5` nothing on an FM one:
 
   | byte | OutRun | ops | music uses |
   |------|--------|-----|-----------|
@@ -89,26 +92,32 @@ Which rip is which song: not yet matched.
   | `$E5` | set FM volume | 1 | - |
   | `$E6` | alter FM volume | 1 | 355 |
   | `$E7` | no attack | 0 | 760 |
-  | `$E8` | note fill | 1 | - |
-  | `$E9` | LFO (`$22`) | 1 | - |
+  | `$E8` | note fill, x the divider | 1 | - |
+  | `$E9` | LFO (`$22`), then AMS / FMS | 2 | - |
   | `$EA` `$EB` | Timer A set / add | 2 | - |
   | `$EC` | alter PSG volume | 1 | 2 |
   | `$ED` `$EE` | YM register write, part I / II | 2 | - |
   | `$EF` | voice (2 operands when bit 7 is set) | 1 | 175 |
   | `$F0` | modulation | 4 | - |
-  | `$F1` | modulation on (sets `+$07`) | 2 | - |
+  | `$F1` | modulation on (`+$07` = the first operand on PSG, the second on FM) | 2 | - |
   | `$F2` | stop | - | 22 |
   | `$F3` | PSG noise | 1 | 7 |
-  | `$F4` | `+$07` = operand (modulation off?) | 1 | 2 |
+  | `$F4` | frequency envelope n (`+$07`: 0 none, `$80` `$F0`'s; the header's `+8` table) | 1 | 2 |
   | `$F5` | PSG voice | 1 | 129 |
   | `$F6` `$F7` `$F8` `$F9` | jump, loop, call, return | 2, 4, 2, 0 | |
   | `$FA` | divider | 1 | - |
   | `$FB` | transposition (add) | 1 | 90 |
   | `$FC` `$FD` | slide mode, raw frequency mode (as Type 0 FM) | 1 | - |
   | `$FE` | FM3 special mode | 4 | - |
-  | `$FF xx` | 8 sub-commands: `00` none, `01` tempo add, `02` play a sound, `03`, `04` copy n bytes, `05`, `06`, `07` (2) | 1+ | 1 (`FF02`, `$84`) |
+  | `$FF xx` | 8 sub-commands (operands): `00` none (1), `01` tempo add (1), `02` play a sound (1), `03` stop every track (1), `04` copy n bytes (3 + n), `05` every track's divider (1), `06` FM3 frequencies (4), `07` track bytes `$18`-`$19` (2) | 1+ | 1 (`FF02 $97`, `$84`) |
 
   A scratch walk with these lengths reads every track of all 5 songs to its end.
+- **Envelopes** (found in Phase 1; the probe missed them): the sound header's `+$A` word is the PSG
+  volume envelopes (`$80C0`, 17 to the first word that names none; `$80` restart, `$81` hold, `$83`
+  mute, any other a jump), `+8` the frequency envelopes `$F4` plays (`$800E`, 10; Space Harrier II's
+  steps with other bytes: `$80` restart, `$81` `$83` hold, `$82 n` jump, `$84 n` scale, from `$85`
+  negative; the scaled offset kept whole, `$0516`, where Space Harrier II keeps a byte).  The songs
+  play envelopes 2 and 5 (constant detunes, +5 and +2) and PSG voices 4 and 16.
 
 ---
 
@@ -263,15 +272,19 @@ the next reset.  So:
 - [x] 0.1 2.1 items 1-4 (item 1: §3.3, T1-T3); gates (regression, tool regression, pytest, ruff, pyright, vulture, layers).  Done 2026-10-10 on branch `outrun`; also split `smps2mod.py` (`convert/samples.py`) and `analyze.py` (`core/analysis/skeleton.py`).
 
 ### Phase 1: read the ROM
-- [ ] 1.1 `SmpsDriver.OUTRUN` (`smpsz80_outrun`), `core/drivers/smpsz80/outrun/`, pinned by SHA-1
+- [x] 1.1 `SmpsDriver.OUTRUN` (`smpsz80_outrun`), `core/drivers/smpsz80/outrun/`, pinned by SHA-1
   in `games.py` (D1).
-- [ ] 1.2 Locate by shape: the pointer-loaded program, the bank words in `$1C00` / `$1C06`, the
-  sound header's music index.  SFX: in Z80 RAM (`$1000`).
-- [ ] 1.3 Flags (the table in 1) as existing `CoordFlag`s; `$FF xx` (operands by sub-command) and
-  `$EF` (a second operand when bit 7 is set) as `FlagKind.READ`; `FF02` dropped (each song alone).
-  Sonic 1's voice layout, header (DAC first).  Check each handler's operand count with a
-  disassembler.
-- [ ] 1.4 `rom_import.py`, `song_dump.py`; read snapshot `read_outrun`; unit tests.
+- [x] 1.2 Locate by shape: the pointer-loaded program, the bank words in `$1C00` / `$1C06`, the
+  sound header's music index.  SFX: in Z80 RAM (`$1000`), not read (music only, as Space Harrier II:
+  the open decision below).  The banks: the 68k's `move.b #n,($A01Cxx).l` writes into the bytes the
+  two bank routines read; the songs' bank is the one whose window holds the sound header.
+- [x] 1.3 Flags as existing `CoordFlag`s, a table per kind of track; `$FF xx` and `$EF` as
+  `FlagKind.READ`; `FF02` dropped (each song alone); the flags no song plays and the converter cannot
+  (modulation, Timer A, note fill x divider, raw writes ...) refused.  `$F4` is `SetPitchEnvelope`.
+  Every handler's operand count checked with z80dis (the table in 1, corrected).  Sonic 1's voice
+  layout (`SMPS_VOICE`), header (DAC first).  `$85`'s PSG and FM tracks call one phrase: the reader
+  now shares code that reads the same for both kinds (`core/rom/tracks.py`).
+- [x] 1.4 `rom_import.py`, `song_dump.py`; read snapshot `read_outrun`; unit tests.
 
 ### Phase 2: timing and pitch
 - [ ] 2.1 `update_clock = TimerA(value)` from the ROM's init write (§3.2), `$EA` / `$EB` refused;

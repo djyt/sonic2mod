@@ -157,7 +157,7 @@ class MergedBuild:
 
         # A mixed composite ends the way its primary does (the release slide's rate).  A banked
         # one shares its slot with sounds of other primaries (a drum hit, a bass note): its notes
-        # look their primary's rate up themselves (core.convert.channel_writer, `bank_member`)
+        # look their primary's rate up themselves (core.convert.channel_writer: Fades.release_rate)
         for c in plan.composites.values():
             if c.fm is None and not c.banked and c.primary in release:
                 release.setdefault(c.inst, release[c.primary])

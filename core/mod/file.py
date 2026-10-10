@@ -91,7 +91,7 @@ _MAX_SAMPLE_BYTES = 0xFFFF      # what sample_list loads
 
 # Bytes per pattern cell (4) × rows per pattern (64)
 _BYTES_PER_CELL = 4
-_ROWS_PER_PATTERN = 64
+ROWS_PER_PATTERN = 64
 
 
 class ModPattern:
@@ -99,7 +99,7 @@ class ModPattern:
     _plen: int
 
     def __init__(self, chan: int = 4):
-        size = chan * _BYTES_PER_CELL * _ROWS_PER_PATTERN
+        size = chan * _BYTES_PER_CELL * ROWS_PER_PATTERN
         self._data = bytearray(size)
         self._plen = size
 
@@ -238,8 +238,8 @@ class ModFile:
         self._chan = chan
 
     def set_row(self, row: int):
-        if row < 0 or row > _ROWS_PER_PATTERN - 1:
-            raise IndexError(f"row {row}: not in 0..{_ROWS_PER_PATTERN - 1}")
+        if row < 0 or row > ROWS_PER_PATTERN - 1:
+            raise IndexError(f"row {row}: not in 0..{ROWS_PER_PATTERN - 1}")
         self._row = row
 
     def set_note(self, n: ModNote, inst: int | None = None):
@@ -316,7 +316,7 @@ class ModFile:
             data = pat.get_bytes()
             for c in range(self.CHANNELS - 1, highest, -1):
                 if any(data[r * stride + c * 4: r * stride + c * 4 + 4] != b"\0\0\0\0"
-                       for r in range(_ROWS_PER_PATTERN)):
+                       for r in range(ROWS_PER_PATTERN)):
                     highest = c
                     break
         return highest + 1
@@ -337,7 +337,7 @@ class ModFile:
             data = pat.get_bytes()
             np_ = ModPattern(channels)
             out = np_.get_bytes()
-            for r in range(_ROWS_PER_PATTERN):
+            for r in range(ROWS_PER_PATTERN):
                 out[r * new_stride: r * new_stride + new_stride] = data[r * old_stride: r * old_stride + new_stride]
             new_patterns.append(np_)
         self.patterns = new_patterns
@@ -640,7 +640,7 @@ class ModImage:
                     jump = (jump[0] if jump is not None else pos + 1, (par >> 4) * 10 + (par & 0xF))
             if jump is not None:
                 pos, row = jump
-            elif row == _ROWS_PER_PATTERN - 1:
+            elif row == ROWS_PER_PATTERN - 1:
                 pos, row = pos + 1, 0
             else:
                 row += 1
@@ -668,7 +668,7 @@ def read_mod(source: bytes | str | os.PathLike) -> ModImage:
     patterns = []
     for _ in range(stored):
         rows = []
-        for _r in range(_ROWS_PER_PATTERN):
+        for _r in range(ROWS_PER_PATTERN):
             cells = []
             for _c in range(channels):
                 b0, b1, b2, b3 = d[off:off + _BYTES_PER_CELL]
@@ -694,11 +694,11 @@ def isolate_channel(data: bytes, keep: int | None) -> bytes:
     order = data[_ORDER_AT:_ORDER_AT + data[_SONG_LENGTH_AT]]
     b = bytearray(data)
     for p in range((max(order) + 1) if order else 0):
-        for r in range(_ROWS_PER_PATTERN):
+        for r in range(ROWS_PER_PATTERN):
             for c in range(channels):
                 if c == keep:
                     continue
-                off = _PATTERNS_AT + ((p * _ROWS_PER_PATTERN + r) * channels + c) * _BYTES_PER_CELL
+                off = _PATTERNS_AT + ((p * ROWS_PER_PATTERN + r) * channels + c) * _BYTES_PER_CELL
                 eff = b[off + 2] & 0x0F
                 if eff in (0xF, 0xB, 0xD):
                     b[off], b[off + 1], b[off + 2] = 0, 0, eff

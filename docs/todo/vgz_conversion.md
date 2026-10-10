@@ -233,7 +233,7 @@ Started: a hit per `0xE0` seek, named `pcm 0x…` by its offset (`dac_hits`).  T
 - Watch for the logger merging back-to-back restarts of the same sample (`vgm_analyze` docstring):
   a restart with no seek shows as the `0x8n` stream running past the sample's known length.
 **Accept:** DAC note count and ticks equal the asm's; extracted kick/snare/timpani byte-equal (or
-explained) against `samples/`.
+explained) against `input/sonic_1/samples/`.
 
 ### [ ] 1.9 Recording artefacts
 - Song-start key-on artefacts (Spring Yard audit) and the sound-test state before the first write:

@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -161,7 +161,7 @@ chaos_emerald:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
+    configs/sonic_1/16_chaos_emerald.yaml: 702974097f19
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
     tests/settings.yaml: a79a8ba763a3
 continue_screen:
@@ -172,7 +172,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -326,7 +326,7 @@ continue_screen:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 continue_screen_lofi:
@@ -339,7 +339,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -493,7 +493,7 @@ continue_screen_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 continue_screen_lofi_merged:
@@ -507,7 +507,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -661,7 +661,7 @@ continue_screen_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 continue_screen_merged:
@@ -673,7 +673,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -827,7 +827,7 @@ continue_screen_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
+    configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: a79a8ba763a3
 credits:
@@ -838,7 +838,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -992,7 +992,7 @@ credits:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
     tests/settings.yaml: a79a8ba763a3
 credits_rom:
@@ -1007,7 +1007,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1161,7 +1161,7 @@ credits_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/13_credits.yaml: 33967a29b9b9
+    configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3
 drowning:
@@ -1172,7 +1172,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1326,7 +1326,7 @@ drowning:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/17_drowning.yaml: 099aadef0ccc
+    configs/sonic_1/17_drowning.yaml: 81b857245faf
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
     tests/settings.yaml: a79a8ba763a3
 ending_theme:
@@ -1337,7 +1337,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1491,7 +1491,7 @@ ending_theme:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
+    configs/sonic_1/12_ending_theme.yaml: ee21c3728278
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
     tests/settings.yaml: a79a8ba763a3
 extra_life:
@@ -1502,7 +1502,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1656,7 +1656,7 @@ extra_life:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/15_1up.yaml: bef552b8a959
+    configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 extra_life_lofi:
@@ -1669,7 +1669,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1823,7 +1823,7 @@ extra_life_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/15_1up.yaml: bef552b8a959
+    configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 extra_life_lofi_merged:
@@ -1837,7 +1837,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1991,7 +1991,7 @@ extra_life_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/15_1up.yaml: bef552b8a959
+    configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 extra_life_merged:
@@ -2003,7 +2003,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2157,7 +2157,7 @@ extra_life_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/15_1up.yaml: bef552b8a959
+    configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
     tests/settings.yaml: a79a8ba763a3
 final_zone:
@@ -2168,7 +2168,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2322,7 +2322,7 @@ final_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/10_final_zone.yaml: c8329f9162cb
+    configs/sonic_1/10_final_zone.yaml: 1816d8c10975
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
     tests/settings.yaml: a79a8ba763a3
 ga_conclusion:
@@ -2333,7 +2333,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2496,7 +2496,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2659,7 +2659,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2822,7 +2822,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2976,7 +2976,7 @@ game_over:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 game_over_lofi:
@@ -2989,7 +2989,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3143,7 +3143,7 @@ game_over_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 game_over_lofi_merged:
@@ -3157,7 +3157,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3311,7 +3311,7 @@ game_over_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 game_over_merged:
@@ -3323,7 +3323,7 @@ game_over_merged:
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3477,7 +3477,7 @@ game_over_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 5c954c505b04
+    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: a79a8ba763a3
 ghz_lofi:
@@ -3490,7 +3490,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3644,7 +3644,7 @@ ghz_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 ghz_lofi_merged:
@@ -3658,7 +3658,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3812,7 +3812,7 @@ ghz_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 green_hill_zone:
@@ -3823,7 +3823,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3977,7 +3977,7 @@ green_hill_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 green_hill_zone_merged:
@@ -3989,7 +3989,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4143,7 +4143,7 @@ green_hill_zone_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: a79a8ba763a3
 green_hill_zone_rom:
@@ -4158,7 +4158,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4312,7 +4312,7 @@ green_hill_zone_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
+    configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3
 invincibility:
@@ -4323,7 +4323,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4477,7 +4477,7 @@ invincibility:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 invincibility_lofi:
@@ -4490,7 +4490,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4644,7 +4644,7 @@ invincibility_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 invincibility_lofi_merged:
@@ -4658,7 +4658,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4812,7 +4812,7 @@ invincibility_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 invincibility_merged:
@@ -4824,7 +4824,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4978,7 +4978,7 @@ invincibility_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: e3c0eb658641
+    configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: a79a8ba763a3
 lab_zone:
@@ -4989,7 +4989,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5143,7 +5143,7 @@ lab_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
+    configs/sonic_1/05_lab_zone.yaml: 28a70a07bc3d
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
     tests/settings.yaml: a79a8ba763a3
 marble_zone:
@@ -5154,7 +5154,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5308,7 +5308,7 @@ marble_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
     tests/settings.yaml: a79a8ba763a3
 marble_zone_rom:
@@ -5323,7 +5323,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5477,7 +5477,7 @@ marble_zone_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/03_marble_zone.yaml: 16310d9338be
+    configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3
 mw_beat_it:
@@ -5488,7 +5488,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5653,7 +5653,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5818,7 +5818,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5983,7 +5983,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6137,7 +6137,7 @@ robotnik:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 robotnik_lofi:
@@ -6150,7 +6150,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6304,7 +6304,7 @@ robotnik_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 robotnik_lofi_merged:
@@ -6318,7 +6318,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6472,7 +6472,7 @@ robotnik_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 robotnik_merged:
@@ -6484,7 +6484,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6638,7 +6638,7 @@ robotnik_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
+    configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: a79a8ba763a3
 scrap_brain_zone:
@@ -6649,7 +6649,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6803,7 +6803,7 @@ scrap_brain_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
+    configs/sonic_1/07_scrap_brain_zone.yaml: a5555800ac10
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
     tests/settings.yaml: a79a8ba763a3
 special_stage:
@@ -6814,7 +6814,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6968,7 +6968,7 @@ special_stage:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/08_special_stage.yaml: 986d25d7793a
+    configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
     tests/settings.yaml: a79a8ba763a3
 spring_yard_zone:
@@ -6979,7 +6979,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7133,7 +7133,7 @@ spring_yard_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
+    configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
     tests/settings.yaml: a79a8ba763a3
 stage_clear:
@@ -7144,7 +7144,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7298,7 +7298,7 @@ stage_clear:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 stage_clear_lofi:
@@ -7311,7 +7311,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7465,7 +7465,7 @@ stage_clear_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 stage_clear_lofi_merged:
@@ -7479,7 +7479,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7633,7 +7633,7 @@ stage_clear_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 stage_clear_merged:
@@ -7645,7 +7645,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7799,7 +7799,7 @@ stage_clear_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
+    configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
     tests/settings.yaml: a79a8ba763a3
 star_light_zone:
@@ -7810,7 +7810,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7964,7 +7964,7 @@ star_light_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
+    configs/sonic_1/06_star_light_zone.yaml: 04ab4d7aca07
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
     tests/settings.yaml: a79a8ba763a3
 title_screen:
@@ -7975,7 +7975,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8129,7 +8129,7 @@ title_screen:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
     tests/settings.yaml: a79a8ba763a3
 title_screen_merged:
@@ -8141,7 +8141,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8295,7 +8295,7 @@ title_screen_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
     tests/settings.yaml: a79a8ba763a3
 title_screen_rom:
@@ -8310,7 +8310,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: b0fa71b-dirty
+  commit: d0bd6d8-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8464,6 +8464,6 @@ title_screen_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   inputs:
-    configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
+    configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: a79a8ba763a3

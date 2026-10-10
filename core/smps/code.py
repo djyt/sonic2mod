@@ -230,6 +230,13 @@ class _Walker:
         self._jump_tie = False
         self._pan_step = 0                         # the pan animation's next step (header.pan_steps)
 
+        # A jump back's durations: labels reached since the last duration byte, the duration
+        # each label's opening notes took from before it, and where a second pass began (tick,
+        # event index) when the jump left another: the loop is that pass
+        self._undurated: list[str] = []
+        self._inherited: dict[str, int] = {}
+        self._second_pass: tuple[int, int] | None = None
+
         self._handlers = {
             OpKind.STOP: self._on_end, OpKind.RETURN: self._on_end,    # RETURN: only reached in a call
             OpKind.JUMP: self._on_jump, OpKind.LOOP: self._on_loop, OpKind.LOOP_EXIT: self._on_loop_exit,
@@ -245,6 +252,7 @@ class _Walker:
 
         # The channel's own start: tick 0 (its loop, if it jumps back here, is taken by tick)
         self._label_ticks.setdefault(start, 0)
+        self._undurated.append(start)
         cur = _Cursor(channel, self._is_dac, tempo_divider, last_duration=self._driver.duration(0))
         if self._header.pitch_envelope:
             channel.events.append(SmpsEvent(effect=SetPitchEnvelope(self._header.pitch_envelope), tick_position=0))
@@ -257,6 +265,8 @@ class _Walker:
             channel.loop_tick = self._label_ticks.get(channel.loop_label)
             channel.loop_event_index = self._label_events.get(channel.loop_label)
             channel.replay_tie = self._replay_tie(channel.loop_label)
+            if self._second_pass is not None:
+                channel.loop_tick, channel.loop_event_index = self._second_pass
         return channel
 
     def _replay_tie(self, label: str) -> bool | None:
@@ -317,6 +327,11 @@ class _Walker:
             cur.channel.has_jump = True
             cur.channel.loop_label = op.name
             self._jump_tie = cur.no_attack
+            if self._replay_differs(op.name, cur):
+                # The first pass's opening notes took a duration the jump does not leave: the
+                # second pass is walked, and is the loop ($98's FM4: 256 ticks, then 18)
+                self._second_pass = (cur.tick, len(cur.channel.events))
+                self._walk(self._labels[op.name] + 1, cur, seen)
             return None
 
         # Forward into code not walked yet: followed, and the label is reached here, now - a later
@@ -325,6 +340,13 @@ class _Walker:
         self._mark_label(op.name, cur, len(cur.channel.events))
         self._walk(self._labels[op.name] + 1, cur, seen)
         return None
+
+    def _replay_differs(self, label: str, cur: _Cursor) -> bool:
+        """A jump back to `label` replays it otherwise than the first pass: its opening notes,
+        before any duration byte, took a duration from before it that the jump does not leave
+        (once: the second pass ends as the first)."""
+        taken = self._inherited.get(label)
+        return self._second_pass is None and taken is not None and taken != cur.last_duration
 
     def _on_loop(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
         """The first pass is behind; replay the body (target to here) count - 1 more times."""
@@ -380,6 +402,7 @@ class _Walker:
         self._label_ticks[label] = cur.tick
         self._label_events[label] = event_index
         self._open_labels.append(label)
+        self._undurated.append(label)
         if cur.no_attack:
             self._tied_labels.add(label)
 
@@ -471,6 +494,7 @@ class _Walker:
     def _duration(self, cur: _Cursor, duration: int) -> None:
         """A duration (already scaled by the tempo divider): the pending note's, or a note of its own."""
         cur.last_duration = duration
+        self._undurated.clear()
         if cur.pending is not None:
             self._close_pending(cur)
             return
@@ -493,6 +517,8 @@ class _Walker:
         if pending is None:
             return
         pending.duration = cur.last_duration
+        for label in self._undurated:               # a duration from before the label (no byte since)
+            self._inherited.setdefault(label, cur.last_duration)
         if pending.is_rest:
             cur.last_note_value = 0         # the driver clears the frequency: a bare duration rests on
         elif not pending.is_dac:

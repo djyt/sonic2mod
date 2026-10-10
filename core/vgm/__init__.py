@@ -45,6 +45,7 @@ from .reader import (
     decode_vgm,
     is_vgm_path,
     read_vgm,
+    retimed,
     vgm_bytes,
 )
 from .realign import realigned
@@ -92,5 +93,6 @@ __all__ = [
     "pitch_segments",
     "read_vgm",
     "realigned",
+    "retimed",
     "vgm_bytes"
 ]

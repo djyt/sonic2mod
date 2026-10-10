@@ -36,8 +36,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config import load_yaml
-from ..smps import SmpsSong, TimerA
-from ..vgm import FrameCut, FrameLog, is_vgm_path, realigned
+from ..smps import SmpsSong, TimerA, update_hz
+from ..vgm import FrameCut, FrameLog, VgmLog, decode_vgm, frame_log, is_vgm_path, realigned, retimed, vgm_bytes
 
 _PROJECT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = _PROJECT / "configs"                  # the song configs, a folder per game below
@@ -199,6 +199,23 @@ class RipShelf:
 def frame_cut(song: SmpsSong) -> FrameCut:
     """How `song`'s rips are cut into frames: as its driver's update runs."""
     return FrameCut.TIMER_A if isinstance(song.rules.update_clock, TimerA) else FrameCut.VINT
+
+
+def rip_scale(song: SmpsSong, region: str, log: VgmLog) -> float:
+    """A second of `log` on its song's clock (T6): the rip's frames a second, measured from its
+    resets, over the driver's.  1 for a rip cut at V-ints (the converter's 60 Hz is its convention);
+    OutRun's rips 0.997, their timer slow."""
+    if frame_cut(song) is FrameCut.VINT:
+        return 1.0
+    return frame_log(log, cut=FrameCut.TIMER_A).fps / update_hz(song.rules, region)
+
+
+def rip_on_song_clock(path: str | Path, song: SmpsSong, region: str) -> tuple[bytes, float]:
+    """The rip's VGM bytes put on its song's clock (retimed where its scale is not 1), and the scale:
+    what an audit aligns a MOD against."""
+    raw = vgm_bytes(path)
+    scale = rip_scale(song, region, decode_vgm(raw))
+    return (raw if scale == 1.0 else retimed(raw, scale)), scale
 
 
 def named(names: Iterable[str] | None, *paths: Path) -> bool:

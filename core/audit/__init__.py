@@ -45,6 +45,8 @@ from .rips import (
     RipShelf,
     frame_cut,
     named,
+    rip_on_song_clock,
+    rip_scale,
 )
 from .signal import (
     VIB_MIN_NOTE,
@@ -116,6 +118,8 @@ __all__ = [
     "reference_render_key",
     "render_mod_channels",
     "render_vgm_channels",
+    "rip_on_song_clock",
+    "rip_scale",
     "rms",
     "scan_glitches",
     "seg_at",

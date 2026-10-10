@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings, load_settings
+from core.config.bpm import exact_bpm
 from core.drivers import dac_samples, read_rom_song
 from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
@@ -92,6 +93,21 @@ class RowGrid(unittest.TestCase):
         song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)], SONIC1_RULES)
         stated = {"name": "Grid", "input_file": "song.asm", "max_patterns": 1}
         self.assertEqual(derive_config(stated, song, Path("configs/grid.yaml"), _SETTINGS).data["ticks_per_row"], 7)
+
+    def test_a_grid_too_coarse_for_any_bpm_is_divided(self):
+        # Long notes only (Space Harrier II's Game Over): a 96-tick grid is 1.6 s a row, below 32
+        # BPM at any speed; the largest part of it that fits, the driver's tempo exactly
+        ops = [Op(OpKind.LABEL, name="FM1"), Op(OpKind.EFFECT, effect=SetVoice(0)),
+               *[Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=96)] * 4, Op(OpKind.STOP)]
+        header = SmpsSongHeader(fm_count=1, tempo_modifier=NO_TEMPO_HOLDS,
+                                channels=[SmpsChannelHeader(channel_type=ChannelType.FM, label="FM1")])
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)], SONIC1_RULES)
+        data = derive_config({"name": "Long", "input_file": "song.asm"}, song, Path("configs/long.yaml"), _SETTINGS).data
+        tpr, speed = data["ticks_per_row"], data["target_speed"]
+        self.assertEqual(96 % tpr, 0)
+        bpm = exact_bpm(header.tempo_divider, header.tempo_modifier, tpr, speed, 60)
+        self.assertEqual((tpr, speed), (48, 16))
+        self.assertAlmostEqual(bpm, 50, places=6)                       # the driver's tempo exactly
 
 
 @needs_moonwalker

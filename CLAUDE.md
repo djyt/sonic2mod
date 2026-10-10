@@ -61,7 +61,8 @@ sonic2mod/
   configs/     settings.yaml; per-song YAML a folder per game: sonic_1/, moonwalker/ (minimal configs), ...
   tools/       analysis and audit utilities (vgm_*, mod_*, merge_survey, fold_csv, rom_import, ...)
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
-  3rdparty/    vendored C emulators (nuked-opn2/, sn76489/);  build/: their compiled libraries (gitignored)
+  3rdparty/    vendored C emulators (nuked-opn2/, sn76489/);  build/: their compiled libraries (gitignored);
+               prebuilt/: the Windows DLLs, used when no compiler is on PATH (tracked)
   docs/  samples/  reference/ (gitignored)
   input/       sonic_1/ (Sonic 1's asm songs, fold CSVs); roms/ (every game's ROMs, not in git)
   output/      a folder per game as configs/ (sonic_1/: MODs, sfx/, sfx8/); cache/, compare/ shared
@@ -74,7 +75,9 @@ pip install pyyaml rich   # external dependencies
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
 ```
 
-Synthesis compiles `3rdparty/`'s `ym3438.c` / `sn76489.c` into `build/` with gcc or MSVC on first use.
+Synthesis compiles `3rdparty/`'s `ym3438.c` / `sn76489.c` into `build/` with gcc or MSVC on first use; with
+no compiler on PATH it loads `prebuilt/`'s DLLs.  After changing a C source (or `ym3438_batch.c`), copy the
+rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 
 ## Linting
 

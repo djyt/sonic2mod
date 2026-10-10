@@ -31,7 +31,8 @@ catalogue entry → render_psg_tone_raw / render_psg_noise_raw → shelf, DC blo
 ## Quick Start
 
 `psg_synthesis.enabled` is `true` in the shipped `configs/settings.yaml` (code default `false`).
-The first render compiles the library into `build/`, so gcc or MSVC must be on PATH.
+The first render compiles the library into `build/` with gcc or MSVC; with neither on PATH,
+Windows loads `prebuilt/sn76489.dll`.
 
 ```bash
 python tools/validate_sn76489.py   # in turn: the device (C3 tone + white noise → output/psg_{tone,noise}_test.raw);

@@ -91,7 +91,8 @@ adds composite instruments to the same catalogue.
 - The chips are kept as MAME keeps devices (`src/devices/sound/`): `core/chips/ym2612/` and
   `core/chips/sn76489/` are the emulators alone (registers in, samples out), above their facts
   (`fm.py`, `psg.py`) and importing nothing else of `core`; their C cores are vendored in
-  `3rdparty/` (MAME's `3rdparty/`) and compiled into `build/` on first use (`core/chips/cbuild.py`).
+  `3rdparty/` (MAME's `3rdparty/`) and compiled into `build/` on first use (`core/chips/cbuild.py`);
+  with no compiler, the tracked Windows DLLs in `prebuilt/` are loaded instead.
   Anything may drive a device: `core/synth` for the converter, `sfx/` for the SFX driver.
 - `core/synth` drives the devices with a song's voices and envelopes (the instrument catalogue
   from `plan`, levels from `config`, voice layout from `smps`); `core/convert` calls its
@@ -316,7 +317,7 @@ limits.
 | `core/chips/psg.py` | SN76489 facts: clock, `psg_frequency_hz`, `PSG_STEP_DB` 2.0, `psg_level_db` |
 | `core/chips/ym2612/` | The YM2612 device: `wrapper.py` (`OPN2`, `output_rate`), `build.py` (Nuked-OPN2 + `ym3438_batch.c` → `build/ym3438.dll`) |
 | `core/chips/sn76489/` | The SN76489 device: `wrapper.py` (`SN76489`), `build.py` (VGMPlay's core → `build/sn76489.dll`) |
-| `core/chips/cbuild.py` | `CLibrary`: compile a device's C core (`3rdparty/`) with gcc / MSVC into `build/`, rebuilt when a source is newer |
+| `core/chips/cbuild.py` | `CLibrary`: compile a device's C core (`3rdparty/`) with gcc / MSVC into `build/`, rebuilt when a source is newer; no compiler: `prebuilt/` |
 | `core/synth/fm_voice.py` | `program_voice`: an `SmpsVoice` → YM2612 registers (the SMPS operator order) |
 | `core/synth/fm_render.py` | `render_note`, `render_layers` (composites), `render_frames` (FM drum tracks) → PCM |
 | `core/synth/fm_samples.py` | `generate_fm_samples`, `generate_fm_drums`: every FM instrument of the catalogue, threaded, through the render cache |

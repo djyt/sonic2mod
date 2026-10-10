@@ -1,7 +1,7 @@
 """Polyphase windowed-sinc resampler (Kaiser window, >70 dB stopband).
 
 Shared by the SFX renderer (53267 Hz -> 44100 Hz, `sfx/render.py`) and the FM sample
-pipeline (53267 Hz -> each instrument's MOD target rate, `ym2612/renderer.py`).  No
+pipeline (53267 Hz -> each instrument's MOD target rate, `core/synth/fm_render.py`).  No
 dependencies beyond the standard library.
 
 The kernel bank depends only on the rate pair and filter settings, so it is built

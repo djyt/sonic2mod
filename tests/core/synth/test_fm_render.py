@@ -1,6 +1,6 @@
-"""The fnum a sample renders at and the frames it renders (ym2612/renderer.py).
+"""The fnum a sample renders at and the frames it renders (core/synth/fm_render.py).
 
-    python -m pytest tests/ym2612/test_renderer.py -q
+    python -m pytest tests/core/synth/test_fm_render.py -q
 """
 
 from __future__ import annotations
@@ -10,14 +10,14 @@ import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from core.chips import FmLfo, freq_word_hz
+from core.chips.ym2612 import output_rate
 from core.drivers.reference import FM_FREQUENCIES
 from core.smps import FmFrame, SmpsVoice, VoiceField
-from ym2612.renderer import note_to_fnum_block, render_frames, render_layers
-from ym2612.wrapper import output_rate
+from core.synth.fm_render import note_to_fnum_block, render_frames, render_layers
 
 
 def _hz(mono, rate: int) -> float:
@@ -67,7 +67,7 @@ class RenderedPitch(unittest.TestCase):
 
 
 class RenderedFrames(unittest.TestCase):
-    """An FM drum program rendered frame by frame (ym2612/renderer.py render_frames)."""
+    """An FM drum program rendered frame by frame (core/synth/fm_render.py render_frames)."""
 
     _VOICE = SmpsVoice(0, algorithm=7, operators={VoiceField.ATTACK_RATE: (31, 31, 31, 31),
                                                   VoiceField.MULTIPLE: (1, 1, 1, 1),

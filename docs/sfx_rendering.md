@@ -50,10 +50,10 @@ after each `smpsAlterPitch` at the old pitch.  The parser marks these `SmpsNote.
 **`smpsNoAttack` skips the key-off and the re-arm**, so a tied note carries its PSG envelope and
 modulation sweep on (driver § smpsNoAttack).
 
-**PSG envelopes hold their last value** at `$80`.  `sn76489/renderer.py` ramps to silence unless
+**PSG envelopes hold their last value** at `$80`.  `core/synth/psg_render.py` ramps to silence unless
 told to `hold` — right for a one-shot MOD sample, wrong here.
 
-**`SetVoice` and `SendVoiceTL` differ** (driver § Carriers by algorithm).  `ym2612/voice.py::program_voice`
+**`SetVoice` and `SendVoiceTL` differ** (driver § Carriers by algorithm).  `core/synth/fm_voice.py::program_voice`
 does `SetVoice`'s sum only and writes $B4 centred, so `sfx/chips.py` mirrors both routines instead.
 
 **`OPN2.write_reg` costs two samples of chip time** and normally discards their audio; on a

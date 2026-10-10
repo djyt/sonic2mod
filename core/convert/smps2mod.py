@@ -44,9 +44,9 @@ from ..smps import (
 )
 from ..smps import semitone_to_note_name as _semitone_to_name
 from ..smps import source_map as source_map_for
+from ..synth import generate_fm_drums, generate_fm_samples, generate_psg_samples
 from .channel_writer import ChannelWriter, EmissionStats, WriterContext
 from .fm_drums import drum_rings
-from .generators import SampleGenerators
 from .layout import ModLayout
 from .level_plan import LevelPlanner
 from .sample_names import sample_names
@@ -60,11 +60,7 @@ _MAX_BANK_BUILDS = 4
 class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
-                 psg_synth: PsgSynthesisSettings | None = None,
-                 generators: SampleGenerators | None = None):
-        # The chip packages' renderers, handed down from the layer above (core/convert/generators.py);
-        # needed only where synthesis is enabled.  Kept across convert()'s rebuilds.
-        self._generators = generators or SampleGenerators()
+                 psg_synth: PsgSynthesisSettings | None = None):
         self._start(song, config, synth, psg_synth)
 
     def _start(self, song: SmpsSong, config: ConversionConfig,
@@ -506,10 +502,6 @@ class SmpsToModConverter:
     def _synthesize_fm(self, synth: SynthesisSettings) -> tuple[dict, set[int]]:
         """Every FM instrument rendered and installed → (the samples, the instruments of map
         entries whose voice the song does not define)."""
-        generate_fm_samples = self._generators.fm
-        if generate_fm_samples is None:
-            raise ValueError("FM synthesis is enabled but no FM generator was given (SampleGenerators.fm)")
-
         # Warn about map entries whose voice index doesn't exist in the song, and collect their
         # instruments to suppress spurious "file not found" warnings.
         missing: set[int] = set()
@@ -564,9 +556,6 @@ class SmpsToModConverter:
         drums = list(fm_drum_catalogue(self.song, self.config).values())
         if not drums:
             return {}
-        generate_fm_drums = self._generators.fm_drums
-        if generate_fm_drums is None:
-            raise ValueError("the song's drums are FM programs but no drum generator was given (SampleGenerators.fm_drums)")
         cache: dict[str, int] = {}
         samples = generate_fm_drums(drums, synth, region_fps(self.config.region),
                                     drum_rings(self.song, self.config, self._timeline), cache_out=cache)
@@ -580,10 +569,6 @@ class SmpsToModConverter:
         envelopes the song implies."""
         if not (psg_synth and psg_synth.enabled and (self.config.psg_map or self.config.psg_voice_map)):
             return
-        generate_psg_samples = self._generators.psg
-        if generate_psg_samples is None:
-            raise ValueError("PSG synthesis is enabled but no PSG generator was given (SampleGenerators.psg)")
-
         rate3 = derive_rate3_dividers(self.song, self.config)
         noise_env = derive_noise_envelopes(self.song, self.config)
         self._report_noise(rate3, noise_env)

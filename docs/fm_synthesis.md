@@ -16,25 +16,25 @@ catalogue entry → render_layers (chip, then resampled) → shelf, DC block →
 
 | File | Role |
 |------|------|
-| `ym2612/build.py`, `ym2612/wrapper.py` | Compile `ym3438.c` + `ym3438_batch.c` (`core.cbuild`); ctypes `OPN2` class |
-| `ym2612/voice.py` | `SmpsVoice` → YM2612 registers (`program_voice`) |
-| `ym2612/renderer.py` | Voices + pitch → PCM (`render_layers`, `render_note`) |
-| `ym2612/sample_generator.py` | The song's instrument catalogue → `{inst: (pcm, rate)}` (`generate_fm_samples`) |
-| `core/convert/smps2mod.py` | Calls the generator (handed in by `convert.py`) and installs the samples |
+| `core/chips/ym2612/build.py`, `core/chips/ym2612/wrapper.py` | The device: compile `3rdparty/nuked-opn2/ym3438.c` + `ym3438_batch.c` into `build/` (`core.chips.cbuild`); ctypes `OPN2` class |
+| `core/synth/fm_voice.py` | `SmpsVoice` → YM2612 registers (`program_voice`) |
+| `core/synth/fm_render.py` | Voices + pitch → PCM (`render_layers`, `render_note`) |
+| `core/synth/fm_samples.py` | The song's instrument catalogue → `{inst: (pcm, rate)}` (`generate_fm_samples`) |
+| `core/convert/smps2mod.py` | Calls the generators (`core.synth`) and installs the samples |
 
 ---
 
 ## Quick Start
 
 `fm_synthesis.enabled` is `true` in the shipped `configs/settings.yaml` (the code's default is
-`false`: samples then come from `sample_list` files).  The first render compiles the DLL, so
-gcc or MSVC must be on PATH.
+`false`: samples then come from `sample_list` files).  The first render compiles the library into
+`build/`, so gcc or MSVC must be on PATH.
 
 ```bash
-python ym2612/validate.py           # A4 test tone → output/validate_test.raw; checks the C helpers
-python ym2612/voice.py              # Title Screen voice 0, 100 ms → prints the peak
-python ym2612/renderer.py           # voice 1 at A3 → output/renderer_test.raw
-python ym2612/sample_generator.py   # voice 1, root A3, through the generator → output/sample_gen_test.raw
+python tools/validate_ym2612.py    # in turn: the device (A4 test tone → output/validate_test.raw, the C helpers);
+                                   # program_voice (Title Screen voice 0, 100 ms → the peak); fm_render (voice 1
+                                   # at A3 → output/renderer_test.raw); generate_fm_samples (the same voice as an
+                                   # instrument → output/sample_gen_test.raw)
 python convert.py configs/sonic_1/01_title_screen.yaml
 ```
 
@@ -223,14 +223,14 @@ run to run.  The merged build's mixer takes the unquantised renders (`raw_out`).
 (`SynthesisSettings.worker_threads`: `normal` = cores − 1, `max`, or a number).  Each thread
 owns its `OPN2`; ctypes releases the GIL for the batch call; results are consumed in job
 order, so the output never depends on the thread count.  With `samples.render_cache`, every
-chip render is kept on disk under a hash of its inputs, in a directory per hash of the DLL and
-the Python it runs through (`core/render_cache.py`); shelf, loops and quantising still run.
+chip render is kept on disk under a hash of its inputs, in a directory per hash of the library and
+the Python it runs through (the device and the FM renderer: a PSG change keeps the FM renders) (`core/render_cache.py`); shelf, loops and quantising still run.
 
 ---
 
 ## OPN2 Emulator Internals
 
-Nuked-OPN2 (`reference/Nuked-OPN2/ym3438.c`) is cycle-accurate; `OPN2_Clock` advances one
+Nuked-OPN2 (`3rdparty/nuked-opn2/ym3438.c`) is cycle-accurate; `OPN2_Clock` advances one
 internal clock.  `OPN2(mode=)` selects the chip type, kept across resets: `ym2612` (MD1/MD2
 DAC: sign bias, ×3 level) or `ym3438`.  `convert.py` synthesises FM only in `ym2612` mode.
 
@@ -257,10 +257,10 @@ SSG-EG (0).  The SMPS operator order is reversed against the registers
 
 ## Module API
 
-### `ym2612/wrapper.py`
+### `core/chips/ym2612/wrapper.py`
 
 ```python
-OPN2(mode="ym2612")                 # loads (building if needed) the DLL and resets the chip
+OPN2(mode="ym2612")                 # loads (building if needed) build/ym3438.dll and resets the chip
 opn2.reset(mode=None)               # None keeps the instance's mode
 opn2.write_reg(addr, data, bank=0)
 opn2.key_on(channel, operators=0xF)
@@ -271,13 +271,13 @@ opn2.begin_capture() / end_capture() / take_capture()   # keep the write flushes
 OPN2.NATIVE_RATE                    # 53 267; output_rate(clock_rate) for another clock
 ```
 
-### `ym2612/voice.py`
+### `core/synth/fm_voice.py`
 
 ```python
 program_voice(opn2, voice, channel, tl_offset=0)   # registers only: no frequency, no key-on
 ```
 
-### `ym2612/renderer.py`
+### `core/synth/fm_render.py`
 
 ```python
 render_layers(layers, mod_note_index, sustain_secs=1.5, release_secs=0.5, target_rate=None,
@@ -294,7 +294,7 @@ note_to_freq(mod_note_index) -> float     # 440 × 2^((idx − 45) / 12); idx 0 
 `mod_note_index` counts from C1 = 0.  `target_rate=None` keeps the native rate.  A passed
 `opn2` is reset (keeping its mode); none creates one.
 
-### `ym2612/sample_generator.py`
+### `core/synth/fm_samples.py`
 
 ```python
 generate_fm_samples(song, config, synth, verbose=False, tl_offsets=None, peaks_out=None,
@@ -314,7 +314,7 @@ release rates and the cache hits.
 
 ### Silence or near-silence
 
-- No gcc / MSVC on PATH, so `ym2612/ym3438.dll` cannot be built (`python ym2612/validate.py`
+- No gcc / MSVC on PATH, so `build/ym3438.dll` cannot be built (`python tools/validate_ym2612.py`
   builds and tests it).
 - `fm_synthesis.enabled: false`, or `mode: ym3438` — either loads `sample_list` files instead.
 - A stated `synth_root` octaves away from the chip pitch: the sample is rendered there and

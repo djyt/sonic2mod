@@ -175,7 +175,7 @@ assert len(CARRIER_OFFSETS_BY_ALG[7]) == 4
 
 def noise_envelope_frames(envelope: PsgEnvelope | None, base_volume: int = 0) -> int | None:
     """Frames a noise note sounds for: its envelope, then the ramp to attenuation 15 the
-    renderer adds so the sample ends in silence (sn76489.sample_generator).  None = no envelope,
+    renderer adds so the sample ends in silence (core.synth.psg_samples).  None = no envelope,
     or one that loops: the note sounds as long as it is keyed."""
     if envelope is None or not envelope.steps or envelope.loops:
         return None

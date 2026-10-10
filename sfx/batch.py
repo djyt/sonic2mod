@@ -11,13 +11,13 @@ from dataclasses import dataclass
 
 from core.audio import gain_to_db
 from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK
+from core.chips.sn76489 import SN76489
+from core.chips.ym2612 import OPN2, output_rate
 from core.drivers import locate_sounds, read_rom_song
 from core.drivers.reference import SONIC1_RULES
 from core.mod import PAL_AMIGA_CLOCK
 from core.rom import RomImage
 from core.smps import SmpsParser, SmpsSong
-from sn76489.wrapper import SN76489
-from ym2612.wrapper import OPN2, output_rate
 
 from .amiga import (
     DEFAULT_MAX_RATE,

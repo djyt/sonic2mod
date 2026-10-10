@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -26,10 +26,16 @@ chaos_emerald:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -48,7 +54,6 @@ chaos_emerald:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -133,6 +138,12 @@ chaos_emerald:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -149,17 +160,6 @@ chaos_emerald:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/16_chaos_emerald.yaml: 9e7c275caffb
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
@@ -172,7 +172,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -191,10 +191,16 @@ continue_screen:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -213,7 +219,6 @@ continue_screen:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -298,6 +303,12 @@ continue_screen:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -314,17 +325,6 @@ continue_screen:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -339,7 +339,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -358,10 +358,16 @@ continue_screen_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -380,7 +386,6 @@ continue_screen_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -465,6 +470,12 @@ continue_screen_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -481,17 +492,6 @@ continue_screen_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -507,7 +507,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -526,10 +526,16 @@ continue_screen_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -548,7 +554,6 @@ continue_screen_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -633,6 +638,12 @@ continue_screen_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -649,17 +660,6 @@ continue_screen_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -673,7 +673,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -692,10 +692,16 @@ continue_screen_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -714,7 +720,6 @@ continue_screen_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -799,6 +804,12 @@ continue_screen_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -815,17 +826,6 @@ continue_screen_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 935f8b906ede
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -838,7 +838,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -857,10 +857,16 @@ credits:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -879,7 +885,6 @@ credits:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -964,6 +969,12 @@ credits:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -980,17 +991,6 @@ credits:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/13_credits.yaml: 33967a29b9b9
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
@@ -1007,7 +1007,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1026,10 +1026,16 @@ credits_rom:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -1048,7 +1054,6 @@ credits_rom:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -1133,6 +1138,12 @@ credits_rom:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -1149,17 +1160,6 @@ credits_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/13_credits.yaml: 33967a29b9b9
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -1172,7 +1172,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1191,10 +1191,16 @@ drowning:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -1213,7 +1219,6 @@ drowning:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -1298,6 +1303,12 @@ drowning:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -1314,17 +1325,6 @@ drowning:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/17_drowning.yaml: 099aadef0ccc
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
@@ -1337,7 +1337,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1356,10 +1356,16 @@ ending_theme:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -1378,7 +1384,6 @@ ending_theme:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -1463,6 +1468,12 @@ ending_theme:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -1479,17 +1490,6 @@ ending_theme:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/12_ending_theme.yaml: dd2403438b8a
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
@@ -1502,7 +1502,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1521,10 +1521,16 @@ extra_life:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -1543,7 +1549,6 @@ extra_life:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -1628,6 +1633,12 @@ extra_life:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -1644,17 +1655,6 @@ extra_life:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/15_1up.yaml: bef552b8a959
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -1669,7 +1669,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1688,10 +1688,16 @@ extra_life_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -1710,7 +1716,6 @@ extra_life_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -1795,6 +1800,12 @@ extra_life_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -1811,17 +1822,6 @@ extra_life_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/15_1up.yaml: bef552b8a959
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -1837,7 +1837,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1856,10 +1856,16 @@ extra_life_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -1878,7 +1884,6 @@ extra_life_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -1963,6 +1968,12 @@ extra_life_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -1979,17 +1990,6 @@ extra_life_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/15_1up.yaml: bef552b8a959
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -2003,7 +2003,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2022,10 +2022,16 @@ extra_life_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -2044,7 +2050,6 @@ extra_life_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -2129,6 +2134,12 @@ extra_life_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -2145,17 +2156,6 @@ extra_life_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/15_1up.yaml: bef552b8a959
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -2168,7 +2168,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2187,10 +2187,16 @@ final_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -2209,7 +2215,6 @@ final_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -2294,6 +2299,12 @@ final_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -2310,17 +2321,6 @@ final_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/10_final_zone.yaml: c8329f9162cb
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
@@ -2333,7 +2333,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2352,10 +2352,16 @@ ga_conclusion:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -2374,7 +2380,6 @@ ga_conclusion:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -2457,6 +2462,12 @@ ga_conclusion:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -2473,17 +2484,6 @@ ga_conclusion:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -2496,7 +2496,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2515,10 +2515,16 @@ ga_the_battle:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -2537,7 +2543,6 @@ ga_the_battle:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -2620,6 +2625,12 @@ ga_the_battle:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -2636,17 +2647,6 @@ ga_the_battle:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -2659,7 +2659,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2678,10 +2678,16 @@ ga_theme_of_thief:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -2700,7 +2706,6 @@ ga_theme_of_thief:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -2783,6 +2788,12 @@ ga_theme_of_thief:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -2799,17 +2810,6 @@ ga_theme_of_thief:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -2822,7 +2822,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2841,10 +2841,16 @@ game_over:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -2863,7 +2869,6 @@ game_over:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -2948,6 +2953,12 @@ game_over:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -2964,17 +2975,6 @@ game_over:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 5c954c505b04
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -2989,7 +2989,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3008,10 +3008,16 @@ game_over_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -3030,7 +3036,6 @@ game_over_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -3115,6 +3120,12 @@ game_over_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -3131,17 +3142,6 @@ game_over_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 5c954c505b04
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3157,7 +3157,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3176,10 +3176,16 @@ game_over_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -3198,7 +3204,6 @@ game_over_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -3283,6 +3288,12 @@ game_over_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -3299,17 +3310,6 @@ game_over_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 5c954c505b04
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3323,7 +3323,7 @@ game_over_merged:
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3342,10 +3342,16 @@ game_over_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -3364,7 +3370,6 @@ game_over_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -3449,6 +3454,12 @@ game_over_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -3465,17 +3476,6 @@ game_over_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 5c954c505b04
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3490,7 +3490,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3509,10 +3509,16 @@ ghz_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -3531,7 +3537,6 @@ ghz_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -3616,6 +3621,12 @@ ghz_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -3632,17 +3643,6 @@ ghz_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -3658,7 +3658,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3677,10 +3677,16 @@ ghz_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -3699,7 +3705,6 @@ ghz_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -3784,6 +3789,12 @@ ghz_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -3800,17 +3811,6 @@ ghz_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -3823,7 +3823,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3842,10 +3842,16 @@ green_hill_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -3864,7 +3870,6 @@ green_hill_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -3949,6 +3954,12 @@ green_hill_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -3965,17 +3976,6 @@ green_hill_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -3989,7 +3989,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4008,10 +4008,16 @@ green_hill_zone_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -4030,7 +4036,6 @@ green_hill_zone_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -4115,6 +4120,12 @@ green_hill_zone_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -4131,17 +4142,6 @@ green_hill_zone_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -4158,7 +4158,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4177,10 +4177,16 @@ green_hill_zone_rom:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -4199,7 +4205,6 @@ green_hill_zone_rom:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -4284,6 +4289,12 @@ green_hill_zone_rom:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -4300,17 +4311,6 @@ green_hill_zone_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: cb70bfc3907d
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -4323,7 +4323,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4342,10 +4342,16 @@ invincibility:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -4364,7 +4370,6 @@ invincibility:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -4449,6 +4454,12 @@ invincibility:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -4465,17 +4476,6 @@ invincibility:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e3c0eb658641
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -4490,7 +4490,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4509,10 +4509,16 @@ invincibility_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -4531,7 +4537,6 @@ invincibility_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -4616,6 +4621,12 @@ invincibility_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -4632,17 +4643,6 @@ invincibility_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e3c0eb658641
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -4658,7 +4658,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4677,10 +4677,16 @@ invincibility_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -4699,7 +4705,6 @@ invincibility_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -4784,6 +4789,12 @@ invincibility_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -4800,17 +4811,6 @@ invincibility_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e3c0eb658641
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -4824,7 +4824,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4843,10 +4843,16 @@ invincibility_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -4865,7 +4871,6 @@ invincibility_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -4950,6 +4955,12 @@ invincibility_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -4966,17 +4977,6 @@ invincibility_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e3c0eb658641
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -4989,7 +4989,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5008,10 +5008,16 @@ lab_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -5030,7 +5036,6 @@ lab_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -5115,6 +5120,12 @@ lab_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -5131,17 +5142,6 @@ lab_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/05_lab_zone.yaml: c3fb9896f145
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
@@ -5154,7 +5154,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5173,10 +5173,16 @@ marble_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -5195,7 +5201,6 @@ marble_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -5280,6 +5285,12 @@ marble_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -5296,17 +5307,6 @@ marble_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 16310d9338be
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
@@ -5323,7 +5323,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5342,10 +5342,16 @@ marble_zone_rom:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -5364,7 +5370,6 @@ marble_zone_rom:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -5449,6 +5454,12 @@ marble_zone_rom:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -5465,17 +5476,6 @@ marble_zone_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 16310d9338be
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -5488,7 +5488,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5507,10 +5507,16 @@ mw_beat_it:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -5529,7 +5535,6 @@ mw_beat_it:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -5614,6 +5619,12 @@ mw_beat_it:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -5630,17 +5641,6 @@ mw_beat_it:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -5653,7 +5653,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5672,10 +5672,16 @@ mw_mr_big:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -5694,7 +5700,6 @@ mw_mr_big:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -5779,6 +5784,12 @@ mw_mr_big:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -5795,17 +5806,6 @@ mw_mr_big:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -5818,7 +5818,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5837,10 +5837,16 @@ mw_title:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -5859,7 +5865,6 @@ mw_title:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -5944,6 +5949,12 @@ mw_title:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -5960,17 +5971,6 @@ mw_title:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/moonwalker/86_title.yaml: a4e39f30e91d
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -5983,7 +5983,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6002,10 +6002,16 @@ robotnik:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -6024,7 +6030,6 @@ robotnik:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -6109,6 +6114,12 @@ robotnik:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -6125,17 +6136,6 @@ robotnik:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -6150,7 +6150,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6169,10 +6169,16 @@ robotnik_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -6191,7 +6197,6 @@ robotnik_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -6276,6 +6281,12 @@ robotnik_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -6292,17 +6303,6 @@ robotnik_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -6318,7 +6318,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6337,10 +6337,16 @@ robotnik_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -6359,7 +6365,6 @@ robotnik_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -6444,6 +6449,12 @@ robotnik_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -6460,17 +6471,6 @@ robotnik_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -6484,7 +6484,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6503,10 +6503,16 @@ robotnik_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -6525,7 +6531,6 @@ robotnik_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -6610,6 +6615,12 @@ robotnik_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -6626,17 +6637,6 @@ robotnik_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: 3604ac887c5a
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -6649,7 +6649,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6668,10 +6668,16 @@ scrap_brain_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -6690,7 +6696,6 @@ scrap_brain_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -6775,6 +6780,12 @@ scrap_brain_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -6791,17 +6802,6 @@ scrap_brain_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/07_scrap_brain_zone.yaml: 712623aedf34
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
@@ -6814,7 +6814,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6833,10 +6833,16 @@ special_stage:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -6855,7 +6861,6 @@ special_stage:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -6940,6 +6945,12 @@ special_stage:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -6956,17 +6967,6 @@ special_stage:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/08_special_stage.yaml: 986d25d7793a
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
@@ -6979,7 +6979,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6998,10 +6998,16 @@ spring_yard_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -7020,7 +7026,6 @@ spring_yard_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -7105,6 +7110,12 @@ spring_yard_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -7121,17 +7132,6 @@ spring_yard_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 0f8afa45d85a
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
@@ -7144,7 +7144,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7163,10 +7163,16 @@ stage_clear:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -7185,7 +7191,6 @@ stage_clear:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -7270,6 +7275,12 @@ stage_clear:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -7286,17 +7297,6 @@ stage_clear:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -7311,7 +7311,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7330,10 +7330,16 @@ stage_clear_lofi:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -7352,7 +7358,6 @@ stage_clear_lofi:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -7437,6 +7442,12 @@ stage_clear_lofi:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -7453,17 +7464,6 @@ stage_clear_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -7479,7 +7479,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7498,10 +7498,16 @@ stage_clear_lofi_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -7520,7 +7526,6 @@ stage_clear_lofi_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -7605,6 +7610,12 @@ stage_clear_lofi_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -7621,17 +7632,6 @@ stage_clear_lofi_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -7645,7 +7645,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7664,10 +7664,16 @@ stage_clear_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -7686,7 +7692,6 @@ stage_clear_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -7771,6 +7776,12 @@ stage_clear_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -7787,17 +7798,6 @@ stage_clear_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 3e20d4af0af7
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -7810,7 +7810,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7829,10 +7829,16 @@ star_light_zone:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -7851,7 +7857,6 @@ star_light_zone:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -7936,6 +7941,12 @@ star_light_zone:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -7952,17 +7963,6 @@ star_light_zone:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/06_star_light_zone.yaml: 9b6e8fbf5311
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
@@ -7975,7 +7975,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7994,10 +7994,16 @@ title_screen:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -8016,7 +8022,6 @@ title_screen:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -8101,6 +8106,12 @@ title_screen:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -8117,17 +8128,6 @@ title_screen:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
@@ -8141,7 +8141,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8160,10 +8160,16 @@ title_screen_merged:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -8182,7 +8188,6 @@ title_screen_merged:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -8267,6 +8272,12 @@ title_screen_merged:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -8283,17 +8294,6 @@ title_screen_merged:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
@@ -8310,7 +8310,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: f01fcc9-dirty
+  commit: b0fa71b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8329,10 +8329,16 @@ title_screen_rom:
   - core/audit/rip_diff.py
   - core/audit/rips.py
   - core/audit/signal.py
-  - core/cbuild.py
   - core/chips/__init__.py
+  - core/chips/cbuild.py
   - core/chips/fm.py
   - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
   - core/config/__init__.py
   - core/config/bpm.py
   - core/config/entries.py
@@ -8351,7 +8357,6 @@ title_screen_rom:
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
-  - core/convert/generators.py
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
@@ -8436,6 +8441,12 @@ title_screen_rom:
   - core/smps/voice_patch.py
   - core/source/__init__.py
   - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
   - core/ui/__init__.py
   - core/ui/cli.py
   - core/ui/pitch_audit.py
@@ -8452,17 +8463,6 @@ title_screen_rom:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
-  - sn76489/__init__.py
-  - sn76489/build.py
-  - sn76489/renderer.py
-  - sn76489/sample_generator.py
-  - sn76489/wrapper.py
-  - ym2612/__init__.py
-  - ym2612/build.py
-  - ym2612/renderer.py
-  - ym2612/sample_generator.py
-  - ym2612/voice.py
-  - ym2612/wrapper.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 0dfa7131eddf
     input/roms/sonic_rev01.bin: c30832bccae0

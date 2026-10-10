@@ -252,7 +252,7 @@ class SpecialMode(unittest.TestCase):
 
     def test_a_voice_and_its_special_mode_render_apart(self):
         # The render cache keys a copy on its offsets: the base voice's render is not the copy's
-        from ym2612.sample_generator import _voice_key
+        from core.synth.fm_samples import _voice_key
         plain, copy = self._voices_set(bytes([0xF0, 0x00, 0xF7, 0x64, 0, 0, 0, 1, 0x40, 0x00]))
         self.assertNotEqual(_voice_key(plain), _voice_key(copy))
 

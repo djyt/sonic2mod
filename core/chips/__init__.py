@@ -1,8 +1,15 @@
-"""The Mega Drive's two sound chips: clocks, carriers, level laws, pitch formulas.  No driver in
-them: smps/ (the driver's tables) and vgm/ (the register log) are both built on these.
+"""The Mega Drive's two sound chips, as MAME keeps devices: their facts (clocks, carriers, level laws,
+pitch formulas) and their emulators.  No driver in them: smps/ (the driver's tables) and vgm/ (the
+register log) are built on the facts; synth/ and the SFX driver drive the emulators.
 
-    fm.py   YM2612
-    psg.py  SN76489
+    fm.py      YM2612 facts
+    psg.py     SN76489 facts
+    ym2612/    the YM2612 device: Nuked-OPN2 (3rdparty/nuked-opn2) through ctypes, OPN2
+    sn76489/   the SN76489 device: VGMPlay's core (3rdparty/sn76489) through ctypes, SN76489
+    cbuild.py  CLibrary: compiles a device's C core into build/ on first use
+
+The facts are imported from here; a device from its own package (core.chips.ym2612), which loads
+its library only when a chip is made.
 """
 
 from .fm import (

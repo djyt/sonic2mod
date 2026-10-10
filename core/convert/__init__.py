@@ -13,8 +13,8 @@
 from .generators import SampleGenerators
 from .smps2mod import SmpsToModConverter
 from .survey import SurveyContext, survey_context
-from .vibrato import S1_FNUM_BASE, vibrato_depth
+from .vibrato import modulation_offset, modulation_slides, vibrato_depth
 
 __all__ = [
-    "S1_FNUM_BASE", "SampleGenerators", "SmpsToModConverter", "SurveyContext", "survey_context", "vibrato_depth"
+    "SampleGenerators", "SmpsToModConverter", "SurveyContext", "modulation_offset", "modulation_slides", "survey_context", "vibrato_depth"
 ]

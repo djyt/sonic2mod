@@ -266,7 +266,7 @@ def _psg_line(p: PsgFrame, clock: int) -> str:
 
 def _dac_line(d: DacFrame) -> str:
     gaps = " ".join(f"{gap}x{n}" for gap, n in d.gaps)
-    return f"seek {','.join(str(s) for s in d.seeks)}  {d.writes} bytes  gaps {gaps}"
+    return f"start {','.join(str(s.offset) for s in d.starts)}  {d.writes} bytes  gaps {gaps}"
 
 
 def _frame_lines(frame: Frame, chip: str, state: ChipState) -> Iterator[tuple[str, str]]:
@@ -279,7 +279,7 @@ def _frame_lines(frame: Frame, chip: str, state: ChipState) -> Iterator[tuple[st
         for ch, p in enumerate(frame.psg):
             if p.attenuations or p.period_writes:
                 yield ("NOISE" if ch == NOISE_CHANNEL else f"PSG{ch + 1}"), _psg_line(p, state.psg_clock)
-    if chip in ('dac', 'all') and frame.dac.seeks:
+    if chip in ('dac', 'all') and frame.dac.starts:
         yield "DAC", _dac_line(frame.dac)
 
 

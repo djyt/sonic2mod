@@ -16,6 +16,7 @@ sys.path.insert(0, str(_HERE))
 
 from vgm_build import bursts, fm_freq, key
 
+from core.drivers.reference import SONIC1_RULES
 from core.smps import CoordFlag, TempoSegment, frame_of_tick, tempo_schedule
 from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song
 from core.vgm.lift.tempo import TempoError, infer_tempo
@@ -117,7 +118,7 @@ class Lift(unittest.TestCase):
         frame = TempoSegment(0, 0, modifier).frame_of
         log = bursts({frame(t): body for t, body in notes.items()}, frame(end),
                      loop_frame=None if loop is None else frame(loop))
-        return lift_song(frame_log(decode_vgm(log)), LiftOptions(tempo_modifier=modifier))
+        return lift_song(frame_log(decode_vgm(log)), SONIC1_RULES, LiftOptions(tempo_modifier=modifier))
 
     def test_attacks_ties_and_rests(self):
         song = self._song({0: _attack(), 4: _attack(), 8: _tie(), 12: key(0, False), 16: _attack()}, end=24)
@@ -151,9 +152,9 @@ class Lift(unittest.TestCase):
             frame = frame_of_tick(segments, t)
             writes[frame] = writes.get(frame, b"") + _attack(1)
         log = bursts(writes, frame_of_tick(segments, fm1[-1]) + 8)
-        song = lift_song(frame_log(decode_vgm(log)))
+        song = lift_song(frame_log(decode_vgm(log)), SONIC1_RULES)
         fm1 = next(c for c in song.channels if c.header.label == "FM1")
-        flags = [(ev.tick_position, ev.effect.params) for ev in fm1.events
+        flags = [(ev.tick_position, list(ev.effect.values)) for ev in fm1.events
                  if ev.effect is not None and ev.effect.flag is CoordFlag.SET_TEMPO_MOD]
         self.assertEqual((song.header.tempo_modifier, flags), (2, [(288, [3])]))
 

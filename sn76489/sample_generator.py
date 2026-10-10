@@ -7,7 +7,7 @@ Public API::
 
     from sn76489.sample_generator import generate_psg_samples
 
-    samples = generate_psg_samples(config, psg_synth)
+    samples = generate_psg_samples(config, psg_synth, song.rules)
     # {inst_num: (pcm_bytes, sample_rate_hz), ...}
 
 Usage (smoke test)::
@@ -43,7 +43,7 @@ from core.config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettin
 from core.mod import ModNote, max_sustain_secs
 from core.plan import PsgInstrument, psg_catalogue
 from core.render_cache import RenderCache, code_salt
-from core.smps import SONIC1_ENVELOPES, PsgEnvelope, noise_envelope_frames
+from core.smps import PlaybackRules, PsgEnvelope, noise_envelope_frames
 from sn76489.build import get_lib_path
 from sn76489.renderer import (
     note_to_psg_n,
@@ -113,10 +113,10 @@ class _PsgRenderer:
     whose envelope holds cut at a sustain loop (with loops), put in `loops_out`.  Noise never loops."""
 
     def __init__(self, synth: PsgSynthesisSettings, fps: float, cache: RenderCache, verbose: bool,
-                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None,
-                 envelopes: Mapping[str, PsgEnvelope]):
+                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None, rules: PlaybackRules):
         self._synth = synth
-        self._envelopes = envelopes
+        self._envelopes = rules.psg_envelopes
+        self._psg_frequencies = rules.psg_frequencies
         self._fps = fps
         self._cache = cache
         self._verbose = verbose
@@ -165,7 +165,7 @@ class _PsgRenderer:
     def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
               env_info: str) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
-        n_val = note_to_psg_n(note, synth.clock_rate)
+        n_val = note_to_psg_n(note, self._psg_frequencies, synth.clock_rate)
         if self._verbose:
             freq_hz = 440.0 * (2.0 ** ((note - 45) / 12.0))
             print(f"  [psg synth] inst={inst_num} tone  "
@@ -182,26 +182,26 @@ class _PsgRenderer:
             print(f"  [psg synth] inst={inst_num} sustain capped at {sustain:.2f}s "
                   f"({synth.max_sample_kb} KiB sample limit at {target_rate}Hz)")
         if not self._loops:
-            return self._tone_render(entry, note, target_rate, envelope, sustain)
+            return self._tone_render(entry, n_val, target_rate, envelope, sustain)
 
         # Rendered long enough to see the envelope settle; again for its own sustain where no loop is
         probe = probe_secs(sustain, fits)
-        mono, rate = self._tone_render(entry, note, target_rate, envelope, probe)
+        mono, rate = self._tone_render(entry, n_val, target_rate, envelope, probe)
         loop = self._loop(inst_num, mono, rate, n_val, sustain, probe)
         if loop is not None:
             if self._loops_out is not None:
                 self._loops_out[inst_num] = loop
             return apply_loop(mono, loop), rate
         if probe > sustain:
-            return self._tone_render(entry, note, target_rate, envelope, sustain)
+            return self._tone_render(entry, n_val, target_rate, envelope, sustain)
         return mono, rate
 
-    def _tone_render(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
+    def _tone_render(self, entry: PsgInstrumentEntry, divider: int, target_rate: int, envelope: PsgEnvelope | None,
                      secs: float) -> tuple[Sequence[float], int]:
         synth = self._synth
         return self._render(
             render_psg_tone_raw, entry.mod_instrument,
-            mod_note_index=note,
+            divider=divider,
             sustain_secs=secs,
             release_secs=synth.release_padding,
             clock_rate=synth.clock_rate,
@@ -278,7 +278,7 @@ class _PsgRenderer:
         dividers = self._rate3_dividers
         if entry.synth_root is None and dividers and entry.mod_instrument in dividers:
             return dividers[entry.mod_instrument]
-        return note_to_psg_n(note, self._synth.clock_rate)
+        return note_to_psg_n(note, self._psg_frequencies, self._synth.clock_rate)
 
     def _render(self, render, inst_num: int, **kwargs) -> tuple[Sequence[float], int]:
         """render(**kwargs) through the render cache, shelved and centred (before any loop is found in it)."""
@@ -297,10 +297,10 @@ class _PsgRenderer:
 def generate_psg_samples(
     config: ConversionConfig,
     psg_synth: PsgSynthesisSettings,
+    rules: PlaybackRules,
     verbose: bool = False,
     rate3_dividers: dict | None = None,
     noise_envelopes: dict | None = None,
-    psg_envelopes: Mapping[str, PsgEnvelope] | None = None,
     loops: bool = False,
     loops_out: dict[int, SustainLoop] | None = None,
     raw_out: dict[int, tuple] | None = None,
@@ -315,7 +315,7 @@ def generate_psg_samples(
         noise_envelopes: {instrument: envelope label} the converter derived for the noise
                          instruments (derive_noise_envelopes) — a psg_map
                          entry's own instrument and each of its `envelopes:` variants.
-        psg_envelopes: the song's envelopes by name (SmpsSong.psg_envelopes); None: Sonic 1's.
+        rules:     the song's driver's (SmpsSong.rules): its PSG table and envelopes.
         loops:     cut each tone whose envelope holds at a sustain loop (core.audio.loops), reported
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.
         cache_out: filled with {"hits": n, "misses": n} of the render cache
@@ -333,8 +333,7 @@ def generate_psg_samples(
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
     catalogue = psg_catalogue(config, noise_envelopes or {})
     cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
-    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out,
-                            psg_envelopes if psg_envelopes is not None else SONIC1_ENVELOPES)
+    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out, rules)
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for spec in catalogue.values():
         rendered = renderer.render(spec)
@@ -391,7 +390,8 @@ def _smoke_test() -> None:
     print(f"  sustain       = {psg_synth.sustain_duration}s")
     print()
 
-    samples = generate_psg_samples(fake_config, psg_synth, verbose=True)
+    from core.drivers.reference import SONIC1_RULES
+    samples = generate_psg_samples(fake_config, psg_synth, SONIC1_RULES, verbose=True)
 
     if not samples:
         print("  ERROR: no samples generated")

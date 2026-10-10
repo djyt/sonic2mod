@@ -20,7 +20,15 @@ slot, the most played first; one that finds none plays the instrument's own samp
 A variant shares its instrument's map entry, level and sample_list volume and finetune: it
 is the same sample, a few cents off.  The offset is in FNUM units, so its interval depends on
 the note (fnum 606 … 1148 within the table's octave); the variant is rendered at the instrument's
-synthesis pitch, and resampling carries that interval to every note.
+synthesis pitch, and resampling carries that interval to every note.  Where that puts the
+variant's own notes more than a finetune step off (Streets of Rage's +195: +336 c on F#, +266 c
+on A#), it is rendered in the pitch class its notes play most instead (`rendered`), and the
+notes it moves by an interval more than 25 c from its sample's get a variant per pitch class
+(`pitch_class`; Moon Beach FM2's six $B3s among 248 $BA).
+
+Channel 3's special mode adds an FNUM offset of its own (the voice's, core.smps.SmpsVoice:
+Streets of Rage's OP4 at +100 on its FM3 drums): the intervals above count it with the detune,
+so its notes in another pitch class get a variant of their own at the instrument's own detune too.
 
 A tie (smpsNoAttack + a duration) re-writes the frequency with the Detune in force, so a
 scoop rises on its tie while the MOD note keeps its sample: the converter moves that note's
@@ -39,6 +47,9 @@ from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
 
 _NAME_CHARS = 22            # a MOD sample name
+_FINETUNE_CENTS = 12.5      # a MOD finetune step
+_APART_CENTS = 25           # a detune's interval this far from its sample's: a sample of its own
+_SEMITONES = 12
 
 
 @dataclass(slots=True)
@@ -48,6 +59,8 @@ class DetuneVariant:
     base: int                # the instrument it is a detuned copy of
     detune: int              # FNUM offset it is rendered with
     notes: int               # notes that play it
+    rendered: int | None = None   # the pitch (SMPS semitone) it is rendered at; None: its base's
+    pitch_class: int | None = None   # the notes it plays: this pitch class; None: the rest
 
 
 @dataclass
@@ -55,13 +68,13 @@ class DetunePlan:
     """Which sample each (instrument, detune) note plays.  Set on `config.detune_plan` by the
     converter; read by core.plan.driver_state.resolve_note and core.plan.instruments.fm_catalogue."""
     own: dict[int, int] = field(default_factory=dict)        # {instrument: its sample's detune}, nonzero only
-    variants: dict[tuple[int, int], DetuneVariant] = field(default_factory=dict)   # (base, detune) ->
+    variants: dict[tuple[int, int, int | None], DetuneVariant] = field(default_factory=dict)   # (base, detune, class) ->
     unplaced: dict[tuple[int, int], int] = field(default_factory=dict)  # (base, detune) -> notes with no slot
     _bases: dict[int, int] = field(default_factory=dict)   # {variant slot: base}
 
-    def instrument_for(self, inst: int, detune: int) -> int:
-        """The slot a note of `inst` at `detune` plays."""
-        v = self.variants.get((inst, detune))
+    def instrument_for(self, inst: int, detune: int, chip: int) -> int:
+        """The slot a note of `inst` at `detune` plays (`chip`: the pitch the chip plays)."""
+        v = self.variants.get((inst, detune, chip % _SEMITONES)) or self.variants.get((inst, detune, None))
         return v.inst if v is not None else inst
 
     def base_of(self, inst: int) -> int:
@@ -78,7 +91,7 @@ class DetunePlan:
         return out
 
     def add(self, v: DetuneVariant) -> None:
-        self.variants[(v.base, v.detune)] = v
+        self.variants[(v.base, v.detune, v.pitch_class)] = v
         self._bases[v.inst] = v.base
 
 
@@ -95,42 +108,93 @@ def plan_detune_variants(song, config) -> DetunePlan:
     sample loaded from disk cannot be re-rendered.  Appends each variant's sample_list entry
     (its base's, renamed) and sets `config.detune_plan`."""
     config.detune_plan = None                      # walked undetuned: every note names its base
-    synthesised = set(fm_catalogue(song, config).instruments)
+    synthesised = fm_catalogue(song, config).instruments
 
     counts: dict[int, dict[int, int]] = {}
+    chips: dict[tuple[int, int], dict[int, int]] = {}      # (instrument, detune) -> {chip pitch: notes}
     for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM,)):
         for _event, _st, res in walk_channel(channel, config, chan_cfg):
             if res is None or res.instrument not in synthesised:
                 continue
             per = counts.setdefault(res.instrument, {})
             per[res.detune] = per.get(res.detune, 0) + 1
+            at = chips.setdefault((res.instrument, res.detune), {})
+            at[res.chip] = at.get(res.chip, 0) + 1
 
     plan = DetunePlan()
-    wanted: list[tuple[int, int, int]] = []        # (notes, base, detune)
+    fm = song.rules.fm_frequencies
+    wanted: list[tuple[int, int, int, int | None, int | None]] = []   # (notes, base, detune, class, rendered)
     for inst, per in counts.items():
         own = max(per, key=lambda d: (per[d], -abs(d), d))
         if own:
             plan.own[inst] = own
-        wanted += [(n, inst, d) for d, n in per.items() if d != own]
+        base = synthesised[inst]
+        special = base.layers[0].special_offset
+        for d, n in per.items():
+            played = chips[(inst, d)]
+            rendered = None if d == own else _rendered(base, d + special, _commonest(played), fm)
+            apart = _apart(base, d + special, rendered, played, fm)
+            rest = n - sum(sum(at.values()) for at in apart.values())
+            if d != own and rest:
+                wanted.append((rest, inst, d, None, rendered))
+            wanted += [(sum(at.values()), inst, d, pc, _in_class(base, pc)) for pc, at in apart.items()]
 
     # The most played first: a song short of slots loses its rarest detunes
     slots = free_slots(config, song)
-    for notes, inst, d in sorted(wanted, key=lambda w: (-w[0], w[1], w[2])):
+    for notes, inst, d, pc, rendered in sorted(wanted, key=lambda w: (-w[0], w[1], w[2], -1 if w[3] is None else w[3])):
         if not slots:
-            plan.unplaced[(inst, d)] = notes
+            plan.unplaced[(inst, d)] = plan.unplaced.get((inst, d), 0) + notes
             continue
-        plan.add(DetuneVariant(slots.pop(0), inst, d, notes))
+        plan.add(DetuneVariant(slots.pop(0), inst, d, notes, rendered, pc))
 
     entries = {e[SAMPLE_SLOT]: e for e in (config.sample_list or [])}
     if plan.variants and config.sample_list is None:
         config.sample_list = []
     for v in plan.variants.values():
         base = entries.get(v.base)
-        name = f"{_stem(base[SAMPLE_FILE]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}"[:_NAME_CHARS]
+        at = "" if v.pitch_class is None else f"@{v.pitch_class}"
+        name = f"{_stem(base[SAMPLE_FILE]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{at}"[:_NAME_CHARS]
         config.sample_list.append([v.inst, name, *(base[SAMPLE_VOLUME:] if base else [])])
 
     config.detune_plan = plan
     return plan
+
+
+def _rendered(base, detune: int, played: int, fm_frequencies: tuple[int, ...]) -> int | None:
+    """Where a variant is rendered: in its notes' commonest pitch class when its base's pitch
+    puts them more than a finetune step off; else None (its base's).  `detune`: the FNUM offset
+    its notes sound at (special mode's in)."""
+    if base.root_idx is None:
+        return None
+    at_base = base.rendered_semitone
+    if abs(detune_cents(played, detune, fm_frequencies) - detune_cents(at_base, detune, fm_frequencies)) <= _FINETUNE_CENTS:
+        return None
+    return _in_class(base, played)
+
+
+def _apart(base, detune: int, rendered: int | None, played: dict[int, int],
+           fm_frequencies: tuple[int, ...]) -> dict[int, dict[int, int]]:
+    """{pitch class: {chip pitch: notes}} of the notes `detune` moves by an interval more than
+    _APART_CENTS from the one its sample carries (rendered there, else at its base's pitch)."""
+    if base.root_idx is None or not detune:
+        return {}
+    heard = detune_cents(rendered if rendered is not None else base.rendered_semitone, detune, fm_frequencies)
+    out: dict[int, dict[int, int]] = {}
+    for chip, n in played.items():
+        if abs(detune_cents(chip, detune, fm_frequencies) - heard) > _APART_CENTS:
+            out.setdefault(chip % _SEMITONES, {})[chip] = n
+    return out
+
+
+def _in_class(base, pitch: int) -> int:
+    """The pitch in `pitch`'s class its base's render can move to: within the octave above the
+    pitch `root` sounds (the same root, another synth_shift)."""
+    sounds = base.rendered_semitone - base.synth_shift
+    return sounds + (pitch - sounds) % _SEMITONES
+
+
+def _commonest(played: dict[int, int]) -> int:
+    return max(played, key=lambda c: (played[c], -c))
 
 
 def _stem(filename: str) -> str:

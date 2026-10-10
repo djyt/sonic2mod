@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..mod import ModFile
-from ..smps import DEFAULT_DRIVER, SmpsDriver, SmpsSong
-from ..source import LiftOptions, is_rom_path, is_vgm_path, read_song
+from ..smps import SmpsSong
+from ..source import DacSample, LiftOptions, SmpsDriver, is_rom_path, is_vgm_path, read_dac, read_song
 from .entries import (
     TWIN_MODES,
     parse_channel_instrument_map,
@@ -170,11 +170,15 @@ class ConversionConfig:
 
     @property
     def lift_options(self) -> LiftOptions:
-        return LiftOptions(self.driver or DEFAULT_DRIVER, self.tempo_modifier, self.tempo_divider)
+        return LiftOptions(self.tempo_modifier, self.tempo_divider)
 
     def read_song(self) -> SmpsSong:
         """The song `input_file` holds: assembly parsed, a ROM's song decoded, a VGM / VGZ rip lifted."""
         return read_song(self.input_file, self.lift_options, self.rom_song, self.driver)
+
+    def read_dac(self) -> list[DacSample]:
+        """The DAC samples `input_file`'s driver holds (a ROM's; none for asm or a rip)."""
+        return read_dac(self.input_file, self.driver)
 
     def validate_mod_channels(self) -> None:
         """Reject a `num_mod_channels` no format tag exists for, or one the channels overflow."""

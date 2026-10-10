@@ -10,6 +10,7 @@ import dataclasses
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -17,14 +18,37 @@ ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_HERE))
 
-from roms import MOONWALKER_ROM, needs_moonwalker
+from roms import (
+    GOLDEN_AXE_ROM,
+    MOONWALKER_ROM,
+    STREETS_OF_RAGE_ROM,
+    needs_golden_axe,
+    needs_moonwalker,
+    needs_streets_of_rage,
+)
 
-from core.config import ChannelConfig, ConversionConfig, SampleSettings
+from core.config import ChannelConfig, ConversionConfig, SampleSettings, load_settings
+from core.drivers import dac_samples, read_rom_song
+from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
 from core.plan import complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
-from core.rom import RomImage, dac_samples, read_rom_song
-from core.smps import parse_smps_note, source_map
+from core.rom import RomImage
+from core.smps import (
+    NO_TEMPO_HOLDS,
+    REST,
+    ChannelType,
+    Op,
+    OpKind,
+    SetVoice,
+    SmpsChannelHeader,
+    SmpsCode,
+    SmpsSongHeader,
+    SmpsVoice,
+    parse_smps_note,
+    song_from_code,
+    source_map,
+)
 
 
 class StartingVolume(unittest.TestCase):
@@ -48,6 +72,21 @@ class Helpers(unittest.TestCase):
         self.assertEqual(_output_path(Path("configs/moonwalker/81_smooth_criminal.yaml")),
                          "output/moonwalker/81_smooth_criminal.mod")
         self.assertEqual(_output_path(Path("elsewhere/song.yaml")), "output/song.mod")
+
+
+class RowGrid(unittest.TestCase):
+    def test_a_one_frame_stagger_keeps_the_beat_on_rows(self):
+        # A tick a frame; FM1 every 7, FM2 a frame behind it.  The exact grid (1) needs 5 patterns,
+        # 1 is allowed: the grid that puts the most notes on rows is the beat's, 7
+        def track(label: str, lead: list) -> list:
+            return [Op(OpKind.LABEL, name=label), Op(OpKind.EFFECT, effect=SetVoice(0)),
+                    *lead, *[Op(OpKind.NOTE, value=0xA0), Op(OpKind.DURATION, value=7)] * 40, Op(OpKind.STOP)]
+        ops = track("FM1", []) + track("FM2", [Op(OpKind.NOTE, value=REST), Op(OpKind.DURATION, value=1)])
+        channels = [SmpsChannelHeader(channel_type=ChannelType.FM, label=name) for name in ("FM1", "FM2")]
+        header = SmpsSongHeader(fm_count=2, tempo_modifier=NO_TEMPO_HOLDS, channels=channels)
+        song = song_from_code(header, SmpsCode(ops), [SmpsVoice(index=0)], SONIC1_RULES)
+        stated = {"name": "Grid", "input_file": "song.asm", "max_patterns": 1}
+        self.assertEqual(derive_config(stated, song, Path("configs/grid.yaml"), _SETTINGS).data["ticks_per_row"], 7)
 
 
 _STATED = {"name": "Smooth Criminal", "input_file": str(MOONWALKER_ROM), "rom_song": "$81"}
@@ -166,17 +205,14 @@ class Moonwalker(unittest.TestCase):
             self.assertEqual(complete.name, "SC lofi")
 
 
-_GOLDEN_AXE = ROOT / "input" / "roms" / "Golden Axe (World) (Rev A).md"
-
-
-@unittest.skipUnless(_GOLDEN_AXE.exists(), "needs input/roms/Golden Axe (World) (Rev A).md")
+@needs_golden_axe
 class GoldenAxe(unittest.TestCase):
     """Type 0 FM: the drum track's FM drums get slots of their own; a silent one none."""
 
     @classmethod
     def setUpClass(cls):
-        cls.song = read_rom_song(RomImage.load(_GOLDEN_AXE), 0x81)       # Wilderness hits drum89 too
-        stated = {"name": "Wilderness", "input_file": str(_GOLDEN_AXE), "rom_song": "$81"}
+        cls.song = read_rom_song(RomImage.load(GOLDEN_AXE_ROM), 0x81)       # Wilderness hits drum89 too
+        stated = {"name": "Wilderness", "input_file": str(GOLDEN_AXE_ROM), "rom_song": "$81"}
         cls.data = derive_config(stated, cls.song, "configs/golden_axe/81_wilderness.yaml", SampleSettings()).data
 
     def test_each_hit_drum_has_a_slot_at_the_drum_root(self):
@@ -192,6 +228,42 @@ class GoldenAxe(unittest.TestCase):
 
     def test_the_drums_play_on_fm3(self):
         self.assertIn("FM3", {c["source"] for c in self.data["channels"]})
+
+
+@needs_streets_of_rage
+class StreetsOfRage(unittest.TestCase):
+    """Good Ending ($91): 13-frame rows, a noise track that plays two envelopes."""
+
+    @classmethod
+    def setUpClass(cls):
+        rom = RomImage.load(STREETS_OF_RAGE_ROM)
+        stated = {"name": "Good Ending", "input_file": str(STREETS_OF_RAGE_ROM), "rom_song": "$91"}
+        cls.data = derive_config(stated, read_rom_song(rom, 0x91), "configs/streets_of_rage/91_good_ending.yaml",
+                                 SampleSettings(), dac_samples(rom)).data
+
+    def test_a_speed_past_8_where_none_up_to_it_keeps_the_tempo(self):
+        # 13 frames a row: speed 7 is 80.77 BPM (81: +0.29 %), speed 13 is 150 exactly
+        self.assertEqual((self.data["ticks_per_row"], self.data["target_speed"]), (13, 13))
+
+    def test_each_envelope_a_noise_form_plays_has_a_slot(self):
+        noise = self.data["psg_map"][0xE7]
+        self.assertEqual(list(noise["envelopes"]), ["$00"])
+        self.assertNotEqual(noise["envelopes"]["$00"], noise["mod_instrument"])
+
+    def test_voice_copies_past_the_slots_play_as_their_voice(self):
+        # Big Boss ($90), windows of 9 (the shipped max_window): its special mode and LFO copies need 36 slots;
+        # the least played copies play as their plain voice, on its windows
+        rom = RomImage.load(STREETS_OF_RAGE_ROM)
+        song = read_rom_song(rom, 0x90)
+        out = derive_config({"name": "Big Boss", "input_file": str(STREETS_OF_RAGE_ROM), "rom_song": "$90"}, song,
+                            "configs/streets_of_rage/90_big_boss.yaml", replace(load_settings(str(_HERE / "settings.yaml"))[0], max_window=9),
+                            dac_samples(rom))
+        voices = {v.index: v for v in song.voices}
+        self.assertLessEqual(len(out.data["sample_list"]), 31)
+        self.assertTrue(out.folded)
+        for copy, (plain, _) in out.folded.items():
+            self.assertEqual(voices[copy].plain, plain)
+            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][plain])
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@ from core.config import ConversionConfig, InstrumentRange, SynthesisSettings, fi
 from core.mod import max_sustain_secs
 from core.plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from core.render_cache import RenderCache, code_salt
-from core.smps import FM_FREQUENCIES, SmpsSong, SmpsVoice, VoiceField
+from core.smps import SmpsSong, SmpsVoice, VoiceField
 from ym2612.build import get_lib_path
 from ym2612.renderer import note_to_fnum_block, note_to_freq, render_frames, render_layers
 from ym2612.wrapper import OPN2
@@ -96,8 +96,12 @@ def _render_salt() -> str:
 
 
 def _voice_key(voice: SmpsVoice) -> tuple:
-    """What of a voice program_voice writes: algorithm, feedback and the operator macros."""
-    return voice.algorithm, voice.feedback, tuple(sorted(voice.operators.items()))
+    """What of a voice the renderer writes: algorithm, feedback, the operator macros, and channel
+    3's special mode offsets and the LFO where it has them (a plain voice's key as it was: the
+    renders cached for it stay valid)."""
+    key = (voice.algorithm, voice.feedback, tuple(sorted(voice.operators.items())))
+    chip = (voice.fnum_offsets, voice.lfo)
+    return key + chip if any(v is not None for v in chip) else key
 
 
 def _thread_opn2(mode: str) -> OPN2:
@@ -131,7 +135,7 @@ def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl
                    lay.keyoff_secs)
                   for lay in spec.layers]
         if verbose:
-            _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate, song.fm_frequencies)
+            _fnum, _block = note_to_fnum_block(spec.synth_idx, synth.clock_rate, fm_frequencies=song.rules.fm_frequencies)
             print(f"  [synth] inst={spec.inst} voice=${spec.layers[0].voice_idx:02X} "
                   f"synth_idx={spec.synth_idx} -> {note_to_freq(spec.synth_idx):.1f} Hz -> fnum={_fnum} block={_block}")
         jobs.append(_RenderJob(spec, layers, spec.target_rate(synth.amiga_clock)))
@@ -159,7 +163,7 @@ class _FmRenderer:
         mono, rate = self._render_at(job, probe)
 
         # The release slides' rate, measured on the probe's tail
-        fnum, block = note_to_fnum_block(job.spec.synth_idx, synth.clock_rate, self._fm_frequencies)
+        fnum, block = note_to_fnum_block(job.spec.synth_idx, synth.clock_rate, fm_frequencies=self._fm_frequencies)
         period = rate / fm_frequency_hz(fnum, block, synth.clock_rate)
         sustain_n = math.ceil(rate * probe)
         release = release_rate_db_s(mono, rate, sustain_n, period)
@@ -214,10 +218,8 @@ class _FmRenderer:
         """render_layers, or the render an earlier conversion cached (core/render_cache.py)."""
         synth = self._synth
         inputs = (tuple((_voice_key(v), *rest) for v, *rest in layers), synth_idx, sustain,
-                  synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps)
-        # Sonic 1's table keys as nothing: the keys every render had before songs had their own
-        if self._fm_frequencies != FM_FREQUENCIES:
-            inputs += (self._fm_frequencies,)
+                  synth.release_padding, target_rate, synth.mode, synth.clock_rate, synth.resample_taps,
+                  self._fm_frequencies)
         return self._cache.through(inputs, lambda: render_layers(
             layers, synth_idx, sustain_secs=sustain, release_secs=synth.release_padding, target_rate=target_rate,
             opn2=_thread_opn2(synth.mode), clock_rate=synth.clock_rate, taps=synth.resample_taps,
@@ -233,10 +235,12 @@ class _FmRenderer:
         if spec.start_ms is not None:
             min_loop["min_start_secs"] = spec.start_ms / 1000.0
         ref = min(synth.loop_ref_by_instrument.get(job.inst, sustain), sustain_n / rate)
+        lfo = next((layer[0].lfo for layer in job.layers if layer[0].lfo is not None), None)
         return find_sustain_loop(mono, rate, period, sustain_n, ref_n=math.ceil(rate * ref),
                                  max_end=min(plain_n, sustain_n),
                                  flat_db=spec.drift_db if spec.drift_db is not None else synth.loop_drift_db,
-                                 timbre=synth.loop_timbre, decay=spec.decay_mode == "slide", **min_loop)
+                                 timbre=synth.loop_timbre, decay=spec.decay_mode == "slide",
+                                 cycle=lfo.period_secs * rate if lfo is not None else 0.0, **min_loop)
 
     def _heard_n(self, job: _RenderJob, rate: int, sustain: float, release: float | None) -> int | None:
         """Where a sample whose sustain holds every note stops being heard: at its sustain where
@@ -369,7 +373,7 @@ def generate_fm_samples(
     # keeps its own OPN2 (see _thread_opn2).  The results are byte-identical to a serial
     # render and are consumed in job order, so the MOD does not depend on scheduling.
     cache = _fm_cache(synth)
-    renderer = _FmRenderer(synth, cache, loops, verbose, song.fm_frequencies)
+    renderer = _FmRenderer(synth, cache, loops, verbose, song.rules.fm_frequencies)
     rendered: list[_Rendered] = []
     if jobs:
         with ThreadPoolExecutor(max_workers=min(len(jobs), synth.worker_threads())) as pool:
@@ -417,7 +421,7 @@ def generate_fm_drums(
     A drum sounds until the drum track's next hit: `ring_secs` is its longest such ring.  It is
     rendered for its program and the release after the stop (synth.release_padding), but never
     past its ring; a program that never stops is rendered for its ring, up to the frames it was
-    run for (core/rom/smpsz80/drums.py), where it ends still keyed.  Each sample is
+    run for (core/drivers/smpsz80/type0fm/drums.py), where it ends still keyed.  Each sample is
     conditioned (shelf, DC block) and quantised to its full 8 bits like any FM render: its level is
     the sample_list volume's job.
     """
@@ -474,10 +478,12 @@ def _smoke_test() -> None:
     )
 
     # Minimal fake SmpsSong
+    from core.drivers.reference import SONIC1_RULES
     from core.smps import SmpsSong, SmpsSongHeader
     fake_song = SmpsSong(
         header=SmpsSongHeader(voice_label="test"),
         voices=[voice1],
+        rules=SONIC1_RULES,
     )
 
     # Minimal ConversionConfig with voice_map for voice 1: the Title Screen's bass range, rendered

@@ -1,12 +1,18 @@
 """The words a driver's flag table is written in: what a coordination flag byte does and how many
-operand bytes follow it.  Each variant's table is its family's (smps68k/ ...)."""
+operand bytes follow it.  Each driver's tables are its own (core/drivers/ ...)."""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
-from ..smps import CoordFlag
+from ..smps import ChannelType, CoordFlag
+
+if TYPE_CHECKING:
+    from .grammar import Instruction
+    from .memory import SoundMemory
 
 
 class EnvelopeCommand(Enum):
@@ -14,6 +20,7 @@ class EnvelopeCommand(Enum):
     HOLD = auto()        # the last step stays
     RESTART = auto()     # back to the first step, this frame
     JUMP = auto()        # to the step the next byte names, this frame
+    MUTE = auto()        # silence, held (Streets of Rage's $83 keys the channel off)
 
 
 class FlagKind(Enum):
@@ -26,6 +33,7 @@ class FlagKind(Enum):
     CALL = auto()
     DROP = auto()        # decoded for its length, no event: nothing in the MOD stands for it
     REFUSE = auto()      # the converter cannot render it, or what it does is not known
+    READ = auto()        # read by its own reader (`read`): operands SMPS's vocabulary spells otherwise
 
 
 @dataclass(frozen=True)
@@ -35,6 +43,7 @@ class FlagSpec:
     flag: CoordFlag | None = None       # EFFECT: the event
     more_if_set: int = 0                # operand bytes that follow when the first is not 0
     what: str = ""                      # DROP / REFUSE: named in reports and errors
+    read: Callable[[SoundMemory, int], Instruction] | None = None    # READ: the instruction at an address
 
 
 def effect(flag: CoordFlag, operands: int = 1) -> FlagSpec:
@@ -49,9 +58,19 @@ def refuse(what: str, operands: int = 0) -> FlagSpec:
     return FlagSpec(FlagKind.REFUSE, operands, what=what)
 
 
+def read(reader: Callable[[SoundMemory, int], Instruction]) -> FlagSpec:
+    """A flag its driver's grammar reads itself: `reader(memory, address)`."""
+    return FlagSpec(FlagKind.READ, read=reader)
+
+
 STOP = FlagSpec(FlagKind.STOP)
 RETURN = FlagSpec(FlagKind.RETURN)
 JUMP = FlagSpec(FlagKind.JUMP, 2)
 LOOP = FlagSpec(FlagKind.LOOP, 4)           # index, count, pointer
 CALL = FlagSpec(FlagKind.CALL, 2)
 NO_ATTACK = FlagSpec(FlagKind.NO_ATTACK)
+
+
+def every_kind(table: Mapping[int, FlagSpec]) -> dict[ChannelType, Mapping[int, FlagSpec]]:
+    """One flag table for every kind of track (DAC, FM, PSG): each SMPS variant so far."""
+    return dict.fromkeys(ChannelType, table)

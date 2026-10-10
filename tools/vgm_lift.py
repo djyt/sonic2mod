@@ -42,14 +42,12 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT))
 
-from core.audit import RIPS_MAP, ChannelChoice, RipDiff, RipShelf, SongSource, compare_with_rip, named, workers
+from core.audit import ChannelChoice, RipDiff, SongSource, compare_with_rip, named, workers
 from core.config import find_settings, load_settings, parse_number
 from core.smps import ALL_ASPECTS, Aspect
-from core.ui import kind_verdicts, modifier_text, song_diff_lines
+from core.ui import add_shelf_arguments, kind_verdicts, modifier_text, rip_shelf, song_diff_lines
 from core.vgm import LIFTED_ASPECTS, LIFTED_KINDS, LiftOptions, is_vgm_path, load_frames
 
-VGZ_DIR = ROOT / "reference" / "vgz"
-CONFIG_DIR = ROOT / "configs"
 _DEFAULT_DIFFS = 12               # differences listed per channel
 _CONFIG_SUFFIXES = (".yaml", ".yml")
 _EVERY_ASPECT = "all"
@@ -72,6 +70,14 @@ def _compare_config(rip: Path, config: Path, aspects: frozenset[Aspect], channel
     return _compare(rip, source, aspects, channels, lift, cache_dir)
 
 
+def _compare_job(rip: Path, config: Path, aspects: frozenset[Aspect], channels: ChannelChoice,
+                 lift: LiftOptions | None, cache_dir: str | None) -> tuple[SongSource | None, RipDiff]:
+    """_compare_config in a worker process: only core types cross back (a class defined in this
+    script does not pickle when coverage.py runs it as its own __main__: tests/selection.py)."""
+    result = _compare_config(rip, config, aspects, channels, lift, cache_dir)
+    return result.source, result.found
+
+
 def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], channels: ChannelChoice,
              lift: LiftOptions | None, cache_dir: str | None) -> _Result:
     """One rip lifted and compared (a worker's job)."""
@@ -87,15 +93,6 @@ def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], c
 # --- pairs ----------------------------------------------------------------------
 
 
-def _shelf(args: argparse.Namespace, configs: Path | None = None, rips: Path | None = None) -> RipShelf:
-    """The configs and rips to pair: the folders given, else each mirroring the other."""
-    try:
-        return RipShelf.around(configs or args.configs, rips or args.vgz_dir, args.rips,
-                               config_root=CONFIG_DIR, rip_root=VGZ_DIR)
-    except ValueError as e:
-        raise SystemExit(f"{e} (--vgz-dir / --configs)") from e
-
-
 def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None]:
     """The rip and its song from the paths named: a rip, a config or both, and --input."""
     rips = [Path(p) for p in args.paths if is_vgm_path(p)]
@@ -107,13 +104,13 @@ def _one_pair(args: argparse.Namespace) -> tuple[Path, SongSource | None]:
     rip = rips[0] if rips else None
     if rip is None:
         assert config is not None                   # one of the two was named
-        rip = _shelf(args, configs=config.parent).rip_for(config)
+        rip = rip_shelf(args, configs=config.parent).rip_for(config)
         if rip is None:
             raise SystemExit(f"{config}: no rip pairs with it (name one, or --rips)")
     if args.input:
         rom_song = parse_number(args.rom_song, "--rom-song") if args.rom_song else None
         return rip, SongSource(Path(args.input), rom_song)
-    config = config or _shelf(args, rips=rip.parent).config_for(rip)
+    config = config or rip_shelf(args, rips=rip.parent).config_for(rip)
     return rip, _source(config) if config else None
 
 
@@ -197,10 +194,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("paths", nargs="*", metavar="RIP|CONFIG", help="a rip, its config, or both")
     ap.add_argument("--all", action="store_true", help="every pair on the shelf (--configs, --vgz-dir), a line each")
-    ap.add_argument("--configs", metavar="DIR", help=f"the configs (default {CONFIG_DIR.relative_to(ROOT)}/ or the rips' mirror)")
-    ap.add_argument("--vgz-dir", metavar="DIR", help=f"the rips (default {VGZ_DIR.relative_to(ROOT)}/ + the configs' subfolder)")
-    ap.add_argument("--rips", metavar="FILE", help=f"YAML {{config stem: rip file}} (default: {RIPS_MAP} beside the configs, "
-                                                   "else rips pair by number)")
+    add_shelf_arguments(ap)
     ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name holds one (02, 88_)")
     ap.add_argument("--input", "--compare", metavar="FILE", help="the song: an asm or a ROM (default: the rip's config's input_file)")
     ap.add_argument("--rom-song", metavar="ID", help="with a ROM --input: its sound ($81 ...)")
@@ -233,14 +227,14 @@ def main() -> None:
         sys.exit(0 if result.found.ok else 1)
 
     # Every pair: a line each, lifted in parallel
-    pairs = [(c, r) for c, r in _shelf(args).pairs() if named(args.only, c, r)]
+    pairs = [(c, r) for c, r in rip_shelf(args).pairs() if named(args.only, c, r)]
     if not pairs:
         raise SystemExit("no rip pairs with a config")
     configs, rips = [c for c, _ in pairs], [r for _, r in pairs]
     n = len(pairs)
     with ProcessPoolExecutor(workers(n)) as pool:
-        results = list(pool.map(_compare_config, rips, configs, [aspects] * n, [channels] * n, [lift] * n,
-                                [cache_dir] * n))
+        jobs = pool.map(_compare_job, rips, configs, [aspects] * n, [channels] * n, [lift] * n, [cache_dir] * n)
+        results = [_Result(rip, source, found) for rip, (source, found) in zip(rips, jobs, strict=True)]
     for result in results:
         _print_line(result)
     trusted = sum(r.found.same_in(LIFTED_KINDS) for r in results)

@@ -76,10 +76,10 @@ transpose path (`docs/pipeline.md` § `voice_map` routing).
 
 ### Tone divider
 
-`note_to_psg_n` writes the divider the Sonic 1 driver writes for the note:
-`core.smps.driver_tables.PSG_FREQUENCIES` (index 0 = `nC0` = 130.98 Hz = C3, so MOD index i is
-table index i − 24).  The table is what the hardware plays; it differs from equal temperament
-by up to 85 cents at the top.  Off the table, or at another clock:
+`note_to_psg_n` finds the divider the song's driver writes for the note in its table
+(`rules.psg_frequencies`; index 0 = `nC0` = C3, so MOD index i is table index i − 24), and the
+renderer takes that divider.  The table is what the hardware plays; Sonic 1's differs from equal
+temperament by up to 85 cents at the top.  Off the table, or at another clock:
 
 ```
 N = round(clock / (32 × freq)),  clamped 1–1023
@@ -117,9 +117,9 @@ nine semitones.
 
 ### Envelopes
 
-An envelope name resolves through the song's own tables (`SmpsSong.psg_envelopes`; Sonic 1's
-are `core.smps.driver_tables.SONIC1_ENVELOPES`, the driver data in `docs/smps_driver.md` § PSG
-volume envelopes).  One step, an attenuation added to `base_volume`, is written per frame
+An envelope name resolves through the song's own tables (`rules.psg_envelopes`; Sonic 1's are
+`core.drivers.reference.SONIC1_ENVELOPES`, the driver data in `docs/smps_driver.md` § PSG volume
+envelopes).  One step, an attenuation added to `base_volume`, is written per frame
 (60 Hz, 50 with `region: pal`).  After the last step a **tone holds** it, as the driver's `$80`
 terminator does — so a held tone settles and can loop; **noise** ramps one step per frame to
 silence (a hat's tail).  An inline list (`envelope: [0, 0, 2, 4]`) works the same; a looping
@@ -209,14 +209,14 @@ render_psg_tone(...) / render_psg_noise(...) -> (bytes, rate)       # int8, peak
 ### `sn76489/sample_generator.py`
 
 ```python
-generate_psg_samples(config, psg_synth, verbose=False, rate3_dividers=None, noise_envelopes=None,
-                     psg_envelopes=None, loops=False, loops_out=None, raw_out=None,
+generate_psg_samples(config, psg_synth, rules, verbose=False, rate3_dividers=None, noise_envelopes=None,
+                     loops=False, loops_out=None, raw_out=None,
                      cache_out=None) -> dict[int, tuple[bytes, int]]
 ```
 
 Returns `{instrument: (int8 PCM, rate)}` for every catalogue instrument.  The converter passes
-the derived `rate3_dividers` and `noise_envelopes` (`{instrument: ...}`) and the song's
-`psg_envelopes` (None: Sonic 1's); `psg_synth.sustain_duration` must already be resolved.
+the song's `rules` (its PSG table and envelopes) and the derived `rate3_dividers` and
+`noise_envelopes` (`{instrument: ...}`); `psg_synth.sustain_duration` must already be resolved.
 
 ---
 

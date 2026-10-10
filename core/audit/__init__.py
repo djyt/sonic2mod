@@ -6,9 +6,11 @@
     levels.py   per-instrument level error and the sample_list volumes that zero it
     onsets.py   key-ons / audio onsets paired one to one
     rip_diff.py a song (asm / ROM) against its rip lifted, note by note (no audio)
+    frame_check.py  a song against its rip's frame log on each note's frame: pitch, level, voice (no lift)
     rips.py     which rip records which config's song
 """
 
+from .frame_check import FrameAspect, FrameCheck, FrameMiss, check_frames
 from .levels import LEVEL_MAX_ERR, LEVEL_MAX_SPREAD, instrument_levels, mod_note_events, suggest_volumes, write_volumes
 from .onsets import OnsetMatch, audio_onsets, keyon_onsets, onset_match
 from .pitch import (
@@ -30,7 +32,7 @@ from .render import (
     workers,
 )
 from .rip_diff import ChannelChoice, LiftTempo, RipDiff, SongSource, TempoSource, compare_with_rip
-from .rips import RIPS_MAP, RipShelf, named
+from .rips import CONFIG_ROOT, RIP_ROOT, RIPS_MAP, RipShelf, named
 from .signal import (
     VIB_MIN_NOTE,
     band_profile,
@@ -48,13 +50,18 @@ from .signal import (
 )
 
 __all__ = [
+    "CONFIG_ROOT",
     "LEVEL_MAX_ERR",
     "LEVEL_MAX_SPREAD",
     "RIPS_MAP",
+    "RIP_ROOT",
     "SR",
     "VGM_CHANNELS",
     "VIB_MIN_NOTE",
     "ChannelChoice",
+    "FrameAspect",
+    "FrameCheck",
+    "FrameMiss",
     "LiftTempo",
     "OnsetMatch",
     "RipDiff",
@@ -65,6 +72,7 @@ __all__ = [
     "audit_pitches",
     "audit_settings",
     "band_profile",
+    "check_frames",
     "compare_with_rip",
     "db",
     "envelope_offset",

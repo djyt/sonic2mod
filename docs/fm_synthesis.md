@@ -99,14 +99,23 @@ most-played wins and `synth_root_ambiguous` warns: split the entry or use `range
 
 Pitch names are real pitches: `synth_root: A4` renders 440 Hz, and an SMPS FM label at pitch
 offset 0 is the chip's note (the driver's table puts `nC0` at 16.35 Hz).  `note_to_fnum_block`
-writes the registers the Sonic 1 driver writes for the note (`core.smps.driver_tables.FM_FREQUENCIES`,
-MOD index i = table index i + 13): fnum 644–1216, the block from the octave.  Rate scaling and
+writes the registers the song's driver writes for the note (its `rules.fm_frequencies`, MOD index
+i = table index i + 13; Sonic 1's: fnum 644–1216, the block from the octave).  Rate scaling and
 DT1 read the key code (block and the fnum's top bits), so the same pitch written as another
 fnum/block pair has another envelope and detune.  Off the table, or at another clock,
 `freq_to_fnum_block` stands in: `fnum = f × 144 × 2^(21 − block) / clock` (A4 → 1083, block 4).
 
 Rendering at the right pitch matters for timbre: a bass voice rendered octaves too high puts
 its modulation sidebands out of the audible range and comes out thin or near-silent.
+
+A voice in channel 3's special mode (`SmpsVoice.fnum_offsets`: Streets of Rage's `$F7`) renders on
+channel 3, the only one with the mode: `$27` = `$40`, then each operator's word (the note's plus its
+offset) to its own registers (OP1 `$AD`/`$A9`, OP2 `$AE`/`$AA`, OP3 `$AC`/`$A8`, OP4 the channel's
+`$A6`/`$A2`).  In a composite it takes channel 3 and the other layers the channels around it.
+
+A voice under the hardware LFO (`SmpsVoice.lfo`: Streets of Rage's `$FC`) writes `$22` (the chip's
+LFO frequency) and its sensitivities into B4.  Under AMS the LFO runs a quarter cycle before
+key-on (its level swing at the middle); under FMS alone it starts with the note.
 
 ### Length: `sustain_duration: auto`
 
@@ -149,7 +158,8 @@ With `samples.sustain_loops` on for the build (code default `merged`, shipped `a
 renderer probes 4 s (`PROBE_SECS`, within the sample limit); a voice whose envelope settles is
 cut where it settles plus one crossfaded loop (at most 1.2 s), and its notes end in release
 slides at the rate measured on the probe's tail (`release_out`) instead of `C00`.  A loop that
-would end past the plain render, or past where the notes stop being heard, is dropped.  Rules,
+would end past the plain render, or past where the notes stop being heard, is dropped.  A voice
+under the hardware LFO loops on whole LFO cycles, its envelope measured over a cycle.  Rules,
 `loop_drift_db` and `loop_decay`: `docs/pipeline.md` § Sample length, sustain loops and release slides.
 
 ### Level: render level and the channel accumulator

@@ -24,24 +24,25 @@ def drum_rings(song: SmpsSong, config: ConversionConfig, timeline: Timeline) -> 
     for channel in song.channels:
         if channel.header.channel_type != ChannelType.DAC:
             continue
-        hits = [ev for ev in channel.events if ev.is_note and not ev.note.is_rest]
+        hits = [(ev.tick_position, ev.note.dac_name) for ev in channel.events if ev.note is not None and not ev.note.is_rest]
         if not hits:
             continue
-        ends = [ev.tick_position for ev in hits[1:]] + [song.end_tick()]
-        secs = [timeline.span_secs(hit.tick_position, end) for hit, end in zip(hits, ends, strict=True)]
-        secs[-1] += _after_loop(channel, hits, song.end_tick(), timeline)
+        ticks = [tick for tick, _ in hits]
+        ends = [*ticks[1:], song.end_tick()]
+        secs = [timeline.span_secs(tick, end) for tick, end in zip(ticks, ends, strict=True)]
+        secs[-1] += _after_loop(channel, ticks, song.end_tick(), timeline)
 
-        for hit, ring in zip(hits, secs, strict=True):
-            slot = slots.get(hit.note.dac_name)
+        for (_, name), ring in zip(hits, secs, strict=True):
+            slot = slots.get(name)
             if slot is not None:
                 rings[slot] = max(rings.get(slot, 0.0), ring)
     return rings
 
 
-def _after_loop(channel: SmpsChannel, hits: list, end: int, timeline: Timeline) -> float:
+def _after_loop(channel: SmpsChannel, hits: list[int], end: int, timeline: Timeline) -> float:
     """How long the last hit rings on past the jump: from the loop point to the first hit after
     it (to the end again when the loop holds none); 0 for a track that stops."""
     if not channel.has_jump or channel.loop_tick is None:
         return 0.0
-    after = next((ev.tick_position for ev in hits if ev.tick_position >= channel.loop_tick), end)
+    after = next((tick for tick in hits if tick >= channel.loop_tick), end)
     return timeline.span_secs(channel.loop_tick, after)

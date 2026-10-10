@@ -1,0 +1,14 @@
+# Streets of Rage - Level Clear.  A minimal config: everything else is derived from the ROM
+# (docs/smps_variants.md); python convert.py <this> --show-config prints it.
+name: "Level Clear"
+input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
+rom_song: "$8D"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [6, "fm_v0a_C3.raw", 14, 0]   # VGZ: -3.0 dB at 10
+  - [12, "fm_v07_E4.raw", 10, 0]   # VGZ: -1.8 dB at 8
+  - [13, "fm_v07_D5.raw", 10, 0]   # VGZ: -1.9 dB at 8
+  - [14, "fm_v08_C3.raw", 22, 0]   # VGZ: +1.1 dB at 25
+  - [16, "psg_$00_B3.raw", 4, 0]   # VGZ: -1.9 dB at 3
+  - [17, "psg_$00_A4.raw", 4, 0]   # VGZ: -1.9 dB at 3
+  - [18, "psg_noise_e7.raw", 3, 0]   # VGZ: +6.7 dB at 6

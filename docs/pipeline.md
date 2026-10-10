@@ -35,7 +35,7 @@ note plays (`architecture.md`) — so the passes cannot disagree.
 **One pass** (`_convert_once`):
 
 1. rendering pitches and detune variants (`prepare_instruments`), on the song as parsed;
-2. `prepare_song`: `apply_global_tempo_div`, then `extend_looping_channels`;
+2. `prepare_song`: a new song, tempo dividers applied, then short loops replayed (the song given is left as it is);
 3. merged build only: the merge plan (`build_merge_plan`);
 4. sustain needs (`SustainPlanner`);
 5. samples: FM rendered, disk samples loaded, DAC drums saturated, PSG rendered; merged: composites
@@ -151,7 +151,7 @@ behind after each change (Drowning ends 59 ms late).  The audit tools allow for 
 
 `cfSetTempoDividerAll` writes every track's divider, and the driver multiplies a duration by it when
 the note is read: a note begun before the change keeps its length, and the last write wins against a
-track's own `smpsChanTempoDiv`.  `apply_global_tempo_div` re-times every channel before anything
+track's own `smpsChanTempoDiv`.  `prepare_song` re-times every channel before anything
 reads ticks (the carrying channel first; the parser keeps `smpsChanTempoDiv` as an event so each
 note's divider is known).  Rows stay ticks: Credits' half-tempo passage has twice the rows at the
 same BPM.  Loop labels are not re-timed; no song that uses the flag loops.
@@ -253,10 +253,11 @@ Ending's PSG2).
 | `smpsAlterVol` | $E6 | `Cxx` | FM TL offset, 0.75 dB/step; `Cxx` only where a note's level differs from its instrument's baked level (§ Levels) |
 | `smpsPSGAlterVol` | $EC | `Cxx` | PSG attenuation, 2 dB/step; same rule |
 | `smpsPan` | $E0 | (level) | MOD pan is per channel; a hard-panned FM note counts `fm_pan_law_db` (3 dB) quieter |
-| `smpsModSet` / `smpsModOn` / `smpsModOff` | $F0 / $F1 / $F4 | `4xy` / — | § Vibrato |
+| `smpsModSet` / `smpsModOn` / `smpsModOff` | $F0 / $F1 / $F4 | `4xy`, a slow one `1xx` / `2xx` / `E1x` / `E2x` / — | § Vibrato |
 | `smpsNoteFill` | $E8 | `ECx` / `C00` / release slide | § Note fill |
 | `smpsNoAttack` | $E7 | note-on or `3FF` | § Legato |
 | `smpsDetune` / `smpsAlterNote` | $E1 | (sample), `E1x` / `E2x` | § Detune variants |
+| Streets of Rage's `$F7` (FM3) / `$FC` | | (sample) | channel 3's special mode, the hardware LFO: voice copies (§ Detune variants, § Hardware LFO) |
 | `smpsChangeTransposition` | $E9 | (placement) | adds to the driver transpose |
 | `smpsSetvoice` | $EF | (routing) | picks the `voice_map` list |
 | `smpsPSGform` / `smpsPSGvoice` | $F3 / $F5 | (routing) | `psg_map` / `psg_voice_map` (`psg_synthesis.md`) |
@@ -314,10 +315,12 @@ the end of their ring (after `smpsNoAttack` continuations: `_ring_ticks`).
 
 ### Vibrato (`smpsModSet` → `4xy`)
 
-The driver (`smps_driver.md` § smpsModSet) has a steady cycle of `2 · speed · (steps + 1)` frames and a
-swing of `delta · steps / 2` units of the note's own frequency word — the YM2612 FNUM of its pitch class
-(644 for C … 1216 for B) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on
-B.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.
+The driver (`smps_driver.md` § smpsModSet) has a steady cycle of `2 · speed · (steps + 1)` frames (a
+step at each turn adds nothing; a driver whose turn moves too, Streets of Rage's, `2 · speed · steps`:
+`TrackRules.modulation_turn_pause`) and a swing of `delta · steps / 2` units (a PSG that adds the sum
+`>> word_shift`: that many fewer) of the note's own frequency word — the YM2612 FNUM of its pitch class
+in the song's table (Sonic 1's: 644 for C … 1148 for A#, B 606 in the block above: a B swings as wide
+as a C) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on A#.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.
 `VibratoSpeed.speed` / `vibrato_depth`:
 
 ```
@@ -333,6 +336,14 @@ y     = the depth whose peak in the player is nearest the swing (_VIBRATO_PEAK)
 - A row carries `4xy` when modulation runs for at least half of it, the attack row included, from the
   `smpsModSet` wait (frames) on; the continuation stops at the release slide.
 - A per-entry `vibrato: XY` override wins; no shipped config needs one.
+- **A cycle too slow for `4x1`** (rounds to `x` 0: Streets of Rage's 251 steps, Moonwalker's 255) is a
+  sweep the note never sees turn, not a vibrato: `4x1` would wobble it ±the whole swing many times too
+  fast.  Each row with a free slot slides instead to the chip's pitch at its end
+  (`modulation_offset`: the wait, `delta` every `speed` frames, a turn after half the steps):
+  `1xx` / `2xx` on the row's later ticks, `E1x` / `E2x` under a period a tick; what the MOD reached is
+  carried, so a taken row is made up on the next.  The modulation runs from the attack or the
+  `smpsModSet` / `smpsModOn` after it (a tie runs it on: Dilapidated Town's FM2 chains), and a tie
+  re-struck for its level (`legato: retrigger`) slides back from the note's period on its next row.
 - Region-independent (both clocks scale with fps).  What remains is the 4-bit grid: one step of `x`
   is 0.4–0.6 Hz, one step of `y` 10–30 c.
 
@@ -410,15 +421,25 @@ every PSG note.
 ### Loop extension
 
 A channel whose data ends in a short `smpsJump` loop (typically PSG3's hi-hat) has the loop body
-replayed to the song's last tick (`extend_looping_channels`).  The body is the events **after the jump
+replayed to the song's last tick (`prepare_song`).  The body is the events **after the jump
 label** (`SmpsChannel.loop_event_index`), not every event at the label's tick: Spring Yard PSG3's
 `smpsPSGAlterVol $FF` just before its label would otherwise repeat each pass and walk the hi-hat to
 full volume.
 
+Tracks that loop at other lengths are in step again only after their periods' least common
+multiple (Streets of Rage $8F: 2304, 1728 and 4608 frames, 13824), so every track is replayed to
+the last jump target plus that period and the MOD loops back to the target.  A loop's period is
+the shortest its body repeats at (Green Hill's drums: 1024 ticks, a 512-tick bar twice); one
+under a quarter of the longest is a texture and sets none (its hi-hat).  A period past four
+times the longest loop is not unrolled: the song ends as before and `loop_drift` names the
+tracks out of step after the MOD's loop (Stealthy Steps' PSG3, 5173 against 5120).
+
 ### Leading rests
 
 The drum track's rests write nothing: the sample plays out, as on the chip, and an FM drum rings on
-(Type 0 FM); only a silent drum's hit stops it (`ChannelWriter._stop_ringing`).
+(Type 0 FM); only a silent drum's hit stops it (`ChannelWriter._stop_ringing`).  A driver whose rest
+stops the sample says so (`TrackRules.rest_cuts`: Streets of Rage's rests and gates play its empty
+`$85`), and its rests write `C00`.
 
 A channel whose first event is a rest gets `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, after
 every channel is converted): a song that loops to position 0 otherwise rings its last note through the
@@ -460,15 +481,38 @@ every detune an instrument plays into a sample of its own:
 - every other detune is a **variant** in a free slot, the most played first, sharing the instrument's
   entry, level and `sample_list` volume / finetune;
 - one with no free slot plays the instrument's own sample (`detune_no_slot`: Credits);
+- a sample carries its detune's interval at the pitch it is rendered at.  Where that is more than a
+  finetune step off its notes' (Streets of Rage's +195: +336 c on F#, +266 c on A#), a variant is
+  rendered in its notes' commonest pitch class (the same `root`, another `synth_shift`), and notes the
+  detune moves more than 25 c from their sample's interval get a variant per pitch class;
 - `resolve_note` routes a note to its variant, so every pass sees it.  The plan is made on the song as
   parsed, before the loop extension, as the audit tools make it (`prepare_instruments`);
 - a **tie** after a detune change (Scrap Brain FM4's scoop: `smpsAlterNote $EC`, a note,
   `smpsAlterNote $00`, `smpsNoAttack`, duration) is re-written by the driver at the new detune; the MOD
   note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference (only a row of its
   own with a free slot; `--verbose` counts them);
-- a merged chip composite renders each layer at its own track's detune.
+- a merged chip composite renders each layer at its own track's detune;
+- **channel 3's special mode** (Streets of Rage's `$F7`: each operator at the note's word plus its own
+  offset) is a copy of the voice that carries the offsets (`SmpsVoice.fnum_offsets`, made in the walk as
+  `$FA` patches are), rendered on channel 3 with `$27` = `$40`.  Its offsets count in the intervals above
+  (OP4's, the channel's own A2 / A6: what a rip reads as its pitch), so its notes get a variant per pitch
+  class at the instrument's own detune too (Moon Beach's FM3 drums: OP4 +100 FNUM is +254 c on C, +193 c
+  on F).
 
 Never stand in for a detune with `finetune: 1`: that moves every note of the slot, detuned or not.
+
+### Hardware LFO
+
+The YM2612 has one LFO: `$22` sets its frequency for every channel, a channel's B4 how far it moves
+that channel (FMS its pitch, AMS the level of operators with AM on).  Streets of Rage's `$FC f p a`
+writes both, so a note plays at the frequency the last `$FC` of any track wrote (`$88`: FM5's
+`$FC 2 3 2` slows FM2's and FM4's vibrato; `$8B`: FM4's `$FC 0 0 0` drops FM5's to 3.8 Hz).
+`core/smps/lfo.py`, a pass over the walked song, gives each attacking FM note a copy of its voice under
+its LFO (`SmpsVoice.lfo`); the sample is rendered with it (B4 and `$22`).  A MOD sample cannot follow
+the chip's free-running phase: under AMS the render starts a quarter cycle in, the level swing at its
+middle (as a note starting anywhere hears it on average; at step 0 it is at its quietest), under FMS
+alone at step 0, the pitch at its centre.  Its sustain loop spans whole LFO cycles
+(`core/audio/loops.py`, `cycle`).
 
 ---
 
@@ -954,7 +998,7 @@ python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every 
   rows (`ticks_per_row` × divider).
 - Aspects: by default what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects all` for
   every one - a lifted note's pitch is its table word, no detune yet).  The lift matches a note to the
-  song's own FM table (`LiftOptions.fm_frequencies`) and holds at its phase (`tempo_phase`).
+  song's own FM table and holds at its phase (`lift_song(frames, song.rules, ...)`).
 - A tie that changes nothing compared is one note on both sides: a rip shows a read only where the
   driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.
 - Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one

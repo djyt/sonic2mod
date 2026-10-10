@@ -60,6 +60,7 @@ def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
     conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
     prepare_instruments(song, cfg, synth)     # synth roots and detune variants, as the converter
     conv.prepare_song()                      # a replayed loop body is as many notes as it plays
+    song = conv.song
     baselines = conv.level_baselines()
 
     def level_scale(n: NoteOn) -> float:

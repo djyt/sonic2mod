@@ -23,6 +23,7 @@ from vgm_build import bursts, fm_freq, key
 
 from core.audit import ChannelChoice, RipShelf, SongSource, TempoSource, compare_with_rip
 from core.audit.rip_diff import _merge_ties
+from core.drivers.reference import SONIC1_RULES
 from core.smps import (
     NO_TEMPO_HOLDS,
     Aspect,
@@ -77,6 +78,15 @@ class Shelf(unittest.TestCase):
         self.assertEqual(shelf.config_for(self.rips / "03 - Marble.vgz"), self.configs / "02_green_hill.yaml")
         self.assertEqual([c.stem for c in shelf.config_files()], ["02_green_hill"])
         self.assertEqual(len(shelf.pairs()), 1)
+
+    def test_a_map_names_its_rips_folder_where_it_is_not_the_mirror(self):
+        # configs/sor -> vgz/sor_1, not vgz/sor; the folder is no config's stem
+        configs = self.configs / "sor"
+        configs.mkdir()
+        _touch(configs, "81_song.yaml")
+        (configs / "rips.yaml").write_text('folder: sor_1\n81_song: "03 - Song.vgz"\n', encoding="utf-8")
+        shelf = RipShelf.around(configs, None, config_root=self.configs, rip_root=self.rips)
+        self.assertEqual((shelf.rips, shelf.names), (self.rips / "sor_1", {"81_song": "03 - Song.vgz"}))
 
     def test_a_named_map_must_exist(self):
         with self.assertRaises(FileNotFoundError):
@@ -149,7 +159,7 @@ class RipCompare(unittest.TestCase):
 
     def test_the_song_against_its_own_rip(self):
         frames = _rip({0: self._FM1}, 80)
-        song = lift_song(frames, LiftOptions(tempo_modifier=_MODIFIER))
+        song = lift_song(frames, SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
         found = compare_with_rip(song, frames)
         self.assertTrue(found.ok)
         self.assertEqual((found.tempo.source, found.tempo.modifier), (TempoSource.SONG, _MODIFIER))
@@ -158,20 +168,20 @@ class RipCompare(unittest.TestCase):
     def test_a_tempo_that_fits_no_schedule_is_inferred(self):
         # Every tick keyed: at m = 2 the second write is on a hold whatever the phase
         frames = _rip({0: _beat([1], 40)}, 48)
-        song = lift_song(frames, LiftOptions(tempo_modifier=_MODIFIER))
+        song = lift_song(frames, SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
         song.header = dataclasses.replace(song.header, tempo_modifier=2)
         found = compare_with_rip(song, frames)
         self.assertEqual((found.tempo.source, found.tempo.modifier), (TempoSource.INFERRED, _MODIFIER))
         self.assertIn("no tempo schedule", found.tempo.refused)
 
     def test_channels_one_side_plays_are_named_not_compared(self):
-        song = lift_song(_rip({0: self._FM1}, 80), LiftOptions(tempo_modifier=_MODIFIER))
+        song = lift_song(_rip({0: self._FM1}, 80), SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
         found = compare_with_rip(song, _rip({0: self._FM1, 1: _beat([4], 18)}, 80))
         self.assertEqual((found.ok, found.only_rip, [c.name for c in found.diff.channels]), (True, ["FM2"], ["FM1"]))
 
     def test_a_channel_left_out(self):
         frames = _rip({0: self._FM1, 1: _beat([4], 18)}, 80)
-        song = lift_song(frames, LiftOptions(tempo_modifier=_MODIFIER))
+        song = lift_song(frames, SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
         found = compare_with_rip(song, frames, channels=ChannelChoice(skip=("FM1",)))
         self.assertEqual(([c.name for c in found.diff.channels], found.only_rip), (["FM2"], []))
 

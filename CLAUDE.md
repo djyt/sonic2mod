@@ -17,13 +17,13 @@ Each topic has one home; the others link to it.
 | `docs/yaml_config.md` | **Every config key** — song config (minimal configs, channels, the instrument maps, sample shaping, merge keys, variants) and `settings.yaml` (code default vs shipped value) |
 | `docs/smps_driver.md` | **Sonic 1 driver and hardware** — coord flags, detune vs transposition, TempoWait, modulation / note fill in frames, voice layout and operator order, DAC sample rates, PSG |
 | `docs/smps_format.md` | Assembly syntax and how the parser reads it |
-| `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM): what each differs from Sonic 1 by, how it was found, how to add a variant |
+| `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code): what each differs from Sonic 1 by, how it was found, how to add a variant |
 | `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, ym2612/ API |
 | `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, sn76489/ API |
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
-| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `binary_import.md` (ROM input), `user_improvements.md` |
+| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `reference/Nuked-OPN2/` | Cycle-accurate YM2612/YM3438 C emulator |
@@ -37,10 +37,13 @@ Full module map: `docs/architecture.md`.
 sonic2mod/
   convert.py  analyze.py  sonic2wav.py   CLIs: conversion, song analysis, SFX → WAV
   core/        library; layers, each importing only those below it (diagnostics.py: any):
-               ui → convert / audit → merge → plan → config → source → vgm / rom → smps / mod
-               → chips / audio / render_cache / files.  Imports nothing from sfx/ or the chip packages
-    smps/        the IR (SmpsSong), parser, the shared song walk (code.py), driver tables, playback
-    rom/ vgm/    ROM bytecode reader; VGM register logs and the lift back to a song
+               ui → convert / audit → merge → plan → config → source → vgm / drivers → rom → smps / mod
+               → chips / audio / render_cache → files.  Imports nothing from sfx/ or the chip packages;
+               drivers only via source (import-linter: pyproject.toml)
+    smps/        the IR (SmpsSong, PlaybackRules), parser, the shared song walk (code.py), playback; no driver's tables
+    drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs;
+                 reference.py: Sonic 1's tables and SONIC1_RULES (an asm song's and a rip's)
+    rom/ vgm/    the ROM framework (readers driven by a driver's description); VGM register logs and the lift
     source/      read_song(path): picks asm / ROM / VGM
     config/      ConversionConfig, settings.yaml, variants
     plan/        DriverState walk (resolve_note), instrument catalogue, synth roots, detune, timeline,
@@ -62,7 +65,7 @@ sonic2mod/
 
 ```bash
 pip install pyyaml rich   # external dependencies
-pip install ruff pyright vulture  # lint / type checking / dead code (optional; or pip install -e .[dev])
+pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
 ```
 
 Synthesis compiles `ym3438.c` / `sn76489.c` with gcc or MSVC on first use.
@@ -73,6 +76,7 @@ Synthesis compiles `ym3438.c` / `sn76489.c` with gcc or MSVC on first use.
 ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
+python -m pytest tests/test_layers_units.py -q   # import layers (pyproject.toml [tool.importlinter]; or lint-imports)
 ```
 
 ## Quick Usage
@@ -115,6 +119,8 @@ python convert.py configs/02_green_hill_zone.yaml --input input/roms/sonic_rev01
 # The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
 python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1
 python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
+# Every song of a ROM (or an asm folder) as read, walked and played, as text: what a reader change moved
+python tools/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
 
 # Render all 49 sound effects to 16-bit stereo WAV (no config needed)
 python sonic2wav.py --all
@@ -145,7 +151,7 @@ python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip fm --cha
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
 python tools/vgm_analyze.py "reference/vgz/01 - Title Theme.vgz" --chip all --max-rows 0
-# The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC seeks per V-int
+# The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC sample starts (a seek, or bytes after a pause) per V-int
 python tools/vgm_analyze.py "reference/vgz/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
@@ -162,6 +168,11 @@ python tools/vgm_lift.py --all --aspects onset           # every rip, a line eac
 python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
 python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
 python tools/vgm_lift.py --all --configs configs/moonwalker                  # every Moonwalker pair
+python tools/vgm_lift.py --all --configs configs/streets_of_rage   # its rips.yaml names their folder (folder:)
+# No lift: every note's pitch (detune in), level and voice registers against the rip's frame log on
+# its frame - what the lift cannot read.  Any driver; tied notes counted apart (vibrato runs on)
+python tools/vgm_frames.py --all --configs configs/streets_of_rage
+python tools/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -189,28 +200,37 @@ python tools/measure_volumes.py --configs configs/moonwalker      # the rips: it
 
 ## Regression Testing
 
-Baselines live in `tests/baselines/`.  Every song config is a case; every config with a `merge:`
-or `merge_patterns:` section is a second case, `<name>_merged`; variants (`_VARIANTS`) are cases
-too, and with the ROM in `input/roms/` four songs are converted from its bytecode (`<name>_rom`).
-A converter change is safe only once every case still produces a byte-identical MOD — cells **and** the sample table and data (length, volume, finetune, loop, MD5).
-Conversions run as parallel subprocesses: ~14 s with an empty render cache, ~4 s warm.
+Cases are data: **`tests/cases.yaml`**, by game.  Sonic stays complete (every song, its lofi variants,
+each config's `<name>_merged` build, four songs read from the ROM: `<name>_rom`); every other
+driver has a few, chosen by line coverage.  A song joins only for code no case runs yet.
+A case whose ROM is not in `input/roms/` is left out.
+A converter change is safe only once every case it can move still produces a byte-identical MOD —
+cells **and** the sample table and data (length, volume, finetune, loop, MD5).
+
+**Selection by what each case ran** (`tests/selection.py`): `--generate-baselines` records the
+project files each case executes (coverage.py, `pip install coverage`; render caches off, so
+generating is cold: ~30 s).  A plain run diffs the working tree with each case's baseline commit
+and runs only the cases a change can move: a driver's folder moves its game's cases, shared code
+(`core/smps`, `core/convert`, ...) moves every case that imports it.  `--all` runs everything.
 
 Every case converts with **`tests/settings.yaml`** (`convert.py --settings`), never
 `configs/settings.yaml`, so tuning a song by ear does not move the baselines.  It states every key
 the live file has (the runner exits 2 otherwise; add a new setting to both).
 `tests/baselines/manifest.yaml` records each baseline's commit, date and the hashes of its settings
-and config.
+and config; `coverage.yaml` what each case ran.
 
 ```bash
-python tests/regression.py --generate-baselines        # BEFORE a change, while the code is known-good
-python tests/regression.py                             # AFTER: diff every case
+python tests/regression.py --generate-baselines        # BEFORE a change, while the code is known-good (commit first)
+python tests/regression.py                             # AFTER: the cases the change can move
+python tests/regression.py --all                       # every case
+python tests/regression.py --only title_screen moonwalker            # cases or groups
 python tests/regression.py --generate-baselines --only title_screen   # accept one song's change
-python tests/regression.py --jobs 4                    # limit parallelism (-j 1: one at a time)
 python -m pytest tests -q                              # unit tests (merge rules, detune, vgm, rom, ...)
 ```
 
 **Workflow for any converter change:**
-1. Run `--generate-baselines` while code is known-good.
+1. Commit, then run `--generate-baselines` while code is known-good (a `-dirty` record selects
+   more than it needs to).
 2. Make the change.
 3. Run without flags — PASS means no regressions on channels, and no note the player cannot
    sound that the baseline sounds (`tools/mod_lint.py`: a `3xx` with no sample playing or a
@@ -219,33 +239,32 @@ python -m pytest tests -q                              # unit tests (merge rules
    a `3FF` where the sounding sample cannot reach the pitch, or a note on a slot the merged build
    stopped rendering, diffs like any intended change.
 
-A change to one config runs only that song's cases (`--only`).
-
-**The VGM tools have their own suite, `tests/tool_regression.py`**: `vgm_analyze` on all 19 VGZs,
-`vgm_pitch_audit` on every baseline MOD and `vgm_lift` (the Moonwalker pairs too, with its ROM), byte
-for byte, in about 10 s; `--with-renders` adds `vgm_compare`.
-Run it after any change to `core/vgm/`, `core/audit/`, `core/mod/timing.py` or a VGM tool.
+**The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
+`vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD, `vgm_lift` (the Moonwalker
+pairs too), `frames_<game>` (`vgm_frames` on Golden Axe's and Streets of Rage's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+Moonwalker, Golden Axe, Streets of Rage) as read, walked and played, no rendering — byte for byte;
+`--with-renders` adds `vgm_compare`.
 
 ```bash
-python tests/tool_regression.py                          # PASS / FAIL + diff
-python tests/tool_regression.py --with-renders           # vgm_compare too
-python tests/tool_regression.py --generate-baselines --only analyze_02_frames   # accept one change
+python tests/tool_regression.py                          # PASS / FAIL + diff (a read_ case names the songs that differ)
+python tests/tool_regression.py --all --with-renders     # everything, vgm_compare too
+python tests/tool_regression.py --generate-baselines --only read_golden_axe   # accept one change
 ```
 
-**Adding a new test case:** append a row to `_SONGS` in `tests/regression.py`:
-```python
-("20_my_song", "my_song", "my_song", "My Song — what makes it worth testing"),
-#  config stem   test name  baseline stem  description
-```
-To ignore a channel while deliberately changing it, add `"my_song": [8]` to `_CASE_OVERRIDES`
-(0-based MOD indices); it is normally empty.  `tools/mod_compare.py` diffs any two MODs
-(`compare_mods(a, b, ignore_channels=[8])`).
+**Adding a case:** a line in `tests/cases.yaml` (`name`, `config`, `variant`, `why`); its
+`--generate-baselines --only <name>`.  To ignore a channel while deliberately changing it, add
+`"my_song": [8]` to `_CASE_OVERRIDES` in `tests/regression.py` (0-based MOD indices); it is normally
+empty.  `tools/mod_compare.py` diffs any two MODs (`compare_mods(a, b, ignore_channels=[8])`).
 
 ## Rules that are easy to get wrong
 
 One line each; the linked section has the cause and the detail.
 
 **Reading the song** (`docs/smps_format.md`, `docs/smps_driver.md`)
+- **Don't simulate bugs.**  Where a song's data or its driver misbehaves (a note past a frequency
+  table reads stray code bytes, an overflow, a data error), convert what was meant, not the
+  glitch: data fixes on, a past-table PSG note on the plausible continuation.  A rip that shows the
+  glitch is evidence of the bug, not a target to match.
 - Notes are bytes $81–$DF (C0–A#7).  FM labels are real pitches: `nA4` at pitch offset 0 = 440 Hz
   (`f = fnum × (clock/144) × 2^block / 2^21`, A4 = fnum 1083, block 4).  A PSG `nC0` is C3.
 - A standalone duration byte **re-keys the last note** at its frequency; after `smpsNoAttack` it is a
@@ -260,6 +279,9 @@ One line each; the linked section has the cause and the detail.
   events after the label, not a flag written just before it.
 - Operator order: SMPS stores OP4..OP1, `SMPS_OP_TO_REG_OFFSET = (0x0C, 0x04, 0x08, 0x00)`
   (`core/smps/driver_tables.py`).  Wrong order = "overdriven guitar".
+
+- A song carries its driver's `PlaybackRules` (tables, envelopes, drum names, timing): read
+  `song.rules`, never a driver's table directly; nothing below `core/drivers` falls back to Sonic 1's.
 
 **Converting** (`docs/pipeline.md`)
 - One state machine decides what a note plays: `DriverState` + `resolve_note` via `walk_channel`

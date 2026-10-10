@@ -1,14 +1,16 @@
 """A ROM's PSG volume envelopes: each a string of attenuation steps ended by a command byte its
 driver knows (SmpsVariant.envelope_commands: Sonic 1's $80 holds; Type 1a's $83 holds, $80
-restarts, $85 nn jumps).  smpsPSGvoice n names envelope n (fTone_0n).  Where they are is the
+restarts, $85 nn jumps; Streets of Rage's $81 holds, $83 silences).  smpsPSGvoice n names
+envelope n (fTone_0n).  Where they are is the
 variant's locate (SoundIndex.envelopes).
 
-    Sonic 1 rev01   9 envelopes (= core.smps.SONIC1_ENVELOPES)
+    Sonic 1 rev01   9 envelopes (= core.drivers.reference.SONIC1_ENVELOPES)
     Moonwalker      6; envelope 6 has no command and runs on into envelope 5, as the driver reads it
 """
 
 from __future__ import annotations
 
+from ..chips import PSG_ATT_SILENT
 from ..smps import PsgEnvelope, psg_voice_name
 from .flags import EnvelopeCommand
 from .image import RomError
@@ -40,6 +42,8 @@ def _envelope(memory: SoundMemory, address: int, variant: SmpsVariant) -> PsgEnv
         command = variant.envelope_commands.get(value)
         if command is None:
             raise RomError(f"PSG envelope at ${address:X}: ${value:02X} at ${at:X} is no {variant.name} envelope command")
+        if command is EnvelopeCommand.MUTE:
+            return PsgEnvelope((*steps, PSG_ATT_SILENT))
         if command is EnvelopeCommand.HOLD or not steps:
             return PsgEnvelope(tuple(steps))
         loop_to = 0 if command is EnvelopeCommand.RESTART else memory.byte(at + 1)

@@ -15,6 +15,9 @@ runs every time, so the settings that steer it are not part of the key.  Writes 
 (core/files.py): parallel conversions share one directory.  A file that cannot be read
 is a miss; one that cannot be written is skipped.  Renders made by other code can never be read
 again: the first cache opened with a new salt removes them.
+
+SONIC2MOD_RENDER_CACHE=off shuts every cache in the process: tests/selection.py records what a
+case runs, and a render read back runs no emulator code.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from __future__ import annotations
 import array
 import contextlib
 import hashlib
+import os
 import shutil
 import struct
 import threading
@@ -37,6 +41,8 @@ _HEADER = struct.Struct("<Ic")
 # The salt's characters a directory is named by
 _SALT_CHARS = 16
 
+_OFF_ENV, _OFF = "SONIC2MOD_RENDER_CACHE", "off"
+
 
 def code_salt(paths: Iterable[Path]) -> str:
     """A hash of every file a render depends on: change one and every key changes."""
@@ -51,7 +57,8 @@ class RenderCache:
     """One chip's renders under `directory` (None: off - every get misses, put does nothing)."""
 
     def __init__(self, directory: str | Path | None, chip: str, salt: str):
-        self._dir = Path(directory) / chip / salt[:_SALT_CHARS] if directory else None
+        shut = os.environ.get(_OFF_ENV) == _OFF
+        self._dir = Path(directory) / chip / salt[:_SALT_CHARS] if directory and not shut else None
         self._lock = threading.Lock()
         self.hits = 0
         self.misses = 0

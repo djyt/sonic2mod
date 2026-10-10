@@ -1,0 +1,29 @@
+# Streets of Rage - The Last Soul.  A minimal config: everything else is derived from the ROM
+# (docs/smps_variants.md); python convert.py <this> --show-config prints it.
+name: "The Last Soul"
+input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
+rom_song: "$88"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 54, 6]   # VGZ: -0.7 dB at 64
+  - [3, "dac84.raw", 37, -3]   # VGZ: +2.5 dB at 64
+  - [5, "fm_v0b_B4.raw", 7, 0]   # VGZ: +5.4 dB at 16
+  - [8, "fm_v13_Ab7.raw", 38, 0]   # VGZ: -1.5 dB at 32
+  - [10, "fm_v11_Fs2.raw", 23, 0]   # VGZ: +0.6 dB at 32
+  - [10, "fm_v14_A3.raw", 9, 0]   # VGZ: +1.4 dB at 10
+  - [11, "fm_v11_E3.raw", 22, 0]   # VGZ: +0.9 dB at 32
+  - [12, "fm_v17_Fs3.raw", 11, 0]   # VGZ: +2.3 dB at 14
+  - [13, "fm_v18_A3.raw", 8, 0]   # VGZ: +2.0 dB at 10
+  - [15, "fm_v19_B4.raw", 11, 0]   # VGZ: -2.5 dB at 8
+  - [16, "fm_v1a_Cs5.raw", 12, 0]   # VGZ: +2.3 dB at 16
+  - [17, "fm_v1a_B5.raw", 12, 0]   # VGZ: +2.3 dB at 16
+  - [18, "fm_v1b_G7.raw", 4, 0]   # VGZ: -6.5 dB at 2
+  - [19, "fm_v04_E2.raw", 25, 0]   # VGZ: +0.0 dB at 32
+  - [19, "fm_v1c_B2.raw", 26, 0]   # VGZ: -1.7 dB at 21
+  - [20, "fm_v1c_A3.raw", 26, 0]   # VGZ: -1.7 dB at 21
+  - [24, "fm_v06_C6.raw", 3, 0]   # VGZ: +0.6 dB at 4
+  - [25, "fm_v06_B7.raw", 22, 0]   # VGZ: -5.1 dB at 16
+  - [26, "fm_v07_B7.raw", 23, 0]   # VGZ: -0.7 dB at 27
+  - [27, "psg_fTone_03_Cs4.raw", 4, 0]   # VGZ: -0.9 dB at 5
+  - [28, "psg_fTone_03_B4.raw", 4, 0]   # VGZ: +0.0 dB at 5
+  - [29, "psg_noise_e7.raw", 2, 0]   # VGZ: +7.0 dB at 6

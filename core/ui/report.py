@@ -71,6 +71,7 @@ class Report:
     patterns: int = 0
     derived: list = field(default_factory=list)   # the sections a minimal config left to the song
     stale: list = field(default_factory=list)     # its sample_list files these settings do not cut
+    folded: dict = field(default_factory=dict)    # {voice copy: (its voice, notes)}: no slot for it (Derivation)
 
 
 # ── Warnings: (check, headline, fix) ──────────────────────────────────────────────────────────
@@ -146,12 +147,37 @@ def _w_rest_no_slot(w: dict):
             "[cyan]num_mod_channels:[/cyan] one step up gives the tempo commands a channel")
 
 
+def _w_loop_drift(w: dict):
+    tracks = ", ".join(w['tracks'])
+    return ("patterns", f"{tracks}: a loop length whose common period with the song's is too long to unroll; "
+                        f"out of step after the MOD's loop", None)
+
+
 def _w_loop_no_slot(w: dict):
     eff, par = w['overwrote']
     what = f" (it replaced {eff:X}{par:02X})" if (eff, par) != (0, 0) else ""
     return ("patterns", f"the loop's Bxx at {w['pattern']:02X}:{w['row']:02d} found no free effect slot and "
                         f"went on channel 1{what}",
             "[cyan]num_mod_channels:[/cyan] one step up gives it a channel")
+
+
+def _w_sample_file_missing(w: dict):
+    return ("samples", f"[bold]instrument {w['instrument']}[/bold]: {escape(w['path'])} not found; the slot is empty",
+            "fix the [cyan]sample_list:[/cyan] entry, or remove it")
+
+
+def _w_voice_missing(w: dict):
+    insts = ", ".join(str(i) for i in w['instruments'])
+    where = escape(w['extra_ctx'].split('[')[0])
+    return ("samples", f"[bold]{escape(w['extra_ctx'])}[/bold]: voice ${w['voice_idx']:02X} is not in the song "
+                       f"[dim](instrument {insts})[/dim]", f"remove the entry from [cyan]{where}[/cyan]")
+
+
+def _w_render_level(w: dict):
+    pan = " panned" if w['panned'] else ""
+    return ("samples", f"[bold]instrument {w['instrument']}[/bold] rendered at TL +{w['tl']}{pan} "
+                       f"({w['rendered_db']:+.2f} dB), baked at {w['baked_db']:+.2f} dB: the loop extension moved "
+                       f"its commonest level", None)
 
 
 def _w_sustain_short(w: dict):
@@ -183,8 +209,15 @@ def _w_synth_root_ambiguous(w: dict):
 
 def _w_detune_no_slot(w: dict):
     parts = ", ".join(f"inst {inst} {d:+d} ×{n}" for (inst, d), n in sorted(w['unplaced'].items(), key=lambda kv: -kv[1]))
-    return ("pitch", f"{len(w['unplaced'])} smpsAlterNote detunes have no free slot and play their "
+    return ("pitch", f"{len(w['unplaced'])} detune variants (smpsAlterNote, FM3 special mode) have no free slot and play their "
                      f"instrument's own sample: {parts}", "free an instrument slot")
+
+
+def _w_copy_no_slot(w: dict):
+    parts = ", ".join(f"${copy:02X} as ${plain:02X} ×{n}" for copy, (plain, n) in
+                      sorted(w['folded'].items(), key=lambda kv: -kv[1][1]))
+    return ("pitch", f"{len(w['folded'])} voice copies (FM3 special mode, LFO) have no free slot and play as "
+                     f"their voice: {parts}", "free an instrument slot")
 
 
 def _lost_parts(w: dict) -> list[str]:
@@ -258,9 +291,13 @@ _WARNINGS: dict[WarningKind, Callable[[dict], tuple[str, str, str | None]]] = {
     WarningKind.MISSING_SOURCE: _w_missing_source, WarningKind.RATE3_SYNTH_ROOT: _w_rate3,
     WarningKind.TEMPO_NO_SLOT: _w_tempo_no_slot, WarningKind.TEMPO_BPM_RANGE: _w_tempo_bpm_range,
     WarningKind.PATTERN_OVERFLOW: _w_pattern_overflow, WarningKind.REST_NO_SLOT: _w_rest_no_slot, WarningKind.LOOP_NO_SLOT: _w_loop_no_slot,
+    WarningKind.LOOP_DRIFT: _w_loop_drift,
     WarningKind.SUSTAIN_SHORT: _w_sustain_short, WarningKind.SAMPLE_TRUNCATED: _w_truncated,
+    WarningKind.SAMPLE_FILE_MISSING: _w_sample_file_missing, WarningKind.VOICE_MISSING: _w_voice_missing,
+    WarningKind.RENDER_LEVEL: _w_render_level,
     WarningKind.NOISE_ENVELOPES: _w_noise_envelopes, WarningKind.SYNTH_ROOT_AMBIGUOUS: _w_synth_root_ambiguous,
     WarningKind.DETUNE_NO_SLOT: _w_detune_no_slot,
+    WarningKind.COPY_NO_SLOT: _w_copy_no_slot,
     WarningKind.MERGE_LOST: _w_merge_lost, WarningKind.MERGE_HEADROOM: _w_merge_headroom,
     WarningKind.MERGE_UNSUPPORTED: _w_merge_unsupported, WarningKind.MERGE_MISSING_SAMPLE: _w_merge_missing,
     WarningKind.MERGE_FILL_LOST: _w_merge_fill_lost, WarningKind.MERGE_DROPPED: _w_merge_dropped,
@@ -758,7 +795,8 @@ def print_report(console: Console, rep: Report) -> None:
     rows, _notes = audit(rep.output_path, amiga_clock=s.amiga_clock if s else PAL_AMIGA_CLOCK)
     sources = rep.converter.sample_sources()
     flags = sample_flags(rows, rep.converter.warnings)
-    lines = warning_lines(rep.converter.warnings)
+    folded = [{'type': WarningKind.COPY_NO_SLOT, 'folded': rep.folded}] if rep.folded else []
+    lines = warning_lines(folded + rep.converter.warnings)
     # The audit's flags on the written file (an unused or empty slot) count as sample warnings;
     # the converter's own sample warnings are listed already
     for inst, fl in sorted(flags.items()):

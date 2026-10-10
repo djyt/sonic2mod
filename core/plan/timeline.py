@@ -13,7 +13,7 @@ import bisect
 
 from ..config import ConversionConfig
 from ..mod import shift_for_breaks
-from ..smps import CoordFlag, SmpsSong, TempoSegment, frame_of_tick
+from ..smps import SetTempoMod, SmpsSong, TempoSegment, frame_of_tick
 
 # A MOD BPM: ProTracker's Fxx reaches 32..255
 _MIN_BPM, _MAX_BPM = 32, 255
@@ -48,12 +48,12 @@ class Timeline:
         cfSetTempo writes v_main_tempo for every track and restarts the TempoWait counter, so
         from that tick on ticks run at fps*(m-1)/m with the hold pattern starting afresh.
         Only the modifier changes here; the divider (smpsSetTempoDiv, $EB) re-timed the ticks
-        before (song_prep.apply_global_tempo_div).
+        before (song_prep.prepare_song).
         """
         segs = [(0, self._song.header.tempo_modifier)]
         for ch in self._song.channels:
-            segs.extend((ev.tick_position, ev.effect.params[0]) for ev in ch.events
-                        if ev.is_effect and ev.effect.flag == CoordFlag.SET_TEMPO_MOD)
+            segs.extend((ev.tick_position, ev.effect.modifier) for ev in ch.events
+                        if isinstance(ev.effect, SetTempoMod))
         segs.sort()
         out: list[tuple[int, int]] = []
         for t, m in segs:

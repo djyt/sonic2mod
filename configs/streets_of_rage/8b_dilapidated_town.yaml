@@ -1,0 +1,24 @@
+# Streets of Rage - Dilapidated Town.  A minimal config: everything else is derived from the ROM
+# (docs/smps_variants.md); python convert.py <this> --show-config prints it.
+name: "Dilapidated Town"
+input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
+rom_song: "$8B"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 50, 6]   # VGZ: +2.2 dB at 64
+  - [2, "dac82.raw", 42, -3]   # VGZ: +3.6 dB at 64
+  - [9, "fm_v0c_A3.raw", 17, 0]   # VGZ: +3.6 dB at 25
+  - [10, "fm_v02_Bb2.raw", 4, 0]   # VGZ: -3.2 dB at 3
+  - [10, "fm_v0c_G4.raw", 15, 0]   # VGZ: +5.4 dB at 28
+  - [11, "fm_v02_B3.raw", 4, 0]   # VGZ: -2.9 dB at 3
+  - [11, "fm_v0d_Bb4.raw", 9, 0]   # VGZ: +4.3 dB at 14
+  - [12, "fm_v0e_D4.raw", 20, 0]   # VGZ: +4.9 dB at 36
+  - [13, "fm_v0f_D4.raw", 5, 0]   # VGZ: +7.7 dB at 12
+  - [14, "fm_v0f_C5.raw", 12, 0]   # VGZ: -4.5 dB at 7
+  - [15, "fm_v05_B7.raw", 14, 0]   # VGZ: -2.2 dB at 11
+  - [16, "fm_v06_D4.raw", 64, 0]   # VGZ: -5.4 dB at 35
+  - [17, "fm_v07_B7.raw", 15, 0]   # VGZ: -4.3 dB at 9
+  - [18, "fm_v08_A4.raw", 16, 0]   # VGZ: -1.4 dB at 14
+  - [19, "fm_v08_G5.raw", 16, 0]   # VGZ: -0.9 dB at 14
+  - [23, "psg_$00_D4.raw", 6, 0]   # VGZ: -2.1 dB at 5
+  - [24, "psg_$00_D5.raw", 3, 0]   # VGZ: +3.2 dB at 4

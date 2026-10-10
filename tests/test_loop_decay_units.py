@@ -80,6 +80,18 @@ class SlidingLoopTests(unittest.TestCase):
         self.assertLess(free.start / RATE, 0.06)         # a beating pair is flat from its first window
         self.assertGreaterEqual(held.start / RATE, 0.06)
 
+    def test_a_tone_under_the_lfo_loops_on_whole_cycles(self):
+        # 3 dB of tremolo and a 10 c vibrato at 6.6 Hz: the loop spans whole cycles
+        cycle = RATE / 6.6
+        tone, phase = [], 0.0
+        for i in range(int(RATE * SECS)):
+            lfo = math.sin(2 * math.pi * i / cycle)
+            phase += 2 * math.pi * FREQ * 2 ** (10 * lfo / 1200) / RATE
+            tone.append(0.5 * (1 + 0.17 * lfo) * math.sin(phase))
+        loop = find_sustain_loop(tone, RATE, PERIOD, len(tone), flat_db=1.0, cycle=cycle)
+        assert loop is not None
+        self.assertLessEqual(abs(loop.length - max(1, round(loop.length / cycle)) * cycle), PERIOD)
+
     def test_flatten_holds_the_level(self):
         flat = flatten(self.mono, int(0.1 * RATE), FALL_DB_S / RATE)
         early = flat[int(0.5 * RATE):int(0.5 * RATE) + int(4 * PERIOD)]

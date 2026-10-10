@@ -140,19 +140,29 @@ class Frames(unittest.TestCase):
         seek = b"\xE0" + struct.pack("<I", 0)
         fl = frame_log(decode_vgm(_vgm(block + b"\x83\x83\x83" + _wait(400) + seek + b"\x82\x82\x80")))
         dac = fl.frames[0].dac
-        self.assertEqual(dac.seeks, (0,))
-        self.assertEqual((dac.writes, dac.since_seek), (6, 3))
+        self.assertEqual([s.offset for s in dac.starts], [0])
+        self.assertEqual((dac.writes, dac.since_start), (6, 3))
         # 3 samples apart before the seek, 2 after; the 400-sample silence between is no gap
         self.assertEqual(dac.gaps, ((2, 2), (3, 2)))
+
+    def test_bytes_resuming_after_a_pause_start_a_sample(self):
+        # The bank holds the next sample where the last ended: the ripper writes no seek
+        bank = bytes(8)
+        block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank
+        seek = b"\xE0" + struct.pack("<I", 2)
+        fl = frame_log(decode_vgm(_vgm(block + seek + b"\x83\x83" + _wait(400) + b"\x83\x82")))
+        dac = fl.frames[0].dac
+        self.assertEqual([s.offset for s in dac.starts], [2, 4])
+        self.assertEqual(dac.since_start, 2)
 
     def test_a_late_seek_belongs_to_the_burst_before_it(self):
         # Two bursts a frame apart; the Z80 starts a sample 600 samples after the first, in the
         # second's window but before its burst
         burst = _fm(0, 0x28, 0xF0)
         seek = b"\xE0" + struct.pack("<I", 0)
-        fl = frame_log(decode_vgm(_vgm(_wait(300) + burst + _wait(600) + seek + _wait(_FRAME - 600) + burst)))
+        fl = frame_log(decode_vgm(_vgm(_wait(300) + burst + _wait(600) + seek + b"\x80" + _wait(_FRAME - 600) + burst)))
         first = next(f.index for f in fl.frames if f.fm[0].keys)
-        sample = next(f.dac.seek_samples[0] for f in fl.frames if f.dac.seek_samples)
+        sample = next(f.dac.starts[0].sample for f in fl.frames if f.dac.starts)
         self.assertEqual(fl.frame_of(sample), first + 1)
         self.assertEqual(fl.burst_frame(sample), first)
 

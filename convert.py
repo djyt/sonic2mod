@@ -124,6 +124,7 @@ def main():
     # ── A minimal config (no channels:) completed from the song ────────────────
     derived: list[str] = []
     stale: list[str] = []
+    folded: dict[int, tuple[int, int]] = {}
     data = config.stated()
     if config.is_minimal:
         try:
@@ -132,7 +133,7 @@ def main():
         except ValueError as e:
             _error(str(e))
         assert derivation is not None
-        data, derived, stale = derivation.data, derivation.derived, derivation.stale
+        data, derived, stale, folded = derivation.data, derivation.derived, derivation.stale, derivation.folded
     if args.show_config:
         console.print(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None), markup=False, highlight=False)
     if args.write_config:
@@ -195,10 +196,10 @@ def main():
         f.write(output_bytes)
 
     print_report(console, Report(
-        config=config, song=song, converter=converter, output_path=config.output_file,
+        config=config, song=converter.song, converter=converter, output_path=config.output_file,
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
         synth=synth, psg_synth=psg_synth, bpm=bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
-        derived=derived, stale=stale))
+        derived=derived, stale=stale, folded=folded))
 
 
 if __name__ == '__main__':

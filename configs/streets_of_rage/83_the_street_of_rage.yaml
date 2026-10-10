@@ -1,0 +1,17 @@
+# Streets of Rage - The Street of Rage.  A minimal config: everything else is derived from the ROM
+# (docs/smps_variants.md); python convert.py <this> --show-config prints it.
+name: "The Street of Rage"
+input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md"
+rom_song: "$83"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [4, "fm_v0c_B7.raw", 15, 0]   # VGZ: -2.5 dB at 11
+  - [5, "fm_v10_B7.raw", 10, 0]   # VGZ: -3.1 dB at 7
+  - [7, "fm_v14_B7.raw", 13, 0]   # VGZ: -5.1 dB at 7
+  - [8, "fm_v17_B7.raw", 10, 0]   # VGZ: -3.2 dB at 7
+  - [8, "fm_v18_A1.raw", 8, 0]   # VGZ: -2.6 dB at 6
+  - [9, "fm_v04_F4.raw", 32, 0]   # VGZ: -1.4 dB at 27
+  - [10, "fm_v07_G2.raw", 44, 0]   # VGZ: -4.2 dB at 27
+  - [11, "fm_v08_G2.raw", 7, 0]   # VGZ: +2.1 dB at 9
+  - [12, "fm_v08_G3.raw", 8, 0]   # VGZ: +1.5 dB at 9
+  - [13, "fm_v08_F4.raw", 8, 0]   # VGZ: +0.9 dB at 9

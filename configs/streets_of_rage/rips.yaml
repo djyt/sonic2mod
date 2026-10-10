@@ -1,0 +1,18 @@
+# Which rip each config converts (docs/smps_variants.md § Streets of Rage; every FM key-on on its frame).
+# $8A has no rip in the pack; $8E is $8D.  The rips are not in this folder's mirror:
+folder: streets_of_rage_1          # under reference/vgz/
+81_fighting_in_the_street: "03 - Fighting in the Street.vgz"
+82_game_over: "14 - Game Over.vgz"
+83_the_street_of_rage: "01 - The Street of Rage.vgz"
+84_moon_beach: "05 - Moon Beach.vgz"
+85_beatnik_on_the_ship: "07 - Beatnik on the Ship.vgz"
+86_violent_breathing: "09 - Violent Breathing.vgz"
+87_attack_the_barbarian: "12 - Attack the Barbarian.vgz"
+88_the_last_soul: "10 - The Last Soul.vgz"
+89_stealthy_steps: "08 - Stealthy Steps.vgz"
+8b_dilapidated_town: "04 - Dilapidated Town.vgz"
+8c_keep_the_groovin: "06 - Keep the Groovin'.vgz"
+8d_level_clear: "11 - Level Clear.vgz"
+8f_you_became_the_bad_guy: "15 - You Became the Bad Guy!.vgz"
+90_big_boss: "13 - Big Boss.vgz"
+91_good_ending: "16 - Good Ending.vgz"

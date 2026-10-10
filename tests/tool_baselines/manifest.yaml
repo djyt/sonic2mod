@@ -1127,13 +1127,13 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 91f43dbb2b74
     tests/settings.yaml: a79a8ba763a3
 pitch_credits:
-  commit: d0bd6d8-dirty
+  commit: 9e7f08a-dirty
   date: '2026-10-10'
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
     tests/baselines/credits_baseline.mod: 1135bbba38b2
-    tests/settings.yaml: a79a8ba763a3
+    tests/settings.yaml: c9fe3405c560
 pitch_drowning:
   commit: d0bd6d8-dirty
   date: '2026-10-10'

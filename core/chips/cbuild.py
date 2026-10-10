@@ -2,7 +2,8 @@
 
 Both chip devices (core/chips/ym2612, core/chips/sn76489) wrap a C core vendored in `3rdparty/`
 and need the same thing: build it on first use into `build/` (untracked), rebuild it when a
-source changes, and work with either gcc or MSVC.  Describe the library once with
+source changes, and work with either gcc or MSVC.  With no compiler on PATH the library in
+`prebuilt/` (tracked: the Windows DLLs, refreshed by hand from `build/`) is used instead.  Describe the library once with
 :class:`CLibrary` and call :meth:`CLibrary.get_lib_path`.
 
     _LIB = CLibrary(
@@ -25,6 +26,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 THIRD_PARTY = _ROOT / "3rdparty"            # the vendored C emulators
 BUILD_DIR = _ROOT / "build"                 # their compiled libraries (untracked)
+PREBUILT_DIR = _ROOT / "prebuilt"           # a copy of them for machines with no compiler (tracked)
 
 _NO_COMPILER = (
     "No C compiler found on PATH.\n"
@@ -54,6 +56,10 @@ class CLibrary:
     @property
     def lib_path(self) -> Path:
         return self.out_dir / self.lib_name
+
+    @property
+    def prebuilt_path(self) -> Path:
+        return PREBUILT_DIR / self.lib_name
 
     def _needs_rebuild(self) -> bool:
         """True when the library is missing or older than any of its sources.
@@ -112,7 +118,15 @@ class CLibrary:
         return self.lib_path
 
     def get_lib_path(self) -> Path:
-        """Return the compiled library path, building it first if necessary."""
+        """Return the compiled library path, building it first if necessary; with no compiler,
+        the prebuilt copy (a build/ one that is there but stale is not used: prebuilt/ is what was
+        committed with the sources)."""
         if self._needs_rebuild():
+            if not _has_compiler() and self.prebuilt_path.exists():
+                return self.prebuilt_path
             self.build()
         return self.lib_path
+
+
+def _has_compiler() -> bool:
+    return bool(shutil.which("gcc") or shutil.which("cl"))

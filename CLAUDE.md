@@ -274,7 +274,9 @@ One line each; the linked section has the cause and the detail.
 - **Don't simulate bugs.**  Where a song's data or its driver misbehaves (a note past a frequency
   table reads stray code bytes, an overflow, a data error), convert what was meant, not the
   glitch: data fixes on, a past-table PSG note on the plausible continuation.  A rip that shows the
-  glitch is evidence of the bug, not a target to match.
+  glitch is evidence of the bug, not a target to match.  Except a bug that shapes an instrument's
+  sound on every play, which the songs were written against: played as heard (Space Harrier II's
+  drums, docs/todo/space_harrier_2.md D6 D7).
 - Notes are bytes $81–$DF (C0–A#7).  FM labels are real pitches: `nA4` at pitch offset 0 = 440 Hz
   (`f = fnum × (clock/144) × 2^block / 2^21`, A4 = fnum 1083, block 4).  A PSG `nC0` is C3.
 - A standalone duration byte **re-keys the last note** at its frequency; after `smpsNoAttack` it is a

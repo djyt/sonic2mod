@@ -26,6 +26,7 @@ from ..audio import (
     SustainLoop,
     apply_loop,
     condition_render,
+    db_to_gain,
     fade_end,
     find_sustain_loop,
     full_scale_int8,
@@ -35,15 +36,18 @@ from ..audio import (
     release_rate_db_s,
 )
 from ..audio import trim_trailing_silence as _trim_trailing_silence
-from ..chips import fm_frequency_hz
+from ..chips import MD_PSG_CLOCK, fm_frequency_hz
+from ..chips.sn76489.build import get_lib_path as get_psg_lib_path
 from ..chips.ym2612 import OPN2
 from ..chips.ym2612.build import get_lib_path
 from ..config import ConversionConfig, SynthesisSettings
 from ..mod import max_sustain_secs
 from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
 from ..render_cache import RenderCache, code_salt
-from ..smps import SmpsSong, SmpsVoice
+from ..smps import FmDrum, SmpsSong, SmpsVoice
+from . import psg_render
 from .fm_render import note_to_fnum_block, note_to_freq, render_frames, render_layers
+from .psg_render import render_psg_frames
 
 # ---------------------------------------------------------------------------
 # Render jobs and worker chips
@@ -399,12 +403,18 @@ def _fm_cache(synth: SynthesisSettings) -> RenderCache:
     return RenderCache(synth.render_cache, "ym2612", _render_salt() if synth.render_cache else "")
 
 
+# An FM drum's PSG part mixed in at the cores' own scales: a PSG channel at attenuation 0 peaks at
+# 4096, one FM carrier at TL 0 at 789 (a sine through the OPN2 render) - equal, before drum_psg_db
+_PSG_TO_FM = 789 / 4096
+
+
 def generate_fm_drums(
     drums: Sequence[FmDrumInstrument],
     synth: SynthesisSettings,
     frame_hz: float,
     ring_secs: Mapping[int, float],
     cache_out: dict[str, int] | None = None,
+    psg_clock: int = MD_PSG_CLOCK,
 ) -> dict:
     """Each FM drum's program rendered whole (render_frames) -> {instrument: (int8 PCM, rate)}.
 
@@ -413,7 +423,8 @@ def generate_fm_drums(
     past its ring; a program that never stops is rendered for its ring, up to the frames it was
     run for (core/drivers/smpsz80/type0fm/drums.py), where it ends still keyed.  Each sample is
     conditioned (shelf, DC block) and quantised to its full 8 bits like any FM render: its level is
-    the sample_list volume's job.
+    the sample_list volume's job.  A drum's PSG part is rendered beside it, cut alike, and mixed
+    in (synth.drum_psg_db, at `psg_clock`).
     """
     cache = _fm_cache(synth)
     out = {}
@@ -430,15 +441,36 @@ def generate_fm_drums(
 
         inputs = ("fm_drum", _voice_key(d.drum.voice), d.drum.tl_offset, frames, frame_hz, tail, rate,
                   synth.mode, synth.clock_rate, synth.resample_taps)
-        mono, rate = cache.through(inputs, lambda d=d, frames=frames, tail=tail, rate=rate: render_frames(
-            d.drum.voice, d.drum.tl_offset, frames, frame_hz, tail, rate, _thread_opn2(synth.mode),
-            synth.clock_rate, synth.resample_taps))
+        psg = d.drum.psg[:len(frames)] if ring is not None else d.drum.psg
+        if psg:
+            inputs += (psg, synth.drum_psg_db, psg_clock, _psg_salt())
+        mono, rate = cache.through(inputs, lambda d=d, frames=frames, psg=psg, tail=tail, rate=rate: _render_drum(
+            d.drum, frames, psg, frame_hz, tail, rate, synth, psg_clock))
         shelves = [(synth.treble_shelf_hz, synth.treble_shelf_db)]
         mono = _trim_trailing_silence(condition_render(mono, rate, shelves, synth.dc_block))
         out[d.inst] = (full_scale_int8(mono, synth.dither), rate)
     if cache_out is not None and cache.enabled:
         cache_out.update(hits=cache.hits, misses=cache.misses)
     return out
+
+
+def _render_drum(drum: FmDrum, frames, psg, frame_hz: float, tail: float, rate: int, synth: SynthesisSettings,
+                 psg_clock: int):
+    """The drum's FM frames, with its PSG part summed in where it has one."""
+    mono, rate = render_frames(drum.voice, drum.tl_offset, frames, frame_hz, tail, rate, _thread_opn2(synth.mode),
+                               synth.clock_rate, synth.resample_taps)
+    if not psg:
+        return mono, rate
+    noise, _ = render_psg_frames(psg, frame_hz, tail, rate, psg_clock)
+    gain = _PSG_TO_FM * db_to_gain(synth.drum_psg_db)
+    length = max(len(mono), len(noise))
+    fm = list(mono) + [0] * (length - len(mono))
+    return [f + gain * (noise[i] if i < len(noise) else 0) for i, f in enumerate(fm)], rate
+
+
+def _psg_salt() -> str:
+    """What a drum's PSG part depends on besides its inputs: the PSG emulator and its renderer."""
+    return code_salt([Path(get_psg_lib_path()), Path(psg_render.__file__)])
 
 
 # ---------------------------------------------------------------------------

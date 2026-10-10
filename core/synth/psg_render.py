@@ -17,11 +17,15 @@ Public API::
 
 from __future__ import annotations
 
+import math
+from collections.abc import Sequence
+
 from ..audio import DEFAULT_TAPS, normalize_int8, resample
 from ..audio import to_mono as _to_mono
 from ..chips import MD_PSG_CLOCK
 from ..chips.sn76489 import SN76489
 from ..config import DEFAULT_PSG_OVERSAMPLE
+from ..smps import PsgDrumFrame
 
 # ---------------------------------------------------------------------------
 # Public helper
@@ -193,6 +197,46 @@ def render_psg_tone(
         divider, sustain_secs, release_secs, clock_rate, target_rate
     )
     return _normalize_int8(mono), rate
+
+
+# ---------------------------------------------------------------------------
+# Frame by frame
+# ---------------------------------------------------------------------------
+
+_TONE3 = 2                 # the tone channel that clocks the noise at rate 3
+_NOISE = 3
+_SILENT = 15
+
+
+def render_psg_frames(
+    frames: Sequence[PsgDrumFrame],
+    frame_hz: float,
+    tail_secs: float = 0.0,
+    target_rate: int = 44100,
+    clock_rate: int = MD_PSG_CLOCK,
+) -> tuple[list, int]:
+    """A PSG part as the driver plays it frame by frame (an FM drum's, core.smps.percussion) ->
+    (mono, rate): each frame's tone 3 divider, noise register and attenuations held 1 / frame_hz
+    seconds, then `tail_secs` silent.  The noise register is written where it changes (the hit's
+    first frame), which resets the LFSR as the chip does: every hit starts its noise alike."""
+    sn = SN76489(clock_rate=clock_rate, sample_rate=target_rate)
+    out: list = []
+    noise: int | None = None
+    at = 0.0                                     # where the next frame starts, in samples
+    for frame in frames:
+        sn.write_tone_freq(_TONE3, frame.divider)
+        if frame.noise != noise:
+            sn.write(frame.noise)
+            noise = frame.noise
+        sn.write_volume(_TONE3, frame.tone_attenuation)
+        sn.write_volume(_NOISE, frame.noise_attenuation)
+        at += target_rate / frame_hz
+        out += sn.render_samples(round(at) - len(out))
+    sn.write_volume(_TONE3, _SILENT)
+    sn.write_volume(_NOISE, _SILENT)
+    out += sn.render_samples(math.ceil(target_rate * tail_secs))
+    sn.shutdown()
+    return _to_mono(out), target_rate
 
 
 # ---------------------------------------------------------------------------

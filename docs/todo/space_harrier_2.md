@@ -186,3 +186,10 @@ FM1-FM6 and PSG3; FM3's and PSG3's records share the drum track's pointer.  No P
 - **D3 `$E9` follow-on:** each song alone.
 - **D4 SFX:** music only.
 - **D5 The family:** no further games yet.
+- **D6 Drum unit B's record:** `$0BF0`, as heard.  The code meant `$0BE6` when bit 5 is clear
+  (`ld hl,$0BE6 / bit 5,a / ld hl,$0BF0 / jr nz,+0`), but no song sets bit 5: the game, and the
+  composer, only ever heard `$0BF0`.
+- **D7 The op-Y step:** as the driver does it.  It stores op Y's low byte + step into the high byte
+  (`$0DA5`), so OP2 / OP4 jump a block on frame 2 (the rip: OP4 42/2, then 1322/5); fixed, OP4 would
+  sit near 4 Hz.  D6 and D7 refine "don't simulate bugs": a bug that shapes an instrument's
+  sound on every play, which the songs were written against, is played as heard.

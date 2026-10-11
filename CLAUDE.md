@@ -23,7 +23,7 @@ Each topic has one home; the others link to it.
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
-| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
+| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `streets_of_rage_2.md` (Mucom-MD: probe and plan, not started); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `3rdparty/` | Vendored C emulators the chip devices compile (in git): `nuked-opn2/` (cycle-accurate YM2612/YM3438), `sn76489/` (VGMPlay's PSG) |

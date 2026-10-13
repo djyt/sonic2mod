@@ -7608,7 +7608,7 @@ pitch_stage_clear:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: d0bd6d8-dirty
+  commit: 8826e48-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7619,6 +7619,7 @@ pitch_stage_clear:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7645,7 +7646,7 @@ pitch_stage_clear:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -7656,6 +7657,7 @@ pitch_stage_clear:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7678,12 +7680,14 @@ pitch_stage_clear:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7693,6 +7697,7 @@ pitch_stage_clear:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7718,12 +7723,13 @@ pitch_stage_clear:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   - tools/vgm_pitch_audit.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_baseline.mod: 86d457f54fc4
-    tests/settings.yaml: a79a8ba763a3
+    tests/baselines/stage_clear_baseline.mod: 2d1ee46c75b1
+    tests/settings.yaml: 41db770e3749
 pitch_stage_clear_lofi:
   argv:
   - tools/vgm_pitch_audit.py
@@ -7736,7 +7742,7 @@ pitch_stage_clear_lofi:
   - --variant
   - lofi
   - --list
-  commit: d0bd6d8-dirty
+  commit: 8826e48-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -7747,6 +7753,7 @@ pitch_stage_clear_lofi:
   - core/audio/resample.py
   - core/audit/__init__.py
   - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
   - core/audit/levels.py
   - core/audit/onsets.py
   - core/audit/pitch.py
@@ -7773,7 +7780,7 @@ pitch_stage_clear_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -7784,6 +7791,7 @@ pitch_stage_clear_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7806,12 +7814,14 @@ pitch_stage_clear_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7821,6 +7831,7 @@ pitch_stage_clear_lofi:
   - core/smps/names.py
   - core/smps/parser.py
   - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
@@ -7846,12 +7857,13 @@ pitch_stage_clear_lofi:
   - core/vgm/lift/tracks.py
   - core/vgm/notes.py
   - core/vgm/reader.py
+  - core/vgm/realign.py
   - tools/vgm_pitch_audit.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_lofi_baseline.mod: 26888dd6bee9
-    tests/settings.yaml: a79a8ba763a3
+    tests/baselines/stage_clear_lofi_baseline.mod: 742aae2631fa
+    tests/settings.yaml: 41db770e3749
 pitch_star_light_zone:
   argv:
   - tools/vgm_pitch_audit.py

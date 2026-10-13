@@ -1423,21 +1423,21 @@ pitch_spring_yard_zone:
     tests/baselines/spring_yard_zone_baseline.mod: b174922126bb
     tests/settings.yaml: a79a8ba763a3
 pitch_stage_clear:
-  commit: d0bd6d8-dirty
-  date: '2026-10-10'
+  commit: 8826e48-dirty
+  date: '2026-10-13'
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_baseline.mod: 86d457f54fc4
-    tests/settings.yaml: a79a8ba763a3
+    tests/baselines/stage_clear_baseline.mod: 2d1ee46c75b1
+    tests/settings.yaml: 41db770e3749
 pitch_stage_clear_lofi:
-  commit: d0bd6d8-dirty
-  date: '2026-10-10'
+  commit: 8826e48-dirty
+  date: '2026-10-13'
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     reference/vgz/sonic_1/11 - Stage Clear.vgz: 0fa1b8c88a86
-    tests/baselines/stage_clear_lofi_baseline.mod: 26888dd6bee9
-    tests/settings.yaml: a79a8ba763a3
+    tests/baselines/stage_clear_lofi_baseline.mod: 742aae2631fa
+    tests/settings.yaml: 41db770e3749
 pitch_star_light_zone:
   commit: d0bd6d8-dirty
   date: '2026-10-10'

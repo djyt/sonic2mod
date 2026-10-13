@@ -250,7 +250,8 @@ python -m pytest tests/core/merge -q                   # one package's unit test
    played-out one, a note on an empty instrument slot; run it on any MOD by hand too).
 4. A FAIL is not an acceptance: read each changed cell before regenerating that song's baseline —
    a `3FF` where the sounding sample cannot reach the pitch, or a note on a slot the merged build
-   stopped rendering, diffs like any intended change.
+   stopped rendering, diffs like any intended change.  The last run's outputs stay in
+   `output/regression/<case>.mod`, to open beside `tests/baselines/<case>_baseline.mod`.
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD (against its own game's rips), `vgm_lift` (the Moonwalker

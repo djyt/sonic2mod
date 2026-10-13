@@ -29,6 +29,10 @@ ProTracker player cannot sound (a tone portamento with no sample playing, a note
 instrument slot) fails the case unless the baseline has the same issue, so a change that
 silences a note is caught without anyone listening.  Generating a baseline prints its count.
 
+Each case's output stays in output/regression/<case>.mod, the last run's (a FAIL opens in FT2 or
+tools/mod_audit.py next to its baseline); a case's old output goes before it converts, so a failed
+conversion is never diffed against the last run's file.
+
 Every conversion reads tests/settings.yaml (convert.py --settings), never configs/settings.yaml,
 so tuning a song by ear does not move the baselines.  It must state every key the live file has.
 tests/baselines/manifest.yaml records what each baseline was made with:
@@ -172,9 +176,12 @@ def _convert_args(tc: dict) -> list[str]:
     return [*variant_args(tc), *tc.get("args", [])]
 
 
+OUTPUT_DIR = ROOT / "output" / "regression"   # each case's output, the last run's (gitignored)
+
+
 def _output_path(name: str) -> Path:
-    """The conversion's output, used by the regression tests alone."""
-    return ROOT / "output" / f"_regression_{name}.mod"
+    """The conversion's output, used by the regression tests alone: kept until the next run."""
+    return OUTPUT_DIR / f"{name}.mod"
 
 
 def _run(tc: dict) -> CaseRun:
@@ -237,6 +244,7 @@ def _write_manifest(manifest: dict) -> None:
 def _convert(tc: dict, record: bool) -> tuple[bool, str, list[str]]:
     """Run convert.py for a case: (ok, failure text, the files it ran when `record`)."""
     run = _run(tc)
+    _output_path(tc["name"]).unlink(missing_ok=True)      # not the last run's, if this one fails
     text = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
     result, files = None, []
     for _attempt in range(2):          # a parallel first run can trip over the chip DLL builds: once more
@@ -267,7 +275,7 @@ def _ensure_native_libs() -> None:
 
 def _convert_all(cases: list[dict], jobs: int, record: bool = False) -> dict[str, tuple[bool, str, list[str]]]:
     """Convert every case, up to `jobs` at a time; {name: (ok, failure text, files run)}."""
-    _output_path("").parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     if jobs > 1:
         _ensure_native_libs()
     with ThreadPoolExecutor(max_workers=max(1, min(jobs, len(cases)))) as pool:
@@ -323,20 +331,17 @@ def generate_baselines(cases: list[dict], jobs: int) -> None:
         if not ok:
             print(failure)
             print("  SKIPPED (conversion failed)")
-            tmp_path.unlink(missing_ok=True)
             continue
         if not tmp_path.exists():
             print(f"  SKIPPED (output not found: {tmp_path})")
             continue
         ran[tc["name"]] = (_run(tc), files)
         if "shares_baseline" in tc:        # a ROM case: recorded, its baseline is the asm case's
-            tmp_path.unlink(missing_ok=True)
             print(f"  Recorded (baseline: {tc['shares_baseline']}'s)")
             continue
 
         baseline_path = ROOT / tc["baseline"]
         shutil.copy2(tmp_path, baseline_path)
-        tmp_path.unlink(missing_ok=True)
         manifest[tc["name"]] = {**made, "config": _content_hash(ROOT / tc["config"], tc.get("variant"))}
         print(f"  Saved baseline: {baseline_path}")
         issues = lint_mod(str(baseline_path), AMIGA_CLOCK)
@@ -358,14 +363,11 @@ def run_tests(cases: list[dict], jobs: int) -> bool:
     settings = _content_hash(SETTINGS_FILE)
     for tc in cases:
         print(f"\n  [{tc['name']}] {tc['description']}")
-        tmp_path = _output_path(tc["name"])
-        try:
-            all_passed &= _check(tc, results[tc["name"]], manifest, settings, tmp_path)
-        finally:
-            tmp_path.unlink(missing_ok=True)
+        all_passed &= _check(tc, results[tc["name"]], manifest, settings, _output_path(tc["name"]))
 
     print()
-    print("All tests PASSED." if all_passed else "Some tests FAILED.")
+    print("All tests PASSED." if all_passed else
+          f"Some tests FAILED.  Their outputs: {OUTPUT_DIR.relative_to(ROOT).as_posix()}/<case>.mod")
     return all_passed
 
 

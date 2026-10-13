@@ -223,6 +223,7 @@ convert()
  ├─ (merged) narrow_to                   empty columns go; ≤ 4 → M.K.
  ├─ sample_names                         (samples.names: source)
  ├─ compact_samples                      slots renumbered (samples.compact_slots)
+ ├─ trim_tails                           one-shots cut to what is heard (samples.trim_tails, mod/reach.py)
  └─ zero_idle_words                      (samples.pt_zero_bytes)
 ```
 
@@ -275,10 +276,11 @@ renders.  Rules: `docs/pipeline.md` § The merged build.
 
 | Module | Role |
 |---|---|
-| `file.py` | `ModFile` (writer: samples, patterns, positions, cell helpers, `narrow_to`, `compact_samples`, `trim_to_pattern`, `zero_idle_words`), `apply_pattern_breaks`, `row_to_bcd`, `read_sample` (a `sample_list` file as a sample); the one reader `read_mod` → `ModImage` (`play_rows`: one pass in play order), `isolate_channel` |
+| `file.py` | `ModFile` (writer: samples, patterns, positions, cell helpers, `narrow_to`, `compact_samples`, `trim_to_pattern`, `trim_tails`, `zero_idle_words`), `apply_pattern_breaks`, `row_to_bcd`, `read_sample` (a `sample_list` file as a sample, `ModSample.file` its name); the one reader `read_mod` → `ModImage` (`play_rows` / `play_order`: one pass in play order, and where it loops back to), `isolate_channel` |
 | `notes.py` | `PERIOD_TABLE` (C1–B3), `note_rate` / `period_rate` (a note's playback rate), `ModNote`, `MOD_NOTE_MAP` (config spellings) |
 | `volume.py` | dB → MOD volume: `db_to_mod_volume`, `clamp_mod_volume`, `headroom_db` |
 | `limits.py` | `MAX_MOD_SAMPLE_BYTES`, `sample_limit_bytes`, `max_sustain_secs` |
+| `reach.py` | `heard_bytes`: a written MOD played as ProTracker does, tick by tick: how far into each one-shot sample a note is heard (`ModFile.trim_tails` cuts there) |
 | `timing.py` | `timed_pass`, `edx_delay`: when each row plays — the MOD clock of the audits |
 | `sample_audit.py` | A written MOD's samples against the notes that play them (`tools/mod_audit.py`, the report's Samples table) |
 

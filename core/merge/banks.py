@@ -11,6 +11,11 @@ a note fill writes).  The offset takes the note's effect slot: a drum note carri
 else; a melodic one gives way where it must (a `Cxx` moves to the note's next row, an `EDx` is
 dropped, a cut inside the attack row moves to the next one) and the converter counts them.
 
+Two members whose sounds are one (the same length, finetune and volume, their unquantised sums
+within half an LSB: Green Hill lofi's drum + bass hits whose keys differ only in a fill that keys
+the bass off after the hit is over) take one region: the second plays the first's bytes
+(`Bank.shares`).
+
 A bank has one loop header, so it holds one looped member at most, laid out last with the loop
 pointing at its own; its notes need no cut.  Sounds with different finetunes cannot
 share a bank (one per slot).  A bank plays at the volume of its loudest member and the quieter
@@ -39,6 +44,7 @@ from .slots import drop_composite, stand_in
 
 MAX_OFFSET = 0xFF00      # the last sound start 9xx can name (xx × 256)
 ALIGN = 256              # a sound starts on a 9xx boundary
+SAME_SOUND_LSB = 0.5     # two sums this close at every sample quantise to one sound
 
 
 @dataclass
@@ -47,6 +53,7 @@ class Bank:
     volume: int
     finetune: int
     members: list[Composite] = field(default_factory=list)
+    shares: list[Composite] = field(default_factory=list)   # members playing another's sound: no bytes of their own
     data: bytearray = field(default_factory=bytearray)
     looped: bool = False                  # its last member loops: nothing may follow it
     loop: tuple[int, int] | None = None   # (start, length) in bytes of that loop within the bank
@@ -129,6 +136,33 @@ def _layout(members: list[Composite], sizes: dict[int, tuple[int, int, bool]], v
     return banks
 
 
+def _same_sounds(members: list[Composite], samples: dict[int, ModSample],
+                 raw: dict[int, list[float]]) -> list[tuple[Composite, Composite]]:
+    """(member, the earlier member whose sound it is) for each unlooped member that is one of
+    `members`' sounds again: the same length, finetune and volume, and the unquantised sums (`raw`;
+    else the bytes) within SAME_SOUND_LSB at every sample.  `members` in their order of preference:
+    the first of a sound keeps it."""
+    def alike(a: int, b: int) -> bool:
+        if a in raw and b in raw:
+            return len(raw[a]) == len(raw[b]) and all(
+                abs(x - y) <= SAME_SOUND_LSB for x, y in zip(raw[a], raw[b], strict=True))
+        return samples[a].data == samples[b].data
+
+    kept: dict[tuple[int, int, int], list[Composite]] = {}
+    same: list[tuple[Composite, Composite]] = []
+    for c in members:
+        s = samples[c.inst]
+        if s.repeat_length > 1:
+            continue
+        key = (len(s.data), s.finetune, s.volume)
+        first = next((o for o in kept.get(key, []) if alike(c.inst, o.inst)), None)
+        if first is None:
+            kept.setdefault(key, []).append(c)
+        else:
+            same.append((c, first))
+    return same
+
+
 def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[float]], dither: str) -> bytes:
     """A member's bytes at its bank's `volume`, quantised once.
 
@@ -179,6 +213,10 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             continue
         sizes[c.inst] = (region, s.finetune, looped)
 
+    # A sound already in the list is laid out once
+    same = _same_sounds(members, samples, raw)
+    members = [c for c in members if all(c is not d for d, _ in same)]
+
     # By volume where it costs no bank more than first fit, and less range
     first = _layout(members, sizes, volume, max_bytes, None)
     by_volume = _layout(members, sizes, volume, max_bytes, len(first))
@@ -193,6 +231,9 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
     for bank in banks[len(slots):]:
         for c in bank.members:
             drop(c, "no slot left for another bank (merge_bank_slots)")
+        for d, first in same:
+            if any(first is c for c in bank.members):
+                drop(d, "no slot left for another bank (merge_bank_slots)")
 
     # Where each sound starts in its bank
     for bank in kept:
@@ -201,6 +242,11 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             region, _ft, looped = sizes[c.inst]
             c.offset, c.region, c.looped = at, len(samples[c.inst].data), looped
             at += region
+        for d, first in same:
+            if any(first is c for c in bank.members):
+                d.offset, d.region, d.looped = first.offset, first.region, False
+                d.member_volume = samples[d.inst].volume
+                bank.shares.append(d)
 
     for slot, bank in zip(slots, kept, strict=False):
         bank.slot = slot
@@ -231,7 +277,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
         if bank.loop is not None:
             sample.repeat, sample.repeat_length = bank.loop[0] // 2, bank.loop[1] // 2
         mod.samples[bank.slot - 1] = sample
-        for c in bank.members:
+        for c in bank.members + bank.shares:
             c.bank_id = c.inst
             for key in [k for k, v in plan.ticks.items() if v == c.inst]:
                 plan.ticks[key] = bank.slot

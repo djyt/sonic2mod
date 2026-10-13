@@ -130,6 +130,11 @@ def _w_tempo_no_slot(w: dict):
                      f"slot and is not written", "[cyan]num_mod_channels:[/cyan] one step up gives it a channel")
 
 
+def _w_end_trigger_no_slot(w: dict):
+    return ("tempo", f"the song's end at {w['pattern']:02X}:{w['row']:02d} found no free effect slot for its "
+                     f"E8x (end_trigger)", "[cyan]num_mod_channels:[/cyan] one step up gives it a channel")
+
+
 def _w_tempo_bpm_range(w: dict):
     return ("tempo", f"tempo change at {w['pattern']:02X}:{w['row']:02d} needs BPM {w['exact_bpm']:.1f}, "
                      f"clamped to {w['bpm']}",
@@ -290,6 +295,7 @@ _WARNINGS: dict[WarningKind, Callable[[dict], tuple[str, str, str | None]]] = {
     WarningKind.CLAMP_HIGH: _w_clamp, WarningKind.CLAMP_LOW: _w_clamp, WarningKind.MAP_GAP: _w_map_gap,
     WarningKind.MISSING_SOURCE: _w_missing_source, WarningKind.RATE3_SYNTH_ROOT: _w_rate3,
     WarningKind.TEMPO_NO_SLOT: _w_tempo_no_slot, WarningKind.TEMPO_BPM_RANGE: _w_tempo_bpm_range,
+    WarningKind.END_TRIGGER_NO_SLOT: _w_end_trigger_no_slot,
     WarningKind.PATTERN_OVERFLOW: _w_pattern_overflow, WarningKind.REST_NO_SLOT: _w_rest_no_slot, WarningKind.LOOP_NO_SLOT: _w_loop_no_slot,
     WarningKind.LOOP_DRIFT: _w_loop_drift,
     WarningKind.SUSTAIN_SHORT: _w_sustain_short, WarningKind.SAMPLE_TRUNCATED: _w_truncated,
@@ -709,6 +715,8 @@ def print_merge(console: Console, rep: Report) -> None:
     notes += [f"{i['cxx_moved']} banked notes' Cxx moved a row later (the attack row holds the 9xx)"
               for i in _infos(rep, InfoKind.MERGE_BANK_NOTES) if i.get('cxx_moved')]
     notes += [f"{i['after']}-channel MOD: columns {i['after'] + 1}–{i['before']} were empty" for i in _infos(rep, InfoKind.NARROWED)]
+    notes += [f"{_kb(i['bytes'])} of sample tails never heard, cut from {len(i['samples'])} samples (trim_tails)"
+              for i in _infos(rep, InfoKind.TAILS_TRIMMED)]
     notes += [f"limit_db: {i['composites']} mixes' peaks limited, up to {i['max_db']:.1f} dB"
               for i in _infos(rep, InfoKind.MERGE_LIMITED)]
     for n in notes:
@@ -778,12 +786,20 @@ def detail_lines(infos: list[dict]) -> list[str]:
                 share = f" (made for {made_for})" if made_for else f" (also {', '.join(others)})" if others else ""
                 out.append(f"  [dim]inst {escape(str(inst)):>7} {notes:3d} notes  {escape(detail)}{escape(share)}[/dim]")
         elif t == InfoKind.MERGE_BANK:
-            out.append(f"bank slot {info['slot']}: {len(info['members'])} sounds, {info['bytes'] / 1024:.1f} K "
+            shared = len(info['members']) - len({m[0] for m in info['members']})
+            out.append(f"bank slot {info['slot']}: {len(info['members'])} sounds"
+                       + (f" ({shared} sharing another's bytes)" if shared else "") + f", {info['bytes'] / 1024:.1f} K "
                        f"at volume {info['volume']}")
             for offset, size, notes, detail in info['members']:
                 out.append(f"  [dim]9{offset >> 8:02X} {size:6d} bytes {notes:3d} notes  {escape(detail)}[/dim]")
         elif t == InfoKind.MERGE_FOLDS:
             out.append(f"[dim]{escape(info['pair'])}: {escape(info['what'])}[/dim]")
+        elif t == InfoKind.TAILS_TRIMMED:
+            out.append(f"tails trimmed: {info['bytes']} bytes never heard, from {len(info['samples'])} samples")
+            for slot, (before, after) in sorted(info['samples'].items()):
+                out.append(f"  [dim]inst {slot:2d} {before:6d} -> {after:6d}[/dim]")
+        elif t == InfoKind.TAILS_KEPT:
+            out.append(f"tails kept whole: {escape(info['effect'])} is not modelled by the replay (core/mod/reach.py)")
         elif t == InfoKind.DAC_SATURATED:
             out.append(f"{info['name']} (inst {info['instrument']}): soft-clipped, body {info['db']:+g} dB at the same peak")
         elif t == InfoKind.MERGE_UNISON_VOLUME:

@@ -104,7 +104,7 @@ class MelodicBanks(unittest.TestCase):
                           notes=notes, entry=[-i, f"m{i}", vol, 0])
             comps[c.key] = c
             ticks[("FM2", 8 * i)] = -i
-            samples[-i] = _sample(bytes([40] * size), volume=vol, loop=loop)
+            samples[-i] = _sample(bytes([40 + i] * size), volume=vol, loop=loop)   # a sound of its own
             entries.append(c.entry)
 
         class Cfg:
@@ -136,14 +136,14 @@ class MelodicBanks(unittest.TestCase):
         pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(mod.samples[6].volume, 64)
         self.assertEqual(mod.samples[7].volume, 32)                    # not scaled down to the drums' 64
-        self.assertEqual(mod.samples[7].data[0], 40)                    # its bytes as they were
+        self.assertEqual(mod.samples[7].data[0], 42)                    # its bytes as they were
 
     def test_sounds_share_a_bank_with_their_own_volume(self):
         # first fit would pair each loud sound with a quiet one: [64 32] [64 32]
         plan, cfg, samples = self._plan([(1500, 64, None, 9), (1500, 32, None, 8), (1500, 64, None, 7),
                                          (1500, 32, None, 6)])
         mod = ModFile(4)
-        raw = {i: [40.0] * len(smp.data) for i, smp in samples.items()}
+        raw = {i: [float(smp.data[0])] * len(smp.data) for i, smp in samples.items()}
         pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=3200, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         by_slot = {}
         for c in plan.composites.values():
@@ -156,6 +156,46 @@ class MelodicBanks(unittest.TestCase):
         dropped = pack_banks(plan, cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(len(dropped), 2)
         self.assertEqual(plan.bank_overflow, [2, 1])                    # notes of each bank left out
+
+
+class SameSounds(unittest.TestCase):
+    """Two members whose sounds are one take one region (Green Hill lofi: a drum + bass hit whose key
+    differs only in a fill that keys the bass off after the hit is over)."""
+
+    def _pack(self, raw_b, vol_b=64):
+        g = MergeGroup("DAC", ["FM2"], bank=True)
+        a = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, None),)), g, base=12, banked=True, notes=4,
+                      entry=[-1, "a", 64, 0])
+        b = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, 200.0),)), g, base=12, banked=True, notes=2,
+                      entry=[-2, "b", vol_b, 0])
+        plan = MergePlan([g], composites={a.key: a, b.key: b})
+        plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
+
+        class Cfg:
+            sample_list: ClassVar[list] = [a.entry, b.entry]
+        sound = [float((7 * k) % 200 - 100) for k in range(1000)]
+        samples = {-1: _sample(bytes(1000)), -2: _sample(bytes(1000), volume=vol_b)}
+        mod = ModFile(4)
+        pack_banks(plan, Cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK,
+                   raw={-1: sound, -2: [v + d for v, d in zip(sound, raw_b, strict=True)]})
+        return plan, mod, a, b
+
+    def test_one_sound_takes_one_region(self):
+        plan, mod, a, b = self._pack([0.3] * 1000)       # under half an LSB everywhere: one sound
+        self.assertEqual((b.inst, b.offset, b.region), (a.inst, a.offset, a.region))
+        self.assertEqual(plan.regions[("DAC", 8)], plan.regions[("DAC", 0)])
+        self.assertEqual(mod.samples[6].length * 2, 1024)            # one region, not two
+        self.assertEqual(plan.banks[0].shares, [b])
+        self.assertEqual(b.bank_id, -2)                              # its notes keep their own level key
+
+    def test_a_sound_an_lsb_off_is_its_own(self):
+        _plan, mod, a, b = self._pack([0.0] * 999 + [1.0])
+        self.assertNotEqual(a.offset, b.offset)
+        self.assertEqual(mod.samples[6].length * 2, 2048)
+
+    def test_another_volume_is_another_sound(self):
+        _plan, _mod, a, b = self._pack([0.0] * 1000, vol_b=32)
+        self.assertNotEqual(a.offset, b.offset)
 
 
 class DrumBanks(unittest.TestCase):
@@ -171,7 +211,7 @@ class DrumBanks(unittest.TestCase):
 
         class Cfg:
             sample_list: ClassVar[list] = [drum.entry, mix.entry]
-        samples = {-1: _sample(bytes([50] * 3000)), -2: _sample(bytes([50] * 3000))}
+        samples = {-1: _sample(bytes([50] * 3000)), -2: _sample(bytes([60] * 3000))}
         dropped = pack_banks(plan, Cfg, ModFile(4), samples, [4], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK,
                              raw={})
         self.assertEqual([d['notes'] for d in dropped], [9])

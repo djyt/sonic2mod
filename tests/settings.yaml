@@ -80,6 +80,7 @@ samples:
   #   merged   : the --merged reduced channel version only
   #   all      : every build (its slots no longer match the config's sample_list numbers)
   compact_slots: merged
+  trim_tails: merged
 
   # What the MOD calls each sample (22 characters):
   #   source   : what plays it and what it was made from - "F1/3/4/5 $05 C4-B5", "F5+3+4+P1 D-3 [1-4]",
@@ -179,3 +180,4 @@ legato: retrigger
 #   ft2   FT2 clone (default)
 #   pt2   ProTracker 2 / pt2-clone / an Amiga
 player: ft2
+end_trigger: 1

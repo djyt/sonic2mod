@@ -30,6 +30,7 @@ class ModSample:
     repeat: int
     repeat_length: int
     data: bytes
+    file: str | None    # the sample_list file its bytes came from (read_sample); None: made here
 
     def __init__(self, name):
         self._name = name[:22]
@@ -39,6 +40,7 @@ class ModSample:
         self.repeat = 0
         self.repeat_length = 1
         self.data = bytes(0)
+        self.file = None
 
     @property
     def name(self) -> str:
@@ -63,10 +65,14 @@ class ModSample:
             raise ValueError(f"volume {v}: not in 0..64")
         self._volume = int(v)
 
+    @property
+    def looped(self) -> bool:
+        return self.repeat_length > 1
+
     def zero_idle_word(self) -> None:
         """A one-shot's first word silenced.  ProTracker replays it once the sample ends, so
         (-126, 126) there buzzes until the next note.  A looped sample replays its loop instead."""
-        if self.repeat_length > 1 or len(self.data) < _IDLE_WORD_BYTES:
+        if self.looped or len(self.data) < _IDLE_WORD_BYTES:
             return
         self.data = bytes(_IDLE_WORD_BYTES) + self.data[_IDLE_WORD_BYTES:]
 
@@ -373,6 +379,22 @@ class ModFile:
                     data[i + 2] = ((new & 0x0F) << 4) | (data[i + 2] & 0x0F)
         return mapping
 
+    def trim_tails(self, heard: dict[int, int | None]) -> dict[int, tuple[int, int]]:
+        """Each one-shot sample cut after the bytes its notes are heard to (`heard`, {slot: bytes;
+        None where all of it may be}: core.mod.reach.heard_bytes), in whole words.  A looped sample
+        and one read from a file (`ModSample.file`: the same drum in several MODs stays the same
+        bytes) are left whole.  Returns {slot: (bytes before, bytes after)} of every sample cut."""
+        cut: dict[int, tuple[int, int]] = {}
+        for slot, n in heard.items():
+            s = self.samples[slot - 1]
+            if n is None or s.looped or s.file is not None:
+                continue
+            keep = max(_IDLE_WORD_BYTES, n + (n & 1))
+            if keep < 2 * s.length:
+                cut[slot] = (2 * s.length, keep)
+                s.data, s.length = s.data[:keep], keep // 2
+        return cut
+
     def trim_to_pattern(self, last_pattern: int) -> None:
         """Remove patterns after last_pattern (unreachable once the loop-point Bxx is set).
 
@@ -433,6 +455,7 @@ def read_sample(working_dir: str, entry: list) -> ModSample | None:
         raise ValueError(f"sample_list: {filename} is {len(data)} bytes, past {_MAX_SAMPLE_BYTES}")
     sample = ModSample(filename)
     sample.data = data
+    sample.file = filename
     sample.set_volume(vol)
     sample.length = (len(data) + 1) // 2      # whole words: an odd file's last byte kept
     sample.set_finetune(finetune)
@@ -629,12 +652,20 @@ class ModImage:
         """(pattern, row, cells) of each row one pass plays: Bxx and Dxx followed (read left to
         right, as ProTracker does: a Bxx after a Dxx resets the row to 0), stopping where the
         song loops back to a row already played."""
-        seen: set[tuple[int, int]] = set()
+        rows, _loop = self.play_order()
+        for pos, row in rows:
+            yield self.order[pos], row, self.patterns[self.order[pos]][row]
+
+    def play_order(self) -> tuple[list[tuple[int, int]], int | None]:
+        """(the (position, row) of each row one pass plays, as play_rows; the index in that list the
+        song loops back to, or None for a song that runs off its last position: one that stops)."""
+        rows: list[tuple[int, int]] = []
+        seen: dict[tuple[int, int], int] = {}
         pos, row = 0, 0
         while pos < len(self.order) and (pos, row) not in seen:
-            seen.add((pos, row))
+            seen[(pos, row)] = len(rows)
+            rows.append((pos, row))
             cells = self.patterns[self.order[pos]][row]
-            yield self.order[pos], row, cells
             jump = None
             for _p, _i, eff, par in cells:
                 if eff == 0xB:
@@ -647,6 +678,7 @@ class ModImage:
                 pos, row = pos + 1, 0
             else:
                 row += 1
+        return rows, seen.get((pos, row))
 
 
 def read_mod(source: bytes | str | os.PathLike) -> ModImage:

@@ -48,7 +48,7 @@ note plays (`architecture.md`) — so the passes cannot disagree.
 ```
 pattern breaks → loop Bxx (or a stopping song's D00) → trailing patterns trimmed
   → (merged) narrowed to the columns in use → sample names → (compact_slots) slots renumbered
-  → one-shots' first word zeroed (samples.pt_zero_bytes)
+  → (trim_tails) one-shots cut to what is heard → one-shots' first word zeroed (samples.pt_zero_bytes)
 ```
 
 The `Bxx` needs the post-break layout, so breaks always come first.  A merged build with
@@ -466,6 +466,13 @@ stops, the DAC plays out and a PSG note is already cut.  `ModLayout.song_end` pu
 of a song that does not loop (none on a pattern's last row) and the patterns after go, so the module
 restarts after the key-offs, not after a pattern of silence.
 
+With settings.yaml `end_trigger: x` (shipped `1`) that row also holds `E8x`, for a replayer that
+reports it (ptplayer's `_mt_E8Trigger`, which `_mt_init` clears to 0, so x is never 0) to tell the game
+the song is over.  A row with no room for both (Stage Clear's holds a `D00` and three `C00`s) moves
+them to the next one, after the last key-offs: the song ends a silent row later.  FT2 clone ignores
+`E8x`; the ProTracker tracker, not its replayers, runs Karplus-Strong with it on a looped sample
+sounding in its column, which a stopping song's last row has none of.
+
 ---
 
 ## Detune variants
@@ -525,6 +532,26 @@ own time at the sample's playback rate.  `sustain_duration: auto` computes that 
 (`SustainPlanner`, 10 s cap, then each generator's cap to `samples.max_sample_kb`), and `sustain_short`
 warns where a note still outlasts its sample.  The rules are `fm_synthesis.md` §
 Length: `sustain_duration: auto`.  A looped sample holds any note and warns nothing.
+
+### Tails no note reaches (`samples.trim_tails`, `core/mod/reach.py`)
+
+The lengths above are estimates from the song's ticks: a ring rounded to where the row grid can put
+its ends, a release padding, a mix cut at its notes' `heard` points (§ Mixes end where no note
+reaches), a bank sound followed by a tick of silence.  Once the MOD is laid out, `heard_bytes` plays
+the written file as ProTracker does, tick by tick, and finds how far into each one-shot sample any
+note is heard (its volume above 0: `C00`, `ECx` or a slide to 0 ends that); `ModFile.trim_tails` cuts
+each there, in whole words.  A looping song is played once more from its loop target, so a note ringing
+across the loop is followed through it; a note still heard at the end (a stopping song's last notes,
+one that rang a whole second pass) keeps its whole sample.  The cut errs long: every step 3 % fast
+(finetune tables, an NTSC Paula clock, a player's DMA start), a vibrato row at its swing's highest
+pitch, the note an `EDx` note replaces at the faster of the two periods.  Lossless: Green Hill lofi's
+merged build lost 5.7 KB, every note playing the same bytes in Aonic's `mod_pack` replay too.
+
+Left whole: looped samples, and samples read from a file (`sample_list`: the DAC drums) - the same drum
+in several MODs stays the same bytes, so a build that shares samples across MODs can store it once and
+cut it to its longest use itself.  A MOD with an effect the replay does not model (anything but
+`3xx 4xy 8xx 9xx Axy Bxx Cxx Dxx Fxx E0x E1x E2x E8x EAx EBx ECx EDx`; the converter writes none) is
+left whole, reported in `--verbose` (`tails_kept`).
 
 ### Sustain loops (`samples.sustain_loops`, `core/audio/loops.py`)
 
@@ -858,6 +885,10 @@ to $FF00; `core/merge/banks.py`).  `pack_banks` runs once the mixes exist, most-
 - a bank plays at its loudest member's volume, quieter members scaled into their bytes (8-bit range
   lost), so `_layout` groups sounds by volume where that takes no more banks than first fit;
 - a looped mix goes last in its bank (the bank's loop header is its loop) and its notes need no cut;
+- two sounds that are one (the same length, finetune and volume, their unquantised sums within half
+  an LSB) take one region: the second plays the first's bytes (`Bank.shares`) and keeps its own level
+  key.  Green Hill lofi's drum + bass hits whose keys differ only in a fill keying the bass off after
+  the hit is over: 3 KB;
 - chip composites are never banked;
 - a member that fits nowhere is dropped like any composite over budget (§ Slots) and reported
   (`merge_bank_dropped`); banks the slots could not hold are counted (`MergePlan.bank_overflow`).

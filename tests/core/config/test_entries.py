@@ -58,7 +58,14 @@ class ConfigLoading(unittest.TestCase):
             self.assertEqual(PsgSynthesisSettings.from_yaml(f.name), PsgSynthesisSettings())
         finally:
             Path(f.name).unlink()
+        # the builds a step runs in; a stopping song's E8x (off in YAML 1.1 reads as False)
+        self.assertEqual(load("samples:\n  trim_tails: merged\n").trims(True), True)
+        self.assertEqual(load("samples:\n  trim_tails: merged\n").trims(False), False)
+        self.assertEqual(load("end_trigger: 3\n").end_trigger, 3)
+        self.assertIsNone(load("end_trigger: off\n").end_trigger)
         for text in ("samples:\n  pt_zero_byte: false\n",       # a typo is not ignored
+                     "samples:\n  trim_tails: some\n",
+                     "end_trigger: 16\n",
                      "max_sample_kb: 64\n",                      # nor a key outside its section
                      "fm_synthesis:\n  headroom_db: 3\n"):      # nor a retired one
             with self.assertRaises(ValueError):

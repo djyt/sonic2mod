@@ -184,7 +184,8 @@ class MergedBuild:
             self._diag.warn(WarningKind.MERGE_BANK_DROPPED, channel=p['primary'], extra_ctx=p['detail'], **p)
         for b in plan.banks:
             self._diag.info(InfoKind.MERGE_BANK, slot=b.slot, bytes=b.bytes, volume=b.volume,
-                            members=[(c.offset, c.region, c.notes, c.detail) for c in b.members])
+                            members=[(c.offset, c.region, c.notes, c.detail)
+                                     for c in sorted(b.members + b.shares, key=lambda c: c.offset)])
 
         idle = [s for s in plan.spare_slots if s not in {b.slot for b in plan.banks}]
         # Only a composite the fit had no slot for could have used one: a budget's or a twin's

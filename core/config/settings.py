@@ -25,13 +25,13 @@ def _psg_volume_mode(value) -> str:
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
-               "names", "root_harmonics", "top_note", "max_window", "drum_root")
+               "trim_tails", "names", "root_harmonics", "top_note", "max_window", "drum_root")
 
 
 # settings.yaml's keys, by section (None: the top level)
 _KEYS = {
     None: {"fm_synthesis", "psg_synthesis", "samples", "amiga_clock", "fm_volume_scaling", "fm_pan_law_db",
-           "psg_volume_scaling", "legato", "player"},
+           "psg_volume_scaling", "legato", "player", "end_trigger"},
     "fm_synthesis": {"enabled", "mode", "clock_rate", "sustain_duration", "release_padding", "detune_variants",
                      "threads", "drum_psg_db"},
     "psg_synthesis": {"enabled", "clock_rate", "sustain_duration", "release_padding", "oversample"},
@@ -87,11 +87,12 @@ def _names(data: dict, default: str, filepath: str) -> str:
     return v
 
 
-def _compact_slots(data: dict, default: str, filepath: str) -> str:
-    """`samples.compact_slots` of settings.yaml: off | merged | all (SUSTAIN_LOOP_MODES' words)."""
-    v = mode_word(data.get("compact_slots", default))
+def _builds(data: dict, key: str, default: str, filepath: str) -> str:
+    """A `samples:` key of settings.yaml naming the builds a step runs in (compact_slots,
+    trim_tails): off | merged | all (SUSTAIN_LOOP_MODES' words)."""
+    v = mode_word(data.get(key, default))
     if v not in SUSTAIN_LOOP_MODES:
-        raise ValueError(f"{filepath}: compact_slots must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
+        raise ValueError(f"{filepath}: {key} must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
     return v
 
 
@@ -132,6 +133,17 @@ def _player(data: dict, default: str, filepath: str) -> str:
     v = str(data.get("player", default)).lower()
     if v not in PLAYERS:
         raise ValueError(f"{filepath}: player must be one of {', '.join(PLAYERS)} (got '{v}')")
+    return v
+
+
+def _end_trigger(data: dict, default: int | None, filepath: str) -> int | None:
+    """Top-level `end_trigger` of settings.yaml: off (or 0) | 1..15, the x of the E8x a stopping
+    song ends with."""
+    v = data.get("end_trigger", default)
+    if v in (None, False, 0) or str(v).lower() == "off":
+        return None
+    if isinstance(v, bool) or not isinstance(v, int) or not 1 <= v <= 0xF:
+        raise ValueError(f"{filepath}: end_trigger must be off or 1..15 (got {v!r})")
     return v
 
 
@@ -238,6 +250,9 @@ class SampleSettings:
     # settings.yaml samples.compact_slots: which builds have their sample slots renumbered without
     # gaps once laid out (ModFile.compact_samples) - "off", "merged" (--merged only), "all"
     compact_slots: str = "merged"
+    # settings.yaml samples.trim_tails: which builds have each one-shot sample cut where the written
+    # MOD's notes stop hearing it (core.mod.reach, ModFile.trim_tails) - "off", "merged", "all"
+    trim_tails: str = "off"
     # settings.yaml samples.names: "source" names each sample for what plays it and what it was made
     # from (core/convert/sample_names.py), "file" by its sample_list file name
     names: str = "source"
@@ -269,6 +284,10 @@ class SampleSettings:
         """True when this build's sample slots are renumbered without gaps (ModFile.compact_samples)."""
         return self.compact_slots == "all" or (self.compact_slots == "merged" and merged)
 
+    def trims(self, merged: bool) -> bool:
+        """True when this build's one-shot samples are cut to what is heard of them (ModFile.trim_tails)."""
+        return self.trim_tails == "all" or (self.trim_tails == "merged" and merged)
+
     def loops_for(self, merged: bool) -> bool:
         """True when this build (the merged one or the reference) gets sustain loops."""
         return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
@@ -282,7 +301,8 @@ class SampleSettings:
             amiga_clock=int(data.get("amiga_clock", cls.amiga_clock)),
             max_sample_kb=_max_sample_kb(smp, cls.max_sample_kb, filepath),
             sustain_loops=_sustain_loops(smp, cls.sustain_loops, filepath),
-            compact_slots=_compact_slots(smp, cls.compact_slots, filepath),
+            compact_slots=_builds(smp, "compact_slots", cls.compact_slots, filepath),
+            trim_tails=_builds(smp, "trim_tails", cls.trim_tails, filepath),
             names=_names(smp, cls.names, filepath),
             loop_drift_db=_non_negative(smp, "loop_drift_db", cls.loop_drift_db, filepath),
             treble_shelf_db=shelf_db,
@@ -345,6 +365,9 @@ class SynthesisSettings(SampleSettings):
     # ProTracker need), "loose" (always 3FF on the target's own instrument, as written before) or
     # "retrigger" (every no-attack note a plain note-on, as before 030ca81; the default).
     legato: str = "retrigger"
+    # settings.yaml `end_trigger` (top level): an E8x (x = this) on the row a song that stops ends on,
+    # for a replayer to report the end by (ptplayer: _mt_E8Trigger); None = none
+    end_trigger: int | None = None
     # settings.yaml `player` (top level): the tracker the MOD is made for, "ft2" (default) or "pt2"
     player: str = "ft2"
     # settings.yaml samples.pt_zero_bytes: a one-shot sample's first word zeroed, since ProTracker
@@ -414,6 +437,7 @@ class SynthesisSettings(SampleSettings):
             fm_pan_law_db=float(data.get("fm_pan_law_db", cls.fm_pan_law_db)),
             legato=_legato(data, cls.legato, filepath),
             player=_player(data, cls.player, filepath),
+            end_trigger=_end_trigger(data, cls.end_trigger, filepath),
             pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", cls.pt_zero_bytes, filepath),
             **cls._shared_fields(data, smp, filepath),
         )

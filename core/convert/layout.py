@@ -18,8 +18,9 @@ _DEFAULT_SPEED = 6
 
 class ModLayout:
     def __init__(self, mod: ModFile, config: ConversionConfig, song: SmpsSong, timeline: Timeline,
-                 diag: Diagnostics) -> None:
+                 diag: Diagnostics, end_trigger: int | None = None) -> None:
         self._mod = mod
+        self._end_trigger = end_trigger     # settings.yaml end_trigger: E8x where a stopping song ends
         self._config = config
         self._song = song
         self._timeline = timeline
@@ -161,19 +162,38 @@ class ModLayout:
         so the module restarts after the key-offs (ChannelWriter._on_stop) instead of after the
         rest of that pattern's empty rows (the Title Screen's last notes end on a pattern's first
         row: 63 rows of silence).  Returns the pattern it ends in; None for a looping song or an
-        end past the written patterns.  No D00 on a pattern's last row (the next is the end)."""
+        end past the written patterns.  No D00 on a pattern's last row (the next is the end).
+
+        With an `end_trigger` the row also holds E8x (x = end_trigger): a replayer that reports
+        E8x (ptplayer's _mt_E8Trigger) tells the game the song is over.  A row with no room for
+        both moves them to the next, after the last key-offs (Stage Clear's end row holds a D00
+        and three C00s): the song ends a silent row later.  FT2 ignores E8x; the ProTracker
+        tracker (not its replayers) runs Karplus-Strong on a looped sample sounding in its
+        column, which a stopping song's last row has none of."""
         if self._song.loop_target_tick() is not None:
             return None
         tpr = self._timeline.ticks_per_row
         pattern, row = divmod(shift_for_breaks(round(self._song.end_tick() / tpr), breaks), 64)
         if pattern >= len(self._mod.patterns):
             return None
-        if row != 63:
-            ch = self._mod.free_effect_channel(pattern, row, range(max(1, self._mod.used_channels())))
+        columns = range(max(1, self._mod.used_channels()))
+        wanted = [(0xD, 0)] if row != 63 else []
+        if self._end_trigger is not None:
+            wanted.append((0xE, 0x80 | self._end_trigger))
+            free = [c for c in columns if self._mod.effect_slot_free(pattern, row, c)]
+            if len(free) < len(wanted) and row < 63:
+                row += 1
+                wanted = [(0xD, 0)] if row != 63 else []
+                wanted.append((0xE, 0x80 | self._end_trigger))
+        for eff, par in wanted:
+            ch = self._mod.free_effect_channel(pattern, row, columns)
             if ch is None:
+                if eff == 0xE:
+                    self._diag.warn(WarningKind.END_TRIGGER_NO_SLOT, channel='all', pattern=pattern, row=row)
+                    continue
                 return None
             self._mod.set_cursor(pattern, ch, row)
-            self._mod.set_effect(0xD, 0)
+            self._mod.set_effect(eff, par)
         return pattern
 
     def loop_point(self, breaks=None) -> None:

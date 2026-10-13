@@ -461,6 +461,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `psg_volume_scaling` | `baked` | `baked` | `baked` or `absolute` |
 | `legato` | `retrigger` | `retrigger` | `smpsNoAttack` notes: `retrigger` (a note-on), `strict` (`3FF` where the sample allows), `loose` (`3FF` always).  `docs/pipeline.md` § Legato (`smpsNoAttack` before a note) |
 | `player` | `ft2` | `ft2` | Which player's vibrato depth `4xy` is fitted to: `ft2` or `pt2` |
+| `end_trigger` | off | `1` | `E8x` (x = this, 1-15) on the row a song that stops ends on, for a replayer to report the end (ptplayer's `_mt_E8Trigger`); `off`: none.  `docs/pipeline.md` § A song that stops |
 
 ### `fm_synthesis:`
 
@@ -496,6 +497,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `dc_block` | `false` | `true` | 5 Hz high-pass on every render (the hardware's output is AC-coupled) |
 | `pt_zero_bytes` | `true` | `true` | Zero a one-shot sample's first word (ProTracker replays it after the sample ends) |
 | `compact_slots` | `merged` | `merged` | Renumber the used slots from 1: `off`, `merged`, `all` |
+| `trim_tails` | `off` | `merged` | Cut each one-shot sample after the last byte any note is heard to (`docs/pipeline.md` § Tails no note reaches): `off`, `merged`, `all`.  Files off disk stay whole |
 | `names` | `source` | `source` | Sample names: `source` (what plays it, e.g. `F1/3/4/5 $05 C4-B5`) or `file` (the `sample_list` file name) |
 | `treble_shelf_db` / `treble_shelf_hz` | `0` / `2500` | same | Brightness shelf on every render; 0 = off |
 | `resample_taps` | `32` | `32` | Resampler kernel width |

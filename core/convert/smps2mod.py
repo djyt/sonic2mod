@@ -21,7 +21,7 @@ from ..config import (
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
-from ..mod import ModFile, apply_pattern_breaks, note_rate
+from ..mod import ModFile, UnmodelledEffect, apply_pattern_breaks, heard_bytes, note_rate, read_mod
 from ..plan import (
     DetunePlan,
     Timeline,
@@ -137,7 +137,8 @@ class SmpsToModConverter:
 
     @property
     def _layout(self) -> ModLayout:
-        return ModLayout(self.mod, self.config, self.song, self._timeline, self._diag)
+        return ModLayout(self.mod, self.config, self.song, self._timeline, self._diag,
+                         end_trigger=self.synth.end_trigger if self.synth else None)
 
     @property
     def _levels(self) -> LevelPlanner:
@@ -219,8 +220,8 @@ class SmpsToModConverter:
         """The finished MOD: the song converted, then laid out.
 
             passes -> pattern breaks -> loop Bxx (or a stopping song's end D00) -> trailing patterns
-                   trimmed -> (merged) narrowed
-                   -> one-shots' first words zeroed (pt_zero_bytes)
+                   trimmed -> (merged) narrowed -> sample names -> slots compacted
+                   -> one-shots cut to what is heard (trim_tails) -> their first words zeroed (pt_zero_bytes)
 
         The loop's Bxx needs the post-break layout, so the order is fixed."""
         mod = self._convert_passes()
@@ -259,11 +260,28 @@ class SmpsToModConverter:
             if self._slot_map:
                 self._diag.remap_instruments(self._slot_map)
 
+        # Each one-shot cut after the last byte any note is heard to, the written cells played back
+        if settings is not None and settings.trims(self.config.merge_active):
+            self._trim_tails(mod, settings.amiga_clock)
+
         # Silent once a one-shot ends: ProTracker replays its first word
         zero_idle = self.synth.pt_zero_bytes if self.synth else True
         if zero_idle:
             mod.zero_idle_words()
         return mod
+
+    def _trim_tails(self, mod: ModFile, amiga_clock: float) -> None:
+        """The one-shot samples cut to what the finished MOD's notes are heard to
+        (core.mod.reach.heard_bytes, ModFile.trim_tails); a MOD holding an effect the replay does
+        not model is left whole."""
+        try:
+            heard = heard_bytes(read_mod(bytes(mod.get_bytes())), amiga_clock)
+        except UnmodelledEffect as e:
+            self._diag.info(InfoKind.TAILS_KEPT, effect=str(e))
+            return
+        cut = mod.trim_tails(heard)
+        if cut:
+            self._diag.info(InfoKind.TAILS_TRIMMED, samples=cut, bytes=sum(b - a for b, a in cut.values()))
 
     def _convert_passes(self) -> ModFile:
         """The song converted, as many times as the bank reserve takes (convert).

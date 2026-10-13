@@ -28,6 +28,7 @@ class WarningKind(StrEnum):
     RENDER_LEVEL = 'render_level'                   # a sample rendered at another level than it is baked at
     # tempo and patterns
     TEMPO_NO_SLOT = 'tempo_no_slot'                 # a tempo Fxx found no free effect slot
+    END_TRIGGER_NO_SLOT = 'end_trigger_no_slot'     # a stopping song's E8x found no free effect slot
     TEMPO_BPM_RANGE = 'tempo_bpm_range'             # a tempo change outside BPM 32..255
     PATTERN_OVERFLOW = 'pattern_overflow'           # a channel ran past max_patterns
     REST_NO_SLOT = 'rest_no_slot'                   # a leading rest's C00 found no slot
@@ -65,6 +66,8 @@ class InfoKind(StrEnum):
     RATE3_DIVIDER = 'rate3_divider'
     NOISE_ENVELOPE = 'noise_envelope'
     DAC_SATURATED = 'dac_saturated'
+    TAILS_TRIMMED = 'tails_trimmed'                 # one-shots cut to what is heard (samples.trim_tails)
+    TAILS_KEPT = 'tails_kept'                       # trim_tails skipped: an effect the replay does not model
     # merged build
     MERGE_FILL = 'merge_fill'
     MERGE_FOLDS = 'merge_folds'

@@ -313,7 +313,7 @@ One line each; the linked section has the cause and the detail.
   FM samples are rendered at that TL offset (the chip clips as the hardware does).
 - One effect per cell; priority: `Cxx` > `4xy` > note cut > a loop's fall slide.
 - Layout order inside `convert()` is fixed: passes → pattern breaks → loop `Bxx` → trim → narrow →
-  compact → zero idle words.  Row-0 tempo `Fxx` is placed after every channel.
+  compact → trim tails → zero idle words.  Row-0 tempo `Fxx` is placed after every channel.
 - Noise mode is permanent once `smpsPSGform` runs; `psg_voice_map` is then never consulted.
 
 **Configs and settings** (`docs/yaml_config.md`)

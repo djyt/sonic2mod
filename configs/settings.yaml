@@ -77,6 +77,16 @@ samples:
   #   all      : every build (its slots no longer match the config's sample_list numbers)
   compact_slots: merged
 
+  # Cut each one-shot sample after the last byte its notes can be heard to, found by playing the
+  # written MOD as ProTracker does, tick by tick, 3% fast for safety (core/mod/reach.py).  Lossless:
+  # what goes was never heard.  A sample read from a file (sample_list: the DAC drums) stays whole, so
+  # the same drum in several MODs stays the same bytes.  A song with an effect the replay does not
+  # model is left alone.
+  #   off      : never
+  #   merged   : the --merged reduced channel version only
+  #   all      : every build
+  trim_tails: merged
+
   # What the MOD calls each sample (22 characters):
   #   source   : what plays it and what it was made from - "F1/3/4/5 $05 C4-B5", "F5+3+4+P1 D-3 [1-4]",
   #              "D dKick B-2" (a voice_map / psg entry's or a merge group's `name:` replaces it)
@@ -175,3 +185,8 @@ legato: retrigger
 #   ft2   FT2 clone (default)
 #   pt2   ProTracker 2 / pt2-clone / an Amiga
 player: ft2
+
+# A song that stops (a jingle: no smpsJump) ends with E8x on its last row, the D00's, x = this value
+# (1..15), so a replayer that reports E8x can tell the game the song is over (ptplayer: _mt_E8Trigger,
+# which _mt_init clears to 0: x must not be 0).  FT2 clone ignores it.  off: no E8x.
+end_trigger: 1

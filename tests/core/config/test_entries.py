@@ -63,6 +63,9 @@ class ConfigLoading(unittest.TestCase):
         self.assertEqual(load("samples:\n  trim_tails: merged\n").trims(False), False)
         self.assertEqual(load("end_trigger: 3\n").end_trigger, 3)
         self.assertIsNone(load("end_trigger: off\n").end_trigger)
+        # a --merged build's player; without merged_player, player's
+        self.assertEqual([load("merged_player: pt2\n").player_for(m) for m in (False, True)], ["ft2", "pt2"])
+        self.assertEqual(load("player: pt2\n").player_for(True), "pt2")
         for text in ("samples:\n  pt_zero_byte: false\n",       # a typo is not ignored
                      "samples:\n  trim_tails: some\n",
                      "end_trigger: 16\n",

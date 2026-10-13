@@ -85,7 +85,7 @@ def main():
                         help="Global settings file (default: settings.yaml beside the config, "
                              "else configs/settings.yaml)")
     parser.add_argument('--player', choices=PLAYERS,
-                        help="Tracker the MOD is made for (vibrato depths) — overrides settings.yaml player")
+                        help="Tracker the MOD is made for (vibrato depths) — overrides settings.yaml player and merged_player")
     parser.add_argument('--verbose', '-v', action='store_true',
                         help="Also list every composite, bank sound, loop extension and synthesis "
                              "pitch, and each sample's release rate and share of the song")
@@ -173,8 +173,8 @@ def main():
     SETTINGS_FILE = _settings_path(args.config, args.settings)
     synth, psg_synth = load_settings(SETTINGS_FILE)
     synth, psg_synth = with_song_overrides(synth, config), with_song_overrides(psg_synth, config)
-    if args.player:
-        synth = dataclasses.replace(synth, player=args.player)
+    if args.player:                     # this build's player, merged or not
+        synth = dataclasses.replace(synth, player=args.player, merged_player=args.player)
 
     # The chips render core's samples: core cannot import them, so they are handed in here
     converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)

@@ -31,7 +31,7 @@ SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_
 # settings.yaml's keys, by section (None: the top level)
 _KEYS = {
     None: {"fm_synthesis", "psg_synthesis", "samples", "amiga_clock", "fm_volume_scaling", "fm_pan_law_db",
-           "psg_volume_scaling", "legato", "player", "end_trigger"},
+           "psg_volume_scaling", "legato", "player", "merged_player", "end_trigger"},
     "fm_synthesis": {"enabled", "mode", "clock_rate", "sustain_duration", "release_padding", "detune_variants",
                      "threads", "drum_psg_db"},
     "psg_synthesis": {"enabled", "clock_rate", "sustain_duration", "release_padding", "oversample"},
@@ -128,11 +128,13 @@ def _fm_mode(section: dict, default: str, filepath: str) -> str:
 PLAYERS = ("ft2", "pt2")
 
 
-def _player(data: dict, default: str, filepath: str) -> str:
-    """Top-level `player` of settings.yaml: ft2 | pt2."""
-    v = str(data.get("player", default)).lower()
+def _player(data: dict, default: str | None, filepath: str, key: str = "player") -> str | None:
+    """Top-level `player` / `merged_player` of settings.yaml: ft2 | pt2 (a missing key: `default`)."""
+    if data.get(key) is None:
+        return default
+    v = str(data[key]).lower()
     if v not in PLAYERS:
-        raise ValueError(f"{filepath}: player must be one of {', '.join(PLAYERS)} (got '{v}')")
+        raise ValueError(f"{filepath}: {key} must be one of {', '.join(PLAYERS)} (got '{v}')")
     return v
 
 
@@ -370,6 +372,9 @@ class SynthesisSettings(SampleSettings):
     end_trigger: int | None = None
     # settings.yaml `player` (top level): the tracker the MOD is made for, "ft2" (default) or "pt2"
     player: str = "ft2"
+    # settings.yaml `merged_player` (top level): the tracker a --merged build (the Amiga build) is made
+    # for; None = `player`
+    merged_player: str | None = None
     # settings.yaml samples.pt_zero_bytes: a one-shot sample's first word zeroed, since ProTracker
     # replays it once the sample ends (core.mod.ModFile.zero_idle_words)
     pt_zero_bytes: bool = True
@@ -419,6 +424,11 @@ class SynthesisSettings(SampleSettings):
                 f"fm_synthesis.threads must be 'normal', 'max' or a positive integer (got {self.threads!r})")
         return v
 
+    def player_for(self, merged: bool) -> str:
+        """The tracker this build's vibrato depths are fitted to: `merged_player` for a --merged build
+        where one is given, else `player`."""
+        return self.merged_player if merged and self.merged_player else self.player
+
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
         data = read_yaml_file(filepath)
@@ -436,7 +446,8 @@ class SynthesisSettings(SampleSettings):
             fm_volume_scaling=data.get("fm_volume_scaling", cls.fm_volume_scaling),
             fm_pan_law_db=float(data.get("fm_pan_law_db", cls.fm_pan_law_db)),
             legato=_legato(data, cls.legato, filepath),
-            player=_player(data, cls.player, filepath),
+            player=_player(data, cls.player, filepath) or cls.player,
+            merged_player=_player(data, cls.merged_player, filepath, "merged_player"),
             end_trigger=_end_trigger(data, cls.end_trigger, filepath),
             pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", cls.pt_zero_bytes, filepath),
             **cls._shared_fields(data, smp, filepath),

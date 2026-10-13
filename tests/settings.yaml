@@ -180,4 +180,5 @@ legato: retrigger
 #   ft2   FT2 clone (default)
 #   pt2   ProTracker 2 / pt2-clone / an Amiga
 player: ft2
+merged_player: pt2
 end_trigger: 1

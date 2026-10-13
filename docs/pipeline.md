@@ -329,7 +329,8 @@ swing = period · (delta · steps / 2) / frequency_word         (periods, per no
 y     = the depth whose peak in the player is nearest the swing (_VIBRATO_PEAK)
 ```
 
-- The peak depends on the player (settings.yaml `player`, `convert.py --player`): PT2 peaks at
+- The peak depends on the player (settings.yaml `player`, `merged_player` for a `--merged` build,
+  `convert.py --player`): PT2 peaks at
   `2y − 1` whole periods, FT2 at `2y − ¼`.
 - A swing under 0.7 periods writes no vibrato (the smallest depth would overshoot threefold).  An `x`
   past 15 plays at 15 and is reported.

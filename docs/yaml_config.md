@@ -38,7 +38,7 @@ python convert.py configs/sonic_1/02_green_hill_zone.yaml --variant lofi --merge
 | `--merged` | Build the merged output (§ 6) |
 | `--variant NAME` | Apply a `variants:` block (§ 7) |
 | `--settings PATH` | Use this settings file (default: `settings.yaml` beside the config, else `configs/settings.yaml`) |
-| `--player ft2\|pt2` | Overrides `player` in settings.yaml |
+| `--player ft2\|pt2` | Overrides `player` and `merged_player` in settings.yaml |
 | `-v`, `--verbose` | Also list composites, bank sounds, loop extensions, synthesis pitches |
 
 **Validation.**  The YAML loader refuses a key given twice in one mapping.  A key the converter
@@ -461,6 +461,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `psg_volume_scaling` | `baked` | `baked` | `baked` or `absolute` |
 | `legato` | `retrigger` | `retrigger` | `smpsNoAttack` notes: `retrigger` (a note-on), `strict` (`3FF` where the sample allows), `loose` (`3FF` always).  `docs/pipeline.md` § Legato (`smpsNoAttack` before a note) |
 | `player` | `ft2` | `ft2` | Which player's vibrato depth `4xy` is fitted to: `ft2` or `pt2` |
+| `merged_player` | `player`'s | `pt2` | The same for a `--merged` build, the Amiga one (Aonic's engine plays it through ptplayer, a ProTracker 2 replayer) |
 | `end_trigger` | off | `1` | `E8x` (x = this, 1-15) on the row a song that stops ends on, for a replayer to report the end (ptplayer's `_mt_E8Trigger`); `off`: none.  `docs/pipeline.md` § A song that stops |
 
 ### `fm_synthesis:`

@@ -186,6 +186,10 @@ legato: retrigger
 #   pt2   ProTracker 2 / pt2-clone / an Amiga
 player: ft2
 
+# The tracker a --merged build (the Amiga build: Aonic's engine plays it through ptplayer, ProTracker 2's
+# replayer) is made for, as `player`; left out, `player`'s.  convert.py --player overrides it too.
+merged_player: pt2
+
 # A song that stops (a jingle: no smpsJump) ends with E8x on its last row, the D00's, x = this value
 # (1..15), so a replayer that reports E8x can tell the game the song is over (ptplayer: _mt_E8Trigger,
 # which _mt_init clears to 0: x must not be 0).  FT2 clone ignores it.  off: no E8x.

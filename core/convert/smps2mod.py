@@ -69,7 +69,7 @@ class SmpsToModConverter:
             synth = dataclasses.replace(synth, loop_timbre=False) if synth else None
             psg_synth = dataclasses.replace(psg_synth, loop_timbre=False) if psg_synth else None
         self.synth = synth
-        self._player = synth.player if synth else "ft2"
+        self._player = synth.player_for(config.merge_active) if synth else "ft2"
         self.psg_synth = psg_synth
         self._song_prepared = False
         self.mod = ModFile(channels=config.mod_channel_count)

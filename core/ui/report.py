@@ -417,7 +417,8 @@ def print_header(console: Console, rep: Report) -> None:
         if s.treble_shelf_db:
             settings += f" · treble {s.treble_shelf_db:+g} dB above {s.treble_shelf_hz:g} Hz"
     if rep.synth is not None:
-        settings += f" · legato {rep.synth.legato} · player {rep.synth.player}"
+        settings += (f" · legato {rep.synth.legato} · player "
+                     f"{rep.synth.player_for(rep.converter.config.merge_active)}")
     cached = _infos(rep, InfoKind.RENDER_CACHE)
     if cached:
         hits = sum(i['hits'] for i in cached)

@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/_regression_chaos_emerald.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -58,6 +58,7 @@ chaos_emerald:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -72,7 +73,7 @@ chaos_emerald:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -92,6 +93,7 @@ chaos_emerald:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -114,12 +116,14 @@ chaos_emerald:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -166,7 +170,7 @@ chaos_emerald:
   inputs:
     configs/sonic_1/16_chaos_emerald.yaml: 702974097f19
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 continue_screen:
   argv:
   - convert.py
@@ -175,7 +179,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_continue_screen.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -226,6 +230,7 @@ continue_screen:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -240,7 +245,7 @@ continue_screen:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -260,6 +265,7 @@ continue_screen:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -282,12 +288,14 @@ continue_screen:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -334,7 +342,7 @@ continue_screen:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 continue_screen_lofi:
   argv:
   - convert.py
@@ -345,7 +353,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/_regression_continue_screen_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -396,6 +404,7 @@ continue_screen_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -410,7 +419,7 @@ continue_screen_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -430,6 +439,7 @@ continue_screen_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -452,12 +462,14 @@ continue_screen_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -504,7 +516,7 @@ continue_screen_lofi:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 continue_screen_lofi_merged:
   argv:
   - convert.py
@@ -516,7 +528,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -567,6 +579,7 @@ continue_screen_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -581,7 +594,7 @@ continue_screen_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -601,6 +614,7 @@ continue_screen_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -623,12 +637,14 @@ continue_screen_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -675,7 +691,7 @@ continue_screen_lofi_merged:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 continue_screen_merged:
   argv:
   - convert.py
@@ -685,7 +701,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/_regression_continue_screen_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -736,6 +752,7 @@ continue_screen_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -750,7 +767,7 @@ continue_screen_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -770,6 +787,7 @@ continue_screen_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -792,12 +810,14 @@ continue_screen_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -844,7 +864,7 @@ continue_screen_merged:
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 1ff53b1485fb
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 credits:
   argv:
   - convert.py
@@ -853,7 +873,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/_regression_credits.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -904,6 +924,7 @@ credits:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -918,7 +939,7 @@ credits:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -938,6 +959,7 @@ credits:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -960,12 +982,14 @@ credits:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -1012,7 +1036,7 @@ credits:
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 credits_rom:
   argv:
   - convert.py
@@ -1025,7 +1049,7 @@ credits_rom:
   - $91
   - --output
   - output/_regression_credits_rom.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1076,6 +1100,7 @@ credits_rom:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -1090,7 +1115,7 @@ credits_rom:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -1110,6 +1135,7 @@ credits_rom:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -1132,12 +1158,14 @@ credits_rom:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -1184,7 +1212,7 @@ credits_rom:
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 drowning:
   argv:
   - convert.py
@@ -1193,7 +1221,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/_regression_drowning.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1244,6 +1272,7 @@ drowning:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -1258,7 +1287,7 @@ drowning:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -1278,6 +1307,7 @@ drowning:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -1300,12 +1330,14 @@ drowning:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -1352,7 +1384,7 @@ drowning:
   inputs:
     configs/sonic_1/17_drowning.yaml: 81b857245faf
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 ending_theme:
   argv:
   - convert.py
@@ -1361,7 +1393,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/_regression_ending_theme.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1412,6 +1444,7 @@ ending_theme:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -1426,7 +1459,7 @@ ending_theme:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -1446,6 +1479,7 @@ ending_theme:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -1468,12 +1502,14 @@ ending_theme:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -1520,7 +1556,7 @@ ending_theme:
   inputs:
     configs/sonic_1/12_ending_theme.yaml: ee21c3728278
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 extra_life:
   argv:
   - convert.py
@@ -1529,7 +1565,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/_regression_extra_life.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1580,6 +1616,7 @@ extra_life:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -1594,7 +1631,7 @@ extra_life:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -1614,6 +1651,7 @@ extra_life:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -1636,12 +1674,14 @@ extra_life:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -1688,7 +1728,7 @@ extra_life:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 extra_life_lofi:
   argv:
   - convert.py
@@ -1699,7 +1739,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/_regression_extra_life_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1750,6 +1790,7 @@ extra_life_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -1764,7 +1805,7 @@ extra_life_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -1784,6 +1825,7 @@ extra_life_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -1806,12 +1848,14 @@ extra_life_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -1858,7 +1902,7 @@ extra_life_lofi:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 extra_life_lofi_merged:
   argv:
   - convert.py
@@ -1870,7 +1914,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/_regression_extra_life_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1921,6 +1965,7 @@ extra_life_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -1935,7 +1980,7 @@ extra_life_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -1955,6 +2000,7 @@ extra_life_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -1977,12 +2023,14 @@ extra_life_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -2029,7 +2077,7 @@ extra_life_lofi_merged:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 extra_life_merged:
   argv:
   - convert.py
@@ -2039,7 +2087,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/_regression_extra_life_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2090,6 +2138,7 @@ extra_life_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -2104,7 +2153,7 @@ extra_life_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -2124,6 +2173,7 @@ extra_life_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -2146,12 +2196,14 @@ extra_life_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -2198,7 +2250,7 @@ extra_life_merged:
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 final_zone:
   argv:
   - convert.py
@@ -2207,7 +2259,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_final_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2258,6 +2310,7 @@ final_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -2272,7 +2325,7 @@ final_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -2292,6 +2345,7 @@ final_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -2314,12 +2368,14 @@ final_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -2366,7 +2422,7 @@ final_zone:
   inputs:
     configs/sonic_1/10_final_zone.yaml: 1816d8c10975
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 ga_conclusion:
   argv:
   - convert.py
@@ -2375,7 +2431,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_conclusion.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2426,6 +2482,7 @@ ga_conclusion:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -2459,6 +2516,7 @@ ga_conclusion:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -2481,12 +2539,14 @@ ga_conclusion:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -2533,7 +2593,7 @@ ga_conclusion:
   inputs:
     configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 ga_the_battle:
   argv:
   - convert.py
@@ -2542,7 +2602,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_the_battle.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2593,6 +2653,7 @@ ga_the_battle:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -2626,6 +2687,7 @@ ga_the_battle:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -2648,12 +2710,14 @@ ga_the_battle:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -2700,7 +2764,7 @@ ga_the_battle:
   inputs:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 ga_theme_of_thief:
   argv:
   - convert.py
@@ -2709,7 +2773,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/_regression_ga_theme_of_thief.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2760,6 +2824,7 @@ ga_theme_of_thief:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -2793,6 +2858,7 @@ ga_theme_of_thief:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -2815,12 +2881,14 @@ ga_theme_of_thief:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -2867,7 +2935,7 @@ ga_theme_of_thief:
   inputs:
     configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 game_over:
   argv:
   - convert.py
@@ -2876,7 +2944,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_game_over.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2927,6 +2995,7 @@ game_over:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -2941,7 +3010,7 @@ game_over:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -2961,6 +3030,7 @@ game_over:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -2983,12 +3053,14 @@ game_over:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -3035,7 +3107,7 @@ game_over:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 game_over_lofi:
   argv:
   - convert.py
@@ -3046,7 +3118,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/_regression_game_over_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3097,6 +3169,7 @@ game_over_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -3111,7 +3184,7 @@ game_over_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3131,6 +3204,7 @@ game_over_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -3153,12 +3227,14 @@ game_over_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -3205,7 +3281,7 @@ game_over_lofi:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 game_over_lofi_merged:
   argv:
   - convert.py
@@ -3217,7 +3293,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/_regression_game_over_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3268,6 +3344,7 @@ game_over_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -3282,7 +3359,7 @@ game_over_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3302,6 +3379,7 @@ game_over_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -3324,12 +3402,14 @@ game_over_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -3376,7 +3456,7 @@ game_over_lofi_merged:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 game_over_merged:
   argv:
   - convert.py
@@ -3386,7 +3466,7 @@ game_over_merged:
   - --merged
   - --output
   - output/_regression_game_over_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3437,6 +3517,7 @@ game_over_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -3451,7 +3532,7 @@ game_over_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3471,6 +3552,7 @@ game_over_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -3493,12 +3575,14 @@ game_over_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -3545,7 +3629,7 @@ game_over_merged:
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 ghz_lofi:
   argv:
   - convert.py
@@ -3556,7 +3640,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/_regression_ghz_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3607,6 +3691,7 @@ ghz_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -3621,7 +3706,7 @@ ghz_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3641,6 +3726,7 @@ ghz_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -3663,12 +3749,14 @@ ghz_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -3715,7 +3803,7 @@ ghz_lofi:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 ghz_lofi_merged:
   argv:
   - convert.py
@@ -3727,7 +3815,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/_regression_ghz_lofi_merged.mod
-  commit: 90c5f34-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3778,6 +3866,7 @@ ghz_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -3792,7 +3881,7 @@ ghz_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3812,6 +3901,7 @@ ghz_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -3834,12 +3924,14 @@ ghz_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -3886,7 +3978,7 @@ ghz_lofi_merged:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 green_hill_zone:
   argv:
   - convert.py
@@ -3895,7 +3987,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_green_hill_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3946,6 +4038,7 @@ green_hill_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -3960,7 +4053,7 @@ green_hill_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -3980,6 +4073,7 @@ green_hill_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -4002,12 +4096,14 @@ green_hill_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -4054,7 +4150,7 @@ green_hill_zone:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 green_hill_zone_merged:
   argv:
   - convert.py
@@ -4064,7 +4160,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/_regression_green_hill_zone_merged.mod
-  commit: 90c5f34-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4115,6 +4211,7 @@ green_hill_zone_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -4129,7 +4226,7 @@ green_hill_zone_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -4149,6 +4246,7 @@ green_hill_zone_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -4171,12 +4269,14 @@ green_hill_zone_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -4223,7 +4323,7 @@ green_hill_zone_merged:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 green_hill_zone_rom:
   argv:
   - convert.py
@@ -4236,7 +4336,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/_regression_green_hill_zone_rom.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4287,6 +4387,7 @@ green_hill_zone_rom:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -4301,7 +4402,7 @@ green_hill_zone_rom:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -4321,6 +4422,7 @@ green_hill_zone_rom:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -4343,12 +4445,14 @@ green_hill_zone_rom:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -4395,7 +4499,7 @@ green_hill_zone_rom:
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: daa3ddf6100f
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 invincibility:
   argv:
   - convert.py
@@ -4404,7 +4508,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/_regression_invincibility.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4455,6 +4559,7 @@ invincibility:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -4469,7 +4574,7 @@ invincibility:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -4489,6 +4594,7 @@ invincibility:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -4511,12 +4617,14 @@ invincibility:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -4563,7 +4671,7 @@ invincibility:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 invincibility_lofi:
   argv:
   - convert.py
@@ -4574,7 +4682,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/_regression_invincibility_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4625,6 +4733,7 @@ invincibility_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -4639,7 +4748,7 @@ invincibility_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -4659,6 +4768,7 @@ invincibility_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -4681,12 +4791,14 @@ invincibility_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -4733,7 +4845,7 @@ invincibility_lofi:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 invincibility_lofi_merged:
   argv:
   - convert.py
@@ -4745,7 +4857,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/_regression_invincibility_lofi_merged.mod
-  commit: 90c5f34-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4796,6 +4908,7 @@ invincibility_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -4810,7 +4923,7 @@ invincibility_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -4830,6 +4943,7 @@ invincibility_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -4852,12 +4966,14 @@ invincibility_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -4904,7 +5020,7 @@ invincibility_lofi_merged:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 invincibility_merged:
   argv:
   - convert.py
@@ -4914,7 +5030,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/_regression_invincibility_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4965,6 +5081,7 @@ invincibility_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -4979,7 +5096,7 @@ invincibility_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -4999,6 +5116,7 @@ invincibility_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -5021,12 +5139,14 @@ invincibility_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5073,7 +5193,7 @@ invincibility_merged:
   inputs:
     configs/sonic_1/14_invincibility.yaml: bde607ca2701
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 lab_zone:
   argv:
   - convert.py
@@ -5082,7 +5202,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_lab_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5133,6 +5253,7 @@ lab_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -5147,7 +5268,7 @@ lab_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -5167,6 +5288,7 @@ lab_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -5189,12 +5311,14 @@ lab_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5241,7 +5365,7 @@ lab_zone:
   inputs:
     configs/sonic_1/05_lab_zone.yaml: 28a70a07bc3d
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 marble_zone:
   argv:
   - convert.py
@@ -5250,7 +5374,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_marble_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5301,6 +5425,7 @@ marble_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -5315,7 +5440,7 @@ marble_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -5335,6 +5460,7 @@ marble_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -5357,12 +5483,14 @@ marble_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5409,7 +5537,7 @@ marble_zone:
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 marble_zone_rom:
   argv:
   - convert.py
@@ -5422,7 +5550,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/_regression_marble_zone_rom.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5473,6 +5601,7 @@ marble_zone_rom:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -5487,7 +5616,7 @@ marble_zone_rom:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -5507,6 +5636,7 @@ marble_zone_rom:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -5529,12 +5659,14 @@ marble_zone_rom:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5581,7 +5713,7 @@ marble_zone_rom:
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 mw_beat_it:
   argv:
   - convert.py
@@ -5590,7 +5722,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_beat_it.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5641,6 +5773,7 @@ mw_beat_it:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -5655,7 +5788,7 @@ mw_beat_it:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/type1a/__init__.py
@@ -5675,6 +5808,7 @@ mw_beat_it:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -5697,12 +5831,14 @@ mw_beat_it:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5749,7 +5885,7 @@ mw_beat_it:
   inputs:
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 mw_mr_big:
   argv:
   - convert.py
@@ -5758,7 +5894,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_mr_big.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5809,6 +5945,7 @@ mw_mr_big:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -5823,7 +5960,7 @@ mw_mr_big:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/type1a/__init__.py
@@ -5843,6 +5980,7 @@ mw_mr_big:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -5865,12 +6003,14 @@ mw_mr_big:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -5917,7 +6057,7 @@ mw_mr_big:
   inputs:
     configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 mw_title:
   argv:
   - convert.py
@@ -5926,7 +6066,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/_regression_mw_title.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5977,6 +6117,7 @@ mw_title:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -5991,7 +6132,7 @@ mw_title:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/type1a/__init__.py
@@ -6011,6 +6152,7 @@ mw_title:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -6033,12 +6175,14 @@ mw_title:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -6085,7 +6229,7 @@ mw_title:
   inputs:
     configs/moonwalker/86_title.yaml: a4e39f30e91d
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 or_last_wave:
   argv:
   - convert.py
@@ -6094,7 +6238,7 @@ or_last_wave:
   - tests/settings.yaml
   - --output
   - output/_regression_or_last_wave.mod
-  commit: 51dc230-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6180,6 +6324,7 @@ or_last_wave:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -6255,9 +6400,9 @@ or_last_wave:
   - core/vgm/reader.py
   - core/vgm/realign.py
   inputs:
-    configs/outrun/84_last_wave.yaml: 461bffceed41
+    configs/outrun/84_last_wave.yaml: 009fc08f1a5d
     input/roms/OutRun (USA, Europe).md: 231f52844398
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 or_passing_breeze:
   argv:
   - convert.py
@@ -6266,7 +6411,7 @@ or_passing_breeze:
   - tests/settings.yaml
   - --output
   - output/_regression_or_passing_breeze.mod
-  commit: 51dc230-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6352,6 +6497,7 @@ or_passing_breeze:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -6427,9 +6573,9 @@ or_passing_breeze:
   - core/vgm/reader.py
   - core/vgm/realign.py
   inputs:
-    configs/outrun/83_passing_breeze.yaml: 7e4ddef7a903
+    configs/outrun/83_passing_breeze.yaml: 3a74ffd6c500
     input/roms/OutRun (USA, Europe).md: 231f52844398
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 or_step_on_beat:
   argv:
   - convert.py
@@ -6438,7 +6584,7 @@ or_step_on_beat:
   - tests/settings.yaml
   - --output
   - output/_regression_or_step_on_beat.mod
-  commit: 51dc230-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6524,6 +6670,7 @@ or_step_on_beat:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -6599,9 +6746,9 @@ or_step_on_beat:
   - core/vgm/reader.py
   - core/vgm/realign.py
   inputs:
-    configs/outrun/85_step_on_beat.yaml: e5f63550aaa9
+    configs/outrun/85_step_on_beat.yaml: 7f6952bc0719
     input/roms/OutRun (USA, Europe).md: 231f52844398
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 robotnik:
   argv:
   - convert.py
@@ -6610,7 +6757,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/_regression_robotnik.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6661,6 +6808,7 @@ robotnik:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -6675,7 +6823,7 @@ robotnik:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -6695,6 +6843,7 @@ robotnik:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -6717,12 +6866,14 @@ robotnik:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -6769,7 +6920,7 @@ robotnik:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 robotnik_lofi:
   argv:
   - convert.py
@@ -6780,7 +6931,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/_regression_robotnik_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6831,6 +6982,7 @@ robotnik_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -6845,7 +6997,7 @@ robotnik_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -6865,6 +7017,7 @@ robotnik_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -6887,12 +7040,14 @@ robotnik_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -6939,7 +7094,7 @@ robotnik_lofi:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 robotnik_lofi_merged:
   argv:
   - convert.py
@@ -6951,7 +7106,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/_regression_robotnik_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7002,6 +7157,7 @@ robotnik_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -7016,7 +7172,7 @@ robotnik_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -7036,6 +7192,7 @@ robotnik_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7058,12 +7215,14 @@ robotnik_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7110,7 +7269,7 @@ robotnik_lofi_merged:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 robotnik_merged:
   argv:
   - convert.py
@@ -7120,7 +7279,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/_regression_robotnik_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7171,6 +7330,7 @@ robotnik_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -7185,7 +7345,7 @@ robotnik_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -7205,6 +7365,7 @@ robotnik_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7227,12 +7388,14 @@ robotnik_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7279,7 +7442,7 @@ robotnik_merged:
   inputs:
     configs/sonic_1/09_robotnik.yaml: 193e80baac83
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 scrap_brain_zone:
   argv:
   - convert.py
@@ -7288,7 +7451,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_scrap_brain_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7339,6 +7502,7 @@ scrap_brain_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -7353,7 +7517,7 @@ scrap_brain_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -7373,6 +7537,7 @@ scrap_brain_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7395,12 +7560,14 @@ scrap_brain_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7447,7 +7614,7 @@ scrap_brain_zone:
   inputs:
     configs/sonic_1/07_scrap_brain_zone.yaml: a5555800ac10
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 sh2_an_epitaph:
   argv:
   - convert.py
@@ -7456,7 +7623,7 @@ sh2_an_epitaph:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_an_epitaph.mod
-  commit: 7cfe533-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7507,6 +7674,7 @@ sh2_an_epitaph:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -7520,6 +7688,7 @@ sh2_an_epitaph:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/pitch_envelopes.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
   - core/drivers/smpsz80/sh2/drums.py
@@ -7543,6 +7712,7 @@ sh2_an_epitaph:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7565,12 +7735,14 @@ sh2_an_epitaph:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7617,7 +7789,7 @@ sh2_an_epitaph:
   inputs:
     configs/space_harrier_2/95_an_epitaph.yaml: 3898a657da05
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 sh2_game_over:
   argv:
   - convert.py
@@ -7626,7 +7798,7 @@ sh2_game_over:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_game_over.mod
-  commit: 7cfe533-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7677,6 +7849,7 @@ sh2_game_over:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -7690,6 +7863,7 @@ sh2_game_over:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/pitch_envelopes.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
   - core/drivers/smpsz80/sh2/drums.py
@@ -7713,6 +7887,7 @@ sh2_game_over:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7735,12 +7910,14 @@ sh2_game_over:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7787,7 +7964,7 @@ sh2_game_over:
   inputs:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 sh2_harrier_saga:
   argv:
   - convert.py
@@ -7796,7 +7973,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_harrier_saga.mod
-  commit: a7b1557-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7847,6 +8024,7 @@ sh2_harrier_saga:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -7860,6 +8038,7 @@ sh2_harrier_saga:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/pitch_envelopes.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
   - core/drivers/smpsz80/sh2/drums.py
@@ -7883,6 +8062,7 @@ sh2_harrier_saga:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -7905,12 +8085,14 @@ sh2_harrier_saga:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -7957,7 +8139,7 @@ sh2_harrier_saga:
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 sh2_motion:
   argv:
   - convert.py
@@ -7966,7 +8148,7 @@ sh2_motion:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_motion.mod
-  commit: 7cfe533-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8017,6 +8199,7 @@ sh2_motion:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -8030,6 +8213,7 @@ sh2_motion:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/pitch_envelopes.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
   - core/drivers/smpsz80/sh2/drums.py
@@ -8053,6 +8237,7 @@ sh2_motion:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -8075,12 +8260,14 @@ sh2_motion:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -8127,7 +8314,7 @@ sh2_motion:
   inputs:
     configs/space_harrier_2/98_motion.yaml: 31261d44d549
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 sh2_winners_flight:
   argv:
   - convert.py
@@ -8136,7 +8323,7 @@ sh2_winners_flight:
   - tests/settings.yaml
   - --output
   - output/_regression_sh2_winners_flight.mod
-  commit: a7b1557-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8187,6 +8374,7 @@ sh2_winners_flight:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -8200,6 +8388,7 @@ sh2_winners_flight:
   - core/drivers/registry.py
   - core/drivers/smpsz80/__init__.py
   - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/pitch_envelopes.py
   - core/drivers/smpsz80/program.py
   - core/drivers/smpsz80/sh2/__init__.py
   - core/drivers/smpsz80/sh2/drums.py
@@ -8223,6 +8412,7 @@ sh2_winners_flight:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -8245,12 +8435,14 @@ sh2_winners_flight:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pattern.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -8297,7 +8489,7 @@ sh2_winners_flight:
   inputs:
     configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 special_stage:
   argv:
   - convert.py
@@ -8306,7 +8498,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/_regression_special_stage.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8357,6 +8549,7 @@ special_stage:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -8371,7 +8564,7 @@ special_stage:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -8391,6 +8584,7 @@ special_stage:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -8413,12 +8607,14 @@ special_stage:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -8465,7 +8661,7 @@ special_stage:
   inputs:
     configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 spring_yard_zone:
   argv:
   - convert.py
@@ -8474,7 +8670,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_spring_yard_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8525,6 +8721,7 @@ spring_yard_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -8539,7 +8736,7 @@ spring_yard_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -8559,6 +8756,7 @@ spring_yard_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -8581,12 +8779,14 @@ spring_yard_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -8633,7 +8833,7 @@ spring_yard_zone:
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 stage_clear:
   argv:
   - convert.py
@@ -8642,7 +8842,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/_regression_stage_clear.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8693,6 +8893,7 @@ stage_clear:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -8707,7 +8908,7 @@ stage_clear:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -8727,6 +8928,7 @@ stage_clear:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -8749,12 +8951,14 @@ stage_clear:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -8801,7 +9005,7 @@ stage_clear:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 stage_clear_lofi:
   argv:
   - convert.py
@@ -8812,7 +9016,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/_regression_stage_clear_lofi.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8863,6 +9067,7 @@ stage_clear_lofi:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -8877,7 +9082,7 @@ stage_clear_lofi:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -8897,6 +9102,7 @@ stage_clear_lofi:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -8919,12 +9125,14 @@ stage_clear_lofi:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -8971,7 +9179,7 @@ stage_clear_lofi:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 stage_clear_lofi_merged:
   argv:
   - convert.py
@@ -8983,7 +9191,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_lofi_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9034,6 +9242,7 @@ stage_clear_lofi_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -9048,7 +9257,7 @@ stage_clear_lofi_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -9068,6 +9277,7 @@ stage_clear_lofi_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -9090,12 +9300,14 @@ stage_clear_lofi_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -9142,7 +9354,7 @@ stage_clear_lofi_merged:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 stage_clear_merged:
   argv:
   - convert.py
@@ -9152,7 +9364,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/_regression_stage_clear_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9203,6 +9415,7 @@ stage_clear_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -9217,7 +9430,7 @@ stage_clear_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -9237,6 +9450,7 @@ stage_clear_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -9259,12 +9473,14 @@ stage_clear_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -9311,7 +9527,7 @@ stage_clear_merged:
   inputs:
     configs/sonic_1/11_stage_clear.yaml: b544742117e0
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 star_light_zone:
   argv:
   - convert.py
@@ -9320,7 +9536,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/_regression_star_light_zone.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9371,6 +9587,7 @@ star_light_zone:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -9385,7 +9602,7 @@ star_light_zone:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -9405,6 +9622,7 @@ star_light_zone:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -9427,12 +9645,14 @@ star_light_zone:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -9479,7 +9699,7 @@ star_light_zone:
   inputs:
     configs/sonic_1/06_star_light_zone.yaml: 04ab4d7aca07
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 title_screen:
   argv:
   - convert.py
@@ -9488,7 +9708,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/_regression_title_screen.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9539,6 +9759,7 @@ title_screen:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -9553,7 +9774,7 @@ title_screen:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -9573,6 +9794,7 @@ title_screen:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -9595,12 +9817,14 @@ title_screen:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -9647,7 +9871,7 @@ title_screen:
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 title_screen_merged:
   argv:
   - convert.py
@@ -9657,7 +9881,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/_regression_title_screen_merged.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9708,6 +9932,7 @@ title_screen_merged:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -9722,7 +9947,7 @@ title_screen_merged:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -9742,6 +9967,7 @@ title_screen_merged:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -9764,12 +9990,14 @@ title_screen_merged:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -9816,7 +10044,7 @@ title_screen_merged:
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749
 title_screen_rom:
   argv:
   - convert.py
@@ -9829,7 +10057,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/_regression_title_screen_rom.mod
-  commit: 2d6c984-dirty
+  commit: 8826e48-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9880,6 +10108,7 @@ title_screen_rom:
   - core/convert/layout.py
   - core/convert/level_plan.py
   - core/convert/sample_names.py
+  - core/convert/samples.py
   - core/convert/smps2mod.py
   - core/convert/survey.py
   - core/convert/sustain_plan.py
@@ -9894,7 +10123,7 @@ title_screen_rom:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dpcm.py
+  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/sonic1/__init__.py
@@ -9914,6 +10143,7 @@ title_screen_rom:
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
+  - core/mod/reach.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
@@ -9936,12 +10166,14 @@ title_screen_rom:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
+  - core/rom/pcm.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
   - core/smps/asm_writer.py
+  - core/smps/clock.py
   - core/smps/code.py
   - core/smps/compare.py
   - core/smps/driver_tables.py
@@ -9988,4 +10220,4 @@ title_screen_rom:
   inputs:
     configs/sonic_1/01_title_screen.yaml: 13bbe5e90b68
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: c9fe3405c560
+    tests/settings.yaml: 41db770e3749

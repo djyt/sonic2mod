@@ -79,7 +79,8 @@ flag Type 1a knows but refuses: the same flag set, short of a few effects (§4).
 
 Near misses in the "no signal" group:
 - **The Revenge of Shinobi (5 files):** MUCOM's code patterns match, but its music index points
-  at no header - Yuzo Koshiro's earlier driver, Streets of Rage's likely ancestor.
+  at no header - Yuzo Koshiro's earlier driver, Streets of Rage's likely ancestor.  Since probed:
+  Streets of Rage's engine with another header and flag set (`docs/todo/revenge_of_shinobi.md`).
 - **Compilations** (6-Pak, Mega Games 3, 6, 6 Vol. 3): two Z80 programs hold an FM table, and
   `driver_ram` requires exactly one - 6-Pak's Golden Axe is missed (its Sonic 1 is read).
 - Micro Machines Turbo Tournament 96, Premier Manager ×2, Ultimate Soccer, Sega Sports 1: MUCOM's

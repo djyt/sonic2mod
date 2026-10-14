@@ -36,9 +36,10 @@ output:
                             # normalise : each effect at full scale; raw's manifest volume restores the
                             #             balance (Paula scales after its DAC: quiet effects keep their bits)
   peak_dbfs: -0.3           # global: the loudest effect's peak
-  boost: 1                  # global: played at volume 64 / boost to the nearest whole one, baked x exactly
-                            # 64 / that volume (1.45 -> volume 44, x 1.4545).  Quiet effects gain
-                            # log2(boost) bits, loud ones clip (the manifest counts it)
+  reference: []             # global: the sound ids whose loudest sets the gain ([A0, B5]); [] every effect
+  over: clip                # global: an effect the gain puts past the rails
+                            #   clip  : clipped (the manifest counts it)
+                            #   limit : turned down to just fit, quieter than composed
   dc_block: false           # Remove DC (30 Hz high-pass): the PSG noise effects carry real offset
   dither: off               # 8-bit rounding:
                             #   shaped : noise pushed up the band; long smpsAlterVol ramps stay smooth
@@ -77,19 +78,24 @@ output:
       channels: mono
       mono_fold: power      # The rings 3 dB under a centred effect, as a stereo listener hears them
       level: global
-      peak_dbfs: 0          # the loudest at the rails: a solo effect plays at its composed level
-      boost: 2              # volume 32: two rings + Jump peak at 122 of 127 (every block-aligned start)
+      peak_dbfs: 0          # the reference's loudest (Hit Boss) at the rails: a full FM channel plays at
+                            # -2.3 dBFS, the music's own scale (its median -2)
+      # The game's common effects (Aonic's to_use): the gain is theirs; a rarer, louder one is turned down
+      reference: [A0, A1, A3, A4, A6, AC, B5, C1, C6, CC, CD]
+      over: limit           # Bumper -7.5 dB, Collapse -4.6, six more under 2 dB
       dc_block: true
-      dither: off # shaped
+      dither: off
       paula: true
       trim_lead: true       # Remove silence / rests at the start of sounds like the 'spring'
       tail_db: -36          # Eliminate Quiet tails
 
-      # Sound effects with custom tail eliminiation
+      # Sound effects with custom tail elimination
       effects:
-        A3: {tail_db: -16}  # Effect $AC [Death]
+        A3: {tail_db: -16}  # Effect $A3 [Death]
         A6: {tail_db: -24}  # Effect $A6 [Spikes]
         AC: {tail_db: -20}  # Effect $AC [Boss Hit]
+        B5: {tail_db: -12}  # Effect $B5 [Ring] - Aggressive!
         B9: {tail_db: -16}  # Effect $B9 [Cliff Collapse]
         C1: {tail_db: -24}  # Effect $C1 [Break Item]
+        C6: {tail_db: -12}  # Effect $C6 [Ring Loss]
         CC: {tail_db: -28}  # Effect $CC [Spring]

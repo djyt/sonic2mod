@@ -141,7 +141,8 @@ python sfx/validate.py                       # tables, resampler, 8-bit chain, t
 
 # sfx.yaml's amiga variant: signed 8-bit mono .raw at 8287 Hz + manifest.yaml for Paula → output/sonic_1/sfx/amiga/
 python sonic2wav.py --all --variant amiga
-# mixer: the same with each effect's composed level baked in (output.boost: x k, played at 64/k) → output/sonic_1/sfx/mixer/
+# mixer: the same with each effect's composed level baked in, played at 64: the gain the common effects' (output.reference),
+# a rarer louder one turned down to fit (output.over: limit) → output/sonic_1/sfx/mixer/
 python sonic2wav.py --all --variant mixer
 python sonic2wav.py --all --config my_sfx.yaml --out output/tmp   # another settings file / folder
 

@@ -2,7 +2,8 @@
 
     SfxRender  (stereo float, the chip's rate)
       -> _Shaped    channels folded, DC removed, rate picked, resampled      (each effect)
-      -> level      one gain for the set, or each at full scale               (every effect's peak)
+      -> level      one gain for the set (its reference's loudest), or each   (every effect's peak)
+                    at full scale
       -> SfxExport  quantised to 8 / 16 bits, Paula's silent word appended    (each effect)
       -> write      .wav / .raw files; raw's manifest.yaml holds what a raw file cannot
 """
@@ -24,6 +25,7 @@ from .config import (
     FOLD_MEAN,
     FORMAT_RAW,
     LEVEL_GLOBAL,
+    OVER_LIMIT,
     RATE_AUTO,
     RATE_NATIVE,
     VOLUME_MAX,
@@ -73,10 +75,11 @@ class SfxExport:
     rate: int
     period: int | None
     note: str | None
-    volume: int                     # restores the composed balance: normalise's, or global's boost undone
+    volume: int                     # normalise: restores the composed balance; global: 64
     peak_dbfs: float                # the written peak against full scale
-    clipped: int                    # samples a boost pushed past the rails
+    clipped: int                    # samples the gain pushed past the rails
     repeat: tuple[int, int] | None  # paula: the silent word's (offset, length) in bytes
+    limited_db: float = 0.0         # over: limit: how far the effect was turned down to fit (<= 0)
 
     @property
     def name(self) -> str:
@@ -100,8 +103,16 @@ def export_all(renders: list[SfxRender], out: OutputSettings, *, taps: int, cloc
     """Every render as `out` writes it.  The level needs the whole set: `global` keeps the composed
     balance with one gain, `normalise` puts each effect at full scale and its volume restores it."""
     shaped = [_shape(r, out, taps, clock) for r in renders]
-    loudest = max((s.peak for s in shaped), default=0.0)
-    return [_quantise(s, out.for_effect(sound_id(s.render.name)), loudest) for s in shaped]
+    return [_quantise(s, out.for_effect(sound_id(s.render.name)), reference_peak(shaped, out))
+            for s in shaped]
+
+
+def reference_peak(shaped: list[_Shaped], out: OutputSettings) -> float:
+    """The peak `global` puts at peak_dbfs: the loudest of `reference`'s effects (the ones a game
+    plays most, so a rare loud one does not turn them down), or of the whole set when none of them
+    is rendered (one file asked for) or no reference is given."""
+    chosen = [s.peak for s in shaped if sound_id(s.render.name) in out.reference]
+    return max(chosen or [s.peak for s in shaped], default=0.0)
 
 
 def _shape(render: SfxRender, out: OutputSettings, taps: int, clock: int) -> _Shaped:
@@ -158,13 +169,19 @@ def _pick_rate(samples: list[float], rate: int, out: OutputSettings,
 
 
 def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
-    # global: the loudest effect at peak_dbfs, the rest below it as composed, x the bake (its peaks clip);
-    # played at the volume that undoes it.  normalise: each at the rails, its volume the composed level
-    # (Paula scales after its DAC)
+    # global: the reference's loudest at peak_dbfs, the rest as composed, played at volume 64 (a bake
+    # for a lower volume gains nothing: Paula scales the grain with the signal).  normalise: each at
+    # the rails, its volume the composed level (Paula scales after its DAC)
     full = _FULL_SCALE[out.bits]
+    limited_db = 0.0
     if out.level == LEVEL_GLOBAL:
-        gain = full * 10.0 ** (out.peak_dbfs / 20.0) / loudest * out.baked if loudest > 0.0 else 1.0
-        volume = out.volume
+        gain = full * 10.0 ** (out.peak_dbfs / 20.0) / loudest if loudest > 0.0 else 1.0
+        volume = VOLUME_MAX
+        if out.over == OVER_LIMIT and s.peak * gain > full:
+            # turned down to just fit: quieter than composed, never clipped (the tail cut is the
+            # effect's own peak's, so it falls where it did; the lead trim's step moves with the gain)
+            limited_db = gain_to_db(full / (s.peak * gain))
+            gain = full / s.peak
     else:
         gain = full / s.peak if s.peak > 0.0 else 1.0
         volume = max(1, min(VOLUME_MAX, round(VOLUME_MAX * s.peak / loudest))) if loudest > 0.0 else 1
@@ -182,7 +199,7 @@ def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
     written = s.peak * gain
     peak_dbfs = gain_to_db(min(written, full) / full) if written > 0.0 else -math.inf
     return SfxExport(s.render, pcm, len(channels), s.rate, s.period, s.note, volume, peak_dbfs, clipped,
-                     repeat)
+                     repeat, limited_db)
 
 
 def _trim(channels: list[list[float]], gain: float, peak: float, out: OutputSettings,
@@ -282,10 +299,11 @@ def _manifest_note(out: OutputSettings) -> str:
              "was rendered at (finetune 0). ")
     volume = ("'volume' restores the composed relative loudness after per-sample "
               "peak normalisation. " if out.level != LEVEL_GLOBAL else
-              f"The composed relative loudness is baked in (x{out.baked:.4g}): play each at "
-              f"'volume' {out.volume}. ")
+              f"The composed relative loudness is baked in: play each at 'volume' {VOLUME_MAX}. ")
     slots = ("'slots'/'mask': the SFX track slots the effect takes (PSG3 tone and noise one). "
              "'peak': the written peak in steps; 'clipped': samples past the rails. ")
+    if out.over == OVER_LIMIT:
+        slots += "'limited_db': how far an effect past the rails was turned down to fit. "
     repeat = ("'repeat_offset'/'repeat_length' point at a trailing silent word so "
               "a non-looping sample does not buzz after it finishes.")
     return ((pitch if out.paula else "") + volume + slots + (repeat if out.paula else "")).strip()
@@ -309,4 +327,6 @@ def _manifest_entry(e: SfxExport, out: OutputSettings) -> dict:
         'peak': e.peak,
         'clipped': e.clipped,
     }
+    if out.over == OVER_LIMIT:
+        entry['limited_db'] = round(e.limited_db, 1)
     return entry

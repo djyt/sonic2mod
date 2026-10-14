@@ -25,7 +25,7 @@ from core.ui import LABEL_W as _LABEL_W
 from core.ui import branding, cli_console, error_printer, row_printer
 from core.version import get_version as _get_version
 from sfx.batch import asm_sources, discover, render_all, rom_sources
-from sfx.config import DEFAULT_CONFIG, LEVEL_GLOBAL, RATE_AUTO, RATE_NATIVE, load_sfx_config
+from sfx.config import DEFAULT_CONFIG, LEVEL_GLOBAL, OVER_LIMIT, RATE_AUTO, RATE_NATIVE, load_sfx_config
 from sfx.export import export_all, write_exports
 from sfx.slots import channel_name
 
@@ -56,6 +56,9 @@ def _results_table(exports, paula: bool, volumes: bool):
     clips = any(e.clipped for e in exports)
     if clips:
         tbl.add_column("Clipped", justify="right")
+    limits = any(e.limited_db for e in exports)
+    if limits:
+        tbl.add_column("Limited", justify="right")
     for e in exports:
         note = [e.note] if paula else []
         volume = [str(e.volume)] if volumes else []
@@ -70,6 +73,7 @@ def _results_table(exports, paula: bool, volumes: bool):
             f"{e.peak_dbfs:+.1f} dB",
             f"{e.size / 1024:.1f}K",
             *([str(e.clipped or "")] if clips else []),
+            *([f"{e.limited_db:+.1f} dB" if e.limited_db else ""] if limits else []),
         )
     return tbl
 
@@ -86,8 +90,10 @@ def _render_label(cfg) -> tuple[str, str]:
     fold = f" ({out.mono_fold} fold)" if not out.stereo else ""
     what = f"{cfg.render.fps:g} Hz tick · {rate} · {out.bits}-bit {out.channels}{fold} {out.format}"
 
-    boost = f" × {out.baked:.4g}, volume {out.volume}" if out.boost != 1.0 else ""
-    level = f"one gain, peak {out.peak_dbfs:+.1f} dBFS{boost}" if out.level == LEVEL_GLOBAL else "per-sample normalise"
+    of = f" of {len(out.reference)} reference effects" if out.reference else ""
+    over = ", louder ones limited" if out.over == OVER_LIMIT else ""
+    level = (f"one gain, peak{of} {out.peak_dbfs:+.1f} dBFS{over}" if out.level == LEVEL_GLOBAL
+             else "per-sample normalise")
     how = [level]
     if out.dc_block:
         how.append("DC removed")

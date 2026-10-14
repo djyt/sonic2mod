@@ -6,6 +6,8 @@ Two files drive a conversion:
   channels and instruments;
 - **`settings.yaml`**: synthesis and sample settings shared by every song (§ 8).
 
+The sound effects (`sonic2wav.py`) read their own, `configs/sfx.yaml`: `docs/sfx_rendering.md`.
+
 This page lists every key: what to write, and in a line or two what it does.  The mechanics
 live in `docs/pipeline.md` (conversion), `docs/fm_synthesis.md` / `docs/psg_synthesis.md`
 (sample rendering) and `docs/smps_driver.md` (the hardware).

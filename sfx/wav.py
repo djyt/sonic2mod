@@ -1,31 +1,29 @@
-"""16-bit stereo WAV output via the standard library."""
+"""WAV output via the standard library."""
 
 from __future__ import annotations
 
+import sys
 import wave
 from array import array
 
-_INT16_MAX = 32767
-_INT16_MIN = -32768
+# 8-bit WAV is unsigned: silence at 128
+_UNSIGNED8_ZERO = 0x80
 
 
-def to_int16(left: list[float], right: list[float], scale: float = 1.0) -> array:
-    """Interleave and quantise two float channels to clamped 16-bit samples."""
-    out = array('h', bytes(4 * len(left)))
-    for i, (lv, rv) in enumerate(zip(left, right, strict=True)):
-        li = round(lv * scale)
-        ri = round(rv * scale)
-        out[2 * i] = _INT16_MAX if li > _INT16_MAX else (_INT16_MIN if li < _INT16_MIN else li)
-        out[2 * i + 1] = _INT16_MAX if ri > _INT16_MAX else (_INT16_MIN if ri < _INT16_MIN else ri)
-    return out
-
-
-def write_wav(path, left: list[float], right: list[float], rate: int, scale: float = 1.0) -> int:
-    """Write a 16-bit stereo WAV.  Returns the number of frames written."""
-    samples = to_int16(left, right, scale)
+def write_wav(path, pcm: array, channels: int, rate: int) -> None:
+    """Write signed interleaved PCM ('b' 8-bit, 'h' 16-bit) as a WAV file."""
+    unsigned = pcm.itemsize == 1
+    data = bytes((v + _UNSIGNED8_ZERO) & 0xFF for v in pcm) if unsigned else _little_endian(pcm).tobytes()
     with wave.open(str(path), 'wb') as w:
-        w.setnchannels(2)
-        w.setsampwidth(2)
+        w.setnchannels(channels)
+        w.setsampwidth(pcm.itemsize)
         w.setframerate(rate)
-        w.writeframes(samples.tobytes())
-    return len(left)
+        w.writeframes(data)
+
+
+def _little_endian(pcm: array) -> array:
+    if sys.byteorder == "little":
+        return pcm
+    swapped = array(pcm.typecode, pcm)
+    swapped.byteswap()
+    return swapped

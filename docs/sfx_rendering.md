@@ -11,7 +11,8 @@ grid destroys.  What the driver does is `docs/smps_driver.md`; this page is how 
 
 ```bash
 python sonic2wav.py --all                       # all 49 → output/sonic_1/sfx/
-python sonic2wav.py --all --variant amiga       # 8-bit raw + manifest.yaml → output/sonic_1/sfx8/
+python sonic2wav.py --all --variant amiga       # 8-bit raw + manifest.yaml → output/sonic_1/sfx/amiga/
+python sonic2wav.py --all --variant mixer       # the same, levels baked for a software mixer → sfx/mixer/
 python sonic2wav.py --rom input/roms/sonic_rev01.bin   # the same 49 read from the ROM
 python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sonic2wav.py --all --dry-run             # parse + render, report, write nothing
@@ -32,22 +33,47 @@ error.
 | `render.fps` | `60` | V-int rate, one SFX tick a frame: 60 NTSC, 50 PAL |
 | `render.tail_seconds` | `1.0` | Rendered after the last track stops |
 | `render.max_seconds` | `10.0` | Safety cap |
-| `render.psg_gain` | `1.0` | PSG against FM (§ Mix levels) |
+| `render.psg_gain` | `0.31` | PSG against FM (§ Mix levels) |
 | `render.psg_past_table` | `extend` | A PSG note past the table: `extend` or `clamp` (§ Known deviations) |
 | `output.directory` | `output/sonic_1/sfx` | `--out` overrides it |
 | `output.format` | `wav` | `wav`: RIFF (8-bit unsigned, as WAV stores it).  `raw`: headerless signed PCM, 16-bit big-endian (the 68000's order), and a `manifest.yaml` |
 | `output.bits` | `16` | `8` or `16`.  16 bits is rounded; 8 bits takes `dither` |
 | `output.rate` | `44100` | Hz; `native` (the YM2612's 53267 Hz, no resampling); `auto` (§ Rate selection; `paula` only) |
-| `output.channels` | `stereo` | `stereo` or `mono` (the mean: the ring pair's panning lost) |
+| `output.channels` | `stereo` | `stereo` or `mono` (the ring pair's panning lost) |
+| `output.mono_fold` | `mean` | Mono: a panned effect against a centred one.  `mean`: (L+R)/2, a one-side effect 6 dB under (the Mega Drive's mono A/V out).  `power`: the stereo power kept, 3 dB under (a stereo listener).  `loudest`: as loud as centred.  A gain per effect; Sonic 1's panned ones are the rings |
 | `output.level` | `global` | `global`: one gain for the set, the composed balance kept (`peak_dbfs` the loudest's peak).  `normalise`: each effect at full scale; the manifest's `volume` restores the balance |
 | `output.peak_dbfs` | `-0.3` | `global`: the loudest effect's peak |
+| `output.boost` | `1` | `global`: played at volume 64 / boost to the nearest whole one, baked × exactly 64 / that volume (1.45 → volume 44, × 1.4545).  Quiet effects gain log2(boost) bits; loud peaks clip, counted in the manifest's `clipped` |
 | `output.dc_block` | `false` | 30 Hz one-pole high-pass |
 | `output.dither` | `off` | 8-bit rounding: `shaped` (first order), `flat`, `off` (`core.audio.to_int8`, the converter's) |
 | `output.paula` | `false` | Rates on ProTracker's period grid, a silent repeat word appended; the manifest gains `period`, `note`, `finetune`, the repeat.  Needs `bits: 8`, `channels: mono` |
 | `output.max_rate` | `28604` | `auto`'s ceiling (period 124); 16574 for an A500 |
 
-The `amiga` variant: `raw`, 8-bit, 8287 Hz (C-2, period 428), mono, `normalise`, DC blocked,
-`shaped` dither, `paula` → `output/sonic_1/sfx8/`.
+Variants:
+
+- **`amiga`**: `raw`, 8-bit, 8287 Hz (C-2, period 428), mono, `normalise`, DC blocked, `shaped`
+  dither, `paula` → `output/sonic_1/sfx/amiga/`.  For playing one effect per Paula channel.
+- **`mixer`**: as `amiga` but `level: global`, `peak_dbfs: 0`, `mono_fold: power`, `boost: 2`
+  (volume 32), `dither: off`, and `format: wav` for listening (`raw` for Aonic) →
+  `output/sonic_1/sfx/mixer/`.  Dither at the rings' level (±46 steps) is heard as hiss: at 8287 Hz
+  the whole band is audible.  Volume 32 is the most two rings and Jump (one
+  channel, every pair of block-aligned start offsets) take without passing ±124: 122 at worst.
+  Each effect is stored at its composed level (the loudest at ±127), so voices sum in software and
+  play at volume 64 / boost.  Rounded once, dithered, at that level: re-scaling `amiga`'s samples
+  would add an undithered second rounding.
+
+### The manifest (`format: raw`)
+
+| Field | Meaning |
+|---|---|
+| `file`, `rate`, `length` | The file, its rate, its size in bytes |
+| `period`, `note`, `finetune` | `paula`: the ProTracker period playing `rate`, its note, 0 |
+| `volume` | `normalise`: the composed level (1-64).  `global`: 64 / boost |
+| `repeat_offset`, `repeat_length` | `paula`: the trailing silent word |
+| `channels` | The channels' types (`FM`, `PSG`) |
+| `slots`, `mask` | The SFX track slots it takes (FM3 FM4 FM5 PSG1 PSG2 PSG3; PSG3 tone and noise one), and as a 6-bit mask, bit 0 FM3 (`mask_bits` at the top).  An effect on a slot cuts the older one's track there (`sfx/slots.py`) |
+| `peak` | The written peak in steps (127 / 32767 full scale) |
+| `clipped` | Samples a boost pushed past the rails |
 
 ## Module map
 
@@ -63,6 +89,7 @@ The `amiga` variant: `raw`, 8-bit, 8287 Hz (C-2, period 428), mono, `normalise`,
 | `sfx/batch.py` | Discovery, naming, rendering at the chip's rate |
 | `sfx/export.py` | Renders → files: channels, DC, rate, level, 8 / 16-bit, `.wav` / `.raw`, the manifest |
 | `sfx/amiga.py` | Paula's side: period grid, FFT rate selection, the silent repeat word |
+| `sfx/slots.py` | The SFX track slots an effect takes, the manifest's `slots` / `mask` |
 | `sfx/wav.py` | WAV writer (stdlib `wave`), 8 or 16-bit |
 
 ## Things that are easy to get wrong
@@ -95,15 +122,25 @@ does `SetVoice`'s sum only and writes $B4 centred, so `sfx/chips.py` mirrors bot
 continuous timeline that pulls the FM out of step with the PSG.  `OPN2.begin_capture()` keeps them
 for the frame loop to prepend (off by default: the MOD path is unaffected).
 
-**One timeline.**  The SN76489's output rate is fixed at `SN76489_Init`, so it is built at the
-OPN2's native 53267 Hz and the mix is resampled once at the end.
+**One timeline.**  The SN76489's output rate is fixed at `SN76489_Init`, so it is built at
+`psg_synthesis.oversample` (8) × the OPN2's native 53267 Hz and its stream resampled down to the
+FM's once, at the end.  At 1× the core's anti-aliasing is a box average and a square wave's
+aliases fold back: Jump at 8287 Hz carried them at −24 dB of the signal (heard as crackle), −41
+dB at 8×.  An effect with no PSG track skips the chip.
 
 ## Mix levels
 
 One channel at full volume measures **YM2612 ±789** (the same for 1 and 4 carriers: the channel
 accumulator clamps), **SN76489 tone ±4096**, noise ±2048.  Each chip is divided by its own full
-scale, so `psg_gain: 1.0` makes a full-scale PSG channel match a full-scale FM one (eight SFX mix
-both chips).
+scale, then the PSG × `psg_gain` (eight SFX mix both chips).
+
+`psg_gain: 0.31` (−10.2 dB) is VGMPlay's balance, the reference the converter's volumes are measured
+against: one PSG tone at attenuation 0 against one FM carrier at TL 0, rendered by VGMPlay through
+the project's `VGMPlay.ini`, peaks 10.2 dB under with the Nuked core (12.0 dB with GPGX and GENS).
+The driver cannot say: its levels are attenuations within each chip, the mix is the board's.  At
+1.0, Sonic 1's Jump (PSG1 at attenuation 0) came out 10 dB louder against the Ring (FM5, carriers at
+TL 0, channel volume $05) than VGMPlay plays our own register writes for the two; there they are
+about equal, as on a Mega Drive's sound test (2026-10-14).
 
 With `level: global` gain is one factor across all 49 files (`peak_dbfs`), not per-file
 normalisation: the composed balance stays (the ring sits well below the death jingle).
@@ -111,7 +148,7 @@ normalisation: the composed balance stays (the ring sits well below the death ji
 ## 8-bit Amiga export (`--variant amiga`)
 
 ```bash
-python sonic2wav.py --all --variant amiga             # -> output/sonic_1/sfx8/ + manifest.yaml
+python sonic2wav.py --all --variant amiga             # -> output/sonic_1/sfx/amiga/ + manifest.yaml
 ```
 
 Per effect rates (`rate: auto`, `max_rate: 16574` for an A500, about half the size) are a variant

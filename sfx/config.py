@@ -17,7 +17,10 @@ from core.audio import DITHER_OFF
 from core.config import apply_variant, dither_mode, mode_word, read_yaml_file
 
 from .amiga import DEFAULT_MAX_RATE
-from .render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS
+from .render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS, PSG_GAIN
+
+# Paula's (and a MOD's) loudest volume
+VOLUME_MAX = 64
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "configs" / "sfx.yaml"
 DEFAULT_INPUT = "reference/smps_drivers/sonic_1/sfx"
@@ -28,6 +31,8 @@ BITS = (8, 16)
 RATE_NATIVE, RATE_AUTO = "native", "auto"
 STEREO, MONO = "stereo", "mono"
 CHANNEL_MODES = (STEREO, MONO)
+FOLD_MEAN, FOLD_POWER, FOLD_LOUDEST = "mean", "power", "loudest"
+MONO_FOLDS = (FOLD_MEAN, FOLD_POWER, FOLD_LOUDEST)
 LEVEL_GLOBAL, LEVEL_NORMALISE = "global", "normalise"
 LEVELS = (LEVEL_GLOBAL, LEVEL_NORMALISE)
 PSG_EXTEND, PSG_CLAMP = "extend", "clamp"
@@ -40,7 +45,7 @@ class RenderSettings:
     fps: float = 60.0                       # V-int rate: one SFX tick a frame
     tail_seconds: float = DEFAULT_TAIL_SECS  # rendered after the last track stops
     max_seconds: float = DEFAULT_MAX_SECS   # a safety cap
-    psg_gain: float = 1.0                   # PSG against FM, each at its own full scale
+    psg_gain: float = PSG_GAIN              # PSG against FM, each at its own full scale
     psg_past_table: str = PSG_EXTEND        # a PSG note past the driver's table
 
 
@@ -52,8 +57,10 @@ class OutputSettings:
     bits: int = 16
     rate: int | str = 44100                 # Hz, RATE_NATIVE or RATE_AUTO (paula only)
     channels: str = STEREO
+    mono_fold: str = FOLD_MEAN              # mono: a panned effect's level against a centred one
     level: str = LEVEL_GLOBAL               # one gain for the set, or each at full scale
     peak_dbfs: float = -0.3                 # global: the loudest effect's peak
+    boost: float = 1.0                      # global: the bake asked for (see volume)
     dc_block: bool = False
     dither: str = DITHER_OFF                # 8-bit rounding: core.audio.DITHER_MODES
     paula: bool = False                     # ProTracker period grid, silent repeat word
@@ -62,6 +69,17 @@ class OutputSettings:
     @property
     def stereo(self) -> bool:
         return self.channels == STEREO
+
+    @property
+    def volume(self) -> int:
+        """global: the Paula volume the samples play at, 64 / boost to the nearest whole one
+        (boost 1.45 -> 44)."""
+        return round(VOLUME_MAX / self.boost)
+
+    @property
+    def baked(self) -> float:
+        """global: the gain baked in, exactly what `volume` undoes (volume 44 -> 64 / 44 = 1.4545)."""
+        return VOLUME_MAX / self.volume
 
 
 @dataclass(frozen=True)
@@ -103,14 +121,17 @@ def _output(data: dict, where: str) -> OutputSettings:
         bits=_choice(data, "bits", d.bits, BITS, where),
         rate=_rate(data.get("rate", d.rate), where),
         channels=_word(data, "channels", d.channels, CHANNEL_MODES, where),
+        mono_fold=_word(data, "mono_fold", d.mono_fold, MONO_FOLDS, where),
         level=_word(data, "level", d.level, LEVELS, where),
         peak_dbfs=float(data.get("peak_dbfs", d.peak_dbfs)),
+        boost=_positive(data, "boost", d.boost, where),
         dc_block=_flag(data, "dc_block", d.dc_block, where),
         dither=dither_mode(data.get("dither", d.dither), where),
         paula=_flag(data, "paula", d.paula, where),
         max_rate=_positive(data, "max_rate", d.max_rate, where),
     )
     _check_paula(out, where)
+    _check_boost(out, where)
     return out
 
 
@@ -122,6 +143,16 @@ def _check_paula(out: OutputSettings, where: str) -> None:
         raise ValueError(f"{where}: paula needs rate in Hz or auto (native is past Paula's top period)")
     if not out.paula and out.rate == RATE_AUTO:
         raise ValueError(f"{where}: rate: auto picks ProTracker periods: it needs paula: true")
+
+
+def _check_boost(out: OutputSettings, where: str) -> None:
+    """A boost trades headroom for bits; the volume that undoes it is 1 to 64."""
+    if out.boost == 1.0:
+        return
+    if out.level != LEVEL_GLOBAL:
+        raise ValueError(f"{where}: boost needs level: global (normalise is at full scale already)")
+    if not 1 <= out.volume <= VOLUME_MAX or out.boost < 1.0:
+        raise ValueError(f"{where}: boost must be 1 to {VOLUME_MAX} (got {out.boost:g})")
 
 
 def _check_keys(data: dict, known: set[str], where: str) -> None:

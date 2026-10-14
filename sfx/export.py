@@ -19,19 +19,30 @@ from core.audio import dc_block, gain_to_db, resample, to_int8
 
 from .amiga import choose_rate, nearest_candidate, pad_for_paula
 from .batch import SfxRender
-from .config import FORMAT_RAW, LEVEL_GLOBAL, RATE_AUTO, RATE_NATIVE, OutputSettings
+from .config import (
+    FOLD_LOUDEST,
+    FOLD_MEAN,
+    FORMAT_RAW,
+    LEVEL_GLOBAL,
+    RATE_AUTO,
+    RATE_NATIVE,
+    VOLUME_MAX,
+    OutputSettings,
+)
+from .slots import SLOTS, slot_mask, slot_names
 from .wav import write_wav
 
 # A sample's full scale by bit depth: the gain that puts a peak of 1.0 at the rail
 _FULL_SCALE = {8: 127.0, 16: 32767.0}
 _INT16_MIN, _INT16_MAX = -32768, 32767
 
+# A mono fold's gain at most: an effect wholly on one side, raised to a centred one's level.  More
+# would be out-of-phase content cancelling in the fold
+_FOLD_GAIN_MAX = 2.0
+
 # The DC blocker's corner: a one-pole high-pass, not a mean subtraction, since many SFX open with a
 # rest a mean would push off zero
 _DC_BLOCK_HZ = 30.0
-
-# Paula's (and a MOD's) loudest volume
-VOLUME_MAX = 64
 
 MANIFEST = "manifest.yaml"
 
@@ -56,13 +67,19 @@ class SfxExport:
     rate: int
     period: int | None
     note: str | None
-    volume: int                     # restores the composed balance (normalise), else VOLUME_MAX
+    volume: int                     # restores the composed balance: normalise's, or global's boost undone
     peak_dbfs: float                # the written peak against full scale
+    clipped: int                    # samples a boost pushed past the rails
     repeat: tuple[int, int] | None  # paula: the silent word's (offset, length) in bytes
 
     @property
     def name(self) -> str:
         return self.render.name
+
+    @property
+    def peak(self) -> int:
+        """The written peak in steps (127 or 32767 full scale)."""
+        return max((abs(v) for v in self.pcm), default=0)
 
     @property
     def size(self) -> int:
@@ -84,8 +101,7 @@ def export_all(renders: list[SfxRender], out: OutputSettings, *, taps: int, cloc
 def _shape(render: SfxRender, out: OutputSettings, taps: int, clock: int) -> _Shaped:
     """Fold, DC-block, then one resampling stage straight from the chip rate (through 44.1 kHz
     first would add a second stage's error for nothing)."""
-    channels = [render.left, render.right] if out.stereo else \
-        [[(lv + rv) * 0.5 for lv, rv in zip(render.left, render.right, strict=True)]]
+    channels = [render.left, render.right] if out.stereo else [_fold(render, out.mono_fold)]
     if out.dc_block:
         channels = [dc_block(c, render.rate, _DC_BLOCK_HZ) for c in channels]
 
@@ -95,6 +111,28 @@ def _shape(render: SfxRender, out: OutputSettings, taps: int, clock: int) -> _Sh
 
     peak = max((abs(v) for c in channels for v in c), default=0.0)
     return _Shaped(render, channels, rate, period, note, peak)
+
+
+def _fold(render: SfxRender, fold: str) -> list[float]:
+    """Mono, (L + R) / 2, raised by `fold` for a panned effect (Sonic 1's: the rings, B5 right, CE left):
+
+        mean     no gain: one side's sound 6 dB under a centred one (the Mega Drive's mono A/V out)
+        power    the stereo power kept: 3 dB under (what a stereo listener hears)
+        loudest  the louder side's power: as loud as a centred one
+
+    A centred effect is the same in all three."""
+    mono = [(lv + rv) * 0.5 for lv, rv in zip(render.left, render.right, strict=True)]
+    if fold == FOLD_MEAN:
+        return mono
+
+    power_left = math.fsum(v * v for v in render.left)
+    power_right = math.fsum(v * v for v in render.right)
+    power_mono = math.fsum(v * v for v in mono)
+    if power_mono <= 0.0:
+        return mono
+    target = max(power_left, power_right) if fold == FOLD_LOUDEST else (power_left + power_right) / 2
+    gain = min(math.sqrt(target / power_mono), _FOLD_GAIN_MAX)
+    return [v * gain for v in mono]
 
 
 def _pick_rate(samples: list[float], rate: int, out: OutputSettings,
@@ -114,17 +152,19 @@ def _pick_rate(samples: list[float], rate: int, out: OutputSettings,
 
 
 def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
-    # global: the loudest effect at peak_dbfs, the rest below it as composed; played at full volume.
-    # normalise: each at the rails, its volume the composed level (Paula scales after its DAC)
+    # global: the loudest effect at peak_dbfs, the rest below it as composed, x the bake (its peaks clip);
+    # played at the volume that undoes it.  normalise: each at the rails, its volume the composed level
+    # (Paula scales after its DAC)
     full = _FULL_SCALE[out.bits]
     if out.level == LEVEL_GLOBAL:
-        gain = full * 10.0 ** (out.peak_dbfs / 20.0) / loudest if loudest > 0.0 else 1.0
-        volume = VOLUME_MAX
+        gain = full * 10.0 ** (out.peak_dbfs / 20.0) / loudest * out.baked if loudest > 0.0 else 1.0
+        volume = out.volume
     else:
         gain = full / s.peak if s.peak > 0.0 else 1.0
         volume = max(1, min(VOLUME_MAX, round(VOLUME_MAX * s.peak / loudest))) if loudest > 0.0 else 1
 
     pcm = _to_pcm8(s.channels, gain, out.dither) if out.bits == 8 else _to_pcm16(s.channels, gain)
+    clipped = sum(1 for c in s.channels for v in c if abs(v * gain) >= full + 0.5)
 
     # Paula loops the repeat region once a sample ends: a trailing silent word stops a one-shot buzzing
     repeat = None
@@ -134,7 +174,8 @@ def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
 
     written = s.peak * gain
     peak_dbfs = gain_to_db(min(written, full) / full) if written > 0.0 else -math.inf
-    return SfxExport(s.render, pcm, len(s.channels), s.rate, s.period, s.note, volume, peak_dbfs, repeat)
+    return SfxExport(s.render, pcm, len(s.channels), s.rate, s.period, s.note, volume, peak_dbfs, clipped,
+                     repeat)
 
 
 def _to_pcm8(channels: list[list[float]], gain: float, dither: str) -> array:
@@ -191,6 +232,7 @@ def _write_manifest(exports: list[SfxExport], out: OutputSettings, directory: st
         'format': _format_line(out),
         'clock': clock,
         'note': _manifest_note(out),
+        'mask_bits': ' '.join(SLOTS) + ' (bit 0 first)',
         'samples': {e.name: _manifest_entry(e, out) for e in exports},
     }
     path = os.path.join(directory, MANIFEST)
@@ -212,10 +254,13 @@ def _manifest_note(out: OutputSettings) -> str:
              "was rendered at (finetune 0). ")
     volume = ("'volume' restores the composed relative loudness after per-sample "
               "peak normalisation. " if out.level != LEVEL_GLOBAL else
-              "The composed relative loudness is baked in: play each at 'volume' 64. ")
+              f"The composed relative loudness is baked in (x{out.baked:.4g}): play each at "
+              f"'volume' {out.volume}. ")
+    slots = ("'slots'/'mask': the SFX track slots the effect takes (PSG3 tone and noise one). "
+             "'peak': the written peak in steps; 'clipped': samples past the rails. ")
     repeat = ("'repeat_offset'/'repeat_length' point at a trailing silent word so "
               "a non-looping sample does not buzz after it finishes.")
-    return ((pitch if out.paula else "") + volume + (repeat if out.paula else "")).strip()
+    return ((pitch if out.paula else "") + volume + slots + (repeat if out.paula else "")).strip()
 
 
 def _manifest_entry(e: SfxExport, out: OutputSettings) -> dict:
@@ -228,5 +273,12 @@ def _manifest_entry(e: SfxExport, out: OutputSettings) -> dict:
     entry['length'] = e.size
     if e.repeat:
         entry |= {'repeat_offset': e.repeat[0], 'repeat_length': e.repeat[1]}
-    entry['channels'] = ' '.join(t for t, _ in e.render.channels)
+    hws = [hw for _, hw in e.render.channels]
+    entry |= {
+        'channels': ' '.join(t for t, _ in e.render.channels),
+        'slots': ' '.join(slot_names(hws)),
+        'mask': slot_mask(hws),
+        'peak': e.peak,
+        'clipped': e.clipped,
+    }
     return entry

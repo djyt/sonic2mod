@@ -8,6 +8,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from core.audio import DEFAULT_TAPS
 from core.chips import MD_FM_CLOCK, MD_PSG_CLOCK
 from core.chips.sn76489 import SN76489
 from core.chips.ym2612 import OPN2, output_rate
@@ -16,7 +17,7 @@ from core.drivers.reference import SONIC1_RULES
 from core.rom import RomImage
 from core.smps import SmpsParser, SmpsSong
 
-from .render import render_sfx
+from .render import PSG_GAIN, render_sfx
 
 _NAME_RE = re.compile(r'^Snd([0-9A-Fa-f]{2})\s*(?:-\s*(.*))?$')
 
@@ -106,7 +107,8 @@ def output_name(path: str) -> str:
 
 
 def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
-               psg_gain=1.0, psg_oob="extend", native_rate: int = OPN2.NATIVE_RATE) -> SfxRender:
+               psg_gain=PSG_GAIN, psg_oob="extend", native_rate: int = OPN2.NATIVE_RATE,
+               psg_oversample: int = 1, taps: int = DEFAULT_TAPS) -> SfxRender:
     """Read and render a single SFX."""
     song = source.read()
     warnings: list[str] = []
@@ -117,7 +119,8 @@ def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs
         raise ValueError(f"{os.path.basename(source.label)}: no channels found")
 
     result = render_sfx(song, opn2, sn, fps=fps, tail_secs=tail_secs,
-                        max_secs=max_secs, psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate)
+                        max_secs=max_secs, psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate,
+                        psg_oversample=psg_oversample, taps=taps)
     warnings.extend(result.warnings)
     if result.truncated:
         warnings.append(f"hit the {max_secs:g}s cap — output truncated")
@@ -135,13 +138,15 @@ def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs
     )
 
 
-def render_all(sources, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
-               psg_oob="extend", fm_clock=MD_FM_CLOCK, psg_clock=MD_PSG_CLOCK, progress=None) -> list[SfxRender]:
+def render_all(sources, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=PSG_GAIN,
+               psg_oob="extend", fm_clock=MD_FM_CLOCK, psg_clock=MD_PSG_CLOCK,
+               psg_oversample: int = 1, taps: int = DEFAULT_TAPS, progress=None) -> list[SfxRender]:
     """Render every source with a single shared pair of chip instances, clocked at `fm_clock` /
-    `psg_clock` (settings.yaml fm_synthesis / psg_synthesis clock_rate)."""
+    `psg_clock` (settings.yaml fm_synthesis / psg_synthesis clock_rate), the PSG at
+    `psg_oversample` x the FM's rate (psg_synthesis.oversample)."""
     native_rate = output_rate(fm_clock)
     opn2 = OPN2(mode="ym2612")
-    sn = SN76489(clock_rate=psg_clock, sample_rate=native_rate)
+    sn = SN76489(clock_rate=psg_clock, sample_rate=native_rate * psg_oversample)
     try:
         renders = []
         for source in sources:
@@ -150,6 +155,7 @@ def render_all(sources, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=1.0,
             renders.append(render_one(
                 source, opn2, sn, fps=fps, tail_secs=tail_secs, max_secs=max_secs,
                 psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate,
+                psg_oversample=psg_oversample, taps=taps,
             ))
         return renders
     finally:

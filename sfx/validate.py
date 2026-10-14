@@ -174,6 +174,40 @@ def check_amiga() -> None:
           length == 2 and padded[offset:offset + 2] == b'\x00\x00')
 
 
+def check_level() -> None:
+    print("\nOne gain: reference and over")
+    from dataclasses import replace
+
+    from core.audio import DEFAULT_TAPS
+    from core.mod import PAL_AMIGA_CLOCK
+    from sfx.batch import SfxRender
+    from sfx.config import LEVEL_GLOBAL, OVER_CLIP, OVER_LIMIT, OutputSettings
+    from sfx.export import export_all
+
+    def tone(name: str, amp: float) -> SfxRender:
+        wave = [amp * math.sin(2 * math.pi * 440 * i / NATIVE_RATE) for i in range(4000)]
+        return SfxRender(name, name, wave, wave, NATIVE_RATE, 0, [], [], False)
+
+    # A common quiet one, the common loudest (the reference), and a rare one three times louder
+    renders = [tone("A0_Quiet", 0.4), tone("AC_Common", 1.0), tone("B4_Rare", 3.0)]
+    out = OutputSettings(bits=8, rate="native", channels="mono", level=LEVEL_GLOBAL, peak_dbfs=0.0,
+                         reference=(0xAC,), over=OVER_LIMIT)
+    quiet, common, rare = export_all(renders, out, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)
+    check("the reference's loudest reaches the rails", common.peak == 127, f"peak {common.peak}")
+    check("the rest keep the balance against it", abs(quiet.peak - 0.4 * 127) <= 1, f"peak {quiet.peak}")
+    check("limit fits a louder effect to the rails, unclipped",
+          rare.peak == 127 and rare.clipped == 0 and abs(rare.limited_db + 9.54) < 0.05,
+          f"peak {rare.peak}, {rare.limited_db:+.2f} dB")
+    check("limit leaves an effect that fits alone", quiet.limited_db == 0.0 and common.limited_db == 0.0)
+
+    clipped = export_all(renders, replace(out, over=OVER_CLIP), taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[2]
+    check("clip keeps the gain and clips", clipped.clipped > 0 and clipped.limited_db == 0.0,
+          f"{clipped.clipped} clipped")
+
+    alone = export_all(renders[:1], out, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[0]
+    check("no reference effect rendered: the set's own loudest", alone.peak == 127, f"peak {alone.peak}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate the offline SFX driver")
     parser.add_argument('--sfx-dir', default=str(_HERE.parent / "reference" / "smps_drivers" / "sonic_1" / "sfx"))
@@ -182,6 +216,7 @@ def main() -> int:
     check_tables()
     check_resampler()
     check_amiga()
+    check_level()
 
     sfx_dir = Path(args.sfx_dir)
     if sfx_dir.is_dir():

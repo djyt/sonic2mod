@@ -35,6 +35,8 @@ FOLD_MEAN, FOLD_POWER, FOLD_LOUDEST = "mean", "power", "loudest"
 MONO_FOLDS = (FOLD_MEAN, FOLD_POWER, FOLD_LOUDEST)
 LEVEL_GLOBAL, LEVEL_NORMALISE = "global", "normalise"
 LEVELS = (LEVEL_GLOBAL, LEVEL_NORMALISE)
+OVER_CLIP, OVER_LIMIT = "clip", "limit"
+OVERS = (OVER_CLIP, OVER_LIMIT)
 PSG_EXTEND, PSG_CLAMP = "extend", "clamp"
 TAIL_OFF = "off"
 
@@ -64,7 +66,9 @@ class OutputSettings:
     mono_fold: str = FOLD_MEAN              # mono: a panned effect's level against a centred one
     level: str = LEVEL_GLOBAL               # one gain for the set, or each at full scale
     peak_dbfs: float = -0.3                 # global: the loudest effect's peak
-    boost: float = 1.0                      # global: the bake asked for (see volume)
+    reference: tuple[int, ...] = ()         # global: sound ids whose loudest sets the gain; () every one
+    over: str = OVER_CLIP                   # global: an effect the gain puts past the rails, clipped or
+                                            # turned down to fit
     dc_block: bool = False
     dither: str = DITHER_OFF                # 8-bit rounding: core.audio.DITHER_MODES
     paula: bool = False                     # ProTracker period grid, silent repeat word
@@ -81,17 +85,6 @@ class OutputSettings:
         """These settings as one effect has them: its `effects:` entry laid over them."""
         own = self.effects.get(sound_id) if sound_id is not None else None
         return replace(self, **own) if own else self
-
-    @property
-    def volume(self) -> int:
-        """global: the Paula volume the samples play at, 64 / boost to the nearest whole one
-        (boost 1.45 -> 44)."""
-        return round(VOLUME_MAX / self.boost)
-
-    @property
-    def baked(self) -> float:
-        """global: the gain baked in, exactly what `volume` undoes (volume 44 -> 64 / 44 = 1.4545)."""
-        return VOLUME_MAX / self.volume
 
 
 @dataclass(frozen=True)
@@ -136,7 +129,8 @@ def _output(data: dict, where: str) -> OutputSettings:
         mono_fold=_word(data, "mono_fold", d.mono_fold, MONO_FOLDS, where),
         level=_word(data, "level", d.level, LEVELS, where),
         peak_dbfs=float(data.get("peak_dbfs", d.peak_dbfs)),
-        boost=_positive(data, "boost", d.boost, where),
+        reference=_sound_ids(data.get("reference", d.reference), f"{where}: reference"),
+        over=_word(data, "over", d.over, OVERS, where),
         dc_block=_flag(data, "dc_block", d.dc_block, where),
         dither=dither_mode(data.get("dither", d.dither), where),
         paula=_flag(data, "paula", d.paula, where),
@@ -146,7 +140,7 @@ def _output(data: dict, where: str) -> OutputSettings:
         effects=_effects(data.get("effects") or {}, f"{where}: effects"),
     )
     _check_paula(out, where)
-    _check_boost(out, where)
+    _check_global(out, where)
     return out
 
 
@@ -160,14 +154,17 @@ def _check_paula(out: OutputSettings, where: str) -> None:
         raise ValueError(f"{where}: rate: auto picks ProTracker periods: it needs paula: true")
 
 
-def _check_boost(out: OutputSettings, where: str) -> None:
-    """A boost trades headroom for bits; the volume that undoes it is 1 to 64."""
-    if out.boost == 1.0:
-        return
-    if out.level != LEVEL_GLOBAL:
-        raise ValueError(f"{where}: boost needs level: global (normalise is at full scale already)")
-    if not 1 <= out.volume <= VOLUME_MAX or out.boost < 1.0:
-        raise ValueError(f"{where}: boost must be 1 to {VOLUME_MAX} (got {out.boost:g})")
+def _check_global(out: OutputSettings, where: str) -> None:
+    """reference and over pick and keep one gain for the set: normalise has none."""
+    if out.level != LEVEL_GLOBAL and (out.reference or out.over != OVER_CLIP):
+        raise ValueError(f"{where}: reference and over need level: global")
+
+
+def _sound_ids(value, where: str) -> tuple[int, ...]:
+    """A list of sound ids ($CC, 0xCC or CC)."""
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{where}: must be a list of sound ids ([A0, B5]) (got {value!r})")
+    return tuple(parse_number(v, where, base=16) for v in value)
 
 
 def _tail_db(value, where: str) -> float | None:

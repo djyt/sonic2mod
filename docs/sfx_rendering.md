@@ -42,8 +42,9 @@ error.
 | `output.channels` | `stereo` | `stereo` or `mono` (the ring pair's panning lost) |
 | `output.mono_fold` | `mean` | Mono: a panned effect against a centred one.  `mean`: (L+R)/2, a one-side effect 6 dB under (the Mega Drive's mono A/V out).  `power`: the stereo power kept, 3 dB under (a stereo listener).  `loudest`: as loud as centred.  A gain per effect; Sonic 1's panned ones are the rings |
 | `output.level` | `global` | `global`: one gain for the set, the composed balance kept (`peak_dbfs` the loudest's peak).  `normalise`: each effect at full scale; the manifest's `volume` restores the balance |
-| `output.peak_dbfs` | `-0.3` | `global`: the loudest effect's peak |
-| `output.boost` | `1` | `global`: played at volume 64 / boost to the nearest whole one, baked × exactly 64 / that volume (1.45 → volume 44, × 1.4545).  Quiet effects gain log2(boost) bits; loud peaks clip, counted in the manifest's `clipped` |
+| `output.peak_dbfs` | `-0.3` | `global`: the loudest effect's peak (of `reference`'s, when given) |
+| `output.reference` | `[]` | `global`: the sound ids whose loudest sets the gain (`[A0, B5]`), so a rare loud effect does not turn the common ones down.  `[]`, or none of them rendered (one file asked for): every effect |
+| `output.over` | `clip` | `global`: an effect the gain puts past the rails.  `clip`: clipped, counted in `clipped`.  `limit`: turned down to just fit, quieter than composed (`limited_db`) |
 | `output.dc_block` | `false` | 30 Hz one-pole high-pass |
 | `output.dither` | `off` | 8-bit rounding: `shaped` (first order), `flat`, `off` (`core.audio.to_int8`, the converter's) |
 | `output.paula` | `false` | Rates on ProTracker's period grid, a silent repeat word appended; the manifest gains `period`, `note`, `finetune`, the repeat.  Needs `bits: 8`, `channels: mono` |
@@ -56,14 +57,23 @@ Variants:
 
 - **`amiga`**: `raw`, 8-bit, 8287 Hz (C-2, period 428), mono, `normalise`, DC blocked, `shaped`
   dither, `paula`, `trim_lead` → `output/sonic_1/sfx/amiga/`.  For playing one effect per Paula channel.
-- **`mixer`**: as `amiga` but `level: global`, `peak_dbfs: 0`, `mono_fold: power`, `boost: 2`
-  (volume 32), `dither: off`, `trim_lead`, `tail_db: -36` (a few effects shorter, its `effects:`) →
-  `output/sonic_1/sfx/mixer/`.  Dither at the rings' level (±46 steps) is heard as hiss: at 8287 Hz
-  the whole band is audible.  Volume 32 is the most two rings and Jump (one
-  channel, every pair of block-aligned start offsets) take without passing ±124: 122 at worst.
-  Each effect is stored at its composed level (the loudest at ±127), so voices sum in software and
-  play at volume 64 / boost.  Rounded once, dithered, at that level: re-scaling `amiga`'s samples
-  would add an undithered second rounding.
+- **`mixer`**: as `amiga` but `wav`, `level: global`, `peak_dbfs: 0`, `mono_fold: power`, `dither: off`,
+  `trim_lead`, `tail_db: -36` (a few effects shorter, its `effects:`) → `output/sonic_1/sfx/mixer/`,
+  played at volume 64.  Dither at the rings' level is heard as hiss: at 8287 Hz the whole band is
+  audible.  Each effect is stored at its composed level, so voices sum in software at one volume.
+  Rounded once at that level: re-scaling `amiga`'s samples would add a second rounding.
+  - **The gain is the common effects'**: `reference` lists the 11 Aonic plays (Jump, Lamppost,
+    Death, Skid, Hit Spikes, Hit Boss, Ring, Break Item, Ring Loss, Spring, Switch), their loudest
+    (Hit Boss, 1.31 full FM channels) at the rails.  A full FM channel then plays at −2.3 dBFS, the
+    music's own scale: in the reference builds of Title, GHZ, Marble, Spring Yard, Star Light and
+    Robotnik a full channel's note plays at −3 to +1 dBFS (sample peak × volume / 64, rendered at its
+    TL), median −2, and GHZ's DAC drums at 0.  So the Mega Drive's music / SFX balance carries over.
+    Set by the whole set's loudest instead (Bumper, three FM channels, 3.1) it sat 7.8 dB under.
+  - **`over: limit`** turns the eight rarer effects past the rails down to fit: Bumper −7.5 dB,
+    Collapse −4.6, Get Continue, Wall Smash, Drown Death −1.5, Rumbling, Fireball, Flamethrower −0.2.
+    The tail cut is each effect's own peak's, so it falls where it did; the lead trim's first
+    audible step moves with the gain (a sample or two).
+  - Voices near the rails overflow an 8-bit sum when two overlap: the mixer should saturate.
 
 ### The manifest (`format: raw`)
 
@@ -71,12 +81,13 @@ Variants:
 |---|---|
 | `file`, `rate`, `length` | The file, its rate, its size in bytes |
 | `period`, `note`, `finetune` | `paula`: the ProTracker period playing `rate`, its note, 0 |
-| `volume` | `normalise`: the composed level (1-64).  `global`: 64 / boost |
+| `volume` | `normalise`: the composed level (1-64).  `global`: 64 |
 | `repeat_offset`, `repeat_length` | `paula`: the trailing silent word |
 | `channels` | The channels' types (`FM`, `PSG`) |
 | `slots`, `mask` | The SFX track slots it takes (FM3 FM4 FM5 PSG1 PSG2 PSG3; PSG3 tone and noise one), and as a 6-bit mask, bit 0 FM3 (`mask_bits` at the top).  An effect on a slot cuts the older one's track there (`sfx/slots.py`) |
 | `peak` | The written peak in steps (127 / 32767 full scale) |
-| `clipped` | Samples a boost pushed past the rails |
+| `clipped` | Samples the gain pushed past the rails (`over: clip`) |
+| `limited_db` | `over: limit`: how far the effect was turned down to fit (0 when it fits) |
 
 ## Module map
 
@@ -146,7 +157,12 @@ TL 0, channel volume $05) than VGMPlay plays our own register writes for the two
 about equal, as on a Mega Drive's sound test (2026-10-14).
 
 With `level: global` gain is one factor across all 49 files (`peak_dbfs`), not per-file
-normalisation: the composed balance stays (the ring sits well below the death jingle).
+normalisation: the composed balance stays (the ring sits well below the death jingle).  `reference`
+picks which effects' loudest sets it; `over: limit` turns down only the ones past the rails.
+
+`psg_gain` holds for SFX played beside the converted music: the music's PSG samples are normalised,
+but their volumes were measured against VGMPlay, so they pay the same balance (GHZ: a full PSG tone
+about 11.5 dB under a full FM channel).
 
 ## 8-bit Amiga export (`--variant amiga`)
 

@@ -1,7 +1,8 @@
 # SFX → WAV rendering (`sonic2wav`)
 
-Renders the 49 Sonic 1 sound effects in `reference/smps_drivers/sonic_1/sfx/*.asm` (or a ROM's) to
-16-bit stereo WAV.
+Renders the 49 Sonic 1 sound effects in `reference/smps_drivers/sonic_1/sfx/*.asm` (or a ROM's) as
+`configs/sfx.yaml` says: WAV or raw, 8 or 16 bits, its rate and folder.  Shipped: 16-bit stereo WAV;
+its `amiga` variant, Paula's 8-bit raw samples.
 
 Unlike the MOD path, which flattens events onto a tracker row grid, this runs a **tick-accurate
 software copy of the Sonic 1 sound driver** against the YM2612 (Nuked-OPN2) and SN76489
@@ -10,11 +11,43 @@ grid destroys.  What the driver does is `docs/smps_driver.md`; this page is how 
 
 ```bash
 python sonic2wav.py --all                       # all 49 → output/sonic_1/sfx/
+python sonic2wav.py --all --variant amiga       # 8-bit raw + manifest.yaml → output/sonic_1/sfx8/
 python sonic2wav.py --rom input/roms/sonic_rev01.bin   # the same 49 read from the ROM
 python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sonic2wav.py --all --dry-run             # parse + render, report, write nothing
+python sonic2wav.py --all --config my_sfx.yaml --out output/tmp   # another settings file, folder
 python sfx/validate.py                          # self-check
 ```
+
+## `configs/sfx.yaml`
+
+Every key the SFX path reads; the code's defaults are the shipped base values.  The chip clocks,
+`amiga_clock` and `samples.resample_taps` are the converter's, from `settings.yaml`.  A
+`variants:` block lays its keys over the ones beside it (`--variant NAME`); an unknown key is an
+error.
+
+| Key | Shipped | Meaning |
+|---|---|---|
+| `input` | `reference/smps_drivers/sonic_1/sfx` | The `SndXX` .asm folder `--all` renders |
+| `render.fps` | `60` | V-int rate, one SFX tick a frame: 60 NTSC, 50 PAL |
+| `render.tail_seconds` | `1.0` | Rendered after the last track stops |
+| `render.max_seconds` | `10.0` | Safety cap |
+| `render.psg_gain` | `1.0` | PSG against FM (§ Mix levels) |
+| `render.psg_past_table` | `extend` | A PSG note past the table: `extend` or `clamp` (§ Known deviations) |
+| `output.directory` | `output/sonic_1/sfx` | `--out` overrides it |
+| `output.format` | `wav` | `wav`: RIFF (8-bit unsigned, as WAV stores it).  `raw`: headerless signed PCM, 16-bit big-endian (the 68000's order), and a `manifest.yaml` |
+| `output.bits` | `16` | `8` or `16`.  16 bits is rounded; 8 bits takes `dither` |
+| `output.rate` | `44100` | Hz; `native` (the YM2612's 53267 Hz, no resampling); `auto` (§ Rate selection; `paula` only) |
+| `output.channels` | `stereo` | `stereo` or `mono` (the mean: the ring pair's panning lost) |
+| `output.level` | `global` | `global`: one gain for the set, the composed balance kept (`peak_dbfs` the loudest's peak).  `normalise`: each effect at full scale; the manifest's `volume` restores the balance |
+| `output.peak_dbfs` | `-0.3` | `global`: the loudest effect's peak |
+| `output.dc_block` | `false` | 30 Hz one-pole high-pass |
+| `output.dither` | `off` | 8-bit rounding: `shaped` (first order), `flat`, `off` (`core.audio.to_int8`, the converter's) |
+| `output.paula` | `false` | Rates on ProTracker's period grid, a silent repeat word appended; the manifest gains `period`, `note`, `finetune`, the repeat.  Needs `bits: 8`, `channels: mono` |
+| `output.max_rate` | `28604` | `auto`'s ceiling (period 124); 16574 for an A500 |
+
+The `amiga` variant: `raw`, 8-bit, 8287 Hz (C-2, period 428), mono, `normalise`, DC blocked,
+`shaped` dither, `paula` → `output/sonic_1/sfx8/`.
 
 ## Module map
 
@@ -26,9 +59,11 @@ python sfx/validate.py                          # self-check
 | `sfx/driver.py` | `SfxDriver` — the per-frame state machine |
 | `sfx/render.py` | Frame loop, FM + PSG mix at 53267 Hz, tail detection |
 | `sfx/resample.py` | Re-exports `core/audio/resample.py` (polyphase windowed-sinc) |
-| `sfx/wav.py` | 16-bit stereo WAV writer (stdlib `wave`) |
-| `sfx/amiga.py` | 8-bit Paula export — period grid, DC blocker, FFT rate selection, dither |
-| `sfx/batch.py` | Discovery, naming, global normalisation, 8-bit export |
+| `sfx/config.py` | `configs/sfx.yaml` → `SfxConfig` (`RenderSettings`, `OutputSettings`) |
+| `sfx/batch.py` | Discovery, naming, rendering at the chip's rate |
+| `sfx/export.py` | Renders → files: channels, DC, rate, level, 8 / 16-bit, `.wav` / `.raw`, the manifest |
+| `sfx/amiga.py` | Paula's side: period grid, FFT rate selection, the silent repeat word |
+| `sfx/wav.py` | WAV writer (stdlib `wave`), 8 or 16-bit |
 
 ## Things that are easy to get wrong
 
@@ -67,19 +102,20 @@ OPN2's native 53267 Hz and the mix is resampled once at the end.
 
 One channel at full volume measures **YM2612 ±789** (the same for 1 and 4 carriers: the channel
 accumulator clamps), **SN76489 tone ±4096**, noise ±2048.  Each chip is divided by its own full
-scale, so `--psg-gain 1.0` makes a full-scale PSG channel match a full-scale FM one (eight SFX mix
+scale, so `psg_gain: 1.0` makes a full-scale PSG channel match a full-scale FM one (eight SFX mix
 both chips).
 
-Gain is one **global** factor across all 49 files (`--peak-dbfs`), not per-file normalisation: the
-composed balance stays (the ring sits well below the death jingle).
+With `level: global` gain is one factor across all 49 files (`peak_dbfs`), not per-file
+normalisation: the composed balance stays (the ring sits well below the death jingle).
 
-## 8-bit Amiga export (`--8bit`)
+## 8-bit Amiga export (`--variant amiga`)
 
 ```bash
-python sonic2wav.py --all --8bit                      # -> output/sonic_1/sfx8/ + manifest.yaml
-python sonic2wav.py --all --8bit --max-rate 16574     # A500 target, about half the size
-python sonic2wav.py --all --8bit --flat-rate 8287     # one rate for everything
+python sonic2wav.py --all --variant amiga             # -> output/sonic_1/sfx8/ + manifest.yaml
 ```
+
+Per effect rates (`rate: auto`, `max_rate: 16574` for an A500, about half the size) are a variant
+of their own, or a copy of `sfx.yaml` given with `--config`.
 
 Headerless **signed 8-bit mono** `.raw` files and a `manifest.yaml` with what a raw file cannot
 hold: rate, the note to trigger it at, the MOD volume, the repeat points.
@@ -93,9 +129,9 @@ Eight bits wants nearly the opposite of the WAV path:
   wastes headroom and clicks on trigger.  A one-pole 30 Hz blocker, not mean subtraction: many SFX
   open with a rest, which a mean would push off zero.
 - **Volumes measured after DC removal and resampling**, on the audio that plays.
-- **Shaped TPDF dither** (`--shape 1`, first order, the default): the long `smpsAlterVol` ramps
-  turn granular when truncated.  `--shape 2` helps at 28 kHz and hurts at 8 kHz, where the whole
-  band is audible.  The RNG is seeded: runs are byte-identical.
+- **Shaped TPDF dither** (`dither: shaped`, first order): the long `smpsAlterVol` ramps turn
+  granular when truncated.  The converter's quantiser (`core.audio.to_int8`); its RNG is seeded
+  from the length: runs are byte-identical.
 - **One resampling stage**, chip rate straight to the target.
 
 ### Rate selection
@@ -107,7 +143,7 @@ square waves, LFSR noise, bright FM — want that ceiling.  Filter quality there
 than rate, hence the sharp polyphase sinc.
 
 The target machine matters more than the material: an A500's fixed ~4.4 kHz filter makes rates
-above ~11 kHz largely academic (`--max-rate 16574`); an A1200 hears them, and also hears Paula's
+above ~11 kHz largely academic (`max_rate: 16574`); an A1200 hears them, and also hears Paula's
 zero-order-hold imaging, so low rates sound grittier there.
 
 ### MOD mechanics
@@ -127,7 +163,7 @@ No tail trimming beyond the WAV path's: 44 of the 45 SFX voices release every op
    garbage pointer.  sonic2wav does the `FixBugs` version: those ramps are cleaner than hardware.
 2. **PSG table overrun is extrapolated.**  SndB6 Spikes Move (`nG6`, index 79) and the unused SndA2
    (`nCs6`, index 73) read past the 70-entry table into code; the twelve-tone sequence is continued
-   from the last musical entry instead.  `--strict` clamps to the table's top.  Index 69 (`nMaxPSG`)
+   from the last musical entry instead.  `psg_past_table: clamp` clamps to the table's top.  Index 69 (`nMaxPSG`)
    keeps its divider 1.
 3. **FM table overrun caps the octave.**  SndA8 SS Goal reaches index 96 — one past the table —
    after 37 `smpsAlterPitch $02` steps; the block field saturates at 7 anyway, so whole octaves are

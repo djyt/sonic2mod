@@ -1,0 +1,52 @@
+# -------------------------------------------------------------------------------------------------
+# Sonic2WAV SFX Settings (sonic2wav.py)
+#
+# - The chip clocks, the Amiga clock and the resampler's taps are the converter's: settings.yaml.
+# - A variant lays its keys over the ones beside it:   python sonic2wav.py --all --variant amiga
+# -------------------------------------------------------------------------------------------------
+
+input: reference/smps_drivers/sonic_1/sfx   # The SndXX .asm files --all renders
+
+render:
+  fps: 60                   # V-int rate, one SFX tick a frame: 60 NTSC, 50 PAL
+  tail_seconds: 1.0         # Rendered after the last track stops, for the release
+  max_seconds: 10.0         # Safety cap (the longest, SndBF Get Continue, plays 4.3 s)
+  psg_gain: 1.0             # PSG against FM, each chip at its own full scale
+  psg_past_table: extend    # A PSG note past the driver's table (SndB6 Spikes Move):
+                            #   extend : the twelve-tone sequence continued
+                            #   clamp  : the table's top note
+
+output:
+  directory: output/sonic_1/sfx
+  format: wav               # wav : RIFF .wav files (8-bit unsigned, as WAV stores it)
+                            # raw : headerless signed PCM (16-bit big-endian) + manifest.yaml
+  bits: 16                  # 8 | 16
+  rate: 44100               # Hz, or
+                            #   native : the YM2612's own (53267 Hz), not resampled
+                            #   auto   : per effect, the lowest ProTracker rate holding 99 % of its energy
+                            #            (paula only)
+  channels: stereo          # stereo | mono (the ring pair's panning lost)
+  level: global             # global    : one gain for the set; the composed balance kept
+                            # normalise : each effect at full scale; raw's manifest volume restores the
+                            #             balance (Paula scales after its DAC: quiet effects keep their bits)
+  peak_dbfs: -0.3           # global: the loudest effect's peak
+  dc_block: false           # Remove DC (30 Hz high-pass): the PSG noise effects carry real offset
+  dither: off               # 8-bit rounding:
+                            #   shaped : noise pushed up the band; long smpsAlterVol ramps stay smooth
+                            #   flat   : noise even across the band
+                            #   off    : plain rounding; a quiet tail steps
+  paula: false              # Rates on ProTracker's period grid (played at a note, finetune 0), a silent
+                            # repeat word appended.  Needs bits: 8, channels: mono
+  max_rate: 28604           # auto's ceiling (period 124).  16574 for an A500: its ~4.4 kHz filter
+
+  variants:
+    amiga:                  # Samples for Aonic (Sonic Amiga Port)
+      directory: output/sonic_1/sfx/amiga
+      format: raw
+      bits: 8
+      rate: 8287            # C-2, period 428: one rate for the software mixer
+      channels: mono
+      level: normalise
+      dc_block: true
+      dither: shaped
+      paula: true

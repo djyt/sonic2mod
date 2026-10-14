@@ -131,14 +131,12 @@ def check_render(sfx_dir: Path) -> None:
 
 def check_amiga() -> None:
     print("\n8-bit Amiga export")
+    from core.audio import DEFAULT_TAPS, dc_block
     from core.mod import PAL_AMIGA_CLOCK
-    from sfx.amiga import (
-        candidate_rates,
-        dc_block,
-        normalise,
-        pad_for_paula,
-        quantise_8bit,
-    )
+    from sfx.amiga import candidate_rates, pad_for_paula
+    from sfx.batch import SfxRender
+    from sfx.config import load_sfx_config
+    from sfx.export import export_all
 
     grid = candidate_rates()
     by_note = {n: (r, p) for r, p, n in grid}
@@ -157,20 +155,18 @@ def check_amiga() -> None:
     check("DC blocker leaves leading silence at zero",
           all(abs(v) < 1e-12 for v in blocked[:100]))
 
-    # Quantisation: full-scale input must reach the rails and stay in range
+    # Quantisation through the amiga variant: a ramp normalised to the rails, in range, padded
     ramp = [(i / 500.0) * 2.0 - 1.0 for i in range(1000)]
-    scaled, peak = normalise(ramp)
-    check("normalise scales to unity peak", abs(max(abs(v) for v in scaled) - 1.0) < 1e-12,
-          f"original peak {peak:.3f}")
-    data = quantise_8bit(scaled, shape=1, dither=True)
-    signed = [b - 256 if b > 127 else b for b in data]
+    render = SfxRender("ramp", "ramp", ramp, ramp, NATIVE_RATE, 0, [], [], False)
+    out = load_sfx_config(variant="amiga").output
+    exported = export_all([render], out, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[0]
+    signed = list(exported.pcm)
     check("quantised samples stay in signed 8-bit range",
           all(-128 <= v <= 127 for v in signed))
     check("quantised peak reaches the rails", max(abs(v) for v in signed) >= 126,
           f"peak {max(abs(v) for v in signed)}")
-
-    check("quantisation is deterministic",
-          quantise_8bit(scaled) == quantise_8bit(scaled))
+    again = export_all([render], out, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[0]
+    check("quantisation is deterministic", exported.pcm == again.pcm)
 
     padded, offset, length = pad_for_paula(b'\x01\x02\x03')
     check("padding yields an even length", len(padded) % 2 == 0, f"{len(padded)} bytes")

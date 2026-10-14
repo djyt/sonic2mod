@@ -20,7 +20,7 @@ Each topic has one home; the others link to it.
 | `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code), Space Harrier II (early Z80), OutRun (Z80 on Timer A): what each differs from Sonic 1 by, how it was found, how to add a variant |
 | `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, the device and core/synth API |
 | `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
-| `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), 8-bit Amiga export |
+| `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), `configs/sfx.yaml`'s keys, 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
 | `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `streets_of_rage_2.md` (Mucom-MD: probe and plan, not started), `revenge_of_shinobi.md` (Streets of Rage's driver, an earlier version: probe and plan, not started); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
@@ -58,7 +58,7 @@ sonic2mod/
     audio/       gain, PCM, resampler, sustain loops
     audit/ ui/   VGZ audits' library; reports and CLI chrome
   sfx/         offline SFX driver
-  configs/     settings.yaml; per-song YAML a folder per game: sonic_1/, moonwalker/ (minimal configs), ...
+  configs/     settings.yaml; sfx.yaml (sonic2wav); per-song YAML a folder per game: sonic_1/, moonwalker/ (minimal configs), ...
   tools/       analysis and audit utilities (vgm_*, mod_*, merge_survey, fold_csv, rom_import, ...)
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
   3rdparty/    vendored C emulators (nuked-opn2/, sn76489/);  build/: their compiled libraries (gitignored);
@@ -131,17 +131,17 @@ python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac
 # Every song of a ROM (or an asm folder) as read, walked and played, as text: what a reader change moved
 python tools/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
 
-# Render all 49 sound effects to 16-bit stereo WAV (no config needed)
+# Render all 49 sound effects as configs/sfx.yaml says (format wav/raw, bits, rate, folder, level, dither):
+# shipped 16-bit stereo WAV → output/sonic_1/sfx/
 python sonic2wav.py --all
 python sonic2wav.py --rom input/roms/sonic_rev01.bin   # the same 49 read from the ROM
 python sonic2wav.py --all --dry-run          # parse + render + report, write nothing
 python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sfx/validate.py                       # tables, resampler, 8-bit chain, ticks, panning
 
-# Export signed 8-bit mono .raw + manifest.yaml for Amiga/Paula → output/sonic_1/sfx8/
-python sonic2wav.py --all --8bit
-python sonic2wav.py --all --8bit --max-rate 16574   # A500 target, ~half the size
-python sonic2wav.py --all --8bit --flat-rate 8287   # one rate for every sample
+# sfx.yaml's amiga variant: signed 8-bit mono .raw at 8287 Hz + manifest.yaml for Paula → output/sonic_1/sfx8/
+python sonic2wav.py --all --variant amiga
+python sonic2wav.py --all --config my_sfx.yaml --out output/tmp   # another settings file / folder
 
 # Analyse a song (no config needed)
 python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm"

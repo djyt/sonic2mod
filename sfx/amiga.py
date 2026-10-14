@@ -1,9 +1,10 @@
-"""8-bit Amiga (Paula) sample export.
+"""Paula's side of the SFX export (sfx.yaml `paula: true`, sfx/export.py): ProTracker's period
+grid, rate selection on it, the silent repeat word.
 
-The 16-bit WAV path optimises for listening; this one optimises for eight bits of
-resolution played back by Paula, which needs almost the opposite treatment:
+Eight bits played by Paula want almost the opposite of the WAV path (configs/sfx.yaml's `amiga`
+variant):
 
-* **Per-sample peak normalisation**, with level restored by the MOD volume column.
+* **Per-sample peak normalisation** (`level: normalise`), the level restored by the MOD volume.
   Paula applies channel volume after the sample DAC, so quantisation noise scales
   down with the signal — storing a quiet effect quietly just throws bits away.
   Measured across the Sonic 1 set that is a median 1.5 bits, and 3.1 bits for
@@ -13,7 +14,6 @@ resolution played back by Paula, which needs almost the opposite treatment:
 * **Dither with noise shaping** at the 8-bit quantisation step.  These effects are
   full of long smpsAlterVol decay ramps, which is exactly where flat truncation
   turns granular.
-* **One resampling stage**, chip rate straight to the target — not via 44.1 kHz.
 
 Paula tops out around period 124 (~28.6 kHz, so ~14.3 kHz Nyquist).  A good half
 of this material has real energy above that, so some band-limiting loss is
@@ -24,9 +24,7 @@ from __future__ import annotations
 
 import cmath
 import math
-import random
 
-from core.audio import dc_block as _dc_block
 from core.mod import PAL_AMIGA_CLOCK
 
 # ProTracker's period table is 856 / 2^(n/12) for n = 0..35, i.e. C-1 to B-3.
@@ -58,16 +56,6 @@ def candidate_rates(clock: int = PAL_AMIGA_CLOCK) -> list[tuple[float, int, str]
     out = [(clock / p, p, name) for p, name in PERIOD_GRID]
     out.sort()
     return out
-
-
-# ---------------------------------------------------------------------------
-# DC removal
-# ---------------------------------------------------------------------------
-
-def dc_block(samples: list[float], rate: int, cutoff: float = 30.0) -> list[float]:
-    """core.audio.pcm.dc_block at the SFX corner (30 Hz): many SFX open with a rest, which a mean
-    subtraction would push off zero."""
-    return _dc_block(samples, rate, cutoff)
 
 
 # ---------------------------------------------------------------------------
@@ -162,53 +150,6 @@ def choose_rate(samples: list[float], rate: int, *, energy_frac: float = 0.99,
 def nearest_candidate(target: float, clock: int = PAL_AMIGA_CLOCK) -> tuple[float, int, str]:
     """Snap an arbitrary rate onto the period grid."""
     return min(candidate_rates(clock), key=lambda c: abs(c[0] - target))
-
-
-# ---------------------------------------------------------------------------
-# Quantisation
-# ---------------------------------------------------------------------------
-
-def quantise_8bit(samples: list[float], *, shape: int = 1, dither: bool = True,
-                  seed: int = 0x50415541) -> bytes:
-    """Normalised floats in [-1, 1] -> signed 8-bit, with shaped TPDF dither.
-
-    shape 0 = flat dither, 1 = first-order (1 - z^-1), 2 = second-order
-    (1 - z^-1)^2.  Second order concentrates the noise harder at the top of the
-    band, which helps at 28 kHz but is counterproductive at 8 kHz where the whole
-    band is audible — hence first order as the default.
-
-    The RNG is seeded so repeated runs are byte-identical.
-    """
-    rng = random.Random(seed)
-    out = bytearray(len(samples))
-    e1 = 0.0
-    e2 = 0.0
-    for i, x in enumerate(samples):
-        v = x * 127.0
-        if shape == 1:
-            v -= e1
-        elif shape >= 2:
-            v -= 2.0 * e1 - e2
-        d = v + (rng.random() - rng.random()) if dither else v
-        q = math.floor(d + 0.5)
-        if q > 127:
-            q = 127
-        elif q < -128:
-            q = -128
-        if shape >= 1:
-            e2 = e1
-            e1 = q - v
-        out[i] = q & 0xFF
-    return bytes(out)
-
-
-def normalise(samples: list[float]) -> tuple[list[float], float]:
-    """Scale to peak 1.0.  Returns (scaled, original_peak)."""
-    peak = max((abs(v) for v in samples), default=0.0)
-    if peak <= 0.0:
-        return list(samples), 0.0
-    inv = 1.0 / peak
-    return [v * inv for v in samples], peak
 
 
 def pad_for_paula(data: bytes) -> tuple[bytes, int, int]:

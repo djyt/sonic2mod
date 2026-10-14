@@ -48,13 +48,16 @@ error.
 | `output.dither` | `off` | 8-bit rounding: `shaped` (first order), `flat`, `off` (`core.audio.to_int8`, the converter's) |
 | `output.paula` | `false` | Rates on ProTracker's period grid, a silent repeat word appended; the manifest gains `period`, `note`, `finetune`, the repeat.  Needs `bits: 8`, `channels: mono` |
 | `output.max_rate` | `28604` | `auto`'s ceiling (period 124); 16574 for an A500 |
+| `output.trim_lead` | `false` | Start at the first sample that rounds to a step (§ Lead and tail).  Plays a frame earlier than the Mega Drive |
+| `output.tail_db` | `off` | Cut where the effect stays this many dB under its own peak (`-30`), the last frame faded |
+| `output.effects` | `{}` | One effect's own `trim_lead` / `tail_db`, by sound id: `{CC: {tail_db: -24}}` (`$CC`, `0xCC` too) |
 
 Variants:
 
 - **`amiga`**: `raw`, 8-bit, 8287 Hz (C-2, period 428), mono, `normalise`, DC blocked, `shaped`
-  dither, `paula` → `output/sonic_1/sfx/amiga/`.  For playing one effect per Paula channel.
+  dither, `paula`, `trim_lead` → `output/sonic_1/sfx/amiga/`.  For playing one effect per Paula channel.
 - **`mixer`**: as `amiga` but `level: global`, `peak_dbfs: 0`, `mono_fold: power`, `boost: 2`
-  (volume 32), `dither: off`, and `format: wav` for listening (`raw` for Aonic) →
+  (volume 32), `dither: off`, `trim_lead`, `tail_db: -36` (a few effects shorter, its `effects:`) →
   `output/sonic_1/sfx/mixer/`.  Dither at the rings' level (±46 steps) is heard as hiss: at 8287 Hz
   the whole band is audible.  Volume 32 is the most two rings and Jump (one
   channel, every pair of block-aligned start offsets) take without passing ±124: 122 at worst.
@@ -86,7 +89,7 @@ Variants:
 | `sfx/render.py` | Frame loop, FM + PSG mix at 53267 Hz, tail detection |
 | `sfx/resample.py` | Re-exports `core/audio/resample.py` (polyphase windowed-sinc) |
 | `sfx/config.py` | `configs/sfx.yaml` → `SfxConfig` (`RenderSettings`, `OutputSettings`) |
-| `sfx/batch.py` | Discovery, naming, rendering at the chip's rate |
+| `sfx/batch.py` | Discovery, naming (`sound_id`), rendering at the chip's rate |
 | `sfx/export.py` | Renders → files: channels, DC, rate, level, 8 / 16-bit, `.wav` / `.raw`, the manifest |
 | `sfx/amiga.py` | Paula's side: period grid, FFT rate selection, the silent repeat word |
 | `sfx/slots.py` | The SFX track slots an effect takes, the manifest's `slots` / `mask` |
@@ -191,7 +194,23 @@ and silence there stops a one-shot buzzing.  Samples are mono: the ring pair's p
 choice (`B5_Ring` right, `CE_Ring_Left_Speaker` left).  A MOD holds 31 instruments, so the 49 never
 fit one module.
 
-No tail trimming beyond the WAV path's: 44 of the 45 SFX voices release every operator at `$0F`.
+### Lead and tail
+
+**The leading rest is the data's.**  19 of the 49 SFX open on a rest, most `nRst, $01` (Spring, Roll,
+Bumper, Shield, Giant Ring ...; Collapse `$02`, Signpost `$04`): written so, not a bug.  Most
+likely it keys the channel off for a frame while the voice uploads: an SFX takes FM4 / FM5 from a
+music note that may still sound, and a key-off and key-on in one frame restart the attack from that
+note's level (release rate `$0F` needs the frame to reach silence).  A sample starts from silence
+anyway: `trim_lead` drops the frame (138 bytes at 8287 Hz; 1.6 KB over the 49), and the effect
+sounds a frame earlier.
+
+**Tails are the voices' own fades.**  44 of the 45 SFX voices release every operator at `$0F`, so
+the long tails are written: Spring's `smpsAlterVol $02` every two frames, 25 times, falls 37.5 dB
+over 50 frames.  `tail_db` cuts where the effect stays that far under its own peak and fades the
+last frame (a cut at −30 dB is still a step of a few 8-bit levels).  Over the mixer's 49 (8-bit,
+volume 32): −36 dB saves 7 KB, −30 dB 26 KB, −24 dB 63 KB of 416 KB; Spring alone −30 dB 3.3 KB of
+8.7 KB.  The mixer variant cuts at −36 dB, and its `effects:` entries cut Death, Hit Spikes, Hit
+Boss, Collapse, Break Item and Spring sooner (−16 to −28 dB, chosen by ear).
 
 ## Known deviations from stock hardware
 

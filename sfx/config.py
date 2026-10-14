@@ -10,11 +10,11 @@ A `variants:` block lays its keys over the ones beside it (sonic2wav.py --varian
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 
 from core.audio import DITHER_OFF
-from core.config import apply_variant, dither_mode, mode_word, read_yaml_file
+from core.config import apply_variant, dither_mode, mode_word, parse_number, read_yaml_file
 
 from .amiga import DEFAULT_MAX_RATE
 from .render import DEFAULT_MAX_SECS, DEFAULT_TAIL_SECS, PSG_GAIN
@@ -36,6 +36,10 @@ MONO_FOLDS = (FOLD_MEAN, FOLD_POWER, FOLD_LOUDEST)
 LEVEL_GLOBAL, LEVEL_NORMALISE = "global", "normalise"
 LEVELS = (LEVEL_GLOBAL, LEVEL_NORMALISE)
 PSG_EXTEND, PSG_CLAMP = "extend", "clamp"
+TAIL_OFF = "off"
+
+# What an `effects:` entry may set: how much of one effect is kept
+EFFECT_KEYS = frozenset({"trim_lead", "tail_db"})
 PSG_PAST_TABLE = (PSG_EXTEND, PSG_CLAMP)
 
 
@@ -65,10 +69,18 @@ class OutputSettings:
     dither: str = DITHER_OFF                # 8-bit rounding: core.audio.DITHER_MODES
     paula: bool = False                     # ProTracker period grid, silent repeat word
     max_rate: float = DEFAULT_MAX_RATE      # auto's ceiling
+    trim_lead: bool = False                 # from the first sample that rounds to a step
+    tail_db: float | None = None            # cut where the effect stays this far under its own peak
+    effects: dict[int, dict] = field(default_factory=dict)   # sound id -> its own EFFECT_KEYS
 
     @property
     def stereo(self) -> bool:
         return self.channels == STEREO
+
+    def for_effect(self, sound_id: int | None) -> OutputSettings:
+        """These settings as one effect has them: its `effects:` entry laid over them."""
+        own = self.effects.get(sound_id) if sound_id is not None else None
+        return replace(self, **own) if own else self
 
     @property
     def volume(self) -> int:
@@ -129,6 +141,9 @@ def _output(data: dict, where: str) -> OutputSettings:
         dither=dither_mode(data.get("dither", d.dither), where),
         paula=_flag(data, "paula", d.paula, where),
         max_rate=_positive(data, "max_rate", d.max_rate, where),
+        trim_lead=_flag(data, "trim_lead", d.trim_lead, where),
+        tail_db=_tail_db(data.get("tail_db", d.tail_db), where),
+        effects=_effects(data.get("effects") or {}, f"{where}: effects"),
     )
     _check_paula(out, where)
     _check_boost(out, where)
@@ -153,6 +168,32 @@ def _check_boost(out: OutputSettings, where: str) -> None:
         raise ValueError(f"{where}: boost needs level: global (normalise is at full scale already)")
     if not 1 <= out.volume <= VOLUME_MAX or out.boost < 1.0:
         raise ValueError(f"{where}: boost must be 1 to {VOLUME_MAX} (got {out.boost:g})")
+
+
+def _tail_db(value, where: str) -> float | None:
+    """dB under the effect's own peak (negative), or off."""
+    if value is None or mode_word(value) == TAIL_OFF:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value >= 0:
+        raise ValueError(f"{where}: tail_db must be dB under the peak (-30) or {TAIL_OFF} (got {value!r})")
+    return float(value)
+
+
+def _effects(data: dict, where: str) -> dict[int, dict]:
+    """`effects:` - a sound id ($CC, 0xCC or CC) to the EFFECT_KEYS it sets for that effect alone."""
+    out = {}
+    for key, entry in data.items():
+        ctx = f"{where}: {key}"
+        if not isinstance(entry, dict):
+            raise ValueError(f"{ctx}: must map {', '.join(sorted(EFFECT_KEYS))} to values")
+        _check_keys(entry, set(EFFECT_KEYS), ctx)
+        own = {}
+        if "trim_lead" in entry:
+            own["trim_lead"] = _flag(entry, "trim_lead", False, ctx)
+        if "tail_db" in entry:
+            own["tail_db"] = _tail_db(entry["tail_db"], ctx)
+        out[parse_number(key, ctx, base=16)] = own
+    return out
 
 
 def _check_keys(data: dict, known: set[str], where: str) -> None:

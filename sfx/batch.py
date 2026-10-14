@@ -20,6 +20,7 @@ from core.smps import SmpsParser, SmpsSong
 from .render import PSG_GAIN, render_sfx
 
 _NAME_RE = re.compile(r'^Snd([0-9A-Fa-f]{2})\s*(?:-\s*(.*))?$')
+_ID_RE = re.compile(r'^([0-9A-F]{2})(?:_|$)')
 
 
 class SfxRender:
@@ -92,6 +93,13 @@ def discover(sfx_dir: str) -> list[str]:
             "  Point --sfx-dir at a directory of 'SndXX - Name.asm' files."
         )
     return sorted(glob.glob(os.path.join(sfx_dir, 'Snd*.asm')))
+
+
+def sound_id(name: str) -> int | None:
+    """An output name's sound id: 'B5_Ring' and 'B5' -> 0xB5; None for a name output_name could not
+    read an id from."""
+    match = _ID_RE.match(name)
+    return int(match.group(1), 16) if match else None
 
 
 def output_name(path: str) -> str:

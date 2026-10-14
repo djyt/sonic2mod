@@ -205,10 +205,20 @@ def to_mono(samples: list) -> list:
 
 def trim_trailing_silence(mono: Sequence[float]) -> Sequence[float]:
     """Remove trailing zero samples (chip-silent) from a raw mono sequence (same type back)."""
-    i = len(mono)
-    while i > 0 and mono[i - 1] == 0:
+    return mono[:sounding_end(mono)]
+
+
+def sounding_end(samples: Sequence[float], floor: float = 0.0) -> int:
+    """The index after the last sample louder than `floor` (|v| > floor); 0 when none is."""
+    i = len(samples)
+    while i > 0 and abs(samples[i - 1]) <= floor:
         i -= 1
-    return mono[:i]
+    return i
+
+
+def sounding_start(samples: Sequence[float], floor: float = 0.0) -> int:
+    """The index of the first sample louder than `floor`; len(samples) when none is."""
+    return next((i for i, v in enumerate(samples) if abs(v) > floor), len(samples))
 
 
 def signed8(data: bytes) -> list[int]:

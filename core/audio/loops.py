@@ -87,6 +87,7 @@ MAX_ERROR = 0.75          # the largest raw discontinuity a loop is still made f
 SILENT_DB = -50.0         # a sustain end this far below the peak has decayed: nothing to loop
 MAX_STARTS = 6            # loop starts tried, one fundamental period apart, from the flat point
 PROBE_SECS = 4.0          # sustain rendered to look for a loop in (span + longest loop + attack)
+END_FADE_SECS = 0.002     # fade_end's default: a cut past where any note reaches, just declicked
 RELEASE_FLOOR_DB = 48.0   # a release this far down is at the 8-bit floor (~49 dB): nothing past it is heard
 MAX_END_FRACTION = 0.8    # a loop ending later than this fraction of the sustain saves nothing:
                           # the envelope was still settling (a slowly decaying voice) - no loop
@@ -435,10 +436,10 @@ def heard_padding(padding: float, release_db_s: float | None, slides: bool) -> f
     return min(padding, RELEASE_FLOOR_DB / release_db_s)
 
 
-def fade_end(mono: Sequence[float], n: int, rate: int) -> list[float]:
-    """The first `n` samples, the last 2 ms faded out (the end no note reaches)."""
+def fade_end(mono: Sequence[float], n: int, rate: int, secs: float = END_FADE_SECS) -> list[float]:
+    """The first `n` samples, the last `secs` faded out (2 ms: the end no note reaches)."""
     out = list(mono[:n])
-    fade = min(len(out), max(1, int(rate * 0.002)))
+    fade = min(len(out), max(1, int(rate * secs)))
     for i in range(fade):
         out[len(out) - fade + i] *= 1 - (i + 1) / fade
     return out

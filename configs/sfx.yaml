@@ -47,6 +47,12 @@ output:
   paula: false              # Rates on ProTracker's period grid (played at a note, finetune 0), a silent
                             # repeat word appended.  Needs bits: 8, channels: mono
   max_rate: 28604           # auto's ceiling (period 124).  16574 for an A500: its ~4.4 kHz filter
+  trim_lead: false          # Start at the first sample that rounds to a step: 19 SFX open on a one-frame
+                            # rest (nRst, $01, in the data: the voice keyed off before its note), silence
+                            # in a sample.  Plays a frame earlier than the Mega Drive
+  tail_db: off              # Cut where the effect stays this many dB under its own peak (-30), the last
+                            # frame faded; off keeps it to the 16-bit floor
+  effects: {}               # One effect's own trim_lead / tail_db, by sound id:  {CC: {tail_db: -24}}
 
   variants:
     # Amiga Quality Samples
@@ -60,13 +66,14 @@ output:
       dc_block: true
       dither: shaped
       paula: true
+      trim_lead: true
 
     # Amiga Quality Samples for Aonic's Crude Software Mixer
     mixer:
       directory: output/sonic_1/sfx/mixer
-      format: wav
+      format: raw
       bits: 8
-      rate: 8287            # the mixer's one rate
+      rate: 8287            # Aonic SFX Mixer Target Rate (Hz)
       channels: mono
       mono_fold: power      # The rings 3 dB under a centred effect, as a stereo listener hears them
       level: global
@@ -75,3 +82,14 @@ output:
       dc_block: true
       dither: off # shaped
       paula: true
+      trim_lead: true       # Remove silence / rests at the start of sounds like the 'spring'
+      tail_db: -36          # Eliminate Quiet tails
+
+      # Sound effects with custom tail eliminiation
+      effects:
+        A3: {tail_db: -16}  # Effect $AC [Death]
+        A6: {tail_db: -24}  # Effect $A6 [Spikes]
+        AC: {tail_db: -20}  # Effect $AC [Boss Hit]
+        B9: {tail_db: -16}  # Effect $B9 [Cliff Collapse]
+        C1: {tail_db: -24}  # Effect $C1 [Break Item]
+        CC: {tail_db: -28}  # Effect $CC [Spring]

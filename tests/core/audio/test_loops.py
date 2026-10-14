@@ -120,6 +120,10 @@ class HeardPadding(unittest.TestCase):
         self.assertEqual(len(out), 60)
         self.assertEqual(out[0], 1.0)
         self.assertEqual(out[-1], 0.0)
+        self.assertEqual(out[-21], 1.0)                                         # 2 ms: the last 20 faded
+        longer = fade_end([1.0] * 100, 60, 10000, secs=0.004)
+        self.assertEqual(longer[-41], 1.0)
+        self.assertLess(longer[-21], 1.0)
 
 
 if __name__ == "__main__":

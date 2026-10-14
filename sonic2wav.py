@@ -27,6 +27,7 @@ from core.version import get_version as _get_version
 from sfx.batch import asm_sources, discover, render_all, rom_sources
 from sfx.config import DEFAULT_CONFIG, LEVEL_GLOBAL, RATE_AUTO, RATE_NATIVE, load_sfx_config
 from sfx.export import export_all, write_exports
+from sfx.slots import channel_name
 
 console = cli_console()
 
@@ -35,9 +36,7 @@ _error = error_printer(console)
 
 
 def _channel_summary(channels) -> str:
-    names = {0x02: "FM3", 0x04: "FM4", 0x05: "FM5",
-             0x80: "PSG1", 0xA0: "PSG2", 0xC0: "PSG3", 0xE0: "Noise"}
-    return " ".join(names.get(hw, f"?{hw:02X}") for _, hw in channels)
+    return " ".join(channel_name(hw) for _, hw in channels)
 
 
 def _results_table(exports, paula: bool, volumes: bool):
@@ -54,6 +53,9 @@ def _results_table(exports, paula: bool, volumes: bool):
         tbl.add_column("Vol", justify="right")
     tbl.add_column("Peak", justify="right")
     tbl.add_column("Size", justify="right")
+    clips = any(e.clipped for e in exports)
+    if clips:
+        tbl.add_column("Clipped", justify="right")
     for e in exports:
         note = [e.note] if paula else []
         volume = [str(e.volume)] if volumes else []
@@ -67,6 +69,7 @@ def _results_table(exports, paula: bool, volumes: bool):
             *volume,
             f"{e.peak_dbfs:+.1f} dB",
             f"{e.size / 1024:.1f}K",
+            *([str(e.clipped or "")] if clips else []),
         )
     return tbl
 
@@ -80,9 +83,11 @@ def _render_label(cfg) -> tuple[str, str]:
         rate = f"auto rate ≤ {out.max_rate:g} Hz"
     else:
         rate = f"{out.rate} Hz"
-    what = f"{cfg.render.fps:g} Hz tick · {rate} · {out.bits}-bit {out.channels} {out.format}"
+    fold = f" ({out.mono_fold} fold)" if not out.stereo else ""
+    what = f"{cfg.render.fps:g} Hz tick · {rate} · {out.bits}-bit {out.channels}{fold} {out.format}"
 
-    level = f"one gain, peak {out.peak_dbfs:+.1f} dBFS" if out.level == LEVEL_GLOBAL else "per-sample normalise"
+    boost = f" × {out.baked:.4g}, volume {out.volume}" if out.boost != 1.0 else ""
+    level = f"one gain, peak {out.peak_dbfs:+.1f} dBFS{boost}" if out.level == LEVEL_GLOBAL else "per-sample normalise"
     how = [level]
     if out.dc_block:
         how.append("DC removed")
@@ -173,6 +178,8 @@ def main():
                 psg_oob=cfg.render.psg_past_table,
                 fm_clock=synth.clock_rate,
                 psg_clock=psg_synth.clock_rate,
+                psg_oversample=psg_synth.psg_oversample,
+                taps=synth.resample_taps,
             )
         except (ValueError, FileNotFoundError) as e:
             _error(str(e))

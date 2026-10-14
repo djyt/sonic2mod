@@ -65,7 +65,7 @@ sonic2mod/
                prebuilt/: the Windows DLLs, used when no compiler is on PATH (tracked)
   docs/  reference/ (gitignored)
   input/       sonic_1/ (Sonic 1's asm songs, fold CSVs, samples/: its DAC drums); roms/ (every game's ROMs, not in git)
-  output/      a folder per game as configs/ (sonic_1/: MODs, sfx/, sfx8/); cache/, compare/ shared
+  output/      a folder per game as configs/ (sonic_1/: MODs, sfx/ (amiga/, mixer/ under it)); cache/, compare/ shared
 ```
 
 ## Setup
@@ -139,8 +139,10 @@ python sonic2wav.py --all --dry-run          # parse + render + report, write no
 python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sfx/validate.py                       # tables, resampler, 8-bit chain, ticks, panning
 
-# sfx.yaml's amiga variant: signed 8-bit mono .raw at 8287 Hz + manifest.yaml for Paula → output/sonic_1/sfx8/
+# sfx.yaml's amiga variant: signed 8-bit mono .raw at 8287 Hz + manifest.yaml for Paula → output/sonic_1/sfx/amiga/
 python sonic2wav.py --all --variant amiga
+# mixer: the same with each effect's composed level baked in (output.boost: x k, played at 64/k) → output/sonic_1/sfx/mixer/
+python sonic2wav.py --all --variant mixer
 python sonic2wav.py --all --config my_sfx.yaml --out output/tmp   # another settings file / folder
 
 # Analyse a song (no config needed)

@@ -11,7 +11,9 @@ render:
   fps: 60                   # V-int rate, one SFX tick a frame: 60 NTSC, 50 PAL
   tail_seconds: 1.0         # Rendered after the last track stops, for the release
   max_seconds: 10.0         # Safety cap (the longest, SndBF Get Continue, plays 4.3 s)
-  psg_gain: 1.0             # PSG against FM, each chip at its own full scale
+  psg_gain: 0.31            # PSG against FM, each chip at its own full scale: VGMPlay's balance (Nuked
+                            # core), a full PSG tone 10.2 dB under a full FM carrier.  1.0 put them level:
+                            # Jump 10 dB too loud against the Ring
   psg_past_table: extend    # A PSG note past the driver's table (SndB6 Spikes Move):
                             #   extend : the twelve-tone sequence continued
                             #   clamp  : the table's top note
@@ -26,10 +28,17 @@ output:
                             #   auto   : per effect, the lowest ProTracker rate holding 99 % of its energy
                             #            (paula only)
   channels: stereo          # stereo | mono (the ring pair's panning lost)
+  mono_fold: mean           # mono: a panned effect (the rings) against a centred one
+                            #   mean    : (L+R)/2, 6 dB under (the Mega Drive's mono A/V out)
+                            #   power   : 3 dB under, what a stereo listener hears
+                            #   loudest : as loud as centred
   level: global             # global    : one gain for the set; the composed balance kept
                             # normalise : each effect at full scale; raw's manifest volume restores the
                             #             balance (Paula scales after its DAC: quiet effects keep their bits)
   peak_dbfs: -0.3           # global: the loudest effect's peak
+  boost: 1                  # global: played at volume 64 / boost to the nearest whole one, baked x exactly
+                            # 64 / that volume (1.45 -> volume 44, x 1.4545).  Quiet effects gain
+                            # log2(boost) bits, loud ones clip (the manifest counts it)
   dc_block: false           # Remove DC (30 Hz high-pass): the PSG noise effects carry real offset
   dither: off               # 8-bit rounding:
                             #   shaped : noise pushed up the band; long smpsAlterVol ramps stay smooth
@@ -40,7 +49,8 @@ output:
   max_rate: 28604           # auto's ceiling (period 124).  16574 for an A500: its ~4.4 kHz filter
 
   variants:
-    amiga:                  # Samples for Aonic (Sonic Amiga Port)
+    # Amiga Quality Samples
+    amiga:
       directory: output/sonic_1/sfx/amiga
       format: raw
       bits: 8
@@ -49,4 +59,19 @@ output:
       level: normalise
       dc_block: true
       dither: shaped
+      paula: true
+
+    # Amiga Quality Samples for Aonic's Crude Software Mixer
+    mixer:
+      directory: output/sonic_1/sfx/mixer
+      format: wav
+      bits: 8
+      rate: 8287            # the mixer's one rate
+      channels: mono
+      mono_fold: power      # The rings 3 dB under a centred effect, as a stereo listener hears them
+      level: global
+      peak_dbfs: 0          # the loudest at the rails: a solo effect plays at its composed level
+      boost: 2              # volume 32: two rings + Jump peak at 122 of 127 (every block-aligned start)
+      dc_block: true
+      dither: off # shaped
       paula: true

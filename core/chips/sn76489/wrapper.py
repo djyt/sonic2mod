@@ -26,6 +26,7 @@ Mega Drive config: FB_SEGAVDP=0x0009, SRW_SEGAVDP=16, boost_noise=1.
 """
 
 import ctypes
+from array import array
 from ctypes import POINTER, c_int32, cast
 
 from ..psg import MD_PSG_CLOCK
@@ -168,6 +169,21 @@ class SN76489:
         Uses SN76489_Update with stereo INT32 buffers.
         Max amplitude is ~±4096 per channel (from PSGVolumeValues table).
         """
+        buf_l, buf_r = self._update(n)
+        return [(buf_l[i], buf_r[i]) for i in range(n)]
+
+    def render_channels(self, n: int) -> tuple[array, array]:
+        """Render n samples as two int32 arrays (L, R): render_samples without a tuple a sample,
+        for long or oversampled streams."""
+        out = []
+        for buf in self._update(n):
+            channel = array('i')
+            channel.frombytes(bytes(buf))
+            out.append(channel)
+        return out[0], out[1]
+
+    def _update(self, n: int):
+        """SN76489_Update into two fresh int32 buffers."""
         buf_l = (c_int32 * n)()
         buf_r = (c_int32 * n)()
         buf_ptrs = (POINTER(c_int32) * 2)(
@@ -175,7 +191,7 @@ class SN76489:
             cast(buf_r, POINTER(c_int32)),
         )
         self._lib.SN76489_Update(self._chip, buf_ptrs, n)
-        return [(buf_l[i], buf_r[i]) for i in range(n)]
+        return buf_l, buf_r
 
     # ------------------------------------------------------------------
     # Cleanup

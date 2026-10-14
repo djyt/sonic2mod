@@ -15,10 +15,10 @@ import sys
 from array import array
 from dataclasses import dataclass
 
-from core.audio import dc_block, gain_to_db, resample, to_int8
+from core.audio import dc_block, fade_end, gain_to_db, resample, sounding_end, sounding_start, to_int8
 
 from .amiga import choose_rate, nearest_candidate, pad_for_paula
-from .batch import SfxRender
+from .batch import SfxRender, sound_id
 from .config import (
     FOLD_LOUDEST,
     FOLD_MEAN,
@@ -39,6 +39,12 @@ _INT16_MIN, _INT16_MAX = -32768, 32767
 # A mono fold's gain at most: an effect wholly on one side, raised to a centred one's level.  More
 # would be out-of-phase content cancelling in the fold
 _FOLD_GAIN_MAX = 2.0
+
+# A tail cut fades over a frame: at -30 dB the cut is still a step of a few 8-bit levels
+_TAIL_FADE_SECS = 1 / 60
+
+# Half a step rounds to silence: the lead trim keeps from the first sample past it
+_HALF_STEP = 0.5
 
 # The DC blocker's corner: a one-pole high-pass, not a mean subtraction, since many SFX open with a
 # rest a mean would push off zero
@@ -95,7 +101,7 @@ def export_all(renders: list[SfxRender], out: OutputSettings, *, taps: int, cloc
     balance with one gain, `normalise` puts each effect at full scale and its volume restores it."""
     shaped = [_shape(r, out, taps, clock) for r in renders]
     loudest = max((s.peak for s in shaped), default=0.0)
-    return [_quantise(s, out, loudest) for s in shaped]
+    return [_quantise(s, out.for_effect(sound_id(s.render.name)), loudest) for s in shaped]
 
 
 def _shape(render: SfxRender, out: OutputSettings, taps: int, clock: int) -> _Shaped:
@@ -163,8 +169,9 @@ def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
         gain = full / s.peak if s.peak > 0.0 else 1.0
         volume = max(1, min(VOLUME_MAX, round(VOLUME_MAX * s.peak / loudest))) if loudest > 0.0 else 1
 
-    pcm = _to_pcm8(s.channels, gain, out.dither) if out.bits == 8 else _to_pcm16(s.channels, gain)
-    clipped = sum(1 for c in s.channels for v in c if abs(v * gain) >= full + 0.5)
+    channels = _trim(s.channels, gain, s.peak, out, s.rate)
+    pcm = _to_pcm8(channels, gain, out.dither) if out.bits == 8 else _to_pcm16(channels, gain)
+    clipped = sum(1 for c in channels for v in c if abs(v * gain) >= full + 0.5)
 
     # Paula loops the repeat region once a sample ends: a trailing silent word stops a one-shot buzzing
     repeat = None
@@ -174,8 +181,29 @@ def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
 
     written = s.peak * gain
     peak_dbfs = gain_to_db(min(written, full) / full) if written > 0.0 else -math.inf
-    return SfxExport(s.render, pcm, len(s.channels), s.rate, s.period, s.note, volume, peak_dbfs, clipped,
+    return SfxExport(s.render, pcm, len(channels), s.rate, s.period, s.note, volume, peak_dbfs, clipped,
                      repeat)
+
+
+def _trim(channels: list[list[float]], gain: float, peak: float, out: OutputSettings,
+          rate: int) -> list[list[float]]:
+    """What of an effect is kept:
+
+        trim_lead  from the first sample that rounds to a step: 19 of Sonic 1's SFX open on a rest
+                   (nRst, $01: the voice keyed off a frame before its note), silence in a sample
+        tail_db    to the last sample within tail_db of the effect's own peak, its last frame faded
+    """
+    n = len(channels[0])
+    start = min(sounding_start(c, _HALF_STEP / gain) for c in channels) if out.trim_lead else 0
+    end = max(sounding_end(c, peak * 10.0 ** (out.tail_db / 20.0)) for c in channels) \
+        if out.tail_db is not None else n
+    if start >= end or (start, end) == (0, n):
+        return channels
+
+    kept = [c[start:end] for c in channels]
+    if end == n:
+        return kept
+    return [fade_end(c, len(c), rate, _TAIL_FADE_SECS) for c in kept]
 
 
 def _to_pcm8(channels: list[list[float]], gain: float, dither: str) -> array:

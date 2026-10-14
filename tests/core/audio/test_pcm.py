@@ -1,4 +1,5 @@
-"""PCM shaping (core/audio/pcm.py): the peak limiter, saturation, to_int8's dither modes and the DC block.
+"""PCM shaping (core/audio/pcm.py): the peak limiter, saturation, to_int8's dither modes, the DC block
+and where a sound starts and ends (sounding_start / sounding_end).
 
     python -m pytest tests/core/audio/test_pcm.py -q
 """
@@ -13,7 +14,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from core.audio import limit_peaks, saturate
+from core.audio import limit_peaks, saturate, sounding_end, sounding_start, trim_trailing_silence
+
+
+class Sounding(unittest.TestCase):
+    """sounding_start / sounding_end: the first sample past a floor, the index after the last."""
+
+    def test_floors(self):
+        x = [0.0, 0.1, -0.5, 0.3, -0.05, 0.0]
+        self.assertEqual(sounding_end(x), 5)                     # floor 0: the trailing zero only
+        self.assertEqual(sounding_end(x, 0.2), 4)                # -0.05 is under 0.2: from 0.3 on
+        self.assertEqual(sounding_start(x), 1)
+        self.assertEqual(sounding_start(x, 0.4), 2)              # |-0.5| first past 0.4
+        self.assertEqual(sounding_end(x, 1.0), 0)                # none: nothing kept ...
+        self.assertEqual(sounding_start(x, 1.0), len(x))         # ... none starts
+        self.assertEqual(trim_trailing_silence([1, 0, 2, 0, 0]), [1, 0, 2])
 
 
 class Limiter(unittest.TestCase):

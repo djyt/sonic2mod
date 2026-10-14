@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from array import array
 
-from core.audio import DEFAULT_TAPS, resample
+from core.audio import DEFAULT_TAPS, resample, sounding_end
 from core.chips.ym2612 import OPN2
 from core.smps import ChannelType
 
@@ -189,8 +189,6 @@ def _mix_psg(fm: list[float], psg: array, gain: float, native_rate: int, oversam
 
 def _trim_trailing_silence(left: list[float], right: list[float]) -> None:
     """Drop the trailing run of samples below the 16-bit noise floor, in place."""
-    end = len(left)
-    while end > 0 and abs(left[end - 1]) < _SILENCE_FLOOR and abs(right[end - 1]) < _SILENCE_FLOOR:
-        end -= 1
+    end = max(sounding_end(left, _SILENCE_FLOOR), sounding_end(right, _SILENCE_FLOOR))
     del left[end:]
     del right[end:]

@@ -13,3 +13,5 @@
 - Strictly adhere to the layered hierarchy: a layer imports only layers below it, never above. The bottom layers (song IR, MOD, chips, audio) are shared vocabulary any layer may use. Where a layer owns a seam, go through it: drivers only via `core.source`. Never "punch holes" through layers. `pyproject.toml` `[tool.importlinter]` enforces this.
 
 - Do not repeat yourself. Check whether similar code already exists. Refactor code for reuse if it results in easier maintainability.
+
+- Split methods, functions and files if they grow to an unwiedly size. Ensure files have a logical hierarchy on disk. 

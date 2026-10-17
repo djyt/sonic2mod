@@ -40,6 +40,9 @@ Song level (beside the blocks)
                                a number pins it, and the report says when one went unused or a sound found no bank
   merge_tolerance: 1           ticks a follower note-on may be off the primary's and still fold (default 1)
   merge_fill: [PSG1]           pooled channels: each note on whichever output column is silent
+  merge_vacate: [FM5]          the channel keeps its column, but each note moves to a column silent for all of it
+                               (nothing cut but a release slide); the rest and legato runs stay - frees a column
+                               for a game's sound effects
   merge_fill_cut_after: {DAC: 2}   song-wide fallback for cut_after, by the column's owner
   merge_drop: [FM3]            channels left out of the merged build everywhere
   merge_twins: always          default short: same-shape composites give up their slot only while slots are short

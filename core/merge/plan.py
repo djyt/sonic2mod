@@ -39,23 +39,26 @@ def prepare_merged_config(config, song=None) -> None:
     or a follower that is its own primary.
     """
     if (not config.merge and not config.merge_drop and not config.merge_fill
-            and not config.merge_pattern_drop):
-        raise ValueError("no `merge:` / `merge_patterns:` groups, `merge_drop:` or `merge_fill:` channels "
-                         "in the config — nothing to fold")
+            and not config.merge_pattern_drop and not config.merge_vacate):
+        raise ValueError("no `merge:` / `merge_patterns:` groups, `merge_drop:`, `merge_fill:` or `merge_vacate:` "
+                         "channels in the config — nothing to fold")
     sources = {c.source for c in config.channels}
     seen: set[str] = set()
-    for key, lst in (("merge_drop", config.merge_drop), ("merge_fill", config.merge_fill)):
+    # A vacated channel keeps its column and moves each note as itself: it may carry no fold,
+    # follow none, and not be dropped or pooled
+    for key, lst in (("merge_drop", config.merge_drop), ("merge_fill", config.merge_fill),
+                     ("merge_vacate", config.merge_vacate)):
         for src in lst:
             if src not in sources:
                 raise ValueError(f"{key}: channel {src} is not in the channels section")
             if src in seen:
-                raise ValueError(f"{key}: channel {src} is listed twice (or is in merge_drop too)")
+                raise ValueError(f"{key}: channel {src} is listed twice (or in merge_drop / merge_fill too)")
             seen.add(src)
     for src in config.merge_pattern_drop:
         if src not in sources:
             raise ValueError(f"merge_patterns drop: channel {src} is not in the channels section")
         if src in seen:
-            raise ValueError(f"merge_patterns drop: channel {src} is in merge_drop / merge_fill already")
+            raise ValueError(f"merge_patterns drop: channel {src} is in merge_drop / merge_fill / merge_vacate already")
     # Where each channel is spoken for: a song-wide group (patterns None) claims every pattern,
     # a merge_patterns group its own.  Two claims on one channel may not overlap.
     claims: dict[str, list[tuple[frozenset | None, str]]] = {}
@@ -72,7 +75,7 @@ def prepare_merged_config(config, song=None) -> None:
             if src not in sources:
                 raise ValueError(f"{ctx}: channel {src} is not in the channels section")
             if src in seen:
-                raise ValueError(f"{ctx}: channel {src} is in merge_drop / merge_fill as well")
+                raise ValueError(f"{ctx}: channel {src} is in merge_drop / merge_fill / merge_vacate as well")
             if (g.primary, *g.followers).count(src) > 1:
                 raise ValueError(f"{ctx}: channel {src} is listed twice")
             claims.setdefault(src, []).append((g.patterns, ctx))

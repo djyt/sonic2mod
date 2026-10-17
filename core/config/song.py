@@ -25,7 +25,7 @@ _KEYS = frozenset({
     "name", "input_file", "rom_song", "driver", "tempo_modifier", "tempo_divider", "output_file", "target_bpm", "target_speed", "ticks_per_row", "num_mod_channels",
     "auto_bpm", "region", "range_space", "samples_dir", "max_patterns", "channels", "dac_samples", "voice_map",
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
-    "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_output_file",
+    "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_vacate", "merge_output_file",
     "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "loop_drift_db",
     "treble_shelf_db", "dac_stall",
 })
@@ -59,6 +59,12 @@ def _region(data: dict, filepath) -> str:
 
 # A sample_list row's fields; volume and finetune may be left off
 SAMPLE_SLOT, SAMPLE_FILE, SAMPLE_VOLUME, SAMPLE_FINETUNE = range(4)
+
+
+def _channel_list(data: dict, key: str) -> list[str]:
+    """A merge key's channels: a list, or one channel alone (`merge_fill: PSG1`)."""
+    value = data.get(key, []) or []
+    return [str(d) for d in ([value] if isinstance(value, str) else value)]
 
 
 @dataclass
@@ -119,6 +125,10 @@ class ConversionConfig:
     # for the fill pool, so a pool note cuts the note's tail (a chime over a kick's decay, over a bass
     # note's second half); a channel absent here is never cut.  Least 1.
     merge_fill_cut_after: dict = field(default_factory=dict)
+    # Channels that keep their column but give each note to another channel silent for all of it,
+    # cutting nothing (core/merge/ pool_notes); a note with nowhere to go stays.  Frees the column
+    # for a game's sound effects as far as that loses nothing
+    merge_vacate: list = field(default_factory=list)
     # Ticks a follower's note-on may be from the primary's and still fold (Green Hill's FM3 starts
     # its chord one tick after FM4/FM5); a note that short before a legato note is a grace note,
     # folded to the note it bends into.
@@ -280,14 +290,13 @@ class ConversionConfig:
         """The merged build's settings: the groups, the dropped and pooled channels, the slot
         budgets, the song's overrides of settings.yaml."""
         self.merge, self.merge_patterns_named, self.merge_pattern_drop = parse_merge_groups(data)
-        drop = data.get('merge_drop', []) or []
-        self.merge_drop = [str(d) for d in ([drop] if isinstance(drop, str) else drop)]
-        fill = data.get('merge_fill', []) or []
-        self.merge_fill = [str(d) for d in ([fill] if isinstance(fill, str) else fill)]
+        self.merge_drop = _channel_list(data, 'merge_drop')
+        self.merge_fill = _channel_list(data, 'merge_fill')
         cut_after = data.get('merge_fill_cut_after', {}) or {}
         if not isinstance(cut_after, dict):
             raise ValueError("merge_fill_cut_after must be a mapping of channel to ticks")
         self.merge_fill_cut_after = {str(k): max(1, int(v)) for k, v in cut_after.items()}
+        self.merge_vacate = _channel_list(data, 'merge_vacate')
         self.merge_output_file = data.get('merge_output_file')
         self.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
         self.merge_loop_timbre = bool(data.get('merge_loop_timbre', False))

@@ -26,9 +26,10 @@ from core.merge import (
     trigger_note,
     unison_gain_db,
 )
+from core.smps import ChannelType
 
 
-def _note(tick=0, duration=8, inst=4, index=24, kind="FM", secs=0.2, fill=0, fill_secs=None, **kw) -> NoteOn:
+def _note(tick=0, duration=8, inst=4, index=24, kind=ChannelType.FM, secs=0.2, fill=0, fill_secs=None, **kw) -> NoteOn:
     n = NoteOn(tick, duration, duration, inst, index, kind, chip=index, secs=secs, fill=fill, fill_secs=fill_secs, **kw)
     n.ticks = [tick]
     return n
@@ -104,9 +105,9 @@ class Unison(unittest.TestCase):
         self.assertIsNone(unison_gain_db(p, [_note(voice=5), _note(voice=5, index=31)], chip=True))
 
     def test_mixed_unison_uses_the_note_levels(self):
-        p, f = _note(kind="PSG", inst=17, level_db=-2.0), _note(kind="PSG", inst=17, level_db=-8.0)
+        p, f = _note(kind=ChannelType.PSG, inst=17, level_db=-2.0), _note(kind=ChannelType.PSG, inst=17, level_db=-8.0)
         self.assertAlmostEqual(_gain(p, [f], False), 20 * math.log10(1 + 10 ** (-6 / 20)))
-        self.assertIsNone(unison_gain_db(p, [_note(kind="PSG", inst=18)], chip=False))
+        self.assertIsNone(unison_gain_db(p, [_note(kind=ChannelType.PSG, inst=18)], chip=False))
 
 
 if __name__ == "__main__":

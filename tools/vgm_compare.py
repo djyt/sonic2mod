@@ -679,7 +679,8 @@ def report_merged_patterns(cfg: ConversionConfig, recording: _Reference, mod_pat
           2  1-4        FM5+FM3+FM4+PSG1  +0.3     +2.1   <-- level
 
     `chip_names`: {source: the chip channel its render is named after} (PSG3 -> NOISE).
-    Pooled notes (merge_fill, fill: true) sound on whatever column is silent: in no reference.
+    Pooled notes (merge_fill, fill: true) sound on whatever column is silent: in no reference; a
+    vacated channel's (merge_vacate) are all credited to its own column, the moved ones too.
     """
     spans = mod_pattern_spans(read_mod(mod_path))
     layout = column_sources(cfg, sorted({p for p, _, _ in spans}))
@@ -770,6 +771,9 @@ def report_merged_patterns(cfg: ConversionConfig, recording: _Reference, mod_pat
     pooled = sorted({g.primary for g in cfg.merge if g.fill} | set(cfg.merge_fill))
     if pooled:
         print(f"  (pooled notes of {', '.join(pooled)} sound on whichever column is silent: in no column's reference)")
+    if cfg.merge_vacate:
+        print(f"  ({', '.join(cfg.merge_vacate)}: the notes vacated onto other columns are in its own column's "
+              f"reference, not theirs)")
     print()
     return res
 

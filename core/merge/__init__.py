@@ -60,8 +60,9 @@ only on their group's primary - what puts a chime on the bass channel between ba
 the drums into a 3-channel version.  A pool note takes the channel that stays silent longest
 (the whole note where one can; a channel whose next note-on cuts it is second choice, and a
 note that would get less than `fill_min_ticks` is not placed); a note with no silent channel
-is lost.  Pool notes are spliced in as solo notes are, so they keep their own instrument,
-level and pitch.
+is lost (a `merge_vacate` channel's moves only where it fits whole, and stays on its own
+column otherwise).  Pool notes are spliced in as solo notes are, so they keep their own
+instrument, level and pitch.
 
 The plan is built once the song's ticks are final (after the global duration divider and the
 loop extension), before the samples are rendered — the FM composites are entries in the

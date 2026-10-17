@@ -204,9 +204,13 @@ class ChannelWriter:
         """This note plays on its group's primary channel in this pattern (merge_patterns), or
         nowhere (dropped).  What still rings here from a pattern the channel was live in ends
         now, as the re-key ended it on the hardware; the channel's cells stay empty otherwise."""
-        if self._ring.inst is None:
-            return
         pattern, row = self._timeline.pattern_row(tick)
+        if self._ring.inst is None:
+            if (pattern, row) == (0, 0):
+                # Nothing rings yet, but a song that loops to position 0 comes back with this
+                # column's last note ringing, which this note re-keyed: a leading rest's C00
+                self._ctx.leading_rests.setdefault(self._router.current(tick), self._cfg.source)
+            return
         if not self._cells.in_song(pattern):
             return
         self._col = self._router.current(tick)

@@ -400,6 +400,7 @@ follower or dropped in every pattern the blocks name.  `merge:` groups may sit b
 | `merge_output_file` | `<output stem>_merged.mod` | Where `--merged` writes |
 | `merge_drop` | `[]` | Channels left out of the merged build |
 | `merge_fill` | `[]` | The fill pool: each note on whichever column is silent when it starts |
+| `merge_vacate` | `[]` | Channels that keep their column but move each note to one silent for all of it; the rest stay (a column freed for sound effects) |
 | `merge_fill_cut_after` | `{}` | `{channel: ticks}`: a pool note may cut that column's notes once they are this old |
 | `merge_tolerance` | `1` | Ticks a follower note-on may be off the primary's and still fold |
 | `merge_bank_slots` | `auto` | Slots held back for sample banks; `auto` rebuilds with what the banks need, a number pins it |

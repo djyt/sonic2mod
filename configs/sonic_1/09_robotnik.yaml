@@ -22,6 +22,10 @@ variants:
   lofi:
     name: "Robotnik lofi"
     loop_drift_db: 12            # bass and arpeggio loop where they settle to within 12 dB (-34 KB)
+    merge_vacate: [FM5]          # the arpeggio's column is the Amiga port's sound-effect channel: 28 of
+                                 # its 84 notes move where a column is silent for all of each (22 onto
+                                 # the drums', 6 the lead's); the rest, under the boss ostinato and the
+                                 # lead's held notes, have nowhere to go without a cut
 
 channels:
   - source: DAC

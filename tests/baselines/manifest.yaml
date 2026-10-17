@@ -190,9 +190,9 @@ robotnik_lofi:
   date: '2026-10-13'
   settings: f08dfd2ff1bd
 robotnik_lofi_merged:
-  commit: bd13b8e
-  config: 986005d0edd0
-  date: '2026-10-13'
+  commit: dbb42e4
+  config: 88200e30cfae
+  date: '2026-10-17'
   settings: f08dfd2ff1bd
 robotnik_merged:
   commit: bd13b8e

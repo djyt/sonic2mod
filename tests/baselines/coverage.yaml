@@ -7106,7 +7106,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: bd13b8e-dirty
+  commit: dbb42e4-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7267,7 +7267,7 @@ robotnik_lofi_merged:
   - core/vgm/reader.py
   - core/vgm/realign.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: 193e80baac83
+    configs/sonic_1/09_robotnik.yaml: e345f5822382
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: 1be2c231bd5e
 robotnik_merged:

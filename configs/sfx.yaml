@@ -100,4 +100,4 @@ output:
         C1: {tail_db: -24}  # Effect $C1 [Break Item]
         C6: {tail_db: -12}  # Effect $C6 [Ring Loss]
         CC: {tail_db: -28}  # Effect $CC [Spring]
-        BE: {transpose: -9}  # Effect $BE [Roll] - its hiss sits above 8287 Hz's band: moved down into it
+        BE: {tail_db: -12, transpose: -9}  # Effect $BE [Roll] - its hiss sits above 8287 Hz's band: moved down into it

@@ -675,7 +675,10 @@ def print_merge(console: Console, rep: Report) -> None:
                      f"[yellow]{d['cut']}[/yellow]" if d.get('cut') else "[dim]—[/dim]"))
     for f in _infos(rep, InfoKind.MERGE_FILL):
         where = ", ".join(f"{n}→{ch}" for ch, n in sorted(f['targets'].items(), key=lambda kv: -kv[1]))
-        rows.append(("", "", f"[bold]{f['source']}[/bold] [dim]fill: {where}[/dim]", "", str(f['placed']), "",
+        col, kind = "", "fill"
+        if f.get('vacate'):                           # the rest stay on its own column
+            col, kind, where = home.get(f['source'], ""), "vacate", f"{where} · {f['kept']} stay"
+        rows.append(("", col, f"[bold]{f['source']}[/bold] [dim]{kind}: {where}[/dim]", "", str(f['placed']), "",
                      f"[red]{f['lost']}[/red]" if f['lost'] else "[dim]—[/dim]",
                      f"[yellow]{f['cut']}[/yellow]" if f['cut'] else "[dim]—[/dim]"))
     blocks = any(r[0] for r in rows)            # merge_patterns: blocks; a song-wide merge has none

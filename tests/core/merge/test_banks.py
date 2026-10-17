@@ -166,7 +166,7 @@ class SameSounds(unittest.TestCase):
         g = MergeGroup("DAC", ["FM2"], bank=True)
         a = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, None),)), g, base=12, banked=True, notes=4,
                       entry=[-1, "a", 64, 0])
-        b = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, 200.0),)), g, base=12, banked=True, notes=2,
+        b = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, 200),)), g, base=12, banked=True, notes=2,
                       entry=[-2, "b", vol_b, 0])
         plan = MergePlan([g], composites={a.key: a, b.key: b})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}

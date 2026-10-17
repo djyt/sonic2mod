@@ -9,6 +9,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
@@ -66,8 +67,8 @@ class MovedLevels(unittest.TestCase):
         mod.samples[18] = ModSample("b3")
         infos = []
         diag = SimpleNamespace(info=lambda kind, **kw: infos.append(kw), warn=lambda *a, **kw: None)
-        ref = {ChannelType.FM: {19: -10.0, 6: -8.0}}
-        build = MergedBuild(plan, mod, cfg, None, None, diag, ref, None)
+        ref: dict[str, dict[int, float]] = {ChannelType.FM: {19: -10.0, 6: -8.0}}
+        build = MergedBuild(plan, mod, cast(Any, cfg), None, cast(Any, None), cast(Any, diag), ref, None)
         build.bake_volumes({19: -5.5, 6: -8.0}, {}, {})          # FM4's louder notes set 19's level now
         self.assertEqual(entry[2], 10)                           # 6 x 4.5 dB
         self.assertEqual(mod.samples[18].volume, 10)

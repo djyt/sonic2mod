@@ -149,7 +149,8 @@ class MergePlan:
     mix_only: set[int] = field(default_factory=set) # rendered for the mixes only; a composite may hold
                                                     #   their slot, so they are kept aside, not installed
     fill: list = field(default_factory=list)        # per pool source: {'source', 'notes', 'placed', 'cut',
-                                                    #   'lost', 'folded', 'targets': {channel: notes}} (pool_notes)
+                                                    #   'lost', 'folded', 'targets': {channel: notes}} (pool_notes);
+                                                    #   a vacated channel's adds 'vacate': True and 'kept'
     slots_free: int = 0                             # instrument slots the composites could take
     slots_wanted: int = 0                           # composites the groups asked for (after max_composites)
     spare_slots: list[int] = field(default_factory=list)   # slots the fit left free (the banks take them)

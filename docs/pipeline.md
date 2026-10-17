@@ -722,8 +722,24 @@ are paired again — and places each note on **any** output column silent when i
 - pool notes are spliced as solo notes, keeping their own instrument, level and pitch on whatever
   column they land.
 
-The report gives, per source, notes placed where, cut, lost and stayed folded.  A line that starts on
-the other parts' note-ons cannot be pooled: Green Hill's chimes start on a bass and drum hit almost
+`merge_vacate: [FM5]` frees a column as far as that loses nothing — a game that interrupts it for
+sound effects (Sonic 1's Robotnik lofi: the Amiga port takes channel 4).  The channel stays live, but
+each of its notes moves (`vacate_notes`, after the rest of the pool) to the first column, in column
+order, silent for all of it, and stays on its own column otherwise:
+
+- a column's notes count whole, `merge_fill_cut_after` or not: a vacated note cuts none;
+- no pool note lands on a vacated column, and vacating takes no column another pool note needed;
+- a legato run (an `smpsNoAttack` note and the note it bends out of) stays home whole;
+- not counted: release slides.  A note's span ends at its key-off, so a moved note may cut the
+  release slide of the column's note before it, and its own release ends at the column's next
+  note.  Read the cells (`A0y` lost) when the voices release slowly; Robotnik's lose none;
+- a moved note plays from its new column's side of the Amiga's L R R L.
+
+A vacated channel may be in no group, drop or pool.  A note moved off pattern 0 row 0 leaves a
+`C00` there (`ModLayout.leading_rests`): the loop comes back with the column's last note ringing.
+
+The report gives, per source, notes placed where, cut, lost, stayed folded and (vacated) stayed
+home.  A line that starts on the other parts' note-ons cannot be pooled: Green Hill's chimes start on a bass and drum hit almost
 every time (30 of 188 placed), so they fold onto the bass as bass+chime mixes instead.
 
 ### Composite instruments

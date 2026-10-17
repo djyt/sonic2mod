@@ -78,7 +78,8 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
                psg_oob: str = "extend",
                native_rate: int = NATIVE_RATE,
                psg_oversample: int = 1,
-               taps: int = DEFAULT_TAPS) -> RenderResult:
+               taps: int = DEFAULT_TAPS,
+               transpose: int = 0) -> RenderResult:
     """Play one parsed SFX and return its mixed stereo output.
 
     Args:
@@ -94,6 +95,7 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
         native_rate: the YM2612's output rate at its clock (core.chips.ym2612.output_rate).
         psg_oversample: `sn` runs at native_rate x this (built so), resampled down at the end with
                    `taps` (settings.yaml psg_synthesis.oversample, samples.resample_taps).
+        transpose: semitones on every track's notes (sfx.yaml `transpose`).
     """
     opn2.reset("ym2612")
     sn.reset()
@@ -105,7 +107,7 @@ def render_sfx(song, opn2, sn, *, fps: float = 60.0,
     for channel in (2, 3, 4):
         opn2.key_off(channel)
 
-    driver = SfxDriver(song, opn2, sn, psg_oob=psg_oob)
+    driver = SfxDriver(song, opn2, sn, psg_oob=psg_oob, transpose=transpose)
     opn2.begin_capture()
 
     # Each chip's stream on its own: the PSG's raw, at its oversampled rate until the end.  An

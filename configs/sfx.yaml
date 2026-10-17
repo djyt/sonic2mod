@@ -53,7 +53,8 @@ output:
                             # in a sample.  Plays a frame earlier than the Mega Drive
   tail_db: off              # Cut where the effect stays this many dB under its own peak (-30), the last
                             # frame faded; off keeps it to the 16-bit floor
-  effects: {}               # One effect's own trim_lead / tail_db, by sound id:  {CC: {tail_db: -24}}
+  transpose: 0              # Transpose a high effect (like Sonic's roll) down x semi-tones. So it doesn't sound awful at 8khz.
+  effects: {}               # One effect's own trim_lead / tail_db / transpose, by sound id:  {CC: {tail_db: -24}}
 
   variants:
     # Amiga Quality Samples
@@ -99,3 +100,4 @@ output:
         C1: {tail_db: -24}  # Effect $C1 [Break Item]
         C6: {tail_db: -12}  # Effect $C6 [Ring Loss]
         CC: {tail_db: -28}  # Effect $CC [Spring]
+        BE: {transpose: -9}  # Effect $BE [Roll] - its hiss sits above 8287 Hz's band: moved down into it

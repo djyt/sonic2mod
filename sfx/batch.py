@@ -116,8 +116,8 @@ def output_name(path: str) -> str:
 
 def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs=10.0,
                psg_gain=PSG_GAIN, psg_oob="extend", native_rate: int = OPN2.NATIVE_RATE,
-               psg_oversample: int = 1, taps: int = DEFAULT_TAPS) -> SfxRender:
-    """Read and render a single SFX."""
+               psg_oversample: int = 1, taps: int = DEFAULT_TAPS, transpose: int = 0) -> SfxRender:
+    """Read and render a single SFX, `transpose` semitones from its own pitch."""
     song = source.read()
     warnings: list[str] = []
 
@@ -128,7 +128,7 @@ def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs
 
     result = render_sfx(song, opn2, sn, fps=fps, tail_secs=tail_secs,
                         max_secs=max_secs, psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate,
-                        psg_oversample=psg_oversample, taps=taps)
+                        psg_oversample=psg_oversample, taps=taps, transpose=transpose)
     warnings.extend(result.warnings)
     if result.truncated:
         warnings.append(f"hit the {max_secs:g}s cap — output truncated")
@@ -148,10 +148,12 @@ def render_one(source: SfxSource, opn2, sn, *, fps=60.0, tail_secs=1.0, max_secs
 
 def render_all(sources, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=PSG_GAIN,
                psg_oob="extend", fm_clock=MD_FM_CLOCK, psg_clock=MD_PSG_CLOCK,
-               psg_oversample: int = 1, taps: int = DEFAULT_TAPS, progress=None) -> list[SfxRender]:
+               psg_oversample: int = 1, taps: int = DEFAULT_TAPS, progress=None,
+               transpose_for: Callable[[int | None], int] | None = None) -> list[SfxRender]:
     """Render every source with a single shared pair of chip instances, clocked at `fm_clock` /
     `psg_clock` (settings.yaml fm_synthesis / psg_synthesis clock_rate), the PSG at
-    `psg_oversample` x the FM's rate (psg_synthesis.oversample)."""
+    `psg_oversample` x the FM's rate (psg_synthesis.oversample); each `transpose_for(its sound id)`
+    semitones from its own pitch (sfx.yaml `transpose`)."""
     native_rate = output_rate(fm_clock)
     opn2 = OPN2(mode="ym2612")
     sn = SN76489(clock_rate=psg_clock, sample_rate=native_rate * psg_oversample)
@@ -164,6 +166,7 @@ def render_all(sources, *, fps=60.0, tail_secs=1.0, max_secs=10.0, psg_gain=PSG_
                 source, opn2, sn, fps=fps, tail_secs=tail_secs, max_secs=max_secs,
                 psg_gain=psg_gain, psg_oob=psg_oob, native_rate=native_rate,
                 psg_oversample=psg_oversample, taps=taps,
+                transpose=transpose_for(sound_id(source.name)) if transpose_for else 0,
             ))
         return renders
     finally:

@@ -186,6 +186,7 @@ def main():
                 psg_clock=psg_synth.clock_rate,
                 psg_oversample=psg_synth.psg_oversample,
                 taps=synth.resample_taps,
+                transpose_for=cfg.output.transpose_for,
             )
         except (ValueError, FileNotFoundError) as e:
             _error(str(e))

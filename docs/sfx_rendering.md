@@ -51,7 +51,8 @@ error.
 | `output.max_rate` | `28604` | `auto`'s ceiling (period 124); 16574 for an A500 |
 | `output.trim_lead` | `false` | Start at the first sample that rounds to a step (§ Lead and tail).  Plays a frame earlier than the Mega Drive |
 | `output.tail_db` | `off` | Cut where the effect stays this many dB under its own peak (`-30`), the last frame faded |
-| `output.effects` | `{}` | One effect's own `trim_lead` / `tail_db`, by sound id: `{CC: {tail_db: -24}}` (`$CC`, `0xCC` too) |
+| `output.transpose` | `0` | Semitones on every track's notes, rendered so (§ Transpose).  The manifest gains `transpose` |
+| `output.effects` | `{}` | One effect's own `trim_lead` / `tail_db` / `transpose`, by sound id: `{CC: {tail_db: -24}}` (`$CC`, `0xCC` too) |
 
 Variants:
 
@@ -88,6 +89,7 @@ Variants:
 | `peak` | The written peak in steps (127 / 32767 full scale) |
 | `clipped` | Samples the gain pushed past the rails (`over: clip`) |
 | `limited_db` | `over: limit`: how far the effect was turned down to fit (0 when it fits) |
+| `transpose` | The semitones the effect was rendered from its own pitch (§ Transpose); absent at 0 |
 
 ## Module map
 
@@ -227,6 +229,19 @@ last frame (a cut at −30 dB is still a step of a few 8-bit levels).  Over the 
 volume 32): −36 dB saves 7 KB, −30 dB 26 KB, −24 dB 63 KB of 416 KB; Spring alone −30 dB 3.3 KB of
 8.7 KB.  The mixer variant cuts at −36 dB, and its `effects:` entries cut Death, Hit Spikes, Hit
 Boss, Collapse, Break Item and Spring sooner (−16 to −28 dB, chosen by ear).
+
+### Transpose
+
+**Some effects live above a low rate's band.**  Roll (`$BE`) is algorithm 4 with feedback 7 on OP1
+(a hiss) into OP2 at ×4: its carrier sits at 4.4 kHz on `nCs6` and 6.3 kHz on `nG6`, the hiss up to
+12 kHz.  Only 8 % of its energy is under 8287 Hz's 4.14 kHz Nyquist, so the resampler rightly
+removes the rest and what is left peaks at 50 of 127, its 31 dB fade (`smpsAlterVol $01` × 42)
+ending on 1-2 steps.  A higher rate does not help the mixer (one rate) or an A500 (its ~4.4 kHz
+filter).  `transpose` adds semitones to every track's pitch byte before the driver plays it: the
+voice, vibrato, fade and timing stay the data's, the notes move into the band (an octave down: 42 %
+of the energy kept, peak 97).  The mixer variant plays Roll at −9 (chosen by ear: peak 92 of
+127, from 50).  A re-voicing for the target, not the Mega Drive's pitch: the
+manifest's `transpose` says so.
 
 ## Known deviations from stock hardware
 

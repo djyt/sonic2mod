@@ -46,7 +46,7 @@ def _s8(value: int) -> int:
 class SfxDriver:
     """Plays one parsed SFX into a YM2612 and an SN76489."""
 
-    def __init__(self, song, opn2, sn, psg_oob: str = "extend"):
+    def __init__(self, song, opn2, sn, psg_oob: str = "extend", transpose: int = 0):
         """
         Args:
             song:     SmpsSong parsed from an SFX .asm (header.is_sfx must be True).
@@ -54,6 +54,7 @@ class SfxDriver:
             sn:       core.chips.sn76489.SN76489 instance, already reset.
             psg_oob:  "extend" or "clamp" — how to treat PSG note indices past the
                       end of the 70-entry driver table.
+            transpose: semitones added to every track's header pitch (sfx.yaml `transpose`).
         """
         self.song = song
         self.opn2 = opn2
@@ -63,7 +64,7 @@ class SfxDriver:
         self.warnings: list[str] = []
 
         self.tracks = [
-            SfxTrack.from_header(ch.header, ch.events, name=ch.header.label)
+            SfxTrack.from_header(ch.header, ch.events, name=ch.header.label, transpose=transpose)
             for ch in song.channels
         ]
 

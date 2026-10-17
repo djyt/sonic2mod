@@ -40,8 +40,8 @@ OVERS = (OVER_CLIP, OVER_LIMIT)
 PSG_EXTEND, PSG_CLAMP = "extend", "clamp"
 TAIL_OFF = "off"
 
-# What an `effects:` entry may set: how much of one effect is kept
-EFFECT_KEYS = frozenset({"trim_lead", "tail_db"})
+# What an `effects:` entry may set: how much of one effect is kept, and its pitch
+EFFECT_KEYS = frozenset({"trim_lead", "tail_db", "transpose"})
 PSG_PAST_TABLE = (PSG_EXTEND, PSG_CLAMP)
 
 
@@ -75,6 +75,8 @@ class OutputSettings:
     max_rate: float = DEFAULT_MAX_RATE      # auto's ceiling
     trim_lead: bool = False                 # from the first sample that rounds to a step
     tail_db: float | None = None            # cut where the effect stays this far under its own peak
+    transpose: int = 0                      # semitones on every track's notes: a high effect moved
+                                            # into a low rate's band
     effects: dict[int, dict] = field(default_factory=dict)   # sound id -> its own EFFECT_KEYS
 
     @property
@@ -85,6 +87,10 @@ class OutputSettings:
         """These settings as one effect has them: its `effects:` entry laid over them."""
         own = self.effects.get(sound_id) if sound_id is not None else None
         return replace(self, **own) if own else self
+
+    def transpose_for(self, sound_id: int | None) -> int:
+        """The semitones one effect is rendered at, its `effects:` entry's if it has one."""
+        return self.for_effect(sound_id).transpose
 
 
 @dataclass(frozen=True)
@@ -137,6 +143,7 @@ def _output(data: dict, where: str) -> OutputSettings:
         max_rate=_positive(data, "max_rate", d.max_rate, where),
         trim_lead=_flag(data, "trim_lead", d.trim_lead, where),
         tail_db=_tail_db(data.get("tail_db", d.tail_db), where),
+        transpose=_semitones(data.get("transpose", d.transpose), where),
         effects=_effects(data.get("effects") or {}, f"{where}: effects"),
     )
     _check_paula(out, where)
@@ -176,6 +183,13 @@ def _tail_db(value, where: str) -> float | None:
     return float(value)
 
 
+def _semitones(value, where: str) -> int:
+    """A whole number of semitones (-12: an octave down)."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{where}: transpose must be whole semitones (-12) (got {value!r})")
+    return value
+
+
 def _effects(data: dict, where: str) -> dict[int, dict]:
     """`effects:` - a sound id ($CC, 0xCC or CC) to the EFFECT_KEYS it sets for that effect alone."""
     out = {}
@@ -189,6 +203,8 @@ def _effects(data: dict, where: str) -> dict[int, dict]:
             own["trim_lead"] = _flag(entry, "trim_lead", False, ctx)
         if "tail_db" in entry:
             own["tail_db"] = _tail_db(entry["tail_db"], ctx)
+        if "transpose" in entry:
+            own["transpose"] = _semitones(entry["transpose"], ctx)
         out[parse_number(key, ctx, base=16)] = own
     return out
 

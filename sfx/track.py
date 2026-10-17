@@ -77,13 +77,14 @@ class SfxTrack:
         return PSG_CHANNEL[self.voice_control]
 
     @classmethod
-    def from_header(cls, ch_header, events, name=""):
-        """Build a track from a parsed SFX channel header, per Sound_PlaySFX."""
+    def from_header(cls, ch_header, events, name="", transpose: int = 0):
+        """Build a track from a parsed SFX channel header, per Sound_PlaySFX; `transpose` semitones
+        on its pitch byte (none on the Mega Drive)."""
         return cls(
             channel_type=ch_header.channel_type,
             voice_control=ch_header.hw_channel,
             events=events,
             name=name,
-            transpose=ch_header.pitch_offset,
+            transpose=ch_header.pitch_offset + transpose,
             volume=ch_header.volume,
         )

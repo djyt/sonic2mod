@@ -304,6 +304,8 @@ def _manifest_note(out: OutputSettings) -> str:
              "'peak': the written peak in steps; 'clipped': samples past the rails. ")
     if out.over == OVER_LIMIT:
         slots += "'limited_db': how far an effect past the rails was turned down to fit. "
+    if out.transpose or any('transpose' in own for own in out.effects.values()):
+        slots += "'transpose': the semitones an effect was rendered from its own pitch. "
     repeat = ("'repeat_offset'/'repeat_length' point at a trailing silent word so "
               "a non-looping sample does not buzz after it finishes.")
     return ((pitch if out.paula else "") + volume + slots + (repeat if out.paula else "")).strip()
@@ -329,4 +331,7 @@ def _manifest_entry(e: SfxExport, out: OutputSettings) -> dict:
     }
     if out.over == OVER_LIMIT:
         entry['limited_db'] = round(e.limited_db, 1)
+    transpose = out.transpose_for(sound_id(e.name))
+    if transpose:
+        entry['transpose'] = transpose
     return entry

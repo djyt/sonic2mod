@@ -98,6 +98,7 @@ output:
         B5: {tail_db: -12}  # Effect $B5 [Ring] - Aggressive!
         B9: {tail_db: -16}  # Effect $B9 [Cliff Collapse]
         C1: {tail_db: -24}  # Effect $C1 [Break Item]
+        C4: {tail_db: -24}  # Effect $C4 [Bomb]
         C6: {tail_db: -12}  # Effect $C6 [Ring Loss]
         CC: {tail_db: -28}  # Effect $CC [Spring]
         BE: {tail_db: -12, transpose: -9}  # Effect $BE [Roll] - its hiss sits above 8287 Hz's band: moved down into it

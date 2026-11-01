@@ -180,7 +180,8 @@ class ModOff(PlayedEffect):
 @dataclass(frozen=True)
 class PsgForm(PlayedEffect):
     flag = CoordFlag.PSG_FORM
-    noise: int                    # the noise register byte
+    noise: int | None             # the noise register byte; None: the track plays tones again
+                                  # (Streets of Rage 2's $F7 8; SMPS has no such flag)
 
 
 @dataclass(frozen=True)

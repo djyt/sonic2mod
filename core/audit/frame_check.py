@@ -44,6 +44,7 @@ from enum import StrEnum
 from ..chips import FEEDBACK_ALGORITHM_MASK, PSG_ATT_SILENT, freq_word, operator_bits
 from ..smps import (
     FM_CHANNEL_NAMES,
+    NOISE_CHANNEL_NAME,
     PSG_CHANNEL_NAMES,
     ChannelType,
     PlayedNote,
@@ -130,6 +131,7 @@ def note_frames(song: SmpsSong, holds_early: bool = False, played: PlayedSong | 
     TempoWait holds a frame earlier than the song's phase)."""
     played = played or played_song(song)
     melodic = {name for name, ch in source_map(song).items() if ch.header.channel_type != ChannelType.DAC}
+    melodic.add(NOISE_CHANNEL_NAME)                 # fixed-rate noise, whichever track plays it
     schedule = tempo_schedule(played.modifier, played.tempo_changes, played.tempo_phase - holds_early)
     return {name: [(frame_of_tick(schedule, n.tick), n) for n in ns if not n.rest]
             for name, ns in played.channels.items() if name in melodic}
@@ -264,9 +266,9 @@ def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog
             want[FrameAspect.VOICE] = _chip_bits(feedback, dict(timbre))
             got[FrameAspect.VOICE] = _chip_bits(fm.feedback_algorithm, {r: fm.operator(r) for r, _ in timbre})
     else:
-        index = PSG_CHANNEL_NAMES.index(name)
-        noise = note.noise is not None
-        tone, level = frame.psg[_NOISE_TONE if noise else index], frame.psg[NOISE_CHANNEL if noise else index]
+        noise = note.noise is not None or name == NOISE_CHANNEL_NAME
+        index = _NOISE_TONE if noise else PSG_CHANNEL_NAMES.index(name)    # a fixed rate's: no pitch
+        tone, level = frame.psg[index], frame.psg[NOISE_CHANNEL if noise else index]
         got = {FrameAspect.PITCH: max(1, tone.period), FrameAspect.LEVEL: level.attenuation}
         level = note.level
         step = steps.step(note.voice)

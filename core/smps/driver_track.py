@@ -70,7 +70,7 @@ class DriverTrack:
         self._detune_word = 0
         self._gate = 0                             # frames before a note's end the driver keys it off
         self._legato = False                       # every read ties (Legato)
-        self._noise = False                        # a PSG_FORM ran: notes are noise
+        self._noise = False                        # a PSG_FORM holds: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
         self._voice: int | None = None             # the voice set last, and what the track plays it with
@@ -109,8 +109,8 @@ class DriverTrack:
             case AlterVol(delta=delta) if self._level is not None:
                 self._level = signed_byte((self._level + delta) % _BYTE_VALUES)
                 return self._volume_change(SetVol(self._level))
-            case PsgForm():
-                self._noise = True
+            case PsgForm(noise=noise):
+                self._noise = noise is not None
             case SelectSample(sound=sound):
                 self._dac_sample = sound
             case SetVoice(index=index):

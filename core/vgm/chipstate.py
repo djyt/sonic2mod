@@ -25,10 +25,13 @@ from ..chips import (
     CARRIER_OFFSETS_BY_ALG,
     MD_FM_CLOCK,
     MD_PSG_CLOCK,
+    NOISE_RATE_TONE3,
     OPERATOR_SLOT_OFFSETS,
     REG_PAN,
     fm_frequency_hz,
     freq_word,
+    noise_rate,
+    noise_white,
     psg_frequency_hz,
     split_freq_word,
 )
@@ -68,9 +71,6 @@ _PSG_LOW_NIBBLE = 0x0F
 _PSG_HIGH_BITS = 0x3F
 _PSG_HIGH_SHIFT = 4
 _NOISE_MASK = 0x07
-_NOISE_RATE_MASK = 0x03
-_NOISE_WHITE_BIT = 0x04
-_NOISE_TONE2_RATE = 3              # the LFSR is clocked by tone channel 2
 _NOISE_BASE_DIVIDER = 512          # rates 0-2: clock / (512 << rate)
 
 
@@ -93,16 +93,6 @@ class Change(NamedTuple):
     channel: int                    # FM 0-5 / PSG 0-3 (3 = noise) / DAC_CHANNEL
     value: int                      # the register's new value
     previous: int                   # its value before the write
-
-
-def noise_white(register: int) -> bool:
-    """The noise register's bit 2: white noise (else periodic)."""
-    return bool(register & _NOISE_WHITE_BIT)
-
-
-def noise_rate(register: int) -> int:
-    """The noise register's rate: 0-2 a fixed divider, 3 tone channel 2."""
-    return register & _NOISE_RATE_MASK
 
 
 class ChipState:
@@ -296,7 +286,7 @@ class ChipState:
     def noise_shift_hz(self) -> float:
         """The LFSR's shift rate: clock / (512 << rate), or tone 2's frequency at rate 3 (its period 0
         counted as 1, as the Sega VDP PSG does)."""
-        if self.noise_rate != _NOISE_TONE2_RATE:
+        if self.noise_rate != NOISE_RATE_TONE3:
             return self.psg_clock / float(_NOISE_BASE_DIVIDER << self.noise_rate)
         return psg_frequency_hz(self._psg_period[2] or 1, self.psg_clock)
 

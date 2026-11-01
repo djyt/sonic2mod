@@ -9,7 +9,9 @@ import unittest
 
 from core.smps import (
     ChannelType,
+    PitchRules,
     PlaybackRules,
+    PsgForm,
     SetVoice,
     SetVol,
     TrackRules,
@@ -76,3 +78,18 @@ class CarrierWrites(unittest.TestCase):
         track.effect(SetVoice(0))
         with self.assertRaisesRegex(ValueError, "track volume is added to"):
             track.effect(VoiceRegister(self._OP1_TL, 0x30))
+
+
+class NoiseOff(unittest.TestCase):
+    """A noise form, then tones again (Streets of Rage 2's `$F7 n`, `$F7 8`)."""
+
+    def test_notes_are_tones_again_after_the_noise(self):
+        rules = TrackRules(pitch=PitchRules(noise_writes_tone3=False))
+        playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
+                                 dac_names={}, tracks={ChannelType.PSG: rules})
+        track = DriverTrack(SmpsChannelHeader(ChannelType.PSG, "t"), "PSG1", playback, VoicePatcher([]))
+        track.note(0x90)
+        track.effect(PsgForm(0xE4))
+        self.assertEqual(track.note(0x95), 0x90)            # noise: tone 3 keeps the last tone note
+        track.effect(PsgForm(None))
+        self.assertEqual(track.note(0x95), 0x95)

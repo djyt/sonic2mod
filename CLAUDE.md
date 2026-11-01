@@ -334,7 +334,8 @@ One line each; the linked section has the cause and the detail.
 - One effect per cell; priority: `Cxx` > `4xy` > note cut > a loop's fall slide.
 - Layout order inside `convert()` is fixed: passes → pattern breaks → loop `Bxx` → trim → narrow →
   compact → trim tails → zero idle words.  Row-0 tempo `Fxx` is placed after every channel.
-- Noise mode is permanent once `smpsPSGform` runs; `psg_voice_map` is then never consulted.
+- Noise mode holds from `smpsPSGform` until a driver turns it off (`PsgForm(None)`, Streets of Rage 2's);
+  meanwhile `psg_voice_map` is never consulted.  Fixed-rate noise plays on a `NOISE` channel of its own.
 
 **Configs and settings** (`docs/yaml_config.md`)
 - settings.yaml values are used everywhere; code constants are only the fallback.

@@ -48,10 +48,14 @@ from .fm import (
 )
 from .psg import (
     MD_PSG_CLOCK,
+    NOISE_RATE_TONE3,
     PSG_ATT_SILENT,
     PSG_DIVIDER_MASK,
     PSG_SAMPLE_RATE,
     PSG_STEP_DB,
+    noise_follows_tone3,
+    noise_rate,
+    noise_white,
     psg_frequency_hz,
     psg_level_db,
 )
@@ -71,6 +75,7 @@ __all__ = [
     "MD_FM_CLOCK",
     "MD_PAL_FM_CLOCK",
     "MD_PSG_CLOCK",
+    "NOISE_RATE_TONE3",
     "OPERATOR_SLOT_OFFSETS",
     "PSG_ATT_SILENT",
     "PSG_DIVIDER_MASK",
@@ -90,6 +95,9 @@ __all__ = [
     "freq_word",
     "freq_word_hz",
     "keyed_carriers",
+    "noise_follows_tone3",
+    "noise_rate",
+    "noise_white",
     "operator_bits",
     "psg_frequency_hz",
     "psg_level_db",

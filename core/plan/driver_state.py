@@ -65,7 +65,7 @@ class DriverState(TrackState):
     """The driver's track state plus the MOD instrument it routes to, advanced one coordination
     flag at a time."""
 
-    __slots__ = ("config", "instrument", "psg_entries", "psg_entry", "psg_label")
+    __slots__ = ("_tone_routing", "config", "instrument", "psg_entries", "psg_entry", "psg_label")
 
     def __init__(self, config, *, is_psg: bool, psg: PsgTable, transpose: int = 0,
                  volume: int = 0, instrument: int = 0):
@@ -75,6 +75,7 @@ class DriverState(TrackState):
         self.psg_entry = None               # active PsgInstrumentEntry
         self.psg_entries = None             # its full psg_voice_map list, if it came from one
         self.psg_label: str | None = None   # "fTone_01" / "form 0xe7", for warnings
+        self._tone_routing: tuple | None = None    # the tone routing a noise form took over: its return
 
     @classmethod
     def for_channel(cls, channel, config, instrument: int = 0) -> DriverState:
@@ -100,11 +101,21 @@ class DriverState(TrackState):
 
     def apply(self, effect) -> None:
         """Advance the track state for one coordination flag, then the MOD routing it decides."""
+        was_noise = self.in_noise_mode
         super().apply(effect)
 
-        if isinstance(effect, PsgForm):
+        if isinstance(effect, PsgForm) and effect.noise is None:
+            # Tones again (Streets of Rage 2's $F7 8): the routing the noise took over, or the
+            # psg_voice_map instrument of the envelope set meanwhile
+            if was_noise and self._tone_routing is not None:
+                self.instrument, self.psg_entry, self.psg_entries, self.psg_label = self._tone_routing
+            self._route_tone(self.envelope)
+
+        elif isinstance(effect, PsgForm):
             # The form byte says white/periodic and the rate: its psg_map entry plays the noise.
             # The envelope is whatever VoiceIndex holds — the header voice or the last smpsPSGvoice.
+            if not was_noise:
+                self._tone_routing = (self.instrument, self.psg_entry, self.psg_entries, self.psg_label)
             form_byte = effect.noise
             entry = self.config.psg_map.get(form_byte)
             if entry is not None:
@@ -124,12 +135,17 @@ class DriverState(TrackState):
                 if self.psg_entry is not None:
                     self.instrument = self.psg_entry.envelopes.get(label, self.psg_entry.mod_instrument)
             else:
-                entries = self.config.psg_voice_map.get(label)
-                if entries is not None:
-                    self.instrument = entries[0].mod_instrument
-                    self.psg_entry = entries[0]
-                    self.psg_entries = entries
-                    self.psg_label = label
+                self._route_tone(label)
+
+    def _route_tone(self, label: str | None) -> None:
+        """Tone notes routed to `label`'s psg_voice_map instrument, where the map has the label."""
+        entries = self.config.psg_voice_map.get(label) if label else None
+        if entries is None:
+            return
+        self.instrument = entries[0].mod_instrument
+        self.psg_entry = entries[0]
+        self.psg_entries = entries
+        self.psg_label = label
 
     # -- queries -------------------------------------------------------------
 

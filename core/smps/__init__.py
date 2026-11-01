@@ -89,6 +89,7 @@ from .effects import (
 )
 from .names import (
     FM_CHANNEL_NAMES,
+    NOISE_CHANNEL_NAME,
     PSG_CHANNEL_NAMES,
     SFX_CHANNEL_IDS,
     SMPS_DAC_NAMES,
@@ -150,6 +151,7 @@ __all__ = [
     "HW_FM_CHANNEL",
     "LAST_NOTE",
     "MAX_PSG",
+    "NOISE_CHANNEL_NAME",
     "NO_TEMPO_HOLDS",
     "PAN_VALUES",
     "PSG_CHANNEL",

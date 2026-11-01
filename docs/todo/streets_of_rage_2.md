@@ -318,7 +318,10 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 ### Phase 3: the walk
 - [ ] 3.0 R4, R5, R6, a commit each.  R4 done: `TrackRules` holds `volume`, `key_off`, `ties`,
   `modulation`, `pitch` (and `byte_durations`).  R5 done: `DriverTrack.cut` returns the notes and effects a key-off
-  leaves, in time order (an effect where the note before it ends).
+  leaves, in time order (an effect where the note before it ends).  R6 done: `PsgForm(None)` turns
+  noise off (Track, DriverTrack, DriverState route back to the tone instrument); fixed-rate noise
+  plays on a `NOISE` channel in `played_song`, the lift and the frame check; `core/chips/psg.py`
+  holds the noise register's facts.  3.4 wires `$F7` to it.
 - [ ] 3.1 FM: volume law (the clamp is on the stored step: `$FB` after an out-of-range `$F1`), the
   gate's 1-frame floor (D3, checked on a rip), soft release, ties across the loop, the vibrato's
   phase and restart; `$FA` carrier writes against a rip (D4, modelled in 2.3).  Pan's direction

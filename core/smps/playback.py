@@ -27,9 +27,9 @@ import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK
+from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
 from .driver_tables import fm_note_index, psg_note_index
-from .names import source_names
+from .names import NOISE_CHANNEL_NAME, source_names
 from .rules import OctaveWrap, PlaybackRules
 from .song import SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
@@ -112,9 +112,36 @@ def played_song(song: SmpsSong) -> PlayedSong:
     end = song.end_tick()
     channels = {name: _played_channel(ch, voices, schedule, end)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
+    _fixed_noise_apart(channels)
     return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels,
                       song.rules.tempo_phase)
 
+
+
+def _fixed_noise_apart(channels: dict[str, list[PlayedNote]]) -> None:
+    """Noise at a fixed rate (0-2) plays on the noise channel alone, whichever track starts it
+    (Streets of Rage 2's PSG1 and PSG3): its notes move to a NOISE channel, a rest left in their
+    place, and carry no table note or pitch.  Noise clocked by tone 3 stays its track's."""
+    moved = [n if n.rest else dataclasses.replace(n, note=None, pitch=None) for n in channels.get(NOISE_CHANNEL_NAME, ())]
+    for name, notes in channels.items():
+        if name == NOISE_CHANNEL_NAME or not any(_fixed_noise(n) for n in notes):
+            continue
+        kept: list[PlayedNote] = []
+        for note in notes:
+            if _fixed_noise(note):
+                moved.append(dataclasses.replace(note, note=None, pitch=None))
+                _rest(kept, note.tick, note.duration)
+            elif note.rest:
+                _rest(kept, note.tick, note.duration)
+            else:
+                kept.append(note)
+        channels[name] = kept
+    if moved:
+        channels[NOISE_CHANNEL_NAME] = sorted(moved, key=lambda n: n.tick)
+
+
+def _fixed_noise(note: PlayedNote) -> bool:
+    return note.noise is not None and not note.rest and not noise_follows_tone3(note.noise)
 
 
 def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],

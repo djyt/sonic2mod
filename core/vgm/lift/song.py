@@ -20,6 +20,7 @@ import math
 from dataclasses import dataclass
 
 from ...smps import (
+    NOISE_CHANNEL_NAME,
     Aspect,
     ChannelType,
     PlaybackRules,
@@ -35,7 +36,17 @@ from ..chipstate import PSG_TONE_CHANNELS
 from ..frames import FrameLog
 from ..reader import VgmError
 from .tempo import TempoError, TempoMap, infer_tempo
-from .tracks import Hit, dac_hits, dac_used, fm_hits, fm_key_on_frames, noise_mode, psg_hits, psg_period_frames
+from .tracks import (
+    Hit,
+    dac_hits,
+    dac_used,
+    fixed_rate_noise,
+    fm_hits,
+    fm_key_on_frames,
+    noise_mode,
+    psg_hits,
+    psg_period_frames,
+)
 
 _DAC_FM_CHANNELS = 5            # with the DAC on, FM6 is the DAC
 
@@ -116,10 +127,15 @@ def _tracks(fl: FrameLog, rules: PlaybackRules) -> list[tuple[SmpsChannelHeader,
     # A driver with no PSG table plays no PSG music (Golden Axe's): what a rip's PSG holds is not the song's
     if not rules.psg_frequencies:
         return tracks
-    noise = noise_mode(fl)
+    # Noise clocked by tone 3 is PSG3's; at a fixed rate the noise channel is a track of its own
+    noise, fixed = noise_mode(fl), fixed_rate_noise(fl)
     for ch in range(PSG_TONE_CHANNELS):
         last = ch == PSG_TONE_CHANNELS - 1
-        tracks.append((SmpsChannelHeader(ChannelType.PSG, f"PSG{ch + 1}"), psg_hits(fl, ch, rules.psg_frequencies, noise and last)))
+        tracks.append((SmpsChannelHeader(ChannelType.PSG, f"PSG{ch + 1}"),
+                       psg_hits(fl, ch, rules.psg_frequencies, noise and last and not fixed)))
+    if fixed:
+        header = SmpsChannelHeader(ChannelType.PSG, NOISE_CHANNEL_NAME, chip_channel=NOISE_CHANNEL_NAME)
+        tracks.append((header, psg_hits(fl, PSG_TONE_CHANNELS - 1, rules.psg_frequencies, noise=True, fixed=True)))
     return tracks
 
 

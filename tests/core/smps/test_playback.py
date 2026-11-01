@@ -9,7 +9,9 @@ import unittest
 
 from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.smps import (
+    NOISE_CHANNEL_NAME,
     CoordFlag,
+    PsgForm,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEvent,
@@ -176,3 +178,26 @@ class Played(unittest.TestCase):
         song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)], rules=SONIC1_RULES))
         played_song(song)
         self.assertEqual(len(song.channels[0].events), 1)
+
+
+class FixedRateNoise(unittest.TestCase):
+    """Noise at a fixed rate plays on the noise channel alone, whichever track starts it; noise
+    clocked by tone 3 stays its track's (Sonic 1's, Streets of Rage's)."""
+
+    _FIXED, _TONE3 = 0xE4, 0xE7      # white noise at rate 0; at tone 3's
+
+    def _played(self, form: int):
+        song = _song(_note(), SmpsEvent(effect=PsgForm(form)), _note(), SmpsEvent(effect=PsgForm(None)), _note(),
+                     kind="PSG")
+        return played_song(song).channels
+
+    def test_fixed_rate_notes_move_to_noise_a_rest_left(self):
+        channels = self._played(self._FIXED)
+        self.assertEqual([(n.tick, n.rest) for n in channels["PSG1"]], [(0, False), (8, True), (16, False)])
+        (noise,) = channels[NOISE_CHANNEL_NAME]
+        self.assertEqual((noise.tick, noise.noise, noise.note, noise.pitch), (8, self._FIXED, None, None))
+
+    def test_noise_clocked_by_tone3_stays_the_tracks(self):
+        channels = self._played(self._TONE3)
+        self.assertNotIn(NOISE_CHANNEL_NAME, channels)
+        self.assertEqual([n.noise for n in channels["PSG1"]], [None, self._TONE3, None])

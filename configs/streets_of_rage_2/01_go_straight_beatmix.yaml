@@ -5,28 +5,39 @@ input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$01"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 57, 5]   # VGZ: +0.9 dB at 64
+  - [6, "fm_v01_B3.raw", 19, 0]   # VGZ: -6.4 dB at 9
+  - [11, "fm_v0e_Eb1.raw", 5, 0]   # VGZ: +5.2 dB at 10
+  - [12, "fm_v0e_Eb4.raw", 14, 0]   # VGZ: +2.2 dB at 18
+  - [13, "fm_v12_Fs2.raw", 4, 0]   # VGZ: +4.6 dB at 7
+  - [14, "fm_v13_Fs2.raw", 4, 0]   # VGZ: +4.2 dB at 7
+  - [17, "fm_v14_Fs2.raw", 6, 0]   # VGZ: +5.4 dB at 12
+  - [18, "fm_v15_Eb3.raw", 10, 0]   # VGZ: +1.5 dB at 12
+  - [20, "fm_v17_Eb4.raw", 11, 0]   # VGZ: +4.5 dB at 19
+  - [25, "fm_v07_C4.raw", 33, 0]   # VGZ: +1.1 dB at 38
+  - [28, "psg_$00_F3.raw", 4, 0]   # VGZ: -5.7 dB at 2
   - [2, "dac82.raw", 48, -2]   # VGZ: +2.5 dB at 64
   - [3, "dac83.raw", 49, -2]   # VGZ: +2.3 dB at 64
-  - [4, "fm_v00_Fs2.raw", 7, 0]   # VGZ: +5.5 dB at 14
+  - [4, "fm_v00_Fs2.raw", 8, 0] # VGZ: -1.2 dB at 7
   - [5, "fm_v00_Fs3.raw", 10, 0]   # VGZ: +1.6 dB at 12
   - [6, "fm_v00_F4.raw", 8, 0]   # VGZ: +2.9 dB at 11
-  - [7, "fm_v01_Eb1.raw", 6, 0]   # VGZ: +8.4 dB at 16
+  - [5, "fm_v01_Eb1.raw", 5, 0] # VGZ: +1.4 dB at 6
   - [8, "fm_v01_Fs3.raw", 17, 0]   # VGZ: +2.4 dB at 23
-  - [9, "fm_v0a_Bb4.raw", 23, 0]   # VGZ: +9.0 dB at 64
+  - [7, "fm_v0a_Bb4.raw", 29, 0] # VGZ: -1.9 dB at 23
   - [10, "fm_v0a_Ab5.raw", 28, 0]   # VGZ: +7.3 dB at 64
-  - [11, "fm_v0b_C6.raw", 6, 0]   # VGZ: -5.3 dB at 3
-  - [12, "fm_v0c_Cs2.raw", 46, 0]   # VGZ: -1.7 dB at 38
+  - [8, "fm_v0b_C6.raw", 5, 0] # VGZ: +0.9 dB at 6
+  - [9, "fm_v0c_Cs2.raw", 46, 0]   # VGZ: -1.7 dB at 38
   - [13, "fm_v0c_Cs3.raw", 47, 0]   # VGZ: -1.9 dB at 38
-  - [14, "fm_v02_Bb1.raw", 14, 0]   # VGZ: +2.9 dB at 19
+  - [15, "fm_v02_Bb1.raw", 14, 0]   # VGZ: +2.9 dB at 19
   - [15, "fm_v02_Bb2.raw", 13, 0]   # VGZ: +3.1 dB at 19
   - [16, "fm_v02_Bb3.raw", 12, 0]   # VGZ: +2.4 dB at 16
-  - [17, "fm_v03_F1.raw", 40, 0]   # VGZ: -2.0 dB at 32
+  - [21, "fm_v03_F1.raw", 30, 0] # VGZ: +2.6 dB at 40
   - [18, "fm_v03_F2.raw", 32, 0]   # VGZ: -2.1 dB at 25
-  - [20, "fm_v04_Ab3.raw", 14, 0]   # VGZ: +1.3 dB at 16
-  - [21, "fm_v05_C7.raw", 19, 0]   # VGZ: -1.7 dB at 16
-  - [22, "fm_v06_C7.raw", 21, 0]   # VGZ: -2.4 dB at 16
-  - [25, "fm_v09_Bb5.raw", 10, 0]   # VGZ: +1.3 dB at 12
-  - [28, "psg_$00_D5.raw", 6, 0]   # VGZ: +3.8 dB at 10
+  - [22, "fm_v04_Ab3.raw", 14, 0]   # VGZ: +1.3 dB at 16
+  - [23, "fm_v05_C7.raw", 19, 0]   # VGZ: -1.7 dB at 16
+  - [24, "fm_v06_C7.raw", 21, 0]   # VGZ: -2.4 dB at 16
+  - [27, "fm_v09_Bb5.raw", 10, 0]   # VGZ: +1.3 dB at 12
+  - [29, "psg_$00_D5.raw", 6, 0]   # VGZ: +3.8 dB at 10
   - [29, "psg_$00_Eb6.raw", 5, 0]   # VGZ: +2.3 dB at 6
   - [30, "psg_$00_Ab7.raw", 5, 0]   # VGZ: +3.8 dB at 8
   - [31, "psg_adsr_ffffffbe010a_v15_Fs3.raw", 14, 0]   # VGZ: +1.1 dB at 16

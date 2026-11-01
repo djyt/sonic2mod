@@ -257,11 +257,14 @@ A case whose ROM is not in `input/roms/` is left out.
 A converter change is safe only once every case it can move still produces a byte-identical MOD —
 cells **and** the sample table and data (length, volume, finetune, loop, MD5).
 
-**Selection by what each case ran** (`tests/selection.py`): `--generate-baselines` records the
-project files each case executes (coverage.py, `pip install coverage`; render caches off, so
-generating is cold: ~30 s).  A plain run diffs the working tree with each case's baseline commit
-and runs only the cases a change can move: a driver's folder moves its game's cases, shared code
-(`core/smps`, `core/convert`, ...) moves every case that imports it.  `--all` runs everything.
+**Selection by what each case ran** (`tests/selection.py`, `tests/functions.py`): `--generate-baselines`
+records the project files and functions each case executes (coverage.py, `pip install coverage`;
+render caches off, so generating is cold).  A plain run diffs the working tree with each case's
+baseline commit and runs only the cases a change can move: a changed function moves the cases that
+ran it; code outside a function (a constant, an import, a class's fields) every case that loaded
+its file; a driver's folder its game's cases.  `--all` runs everything.  Regenerate every record
+now and then (both suites, `--generate-baselines`): a record's commit far behind makes every
+run diff more.
 
 Every case converts with **`tests/settings.yaml`** (`convert.py --settings`), never
 `configs/settings.yaml`, so tuning a song by ear does not move the baselines.  It states every key

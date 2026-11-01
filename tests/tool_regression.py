@@ -57,12 +57,12 @@ import yaml
 from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, variant_args
 from tests.roms import GAMES, MOONWALKER_RIPS, MOONWALKER_ROM, SONIC1_ASM, SONIC1_ROM, STREETS_OF_RAGE_2_ROM
-from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
+from tests.selection import CaseRun, Ran, head_commit, report, run_recorded, save_record, select
 
 BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
 COVERAGE_FILE = BASELINES_DIR / "coverage.yaml"
-_RUNNER_FILES = ("tests/tool_regression.py", "tests/selection.py")      # a change to either runs every case
+_RUNNER_FILES = ("tests/tool_regression.py", "tests/selection.py", "tests/functions.py")   # a change to one runs every case
 VGZ_DIR = ROOT / "reference" / "vgz" / "sonic_1"
 RENDER_DIR = ROOT / "output" / "compare" / "tool_regression"
 
@@ -106,7 +106,7 @@ class _Case:
     from_line: str | None = None                # compare from the first line starting with this
     renders: bool = False                       # needs VGMPlay + ffmpeg
     output: str = field(default="", repr=False)
-    files: list[str] = field(default_factory=list, repr=False)   # what it ran, when recorded
+    files: Ran = field(default_factory=Ran, repr=False)          # what it ran, when recorded
 
     @property
     def run(self) -> CaseRun:

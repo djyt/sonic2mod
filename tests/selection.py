@@ -4,10 +4,14 @@ tests/tool_regression.py select their cases with it.
     record   --generate-baselines runs each case under coverage.py with the chip render caches
              off (a cached render runs no emulator code) and keeps what it ran, in the suite's
              coverage.yaml:   case: commit, argv, inputs (path: hash), files (the project's, executed)
+             functions.yaml:  each function the cases that ran its body (tests/functions.py)
 
     select   a run diffs the working tree with each case's commit (changed and untracked files)
              and runs the case when
-                 a file it executed changed              core/drivers/smpsz80/...  -> Golden Axe's cases
+                 a function it ran changed               core/smps/code.py::_Walk.note -> the cases that read notes
+                 code outside a function changed in a file it loaded (a constant, an import, fields)
+                 a file it executed changed, where it has no function record
+                                                         core/drivers/smpsz80/...  -> Golden Axe's cases
                  an input's hash changed                 its config, a ROM, a rip, a baseline MOD
                  its arguments changed                   tests/cases.yaml
                  a non-Python file changed beside code it executed     core/chips/ym2612/ym3438_batch.c
@@ -33,7 +37,10 @@ from pathlib import Path
 
 import yaml
 
+from tests.functions import decode_index, encode_index, ran_functions, touched_functions
+
 ROOT = Path(__file__).resolve().parent.parent
+INDEX_FILE = "functions.yaml"              # beside a suite's coverage.yaml
 
 # core/render_cache.py reads it: "off" keeps every chip render cache shut for one process
 _RENDER_CACHE_ENV = "SONIC2MOD_RENDER_CACHE"
@@ -61,6 +68,14 @@ class CaseRun:
 
 
 @dataclass
+class Ran:
+    """What a recorded case ran: the project files, and in each Python file its functions."""
+
+    files: list[str] = field(default_factory=list)
+    functions: dict[str, list[str]] = field(default_factory=dict)
+
+
+@dataclass
 class Selection:
     names: set[str]
     reasons: dict[str, str] = field(default_factory=dict)    # case -> why it runs
@@ -69,8 +84,8 @@ class Selection:
 
 # --- recording -------------------------------------------------------------------------------
 
-def run_recorded(case: CaseRun, **run_args) -> tuple[subprocess.CompletedProcess, list[str]]:
-    """Run `case` under coverage.py: its result and the project files it executed."""
+def run_recorded(case: CaseRun, **run_args) -> tuple[subprocess.CompletedProcess, Ran]:
+    """Run `case` under coverage.py: its result and what it ran."""
     try:
         import coverage
     except ImportError:
@@ -88,24 +103,40 @@ def run_recorded(case: CaseRun, **run_args) -> tuple[subprocess.CompletedProcess
         # Measured files include the source tree's unexecuted ones (no lines): not run
         cov = coverage.Coverage(data_file=str(data), config_file=str(rc))
         cov.combine([tmp], keep=True)
-        ran = cov.get_data()
-        return result, sorted(_relative(f) for f in ran.measured_files() if ran.lines(f) and _inside(f))
+        data_ran = cov.get_data()
+        executed = {f: data_ran.lines(f) or [] for f in data_ran.measured_files() if data_ran.lines(f) and _inside(f)}
+        functions = {_relative(f): names for f, lines in executed.items()
+                     if f.endswith(_PYTHON) and (names := ran_functions(Path(f), lines))}
+        return result, Ran(sorted(_relative(f) for f in executed), functions)
 
 
-def save_record(path: Path, ran: dict[str, tuple[CaseRun, list[str]]]) -> None:
-    """Add (or replace) each case's record: the commit, its argv and inputs, the files it ran."""
+def save_record(path: Path, ran: dict[str, tuple[CaseRun, Ran]]) -> None:
+    """Add (or replace) each case's record: the commit, its argv and inputs, the files it ran;
+    and its functions in the index beside it."""
     record = load_record(path)
+    functions = decode_index(_load_yaml(path.with_name(INDEX_FILE)))
     commit = head_commit()
-    for name, (case, files) in ran.items():
-        record[name] = {"commit": commit, "argv": list(case.argv), "inputs": _hashes(case.inputs), "files": files}
-    text = yaml.safe_dump(record, sort_keys=True, default_flow_style=False, width=120)
-    path.write_text(_HEADER + text, encoding="utf-8", newline="\n")
+    for name, (case, what) in ran.items():
+        record[name] = {"commit": commit, "argv": list(case.argv), "inputs": _hashes(case.inputs), "files": what.files}
+        functions[name] = {f: set(names) for f, names in what.functions.items()}
+    functions = {name: fs for name, fs in functions.items() if name in record}
+    _write_yaml(path, record)
+    _write_yaml(path.with_name(INDEX_FILE), encode_index(functions))
 
 
 def load_record(path: Path) -> dict:
+    return _load_yaml(path)
+
+
+def _load_yaml(path: Path) -> dict:
     if not path.exists():
         return {}
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _write_yaml(path: Path, data: dict) -> None:
+    text = yaml.safe_dump(data, sort_keys=True, default_flow_style=False, width=120)
+    path.write_text(_HEADER + text, encoding="utf-8", newline="\n")
 
 
 # --- selecting -------------------------------------------------------------------------------
@@ -114,10 +145,12 @@ def select(cases: Iterable[CaseRun], record_path: Path, runner_files: Iterable[s
     """The cases the working tree's changes can move (module docstring)."""
     cases = list(cases)
     record = load_record(record_path)
+    functions = decode_index(_load_yaml(record_path.with_name(INDEX_FILE)))
     runner = set(runner_files)
     code_dirs = {_parent(f) for entry in record.values() for f in entry.get("files", ())}
     picked = Selection(set())
     changed_by_commit: dict[str, set[str] | None] = {}
+    touched: dict[tuple[str, str], set[str] | None] = {}
 
     for case in cases:
         was = record.get(case.name)
@@ -139,7 +172,12 @@ def select(cases: Iterable[CaseRun], record_path: Path, runner_files: Iterable[s
         if changed is None:
             picked.reasons[case.name] = f"commit {commit} not found"
             continue
-        why, everything = _placed(changed, was, code_dirs, runner)
+        def touched_by(path: str, commit: str = commit) -> set[str] | None:
+            if (commit, path) not in touched:
+                touched[commit, path] = _touched(commit, path)
+            return touched[commit, path]
+
+        why, everything = _placed(changed, was, code_dirs, runner, touched_by, functions.get(case.name))
         if everything:
             picked.everything = why
             break
@@ -152,9 +190,12 @@ def select(cases: Iterable[CaseRun], record_path: Path, runner_files: Iterable[s
     return picked
 
 
-def _placed(changed: set[str], was: dict, code_dirs: set[str], runner: set[str]) -> tuple[str, bool]:
+def _placed(changed: set[str], was: dict, code_dirs: set[str], runner: set[str],
+            moved=None, ran: dict[str, set[str]] | None = None) -> tuple[str, bool]:
     """Why a case with record `was` runs ("" when no change moves it), and whether every case
-    runs.  `code_dirs`: the directories any case executed code in."""
+    runs.  `code_dirs`: the directories any case executed code in.  `moved(path)`: the functions
+    a change to a Python file touched (None: code outside them); `ran`: the case's functions by
+    file (None: no function record, a file's change moves it)."""
     files = set(was.get("files", ()))
     inputs = set(was.get("inputs", {}))
     own_dirs = {_parent(f) for f in files}
@@ -162,6 +203,14 @@ def _placed(changed: set[str], was: dict, code_dirs: set[str], runner: set[str])
     for path in sorted(changed):
         if path in runner or path == _LIVE_SETTINGS:
             return f"{path} changed", True
+        if path in files and path.endswith(_PYTHON) and moved is not None and ran is not None:
+            touched = moved(path)
+            if touched is None:
+                return f"{path} changed outside its functions", False
+            hit = sorted(touched & ran.get(path, set()))
+            if hit:
+                return f"{path}: {hit[0]} changed", False
+            continue
         if path in files:
             return f"{path} changed", False
         if path in inputs or path.startswith(_MOVES_NONE + _INPUT_ONLY) or path.endswith((_NOTES, _PYTHON)):
@@ -182,6 +231,14 @@ def changed_since(commit: str) -> set[str] | None:
         return None
     untracked = _git("ls-files", "--others", "--exclude-standard") or ""
     return {line for line in (diff + "\n" + untracked).splitlines() if line}
+
+
+def _touched(commit: str, path: str) -> set[str] | None:
+    """The functions of `path` that differ from `commit` to the working tree (functions.py)."""
+    old = _git("show", f"{commit.removesuffix('-dirty')}:./{path}")
+    new_path = ROOT / path
+    new = new_path.read_text(encoding="utf-8") if new_path.exists() else None
+    return touched_functions(old, new)
 
 
 def head_commit() -> str:

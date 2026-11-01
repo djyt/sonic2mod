@@ -1,0 +1,27 @@
+# Which rip each config converts (docs/todo/streets_of_rage_2.md 2.6: each paired by its FM onsets,
+# 2-264 wrong of 80-3529).  No rip: $04 ($03's other version), $12 ($02's), $17; $0C and $10 are
+# silences.  23 Walking Bottom (the beta's) matches no song.  The rips are not in this folder's mirror:
+folder: streets_of_rage_2          # under reference/vgz/
+00_go_straight: "02 - Go Straight.vgz"
+01_go_straight_beatmix: "22 - Go Straight (Beatmix).vgz"
+02_never_return_alive: "04 - Never Return Alive.vgz"
+03_in_the_bar: "03 - In the Bar.vgz"
+05_jungle_base: "13 - Jungle Base.vgz"
+06_slow_moon: "11 - Slow Moon.vgz"
+07_spin_on_the_bridge: "05 - Spin on the Bridge.vgz"
+08_too_deep: "10 - Too Deep.vgz"
+09_little_money_avenue: "24 - Little Money Avenue.vgz"
+0a_sor_super_mix: "16 - SOR Super Mix.vgz"
+0b_level_complete: "20 - Level Complete.vgz"
+0d_wave_131: "12 - Wave 131.vgz"
+0e_max_man: "17 - Max Man.vgz"
+0f_dreamer: "07 - Dreamer.vgz"
+11_under_logic: "09 - Under Logic.vgz"
+13_revenge_of_mr_x: "18 - Revenge of Mr. X.vgz"
+14_alien_power: "08 - Alien Power.vgz"
+15_expander: "15 - Expander.vgz"
+16_ready_funk: "06 - Ready Funk.vgz"
+18_player_select: "01 - Player Select V2.vgz"
+19_game_over: "21 - Game Over.vgz"
+1a_back_to_the_industry: "14 - Back to the Industry.vgz"
+1b_good_ending: "19 - Good Ending.vgz"

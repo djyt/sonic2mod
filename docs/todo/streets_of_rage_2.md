@@ -188,7 +188,7 @@ What in today's architecture Streets of Rage 2 runs into, and The Revenge of Shi
 | B4 | The key-off yields notes only (`DriverTrack.cut`): soft release is a level change inside a ringing note, and rests that do not cut | `core/smps/driver_track.py` | | R5 |
 | B5 | Noise is PSG3's mode, permanent: `Track.in_noise_mode`, `DriverState`, `noise_derive`, `synth_roots`, CLAUDE.md's rule; the lift (`noise_mode`: PSG3 the whole song) and `frame_check` (pitch from tone 3).  SoR2: any tone track, and back, at a fixed rate | `core/smps`, `core/plan`, `core/vgm/lift`, `core/audit` | RoS: a 4th track | R6 |
 | B6 | `PsgEnvelope`: attenuation steps added to the volume, no release.  SoR2: ADSR, level × volume, a release after the gate.  Downstream PSG notes keep their cuts; release slides are FM's (`Fades.release`) | `core/smps/driver_tables.py`, `core/convert/channel_writer/fades.py` | | Phase 3.3 (new concept) |
-| B7 | 31 instruments: SoR1 already hit `copy_no_slot` / `detune_no_slot`; envelope × volume and soft-release tails add more | `core/plan`, `core/merge` | | measured in 2.7 before 3.3's design (D2) |
+| B7 | 31 instruments: SoR1 already hit `copy_no_slot` / `detune_no_slot`; envelope × volume and soft-release tails add more | `core/plan`, `core/merge` | | 2.7: register copies now fold (`SmpsVoice.unpatched`); 4 songs still over: 5.3 |
 | B8 | Framework names say SMPS (`SmpsVariant`, `SmpsDriver`, `HeaderLayout`); Mucom-MD is the first engine that is not | `core/rom/variant.py`, `core/drivers/names.py` | | no rename: it fits through the hooks (`grammar`, `music_header_reader`, `voice_reader`, `rules_from_rom`, `dac`); a line in the docs.  Revisit at a third engine |
 | B9 | Z80 program loads are enumerated shapes; SoR2's raw copy (`lea $559C2.l,a1` / `move.w #$1FFF,d0`) may be a sixth | `core/rom/z80.py` | | 2.1 |
 | B10 | `vgm_analyze`'s "smps" column names PSG notes by Sonic 1's table (nC0 = C3) | `tools/vgm/` | | cosmetic: read the real-pitch column |
@@ -302,10 +302,18 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   `read_streets_of_rage_2`.
 - [x] 2.5 Tests: the dialect on hand-built bytes; with the ROM: tables, every song on its channels,
   loop targets, what is dropped.  The driver contract passes.
-- [ ] 2.6 `configs/streets_of_rage_2/rips.yaml`: 24 rips against 26 songs with notes (D10);
-  `vgm_lift --aspects onset length` on FM: the yardstick.
-- [ ] 2.7 Slot census: every song converted as read (minimal configs), `copy_no_slot` /
-  `detune_no_slot` counted, the envelope instruments (D2's table) added: which songs need banking.
+- [x] 2.6 `configs/streets_of_rage_2/`: a minimal config per song with notes (26); `rips.yaml`: each
+  rip paired with the song its FM onsets match best (2-264 wrong of 80-3529; the next song 10x
+  worse).  23 Walking Bottom (the beta's) matches none (431 of 567 at best: D10, left out).  No rip:
+  `$04` (`$03`'s other version), `$12` (`$02`'s), `$17`.  The yardstick, `vgm_lift --aspects onset
+  length --channels FM` as read: onsets 2-264 wrong a song, lengths 6-2314 (soft release, the gate
+  floor and ties not yet modelled): 0 of 23 play as their song.
+- [x] 2.7 Slot census: every song converted as read.  12 of 26 needed 33-96 instruments: `$FA`'s
+  register copies (Spin on the Bridge plays 138 voices: 18 of its own, 120 copies, 62 under the LFO)
+  had no fallback when slots ran out.  Generic fix: a register-patched copy folds onto the voice it
+  patches (`SmpsVoice.unpatched`), after the special-mode / LFO copies (`plain`), as before.  Now
+  4 over: `$01` 33, `$0D` 33, `$05` 41, `$07` 43 (5.3: banking, D2).  Also: a config could not
+  name a pitch past B7 (`parse_smps_note`; SoR2's PSG reaches B8): it reads them now.
 
 ### Phase 3: the walk
 - [ ] 3.0 R4, R5, R6, a commit each.
@@ -322,10 +330,12 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   key-on; PSG pitch and level; `vgm_lift` onsets and lengths.
 
 ### Phase 4: DAC
-- [ ] 4.1 The sample reader: R2's `RunDpcm` on Z80 `$01BF`'s table; `$81`-`$84` byte-equal to the
-  rips' banks.  The Z80 load (B9, checked: `z80_loads` finds none) is the "copied" shape on other
-  registers (`$40DA2`: `lea $559C2.l,a1` / `lea $A00000.l,a2` / `move.w #$1FFF,d0` / `move.b (a1)+,(a2)+`
-  / `dbra`): generalise it over the address registers.
+- [x] 4.1 The sample reader: R2's `RunDpcm` on Z80 `$01BF`'s table (`core/rom/pcm/sor.py`
+  `player_samples`, both games' drivers on it); `$81`-`$83` byte-equal to the rips' banks (in 20, 6,
+  10 of 24), `$84` in none (no song plays it).  Its loop (`$00EE`-`$0185`): a nibble 186 / 246, a
+  run's step 219, a run's entry 19 / 79, + 13 a pitch step (SoR1's: 190 / 242, 219, 23 / 75).  The Z80 load (B9) was the "copied" shape on other registers (`$40DA2`: `lea $559C2.l,a1` /
+  `lea $A00000.l,a2` / `move.w #$1FFF,d0` / `move.b (a1)+,(a2)+` / `dbra`): `z80.py`'s copied loads
+  are now read on any registers, either lea first (The Revenge of Shinobi's two blocks found too).
 - [ ] 4.2 Rates: recount the loop's cycles (SoR1's counts as the start; this player's `$1FFD` writes
   and bank code moved), the 68k's stall from the rips (their hi-hats play 2× fast: pack notes).
 - [ ] 4.3 Rests and gates leave the sample playing (`rest_cuts` False); onsets against the rips.

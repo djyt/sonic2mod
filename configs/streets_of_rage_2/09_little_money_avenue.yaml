@@ -1,0 +1,5 @@
+# Streets of Rage 2 - Little Money Avenue.  A minimal config: everything else is derived from the ROM
+# (docs/todo/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+name: "Little Money Avenue"
+input_file: "input/roms/Streets of Rage 2 (USA).md"
+rom_song: "$09"

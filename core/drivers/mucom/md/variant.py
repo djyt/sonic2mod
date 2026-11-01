@@ -9,7 +9,7 @@ read with a disassembler (docs/todo/streets_of_rage_2.md § 1).
                 grammar (grammar.py) reads the rest
     volume      FM: $F1 v sets step clamp(v - 2, 0, 19), TL = the volume table's; $FB n adds,
                 clamped.  PSG: $F1 v (0-15), att = v ^ 15; $FB n adds, clamped
-    DAC         Phase 4
+    DAC         the Z80 player's samples $81-$84 (dac.py)
 
 Dropped and reported until Phase 3: soft release, PSG envelopes ($F0, $FA), noise ($F7, $F8).
 """
@@ -25,6 +25,7 @@ from core.rom.variant import MUCOM_VOICE, HeaderLayout, SmpsVariant, TrackSlot
 from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules
 
 from ...names import SmpsDriver
+from .dac import MUSIC_SAMPLES, mucom_md_dac
 from .grammar import DIALECT, PSG_FIRST, PSG_NOTES, drum_prefix, drum_vibrato, prefix
 from .header import read_image
 from .locate import FM_VOLUME_STEPS, PSG_MAX_DIVIDER, fm_frequencies, fm_volumes, locate, psg_octave
@@ -140,11 +141,11 @@ MUCOM_MD = SmpsVariant(
     header=_HEADER,
     voice_layout=MUCOM_VOICE,
     # Its FM octave, volume table and PSG table read from the ROM; the Z80 player's samples
-    # $81-$85 (from $86: voice clips)
     rules=PlaybackRules(driver=SmpsDriver.MUCOM_MD, fm_frequencies=(), psg_frequencies=(), psg_read=(),
-                        psg_envelopes={}, dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x86)},
+                        psg_envelopes={}, dac_names={b: f"dac{b:02X}" for b in MUSIC_SAMPLES},
                         tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK}),
     rules_from_rom=_rules_from_rom,
     grammar=DIALECT.instruction,
     music_header_reader=read_image,
+    dac=mucom_md_dac,
 )

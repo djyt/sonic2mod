@@ -64,7 +64,7 @@ sonic2mod/
     vgm/         against a rip: vgm_analyze, vgm_compare, vgm_pitch_audit, vgm_lift, vgm_frames, measure_volumes
     mod/         a written MOD: mod_audit, mod_lint, mod_compare, mod_render_diff
     config/      write or derive a song config: merge_survey, fold_csv, config_to_chip_space, make_credits_config
-    rom/         read a ROM: rom_import, song_dump
+    rom/         read a ROM: rom_import, song_dump, disasm (a driver's 68k / Z80 code, its jump tables)
     chips/       chip device smoke tests: validate_ym2612, validate_sn76489
     dev/         repo upkeep: check, release, hooks/
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
@@ -80,6 +80,7 @@ sonic2mod/
 ```bash
 pip install numpy pyyaml rich   # external dependencies (or pip install -e .)
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
+pip install capstone z80dis       # tools/rom/disasm.py: a driver's 68k and Z80 code
 git config core.hooksPath tools/dev/hooks   # the pre-commit hook (per clone): tools/dev/check.py --fast
 ```
 
@@ -146,6 +147,11 @@ python tools/rom/rom_import.py input/roms/sonic_rev01.bin --compare reference/sm
 python tools/rom/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
 # Every song of a ROM (or an asm folder) as read, walked and played, as text: what a reader change moved
 python tools/rom/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
+# A driver's code: a routine to its end, the Z80-bus / YM handshake folded to `; bus`; a jump table's
+# targets; the Z80 program as the 68k loads it (--raw: every instruction and its bytes)
+python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" 40E46
+python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --table 41B74 --entries 16 --first F0
+python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --z80 00EE
 
 # Render all 49 sound effects as configs/sfx.yaml says (format wav/raw, bits, rate, folder, level, dither):
 # shipped 16-bit stereo WAV → output/sonic_1/sfx/

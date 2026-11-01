@@ -56,7 +56,7 @@ import yaml
 
 from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, variant_args
-from tests.roms import GAMES, MOONWALKER_RIPS, MOONWALKER_ROM, SONIC1_ASM, SONIC1_ROM
+from tests.roms import GAMES, MOONWALKER_RIPS, MOONWALKER_ROM, SONIC1_ASM, SONIC1_ROM, STREETS_OF_RAGE_2_ROM
 from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
 
 BASELINES_DIR = _HERE / "tool_baselines"
@@ -189,6 +189,19 @@ def _read_cases() -> list[_Case]:
     return cases
 
 
+# disasm.py on Streets of Rage 2's driver: a routine with its bus handshake folded, its FM flag
+# table, the Z80 player's sample loop
+_DISASM = (("68k", ["40E46", "--table", "41B74", "--entries", "16", "--first", "F0"]), ("z80", ["--z80", "00EE"]))
+
+
+def _disasm_cases() -> list[_Case]:
+    if not STREETS_OF_RAGE_2_ROM.exists():
+        return []
+    rom = STREETS_OF_RAGE_2_ROM.relative_to(ROOT).as_posix()
+    return [_Case(f"disasm_streets_of_rage_2_{cpu}", ["tools/rom/disasm.py", rom, *args], [STREETS_OF_RAGE_2_ROM])
+            for cpu, args in _DISASM]
+
+
 def _missing_sources() -> list[str]:
     """The ROMs, rips and asm some cases need that are not here."""
     wanted = {MOONWALKER_RIPS, *(source for _, source, _ in _READS), *(rips for _, _, rips, _ in _FRAMES)}
@@ -197,7 +210,7 @@ def _missing_sources() -> list[str]:
 
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases()
+    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases() + _disasm_cases()
     shelves: dict[Path, RipShelf] = {}      # each game's: its configs' folder and its rips
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there

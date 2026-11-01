@@ -18542,7 +18542,7 @@ read_streets_of_rage:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 4de87d5-dirty
+  commit: 9d41a42-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18565,10 +18565,10 @@ read_streets_of_rage:
   - core/drivers/smps68k/common.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
-  - core/drivers/smps68k/mucom/__init__.py
-  - core/drivers/smps68k/mucom/dac.py
-  - core/drivers/smps68k/mucom/grammar.py
-  - core/drivers/smps68k/mucom/variant.py
+  - core/drivers/smps68k/streets_of_rage/__init__.py
+  - core/drivers/smps68k/streets_of_rage/dac.py
+  - core/drivers/smps68k/streets_of_rage/grammar.py
+  - core/drivers/smps68k/streets_of_rage/variant.py
   - core/rom/__init__.py
   - core/rom/envelopes.py
   - core/rom/fixes.py
@@ -18580,7 +18580,8 @@ read_streets_of_rage:
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/sor.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py

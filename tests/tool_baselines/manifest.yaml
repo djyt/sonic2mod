@@ -1584,7 +1584,7 @@ read_space_harrier_2:
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: 4de87d5
+  commit: 9d41a42
   date: '2026-11-01'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97

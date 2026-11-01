@@ -9,11 +9,13 @@ as the 68k loads it (core/rom/z80.py), or a ROM bank in its window.
     Dpcm          Sonic 1's, Moonwalker's, OutRun's: each nibble one delta on an accumulator from $80
     Pcm           OutRun's: each byte an unsigned output
                   both: a fixed cost per output, a djnz turn more per pitch step
+    RunDpcm       Streets of Rage's players' (its sequel's too): the sample's own deltas, nibble 0 a run
+    pcm_table     where a player descended from Sonic 1's keeps its table (`ld iy,nn`)
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -31,6 +33,9 @@ _DELTAS = bytes([0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40,
                  0x80, 0xFF, 0xFE, 0xFC, 0xF8, 0xF0, 0xE0, 0xC0])
 ACCUMULATOR = 0x80                        # where a sample's output starts
 SIGN = 0x80                               # the Z80's unsigned byte -> signed PCM
+_RUN_DELTAS = 16                          # RunDpcm: the sample's delta table, before its nibbles
+_BYTE_VALUES = 0x100                      # a run of 0 steps: the Z80's count wraps to 256
+_LD_IY = bytes.fromhex("FD21")            # ld iy,nn: a player's PCM table
 
 
 class SampleFormat(Protocol):
@@ -78,6 +83,62 @@ class Pcm:
 
     def cycles(self, _data: bytes, pitch: int) -> float:
         return self.base + self.per_pitch * (pitch - 1)
+
+
+@dataclass(frozen=True)
+class RunDpcm:
+    """Streets of Rage's players' format: the sample's own 16-byte delta table first, byte 0 a
+    run's length; then nibbles, high first: n adds deltas[n] to the output, 0 adds the last delta
+    again, deltas[0] times (0: 256).  Cycles per output, by the player's loop: a literal nibble
+    `nibble` (high, low), a run's step `run_step`, a run's entry `run_entry` (high, low) more,
+    `per_pitch` more each pitch step; the 68k holds the Z80's bus `stall` of each frame."""
+
+    nibble: tuple[int, int]
+    run_step: int
+    run_entry: tuple[int, int]
+    per_pitch: int
+    stall: float
+
+    def decode(self, data: bytes) -> bytes:
+        deltas, out = data[:_RUN_DELTAS], bytearray()
+        acc, last = ACCUMULATOR, None
+        for nibble, _ in self._nibbles(data):
+            if nibble:
+                last = deltas[nibble]
+                steps = 1
+            elif last is None:
+                raise RomError("DAC sample: starts with a run (the last sample's delta, played on)")
+            else:
+                steps = self._run(deltas)
+            for _ in range(steps):
+                acc = (acc + last) & 0xFF
+                out.append(acc ^ SIGN)
+        return bytes(out)
+
+    def cycles(self, data: bytes, pitch: int) -> float:
+        """The count's cycles per output, the 68k's stall in."""
+        per_pitch = self.per_pitch * pitch
+        total = outputs = 0
+        for nibble, low in self._nibbles(data):
+            if nibble:
+                total += self.nibble[low] + per_pitch
+                outputs += 1
+                continue
+            run = self._run(data[:_RUN_DELTAS])
+            total += run * (self.run_step + per_pitch) + self.run_entry[low]
+            outputs += run
+        return total / outputs / (1 - self.stall)
+
+    @staticmethod
+    def _nibbles(data: bytes) -> Iterator[tuple[int, bool]]:
+        """(nibble, is the low one) of each byte after the delta table."""
+        for byte in data[_RUN_DELTAS:]:
+            yield byte >> 4, False
+            yield byte & 0xF, True
+
+    @staticmethod
+    def _run(deltas: bytes) -> int:
+        return deltas[0] or _BYTE_VALUES
 
 
 @dataclass(frozen=True)
@@ -146,3 +207,12 @@ def delta_table(memory: bytes) -> bytes:
     if at < 0:
         raise RomError("Z80 driver: no DPCM delta table")
     return memory[at:at + len(_DELTAS)]
+
+
+def pcm_table(z80: bytes) -> int:
+    """The Z80 address of the player's PCM table: the one `ld iy,nn` of a player descended from
+    Sonic 1's (Moonwalker's, Streets of Rage's and its sequel's)."""
+    at = z80.find(_LD_IY)
+    if at < 0:
+        raise RomError("Z80 driver: no PCM table (ld iy,nn)")
+    return z80_word(z80, at + len(_LD_IY))

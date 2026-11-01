@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from .cell import CELL_BYTES, ROWS_PER_PATTERN, Cell
 from .notes import PERIOD_TABLE, ModNote
-from .reader import BYTE_ORDER, ModImage, SampleInfo, sample_name
+from .reader import BYTE_ORDER, SAMPLE_NAME_BYTES, TITLE_BYTES, ModImage, SampleInfo, sample_name
 
 # Paula's clock on a PAL Amiga: a sample plays at PAL_AMIGA_CLOCK / period bytes a second
 PAL_AMIGA_CLOCK = 3_546_895
@@ -14,6 +14,11 @@ PAL_AMIGA_CLOCK = 3_546_895
 
 # The word ProTracker replays after a one-shot sample ends: its first two bytes
 _IDLE_WORD_BYTES = 2
+
+
+def _name_field(name: str, size: int) -> bytearray:
+    """A title or sample name field: ASCII, NUL padded to `size` (a full one has no terminator)."""
+    return bytearray(name.encode('ascii', 'replace')[:size].ljust(size, b'\x00'))
 
 
 class ModSample:
@@ -27,7 +32,7 @@ class ModSample:
     file: str | None    # the sample_list file its bytes came from (read_sample); None: made here
 
     def __init__(self, name):
-        self._name = name[:22]
+        self._name = name[:SAMPLE_NAME_BYTES]
         self.length = 0
         self._finetune = 0
         self._volume = 0
@@ -75,11 +80,9 @@ class ModSample:
         size = 2 * self.length
         return bytes(self.data[:size].ljust(size, b"\0"))
 
-    def set_name(self, name: str) -> None: self._name = name[:22]
-    def get_name(self): return self._name
+    def set_name(self, name: str) -> None: self._name = name[:SAMPLE_NAME_BYTES]
     def get_name_bytes(self):
-        """The 22-byte name field: ASCII, NUL padded (no terminator needed when all 22 are used)."""
-        return bytearray(self._name.encode('ascii', 'replace')[:22].ljust(22, b'\x00'))
+        return _name_field(self._name, SAMPLE_NAME_BYTES)
     def get_bytes(self):
         output = bytearray()
         output += self.get_name_bytes()
@@ -176,9 +179,8 @@ class ModFile:
         self.position_list = bytearray(self.MAX_POSITIONS + 1)
         self.patterns = [ModPattern(self.CHANNELS)]
 
-    def set_name(self, name: str): self._name = name[0:19]
-    def get_name(self): return self._name.ljust(19, ' ')
-    def get_name_bytes(self): return bytearray(self.get_name(), 'utf-8') + b'\x00'
+    def set_name(self, name: str): self._name = name[:TITLE_BYTES]
+    def get_name_bytes(self): return _name_field(self._name, TITLE_BYTES)
 
     def get_bytes(self):
         output = bytearray()

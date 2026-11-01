@@ -19,7 +19,9 @@ from .cell import CELL_BYTES, ROWS_PER_PATTERN, Cell
 BYTE_ORDER: Literal["little", "big"] = "big"
 
 _SAMPLE_SLOTS = 31
-_SAMPLE_HEADERS, _SAMPLE_HEADER_BYTES, _SAMPLE_NAME_BYTES = 20, 30, 22
+# The title and sample name fields: NUL padded, no terminator when full
+TITLE_BYTES, SAMPLE_NAME_BYTES = 20, 22
+_SAMPLE_HEADERS, _SAMPLE_HEADER_BYTES = TITLE_BYTES, 30
 _SONG_LENGTH_AT, _ORDER_AT, _ORDER_SLOTS = 950, 952, 128
 _TAG_AT, _PATTERNS_AT = 1080, 1084
 _LOOP_WORDS_NONE = 1           # a loop length of one word: no loop
@@ -45,7 +47,7 @@ def format_channels(tag: str) -> int | None:
 
 def sample_name(field: bytes | bytearray) -> str:
     """A sample's name as its 22-byte header field holds it: up to the first NUL."""
-    return bytes(field[:_SAMPLE_NAME_BYTES]).split(b"\0")[0].decode("latin1")
+    return bytes(field[:SAMPLE_NAME_BYTES]).split(b"\0")[0].decode("latin1")
 
 
 @dataclass(frozen=True)

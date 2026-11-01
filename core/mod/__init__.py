@@ -30,7 +30,7 @@ from .notes import (
     shifted_rate,
 )
 from .reach import UnmodelledEffect, heard_bytes
-from .reader import ModImage, isolate_channel, read_mod
+from .reader import SAMPLE_NAME_BYTES, ModImage, isolate_channel, read_mod
 from .sample_audit import LOW_RATE_HZ, audit
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM, TimedRow, edx_delay, timed_pass
 from .volume import MOD_MAX_VOLUME, clamp_mod_volume, db_to_mod_volume, headroom_db
@@ -48,6 +48,7 @@ __all__ = [
     "PAL_AMIGA_CLOCK",
     "PERIOD_TABLE",
     "ROWS_PER_PATTERN",
+    "SAMPLE_NAME_BYTES",
     "TICK_SECS_AT_1_BPM",
     "ModFile",
     "ModImage",

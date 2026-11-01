@@ -116,6 +116,13 @@ class WriterTests(unittest.TestCase):
         s.data, s.length = bytes(4), 2
         self.assertEqual(read_mod(bytes(mod.get_bytes())).samples[0].name.rstrip("\x00"), "F5+3+4+P1 F#3 #2 [1-4]")
 
+    def test_all_20_title_characters_are_written(self):
+        mod = ModFile(4)
+        mod.set_name("Green Hill Zone lofi!")      # 21 characters: the last cut
+        self.assertEqual(bytes(mod.get_bytes()[:20]), b"Green Hill Zone lofi")
+        mod.set_name("Title")
+        self.assertEqual(bytes(mod.get_bytes()[:20]), b"Title".ljust(20, b"\0"))
+
 
 class CellWrites(unittest.TestCase):
     def test_a_note_and_an_effect_share_a_cell(self):

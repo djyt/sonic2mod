@@ -1,7 +1,7 @@
 """What each MOD sample slot is called (settings.yaml samples.names: source): what plays it and what
 it was made from, in the 22 characters a sample name has.  A synthesised sample used to carry its
 sample_list file name (`ghz_v00.raw`: no such file, four characters spent on `.raw`), a composite
-`merge ` and its group (cut off past 21: `merge FM5+FM3+FM4+PSG`), twins the same name twice.
+`merge ` and its group (`merge FM5+FM3+FM4+PSG`), twins the same name twice.
 
     F1/3/4/5 $05 C4-B5    an FM voice's range, the channels that play it
     F5 $04 C6-B7 dt+2     a detune variant (core/plan/detune.py)
@@ -24,13 +24,13 @@ from collections import Counter, defaultdict
 from collections.abc import Sequence
 
 from ..merge import merge_plan_of
-from ..mod import MOD_NOTE_MAP, PERIOD_TABLE, ModFile
+from ..mod import MOD_NOTE_MAP, PERIOD_TABLE, SAMPLE_NAME_BYTES, ModFile
 from ..mod.sample_audit import note_name
 from ..plan import ConversionPlan, fm_catalogue, psg_catalogue
 from ..smps import SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 
-NAME_CHARS = 22
+NAME_CHARS = SAMPLE_NAME_BYTES
 
 
 def channel_label(sources, sep: str) -> str:

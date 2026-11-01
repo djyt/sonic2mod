@@ -9,7 +9,7 @@ import math
 
 from ..audio import db_to_gain, semitone_to_hz
 from ..config import MergeGroup, SampleRow, format_patterns
-from ..mod import MOD_MAX_VOLUME, PERIOD_TABLE
+from ..mod import MOD_MAX_VOLUME, PERIOD_TABLE, SAMPLE_NAME_BYTES
 from ..plan import ConversionPlan, FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
 from ..smps import ChannelType, prepare_song, source_map
 from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
@@ -387,7 +387,7 @@ class _Planner:
         self.provisional -= 1
         inst = self.provisional
         vol, ft = self.vol_of.get(p.instrument, (MOD_MAX_VOLUME, 0))
-        entry = SampleRow(inst, f"merge {g.label}"[:21], vol, ft)
+        entry = SampleRow(inst, f"merge {g.label}"[:SAMPLE_NAME_BYTES], vol, ft)
         comp = Composite(inst, key, g, p.kind, entry=entry, banked=g.bank and not chip,
                          pitch_hz=semitone_to_hz(p.chip) if p.chip is not None else None)
         if chip:

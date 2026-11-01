@@ -114,7 +114,7 @@ from .names import (
 from .parser import SmpsParser
 from .percussion import ALL_OPERATORS, FmDrum, FmFrame, PsgDrumFrame
 from .pitch_envelope import PitchEnvelope
-from .playback import Aspect, PlayedNote, PlayedSong, played_song
+from .playback import Aspect, PlayedNote, PlayedSong, played_song, psg_render_divider
 from .rules import (
     KeyOffRules,
     ModulationRules,
@@ -273,6 +273,7 @@ __all__ = [
     "played_song",
     "prepare_song",
     "psg_note_index",
+    "psg_render_divider",
     "psg_tone2_divider",
     "psg_voice_name",
     "semitone_to_note_name",

@@ -115,7 +115,7 @@ class _PsgRenderer:
         self._synth = synth
         self._pitches_out = pitches_out
         self._envelopes = rules.psg_envelopes
-        self._psg_table = rules.psg_table
+        self._rules = rules
         self._fps = fps
         self._cache = cache
         self._verbose = verbose
@@ -138,7 +138,7 @@ class _PsgRenderer:
 
         entry_type = entry.type.lower()
         if entry_type == _TONE:
-            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info)
+            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info, spec.detune)
         elif entry_type in (_WHITE_NOISE, _PERIODIC_NOISE):
             mono, rate = self._noise(entry, spec.synth_idx, entry_type == _WHITE_NOISE, target_rate, envelope, env_info)
         else:
@@ -162,9 +162,9 @@ class _PsgRenderer:
         return mono, rate
 
     def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
-              env_info: str) -> tuple[Sequence[float], int]:
+              env_info: str, detune: int = 0) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
-        n_val = note_to_psg_n(note, self._psg_table, synth.clock_rate)
+        n_val = note_to_psg_n(note, self._rules, synth.clock_rate, detune)
         if self._pitches_out is not None:
             self._pitches_out[inst_num] = psg_frequency_hz(n_val, synth.clock_rate)
         if self._verbose:
@@ -279,7 +279,7 @@ class _PsgRenderer:
         dividers = self._rate3_dividers
         if entry.synth_root is None and dividers and entry.mod_instrument in dividers:
             return dividers[entry.mod_instrument]
-        return note_to_psg_n(note, self._psg_table, self._synth.clock_rate)
+        return note_to_psg_n(note, self._rules, self._synth.clock_rate)
 
     def _render(self, render, inst_num: int, **kwargs) -> tuple[Sequence[float], int]:
         """render(**kwargs) through the render cache, shelved and centred (before any loop is found in it)."""

@@ -31,7 +31,7 @@ from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
 from .driver_tables import fm_note_index, psg_note_index
 from .names import NOISE_CHANNEL_NAME, source_names
 from .rules import PitchRules, PlaybackRules
-from .song import SmpsNote, SmpsSong, SmpsVoice
+from .song import ChannelType, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
@@ -237,6 +237,16 @@ def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[T
     played = [dataclasses.replace(note, duration=sounds)]
     _rest(played, note.tick + sounds, note.duration - sounds)
     return played
+
+
+def psg_render_divider(rules: PlaybackRules, semitone: int, detune: int = 0) -> int:
+    """The divider a PSG sample of `semitone` (SMPS, C0 = 0) is rendered at: the driver's table's
+    (PsgTable.render_divider), its detune word added as the driver adds it (>> the note's octave:
+    Streets of Rage 2's, floored as the 68k's asr; as it is: Sonic 1's), within the chip's 10 bits.
+    The renderer, the pitch a sample is taken to sound and the converter's check read it here."""
+    table = rules.psg_table
+    shift = rules.track(ChannelType.PSG).pitch.shift(semitone - table.pitch)
+    return max(1, min(PSG_DIVIDER_MASK, table.render_divider(semitone) + (detune >> shift)))
 
 
 def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:

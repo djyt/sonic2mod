@@ -15,7 +15,6 @@ from collections.abc import Iterable
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
 from ..chips import MD_FM_CLOCK, MD_PSG_CLOCK
 from ..config import (
-    ConversionConfig,
     PsgSynthesisSettings,
     SampleRow,
     SynthesisSettings,
@@ -42,15 +41,17 @@ from .level_plan import LevelPlanner
 from .sustain_plan import SustainPlanner
 
 
-def psg_synth_instruments(config: ConversionConfig, psg_synth: PsgSynthesisSettings | None) -> set[int]:
+def psg_synth_instruments(conv: ConversionPlan, psg_synth: PsgSynthesisSettings | None) -> set[int]:
     """The PSG instruments that will be synthesized, so disk loading skips them (no spurious
-    "file not found" warnings): every map entry's, a noise entry's `envelopes:` variants too."""
+    "file not found" warnings, no empty slot): every map entry's, a noise entry's `envelopes:`
+    variants, every detune variant (the catalogue the renderer renders, entries without a root too)."""
     if not (psg_synth and psg_synth.enabled):
         return set()
+    config = conv.config
     insts = {e.mod_instrument for e in config.psg_map.values()}
     insts |= {i for e in config.psg_map.values() for i in e.envelopes.values()}
     insts |= {e.mod_instrument for entries in config.psg_voice_map.values() for e in entries}
-    return insts
+    return insts | set(psg_catalogue(conv))
 
 
 _RENDER_CENTS = 5.0          # a tone rendered further than this from its notes' pitch is warned

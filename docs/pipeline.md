@@ -481,8 +481,8 @@ sounding in its column, which a stopping song's last row has none of.
 `smpsDetune` / `smpsAlterNote` ($E1) adds a raw offset to the frequency word (`FMUpdateFreq`), so its
 interval depends on the note: `$03` is +8 c on C (FNUM 644), +4.5 c on A# (1148).  It is not semitones
 and never affects range lookup.  A MOD retunes only a whole sample in 12.5 c finetune steps, so
-`core/plan/detune.py` (settings.yaml `fm_synthesis.detune_variants`, on by default; FM only) renders
-every detune an instrument plays into a sample of its own:
+`core/plan/detune.py` (settings.yaml `fm_synthesis.detune_variants`, on by default) renders every
+detune an instrument plays into a sample of its own:
 
 - the detune most of its notes play at is its **own**: its slot's sample is rendered with it (Title
   Screen's FM5 double takes no extra slot);
@@ -500,6 +500,12 @@ every detune an instrument plays into a sample of its own:
   note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference (only a row of its
   own with a free slot; `--verbose` counts them);
 - a merged chip composite renders each layer at its own track's detune;
+- **PSG** tones the same: own and variants, a variant per detune (no pitch classes).  The detune is
+  added to the divider as the driver adds it (`core.smps.psg_render_divider`: as it is, Sonic 1's;
+  >> the note's octave, Streets of Rage 2's), so Sonic 1's +2 is a different interval on each note
+  of a window: Robotnik's PSG2 stays 15 c out.  Marble Zone's PSG2 went from 13.5 c to 2.5 c, Go
+  Straight's PSG1 from 16 c to 8 c (the rest: its vibrato swings below the note only, a MOD's is
+  centred);
 - **channel 3's special mode** (Streets of Rage's `$F7`: each operator at the note's word plus its own
   offset) is a copy of the voice that carries the offsets (`SmpsVoice.fnum_offsets`, made in the walk as
   `$FA` patches are), rendered on channel 3 with `$27` = `$40`.  Its offsets count in the intervals above

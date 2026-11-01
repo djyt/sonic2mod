@@ -248,6 +248,8 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
                 raw, path = entry.root.value + (key - entry.low), "psg_root"
             elif entry.type != "tone":
                 raw, path = entry.root.value, "psg_fixed"
+        if detune is not None and not st.in_noise_mode:
+            inst = detune.instrument_for(inst, st.detune, chip)
     if raw is None:
         raw = source_semitone + total
     return ResolvedNote(inst, clamp_note(raw), raw, path, entry,

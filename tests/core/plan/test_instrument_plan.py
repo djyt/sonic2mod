@@ -6,6 +6,7 @@ each instrument's sounding pitch, roots resolved and detune planned.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import unittest
 from pathlib import Path
@@ -14,7 +15,7 @@ from types import SimpleNamespace
 from core.audio import semitone_to_hz
 from core.chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from core.config import ConversionConfig, InstrumentRange, PsgInstrumentEntry, load_settings
-from core.drivers.reference import FM_FREQUENCIES, PSG_FREQUENCIES
+from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.mod import ModNote
 from core.plan import (
     ConversionPlan,
@@ -25,7 +26,7 @@ from core.plan import (
     prepare_instruments,
     sounding_pitches,
 )
-from core.smps import PsgTable, fm_table_index
+from core.smps import fm_table_index
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -38,9 +39,8 @@ def _word_cents(semitone: int, table: tuple[int, ...]) -> float:
 
 
 def _song(fm_frequencies: tuple[int, ...]) -> SimpleNamespace:
-    return SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)],
-                           rules=SimpleNamespace(fm_frequencies=fm_frequencies,
-                                                 psg_table=PsgTable.of(PSG_FREQUENCIES, PSG_FREQUENCIES)))
+    rules = dataclasses.replace(SONIC1_RULES, fm_frequencies=fm_frequencies)
+    return SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)], rules=rules)
 
 
 class Sounding(unittest.TestCase):

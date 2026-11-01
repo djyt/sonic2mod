@@ -20,7 +20,7 @@ from typing import NamedTuple
 from ..audio import semitone_to_hz
 from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from ..config import ConversionConfig
-from ..smps import fm_render_word
+from ..smps import fm_render_word, psg_render_divider
 from .conversion import ConversionPlan
 from .detune import detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
@@ -64,8 +64,9 @@ def sounding_pitches(song, conv: ConversionPlan) -> dict[int, InstrumentPitch]:
                                     cents + (detune_cents(fm.rendered_semitone, offset, table) if offset else 0.0))
     for inst, psg in psg_catalogue(conv).items():
         if psg.entry.type == TONE and inst not in out:
+            rendered = psg.synth_idx + RENDER_INDEX_C1
             out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone,
-                                        song.rules.psg_table.divider_cents(psg.synth_idx + RENDER_INDEX_C1))
+                                        1200 * math.log2(_psg_render_hz(song, psg) / semitone_to_hz(rendered)))
     return out
 
 
@@ -77,11 +78,15 @@ def rendered_pitches(song, conv: ConversionPlan) -> dict[int, float]:
         layer = fm.layers[0]
         if layer.semitones == 0 and not layer.fnum_offset:
             out[inst] = freq_word_hz(fm_render_word(fm.synth_idx + RENDER_INDEX_C1, song.rules.fm_frequencies))
-    table = song.rules.psg_table
     for inst, psg in psg_catalogue(conv).items():
         if psg.entry.type == TONE and inst not in out:
-            out[inst] = psg_frequency_hz(table.render_divider(psg.synth_idx + RENDER_INDEX_C1), MD_PSG_CLOCK)
+            out[inst] = _psg_render_hz(song, psg)
     return out
+
+
+def _psg_render_hz(song, psg) -> float:
+    """The Hz a PSG tone's sample is rendered at: its divider, its own detune in."""
+    return psg_frequency_hz(psg_render_divider(song.rules, psg.synth_idx + RENDER_INDEX_C1, psg.detune), MD_PSG_CLOCK)
 
 
 def _fm_word_cents(semitone: int, fm_frequencies: tuple[int, ...]) -> float:

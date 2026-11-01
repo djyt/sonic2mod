@@ -11,7 +11,7 @@ Public API::
         note_to_psg_n,
     )
 
-    pcm, rate = render_psg_tone(note_to_psg_n(mod_note_index, rules.psg_table))
+    pcm, rate = render_psg_tone(note_to_psg_n(mod_note_index, rules))
     pcm, rate = render_psg_noise(white=True, noise_rate=0)
 """
 
@@ -25,7 +25,7 @@ from ..audio import to_mono as _to_mono
 from ..chips import MD_PSG_CLOCK, psg_divider_for_hz
 from ..chips.sn76489 import SN76489
 from ..config import DEFAULT_PSG_OVERSAMPLE
-from ..smps import C1_SEMITONE, PsgDrumFrame, PsgTable
+from ..smps import C1_SEMITONE, PlaybackRules, PsgDrumFrame, psg_render_divider
 
 # ---------------------------------------------------------------------------
 # Public helper
@@ -38,17 +38,18 @@ from ..smps import C1_SEMITONE, PsgDrumFrame, PsgTable
 DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
 
 
-def note_to_psg_n(mod_note_index: int, table: PsgTable, clock_rate: int = MD_PSG_CLOCK) -> int:
-    """MOD note index → the SN76489 10-bit divider N the driver writes for that note.
+def note_to_psg_n(mod_note_index: int, rules: PlaybackRules, clock_rate: int = MD_PSG_CLOCK, detune: int = 0) -> int:
+    """MOD note index → the SN76489 10-bit divider N the driver writes for that note, `detune` (a
+    detune word) added as it adds it (core.smps.psg_render_divider).
 
-    The driver's PSG table (PlaybackRules.psg_table) is what the hardware plays: its chromatic run
-    starts at its own pitch (Sonic 1's at C3, Streets of Rage 2's and Space Harrier II's at A2).
-    Sonic 1's differs from the rounded equal-temperament divider on 29 of its 70 entries, by up to
-    85 cents at the top.  Off the run, or at another clock, the formula N = clock / (32 × freq)
-    stands in.  Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
+    The driver's PSG table is what the hardware plays: its chromatic run starts at its own pitch
+    (Sonic 1's at C3, Streets of Rage 2's and Space Harrier II's at A2).  Sonic 1's differs from
+    the rounded equal-temperament divider on 29 of its 70 entries, by up to 85 cents at the top.
+    Off the run, or at another clock, the formula N = clock / (32 × freq) stands in.
+    Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
     if clock_rate == MD_PSG_CLOCK:
-        return table.render_divider(mod_note_index + C1_SEMITONE)
+        return psg_render_divider(rules, mod_note_index + C1_SEMITONE, detune)
     return psg_divider_for_hz(440.0 * (2.0 ** ((mod_note_index - 45) / 12.0)), clock_rate)
 
 

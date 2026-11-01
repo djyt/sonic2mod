@@ -45,7 +45,7 @@ from ..config import SampleRow
 from ..smps import ChannelType, fm_table_index
 from .conversion import ConversionPlan
 from .driver_state import enabled_channels, walk_channel
-from .instruments import fm_catalogue, free_slots
+from .instruments import TONE, fm_catalogue, free_slots, psg_catalogue
 
 _NAME_CHARS = 22            # a MOD sample name
 _FINETUNE_CENTS = 12.5      # a MOD finetune step
@@ -130,8 +130,9 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
             at[res.chip] = at.get(res.chip, 0) + 1
 
     plan = DetunePlan()
+    psg_own, wanted = _psg_detunes(song, conv)
+    plan.own |= psg_own
     fm = song.rules.fm_frequencies
-    wanted: list[_Wanted] = []
     for inst, per in counts.items():
         # The most played pair; ties: the smaller detune, then no envelope
         own = max(per, key=lambda pair: (per[pair], -abs(pair[0]), pair[0], -pair[1]))
@@ -165,6 +166,24 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
         name = f"{_stem(base.file) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{envelope}{at}"[:_NAME_CHARS]
         conv.samples.add(SampleRow(v.inst, name, base.volume, base.finetune) if base else SampleRow(v.inst, name))
     return plan
+
+
+def _psg_detunes(song, conv: ConversionPlan) -> tuple[dict[int, int], list[_Wanted]]:
+    """({PSG tone instrument: the detune word most of its notes play at}, nonzero only, the variants
+    its other detunes want), as an FM instrument's: its own rendered into its sample, each other a
+    slot of its own where one is free (Streets of Rage 2's PSG detunes -1 and -2, 7-15 c a note at
+    A#4, played flat; Sonic 1's Robotnik shares a sample between PSG1 at 0 and PSG2 at 2)."""
+    tones = {inst for inst, p in psg_catalogue(conv).items() if p.entry.type == TONE}
+    counts: dict[int, dict[int, int]] = {}
+    for chan_cfg, channel in enabled_channels(song, conv.config, (ChannelType.PSG,)):
+        for _event, st, res in walk_channel(channel, conv, chan_cfg):
+            if res is None or res.instrument not in tones or st.noise_form is not None:
+                continue
+            per = counts.setdefault(res.instrument, {})
+            per[res.detune] = per.get(res.detune, 0) + 1
+    own = {inst: max(per, key=lambda d: (per[d], -abs(d), d)) for inst, per in counts.items()}
+    wanted = [_Wanted(n, inst, d, 0, None, None) for inst, per in counts.items() for d, n in per.items() if d != own[inst]]
+    return {inst: d for inst, d in own.items() if d}, wanted
 
 
 @dataclass(frozen=True)

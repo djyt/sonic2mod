@@ -1,276 +1,276 @@
 # Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
-  commit: bd13b8e
+  commit: 86831cf
   config: eced9d797c95
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 continue_screen:
-  commit: bd13b8e
+  commit: 86831cf
   config: 8e5e70cfa676
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 continue_screen_lofi:
-  commit: bd13b8e
+  commit: 86831cf
   config: 2509190ef4f4
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 continue_screen_lofi_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 2509190ef4f4
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 continue_screen_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 8e5e70cfa676
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 credits:
-  commit: bd13b8e
+  commit: 86831cf
   config: c7ab89891871
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 drowning:
-  commit: bd13b8e
+  commit: 86831cf
   config: acf6be34f295
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 ending_theme:
-  commit: bd13b8e
+  commit: 86831cf
   config: fa303604bf50
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 extra_life:
-  commit: bd13b8e
+  commit: 86831cf
   config: 04a7a06d9509
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 extra_life_lofi:
-  commit: bd13b8e
+  commit: 86831cf
   config: 4e5c5e53a137
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 extra_life_lofi_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 4e5c5e53a137
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 extra_life_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 04a7a06d9509
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 final_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: ae40800419ff
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 ga_conclusion:
-  commit: bd13b8e
+  commit: 86831cf
   config: b099d914aa84
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 ga_the_battle:
-  commit: bd13b8e
+  commit: 86831cf
   config: 2df83b05093e
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 ga_theme_of_thief:
-  commit: bd13b8e
+  commit: 86831cf
   config: 5d1f007216c0
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 game_over:
-  commit: bd13b8e
+  commit: 86831cf
   config: 99bd0ece5760
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 game_over_lofi:
-  commit: bd13b8e
+  commit: 86831cf
   config: 000b0cf4eff7
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 game_over_lofi_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 000b0cf4eff7
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 game_over_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 99bd0ece5760
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 ghz_lofi:
-  commit: bd13b8e
+  commit: 86831cf
   config: a35b6f958452
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 ghz_lofi_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: a35b6f958452
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 green_hill_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: 82e96cc64ff9
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 green_hill_zone_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 82e96cc64ff9
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 invincibility:
-  commit: bd13b8e
+  commit: 86831cf
   config: 45c59a4a3fa4
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 invincibility_lofi:
-  commit: bd13b8e
+  commit: 86831cf
   config: c189e967145b
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 invincibility_lofi_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: c189e967145b
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 invincibility_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 45c59a4a3fa4
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 lab_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: bb35dfa42c67
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 marble_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: abdd296373ef
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 mw_beat_it:
-  commit: bd13b8e
+  commit: 86831cf
   config: 8035cc0a3198
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 mw_mr_big:
-  commit: bd13b8e
+  commit: 86831cf
   config: c53e3a25cf09
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 mw_title:
-  commit: bd13b8e
+  commit: 86831cf
   config: f1f53ea283d8
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 or_last_wave:
-  commit: bd13b8e
+  commit: 86831cf
   config: 3b2d0c4fd17a
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 or_passing_breeze:
-  commit: bd13b8e
+  commit: 86831cf
   config: 1bdab532db74
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 or_step_on_beat:
-  commit: bd13b8e
+  commit: 86831cf
   config: 5fe881fa69ff
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik:
-  commit: bd13b8e
+  commit: 86831cf
   config: d8d9d0b21a0d
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik_lofi:
-  commit: bd13b8e
-  config: 986005d0edd0
-  date: '2026-10-13'
+  commit: 86831cf
+  config: 88200e30cfae
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik_lofi_merged:
-  commit: dbb42e4
+  commit: 86831cf
   config: 88200e30cfae
-  date: '2026-10-17'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: d8d9d0b21a0d
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 scrap_brain_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: 25398fbaaaf9
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 sh2_an_epitaph:
-  commit: bd13b8e
+  commit: 86831cf
   config: 6b69fc6115a9
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 sh2_game_over:
-  commit: bd13b8e
+  commit: 86831cf
   config: 3af9f9666998
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 sh2_harrier_saga:
-  commit: bd13b8e
+  commit: 86831cf
   config: ef99a6f6b879
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 sh2_motion:
-  commit: bd13b8e
+  commit: 86831cf
   config: 0acc01d046ad
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 sh2_winners_flight:
-  commit: bd13b8e
+  commit: 86831cf
   config: 38bbf08c007c
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 special_stage:
-  commit: bd13b8e
+  commit: 86831cf
   config: 2fdf36b4501f
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 spring_yard_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: 30e9d0b4e5ba
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 stage_clear:
-  commit: bd13b8e
+  commit: 86831cf
   config: 2d290a6f1249
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 stage_clear_lofi:
-  commit: bd13b8e
+  commit: 86831cf
   config: 1dc0f88a027f
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 stage_clear_lofi_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 1dc0f88a027f
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 stage_clear_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: 2d290a6f1249
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 star_light_zone:
-  commit: bd13b8e
+  commit: 86831cf
   config: 9f86f789248e
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 title_screen:
-  commit: bd13b8e
+  commit: 86831cf
   config: fb4953c1ddad
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd
 title_screen_merged:
-  commit: bd13b8e
+  commit: 86831cf
   config: fb4953c1ddad
-  date: '2026-10-13'
+  date: '2026-11-01'
   settings: f08dfd2ff1bd

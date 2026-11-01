@@ -64,7 +64,8 @@ sonic2mod/
     vgm/         against a rip: vgm_analyze, vgm_compare, vgm_pitch_audit, vgm_lift, vgm_frames, measure_volumes
     mod/         a written MOD: mod_audit, mod_lint, mod_compare, mod_render_diff
     config/      write or derive a song config: merge_survey, fold_csv, config_to_chip_space, make_credits_config
-    rom/         read a ROM: rom_import, song_dump, disasm (a driver's 68k / Z80 code, its jump tables)
+    rom/         read a ROM: rom_import, song_dump, disasm (a driver's 68k / Z80 code, its jump tables),
+                 flag_census (every flag the songs hold, by its bytes and what it reads as)
     chips/       chip device smoke tests: validate_ym2612, validate_sn76489
     dev/         repo upkeep: check, release, hooks/
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
@@ -152,6 +153,8 @@ python tools/rom/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" 40E46
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --table 41B74 --entries 16 --first F0
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --z80 00EE
+# Every flag a ROM's songs hold, counted by its bytes and what it reads as, with the songs and first address
+python tools/rom/flag_census.py "input/roms/Streets of Rage 2 (USA).md" --flag FF FA --kind PSG
 
 # Render all 49 sound effects as configs/sfx.yaml says (format wav/raw, bits, rate, folder, level, dither):
 # shipped 16-bit stereo WAV → output/sonic_1/sfx/

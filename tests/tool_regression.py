@@ -190,17 +190,19 @@ def _read_cases() -> list[_Case]:
     return cases
 
 
-# disasm.py on Streets of Rage 2's driver: a routine with its bus handshake folded, its FM flag
-# table, the Z80 player's sample loop
-_DISASM = (("68k", ["40E46", "--table", "41B74", "--entries", "16", "--first", "F0"]), ("z80", ["--z80", "00EE"]))
+# The ROM tools on Streets of Rage 2: disasm.py (a routine with its bus handshake folded, its FM
+# flag table, the Z80 player's sample loop) and flag_census.py (every flag, every row)
+_ROM_TOOLS = (("disasm_streets_of_rage_2_68k", ["tools/rom/disasm.py", "40E46", "--table", "41B74", "--entries", "16",
+                                                "--first", "F0"]),
+              ("disasm_streets_of_rage_2_z80", ["tools/rom/disasm.py", "--z80", "00EE"]),
+              ("census_streets_of_rage_2", ["tools/rom/flag_census.py", "--rows", "0"]))
 
 
-def _disasm_cases() -> list[_Case]:
+def _rom_tool_cases() -> list[_Case]:
     if not STREETS_OF_RAGE_2_ROM.exists():
         return []
     rom = STREETS_OF_RAGE_2_ROM.relative_to(ROOT).as_posix()
-    return [_Case(f"disasm_streets_of_rage_2_{cpu}", ["tools/rom/disasm.py", rom, *args], [STREETS_OF_RAGE_2_ROM])
-            for cpu, args in _DISASM]
+    return [_Case(name, [tool, rom, *args], [STREETS_OF_RAGE_2_ROM]) for name, (tool, *args) in _ROM_TOOLS]
 
 
 def _missing_sources() -> list[str]:
@@ -211,7 +213,7 @@ def _missing_sources() -> list[str]:
 
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases() + _disasm_cases()
+    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases() + _rom_tool_cases()
     shelves: dict[Path, RipShelf] = {}      # each game's: its configs' folder and its rips
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there

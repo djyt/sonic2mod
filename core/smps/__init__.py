@@ -25,6 +25,7 @@ from .asm_writer import write_asm
 from .clock import REGIONS, VINT, TimerA, UpdateClock, VInt, update_hz
 from .code import (
     TRACK_BYTES,
+    FlagRead,
     Op,
     OpKind,
     SmpsCode,
@@ -187,6 +188,7 @@ __all__ = [
     "DetuneAdd",
     "DriverEffect",
     "EnvelopePreset",
+    "FlagRead",
     "Fm3Special",
     "FmDrum",
     "FmFrame",

@@ -13,7 +13,7 @@ from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from ..smps import ChannelType, Op, OpKind, SmpsCode
+from ..smps import ChannelType, FlagRead, Op, OpKind, SmpsCode
 from .fixes import RomFix
 from .grammar import Instruction, track_label
 from .image import RomError
@@ -26,6 +26,7 @@ class DecodedTracks:
     code: SmpsCode
     labels: dict[str, int]                                   # each label's address
     dropped: Counter[str] = field(default_factory=Counter)   # flags read and left out, by name
+    flags: list[FlagRead] = field(default_factory=list)      # every flag, in address order
 
 
 def decode_tracks(memory: SoundMemory, starts: dict[int, ChannelType], variant: SmpsVariant,
@@ -61,7 +62,18 @@ def decode_tracks(memory: SoundMemory, starts: dict[int, ChannelType], variant: 
     _check_overlaps(decoded)
     _loop_ends(decoded, loops)
     dropped = Counter(d.dropped for d in decoded.values() if d.dropped)
-    return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in sorted(labels)}, dropped)
+    flags = [_flag(memory, a, decoded[a], kinds[a]) for a in sorted(decoded)
+             if a not in splices and memory.byte(a) in variant.flags[kinds[a]]]
+    return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in sorted(labels)}, dropped, flags)
+
+
+def _flag(memory: SoundMemory, address: int, one: Instruction, kind: ChannelType) -> FlagRead:
+    """The flag at `address`: its bytes and what it was read as."""
+    read = (one.dropped and f"dropped: {one.dropped}") or ", ".join(
+        repr(op.effect) if op.effect is not None else op.kind.name for op in one.ops)
+    if not read:
+        read = "nothing" if one.target is None else f"to ${one.target:X}"
+    return FlagRead(address, kind, memory.bytes_at(address, one.length), read)
 
 
 def _instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType,

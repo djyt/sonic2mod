@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.drivers import detect_variant, read_rom_song
+from core.drivers import detect_variant, read_rom_code, read_rom_song
 from core.drivers.mucom.md import MUCOM_MD
 from core.drivers.mucom.md.header import read_image
 from core.drivers.mucom.md.locate import fm_volumes, locate
@@ -160,6 +160,13 @@ class StreetsOfRage2(unittest.TestCase):
         held = [v for v in song.voices if v.volume_slots is not None]
         self.assertTrue(held)
         self.assertTrue(all(len(v.volume_slots or ()) < len(v.carrier_registers) for v in held))
+
+    def test_every_flag_kept_with_its_bytes_and_reading(self):
+        flags = read_rom_code(self.rom, 0x06, self.index).flags
+        release = next(f for f in flags if f.address == 0x47648)
+        self.assertEqual((release.kind, release.data, release.read),
+                         (ChannelType.FM, bytes([0xFF, 0xF3, 4]), "SoftRelease(level=4, on=True)"))
+        self.assertEqual([f.address for f in flags], sorted(f.address for f in flags))
 
 
 if __name__ == "__main__":

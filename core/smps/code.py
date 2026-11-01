@@ -94,6 +94,17 @@ def track_byte(value: int) -> Op | None:
     return None
 
 
+@dataclass(frozen=True)
+class FlagRead:
+    """A coordination flag as a ROM holds it: where, on which kind of track, its bytes, and what
+    it was read as (its ops, or the name it was dropped under)."""
+
+    address: int
+    kind: ChannelType
+    data: bytes
+    read: str
+
+
 @dataclass
 class SongCode:
     """A song as a front end reads it, before the walk: header, code, voices, and the rules its
@@ -107,6 +118,7 @@ class SongCode:
     addresses: dict[str, int] = field(default_factory=dict)      # ... and each label's (voices too)
     dropped: dict[str, int] = field(default_factory=dict)        # flags read and left out, by name
     fm_drums: dict[str, FmDrum] = field(default_factory=dict)    # the drum track's FM programs
+    flags: list[FlagRead] = field(default_factory=list)          # a ROM's: every flag, in address order
 
     def song(self) -> SmpsSong:
         song = song_from_code(self.header, self.code, self.voices, self.rules)

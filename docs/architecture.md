@@ -359,7 +359,7 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 | `tools/vgm/` | Against a rip: `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `vgm_frames`, `measure_volumes` |
 | `tools/mod/` | A written MOD: `mod_audit`, `mod_lint`, `mod_compare`, `mod_render_diff` |
 | `tools/config/` | Write or derive a song config: `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config` |
-| `tools/rom/` | Read a ROM: `rom_import`, `song_dump`, `disasm` (a driver's 68k / Z80 code: routines, jump tables) |
+| `tools/rom/` | Read a ROM: `rom_import`, `song_dump`, `disasm` (a driver's 68k / Z80 code: routines, jump tables), `flag_census` (every flag the songs hold: `SongCode.flags`) |
 | `tools/chips/` | `validate_ym2612`, `validate_sn76489`: each device, then `core/synth` through it |
 | `tools/dev/` | Repo upkeep: `check`, `release`, `hooks/` (git hooks, the Claude Code ruff hook) |
 | `tests/regression.py` | Every config (and its merged build, variants, ROM cases) converted and compared with a baseline MOD, cells and samples |

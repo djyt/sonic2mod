@@ -53,7 +53,7 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     if variant.fm_drums and not index.is_sfx(sound_id):
         drums = variant.fm_drums(image, head.header, rules.fm_frequencies)
     return SongCode(head.header, tracks.code, voices, rules, address=address, addresses=tracks.labels,
-                    dropped=dict(tracks.dropped), fm_drums=drums)
+                    dropped=dict(tracks.dropped), fm_drums=drums, flags=tracks.flags)
 
 
 def _rules(variant: SmpsVariant, image: RomImage, memory: SoundMemory, index: SoundIndex) -> PlaybackRules:

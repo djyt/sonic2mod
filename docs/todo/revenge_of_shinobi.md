@@ -203,7 +203,8 @@ names it (CLAUDE.md, "Scalable structure").
    noise as PSG3's form.  A track on the noise channel alone (chip channel `NOISE`) through the walk,
    the planner and the PSG render: check what assumes three (D3).
 4. **`z80_loads`:** an uncompressed copy in two blocks (`lea $A00000,a1` / `lea src,a2` /
-   `move.w #n,d2` / `move.b (a2)+,(a1)+` / `dbra`), and the bytes the 68k pokes after it
+   `move.w #n,d2` / `move.b (a2)+,(a1)+` / `dbra`): read since Streets of Rage 2's 4.1 (copied
+   loads on any registers; both blocks found).  Left: the bytes the 68k pokes after it
    (`$1FF8`-`$1FFA`).
 
 ### 5.2 New concepts

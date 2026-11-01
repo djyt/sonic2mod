@@ -4,8 +4,8 @@ Moonwalker, Streets of Rage), an SMPS Z80 driver the whole sound driver (Golden 
 load several programs at one address (Space Harrier II: its driver, then a PCM voice player in its
 place): z80_loads keeps each apart.
 
-    copied      lea (z80_ram+n).l,a6 / lea (src).l,a5 / move.w #len-1,d0 /       Moonwalker, Golden Axe
-                move.b (a5)+,(a6)+ / dbra d0
+    copied      lea (z80_ram+n).l,ad / lea (src).l,as (either first) /           Moonwalker, Golden Axe (a6, a5),
+                move.w #len-1,dn / move.b (as)+,(ad)+ / dbra dn                  Streets of Rage 2 (a2, a1)
     Kosinski    lea (src).l,a0 / lea (z80_ram).l,a1 / (KosDec)                   Sonic 1
     buffered    lea (src).l,a0 / lea (buf).l,a1 / jsr (KosDec) /                  Streets of Rage
                 lea (z80_ram+n).l,a1 / lea (buf).l,a2 / move.w #len-1,d2 / move.b (a2)+,(a1)+ / dbra d2
@@ -33,10 +33,14 @@ _WORD, _LONG = 2, 4
 _Z80_RAM_TOP = (Z80_RAM_BASE >> 16).to_bytes(_WORD, "big")    # a long naming Z80 RAM: its top word
 
 # Copied
-_LEA_Z80_A6 = bytes.fromhex("4DF9") + _Z80_RAM_TOP   # lea (z80_ram+n).l,a6
-_LEA_A5 = bytes.fromhex("4BF9")                  # lea (src).l,a5
 _MOVE_COUNT = bytes.fromhex("303C")              # move.w #n,d0
-_COPY = bytes.fromhex("1CDD51C8FFFC")            # move.b (a5)+,(a6)+ / dbra d0,*-2
+_MOVE_POSTINC = 0x10D8                           # move.b (as)+,(ad)+: d in bits 9-11, s in bits 0-2
+_MOVE_POSTINC_MASK = 0xF1F8
+_DBRA = 0x51C8                                   # dbra dn,*-2: n in bits 0-2, then the displacement
+_DBRA_BACK = 0xFFFC
+_MOVE_W_IMM = 0x303C                             # move.w #n,dn: n in bits 9-11
+_LEA_ABS = 0x41F9                                # lea (xxx).l,an: n in bits 9-11
+_REGISTER_MASK = 0xF1FF                          # an opcode with its bits 9-11 register cleared
 
 # Kosinski, and buffered
 _LEA_A0 = bytes.fromhex("41F9")                  # lea (src).l,a0
@@ -110,17 +114,33 @@ def z80_word(ram: bytes, at: int) -> int:
 
 
 def _copied(rom: RomImage) -> Iterator[tuple[int, int, bytes]]:
-    """(where, Z80 address, bytes) of each uncompressed copy loop."""
-    for at in rom.find_all(_LEA_Z80_A6):
-        dest_at = at + len(_LEA_Z80_A6)                   # the long's low word: the Z80 address
-        src_at = dest_at + _WORD
-        count_at = src_at + _LEA
-        copy_at = count_at + _OPCODE + _WORD
-        if (rom.bytes_at(src_at, 2) != _LEA_A5 or rom.bytes_at(count_at, 2) != _MOVE_COUNT
-                or rom.bytes_at(copy_at, len(_COPY)) != _COPY):
+    """(where, Z80 address, bytes) of each uncompressed copy loop: a byte copy and its dbra, the
+    count before them, and before that the two leas that load its registers, the destination's in
+    Z80 RAM."""
+    for back_at in rom.find_all(_DBRA_BACK.to_bytes(_WORD, "big")):
+        copy_at = back_at - _OPCODE - _OPCODE              # move.b (as)+,(ad)+ / dbra dn
+        if copy_at < 0:
+            continue
+        move, dbra = rom.word(copy_at), rom.word(copy_at + _OPCODE)
+        if move & _MOVE_POSTINC_MASK != _MOVE_POSTINC or dbra & ~_REGISTER != _DBRA:
+            continue
+        count_at = copy_at - _OPCODE - _WORD
+        if count_at < 2 * _LEA or rom.word(count_at) != _MOVE_W_IMM | (dbra & _REGISTER) << _AN_IN_LEA:
+            continue
+        leas = {_lea_register(rom, at): rom.long(at + _OPCODE) for at in (count_at - 2 * _LEA, count_at - _LEA)}
+        source, dest = leas.get(move & _REGISTER), leas.get(move >> _AN_IN_LEA & _REGISTER)
+        if source is None or dest is None or not Z80_RAM_BASE <= dest < Z80_RAM_BASE + Z80_RAM_SIZE:
             continue
         count = rom.word(count_at + _OPCODE) + 1
-        yield at, rom.word(dest_at), rom.bytes_at(rom.long(src_at + _OPCODE), count)
+        if not rom.contains(source, count):
+            continue                                       # from 68k RAM: a buffered load's copy
+        yield count_at - 2 * _LEA, dest - Z80_RAM_BASE, rom.bytes_at(source, count)
+
+
+def _lea_register(rom: RomImage, at: int) -> int | None:
+    """The address register a `lea (xxx).l,an` at `at` loads; None for any other instruction."""
+    opcode = rom.word(at)
+    return opcode >> _AN_IN_LEA & _REGISTER if opcode & _REGISTER_MASK == _LEA_ABS else None
 
 
 def _kosinski(rom: RomImage) -> Iterator[tuple[int, int, bytes]]:

@@ -18,6 +18,7 @@ from core.smps import (
     SmpsParser,
     flag_from_macro,
     flag_name,
+    parse_smps_note,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -47,3 +48,11 @@ class Flags(unittest.TestCase):
         effects = [ev.effect for ch in song.channels for ev in ch.events if ev.effect is not None]
         self.assertTrue(effects)
         self.assertTrue(all(isinstance(e.flag, CoordFlag) for e in effects))
+
+
+class NoteNames(unittest.TestCase):
+    def test_smps_names_and_pitches_past_them(self):
+        # nC0 = 0; nMaxPSG an alias; C8 and B8 past the note bytes (a PSG table to B8)
+        self.assertEqual([parse_smps_note(n) for n in ("C0", "Bb7", "MaxPSG", "C8", "B8")], [0, 94, 69, 96, 107])
+        with self.assertRaisesRegex(ValueError, "Unknown SMPS note name"):
+            parse_smps_note("H2")

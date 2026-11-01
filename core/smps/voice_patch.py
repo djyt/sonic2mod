@@ -80,6 +80,7 @@ class VoicePatcher:
             plain_index = self.copy(base, plain) if plain != changes else None
             voice = changes.applied(self._voices[base])
             voice.plain = plain_index
+            voice.unpatched = base if plain_index is None else None
             voice.index = max(self._voices) + 1
             self._voices[voice.index] = voice
             self._copies[key] = voice.index

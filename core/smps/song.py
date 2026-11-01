@@ -179,9 +179,11 @@ class SmpsVoice:
     fnum_offsets: tuple[int, ...] | None = None
     # The hardware LFO the voice plays under (a copy the walk makes: core/smps/lfo.py).  None: none
     lfo: FmLfo | None = None
-    # A copy in special mode or under the LFO: the voice it is without them (what it plays as when
-    # a MOD runs out of slots: core.plan.derive).  None: no such copy
+    # What a copy plays as when a MOD runs out of slots (core.plan.derive), first the one, then the
+    # other: in special mode or under the LFO, the voice it is without them (`plain`); with register
+    # writes (a voice patch), the song's own voice it patches (`unpatched`).  None: no such copy
     plain: int | None = None
+    unpatched: int | None = None
     # The operator slots (register offsets) the track volume is added to, where the voice marks
     # them itself (OutRun's: a TL byte's bit 7).  None: the algorithm's carriers
     volume_slots: tuple[int, ...] | None = None

@@ -1,17 +1,22 @@
-"""The sample format of Streets of Rage's Z80 players (its sequel's descends from it): RunDpcm, the
-sample's own delta table and runs of its last delta.
+"""Streets of Rage's Z80 players (its sequel's descends from it): their table and sample format.
+
+    table     ld iy,nn: 5 bytes a sound from $81, start.w size.w pitch.b (little-endian)
+    RunDpcm   the sample's own delta table and runs of its last delta; each player's loop its own
+              cycle counts (the drivers' dac.py)
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 
 from ..image import RomError
-from . import ACCUMULATOR, SIGN
+from ..variant import DacSample
+from . import ACCUMULATOR, SIGN, PcmEntry, PcmTable, one_format, pcm_table
 
 _RUN_DELTAS = 16                          # the sample's delta table, before its nibbles
 _BYTE_VALUES = 0x100                      # a run of 0 steps: the Z80's count wraps to 256
+_ENTRY = PcmEntry(5, size_at=2, pitch_at=4)
 
 
 @dataclass(frozen=True)
@@ -68,3 +73,9 @@ class RunDpcm:
     @staticmethod
     def _run(deltas: bytes) -> int:
         return deltas[0] or _BYTE_VALUES
+
+
+def player_samples(z80: bytes, form: RunDpcm, names: Mapping[int, str], sounds: range) -> list[DacSample]:
+    """`sounds` as a Streets of Rage player in Z80 RAM `z80` plays them, its loop's cycles `form`'s."""
+    table = PcmTable(z80, pcm_table(z80), _ENTRY, one_format(form), names)
+    return [table.sample(sound) for sound in sounds]

@@ -16,12 +16,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from core.rom.image import RomImage
-from core.rom.pcm import PcmEntry, PcmTable, one_format, pcm_table
-from core.rom.pcm.sor import RunDpcm
+from core.rom.pcm.sor import RunDpcm, player_samples
 from core.rom.variant import DacSample
 from core.rom.z80 import z80_ram
 
-_ENTRY = PcmEntry(5, size_at=2, pitch_at=4)
 _MUSIC = range(0x81, 0x85)
 
 # Its player's loop: a literal nibble (high, low), a run's step, a run's entry (high, low), per
@@ -31,6 +29,4 @@ RUN_DPCM = RunDpcm(nibble=(190, 242), run_step=219, run_entry=(23, 75), per_pitc
 
 def streets_of_rage_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
     """The samples a Streets of Rage song can play ($81-$84)."""
-    z80 = z80_ram(rom)
-    table = PcmTable(z80, pcm_table(z80), _ENTRY, one_format(RUN_DPCM), names)
-    return [table.sample(sound) for sound in _MUSIC]
+    return player_samples(z80_ram(rom), RUN_DPCM, names, _MUSIC)

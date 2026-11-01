@@ -17,7 +17,7 @@ class WarningKind(StrEnum):
     MISSING_SOURCE = 'missing_source'               # a channel's source is not in the song
     SYNTH_ROOT_AMBIGUOUS = 'synth_root_ambiguous'   # an entry's low note plays at several chip pitches
     DETUNE_NO_SLOT = 'detune_no_slot'               # detune variants with no free slot
-    COPY_NO_SLOT = 'copy_no_slot'                   # voice copies (special mode, LFO) a minimal config plays as their voice
+    COPY_NO_SLOT = 'copy_no_slot'                   # voice copies (LFO, register patch, special mode) a minimal config plays as their voice
     VOLUME_NO_SLOT = 'volume_no_slot'               # envelopes at a volume a minimal config plays at another
     WINDOW_NO_SLOT = 'window_no_slot'               # a voice's windows a minimal config merged to fit
     # samples

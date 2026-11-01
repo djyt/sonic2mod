@@ -288,8 +288,8 @@ class StreetsOfRage(unittest.TestCase):
         self.assertNotEqual(noise["envelopes"]["$00"], noise["mod_instrument"])
 
     def test_voice_copies_past_the_slots_play_as_their_voice(self):
-        # Big Boss ($90), windows of 9 (the shipped max_window): its special mode and LFO copies need 36 slots;
-        # the least played copies play as their plain voice, on its windows
+        # Big Boss ($90), windows of 9 (the shipped max_window): its copies need 36 slots; the least played
+        # LFO or register-patched copies play as their voice, on its windows
         rom = RomImage.load(STREETS_OF_RAGE_ROM)
         song = read_rom_song(rom, 0x90)
         out = derive_config({"name": "Big Boss", "input_file": str(STREETS_OF_RAGE_ROM), "rom_song": "$90"}, song,
@@ -298,9 +298,10 @@ class StreetsOfRage(unittest.TestCase):
         voices = {v.index: v for v in song.voices}
         self.assertLessEqual(len(out.data["sample_list"]), 31)
         self.assertTrue(out.folded)
-        for copy, (plain, _) in out.folded.items():
-            self.assertEqual(voices[copy].plain, plain)
-            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][plain])
+        for copy, (voice, _) in out.folded.items():
+            self.assertIn(voice, (voices[copy].plain, voices[copy].unpatched))
+            self.assertIsNone(voices[copy].fnum_offsets)          # special mode's copies keep their slots
+            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][voice])
 
 
 @needs_streets_of_rage_2

@@ -225,7 +225,7 @@ def _w_detune_no_slot(w: dict):
 def _w_copy_no_slot(w: dict):
     parts = ", ".join(f"${copy:02X} as ${plain:02X} ×{n}" for copy, (plain, n) in
                       sorted(w['folded'].items(), key=lambda kv: -kv[1][1]))
-    return ("pitch", f"{len(w['folded'])} voice copies (FM3 special mode, LFO) have no free slot and play as "
+    return ("pitch", f"{len(w['folded'])} voice copies (LFO, register patch, FM3 special mode) have no free slot and play as "
                      f"their voice: {parts}", "free an instrument slot")
 
 

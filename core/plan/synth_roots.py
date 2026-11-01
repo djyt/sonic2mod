@@ -115,7 +115,10 @@ def resolve_synth_roots(song, conv: ConversionPlan) -> ResolvedRoots:
         groups.setdefault(item[1].mod_instrument, []).append(item)
     out: dict[int, RenderPitch] = {}
     for group in groups.values():
-        _, first, _, d_first, first_stated = group[0]
+        # The first entry with notes leads: a voice or envelope folded onto another's slot names it
+        # too, and the first to name it may route none of its notes there (Streets of Rage 2's
+        # Under Logic: adsr_..._v11's upper window holds only v12's notes)
+        _, first, _, d_first, first_stated = next((item for item in group if item[3] is not None), group[0])
         if d_first is None:
             pitch, shift = first.synth_root, 0          # no notes: nothing to place
         elif first_stated:
@@ -134,7 +137,9 @@ def resolve_synth_roots(song, conv: ConversionPlan) -> ResolvedRoots:
             if stated and e is not first:
                 out[id(e)] = RenderPitch(e.synth_root, (e.synth_root - d) if d is not None else 0)   # its own say
             else:
-                out[id(e)] = RenderPitch(pitch, shift if d is not None else 0)
+                # One sample: an entry with no notes renders it as the lead does (the generator
+                # renders for the first entry naming the slot)
+                out[id(e)] = RenderPitch(pitch, shift if d is not None or d_first is not None else 0)
 
     report = [SynthRoot(context, e.mod_instrument, out[id(e)].synth_root, not stated, out[id(e)].shift, per,
                         pitches.get(id(e), {}))

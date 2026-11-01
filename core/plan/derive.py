@@ -12,8 +12,9 @@ one sample_list row), never the whole section.
 
 Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
     over 31     what gives way, in order (core.plan.slot_fit): an envelope at a volume plays at its
-                most played volume; a voice copy as its voice (FM3 special mode, LFO, then a
-                register patch); a voice's neighbouring windows merge, the cheapest first
+                most played volume; a copy under the LFO or with a register patch as its voice;
+                a voice's neighbouring windows merge, the cheapest first; last, a copy in channel
+                3's special mode as its voice (its notes' pitch moves: the operators' offsets lost)
     FM / PSG tone   an entry per window of the chip pitches a voice / envelope plays: its lowest
                     on the first MOD note keeping samples.root_harmonics harmonics (never under
                     E1, the 5 kHz line), its top at most samples.top_note (A3), its span at most
@@ -357,13 +358,18 @@ class _Deriver:
         return out
 
     def _fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
-        """`fm` and `tone` fitted to `slots`, as far as they go (core.plan.slot_fit): envelopes at
-        their most played volume, voice copies as their voices, then windows merged."""
+        """`fm` and `tone` fitted to `slots`, as far as they go (core.plan.slot_fit), what sounds
+        least changed first: envelopes at their most played volume, LFO and register-patch copies
+        as their voices, windows merged; then special-mode copies as theirs, one at a time."""
         tone, self._out.volumes_folded = fold_volumes(tone, slots - self._fm_slots(fm), volume_family, self._tone_slots)
-        fm = self._fold_copies(fm, slots - self._tone_slots(tone))
-        groups: dict[tuple, Counter] = {(ChannelType.FM, key): p for key, p in fm.items()}
-        groups |= {("tone", key): p for key, p in tone.items()}
-        self._merges = merge_windows(groups, self._max_span, self._widest, slots)
+        fm = self._fold_copies(fm, slots - self._tone_slots(tone), (_lfo_voice, _unpatched_voice))
+        while True:
+            groups: dict[tuple, Counter] = {(ChannelType.FM, key): p for key, p in fm.items()}
+            groups |= {("tone", key): p for key, p in tone.items()}
+            self._merges = merge_windows(groups, self._max_span, self._widest, slots)
+            used = sum(len(self._cut(kind, key, p)) for (kind, key), p in groups.items())
+            if used <= slots or not self._fold_one(fm, (_special_voice,)):
+                break
         self._out.windows_merged = {(f"${key:02X}" if kind == ChannelType.FM else key): n
                                     for (kind, key), n in self._merges.items()}
         return fm, tone
@@ -377,25 +383,26 @@ class _Deriver:
         """The widest window a sample may play: the floor to top_note."""
         return self._top - self._floor
 
-    def _fold_copies(self, fm: dict[int, Counter], slots: int) -> dict[int, Counter]:
+    def _fold_copies(self, fm: dict[int, Counter], slots: int, fallbacks) -> dict[int, Counter]:
         """`fm` with copies folded onto their voices while its windows outnumber `slots`: the least
-        played copy plays as the voice it falls back to, its notes in that voice's windows
-        (Derivation.folded).  Copies in channel 3's special mode or under the LFO first (as their
-        plain voice: SmpsVoice.plain), then register-patched ones (as the voice they patch:
-        SmpsVoice.unpatched)."""
-        voices = {v.index: v for v in self._song.voices}
+        played copy any of `fallbacks` names plays as that voice, its notes in that voice's windows
+        (Derivation.folded)."""
         fm = {key: Counter(pitches) for key, pitches in fm.items()}
-        for fallback in (_plain_voice, _unpatched_voice):
-            while self._fm_slots(fm) > slots:
-                copies = [key for key in fm if fallback(voices[key]) is not None]
-                if not copies:
-                    break
-                copy = min(copies, key=lambda key: (fm[key].total(), key))
-                target = fallback(voices[copy])
-                assert target is not None
-                self._out.folded[copy] = (target, fm[copy].total())
-                fm.setdefault(target, Counter()).update(fm.pop(copy))
+        while self._fm_slots(fm) > slots and self._fold_one(fm, fallbacks):
+            pass
         return fm
+
+    def _fold_one(self, fm: dict[int, Counter], fallbacks) -> bool:
+        """The least played copy any of `fallbacks` names folded onto that voice; False: none."""
+        voices = {v.index: v for v in self._song.voices}
+        targets = {key: target for key in fm
+                   if (target := next((t for f in fallbacks if (t := f(voices[key])) is not None), None)) is not None}
+        if not targets:
+            return False
+        copy = min(targets, key=lambda key: (fm[key].total(), key))
+        self._out.folded[copy] = (targets[copy], fm[copy].total())
+        fm.setdefault(targets[copy], Counter()).update(fm.pop(copy))
+        return True
 
     def _folded_to(self, copy: int) -> int:
         """The voice a folded copy plays as: its fallback's, where that was folded too."""
@@ -557,8 +564,14 @@ def _pitch_name(semitone: int) -> str:
     return note_label(_FIRST_NOTE + semitone)[len("n"):]
 
 
-def _plain_voice(voice: SmpsVoice) -> int | None:
-    return voice.plain
+def _lfo_voice(voice: SmpsVoice) -> int | None:
+    """A copy under the hardware LFO: its plain voice."""
+    return voice.plain if voice.fnum_offsets is None else None
+
+
+def _special_voice(voice: SmpsVoice) -> int | None:
+    """A copy in channel 3's special mode: its plain voice."""
+    return voice.plain if voice.fnum_offsets is not None else None
 
 
 def _unpatched_voice(voice: SmpsVoice) -> int | None:

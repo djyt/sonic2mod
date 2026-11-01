@@ -88,12 +88,14 @@ A MOD holds 31 instruments.  Where the windows need more, these give way in turn
 first, until the song fits (`core/plan/slot_fit.py`; each one a warning):
 1. an envelope the volume shapes plays at its most played volume, `Cxx` the difference
    (`volume_no_slot`: Streets of Rage 2's ADSR envelopes, an instrument per preset and volume);
-2. voice copies (channel 3's special mode, the hardware LFO: `docs/pipeline.md` § Hardware LFO;
-   then register patches) play as their voice on its windows (`copy_no_slot`: Streets of Rage's
-   Big Boss, 5 copies);
+2. voice copies under the hardware LFO (`docs/pipeline.md` § Hardware LFO) or with a register
+   patch play as their voice on its windows (`copy_no_slot`: Streets of Rage's Big Boss);
 3. a voice's (an envelope's) neighbouring windows merge, the merge moving the fewest notes first:
    those notes play further from their sample's pitch (`window_no_slot`: Streets of Rage 2's
-   Jungle Base, 13).
+   Jungle Base, 13);
+4. copies in channel 3's special mode play as their plain voice, one at a time with the windows
+   merged anew: the operators' offsets are lost, and with them the notes' pitch (Alien Power's
+   FM3 300-400 c).
 
 A song that still does not fit is an error.  Banks (`9xx`) would hold one looped sound each, and
 these are looped or seconds long: the plain build does not bank.

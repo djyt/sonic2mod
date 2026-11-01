@@ -11,7 +11,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from ..chips import CARRIER_OFFSETS_BY_ALG, MD_PSG_CLOCK
+from ..audio import semitone_to_hz
+from ..chips import CARRIER_OFFSETS_BY_ALG, MD_PSG_CLOCK, psg_frequency_hz
 
 _WORD_VALUES = 0x10000
 
@@ -38,8 +39,7 @@ def signed_word(value: int) -> int:
 # transpose lands on the same index as the corrected $10.
 
 FM_TABLE_NC0 = 1         # an FM table's index of nC0: index 0 is the rest's (FMSetFreq subtracts $80)
-PSG_TABLE_PITCH = 36     # the pitch (SMPS semitone) of a PSG table's index 0: C3
-_PSG_TABLE_NOTES = 69    # its chromatic entries, C3 up
+PSG_TABLE_PITCH = 36     # the SMPS convention for a PSG table's index 0 (nC0): C3, where a driver has no table
 C1_SEMITONE = 12         # nC1: where a MOD's note index 0 (C-1) plays, an octave above nC0
 
 
@@ -58,24 +58,75 @@ def psg_note_index(note_value: int, transpose: int) -> int:
     return ((note_value - 0x81) + transpose) & 0x7F
 
 
-def psg_index_semitone(index: int, psg_read: tuple[int, ...]) -> int:
-    """Real pitch (SMPS semitone, C0 = 0) the PSG plays for a table index (`psg_read`: the driver's
-    words, PlaybackRules.psg_read).
+_CHROMATIC_CHECKED = 24      # a table's first entries checked as chromatic: two octaves, where a
+_CHROMATIC_SEMITONES = 0.25  # divider is large enough to be exact (Sonic 1's: within 0.03)
 
-    Entries 0-68 are chromatic from C3 (index 0 = 854 = 131 Hz), so the pitch is index + 36.
-    The driver masks the index to 7 bits and reads on past the table, so a note transposed
-    below C3 (Credits PSG1: indices 125-127) or above nMaxPSG plays whatever word sits there -
-    Marble Zone's five "data bug" notes, and Credits' G#3 where A2 was written.  Those come out
-    of the driver's words past its table like any other divider (0 clocked as 1).
-    """
-    if 0 <= index < _PSG_TABLE_NOTES:
-        return PSG_TABLE_PITCH + index
-    n = psg_read[index & 0x7F]
-    if n > 1:
-        return round(57 + 12 * math.log2((MD_PSG_CLOCK / (32.0 * n)) / 440.0))
-    # The table is followed by code, not data; where the extrapolated table has nothing usable
-    # the written pitch is the best guess (the audit will show what the hardware really did).
-    return PSG_TABLE_PITCH + index
+
+def _divider_semitone(n: int) -> float:
+    """The pitch (SMPS semitone, A4 = 57) the SN76489 plays for tone divider `n` (> 0)."""
+    return 57 + 12 * math.log2((MD_PSG_CLOCK / (32.0 * n)) / 440.0)
+
+
+@dataclass(frozen=True)
+class PsgTable:
+    """A driver's PSG frequency table as a note's 7-bit index reads it.
+
+        index  0 ............ notes-1 | notes ... 127
+               chromatic from `pitch` | past the table: whatever words sit there
+
+    Sonic 1's (and every 68k driver's here) starts at C3 (854, 131 Hz) and runs 69 notes; Space
+    Harrier II's starts at A2 (1016) and runs 72.  PlaybackRules.psg_table reads both from the
+    driver's own table."""
+
+    read: tuple[int, ...]              # the 128 words an index reads (PlaybackRules.psg_read)
+    pitch: int = PSG_TABLE_PITCH       # index 0's pitch (SMPS semitone, C0 = 0)
+    notes: int = 0                     # the chromatic entries from index 0
+
+    @classmethod
+    def of(cls, frequencies: tuple[int, ...], read: tuple[int, ...], driver: str = "") -> PsgTable:
+        """The table a driver stores (`frequencies`: its dividers by index; `read`: the words an
+        index reads).  Its chromatic run ends at its first divider of 1 or less (Sonic 1's
+        nMaxPSG); one whose first two octaves are not a semitone apart is an error (a table read
+        from the wrong place)."""
+        if not frequencies:
+            return cls(read)                        # no PSG table: the driver plays no PSG notes
+        notes = next((i for i, n in enumerate(frequencies) if n <= 1), len(frequencies))
+        pitch = round(_divider_semitone(frequencies[0]))
+        for i, n in enumerate(frequencies[:min(notes, _CHROMATIC_CHECKED)]):
+            if abs(_divider_semitone(n) - (pitch + i)) > _CHROMATIC_SEMITONES:
+                raise ValueError(f"{driver}: PSG table entry {i} (divider {n}) is not a semitone "
+                                 f"above the one before: not a chromatic table")
+        return cls(read, pitch, notes)
+
+    def divider(self, index: int) -> int:
+        """The word the driver reads for a (7-bit masked) index."""
+        return self.read[index & 0x7F]
+
+    def semitone(self, index: int) -> int:
+        """Real pitch (SMPS semitone, C0 = 0) the PSG plays for a table index.
+
+        Inside the chromatic run, the table's pitch + index.  The driver masks the index to 7 bits
+        and reads on past the table, so a note transposed below it (Sonic 1's Credits PSG1:
+        indices 125-127) or above its last note plays whatever word sits there - Sonic 1's Marble
+        Zone's five "data bug" notes, and its Credits' G#3 where A2 was written.  Those come out of
+        the driver's words like any other divider (0 clocked as 1).
+        """
+        if 0 <= index < self.notes or not self.read:
+            return self.pitch + index
+        n = self.divider(index)
+        if n > 1:
+            return round(_divider_semitone(n))
+        # The table is followed by code, not data; where the extrapolated table has nothing usable
+        # the written pitch is the best guess (the audit will show what the hardware really did).
+        return self.pitch + index
+
+    def divider_cents(self, semitone: int) -> float:
+        """Cents the table's divider for a pitch sounds off equal temperament: a sample is rendered
+        with it (Streets of Rage's and Sonic 1's B7: divider 29, -42 c).  0 outside the run."""
+        i = semitone - self.pitch
+        if not 0 <= i < self.notes or self.read[i] <= 0:
+            return 0.0
+        return 1200 * math.log2(psg_frequency_hz(self.read[i], MD_PSG_CLOCK) / semitone_to_hz(semitone))
 
 
 def psg_tone2_divider(note_value: int, transpose: int, psg_read: tuple[int, ...]) -> int:
@@ -183,12 +234,11 @@ def noise_envelope_frames(envelope: PsgEnvelope | None, base_volume: int = 0) ->
     return len(envelope.steps) + max(0, 15 - held_att) + 1
 
 
-def chip_pitch(source_semitone: int, transpose: int, is_psg: bool, psg_read: tuple[int, ...]) -> int:
+def chip_pitch(source_semitone: int, transpose: int, is_psg: bool, psg: PsgTable) -> int:
     """The real pitch (SMPS semitone, C0 = 0) the chip plays for a note byte and transpose.
 
     `transpose` is the driver's: the header pitch_offset plus every smpsChangeTransposition.
     A PSG note goes through the driver's frequency table, so one transposed past either end
     of it lands on whatever the hardware reads there.
     """
-    return (psg_index_semitone(source_semitone + transpose, psg_read) if is_psg
-            else source_semitone + transpose)
+    return psg.semitone(source_semitone + transpose) if is_psg else source_semitone + transpose

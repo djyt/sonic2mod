@@ -214,7 +214,7 @@ def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[T
 def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:
     """The frequency word the driver reads for a note byte at the track's transposition."""
     if st.is_psg:
-        return st.psg_read[psg_note_index(note.note_value, st.transpose)]
+        return st.psg.divider(psg_note_index(note.note_value, st.transpose))
     return fm_frequencies[fm_note_index(note.note_value, st.transpose)]
 
 

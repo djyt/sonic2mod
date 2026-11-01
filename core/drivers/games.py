@@ -45,6 +45,11 @@ _GAMES = (
 _BY_SHA1 = {game.sha1: game for game in _GAMES}
 
 
+def all_games() -> tuple[Game, ...]:
+    """Every ROM known, in the order above."""
+    return _GAMES
+
+
 def known_game(rom: RomImage) -> Game | None:
     """The game this exact ROM is; None for any other."""
     return _BY_SHA1.get(rom.sha1)

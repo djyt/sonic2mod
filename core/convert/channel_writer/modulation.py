@@ -87,7 +87,7 @@ class Modulation:
         # Depth is per note: the driver's swing is a fixed number of FNUM / divider units, so its
         # size in cents depends on the chip note it is added to.
         depth = vibrato_depth(self._change, self._steps, PERIOD_TABLE[n.mod_note.value],
-                              n.res.source + st.transpose, self._is_psg, st.psg_read,
+                              n.res.source + st.transpose, self._is_psg, st.psg.read,
                               self._rules.fm_frequencies, self._ctx.player, self._track)
         return (self._speed if depth else 0), depth
 
@@ -149,5 +149,5 @@ class Modulation:
         """The pitch a modulation offset moves `n` by: added to its FNUM word, or its PSG divider."""
         if not self._is_psg:
             return lambda offset: detune_cents(n.res.chip, offset, self._rules.fm_frequencies)
-        divider = st.psg_read[(n.res.source + st.transpose) & 0x7F]
+        divider = st.psg.divider(n.res.source + st.transpose)
         return lambda offset: 1200 * math.log2(divider / max(1, divider + offset)) if divider > 0 else 0.0

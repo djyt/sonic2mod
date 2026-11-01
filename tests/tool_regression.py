@@ -56,20 +56,7 @@ import yaml
 
 from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, variant_args
-from tests.roms import (
-    GOLDEN_AXE_RIPS,
-    GOLDEN_AXE_ROM,
-    MOONWALKER_RIPS,
-    MOONWALKER_ROM,
-    OUTRUN_RIPS,
-    OUTRUN_ROM,
-    SONIC1_ASM,
-    SONIC1_ROM,
-    SPACE_HARRIER_2_RIPS,
-    SPACE_HARRIER_2_ROM,
-    STREETS_OF_RAGE_RIPS,
-    STREETS_OF_RAGE_ROM,
-)
+from tests.roms import GAMES, MOONWALKER_RIPS, MOONWALKER_ROM, SONIC1_ASM, SONIC1_ROM
 from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
 
 BASELINES_DIR = _HERE / "tool_baselines"
@@ -96,26 +83,18 @@ _SECTION = "### "                 # song_dump's per-song header: a failing read_
 _SHIPPED = ["--shipped"]
 _POOLED = "--all"                 # a tool given it runs every rip in a process pool of its own
 
-# frames_<name>: vgm_frames over a game's pairs (its ROM, its rips, its configs)
-_FRAMES = (
-    ("golden_axe", GOLDEN_AXE_ROM, GOLDEN_AXE_RIPS, _CONFIG_DIR / "golden_axe"),
-    ("streets_of_rage", STREETS_OF_RAGE_ROM, STREETS_OF_RAGE_RIPS, _CONFIG_DIR / "streets_of_rage"),
-    ("space_harrier_2", SPACE_HARRIER_2_ROM, SPACE_HARRIER_2_RIPS, _CONFIG_DIR / "space_harrier_2"),
-    ("outrun", OUTRUN_ROM, OUTRUN_RIPS, _CONFIG_DIR / "outrun"),
-)
+# frames_<name>: vgm_frames over a game's pairs (its ROM, its rips, its configs): tests/roms.py GAMES
+_FRAMES = tuple((g.name, g.rom, g.rips, g.configs) for g in GAMES if g.frames)
 
-# read_<name>: song_dump's source and arguments
+# read_<name>: song_dump's source and arguments.  Sonic 1 is read from its asm and its ROM, with
+# and without the shipped data bugs; every other game from its ROM (tests/roms.py GAMES)
 _READS = (
     ("sonic1_asm_music", SONIC1_ASM / "music", []),
     ("sonic1_asm_music_shipped", SONIC1_ASM / "music", _SHIPPED),
     ("sonic1_asm_sfx", SONIC1_ASM / "sfx", []),
     ("sonic1_rom", SONIC1_ROM, []),
     ("sonic1_rom_shipped", SONIC1_ROM, _SHIPPED),
-    ("moonwalker", MOONWALKER_ROM, []),
-    ("golden_axe", GOLDEN_AXE_ROM, []),
-    ("streets_of_rage", STREETS_OF_RAGE_ROM, []),
-    ("space_harrier_2", SPACE_HARRIER_2_ROM, []),
-    ("outrun", OUTRUN_ROM, []),
+    *((g.name, g.rom, []) for g in GAMES if g.rom != SONIC1_ROM),
 )
 
 

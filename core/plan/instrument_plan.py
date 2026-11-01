@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from ..audio import semitone_to_hz
-from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
+from ..chips import freq_word_hz
 from ..config import ConversionConfig
-from ..smps import PSG_TABLE_PITCH, fm_table_index
+from ..smps import fm_table_index
 from .detune import DetunePlan, detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
 from .synth_roots import SynthRoot, resolve_synth_roots
@@ -59,7 +59,7 @@ def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitc
     for inst, psg in psg_catalogue(config).items():
         if psg.entry.type == TONE and inst not in out:
             out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone,
-                                        _psg_divider_cents(psg.synth_idx + RENDER_INDEX_C1, song.rules.psg_frequencies))
+                                        song.rules.psg_table.divider_cents(psg.synth_idx + RENDER_INDEX_C1))
     return out
 
 
@@ -71,12 +71,3 @@ def _fm_word_cents(semitone: int, fm_frequencies: tuple[int, ...]) -> float:
     if not 0 <= i < len(fm_frequencies) or fm_frequencies[i] <= 0:
         return 0.0
     return 1200 * math.log2(freq_word_hz(fm_frequencies[i]) / semitone_to_hz(semitone))
-
-
-def _psg_divider_cents(semitone: int, psg_frequencies: tuple[int, ...]) -> float:
-    """Cents the driver's divider for a pitch sounds off equal temperament: the sample is
-    rendered with it (Streets of Rage's and Sonic 1's B7: divider 29, -42 c)."""
-    i = semitone - PSG_TABLE_PITCH
-    if not 0 <= i < len(psg_frequencies) or psg_frequencies[i] <= 0:
-        return 0.0
-    return 1200 * math.log2(psg_frequency_hz(psg_frequencies[i], MD_PSG_CLOCK) / semitone_to_hz(semitone))

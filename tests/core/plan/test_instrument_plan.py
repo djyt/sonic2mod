@@ -23,7 +23,7 @@ from core.plan import (
     prepare_instruments,
     sounding_pitches,
 )
-from core.smps import fm_table_index
+from core.smps import PsgTable, fm_table_index
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -37,7 +37,8 @@ def _word_cents(semitone: int, table: tuple[int, ...]) -> float:
 
 def _song(fm_frequencies: tuple[int, ...]) -> SimpleNamespace:
     return SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)],
-                           rules=SimpleNamespace(fm_frequencies=fm_frequencies, psg_frequencies=PSG_FREQUENCIES))
+                           rules=SimpleNamespace(fm_frequencies=fm_frequencies,
+                                                 psg_table=PsgTable.of(PSG_FREQUENCIES, PSG_FREQUENCIES)))
 
 
 class Sounding(unittest.TestCase):

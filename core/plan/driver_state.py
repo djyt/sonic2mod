@@ -31,6 +31,7 @@ from ..config import InstrumentRange, PsgInstrumentEntry
 from ..smps import (
     ChannelType,
     PsgForm,
+    PsgTable,
     PsgVoice,
     TrackState,
     chip_pitch,
@@ -59,9 +60,9 @@ class DriverState(TrackState):
 
     __slots__ = ("config", "instrument", "psg_entries", "psg_entry", "psg_label")
 
-    def __init__(self, config, *, is_psg: bool, psg_read: tuple[int, ...], transpose: int = 0,
+    def __init__(self, config, *, is_psg: bool, psg: PsgTable, transpose: int = 0,
                  volume: int = 0, instrument: int = 0):
-        super().__init__(is_psg=is_psg, psg_read=psg_read, transpose=transpose, volume=volume)
+        super().__init__(is_psg=is_psg, psg=psg, transpose=transpose, volume=volume)
         self.config = config
         self.instrument = instrument        # MOD instrument slot currently routed to
         self.psg_entry = None               # active PsgInstrumentEntry
@@ -74,7 +75,7 @@ class DriverState(TrackState):
         header = channel.header
         st = cls(config,
                  is_psg=header.channel_type == ChannelType.PSG,
-                 psg_read=channel.rules.psg_read,
+                 psg=channel.rules.psg_table,
                  transpose=header.pitch_offset,
                  volume=header.volume,
                  instrument=instrument)
@@ -135,7 +136,7 @@ class DriverState(TrackState):
         space = self.config.range_space if range_space is None else range_space
         if space != "chip":
             return source_semitone
-        return chip_pitch(source_semitone, self.transpose, self.is_psg, self.psg_read)
+        return chip_pitch(source_semitone, self.transpose, self.is_psg, self.psg)
 
     def fm_ranges(self, source: str):
         """The range list the current voice routes through on this channel: its
@@ -202,7 +203,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     """
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
-    chip = chip_pitch(source_semitone, st.transpose, st.is_psg, st.psg_read)
+    chip = chip_pitch(source_semitone, st.transpose, st.is_psg, st.psg)
     inst, raw, path, entry = st.instrument, None, "transpose", None
     if not st.is_psg:
         entry = st.fm_range_entry(source, key)

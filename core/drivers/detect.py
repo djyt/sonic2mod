@@ -17,6 +17,7 @@ from core.rom.tracks import decode_tracks
 from core.rom.variant import SmpsVariant, SoundIndex
 
 from .games import known_game
+from .names import SmpsDriver
 from .registry import all_drivers, load_driver
 
 
@@ -26,14 +27,20 @@ def detect_variant(rom: RomImage) -> SmpsVariant:
     if game is not None:
         return load_driver(game.driver)
 
-    drivers = all_drivers()
-    failures = {driver.name: _failure(rom, driver) for driver in drivers}
-    fits = [driver for driver in drivers if failures[driver.name] is None]
+    failures = trial_reads(rom)
+    fits = [name for name, failure in failures.items() if failure is None]
     if len(fits) == 1:
-        return fits[0]
+        return load_driver(fits[0])
 
     tried = "; ".join(f"{name}: {failure or 'reads every song'}" for name, failure in failures.items())
     raise RomError(f"no single driver reads this ROM's songs ({tried}); state driver: in the config")
+
+
+def trial_reads(rom: RomImage) -> dict[SmpsDriver, str | None]:
+    """Every driver tried on the ROM, its SHA-1 aside: what stops each reading its songs, None for
+    one that reads them all.  Detection needs exactly one None (tests/core/drivers/test_contract.py
+    holds every known game to it, so a new driver cannot make another game's revisions ambiguous)."""
+    return {SmpsDriver(driver.name): _failure(rom, driver) for driver in all_drivers()}
 
 
 def first_failure(rom: RomImage, index: SoundIndex, variant: SmpsVariant) -> str | None:

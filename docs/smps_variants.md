@@ -455,7 +455,17 @@ and its history: `docs/todo/done/outrun.md`.
    `__init__` imports no driver); each ROM it is known in, with any data fixes, in `games.py`.  A driver imports the framework
    absolutely (`core.rom.flags`), its family relatively.  Nothing outside its folder names it:
    what the song itself must say goes in the IR (`core/smps`), what a reader needs in the
-   variant's description - never a variant check.
-3. Check: `tools/rom/rom_import.py` lists every song; `tools/vgm/vgm_lift.py` against the rips (FM is what
+   variant's description - never a variant check.  Its PSG table's pitch comes from the table
+   itself (`PlaybackRules.psg_table`: Space Harrier II's starts at A2, the rest at C3); one that is
+   not chromatic is an error.
+3. Register it with the tests: its folder in `pyproject.toml`'s "drivers: none imports another"
+   contract (`tests/test_layers.py` fails until it is); its ROM, rips and configs folder as a line
+   in `tests/roms.py` `GAMES` (the read_ / frames_ / glitches_ tool cases follow).
+   `tests/core/drivers/test_contract.py` then holds it to the contract: its ROM pinned to it, no
+   other driver reading its songs (and it no other game's), every song read; and it fails until
+   the driver's line in `_REVIEWED` says where it plays differently from Sonic 1 - every
+   `PlaybackRules` and `TrackRules` switch it does not state is Sonic 1's, so check each against
+   the driver's code.
+4. Check: `tools/rom/rom_import.py` lists every song; `tools/vgm/vgm_lift.py` against the rips (FM is what
    it reads in full); `tools/vgm/vgm_pitch_audit.py`; `tools/vgm/measure_volumes.py`.  A rip is only as good
    as its emulator and ripper: back a finding with the driver's code.

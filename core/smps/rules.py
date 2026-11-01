@@ -21,11 +21,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 from ..chips import split_freq_word
 from .clock import VINT, UpdateClock
-from .driver_tables import PsgEnvelope
+from .driver_tables import PsgEnvelope, PsgTable
 from .pitch_envelope import PitchEnvelope
 
 if TYPE_CHECKING:
@@ -102,6 +103,12 @@ class PlaybackRules:
     pitch_envelopes: Mapping[int, PitchEnvelope] = field(default_factory=dict)
     update_clock: UpdateClock = VINT
     dac_pans: Mapping[int, int] = field(default_factory=dict)    # none: the track's pan alone
+
+    @cached_property
+    def psg_table(self) -> PsgTable:
+        """The PSG table a note's index reads: its words, and the pitch and length of its chromatic
+        run, read from the driver's own table (a malformed one is a ValueError)."""
+        return PsgTable.of(self.psg_frequencies, self.psg_read, self.driver)
 
     def track(self, kind: ChannelType) -> TrackRules:
         """How a `kind` track reads; Sonic 1's where the driver states none."""

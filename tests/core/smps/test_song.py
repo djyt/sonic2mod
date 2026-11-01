@@ -55,12 +55,12 @@ class OtherDrivers(unittest.TestCase):
     """What a driver other than Sonic 1's puts in a song (Type 0 FM: docs/todo/binary_import.md)."""
 
     def test_set_vol_is_absolute_where_alter_vol_adds(self):
-        fm = TrackState(is_psg=False, volume=8, psg_read=SONIC1_RULES.psg_read)
+        fm = TrackState(is_psg=False, volume=8, psg=SONIC1_RULES.psg_table)
         fm.apply(AlterVol(4))
         self.assertEqual(fm.tl, 12)
         fm.apply(SetVol(3))
         self.assertEqual(fm.tl, 3)
-        psg = TrackState(is_psg=True, volume=2, psg_read=SONIC1_RULES.psg_read)
+        psg = TrackState(is_psg=True, volume=2, psg=SONIC1_RULES.psg_table)
         psg.apply(SetVol(0x20))
         self.assertEqual(psg.att, 15)                         # clamped as smpsAlterVol is
         self.assertEqual(flag_from_macro(flag_name(CoordFlag.SET_VOL)), CoordFlag.SET_VOL)

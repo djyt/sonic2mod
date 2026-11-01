@@ -22,18 +22,21 @@ what only it has.  Drivers import the framework by absolute path (core.rom...), 
 relatively.  A new driver: docs/smps_variants.md § Adding a variant.
 """
 
-from .detect import detect_variant, first_failure
-from .games import data_fixes
+from .detect import detect_variant, first_failure, trial_reads
+from .games import all_games, data_fixes, known_game
 from .read import dac_samples, locate_sounds, read_rom_code, read_rom_song
 from .registry import load_driver
 
 __all__ = [
+    "all_games",
     "dac_samples",
     "data_fixes",
     "detect_variant",
     "first_failure",
+    "known_game",
     "load_driver",
     "locate_sounds",
     "read_rom_code",
     "read_rom_song",
+    "trial_reads",
 ]

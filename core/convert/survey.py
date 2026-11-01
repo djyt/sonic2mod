@@ -40,8 +40,8 @@ class SurveyContext:
     def pair(self, primary: str, follower: str, patterns=None, cut_primary: bool = False) -> PairStats:
         """The follower lined up with the primary, over the whole song or in `patterns` only."""
         p_notes, p_rests = self.restrict(primary, patterns)
-        f_notes, f_rests = self.restrict(follower, patterns)
-        return pair_channels(p_notes, p_rests, f_notes, f_rests, primary, follower, self.level_scale,
+        f_notes, _ = self.restrict(follower, patterns)
+        return pair_channels(p_notes, p_rests, f_notes, primary, follower, self.level_scale,
                              cut_primary=cut_primary, tolerance=self.tolerance)
 
     def restrict(self, source: str, patterns) -> tuple[dict[int, NoteOn], list[int]]:

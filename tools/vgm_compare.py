@@ -566,7 +566,7 @@ def report(cfg: ConversionConfig, song, recording: _Reference, mod_path: Path, w
     return res
 
 
-def report_merged(recording: _Reference, mod_path: Path, workdir: Path, offset: float | None, ref_chan: str,
+def report_merged(recording: _Reference, workdir: Path, offset: float | None, ref_chan: str,
                   labels: dict[str, list[str]], max_rows: int = 400) -> dict:
     """The merged build: every MOD channel against the sum of the chip channels folded onto it.
 
@@ -948,7 +948,7 @@ def main() -> None:
     if per_pattern:
         res = report_merged_patterns(cfg, reference, mod_path, workdir, args.offset, chip_names)
     elif args.merged:
-        res = report_merged(reference, mod_path, workdir, args.offset, args.ref, labels, args.max_rows)
+        res = report_merged(reference, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
         res = report(cfg, song, reference, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)

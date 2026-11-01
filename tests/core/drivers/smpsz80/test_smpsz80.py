@@ -37,7 +37,7 @@ class SmpsZ80(unittest.TestCase):
     def _rom(self, music_count: int = 3) -> RomImage:
         rom = bytearray(_HEADER.ljust(2 * self._BANK, b"\0"))
 
-        # lea (z80_ram).l,a6 / lea (driver).l,a5 / move.w #n-1,d0 / move.b (a5)+,(a6)+ / dbra
+        # The driver's copy loop: lea (z80_ram).l,a6 / lea (driver).l,a5 / move.w #n-1,d0 / move.b (a5)+,(a6)+ / dbra
         driver = bytearray(0x80)
         octaves = b"".join(w.to_bytes(2, "little") for w in FM_FREQUENCIES[:24])      # two octaves
         driver[self._FM_TABLE:self._FM_TABLE + len(octaves)] = octaves

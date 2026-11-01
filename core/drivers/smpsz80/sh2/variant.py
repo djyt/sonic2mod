@@ -122,7 +122,7 @@ _DRUM_FLAGS: dict[int, FlagSpec] = {
 _TRACK = TrackRules(byte_durations=True)
 
 
-def _fm_drums(rom: RomImage, header: SmpsSongHeader, fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
+def _fm_drums(rom: RomImage, _header: SmpsSongHeader, _fm_frequencies: tuple[int, ...]) -> dict[str, FmDrum]:
     """Every drum byte's drums, as the driver plays them (drums.py): the same in every song."""
     return {drum_name(byte): drum for byte, drum in read_sh2_drums(rom).items()}
 

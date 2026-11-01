@@ -11,7 +11,7 @@ from .model import GroupNotes, MergePlan
 from .notes import NoteOn, channel_notes
 
 
-def splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, NoteOn], p_rests: list[int]) -> None:
+def splice_solo_notes(plan: MergePlan, song, g: MergeGroup, p_notes: dict[int, NoteOn]) -> None:
     """Put every follower note that starts while the primary is silent into the primary's event
     stream as the follower's own note (walk_channel resolves it from the NoteOn), followed by
     the follower's rest where nothing of the primary takes the channel back."""

@@ -31,7 +31,7 @@ class BankedZ80Memory(SoundMemory):
     def contains(self, address: int, length: int = 1) -> bool:
         return self._bank <= address and address + length <= self._bank + BANK_SIZE and super().contains(address, length)
 
-    def header_pointer(self, header: int, at: int) -> int:
+    def header_pointer(self, _header: int, at: int) -> int:
         return self.rom_address(self.word(at))
 
     def code_pointer(self, operand: int) -> int:
@@ -59,7 +59,7 @@ class Z80RamMemory(SoundMemory):
 
     _BYTE_ORDER = "little"
 
-    def header_pointer(self, header: int, at: int) -> int:
+    def header_pointer(self, _header: int, at: int) -> int:
         return self.word(at)
 
     def code_pointer(self, operand: int) -> int:

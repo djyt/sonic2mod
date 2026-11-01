@@ -1,4 +1,6 @@
-/.claude
+# Claude Code's local state; its project settings (the hooks) are shared
+/.claude/*
+!/.claude/settings.json
 /output
 reference/*
 input/roms

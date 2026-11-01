@@ -552,9 +552,9 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
 
         # --- update Bxx effects that targeted patterns after the break -------
         # Old target T (pattern T, row 0) is now at:
-        #   body_row   = T*64 - body_start_flat
-        #   new_pat    = P+1 + body_row // 64
-        #   new_row    = body_row % 64
+        #   body_row   ← T*64 - body_start_flat
+        #   new_pat    ← P+1 + body_row // 64
+        #   new_row    ← body_row % 64
         # If new_row != 0 a Dxx (BCD row) must accompany the Bxx so the
         # player starts at the right row within the new pattern.
         for pat_i, pat in enumerate(mod.patterns):

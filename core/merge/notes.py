@@ -294,7 +294,7 @@ def _fill_ms(p: NoteOn, f: NoteOn, tolerance: int = 1) -> int | None:
 
 # --- composite keys: equal keys, one composite -----------------------------------------------
 #
-#   CompositeKey(kind, primary, layers, base)
+#   CompositeKey kind, primary, layers, base
 #                 │     │        │       └ mix only: the primary note of a mix made for a
 #                 │     │        │         transposition the shared one cannot reach
 #                 │     │        └ one ChipLayerKey / MixLayerKey per follower
@@ -377,7 +377,7 @@ def match_onsets(p_notes: dict[int, NoteOn], f_notes: dict[int, NoteOn], toleran
 
 
 def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
-                  f_notes: dict[int, NoteOn], f_rests: list[int],
+                  f_notes: dict[int, NoteOn],
                   primary: str, follower: str, level_scale=lambda n: 1.0,
                   cut_primary: bool = False, tolerance: int = 0) -> PairStats:
     """Line a follower's notes up with a primary's."""

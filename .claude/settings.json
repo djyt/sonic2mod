@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/hooks/ruff_after_edit.py\"",
+            "timeout": 30,
+            "statusMessage": "ruff"
+          }
+        ]
+      }
+    ]
+  }
+}

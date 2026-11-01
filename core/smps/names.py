@@ -30,7 +30,7 @@ def _build_smps_note_names():
             names[note_name] = val
 
         # Enharmonic aliases
-        # nDb = nCs, nEb = nDs, nFb = nE, nF = nEs, nGb = nFs, nAb = nGs, nBb = nAs
+        # nDb as nCs, nEb as nDs, nFb as nE, nF as nEs, nGb as nFs, nAb as nGs, nBb as nAs
         # nCb(next) = nB, nBs = next C
         enharmonics = {
             f'nDb{octave}': f'nCs{octave}',

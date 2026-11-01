@@ -32,53 +32,53 @@ line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
+# Each rule code with what it means in plain English.  `ruff rule <CODE>` prints the full text.
 select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes (unused imports, undefined names, etc.)
-    "I",      # isort
-    "UP",     # pyupgrade (modernise syntax)
-    "B",      # flake8-bugbear
-    "SIM",    # flake8-simplify
-    "PERF",   # perflint
-    "PLW",    # pylint warnings
-    "RUF",    # ruff-specific rules
+    "E",       # Layout errors PEP 8 lists: bad indentation, missing or extra whitespace, `== None`
+    "W",       # Layout warnings PEP 8 lists: trailing whitespace, blank lines holding spaces
+    "F",       # Real mistakes: an unused import or variable, a name never defined, a duplicate key
+    "I",       # Imports sorted and grouped: standard library, third party, then this project
+    "UP",      # Old syntax that the target Python writes shorter (`list[int]`, not `List[int]`)
+    "B",       # Likely bugs: a mutable default argument, a loop variable captured late, `except:`
+    "SIM",     # Code that says the same in fewer steps (nested ifs merged, `return cond`)
+    "PERF",    # Slow patterns: a loop that builds a list a comprehension would, `try` inside a loop
+    "PLW",     # Pylint's warnings: a loop variable overwritten in its body, a global never assigned
+    "RUF",     # Ruff's own checks: mutable class defaults, a `noqa` that suppresses nothing
+    "ARG001",  # A function parameter its body never reads (one a caller's signature fixes: `_name`)
+    "ARG002",  # A method parameter its body never reads (one an interface fixes: `_name`)
+    "ERA001",  # A comment that parses as code: dead code to delete (word a formula as prose)
 ]
+# Each ignored code: what it would flag, then why it stays off
 ignore = [
-    # Line length — many lines are intentionally wide (Rich markup, byte tables)
-    "E501",
-    # Multiple statements on one line — used intentionally for compact channel init
-    "E701", "E702",
-    # Module-level import not at top — sys.path manipulation before imports is intentional
-    "E402",
-    # Ambiguous variable names (l, O, I) — e.g. loop indices in SMPS parsing
-    "E741",
-    # Magic value comparisons — byte values ($81, $E0, etc.) are self-documenting constants
-    "PLR2004",
-    # Complexity thresholds — conversion engine is inherently complex
-    "C901", "PLR0912", "PLR0915", "PLR0913",
-    # Boolean positional args — existing API; not worth breaking callers
-    "FBT001", "FBT002",
-    # Import-outside-toplevel — conditional sys.path inserts in subpackages
-    "PLC0415",
-    # Non-lowercase variable in function — SETTINGS_FILE, SMPS_ constants are fine
-    "N806",
-    # os.path → pathlib migration — not a priority; keep os.path for consistency
+    "E501",    # A line over the length limit: wide lines are deliberate (Rich markup, byte tables)
+    "E701",    # Two statements on one line after a colon (`if x: y`): compact channel set-up
+    "E702",    # Two statements on one line with a semicolon: compact channel set-up
+    "E402",    # An import below other code: sys.path is set up before the imports it enables
+    "E741",    # A variable named l, O or I (mistakable for 1 and 0): loop indices in SMPS parsing
+    "PLR2004", # A bare number in a comparison: driver bytes ($81, $E0) read as their own names
+    "C901",    # A function with too many paths through it: the conversion engine is inherently so
+    "PLR0912", # A function with too many branches: as above
+    "PLR0915", # A function with too many statements: as above
+    "PLR0913", # A function with too many parameters: as above
+    "FBT001",  # A bool positional parameter (`f(True)` unreadable at the call): existing API
+    "FBT002",  # A bool positional parameter with a default: as above
+    "PLC0415", # An import inside a function: conditional sys.path inserts in subpackages
+    "N806",    # An UPPER_CASE variable inside a function: SETTINGS_FILE, SMPS_ constants read so
+    # os.path calls that pathlib could make (abspath, chmod, makedirs, exists, isabs, isdir,
+    # isfile, basename, dirname, join, samefile, splitext, open): os.path is kept throughout
     "PTH100", "PTH102", "PTH103", "PTH107", "PTH110", "PTH111",
     "PTH112", "PTH113", "PTH116", "PTH117", "PTH118", "PTH119",
     "PTH120", "PTH122", "PTH123",
-    # Private member access — sfx/chips.py and tools/ reuse a few private helpers
-    "SLF001",
-    # Typing-only imports — not restructuring imports right now
-    "TC001", "TC002", "TC003",
-    # Implicit namespace package — tools/ scripts don't need __init__.py
-    "INP001",
-    # Ambiguous Unicode in strings/docstrings/comments — musical symbols are intentional
-    "RUF001", "RUF002", "RUF003",
-    # Missing trailing comma — style preference; not enforced here
-    "COM812",
-    # No-explicit-stacklevel for warnings.warn — minor
-    "B028",
+    "SLF001",  # Another object's _private member read: sfx/ and tools/ reuse a few private helpers
+    "TC001",   # An import used only in type hints, not moved under TYPE_CHECKING: not restructured
+    "TC002",   # As above, for a third-party import
+    "TC003",   # As above, for a standard-library import
+    "INP001",  # A .py file in a folder with no __init__.py: tools/ scripts are no package
+    "RUF001",  # A character that looks like another (♯, ×) in a string: musical symbols are meant
+    "RUF002",  # As above, in a docstring
+    "RUF003",  # As above, in a comment
+    "COM812",  # A multi-line call or literal without a trailing comma: a style choice, not enforced
+    "B028",    # warnings.warn without stacklevel (the warning names the wrong line): minor
 ]
 
 [tool.ruff.lint.isort]
@@ -113,8 +113,10 @@ executionEnvironments = [
 ]
 include = ["core", "convert.py", "analyze.py", "sonic2wav.py", "sfx", "tools"]
 exclude = ["reference", "3rdparty", "build", "output", "**/__pycache__"]
-# Relax rules that fire on intentionally dynamic code
+# Rules relaxed for intentionally dynamic code:
+# an import whose type stubs exist but whose source package is not installed
 reportMissingModuleSource = false
+# an attribute pyright cannot find on the object's declared type (set at run time, getattr'd)
 reportAttributeAccessIssue = false
 
 # Import rules (agents.md layering), checked by tests/test_layers.py (or lint-imports).

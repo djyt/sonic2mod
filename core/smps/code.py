@@ -320,10 +320,10 @@ class _Walker:
         self._close_pending(cur)
         self._mark_label(op.name, cur, len(cur.channel.events))
 
-    def _on_end(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+    def _on_end(self, _op: Op, _i: int, _cur: _Cursor, _seen: set[str]) -> int | None:
         return None
 
-    def _on_jump(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+    def _on_jump(self, op: Op, _i: int, cur: _Cursor, seen: set[str]) -> int | None:
         if self._driver.jump_clears_tie:
             cur.no_attack = False
 
@@ -365,7 +365,7 @@ class _Walker:
         self._passes.pop(op.name, None)
         return i
 
-    def _on_loop_exit(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+    def _on_loop_exit(self, op: Op, i: int, cur: _Cursor, _seen: set[str]) -> int | None:
         """On its loop's last pass: out past the loop's end, a tie dropped (Streets of Rage's $FE)."""
         end = self._loop_end(i, op.name)
         if end is None or self._passes.get(op.name, 1) < self._ops[end].value:
@@ -375,19 +375,19 @@ class _Walker:
             return None
         return end + 1                              # a loop of one pass: past its end
 
-    def _on_call(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+    def _on_call(self, op: Op, i: int, cur: _Cursor, _seen: set[str]) -> int | None:
         if op.name in self._labels:
             self._walk(self._labels[op.name] + 1, cur, seen=set())
         return i
 
-    def _on_effect(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+    def _on_effect(self, op: Op, i: int, cur: _Cursor, _seen: set[str]) -> int | None:
         assert op.effect is not None
         cur.tempo_div = self._effect(op.effect, cur.tick, cur.tempo_div)
         if isinstance(op.effect, Pan):
             cur.pan = op.effect.b4
         return i
 
-    def _on_byte(self, op: Op, i: int, cur: _Cursor, seen: set[str]) -> int | None:
+    def _on_byte(self, op: Op, i: int, cur: _Cursor, _seen: set[str]) -> int | None:
         """A track byte; the cursor carries a pending note across ops (and dc.b lines)."""
         self._byte(cur, op)
         if op.kind is OpKind.DURATION:

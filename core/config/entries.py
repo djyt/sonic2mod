@@ -19,8 +19,8 @@ class InstrumentRange:
     high: int           # inclusive upper bound — SMPS semitone from C0
     mod_instrument: int # MOD instrument number (1-31)
     root: ModNote | None = None  # MOD note where `low` plays;
-                                    # out_note = root + (source_semitone - low)
-                                    # if None: fall back to channel transpose for note
+                                    # a note plays at root + (source_semitone - low);
+                                    # None: the channel's transpose places it
     synth_root: int | None = None  # SMPS semitone the sample is rendered at.  None in a config:
                                       # core.plan.synth_roots.resolve_synth_roots fills in the chip
                                       # pitch the entry's notes play most often (the song decides).

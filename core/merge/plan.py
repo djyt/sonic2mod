@@ -227,7 +227,7 @@ def build_merge_plan(song, config, *, pan_law_db: float,
 
     for gn in planner.groups:
         planner.fold(gn)
-        splice_solo_notes(planner.plan, song, gn.group, gn.p_notes, gn.p_rests)
+        splice_solo_notes(planner.plan, song, gn.group, gn.p_notes)
 
     config.merge_plan = planner.plan
     planner.settle()
@@ -330,8 +330,8 @@ class _Planner:
         """How every follower lines up with its primary (plan.stats)."""
         self.plan.stats = []
         for g, p_notes, p_rests, followers in self.groups:
-            for f, f_notes, f_rests in followers:
-                st = pair_channels(p_notes, p_rests, f_notes, f_rests, g.primary, f, self.level_scale,
+            for f, f_notes, _ in followers:
+                st = pair_channels(p_notes, p_rests, f_notes, g.primary, f, self.level_scale,
                                    cut_primary=g.cut_primary, tolerance=self.tol)
                 st.group = g
                 self.plan.stats.append(st)

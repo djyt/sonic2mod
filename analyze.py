@@ -104,7 +104,7 @@ def _normal_effect_summary(effect_counts: dict) -> str:
 # Section renderers
 # ---------------------------------------------------------------------------
 
-def render_header(analysis: SongAnalysis, region: str):
+def render_header(analysis: SongAnalysis):
     song = analysis.song
     fname = os.path.basename(analysis.file_path)
     h = song.header
@@ -546,7 +546,7 @@ def main():
     analysis = analyze_song(song, args.song, config)
 
     # Render
-    render_header(analysis, args.region)
+    render_header(analysis)
 
     for ch_an in analysis.channels:
         if ch_an.channel_type == ChannelType.DAC:

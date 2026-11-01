@@ -6,6 +6,10 @@ Never include "Co-Authored-By" trailers in commit messages.
 Converts Sonic 1 SMPS music (assembly, ROM bytecode or a VGM rip) to Amiga ProTracker MOD, rendering
 its instruments on emulated YM2612 / SN76489 chips.
 
+## Coding Rules
+
+@agents.md
+
 ## Documentation Index
 
 Each topic has one home; the others link to it.
@@ -73,6 +77,7 @@ sonic2mod/
 ```bash
 pip install pyyaml rich   # external dependencies
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
+git config core.hooksPath tools/hooks   # the pre-commit hook (per clone): tools/check.py --fast
 ```
 
 Synthesis compiles `3rdparty/`'s `ym3438.c` / `sn76489.c` into `build/` with gcc or MSVC on first use; with
@@ -81,7 +86,13 @@ rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 
 ## Linting
 
+Enforced: the git pre-commit hook (`tools/hooks/pre-commit`) runs `tools/check.py --fast` when a
+`.py` / `.toml` file is staged; a Claude Code hook (`.claude/settings.json`) runs ruff on each Python
+file Claude edits and hands the findings back.  Every rule in `pyproject.toml` carries a
+plain-English line saying what it flags (an ignored one: and why it is off).
+
 ```bash
+python tools/check.py          # all of the below + unit tests; --fast: without the unit tests
 ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)

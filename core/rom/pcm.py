@@ -40,7 +40,7 @@ class SampleFormat(Protocol):
         """The sample's stored bytes as signed 8-bit PCM."""
         ...
 
-    def cycles(self, data: bytes, pitch: int) -> float:
+    def cycles(self, data: bytes, pitch: int, /) -> float:
         """Z80 cycles per output, on average, played at `pitch`."""
         ...
 
@@ -62,7 +62,7 @@ class Dpcm:
                 out.append(acc ^ SIGN)
         return bytes(out)
 
-    def cycles(self, data: bytes, pitch: int) -> float:
+    def cycles(self, _data: bytes, pitch: int) -> float:
         return self.base + self.per_pitch * (pitch - 1)
 
 
@@ -76,7 +76,7 @@ class Pcm:
     def decode(self, data: bytes) -> bytes:
         return bytes(byte ^ SIGN for byte in data)
 
-    def cycles(self, data: bytes, pitch: int) -> float:
+    def cycles(self, _data: bytes, pitch: int) -> float:
         return self.base + self.per_pitch * (pitch - 1)
 
 

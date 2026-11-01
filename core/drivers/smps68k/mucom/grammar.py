@@ -119,7 +119,7 @@ def _effect(effect: SmpsEffect, length: int) -> Instruction:
 
 # --- loops ---------------------------------------------------------------------------------
 
-def loop_start(memory: SoundMemory, address: int) -> Instruction:
+def loop_start(_memory: SoundMemory, address: int) -> Instruction:
     """`$F5 offset.w`: the body starts after it (its count is the closing `$F6`'s)."""
     body = address + 3
     return Instruction((), 3, True, target=body)
@@ -194,7 +194,7 @@ def pan(memory: SoundMemory, address: int) -> Instruction:
     return _effect(Pan(_PAN_B4[n]), 2)
 
 
-def noise(memory: SoundMemory, address: int) -> Instruction:
+def noise(_memory: SoundMemory, _address: int) -> Instruction:
     """`$F7 x` on a PSG track: white noise clocked by tone 3 (the operand is not read)."""
     return _effect(PsgForm(_NOISE_FORM), 2)
 

@@ -224,7 +224,7 @@ class ChannelWriter:
         # The drum track's rest plays nothing new unless its driver's cuts: the sample plays out
         # (Sonic 1's DACUpdateTrack returns on $80), Type 0 FM lets an FM drum ring on FM3, Streets
         # of Rage's plays the empty sample.  A follower's rest spliced in still cuts.
-        if self._rest_plays_out and getattr(event, "merged", None) is None:
+        if self._rest_plays_out and event.spliced is None:
             return
 
         # is_no_attack=True marks an FM/DAC standalone-duration continuation — the YM2612
@@ -410,7 +410,7 @@ class ChannelWriter:
         # follower's smpsNoteFill, on the NoteOn core.merge spliced it from), and a PSG note
         # ends at its duration wherever it plays (an FM one on a PSG channel does not: it rings
         # into its rest's release)
-        solo = getattr(event, "merged", None)
+        solo = event.spliced
         fill = self._note_fill if solo is None else solo.fill
         psg = self._is_psg if solo is None else solo.kind == ChannelType.PSG
 

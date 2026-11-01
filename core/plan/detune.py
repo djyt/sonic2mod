@@ -41,7 +41,7 @@ import math
 from dataclasses import dataclass, field
 
 from ..chips import FREQ_WORD_MAX, split_freq_word
-from ..config import SAMPLE_FILE, SAMPLE_SLOT, SAMPLE_VOLUME
+from ..config import SampleRow
 from ..smps import ChannelType, fm_table_index
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
@@ -156,15 +156,15 @@ def plan_detune_variants(song, config) -> DetunePlan:
             continue
         plan.add(DetuneVariant(slots.pop(0), inst, d, notes, rendered, pc, e))
 
-    entries = {e[SAMPLE_SLOT]: e for e in (config.sample_list or [])}
+    entries = config.sample_rows()
     if plan.variants and config.sample_list is None:
         config.sample_list = []
     for v in plan.variants.values():
         base = entries.get(v.base)
         at = "" if v.pitch_class is None else f"@{v.pitch_class}"
         envelope = f" pe{v.envelope}" if v.envelope else ""
-        name = f"{_stem(base[SAMPLE_FILE]) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{envelope}{at}"[:_NAME_CHARS]
-        config.sample_list.append([v.inst, name, *(base[SAMPLE_VOLUME:] if base else [])])
+        name = f"{_stem(base.file) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{envelope}{at}"[:_NAME_CHARS]
+        config.sample_list.append(SampleRow(v.inst, name, base.volume, base.finetune) if base else SampleRow(v.inst, name))
 
     config.detune_plan = plan
     return plan

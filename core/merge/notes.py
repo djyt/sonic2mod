@@ -108,7 +108,7 @@ class _NoteWalk:
 
     def walk(self, chan_cfg) -> None:
         for event, st, res in walk_channel(self._channel, self._config, chan_cfg):
-            if getattr(event, "merged", None) is not None:
+            if event.spliced is not None:
                 continue                                    # a solo note spliced in from a follower
             if event.is_effect:
                 self._on_effect(event.effect)

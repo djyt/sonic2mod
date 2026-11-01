@@ -8,8 +8,8 @@ import dataclasses
 import math
 
 from ..audio import db_to_gain, semitone_to_hz
-from ..config import MergeGroup, format_patterns
-from ..mod import PERIOD_TABLE
+from ..config import MergeGroup, SampleRow, format_patterns
+from ..mod import MOD_MAX_VOLUME, PERIOD_TABLE
 from ..plan import FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
 from ..smps import ChannelType, prepare_song, source_map
 from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
@@ -248,8 +248,7 @@ class _Planner:
 
         # Read before any composite is added: the catalogue, the volumes, the never-named slots
         self.cat = fm_catalogue(song, config)
-        self.vol_of = {e[0]: (e[2] if len(e) > 2 else 64, e[3] if len(e) > 3 else 0)
-                       for e in (config.sample_list or [])}
+        self.vol_of = {slot: (row.volume, row.finetune) for slot, row in config.sample_rows().items()}
         self.free = free_slots(config, song)
         if config.sample_list is None:
             config.sample_list = []
@@ -386,8 +385,8 @@ class _Planner:
 
         self.provisional -= 1
         inst = self.provisional
-        vol, ft = self.vol_of.get(p.instrument, (64, 0))
-        comp = Composite(inst, key, g, p.kind, entry=[inst, f"merge {g.label}"[:21], vol, ft], banked=g.bank and not chip,
+        vol, ft = self.vol_of.get(p.instrument, (MOD_MAX_VOLUME, 0))
+        comp = Composite(inst, key, g, p.kind, entry=SampleRow(inst, f"merge {g.label}"[:21], vol, ft), banked=g.bank and not chip,
                          pitch_hz=semitone_to_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None

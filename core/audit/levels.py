@@ -7,7 +7,7 @@ import statistics
 from pathlib import Path
 
 from ..audio import db_to_gain, gain_to_db
-from ..config import SAMPLE_FILE, SAMPLE_FINETUNE, SAMPLE_SLOT, SAMPLE_VOLUME
+from ..config import SampleRow
 from ..mod import ModImage, edx_delay, timed_pass
 from .signal import db, rms, seg_at
 
@@ -147,7 +147,7 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
     derived = _derived_rows(config_path, settings_path)
 
     # A minimal config's rows follow their file (core.plan.derive): each numbered as its slot is now
-    text = _renumber_rows(text, {row[SAMPLE_FILE]: row[SAMPLE_SLOT] for row in derived.values()})
+    text = _renumber_rows(text, {row.file: row.slot for row in derived.values()})
 
     added: list[str] = []
     changes = []
@@ -160,11 +160,11 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
         note = f"VGZ: {it['err_db']:+.1f} dB at {it['volume']}"
 
         # The instrument's row: by slot, and by file in a minimal config
-        m = _row_pattern(str(inst), re.escape(row[SAMPLE_FILE]) if row else _ANY_FILE).search(text)
+        m = _row_pattern(str(inst), re.escape(row.file) if row else _ANY_FILE).search(text)
 
         # A derived sample with no row: one added
-        if not m and row is not None and row[SAMPLE_VOLUME] == it["volume"]:
-            added.append(f'  - [{inst}, "{row[SAMPLE_FILE]}", {new}, {row[SAMPLE_FINETUNE]}]   # {note}')
+        if not m and row is not None and row.volume == it["volume"]:
+            added.append(f'  - [{inst}, "{row.file}", {new}, {row.finetune}]   # {note}')
             changes.append(change)
             continue
         if not m or int(m["volume"]) != it["volume"]:
@@ -201,14 +201,14 @@ def _renumber_rows(text: str, slot_of: dict[str, int]) -> str:
     return _row_pattern().sub(renumber, text)
 
 
-def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[int, list]:
+def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[int, SampleRow]:
     """A minimal config's sample_list as derived (by instrument); nothing for a full config."""
     from ..config import ConversionConfig
     from ..plan import load_config
 
     if not ConversionConfig.from_yaml(str(config_path)).is_minimal:
         return {}
-    return {row[SAMPLE_SLOT]: row for row in load_config(config_path, settings_path).sample_list or []}
+    return load_config(config_path, settings_path).sample_rows()
 
 
 def _add_rows(text: str, rows: list[str]) -> str:

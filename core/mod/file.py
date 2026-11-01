@@ -412,18 +412,6 @@ class ModFile:
         for i in range(keep, self.MAX_POSITIONS + 1):
             self.position_list[i] = 0
 
-    def add_samples(self, working_dir: str, sample_list: list) -> list[str]:
-        """Each sample_list entry's file into its slot; the paths not found (left empty).  A slot or
-        size the MOD cannot hold is a config error."""
-        missing: list[str] = []
-        for entry in sample_list or []:
-            sample = read_sample(working_dir, entry)
-            if sample is None:
-                missing.append(os.path.join(working_dir, entry[1]))
-                continue
-            self.samples[entry[0] - 1] = sample
-        return missing
-
     def create_placeholder_samples(self, count=10):
         """Create minimal placeholder samples for instruments 1-count.
         Users can replace these with real samples later.
@@ -437,13 +425,10 @@ class ModFile:
             self.samples[i - 1] = sample
 
 
-def read_sample(working_dir: str, entry: list) -> ModSample | None:
-    """A sample_list entry's file as a sample, with its volume and finetune; None where the file
-    is not found.  A slot or size the MOD cannot hold is a config error."""
-    sample_index: int = entry[0]
-    filename: str = entry[1]
-    vol: int = entry[2]
-    finetune: int = entry[3] if len(entry) > 3 else 0
+def read_sample(working_dir: str, sample_index: int, filename: str, vol: int, finetune: int) -> ModSample | None:
+    """A sample_list row's file (`filename` in `working_dir`) as instrument `sample_index`, with its
+    volume and finetune; None where the file is not found.  A slot or size the MOD cannot hold is a
+    config error."""
     if sample_index < 1 or sample_index > MAX_INSTRUMENT:
         raise ValueError(f"sample_list: instrument {sample_index} is not in 1..{MAX_INSTRUMENT}")
     full_path = os.path.join(working_dir, filename)

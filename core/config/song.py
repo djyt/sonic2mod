@@ -1,10 +1,12 @@
 """A song's conversion config (ConversionConfig): what convert.py reads from configs/<song>.yaml."""
 
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..mod import ModFile
+from ..mod import MOD_MAX_VOLUME, ModFile
 from ..smps import REGIONS, SmpsSong
 from ..source import DacSample, LiftOptions, SmpsDriver, is_rom_path, is_vgm_path, read_dac, read_song
 from .entries import (
@@ -61,8 +63,26 @@ def _region(data: dict, filepath) -> str:
 _PLAIN_KEYS = ("name", "input_file", "output_file", "target_bpm", "target_speed", "ticks_per_row",
                "num_mod_channels", "auto_bpm", "samples_dir", "max_patterns")
 
-# A sample_list row's fields; volume and finetune may be left off
+# A sample_list row's fields in the YAML; volume and finetune may be left off
 SAMPLE_SLOT, SAMPLE_FILE, SAMPLE_VOLUME, SAMPLE_FINETUNE = range(4)
+
+
+@dataclass
+class SampleRow:
+    """A sample_list row: the instrument `slot` is the sample `file` (in samples_dir, or the name a
+    rendered sample carries), at `volume` (0-64) and `finetune` (-8..7).  The merged build and the
+    detune variants add rows, and set a row's volume or slot as they place it."""
+    slot: int
+    file: str
+    volume: int = MOD_MAX_VOLUME
+    finetune: int = 0
+
+    @classmethod
+    def from_yaml(cls, row, filepath) -> SampleRow:
+        """`[slot, file]`, `[slot, file, volume]` or `[slot, file, volume, finetune]`."""
+        if not isinstance(row, list) or not 2 <= len(row) <= 4:
+            raise ValueError(f"{filepath}: sample_list row {row!r} is not [slot, file, volume, finetune]")
+        return cls(*row)
 
 
 def _channel_list(data: dict, key: str) -> list[str]:
@@ -105,7 +125,7 @@ class ConversionConfig:
     channels: list = field(default_factory=list)       # list of ChannelConfig
     dac_samples: list = field(default_factory=list)    # list of DacSampleConfig
 
-    sample_list: list | None = None                 # rows [slot, file, volume, finetune]: SAMPLE_*
+    sample_list: list[SampleRow] | None = None      # None: none stated (placeholder samples)
     samples_dir: str = "./samples/"
     max_patterns: int = 127
     voice_map: dict = field(default_factory=dict)         # {voice_index: list[InstrumentRange]}
@@ -215,7 +235,7 @@ class ConversionConfig:
         return cls.from_data(resolved, filepath, variant)
 
     @classmethod
-    def from_data(cls, data: dict, filepath, variant: str | None = None) -> "ConversionConfig":
+    def from_data(cls, data: dict, filepath, variant: str | None = None) -> ConversionConfig:
         """A config from its YAML data with its variant applied (a file's, or a minimal one completed
         by core.plan.derive_config)."""
         unknown = sorted(set(data) - _KEYS)
@@ -231,13 +251,26 @@ class ConversionConfig:
         config.channel_instrument_map = parse_channel_instrument_map(data)
         config.psg_map = parse_psg_map(data, filepath)
         config.psg_voice_map = parse_psg_voice_map(data)
-        config.sample_list = data.get('sample_list')
+        rows = data.get('sample_list')
+        config.sample_list = None if rows is None else [SampleRow.from_yaml(r, filepath) for r in rows]
         config._read_merge(data)
         config.mod_pattern_breaks = parse_pattern_breaks(data)
         config.validate_mod_channels()
         config._read_source(data)
         config._data = dict(data)
         return config
+
+    def sample_row(self, slot: int, original: bool = False) -> SampleRow | None:
+        """The row `slot` plays: the last naming it (a composite's, appended by the merge plan), or
+        the first when `original` (the sample the slot was named for, kept aside for the mixer)."""
+        rows = [r for r in self.sample_list or [] if r.slot == slot]
+        if not rows:
+            return None
+        return rows[0] if original else rows[-1]
+
+    def sample_rows(self) -> dict[int, SampleRow]:
+        """{slot: the row it plays} (sample_row's, for every slot named)."""
+        return {r.slot: r for r in self.sample_list or []}
 
     @property
     def is_minimal(self) -> bool:

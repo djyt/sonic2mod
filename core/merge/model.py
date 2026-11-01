@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from ..config import MergeGroup
+from ..config import MergeGroup, SampleRow
 from ..plan import FmInstrument
 from ..smps import ChannelType
 from .notes import CHIP, CompositeKey, NoteOn, PairStats
@@ -46,7 +46,7 @@ class Composite:
     primary_kind: ChannelType = ChannelType.FM     # the primary channel's chip (its NoteOn's)
     notes: int = 0
     fm: FmInstrument | None = None     # chip-rendered: an entry for the instrument catalogue
-    entry: list | None = None          # its sample_list entry [inst, name, volume, finetune]
+    entry: SampleRow | None = None     # its sample_list row
     headroom_db: float = 0.0           # pcm mix: dB the sum exceeded full scale by (volume clamped)
     limited_db: float = 0.0            # pcm mix: the most its group's limit_db limiter took off a peak
     note: int | None = None            # pcm mix: the MOD note it is triggered at, when not the

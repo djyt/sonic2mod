@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from core.audit import levels
+from core.config import SampleRow
 
 
 class WriteVolumes(unittest.TestCase):
@@ -18,8 +19,8 @@ class WriteVolumes(unittest.TestCase):
         text = ('name: "x"\nsample_list:\n'
                 '  - [5, "fm_v01_Eb2.raw", 11, 0]   # VGZ: -2.6 dB at 8\n'
                 '  - [8, "psg_noise_e7.raw", 2, 0]\n')
-        derived = {6: [6, "fm_v01_Eb2.raw", 11, 0], 7: [7, "fm_v01_Cs3.raw", 11, 0],
-                   12: [12, "psg_noise_e7.raw", 2, 0]}     # a setting split voice $01 since
+        derived = {6: SampleRow(6, "fm_v01_Eb2.raw", 11, 0), 7: SampleRow(7, "fm_v01_Cs3.raw", 11, 0),
+                   12: SampleRow(12, "psg_noise_e7.raw", 2, 0)}     # a setting split voice $01 since
         found = [{"instrument": 6, "name": "F2 $01", "volume": 11, "suggested": 16, "err_db": -3.2},
                  {"instrument": 7, "name": "F2 $01", "volume": 11, "suggested": 14, "err_db": -2.1}]
         with tempfile.TemporaryDirectory() as tmp:

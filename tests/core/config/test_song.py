@@ -60,6 +60,26 @@ class Values(unittest.TestCase):
             _config(dac_stall=1.2)
 
 
+class SampleRows(unittest.TestCase):
+    """sample_list rows: parsed once, volume and finetune defaulted; a slot plays its last row."""
+
+    def test_a_short_row_takes_the_defaults(self):
+        row = _config(sample_list=[[3, "kick.raw"]]).sample_list[0]
+        self.assertEqual((row.slot, row.file, row.volume, row.finetune), (3, "kick.raw", 64, 0))
+
+    def test_a_row_of_another_shape_is_an_error(self):
+        for bad in ([3], [3, "a.raw", 64, 0, 1], {"slot": 3}):
+            with self.subTest(row=bad), self.assertRaisesRegex(ValueError, "sample_list row"):
+                _config(sample_list=[bad])
+
+    def test_a_slot_plays_its_last_row_and_keeps_its_first(self):
+        cfg = _config(sample_list=[[5, "drum.raw", 40, 0], [5, "merge FM1", 30, 0]])
+        self.assertEqual(cfg.sample_row(5).file, "merge FM1")                    # a composite's, appended
+        self.assertEqual(cfg.sample_row(5, original=True).file, "drum.raw")      # what the slot was named for
+        self.assertIsNone(cfg.sample_row(6))
+        self.assertEqual(cfg.sample_rows()[5].volume, 30)
+
+
 class Numbers(unittest.TestCase):
     def test_one_spelling_for_every_number_key(self):
         # $ and 0x are hex everywhere; bare digits are decimal, a vibrato's hex

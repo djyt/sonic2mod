@@ -37,6 +37,7 @@ import math
 from dataclasses import dataclass, field
 
 from ..audio import DEFAULT_DITHER, gain_to_db, to_int8
+from ..config import SampleRow
 from ..mod import ModSample, note_rate
 from .mix import composite_dither
 from .model import Composite, MergePlan
@@ -286,6 +287,6 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             if c.entry in sample_list:
                 sample_list.remove(c.entry)
             c.inst = bank.slot
-        sample_list.append([bank.slot, sample.name, bank.volume, bank.finetune])
+        sample_list.append(SampleRow(bank.slot, sample.name, bank.volume, bank.finetune))
     plan.banks = kept
     return dropped

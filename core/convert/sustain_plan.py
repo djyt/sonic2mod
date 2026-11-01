@@ -7,7 +7,7 @@ whether it loops: a looped sample holds any note).
 import dataclasses
 
 from ..audio import SustainLoop
-from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig, SynthesisSettings
+from ..config import ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergePlan
 from ..mod import PERIOD_TABLE, max_sustain_secs, note_rate
@@ -104,7 +104,7 @@ class SustainPlanner:
         The MOD note and instrument are the ones core.convert.channel_writer will trigger: the same
         walk_channel / resolve_note.
         """
-        finetunes = {e[SAMPLE_SLOT]: e[SAMPLE_FINETUNE] for e in (self._config.sample_list or []) if len(e) > SAMPLE_FINETUNE}
+        finetunes = {slot: row.finetune for slot, row in self._config.sample_rows().items()}
         roots = self._synthesis_roots(kind)
         # A note that plays a mixed composite (core.merge) plays its source samples inside it:
         # the primary's at the note, each follower's at its interval.  They need the ring as much
@@ -132,14 +132,14 @@ class SustainPlanner:
             for event, _st, res in walk_channel(channel, self._config, chan_cfg):
                 if not event.is_note:
                     continue
-                if (merge is not None and getattr(event, "merged", None) is None
+                if (merge is not None and event.spliced is None
                         and merge.is_folded(chan_cfg.source, event.tick_position)):
                     if not event.note.is_rest:
                         _cut_ring(rings, event.tick_position)   # the converter ends what rings here at it
                     rings.append(None)          # folded away here: nothing of its own sounds
                     continue
                 note = event.note
-                merged = getattr(event, "merged", None)
+                merged = event.spliced
                 if foreign and not note.is_rest and (merged is None or merged.kind != kind):
                     _cut_ring(rings, event.tick_position)       # another chip's note: not this pass's
                     rings.append(None)

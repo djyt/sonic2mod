@@ -24,7 +24,7 @@ from ..audio import (
     to_int8,
     unroll_values,
 )
-from ..config import DEFAULT_SHELF_HZ, SAMPLE_FILE
+from ..config import DEFAULT_SHELF_HZ
 from ..mod import MAX_MOD_SAMPLE_BYTES, ModSample, clamp_mod_volume, note_rate
 from ..smps import ChannelType
 from .model import Composite, MergePlan
@@ -370,7 +370,7 @@ def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] |
     if len(pcm) % 2:
         pcm += b"\x00"
 
-    sample = ModSample(comp.entry[SAMPLE_FILE] if comp.entry else f"merge{comp.inst}")
+    sample = ModSample(comp.entry.file if comp.entry else f"merge{comp.inst}")
     sample.data = pcm
     sample.length = len(pcm) // 2
     sample.set_volume(vol)
@@ -378,5 +378,5 @@ def _to_sample(comp: Composite, total: list[float], keep_loop: tuple[int, int] |
     if keep_loop is not None and keep_loop[0] + keep_loop[1] <= len(pcm):
         sample.repeat, sample.repeat_length = keep_loop[0] // 2, keep_loop[1] // 2
     if comp.entry is not None:
-        comp.entry[2] = vol
+        comp.entry.volume = vol
     return sample, total, pk

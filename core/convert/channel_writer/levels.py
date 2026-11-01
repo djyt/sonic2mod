@@ -8,7 +8,7 @@ driver holds for the channel (SynthesisSettings.fm_volume_mode, psg_volume_mode)
 """
 
 from ...audio import db_to_gain
-from ...config import SAMPLE_SLOT, SAMPLE_VOLUME, ChannelConfig
+from ...config import ChannelConfig
 from ...merge import Composite
 from ...mod import MOD_MAX_VOLUME, clamp_mod_volume
 from ...plan import DriverState
@@ -30,8 +30,7 @@ class Levels:
         self._header_volume = channel.header.volume
 
         # {inst_num: sample volume} from sample_list, for Cxx scaling
-        self._sample_vols = {e[SAMPLE_SLOT]: (e[SAMPLE_VOLUME] if len(e) > SAMPLE_VOLUME else MOD_MAX_VOLUME)
-                             for e in ctx.config.sample_list or []}
+        self._sample_vols = {slot: row.volume for slot, row in ctx.config.sample_rows().items()}
 
         # The modes; outside baked one, current_volume carries the level as a MOD volume
         self._fm_absolute = ctx.fm_volume_mode == "absolute"

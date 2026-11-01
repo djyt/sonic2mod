@@ -34,8 +34,7 @@ def _splice_note(plan: MergePlan, events: list, target: str, source: str, t: int
     the target's takes the channel back within `span` ticks."""
     plan.solo[(target, t)] = (source, n)
     plan.spliced.update((source, tt) for tt in n.all_ticks)
-    ev = SmpsEvent(note=SmpsNote(note_value=n.note_value, duration=n.duration), tick_position=t)
-    ev.merged = n                                       # type: ignore[attr-defined]
+    ev = SmpsEvent(note=SmpsNote(note_value=n.note_value, duration=n.duration), tick_position=t, spliced=n)
     # A rest at this tick (the target's own, or the end of the solo note before) would put a
     # C00 or a release slide in the note's cell: the note re-keys the channel by itself
     events[:] = [e for e in events if not (e.tick_position == t and e.is_note and e.note.is_rest)]
@@ -43,8 +42,8 @@ def _splice_note(plan: MergePlan, events: list, target: str, source: str, t: int
     end = t + n.duration
     own = {e.tick_position for e in events if e.is_note and (not e.note.is_rest or not e.note.is_no_attack)}
     if end not in own and span >= n.duration:
-        rest = SmpsEvent(note=SmpsNote(note_value=0x80, duration=0, is_rest=True), tick_position=end)
-        rest.merged = NoteOn(end, 0, 0, 0, 0, n.kind)  # type: ignore[attr-defined]
+        rest = SmpsEvent(note=SmpsNote(note_value=0x80, duration=0, is_rest=True), tick_position=end,
+                         spliced=NoteOn(end, 0, 0, 0, 0, n.kind))
         _insert_event(events, rest)
 
 

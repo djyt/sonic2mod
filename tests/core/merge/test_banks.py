@@ -8,7 +8,7 @@ from __future__ import annotations
 import unittest
 from typing import ClassVar
 
-from core.config import MergeGroup
+from core.config import MergeGroup, SampleRow
 from core.merge import (
     ALIGN,
     MIX,
@@ -37,9 +37,9 @@ class Banks(unittest.TestCase):
     def test_pack_aligns_cuts_and_drops(self):
         g = MergeGroup("DAC", ["FM2"], bank=True)
         c1 = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, note=None, banked=True, notes=5,
-                       entry=[-1, "a", 64, 0])
+                       entry=SampleRow(-1, "a", 64, 0))
         c2 = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(2, 3, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
-                       entry=[-2, "b", 32, 0])
+                       entry=SampleRow(-2, "b", 32, 0))
         plan = MergePlan([g], composites={c1.key: c1, c2.key: c2})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
         plan.bases = {("DAC", 0): 12, ("DAC", 8): 12}
@@ -60,7 +60,7 @@ class Banks(unittest.TestCase):
         self.assertEqual(len(mod.samples[6].data) % ALIGN, 0)
         # a member that fits no bank is dropped and reported
         c3 = Composite(-3, CompositeKey(MIX, 1, (MixLayerKey(2, 5, 1.0, None),)), g, base=12, note=None, banked=True, notes=1,
-                       entry=[-3, "c", 64, 0])
+                       entry=SampleRow(-3, "c", 64, 0))
         plan.composites[c3.key] = c3
         plan.ticks[("DAC", 16)] = -3
         Cfg.sample_list.append(c3.entry)
@@ -74,9 +74,9 @@ class Banks(unittest.TestCase):
         # scaling its 8-bit bytes would dither them twice: without the sum it is refused
         g = MergeGroup("DAC", ["FM2"], bank=True)
         loud = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, banked=True, notes=2,
-                         entry=[-1, "a", 64, 0])
+                         entry=SampleRow(-1, "a", 64, 0))
         quiet = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(2, 3, 1.0, None),)), g, base=12, banked=True, notes=1,
-                          entry=[-2, "b", 32, 0])
+                          entry=SampleRow(-2, "b", 32, 0))
         plan = MergePlan([g], composites={loud.key: loud, quiet.key: quiet})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
@@ -96,7 +96,7 @@ class MelodicBanks(unittest.TestCase):
         comps, ticks, samples, entries = {}, {}, {}, []
         for i, (size, vol, loop, notes) in enumerate(specs, 1):
             c = Composite(-i, CompositeKey(MIX, 3, (MixLayerKey(16, i, 1.0, None),)), g, base=12, banked=True,
-                          notes=notes, entry=[-i, f"m{i}", vol, 0])
+                          notes=notes, entry=SampleRow(-i, f"m{i}", vol, 0))
             comps[c.key] = c
             ticks[("FM2", 8 * i)] = -i
             samples[-i] = _sample(bytes([40 + i] * size), volume=vol, loop=loop)   # a sound of its own
@@ -160,9 +160,9 @@ class SameSounds(unittest.TestCase):
     def _pack(self, raw_b, vol_b=64):
         g = MergeGroup("DAC", ["FM2"], bank=True)
         a = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, None),)), g, base=12, banked=True, notes=4,
-                      entry=[-1, "a", 64, 0])
+                      entry=SampleRow(-1, "a", 64, 0))
         b = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(4, -3, 1.0, 200),)), g, base=12, banked=True, notes=2,
-                      entry=[-2, "b", vol_b, 0])
+                      entry=SampleRow(-2, "b", vol_b, 0))
         plan = MergePlan([g], composites={a.key: a, b.key: b})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
@@ -198,9 +198,9 @@ class DrumBanks(unittest.TestCase):
         # bank_drums: a drum hit's slot may be a composite's now, so its bank goes in before a
         # bank with more notes
         g = MergeGroup("FM3", ["FM4"], bank=True, bank_drums=True)
-        drum = Composite(-1, CompositeKey(MIX, 1, ()), g, base=24, banked=True, notes=2, entry=[-1, "a", 64, 0])
+        drum = Composite(-1, CompositeKey(MIX, 1, ()), g, base=24, banked=True, notes=2, entry=SampleRow(-1, "a", 64, 0))
         mix = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(18, -11, 1.0, None),)), g, base=24, banked=True,
-                        notes=9, entry=[-2, "b", 64, 0])
+                        notes=9, entry=SampleRow(-2, "b", 64, 0))
         plan = MergePlan([g], composites={drum.key: drum, mix.key: mix})
         plan.ticks = {("FM3", 0): -1, ("FM3", 8): -2}
 
@@ -218,9 +218,9 @@ class BankAlignment(unittest.TestCase):
     def test_a_short_raw_member_keeps_the_next_sound_on_its_boundary(self):
         g = MergeGroup("DAC", ["PSG3"], bank=True)
         c1 = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, banked=True, notes=2,
-                       entry=[-1, "a", 64, 0])
+                       entry=SampleRow(-1, "a", 64, 0))
         c2 = Composite(-2, CompositeKey(MIX, 1, (MixLayerKey(2, 3, 1.0, None),)), g, base=12, banked=True, notes=1,
-                       entry=[-2, "b", 64, 0])
+                       entry=SampleRow(-2, "b", 64, 0))
         plan = MergePlan([g], composites={c1.key: c1, c2.key: c2})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 

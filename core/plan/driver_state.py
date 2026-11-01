@@ -244,7 +244,7 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
     plan = getattr(config, "merge_plan", None)       # core.merge: composite instruments per tick
     for event in channel.events:
         res = None
-        solo = getattr(event, "merged", None)
+        solo = event.spliced
         if solo is not None:
             # A follower's note spliced into this channel while the primary is silent
             # (core.merge): it plays the follower's instrument at the follower's level, so the

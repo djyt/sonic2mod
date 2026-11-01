@@ -44,7 +44,7 @@ class BankDrums(unittest.TestCase):
         kick = pl.plan.composites[next(k for k in pl.plan.composites if k.primary == 1)]
         self.assertEqual(pl.plan.ticks[("FM3", 12)], kick.inst)
         assert kick.entry is not None
-        self.assertEqual(kick.entry[2], 13)                    # the drum's own volume
+        self.assertEqual(kick.entry.volume, 13)                    # the drum's own volume
 
     def test_without_bank_drums_a_lone_hit_plays_its_drum(self):
         g = MergeGroup("FM3", ["FM4"], bank=True)

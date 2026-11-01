@@ -25,7 +25,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 
-from ..config import SAMPLE_SLOT, ConversionConfig, InstrumentRange, PsgInstrumentEntry
+from ..config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
 from ..mod import MOD_NOTE_MAP, ModNote, note_rate
 from ..smps import FmDrum
 
@@ -245,7 +245,7 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
 
 def free_slots(config, song) -> list[int]:
     """Instrument slots nothing in the config names."""
-    used = {e[SAMPLE_SLOT] for e in (config.sample_list or [])}
+    used = set(config.sample_rows())
     used |= set(fm_catalogue(song, config).instruments)
     used |= set(psg_catalogue(config))
     used |= {d.mod_instrument for d in config.dac_samples}

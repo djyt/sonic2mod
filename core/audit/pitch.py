@@ -28,7 +28,7 @@ from collections import Counter, defaultdict
 import numpy as np
 
 from ..audio import pitch_name, semitone_to_hz
-from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig
+from ..config import ConversionConfig
 from ..mod import PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
 from ..plan import sounding_pitches
 from ..vgm import Segment
@@ -41,7 +41,7 @@ _HELD = 0.025                               # s a pitch holds for a move from it
 def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument, attack); follows Bxx/Dxx and stops at the loop."""
     inst = sounding_pitches(song, cfg)
-    finetune = {e[SAMPLE_SLOT]: (e[SAMPLE_FINETUNE] if len(e) > SAMPLE_FINETUNE else 0) for e in (cfg.sample_list or [])}
+    finetune = {slot: row.finetune for slot, row in cfg.sample_rows().items()}
     known = set(PERIOD_TABLE)
     out: dict[int, list[tuple]] = defaultdict(list)
     sounding: dict[int, tuple[int, int]] = {}         # channel -> (period, instrument) of its note

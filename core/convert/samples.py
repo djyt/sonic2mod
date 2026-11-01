@@ -13,17 +13,14 @@ from collections.abc import Iterable
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
 from ..chips import MD_PSG_CLOCK
 from ..config import (
-    SAMPLE_FILE,
-    SAMPLE_FINETUNE,
-    SAMPLE_SLOT,
-    SAMPLE_VOLUME,
     ConversionConfig,
     PsgSynthesisSettings,
+    SampleRow,
     SynthesisSettings,
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan
-from ..mod import MAX_MOD_SAMPLE_BYTES, ModFile, ModSample, note_rate, read_sample
+from ..mod import MAX_MOD_SAMPLE_BYTES, MOD_MAX_VOLUME, ModFile, ModSample, note_rate, read_sample
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..plan import (
     Timeline,
@@ -128,9 +125,7 @@ class SampleInstaller:
         sample_list volume and finetune for the instrument - the last entry naming the slot (a
         composite's, appended by the plan) unless `original` asks for the first (the source the
         slot was named for, kept aside for the mixer)."""
-        sample_list = self._config.sample_list or []
-        entries = [e for e in sample_list if e[SAMPLE_SLOT] == inst_num]
-        entry = (entries[0] if original else entries[-1]) if entries else None
+        entry = self._config.sample_row(inst_num, original)
         pcm_data = pcm_orig[:max_bytes]
         if len(pcm_orig) > max_bytes:
             # The generators cap the sustain to the limit; this is a last resort.
@@ -138,12 +133,12 @@ class SampleInstaller:
                             instrument=inst_num, bytes=len(pcm_orig), max_bytes=max_bytes)
         if len(pcm_data) % 2:                   # a MOD sample is whole words: evened with a zero
             pcm_data += b"\0"
-        sample = ModSample(entry[SAMPLE_FILE] if entry else f"{prefix}_inst{inst_num}")
+        sample = ModSample(entry.file if entry else f"{prefix}_inst{inst_num}")
         sample.data = pcm_data
         sample.length = len(pcm_data) // 2
-        sample.set_volume(entry[SAMPLE_VOLUME] if entry and len(entry) > SAMPLE_VOLUME else 64)
-        if entry and len(entry) > SAMPLE_FINETUNE and entry[SAMPLE_FINETUNE] != 0:
-            sample.set_finetune(entry[SAMPLE_FINETUNE])
+        sample.set_volume(entry.volume if entry else MOD_MAX_VOLUME)
+        if entry and entry.finetune != 0:
+            sample.set_finetune(entry.finetune)
         if loop is not None and loop.end <= len(pcm_data) and loop.length >= 4:
             sample.repeat = loop.start // 2
             sample.repeat_length = loop.length // 2
@@ -165,10 +160,22 @@ class SampleInstaller:
 
     # --- from disk ------------------------------------------------------------------------------
     def _load_disk_samples(self, skip: set[int]) -> None:
-        for entry in self._config.sample_list or []:
-            if entry[SAMPLE_SLOT] not in skip:
-                for path in self._mod.add_samples(self._config.samples_dir, [entry]):
-                    self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=entry[SAMPLE_SLOT], path=path)
+        """Each sample_list row's file into its slot (a later row naming the slot over an earlier);
+        a file not on disk leaves the slot empty, with a warning."""
+        for row in self._config.sample_list or []:
+            if row.slot in skip:
+                continue
+            sample = self._read(row)
+            if sample is not None:
+                self._mod.samples[row.slot - 1] = sample
+
+    def _read(self, row: SampleRow) -> ModSample | None:
+        """`row`'s file as a sample; None, warned, where it is not on disk."""
+        sample = read_sample(self._config.samples_dir, row.slot, row.file, row.volume, row.finetune)
+        if sample is None:
+            self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=row.slot,
+                            path=os.path.join(self._config.samples_dir, row.file))
+        return sample
 
     def _load_aside_drums(self, rendered: set[int]) -> None:
         """A drum off disk whose slot a composite holds (a `bank_drums` group's: it plays from a
@@ -178,11 +185,10 @@ class SampleInstaller:
         prefers a source's render to its bytes, must take the drum's bytes."""
         aside = self._mix_only_aside({d.mod_instrument for d in self._config.dac_samples}) - rendered
         for inst in sorted(aside):
-            entry = next(e for e in self._config.sample_list or [] if e[SAMPLE_SLOT] == inst)
-            sample = read_sample(self._config.samples_dir, entry)
+            entry = self._config.sample_row(inst, original=True)
+            assert entry is not None, "a DAC drum's slot has its sample_list row"
+            sample = self._read(entry)
             if sample is None:
-                self._diag.warn(WarningKind.SAMPLE_FILE_MISSING, instrument=inst,
-                                path=os.path.join(self._config.samples_dir, entry[SAMPLE_FILE]))
                 continue
             self.mix_sources[inst] = sample
             self.raw_renders.pop(inst, None)

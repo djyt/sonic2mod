@@ -10,7 +10,7 @@ import math
 import unittest
 
 from core.audio import RELEASE_FLOOR_DB
-from core.config import MergeGroup
+from core.config import MergeGroup, SampleRow
 from core.merge import (
     MIX,
     Composite,
@@ -39,7 +39,7 @@ class Mixer(unittest.TestCase):
     def _plan(self, longest: float) -> tuple[MergePlan, ModFile, Composite]:
         g = MergeGroup("DAC", ["FM2"])
         c = Composite(-1, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, note=None, longest=longest,
-                      entry=[-1, "merge", 64, 0])
+                      entry=SampleRow(-1, "merge", 64, 0))
         plan = MergePlan([g], composites={c.key: c})
         mod = ModFile(4)
         mod.samples[0] = _sample(bytes([100] * 400))                           # the drum: 400 bytes, unlooped
@@ -76,7 +76,7 @@ class Heard(unittest.TestCase):
     def _mix(self, heard: list) -> int:
         g = MergeGroup("DAC", ["FM2"])
         c = Composite(5, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 1.0, None),)), g, base=12, longest=1.0,
-                      entry=[5, "merge", 64, 0], heard=heard)
+                      entry=SampleRow(5, "merge", 64, 0), heard=heard)
         plan = MergePlan([g], composites={c.key: c})
         mod = ModFile(4)
         mod.samples[0] = _sample(bytes([100] * 20000))                     # the drum: long, unlooped
@@ -104,7 +104,7 @@ class MixLoop(unittest.TestCase):
         tone = bytes(int(90 * math.sin(2 * math.pi * i / period)) & 0xFF for i in range(int(3 * rate)))
         g = MergeGroup("FM1", ["PSG2"], loop_mix=loop_mix, loop_drift_db=1.0, loop_min_ms=300)
         c = Composite(5, CompositeKey(MIX, 1, (MixLayerKey(2, 0, 0.5, None),)), g, base=12, longest=2.5,
-                      entry=[5, "merge", 64, 0], pitch_hz=rate / period)
+                      entry=SampleRow(5, "merge", 64, 0), pitch_hz=rate / period)
         mod = ModFile(4)
         mod.samples[0] = _sample(tone)
         mod.samples[1] = _sample(tone)

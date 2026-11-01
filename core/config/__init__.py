@@ -41,13 +41,14 @@ from .song import (
     SAMPLE_SLOT,
     SAMPLE_VOLUME,
     ConversionConfig,
+    SampleRow,
     variant_output_file,
 )
 
 __all__ = [
     "DEFAULT_AMIGA_CLOCK", "DEFAULT_PSG_OVERSAMPLE", "DEFAULT_SHELF_HZ", "LEGATO_MODES", "PLAYERS", "SAMPLE_FILE", "SAMPLE_FINETUNE", "SAMPLE_KEYS", "SAMPLE_SLOT", "SAMPLE_VOLUME",
     "SUSTAIN_LOOP_MODES", "BpmReport", "ChannelConfig", "ConversionConfig", "DacSample", "DacSampleConfig", "InstrumentRange", "MergeGroup",
-    "PsgInstrumentEntry", "PsgSynthesisSettings", "SampleSettings", "SynthesisSettings", "apply_variant",
+    "PsgInstrumentEntry", "PsgSynthesisSettings", "SampleRow", "SampleSettings", "SynthesisSettings", "apply_variant",
     "bpm_report", "bpm_rounding_options", "derive_bpm", "dither_mode", "exact_bpm", "find_settings", "format_patterns", "load_settings", "load_yaml",
     "mode_word", "parse_number", "parse_patterns", "rate3_synth_root_issues", "read_yaml_file", "variant_output_file", "with_song_overrides"
 ]

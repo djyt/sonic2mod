@@ -9,7 +9,7 @@ from __future__ import annotations
 import unittest
 from typing import ClassVar
 
-from core.config import MergeGroup
+from core.config import MergeGroup, SampleRow
 from core.merge import (
     CHIP,
     MIX,
@@ -27,11 +27,11 @@ class Twins(unittest.TestCase):
     def _plan(self):
         g = MergeGroup("FM5", ["FM3", "PSG1"])
         cut = Composite(-1, CompositeKey(MIX, 14, (MixLayerKey(14, 7, 1.0, None), MixLayerKey(19, 0, 1.0, 267))), g,
-                        base=16, note=23, notes=11, entry=[-1, "cut", 64, 0])
+                        base=16, note=23, notes=11, entry=SampleRow(-1, "cut", 64, 0))
         held = Composite(-2, CompositeKey(MIX, 14, (MixLayerKey(14, 7, 1.0, None), MixLayerKey(19, 0, 1.0, None))), g,
-                         base=14, note=21, notes=2, entry=[-2, "held", 64, 0])
+                         base=14, note=21, notes=2, entry=SampleRow(-2, "held", 64, 0))
         other = Composite(-3, CompositeKey(MIX, 14, (MixLayerKey(14, 4, 1.0, None),)), g, base=14, notes=1,
-                          entry=[-3, "other", 64, 0])
+                          entry=SampleRow(-3, "other", 64, 0))
         plan = MergePlan([g], composites={c.key: c for c in (cut, held, other)})
         plan.ticks = {("FM5", 0): -1, ("FM5", 8): -2, ("FM5", 16): -3}
         plan.bases = {("FM5", 0): 16, ("FM5", 8): 14, ("FM5", 16): 14}

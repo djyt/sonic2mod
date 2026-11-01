@@ -9,7 +9,7 @@ import unittest
 from types import SimpleNamespace
 from typing import Any, cast
 
-from core.config import MergeGroup
+from core.config import MergeGroup, SampleRow
 from core.merge import (
     MIX,
     Composite,
@@ -56,8 +56,8 @@ class MovedLevels(unittest.TestCase):
     def test_the_volume_follows_the_baseline(self):
         g = MergeGroup("FM5", ["FM6"])
         plan = MergePlan([g])
-        entry = [19, "fm_v4b_B3.raw", 6, 0]
-        cfg = SimpleNamespace(sample_list=[entry, [6, "fm_v0b.raw", 10, 0]])
+        entry = SampleRow(19, "fm_v4b_B3.raw", 6, 0)
+        cfg = SimpleNamespace(sample_list=[entry, SampleRow(6, "fm_v0b.raw", 10, 0)])
         mod = ModFile(4)
         mod.samples[18] = ModSample("b3")
         infos = []
@@ -65,7 +65,7 @@ class MovedLevels(unittest.TestCase):
         ref: dict[str, dict[int, float]] = {ChannelType.FM: {19: -10.0, 6: -8.0}}
         build = MergedBuild(plan, mod, cast(Any, cfg), None, cast(Any, None), cast(Any, diag), ref, None)
         build.bake_volumes({19: -5.5, 6: -8.0}, {}, {})          # FM4's louder notes set 19's level now
-        self.assertEqual(entry[2], 10)                           # 6 x 4.5 dB
+        self.assertEqual(entry.volume, 10)                           # 6 x 4.5 dB
         self.assertEqual(mod.samples[18].volume, 10)
-        self.assertEqual(cfg.sample_list[1][2], 10)              # unmoved
+        self.assertEqual(cfg.sample_list[1].volume, 10)              # unmoved
         self.assertEqual([(i['instrument'], i['unison']) for i in infos], [(19, False)])

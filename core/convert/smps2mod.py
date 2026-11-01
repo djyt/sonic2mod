@@ -11,8 +11,6 @@ import os
 
 from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db
 from ..config import (
-    SAMPLE_FILE,
-    SAMPLE_SLOT,
     ConversionConfig,
     PsgSynthesisSettings,
     SynthesisSettings,
@@ -416,7 +414,7 @@ class SmpsToModConverter:
         at their mod_note) and the noise instruments (their envelope, then the ramp to
         silence).  What core.merge bounds a note's sounding span with."""
         clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
-        files = {e[SAMPLE_SLOT]: e[SAMPLE_FILE] for e in (self.config.sample_list or [])}
+        files = {slot: row.file for slot, row in self.config.sample_rows().items()}
         out: dict[int, float] = {}
         for d in self.config.dac_samples:
             path = os.path.join(self.config.samples_dir, files.get(d.mod_instrument, ""))

@@ -14,6 +14,7 @@ from .rules import PlaybackRules
 from .tempo import NO_TEMPO_HOLDS, TempoSegment, tempo_schedule
 
 if TYPE_CHECKING:
+    from ..merge.notes import NoteOn  # a spliced note's: core.merge splices, above the IR (a hint only)
     from .percussion import FmDrum  # it imports SmpsVoice from here
 
 # ---------------------------------------------------------------------------
@@ -55,6 +56,9 @@ class SmpsEvent:
     note: SmpsNote | None = None
     effect: PlayedEffect | None = None
     tick_position: int = 0  # Cumulative tick position in the channel
+    # The merged build's note spliced into this channel from another (core.merge: a follower's solo
+    # note, a fill-pool note, or the rest that ends one): it plays as that note; None: the song's own
+    spliced: NoteOn | None = None
 
     @property
     def is_note(self):

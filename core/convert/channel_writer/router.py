@@ -49,13 +49,13 @@ class ColumnRouter:
     def plays_here(self, ev) -> bool:
         """A note-on this channel's output sounds: not one folded onto another channel (or
         dropped) in its pattern."""
-        return (self._plan is None or getattr(ev, "merged", None) is not None
+        return (self._plan is None or ev.spliced is not None
                 or not self._plan.is_folded(self._source, ev.tick_position))
 
     def away(self, ev) -> bool:
         """An own event in a pattern this channel plays nothing of its own in (a follower's, or
         dropped there)."""
-        return (bool(self._away) and getattr(ev, "merged", None) is None
+        return (bool(self._away) and ev.spliced is None
                 and self._pattern(ev.tick_position) in self._away)
 
     def borrowed(self, column: int, tick: int) -> bool:

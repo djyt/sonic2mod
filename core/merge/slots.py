@@ -3,7 +3,6 @@ their slot up first, stand-ins taking a dropped composite's notes."""
 
 from __future__ import annotations
 
-from ..config import SAMPLE_SLOT
 from ..plan import fm_catalogue, psg_catalogue, walk_channel
 from ..smps import source_map
 from .model import LAST_MOD_NOTE, NO_SLOT, Composite, MergePlan
@@ -193,7 +192,7 @@ def _assign_slots(plan: MergePlan, chosen: dict[int, int]) -> None:
         real = remap[c.inst]
         assert real is not None, "fit_composites gives every composite it keeps a slot"
         if c.entry is not None:
-            c.entry[0] = real
+            c.entry.slot = real
         if c.fm is not None:
             c.fm.inst = real
         c.inst = real
@@ -212,12 +211,12 @@ def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
         if not chan_cfg.enabled or channel is None:
             continue
         for event, _st, res in walk_channel(channel, config, chan_cfg):
-            if event.is_note and getattr(event, "merged", None) is None and plan.is_folded(chan_cfg.source, event.tick_position):
+            if event.is_note and event.spliced is None and plan.is_folded(chan_cfg.source, event.tick_position):
                 continue                     # played on another channel (or dropped) in this pattern
             if res is not None:
                 used.add(res.instrument)
             elif event.is_note and event.note.is_dac and event.note.dac_name in dac_map:
                 used.add(plan.instrument_at(chan_cfg.source, event.tick_position, dac_map[event.note.dac_name]))
     named = set(fm_catalogue(song, config).instruments) | set(psg_catalogue(config))
-    named |= set(dac_map.values()) | {e[SAMPLE_SLOT] for e in (config.sample_list or [])}
+    named |= set(dac_map.values()) | set(config.sample_rows())
     return named - used

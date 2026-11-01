@@ -49,6 +49,7 @@ _REVIEWED: dict[SmpsDriver, dict] = {
     },
     # Phase 2 of docs/todo/streets_of_rage_2.md: what reading needs; Phase 3 reviews the rest
     SmpsDriver.MUCOM_MD: {
+        "DAC": {"ties.drum_restarts": False},
         "FM": {"volume.kept": "256 steps", "volume.step_range": range(20), "volume.tl_writes_hold": True,
                "key_off.gate_sees_tie": True, "key_off.gate_floor": 1,
                "key_off.soft_release": SoftReleaseLaw(sign=1, voice_keys_off=True), "ties.exit_clears": False,

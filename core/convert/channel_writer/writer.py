@@ -294,6 +294,10 @@ class ChannelWriter:
         the slot is always free for EDx."""
         note, tick = event.note, event.tick_position
 
+        # A tie the driver lets the sample play on through (Streets of Rage 2's)
+        if note.is_no_attack and not self._track.ties.drum_restarts:
+            return True
+
         # A silent FM drum (its program a rest): the hit only stops the drum ringing, as FM3's key-off
         drum = self._ctx.song.fm_drums.get(note.dac_name)
         if drum is not None and drum.silent:

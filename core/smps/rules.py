@@ -125,6 +125,9 @@ class TieRules:
     late_keys_off: bool = False             # a tie read after a flag, not straight after its note, comes after
                                             # the note's end keyed it off: the next note attacks (Streets of
                                             # Rage 2's, $41C9C); False: it ties
+    drum_restarts: bool = True              # a tie on the drum track starts its sample again (Sonic 1's
+                                            # DACUpdateTrack reads no tie); False: it plays on (Streets of
+                                            # Rage 2's, $4277A)
 
 
 @dataclass(frozen=True)

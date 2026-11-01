@@ -5,12 +5,15 @@
 
 from __future__ import annotations
 
+import dataclasses
 import unittest
 
 from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.smps import (
     NOISE_CHANNEL_NAME,
+    ChannelType,
     CoordFlag,
+    PlaybackRules,
     PsgForm,
     SmpsChannel,
     SmpsChannelHeader,
@@ -19,6 +22,8 @@ from core.smps import (
     SmpsSong,
     SmpsSongHeader,
     SmpsVoice,
+    TieRules,
+    TrackRules,
     VoiceField,
     compare_songs,
     effect_of,
@@ -178,6 +183,24 @@ class Played(unittest.TestCase):
         song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)], rules=SONIC1_RULES))
         played_song(song)
         self.assertEqual(len(song.channels[0].events), 1)
+
+
+class DrumTie(unittest.TestCase):
+    """A tie on the drum track: Sonic 1 starts the sample again, Streets of Rage 2 lets it play on."""
+
+    @staticmethod
+    def _attacks(rules: PlaybackRules) -> list[bool]:
+        hit, tie = (SmpsEvent(SmpsNote(0x81, 8, is_dac=True, dac_name="kick", is_no_attack=t)) for t in (False, True))
+        song = _song(hit, tie, kind="DAC")
+        song.rules = song.channels[0].rules = rules
+        return [n.attack for n in played_song(song).channels["DAC"]]
+
+    def test_sonic_1_strikes_again(self):
+        self.assertEqual(self._attacks(SONIC1_RULES), [True, True])
+
+    def test_a_driver_can_let_it_play_on(self):
+        rules = dataclasses.replace(SONIC1_RULES, tracks={ChannelType.DAC: TrackRules(ties=TieRules(drum_restarts=False))})
+        self.assertEqual(self._attacks(rules), [True, False])
 
 
 class FixedRateNoise(unittest.TestCase):

@@ -167,7 +167,8 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
             note = dataclasses.replace(note, is_rest=False, is_retrigger=True)
         if note.is_dac:
             resting = False
-            played.append(PlayedNote(ev.tick_position, note.duration, rest=False, dac=note.dac_name))
+            strikes = not note.is_no_attack or channel.rules.track(channel.header.channel_type).ties.drum_restarts
+            played.append(PlayedNote(ev.tick_position, note.duration, rest=False, attack=strikes, dac=note.dac_name))
             continue
 
         # NoteTimeout ran out before this read: it keyed the channel off then

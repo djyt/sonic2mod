@@ -373,9 +373,14 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   run's step 219, a run's entry 19 / 79, + 13 a pitch step (SoR1's: 190 / 242, 219, 23 / 75).  The Z80 load (B9) was the "copied" shape on other registers (`$40DA2`: `lea $559C2.l,a1` /
   `lea $A00000.l,a2` / `move.w #$1FFF,d0` / `move.b (a1)+,(a2)+` / `dbra`): `z80.py`'s copied loads
   are now read on any registers, either lea first (The Revenge of Shinobi's two blocks found too).
-- [ ] 4.2 Rates: recount the loop's cycles (SoR1's counts as the start; this player's `$1FFD` writes
-  and bank code moved), the 68k's stall from the rips (their hi-hats play 2× fast: pack notes).
-- [ ] 4.3 Rests and gates leave the sample playing (`key_off.rest_cuts` False); onsets against the rips.
+- [x] 4.2 Rates: 4.1's count stands (a nibble 186 + 13 × pitch, `$00EE`-`$0132` recounted).  The
+  rips play `$81`-`$83` at it, 0.2-0.5 % under between stalls (Sonic 1's rips ran 2-3 % fast); the
+  pack's "hi-hats at twice their rate" shows nowhere in the stream.  The 68k's stall 1.5-3.1 % by
+  song (`vgm_analyze.py --dac-stall`): `RUN_DPCM.stall` the median, 1.8 % (pitch 4: 12894-13040 Hz).
+- [x] 4.3 Rests and gates leave the sample playing (`key_off.rest_cuts` False); a tie asks for no
+  sample (`$4277A`: `ties.drum_restarts` False; SOR Super Mix's 69).  The rips' banks are the stream
+  as heard: a drum cutting into another shows no seek, so the frame log finds starts by the ROM's
+  samples' bytes (`frame_log(dac_samples=)`).  DAC onsets and lengths same in all 23 rips.
 
 ### Phase 5: convert
 - [ ] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26).

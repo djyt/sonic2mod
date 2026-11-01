@@ -173,6 +173,7 @@ def _psg_dividers(octave: tuple[int, ...]) -> tuple[int, ...]:
 #   the PSG adds (detune + vibrato) >> the note's octave, the divider clamped to 1-1023 ($4226C)
 #   the loop and a loop's exit ($FE) keep a tie (they leave the tie bit); a $FD after a flag sets the tie bit after
 #     the note's end keyed it off ($41C9C): the next note attacks, unless a soft release spared it
+#   the drum track: a tie asks for no sample ($4277A), and a rest stops none: the sample plays out
 _NO_TURN_PAUSE = ModulationRules(turn_pause=False)
 _LATE_TIE = TieRules(late_keys_off=True, exit_clears=False)
 _FM_TRACK = TrackRules(
@@ -185,6 +186,7 @@ _PSG_TRACK = TrackRules(
                        step_range=_PSG_STEPS, initial_step=_INITIAL_VOLUME),
     key_off=KeyOffRules(gate_sees_tie=True, soft_release=SoftReleaseLaw(sign=-1, envelope_clears=True)),
     ties=_LATE_TIE, modulation=_NO_TURN_PAUSE, pitch=PitchRules(octave_shift_from=PSG_FIRST, divider_clamp=True, noise_writes_tone3=False))
+_DRUM_TRACK = TrackRules(ties=TieRules(drum_restarts=False))
 
 
 MUCOM_MD = SmpsVariant(
@@ -198,7 +200,7 @@ MUCOM_MD = SmpsVariant(
     # Its FM octave, volume table and PSG table read from the ROM; the Z80 player's samples
     rules=PlaybackRules(driver=SmpsDriver.MUCOM_MD, fm_frequencies=(), psg_frequencies=(), psg_read=(),
                         psg_envelopes=ADSR_ENVELOPES, dac_names={b: f"dac{b:02X}" for b in MUSIC_SAMPLES},
-                        tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK}),
+                        tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK, ChannelType.DAC: _DRUM_TRACK}),
     rules_from_rom=_rules_from_rom,
     grammar=DIALECT.instruction,
     music_header_reader=read_image,

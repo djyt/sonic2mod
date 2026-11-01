@@ -8397,6 +8397,117 @@ analyze_19_volumes:
   - tools/vgm/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
+disasm_streets_of_rage_2_68k:
+  argv:
+  - tools/rom/disasm.py
+  - input/roms/Streets of Rage 2 (USA).md
+  - 40E46
+  - --table
+  - 41B74
+  - --entries
+  - '16'
+  - --first
+  - F0
+  commit: 800a4bc
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/chips/__init__.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/rom/__init__.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/variant.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - tools/rom/disasm.py
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+disasm_streets_of_rage_2_z80:
+  argv:
+  - tools/rom/disasm.py
+  - input/roms/Streets of Rage 2 (USA).md
+  - --z80
+  - 00EE
+  commit: 800a4bc
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/chips/__init__.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/rom/__init__.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/variant.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - tools/rom/disasm.py
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 frames_golden_axe:
   argv:
   - tools/vgm/vgm_frames.py

@@ -707,6 +707,16 @@ compare_title_screen_merged:
     reference/vgz/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_merged_baseline.mod: 9e8d732c2bf4
     tests/settings.yaml: cb012d4f941d
+disasm_streets_of_rage_2_68k:
+  commit: 800a4bc
+  date: '2026-11-01'
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+disasm_streets_of_rage_2_z80:
+  commit: 800a4bc
+  date: '2026-11-01'
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 frames_golden_axe:
   commit: d4522d7-dirty
   date: '2026-11-01'

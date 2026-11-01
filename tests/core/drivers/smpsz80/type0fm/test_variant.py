@@ -8,13 +8,8 @@ from __future__ import annotations
 
 import dataclasses
 import re
-import sys
 import unittest
 from collections import Counter
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import (
     detect_variant,
@@ -164,7 +159,3 @@ class GoldenAxe(unittest.TestCase):
         index = locate_type0(self.rom)
         self.assertEqual((len(index.music), index.music[0x81], index.music[0x8F]), (15, 0x1937F, 0x1D1CD))
         self.assertEqual((len(index.sfx), min(index.sfx), max(index.sfx)), (42, 0x90, 0xB9))
-
-
-if __name__ == "__main__":
-    unittest.main()

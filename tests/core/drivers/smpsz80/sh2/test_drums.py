@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smpsz80.sh2.drums import read_sh2_drums
 from core.rom import RomImage
@@ -42,7 +37,3 @@ class Drums(unittest.TestCase):
         self.assertEqual([(f.divider, f.noise, f.tone_attenuation, f.noise_attenuation) for f in self.drums[0x89].psg][:3],
                          [(48, 0xE7, 15, 0), (48, 0xE7, 15, 1), (48, 0xE7, 15, 2)])
         self.assertEqual([(f.tone_attenuation, f.noise_attenuation) for f in self.drums[0x81].psg], [(8, 6), (12, 10), (15, 15)])
-
-
-if __name__ == "__main__":
-    unittest.main()

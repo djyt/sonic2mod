@@ -5,13 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
-
 
 
 class ReferenceKey(unittest.TestCase):
@@ -21,7 +15,3 @@ class ReferenceKey(unittest.TestCase):
         self.assertEqual(base, reference_render_key(b"vgz", "[General]\nMuteMask = 0x7E"))
         self.assertNotEqual(base, reference_render_key(b"vgz2", "[General]\nMuteMask = 0x7E"))
         self.assertNotEqual(base, reference_render_key(b"vgz", "[General]\nMuteMask = 0x7D"))
-
-
-if __name__ == "__main__":
-    unittest.main()

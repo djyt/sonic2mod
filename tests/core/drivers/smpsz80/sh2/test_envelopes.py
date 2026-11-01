@@ -6,12 +6,7 @@ then the ROM's.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smpsz80.sh2.envelopes import read_pitch_envelopes
 from core.drivers.smpsz80.sh2.locate import sh2_memory
@@ -58,7 +53,3 @@ class SpaceHarrier2(unittest.TestCase):
         envelopes = read_pitch_envelopes(sh2_memory(RomImage.load(SPACE_HARRIER_2_ROM)))
         self.assertEqual(sorted(envelopes), [1, 2, 3, 4])
         self.assertEqual(envelopes[4].steps, (-8, -4, -2, 0, 1, 2, 4, 2, 1, 0, -1, -2, -1, Scale(2), Jump(3)))
-
-
-if __name__ == "__main__":
-    unittest.main()

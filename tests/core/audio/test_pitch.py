@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audio import cents, hz_to_midi, midi_name, pitch_name
 
@@ -41,7 +36,3 @@ class Intervals(unittest.TestCase):
     def test_cents_of_nothing_is_nan(self):
         self.assertTrue(math.isnan(cents(0.0, 440.0)))
         self.assertTrue(math.isnan(cents(440.0, 0.0)))
-
-
-if __name__ == "__main__":
-    unittest.main()

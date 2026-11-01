@@ -7,12 +7,7 @@ level, and the catalogue renders each slot at its own offset.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import InstrumentRange
 from core.drivers.reference import FM_FREQUENCIES
@@ -79,7 +74,3 @@ class DetunePlanTest(unittest.TestCase):
         _add_detune_variants(cat, plan)
         moved = cat.instruments[25].entry
         self.assertEqual((moved.root, moved.synth_root, moved.synth_shift), (ModNote.C2, 66, 6))
-
-
-if __name__ == "__main__":
-    unittest.main()

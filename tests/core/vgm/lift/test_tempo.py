@@ -7,12 +7,7 @@ given to it.
 from __future__ import annotations
 
 import itertools
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT))
 
 from core.smps import (
     NO_TEMPO_HOLDS,
@@ -109,7 +104,3 @@ class GivenTempo(unittest.TestCase):
     def test_no_holds(self):
         tempo = infer_tempo({"FM1": [5, 6, 9, 20]}, modifier=NO_TEMPO_HOLDS)
         self.assertEqual([tempo.tick(f) for f in (5, 6, 9, 20)], [0, 1, 4, 15])
-
-
-if __name__ == "__main__":
-    unittest.main()

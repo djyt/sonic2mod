@@ -9,12 +9,7 @@ from __future__ import annotations
 import bisect
 import math
 import random
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit.pitch import _same_pitch, _StartScorer
 
@@ -68,7 +63,3 @@ class StartScore(unittest.TestCase):
         self.assertTrue(_same_pitch(440.0, 440.0 * 2 ** (40 / 1200)))
         self.assertFalse(_same_pitch(440.0, 440.0 * 2 ** (60 / 1200)))
         self.assertFalse(math.isnan(1200 * math.log2(880.0 / 440.0)))
-
-
-if __name__ == "__main__":
-    unittest.main()

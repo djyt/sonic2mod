@@ -6,12 +6,7 @@ their instrument numbers after the slots are compacted (Diagnostics.remap_instru
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
 
 from core.diagnostics import Diagnostics, InfoKind, WarningKind
 from core.ui.report import _WARNINGS
@@ -64,7 +59,3 @@ class RemapTests(unittest.TestCase):
         self.assertEqual(diag.infos[0]["instruments"], [2, 3])
         self.assertEqual(diag.infos[1]["composites"], [(3, 4, "x"), (2, 2, "y")])
         self.assertEqual(diag.infos[2]["instruments"], 6)
-
-
-if __name__ == "__main__":
-    unittest.main()

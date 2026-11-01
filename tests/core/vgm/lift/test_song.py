@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import itertools
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.smps import CoordFlag, TempoSegment, frame_of_tick, tempo_schedule
@@ -80,7 +75,3 @@ class Lift(unittest.TestCase):
         flags = [(ev.tick_position, list(ev.effect.values)) for ev in fm1.events
                  if ev.effect is not None and ev.effect.flag is CoordFlag.SET_TEMPO_MOD]
         self.assertEqual((song.header.tempo_modifier, flags), (2, [(288, [3])]))
-
-
-if __name__ == "__main__":
-    unittest.main()

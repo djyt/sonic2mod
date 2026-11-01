@@ -5,13 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from collections import Counter
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import (
     dac_samples,
@@ -147,7 +142,3 @@ class Moonwalker(unittest.TestCase):
         self.assertEqual((samples[0x8C].of, samples[0x8C].pitch, samples[0x90].pitch), (0x85, 0x16, 0x1E))
         self.assertEqual({b: round(samples[b].rate) for b in (0x81, 0x82, 0x84)},
                          {0x81: 10739, 0x82: 6770, 0x84: 15193})     # the rips: 10765, ~6770, ~15190
-
-
-if __name__ == "__main__":
-    unittest.main()

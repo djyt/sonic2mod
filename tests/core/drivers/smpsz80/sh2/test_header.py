@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smpsz80.sh2.header import is_track_list, read_track_list
 from core.drivers.smpsz80.sh2.memory import DriverTables, Sh2Memory
@@ -92,7 +87,3 @@ class TrackLists(unittest.TestCase):
     def test_a_channel_byte_that_names_no_channel_is_no_track_list(self):
         self.assertTrue(is_track_list(_memory(_song()), _BANK + _LIST))
         self.assertFalse(is_track_list(_memory(_song({1: _record(0x03, _CODE + 1)})), _BANK + _LIST))
-
-
-if __name__ == "__main__":
-    unittest.main()

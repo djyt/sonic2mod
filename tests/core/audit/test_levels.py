@@ -5,14 +5,10 @@
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit import levels
 
@@ -36,7 +32,3 @@ class WriteVolumes(unittest.TestCase):
         self.assertIn('  - [12, "psg_noise_e7.raw", 2, 0]', out)            # not measured: renumbered only
         self.assertIn('[7, "fm_v01_Cs3.raw", 14, 0]', out)                  # a window with no row: added
         self.assertNotIn("[5,", out)
-
-
-if __name__ == "__main__":
-    unittest.main()

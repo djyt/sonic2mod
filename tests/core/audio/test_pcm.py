@@ -7,12 +7,7 @@ and where a sound starts and ends (sounding_start / sounding_end).
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audio import limit_peaks, saturate, sounding_end, sounding_start, trim_trailing_silence
 
@@ -103,7 +98,3 @@ class Dither(unittest.TestCase):
         tail = out[-rate // 4:]
         self.assertLess(abs(sum(tail) / len(tail)), 0.5)             # the +40 offset gone
         self.assertGreater(max(tail), 55)                            # the 220 Hz wave kept
-
-
-if __name__ == "__main__":
-    unittest.main()

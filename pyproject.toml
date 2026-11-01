@@ -8,6 +8,7 @@ version = "0.2.0"
 description = "Sonic 1 SMPS music to Amiga MOD converter"
 requires-python = ">=3.11"
 dependencies = [
+    "numpy",
     "pyyaml",
     "rich",
 ]
@@ -48,38 +49,27 @@ select = [
     "ARG002",  # A method parameter its body never reads (one an interface fixes: `_name`)
     "ERA001",  # A comment that parses as code: dead code to delete (word a formula as prose)
 ]
-# Each ignored code: what it would flag, then why it stays off
+# Each ignored code: what it would flag, then why it stays off.  Only codes of the families selected
+# above: an ignore of one not selected does nothing
 ignore = [
     "E501",    # A line over the length limit: wide lines are deliberate (Rich markup, byte tables)
     "E701",    # Two statements on one line after a colon (`if x: y`): compact channel set-up
     "E702",    # Two statements on one line with a semicolon: compact channel set-up
-    "E402",    # An import below other code: sys.path is set up before the imports it enables
     "E741",    # A variable named l, O or I (mistakable for 1 and 0): loop indices in SMPS parsing
-    "PLR2004", # A bare number in a comparison: driver bytes ($81, $E0) read as their own names
-    "C901",    # A function with too many paths through it: the conversion engine is inherently so
-    "PLR0912", # A function with too many branches: as above
-    "PLR0915", # A function with too many statements: as above
-    "PLR0913", # A function with too many parameters: as above
-    "FBT001",  # A bool positional parameter (`f(True)` unreadable at the call): existing API
-    "FBT002",  # A bool positional parameter with a default: as above
-    "PLC0415", # An import inside a function: conditional sys.path inserts in subpackages
-    "N806",    # An UPPER_CASE variable inside a function: SETTINGS_FILE, SMPS_ constants read so
-    # os.path calls that pathlib could make (abspath, chmod, makedirs, exists, isabs, isdir,
-    # isfile, basename, dirname, join, samefile, splitext, open): os.path is kept throughout
-    "PTH100", "PTH102", "PTH103", "PTH107", "PTH110", "PTH111",
-    "PTH112", "PTH113", "PTH116", "PTH117", "PTH118", "PTH119",
-    "PTH120", "PTH122", "PTH123",
-    "SLF001",  # Another object's _private member read: sfx/ and tools/ reuse a few private helpers
-    "TC001",   # An import used only in type hints, not moved under TYPE_CHECKING: not restructured
-    "TC002",   # As above, for a third-party import
-    "TC003",   # As above, for a standard-library import
-    "INP001",  # A .py file in a folder with no __init__.py: tools/ scripts are no package
     "RUF001",  # A character that looks like another (♯, ×) in a string: musical symbols are meant
     "RUF002",  # As above, in a docstring
     "RUF003",  # As above, in a comment
-    "COM812",  # A multi-line call or literal without a trailing comma: a style choice, not enforced
     "B028",    # warnings.warn without stacklevel (the warning names the wrong line): minor
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# An import below other code: a script run by path puts the project on sys.path before importing it
+"convert.py" = ["E402"]
+"analyze.py" = ["E402"]
+"tools/**" = ["E402"]
+"sfx/validate.py" = ["E402"]
+"tests/regression.py" = ["E402"]
+"tests/tool_regression.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["core", "sfx"]
@@ -92,8 +82,10 @@ skip-magic-trailing-comma = false
 [tool.pytest.ini_options]
 # tests/ mirrors the code (tests/core/audit/test_pitch.py beside tests/core/audio/test_pitch.py): its
 # folders are no packages, so a module is imported by its path, not its file name; and tests/core
-# cannot stand in for core where a runner puts tests/ first on sys.path
+# cannot stand in for core where a runner puts tests/ first on sys.path.  The project root is on the
+# path (pythonpath), so a test imports core and tests.<helper> without setting it up itself
 addopts = ["--import-mode=importlib"]
+pythonpath = ["."]
 
 [tool.vulture]
 # Code nothing uses: `python -m vulture`.  vulture_whitelist.py lists what is used in ways it
@@ -126,38 +118,47 @@ reportMissingModuleSource = false
 root_packages = ["core", "sfx"]
 exclude_type_checking_imports = true
 
+# Exhaustive: a new package under core/ fails until it is given a layer.  diagnostics (any layer
+# may report) and version (read by the CLIs) sit outside it
 [[tool.importlinter.contracts]]
 name = "core: each layer imports only those below it"
 type = "layers"
+containers = ["core"]
 layers = [
-    "core.ui",
-    "core.convert | core.audit",
-    "core.merge | core.synth",
-    "core.plan",
-    "core.config",
-    "core.source",
-    "core.vgm | core.drivers",
-    "core.rom",
-    "core.smps | core.mod",
-    "core.chips | core.audio | core.render_cache",
-    "core.files",
+    "ui",
+    "convert | audit | analysis",
+    "merge | synth",
+    "plan",
+    "config",
+    "source",
+    "vgm | drivers",
+    "rom",
+    "smps | mod",
+    "chips | audio | render_cache",
+    "files",
 ]
+exhaustive = true
+exhaustive_ignores = ["diagnostics", "version"]
 
 [[tool.importlinter.contracts]]
 name = "drivers: reached through core.source alone"
 type = "forbidden"
-source_modules = ["core.ui", "core.convert", "core.audit", "core.merge", "core.synth", "core.plan", "core.config"]
+source_modules = ["core.ui", "core.convert", "core.audit", "core.analysis", "core.merge", "core.synth", "core.plan",
+                  "core.config"]
 forbidden_modules = ["core.drivers"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
 name = "drivers: none imports another (a family's shared code is the family folder's)"
 type = "independence"
+# Every driver folder: tests/test_layers.py checks this list against core/drivers/<family>/<driver>/
 modules = [
     "core.drivers.smps68k.sonic1",
     "core.drivers.smps68k.type1a",
     "core.drivers.smps68k.mucom",
     "core.drivers.smpsz80.type0fm",
+    "core.drivers.smpsz80.sh2",
+    "core.drivers.smpsz80.outrun",
 ]
 
 [[tool.importlinter.contracts]]

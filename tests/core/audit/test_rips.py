@@ -5,13 +5,9 @@
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit import ForeignSound, RipFaults, RipGlitch, RipShelf
 from core.vgm import FrameLog
@@ -115,7 +111,3 @@ class Faults(unittest.TestCase):
         self.assertFalse(RipFaults())
         frames = FrameLog([], 735, 0, 0, None)
         self.assertIs(RipFaults().realign(frames), frames)
-
-
-if __name__ == "__main__":
-    unittest.main()

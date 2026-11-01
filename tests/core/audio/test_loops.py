@@ -8,12 +8,7 @@ What a note can still hear past its sustain (heard_padding, fade_end).
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audio import RELEASE_FLOOR_DB
 from core.audio.loops import apply_loop, find_sustain_loop, flatten
@@ -124,7 +119,3 @@ class HeardPadding(unittest.TestCase):
         longer = fade_end([1.0] * 100, 60, 10000, secs=0.004)
         self.assertEqual(longer[-41], 1.0)
         self.assertLess(longer[-21], 1.0)
-
-
-if __name__ == "__main__":
-    unittest.main()

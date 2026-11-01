@@ -8,13 +8,9 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit import ChannelChoice, ForeignSound, RipFaults, RipGlitch, SongSource, TempoSource, compare_with_rip
 from core.audit.rip_diff import _merge_ties
@@ -179,7 +175,3 @@ class Moonwalker(unittest.TestCase):
         counts = {c.name: c.counts() for c in found.diff.channels}
         self.assertEqual([n for n, c in counts.items() if c], ["FM5"])           # its first note, a tick late
         self.assertEqual(counts["FM5"][Aspect.ONSET], 2)
-
-
-if __name__ == "__main__":
-    unittest.main()

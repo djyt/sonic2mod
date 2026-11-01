@@ -6,13 +6,8 @@ twin that rings furthest; a chip composite never takes an FM source's slot.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from typing import ClassVar
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import MergeGroup
 from core.merge import (
@@ -77,7 +72,3 @@ class Slots(unittest.TestCase):
         self.assertEqual(left, [])
         chosen, left = _plan_slots([chip], [14], pcm_only={14})
         self.assertEqual(left, [chip])
-
-
-if __name__ == "__main__":
-    unittest.main()

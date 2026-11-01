@@ -8,12 +8,7 @@ primary louder (no composite).
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import MergeGroup
 from core.merge import (
@@ -108,7 +103,3 @@ class Unison(unittest.TestCase):
         p, f = _note(kind=ChannelType.PSG, inst=17, level_db=-2.0), _note(kind=ChannelType.PSG, inst=17, level_db=-8.0)
         self.assertAlmostEqual(_gain(p, [f], False), 20 * math.log10(1 + 10 ** (-6 / 20)))
         self.assertIsNone(unison_gain_db(p, [_note(kind=ChannelType.PSG, inst=18)], chip=False))
-
-
-if __name__ == "__main__":
-    unittest.main()

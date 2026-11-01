@@ -10,11 +10,10 @@ import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
-
 from core.drivers.names import SmpsDriver
 from core.drivers.registry import all_drivers
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 class Registry(unittest.TestCase):
@@ -29,7 +28,3 @@ class Registry(unittest.TestCase):
         self.assertIn("core.drivers.smps68k.type1a", out)
         for other in ("sonic1", "mucom", "type0fm"):
             self.assertNotIn(f".{other}", out)
-
-
-if __name__ == "__main__":
-    unittest.main()

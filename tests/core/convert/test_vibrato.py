@@ -6,12 +6,7 @@ that replayer is nearest the hardware's swing; the modulation sweep as the drive
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.convert import modulation_offset, modulation_slides, vibrato_depth
 from core.drivers.reference import SONIC1_RULES
@@ -106,7 +101,3 @@ class Modulation(unittest.TestCase):
         drift = ModSet(wait=0, speed=4, delta=1, steps=251)                # Dilapidated Town: 1 unit / 4 frames
         slides = modulation_slides(drift, 400, [(0, 8)], lambda t: t, lambda units: 2.0 * units, 5)
         self.assertEqual(slides, [(0, 0xE, 0x11)])                            # E11: 2 units, 4 c, ~1 period
-
-
-if __name__ == "__main__":
-    unittest.main()

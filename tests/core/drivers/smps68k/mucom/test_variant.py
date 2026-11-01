@@ -5,13 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from collections import Counter
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import detect_variant, locate_sounds, read_rom_code, read_rom_song
 from core.drivers.reference import PSG_FREQUENCIES
@@ -96,7 +91,3 @@ class StreetsOfRage(unittest.TestCase):
         noise = source_map(read_rom_song(self.rom, 0x89, self.index))["PSG3"]
         self.assertEqual(noise.loop_tick, 0)
         self.assertEqual(sum(1 for e in noise.events if e.note and e.note.duration == 90), 16)
-
-
-if __name__ == "__main__":
-    unittest.main()

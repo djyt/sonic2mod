@@ -4,8 +4,11 @@ Usage::
 
     python analyze.py "reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm" --write output/sonic_1/credits_skeleton.yaml
     python tools/config/make_credits_config.py output/sonic_1/credits_skeleton.yaml
+    python tools/config/make_credits_config.py output/sonic_1/credits_skeleton.yaml --out configs/sonic_1/13_credits.yaml
 
-Re-running keeps the volumes (and their VGZ / by-hand comments) of the existing config.
+Writes output/sonic_1/13_credits.yaml unless --out names another file: the shipped config is
+hand-tuned, so replacing it is asked for, not the default.  The volumes (and their VGZ / by-hand
+comments) of the shipped config (--volumes-from) are kept.
 
 Every FM voice's notes are collected as the real pitch the chip plays (byte + pitch_offset +
 smpsChangeTransposition), split into windows of at most three octaves, and each window becomes a
@@ -16,26 +19,37 @@ voice_map entry synthesised at its lowest note (`root: C1` there).  PSG tones li
 voice keeps its own entries, pointing at the shared instrument with its root shifted so its notes
 sound right.  Volumes are the analyze.py skeleton's estimates (set from the VGZ afterwards).
 """
+import argparse
 import re
 import sys
 from collections import Counter, defaultdict
+from pathlib import Path
 
 import yaml
 
-sys.path.insert(0, ".")
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 from core.config import ChannelConfig, ConversionConfig
 from core.drivers.reference import SONIC1_RULES
 from core.plan import walk_channel
 from core.smps import PsgVoice, SmpsParser, VoiceField, semitone_to_note_name, source_map, synth_note_name
 
-SKEL = sys.argv[1] if len(sys.argv) > 1 else "output/sonic_1/credits_skeleton.yaml"
-OUT = "configs/sonic_1/13_credits.yaml"
+_SHIPPED = ROOT / "configs" / "sonic_1" / "13_credits.yaml"
+_ap = argparse.ArgumentParser(description="Build Sonic 1's Credits config in chip-pitch space from an analyze.py skeleton")
+_ap.add_argument("skeleton", nargs="?", default=str(ROOT / "output" / "sonic_1" / "credits_skeleton.yaml"),
+                 help="analyze.py --write's YAML skeleton of Mus91 - Credits.asm")
+_ap.add_argument("--out", default=str(ROOT / "output" / "sonic_1" / "13_credits.yaml"),
+                 help="the config to write (default under output/; the shipped one only when named)")
+_ap.add_argument("--volumes-from", default=str(_SHIPPED), metavar="CONFIG",
+                 help="the config whose measured sample_list volumes are kept (default: the shipped one)")
+_args = _ap.parse_args()
+SKEL, OUT, VOLUMES_FROM = _args.skeleton, Path(_args.out), _args.volumes_from
 MOD_LO, MOD_SPAN = 12, 35          # MOD C1 in SMPS semitones; C1..B3
 
 
 with open(SKEL, encoding="utf-8") as fh:
     skel = yaml.safe_load(fh)
-song = SmpsParser(SONIC1_RULES).parse_file("reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm")
+song = SmpsParser(SONIC1_RULES).parse_file(str(ROOT / "reference" / "smps_drivers" / "sonic_1" / "music" / "Mus91 - Credits.asm"))
 voices = {v.index: v for v in song.voices}
 
 
@@ -181,7 +195,7 @@ psg_noise = psg_inst_first + len(psg_packs)
 skel_vol = {row[0]: row for row in skel["sample_list"]}
 measured: dict[int, tuple[int, str]] = {}
 try:
-    with open(OUT, encoding="utf-8") as fh:
+    with open(VOLUMES_FROM, encoding="utf-8") as fh:
         for line in fh:
             t = line.strip()
             if t.startswith("- [") and "]" in t:
@@ -287,6 +301,7 @@ for label, es in by_label.items():
     for e in es:
         lines += [f"    - low:  {smps_name(e['lo'])}", f"      high: {smps_name(e['hi'])}",
                   f"      mod_instrument: {e['inst']}", f"      root: {mod_name(e['root'])}"]
+OUT.parent.mkdir(parents=True, exist_ok=True)
 with open(OUT, "w", encoding="utf-8", newline="") as fh:
     fh.write("\n".join(lines) + "\n")
 print(f"wrote {OUT}: FM 4-{fm_last} ({len(groups)} instruments from {len(entries)} voices), "

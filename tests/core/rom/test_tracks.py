@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import (
     read_rom_song,
@@ -137,7 +132,3 @@ class Tracks(unittest.TestCase):
         for flag in (0xE4, 0xEE):
             code = decode_tracks(_memory(_music([bytes([0x80, 0x01, flag, 0xA0, 0x01])])), {_SONG + 10: ChannelType.FM}, SONIC1).code
             self.assertIs(code.ops[-1].kind, OpKind.STOP)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -5,12 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit import Excuse, ForeignSound, FrameAspect, FrameCheck, RipFaults, RipShelf, check_frames
 from core.drivers import read_rom_song
@@ -27,6 +23,8 @@ from tests.roms import (
     needs_space_harrier_2_rips,
     needs_streets_of_rage_rips,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 @needs_space_harrier_2_rips
@@ -93,7 +91,3 @@ class GoldenAxe(unittest.TestCase):
         check = check_frames(song, load_frames(GOLDEN_AXE_RIPS / "01 - The Battle.vgz"))
         self.assertNotIn("FM3", {name for name, _, _ in check.checked})
         self.assertTrue(check.ok)
-
-
-if __name__ == "__main__":
-    unittest.main()

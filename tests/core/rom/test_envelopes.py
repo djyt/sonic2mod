@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
@@ -53,7 +48,3 @@ class Envelopes(unittest.TestCase):
                                      "fTone_03": PsgEnvelope((4, 5, 6), 1)})
         with self.assertRaisesRegex(RomError, r"\$83"):
             read_envelopes(_memory(data), addresses, SONIC1)       # Sonic 1 knows only $80 (hold)
-
-
-if __name__ == "__main__":
-    unittest.main()

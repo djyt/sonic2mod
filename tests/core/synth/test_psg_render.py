@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.smps import PsgDrumFrame
 from core.synth.psg_render import render_psg_frames
@@ -33,7 +28,3 @@ class PsgFrames(unittest.TestCase):
         # Writing the noise register resets the LFSR: two renders of one part are equal
         frames = [PsgDrumFrame(16, 0xE7, 8, 6), PsgDrumFrame(16, 0xE7, 12, 10)]
         self.assertEqual(render_psg_frames(frames, 60.0, target_rate=_RATE), render_psg_frames(frames, 60.0, target_rate=_RATE))
-
-
-if __name__ == "__main__":
-    unittest.main()

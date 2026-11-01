@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import struct
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.vgm import (
     VgmError,
@@ -55,7 +50,3 @@ class Reader(unittest.TestCase):
             decode_vgm(_vgm(b"\x6F"))
         with self.assertRaises(VgmError):
             decode_vgm(b"RIFF" + bytes(_HEADER_BYTES))
-
-
-if __name__ == "__main__":
-    unittest.main()

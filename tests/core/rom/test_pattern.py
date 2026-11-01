@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.rom.pattern import code_pattern
 
@@ -36,7 +31,3 @@ class Listing(unittest.TestCase):
     def test_a_listing_of_no_bytes_is_refused(self):
         with self.assertRaisesRegex(ValueError, "no bytes"):
             code_pattern("ld a,b")
-
-
-if __name__ == "__main__":
-    unittest.main()

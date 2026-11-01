@@ -6,12 +6,8 @@ SMPS2ASM macros name them.
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.drivers.smps68k.mucom import MUCOM
@@ -23,6 +19,8 @@ from core.smps import (
     flag_from_macro,
     flag_name,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _MUSIC = ROOT / "reference" / "smps_drivers" / "sonic_1" / "music"
 
@@ -49,7 +47,3 @@ class Flags(unittest.TestCase):
         effects = [ev.effect for ch in song.channels for ev in ch.events if ev.effect is not None]
         self.assertTrue(effects)
         self.assertTrue(all(isinstance(e.flag, CoordFlag) for e in effects))
-
-
-if __name__ == "__main__":
-    unittest.main()

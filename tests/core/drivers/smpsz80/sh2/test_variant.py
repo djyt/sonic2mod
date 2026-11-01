@@ -6,13 +6,8 @@ then every song of the ROM when it is present.
 
 from __future__ import annotations
 
-import sys
 import unittest
 from collections import Counter
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import detect_variant, read_rom_code
 from core.drivers.smpsz80.sh2 import SH2
@@ -99,7 +94,3 @@ class SpaceHarrier2(unittest.TestCase):
             used = {op.effect.index for op in code.code.ops if op.kind is OpKind.EFFECT and isinstance(op.effect, SetVoice)}
             with self.subTest(song=f"${sid:02X}"):
                 self.assertTrue(all(code.voices[i].operators for i in used))
-
-
-if __name__ == "__main__":
-    unittest.main()

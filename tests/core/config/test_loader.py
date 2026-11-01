@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import apply_variant
 
@@ -70,7 +65,3 @@ class ApplyVariantTests(unittest.TestCase):
             apply_variant({"variants": {"lofi": 3}}, "lofi")
         with self.assertRaisesRegex(ValueError, "cannot hold variants"):
             apply_variant({"variants": {"lofi": {"variants": {}}}}, "lofi")
-
-
-if __name__ == "__main__":
-    unittest.main()

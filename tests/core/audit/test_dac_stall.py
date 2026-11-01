@@ -5,16 +5,14 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit.dac_stall import dac_stall
 from core.vgm import read_vgm
 from tests.roms import OUTRUN_RIPS
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _GREEN_HILL = ROOT / "reference" / "vgz" / "sonic_1" / "02 - Green Hill Zone.vgz"
 
@@ -32,7 +30,3 @@ class Stall(unittest.TestCase):
         assert stall is not None
         self.assertAlmostEqual(stall.share, 0.349, places=3)
         self.assertIsNone(dac_stall(read_vgm(OUTRUN_RIPS / "04 - Last Wave.vgz")))   # no DAC
-
-
-if __name__ == "__main__":
-    unittest.main()

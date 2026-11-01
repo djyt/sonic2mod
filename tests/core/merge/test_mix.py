@@ -7,12 +7,7 @@ are cut to the composite's notes, a settled mix loops, a mix takes its primary's
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audio import RELEASE_FLOOR_DB
 from core.config import MergeGroup
@@ -132,7 +127,3 @@ class Dither(unittest.TestCase):
         self.assertEqual(composite_dither(plain, {15: "off"}, "shaped"), "shaped")   # a follower's is not
         own = Composite(23, key, MergeGroup("FM1", ["PSG2"], dither="flat"))
         self.assertEqual(composite_dither(own, {10: "off"}, "shaped"), "flat")       # the group's wins
-
-
-if __name__ == "__main__":
-    unittest.main()

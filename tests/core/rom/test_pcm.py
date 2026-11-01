@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.chips import MD_PSG_CLOCK
 from core.rom import RomError
@@ -59,7 +54,3 @@ class Table(unittest.TestCase):
         memory = bytes(_BANK) + _entry(_BANK, 0, 1, 0)
         with self.assertRaisesRegex(RomError, r"\$81"):
             PcmTable(memory, _BANK, _ENTRY, one_format(_DPCM), _NAMES).sample(0x81)
-
-
-if __name__ == "__main__":
-    unittest.main()

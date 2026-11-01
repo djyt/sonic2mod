@@ -43,7 +43,7 @@ RANGE_SPACES = ("source", "chip")
 
 def _range_space(data: dict, filepath) -> str:
     """`range_space:` source | chip; anything else is an error (it read as source)."""
-    space = str(data.get("range_space", "source")).lower()
+    space = str(data.get("range_space", ConversionConfig.range_space)).lower()
     if space not in RANGE_SPACES:
         raise ValueError(f"{filepath}: range_space must be one of {', '.join(RANGE_SPACES)} (got {data['range_space']!r})")
     return space
@@ -51,11 +51,15 @@ def _range_space(data: dict, filepath) -> str:
 
 def _region(data: dict, filepath) -> str:
     """`region:`, lower-cased; an unknown one is an error."""
-    region = str(data.get("region", "ntsc")).lower()
+    region = str(data.get("region", ConversionConfig.region)).lower()
     if region not in REGIONS:
         raise ValueError(f"{filepath}: region must be one of {', '.join(REGIONS)} (got {data['region']!r})")
     return region
 
+
+# The config keys that are ConversionConfig fields of the same name, taken as the YAML states them
+_PLAIN_KEYS = ("name", "input_file", "output_file", "target_bpm", "target_speed", "ticks_per_row",
+               "num_mod_channels", "auto_bpm", "samples_dir", "max_patterns")
 
 # A sample_list row's fields; volume and finetune may be left off
 SAMPLE_SLOT, SAMPLE_FILE, SAMPLE_VOLUME, SAMPLE_FINETUNE = range(4)
@@ -217,21 +221,10 @@ class ConversionConfig:
         unknown = sorted(set(data) - _KEYS)
         if unknown:
             raise ValueError(f"{filepath}: unknown key(s): {', '.join(unknown)}")
-        config = cls(
-            name=data.get('name', 'Untitled'),
-            variant=variant,
-            input_file=data.get('input_file', ''),
-            output_file=data.get('output_file', 'output.mod'),
-            target_bpm=data.get('target_bpm', 150),
-            target_speed=data.get('target_speed', 6),
-            ticks_per_row=data.get('ticks_per_row', 6.0),
-            num_mod_channels=data.get('num_mod_channels'),
-            auto_bpm=data.get('auto_bpm', False),
-            region=_region(data, filepath),
-            range_space=_range_space(data, filepath),
-            samples_dir=data.get('samples_dir', './samples/'),
-            max_patterns=data.get('max_patterns', 127),
-        )
+        # The keys read as they are; one left out keeps its field's default
+        stated = {key: data[key] for key in _PLAIN_KEYS if key in data}
+        config = cls(variant=variant, region=_region(data, filepath), range_space=_range_space(data, filepath),
+                     **stated)
         config.channels = parse_channels(data)
         config.dac_samples = parse_dac_samples(data)
         config.voice_map = parse_voice_maps(data)
@@ -298,20 +291,20 @@ class ConversionConfig:
         self.merge_fill_cut_after = {str(k): max(1, int(v)) for k, v in cut_after.items()}
         self.merge_vacate = _channel_list(data, 'merge_vacate')
         self.merge_output_file = data.get('merge_output_file')
-        self.merge_max_synth_shift = int(data.get('merge_max_synth_shift', 12))
-        self.merge_loop_timbre = bool(data.get('merge_loop_timbre', False))
-        self.merge_tolerance = int(data.get('merge_tolerance', 1))
+        self.merge_max_synth_shift = int(data.get('merge_max_synth_shift', self.merge_max_synth_shift))
+        self.merge_loop_timbre = bool(data.get('merge_loop_timbre', self.merge_loop_timbre))
+        self.merge_tolerance = int(data.get('merge_tolerance', self.merge_tolerance))
         bank_slots = data.get('merge_bank_slots', 'auto')
         self.merge_bank_slots_auto = str(bank_slots).lower() == 'auto'
         if not self.merge_bank_slots_auto:
             self.merge_bank_slots = max(0, int(bank_slots))
-        self.merge_twins = str(data.get('merge_twins', 'short'))
+        self.merge_twins = str(data.get('merge_twins', self.merge_twins))
         if self.merge_twins not in TWIN_MODES:
             raise ValueError(f"merge_twins: {self.merge_twins!r} is not one of {', '.join(TWIN_MODES)}")
         if data.get('loop_drift_db') is not None:
             self.loop_drift_db = max(0.0, float(data['loop_drift_db']))
         if data.get('treble_shelf_db') is not None:
             self.treble_shelf_db = float(data['treble_shelf_db'])
-        self.dac_stall = float(data.get('dac_stall', 0.0))
+        self.dac_stall = float(data.get('dac_stall', self.dac_stall))
         if not 0.0 <= self.dac_stall < 1.0:
             raise ValueError(f"dac_stall: {self.dac_stall} is not a share of the time (0 to under 1)")

@@ -6,12 +6,7 @@ bank and its indexes found by their shape.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import FM_FREQUENCIES
 from core.drivers.smpsz80.memory import BankedZ80Memory
@@ -107,7 +102,3 @@ class SmpsZ80(unittest.TestCase):
     def test_a_68k_rom_has_no_z80_driver_to_find(self):
         with self.assertRaisesRegex(RomError, "Z80"):
             sound_bank(_rom(b"\0" * 0x100))
-
-
-if __name__ == "__main__":
-    unittest.main()

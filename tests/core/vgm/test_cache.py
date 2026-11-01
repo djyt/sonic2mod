@@ -5,13 +5,9 @@
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.vgm import (
     decode_vgm,
@@ -63,7 +59,3 @@ class FrameCache(unittest.TestCase):
     def test_no_directory_reads_the_rip(self):
         rip = self._rip("a.vgm", _A4[0])
         self.assertEqual(load_frames(rip), frame_log(decode_vgm(rip.read_bytes())))
-
-
-if __name__ == "__main__":
-    unittest.main()

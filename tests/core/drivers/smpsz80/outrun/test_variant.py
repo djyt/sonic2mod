@@ -6,13 +6,8 @@ tables and every song when it is present.
 
 from __future__ import annotations
 
-import sys
 import unittest
 from collections import Counter
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import detect_variant, read_rom_code, read_rom_song
 from core.drivers.smpsz80.memory import BankedZ80Memory
@@ -112,7 +107,3 @@ class OutRun(unittest.TestCase):
             dropped += read_rom_code(self.rom, sound, self.index).dropped
         self.assertEqual(dropped, {"$FF $02: play sound $97 (each song converts alone)": 1,
                                    "PSG voice on an FM track (ignored)": 3})
-
-
-if __name__ == "__main__":
-    unittest.main()

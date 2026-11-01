@@ -7,12 +7,11 @@ imports only those below it, the drivers only through core.source, no driver ano
 from __future__ import annotations
 
 import os
-import sys
+import tomllib
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 try:
     from importlinter import configuration
@@ -35,5 +34,15 @@ class Layers(unittest.TestCase):
         self.assertTrue(kept, "an import breaks a layer rule: the report above names it")
 
 
-if __name__ == "__main__":
-    unittest.main()
+class DriverIndependence(unittest.TestCase):
+    """The "none imports another" contract names every driver folder: a new one is not left out."""
+
+    def test_every_driver_folder_is_listed(self):
+        with open(ROOT / "pyproject.toml", "rb") as f:
+            contracts = tomllib.load(f)["tool"]["importlinter"]["contracts"]
+        listed = next(c["modules"] for c in contracts if c["type"] == "independence" and "none imports" in c["name"])
+
+        # core/drivers/<family>/<driver>/__init__.py
+        folders = sorted(".".join(p.parent.relative_to(ROOT).parts)
+                         for p in (ROOT / "core" / "drivers").glob("*/*/__init__.py"))
+        self.assertEqual(sorted(listed), folders)

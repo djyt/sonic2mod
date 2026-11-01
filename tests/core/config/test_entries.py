@@ -7,12 +7,8 @@ dither overrides, sample settings, a key given twice, pattern ranges.
 from __future__ import annotations
 
 import io
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import format_patterns, load_yaml, parse_patterns
 from core.config.entries import _parse_instrument_range, _parse_merge_group
@@ -95,7 +91,3 @@ class Dither(unittest.TestCase):
         self.assertEqual(g.dither, "off")                    # YAML reads a bare `off` as false
         with self.assertRaises(ValueError):
             _parse_instrument_range({"low": "C4", "high": "B5", "mod_instrument": 9, "dither": "noisy"})
-
-
-if __name__ == "__main__":
-    unittest.main()

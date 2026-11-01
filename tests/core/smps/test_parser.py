@@ -6,17 +6,15 @@ and bare durations.
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.smps import (
     SmpsParser,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _MUSIC = ROOT / "reference" / "smps_drivers" / "sonic_1" / "music"
 
@@ -119,7 +117,3 @@ Song_Voices:
         nc4, nd4, ne4 = 0xB1, 0xB3, 0xB5
         self.assertEqual(notes, [(0, nc4, 24), (24, nd4, 24), (48, ne4, 12), (60, nd4, 12), (72, ne4, 12)])
         self.assertEqual((fm1.loop_tick, fm1.loop_event_index), (60, 3))
-
-
-if __name__ == "__main__":
-    unittest.main()

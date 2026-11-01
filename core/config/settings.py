@@ -480,7 +480,11 @@ def find_settings(config_path: str | None = None) -> str | None:
 
 
 def load_settings(path: str | None) -> tuple["SynthesisSettings", "PsgSynthesisSettings"]:
-    """Both chips' settings from `path`; the code's defaults when there is no file."""
-    if path is None or not os.path.exists(path):
+    """Both chips' settings from `path`; the code's defaults when there is none (None: find_settings
+    found no file).  A path that does not exist is an error: a mistyped --settings would otherwise
+    run on the defaults, unannounced."""
+    if path is None:
         return SynthesisSettings(), PsgSynthesisSettings()
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"settings file not found: {path}")
     return SynthesisSettings.from_yaml(path), PsgSynthesisSettings.from_yaml(path)

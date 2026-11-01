@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smpsz80.sh2.locate import driver_tables, locate_sh2
 from core.drivers.smpsz80.sh2.memory import DriverTables
@@ -41,7 +36,3 @@ class OtherDrivers(unittest.TestCase):
     def test_golden_axe_has_no_song_loader(self):
         with self.assertRaisesRegex(RomError, "not a Space Harrier II driver|banks mapped"):
             driver_tables(RomImage.load(GOLDEN_AXE_ROM))
-
-
-if __name__ == "__main__":
-    unittest.main()

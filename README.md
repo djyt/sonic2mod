@@ -15,14 +15,11 @@ Convert Sonic The Hedgehog 1 SMPS assembly music files from the Sega Megadrive t
 ```bash
 git clone https://github.com/djyt/sonic2mod
 cd sonic2mod
-pip install .
-```
-
-For a development install (edits to source take effect immediately):
-
-```bash
 pip install -e .
 ```
+
+An editable install: the code reads `configs/`, `3rdparty/` and `prebuilt/` from the clone, so a plain
+`pip install .` into site-packages cannot find them.
 
 This registers three CLI commands: `sonic2mod` (convert), `sonic2mod-analyze` (analyse) and
 `sonic2wav` (render the sound effects). All three take `--version`.
@@ -104,7 +101,7 @@ The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPla
 build with libopenmpt — setup is in `docs/pipeline.md`. The per-song findings, and what each song
 still needs, are written up in `docs/audits/`.
 
-There is also a regression suite. It converts all 19 songs and diffs every channel of every
+There is also a regression suite. It converts every song (`tests/cases.yaml`) and diffs every channel of every
 pattern against a saved baseline, so any change to the converter has to prove it altered only
 what it meant to:
 
@@ -155,19 +152,19 @@ python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
 python sonic2wav.py --all --dry-run
 ```
 
-Useful options: `--rate native` writes at the chip's own 53267 Hz and skips resampling, `--psg-gain` sets the PSG level against the FM, `--no-normalize` writes raw chip levels. By default a single global gain is applied across all 49 files, which keeps the relative loudness the composers intended rather than making everything equally loud.
+What is written is set in `configs/sfx.yaml`: `rate` (`native` writes at the chip's own 53267 Hz and skips resampling), `psg_gain` (the PSG against the FM), `level` and more; `--config` reads another file. By default a single global gain is applied across all 49 files, which keeps the relative loudness the composers intended rather than making everything equally loud.
 
 ### 8-bit samples for the Amiga
 
 ```bash
-python sonic2wav.py --all --8bit
+python sonic2wav.py --all --variant amiga
 ```
 
-Writes signed 8-bit mono `.raw` files to `output/sonic_1/sfx8/` alongside a `manifest.yaml` giving each sample's rate, the note to trigger it at, the suggested MOD volume and its repeat points.
+Writes signed 8-bit mono `.raw` files to `output/sonic_1/sfx/amiga/` alongside a `manifest.yaml` giving each sample's rate, the note to trigger it at, the suggested MOD volume and its repeat points.
 
 Eight bits needs roughly the opposite treatment to the 16-bit set. Each sample is DC-corrected, resampled once straight from the chip rate, peak-normalised, and dithered with noise shaping — then the volume column restores the composed balance. Normalising per sample rather than globally is worth a median 1.5 bits, and 3.1 bits on the quietest effect.
 
-Rates are chosen per effect from ProTracker's own period table, so each sample plays at true pitch with finetune 0. `--max-rate 16574` targets an A500 (whose fixed ~4.4 kHz filter makes more largely academic) and roughly halves the total; `--flat-rate N` forces a single rate for everything.
+Rates sit on ProTracker's own period table (`paula: true`), so each sample plays at true pitch with finetune 0. The `amiga` variant writes every effect at one rate (`rate: 8287`, C-2); `rate: auto` picks one per effect, up to `max_rate` (16574 targets an A500, whose fixed ~4.4 kHz filter makes more largely academic, and roughly halves the total).
 
 See `docs/sfx_rendering.md` for the driver details, the 8-bit chain, and the handful of documented deviations from stock hardware.
 

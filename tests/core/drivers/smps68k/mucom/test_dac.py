@@ -6,12 +6,7 @@ against the rips' banks when the ROM and rips are present.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smps68k.mucom.dac import _RunDpcm
 from core.rom.image import RomError
@@ -48,7 +43,3 @@ class SamplesAgainstTheRips(unittest.TestCase):
             unsigned = bytes(b ^ 0x80 for b in s.pcm)
             self.assertTrue(any(unsigned in bank for bank in banks), f"${s.sound:02X}")
         self.assertEqual([round(s.rate) for s in samples], [12983, 15381, 9464, 15381])
-
-
-if __name__ == "__main__":
-    unittest.main()

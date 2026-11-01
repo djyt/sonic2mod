@@ -6,14 +6,10 @@ prebuilt/ on a machine with no compiler.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.chips import cbuild
 
@@ -52,7 +48,3 @@ class LibraryPath(unittest.TestCase):
         (self.prebuilt / self.lib.lib_name).write_bytes(b"lib")
         with self._without_compiler():
             self.assertEqual(self.lib.get_lib_path(), self.lib.lib_path)
-
-
-if __name__ == "__main__":
-    unittest.main()

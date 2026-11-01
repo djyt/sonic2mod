@@ -7,12 +7,8 @@ from __future__ import annotations
 
 import glob
 import re
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers import (
     dac_samples,
@@ -33,6 +29,8 @@ from tests.roms import (
     SONIC1_ROM,
     needs_sonic1_rom_and_asm,
 )
+
+ROOT = Path(__file__).resolve().parents[5]
 
 
 @needs_sonic1_rom_and_asm
@@ -86,7 +84,3 @@ class SonicRev01(unittest.TestCase):
             if s.name in raws:
                 self.assertEqual(s.pcm, (ROOT / "input" / "sonic_1" / "samples" / f"{raws[s.name]}.raw").read_bytes(), s.name)
         self.assertEqual([s.pitch for s in dac_samples(self.rom)], [23, 1, 27, 0x12, 0x15, 0x1C, 0x1D])
-
-
-if __name__ == "__main__":
-    unittest.main()

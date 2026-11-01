@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import FM_FREQUENCIES
 from core.drivers.smpsz80.program import driver_ram, fm_frequencies, fm_table
@@ -61,7 +56,3 @@ class DriverRam(unittest.TestCase):
     def test_none_is_refused(self):
         with self.assertRaisesRegex(RomError, "0 Z80 programs"):
             driver_ram(_rom(_program(False)))
-
-
-if __name__ == "__main__":
-    unittest.main()

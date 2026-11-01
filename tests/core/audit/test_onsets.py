@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit import keyon_onsets
 
@@ -41,7 +36,3 @@ class KeyonOnsets(unittest.TestCase):
         vo = [k * 0.25 for k in range(100)]
         m = keyon_onsets(vo, [t for k, t in enumerate(vo) if k % 10])
         self.assertEqual((m.missing, m.extra, m.lost[:2]), (10, 0, [0.0, 2.5]))
-
-
-if __name__ == "__main__":
-    unittest.main()

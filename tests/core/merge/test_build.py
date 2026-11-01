@@ -5,14 +5,9 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import MergeGroup
 from core.merge import (
@@ -74,7 +69,3 @@ class MovedLevels(unittest.TestCase):
         self.assertEqual(mod.samples[18].volume, 10)
         self.assertEqual(cfg.sample_list[1][2], 10)              # unmoved
         self.assertEqual([(i['instrument'], i['unison']) for i in infos], [(19, False)])
-
-
-if __name__ == "__main__":
-    unittest.main()

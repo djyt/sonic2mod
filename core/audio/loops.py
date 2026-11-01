@@ -25,8 +25,7 @@ loop, and the sample can be cut there: its length no longer depends on the notes
      cycles is rarely the answer: nearly every Sonic 1 voice detunes its operators (DT1),
      so its waveform never repeats exactly and the best length is where the operators'
      phases come closest to recurring (a beating pair: one beat period).  The lowest
-     score wins (numpy scores every length at once; without it only the fundamental's
-     grid is tried).
+     score wins (numpy scores every length at once).
      A loop that would end past `MAX_END_FRACTION` of the rendered sustain is refused: the
      envelope was still settling there (a slowly decaying voice), and a loop at its last
      level would freeze a decay that the hardware carries on.  The generators render a
@@ -61,6 +60,8 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+
+import numpy as np
 
 from .gain import gain_to_db
 
@@ -134,37 +135,23 @@ def loop_error(x: Sequence[float], start: int, length: int, span: int) -> float:
 
 def _errors(x: Sequence[float], s: int, min_len: int, max_len: int, check: int,
             period: float, cycle: float = 0.0) -> list[tuple[float, int]]:
-    """[(error, length)] for the even loop lengths in [min_len, max_len] at start `s`: every
-    one with numpy, else the fundamental's grid (k periods, two samples either way).  With an
+    """[(error, length)] for every even loop length in [min_len, max_len] at start `s`.  With an
     LFO `cycle`, only the lengths within a period of a whole number of cycles."""
     if cycle:
         return [(loop_error(x, s, length, check), length) for length in range(min_len, max_len + 1, 2)
                 if abs(length - max(1, round(length / cycle)) * cycle) <= period]
-    try:
-        import numpy as np
-    except ImportError:
-        np = None
-    if np is not None:
-        seg = np.asarray(x[s:s + max_len + check], dtype=np.float64)
-        a = seg[:check]
-        den = float(a @ a)
-        if den <= 0:
-            return []
-        win = np.lib.stride_tricks.sliding_window_view(seg, check)   # row L = the window at s + L
-        d = win - a
-        err = np.sqrt(np.einsum("ij,ij->i", d, d) / den)
-        lengths = np.arange(min_len, max_len + 1, 2)
-        return [(float(err[L]), int(L)) for L in lengths if len(err) > L]
-    out = []
-    k = 1
-    while True:
-        base = _even(k * period)
-        if base > max_len:
-            break
-        out.extend((loop_error(x, s, length, check), length)
-                   for length in (base - 2, base, base + 2) if min_len <= length <= max_len)
-        k += 1
-    return out
+
+    # Every length at once: row L of the sliding windows is the window at s + L
+    seg = np.asarray(x[s:s + max_len + check], dtype=np.float64)
+    a = seg[:check]
+    den = float(a @ a)
+    if den <= 0:
+        return []
+    win = np.lib.stride_tricks.sliding_window_view(seg, check)
+    d = win - a
+    err = np.sqrt(np.einsum("ij,ij->i", d, d) / den)
+    lengths = np.arange(min_len, max_len + 1, 2)
+    return [(float(err[L]), int(L)) for L in lengths if len(err) > L]
 
 
 def _band(ref: list[float], tol: float) -> tuple[float, float]:

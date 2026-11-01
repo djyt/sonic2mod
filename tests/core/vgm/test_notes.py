@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import struct
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.vgm import (
     decode_vgm,
@@ -78,7 +73,3 @@ class Notes(unittest.TestCase):
         fm1 = segments["FM1"]
         self.assertEqual([hz is None for _, hz in fm1], [True, False, True])
         self.assertAlmostEqual(end, 735 / 44100)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.smps import PitchEnvelope
 from core.smps.pitch_envelope import Hold, Jump, Restart, Scale
@@ -38,7 +33,3 @@ class Offsets(unittest.TestCase):
     def test_an_envelope_of_commands_alone_is_refused(self):
         with self.assertRaisesRegex(ValueError, "without an offset"):
             PitchEnvelope((Scale(1), Jump(0))).offsets(1)
-
-
-if __name__ == "__main__":
-    unittest.main()

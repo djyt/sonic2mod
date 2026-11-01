@@ -6,13 +6,8 @@ bytes, the hardware LFO and FM3's special mode (docs/smps_variants.md).
 
 from __future__ import annotations
 
-import sys
 import unittest
 from dataclasses import replace
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.chips import FmLfo
 from core.drivers.smps68k.memory import Relative68kMemory
@@ -259,7 +254,3 @@ class SpecialMode(unittest.TestCase):
     def test_only_channel_3_has_the_mode(self):
         with self.assertRaisesRegex(ValueError, "special mode on FM1"):
             self._voices_set(bytes([0xF7, 0x64, 0, 0, 0, 0x00]), "FM1")
-
-
-if __name__ == "__main__":
-    unittest.main()

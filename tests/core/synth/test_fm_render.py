@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.chips import FmLfo, freq_word_hz
 from core.chips.ym2612 import output_rate
@@ -108,7 +103,3 @@ class RenderedFrames(unittest.TestCase):
             self.assertEqual(max(abs(x) for x in mono) > 0, sounds)
             if sounds:
                 self.assertAlmostEqual(_hz(mono, rate) / freq_word_hz(word), 1.0, delta=0.005)
-
-
-if __name__ == "__main__":
-    unittest.main()

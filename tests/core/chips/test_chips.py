@@ -7,12 +7,8 @@ driver in them, and the driver's tables and the VGM reader both built on them.
 from __future__ import annotations
 
 import re
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.chips import (
     CARRIER_OFFSETS_BY_ALG,
@@ -26,6 +22,8 @@ from core.chips import (
     psg_frequency_hz,
     psg_level_db,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 class Facts(unittest.TestCase):
@@ -71,7 +69,3 @@ class Layers(unittest.TestCase):
     def test_only_the_lift_reads_the_song_model(self):
         readers = {m.split("/")[0] for m, deps in self._imports("vgm").items() if "smps" in deps}
         self.assertEqual(readers, {"lift"})
-
-
-if __name__ == "__main__":
-    unittest.main()

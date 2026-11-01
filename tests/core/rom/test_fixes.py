@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
@@ -60,7 +55,3 @@ class Fixes(unittest.TestCase):
     def test_a_fix_whose_bytes_differ_is_refused(self):
         with self.assertRaises(RomError):
             apply_fixes(_rom(b"\x01"), (RomFix(_SONG, b"\x02", b"\x03", "test"),))
-
-
-if __name__ == "__main__":
-    unittest.main()

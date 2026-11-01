@@ -7,13 +7,9 @@ and a variant's default output file.
 from __future__ import annotations
 
 import io
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import ConversionConfig, load_yaml, parse_number
 
@@ -108,7 +104,3 @@ class OutputFileTests(unittest.TestCase):
     def test_stated_output_file(self):
         text = 'output_file: "output/02_song.mod"\nvariants:\n  lofi: {output_file: "output/small.mod"}\n'
         self.assertEqual(self._config(text, "lofi").output_file, "output/small.mod")
-
-
-if __name__ == "__main__":
-    unittest.main()

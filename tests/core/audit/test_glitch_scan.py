@@ -7,12 +7,8 @@ lost V-int; one channel moving alone is the song's.  On hand-built logs, and on 
 from __future__ import annotations
 
 import itertools
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audit import ChannelMove, GlitchCandidate, RipShelf, SongSource, scan_glitches
 from core.drivers.reference import SONIC1_RULES
@@ -20,6 +16,8 @@ from core.smps import TempoSegment
 from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song, load_frames
 from tests.roms import needs_golden_axe_rips, needs_space_harrier_2_rips
 from tests.vgm_build import fm_notes
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _MODIFIER = 3
 _END = 120                      # ticks
@@ -106,7 +104,3 @@ class GoldenAxe(unittest.TestCase):
         # At the song's phase FM2 FM4 FM5 FM6 move a frame early on while FM1 does not: the phase's
         scan = _scan("golden_axe", "8c_old_map")
         self.assertEqual((scan.holds_early, scan.candidates), (True, []))
-
-
-if __name__ == "__main__":
-    unittest.main()

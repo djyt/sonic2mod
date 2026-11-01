@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import struct
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.vgm import (
     decode_vgm,
@@ -76,7 +71,3 @@ class Frames(unittest.TestCase):
         bank = bytes(range(8))
         block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank
         self.assertEqual(frame_log(decode_vgm(_vgm(block + b"\x81"))).pcm, bank)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -6,12 +6,8 @@ the B4 byte.
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.smps import (
@@ -24,6 +20,8 @@ from core.smps import (
     pan_is_hard,
     pan_side,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _MUSIC = ROOT / "reference" / "smps_drivers" / "sonic_1" / "music"
 
@@ -49,7 +47,3 @@ class Panning(unittest.TestCase):
         song = SmpsParser(SONIC1_RULES).parse_file(str(_GHZ))
         pans = {ev.effect.b4 for ch in song.channels for ev in ch.events if isinstance(ev.effect, Pan)}
         self.assertEqual(pans, {0x40, 0x80, 0xC0})          # panRight, panLeft, panCenter (all , $00)
-
-
-if __name__ == "__main__":
-    unittest.main()

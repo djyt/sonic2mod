@@ -7,13 +7,9 @@ each instrument's sounding pitch, roots resolved and detune planned.
 from __future__ import annotations
 
 import math
-import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.audio import semitone_to_hz
 from core.chips import freq_word_hz
@@ -28,6 +24,8 @@ from core.plan import (
     sounding_pitches,
 )
 from core.smps import fm_table_index
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _C2 = ModNote.C2.value          # MOD index 12
 
@@ -84,7 +82,3 @@ class Prepare(unittest.TestCase):
         self.assertTrue(rooted and all(e.synth_root is not None for e in rooted))
         self.assertIs(plan.detune, cfg.detune_plan)
         self.assertTrue(plan.synth_roots)
-
-
-if __name__ == "__main__":
-    unittest.main()

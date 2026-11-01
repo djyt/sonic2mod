@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import dataclasses
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smps68k.memory import Relative68kMemory
 from core.drivers.smps68k.sonic1 import SONIC1
@@ -86,7 +81,3 @@ class Headers(unittest.TestCase):
         self.assertIs(music_header(memory, _SONG, variant), own)
         self.assertIs(sfx_header(memory, _SONG, variant), own)
         self.assertEqual(music_header(memory, _SONG, SONIC1), read_music_header(memory, _SONG, SONIC1.header))
-
-
-if __name__ == "__main__":
-    unittest.main()

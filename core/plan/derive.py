@@ -164,6 +164,9 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     if config.variant is not None and "output_file" in derivation.derived:
         derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)
     complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)
+    if not derivation.files:        # no DAC samples: nothing to write, no folder made in the cwd
+        return complete, derivation
+
     samples = Path(complete.samples_dir)
     samples.mkdir(parents=True, exist_ok=True)
     for name, pcm in derivation.files.items():

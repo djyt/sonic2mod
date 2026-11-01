@@ -6,14 +6,9 @@ for all of it and keeps the rest on its own; prepare_merged_config's checks on i
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import MergeGroup
 from core.merge import MergePlan, NoteOn, pool
@@ -118,7 +113,3 @@ class VacateChecks(unittest.TestCase):
         for why, config in cases.items():
             with self.subTest(why), self.assertRaisesRegex(ValueError, why):
                 prepare_merged_config(config)
-
-
-if __name__ == "__main__":
-    unittest.main()

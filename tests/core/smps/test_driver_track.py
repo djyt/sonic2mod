@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.smps import ChannelType, PlaybackRules, TrackRules
 from core.smps.driver_track import DriverTrack
@@ -34,7 +29,3 @@ class Durations(unittest.TestCase):
         # Space Harrier II: a byte counted up to - none read yet (0) is 256 ticks, 100 x 3 is 44
         track = _track(TrackRules(byte_durations=True))
         self.assertEqual([track.duration(t) for t in (0, 1, 72, 255, 256, 300)], [256, 1, 72, 255, 256, 44])
-
-
-if __name__ == "__main__":
-    unittest.main()

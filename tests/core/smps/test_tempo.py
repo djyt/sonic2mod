@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.smps import TempoSegment, tempo_schedule
 
@@ -27,7 +22,3 @@ class Segments(unittest.TestCase):
         later = tempo_schedule(2, [(4, 3)])[1]
         self.assertEqual((later.frame, later.tick), (9, 5))
         self.assertTrue(later.holds(11))
-
-
-if __name__ == "__main__":
-    unittest.main()

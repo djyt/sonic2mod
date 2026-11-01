@@ -6,12 +6,7 @@ the 22-character fit.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.convert.sample_names import NAME_CHARS, _fit, _range, channel_label
 
@@ -32,7 +27,3 @@ class LabelTests(unittest.TestCase):
         long = _fit(["bank", "D+F1+2+3+4+5+P1+2+3", "11 hits"])
         self.assertLessEqual(len(long), NAME_CHARS)
         self.assertEqual(long, "bank D+F1+2+3+4+5+P1+2+3"[:NAME_CHARS])
-
-
-if __name__ == "__main__":
-    unittest.main()

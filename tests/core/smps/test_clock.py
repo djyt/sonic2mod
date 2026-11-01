@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import dataclasses
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.smps import TimerA, update_hz
@@ -32,7 +27,3 @@ class UpdateHz(unittest.TestCase):
     def test_an_unknown_region_is_an_error(self):
         with self.assertRaisesRegex(ValueError, "region"):
             update_hz(SONIC1_RULES, "secam")
-
-
-if __name__ == "__main__":
-    unittest.main()

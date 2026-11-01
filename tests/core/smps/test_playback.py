@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.smps import (
@@ -181,7 +176,3 @@ class Played(unittest.TestCase):
         song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)], rules=SONIC1_RULES))
         played_song(song)
         self.assertEqual(len(song.channels[0].events), 1)
-
-
-if __name__ == "__main__":
-    unittest.main()

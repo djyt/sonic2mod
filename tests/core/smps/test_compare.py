@@ -5,12 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.smps import (
@@ -31,6 +27,8 @@ from core.smps import (
     effect_of,
     played_song,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _MUSIC = ROOT / "reference" / "smps_drivers" / "sonic_1" / "music"
 
@@ -149,7 +147,3 @@ class Compare(unittest.TestCase):
         for path in sorted(_MUSIC.glob("*.asm")):
             played = played_song(SmpsParser(SONIC1_RULES).parse_file(str(path)))
             self.assertTrue(compare_songs(played, played).ok, path.name)
-
-
-if __name__ == "__main__":
-    unittest.main()

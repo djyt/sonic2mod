@@ -6,12 +6,7 @@
 from __future__ import annotations
 
 import dataclasses
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.chips import OperatorReg
 from core.drivers.smps68k.memory import Relative68kMemory
@@ -77,7 +72,3 @@ class Voices(unittest.TestCase):
         self.assertEqual(bank_voices(memory, _SONG, 3, variant), [])
         self.assertEqual(asked, [(_SONG, 3)])
         self.assertEqual(bank_voices(memory, _SONG, 1, SONIC1), read_voices(memory, _SONG, 1, _SONIC1_VOICES))
-
-
-if __name__ == "__main__":
-    unittest.main()

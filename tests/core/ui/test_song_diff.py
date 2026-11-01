@@ -6,12 +6,7 @@ seconds beside each tick.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.smps import (
     ChannelDiff,
@@ -33,7 +28,3 @@ class DiffLines(unittest.TestCase):
         diff = SongDiff([], [ChannelDiff("FM1", 4, missing=[12])], [], [])
         lines = song_diff_lines(diff, 4, seconds=lambda tick: tick / 60)
         self.assertIn("missing at 12 (0.20s)", "\n".join(lines))
-
-
-if __name__ == "__main__":
-    unittest.main()

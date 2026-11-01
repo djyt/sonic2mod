@@ -8,12 +8,8 @@ from __future__ import annotations
 
 import dataclasses
 import math
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.reference import SONIC1_RULES
 from core.smps import (
@@ -43,6 +39,8 @@ from core.smps import (
     tempo_schedule,
     voice_field_from_macro,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _MUSIC = ROOT / "reference" / "smps_drivers" / "sonic_1" / "music"
 
@@ -246,7 +244,3 @@ class Voice(unittest.TestCase):
         self.assertEqual(v.operators[VoiceField.DETUNE], (0, 5, 0, 5))
         self.assertEqual(v.operators[VoiceField.MULTIPLE], (2, 1, 8, 1))
         self.assertTrue(all(isinstance(k, VoiceField) for k in v.operators))
-
-
-if __name__ == "__main__":
-    unittest.main()

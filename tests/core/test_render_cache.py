@@ -6,13 +6,9 @@
 from __future__ import annotations
 
 import array
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
 
 from core.render_cache import RenderCache, code_salt
 
@@ -142,7 +138,3 @@ class Files(unittest.TestCase):
         self.assertEqual(cache.get_bytes("k", ".frames"), b"frames")
         next((self.dir / "cache").rglob("k.frames")).write_bytes(b"not zlib")
         self.assertIsNone(cache.get_bytes("k", ".frames"))
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.vgm import decode_vgm, frame_log, realigned
 from tests.vgm_build import FRAME, bursts, fm_freq, key
@@ -57,7 +52,3 @@ class Realigned(unittest.TestCase):
         self.assertEqual((held.fm[0].fnum, held.fm[0].block), _A4)           # the frame before's state
         self.assertEqual(_keyed(fixed), [a, a + 2])
         self.assertEqual(fixed.end_sample, log.end_sample + FRAME)
-
-
-if __name__ == "__main__":
-    unittest.main()

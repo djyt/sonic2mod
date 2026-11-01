@@ -7,14 +7,10 @@ StreetsOfRage classes read their ROMs when they are present.
 from __future__ import annotations
 
 import dataclasses
-import sys
 import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import ChannelConfig, ConversionConfig, SampleSettings, load_settings
 from core.config.bpm import exact_bpm
@@ -49,6 +45,8 @@ from tests.roms import (
     needs_space_harrier_2,
     needs_streets_of_rage,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
 
 _SETTINGS = SampleSettings(amiga_clock=3546895)
 
@@ -306,7 +304,3 @@ class StreetsOfRage(unittest.TestCase):
         for copy, (plain, _) in out.folded.items():
             self.assertEqual(voices[copy].plain, plain)
             self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][plain])
-
-
-if __name__ == "__main__":
-    unittest.main()

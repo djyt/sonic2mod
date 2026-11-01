@@ -8,12 +8,7 @@ plays 8287 bytes a second, 170.7 a tick with the 3 % margin.
 from __future__ import annotations
 
 import math
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.mod import (
     PAL_AMIGA_CLOCK,
@@ -130,7 +125,3 @@ class TrimTails(unittest.TestCase):
         self.assertEqual(mod.trim_tails({1: 100}), {})
         self.assertEqual(looped.trim_tails({1: 100}), {})
         self.assertEqual(_mod().trim_tails({1: None}), {})
-
-
-if __name__ == "__main__":
-    unittest.main()

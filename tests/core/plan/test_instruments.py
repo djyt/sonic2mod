@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import InstrumentRange, PsgInstrumentEntry
 from core.mod import ModNote
@@ -36,7 +31,3 @@ class RenderingPitch(unittest.TestCase):
         shifted = PsgInstrument(5, PsgInstrumentEntry(5, "tone", ModNote.C2, synth_root=40, synth_shift=4), "")
         self.assertEqual((plain.synth_idx, plain.root_semitone), (_C2, 24))
         self.assertEqual((shifted.synth_idx, shifted.root_semitone), (28, 36))
-
-
-if __name__ == "__main__":
-    unittest.main()

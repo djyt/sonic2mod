@@ -5,13 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from typing import ClassVar
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import MergeGroup
 from core.merge import (
@@ -238,7 +233,3 @@ class BankAlignment(unittest.TestCase):
         pack_banks(plan, Cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         self.assertEqual(c2.offset % ALIGN, 0)
         self.assertEqual(mod.samples[6].data[c2.offset], 90)           # 9xx lands on the sound, not silence
-
-
-if __name__ == "__main__":
-    unittest.main()

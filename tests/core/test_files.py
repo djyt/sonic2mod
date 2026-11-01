@@ -5,13 +5,9 @@
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
 
 from core.files import write_atomic, write_shared
 
@@ -46,7 +42,3 @@ class SharedFiles(unittest.TestCase):
             write_atomic(path, fail)
         self.assertEqual(path.read_bytes(), b"old")
         self.assertEqual([p.name for p in self.dir.iterdir()], ["dac81.raw"])
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -38,9 +38,9 @@ Full module map: `docs/architecture.md`.
 sonic2mod/
   convert.py  analyze.py  sonic2wav.py   CLIs: conversion, song analysis, SFX → WAV
   core/        library; layers, each importing only those below it (diagnostics.py: any):
-               ui → convert / audit → merge / synth → plan → config → source → vgm / drivers → rom → smps / mod
+               ui → convert / audit / analysis → merge / synth → plan → config → source → vgm / drivers → rom → smps / mod
                → chips / audio / render_cache → files.  Imports nothing from sfx/; drivers only via source
-               (import-linter: pyproject.toml)
+               (import-linter: pyproject.toml; a new package fails until given a layer)
     smps/        the IR (SmpsSong, PlaybackRules), parser, the shared song walk (code.py), playback; no driver's tables
     drivers/     the sound drivers, a folder each by family (smps68k/sonic1 ...): registry, detect, read a ROM's songs;
                  reference.py: Sonic 1's tables and SONIC1_RULES (an asm song's and a rip's)
@@ -78,7 +78,7 @@ sonic2mod/
 ## Setup
 
 ```bash
-pip install pyyaml rich   # external dependencies
+pip install numpy pyyaml rich   # external dependencies (or pip install -e .)
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
 git config core.hooksPath tools/dev/hooks   # the pre-commit hook (per clone): tools/dev/check.py --fast
 ```

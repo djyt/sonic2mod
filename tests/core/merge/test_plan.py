@@ -6,13 +6,8 @@ banks as composites of the drum alone.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.config import MergeGroup
 from core.merge import MIX, MergePlan, NoteOn
@@ -61,7 +56,3 @@ class BankDrums(unittest.TestCase):
         g = MergeGroup("FM1", [], bank=True, bank_drums=True)
         with self.assertRaises(ValueError):
             _planner(g).fold(GroupNotes(g, {0: _hit(0, 14, ChannelType.FM)}, [], []))
-
-
-if __name__ == "__main__":
-    unittest.main()

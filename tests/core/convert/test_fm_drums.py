@@ -5,13 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.convert.fm_drums import drum_rings
 from core.drivers.reference import SONIC1_RULES
@@ -43,7 +38,3 @@ class DrumRings(unittest.TestCase):
     def test_the_last_hit_rings_across_the_loop(self):
         # The track jumps back to tick 5: the hit at 40 rings to the end (1.0), then 5 -> 10 (0.5)
         self.assertEqual(_drum_rings(loop_tick=5), {1: 1.5, 2: 3.0})
-
-
-if __name__ == "__main__":
-    unittest.main()

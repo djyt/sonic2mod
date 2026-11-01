@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.vgm import (
     ChangeKind,
@@ -69,7 +64,3 @@ class Chips(unittest.TestCase):
         commands = _fm(0, 0xB0, 0x04) + b"".join(_fm(0, 0x40 + s, tl) for s, tl in ((0, 1), (4, 2), (8, 3), (12, 4)))
         state, _ = self._replay(commands)
         self.assertEqual(state.fm_carrier_tls(0), (3, 4))
-
-
-if __name__ == "__main__":
-    unittest.main()

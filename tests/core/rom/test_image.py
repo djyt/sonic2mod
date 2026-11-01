@@ -5,12 +5,8 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.rom import RomError, RomImage
 
@@ -46,7 +42,3 @@ class Image(unittest.TestCase):
                 RomImage.load(path)
         finally:
             path.unlink()
-
-
-if __name__ == "__main__":
-    unittest.main()

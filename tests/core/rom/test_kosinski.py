@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.rom import RomError, RomImage
 from core.rom.kosinski import kosinski
@@ -49,7 +44,3 @@ class Kosinski(unittest.TestCase):
         blob = bytes([0b1011_0011, 0b10, 0x41, 0x42, 0xFE, 0x00, 0xF8, 0x00])   # "ABABABA" (above)
         ram = z80_ram(_rom(code.ljust(0x100, b"\0") + blob))
         self.assertEqual(ram[0x0F:0x16], b"\0ABABA\0")
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[5]
-sys.path.insert(0, str(ROOT))
 
 from core.drivers.smpsz80.memory import BankedZ80Memory
 from core.drivers.smpsz80.sh2.voices import is_full_voice, read_sh2_voices, voice_registers
@@ -67,7 +62,3 @@ class Voices(unittest.TestCase):
     def test_a_list_without_its_end_is_refused(self):
         with self.assertRaisesRegex(RomError, "no \\$83"):
             voice_registers(_memory(bytes([0x30, 0x01] * 0x21)), _BANK + 0x20)
-
-
-if __name__ == "__main__":
-    unittest.main()

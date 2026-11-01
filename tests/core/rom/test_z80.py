@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.rom import RomError, RomImage
 from core.rom.z80 import z80_loads, z80_ram
@@ -88,7 +83,3 @@ class Pointed(unittest.TestCase):
         rom = _rom(self._code(), (0x7FFFF0).to_bytes(4, "big") + (3).to_bytes(4, "big"))
         with self.assertRaisesRegex(RomError, "no load"):
             z80_loads(rom)
-
-
-if __name__ == "__main__":
-    unittest.main()

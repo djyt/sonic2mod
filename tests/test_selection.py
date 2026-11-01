@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from tests.selection import _placed
 
@@ -46,7 +41,3 @@ class Placement(unittest.TestCase):
     def test_what_moves_everything(self):
         for path in ("tests/regression.py", "configs/settings.yaml", "sfx/tables.bin"):
             self.assertTrue(_moves(_SONIC, path)[1], path)
-
-
-if __name__ == "__main__":
-    unittest.main()

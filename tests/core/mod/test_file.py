@@ -6,12 +6,7 @@ and name field, narrowing only when the columns beyond are empty.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
 
 from core.mod import PERIOD_TABLE, ModFile, ModNote, ModSample, read_mod
 
@@ -125,7 +120,3 @@ class WriterTests(unittest.TestCase):
         s.set_name("F5+3+4+P1 F#3 #2 [1-4]")       # 22 characters
         s.data, s.length = bytes(4), 2
         self.assertEqual(read_mod(bytes(mod.get_bytes())).samples[0].name.rstrip("\x00"), "F5+3+4+P1 F#3 #2 [1-4]")
-
-
-if __name__ == "__main__":
-    unittest.main()

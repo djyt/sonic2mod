@@ -3,3 +3,14 @@
 name: "Ready Funk"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$16"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [4, "fm_v00_E2.raw", 16, 0]   # VGZ: +1.3 dB at 19
+  - [5, "fm_v00_G3.raw", 13, 0]   # VGZ: +3.0 dB at 19
+  - [6, "fm_v00_F4.raw", 16, 0]   # VGZ: +1.7 dB at 19
+  - [7, "fm_v00_Eb5.raw", 16, 0]   # VGZ: +1.4 dB at 19
+  - [10, "fm_v02_Cs4.raw", 14, 0]   # VGZ: -4.8 dB at 8
+  - [14, "fm_v05_C7.raw", 25, 0]   # VGZ: -2.5 dB at 19
+  - [15, "fm_v06_C7.raw", 29, 0]   # VGZ: -3.8 dB at 19
+  - [17, "fm_v08_Ab2.raw", 48, 0]   # VGZ: -2.0 dB at 38
+  - [19, "fm_v09_Bb2.raw", 15, 0]   # VGZ: +1.8 dB at 18

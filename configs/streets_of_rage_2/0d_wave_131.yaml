@@ -3,3 +3,17 @@
 name: "Wave 131"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$0D"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 54, 5]   # VGZ: +1.5 dB at 64
+  - [2, "dac82.raw", 52, -2]   # VGZ: +1.8 dB at 64
+  - [3, "dac83.raw", 53, -2]   # VGZ: +1.6 dB at 64
+  - [6, "fm_v01_G1.raw", 48, 0]   # VGZ: -2.0 dB at 38
+  - [7, "fm_v0a_Ab4.raw", 15, 0]   # VGZ: +1.8 dB at 19
+  - [8, "fm_v0a_Fs5.raw", 14, 0]   # VGZ: +2.6 dB at 19
+  - [9, "fm_v0a_E6.raw", 15, 0]   # VGZ: +2.3 dB at 19
+  - [10, "fm_v02_C7.raw", 26, 0]   # VGZ: -2.6 dB at 19
+  - [11, "fm_v03_C7.raw", 25, 0]   # VGZ: -2.3 dB at 19
+  - [12, "fm_v04_C2.raw", 17, 0]   # VGZ: +11.6 dB at 64
+  - [22, "fm_v07_Eb5.raw", 28, 0]   # VGZ: -7.4 dB at 12
+  - [30, "psg_adsr_ffffffbe000a_v11_E5.raw", 11, 0]   # VGZ: +3.1 dB at 16

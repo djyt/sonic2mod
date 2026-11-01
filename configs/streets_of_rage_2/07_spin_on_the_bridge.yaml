@@ -3,3 +3,34 @@
 name: "Spin on the Bridge"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$07"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 26, 5]   # VGZ: +1.6 dB at 64
+  - [2, "dac82.raw", 25, -2]   # VGZ: +1.8 dB at 64
+  - [3, "dac83.raw", 26, -2]   # VGZ: +1.8 dB at 64
+  - [4, "fm_v00_D4.raw", 11, 0]   # VGZ: +4.9 dB at 38
+  - [5, "fm_v00_C5.raw", 12, 0]   # VGZ: +8.4 dB at 64
+  - [6, "fm_v01_D2.raw", 10, 0]   # VGZ: -8.9 dB at 7
+  - [7, "fm_v01_C3.raw", 8, 0]   # VGZ: -1.6 dB at 14
+  - [8, "fm_v01_F5.raw", 5, 0]   # VGZ: -2.9 dB at 7
+  - [9, "fm_v0a_C1.raw", 9, 0]   # VGZ: -1.0 dB at 16
+  - [11, "fm_v0e_F1.raw", 23, 0]   # VGZ: +2.7 dB at 64
+  - [12, "fm_v0e_A3.raw", 26, 0]   # VGZ: -2.8 dB at 38
+  - [13, "fm_v0f_C7.raw", 13, 0]   # VGZ: -3.2 dB at 19
+  - [14, "fm_v10_C7.raw", 16, 0]   # VGZ: -2.2 dB at 25
+  - [15, "fm_v11_C4.raw", 18, 0]   # VGZ: +0.1 dB at 38
+  - [17, "fm_v02_Ab3.raw", 7, 0]   # VGZ: +12.5 dB at 64
+  - [18, "fm_v02_A4.raw", 8, 0]   # VGZ: +3.5 dB at 25
+  - [19, "fm_v03_F0.raw", 9, 0]   # VGZ: +2.5 dB at 25
+  - [20, "fm_v04_E3.raw", 17, 0]   # VGZ: +5.4 dB at 64
+  - [21, "fm_v04_E4.raw", 17, 0]   # VGZ: -3.1 dB at 25
+  - [22, "fm_v05_E2.raw", 25, 0]   # VGZ: -2.7 dB at 38
+  - [23, "fm_v06_E2.raw", 8, 0]   # VGZ: +1.0 dB at 19
+  - [24, "fm_v06_B7.raw", 12, 0]   # VGZ: +8.5 dB at 64
+  - [25, "fm_v43_C2.raw", 15, 0]   # VGZ: +0.2 dB at 32
+  - [26, "fm_v45_C3.raw", 18, 0]   # VGZ: -1.1 dB at 32
+  - [27, "fm_v07_A1.raw", 21, 0]   # VGZ: -4.6 dB at 25
+  - [28, "fm_v08_B7.raw", 7, 0]   # VGZ: -7.4 dB at 6
+  - [29, "fm_v09_E1.raw", 6, 0]   # VGZ: +3.2 dB at 18
+  - [30, "psg_$00_B3.raw", 2, 0]   # VGZ: +0.5 dB at 4
+  - [31, "psg_$00_G5.raw", 2, 0]   # VGZ: +0.5 dB at 5

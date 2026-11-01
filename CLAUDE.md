@@ -116,6 +116,11 @@ python convert.py configs/sonic_1/01_title_screen.yaml
 # Override output path
 python convert.py configs/sonic_1/01_title_screen.yaml --output output/sonic_1/title_screen.mod
 
+# Every song of a game: a config folder, converted in parallel, a line each (exit 1 if any fails);
+# --merged / --variant build only the songs that have merge groups / that variant (the rest skipped)
+python convert.py configs/streets_of_rage_2
+python convert.py configs/sonic_1 --variant lofi --merged
+
 # Also list every composite, bank sound, loop extension and synthesis pitch (and each sample's
 # release rate and share of the song)
 python convert.py configs/sonic_1/02_green_hill_zone.yaml --merged --verbose

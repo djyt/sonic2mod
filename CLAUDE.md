@@ -1,8 +1,5 @@
 # sonic2mod — SMPS-to-MOD Converter
 
-## Git Commits
-Never include "Co-Authored-By" trailers in commit messages.
-
 Converts Sonic 1 SMPS music (assembly, ROM bytecode or a VGM rip) to Amiga ProTracker MOD, rendering
 its instruments on emulated YM2612 / SN76489 chips.
 
@@ -87,8 +84,9 @@ rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 ## Linting
 
 Enforced: the git pre-commit hook (`tools/hooks/pre-commit`) runs `tools/check.py --fast` when a
-`.py` / `.toml` file is staged; a Claude Code hook (`.claude/settings.json`) runs ruff on each Python
-file Claude edits and hands the findings back.  Every rule in `pyproject.toml` carries a
+`.py` / `.toml` file is staged; `tools/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude
+Code adds none: `attribution` in `.claude/settings.json`); a Claude Code hook there runs ruff on each
+Python file Claude edits and hands the findings back.  Every rule in `pyproject.toml` carries a
 plain-English line saying what it flags (an ignored one: and why it is off).
 
 ```bash

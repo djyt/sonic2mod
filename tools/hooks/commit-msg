@@ -1,0 +1,8 @@
+#!/bin/sh
+# Git commit-msg hook: no Co-Authored-By trailers (commits name their author alone).
+# Enabled with the pre-commit hook: git config core.hooksPath tools/hooks
+
+if grep -qi '^co-authored-by:' "$1"; then
+    echo "commit-msg: remove the Co-Authored-By line; this repo's commits carry none" >&2
+    exit 1
+fi

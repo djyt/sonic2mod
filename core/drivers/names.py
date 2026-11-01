@@ -12,6 +12,7 @@ class SmpsDriver(StrEnum):
     MUCOM = "smps68k_mucom"        # SMPS 68k Type 1b with MUCOM-style track code: Streets of Rage
     SH2 = "smpsz80_sh2"            # an early SMPS Z80 (Golden Axe's ancestor): Space Harrier II
     OUTRUN = "smpsz80_outrun"      # an SMPS Z80 on Timer A, Sonic 1's flags: OutRun
+    MUCOM_MD = "mucom_md"          # Mucom-MD 0.85, MUCOM88's songs on the 68k: Streets of Rage 2
 
 
 # The driver of a song that states none: an asm song (SMPS2ASM, Sonic 1's disassembly) or a VGM lift

@@ -446,9 +446,9 @@ class _Walker:
         if isinstance(effect, ChanTempoDiv):
             tempo_div = effect.divider
         resolved = self._driver.effect(effect)
-        if resolved is None:
+        if not resolved:
             return tempo_div
-        self._channel.events.append(SmpsEvent(effect=resolved, tick_position=tick))
+        self._channel.events.extend(SmpsEvent(effect=e, tick_position=tick) for e in resolved)
 
         # A voice with its own pan byte: the driver writes B4 as it loads the voice
         pan = self._voice_pans.get(effect.index) if isinstance(effect, SetVoice) else None

@@ -84,6 +84,8 @@ class TrackRules:
     octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
     tie_restarts_envelope: bool = True      # a tied read starts the PSG envelope again (Streets of Rage's
                                             # rips); False: it plays on from the attack (OutRun's, $0391)
+    carrier_writes_hold: bool = False       # a register write to a TL the volume sets holds until the next
+                                            # volume change or voice (Streets of Rage 2's, $41996); False: refused
 
 
 SONIC1_TRACK = TrackRules()

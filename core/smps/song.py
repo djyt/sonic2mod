@@ -257,6 +257,18 @@ class SmpsVoice:
             operators[field_] = tuple(values)
         return dataclasses.replace(self, operators=operators)
 
+    def level_fixed(self, register: int, value: int) -> SmpsVoice:
+        """A copy whose TL `register` (channel 0), one the track volume is added to, is `value`
+        whatever the volume: the driver wrote it over the volume's (Streets of Rage 2's `$FA`)."""
+        if register not in self.volume_registers:
+            raise ValueError(f"register ${register:02X}: not a TL the track volume is added to")
+        slot = register - OperatorReg.TL
+        values = self.operator_values(VoiceField.TOTAL_LEVEL)
+        values[SMPS_OP_TO_REG_OFFSET.index(slot)] = value & TL_MASK
+        operators = dict(self.operators) | {VoiceField.TOTAL_LEVEL: tuple(values)}
+        volume = tuple(r - OperatorReg.TL for r in self.volume_registers if r != register)
+        return dataclasses.replace(self, operators=operators, volume_slots=volume)
+
     def chip_registers(self, tl_offset: int = 0) -> dict[int, int]:
         """registers() as the chip reads them: TL is 7 bits (SMPS2ASM sets bit 7 on the carriers,
         and some asm writes a modulator's TL as $80)."""

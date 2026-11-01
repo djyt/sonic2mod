@@ -98,6 +98,12 @@ class VoiceLayout:
 SMPS_VOICE = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.KS_AR, OperatorReg.AM_D1R, OperatorReg.D2R,
                           OperatorReg.D1L_RR, OperatorReg.TL))
 
+# MUCOM88's 25 bytes (Streets of Rage's, its sequel's): each register's four operator bytes in
+# register order, TL second, then feedback / algorithm; the carriers' TL the track's volume writes
+MUCOM_VOICE = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_AR, OperatorReg.AM_D1R,
+                           OperatorReg.D2R, OperatorReg.D1L_RR),
+                          feedback_last=True, operator_offsets=(0x00, 0x04, 0x08, 0x0C), carrier_tl=False)
+
 
 @dataclass(frozen=True)
 class TrackSlot:

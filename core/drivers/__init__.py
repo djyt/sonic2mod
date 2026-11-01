@@ -10,6 +10,8 @@ Grouped by family, one folder per driver:
         type0fm/        Golden Axe (Type 0 FM)
         sh2/            Space Harrier II (an early SMPS Z80)
         outrun/         OutRun (SMPS Z80 on Timer A)
+    mucom/              MUCOM88's own engines: its song images as they are, MUCOM's track language
+        md/             Streets of Rage 2 (Mucom-MD 0.85)
     registry.py         every driver by name, loaded on first use
     games.py            every ROM known by its SHA-1: its game, driver and data fixes
     detect.py           the driver a ROM's songs read with: pinned, else the one that reads them all

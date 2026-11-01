@@ -44,6 +44,11 @@ _REVIEWED: dict[SmpsDriver, dict] = {
         "FM": {"octave_wrap": OctaveWrap(low=0x283, high=0x508, drop=0x285, rise=0x284), "tie_restarts_envelope": False},
         "PSG": {"tie_restarts_envelope": False},
     },
+    # Phase 2 of docs/todo/streets_of_rage_2.md: what reading needs; Phase 3 reviews the rest
+    SmpsDriver.MUCOM_MD: {
+        "FM": {"carrier_writes_hold": True},
+        "PSG": {"volume_steps": "256 steps"},
+    },
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")
 

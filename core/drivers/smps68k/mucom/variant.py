@@ -25,12 +25,11 @@ from __future__ import annotations
 from dataclasses import replace
 from functools import lru_cache, partial
 
-from core.chips import OperatorReg
 from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, read, refuse
 from core.rom.grammar.mucom import dac_sample, detune, loop_end, loop_exit, loop_start, register_write
 from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
-from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
+from core.rom.variant import MUCOM_VOICE, EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot
 from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules
 
 from ...names import SmpsDriver
@@ -70,10 +69,6 @@ _HEADER = HeaderLayout(
     psg_entry=EntryLayout(4, volume=2, envelope=3),
     psg_slots=("PSG3", "PSG2", "PSG1"),
 )
-
-_VOICE_LAYOUT = VoiceLayout((OperatorReg.DT_MUL, OperatorReg.TL, OperatorReg.KS_AR, OperatorReg.AM_D1R,
-                           OperatorReg.D2R, OperatorReg.D1L_RR),
-                          feedback_last=True, operator_offsets=(0x00, 0x04, 0x08, 0x0C), carrier_tl=False)
 
 # The loops, the same on every kind of track ($F5 opens, $F6 closes, $FE leaves on the last pass)
 _LOOPS: dict[int, FlagSpec] = {0xF5: read(loop_start), 0xF6: read(loop_end), 0xFE: read(loop_exit)}
@@ -206,7 +201,7 @@ MUCOM = SmpsVariant(
     flags={ChannelType.FM: _FM_FLAGS, ChannelType.PSG: _PSG_FLAGS, ChannelType.DAC: _DAC_FLAGS},
     envelope_commands={0x81: EnvelopeCommand.HOLD, 0x80: EnvelopeCommand.RESTART, 0x83: EnvelopeCommand.MUTE},
     header=_HEADER,
-    voice_layout=_VOICE_LAYOUT,
+    voice_layout=MUCOM_VOICE,
     # Its FM octave, volume table and envelopes read from the ROM; Sonic 1's PSG rows (checked);
     # the Z80 player's 17 commands ($81-$91); each kind of track as above
     rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,

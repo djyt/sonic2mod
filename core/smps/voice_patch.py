@@ -11,8 +11,10 @@ the walk sees voices only.
     SetVoice(3) ... SetVoice(10)               ... SetVoice(11)            ... SetVoice(12)
                                                        (10, 11, 12: voice 3 patched; 12 offset too)
 
-A write to a carrier's TL is refused (SmpsVoice.patched): the driver adds the header volume to it
-and writes it again after each volume change, which no voice says (no song in the ROM does).
+A write to a TL the volume sets (a carrier's) is refused (SmpsVoice.patched), unless the track's
+driver holds it until the next volume change (TrackRules.carrier_writes_hold: Streets of Rage 2's):
+then the copy's TL is the written one, out of the volume's reach (SmpsVoice.level_fixed), until
+the walk takes it back.
 """
 
 from __future__ import annotations
@@ -30,17 +32,25 @@ class VoiceChanges:
     registers: tuple[tuple[int, int], ...] = ()     # (channel 0 register, byte) written over it, by register
     fnum_offsets: tuple[int, ...] | None = None     # channel 3's special mode; None: normal
     lfo: FmLfo | None = None                        # the hardware LFO it plays under; None: none
+    levels: tuple[tuple[int, int], ...] = ()        # (TL register, byte) written over the volume's, by register
 
     def written(self, register: int, value: int) -> VoiceChanges:
         """These changes and `register` written `value`."""
         registers = dict(self.registers) | {register: value}
         return dataclasses.replace(self, registers=tuple(sorted(registers.items())))
 
+    def level_written(self, register: int, value: int) -> VoiceChanges:
+        """These changes and the volume's TL `register` written `value`, until the next volume."""
+        levels = dict(self.levels) | {register: value}
+        return dataclasses.replace(self, levels=tuple(sorted(levels.items())))
+
     def applied(self, voice: SmpsVoice) -> SmpsVoice:
         """A copy of `voice` playing with these changes."""
         voice = dataclasses.replace(voice, fnum_offsets=self.fnum_offsets, lfo=self.lfo)
         for register, value in self.registers:
             voice = voice.patched(register, value)
+        for register, value in self.levels:
+            voice = voice.level_fixed(register, value)
         return voice
 
 
@@ -55,6 +65,10 @@ class VoicePatcher:
         self._copies: dict[tuple[int, VoiceChanges], int] = {}
         self._made: dict[int, tuple[int, VoiceChanges]] = {}    # {copy: (its voice, its changes)}
         self.added: list[SmpsVoice] = []            # the copies, in the order made
+
+    def voice(self, index: int) -> SmpsVoice:
+        """Voice `index`: the song's own or a copy."""
+        return self._voices[index]
 
     def copy(self, base: int, changes: VoiceChanges) -> int:
         """The index of voice `base` played with `changes`: `base` itself for none."""

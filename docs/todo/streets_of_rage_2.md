@@ -84,7 +84,7 @@ song `$19` has no loop pointer at all (a one-shot), `$0C` and `$10` are empty (e
 | `$FB n` | volume step += n, clamped 0-19 | volume += n, clamped 0-15 | (FM's) | 2177 / 981 / 4 |
 | `$FC f p a` | LFO: `$22` = f \| 8, B4 FMS p AMS a | **no operands** (`rts`) | no operands | 22 / 0 / 0 |
 | `$FD` | tie (read after the note: the note ties into the next) | same | same | 356 / 135 / 4 |
-| `$FF s ...` | prefix: `F3 n` soft release level, `F5 x` soft release off (x 0), `F4 x` rest key-off, `F0` `F1` `F2` skipped | same | skipped (1 or 2 bytes) | 105 / 33 / 0 |
+| `$FF s ...` | prefix ($41B94): `F3 n` soft release level, `F5 x` soft release off (x 0) or on, `F4 x` rest key-off, `F0` `F1` (1 byte) `F2` (2) skipped | the same handler | skipped ($4287A; 1 or 2 bytes) | 105 / 33 / 0 |
 
 Loops: the driver keeps them on a stack (`$41DEC`, `$41E0C`, `$41E50`) and reads neither `$F5`'s nor
 `$F6`'s offset; the offsets are still exact in every song (1192 `$F6` backs to their `$F5`, 283 `$FE`
@@ -113,8 +113,8 @@ No loop pointer lands inside a loop body.
   next volume change (SoR1 had none on carriers; which of these 464 are carriers: Phase 3).
 - **PSG pitch:** divider = table[s] >> octave, clamped 1-1023; octave o plays C(o+1) (o3 = C4, one
   octave above FM's o3).  Dividers differ from Sonic 1's by ±1 (C3: 855 vs 854).  The playable run is
-  o1 A (1017, A2) to o7 B (14, B8), 75 notes: a table that starts at A2, as Space Harrier II's
-  (`PsgTable`).  o1 C-G# (and o0) clamp to 1023, 10 c under A2: one note, `$10`, of the 6 in octave 1
+  o1 A (1016, A2) to o7 B (14, B8), 75 notes: a table that starts at A2, as Space Harrier II's
+  (`PsgTable`).  o1 C-G# (and o0) clamp to 1023, 12 c under A2: one note, `$10`, of the 6 in octave 1
   (songs `$05`, `$15`).
 - **PSG detune and vibrato:** (detune + vibrato) >> octave added to the divider: a constant
   interval across octaves (SoR1: a fixed `>> 4`).
@@ -282,20 +282,24 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 - [x] 1.3 R7: sound IDs from 0 (messages, a test).
 
 ### Phase 2: read the ROM
-- [ ] 2.1 The driver `mucom_md` in `core/drivers/mucom/md/` (D1): `names.py`, `registry.py`,
+- [x] 2.1 The driver `mucom_md` in `core/drivers/mucom/md/` (D1): `names.py`, `registry.py`,
   `games.py` (SHA-1), `pyproject.toml`'s three driver contracts (registry-only, families
   independent, drivers independent), `tests/roms.py` `GAMES`, `_REVIEWED`.  Located by the code that
   reads each table: the ID string `Mucom-MD Ver0.85`; `lea $429CE(pc),a0` after the song command's
   bus request (`$404F8`); the volume, octave, PSG and preset tables (`lea (pc)` at `$41C28`,
   `$40F5A`, `$42118`, `$42464`); the Z80 copy (B9).
-- [ ] 2.2 Memory (LE words, relative to the image's +9) and the header reader (§ 1.2): the 9 tracks
+- [x] 2.2 Memory (LE words, relative to the image's +9) and the header reader (§ 1.2): the 9 tracks
   on their chip channels (G and J checked empty); loop targets with R3.  Voices: SoR1's
   `VoiceLayout`.  Index: relative longs, songs `$00`-`$1B`, SFX listed, not read (D6).
-- [ ] 2.3 Flag tables per kind (§ 1.3) and its dialect (R1).  Dropped and reported until Phase 3:
+- [x] 2.3 Flag tables per kind (§ 1.3) and its dialect (R1).  Dropped and reported until Phase 3:
   soft release, PSG envelopes, noise.  Refused: `$F4` 3-6, `$FF F4`, `$FC` on PSG / drums (none used).
-- [ ] 2.4 `rom_import.py` lists the 28 songs; `song_dump.py` reads, walks and plays each; tool case
+  D4 done here (every song must walk): `$FA` queues up to 8 writes, written after the volume each
+  frame (`$41996`), so a carrier's TL holds until the next volume change or voice
+  (`TrackRules.carrier_writes_hold`; `SmpsVoice.level_fixed`; a volume change in the same read is
+  refused, none happens).  `$02` `$12` `$13` make 18 such voice copies each (slots: 2.7).
+- [x] 2.4 `rom_import.py` lists the 28 songs; `song_dump.py` reads, walks and plays each; tool case
   `read_streets_of_rage_2`.
-- [ ] 2.5 Tests: the dialect on hand-built bytes; with the ROM: tables, every song on its channels,
+- [x] 2.5 Tests: the dialect on hand-built bytes; with the ROM: tables, every song on its channels,
   loop targets, what is dropped.  The driver contract passes.
 - [ ] 2.6 `configs/streets_of_rage_2/rips.yaml`: 24 rips against 26 songs with notes (D10);
   `vgm_lift --aspects onset length` on FM: the yardstick.
@@ -304,9 +308,10 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 
 ### Phase 3: the walk
 - [ ] 3.0 R4, R5, R6, a commit each.
-- [ ] 3.1 FM: volume law, the gate's 1-frame floor (D3, checked on a rip), soft release, ties across
-  the loop, the vibrato's phase and restart; `$FA` writes (which TLs are carriers: D4).  Pan's
-  direction from a rip.
+- [ ] 3.1 FM: volume law (the clamp is on the stored step: `$FB` after an out-of-range `$F1`), the
+  gate's 1-frame floor (D3, checked on a rip), soft release, ties across the loop, the vibrato's
+  phase and restart; `$FA` carrier writes against a rip (D4, modelled in 2.3).  Pan's direction
+  from a rip.
 - [ ] 3.2 PSG: its table (§ 1.4, D8), detune / vibrato `>> octave`, volume, soft release.
 - [ ] 3.3 PSG envelopes: the ADSR resolved per (preset, volume), with its release (D2).  The render:
   a sustain loop at SL (or the SR decay); the release a PSG slide beside `Fades.release`.
@@ -365,7 +370,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 6. **Music only:** the 55 SFX listed, not read.
 7. **Regression:** a few cases by coverage (soft release, a PSG envelope, noise takeover).
 8. **PSG octave 1 C-G#** (one note, `$10`): read as A2, the table's first note: the clamp as heard
-   (divider 1023; A2's 1017 is 10 c sharp of it).
+   (divider 1023; A2's 1016 is 12 c sharp of it).
 9. **`TrackRules` grouped** by concern (R4) before SoR2's switches.
 10. **Rips without a song** (23 Walking Bottom, beta; maybe the two bonus tracks): paired if a ROM
    song matches by FM onsets, else left out of `rips.yaml` (named in its comment).

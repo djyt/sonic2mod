@@ -3,9 +3,10 @@
 The walk follows the code (labels, loops, jumps, calls) and builds notes from note and duration
 bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answered here:
 
-    effect(e)            the effect as the track plays it: a volume step a SetVol, a detune add a
-                         Detune, a register write or channel 3's special mode the voice it leaves;
-                         None for one the notes take (a gate)
+    effect(e)            the effects it plays as: a volume step a SetVol, a detune add a Detune, a
+                         register write or channel 3's special mode the voice it leaves; none for one
+                         the notes take (a gate); a volume change after a held carrier write the
+                         voice back, then the level
     note(value)          the note byte as it sounds: a drum track's selected sample, a noise note
                          on the tone it is clocked by
     cut(note, tied_next) the note as the driver keys it off: itself, or the part it holds and a rest
@@ -69,6 +70,7 @@ class DriverTrack:
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
         self._voice: int | None = None             # the voice set last, and what the track plays it with
         self._changes = NO_CHANGES
+        self._level_written = False                # a carrier's TL written since the last note
 
     @property
     def jump_clears_tie(self) -> bool:
@@ -80,28 +82,28 @@ class DriverTrack:
 
     # --- effects ------------------------------------------------------------------------------
 
-    def effect(self, effect: SmpsEffect) -> PlayedEffect | None:
+    def effect(self, effect: SmpsEffect) -> tuple[PlayedEffect, ...]:
         """`effect` as the track plays it: a volume step a level (an AlterVol then moves that level
         as the driver keeps it, unclamped), a detune add the detune, a register write or special
-        mode the patched voice; None: the notes take it (a gate)."""
+        mode the patched voice; none: the notes take it (a gate)."""
         match effect:
             case Gate(frames=frames):
                 self._gate = frames
-                return None
+                return ()
             case Legato():
                 self._legato = effect.on
-                return None
+                return ()
             case VolumeStep(step=step):
-                return self._volume(signed_byte(step % _BYTE_VALUES))
+                return self._volume_change(self._volume(signed_byte(step % _BYTE_VALUES)))
             case AlterVolumeStep(delta=delta):
-                return self._volume(signed_byte((self._volume_step + delta) % _BYTE_VALUES))
+                return self._volume_change(self._volume(signed_byte((self._volume_step + delta) % _BYTE_VALUES)))
             case Detune(offset=offset):
-                return self._detune(offset)
+                return (self._detune(offset),)
             case DetuneAdd(offset=offset):
-                return self._detune(self._detune_word + offset)
+                return (self._detune(self._detune_word + offset),)
             case AlterVol(delta=delta) if self._level is not None:
                 self._level = signed_byte((self._level + delta) % _BYTE_VALUES)
-                return SetVol(self._level)
+                return self._volume_change(SetVol(self._level))
             case PsgForm():
                 self._noise = True
             case SelectSample(sound=sound):
@@ -109,24 +111,43 @@ class DriverTrack:
             case SetVoice(index=index):
                 # A voice set rewrites every register; the special mode stays
                 self._voice = index
-                self._changes = dataclasses.replace(self._changes, registers=())
-                return SetVoice(self._voices.copy(index, self._changes))
+                self._changes = dataclasses.replace(self._changes, registers=(), levels=())
+                return (SetVoice(self._voices.copy(index, self._changes)),)
             case VoiceRegister(register=register, value=value):
-                return self._patched(register, value)
+                return (self._patched(register, value),)
             case Fm3Special(offsets=offsets):
-                return self._special_mode(offsets)
+                voice = self._special_mode(offsets)
+                return () if voice is None else (voice,)
         if isinstance(effect, DriverEffect):
             raise ValueError(f"{self._header.label}: {effect} is no effect this track's driver plays")
         assert isinstance(effect, PlayedEffect)
-        return effect
+        return (effect,)
 
     def _patched(self, register: int, value: int) -> SetVoice:
         """The voice set with `register` (as the track writes it: its channel in the low bits)
-        written over it, and every write since the voice was set."""
+        written over it, and every write since the voice was set.  A TL the volume sets, where the
+        driver holds it, until the next volume change."""
         if self._voice is None or self._header.channel_type != ChannelType.FM:
             raise ValueError(f"{self._header.label}: a register write with no FM voice set")
-        self._changes = self._changes.written(register - self._channel_number(), value)
+        register -= self._channel_number()
+        if self._rules.carrier_writes_hold and register in self._voices.voice(self._voice).volume_registers:
+            self._changes = self._changes.level_written(register, value)
+            self._level_written = True
+        else:
+            self._changes = self._changes.written(register, value)
         return SetVoice(self._voices.copy(self._voice, self._changes))
+
+    def _volume_change(self, level: SetVol) -> tuple[PlayedEffect, ...]:
+        """A volume change: the voice back from a held carrier write (the driver writes the volume
+        over it), then the level.  One in the read that wrote the carrier is refused: the driver
+        writes the queued registers after the volume, an order within a frame the walk does not keep."""
+        if not self._changes.levels:
+            return (level,)
+        if self._level_written:
+            raise ValueError(f"{self._header.label}: a volume change in the read that wrote a carrier's TL (not converted)")
+        assert self._voice is not None
+        self._changes = dataclasses.replace(self._changes, levels=())
+        return (SetVoice(self._voices.copy(self._voice, self._changes)), level)
 
     def _special_mode(self, offsets: tuple[int, ...] | None) -> SetVoice | None:
         """The voice set, its operators at `offsets` from the next note on (None: before any
@@ -170,6 +191,7 @@ class DriverTrack:
         """A note byte as it sounds: SELECTED_SAMPLE the sample DAC_SAMPLE chose (none yet: the
         driver plays nothing); a noise note whose driver leaves tone 3 alone, the last tone note
         (none: nMaxPSG)."""
+        self._level_written = False
         if value == SELECTED_SAMPLE:
             return REST if self._dac_sample is None else self._dac_sample
         if value == REST or not self._is_psg:

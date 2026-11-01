@@ -48,6 +48,7 @@ from .fm import (
 )
 from .psg import (
     MD_PSG_CLOCK,
+    NOISE_RATE_MASK,
     NOISE_RATE_TONE3,
     PSG_ATT_SILENT,
     PSG_DIVIDER_MASK,
@@ -75,6 +76,7 @@ __all__ = [
     "MD_FM_CLOCK",
     "MD_PAL_FM_CLOCK",
     "MD_PSG_CLOCK",
+    "NOISE_RATE_MASK",
     "NOISE_RATE_TONE3",
     "OPERATOR_SLOT_OFFSETS",
     "PSG_ATT_SILENT",

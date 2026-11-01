@@ -53,7 +53,7 @@ def vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: 
     Driver: the accumulator swings delta * steps / 2 either side of its centre (first
     half-swing steps/2 steps, every later one the full `steps`), and is added to the note's
     own frequency word: the YM2612 FNUM of its pitch class in the song's table (the block is
-    untouched) or the SN76489 divider of its PSG table entry (the sum >> `track.pitch.word_shift`).  An Amiga period and a PSG
+    untouched) or the SN76489 divider of its PSG table entry (the sum >> `track.pitch.shift`).  An Amiga period and a PSG
     divider are both 1/f and a small FNUM change is proportional to f, so in every case the
     swing in periods is
 
@@ -67,7 +67,8 @@ def vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: 
     word = psg_read[chip_index & 0x7F] if is_psg else _fnum(chip_index, fm_frequencies)
     if word <= 0:
         return 0
-    swing = period * (abs(signed_delta(delta)) * steps / 2 / (1 << track.pitch.word_shift)) / word
+    shift = track.pitch.shift(chip_index) if is_psg else track.pitch.word_shift
+    swing = period * (abs(signed_delta(delta)) * steps / 2 / (1 << shift)) / word
     if swing < _MIN_SWING:
         return 0
 
@@ -80,11 +81,12 @@ def signed_delta(delta: int) -> int:
     return delta - 0x100 if 0x80 <= delta <= 0xFF else delta
 
 
-def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK) -> int:
+def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK, index: int = 0) -> int:
     """What the modulation adds to the frequency word (FNUM or PSG divider units) `frame`
     frames after the note's attack: nothing for `wait` frames, then a step every `speed`, each
     adding `delta`: half its moves up first (TrackRules.modulation.first_leg_short), then `steps` moves each way, a turn's step a pause
-    where `track` spends one there (Sonic 1), the sum >> `track.pitch.word_shift`.  Streets of Rage $90
+    where `track` spends one there (Sonic 1), the sum >> `track.pitch.shift(index)` (`index`: the note's
+    table index).  Streets of Rage $90
     FM4 (wait 8, +8 a step, speed 1): the rip's word moves 0 ... 0 +8 +16 ..., +8 at frame 9.
 
         offset ^       /^^\\
@@ -104,12 +106,12 @@ def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK
         leg, at = divmod(taken - half - 1, mod.steps + pause)
         moved = max(0, at + 1 - pause)
         units = half - moved if leg % 2 == 0 else half - mod.steps + moved
-    return (signed_delta(mod.delta) * units) >> track.pitch.word_shift
+    return (signed_delta(mod.delta) * units) >> track.pitch.shift(index)
 
 
 def modulation_slides(mod: ModSet, period: int, rows: list[tuple[float, float]], frame_of: Callable[[float], float],
                       cents_of: Callable[[int], float], row_ticks: int,
-                      track: TrackRules = _SONIC1_TRACK) -> list[tuple[float, int, int]]:
+                      track: TrackRules = _SONIC1_TRACK, index: int = 0) -> list[tuple[float, int, int]]:
     """(row tick, effect, param): each row's slide to the chip's pitch at the row's end.
 
     `rows`: (start, end) ticks of the note's rows; `frame_of`: a tick's frame from the attack;
@@ -118,7 +120,7 @@ def modulation_slides(mod: ModSet, period: int, rows: list[tuple[float, float]],
     carried on, so rounding never accumulates."""
     reached, out = float(period), []
     for start, end in rows:
-        target = period * 2 ** (-cents_of(modulation_offset(mod, int(frame_of(end)), track)) / _CENTS_PER_OCTAVE)
+        target = period * 2 ** (-cents_of(modulation_offset(mod, int(frame_of(end)), track, index)) / _CENTS_PER_OCTAVE)
         move = reached - target                 # periods to slide: > 0 up (the period falls)
         per_tick = min(round(abs(move) / row_ticks), _MAX_SLIDE)
         if per_tick:

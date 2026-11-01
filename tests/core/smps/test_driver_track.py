@@ -9,13 +9,19 @@ from __future__ import annotations
 import unittest
 
 from core.smps import (
+    Adsr,
+    AdsrEnvelope,
     AlterVolumeStep,
     ChannelType,
+    Detune,
+    EnvelopePreset,
     Gate,
     KeyOffRules,
+    NoiseRate,
     PitchRules,
     PlaybackRules,
     PsgForm,
+    PsgVoice,
     SetVoice,
     SetVol,
     SmpsNote,
@@ -205,3 +211,40 @@ class LateTies(unittest.TestCase):
         late = _track(TrackRules(ties=TieRules(late_keys_off=True)))
         self.assertEqual((late.ties(direct=True), late.ties(direct=False)), (True, False))
         self.assertTrue(_track().ties(direct=False))                        # Sonic 1: any tie before the read
+
+
+def _psg(rules: TrackRules, presets: tuple[Adsr, ...] = ()) -> DriverTrack:
+    playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
+                             dac_names={}, tracks={ChannelType.PSG: rules}, adsr_presets=presets)
+    return DriverTrack(SmpsChannelHeader(ChannelType.PSG, "t"), "PSG1", playback, VoicePatcher([]))
+
+
+_PSG_VOLUME = VolumeRules(steps={v: v ^ 15 for v in range(16)}, initial_step=8)
+
+
+class PsgDriverState(unittest.TestCase):
+    """Streets of Rage 2's PSG: its starting volume, detune by the note's octave, ADSR envelopes, noise rate."""
+
+    def test_it_starts_at_its_drivers_volume(self):
+        self.assertEqual(_psg(TrackRules(volume=_PSG_VOLUME)).opening(), (SetVol(7),))
+        self.assertEqual(_track().opening(), ())
+
+    def test_detune_shifted_by_the_notes_octave(self):
+        track = _psg(TrackRules(pitch=PitchRules(octave_shift_from=21)))
+        track.effect(Detune(-64))
+        track.note(0x81 + 15)                               # index 15: (15 + 21) // 12 = octave 3
+        self.assertEqual(track.before_note(), (False, (Detune(-8),)))
+
+    def test_an_envelope_named_at_the_volume_and_again_as_it_changes(self):
+        held = Adsr(255, 255, 255, 200, 0, 10)
+        track = _psg(TrackRules(volume=_PSG_VOLUME), presets=(held,))
+        track.opening()
+        self.assertEqual(track.effect(EnvelopePreset(0)), (PsgVoice(held.name(8)),))
+        self.assertEqual(track.effect(VolumeStep(12)), (SetVol(3), PsgVoice(held.name(12))))
+        self.assertEqual(track.effect(AdsrEnvelope(*[255, 255, 255, 255, 0, 255])), (PsgVoice("$00"),))
+
+    def test_a_noise_rate_only_while_noise_plays(self):
+        track = _psg(TrackRules())
+        self.assertEqual(track.effect(NoiseRate(2)), ())
+        track.effect(PsgForm(0xE4))
+        self.assertEqual(track.effect(NoiseRate(2)), (PsgForm(0xE6),))

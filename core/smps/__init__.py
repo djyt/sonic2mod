@@ -20,6 +20,7 @@ whatever driver or file the song came from.
                       parse_differences: where two readings of the same bytes differ
 """
 
+from .adsr import ADSR_ENVELOPES, Adsr
 from .asm_writer import write_asm
 from .clock import REGIONS, VINT, TimerA, UpdateClock, VInt, update_hz
 from .code import (
@@ -53,6 +54,7 @@ from .driver_tables import (
     signed_byte,
 )
 from .effects import (
+    AdsrEnvelope,
     AlterVol,
     AlterVolumeStep,
     ChangeTransposition,
@@ -61,12 +63,14 @@ from .effects import (
     Detune,
     DetuneAdd,
     DriverEffect,
+    EnvelopePreset,
     Fm3Special,
     Gate,
     Lfo,
     ModOff,
     ModOn,
     ModSet,
+    NoiseRate,
     Nop,
     NoteFill,
     Pan,
@@ -143,6 +147,7 @@ from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, 
 from .track import TrackState
 
 __all__ = [
+    "ADSR_ENVELOPES",
     "ALL_ASPECTS",
     "ALL_OPERATORS",
     "C1_SEMITONE",
@@ -168,6 +173,8 @@ __all__ = [
     "SMPS_OP_TO_REG_OFFSET",
     "TRACK_BYTES",
     "VINT",
+    "Adsr",
+    "AdsrEnvelope",
     "AlterVol",
     "AlterVolumeStep",
     "Aspect",
@@ -179,6 +186,7 @@ __all__ = [
     "Detune",
     "DetuneAdd",
     "DriverEffect",
+    "EnvelopePreset",
     "Fm3Special",
     "FmDrum",
     "FmFrame",
@@ -189,6 +197,7 @@ __all__ = [
     "ModOn",
     "ModSet",
     "ModulationRules",
+    "NoiseRate",
     "Nop",
     "NoteDiff",
     "NoteFill",

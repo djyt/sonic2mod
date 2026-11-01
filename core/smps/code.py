@@ -261,6 +261,7 @@ class _Walker:
         cur = _Cursor(channel, self._is_dac, tempo_divider, last_duration=self._driver.duration(0))
         if self._header.pitch_envelope:
             channel.events.append(SmpsEvent(effect=SetPitchEnvelope(self._header.pitch_envelope), tick_position=0))
+        channel.events.extend(SmpsEvent(effect=e, tick_position=0) for e in self._driver.opening())
         self._walk(self._labels[start] + 1, cur, seen={start})
 
         # The loop as a tick and an event index: where THIS channel reached its jump's target.

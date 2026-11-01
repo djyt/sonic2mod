@@ -304,7 +304,7 @@ class SampleInstaller:
             self._conv, psg_synth, self._song.rules, rate3_dividers={i: d.n for i, d in rate3.items()},
             noise_envelopes={i: d.envelope for i, d in noise_env.items()},
             loops=psg_synth.loops_for(self._config.merge_active), loops_out=psg_loops,
-            raw_out=self.raw_renders, cache_out=psg_cache)
+            raw_out=self.raw_renders, cache_out=psg_cache, release_out=self.release)
         if psg_cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="PSG", **psg_cache)
 

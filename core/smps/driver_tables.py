@@ -154,6 +154,7 @@ class PsgEnvelope:
 
     steps: tuple[int, ...]
     loop_to: int | None = None
+    release: tuple[int, ...] = ()   # the steps a frame after the key-off, from the held level; none: it silences
 
     @property
     def loops(self) -> bool:

@@ -54,8 +54,10 @@ _REVIEWED: dict[SmpsDriver, dict] = {
                "key_off.soft_release": SoftReleaseLaw(sign=1, voice_keys_off=True), "ties.exit_clears": False,
                "ties.late_keys_off": True, "modulation.turn_pause": False},
         "PSG": {"volume.steps": "128 steps", "volume.kept": "256 steps", "volume.step_range": range(16),
-                "key_off.gate_sees_tie": True, "key_off.soft_release": SoftReleaseLaw(sign=-1),
-                "ties.exit_clears": False, "ties.late_keys_off": True, "modulation.turn_pause": False},
+                "volume.initial_step": 8, "key_off.gate_sees_tie": True,
+                "key_off.soft_release": SoftReleaseLaw(sign=-1, envelope_clears=True),
+                "ties.exit_clears": False, "ties.late_keys_off": True, "modulation.turn_pause": False,
+                "pitch.octave_shift_from": 21, "pitch.divider_clamp": True, "pitch.noise_writes_tone3": False},
     },
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")

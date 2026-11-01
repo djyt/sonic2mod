@@ -29,6 +29,7 @@ from ..audio import (
     probe_secs,
 )
 from ..audio import trim_trailing_silence as _trim_trailing_silence
+from ..chips import psg_level_db
 from ..chips.sn76489.build import get_lib_path
 from ..config import PsgInstrumentEntry, PsgSynthesisSettings
 from ..mod import max_sustain_secs
@@ -82,6 +83,12 @@ def _resolve_envelope(entry: PsgInstrumentEntry, tables: Mapping[str, PsgEnvelop
             print(f"  Warning: unknown envelope name '{e}' — rendering at constant volume")
         return table
     return PsgEnvelope(tuple(e))
+
+
+def _release_db_per_sec(envelope: PsgEnvelope, fps: float) -> float:
+    """How fast an envelope's release falls: from its held step to its last, over its frames."""
+    fall = psg_level_db(envelope.steps[-1]) - psg_level_db(envelope.release[-1])
+    return fall * fps / len(envelope.release)
 
 
 def _envelope_frames(envelope: PsgEnvelope | None, secs: float, fps: float) -> list[int] | None:
@@ -295,6 +302,7 @@ def generate_psg_samples(
     loops_out: dict[int, SustainLoop] | None = None,
     raw_out: dict[int, tuple] | None = None,
     cache_out: dict[str, int] | None = None,
+    release_out: dict[int, float | None] | None = None,
 ) -> dict:
     """Render a PSG sample for every instrument in the config's catalogue.
 
@@ -310,6 +318,8 @@ def generate_psg_samples(
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.
         cache_out: filled with {"hits": n, "misses": n} of the render cache
                    (settings.yaml samples.render_cache; nothing when it is off).
+        release_out: filled with {instrument: dB per second the level falls after key-off} for
+                   each whose envelope releases (an ADSR's: core/smps/adsr.py); the others cut.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -330,6 +340,9 @@ def generate_psg_samples(
         rendered = renderer.render(spec)
         if rendered is not None:
             raw_data[spec.entry.mod_instrument] = rendered
+        envelope = _resolve_envelope(spec.entry, rules.psg_envelopes)
+        if release_out is not None and envelope is not None and envelope.release:
+            release_out[spec.entry.mod_instrument] = _release_db_per_sec(envelope, fps)
     if cache_out is not None and cache.enabled:
         cache_out.update(hits=cache.hits, misses=cache.misses)
     if raw_out is not None:                  # the unquantised renders, for the composite mixer

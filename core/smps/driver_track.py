@@ -14,6 +14,7 @@ bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answer
     cut(note, tied_next) the note as the driver keys it off, in time order: itself, or the part it
                          holds and a rest (a soft release: the part it holds, its softer level, the
                          rest held); an effect plays where the note before it ends, or the rest's start
+    opening()            what the track plays from its start: the level its driver starts it at
     jump_clears_tie      a jump drops a pending tie; exit_clears_tie: a loop's exit
     ties(direct)         a tie byte (`direct`: straight after its note) ties the next read
     legato               every read ties, as if smpsNoAttack came before it (Legato on)
@@ -27,19 +28,24 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Sequence
 
-from ..chips import CH3_CHANNEL, OperatorReg
+from ..chips import CH3_CHANNEL, NOISE_RATE_MASK, OperatorReg
+from .adsr import Adsr
 from .driver_tables import SMPS_OP_TO_REG_OFFSET, signed_byte, signed_word
 from .effects import (
+    AdsrEnvelope,
     AlterVol,
     AlterVolumeStep,
     Detune,
     DetuneAdd,
     DriverEffect,
+    EnvelopePreset,
     Fm3Special,
     Gate,
     Legato,
+    NoiseRate,
     PlayedEffect,
     PsgForm,
+    PsgVoice,
     SelectSample,
     SetVoice,
     SetVol,
@@ -50,7 +56,7 @@ from .effects import (
 )
 from .names import FM_CHANNEL_NAMES
 from .rules import PlaybackRules
-from .song import MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
+from .song import FIRST_NOTE, MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
 from .voice_patch import NO_CHANGES, VoicePatcher
 
 _BYTE_VALUES = 0x100
@@ -78,11 +84,15 @@ class DriverTrack:
         self._spared = False                       # a soft release spared the last note's key-off: it still keys
         self._softened = False                     # ... at the soft release's level
         self._voice_loads = False                  # a voice set this read loads after it, keying a spared note off
+        self._adsr: Adsr | None = None             # the ADSR envelope set (EnvelopePreset, AdsrEnvelope)
+        self._presets = rules.adsr_presets
         self._detune_word = 0
         self._gate = 0                             # frames before a note's end the driver keys it off
         self._legato = False                       # every read ties (Legato)
-        self._noise = False                        # a PSG_FORM holds: notes are noise
+        self._noise_form: int | None = None        # the PSG_FORM that holds: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
+        self._shift = self._rules.pitch.word_shift  # the detune word's shift, as the last note set it
+        self._next_shift = self._shift             # ... as the note being read sets it
         self._dac_sample: int | None = None        # DAC_SAMPLE's: what a drum track's SELECTED_SAMPLE plays
         self._voice: int | None = None             # the voice set last, and what the track plays it with
         self._changes = NO_CHANGES
@@ -91,6 +101,11 @@ class DriverTrack:
     @property
     def jump_clears_tie(self) -> bool:
         return self._rules.ties.jump_clears
+
+    def opening(self) -> tuple[PlayedEffect, ...]:
+        """What the track plays from its start before any flag: the level its driver starts it at."""
+        initial = self._rules.volume.initial_step
+        return () if initial is None else (self._volume(initial),)
 
     def ties(self, direct: bool) -> bool:
         """A tie byte ties the next read: straight after its note, or where the driver looks for it
@@ -127,6 +142,10 @@ class DriverTrack:
                 return self._volume_change(self._volume(self._altered(delta)))
             case SoftRelease(level=level, on=on):
                 return self._soft_release(level, on)
+            case EnvelopePreset(preset=preset):
+                return self._envelope(self._preset(preset))
+            case AdsrEnvelope():
+                return self._envelope(Adsr(*effect.values))
             case Detune(offset=offset):
                 return (self._detune(offset),)
             case DetuneAdd(offset=offset):
@@ -135,7 +154,13 @@ class DriverTrack:
                 self._level = signed_byte((self._level + delta) % _BYTE_VALUES)
                 return self._volume_change(SetVol(self._level))
             case PsgForm(noise=noise):
-                self._noise = noise is not None
+                self._noise_form = noise
+            case NoiseRate(rate=rate):
+                # A rate outside noise mode writes nothing the noise plays (Streets of Rage 2's $F8)
+                if self._noise_form is None:
+                    return ()
+                self._noise_form = self._noise_form & ~NOISE_RATE_MASK | rate
+                return (PsgForm(self._noise_form),)
             case SelectSample(sound=sound):
                 self._dac_sample = sound
             case SetVoice(index=index):
@@ -170,6 +195,16 @@ class DriverTrack:
             self._changes = self._changes.written(register, value)
         return SetVoice(self._voices.copy(self._voice, self._changes))
 
+    def _preset(self, preset: int) -> Adsr:
+        if preset >= len(self._presets):
+            raise ValueError(f"{self._header.label}: ADSR preset {preset}, which its driver has none of")
+        return self._presets[preset]
+
+    def _envelope(self, adsr: Adsr) -> tuple[PlayedEffect, ...]:
+        """An ADSR envelope from the next note on: as the envelope at the track's volume."""
+        self._adsr = adsr
+        return (PsgVoice(adsr.name(self._volume_step)),)
+
     def _altered(self, delta: int) -> int:
         """The step an AlterVolumeStep leaves: the sum clamped where the driver clamps it, else a signed byte."""
         total = self._volume_step + delta
@@ -196,8 +231,11 @@ class DriverTrack:
         return self._volume_written(level if self._softened else None)
 
     def _volume_change(self, level: SetVol) -> tuple[PlayedEffect, ...]:
-        """A volume change, written at once."""
-        return self._volume_written(level)
+        """A volume change, written at once; under an ADSR envelope, the envelope at the new volume."""
+        written = self._volume_written(level)
+        if self._adsr is None:
+            return written
+        return (*written, PsgVoice(self._adsr.name(self._volume_step)))
 
     def _volume_written(self, level: SetVol | None) -> tuple[PlayedEffect, ...]:
         """The driver writes the volume (`level`; None: the level it has): the voice back from
@@ -243,7 +281,7 @@ class DriverTrack:
     def _detune(self, word: int) -> Detune:
         """The detune word `word` (add.w) as the track adds it (the PSG's shifted to a divider)."""
         self._detune_word = signed_word(word)
-        return Detune(self._detune_word >> self._rules.pitch.word_shift)
+        return Detune(self._detune_word >> self._shift)
 
     def duration(self, ticks: int) -> int:
         """A duration (byte x divider; 0: none read yet) as the track counts it: its low byte,
@@ -262,7 +300,8 @@ class DriverTrack:
             return REST if self._dac_sample is None else self._dac_sample
         if value == REST or not self._is_psg:
             return value
-        if not self._noise:
+        self._next_shift = self._rules.pitch.shift(value - FIRST_NOTE)
+        if self._noise_form is None:
             self._tone_note = value
             return value
         if self._rules.pitch.noise_writes_tone3:
@@ -275,8 +314,19 @@ class DriverTrack:
         key-on comes alone ($415E0) and the note still keying slides on, no attack.  A softened
         note's level is back for the new one ($40F94: the volume rewritten)."""
         self._load_voice()
+        law = self._rules.key_off.soft_release
+        if self._adsr is not None and law is not None and law.envelope_clears:
+            self._soft = None
         slides = self._spared and self._soft is None
-        return slides, self._restored() if self._soft is not None or self._softened else ()
+        written = self._restored() if self._soft is not None or self._softened else ()
+        return slides, (*self._shifted(), *written)
+
+    def _shifted(self) -> tuple[PlayedEffect, ...]:
+        """The detune again where the note read shifts it otherwise (by its octave)."""
+        if self._next_shift == self._shift:
+            return ()
+        self._shift = self._next_shift
+        return (Detune(self._detune_word >> self._shift),) if self._detune_word else ()
 
     def _load_voice(self) -> None:
         """The read ends: a voice set in it loads, keying the note a soft release spared off if

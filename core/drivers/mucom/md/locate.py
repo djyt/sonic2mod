@@ -6,7 +6,7 @@ and the instructions after it (one table however many places read it).
     FM octave    12 words C-B, the block the note's octave            (Streets of Rage's words)
     FM volume    20 carrier TLs by volume step 0-19
     PSG octave   12 words C-B, the dividers x 8: a note's divider is its word >> its octave
-    PSG presets  16 envelopes x 6 bytes (AL AR DR SL SR RR)               (Phase 3: not read yet)
+    PSG presets  16 envelopes x 6 bytes (AL AR DR SL SR RR)
 
     Streets of Rage 2 (USA)   index $429CE; tables $4291A $4293E $42956 $4296E
 """
@@ -21,6 +21,7 @@ from core.rom.header import read_index
 from core.rom.image import RomError, RomImage
 from core.rom.pattern import code_pattern
 from core.rom.variant import SoundIndex
+from core.smps import Adsr
 
 from .header import is_image
 from .memory import MucomMemory
@@ -53,7 +54,14 @@ _PSG_OCTAVE = code_pattern("""
     D6 43              add.w   d3,d3
 """)
 
+_PSG_PRESETS = code_pattern("""
+    43 FA <w>          lea     (presets,pc),a1
+    45 EE 00 8A        lea     $8A(a6),a2
+    D0 40              add.w   d0,d0
+""")
+
 FM_VOLUME_STEPS = 20           # TL by step 0-19
+_PRESETS, _PRESET_BYTES = 16, 6
 PSG_MAX_DIVIDER = 0x3FF        # the tone register's 10 bits: a larger divider is clamped
 
 
@@ -94,6 +102,12 @@ def fm_volumes(rom: RomImage) -> tuple[int, ...]:
 def psg_octave(rom: RomImage) -> tuple[int, ...]:
     """The PSG's 12 words C-B: a note's divider is its word >> its octave."""
     return _words(rom, pc_table(rom, _PSG_OCTAVE))
+
+
+def psg_presets(rom: RomImage) -> tuple[Adsr, ...]:
+    """The PSG's envelope presets ($F0 n): AL AR DR SL SR RR each."""
+    table = pc_table(rom, _PSG_PRESETS)
+    return tuple(Adsr.of(rom.bytes_at(table + i * _PRESET_BYTES, _PRESET_BYTES)) for i in range(_PRESETS))
 
 
 def _words(rom: RomImage, at: int) -> tuple[int, ...]:

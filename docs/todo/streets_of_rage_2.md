@@ -343,13 +343,28 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   into the replay (Go Straight and its Beatmix: FM5's 12 opening loop notes 2 frames long; a
   second pass would double 17 songs); a late `$FD` that keeps a same-pitch note's vibrato running
   (Wave 131 FM3, 16 notes); the rest only where a rip ends mid-note.
-- [ ] 3.2 PSG: its table (§ 1.4, D8), detune / vibrato `>> octave`, volume, soft release.
-- [ ] 3.3 PSG envelopes: the ADSR resolved per (preset, volume), with its release (D2).  The render:
-  a sustain loop at SL (or the SR decay); the release a PSG slide beside `Fades.release`.
-- [ ] 3.4 Noise takeover (R6): the track's notes on the noise channel at rates 0-2; what its tone
-  channel does meanwhile (unwritten: check a rip).
-- [ ] 3.5 Against the rips' frame logs (`vgm_frames`): FM pitch, level, voice registers at every
-  key-on; PSG pitch and level; `vgm_lift` onsets and lengths.
+- [x] 3.2 PSG: its table (D8: o1 C-G# read as A2, 3 notes 12 c sharp), (detune + vibrato) >> the
+  note's octave (`pitch.octave_shift_from`; `$4226C`), the divider clamped 1-1023
+  (`pitch.divider_clamp`), vibrato depth x 266 / 256 (the dialect's PSG `$F4`, `$41F00`), volume
+  (kept 0-15, `$FB` clamped; a track starts at 8: `volume.initial_step`, `$40940`), soft release
+  (sign -1; cleared by an envelope's note: `envelope_clears`, `$420FE`).
+- [x] 3.3 PSG envelopes (D2): `core/smps/adsr.py`; `$F0 n` an `EnvelopePreset` (the ROM's 16 at
+  `$4296E`, `PlaybackRules.adsr_presets`), `$FA` six bytes an `AdsrEnvelope` ($03 / $04's
+  `c8 32 ff dc 01 0a`).  The walk names the (envelope, volume) a `PsgVoice` (a flat one `$00`), again
+  at each volume change; `ADSR_ENVELOPES` makes each named one.  Rendered as any PSG envelope (held:
+  a sustain loop); the release (RR a frame from SL) a slide: the PSG renderer reports its rate as
+  FM's does.  Slots: 8 songs now over 31 (`$01` 34, `$02` 38, `$05` 53, `$07` 43, `$09` 33, `$0D` 38,
+  `$12` 39; 2.7's 4 + the envelopes): 5.3 (D2: banking, then the per-preset fallback).
+- [x] 3.4 Noise: `$F7 n` `PsgForm($E4)` (white, rate 0, n ignored), `$F7 8` `PsgForm(None)`, `$F8 n`
+  a `NoiseRate` (n 0-11 / 12-22 / more: 0 / 1 / 2) that only plays in noise mode.  The tone channel
+  is left unwritten (`noise_writes_tone3` False).  Level Complete and Game Over: every noise note
+  exact against the rips.
+- [x] 3.5 Against the rips (`vgm_frames`; lift FM): every FM attack's level, voice, pan exact in 23
+  of 23, pitch in 21; 19 of 23 songs play every attack (FM, PSG, noise) exactly.  Left: Wave 131's
+  late-tie vibrato (16), D8's clamped note (3), Go Straight's and its Beatmix's PSG2 sweep and the
+  detune their loop carries (5, 4), Jungle Base's FM3 (1).  The PSG lift stays
+  "unfinished": it merges repeated same-pitch attacks and reads vibrato sweeps as notes.  Left,
+  known: state the loop's jump carries into the replay (a gate, a soft release, a detune word).
 
 ### Phase 4: DAC
 - [x] 4.1 The sample reader: R2's `RunDpcm` on Z80 `$01BF`'s table (`core/rom/pcm/sor.py`

@@ -14,7 +14,17 @@ from core.drivers.mucom.md.header import read_image
 from core.drivers.mucom.md.locate import fm_volumes, locate
 from core.drivers.mucom.md.memory import MucomMemory
 from core.rom import RomError, RomImage
-from core.smps import FIRST_NOTE, ChannelType, Pan, SoftRelease
+from core.smps import (
+    FIRST_NOTE,
+    AdsrEnvelope,
+    ChannelType,
+    EnvelopePreset,
+    ModSet,
+    NoiseRate,
+    Pan,
+    PsgForm,
+    SoftRelease,
+)
 from tests.roms import STREETS_OF_RAGE_2_ROM, needs_streets_of_rage_2
 
 _HEADER = b"SEGA MEGA DRIVE ".rjust(0x110, b"\0").ljust(0x200, b"\0")
@@ -46,9 +56,9 @@ def _read(code: bytes, kind: ChannelType = ChannelType.FM):
     return MUCOM_MD.grammar(_memory(code), _AT, MUCOM_MD, kind)
 
 
-def _effect(code: bytes):
+def _effect(code: bytes, kind: ChannelType = ChannelType.FM):
     """The one effect `code` reads as, whole."""
-    read = _read(code)
+    read = _read(code, kind)
     assert read.length == len(code) and len(read.ops) == 1
     return read.ops[0].effect
 
@@ -97,6 +107,21 @@ class Dialect(unittest.TestCase):
             _read(bytes([0xFF, 0xF4, 1]))
         with self.assertRaisesRegex(RomError, "prefix table"):
             _read(bytes([0xFF, 0xF6, 0]))
+
+    def test_psg_noise_takes_the_channel_and_gives_it_back(self):
+        self.assertEqual(_effect(bytes([0xF7, 3]), ChannelType.PSG), PsgForm(0xE4))
+        self.assertEqual(_effect(bytes([0xF7, 8]), ChannelType.PSG), PsgForm(None))
+        self.assertEqual([_effect(bytes([0xF8, n]), ChannelType.PSG) for n in (11, 12, 22, 23)],
+                         [NoiseRate(0), NoiseRate(1), NoiseRate(1), NoiseRate(2)])
+
+    def test_psg_envelopes_a_preset_or_six_bytes(self):
+        self.assertEqual(_effect(bytes([0xF0, 2]), ChannelType.PSG), EnvelopePreset(2))
+        self.assertEqual(_effect(bytes([0xFA, 200, 50, 255, 220, 1, 10]), ChannelType.PSG),
+                         AdsrEnvelope(200, 50, 255, 220, 1, 10))
+
+    def test_psg_vibrato_depth_scaled_266_256(self):
+        mod = _effect(bytes([0xF4, 0, 1, 1, 0xD0, 0x07, 4]), ChannelType.PSG)       # depth 2000
+        self.assertEqual(mod, ModSet(1, 1, 2000 * 266 >> 8, 4))
 
     def test_the_drum_track_skips_what_plays_no_sample(self):
         vibrato = _read(bytes([0xF4, 0, 1, 2, 3, 0, 4]), ChannelType.DAC)

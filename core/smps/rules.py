@@ -7,6 +7,7 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                psg_frequencies  the PSG dividers by psg_note_index (0 = nC0 = C3), as the driver stores them
                psg_read         the 128 words a 7-bit index reads: the table, then what lies past it
     envelopes  psg_envelopes    by smpsPSGvoice name (fTone_01 ...)
+               adsr_presets     the ADSR envelopes a preset names (core/smps/adsr.py)
                pitch_envelopes  by SetPitchEnvelope's index (1 ...): a driver's frequency envelopes
     drums      dac_names        the drum track's bytes that play a sample, by name
                dac_pans         the B4 byte a sample writes to FM6 as it starts, by byte (OutRun's)
@@ -30,6 +31,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 
 from ..chips import split_freq_word
+from .adsr import Adsr
 from .clock import VINT, UpdateClock
 from .driver_tables import PsgEnvelope, PsgTable
 from .pitch_envelope import PitchEnvelope
@@ -39,6 +41,7 @@ if TYPE_CHECKING:
 
 
 _BLOCK = 0x800                  # a frequency word's block, one step
+_SEMITONES = 12
 _WORD_MASK = 0xFFFF
 
 
@@ -74,6 +77,8 @@ class VolumeRules:
     # The step a VolumeStep's byte keeps; none: the byte (Streets of Rage 2's FM: v - 2, clamped 0-19)
     kept: Mapping[int, int] = field(default_factory=dict)
     step_range: range | None = None         # an AlterVolumeStep's sum clamped into it; None: it wraps (a signed byte)
+    initial_step: int | None = None         # the step a track starts at, at its level (Streets of Rage 2's PSG:
+                                            # 8, $40940); None: 0, no level until a volume flag
     tl_writes_hold: bool = False            # a register write to any TL holds until the next volume change or
                                             # voice: the volume write rewrites all four, a modulator's from the
                                             # voice (Streets of Rage 2's, $41A9A); False: a carrier's refused
@@ -86,6 +91,8 @@ class SoftReleaseLaw:
     rings on through the rests, until the next note keys it off."""
 
     sign: int                               # FM +1 ($40EE0: half way to step n), PSG -1 ($42076: half of v - n)
+    envelope_clears: bool = False           # a note under an envelope turns it off as it starts (the PSG's,
+                                            # $420FE: its phase byte reset)
     voice_keys_off: bool = False            # a voice set keys the note off where it is on as the read ends
                                             # (FM's: the voice loads after the read, $410F4 / $416BA)
 
@@ -136,9 +143,20 @@ class PitchRules:
 
     word_shift: int = 0                     # the track adds its detune word, and its modulation's sum,
                                             # >> this (the PSG's: a divider)
+    octave_shift_from: int | None = None    # ... >> the note's octave instead: (its table index + this) // 12
+                                            # (Streets of Rage 2's PSG: 21, its table from octave 1's A)
+    divider_clamp: bool = False             # the driver clamps the PSG divider to 1-1023 before it writes it
+                                            # (Streets of Rage 2's, $4226C); False: the chip drops the bits above
     octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
     noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
                                             # keeps the last tone note's (none: divider 0, nMaxPSG)
+
+
+    def shift(self, index: int) -> int:
+        """What the detune word and the modulation's sum are shifted by for the note at table `index`."""
+        if self.octave_shift_from is None:
+            return self.word_shift
+        return (index + self.octave_shift_from) // _SEMITONES
 
 
 @dataclass(frozen=True)
@@ -173,6 +191,7 @@ class PlaybackRules:
     pitch_envelopes: Mapping[int, PitchEnvelope] = field(default_factory=dict)
     update_clock: UpdateClock = VINT
     dac_pans: Mapping[int, int] = field(default_factory=dict)    # none: the track's pan alone
+    adsr_presets: tuple[Adsr, ...] = ()           # the ADSR envelopes an EnvelopePreset names (Streets of Rage 2's)
 
     @cached_property
     def psg_table(self) -> PsgTable:

@@ -140,7 +140,7 @@ class Modulation:
 
         slides = modulation_slides(self._mod_set, PERIOD_TABLE[n.mod_note.value], rows,
                                    lambda tick: max(0.0, (tick - self._origin) / tpf), self._cents(n, st),
-                                   self._config.target_speed - 1, self._track)
+                                   self._config.target_speed - 1, self._track, n.res.source + st.transpose)
         for start, effect, param in slides:
             pattern, row = self._timeline.pattern_row(start)
             self._cells.put(pattern, row, col, effect, param)

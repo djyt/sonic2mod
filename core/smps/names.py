@@ -251,6 +251,9 @@ _FLAG_MACROS = {
     CoordFlag.PITCH_ENVELOPE: "smpsPitchEnvelope",   # likewise
     CoordFlag.PAN_STEP: "smpsPanStep",       # likewise
     CoordFlag.SOFT_RELEASE: "smpsSoftRelease",   # likewise
+    CoordFlag.ENVELOPE_PRESET: "smpsEnvelopePreset",   # likewise
+    CoordFlag.ADSR_ENVELOPE: "smpsAdsr",     # likewise
+    CoordFlag.NOISE_RATE: "smpsNoiseRate",   # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

@@ -19,7 +19,7 @@ PSG_ATT_SILENT = 15                  # attenuation at or above which nothing is 
 PSG_DIVIDER_MASK = 0x3FF             # a tone divider is 10 bits: the chip drops the bits above
 
 _NOISE_WHITE_BIT = 0x04
-_NOISE_RATE_MASK = 0x03
+NOISE_RATE_MASK = 0x03               # the noise register's rate bits
 NOISE_RATE_TONE3 = 3                 # the LFSR is clocked by tone channel 3 (index 2)
 
 
@@ -35,7 +35,7 @@ def noise_white(register: int) -> bool:
 
 def noise_rate(register: int) -> int:
     """The noise register's rate: 0-2 a fixed divider, 3 tone channel 3's period."""
-    return register & _NOISE_RATE_MASK
+    return register & NOISE_RATE_MASK
 
 
 def noise_follows_tone3(register: int) -> bool:

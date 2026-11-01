@@ -1269,7 +1269,7 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 5a9503014af6
     tests/settings.yaml: 1be2c231bd5e
 pitch_credits:
-  commit: d4522d7-dirty
+  commit: f967b6d-dirty
   date: '2026-11-01'
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
@@ -1437,7 +1437,7 @@ pitch_or_last_wave:
     tests/baselines/or_last_wave_baseline.mod: 86a299cd3581
     tests/settings.yaml: 1be2c231bd5e
 pitch_or_passing_breeze:
-  commit: d4522d7-dirty
+  commit: f967b6d-dirty
   date: '2026-11-01'
   inputs:
     configs/outrun/83_passing_breeze.yaml: 3a74ffd6c500
@@ -1525,7 +1525,7 @@ pitch_special_stage:
     tests/baselines/special_stage_baseline.mod: 765f7ee8c30f
     tests/settings.yaml: 1be2c231bd5e
 pitch_spring_yard_zone:
-  commit: d4522d7-dirty
+  commit: f967b6d-dirty
   date: '2026-11-01'
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db

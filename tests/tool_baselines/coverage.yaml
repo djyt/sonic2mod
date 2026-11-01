@@ -10794,7 +10794,7 @@ frames_golden_axe:
   - --all
   - --configs
   - configs/golden_axe
-  commit: d4522d7-dirty
+  commit: 013440d-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -10843,6 +10843,7 @@ frames_golden_axe:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10875,14 +10876,18 @@ frames_golden_axe:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
@@ -10896,7 +10901,8 @@ frames_golden_axe:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
@@ -10907,6 +10913,7 @@ frames_golden_axe:
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10951,6 +10958,7 @@ frames_golden_axe:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
@@ -10987,7 +10995,7 @@ frames_outrun:
   - --all
   - --configs
   - configs/outrun
-  commit: d4522d7-dirty
+  commit: 013440d-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -11036,6 +11044,7 @@ frames_outrun:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -11069,14 +11078,18 @@ frames_outrun:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
@@ -11090,18 +11103,21 @@ frames_outrun:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -11146,6 +11162,7 @@ frames_outrun:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
     configs/outrun/81_magical_sound_shower.yaml: c3b17f549fa3
@@ -11166,7 +11183,7 @@ frames_space_harrier_2:
   - --all
   - --configs
   - configs/space_harrier_2
-  commit: 481c448-dirty
+  commit: 013440d-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -11289,6 +11306,7 @@ frames_space_harrier_2:
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -11333,6 +11351,7 @@ frames_space_harrier_2:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
@@ -11383,7 +11402,7 @@ frames_streets_of_rage:
   - --all
   - --configs
   - configs/streets_of_rage
-  commit: 481c448-dirty
+  commit: 013440d-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -11505,6 +11524,7 @@ frames_streets_of_rage:
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -11549,6 +11569,7 @@ frames_streets_of_rage:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
     configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be

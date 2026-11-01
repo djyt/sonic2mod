@@ -15659,7 +15659,7 @@ pitch_ending_theme:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -15831,7 +15831,7 @@ pitch_ending_theme:
   inputs:
     configs/sonic_1/12_ending_theme.yaml: f4e9e818c57a
     reference/vgz/sonic_1/12 - Ending Theme.vgz: 2e46ef36c30d
-    tests/baselines/ending_theme_baseline.mod: 38151e86a3b7
+    tests/baselines/ending_theme_baseline.mod: 5f1fdae61c9f
     tests/settings.yaml: 1be2c231bd5e
 pitch_extra_life:
   argv:
@@ -19531,7 +19531,7 @@ pitch_robotnik:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -19703,7 +19703,7 @@ pitch_robotnik:
   inputs:
     configs/sonic_1/09_robotnik.yaml: e345f5822382
     reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_baseline.mod: d7b43ca04dcc
+    tests/baselines/robotnik_baseline.mod: fe11a35fdcbd
     tests/settings.yaml: 1be2c231bd5e
 pitch_robotnik_lofi:
   argv:
@@ -19717,7 +19717,7 @@ pitch_robotnik_lofi:
   - --variant
   - lofi
   - --list
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -19889,7 +19889,7 @@ pitch_robotnik_lofi:
   inputs:
     configs/sonic_1/09_robotnik.yaml: e345f5822382
     reference/vgz/sonic_1/09 - Robotnik.vgz: 6ca329646d5b
-    tests/baselines/robotnik_lofi_baseline.mod: 1dea15654e5a
+    tests/baselines/robotnik_lofi_baseline.mod: 989d4421bd3e
     tests/settings.yaml: 1be2c231bd5e
 pitch_scrap_brain_zone:
   argv:
@@ -21336,7 +21336,7 @@ pitch_sor2_go_straight:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -21509,7 +21509,7 @@ pitch_sor2_go_straight:
   inputs:
     configs/streets_of_rage_2/00_go_straight.yaml: c98be6eef40b
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: 32f1c1eee48f
+    tests/baselines/sor2_go_straight_baseline.mod: b29de63f0e52
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
   argv:
@@ -21521,7 +21521,7 @@ pitch_sor2_jungle_base:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -21692,9 +21692,9 @@ pitch_sor2_jungle_base:
   - core/vgm/writes.py
   - tools/vgm/vgm_pitch_audit.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: 5ecec7b7eab8
+    configs/streets_of_rage_2/05_jungle_base.yaml: acfd7fe7f498
     reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
-    tests/baselines/sor2_jungle_base_baseline.mod: eec207dfbc5e
+    tests/baselines/sor2_jungle_base_baseline.mod: f258f7e40339
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_level_complete:
   argv:
@@ -21891,7 +21891,7 @@ pitch_sor2_too_deep:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -22064,7 +22064,7 @@ pitch_sor2_too_deep:
   inputs:
     configs/streets_of_rage_2/08_too_deep.yaml: 24ca98eadd77
     reference/vgz/streets_of_rage_2/10 - Too Deep.vgz: 801f6afd911e
-    tests/baselines/sor2_too_deep_baseline.mod: 0d08c1c8e880
+    tests/baselines/sor2_too_deep_baseline.mod: b2c461cce6b5
     tests/settings.yaml: 1be2c231bd5e
 pitch_special_stage:
   argv:

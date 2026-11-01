@@ -170,9 +170,9 @@ cases:
 - read_streets_of_rage_2
 functions:
   core/audio/gain.py::db_to_gain: 7fe3f00e00000039ce739ce739ce739ce739ce
-  core/audio/pitch.py::hz_to_midi: 11800000028500035ad7bdaf7bdaf7bdef7bded
-  core/audio/pitch.py::midi_name: 11800000028500035ad7bdaf7bdaf7bdef7bded
-  core/audio/pitch.py::pitch_name: 11800000028500035ad7bdaf7bdaf7bdef7bded
+  core/audio/pitch.py::hz_to_midi: 11000000008500035ad7bdaf7bdaf7bdef7bded
+  core/audio/pitch.py::midi_name: 11000000008500035ad7bdaf7bdaf7bdef7bded
+  core/audio/pitch.py::pitch_name: 11000000008500035ad7bdaf7bdaf7bdef7bded
   core/audio/pitch.py::semitone_to_hz: 1fffffffffff0000000000000000000000000000
   core/audit/frame_check.py::FrameCheck.missed: 7c000000000000000000000000
   core/audit/frame_check.py::FrameCheck.ok: 7c000000000000000000000000
@@ -539,7 +539,7 @@ functions:
   core/plan/conversion.py::MergeRouting.instrument_at: 1ffffffffffffffc7fffffffffffffffffffffff
   core/plan/conversion.py::MergeRouting.instruments: 1ffffffffffffffc7fffffffffffffffffffffff
   core/plan/conversion.py::SampleTable.__init__: 1fffffffffff0000000000000000000000000000
-  core/plan/conversion.py::SampleTable.add: 96ff3b8c1210000000000000000000000000000
+  core/plan/conversion.py::SampleTable.add: 96fffb8c1210000000000000000000000000000
   core/plan/conversion.py::SampleTable.rows: 1fffffffffff0000000000000000000000000000
   core/plan/derive.py::_Deriver.__init__: 7fe3f00e000000000000000000000000000000
   core/plan/derive.py::_Deriver._cut: 7fe3f00e000000000000000000000000000000
@@ -556,6 +556,7 @@ functions:
   core/plan/derive.py::_Deriver._items: 7fe3f00e000000000000000000000000000000
   core/plan/derive.py::_Deriver._lowest_root: 7fe3f00e000000000000000000000000000000
   core/plan/derive.py::_Deriver._max_span: 7fe3f00e000000000000000000000000000000
+  core/plan/derive.py::_Deriver._merged_fit: '58000000000000000000000000000000000000'
   core/plan/derive.py::_Deriver._nearest: 7c037000000000000000000000000000000000
   core/plan/derive.py::_Deriver._noise: '24033000000000000000000000000000000000'
   core/plan/derive.py::_Deriver._notes: 7fe3f00e000000000000000000000000000000
@@ -579,13 +580,14 @@ functions:
   core/plan/derive.py::complete_config: 1fffffffffff0000000000000000000000000000
   core/plan/derive.py::derive_config: 7fe3f00e000000000000000000000000000000
   core/plan/derive.py::starting_volume: 7fe3f00e000000000000000000000000000000
-  core/plan/detune.py::DetunePlan.add: 96ff3b8c1210000000000000000000000000000
-  core/plan/detune.py::_Wanted.order: 97ff3b8c1290000000000000000000000000000
+  core/plan/detune.py::DetunePlan.add: 96fffb8c1210000000000000000000000000000
+  core/plan/detune.py::_Wanted.order: 97fffb8c1290000000000000000000000000000
   core/plan/detune.py::_apart: 1fffffffffff0000000000000000000000000000
   core/plan/detune.py::_commonest: 97ff3b8c1290000000000000000000000000000
   core/plan/detune.py::_in_class: '60000000080000000000000000000000000000'
+  core/plan/detune.py::_psg_detunes: 580c0000200000000000000000000000000000
   core/plan/detune.py::_rendered: 97ff3b8c1290000000000000000000000000000
-  core/plan/detune.py::_stem: 96ff3b8c1210000000000000000000000000000
+  core/plan/detune.py::_stem: 96fffb8c1210000000000000000000000000000
   core/plan/detune.py::_word_hz: 197fffbfc1e90000000000000000000000000000
   core/plan/detune.py::detune_cents: 197fffbfc1e90000000000000000000000000000
   core/plan/detune.py::detune_variants_wanted: 1fffffffffff0000000000000000000000000000
@@ -602,6 +604,7 @@ functions:
   core/plan/driver_state.py::resolve_note: 1fffffffffff0000000000000000000000000000
   core/plan/driver_state.py::walk_channel: 1fffffffffff0000000000000000000000000000
   core/plan/instrument_plan.py::_fm_word_cents: 1fffffffffff0000000000000000000000000000
+  core/plan/instrument_plan.py::_psg_render_hz: 580c0000200000000000000000000000000000
   core/plan/instrument_plan.py::prepare_instruments: 1fffffffffff0000000000000000000000000000
   core/plan/instrument_plan.py::sounding_pitches: 1fffffffffff0000000000000000000000000000
   core/plan/instruments.py::FmInstrument.rendered_semitone: 1fffffffffff0000000000000000000000000000
@@ -615,13 +618,18 @@ functions:
   core/plan/instruments.py::PsgInstrument.synth_idx: ff81e3cc0e90000000000000000000000000000
   core/plan/instruments.py::PsgInstrument.synth_shift: ff81e3cc0e90000000000000000000000000000
   core/plan/instruments.py::_add_detune_variants: 1fffffffffff0000000000000000000000000000
+  core/plan/instruments.py::_add_psg_detune_variants: 580c0000200000000000000000000000000000
   core/plan/instruments.py::fm_catalogue: 1fffffffffff0000000000000000000000000000
   core/plan/instruments.py::fm_catalogue.add: 1fffffffffff0000000000000000000000000000
   core/plan/instruments.py::fm_catalogue.rooted: 1fffffffffff0000000000000000000000000000
   core/plan/instruments.py::free_slots: 1fffffffffff0000000000000000000000000000
   core/plan/instruments.py::psg_catalogue: 1fffffffffff0000000000000000000000000000
   core/plan/instruments.py::psg_catalogue.add: 1ffc1f3fc0e90000000000000000000000000000
+  core/plan/slot_fit.py::_cheapest: '10000000000000000000000000000000000000'
+  core/plan/slot_fit.py::_merge_cost: '10000000000000000000000000000000000000'
   core/plan/slot_fit.py::_most_played: '10000000000000000000000000000000000000'
+  core/plan/slot_fit.py::_notes: '10000000000000000000000000000000000000'
+  core/plan/slot_fit.py::_pair_cost: '10000000000000000000000000000000000000'
   core/plan/slot_fit.py::fold_volumes: 7fe3f00e000000000000000000000000000000
   core/plan/slot_fit.py::merge_windows: 7fe3f00e000000000000000000000000000000
   core/plan/slot_fit.py::merge_windows.cut: 7fe3f00e000000000000000000000000000000
@@ -812,12 +820,14 @@ functions:
   core/smps/compare.py::compare_songs: f000000000000000000000000000
   core/smps/driver_tables.py::PsgEnvelope.frames: '68000000000000000000000000'
   core/smps/driver_tables.py::PsgTable.divider: dbd900133fc028fd68000000000000000000000000
-  core/smps/driver_tables.py::PsgTable.divider_cents: ff81e3cc0e90000000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.divider_cents: fa0123cc0c90000000000000000000000000000
   core/smps/driver_tables.py::PsgTable.of: fbfffffffffffffffc000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.render_divider: 580c0000200000000000000000000000000000
   core/smps/driver_tables.py::PsgTable.semitone: 1ffc1f3fc0e90000000000000000000000000000
   core/smps/driver_tables.py::_divider_semitone: fbdffffffff1ffff78000000000000000000000000
   core/smps/driver_tables.py::chip_pitch: 1fffffffffff0000000000000000000000000000
   core/smps/driver_tables.py::fm_note_index: fbe00000000000fffc000000000000000000000000
+  core/smps/driver_tables.py::fm_render_word: 580c0000200000000000000000000000000000
   core/smps/driver_tables.py::fm_table_index: 1fffffffffff0000000000000000000000000000
   core/smps/driver_tables.py::psg_note_index: dbc00000000000fd68000000000000000000000000
   core/smps/driver_tables.py::psg_voice_name: ffffffffffffffffffffffffffffffffffffffffff
@@ -903,6 +913,7 @@ functions:
   core/smps/playback.py::_rest: fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_table_word: fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::played_song: fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::psg_render_divider: 580c0000200000000000000000000000000000
   core/smps/rules.py::OctaveWrap.wrapped: a00000000e00018c000000000000000000000000
   core/smps/rules.py::PitchRules.shift: dfdffc1f3fc0e9fd68000000000000000000000000
   core/smps/rules.py::PlaybackRules.psg_table: fbfffffffffffffffc000000000000000000000000

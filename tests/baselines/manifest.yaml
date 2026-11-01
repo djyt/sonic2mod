@@ -35,7 +35,7 @@ drowning:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 ending_theme:
-  commit: c6d0253-dirty
+  commit: 47ca32b
   config: fa303604bf50
   date: '2026-11-01'
   settings: f08dfd2ff1bd
@@ -145,7 +145,7 @@ lab_zone:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 marble_zone:
-  commit: c6d0253-dirty
+  commit: 47ca32b
   config: abdd296373ef
   date: '2026-11-01'
   settings: f08dfd2ff1bd
@@ -180,12 +180,12 @@ or_step_on_beat:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik:
-  commit: c6d0253-dirty
+  commit: 47ca32b
   config: d8d9d0b21a0d
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik_lofi:
-  commit: c6d0253-dirty
+  commit: 47ca32b
   config: 88200e30cfae
   date: '2026-11-01'
   settings: f08dfd2ff1bd
@@ -235,7 +235,7 @@ sor2_game_over:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_go_straight:
-  commit: d8e3bbd-dirty
+  commit: 47ca32b
   config: 3cd8febd439a
   date: '2026-11-01'
   settings: f08dfd2ff1bd
@@ -245,17 +245,17 @@ sor2_jungle_base:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_level_complete:
-  commit: d8e3bbd-dirty
+  commit: 47ca32b
   config: 313ed9b20249
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_song_12:
-  commit: d172191
+  commit: 47ca32b
   config: f9cb3005d436
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_too_deep:
-  commit: d8e3bbd-dirty
+  commit: 47ca32b
   config: 026e674b2f48
   date: '2026-11-01'
   settings: f08dfd2ff1bd

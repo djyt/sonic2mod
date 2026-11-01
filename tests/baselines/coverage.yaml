@@ -1393,7 +1393,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/regression/ending_theme.mod
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5371,7 +5371,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/regression/marble_zone.mod
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5547,7 +5547,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/regression/marble_zone_rom.mod
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6754,7 +6754,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/regression/robotnik.mod
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6928,7 +6928,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/regression/robotnik_lofi.mod
-  commit: c6d0253-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8663,7 +8663,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: d8e3bbd-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9009,7 +9009,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: d8e3bbd-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9182,7 +9182,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: d172191-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9355,7 +9355,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: d8e3bbd-dirty
+  commit: 47ca32b-dirty
   files:
   - convert.py
   - core/__init__.py

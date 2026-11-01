@@ -1,5 +1,7 @@
 """A song prepared the way `convert.py --merged` prepares it before it plans the merge, with every
 channel's notes in hand: what tools/config/merge_survey.py and tools/config/fold_csv.py pair and count.
+The config is set up as the converter's (prepare_conversion: auto_bpm, the song's overrides), so a
+note's seconds are the ones the merged build plans with.
 """
 
 from __future__ import annotations
@@ -8,9 +10,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..audio import db_to_gain
-from ..config import ConversionConfig, find_settings, load_settings
+from ..config import ConversionConfig
 from ..merge import NoteOn, PairStats, channel_notes, pair_channels
 from ..plan import prepare_instruments
+from .prepare import prepare_conversion
 from .smps2mod import SmpsToModConverter
 
 
@@ -54,10 +57,11 @@ class SurveyContext:
 
 def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
     """Parse and prepare the song the way `convert.py --merged` does before it builds the merge
-    plan (tempo re-timing, loop extension, baked levels) and collect every channel's notes."""
-    song = cfg.read_song()
-    synth, psg = load_settings(find_settings(config_path))
-    conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=psg)
+    plan (tempo re-timing, loop extension, baked levels) and collect every channel's notes.  The
+    followers stay on: the survey pairs every channel, before any fold."""
+    prep = prepare_conversion(cfg, config_path)
+    cfg, song, synth = prep.config, prep.song, prep.synth
+    conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=prep.psg_synth)
     prepare_instruments(song, cfg, synth)     # synth roots and detune variants, as the converter
     conv.prepare_song()                      # a replayed loop body is as many notes as it plays
     song = conv.song

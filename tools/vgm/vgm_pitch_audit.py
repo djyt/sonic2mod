@@ -34,9 +34,11 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parents[1]))
 
-from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit, rip_on_song_clock
+from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, rip_on_song_clock
+from core.config import ConversionConfig
+from core.convert import prepare_conversion
 from core.mod import read_mod
-from core.plan import load_config
+from core.plan import prepare_instruments
 from core.ui import add_variant_argument, print_audit
 from core.vgm import decode_vgm, pitch_segments
 
@@ -61,8 +63,12 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = load_config(args.config, args.settings, variant=args.variant)
-    song = prepare_audit(cfg, args.settings, args.config)       # synth roots and detune variants, as the converter
+    try:
+        prep = prepare_conversion(ConversionConfig.from_yaml(args.config, args.variant), args.config, args.settings)
+    except ValueError as e:
+        raise SystemExit(f"ERROR: {e}") from e
+    cfg, song = prep.config, prep.song
+    prepare_instruments(song, cfg, prep.synth)       # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     rip, scale = rip_on_song_clock(args.vgz, song, cfg.region)     # a rip whose timer ran off its driver's: retimed
     if scale != 1.0:

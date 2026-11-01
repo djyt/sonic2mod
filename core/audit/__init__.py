@@ -17,11 +17,9 @@ from .levels import LEVEL_MAX_ERR, LEVEL_MAX_SPREAD, instrument_levels, mod_note
 from .onsets import OnsetMatch, audio_onsets, keyon_onsets, onset_match
 from .pitch import (
     audit_pitches,
-    audit_settings,
     instrument_verdicts,
     mod_pitch_timeline,
     note_start_offset,
-    prepare_audit,
 )
 from .render import (
     SR,
@@ -93,7 +91,6 @@ __all__ = [
     "TempoSource",
     "audio_onsets",
     "audit_pitches",
-    "audit_settings",
     "band_profile",
     "check_frames",
     "compare_with_rip",
@@ -114,7 +111,6 @@ __all__ = [
     "onset_match",
     "onsets",
     "pitch_track",
-    "prepare_audit",
     "reference_render_key",
     "render_mod_channels",
     "render_vgm_channels",

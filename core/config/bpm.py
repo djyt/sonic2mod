@@ -1,7 +1,29 @@
 """The MOD BPM a song's SMPS tempo header plays at."""
 
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
 
 
+@dataclass(frozen=True)
+class BpmReport:
+    """How far a whole-number MOD BPM is from the driver's tempo (convert.py's report)."""
+    exact: float                 # the BPM the driver's tempo works out at
+    error_pct: float             # the MOD's BPM against it
+    better: dict | None          # the best bpm_rounding_options() row closer than that, if any
+
+
+def bpm_report(bpm: int, tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float = 60.0) -> BpmReport | None:
+    """How far `bpm` (derive_bpm's) is from the exact tempo, and which target_speed would leave it
+    closer; None when the tempo cannot be derived."""
+    exact = exact_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps)
+    if math.isnan(exact):
+        return None
+    err = (bpm / exact - 1) * 100
+    better = [o for o in bpm_rounding_options(tempo_divider, tempo_modifier, ticks_per_row, fps)
+              if abs(o["error_pct"]) < abs(err) - 0.05]
+    return BpmReport(exact, err, better[0] if better else None)
 
 
 def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float = 60.0):

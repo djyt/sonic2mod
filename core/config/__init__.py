@@ -8,7 +8,7 @@
 """
 
 from ..source import DacSample  # what ConversionConfig.read_dac returns
-from .bpm import bpm_rounding_options, derive_bpm, exact_bpm
+from .bpm import BpmReport, bpm_report, bpm_rounding_options, derive_bpm, exact_bpm
 from .entries import (
     ChannelConfig,
     DacSampleConfig,
@@ -46,8 +46,8 @@ from .song import (
 
 __all__ = [
     "DEFAULT_AMIGA_CLOCK", "DEFAULT_PSG_OVERSAMPLE", "DEFAULT_SHELF_HZ", "LEGATO_MODES", "PLAYERS", "SAMPLE_FILE", "SAMPLE_FINETUNE", "SAMPLE_KEYS", "SAMPLE_SLOT", "SAMPLE_VOLUME",
-    "SUSTAIN_LOOP_MODES", "ChannelConfig", "ConversionConfig", "DacSample", "DacSampleConfig", "InstrumentRange", "MergeGroup",
+    "SUSTAIN_LOOP_MODES", "BpmReport", "ChannelConfig", "ConversionConfig", "DacSample", "DacSampleConfig", "InstrumentRange", "MergeGroup",
     "PsgInstrumentEntry", "PsgSynthesisSettings", "SampleSettings", "SynthesisSettings", "apply_variant",
-    "bpm_rounding_options", "derive_bpm", "dither_mode", "exact_bpm", "find_settings", "format_patterns", "load_settings", "load_yaml",
+    "bpm_report", "bpm_rounding_options", "derive_bpm", "dither_mode", "exact_bpm", "find_settings", "format_patterns", "load_settings", "load_yaml",
     "mode_word", "parse_number", "parse_patterns", "rate3_synth_root_issues", "read_yaml_file", "variant_output_file", "with_song_overrides"
 ]

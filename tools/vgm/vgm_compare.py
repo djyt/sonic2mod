@@ -69,7 +69,6 @@ from core.audit import (
     OnsetMatch,
     audio_onsets,
     audit_pitches,
-    audit_settings,
     band_profile,
     db,
     envelope_offset,
@@ -84,7 +83,6 @@ from core.audit import (
     note_start_offset,
     onset_match,
     onsets,
-    prepare_audit,
     render_mod_channels,
     render_vgm_channels,
     rip_on_song_clock,
@@ -95,9 +93,10 @@ from core.audit import (
     write_volumes,
 )
 from core.config import ConversionConfig
-from core.merge import column_sources, prepare_merged_config
+from core.convert import prepare_conversion
+from core.merge import column_sources
 from core.mod import ModImage, read_mod, timed_pass
-from core.plan import load_config
+from core.plan import prepare_instruments
 from core.ui import add_variant_argument, print_audit
 from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
 
@@ -866,15 +865,16 @@ def main() -> None:
     with contextlib.suppress(Exception):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
-    cfg = load_config(args.config, args.settings, variant=args.variant)
-    if args.merged:
-        try:
-            prepare_merged_config(cfg, cfg.read_song())   # followers off, channels packed, merge_output_file
-        except ValueError as e:
-            raise SystemExit(f"ERROR: {e}") from e
+    # The config set up as convert.py's (merged: followers off, channels packed, merge_output_file).
     # synth_root / synth_shift come from the song (what the converter does before rendering), and
     # so do the detune variants; without them the symbolic verdict reads every shifted entry as wrong
-    song = prepare_audit(cfg, args.settings, args.config)
+    try:
+        prep = prepare_conversion(ConversionConfig.from_yaml(args.config, args.variant), args.config, args.settings,
+                                  merged=args.merged)
+    except ValueError as e:
+        raise SystemExit(f"ERROR: {e}") from e
+    cfg, song = prep.config, prep.song
+    prepare_instruments(song, cfg, prep.synth)
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):
@@ -934,8 +934,7 @@ def main() -> None:
         else:
             vgmplay = find_vgmplay(args.vgmplay)
             print(f"Rendering reference channels with {vgmplay} ...")
-            synth, _psg = audit_settings(args.settings, args.config)
-            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core, masks, cache_dir=synth.render_cache)
+            render_vgm_channels(vgz, vgm_names, vgmplay, workdir, args.core, masks, cache_dir=prep.synth.render_cache)
         print("Rendering MOD channels with ffmpeg/libopenmpt ...")
         render_mod_channels(mod_path, chan_map, workdir)
         print()

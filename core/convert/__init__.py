@@ -7,13 +7,15 @@
     vibrato.py         smpsModSet -> 4xy
     channel_writer/    one channel into MOD cells
     layout.py          C00 / Fxx / Bxx / Dxx in the cells left free
+    prepare.py         a config set up to convert: completed, merged, auto_bpm, its settings
     survey.py          the song prepared as the merged build prepares it (merge_survey, fold_csv)
 """
 
+from .prepare import PreparedConversion, prepare_conversion
 from .smps2mod import SmpsToModConverter
 from .survey import SurveyContext, survey_context
 from .vibrato import modulation_offset, modulation_slides, vibrato_depth
 
 __all__ = [
-    "SmpsToModConverter", "SurveyContext", "modulation_offset", "modulation_slides", "survey_context", "vibrato_depth"
+    "PreparedConversion", "SmpsToModConverter", "SurveyContext", "modulation_offset", "modulation_slides", "prepare_conversion", "survey_context", "vibrato_depth"
 ]

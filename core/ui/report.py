@@ -30,7 +30,7 @@ from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
-from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
+from ..config import BpmReport, ConversionConfig, PsgSynthesisSettings, SynthesisSettings
 from ..convert import SmpsToModConverter
 from ..diagnostics import InfoKind, WarningKind
 from ..mod import MAX_MOD_SAMPLE_BYTES, PAL_AMIGA_CLOCK, audit
@@ -68,7 +68,7 @@ class Report:
     verbose: bool
     synth: SynthesisSettings
     psg_synth: PsgSynthesisSettings
-    bpm: dict = field(default_factory=dict)       # derived, exact, error_pct, better (option or None)
+    bpm: BpmReport | None = None                  # auto_bpm: the whole-number BPM against the tempo
     mod_channels: int = 0
     patterns: int = 0
     derived: list = field(default_factory=list)   # the sections a minimal config left to the song
@@ -406,9 +406,9 @@ def print_header(console: Console, rep: Report) -> None:
     tempo = (f"div {song.header.tempo_divider} · {modifier} · {cfg.region.upper()}  [dim]→[/dim]  "
              f"[bold]{cfg.target_bpm}[/bold] BPM · speed [bold]{cfg.target_speed}[/bold] · "
              f"{cfg.ticks_per_row} ticks/row")
-    if b.get('exact') and abs(b.get('error_pct', 0.0)) >= _BPM_ERROR_PCT:
-        tempo += f"  {WARN} [yellow]{b['error_pct']:+.2f} %[/yellow]"
-    elif b.get('exact'):
+    if b and abs(b.error_pct) >= _BPM_ERROR_PCT:
+        tempo += f"  {WARN} [yellow]{b.error_pct:+.2f} %[/yellow]"
+    elif b:
         tempo += f"  {OK}"
     fm = (f"FM {rep.synth.mode}" if rep.synth and rep.synth.enabled else "FM from disk")
     psg = "PSG synthesised" if rep.psg_synth and rep.psg_synth.enabled else "PSG from disk"
@@ -452,12 +452,12 @@ def _check_summaries(rep: Report, rows: list[dict], sources: dict[int, dict]) ->
     b = rep.bpm
     changes = len(_infos(rep, InfoKind.TEMPO_CHANGE))
     extra = f" · {changes} tempo change{'s' if changes != 1 else ''} (Fxx)" if changes else ""
-    if b.get('exact') and abs(b.get('error_pct', 0.0)) >= _BPM_ERROR_PCT:
-        better = b.get('better')
+    if b and abs(b.error_pct) >= _BPM_ERROR_PCT:
+        better = b.better
         hint = (f" [dim]→ target_speed: {better['speed']} gives {better['bpm']} ({better['error_pct']:+.2f} %)[/dim]"
                 if better else "")
-        out['tempo'] = (WARN, f"{b['exact']:.3f} BPM rounded to {rep.config.target_bpm}: "
-                              f"{b['error_pct']:+.2f} %{hint}{extra}")
+        out['tempo'] = (WARN, f"{b.exact:.3f} BPM rounded to {rep.config.target_bpm}: "
+                              f"{b.error_pct:+.2f} %{hint}{extra}")
     else:
         out['tempo'] = (OK, f"{rep.config.target_bpm} BPM, the driver's tempo exactly{extra}")
     notes = sum(1 for ch in rep.song.channels for e in ch.events if e.note is not None and not e.note.is_rest)

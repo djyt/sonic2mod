@@ -162,7 +162,7 @@ How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
 | `entries.py` | `InstrumentRange`, `PsgInstrumentEntry`, `ChannelConfig`, `DacSampleConfig`, `MergeGroup` and one parser per section |
 | `song.py` | `ConversionConfig`: `from_yaml(path, variant)` → `from_data` (unknown top-level keys are errors), `read_song()`, `is_minimal`, `stated()`, `use_source()`, `mod_channel_count` |
 | `settings.py` | `SampleSettings` and its subclasses `SynthesisSettings` (YM2612, `legato`, `player`) and `PsgSynthesisSettings`; `find_settings`, `load_settings`, `with_song_overrides` |
-| `bpm.py` | `derive_bpm`, `exact_bpm`, `bpm_rounding_options` |
+| `bpm.py` | `derive_bpm`, `exact_bpm`, `bpm_rounding_options`, `bpm_report` → `BpmReport` |
 
 Every key: `docs/yaml_config.md`.  Settings are read by every CLI and tool; a constant in the
 code is only the fallback when a key is absent.
@@ -242,6 +242,7 @@ the song and config, until the slots reserved for sample banks match what the ba
 | `vibrato.py` | `VibratoSpeed`, `vibrato_depth`: `smpsModSet` → `4xy` |
 | `layout.py` | `ModLayout`: `leading_rests`, `tempo_commands`, `tempo_changes`, `loop_point`, `song_end` |
 | `sample_names.py` | `sample_names`: what plays each slot, in 22 characters |
+| `prepare.py` | `prepare_conversion` → `PreparedConversion`: a config set up to convert — a minimal one completed, the merged build's columns, `auto_bpm`, the settings with the song's overrides.  `convert.py`, `survey_context`, `vgm_compare` and `vgm_pitch_audit` all start here |
 | `survey.py` | `SurveyContext`: the song prepared as `--merged` prepares it (merge_survey, fold_csv) |
 
 What each step decides, and why: `docs/pipeline.md`.

@@ -8,27 +8,14 @@ Usage:
 """
 
 import argparse
-import dataclasses
 import os
 import sys
 from pathlib import Path
 
 import yaml
 
-from core.config import (
-    PLAYERS,
-    ConversionConfig,
-    bpm_rounding_options,
-    derive_bpm,
-    exact_bpm,
-    find_settings,
-    load_settings,
-    with_song_overrides,
-)
-from core.convert import SmpsToModConverter
-from core.merge import prepare_merged_config
-from core.plan import complete_config
-from core.smps import update_hz
+from core.config import PLAYERS, ConversionConfig, find_settings
+from core.convert import SmpsToModConverter, prepare_conversion
 from core.ui import Report, add_variant_argument, branding, cli_console, error_printer, print_report
 
 console = cli_console()
@@ -114,25 +101,18 @@ def main():
     if not os.path.exists(config.input_file):
         _error(f"Input file not found: {config.input_file}")
 
-    # ── Parse (an asm), read (a ROM) or lift (a VGM rip) ───────────────────────
+    # ── Read the song (asm parsed, ROM read, VGM lifted) and set the conversion up: a minimal
+    #    config completed, the merged build's columns, auto_bpm, the settings ─────────────────
     try:
-        song = config.read_song()
+        prep = prepare_conversion(config, args.config, _settings_path(args.config, args.settings),
+                                  merged=args.merged and not args.write_config, player=args.player)
     except ValueError as e:
         _error(str(e))
+    config, song, synth, psg_synth = prep.config, prep.song, prep.synth, prep.psg_synth
 
-    # ── A minimal config (no channels:) completed from the song ────────────────
-    derived: list[str] = []
-    stale: list[str] = []
-    folded: dict[int, tuple[int, int]] = {}
-    data = config.stated()
-    if config.is_minimal:
-        try:
-            settings = load_settings(_settings_path(args.config, args.settings))[0]
-            config, derivation = complete_config(config, args.config, settings, song)
-        except ValueError as e:
-            _error(str(e))
-        assert derivation is not None
-        data, derived, stale, folded = derivation.data, derivation.derived, derivation.stale, derivation.folded
+    # ── A minimal config: what was derived, shown or written ───────────────────
+    derivation = prep.derivation
+    data = derivation.data if derivation else config.stated()
     if args.show_config:
         console.print(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=None), markup=False, highlight=False)
     if args.write_config:
@@ -140,11 +120,6 @@ def main():
         console.print(f"wrote {args.write_config}")
         return
 
-    if args.merged:
-        try:
-            prepare_merged_config(config, song)
-        except ValueError as e:
-            _error(str(e))
     if args.output:
         config.output_file = args.output
 
@@ -152,30 +127,7 @@ def main():
         base = os.path.splitext(os.path.basename(config.input_file))[0]
         config.output_file = base.replace(" ", "_") + ".mod"
 
-
-    # BPM derivation.  A MOD BPM is a whole number: the report says how far off the driver's
-    # tempo that leaves the song, and which target_speed would leave it closer.
-    bpm: dict = {}
-    if config.auto_bpm:
-        fps = update_hz(song.rules, config.region)
-        config.target_bpm = derive_bpm(song.header.tempo_divider, song.header.tempo_modifier,
-                                       config.ticks_per_row, config.target_speed, fps)
-        exact = exact_bpm(song.header.tempo_divider, song.header.tempo_modifier,
-                          config.ticks_per_row, config.target_speed, fps)
-        if exact == exact:
-            err = (config.target_bpm / exact - 1) * 100
-            better = [o for o in bpm_rounding_options(song.header.tempo_divider, song.header.tempo_modifier,
-                                                      config.ticks_per_row, fps)
-                      if abs(o["error_pct"]) < abs(err) - 0.05]
-            bpm = {'exact': exact, 'error_pct': err, 'better': better[0] if better else None}
-
     # ── Convert ───────────────────────────────────────────────────────────────
-    SETTINGS_FILE = _settings_path(args.config, args.settings)
-    synth, psg_synth = load_settings(SETTINGS_FILE)
-    synth, psg_synth = with_song_overrides(synth, config), with_song_overrides(psg_synth, config)
-    if args.player:                     # this build's player, merged or not
-        synth = dataclasses.replace(synth, player=args.player, merged_player=args.player)
-
     # The chips render core's samples: core cannot import them, so they are handed in here
     converter = SmpsToModConverter(song, config, synth=synth, psg_synth=psg_synth)
     with console.status("[dim]Converting…[/dim]", spinner="dots"):
@@ -196,8 +148,9 @@ def main():
     print_report(console, Report(
         config=config, song=converter.song, converter=converter, output_path=config.output_file,
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
-        synth=synth, psg_synth=psg_synth, bpm=bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
-        derived=derived, stale=stale, folded=folded))
+        synth=synth, psg_synth=psg_synth, bpm=prep.bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
+        derived=derivation.derived if derivation else [], stale=derivation.stale if derivation else [],
+        folded=derivation.folded if derivation else {}))
 
 
 if __name__ == '__main__':

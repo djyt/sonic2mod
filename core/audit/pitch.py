@@ -12,7 +12,6 @@ Every chip segment longer than min_ms is compared with the MOD note sounding at 
 The authority on "is every note right": an audio window's pitch is unreliable on legato runs and
 1-tick grace notes (GHZ FM3-FM5), which this is immune to.
 
-    prepare_audit       the instruments as the converter prepared them (core.plan.prepare_instruments)
     mod_pitch_timeline  per MOD channel, (seconds, Hz, instrument, attack) at each note, and at
                         each step of an E1x / E2x / 1xx / 2xx (attack False: only notes pair with
                         a chip note's start)
@@ -25,33 +24,18 @@ from __future__ import annotations
 import itertools
 import math
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import numpy as np
 
 from ..audio import pitch_name, semitone_to_hz
-from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig, find_settings, load_settings
+from ..config import SAMPLE_FINETUNE, SAMPLE_SLOT, ConversionConfig
 from ..mod import PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
-from ..plan import prepare_instruments, sounding_pitches
+from ..plan import sounding_pitches
 from ..vgm import Segment
 
 _SLIDE_UP, _SLIDE_DOWN = 0x1, 0x2          # 1xx / 2xx
 _ATTACK = 3                                 # a timeline entry's: a note-on, not a slide's step
 _HELD = 0.025                               # s a pitch holds for a move from it to start a note (> a frame)
-
-def audit_settings(settings_path: str | Path | None, config_path: str | Path):
-    """(SynthesisSettings, PsgSynthesisSettings) the MOD was converted with: `settings_path`, else the
-    settings.yaml beside the config, else configs/settings.yaml."""
-    return load_settings(str(settings_path) if settings_path else find_settings(str(config_path)))
-
-
-def prepare_audit(cfg: ConversionConfig, settings_path: str | Path | None, config_path: str | Path):
-    """What the converter decides before it renders, on `cfg` (core.plan.prepare_instruments: every
-    entry's synth_root / synth_shift, the detune variants the settings ask for).  Returns the song."""
-    song = cfg.read_song()
-    synth, _psg = audit_settings(settings_path, config_path)
-    prepare_instruments(song, cfg, synth)
-    return song
 
 
 def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict[int, list[tuple]], float]:

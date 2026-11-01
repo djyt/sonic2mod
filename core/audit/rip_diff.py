@@ -49,9 +49,9 @@ from ..smps import (
     tempo_schedule,
     tick_at_frame,
 )
-from ..source import SmpsDriver, is_vgm_path, read_song
-from ..vgm import LIFTED_ASPECTS, FrameLog, LiftOptions, VgmLiftError, lift_song
-from .rips import RipFaults
+from ..source import SmpsDriver, is_vgm_path, read_dac, read_song
+from ..vgm import LIFTED_ASPECTS, FrameLog, LiftOptions, VgmLiftError, lift_song, load_frames
+from .rips import RipFaults, dac_written, frame_cut
 
 
 @dataclass(frozen=True)
@@ -82,6 +82,11 @@ class SongSource:
 
     def read(self) -> SmpsSong:
         return read_song(self.path, rom_song=self.rom_song, driver=self.driver, fix_data_bugs=False)
+
+    def rip_frames(self, rip: Path, song: SmpsSong, cache_dir: str | Path | None = None) -> FrameLog:
+        """`rip`'s frame log as `song` (this source's) is played: cut as its driver's update runs,
+        its DAC starts found by the ROM's samples' bytes (an asm's: by seeks and pauses)."""
+        return load_frames(rip, cache_dir, frame_cut(song), dac_written(read_dac(self.path, self.driver)))
 
 
 @dataclass(frozen=True)

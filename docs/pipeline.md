@@ -1070,6 +1070,9 @@ python tools/vgm/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # ev
   note is folded too: the lift reads a note at its key write, and a legato slide writes none.
 - The window ends at the rip's last whole frame (its last is often half written): past it the lifted
   song is the log's loop again, not the game.
+- A ROM song's DAC starts are read by its samples' bytes (`SongSource.rip_frames`): a ripper's bank
+  is the stream as heard, so a drum cutting into another plays on with no seek or pause, and a seek
+  may land mid-sample.  An asm song's: by seeks and pauses.
 - Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one
   side plays are named, not compared.  Ticks print with seconds into the song.
 - Verdict per kind, the song's (`channel_type`, not the name): `FM same · DAC onset 4 · PSG note 31

@@ -49,14 +49,13 @@ from core.audit import (
     RipFaults,
     SongSource,
     check_frames,
-    frame_cut,
     named,
     scan_glitches,
     workers,
 )
 from core.config import find_settings, load_settings
 from core.ui import add_shelf_arguments, rip_shelf
-from core.vgm import FrameLog, load_frames
+from core.vgm import FrameLog
 
 _DEFAULT_MISSES = 8               # misses listed per channel and aspect
 _KINDS = ("FM", "PSG", "NOISE")
@@ -69,7 +68,7 @@ def _check(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
         source = SongSource.from_config(config, ROOT)
         title = f"{rip.stem} {source.sound}".rstrip()
         song = source.read()
-        return title, check_frames(song, load_frames(rip, cache_dir, frame_cut(song)), channels, faults)
+        return title, check_frames(song, source.rip_frames(rip, song, cache_dir), channels, faults)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", None
 
@@ -80,7 +79,7 @@ def _scan(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
     try:
         source = SongSource.from_config(config, ROOT)
         song = source.read()
-        frames = load_frames(rip, cache_dir, frame_cut(song))
+        frames = source.rip_frames(rip, song, cache_dir)
         scan = scan_glitches(song, frames, channels, faults)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", []

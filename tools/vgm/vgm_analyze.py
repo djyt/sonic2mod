@@ -332,7 +332,7 @@ def print_writes(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
     rows: list[list] = []                       # [frame, channel, text]
     for w in decoded_writes(log):
         frame = fl.frame_of(w.sample)
-        if frame not in frames or not w.channel.startswith(kinds) or not _shows(w.channel, channel_filter):
+        if frame not in frames or not _shows(w.channel, kinds, channel_filter):
             continue
         field, _, operand = w.text.partition(" op")
         last = rows[-1] if rows else None
@@ -350,8 +350,9 @@ def print_writes(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
         print(f"  ... {len(rows) - len(shown)} more rows (use --max-rows, --from / --to)")
 
 
-def _shows(channel: str, channel_filter: set[str] | None) -> bool:
-    return not channel_filter or channel in channel_filter
+def _shows(channel: str, kinds: tuple[str, ...], channel_filter: set[str] | None) -> bool:
+    """A channel named (--channel DAC) shows whatever --chip; else those --chip covers."""
+    return channel in channel_filter if channel_filter else channel.startswith(kinds)
 
 
 def main() -> None:

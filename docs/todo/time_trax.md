@@ -168,10 +168,12 @@ names it.
 
 ### 5.1 Reading (small)
 
-1. **A new family folder** (D1), its `variant.py`, `names.py` / `registry.py` / `games.py` lines,
+1. **A new family folder** `core/drivers/timetrax/` (D1), its `variant.py`, `names.py` / `registry.py` / `games.py` lines,
    the layer contract.  Detection by code anchors (the mailbox, the bank write, the command table).
-2. **The Z80 load:** a raw copy (`core/rom/z80.py`'s uncompressed copy) and a banked window, as
-   Golden Axe / OutRun; **big-endian words** in the bank (`SoundMemory.word` takes byte order).
+2. **The Z80 load:** a raw copy and a banked window, as Golden Axe / OutRun.  `z80.py`'s *copied*
+   shape misses it (`disasm.py --z80`: no load found): its leas sit before the bus request, not
+   next to the count; widen the match.  **Big-endian words** in the bank: a `SoundMemory`
+   subclass, as Mucom-MD's `memory.py` (`_BYTE_ORDER`).
 3. **The grammar:** § 2.3 through the shared code walk (`core/smps/code.py`): a note and its
    duration, fixed duration as grammar state, a call stack, counted loops.
 4. **The header:** (prio, channel, ptr) lists; voices (26 bytes, register order) through
@@ -191,23 +193,61 @@ names it.
 | transposition **set** | `SetTransposition` | walk | none | small |
 | pan `$FF` / 0 / 1 | `Pan` | grammar | `8xx` per note (check the writer emits `Pan`) | small |
 | detune | `Detune` (raw fnum) | grammar | detune variants | none |
-| volume law (TL scaled) | `PlaybackRules` level law; `SetVol` from the loudest carrier (D3) | walk | levels; `measure_volumes` | medium |
-| volume mask (`$AA`) | a patched voice per (voice, vol) | walk (`voice_patch.py`) | samples | small |
-| glide | `Glide(step, every)` | walk: the sounding word per frame | writer: `3xx` at a speed (the writer has only `3FF`) (D4) | **large** |
-| portamento | `Portamento(semitones, every)` | walk | `3xx`, or a note per step (D4) | **large** |
+| volume law (TL scaled) | `PlaybackRules` level law; `SetVol` from the loudest carrier, a patched voice past a threshold (D3) | walk | levels; `voice_patch.py`; `measure_volumes` | medium |
+| volume mask (`$AA`) | in D3's patched voices | walk | samples | small |
+| glide | `Glide(step, every)` | walk: the sounding word per frame | writer: row slides to the sounding pitch (`modulation_slides`, D4) | **large** |
+| portamento | `Portamento(semitones, every)` | walk | as glide (D4) | **large** |
 | FM volume envelope | `FmEnvelope(attack)` + on / off | walk | baked per (voice, envelope), as SH2's pitch envelopes (D5) | **large** |
 | vibrato (2 uses) | `ModSet` approximation | grammar | `4xy` | small |
 
 Glide, portamento and the volume law are the only parts touching most songs' sound; the rest is mapping.
+
+### 5.3 From the `streets_of_rage_2` branch (checked 2026-11-01)
+
+| Change | Use here |
+|---|---|
+| Sound IDs from 0 (R7) | song 0 is the Title |
+| `core/drivers/mucom/md/` (variant, header, locate, grammar, memory) | the shape of a non-SMPS family |
+| `core/rom/grammar/` package, a module per language | `grammar/timetrax.py`.  The grammar is per address, stateless: `$86` fixed duration and `$83` (no pointer back to its `$82`) need a pre-pass in the reader (MUCOM's loop end carries its offset; this one does not) |
+| `VoiceChanges.levels`, `SmpsVoice.level_fixed` / `unpatched`; derive folds a patched copy onto its voice when slots run out | D3's patched voices: exact TLs out of the volume's reach; song 4's overflow folds back to plain voices.  Folding takes the least played, not the worst error |
+| `core/plan/slot_fit.py`: fit 31 slots by volumes, copies, then windows | song 4 (27 voices + envelopes) |
+| `TrackRules` grouped; `key_off.gate_floor` | check `$96` / `$98` on notes shorter than n against it |
+| `vgm_analyze --writes` | the volume law: all four TLs per write, `$AA`'s modulators |
+| `vgm_frames` FM pan check | ~1,500 pan changes a pass on song 0's FM4 |
+| `vgm_lift`: FM note = table entry nearest the sounding pitch; legato slides folded | glides and the +10 cent table |
+| `flag_census.py` | once the reader exists |
+| `disasm.py` | 68k works now; `--z80` after the load fix |
+
+Not useful: soft release (a rest here holds at full level), ADSR (PSG only), noise, DAC onsets, header
+loops.  Still new: the volume law, glide, portamento, FM volume envelopes.
+
+Already in main, missed in 5.2: `core/convert/vibrato.py`'s `modulation_slides` slides a row at a
+time (`1xx` / `2xx`, fine `E1x` / `E2x`) to the chip's pitch at each row's end, carrying what the MOD
+reached.  A glide is the same with another curve: D4 uses it.
 
 ---
 
 ## 6. Plan
 
 ### Phase 0
-- [ ] 0.1 Decisions § 7.  Unzip the rips; branch `time_trax` in a worktree (other sessions share this
+- [x] 0.1 Decisions § 7 (2026-11-01).
+- [ ] 0.2 Unzip the rips; branch `time_trax` in a worktree (other sessions share this
   checkout).
-- [ ] 0.2 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
+- [ ] 0.3 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
+- [ ] 0.4 Tools (each its own commit, before the phase that needs it):
+  - T1 `core/rom/z80.py`: the copied load with its leas before the bus request (Phase 1; also
+    `disasm.py --z80`).
+  - T2 `vgm_frames`: every frame of a note, not only its first: the word (glide, portamento) and
+    the TLs (envelopes) against the walk's (Phase 2.3, 2.4).  Today a glide's path goes unchecked.
+  - T3 `vgm_frames` level: all four TLs, not the carriers' only: `$AA` scales modulators (2.2).
+  - T4 `vgm_pitch_audit`: a slide check.  It judges chip segments of 60 ms or more; a glide's
+    pitch lasts a frame (20 ms), so no glide is judged.  `mod_pitch_timeline` already follows
+    `1xx` / `2xx` / `E1x` / `E2x` per tick: compare it with the rip's word per frame while a
+    note slides (3.2).
+  - T5 `disasm.py --table` on Z80 tables (little-endian absolute words: the flags at `$0DC8` /
+    `$0E20`).  Optional: § 2.3 is decoded.
+  - Check, likely fine: `vgm_lift` on a song with no tempo holds (durations are frames);
+    `flag_census` on flags `$80`-`$AB`.
 
 ### Phase 1: read
 - [ ] 1.1 5.1 items 1-4; `rom_import.py` lists six songs; `song_dump.py` reads, walks and plays each;
@@ -220,33 +260,46 @@ Glide, portamento and the volume law are the only parts touching most songs' sou
 ### Phase 2: the walk
 - [ ] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.
 - [ ] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.
-- [ ] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch.
-- [ ] 2.4 Volume envelopes.
+- [ ] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).
+- [ ] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).
 
 ### Phase 3: convert
-- [ ] 3.1 Writer: speed `3xx` for glides / portamento (D4); envelopes baked (D5).
-- [ ] 3.2 `vgm_pitch_audit` clean; `measure_volumes --configs configs/time_trax`, one pass.
+- [ ] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's
+  glide / portamento word (D4); envelopes baked (D5).
+- [ ] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
 - [ ] 3.3 Regression cases by coverage; tool cases `read_`, `frames_`, `glitches_`.
 - [ ] 3.4 Listen in the FT2 clone (the user).
 
 ### Phase 4: close
-- [ ] 4.1 A section in `docs/smps_variants.md` (or a new `docs/follin_driver.md`: it is no SMPS);
+- [ ] 4.1 A section in `docs/smps_variants.md` (or a new `docs/timetrax_driver.md`: it is no SMPS);
   `docs/architecture.md`; CLAUDE.md's index; this plan to `done/`.
 
 ---
 
-## 7. Decisions (open, for the user)
+## 7. Decisions (2026-11-01)
 
-1. **Name and place.**  Proposed: a family `core/drivers/follin/` with `timetrax/` in it (driver
-   `follin_z80`).  The family's name says it is not SMPS; a second Follin game would sit beside it.
-2. **Region.**  The rips are 50 Hz; a US cartridge would play 20 % faster.  Recommended: `pal` in the
-   configs (matches the rips; every tool checks against them), a `ntsc` variant if wanted.
-3. **Volume law.**  `SetVol` from the loudest carrier's TL change (fits baked levels; exact for one
-   carrier, small timbre error for several), or a patched voice per (voice, vol) (exact, more samples).
-   Recommended: the first.
-4. **Glides and portamento in the MOD.**  `3xx` at a speed per note (FT2 slides periods, the chip
-   fnum: approximate), or bake each glide into a sample (exact, a sample per (voice, from, to)).
-   Recommended: `3xx`; portamento's 1-frame semitone steps as the same `3xx`.
-5. **Volume envelopes.**  Baked per (voice, envelope) (as Space Harrier II's pitch envelopes), or
-   `Axy` / `Cxx` per row.  Recommended: baked.
-6. **SFX** (33 entries, PSG and DAC ones among them): not converted, as for every other driver.
+1. **Place:** `core/drivers/timetrax/`, a family of its own (driver `timetrax`).  No claim about other
+   Follin games.
+2. **Region:** `pal` in the configs: the rips are 50 Hz.  An `ntsc` variant only if wanted later.
+3. **Volume law:** hybrid.  `SetVol` from the loudest carrier's TL change; a patched voice per
+   (voice, vol, mask) only where some operator misses by ≥ a threshold (settings.yaml; 3 TL steps =
+   2.25 dB).  Measured (FM notes, one pass, envelope notes apart):
+
+   | Song | Voices | Exact (voice, vol, mask) | Hybrid, ≥ 3 | Notes ≥ 3 off under `SetVol` |
+   |---|---|---|---|---|
+   | 0 | 17 | 17 | 17 | 0 |
+   | 1 | 19 | 29 | 23 | 114 / 2888 |
+   | 2 | 14 | 20 | 19 | 122 / 3796 |
+   | 3 | 16 | 17 | 16 | 0 |
+   | 4 | 19 | 33 | 27 | 366 / 4231 |
+   | 5 | 9 | 9 | 9 | 0 |
+
+   Song 4 then has 4 slots left for envelopes and detune variants: expect banks or a lower threshold
+   trade there.
+4. **Glides and portamento:** row slides, `core/convert/vibrato.py`'s `modulation_slides`
+   generalised from a `ModSet` to any curve: each row `1xx` / `2xx` (fine `E1x` / `E2x`) to the
+   sounding pitch at its end, the error carried.  The curve is the walk's frame-exact word, glide
+   on top of portamento; portamento's semitone steps smooth within a row.
+5. **Volume envelopes:** baked per (voice, envelope), as Space Harrier II's pitch envelopes.
+6. **Tuning:** as heard on PAL: +10 cents, the table's words carried.
+7. **SFX:** not converted.

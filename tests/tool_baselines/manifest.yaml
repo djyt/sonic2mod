@@ -1127,7 +1127,7 @@ lift_all:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 lift_moonwalker_88_round_clear:
-  commit: d4522d7-dirty
+  commit: a53ba79
   date: '2026-11-01'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
@@ -1186,7 +1186,7 @@ lift_moonwalker_88_round_clear:
     reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
     reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 lift_moonwalker_all:
-  commit: ce3f15f
+  commit: a53ba79
   date: '2026-11-01'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
@@ -1575,7 +1575,7 @@ read_moonwalker:
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_outrun:
-  commit: aad5d1d
+  commit: a53ba79
   date: '2026-11-01'
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -1689,17 +1689,17 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: aad5d1d
+  commit: a53ba79
   date: '2026-11-01'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: aad5d1d
+  commit: a53ba79
   date: '2026-11-01'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
 read_streets_of_rage_2:
-  commit: aad5d1d
+  commit: a53ba79
   date: '2026-11-01'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9

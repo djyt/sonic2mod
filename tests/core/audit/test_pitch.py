@@ -11,7 +11,7 @@ import math
 import random
 import unittest
 
-from core.audit.pitch import _same_pitch, _StartScorer
+from core.audit.pitch import _same_pitch, _StartScorer, audit_pitches
 
 _STEP, _DRIFT = 0.005, 0.006
 
@@ -63,3 +63,26 @@ class StartScore(unittest.TestCase):
         self.assertTrue(_same_pitch(440.0, 440.0 * 2 ** (40 / 1200)))
         self.assertFalse(_same_pitch(440.0, 440.0 * 2 ** (60 / 1200)))
         self.assertFalse(math.isnan(1200 * math.log2(880.0 / 440.0)))
+
+
+def _audit(chip, notes):
+    """`chip` segments on PSG1 against MOD `notes` ((s, Hz)): the verdicts and the trace."""
+    steps = []
+    res = audit_pitches({"PSG1": chip}, chip[-1][0] + 1, {0: [(t, f, 1, True) for t, f in notes]}, 99.0,
+                        {"PSG1": 0}, 0.0, trace=steps.append)
+    return res["channels"]["PSG1"], steps
+
+
+class Pairing(unittest.TestCase):
+    def test_a_tone_written_after_its_attenuation_still_pairs(self):
+        # The new note's attenuation lands before its tone: the old pitch holds 0.2 ms
+        st, steps = _audit([(0.0, 440.0), (1.0, 440.0), (1.0002, 494.0), (1.5, None)], [(0.0, 440.0), (1.0, 494.0)])
+        self.assertEqual((st["ok"], st["wrong"]), (2, 0))
+        self.assertEqual([s.paired for s in steps], [0.0, 1.0])
+
+    def test_a_start_the_mod_lacks_is_not_a_tempo_step(self):
+        # A stale tone unmuted at 0 (the rip's alone), then a note every 117 ms the MOD plays too
+        beat = [(0.117 * k, 330.0 + 30 * k) for k in range(1, 6)]
+        _, steps = _audit([(0.0, 880.0), *beat, (0.7, None)], beat)
+        self.assertEqual([s.paired for s in steps[1:]], [t for t, _ in beat])
+        self.assertTrue(all(abs(s.deviation) < 0.01 for s in steps[1:]))

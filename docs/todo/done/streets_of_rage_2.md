@@ -384,7 +384,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 
 ### Phase 5: convert
 - [x] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26; 2.6).
-- [x] 5.2 `vgm_pitch_audit`: 15 of 23 clean, after fixing what it misread (a PSG note's attenuation
+- [x] 5.2 `vgm_pitch_audit`: 14 of 23 clean, after fixing what it misread (a PSG note's attenuation
   written before its tone; a rip-only start read as a tempo step) and what the slot fit broke (a
   special-mode copy folded: its pitch; an instrument whose first entry routes no notes: no rendering
   pitch).  Left: modulation sweeps no 4xy plays (depth -150 ... 598), PSG detune on high notes (no

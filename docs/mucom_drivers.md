@@ -99,7 +99,7 @@ Bottom, the beta's, matches no song; `$04`, `$12`, `$17` have none)
 - `vgm_lift`: FM onsets and lengths exact in 20 of 23; DAC onsets and lengths in all 23 (its starts
   found by the ROM's sample bytes: the rips' banks are the stream as heard, a drum cutting into
   another shows no seek).
-- `vgm_pitch_audit`: 15 of 23 clean.  Left: modulation sweeps a MOD's vibrato cannot play (depths
+- `vgm_pitch_audit`: 14 of 23 clean.  Left: modulation sweeps a MOD's vibrato cannot play (depths
   -150 ... 598: Never Return Alive, Player Select), PSG detune on high notes (a divider's -1 is 37 c
   there; PSG detunes take no variant: SOR Super Mix, Dreamer, Back to the Industry), Wave 131.
 - Volumes measured (`measure_volumes.py --configs configs/streets_of_rage_2`, one pass: 376).

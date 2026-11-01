@@ -200,6 +200,11 @@ python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.v
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
+# Every pair of a game, a line each, in parallel; --convert writes each MOD first (the audit reads the one on
+# disk: a stale MOD is the commonest false result).  A config alone finds its rip (rips.yaml)
+python tools/vgm/vgm_pitch_audit.py --all --configs configs/streets_of_rage_2 --convert
+# Why a note was judged so: each chip segment near a time, the MOD note it paired with, the running deviation
+python tools/vgm/vgm_pitch_audit.py configs/streets_of_rage_2/11_under_logic.yaml --trace PSG2 --at 29.9
 
 # The song as read (asm or ROM) against its rip, lifted (docs/todo/vgz_conversion.md Phase 1): differences per
 # channel and aspect, repeated ones grouped, up to the rip's last whole frame.  The lift takes the song's tempo;

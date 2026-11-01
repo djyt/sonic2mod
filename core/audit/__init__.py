@@ -16,6 +16,7 @@ from .glitch_scan import ChannelMove, GlitchCandidate, GlitchScan, scan_glitches
 from .levels import LEVEL_MAX_ERR, LEVEL_MAX_SPREAD, instrument_levels, mod_note_events, suggest_volumes, write_volumes
 from .onsets import OnsetMatch, audio_onsets, keyon_onsets, onset_match
 from .pitch import (
+    PairStep,
     audit_pitches,
     instrument_verdicts,
     mod_pitch_timeline,
@@ -83,6 +84,7 @@ __all__ = [
     "GlitchScan",
     "LiftTempo",
     "OnsetMatch",
+    "PairStep",
     "RipDiff",
     "RipFaults",
     "RipGlitch",

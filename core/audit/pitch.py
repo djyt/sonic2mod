@@ -35,6 +35,8 @@ from ..vgm import Segment
 _SLIDE_UP, _SLIDE_DOWN = 0x1, 0x2          # 1xx / 2xx
 _ATTACK = 3                                 # a timeline entry's: a note-on, not a slide's step
 _HELD = 0.025                               # s a pitch holds for a move from it to start a note (> a frame)
+_INSTANT = 0.008                            # s: a segment shorter is one write of a burst the next replaces
+                                            # (a burst lasts up to 7.5 ms; a frame is 16.7)
 
 
 def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[int, list[tuple]], float]:
@@ -98,7 +100,7 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
     for src, evs in chip.items():
         if src in chan_map:
             prev = None
-            for t, f in evs:
+            for t, f in _settled(evs):
                 if f is not None and (prev is None or abs(1200 * math.log2(f / prev)) > 50):
                     starts.append((chan_map[src], t, f))
                 prev = f
@@ -122,6 +124,15 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
         if best > 0:
             return best_lag
     return 0.0
+
+
+def _settled(segments: list[Segment]) -> list[Segment]:
+    """`segments` without a pitch the next replaces within the driver's burst: a PSG note's
+    attenuation written before its tone holds the last note's pitch for a moment (Streets of Rage
+    2's), and took the new note's start with it.  A silence stays: a key-off and key-on in one
+    burst re-strike a note at its pitch."""
+    return [seg for seg, after in zip(segments, [*segments[1:], None], strict=True)
+            if after is None or seg[1] is None or after[0] - seg[0] >= _INSTANT]
 
 
 def _chip_starts(segments: list[Segment]) -> list[bool]:
@@ -223,17 +234,18 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
             continue
         timeline = mod[chan_map[src]]
         notes = [n for n in timeline if n[_ATTACK]]         # what a chip note's start pairs with
-        evs = [*chip[src], (vgm_end, None)]
+        segments = _settled(chip[src])
+        evs = [*segments, (vgm_end, None)]
         st: dict = {"ok": 0, "wrong": 0, "missing": 0, "short": 0, "wrong_notes": [], "missing_notes": []}
         run, j = offset, 0          # running MOD-minus-chip deviation (s); next unpaired MOD note
-        starts = _chip_starts(chip[src])
-        starts_t = [t for (t, _), s in zip(chip[src], starts, strict=True) if s]   # for looking past a tempo step
+        starts = _chip_starts(segments)
+        starts_t = [t for (t, _), s in zip(segments, starts, strict=True) if s]   # for looking past a tempo step
         si = -1
         for i, ((t0, f), (t1, _)) in enumerate(itertools.pairwise(evs)):
             is_start = starts[i]
             # A segment starting as the MOD's single pass ends is the recording going round its
             # loop; the last MOD note must not be judged against it.
-            if f is None or t0 + run > mod_end - 0.03 or t1 - t0 < 1e-4:
+            if f is None or t0 + run > mod_end - 0.03:
                 continue
             # Pair a note start with the next MOD note near it (MOD-only notes in between are
             # skipped), and let the deviation follow.
@@ -242,9 +254,13 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
                 si += 1
                 while j < len(notes) and notes[j][0] - t0 < run - 0.04:
                     j += 1
-                if j < len(notes) and abs(notes[j][0] - t0 - run) > 0.04:
+                extra = (si + 1 < len(starts_t) and j < len(notes)
+                         and abs(notes[j][0] - starts_t[si + 1] - run) <= 0.04)
+                if j < len(notes) and abs(notes[j][0] - t0 - run) > 0.04 and not extra:
                     # A step in the deviation that the next two starts confirm is a tempo
-                    # change (the MOD falls up to two frames behind at each smpsSetTempoMod).
+                    # change (the MOD falls up to two frames behind at each smpsSetTempoMod);
+                    # not where the next start meets this MOD note as things stand: this start
+                    # is the rip's alone (Streets of Rage 2's PSG2 unmuted on a stale tone)
                     d = notes[j][0] - t0
                     if abs(d - run) <= 0.12 and all(
                             si + n < len(starts_t) and j + n < len(notes)

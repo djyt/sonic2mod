@@ -285,8 +285,10 @@ def _frame_lines(frame: Frame, chip: str, state: ChipState) -> Iterator[tuple[st
         yield "DAC", _dac_line(frame.dac)
 
 
-def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None, max_rows: int) -> None:
-    """Each frame's writes, one line per channel written to: what the lift reads (core.vgm.frames)."""
+def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None, max_rows: int,
+                 first: int = 0, last: int | None = None) -> None:
+    """Each frame's writes (frames `first` to `last`), one line per channel written to: what the
+    lift reads (core.vgm.frames)."""
     fl = frame_log(log, state)
     loop = f", loops to frame {fl.loop_frame}" if fl.loop_frame is not None else ""
     print(f"Frames : {len(fl.frames)} of {fl.frame_samples} samples, bursts at +{fl.phase},"
@@ -297,7 +299,7 @@ def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
     print("-" * 96)
 
     shown, total = 0, 0
-    for frame in fl.frames:
+    for frame in fl.frames[first:None if last is None else last + 1]:
         for name, text in _frame_lines(frame, chip, state):
             if channel_filter and name not in channel_filter:
                 continue
@@ -404,8 +406,8 @@ def main() -> None:
         help="Print every register write in order, decoded (TL op1, key on, pan ...), with its frame; "
              "a run of one field a row",
     )
-    ap.add_argument("--from", type=int, default=0, dest="first", metavar="FRAME", help="--writes: the first frame (0)")
-    ap.add_argument("--to", type=int, default=None, dest="last", metavar="FRAME", help="--writes: the last frame (the end)")
+    ap.add_argument("--from", type=int, default=0, dest="first", metavar="FRAME", help="--writes, --frames: the first frame (0)")
+    ap.add_argument("--to", type=int, default=None, dest="last", metavar="FRAME", help="--writes, --frames: the last frame (the end)")
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -439,7 +441,8 @@ def main() -> None:
         print(f"File   : {path}")
         if "track" in log.tags:
             print(f"Track  : {log.tags['track']} ({log.tags.get('game', '?')})")
-        print_frames(log, ChipState.for_log(log, args.clock, args.psg_clock), args.chip, channel_filter, args.max_rows)
+        print_frames(log, ChipState.for_log(log, args.clock, args.psg_clock), args.chip, channel_filter, args.max_rows,
+                     args.first, args.last)
         return
 
     rows, fm_amp, psg_amp = parse_vgm(

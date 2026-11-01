@@ -21,12 +21,12 @@ from ..config import ConversionConfig
 from ..smps import PSG_TABLE_PITCH, fm_table_index
 from .detune import DetunePlan, detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
-from .synth_roots import resolve_synth_roots
+from .synth_roots import SynthRoot, resolve_synth_roots
 
 
 @dataclass
 class InstrumentPlan:
-    synth_roots: list[dict]         # resolve_synth_roots' report, one per rooted entry
+    synth_roots: list[SynthRoot]    # resolve_synth_roots' report, one per rooted entry
     detune: DetunePlan | None       # None: FM is not synthesised or the settings want no variants
 
 

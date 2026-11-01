@@ -5,6 +5,7 @@ whether it loops: a looped sample holds any note).
 """
 
 import dataclasses
+from dataclasses import dataclass
 
 from ..audio import SustainLoop
 from ..config import ConversionConfig, SynthesisSettings
@@ -17,11 +18,32 @@ from ..smps import ChannelType, SmpsSong
 _AUTO_SUSTAIN_CAP_SECS = 10.0
 
 
-def _cut_ring(rings: list, tick: int) -> None:
+@dataclass
+class _Ring:
+    """A note and the smpsNoAttack continuations after it: one stretch of its sample, heard."""
+    start: int                  # its note-on's tick
+    ticks: int                  # how long it sounds
+    instrument: int             # the MOD instrument and note index it plays
+    index: int
+    slides: bool = False        # it ends in a release slide (not a C00)
+
+
+# A channel's rings in order; None where nothing of the channel's own sounds (a rest's C00, a
+# folded note, another chip's note)
+_Rings = list[_Ring | None]
+
+
+def _sounding(rings: _Rings) -> _Ring | None:
+    """The ring still sounding: the last, unless a rest or a fold ended it."""
+    return rings[-1] if rings else None
+
+
+def _cut_ring(rings: _Rings, tick: int) -> None:
     """The ring still sounding ends at `tick`: a note-on retriggers the column (in the merged
     build a pooled note can take it before the ring's own duration is up: cut_after)."""
-    if rings and rings[-1] is not None:
-        rings[-1][1] = min(rings[-1][1], tick - rings[-1][0])
+    ring = _sounding(rings)
+    if ring is not None:
+        ring.ticks = min(ring.ticks, tick - ring.start)
 
 
 class SustainPlanner:
@@ -123,61 +145,27 @@ class SustainPlanner:
             if merge is not None and not chan_cfg.enabled:
                 continue            # a follower: its notes play as composites (credited above) or
                                     # spliced onto a live channel (counted there), or not at all
-            foreign = channel.header.channel_type != kind
-            rings: list = []        # [start tick, ring ticks, instrument, out idx, ends in a slide] or None
-            # A smpsNoAttack note is a 3FF (the sample rings on) unless `legato: retrigger`
-            # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
-            # ring for notes of a second
-            portamento = (self._synth.legato if self._synth else "strict") != "retrigger"
-            for event, _st, res in walk_channel(channel, self._config, chan_cfg):
-                if not event.is_note:
-                    continue
-                if (merge is not None and event.spliced is None
-                        and merge.is_folded(chan_cfg.source, event.tick_position)):
-                    if not event.note.is_rest:
-                        _cut_ring(rings, event.tick_position)   # the converter ends what rings here at it
-                    rings.append(None)          # folded away here: nothing of its own sounds
-                    continue
-                note = event.note
-                merged = event.spliced
-                if foreign and not note.is_rest and (merged is None or merged.kind != kind):
-                    _cut_ring(rings, event.tick_position)       # another chip's note: not this pass's
-                    rings.append(None)
-                    continue
-                if note.is_rest:
-                    if note.is_no_attack and rings and rings[-1] is not None:
-                        rings[-1][1] += note.duration       # continuation: no C00, keeps advancing
-                    else:
-                        if rings and rings[-1] is not None:
-                            rings[-1][4] = self._slides_after(chan_cfg, rings[-1][0], event.tick_position, merge)
-                        rings.append(None)                  # C00 (or a slide) ends the ring
-                    continue
-                if res is None:
-                    continue
-                if note.is_no_attack and portamento and rings and rings[-1] is not None:
-                    rings[-1][1] += note.duration           # legato: a portamento, the sample rings on
-                    continue
-                _cut_ring(rings, event.tick_position)
-                rings.append([event.tick_position, note.duration, res.instrument, res.index, False])
+            rings = self._rings(chan_cfg, channel, kind, merge)
 
             # A channel's last note, with no rest or note after it, rings out into its sample's
             # release (a jingle's final chord): that instrument keeps its release padding
-            if rings and rings[-1] is not None:
-                comp = comps.get(rings[-1][2])
+            last = _sounding(rings)
+            if last is not None:
+                comp = comps.get(last.instrument)
                 self._rings_out.setdefault(kind, set()).update(
-                    [rings[-1][2]] + ([i for i, _ in comp.mix_notes(0)] if comp is not None else []))
+                    [last.instrument] + ([i for i, _ in comp.mix_notes(0)] if comp is not None else []))
             for ring in rings:
                 if ring is None:
                     continue
-                start, ticks, inst, out_idx, slides = ring
-                if slides:
+                inst = ring.instrument
+                if ring.slides:
                     self._slide_ends.setdefault(kind, set()).add(inst)
-                wall = self._timeline.span_secs(*self._mod_span(start, start + ticks))
-                wall_ref = self._timeline.span_secs(start, start + ticks + self._timeline.ticks_per_row)
+                wall = self._timeline.span_secs(*self._mod_span(ring.start, ring.start + ring.ticks))
+                wall_ref = self._timeline.span_secs(ring.start, ring.start + ring.ticks + self._timeline.ticks_per_row)
                 comp = comps.get(inst)
-                plays = [(inst, out_idx)]
+                plays = [(inst, ring.index)]
                 if comp is not None:
-                    plays += comp.mix_notes(out_idx)
+                    plays += comp.mix_notes(ring.index)
                 for inst_i, raw_idx in plays:
                     if inst_i != inst and inst_i not in roots:
                         continue                # a source of the other chip: its own pass counts it
@@ -196,6 +184,52 @@ class SustainPlanner:
                     refs = self._loop_refs.setdefault(kind, {})
                     refs[inst_i] = max(refs.get(inst_i, 0.0), wall_ref * scale)
         return needs
+
+    def _rings(self, chan_cfg, channel, kind: str, merge: MergePlan | None) -> _Rings:
+        """One channel's rings, as core.convert.channel_writer plays its notes in the `kind` pass:
+        a rest's C00 (or release slide) ends one, a smpsNoAttack rest or legato note carries it on."""
+        foreign = channel.header.channel_type != kind
+        rings: _Rings = []
+        # A smpsNoAttack note is a 3FF (the sample rings on) unless `legato: retrigger`
+        # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
+        # ring for notes of a second
+        portamento = (self._synth.legato if self._synth else "strict") != "retrigger"
+        for event, _st, res in walk_channel(channel, self._config, chan_cfg):
+            if not event.is_note:
+                continue
+            note = event.note
+            sounding = _sounding(rings)
+
+            if (merge is not None and event.spliced is None
+                    and merge.is_folded(chan_cfg.source, event.tick_position)):
+                if not note.is_rest:
+                    _cut_ring(rings, event.tick_position)   # the converter ends what rings here at it
+                rings.append(None)          # folded away here: nothing of its own sounds
+                continue
+
+            spliced = event.spliced
+            if foreign and not note.is_rest and (spliced is None or spliced.kind != kind):
+                _cut_ring(rings, event.tick_position)       # another chip's note: not this pass's
+                rings.append(None)
+                continue
+
+            if note.is_rest:
+                if note.is_no_attack and sounding is not None:
+                    sounding.ticks += note.duration         # continuation: no C00, keeps advancing
+                    continue
+                if sounding is not None:
+                    sounding.slides = self._slides_after(chan_cfg, sounding.start, event.tick_position, merge)
+                rings.append(None)                          # C00 (or a slide) ends the ring
+                continue
+
+            if res is None:
+                continue
+            if note.is_no_attack and portamento and sounding is not None:
+                sounding.ticks += note.duration             # legato: a portamento, the sample rings on
+                continue
+            _cut_ring(rings, event.tick_position)
+            rings.append(_Ring(event.tick_position, note.duration, res.instrument, res.index))
+        return rings
 
     def resolve(self, settings, kind: str, merge: MergePlan | None):
         """Settings with `sustain_duration: auto` resolved per instrument: each synthesised

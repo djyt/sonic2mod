@@ -2,12 +2,26 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from ..config import PsgInstrumentEntry
 from ..smps import ChannelType
 from .driver_state import enabled_channels, walk_channel
 
 
-def resolve_synth_roots(song, config) -> list[dict]:
+@dataclass(frozen=True)
+class SynthRoot:
+    """One rooted map entry's rendering pitch, as resolve_synth_roots set it."""
+    context: str                    # where the entry is (for the report)
+    instrument: int
+    synth_root: int | None
+    derived: bool                   # from the song (False: the config states it)
+    shift: int                      # its synth_shift
+    votes: dict[int, int]           # {the pitch `root` stands for (D): notes}; more than one: ambiguous
+    pitches: dict[int, int]         # {chip pitch: notes}
+
+
+def resolve_synth_roots(song, config) -> list[SynthRoot]:
     """Fill in every rooted map entry's `synth_root` from the song, and its `synth_shift`.
 
     A sample is rendered at synth_root and played at root's rate, so MOD note m sounds at
@@ -32,8 +46,7 @@ def resolve_synth_roots(song, config) -> list[dict]:
     Chaos Emerald lead's rate to 4 kHz).  The cost is the sample's size, 2^(shift/12) times —
     hence the octave cap.
 
-    Returns one dict per entry: {'context', 'instrument', 'synth_root', 'derived', 'shift',
-    'votes': {D: notes}, 'pitches': {chip pitch: notes}}.  More than one D means the entry's
+    Returns one SynthRoot per entry.  More than one D (`votes`) means the entry's
     low is played at several chip pitches (several pitch offsets or an
     smpsChangeTransposition under one source range — what `range_space: chip` and a split
     entry are for); the caller warns.
@@ -116,7 +129,6 @@ def resolve_synth_roots(song, config) -> list[dict]:
 
     out = []
     for context, e, per, _d, stated in items:
-        out.append({'context': context, 'instrument': e.mod_instrument, 'synth_root': e.synth_root,
-                    'derived': not stated, 'shift': e.synth_shift, 'votes': per,
-                    'pitches': pitches.get(id(e), {})})
+        out.append(SynthRoot(context, e.mod_instrument, e.synth_root, not stated, e.synth_shift, per,
+                             pitches.get(id(e), {})))
     return out

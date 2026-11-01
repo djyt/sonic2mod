@@ -129,7 +129,7 @@ def plan_detune_variants(song, config) -> DetunePlan:
 
     plan = DetunePlan()
     fm = song.rules.fm_frequencies
-    wanted: list[tuple[int, int, int, int, int | None, int | None]] = []   # (notes, base, detune, envelope, class, rendered)
+    wanted: list[_Wanted] = []
     for inst, per in counts.items():
         # The most played pair; ties: the smaller detune, then no envelope
         own = max(per, key=lambda pair: (per[pair], -abs(pair[0]), pair[0], -pair[1]))
@@ -145,16 +145,15 @@ def plan_detune_variants(song, config) -> DetunePlan:
             apart = _apart(base, d + special, rendered, played, fm)
             rest = n - sum(sum(at.values()) for at in apart.values())
             if (d, e) != own and rest:
-                wanted.append((rest, inst, d, e, None, rendered))
-            wanted += [(sum(at.values()), inst, d, e, pc, _in_class(base, pc)) for pc, at in apart.items()]
+                wanted.append(_Wanted(rest, inst, d, e, None, rendered))
+            wanted += [_Wanted(sum(at.values()), inst, d, e, pc, _in_class(base, pc)) for pc, at in apart.items()]
 
-    # The most played first: a song short of slots loses its rarest
     slots = free_slots(config, song)
-    for notes, inst, d, e, pc, rendered in sorted(wanted, key=lambda w: (-w[0], w[1], w[2], w[3], -1 if w[4] is None else w[4])):
+    for w in sorted(wanted, key=_Wanted.order):
         if not slots:
-            plan.unplaced[(inst, d)] = plan.unplaced.get((inst, d), 0) + notes
+            plan.unplaced[(w.base, w.detune)] = plan.unplaced.get((w.base, w.detune), 0) + w.notes
             continue
-        plan.add(DetuneVariant(slots.pop(0), inst, d, notes, rendered, pc, e))
+        plan.add(DetuneVariant(slots.pop(0), w.base, w.detune, w.notes, w.rendered, w.pitch_class, w.envelope))
 
     entries = config.sample_rows()
     if plan.variants and config.sample_list is None:
@@ -168,6 +167,21 @@ def plan_detune_variants(song, config) -> DetunePlan:
 
     config.detune_plan = plan
     return plan
+
+
+@dataclass(frozen=True)
+class _Wanted:
+    """A variant the song's notes ask for, before it has a slot."""
+    notes: int                  # how many notes play it
+    base: int                   # the instrument it detunes
+    detune: int
+    envelope: int
+    pitch_class: int | None     # the notes it plays: this pitch class; None: the pair's other notes
+    rendered: int | None        # the pitch (SMPS semitone) it is rendered at; None: its base's
+
+    def order(self) -> tuple:
+        """The most played first (a song short of slots loses its rarest), then by instrument, pair, class."""
+        return (-self.notes, self.base, self.detune, self.envelope, -1 if self.pitch_class is None else self.pitch_class)
 
 
 def _rendered(base, detune: int, played: int, fm_frequencies: tuple[int, ...]) -> int | None:

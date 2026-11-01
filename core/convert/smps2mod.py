@@ -186,7 +186,7 @@ class SmpsToModConverter:
                     src += f" detune {inst.layers[0].fnum_offset:+d}"
                 out[inst.inst] = {'kind': 'FM', 'source': src}
         if self.psg_synth is not None and self.psg_synth.enabled:
-            for inst in psg_catalogue(self.config, {i: d['envelope'] for i, d in
+            for inst in psg_catalogue(self.config, {i: d.envelope for i, d in
                                                      derive_noise_envelopes(self.song, self.config).items()}).values():
                 e = inst.entry
                 env = e.envelope if isinstance(e.envelope, str) else ("inline" if e.envelope else "")
@@ -247,7 +247,7 @@ class SmpsToModConverter:
         # Each sample named for what plays it and what it was made from (samples.names)
         settings = self.synth or self.psg_synth
         if settings is not None and settings.names == "source":
-            envs = {i: d['envelope'] for i, d in derive_noise_envelopes(self.song, self.config).items()}
+            envs = {i: d.envelope for i, d in derive_noise_envelopes(self.song, self.config).items()}
             for inst, name in sample_names(mod, self.song, self.config, self._played, self._merge, envs).items():
                 mod.samples[inst - 1].set_name(name)
 
@@ -390,12 +390,13 @@ class SmpsToModConverter:
         self._instrument_plan = prepare_instruments(self.song, self.config, self.synth)
         derived = stated = 0
         for r in self._instrument_plan.synth_roots:
-            derived += r['derived']
-            stated += not r['derived']
-            if r['shift'] and not r['derived']:
-                self._diag.info(InfoKind.SYNTH_SHIFT, **r)
-            if len(r['votes']) > 1:
-                self._diag.warn(WarningKind.SYNTH_ROOT_AMBIGUOUS, channel='map', extra_ctx=r['context'], **r)
+            derived += r.derived
+            stated += not r.derived
+            if r.shift and not r.derived:
+                self._diag.info(InfoKind.SYNTH_SHIFT, **dataclasses.asdict(r))
+            if len(r.votes) > 1:
+                self._diag.warn(WarningKind.SYNTH_ROOT_AMBIGUOUS, channel='map', extra_ctx=r.context,
+                                **dataclasses.asdict(r))
         if derived or stated:
             self._diag.info(InfoKind.SYNTH_ROOTS, derived=derived, stated=stated)
 
@@ -423,7 +424,7 @@ class SmpsToModConverter:
                 out[d.mod_instrument] = os.path.getsize(path) / note_rate(note.value, clock)
         fps = self._timeline.fps
         for inst, d in derive_noise_envelopes(self.song, self.config).items():
-            env = d['envelope']
+            env = d.envelope
             env = self.song.rules.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None
             frames = noise_envelope_frames(env)
             if frames is not None:

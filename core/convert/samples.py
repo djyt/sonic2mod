@@ -7,6 +7,7 @@ aside for the mixer (core.merge) instead of installed.
     what the rest of the pass reads: each sample's loop, release rate, rate, unquantised render
 """
 
+import dataclasses
 import os
 from collections.abc import Iterable
 
@@ -23,6 +24,8 @@ from ..merge import MergedBuild, MergePlan
 from ..mod import MAX_MOD_SAMPLE_BYTES, MOD_MAX_VOLUME, ModFile, ModSample, note_rate, read_sample
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..plan import (
+    NoiseEnvelope,
+    Rate3Divider,
     Timeline,
     derive_noise_envelopes,
     derive_rate3_dividers,
@@ -297,8 +300,8 @@ class SampleInstaller:
         psg_loops: dict[int, SustainLoop] = {}
         psg_cache: dict[str, int] = {}
         psg_samples = generate_psg_samples(
-            self._config, psg_synth, self._song.rules, rate3_dividers={i: d['n'] for i, d in rate3.items()},
-            noise_envelopes={i: d['envelope'] for i, d in noise_env.items()},
+            self._config, psg_synth, self._song.rules, rate3_dividers={i: d.n for i, d in rate3.items()},
+            noise_envelopes={i: d.envelope for i, d in noise_env.items()},
             loops=psg_synth.loops_for(self._config.merge_active), loops_out=psg_loops,
             raw_out=self.raw_renders, cache_out=psg_cache)
         if psg_cache:
@@ -315,17 +318,18 @@ class SampleInstaller:
             self.mix_sources[i] = self._make_sample(i, psg_samples[i][0], "psg", psg_loops.get(i),
                                                     psg_synth.max_sample_bytes, original=True)
 
-    def _report_noise(self, rate3: dict[int, dict], noise_env: dict[int, dict]) -> None:
+    def _report_noise(self, rate3: dict[int, Rate3Divider], noise_env: dict[int, NoiseEnvelope]) -> None:
         """The derived rate-3 dividers and noise envelopes as infos; a sample standing in for
         several envelopes as a warning."""
         for inst, d in sorted(rate3.items()):
-            if d['used']:
-                self._diag.info(InfoKind.RATE3_DIVIDER, instrument=inst, **d)
+            if d.used:
+                self._diag.info(InfoKind.RATE3_DIVIDER, instrument=inst, **dataclasses.asdict(d))
         for inst, d in sorted(noise_env.items()):
-            if d['envelope'] is not None:
-                self._diag.info(InfoKind.NOISE_ENVELOPE, instrument=inst, envelope=d['envelope'],
-                                derived=d['derived'], notes=d['counts'].get(d['envelope'], 0))
-            others = {k: n for k, n in d['counts'].items() if k != d['envelope']}
+            if d.envelope is not None:
+                label = d.envelope if isinstance(d.envelope, str) else None
+                self._diag.info(InfoKind.NOISE_ENVELOPE, instrument=inst, envelope=d.envelope,
+                                derived=d.derived, notes=d.counts.get(label, 0))
+            others = {k: n for k, n in d.counts.items() if k != d.envelope}
             if others:
                 self._diag.warn(WarningKind.NOISE_ENVELOPES, channel='PSG', extra_ctx=f'instrument {inst}',
-                                instrument=inst, envelope=d['envelope'], others=others)
+                                instrument=inst, envelope=d.envelope, others=others)

@@ -26,8 +26,8 @@ from .instruments import (
     free_slots,
     psg_catalogue,
 )
-from .noise_derive import derive_noise_envelopes, derive_rate3_dividers
-from .synth_roots import resolve_synth_roots
+from .noise_derive import NoiseEnvelope, Rate3Divider, derive_noise_envelopes, derive_rate3_dividers
+from .synth_roots import SynthRoot, resolve_synth_roots
 from .timeline import Timeline
 
 __all__ = [
@@ -41,8 +41,11 @@ __all__ = [
     "FmLayer",
     "InstrumentPitch",
     "InstrumentPlan",
+    "NoiseEnvelope",
     "PsgInstrument",
+    "Rate3Divider",
     "ResolvedNote",
+    "SynthRoot",
     "Timeline",
     "complete_config",
     "derive_config",

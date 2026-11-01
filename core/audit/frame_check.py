@@ -52,6 +52,7 @@ from ..smps import (
     PsgEnvelope,
     SmpsSong,
     frame_of_tick,
+    pan_side,
     played_song,
     prepare_song,
     source_map,
@@ -75,6 +76,7 @@ class FrameAspect(StrEnum):
     PITCH = "pitch"
     LEVEL = "level"
     VOICE = "voice"
+    PAN = "pan"                         # FM: B4's speakers, L R or C
 
 
 class Excuse(StrEnum):
@@ -258,9 +260,10 @@ def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog
     frame = frames.frames[at]
     if name in FM_CHANNEL_NAMES:
         fm = frame.fm[FM_CHANNEL_NAMES.index(name)]
-        got = {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls))}
+        got = {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls)),
+               FrameAspect.PAN: pan_side(fm.pan)}
         levels = note.level if isinstance(note.level, tuple) else ()     # FM: the carriers' TLs
-        want = {FrameAspect.PITCH: note.pitch, FrameAspect.LEVEL: tuple(sorted(levels))}
+        want = {FrameAspect.PITCH: note.pitch, FrameAspect.LEVEL: tuple(sorted(levels)), FrameAspect.PAN: note.pan}
         if isinstance(note.voice, tuple):                                  # FM: (B0, ((register, byte) ...))
             feedback, timbre = note.voice
             want[FrameAspect.VOICE] = _chip_bits(feedback, dict(timbre))

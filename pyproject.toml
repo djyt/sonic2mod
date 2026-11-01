@@ -155,7 +155,7 @@ type = "independence"
 modules = [
     "core.drivers.smps68k.sonic1",
     "core.drivers.smps68k.type1a",
-    "core.drivers.smps68k.mucom",
+    "core.drivers.smps68k.streets_of_rage",
     "core.drivers.smpsz80.type0fm",
     "core.drivers.smpsz80.sh2",
     "core.drivers.smpsz80.outrun",

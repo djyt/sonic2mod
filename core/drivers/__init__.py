@@ -5,7 +5,7 @@ Grouped by family, one folder per driver:
     smps68k/            the driver on the 68k: relative big-endian pointers, the Go_ block, DPCM
         sonic1/         Sonic the Hedgehog (Type 1b)
         type1a/         Michael Jackson's Moonwalker (Type 1a)
-        mucom/          Streets of Rage (Type 1b, MUCOM-style track code)
+        streets_of_rage/  Streets of Rage (Type 1b, its MUCOM dialect)
     smpsz80/            the driver on the Z80: the bank window, absolute little-endian pointers
         type0fm/        Golden Axe (Type 0 FM)
         sh2/            Space Harrier II (an early SMPS Z80)

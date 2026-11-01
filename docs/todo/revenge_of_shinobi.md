@@ -125,7 +125,7 @@ instructions, normalised for addresses and RAM base.  The load routine, track la
 update, vibrato, loops, voice load and volume table are the same code.  **The track language and
 the engine are shared; the header, about ten flag meanings, the PSG and the DAC are not.**
 
-| | Streets of Rage (`smps68k_mucom`) | The Revenge of Shinobi |
+| | Streets of Rage (`smps68k_streets_of_rage`) | The Revenge of Shinobi |
 |---|---|---|
 | sound RAM | `$FFF000` | `$FFF700` |
 | header | `voices.w fm.b psg.b`; FM `ptr.w vol.b`, PSG `ptr.w vol.b env.b` | + 2 bytes (song volume); FM 4 bytes, PSG 6 (Sonic 1's sizes) |
@@ -279,7 +279,7 @@ names it (CLAUDE.md, "Scalable structure").
 
 ## 7. Decisions (open, for the user)
 
-1. **Name and place.**  Proposed: `smps68k/shinobi` (`smps68k_shinobi`), a sibling of `smps68k/mucom`
+1. **Name and place.**  Proposed: `smps68k/shinobi` (`smps68k_shinobi`), a sibling of `smps68k/streets_of_rage`
    sharing the track language (5.1.1).  Alternative: one `mucom` package with two variants, since the
    engines are the same code.
 2. **The header:** a `HeaderLayout` field for the bytes before the entries (any driver), or Shinobi's

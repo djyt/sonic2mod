@@ -140,7 +140,7 @@ No loop pointer lands inside a loop body.
 68k's engine taught MUCOM's track bytes (its songs converted to an SMPS-like header); SoR2 runs
 MUCOM88's own model on the 68k with MUCOM88's own song images.
 
-| | Streets of Rage (`smps68k_mucom`) | Streets of Rage 2 (Mucom-MD 0.85) |
+| | Streets of Rage (`smps68k_streets_of_rage`) | Streets of Rage 2 (Mucom-MD 0.85) |
 |---|---|---|
 | engine | SMPS 68k: RAM `$FFF000`, `$30`-byte tracks, Sonic 1's queue | Mucom-MD: RAM `$FFA000`, `$A0`-byte tracks, command words via `jsr $40008` |
 | index | 17 absolute longs from `$81` | relative longs from 0: 28 songs, 55 SFX |
@@ -182,7 +182,7 @@ What in today's architecture Streets of Rage 2 runs into, and The Revenge of Shi
 
 | # | Bottleneck | Where | Also | Answer |
 |---|---|---|---|---|
-| B1 | Code two families share has no home: the contracts "drivers: none imports another" and "the families independent" keep SoR1's MUCOM language, run-DPCM format and PCM-table finder (`smps68k/mucom/`, `smps68k/dac.py`) from a driver outside `smps68k` | `pyproject.toml` | RoS | R1, R2 |
+| B1 | Code two families share has no home: the contracts "drivers: none imports another" and "the families independent" keep SoR1's MUCOM language, run-DPCM format and PCM-table finder (`smps68k/streets_of_rage/`, `smps68k/dac.py`) from a driver outside `smps68k` | `pyproject.toml` | RoS | R1, R2 |
 | B2 | A track ends at `$00`; where it goes is the header's.  `decode_tracks` knows no track's end target | `core/rom/tracks.py` | | R3 |
 | B3 | `TrackRules`: 12 flat switches, each a branch in `DriverTrack` / `code.py`; SoR2 adds ~6 (gate floor, soft release, vibrato phase, PSG depth scale, word shift by octave, volume clamp) | `core/smps/rules.py` | every driver | R4 |
 | B4 | The key-off yields notes only (`DriverTrack.cut`): soft release is a level change inside a ringing note, and rests that do not cut | `core/smps/driver_track.py` | | R5 |
@@ -212,7 +212,7 @@ regression (`tests/selection.py`), the driver's own PSG table (`PsgTable`, `b0dc
        mucom.py         MUCOM: d n notes, $F0+ flags, loops, MucomDialect
      flags.py           FlagSpec vocabulary (both languages)
    core/drivers/
-     smps68k/mucom/     SoR1: its dialect and departures
+     smps68k/streets_of_rage/     SoR1: its dialect and departures
      mucom/md/          SoR2: its dialect, header, memory
    ```
 
@@ -346,7 +346,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 ## 5. Decisions (the user, 2026-11-01)
 
 1. **Name and place:** `mucom_md` (Mucom-MD 0.85) in a new family, `core/drivers/mucom/md/`; SoR1
-   stays `smps68k/mucom` (its engine is SMPS's).  The shared MUCOM language in the framework, with a
+   stays `smps68k/streets_of_rage` (its engine is SMPS's).  The shared MUCOM language in the framework, with a
    clear split from the decoder: `core/rom/grammar/` a package, `smps.py` and `mucom.py` in it,
    `tracks.py` the one decoder (R1's tree).
 2. **PSG envelopes: exact**, an instrument per (preset, volume), identical curves sharing one,

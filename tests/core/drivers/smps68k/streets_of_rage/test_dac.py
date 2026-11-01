@@ -1,14 +1,14 @@
-"""Streets of Rage's DPCM samples (core/drivers/smps68k/mucom/dac.py) on hand-built bytes, then
+"""Streets of Rage's DPCM samples (core/drivers/smps68k/streets_of_rage/dac.py) on hand-built bytes, then
 against the rips' banks when the ROM and rips are present.
 
-    python -m pytest tests/core/drivers/smps68k/mucom/test_dac.py -q
+    python -m pytest tests/core/drivers/smps68k/streets_of_rage/test_dac.py -q
 """
 
 from __future__ import annotations
 
 import unittest
 
-from core.drivers.smps68k.mucom.dac import RUN_DPCM
+from core.drivers.smps68k.streets_of_rage.dac import RUN_DPCM
 from core.source import read_dac
 from core.vgm import read_vgm
 from tests.roms import STREETS_OF_RAGE_RIPS, STREETS_OF_RAGE_ROM, needs_streets_of_rage_rips

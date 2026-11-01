@@ -9,7 +9,7 @@ each fact was found.  Sonic 1 itself is `docs/smps_driver.md`; how the reader is
 | `sonic1` (Type 1b, modified) | SMPS 68k | Sonic the Hedgehog | `core/drivers/smps68k/sonic1/` |
 | `smps68k_type1a` | SMPS 68k | Michael Jackson's Moonwalker | `core/drivers/smps68k/type1a/` |
 | `smpsz80_type0fm` (an early Type 1 FM) | SMPS Z80 | Golden Axe | `core/drivers/smpsz80/type0fm/` |
-| `smps68k_mucom` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/drivers/smps68k/mucom/` |
+| `smps68k_streets_of_rage` (Type 1b, MUCOM-style track code) | SMPS 68k | Streets of Rage | `core/drivers/smps68k/streets_of_rage/` |
 | `smpsz80_sh2` (early, Golden Axe's ancestor) | SMPS Z80 | Space Harrier II | `core/drivers/smpsz80/sh2/` |
 | `smpsz80_outrun` (Golden Axe's layout, Sonic 1's flags, on Timer A) | SMPS Z80 | OutRun | `core/drivers/smpsz80/outrun/` |
 

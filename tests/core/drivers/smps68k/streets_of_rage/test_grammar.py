@@ -1,7 +1,7 @@
 """Streets of Rage's driver (SMPS 68k with MUCOM-style track code): the grammar on hand-built
 bytes, the hardware LFO and FM3's special mode (docs/smps_variants.md).
 
-    python -m pytest tests/core/drivers/smps68k/mucom/test_grammar.py -q
+    python -m pytest tests/core/drivers/smps68k/streets_of_rage/test_grammar.py -q
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from dataclasses import replace
 
 from core.chips import FmLfo
 from core.drivers.smps68k.memory import Relative68kMemory
-from core.drivers.smps68k.mucom import MUCOM
+from core.drivers.smps68k.streets_of_rage import STREETS_OF_RAGE
 from core.rom import RomImage
 from core.rom.grammar import track_label
 from core.rom.image import RomError
@@ -35,10 +35,10 @@ _AT = 0x200                     # where a hand-built track starts
 
 
 # The ROM's first FM volume steps (the rest is read from it)
-_FM = replace(MUCOM.rules.track(ChannelType.FM), volume_steps={-1: 0x2D, 0: 0x36, 1: 0x33, 2: 0x30})
+_FM = replace(STREETS_OF_RAGE.rules.track(ChannelType.FM), volume_steps={-1: 0x2D, 0: 0x36, 1: 0x33, 2: 0x30})
 
 
-_RULES = replace(MUCOM.rules, tracks={**MUCOM.rules.tracks, ChannelType.FM: _FM})
+_RULES = replace(STREETS_OF_RAGE.rules, tracks={**STREETS_OF_RAGE.rules.tracks, ChannelType.FM: _FM})
 
 
 def _song(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0, chip_channel: str = "",
@@ -46,7 +46,7 @@ def _song(track: bytes, kind: ChannelType = ChannelType.FM, volume: int = 0, chi
     """A track's bytes, decoded and walked as a song's one channel (its header volume `volume`,
     on `chip_channel`)."""
     memory = Relative68kMemory(RomImage(_HEADER + track))
-    code = decode_tracks(memory, {_AT: kind}, MUCOM).code
+    code = decode_tracks(memory, {_AT: kind}, STREETS_OF_RAGE).code
     header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=kind, label=track_label(_AT), volume=volume,
                                                         chip_channel=chip_channel)])
     return song_from_code(header, code, list(voices), _RULES)
@@ -74,7 +74,7 @@ def _tracks(*tracks: bytes, voices: tuple[SmpsVoice, ...] = ()):
         starts.append(at)
         image += track
         at += len(track)
-    code = decode_tracks(Relative68kMemory(RomImage(_HEADER + image)), dict.fromkeys(starts, ChannelType.FM), MUCOM).code
+    code = decode_tracks(Relative68kMemory(RomImage(_HEADER + image)), dict.fromkeys(starts, ChannelType.FM), STREETS_OF_RAGE).code
     header = SmpsSongHeader(channels=[SmpsChannelHeader(channel_type=ChannelType.FM, label=track_label(a))
                                       for a in starts])
     return song_from_code(header, code, list(voices), _RULES)

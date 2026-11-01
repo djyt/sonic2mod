@@ -31,7 +31,7 @@ _REVIEWED: dict[SmpsDriver, dict] = {
     SmpsDriver.SONIC1: {},
     SmpsDriver.TYPE1A: {},
     SmpsDriver.TYPE0FM: {"tempo_phase": 1, "key_run_out": 256},
-    SmpsDriver.MUCOM: {
+    SmpsDriver.STREETS_OF_RAGE: {
         "DAC": {"modulation_turn_pause": False, "jump_clears_tie": True, "rest_cuts": True},
         "FM": {"modulation_turn_pause": False, "jump_clears_tie": True, "gate_spares_tied": True,
                "gate_sees_tie": True, "tied_rest_holds": 1},

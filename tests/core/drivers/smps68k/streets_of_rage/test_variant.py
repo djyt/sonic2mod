@@ -1,6 +1,6 @@
 """Streets of Rage's driver on the ROM, when it is present (docs/smps_variants.md).
 
-    python -m pytest tests/core/drivers/smps68k/mucom/test_variant.py -q
+    python -m pytest tests/core/drivers/smps68k/streets_of_rage/test_variant.py -q
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from collections import Counter
 
 from core.drivers import detect_variant, locate_sounds, read_rom_code, read_rom_song
 from core.drivers.reference import PSG_FREQUENCIES
-from core.drivers.smps68k.mucom import MUCOM
+from core.drivers.smps68k.streets_of_rage import STREETS_OF_RAGE
 from core.rom import RomImage
 from core.rom.image import RomError
 from core.smps import (
@@ -29,7 +29,7 @@ class StreetsOfRage(unittest.TestCase):
         cls.index = locate_sounds(cls.rom)
 
     def test_pinned_and_located_by_the_code_that_reads_each_table(self):
-        self.assertIs(detect_variant(self.rom), MUCOM)
+        self.assertIs(detect_variant(self.rom), STREETS_OF_RAGE)
         self.assertEqual((min(self.index.music), max(self.index.music), self.index.music[0x81]), (0x81, 0x91, 0x74C6E))
         self.assertEqual(self.index.music[0x8D], self.index.music[0x8E])          # Level Clear twice
         self.assertEqual((len(self.index.sfx), min(self.index.sfx)), (48, 0xA0))

@@ -4,6 +4,6 @@
     grammar.py    its dialect of MUCOM's language (core/rom/grammar/mucom.py): PSG rows, pan, PSG flags
 """
 
-from .variant import MUCOM
+from .variant import STREETS_OF_RAGE
 
-__all__ = ["MUCOM"]
+__all__ = ["STREETS_OF_RAGE"]

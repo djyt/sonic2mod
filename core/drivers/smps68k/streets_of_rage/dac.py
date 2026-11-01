@@ -29,7 +29,7 @@ _MUSIC = range(0x81, 0x85)
 RUN_DPCM = RunDpcm(nibble=(190, 242), run_step=219, run_entry=(23, 75), per_pitch=13, stall=0.016)
 
 
-def mucom_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
+def streets_of_rage_dac(rom: RomImage, names: Mapping[int, str]) -> list[DacSample]:
     """The samples a Streets of Rage song can play ($81-$84)."""
     z80 = z80_ram(rom)
     table = PcmTable(z80, pcm_table(z80), _ENTRY, one_format(RUN_DPCM), names)

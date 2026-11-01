@@ -10,7 +10,7 @@ import unittest
 from dataclasses import replace
 
 from core.drivers.smps68k.memory import Relative68kMemory
-from core.drivers.smps68k.mucom import MUCOM
+from core.drivers.smps68k.streets_of_rage import STREETS_OF_RAGE
 from core.rom import RomError, RomImage
 from core.rom.flags import every_kind, read
 from core.rom.grammar import Instruction, track_label
@@ -51,7 +51,7 @@ def _psg_note(memory: SoundMemory, at: int) -> int:
 _DIALECT = MucomDialect(psg_note=_psg_note, pan_b4=(0x00, 0x40, 0x80), vibrato_steps=0)
 _FLAGS = {0xF0: read(dac_sample), 0xF2: read(detune), 0xF4: read(_DIALECT.vibrato), 0xF5: read(loop_start),
           0xF6: read(loop_end), 0xF8: read(_DIALECT.pan), 0xFA: read(register_write), 0xFE: read(loop_exit)}
-_VARIANT = replace(MUCOM, name="test", flags=every_kind(_FLAGS), grammar=_DIALECT.instruction)
+_VARIANT = replace(STREETS_OF_RAGE, name="test", flags=every_kind(_FLAGS), grammar=_DIALECT.instruction)
 
 
 def _memory(code: bytes) -> Relative68kMemory:

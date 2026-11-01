@@ -19,7 +19,7 @@ need: it unrolls each loop from its `$F6`.  Every offset is little-endian (the P
 What differs per driver is data, its MucomDialect: PSG note decoding, the pan table, the vibrato's
 steps per half cycle.
 
-    Streets of Rage      core/drivers/smps68k/mucom/grammar.py
+    Streets of Rage      core/drivers/smps68k/streets_of_rage/grammar.py
 """
 
 from __future__ import annotations

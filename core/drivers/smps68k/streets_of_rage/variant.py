@@ -36,7 +36,7 @@ from ...names import SmpsDriver
 from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
 from ..locate import pointers_before_data
 from ..memory import Relative68kMemory
-from .dac import mucom_dac
+from .dac import streets_of_rage_dac
 from .grammar import DIALECT, noise, psg_volume_down
 
 _LONG, _WORD = 4, 2
@@ -194,8 +194,8 @@ _PSG_TRACK = TrackRules(volume_steps=_PSG_VOLUME_STEPS, word_shift=_PSG_WORD_SHI
 _DAC_TRACK = TrackRules(jump_clears_tie=True, rest_cuts=True, modulation_turn_pause=False)
 
 
-MUCOM = SmpsVariant(
-    name=SmpsDriver.MUCOM,
+STREETS_OF_RAGE = SmpsVariant(
+    name=SmpsDriver.STREETS_OF_RAGE,
     memory=Relative68kMemory,
     locate=_locate,
     flags={ChannelType.FM: _FM_FLAGS, ChannelType.PSG: _PSG_FLAGS, ChannelType.DAC: _DAC_FLAGS},
@@ -204,11 +204,11 @@ MUCOM = SmpsVariant(
     voice_layout=MUCOM_VOICE,
     # Its FM octave, volume table and envelopes read from the ROM; Sonic 1's PSG rows (checked);
     # the Z80 player's 17 commands ($81-$91); each kind of track as above
-    rules=PlaybackRules(driver=SmpsDriver.MUCOM, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
+    rules=PlaybackRules(driver=SmpsDriver.STREETS_OF_RAGE, fm_frequencies=(), psg_frequencies=PSG_FREQUENCIES,
                         psg_read=PSG_FREQUENCIES_EXTENDED, psg_envelopes={},
                         dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)},
                         tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK, ChannelType.DAC: _DAC_TRACK}),
     rules_from_rom=_rules_from_rom,
     grammar=DIALECT.instruction,
-    dac=mucom_dac,
+    dac=streets_of_rage_dac,
 )

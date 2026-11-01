@@ -234,18 +234,17 @@ reached.  A glide is the same with another curve: D4 uses it.
 - [ ] 0.2 Unzip the rips; branch `time_trax` in a worktree (other sessions share this
   checkout).
 - [ ] 0.3 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
-- [ ] 0.4 Tools (each its own commit, before the phase that needs it):
-  - T1 `core/rom/z80.py`: the copied load with its leas before the bus request (Phase 1; also
-    `disasm.py --z80`).
-  - T2 `vgm_frames`: every frame of a note, not only its first: the word (glide, portamento) and
-    the TLs (envelopes) against the walk's (Phase 2.3, 2.4).  Today a glide's path goes unchecked.
-  - T3 `vgm_frames` level: all four TLs, not the carriers' only: `$AA` scales modulators (2.2).
-  - T4 `vgm_pitch_audit`: a slide check.  It judges chip segments of 60 ms or more; a glide's
-    pitch lasts a frame (20 ms), so no glide is judged.  `mod_pitch_timeline` already follows
-    `1xx` / `2xx` / `E1x` / `E2x` per tick: compare it with the rip's word per frame while a
-    note slides (3.2).
-  - T5 `disasm.py --table` on Z80 tables (little-endian absolute words: the flags at `$0DC8` /
-    `$0E20`).  Optional: § 2.3 is decoded.
+- [x] 0.4 Tools (branch `time_trax`):
+  - T1 `core/rom/z80.py`: the copied load with a bus grant wait between its leas and the count
+    (`disasm.py --z80` reads it).
+  - T2 `vgm_frames`: a note with a path (`PlayedNote.pitch_path` / `level_path`: what the walk
+    writes after the first frame) judged on every frame it spans ("pitch path", "level path").
+    Phase 2.3 / 2.4 fill the paths.
+  - T3 dropped: modulator TLs are already checked, under "voice" (every register but the
+    carriers' TL).
+  - T4 `vgm_pitch_audit --slides [CENTS]`: a run of chip segments shorter than `--min-ms`, each
+    against the MOD's `1xx` / `2xx` at its midpoint (default 50 cents).
+  - T5 `disasm.py --z80 --table`: little-endian Z80 addresses.
   - Check, likely fine: `vgm_lift` on a song with no tempo holds (durations are frames);
     `flag_census` on flags `$80`-`$AB`.
 

@@ -159,6 +159,7 @@ python tools/rom/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" 40E46
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --table 41B74 --entries 16 --first F0
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --z80 00EE
+python tools/rom/disasm.py "input/roms/Time Trax (USA) (Proto).md" --z80 --table 0DC8 --entries 44 --first 80   # a Z80 table
 # Every flag a ROM's songs hold, counted by its bytes and what it reads as, with the songs and first address
 python tools/rom/flag_census.py "input/roms/Streets of Rage 2 (USA).md" --flag FF FA --kind PSG
 

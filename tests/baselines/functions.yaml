@@ -1073,7 +1073,7 @@ functions:
   core/smps/code.py::track_byte: 1ff81ffffffffffff
   core/smps/driver_tables.py::PsgEnvelope.frames: 1ffbc0fe7ffe01f61
   core/smps/driver_tables.py::PsgEnvelope.loops: 1e1100867ffe00160
-  core/smps/driver_tables.py::PsgTable.divider: 1e16c0867ffe00160
+  core/smps/driver_tables.py::PsgTable.divider: 1e17c0867ffe00160
   core/smps/driver_tables.py::PsgTable.of: 1ffffffffffffffff
   core/smps/driver_tables.py::PsgTable.semitone: 1fffe0fe7ffe01f61
   core/smps/driver_tables.py::_divider_semitone: 1fffffffffffe3fff

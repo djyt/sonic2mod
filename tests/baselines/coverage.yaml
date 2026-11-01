@@ -8490,7 +8490,7 @@ sor2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_game_over.mod
-  commit: c6d0253-dirty
+  commit: d8e3bbd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8663,7 +8663,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: c6d0253-dirty
+  commit: d8e3bbd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8836,7 +8836,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: c6d0253-dirty
+  commit: d8e3bbd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9009,7 +9009,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: c6d0253-dirty
+  commit: d8e3bbd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9182,7 +9182,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: c6d0253-dirty
+  commit: d8e3bbd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9355,7 +9355,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: c6d0253-dirty
+  commit: d8e3bbd-dirty
   files:
   - convert.py
   - core/__init__.py

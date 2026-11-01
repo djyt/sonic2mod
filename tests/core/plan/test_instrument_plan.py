@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from core.audio import semitone_to_hz
-from core.chips import freq_word_hz
+from core.chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from core.config import ConversionConfig, InstrumentRange, PsgInstrumentEntry, load_settings
 from core.drivers.reference import FM_FREQUENCIES, PSG_FREQUENCIES
 from core.mod import ModNote
@@ -65,7 +65,9 @@ class Sounding(unittest.TestCase):
         word = _word_cents(64, FM_FREQUENCIES)                  # Sonic 1's E5: +4 c
         self.assertAlmostEqual(got[3].cents, word + detune_cents(64, 3, FM_FREQUENCIES))
         self.assertAlmostEqual(got[23].cents, word + detune_cents(64, -20, FM_FREQUENCIES))
-        self.assertEqual((got[5].root, got[5].root_semitone, got[5].cents), (_C2, 24, 0.0))   # below the table
+        # below the PSG's reach: rendered at the clamped divider 1023 (A2), 889 c above C2
+        self.assertEqual((got[5].root, got[5].root_semitone), (_C2, 24))
+        self.assertAlmostEqual(got[5].cents, 1200 * math.log2(psg_frequency_hz(1023, MD_PSG_CLOCK) / semitone_to_hz(24)))
         self.assertAlmostEqual(got[7].cents, -41.6, places=1)     # the driver's B7: divider 29
 
     def test_a_table_that_plays_its_notes_off_their_names(self):

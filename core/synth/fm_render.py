@@ -29,6 +29,7 @@ from ..chips import (
     MD_FM_CLOCK,
     OPERATOR_SLOT_OFFSETS,
     REG_CH3_MODE,
+    fnum_block_for_hz,
     freq_word,
     split_freq_word,
 )
@@ -39,7 +40,7 @@ from ..smps import (
     FmFrame,
     OctaveWrap,
     SmpsVoice,
-    fm_table_index,
+    fm_render_word,
 )
 from .fm_voice import program_voice
 
@@ -76,9 +77,8 @@ def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK, *,
     block and as 574 in the next sounds the same pitch with a different envelope and detune.
     Off the table, or at another clock, the formula in freq_to_fnum_block stands in.
     """
-    i = fm_table_index(C1_SEMITONE + mod_note_index)
-    if clock_rate == MD_FM_CLOCK and 0 <= i < len(fm_frequencies):
-        return split_freq_word(fm_frequencies[i])
+    if clock_rate == MD_FM_CLOCK:
+        return split_freq_word(fm_render_word(C1_SEMITONE + mod_note_index, fm_frequencies))
     return freq_to_fnum_block(note_to_freq(mod_note_index), clock_rate)
 
 
@@ -93,17 +93,7 @@ def freq_to_fnum_block(freq: float, clock_rate: int = MD_FM_CLOCK) -> tuple[int,
     same thing: MakeFMFrequency(f) = f × 2^21 / FM_Sample_Rate at block 0, 16.35 Hz = C0.
     A4 = 440 Hz → fnum 1083, block 4.)
     """
-    # Prefer fnum in [512, 1023]
-    for block in range(8):
-        fnum = round(freq * 144 * (1 << (21 - block)) / clock_rate)
-        if 512 <= fnum <= 1023:
-            return fnum, block
-    # Fallback: any valid fnum
-    for block in range(8):
-        fnum = round(freq * 144 * (1 << (21 - block)) / clock_rate)
-        if 1 <= fnum <= 1023:
-            return fnum, block
-    return 1, 0
+    return fnum_block_for_hz(freq, clock_rate)
 
 
 # ---------------------------------------------------------------------------

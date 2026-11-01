@@ -150,6 +150,17 @@ def freq_word(fnum: int, block: int) -> int:
     return (block & _BLOCK_MASK) << _FNUM_BITS | (fnum & _FNUM_MASK)
 
 
+def fnum_block_for_hz(freq: float, clock: int = MD_FM_CLOCK) -> tuple[int, int]:
+    """(fnum, block) nearest `freq`: fnum in [512, 1023] where a block puts it there, else any
+    valid fnum.  f = fnum x (clock / 144) x 2^block / 2^21 (A4 = 440 Hz: fnum 1083, block 4)."""
+    for low in (512, 1):
+        for block in range(8):
+            fnum = round(freq * 144 * (1 << (21 - block)) / clock)
+            if low <= fnum <= 1023:
+                return fnum, block
+    return 1, 0
+
+
 def freq_word_hz(word: int, clock: int = MD_FM_CLOCK) -> float:
     """The pitch a frequency word plays at `clock`."""
     return fm_frequency_hz(*split_freq_word(word), clock)

@@ -29,7 +29,7 @@ from ..audio import (
     probe_secs,
 )
 from ..audio import trim_trailing_silence as _trim_trailing_silence
-from ..chips import psg_level_db
+from ..chips import psg_frequency_hz, psg_level_db
 from ..chips.sn76489.build import get_lib_path
 from ..config import PsgInstrumentEntry, PsgSynthesisSettings
 from ..mod import max_sustain_secs
@@ -110,8 +110,10 @@ class _PsgRenderer:
     whose envelope holds cut at a sustain loop (with loops), put in `loops_out`.  Noise never loops."""
 
     def __init__(self, synth: PsgSynthesisSettings, fps: float, cache: RenderCache, verbose: bool,
-                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None, rules: PlaybackRules):
+                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None, rules: PlaybackRules,
+                 pitches_out: dict | None = None):
         self._synth = synth
+        self._pitches_out = pitches_out
         self._envelopes = rules.psg_envelopes
         self._psg_table = rules.psg_table
         self._fps = fps
@@ -163,6 +165,8 @@ class _PsgRenderer:
               env_info: str) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
         n_val = note_to_psg_n(note, self._psg_table, synth.clock_rate)
+        if self._pitches_out is not None:
+            self._pitches_out[inst_num] = psg_frequency_hz(n_val, synth.clock_rate)
         if self._verbose:
             freq_hz = 440.0 * (2.0 ** ((note - 45) / 12.0))
             print(f"  [psg synth] inst={inst_num} tone  "
@@ -303,6 +307,7 @@ def generate_psg_samples(
     raw_out: dict[int, tuple] | None = None,
     cache_out: dict[str, int] | None = None,
     release_out: dict[int, float | None] | None = None,
+    pitches_out: dict[int, float] | None = None,
 ) -> dict:
     """Render a PSG sample for every instrument in the config's catalogue.
 
@@ -320,6 +325,8 @@ def generate_psg_samples(
                    (settings.yaml samples.render_cache; nothing when it is off).
         release_out: filled with {instrument: dB per second the level falls after key-off} for
                    each whose envelope releases (an ADSR's: core/smps/adsr.py); the others cut.
+        pitches_out: filled with {instrument: Hz} each tone is rendered at (its divider): what the
+                   converter holds to core.plan.rendered_pitches.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -334,7 +341,7 @@ def generate_psg_samples(
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
     catalogue = psg_catalogue(conv, noise_envelopes or {})
     cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
-    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out, rules)
+    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out, rules, pitches_out)
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for spec in catalogue.values():
         rendered = renderer.render(spec)

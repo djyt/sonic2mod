@@ -17,7 +17,7 @@ from .conversion import ConversionPlan, MergeRouting, RenderPitch, SampleTable
 from .derive import Derivation, complete_config, derive_config, load_config, starting_volume
 from .detune import DetunePlan, DetuneVariant, detune_cents, detune_variants_wanted, plan_detune_variants
 from .driver_state import DriverState, ResolvedNote, enabled_channels, walk_channel
-from .instrument_plan import InstrumentPitch, InstrumentPlan, prepare_instruments, sounding_pitches
+from .instrument_plan import InstrumentPitch, InstrumentPlan, prepare_instruments, rendered_pitches, sounding_pitches
 from .instruments import (
     FmCatalogue,
     FmDrumInstrument,
@@ -69,6 +69,7 @@ __all__ = [
     "plan_detune_variants",
     "prepare_instruments",
     "psg_catalogue",
+    "rendered_pitches",
     "resolve_synth_roots",
     "sounding_pitches",
     "starting_volume",

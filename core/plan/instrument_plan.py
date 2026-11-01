@@ -7,6 +7,9 @@ config, and what pitch each MOD instrument sounds once they are made.
     sounding_pitches      per MOD instrument: the note it is anchored at, the pitch that note sounds
                           and its sample's cents off it (the driver's table word or divider off equal
                           temperament, an FM detune), read from the catalogue the generators render from
+    rendered_pitches      per tone instrument, the Hz its sample must be rendered at: what the
+                          converter holds each render to (a renderer reading the table its own way
+                          once played Streets of Rage 2's PSG three semitones low, unseen)
 """
 
 from __future__ import annotations
@@ -15,9 +18,9 @@ import math
 from typing import NamedTuple
 
 from ..audio import semitone_to_hz
-from ..chips import freq_word_hz
+from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from ..config import ConversionConfig
-from ..smps import fm_table_index
+from ..smps import fm_render_word
 from .conversion import ConversionPlan
 from .detune import detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
@@ -66,11 +69,23 @@ def sounding_pitches(song, conv: ConversionPlan) -> dict[int, InstrumentPitch]:
     return out
 
 
+def rendered_pitches(song, conv: ConversionPlan) -> dict[int, float]:
+    """{instrument: Hz} each tone sample must be rendered at: an FM instrument's first layer with
+    no offset of its own (a detune variant, a composite's other layers apart), a PSG tone's."""
+    out: dict[int, float] = {}
+    for inst, fm in fm_catalogue(song, conv).instruments.items():
+        layer = fm.layers[0]
+        if layer.semitones == 0 and not layer.fnum_offset:
+            out[inst] = freq_word_hz(fm_render_word(fm.synth_idx + RENDER_INDEX_C1, song.rules.fm_frequencies))
+    table = song.rules.psg_table
+    for inst, psg in psg_catalogue(conv).items():
+        if psg.entry.type == TONE and inst not in out:
+            out[inst] = psg_frequency_hz(table.render_divider(psg.synth_idx + RENDER_INDEX_C1), MD_PSG_CLOCK)
+    return out
+
+
 def _fm_word_cents(semitone: int, fm_frequencies: tuple[int, ...]) -> float:
     """Cents the driver's word for a pitch sounds off equal temperament: the sample is rendered
     with it (Golden Axe's -16 c; Space Harrier II's table plays each note 11 semitones and 26 c
     above the name SMPS gives it)."""
-    i = fm_table_index(semitone)
-    if not 0 <= i < len(fm_frequencies) or fm_frequencies[i] <= 0:
-        return 0.0
-    return 1200 * math.log2(freq_word_hz(fm_frequencies[i]) / semitone_to_hz(semitone))
+    return 1200 * math.log2(freq_word_hz(fm_render_word(semitone, fm_frequencies)) / semitone_to_hz(semitone))

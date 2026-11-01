@@ -22,7 +22,7 @@ from collections.abc import Sequence
 
 from ..audio import DEFAULT_TAPS, normalize_int8, resample
 from ..audio import to_mono as _to_mono
-from ..chips import MD_PSG_CLOCK
+from ..chips import MD_PSG_CLOCK, psg_divider_for_hz
 from ..chips.sn76489 import SN76489
 from ..config import DEFAULT_PSG_OVERSAMPLE
 from ..smps import C1_SEMITONE, PsgDrumFrame, PsgTable
@@ -47,12 +47,9 @@ def note_to_psg_n(mod_note_index: int, table: PsgTable, clock_rate: int = MD_PSG
     85 cents at the top.  Off the run, or at another clock, the formula N = clock / (32 × freq)
     stands in.  Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
-    i = mod_note_index + C1_SEMITONE - table.pitch
-    if clock_rate == MD_PSG_CLOCK and 0 <= i < table.notes and table.divider(i):
-        return table.divider(i)
-    freq = 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
-    n = round(clock_rate / (2.0 * freq * 16.0))
-    return max(1, min(1023, n))
+    if clock_rate == MD_PSG_CLOCK:
+        return table.render_divider(mod_note_index + C1_SEMITONE)
+    return psg_divider_for_hz(440.0 * (2.0 ** ((mod_note_index - 45) / 12.0)), clock_rate)
 
 
 # ---------------------------------------------------------------------------

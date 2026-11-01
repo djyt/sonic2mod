@@ -23,6 +23,11 @@ NOISE_RATE_MASK = 0x03               # the noise register's rate bits
 NOISE_RATE_TONE3 = 3                 # the LFSR is clocked by tone channel 3 (index 2)
 
 
+def psg_divider_for_hz(freq: float, clock: int = MD_PSG_CLOCK) -> int:
+    """The 10-bit tone divider nearest `freq`: N = clock / (32 x freq)."""
+    return max(1, min(1023, round(clock / (32.0 * freq))))
+
+
 def psg_frequency_hz(period: int, clock: int) -> float:
     """The pitch a tone period plays at `clock`; 0 for period 0."""
     return clock / (_PERIOD_DIVIDER * period) if period > 0 else 0.0

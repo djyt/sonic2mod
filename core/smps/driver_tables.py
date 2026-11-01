@@ -12,7 +12,14 @@ import math
 from dataclasses import dataclass
 
 from ..audio import semitone_to_hz
-from ..chips import CARRIER_OFFSETS_BY_ALG, MD_PSG_CLOCK, psg_frequency_hz
+from ..chips import (
+    CARRIER_OFFSETS_BY_ALG,
+    MD_PSG_CLOCK,
+    fnum_block_for_hz,
+    freq_word,
+    psg_divider_for_hz,
+    psg_frequency_hz,
+)
 
 _WORD_VALUES = 0x10000
 
@@ -46,6 +53,16 @@ C1_SEMITONE = 12         # nC1: where a MOD's note index 0 (C-1) plays, an octav
 def fm_table_index(semitone: int) -> int:
     """Where an SMPS semitone (nC0 = 0) stands in an FM table."""
     return semitone + FM_TABLE_NC0
+
+
+def fm_render_word(semitone: int, fm_frequencies: tuple[int, ...]) -> int:
+    """The block|fnum word a sample of `semitone` (SMPS, C0 = 0) is rendered at: the driver's
+    table's, what the hardware plays; equal temperament off it.  The renderer and the pitch a
+    sample is taken to sound both read it here, so they cannot disagree."""
+    i = fm_table_index(semitone)
+    if 0 <= i < len(fm_frequencies) and fm_frequencies[i] > 0:
+        return fm_frequencies[i]
+    return freq_word(*fnum_block_for_hz(semitone_to_hz(semitone)))
 
 
 def fm_note_index(note_value: int, transpose: int) -> int:
@@ -120,13 +137,19 @@ class PsgTable:
         # the written pitch is the best guess (the audit will show what the hardware really did).
         return self.pitch + index
 
-    def divider_cents(self, semitone: int) -> float:
-        """Cents the table's divider for a pitch sounds off equal temperament: a sample is rendered
-        with it (Streets of Rage's and Sonic 1's B7: divider 29, -42 c).  0 outside the run."""
+    def render_divider(self, semitone: int) -> int:
+        """The divider a sample of `semitone` is rendered at: the table's within its run (from its
+        own pitch: Sonic 1's C3, Streets of Rage 2's A2), equal temperament outside it.  The
+        renderer and divider_cents both read it here."""
         i = semitone - self.pitch
-        if not 0 <= i < self.notes or self.read[i] <= 0:
-            return 0.0
-        return 1200 * math.log2(psg_frequency_hz(self.read[i], MD_PSG_CLOCK) / semitone_to_hz(semitone))
+        if 0 <= i < self.notes and self.read[i] > 0:
+            return self.read[i]
+        return psg_divider_for_hz(semitone_to_hz(semitone))
+
+    def divider_cents(self, semitone: int) -> float:
+        """Cents the divider a sample of a pitch is rendered at sounds off equal temperament
+        (Streets of Rage's and Sonic 1's B7: divider 29, -42 c)."""
+        return 1200 * math.log2(psg_frequency_hz(self.render_divider(semitone), MD_PSG_CLOCK) / semitone_to_hz(semitone))
 
 
 def psg_tone2_divider(note_value: int, transpose: int, psg_read: tuple[int, ...]) -> int:

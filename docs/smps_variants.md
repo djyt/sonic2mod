@@ -157,7 +157,7 @@ Z80 DAC mailbox (`$A01FFF`), the relative jump.  Different: track bytes, flags `
 table per kind of track), no tempo (a tick is a frame), loops on a per-track stack, an absolute
 volume step table, voices in register order.
 
-**Where things are** (`mucom/variant.py`: each table found by the code that reads it)
+**Where things are** (`streets_of_rage/variant.py`: each table found by the code that reads it)
 
 | What | ROM | Note |
 |---|---|---|
@@ -175,7 +175,7 @@ volume step table, voices in register order.
 **Song header:** `voices.w fm.b psg.b`; FM entries `ptr.w volume.b` (FM1-FM5, then the drum track);
 PSG entries `ptr.w volume.b envelope.b` (tone 3, 2, 1).  No tempo, no pitch.
 
-**Track code** (`core/rom/grammar/mucom.py`, its dialect `mucom/grammar.py`): `d n` a note (`d` $01-$7F frames, `n` octave | semitone),
+**Track code** (`core/rom/grammar/mucom.py`, its dialect `streets_of_rage/grammar.py`): `d n` a note (`d` $01-$7F frames, `n` octave | semitone),
 `$80|d` a rest, `$00` the end, `$F0`-`$FF` a flag.  Durations stop at 127: longer notes are tie
 chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read row 2, 6-9 row 6).
 
@@ -226,7 +226,7 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
 - **PSG noise:** `$F7` on tone 3 writes no tone 3 frequency, so a noise note plays the last tone
   note's divider, or 0 (`nMaxPSG`) before any.
 
-**DAC** (`mucom/dac.py`; the Z80 player: table at Z80 `$019B`, 5 bytes: start.w, size.w, pitch.b)
+**DAC** (`streets_of_rage/dac.py`; the Z80 player: table at Z80 `$019B`, 5 bytes: start.w, size.w, pitch.b)
 - Music samples `$81`-`$84`; `$85` is empty (size 0): the drum track's rests and gates play it, so
   they **cut** the sample (`TrackRules.rest_cuts`: `C00`).  From `$86`: voice clips, not read.
 - Format: each sample its own 16-byte delta table (byte 0 = a run length); nibble n adds table[n],

@@ -47,7 +47,7 @@ _REVIEWED: dict[SmpsDriver, dict] = {
                "ties.restarts_envelope": False},
         "PSG": {"ties.restarts_envelope": False},
     },
-    # Phase 2 of docs/todo/streets_of_rage_2.md: what reading needs; Phase 3 reviews the rest
+    # docs/mucom_drivers.md: reviewed against its code (docs/todo/done/streets_of_rage_2.md Phases 2-4)
     SmpsDriver.MUCOM_MD: {
         "DAC": {"ties.drum_restarts": False},
         "FM": {"volume.kept": "256 steps", "volume.step_range": range(20), "volume.tl_writes_hold": True,

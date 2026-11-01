@@ -1,5 +1,5 @@
 """Mucom-MD 0.85: Streets of Rage 2 (Bare Knuckle II).  No disassembly: its driver ($40000-$429CE)
-read with a disassembler (docs/todo/streets_of_rage_2.md § 1).
+read with a disassembler (docs/mucom_drivers.md).
 
     songs       MUCOM88's images, byte for byte (header.py); the index and tables by the code that
                 reads each (locate.py)

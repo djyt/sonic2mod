@@ -1,5 +1,5 @@
 # Streets of Rage 2 - Song 17  (not in the VGZ pack).  A minimal config: everything else is derived from the ROM
-# (docs/todo/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
 name: "Song 17"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$17"

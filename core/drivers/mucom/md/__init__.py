@@ -1,4 +1,4 @@
-"""Streets of Rage 2: Mucom-MD 0.85, MUCOM88's songs on the 68k (docs/todo/streets_of_rage_2.md).
+"""Streets of Rage 2: Mucom-MD 0.85, MUCOM88's songs on the 68k (docs/mucom_drivers.md).
 
     variant.py    the description: flags per kind of track, rules, tables read from the ROM
     header.py     a song: MUCOM88's compiled image, its tracks' loops

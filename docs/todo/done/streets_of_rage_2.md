@@ -1,9 +1,9 @@
 # Streets of Rage 2: Mucom-MD, MUCOM88 songs on the 68k
 
-Planned 2026-10-10; reviewed against the code (to `faf3913`) and the rips 2026-11-01.  Goal:
-`convert.py` reads Streets of Rage 2's songs from the ROM, as it reads Streets of Rage
-(`docs/todo/done/streets_of_rage.md`, `docs/smps_variants.md` § Streets of Rage).  Nothing
-implemented yet; this is the probe and the plan.
+Planned 2026-10-10; reviewed against the code (to `faf3913`) and the rips 2026-11-01; done
+2026-11-01 but 5.5 (listening: the user).  `convert.py` reads Streets of Rage 2's songs from the
+ROM, as it reads Streets of Rage.  The driver as built: `docs/mucom_drivers.md`; this is the probe,
+the plan and what each step found.
 
 Status key: `[ ]` open, `[x]` done.  Four parts: what the driver is (1), how close it is to
 Streets of Rage's (2), what the code must change - its bottlenecks, refactors, new concepts (3),
@@ -384,18 +384,23 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 
 ### Phase 5: convert
 - [x] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26; 2.6).
-- [ ] 5.2 `vgm_pitch_audit` clean; `measure_volumes.py --configs configs/streets_of_rage_2`, one pass.
+- [x] 5.2 `vgm_pitch_audit`: 15 of 23 clean, after fixing what it misread (a PSG note's attenuation
+  written before its tone; a rip-only start read as a tempo step) and what the slot fit broke (a
+  special-mode copy folded: its pitch; an instrument whose first entry routes no notes: no rendering
+  pitch).  Left: modulation sweeps no 4xy plays (depth -150 ... 598), PSG detune on high notes (no
+  PSG detune variants: -37 c, 29 notes), Wave 131.  `measure_volumes.py`, one pass: 376 volumes.
 - [x] 5.3 Slots: 7 songs needed 33-53 (Jungle Base: 3 drums, 18 voices in 32 windows, an envelope at 7
   volumes in 18).  D2 amended (the user, 2026-11-01): no banks (one looped sound a bank; these
   presets sustain or fade over ~3 s), so `core/plan/slot_fit.py`: envelopes at their most played
   volume, then copies, then windows merged.  All 26 fit.  Left, warned: copies and detune variants
   played as their voice where the slots are gone (`copy_no_slot` / `detune_no_slot`: 16 songs;
   Spin on the Bridge 114 register-patched copies).
-- [ ] 5.4 Regression cases chosen by coverage (D7); `tool_regression`: `read_`, `frames_`, `glitches_`.
+- [x] 5.4 Six cases by line coverage (`tests/cases.yaml` `streets_of_rage_2`); `tool_regression`:
+  `read_`, `frames_`, `glitches_` (no glitch in any rip), `pitch_` of the five with a rip.
 - [ ] 5.5 Listen in the FT2 clone (the user).
 
 ### Phase 6: close
-- [ ] 6.1 The analysis (§ 1-2, with what the phases found) to its home (D1: a doc of its own,
+- [x] 6.1 The analysis (§ 1-2, with what the phases found) to its home (D1: a doc of its own,
   `docs/mucom_drivers.md`, since `smps_variants.md` names SMPS variants); `docs/architecture.md`;
   CLAUDE.md's index; this plan to `done/`.
 

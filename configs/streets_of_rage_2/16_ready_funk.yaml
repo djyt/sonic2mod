@@ -1,5 +1,5 @@
 # Streets of Rage 2 - Ready Funk.  A minimal config: everything else is derived from the ROM
-# (docs/todo/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
 name: "Ready Funk"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$16"

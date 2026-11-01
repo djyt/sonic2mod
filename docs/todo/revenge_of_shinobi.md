@@ -141,7 +141,7 @@ the engine are shared; the header, about ten flag meanings, the PSG and the DAC 
 | DAC | Kosinski player, run-DPCM, 5-byte entries | raw two-block copy, Sonic 1's DPCM, 12-byte entries with loops, `$85` pitched |
 | notes, rests, loops, `$F1` FM, `$F3`, `$F4` FM, `$F5` `$F6` `$FE`, `$F7` FM, `$FA` FM, `$FB`, `$FC`, `$FD`, voices, FM tables | | **same** |
 
-Streets of Rage 2's R1 (`docs/todo/streets_of_rage_2.md` § 3.2) moved the shared MUCOM track
+Streets of Rage 2's R1 (`docs/todo/done/streets_of_rage_2.md` § 3.2) moved the shared MUCOM track
 language to `core/rom/grammar/mucom.py`, a `MucomDialect` per driver.  Shinobi is its third reader.
 
 ---

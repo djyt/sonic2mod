@@ -1,4 +1,4 @@
-# Which rip each config converts (docs/todo/streets_of_rage_2.md 2.6: each paired by its FM onsets,
+# Which rip each config converts (docs/todo/done/streets_of_rage_2.md 2.6: each paired by its FM onsets,
 # 2-264 wrong of 80-3529).  No rip: $04 ($03's other version), $12 ($02's), $17; $0C and $10 are
 # silences.  23 Walking Bottom (the beta's) matches no song.  The rips are not in this folder's mirror:
 folder: streets_of_rage_2          # under reference/vgz/

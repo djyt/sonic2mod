@@ -12,9 +12,10 @@ one sample_list row), never the whole section.
 
 Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
     over 31     what gives way, in order (core.plan.slot_fit): an envelope at a volume plays at its
-                most played volume; a copy under the LFO or with a register patch as its voice;
-                a voice's neighbouring windows merge, the cheapest first; last, a copy in channel
-                3's special mode as its voice (its notes' pitch moves: the operators' offsets lost)
+                most played volume; a copy under the LFO as its voice;
+                a voice's neighbouring windows merge, the cheapest first; then a register-patched
+                copy as the voice it patches; last, a copy in channel 3's special mode as its voice
+                (its notes' pitch moves: the operators' offsets lost)
     FM / PSG tone   an entry per window of the chip pitches a voice / envelope plays: its lowest
                     on the first MOD note keeping samples.root_harmonics harmonics (never under
                     E1, the 5 kHz line), its top at most samples.top_note (A3), its span at most
@@ -146,9 +147,9 @@ class Derivation:
     stale: list[str] = field(default_factory=list)          # stated rows' files these settings do not
                                                             # cut (another max_window's, or stale): left out
     folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # {voice copy: (the voice it plays
-                                                            # as, its notes)}: no slot for it
+                                                            # as, the ticks its notes sound)}: no slot for it
     volumes_folded: dict[str, tuple[str, int]] = field(default_factory=dict)   # {envelope at a volume:
-                                                            # (the volume it plays as, its notes)}: no slot
+                                                            # (the volume it plays as, the ticks its notes sound)}: no slot
     windows_merged: dict[str, int] = field(default_factory=dict)   # {voice / envelope: windows merged}
 
 
@@ -246,8 +247,8 @@ class _Deriver:
                 if any(e.note is not None and not e.note.is_rest for e in ch.events)]
 
     def _notes(self, sources: list[str]):
-        """Each FM voice's and PSG envelope's chip pitches, each noise form's envelopes, the DAC
-        samples hit."""
+        """Each FM voice's and PSG envelope's chip pitches (ticks sounded: a long note weighs more
+        in what gives way to fit the slots), each noise form's envelopes, the DAC samples hit."""
         fm: dict[int, Counter] = defaultdict(Counter)
         tone: dict[str, Counter] = defaultdict(Counter)
         noise: dict[int, Counter] = defaultdict(Counter)
@@ -268,10 +269,10 @@ class _Deriver:
                     noise[st.noise_form][label] += 1
                     levels[("noise", (st.noise_form, label))][(None, (st.att, False))] += 1
                 elif res is not None and st.is_psg:
-                    tone[st.envelope or _NO_ENVELOPE][res.chip] += 1
+                    tone[st.envelope or _NO_ENVELOPE][res.chip] += note.duration
                     levels[("tone", st.envelope or _NO_ENVELOPE)][(res.chip, (st.att, False))] += 1
                 elif res is not None and st.voice is not None:
-                    fm[st.voice][res.chip] += 1
+                    fm[st.voice][res.chip] += note.duration
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
         return fm, tone, noise, dac
 
@@ -359,20 +360,26 @@ class _Deriver:
 
     def _fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
         """`fm` and `tone` fitted to `slots`, as far as they go (core.plan.slot_fit), what sounds
-        least changed first: envelopes at their most played volume, LFO and register-patch copies
-        as their voices, windows merged; then special-mode copies as theirs, one at a time."""
+        least changed first: envelopes at their most played volume, LFO copies as their voices,
+        windows merged; then, one at a time with the windows merged anew, register-patched copies
+        as the voice they patch (a patch can change the sound wholly: Never Return Alive's $1F
+        lets $09's feedback modulator decay; folded, a 5 s note played 19 dB loud), last
+        special-mode copies (their notes' pitch moves)."""
         tone, self._out.volumes_folded = fold_volumes(tone, slots - self._fm_slots(fm), volume_family, self._tone_slots)
-        fm = self._fold_copies(fm, slots - self._tone_slots(tone), (_lfo_voice, _unpatched_voice))
-        while True:
-            groups: dict[tuple, Counter] = {(ChannelType.FM, key): p for key, p in fm.items()}
-            groups |= {("tone", key): p for key, p in tone.items()}
-            self._merges = merge_windows(groups, self._max_span, self._widest, slots)
-            used = sum(len(self._cut(kind, key, p)) for (kind, key), p in groups.items())
-            if used <= slots or not self._fold_one(fm, (_special_voice,)):
-                break
+        fm = self._fold_copies(fm, slots - self._tone_slots(tone), (_lfo_voice,))
+        for fallback in (_unpatched_voice, _special_voice):
+            while not self._merged_fit(fm, tone, slots) and self._fold_one(fm, (fallback,)):
+                pass
         self._out.windows_merged = {(f"${key:02X}" if kind == ChannelType.FM else key): n
                                     for (kind, key), n in self._merges.items()}
         return fm, tone
+
+    def _merged_fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> bool:
+        """The windows merged as far as `slots` asks (self._merges): whether they fit."""
+        groups: dict[tuple, Counter] = {(ChannelType.FM, key): p for key, p in fm.items()}
+        groups |= {("tone", key): p for key, p in tone.items()}
+        self._merges = merge_windows(groups, self._max_span, self._widest, slots)
+        return sum(len(self._cut(kind, key, p)) for (kind, key), p in groups.items()) <= slots
 
     def _cut(self, kind: str, key, pitches: Counter) -> list[tuple[int, int]]:
         """The windows a voice's (envelope's) `pitches` are cut into, merged as _fit chose."""

@@ -7,11 +7,12 @@ read with a disassembler (docs/todo/streets_of_rage_2.md § 1).
     voice       MUCOM88's 25 bytes (core.rom.variant.MUCOM_VOICE), as Streets of Rage's
     flags       one table per kind of track (FM $41B74, PSG $423E8, the drum track $4285A); the
                 grammar (grammar.py) reads the rest
-    volume      FM: $F1 v sets step clamp(v - 2, 0, 19), TL = the volume table's; $FB n adds,
-                clamped.  PSG: $F1 v (0-15), att = v ^ 15; $FB n adds, clamped
+    volume      FM: $F1 v keeps step v - 2 (a byte, $41C02), 19 at most; TL = the volume table's;
+                $FB n adds to the step kept, clamped 0-19 ($41DC0).  PSG: $F1 v keeps v (0 under it),
+                att = v ^ 15; $FB n adds, clamped 0-15
     DAC         the Z80 player's samples $81-$84 (dac.py)
 
-Dropped and reported until Phase 3: soft release, PSG envelopes ($F0, $FA), noise ($F7, $F8).
+Dropped and reported until Phase 3: PSG envelopes ($F0, $FA), noise ($F7, $F8).
 """
 
 from __future__ import annotations
@@ -22,7 +23,17 @@ from core.rom.flags import NO_ATTACK, FlagSpec, drop, effect, read, refuse
 from core.rom.grammar.mucom import dac_sample, detune, loop_end, loop_exit, loop_start, register_write
 from core.rom.image import RomImage
 from core.rom.variant import MUCOM_VOICE, HeaderLayout, SmpsVariant, TrackSlot
-from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules, VolumeRules
+from core.smps import (
+    ChannelType,
+    CoordFlag,
+    KeyOffRules,
+    ModulationRules,
+    PlaybackRules,
+    SoftReleaseLaw,
+    TieRules,
+    TrackRules,
+    VolumeRules,
+)
 
 from ...names import SmpsDriver
 from .dac import MUSIC_SAMPLES, mucom_md_dac
@@ -34,7 +45,10 @@ from .memory import MucomMemory
 _BYTE_VALUES = 0x100
 _SIGNED_STEPS = range(-0x80, 0x80)          # a flag's byte, as TrackRules keys it
 _FM_STEP_OFFSET = 2                          # $F1 v: step v - 2
+_FM_STEPS = range(FM_VOLUME_STEPS)           # the step kept: 0-19
 _PSG_VOLUME = 0xF                            # att = v ^ 15
+_PSG_STEPS = range(_PSG_VOLUME + 1)          # $FB's sum clamped 0-15
+_PSG_KEPT = range(0x80)                      # $F1 v: v, 0 under it
 _SEMITONES = 12
 _PSG_READ = 128                              # the words a 7-bit index reads
 
@@ -106,14 +120,16 @@ def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
     """Its FM octave and volume table, and its PSG table, read from the ROM."""
     psg = _psg_dividers(psg_octave(rom))
     track = rules.track(ChannelType.FM)
-    fm = replace(track, volume=replace(track.volume, steps=_fm_volume_steps(fm_volumes(rom))))
+    volumes = fm_volumes(rom)
+    fm = replace(track, volume=replace(track.volume, steps={step: volumes[step] for step in _FM_STEPS}))
     return replace(rules, fm_frequencies=fm_frequencies(rom), psg_frequencies=psg[:PSG_NOTES], psg_read=psg,
                    tracks={**rules.tracks, ChannelType.FM: fm})
 
 
-def _fm_volume_steps(volumes: tuple[int, ...]) -> dict[int, int]:
-    """`$F1 v`'s TL for every byte v: the step v - 2 (unsigned), clamped to the table."""
-    return {v: volumes[min(max((v % _BYTE_VALUES) - _FM_STEP_OFFSET, 0), FM_VOLUME_STEPS - 1)] for v in _SIGNED_STEPS}
+def _fm_kept_step(v: int) -> int:
+    """The step `$F1 v` keeps: v - 2 as a byte, 19 at most (v 0 and 1: 19; the tst.b before its
+    bcc clears the carry, so the clamp to 0 never runs)."""
+    return min((v - _FM_STEP_OFFSET) % _BYTE_VALUES, _FM_STEPS.stop - 1)
 
 
 def _psg_dividers(octave: tuple[int, ...]) -> tuple[int, ...]:
@@ -126,11 +142,28 @@ def _psg_dividers(octave: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(out)
 
 
-# How each kind of track reads; what Phase 3 checks against the driver is Sonic 1's until then:
+# How each kind of track reads:
 #   $FA's writes are queued and written after the volume ($41996): a carrier's TL holds until the
-#   next volume change or voice
-_FM_TRACK = TrackRules(volume=VolumeRules(carrier_writes_hold=True))
-_PSG_TRACK = TrackRules(volume=VolumeRules(steps={v: max(v, 0) ^ _PSG_VOLUME for v in _SIGNED_STEPS}))
+#     next volume change or voice
+#   the gate ($40E64 FM, $4204E PSG) spares a note the next byte ties; FM keys a note no longer
+#     than the gate 1 frame ($40F72), the PSG plays it whole ($4213C)
+#   soft release: at the gate FM drops to step (step + n) >> 1 ($40EE0), the PSG to (v - n) >> 1
+#     ($42076); a rest keys nothing off while it is on ($41020, $4216E), an FM voice set does ($416BA)
+#   the vibrato moves at each turn (no pause), its counter first loaded with half the count ($40DE4)
+#   the loop and a loop's exit ($FE) keep a tie (they leave the tie bit); a $FD after a flag sets the tie bit after
+#     the note's end keyed it off ($41C9C): the next note attacks, unless a soft release spared it
+_NO_TURN_PAUSE = ModulationRules(turn_pause=False)
+_LATE_TIE = TieRules(late_keys_off=True, exit_clears=False)
+_FM_TRACK = TrackRules(
+    volume=VolumeRules(kept={v: _fm_kept_step(v) for v in _SIGNED_STEPS}, step_range=_FM_STEPS,
+                       tl_writes_hold=True),
+    key_off=KeyOffRules(gate_sees_tie=True, gate_floor=1, soft_release=SoftReleaseLaw(sign=1, voice_keys_off=True)),
+    ties=_LATE_TIE, modulation=_NO_TURN_PAUSE)
+_PSG_TRACK = TrackRules(
+    volume=VolumeRules(steps={v: v ^ _PSG_VOLUME for v in _PSG_KEPT}, kept={v: max(v, 0) for v in _SIGNED_STEPS},
+                       step_range=_PSG_STEPS),
+    key_off=KeyOffRules(gate_sees_tie=True, soft_release=SoftReleaseLaw(sign=-1)),
+    ties=_LATE_TIE, modulation=_NO_TURN_PAUSE)
 
 
 MUCOM_MD = SmpsVariant(

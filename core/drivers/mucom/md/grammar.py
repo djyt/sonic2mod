@@ -4,8 +4,8 @@ it.  Its dialect and its own flags:
     PSG notes   octave o plays C(o+1): the table runs from o1 A (A2) to o7 B (B8); o1 C-G# (and o0)
                 clamp to the largest divider, 12 c under A2: read as A2 (the clamp as heard)
     $F8 n       pan: ror.b #2 -> 0 none, 1 right, 2 left, 3 centre
-    $F4         a half cycle is count steps (its phase: Phase 3)
-    $FF s ...   a prefix ($41B94, FM and PSG): F3 n the soft release's level, F5 x soft release
+    $F4         a half cycle is count steps, the counter first loaded with half of it ($40DE4)
+    $FF s ...   a prefix ($41B94, FM and PSG): F3 n soft release on at level n, F5 x soft release
                 off (x 0) or on, F4 x a rest keys off; F0 F1 F2 read and skipped.  The drum
                 track's ($4287A) skips them all
 """
@@ -13,10 +13,10 @@ it.  Its dialect and its own flags:
 from __future__ import annotations
 
 from core.rom.grammar import Instruction
-from core.rom.grammar.mucom import SEMITONES, MucomDialect, octave_and_semitone
+from core.rom.grammar.mucom import SEMITONES, MucomDialect, as_instruction, octave_and_semitone
 from core.rom.image import RomError
 from core.rom.memory import SoundMemory
-from core.smps import FIRST_NOTE
+from core.smps import FIRST_NOTE, SoftRelease
 
 # The PSG table: from octave 1's A to octave 7's B (3 octave bits)
 PSG_FIRST = SEMITONES * 1 + 9
@@ -27,8 +27,7 @@ _VIBRATO_STEPS = 0                           # a half cycle: count steps
 
 # $FF's sub-commands and their operand bytes (the jump table at $41BA8 / $4288E)
 _PREFIX_OPERANDS = {0xF0: 1, 0xF1: 1, 0xF2: 2, 0xF3: 1, 0xF4: 1, 0xF5: 1}
-_SOFT_RELEASE = {0xF3: "soft release level", 0xF5: "soft release on / off"}
-_REST_KEY_OFF = 0xF4
+_SOFT_RELEASE_LEVEL, _REST_KEY_OFF, _SOFT_RELEASE_ON = 0xF3, 0xF4, 0xF5
 
 
 def _psg_note(memory: SoundMemory, at: int) -> int:
@@ -41,12 +40,17 @@ DIALECT = MucomDialect(psg_note=_psg_note, pan_b4=_PAN_B4, vibrato_steps=_VIBRAT
 
 
 def prefix(memory: SoundMemory, address: int) -> Instruction:
-    """`$FF s ...` on an FM or PSG track: the soft release dropped and reported (Phase 3), a rest's
-    key-off refused (no song sets it), F0-F2 skipped as the driver skips them."""
+    """`$FF s ...` on an FM or PSG track: the soft release ($41BB4: F3 n on at n; $41BC2: F5 x on,
+    or off at 0), a rest's key-off refused (no song sets it), F0-F2 skipped as the driver skips them."""
     sub, length = _prefix(memory, address)
+    operand = memory.byte(address + 2)
+    if sub == _SOFT_RELEASE_LEVEL:
+        return as_instruction(SoftRelease(operand, on=True), length)
+    if sub == _SOFT_RELEASE_ON:
+        return as_instruction(SoftRelease(None, on=operand != 0), length)
     if sub == _REST_KEY_OFF:
         raise RomError(f"${address:X}: $FF $F4 (a rest keys off): not converted")
-    return Instruction((), length, True, dropped=_SOFT_RELEASE.get(sub, f"$FF ${sub:02X} (skipped)"))
+    return Instruction((), length, True, dropped=f"$FF ${sub:02X} (skipped)")
 
 
 def drum_prefix(memory: SoundMemory, address: int) -> Instruction:

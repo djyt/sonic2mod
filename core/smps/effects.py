@@ -63,6 +63,7 @@ class CoordFlag(StrEnum):
     LEGATO = auto()               # Space Harrier II's $EE
     PITCH_ENVELOPE = auto()       # its $F4
     PAN_STEP = auto()             # its pan animation (a track flag): a step each read
+    SOFT_RELEASE = auto()         # Streets of Rage 2's $FF $F3 / $F5
 
 
 @dataclass(frozen=True)
@@ -248,6 +249,14 @@ class Gate(DriverEffect):
     """Each note keyed off this many frames (track updates) before its end; 0: none."""
     flag = CoordFlag.GATE
     frames: int
+
+
+@dataclass(frozen=True)
+class SoftRelease(DriverEffect):
+    """While on, a key-off softens the note instead and it rings on (TrackRules.key_off.soft_release)."""
+    flag = CoordFlag.SOFT_RELEASE
+    level: int | None             # n, the level it softens by; None: the one set last
+    on: bool
 
 
 @dataclass(frozen=True)

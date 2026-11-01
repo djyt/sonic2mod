@@ -317,7 +317,7 @@ the end of their ring (after `smpsNoAttack` continuations: `_ring_ticks`).
 
 The driver (`smps_driver.md` § smpsModSet) has a steady cycle of `2 · speed · (steps + 1)` frames (a
 step at each turn adds nothing; a driver whose turn moves too, Streets of Rage's, `2 · speed · steps`:
-`TrackRules.modulation_turn_pause`) and a swing of `delta · steps / 2` units (a PSG that adds the sum
+`TrackRules.modulation.turn_pause`; its first leg `modulation.first_leg_short`) and a swing of `delta · steps / 2` units (a PSG that adds the sum
 `>> pitch.word_shift`: that many fewer) of the note's own frequency word — the YM2612 FNUM of its pitch class
 in the song's table (Sonic 1's: 644 for C … 1148 for A#, B 606 in the block above: a B swings as wide
 as a C) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on A#.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.

@@ -12,9 +12,9 @@ the walk sees voices only.
                                                        (10, 11, 12: voice 3 patched; 12 offset too)
 
 A write to a TL the volume sets (a carrier's) is refused (SmpsVoice.patched), unless the track's
-driver holds it until the next volume change (TrackRules.volume.carrier_writes_hold: Streets of Rage 2's):
-then the copy's TL is the written one, out of the volume's reach (SmpsVoice.level_fixed), until
-the walk takes it back.
+driver holds it until the next volume change (TrackRules.volume.tl_writes_hold: Streets of Rage 2's,
+whose volume write rewrites every TL, a modulator's too): then the copy's TL is the written one, a
+carrier's out of the volume's reach (SmpsVoice.level_fixed), until the walk takes it back.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ class VoiceChanges:
     registers: tuple[tuple[int, int], ...] = ()     # (channel 0 register, byte) written over it, by register
     fnum_offsets: tuple[int, ...] | None = None     # channel 3's special mode; None: normal
     lfo: FmLfo | None = None                        # the hardware LFO it plays under; None: none
-    levels: tuple[tuple[int, int], ...] = ()        # (TL register, byte) written over the volume's, by register
+    levels: tuple[tuple[int, int], ...] = ()        # (TL register, byte) written until the next volume, by register
 
     def written(self, register: int, value: int) -> VoiceChanges:
         """These changes and `register` written `value`."""
@@ -40,7 +40,7 @@ class VoiceChanges:
         return dataclasses.replace(self, registers=tuple(sorted(registers.items())))
 
     def level_written(self, register: int, value: int) -> VoiceChanges:
-        """These changes and the volume's TL `register` written `value`, until the next volume."""
+        """These changes and TL `register` written `value`, until the next volume."""
         levels = dict(self.levels) | {register: value}
         return dataclasses.replace(self, levels=tuple(sorted(levels.items())))
 
@@ -50,7 +50,8 @@ class VoiceChanges:
         for register, value in self.registers:
             voice = voice.patched(register, value)
         for register, value in self.levels:
-            voice = voice.level_fixed(register, value)
+            fixed = voice.level_fixed if register in voice.volume_registers else voice.patched
+            voice = fixed(register, value)
         return voice
 
 

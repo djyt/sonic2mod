@@ -14,7 +14,7 @@ from core.drivers.mucom.md.header import read_image
 from core.drivers.mucom.md.locate import fm_volumes, locate
 from core.drivers.mucom.md.memory import MucomMemory
 from core.rom import RomError, RomImage
-from core.smps import FIRST_NOTE, ChannelType, Pan
+from core.smps import FIRST_NOTE, ChannelType, Pan, SoftRelease
 from tests.roms import STREETS_OF_RAGE_2_ROM, needs_streets_of_rage_2
 
 _HEADER = b"SEGA MEGA DRIVE ".rjust(0x110, b"\0").ljust(0x200, b"\0")
@@ -44,6 +44,13 @@ def _image(tracks: dict[int, bytes], loops: dict[int, int] | None = None) -> byt
 
 def _read(code: bytes, kind: ChannelType = ChannelType.FM):
     return MUCOM_MD.grammar(_memory(code), _AT, MUCOM_MD, kind)
+
+
+def _effect(code: bytes):
+    """The one effect `code` reads as, whole."""
+    read = _read(code)
+    assert read.length == len(code) and len(read.ops) == 1
+    return read.ops[0].effect
 
 
 class Image(unittest.TestCase):
@@ -81,9 +88,10 @@ class Dialect(unittest.TestCase):
         self.assertEqual([_read(bytes([0xF8, n])).ops[0].effect for n in range(4)],
                          [Pan(0x00), Pan(0x40), Pan(0x80), Pan(0xC0)])
 
-    def test_prefix_lengths_soft_release_dropped(self):
-        release = _read(bytes([0xFF, 0xF3, 4]))
-        self.assertEqual((release.ops, release.length, release.dropped), ((), 3, "soft release level"))
+    def test_the_prefix_sets_the_soft_release(self):
+        self.assertEqual(_effect(bytes([0xFF, 0xF3, 4])), SoftRelease(4, on=True))
+        self.assertEqual(_effect(bytes([0xFF, 0xF5, 0])), SoftRelease(None, on=False))
+        self.assertEqual(_effect(bytes([0xFF, 0xF5, 1])), SoftRelease(None, on=True))
         self.assertEqual(_read(bytes([0xFF, 0xF2, 1, 2])).length, 4)
         with self.assertRaisesRegex(RomError, "a rest keys off"):
             _read(bytes([0xFF, 0xF4, 1]))

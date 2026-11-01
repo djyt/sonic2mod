@@ -210,7 +210,7 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
   (`key_off.tied_rest_holds`).  A jump drops an FM or drum track's tie, not a PSG's (`replay_tie`).
 - **Vibrato:** SMPS's shape, but the count is tested before it counts down and the turn's step
   moves too: a half cycle is count + 1 moves, no pause (`modulation.turn_pause`; Sonic 1's turn
-  adds nothing).  The PSG adds the depth words' sum >> 4 (`pitch.word_shift`), not each step's.  Cycles
+  adds nothing), the first leg half the count (`modulation.first_leg_short` 1).  The PSG adds the depth words' sum >> 4 (`pitch.word_shift`), not each step's.  Cycles
   too slow for `4x1` play as slides.
 - **Voices:** 25 bytes, DT/MUL TL KS/AR AM/D1R D2R D1L/RR in register order, FB/ALG last.  `$FA`
   writes (D1R, D2R, D1L/RR; 203 in the songs) last until the next voice: a patched copy

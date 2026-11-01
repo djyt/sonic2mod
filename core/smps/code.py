@@ -27,6 +27,7 @@ from .effects import (
     CoordFlag,
     Pan,
     PanStep,
+    PlayedEffect,
     PsgVoice,
     SetPitchEnvelope,
     SetVoice,
@@ -348,7 +349,9 @@ class _Walker:
     def _replay_differs(self, label: str, cur: _Cursor) -> bool:
         """A jump back to `label` replays it otherwise than the first pass: its opening notes,
         before any duration byte, took a duration from before it that the jump does not leave
-        (once: the second pass ends as the first)."""
+        (once: the second pass ends as the first).  The driver's key-off state the jump carries
+        (a gate, a soft release) is not followed: a second pass for it would double most of
+        Streets of Rage 2's songs for a few frames of their loop's opening notes."""
         taken = self._inherited.get(label)
         return self._second_pass is None and taken is not None and taken != cur.last_duration
 
@@ -365,11 +368,13 @@ class _Walker:
         return i
 
     def _on_loop_exit(self, op: Op, i: int, cur: _Cursor, _seen: set[str]) -> int | None:
-        """On its loop's last pass: out past the loop's end, a tie dropped (Streets of Rage's $FE)."""
+        """On its loop's last pass: out past the loop's end, a tie dropped where the driver drops it
+        (Streets of Rage's $FE)."""
         end = self._loop_end(i, op.name)
         if end is None or self._passes.get(op.name, 1) < self._ops[end].value:
             return i
-        cur.no_attack = False
+        if self._driver.exit_clears_tie:
+            cur.no_attack = False
         if op.name in self._passes:                 # the last replay ends here
             return None
         return end + 1                              # a loop of one pass: past its end
@@ -388,6 +393,9 @@ class _Walker:
 
     def _on_byte(self, op: Op, i: int, cur: _Cursor, _seen: set[str]) -> int | None:
         """A track byte; the cursor carries a pending note across ops (and dc.b lines)."""
+        if op.kind is OpKind.NO_ATTACK and not self._driver.ties(self._prev_op(i - 1) is OpKind.DURATION):
+            self._close_pending(cur)                # too late: it ties nothing
+            return i
         self._byte(cur, op)
         if op.kind is OpKind.DURATION:
             self._keyed_off(cur, i)
@@ -418,8 +426,14 @@ class _Walker:
         event = cur.channel.events[-1]
         if event.note is None:
             return
-        first, *rest = self._driver.cut(event.note, self._next_op(i) is OpKind.NO_ATTACK)
-        assert isinstance(first, SmpsNote), "a key-off leaves its note first"
+        keyed = list(self._driver.cut(event.note, self._next_op(i) is OpKind.NO_ATTACK))
+
+        # Effects before the first note play where it starts (the note before ended there)
+        lead = next(n for n, e in enumerate(keyed) if isinstance(e, SmpsNote))
+        cur.channel.events[-1:-1] = [SmpsEvent(effect=e, tick_position=event.tick_position)
+                                     for e in keyed[:lead] if isinstance(e, PlayedEffect)]
+        first, *rest = keyed[lead:]
+        assert isinstance(first, SmpsNote)
         event.note = first
         tick = event.tick_position + first.duration
         for played in rest:
@@ -428,6 +442,13 @@ class _Walker:
                 tick += played.duration
             else:
                 cur.channel.events.append(SmpsEvent(effect=played, tick_position=tick))
+
+    def _prev_op(self, i: int) -> OpKind | None:
+        """The kind of the last op before `i` that is not a label (in the code, not as walked)."""
+        i -= 1
+        while i >= 0 and self._ops[i].kind is OpKind.LABEL:
+            i -= 1
+        return self._ops[i].kind if i >= 0 else None
 
     def _next_op(self, i: int) -> OpKind | None:
         """The kind of the first op from `i` that is not a label."""
@@ -507,7 +528,20 @@ class _Walker:
             self._sample_pan(cur, val)
         else:
             note = SmpsNote(note_value=val, duration=0, is_no_attack=cur.no_attack)
+        if not note.is_rest:
+            self._before_note(cur, note)
         self._open_note(cur, note)
+
+    def _before_note(self, cur: _Cursor, note: SmpsNote) -> None:
+        """As `note` is read: it slides on where its driver keys it on over a note still keying,
+        and what the driver writes first plays after the note before (a soft release's level undone)."""
+        slides, written = self._driver.before_note()
+        if slides:
+            note.is_no_attack = True
+        if not written:
+            return
+        self._close_pending(cur)
+        self._channel.events.extend(SmpsEvent(effect=e, tick_position=cur.tick) for e in written)
 
     def _sample_pan(self, cur: _Cursor, val: int) -> None:
         """A sample with its own pan writes B4 as it starts (OutRun's $0189): a Pan before its note,

@@ -93,24 +93,35 @@ No loop pointer lands inside a loop body.
 
 ### 1.4 How it plays
 
-- **FM volume:** TL = table[clamp(v - 2, 0, 19)] on the carriers (the voice's own carrier TLs never
-  play); `$FB` moves the step.  Songs use v `$04`-`$13` (`$10` most).
+- **FM volume:** `$F1 v` keeps step (v - 2) as a byte, 19 at most (`$41C02`: v 0 and 1 keep 19; the
+  `tst.b` before its `bcc` clears the carry, so the clamp to 0 never runs); TL = table[step] on the
+  carriers (the voice's own carrier TLs never play).  `$FB n` adds to the step kept, clamped 0-19
+  (`$41DC0`).  Songs use v `$04`-`$13` (`$10` most).  The volume write (`$41A9A`) rewrites all four
+  TLs, a modulator's from the voice.
 - **Gate:** FM: a note no longer than q keys off after **1 frame** (`$40F72`: `d ≤ q -> 1`); PSG:
-  it plays whole (`$4213C`); 75 FM and 146 PSG note bytes are no longer than their gate.
-- **Soft release** (`$FF $F3 n`, 18 songs): at the gate the FM note is not keyed off but drops to
-  TL = table[(step + n) >> 1] (`$40EE0`) and rings through the rests; the next note keys off, then on.
-  PSG: att = ((v - n) >> 1) ^ 15 (`$42076`).  `$FF $F5 0` ends it.
+  it plays whole (`$4213C`); 75 FM and 146 PSG note bytes are no longer than their gate.  The gate
+  spares a note the next byte ties (`$40E64`: the tie bit read with the note).
+- **Soft release** (`$FF $F3 n` on at level n, `$FF $F5 x` on / off; levels 0-15; 18 songs): nothing
+  keys off.  At the gate (or the note's end, with no gate) the FM note drops to TL =
+  table[(step + n) >> 1] (`$40EE0`, a volume write) and rings through the rests (`$41020`); the next
+  note keys off, then on (`$4156C`), the volume written again (`$40F94`).  PSG: att = ((v - n) >> 1) ^ 15
+  (`$42076`).  `$FF $F5 0` ends it and writes the volume (`$41BCC`); a note still ringing then is
+  keyed on alone (`$415E0`): the next note slides on, no attack.  An FM voice set keys the
+  ringing note off if soft release is still on as the read ends (the voice loads after the read,
+  `$410F4` / `$416BA`).
 - **Ties:** every note keys off at its end, the next keys on; a note followed by `$FD` is not keyed
-  off and the next one slides legato (frequency only).  The tie bit survives the loop jump (none of
-  the 28 songs ends a track tied).
+  off and the next one slides legato (frequency only).  A `$FD` after a flag sets the tie bit after
+  the note's end keyed it off (`$41C9C`): the next note attacks (but keeps its vibrato, below).  The
+  tie bit survives the loop jump and `$FE` (none of the 28 songs ends a track tied).
 - **Vibrato** (`$40E08`): after the delay, every `speed` frames a step of `depth`; the counter starts
-  at count / 2 and a half cycle is count steps (SoR1: count + 1).  Restarted on each note unless it
-  is a tied note of the same pitch (`$40F3C`); `$F2` forces the restart.
+  at count / 2 and a half cycle is count steps, the turn moving too (SoR1: count + 1).  Restarted on
+  each note unless it is a tied note of the same pitch (`$40F3C`, a late `$FD`'s tie bit too); `$F2`
+  forces the restart.
 - **FM3 special mode, LFO:** as Streets of Rage's (`$42002`: `$1A` = `$40` on FM3 when an offset is
   nonzero; `$41F0E`).  Data: `$F7 64 00 00 00` / `00 00 00 00`, `$FC` with FMS 2-7.
 - **`$FA` writes:** TL `$4x` 464, AM/D1R 29, D2R 8, D1L/RR 38, KS/AR 2, `$26` 20 (Timer B: inert, the
-  driver runs on V-int).  Written after the volume, so a carrier's TL holds until the
-  next volume change (SoR1 had none on carriers; which of these 464 are carriers: Phase 3).
+  driver runs on V-int).  Queued, written after the volume (`$41112`), so any TL's holds until the
+  next volume write, which rewrites all four (a modulator's from the voice, `$41A9A`).
 - **PSG pitch:** divider = table[s] >> octave, clamped 1-1023; octave o plays C(o+1) (o3 = C4, one
   octave above FM's o3).  Dividers differ from Sonic 1's by ±1 (C3: 855 vs 854).  The playable run is
   o1 A (1016, A2) to o7 B (14, B8), 75 notes: a table that starts at A2, as Space Harrier II's
@@ -247,19 +258,20 @@ Order: R1, R2, R7 before Phase 2; R3 with 2.2; R4, R5, R6 before Phase 3.  One c
 | Fact | IR | Resolved in | Downstream |
 |---|---|---|---|
 | header loop pointers | R3: `JUMP` at the track's end | header reader, `decode_tracks` | none |
-| FM volume `v − 2`, clamped 0-19 | `volume.steps` over every byte + R4's clamp on `$FB` | walk | none |
+| FM volume `v − 2`, clamped 0-19 | `volume.kept` (the step a byte keeps), `volume.step_range` (`$FB`'s clamp) | walk | none |
 | PSG volume 0-15, `$FB` clamped | `SET_VOL` / `ALTER_VOL` with a clamp per kind | walk | none |
-| soft release (`$FF F3 n`, `F5`) | R5: gate -> note, level change, tied tail through the rests | walk | `Cxx` on a tie (exists) |
-| FM gate d ≤ q -> 1 frame | R4's gate floor | walk | none |
-| vibrato count / 2 start, count per half | R4's modulation phase | walk / timeline | check the `4xy` formula |
+| soft release (`$FF F3 n`, `F5`) | `SoftRelease`; `key_off.soft_release` (`SoftReleaseLaw`): gate -> note, level change, tied tail through the rests; off: the next note slides | walk | `Cxx` on a tie (exists) |
+| FM gate d ≤ q -> 1 frame | `key_off.gate_floor` | walk | none |
+| vibrato count / 2 start, count per half | `modulation.first_leg_short` (SoR1 1, SoR2 0) | `modulation_offset` | none |
+| a late `$FD` (after a flag) | `ties.late_keys_off` | walk | none |
 | PSG detune and vibrato `>> octave`, depth × 266/256 | R4's word shift by octave, depth scale | walk | none |
 | PSG pitch | the driver's table, A2-B8 (§ 1.4); o1 C-G# -> index 0 in the grammar (D8) | variant, grammar | none |
 | PSG ADSR envelope with release | `PsgEnvelope` gains a release; resolved per (preset, volume) in the walk (D2) | walk | PSG render: attack / decay / sustain; PSG release slides beside FM's (B6) |
 | noise takeover, fixed rate | R6: `PsgForm($E4 \| rate)` and back | walk | psg render (rates 0-2 exist) |
 | pan 1 R / 2 L | `PAN` | dialect (R1) | none |
 | drum rests do not cut | `key_off.rest_cuts` False (exists) | rules | none |
-| `$FA` carrier TL | a voice patch the next volume change undoes (D4; RoS's too) | walk (`voice_patch.py`) | none |
-| tie survives the loop | `ties.jump_clears` False (exists) | rules | none |
+| `$FA` TL writes | `volume.tl_writes_hold`: a voice patch the next volume write undoes (D4; RoS's too) | walk (`voice_patch.py`) | none |
+| tie survives the loop and `$FE` | `ties.jump_clears` False (exists), `ties.exit_clears` False | rules | none |
 
 ---
 
@@ -296,7 +308,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   soft release, PSG envelopes, noise.  Refused: `$F4` 3-6, `$FF F4`, `$FC` on PSG / drums (none used).
   D4 done here (every song must walk): `$FA` queues up to 8 writes, written after the volume each
   frame (`$41996`), so a carrier's TL holds until the next volume change or voice
-  (`TrackRules.carrier_writes_hold`; `SmpsVoice.level_fixed`; a volume change in the same read is
+  (`TrackRules.tl_writes_hold`; `SmpsVoice.level_fixed`; a volume change in the same read is
   refused, none happens).  `$02` `$12` `$13` make 18 such voice copies each (slots: 2.7).
 - [x] 2.4 `rom_import.py` lists the 28 songs; `song_dump.py` reads, walks and plays each; tool case
   `read_streets_of_rage_2`.
@@ -316,16 +328,21 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   name a pitch past B7 (`parse_smps_note`; SoR2's PSG reaches B8): it reads them now.
 
 ### Phase 3: the walk
-- [ ] 3.0 R4, R5, R6, a commit each.  R4 done: `TrackRules` holds `volume`, `key_off`, `ties`,
+- [x] 3.0 R4, R5, R6, a commit each.  R4 done: `TrackRules` holds `volume`, `key_off`, `ties`,
   `modulation`, `pitch` (and `byte_durations`).  R5 done: `DriverTrack.cut` returns the notes and effects a key-off
   leaves, in time order (an effect where the note before it ends).  R6 done: `PsgForm(None)` turns
   noise off (Track, DriverTrack, DriverState route back to the tone instrument); fixed-rate noise
   plays on a `NOISE` channel in `played_song`, the lift and the frame check; `core/chips/psg.py`
   holds the noise register's facts.  3.4 wires `$F7` to it.
-- [ ] 3.1 FM: volume law (the clamp is on the stored step: `$FB` after an out-of-range `$F1`), the
-  gate's 1-frame floor (D3, checked on a rip), soft release, ties across the loop, the vibrato's
-  phase and restart; `$FA` carrier writes against a rip (D4, modelled in 2.3).  Pan's direction
-  from a rip.
+- [x] 3.1 FM, every mechanism a rule (§ 3.3), SoR2's facts in its variant: volume law (the step
+  kept, `$FB`'s clamp), the gate's 1-frame floor (D3: the rips agree), soft release (with `$FF $F5`,
+  the voice set's key-off and the slide after it), late ties, `$FE` keeping a tie, the vibrato's
+  first leg, every `$FA` TL write held to the next volume write (D4).  Against the rips: FM onsets
+  and lengths exact in 17 of 23 (2.6's yardstick: 0); every FM attack's level, voice and pan
+  exact in all 23, its pitch in 21.  Left, known: a gate or soft release the loop's jump carries
+  into the replay (Go Straight and its Beatmix: FM5's 12 opening loop notes 2 frames long; a
+  second pass would double 17 songs); a late `$FD` that keeps a same-pitch note's vibrato running
+  (Wave 131 FM3, 16 notes); the rest only where a rip ends mid-note.
 - [ ] 3.2 PSG: its table (§ 1.4, D8), detune / vibrato `>> octave`, volume, soft release.
 - [ ] 3.3 PSG envelopes: the ADSR resolved per (preset, volume), with its release (D2).  The render:
   a sustain loop at SL (or the SR decay); the release a PSG slide beside `Fades.release`.

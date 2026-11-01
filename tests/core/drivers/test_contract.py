@@ -21,7 +21,7 @@ from core.drivers.names import SmpsDriver
 from core.drivers.registry import all_drivers
 from core.rom import RomImage
 from core.smps import ChannelType
-from core.smps.rules import SONIC1_TRACK, OctaveWrap, PlaybackRules, TrackRules
+from core.smps.rules import SONIC1_TRACK, OctaveWrap, PlaybackRules, SoftReleaseLaw, TrackRules
 from tests.roms import GAMES
 
 # Where each driver's playback departs from Sonic 1's (PlaybackRules' and each track kind's
@@ -32,11 +32,13 @@ _REVIEWED: dict[SmpsDriver, dict] = {
     SmpsDriver.TYPE1A: {},
     SmpsDriver.TYPE0FM: {"tempo_phase": 1, "key_run_out": 256},
     SmpsDriver.STREETS_OF_RAGE: {
-        "DAC": {"modulation.turn_pause": False, "ties.jump_clears": True, "key_off.rest_cuts": True},
-        "FM": {"modulation.turn_pause": False, "ties.jump_clears": True, "key_off.gate_spares_tied": True,
-               "key_off.gate_sees_tie": True, "key_off.tied_rest_holds": 1},
+        "DAC": {"modulation.turn_pause": False, "modulation.first_leg_short": 1, "ties.jump_clears": True,
+                "key_off.rest_cuts": True},
+        "FM": {"modulation.turn_pause": False, "modulation.first_leg_short": 1, "ties.jump_clears": True,
+               "key_off.gate_spares_tied": True, "key_off.gate_sees_tie": True, "key_off.tied_rest_holds": 1},
         "PSG": {"volume.steps": "256 steps", "pitch.word_shift": 4, "modulation.turn_pause": False,
-                "pitch.noise_writes_tone3": False, "key_off.gate_sees_tie": True, "key_off.tied_rest_holds": 0},
+                "modulation.first_leg_short": 1, "pitch.noise_writes_tone3": False, "key_off.gate_sees_tie": True,
+                "key_off.tied_rest_holds": 0},
     },
     SmpsDriver.SH2: {"DAC": {"byte_durations": True}, "FM": {"byte_durations": True}, "PSG": {"byte_durations": True}},
     SmpsDriver.OUTRUN: {
@@ -47,8 +49,13 @@ _REVIEWED: dict[SmpsDriver, dict] = {
     },
     # Phase 2 of docs/todo/streets_of_rage_2.md: what reading needs; Phase 3 reviews the rest
     SmpsDriver.MUCOM_MD: {
-        "FM": {"volume.carrier_writes_hold": True},
-        "PSG": {"volume.steps": "256 steps"},
+        "FM": {"volume.kept": "256 steps", "volume.step_range": range(20), "volume.tl_writes_hold": True,
+               "key_off.gate_sees_tie": True, "key_off.gate_floor": 1,
+               "key_off.soft_release": SoftReleaseLaw(sign=1, voice_keys_off=True), "ties.exit_clears": False,
+               "ties.late_keys_off": True, "modulation.turn_pause": False},
+        "PSG": {"volume.steps": "128 steps", "volume.kept": "256 steps", "volume.step_range": range(16),
+                "key_off.gate_sees_tie": True, "key_off.soft_release": SoftReleaseLaw(sign=-1),
+                "ties.exit_clears": False, "ties.late_keys_off": True, "modulation.turn_pause": False},
     },
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")
@@ -102,8 +109,9 @@ def _departures(rules: PlaybackRules) -> dict:
     for kind in ChannelType:
         track = rules.track(kind)
         differ = {name: value for name, value in _switches(track).items() if value != _switches(SONIC1_TRACK)[name]}
-        if "volume.steps" in differ:
-            differ["volume.steps"] = f"{len(track.volume.steps)} steps"
+        for table in ("volume.steps", "volume.kept"):      # a table by its size
+            if table in differ:
+                differ[table] = f"{len(differ[table])} steps"
         if differ:
             out[kind.value] = differ
     return out

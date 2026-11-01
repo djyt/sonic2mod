@@ -15,8 +15,8 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
                from Sonic 1's (track(kind); a kind left out reads as Sonic 1's), by concern:
-                   volume      the level a volume step sets, a register write over it
-                   key_off     the gate and the rest: what they key off
+                   volume      the step a volume flag keeps, the level it sets, a register write over it
+                   key_off     the gate and the rest: what they key off, a soft release instead
                    ties        what a jump and a tied read do to a tie
                    modulation  the vibrato's turns
                    pitch       the detune word's scale, the octave it is kept in, noise on tone 3
@@ -67,12 +67,30 @@ class OctaveWrap:
 
 @dataclass(frozen=True)
 class VolumeRules:
-    """The level a track's volume sets."""
+    """The step a track's volume keeps and the level it sets."""
 
-    # VolumeStep: the level (FM: TL offset, PSG: attenuation) by step, a signed byte; none: no steps
+    # The level (FM: TL offset, PSG: attenuation) by the step the track keeps, a signed byte; none: no steps
     steps: Mapping[int, int] = field(default_factory=dict)
-    carrier_writes_hold: bool = False       # a register write to a TL the volume sets holds until the next
-                                            # volume change or voice (Streets of Rage 2's, $41996); False: refused
+    # The step a VolumeStep's byte keeps; none: the byte (Streets of Rage 2's FM: v - 2, clamped 0-19)
+    kept: Mapping[int, int] = field(default_factory=dict)
+    step_range: range | None = None         # an AlterVolumeStep's sum clamped into it; None: it wraps (a signed byte)
+    tl_writes_hold: bool = False            # a register write to any TL holds until the next volume change or
+                                            # voice: the volume write rewrites all four, a modulator's from the
+                                            # voice (Streets of Rage 2's, $41A9A); False: a carrier's refused
+
+
+@dataclass(frozen=True)
+class SoftReleaseLaw:
+    """A key-off that softens instead (Streets of Rage 2's `$FF $F3 n`, while on): where the gate or a
+    rest would key a note off, it drops to the level of step (step + sign x n) >> 1 (a byte) and
+    rings on through the rests, until the next note keys it off."""
+
+    sign: int                               # FM +1 ($40EE0: half way to step n), PSG -1 ($42076: half of v - n)
+    voice_keys_off: bool = False            # a voice set keys the note off where it is on as the read ends
+                                            # (FM's: the voice loads after the read, $410F4 / $416BA)
+
+    def step(self, step: int, n: int) -> int:
+        return ((step + self.sign * n) & 0xFF) >> 1
 
 
 @dataclass(frozen=True)
@@ -83,6 +101,9 @@ class KeyOffRules:
     gate_sees_tie: bool = False             # the gate leaves a note the next byte ties
     tied_rest_holds: int | None = None      # frames a rest after a tie holds the note; None: the whole rest
     rest_cuts: bool = False                 # the drum track's rest (and gate) stops the sample; False: it plays out
+    gate_floor: int | None = None           # frames a note no longer than the gate keys (Streets of Rage 2's
+                                            # FM: 1, $40F72); None: it plays whole
+    soft_release: SoftReleaseLaw | None = None   # the driver's soft release; None: it has none (refused)
 
 
 @dataclass(frozen=True)
@@ -90,8 +111,13 @@ class TieRules:
     """What a jump and a tied read do to a tie."""
 
     jump_clears: bool = False               # a jump drops a pending tie
+    exit_clears: bool = True                # a loop's exit drops a pending tie (Streets of Rage's $FE); False:
+                                            # it keeps it (Streets of Rage 2's, $41E50)
     restarts_envelope: bool = True          # a tied read starts the PSG envelope again (Streets of Rage's
                                             # rips); False: it plays on from the attack (OutRun's, $0391)
+    late_keys_off: bool = False             # a tie read after a flag, not straight after its note, comes after
+                                            # the note's end keyed it off: the next note attacks (Streets of
+                                            # Rage 2's, $41C9C); False: it ties
 
 
 @dataclass(frozen=True)
@@ -100,6 +126,8 @@ class ModulationRules:
 
     turn_pause: bool = True                 # the modulation spends a step at each turn: its counter's
                                             # reload adds nothing (Sonic 1); False: it moves too
+    first_leg_short: int = 0                # the counter first loads half of (steps - this): Streets of
+                                            # Rage's 1 (half its count, its reload the count + 1)
 
 
 @dataclass(frozen=True)

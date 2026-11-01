@@ -83,7 +83,7 @@ def signed_delta(delta: int) -> int:
 def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK) -> int:
     """What the modulation adds to the frequency word (FNUM or PSG divider units) `frame`
     frames after the note's attack: nothing for `wait` frames, then a step every `speed`, each
-    adding `delta`: half its moves up first, then `steps` moves each way, a turn's step a pause
+    adding `delta`: half its moves up first (TrackRules.modulation.first_leg_short), then `steps` moves each way, a turn's step a pause
     where `track` spends one there (Sonic 1), the sum >> `track.pitch.word_shift`.  Streets of Rage $90
     FM4 (wait 8, +8 a step, speed 1): the rip's word moves 0 ... 0 +8 +16 ..., +8 at frame 9.
 
@@ -96,7 +96,7 @@ def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK
         return 0
     taken = (frame - mod.wait) // (mod.speed or 256)
     pause = int(track.modulation.turn_pause)
-    half = (mod.steps - 1 + pause) // 2         # the counter starts at half its reload
+    half = (mod.steps - track.modulation.first_leg_short) // 2     # the counter's first load
     if taken <= half:
         units = taken
     else:

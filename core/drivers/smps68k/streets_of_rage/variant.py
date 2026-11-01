@@ -196,9 +196,10 @@ def _check_psg_rows(rom: RomImage) -> None:
 #   a rest after a tie keys FM off on its first frame (the key-off at its read waits on the tie
 #     bit), the PSG at once ($7390A)
 #   in noise mode no tone 3 frequency is written; the PSG adds the detune word and the vibrato's sum >> 4
-#   the vibrato's counter reloads on a step that moves (no pause at a turn)
+#   the vibrato's counter reloads on a step that moves (no pause at a turn); it first loads half the
+#     count, the reload the count + 1
 #   the drum track's rest and gate play sample $85, which is empty: they cut the sample
-_NO_TURN_PAUSE = ModulationRules(turn_pause=False)
+_NO_TURN_PAUSE = ModulationRules(turn_pause=False, first_leg_short=1)
 _FM_TRACK = TrackRules(ties=TieRules(jump_clears=True), modulation=_NO_TURN_PAUSE,
                        key_off=KeyOffRules(gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1))
 _PSG_TRACK = TrackRules(volume=VolumeRules(steps=_PSG_VOLUME_STEPS), modulation=_NO_TURN_PAUSE,

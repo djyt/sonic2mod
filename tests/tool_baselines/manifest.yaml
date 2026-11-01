@@ -1075,12 +1075,12 @@ glitches_streets_of_rage:
     reference/vgz/streets_of_rage_1/15 - You Became the Bad Guy!.vgz: 382aa0e8280f
     reference/vgz/streets_of_rage_1/16 - Good Ending.vgz: a8a2300985e6
 lift_02:
-  commit: d4522d7-dirty
+  commit: ce3f15f
   date: '2026-11-01'
   inputs:
     reference/vgz/sonic_1/02 - Green Hill Zone.vgz: febd2f055ce1
 lift_all:
-  commit: d4522d7-dirty
+  commit: ce3f15f
   date: '2026-11-01'
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
@@ -1181,7 +1181,7 @@ lift_moonwalker_88_round_clear:
     reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
     reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 lift_moonwalker_all:
-  commit: d4522d7-dirty
+  commit: ce3f15f
   date: '2026-11-01'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16

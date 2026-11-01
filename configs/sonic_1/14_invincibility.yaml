@@ -11,7 +11,7 @@ target_speed: 4
 ticks_per_row: 3            # every 192-tick phrase fills one 64-row pattern (the loop is 3); the $04
                             # notes (FM1/FM5 run, DAC rolls) are triplets on this grid and take EDx
 region: ntsc
-range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
+range_space: chip          # ranges are the pitches the chip plays (tools/config/config_to_chip_space.py)
 
 # Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/14_invincibility_lofi_merged.mod): the merged
 # build 45 -> 23 KB.  The hat at A2 (14 kHz), no drum + hat mixes (the hats go to the fill pool), and the
@@ -128,7 +128,7 @@ mod_pattern_breaks:
 # -------------------------------------------------------------------------------------------------
 # Merged 4-Channel Version (convert.py --merged)
 # drums (DAC+PSG3) · lead (FM1+FM5) · bass (FM2) · chords (FM3+FM4) → 4-channel M.K.
-# The two FM folds are clean (tools/merge_survey.py); the bass stays on its own channel.
+# The two FM folds are clean (tools/config/merge_survey.py); the bass stays on its own channel.
 # -------------------------------------------------------------------------------------------------
 merge_twins: always            # the snare + short hat mix (4 notes) was the long-hat one cut earlier
 

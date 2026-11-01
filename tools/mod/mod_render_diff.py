@@ -6,14 +6,14 @@ differ by design, so a byte diff proves nothing.  This renders each MOD channel 
 and reports, per channel, the worst 20 ms window: how far the difference sits below the
 signal there (dB).  A trim past what any note plays leaves no window above the floor.
 
-    python tools/mod_render_diff.py before.mod after.mod
-    python tools/mod_render_diff.py before.mod after.mod --floor -60   # report windows above -60 dB
+    python tools/mod/mod_render_diff.py before.mod after.mod
+    python tools/mod/mod_render_diff.py before.mod after.mod --floor -60   # report windows above -60 dB
 
 Rebuilt samples carry fresh dither (core.audio.pcm seeds it with the sample's length), so a sample
 that only got shorter still differs by about -37 dB everywhere; hold the seed fixed in both
 builds to see past it.
 
-Needs numpy and an ffmpeg with the libopenmpt demuxer (as tools/vgm_compare.py).
+Needs numpy and an ffmpeg with the libopenmpt demuxer (as tools/vgm/vgm_compare.py).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from pathlib import Path
 import numpy as np
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.mod import isolate_channel, read_mod
 

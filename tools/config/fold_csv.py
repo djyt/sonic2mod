@@ -21,7 +21,7 @@ that channel the fold's primary (the ear's choice over the measurement below).
 
 A fold is written as a merge group, and a group needs a **primary** (the channel the others
 fold onto, whose effects apply).  The table cannot say which, so this tool measures: every
-member is tried as the primary over the fold's patterns, the way `tools/merge_survey.py`
+member is tried as the primary over the fold's patterns, the way `tools/config/merge_survey.py`
 measures a pair, and the one that loses the fewest follower notes wins (ties: the most
 folded, then the fewest composite instruments).  The per-candidate counts are printed so the
 choice can be overruled by hand in the YAML.  A drum primary gets `cut_primary: true` (a
@@ -34,8 +34,8 @@ block it wrote last time.  The config is the source of truth: the table is the q
 draft the folds, and the block can be edited by hand afterwards (a re-run with `--write`
 replaces it from the table again).
 
-    python tools/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv
-    python tools/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv --write
+    python tools/config/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv
+    python tools/config/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv --write
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.config import ConversionConfig, format_patterns
 from core.convert import SurveyContext, survey_context
@@ -55,7 +55,7 @@ from core.merge import PairStats
 from core.plan import load_config
 from core.ui import add_variant_argument
 
-MARK_BEGIN = "# >>> merge_patterns - written by tools/fold_csv.py from {csv}; the config is the source of truth: edit it here, or re-run --write to replace the block from the table"
+MARK_BEGIN = "# >>> merge_patterns - written by tools/config/fold_csv.py from {csv}; the config is the source of truth: edit it here, or re-run --write to replace the block from the table"
 MARK_END = "# <<< merge_patterns"
 
 

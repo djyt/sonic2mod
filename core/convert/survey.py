@@ -1,5 +1,5 @@
 """A song prepared the way `convert.py --merged` prepares it before it plans the merge, with every
-channel's notes in hand: what tools/merge_survey.py and tools/fold_csv.py pair and count.
+channel's notes in hand: what tools/config/merge_survey.py and tools/config/fold_csv.py pair and count.
 """
 
 from __future__ import annotations

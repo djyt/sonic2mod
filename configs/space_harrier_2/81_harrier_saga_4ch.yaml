@@ -25,7 +25,7 @@ sample_list:   # volumes set from the VGZ (81_harrier_saga.yaml's); the rest is 
 
 # -------------------------------------------------------------------------------------------------
 # Amiga build: 6 channels -> 4.  FM5 and FM6 play one rhythm a third to a fifth apart (591 of 592
-# notes together: tools/merge_survey.py), rendered as chip composites.  FM4's 16th-note arpeggio
+# notes together: tools/config/merge_survey.py), rendered as chip composites.  FM4's 16th-note arpeggio
 # (patterns $0C-$17, $25-$31, $49-$55) rides the drum column: 507 of its 768 notes land on a hit
 # and are mixed with it, the other 261 play on their own and cut the drum's tail (a drum hit is
 # ~0.1 s).  The drums, alone and mixed, play from sample banks (9xx), which frees their five slots

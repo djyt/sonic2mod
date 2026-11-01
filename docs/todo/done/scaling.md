@@ -36,7 +36,7 @@ Status key: `[ ]` open, `[x]` done.
 
 ## 3. Plan
 
-- [x] 1. Read snapshots (gates the refactors after it): `tools/song_dump.py`, tool_regression
+- [x] 1. Read snapshots (gates the refactors after it): `tools/rom/song_dump.py`, tool_regression
   `read_*` (~2 s for every song of the four games).
 - [x] 2. Lazy driver registry (`load_driver`); `core/drivers/games.py` (findings 1, 2).
 - [x] 3. `tests/cases.yaml`, `tests/selection.py`; Moonwalker and Golden Axe three cases each.

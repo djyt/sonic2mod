@@ -343,7 +343,7 @@ class _Skeleton:
                          f"{TL_STEP_DB} dB/step)")
             lines.append(f"  # and −{self._pan_law_db:g} dB when hard-panned (core.plan.starting_volume; samples are peak-normalised).  "
                          "Starting points (~2 dB) —")
-            lines.append("  # measure with tools/vgm_compare.py; every channel sharing an instrument should read the same error.")
+            lines.append("  # measure with tools/vgm/vgm_compare.py; every channel sharing an instrument should read the same error.")
         for v in self._fm_voices:
             lines.append(f"  # --- voice ${v.index:02X}: {v.alg} — {v.used_by} ---")
             if v.volume_note:

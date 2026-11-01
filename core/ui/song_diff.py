@@ -1,4 +1,4 @@
-"""compare_songs' result as text (tools/vgm_lift.py, tools/rom_import.py): per channel its note
+"""compare_songs' result as text (tools/vgm/vgm_lift.py, tools/rom/rom_import.py): per channel its note
 count and differences, one difference made again and again printed once with its count."""
 
 from __future__ import annotations

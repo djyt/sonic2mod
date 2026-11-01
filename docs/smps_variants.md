@@ -51,7 +51,7 @@ A ROM known by its SHA-1 is pinned to its variant; any other is tried with each 
   writes its 24 operator registers, then `$61478` writes each carrier's TL (Sonic 1's slot mask,
   `$614C0`) from `$9(a3)` alone, as `$E6` does after changing it.  The voice's own carrier TLs never
   play (`VoiceLayout.carrier_tl`); a volume with bit 7 set writes none.  Found by
-  `tools/vgm_frames.py`: an algorithm 5 voice's third carrier 27 TL quieter than every rip.
+  `tools/vgm/vgm_frames.py`: an algorithm 5 voice's third carrier 27 TL quieter than every rip.
 - **PSG envelopes:** the ROM's six, ending `$83` (hold); `$80` restarts, `$85 nn` jumps to step nn;
   envelope 6 has no terminator and runs into 5.
 - **DAC:** a Z80 sample player copied uncompressed (code `$6166A`, samples `$61876`, to Z80
@@ -61,8 +61,8 @@ A ROM known by its SHA-1 is pinned to its variant; any other is tried with each 
   1) cycles a byte.
 - **Tempos:** modifiers 3-32 and 255 (the title jingle).
 
-Against the rips (`tools/vgm_lift.py`): every song's FM plays as recorded, but FM5's first note,
-a tick late in 4 rips.  Against their frame logs (`tools/vgm_frames.py`): every FM note's
+Against the rips (`tools/vgm/vgm_lift.py`): every song's FM plays as recorded, but FM5's first note,
+a tick late in 4 rips.  Against their frame logs (`tools/vgm/vgm_frames.py`): every FM note's
 pitch, level and voice as recorded, but that note and the logs' loop and end frames.
 
 ---
@@ -456,6 +456,6 @@ and its history: `docs/todo/done/outrun.md`.
    absolutely (`core.rom.flags`), its family relatively.  Nothing outside its folder names it:
    what the song itself must say goes in the IR (`core/smps`), what a reader needs in the
    variant's description - never a variant check.
-3. Check: `tools/rom_import.py` lists every song; `tools/vgm_lift.py` against the rips (FM is what
-   it reads in full); `tools/vgm_pitch_audit.py`; `tools/measure_volumes.py`.  A rip is only as good
+3. Check: `tools/rom/rom_import.py` lists every song; `tools/vgm/vgm_lift.py` against the rips (FM is what
+   it reads in full); `tools/vgm/vgm_pitch_audit.py`; `tools/vgm/measure_volumes.py`.  A rip is only as good
    as its emulator and ripper: back a finding with the driver's code.

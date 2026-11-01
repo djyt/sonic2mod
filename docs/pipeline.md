@@ -236,7 +236,7 @@ separate entries: `root_e = root_head + (low_e − low_head)`.  Needed where a s
 keeping a voice: Credits' FM2 does it twenty times, and matched on source bytes 8 % of its notes
 were right.
 
-`tools/config_to_chip_space.py <config>` converts a source-space config: for every entry it collects
+`tools/config/config_to_chip_space.py <config>` converts a source-space config: for every entry it collects
 the chip pitches each channel plays through it (loops extended, every transposition), writes one
 entry per range touched with `synth_root` = its low note and `root` shifted to keep the tuning, and
 warns where a range cannot fit C1–B3 at that tuning (those notes need an instrument of their own:
@@ -376,7 +376,7 @@ FM1 holds an E for 2.8 s, then a no-attack C — the hardware plays it at a fres
 
 `loose` sounds right only in a player that swaps the sample on an instrument number (OpenMPT).  A
 `3FF` takes the attack row's slot: no `EDx` (the note is rounded), a due `Cxx` moves a row.  Under
-`strict` / `loose` the sustain need counts a legato note as the same ring, and `tools/mod_lint.py` flags
+`strict` / `loose` the sustain need counts a legato note as the same ring, and `tools/mod/mod_lint.py` flags
 a `3xx` with nothing playable under it.
 
 ---
@@ -701,7 +701,7 @@ sample when that is shorter, and for its fill — `NoteOn.sounding`):
   merged build plays are not rendered (`MergePlan.unused`).
 - Two channels that never sound at once are a clean pair of solo notes: they simply share a column.
 
-**Survey first.** `tools/merge_survey.py <config>` counts the table above for every ordered pair of a
+**Survey first.** `tools/config/merge_survey.py <config>` counts the table above for every ordered pair of a
 song's channels and suggests groups (never one with orphans); the converter reports the same counts
 for the groups it was given.
 
@@ -874,9 +874,9 @@ merge_patterns:
   twice in one pattern is an error.  Notes of a departed channel in patterns no group folds are lost
   (`merge_dropped`); patterns no block names fold nothing (`merge_unspecified`).
 
-### Choosing the primary (`tools/fold_csv.py`)
+### Choosing the primary (`tools/config/fold_csv.py`)
 
-`tools/fold_csv.py <config> <table.csv> [--write] [--bank] [--mix-note F2]` writes the
+`tools/config/fold_csv.py <config> <table.csv> [--write] [--bank] [--mix-note F2]` writes the
 `merge_patterns:` section from a fold table: a row per pattern (hex), a column per reference MOD
 channel, each cell `fold N` / `fold N*` / `keep` / `drop` / blank (kept where the channel plays, else
 dropped); equal rows join into one block.  The table cannot name a fold's primary, so the tool tries
@@ -998,17 +998,17 @@ way.
 ### Verifying a merged build
 
 - **Regression:** every config with a merge section is a second case, `<name>_merged`.
-- **Against the VGZ:** `tools/vgm_compare.py <config> <vgz> --merged` renders each merged column and,
+- **Against the VGZ:** `tools/vgm/vgm_compare.py <config> <vgz> --merged` renders each merged column and,
   with a combined mute mask, the sum of the chip channels folded onto it, and reports whole-song balance
   and audio onsets per column.  With `merge_patterns:` it renders every chip channel once and builds
   each column's reference per pattern from the channels that sound there (`core.merge.column_sources`):
   a column × pattern-block table of block level and the primary's key-on attacks against the song's
   median block, flagged at 2 dB.  Pooled notes are in no reference.  The per-note audit needs one note
   stream per channel, so it is the reference build's.
-- **Samples:** `tools/mod_audit.py <mod> [--banks]` reads any MOD back and reports each sample against
+- **Samples:** `tools/mod/mod_audit.py <mod> [--banks]` reads any MOD back and reports each sample against
   the notes that play it: unused, too short, oversize, empty slot, low rate, `same as N` (first 100 ms
   correlate ≥ 0.98), `finetune variant of N`, and per bank sound with `--banks`.
-- **Size cuts:** `tools/mod_render_diff.py` renders two MODs per channel and reports the worst 20 ms
+- **Size cuts:** `tools/mod/mod_render_diff.py` renders two MODs per channel and reports the worst 20 ms
   difference; hold the dither seed fixed to see past its noise.
 
 ---
@@ -1032,8 +1032,8 @@ way.
 
 ```bash
 python convert.py configs/sonic_1/01_title_screen.yaml
-python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
-python tools/vgm_compare.py <cfg> <vgz> --skip-render     # reuse output/compare/<cfg>/*.wav
+python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
+python tools/vgm/vgm_compare.py <cfg> <vgz> --skip-render     # reuse output/compare/<cfg>/*.wav
 ```
 
 Report sections: per-note pitch/level, per-channel summary, pitch verdict, vibrato, channel balance
@@ -1041,7 +1041,7 @@ Report sections: per-note pitch/level, per-channel summary, pitch verdict, vibra
 Notes the recording plays after the MOD's single pass has ended are left out.  Levels are L/R power,
 never a mono mix (a hard-panned YM2612 channel reads ~5 dB low in mono).
 
-### The song before conversion (`tools/vgm_lift.py`)
+### The song before conversion (`tools/vgm/vgm_lift.py`)
 
 Does the song as read - asm or ROM bytecode - play what the rip recorded?  No MOD, no audio: the rip
 is lifted to a song (`core/vgm/lift/`) and both are compared note by note through `played_song`
@@ -1049,8 +1049,8 @@ is lifted to a song (`core/vgm/lift/`) and both are compared note by note throug
 one only `vgm_compare` / `vgm_pitch_audit` show is the converter's.
 
 ```bash
-python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml       # a config and its rip
-python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every pair, a line each
+python tools/vgm/vgm_lift.py configs/moonwalker/88_round_clear.yaml       # a config and its rip
+python tools/vgm/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every pair, a line each
 ```
 
 - Pairs: a config and its rip share a number, or the `rips.yaml` beside the configs maps config stem
@@ -1076,7 +1076,7 @@ python tools/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # every 
   rip lost or gained (a glitch, below), which the lift would read as a tempo change; a rip's
   `rips.yaml` entry has it undone first.
 
-### The rip's own faults (`rips.yaml`, `tools/vgm_frames.py --glitches`)
+### The rip's own faults (`rips.yaml`, `tools/vgm/vgm_frames.py --glitches`)
 
 A rip records its emulator's run, not only the song.  What is the rip's, not the song's, is logged
 per rip in the `rips.yaml` beside the configs (`core/audit/rips.py`): the entry, a plain rip name
@@ -1105,7 +1105,7 @@ and `--glitches` print them):
   ("excused: log end 4, re-entry 2").  **Log end**: a note on the log's last frame, which the log
   ends inside, mid-burst.  **Re-entry**: a channel's first note back in its loop keyed a frame late, as
   the next frame has it (the re-entry's burst overruns its frame; this time the next V-int is kept).
-- Finding glitches: `python tools/vgm_frames.py --all --glitches --configs configs/<game>` follows each
+- Finding glitches: `python tools/vgm/vgm_frames.py --all --glitches --configs configs/<game>` follows each
   FM channel's key-ons (on their frame, at the note's pitch) from where the rip starts, and moves a
   channel when two attacks running land only on another offset.  Moves of one shift whose windows
   overlap are one candidate: a **glitch** when every channel playing across it moved (two at least;
@@ -1121,7 +1121,7 @@ and `--glitches` print them):
   FM4 is no other sound: its part plays 768 frames later in the rip than the song walks it (99 of 118
   attacks land there), and its OP1 SSG-EG holds `$FF` from before the song.
 
-### Pitch verdict (`tools/vgm_pitch_audit.py`)
+### Pitch verdict (`tools/vgm/vgm_pitch_audit.py`)
 
 The authority on "is every note right", symbolic and self-aligning: the chip's frequency registers
 against the pitch each MOD note sounds at, with a per-instrument verdict ("synth_root is 1 octave too
@@ -1148,7 +1148,7 @@ inst sample            vol notes    err spread suggest   per channel (Cxx: err x
   when it sits 2 dB or more below that median.
 
 `--write-volumes` writes the suggestions of 1 dB or more into the config, with `# VGZ: +4.6 dB at 16`
-on the line; re-convert and re-run to verify.  `tools/measure_volumes.py` does it for every song
+on the line; re-convert and re-run to verify.  `tools/vgm/measure_volumes.py` does it for every song
 (cores − 1 in parallel): convert, one write pass, re-convert, verify, then a line per song with the
 volumes changed, what is still ≥ 1 dB off (ceiling, channels disagree, two-note instruments marked) and
 the pitch verdict.  Exactly one write pass: the errors are relative to the median, so a second pass

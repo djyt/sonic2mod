@@ -70,14 +70,14 @@ regression and unit tests unchanged.  `write_asm` (`core/smps/asm_writer.py`) is
 `SmpsParser(fix_data_bugs=True)`; the parser now reads `if Symbol=0` too.  Before, it missed
 Credits' `=0` block, so Credits converted as shipped and Marble Zone fixed.  Default chosen by the
 user: fixed - the Credits baseline changed (PSG2's passage on time, its muting `smpsAlterVol` gone).
-`tools/vgm_lift.py` compares rips with the shipped spelling.  Fixed vs shipped differ in Marble Zone
+`tools/vgm/vgm_lift.py` compares rips with the shipped spelling.  Fixed vs shipped differ in Marble Zone
 PSG3, Credits PSG2 and SndBC's header only.
 
 ---
 
 ## Phase 1: Sonic 1 (`sonic_rev01.bin`) - done 2026-10-03
 
-`core/rom/`, beside `core/vgm/` (source → rom → smps).  `tools/rom_import.py ROM --compare reference/smps_drivers/sonic_1`:
+`core/rom/`, beside `core/vgm/` (source → rom → smps).  `tools/rom/rom_import.py ROM --compare reference/smps_drivers/sonic_1`:
 68 of 68 read as their asm.
 
 ### [x] 1.1 ROM image and driver location
@@ -107,7 +107,7 @@ and Credits against their shipped asm).
 fixed pitch $10 and shipped $90 render the same: the driver masks bit 7).
 
 ### [x] 1.7 Tooling
-`tools/rom_import.py`: listing, `--compare DIR` (parse + `compare_songs`, music only: `played_song`
+`tools/rom/rom_import.py`: listing, `--compare DIR` (parse + `compare_songs`, music only: `played_song`
 cannot follow SFX notes past the FM table), `--asm DIR` (all 68 parse back to the same song, labels
 included), `--dac DIR`.  `vgm_lift.py`'s diff printing moved to `core/ui/song_diff.py`, output unchanged.
 

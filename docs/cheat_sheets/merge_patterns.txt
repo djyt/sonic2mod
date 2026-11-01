@@ -58,8 +58,8 @@ Gotcha
   every group starts with "- " — without it its keys merge into the group above (the loader now refuses the duplicate key)
 
 Tools (each takes --variant NAME; fold_csv --write does not)
-  python tools/fold_csv.py <config> <table.csv> --write --bank --mix-note C3   draft the section from a fold table
+  python tools/config/fold_csv.py <config> <table.csv> --write --bank --mix-note C3   draft the section from a fold table
                                                                                 (--bank / --mix-note: on drum-primary groups)
-  python tools/merge_survey.py <config> --all                                   every channel pair, not only the clean ones
+  python tools/config/merge_survey.py <config> --all                                   every channel pair, not only the clean ones
   python convert.py <config> --merged                                           build; read "composite slots" and the warnings
-  python tools/mod_audit.py output/<song>_merged.mod --banks                    samples vs the notes that play them; per 9xx sound
+  python tools/mod/mod_audit.py output/<song>_merged.mod --banks                    samples vs the notes that play them; per 9xx sound

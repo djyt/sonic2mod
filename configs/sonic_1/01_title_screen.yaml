@@ -49,7 +49,7 @@ channels:
 # FM volumes bake in the smpsHeaderFM TL offsets (FM1 $0C, FM2 $09, FM3 $0D, FM4 $0C, FM5 $0E;
 # 0.75 dB per step) relative to FM2, so no per-note Cxx is needed:  32 × 10^(−steps×0.75/20).
 # FM3/FM4 end on voice $01 with smpsAlterVol −4/−3, which lands them exactly on FM2's $09, so
-# instrument 5 serves all three at 32.  Verified against reference/vgz/sonic_1 with tools/vgm_compare.py.
+# instrument 5 serves all three at 32.  Verified against reference/vgz/sonic_1 with tools/vgm/vgm_compare.py.
 # -------------------------------------------------------------------------------------------------
 sample_list:
   # --- percussion ---
@@ -157,7 +157,7 @@ mod_pattern_breaks:
 # -------------------------------------------------------------------------------------------------
 # Amiga build (convert.py --merged): 7 channels -> 4.  FM5 is FM1's detuned double, FM3 plays
 # a third / fourth above FM4 on every note, and the PSG3 hi-hat lands on 24 of the 30 drum
-# hits.  tools/merge_survey.py measured the pairs; the composites are rendered per interval.
+# hits.  tools/config/merge_survey.py measured the pairs; the composites are rendered per interval.
 # -------------------------------------------------------------------------------------------------
 merge:
   - primary: FM1

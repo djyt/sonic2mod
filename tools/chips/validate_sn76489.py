@@ -10,7 +10,7 @@ Then the converter's PSG path through it (core/synth), each writing its own file
 
 Usage::
 
-    python tools/validate_sn76489.py
+    python tools/chips/validate_sn76489.py
 """
 
 import struct
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.audio import int8_to_raw16, write_raw16
 from core.chips import MD_PSG_CLOCK
@@ -38,7 +38,7 @@ def check_device() -> None:
     sustain_n   = int(sample_rate * 0.5)
     release_n   = int(sample_rate * 0.1)
 
-    out_dir = _HERE.parent / "output"
+    out_dir = _HERE.parents[1] / "output"
     out_dir.mkdir(exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -135,7 +135,7 @@ def check_render() -> None:
     peak_tone = max(abs(v) for v in mono_tone) if mono_tone else 0
     print(f"  Samples: {len(mono_tone)}  Rate: {rate_tone} Hz  Peak: {peak_tone}")
 
-    out_dir = _HERE.parent / "output"
+    out_dir = _HERE.parents[1] / "output"
     out_dir.mkdir(exist_ok=True)
 
     # Write as 16-bit
@@ -214,7 +214,7 @@ def check_samples() -> None:
     for inst_num, (pcm, rate) in samples.items():
         print(f"    instrument {inst_num}: {len(pcm)} bytes @ {rate} Hz")
 
-    out_dir = _HERE.parent / "output"
+    out_dir = _HERE.parents[1] / "output"
     out_dir.mkdir(exist_ok=True)
 
     for inst_num, (pcm, _) in samples.items():

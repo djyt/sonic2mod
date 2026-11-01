@@ -6,8 +6,8 @@ symbolic pitch check that turned out to be necessary for this song.  Reproduce w
 
 ```bash
 python convert.py configs/sonic_1/02_green_hill_zone.yaml
-python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
-python tools/vgm_compare.py    configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+python tools/vgm/vgm_compare.py    configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 ```
 
 ---
@@ -145,7 +145,7 @@ octave, output is byte-identical.  The FM pitches quoted above — `synth_root: 
 "synthesised at C5" — are in the old convention, one octave above what the config says now.  The
 PSG `synth_root: A8` is unaffected.)*
 
-`tools/vgm_analyze._fnum_to_hz` and `core/synth/fm_render.freq_to_fnum_block` both use
+`tools/vgm/vgm_analyze._fnum_to_hz` and `core/synth/fm_render.freq_to_fnum_block` both use
 `2^(20−block)`.  The chip — and the driver's own `MakeFMFrequency(f) = f·2^21/fs` — is
 `2^(21−block)`.  The analyzer therefore reports every FM pitch an octave high and the synthesiser
 renders an octave below the `synth_root` name; configs tuned from one against the other sound
@@ -157,7 +157,7 @@ and lowering every FM `synth_root` by an octave in one commit.
 
 ## Tooling added
 
-`tools/vgm_pitch_audit.py` — symbolic pitch audit, no rendering: the VGZ's frequency-register
+`tools/vgm/vgm_pitch_audit.py` — symbolic pitch audit, no rendering: the VGZ's frequency-register
 timeline (key-ons *and* legato pitch changes) against the pitch each MOD note sounds at, computed
 from `root` / `synth_root` / finetune.  Exit code 1 on any wrong or missing note.  The per-note
 pitch column of `vgm_compare.py` measures audio windows; on GHZ it flagged 245 notes that were

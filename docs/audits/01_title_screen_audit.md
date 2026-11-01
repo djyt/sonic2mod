@@ -5,8 +5,8 @@ hardware recording `reference/vgz/sonic_1/01 - Title Theme.vgz`.  Method, number
 and what is still open.  Reproduce with:
 
 ```bash
-python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
-python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
+python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
+python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
 ```
 
 (VGMPlay is picked up from `reference/vgz/vgmplay/`; setup in `docs/pipeline.md` § Verifying
@@ -135,9 +135,9 @@ halves the stretch at the cost of one extra 16 KB sample.
 
 ## Easier for the end user
 
-- `tools/vgm_compare.py` gives the numbers above for any song with a VGZ in `reference/vgz`
+- `tools/vgm/vgm_compare.py` gives the numbers above for any song with a VGZ in `reference/vgz`
   (needs VGMPlay and an ffmpeg with libopenmpt); flagged rows point at the exact note.
-- `tools/vgm_analyze.py --chip all` now prints the tone-2 divider on rate-3 noise key-ons
+- `tools/vgm/vgm_analyze.py --chip all` now prints the tone-2 divider on rate-3 noise key-ons
   (`white/tone2 N=0`) and DAC seek events, so both the noise config and the drum timing can be
   checked without listening.
 - `tone2_n:` replaces the octave-12 `synth_root` arithmetic for rate-3 noise.

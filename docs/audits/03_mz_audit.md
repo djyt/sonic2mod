@@ -5,8 +5,8 @@ stood after todo items 1–6, 9–12 and 14 (frame-timed fills, the vibrato form
 derived rate-3 noise, tempo changes) and the Credits work.  Method as in `02_ghz_audit.md`:
 
 ```
-python tools/vgm_pitch_audit.py configs/sonic_1/03_marble_zone.yaml "reference/vgz/sonic_1/03 - Marble Zone.vgz"
-python tools/vgm_compare.py    configs/sonic_1/03_marble_zone.yaml "reference/vgz/sonic_1/03 - Marble Zone.vgz"
+python tools/vgm/vgm_pitch_audit.py configs/sonic_1/03_marble_zone.yaml "reference/vgz/sonic_1/03 - Marble Zone.vgz"
+python tools/vgm/vgm_compare.py    configs/sonic_1/03_marble_zone.yaml "reference/vgz/sonic_1/03 - Marble Zone.vgz"
 ```
 
 ## Result: clean, one volume set by hand

@@ -5,11 +5,11 @@ The version lives in pyproject.toml only; convert.py / analyze.py / sonic2wav.py
 there through core.version (so a checkout never shows a stale installed-metadata number).
 
 Usage:
-    python tools/release.py patch          # X.Y.Z → X.Y.Z+1
-    python tools/release.py minor          # X.Y.Z → X.Y+1.0
-    python tools/release.py major          # X.Y.Z → X+1.0.0
-    python tools/release.py 1.2.3          # set explicit version
-    python tools/release.py patch --dry-run
+    python tools/dev/release.py patch          # X.Y.Z → X.Y.Z+1
+    python tools/dev/release.py minor          # X.Y.Z → X.Y+1.0
+    python tools/dev/release.py major          # X.Y.Z → X+1.0.0
+    python tools/dev/release.py 1.2.3          # set explicit version
+    python tools/dev/release.py patch --dry-run
 """
 
 import argparse
@@ -19,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from core.version import PYPROJECT, get_version  # the same reader the CLIs use

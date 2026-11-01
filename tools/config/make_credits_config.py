@@ -3,7 +3,7 @@
 Usage::
 
     python analyze.py "reference/smps_drivers/sonic_1/music/Mus91 - Credits.asm" --write output/sonic_1/credits_skeleton.yaml
-    python tools/make_credits_config.py output/sonic_1/credits_skeleton.yaml
+    python tools/config/make_credits_config.py output/sonic_1/credits_skeleton.yaml
 
 Re-running keeps the volumes (and their VGZ / by-hand comments) of the existing config.
 

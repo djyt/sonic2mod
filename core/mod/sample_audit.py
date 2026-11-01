@@ -2,7 +2,7 @@
 
 Reads the file alone (no config): bytes, the note each sample plays at most, its loop, how
 many notes play it on which channels, the longest note, the share of the song it sounds and
-flags (unused, too short, oversize, empty slot, low rate, same as N).  `tools/mod_audit.py` is
+flags (unused, too short, oversize, empty slot, low rate, same as N).  `tools/mod/mod_audit.py` is
 its command line; `convert.py` reads it for the sample table of its report.
 """
 

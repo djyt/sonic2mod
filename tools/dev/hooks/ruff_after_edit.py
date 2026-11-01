@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 _FEEDBACK = 2                       # Claude Code: exit 2 hands stderr to the model
 
 

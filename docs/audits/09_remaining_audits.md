@@ -19,7 +19,7 @@ where the per-instrument table asked for it, re-render, re-measure.
 | Continue | 70 / 101 | **101 / 101** | FM2 changes key with `smpsAlterPitch` (+1, −12, +12, +1 …) under source-byte roots; `nFs5` / `nE4` were never covered at all.  `range_space: chip`, with the loop-extended events (the transposition accumulates on every replay) |
 | Game Over | 66 / 66 | — | clean (2 FM1 notes at 25 ms are vibrato) |
 
-Stage Clear, Ending, Invincibility and Continue were converted with `tools/config_to_chip_space.py`,
+Stage Clear, Ending, Invincibility and Continue were converted with `tools/config/config_to_chip_space.py`,
 written for this pass (see `docs/pipeline.md` § `range_space: chip`).  Three things it had to get
 right, each found on one of these songs: keep `synth_root` and `root` moving together (the sample
 is rendered from the entry's own pair — Ending read 19 semitones off with `root` moved alone);

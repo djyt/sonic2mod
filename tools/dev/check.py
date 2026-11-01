@@ -1,7 +1,7 @@
 """Every static check, and the unit tests: what a commit must pass.
 
-    python tools/check.py           lint, types, dead code, import layers, unit tests (~45 s)
-    python tools/check.py --fast    the same without the unit tests (~8 s): the git pre-commit hook
+    python tools/dev/check.py           lint, types, dead code, import layers, unit tests (~45 s)
+    python tools/dev/check.py --fast    the same without the unit tests (~8 s): the git pre-commit hook
 
 Every check runs, even after one fails, so one pass shows everything; exit 1 if any failed.
 """
@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 _PYTHON = sys.executable
 
 

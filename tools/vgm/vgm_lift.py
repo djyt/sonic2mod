@@ -23,14 +23,14 @@ compared there ("another sound", "known rip faults": the differences set aside).
 
 Usage::
 
-    python tools/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"            # one rip, its differences
-    python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml               # a config: its rip
-    python tools/vgm_lift.py rip.vgz --input "input/roms/X.md" --rom-song '$88'   # any song
-    python tools/vgm_lift.py --all                                               # every rip, a line each
-    python tools/vgm_lift.py --all --configs configs/moonwalker                  # every pair rips.yaml names
-    python tools/vgm_lift.py --all --aspects onset --only 02 17                 # rips or configs whose name holds one
-    python tools/vgm_lift.py --all --aspects onset length note --channels FM --skip FM3
-    python tools/vgm_lift.py --all --infer-tempo --aspects onset                 # judge the tempo inference
+    python tools/vgm/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"            # one rip, its differences
+    python tools/vgm/vgm_lift.py configs/moonwalker/88_round_clear.yaml               # a config: its rip
+    python tools/vgm/vgm_lift.py rip.vgz --input "input/roms/X.md" --rom-song '$88'   # any song
+    python tools/vgm/vgm_lift.py --all                                               # every rip, a line each
+    python tools/vgm/vgm_lift.py --all --configs configs/moonwalker                  # every pair rips.yaml names
+    python tools/vgm/vgm_lift.py --all --aspects onset --only 02 17                 # rips or configs whose name holds one
+    python tools/vgm/vgm_lift.py --all --aspects onset length note --channels FM --skip FM3
+    python tools/vgm/vgm_lift.py --all --infer-tempo --aspects onset                 # judge the tempo inference
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-ROOT = _HERE.parent
+ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.audit import ChannelChoice, RipDiff, RipFaults, SongSource, compare_with_rip, frame_cut, named, workers

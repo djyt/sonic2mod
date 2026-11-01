@@ -19,9 +19,9 @@ it is played at most, its loop, how many notes play it on which channels, the lo
                   that is its primary louder, or two of one chord shape
     finetune variant of N   the same, at another finetune (a chorus detune: intended)
 
-    python tools/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod
-    python tools/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod --slack 1.5   # oversize = 1.5 s past the longest note
-    python tools/mod_audit.py output/sonic_1/02_green_hill_zone_lofi_merged.mod --banks    # each bank sound (9xx offset) too
+    python tools/mod/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod
+    python tools/mod/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod --slack 1.5   # oversize = 1.5 s past the longest note
+    python tools/mod/mod_audit.py output/sonic_1/02_green_hill_zone_lofi_merged.mod --banks    # each bank sound (9xx offset) too
 
 What each sample costs against what it earns: `KB%` is its share of the file's sample bytes,
 `play%` the share of the song's time it sounds on some channel (summed over channels, so two
@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.config import find_settings, load_settings
 from core.mod import audit

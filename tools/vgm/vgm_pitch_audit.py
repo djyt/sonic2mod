@@ -19,8 +19,8 @@ Both sides are in real Hz: FM frequencies come from core.vgm.fm_frequency_hz and
 
 Usage::
 
-    python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
-    python tools/vgm_pitch_audit.py cfg.yaml ref.vgz --mod output/x.mod --min-ms 40 --list
+    python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+    python tools/vgm/vgm_pitch_audit.py cfg.yaml ref.vgz --mod output/x.mod --min-ms 40 --list
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.audit import audit_pitches, mod_pitch_timeline, note_start_offset, prepare_audit, rip_on_song_clock
 from core.mod import read_mod

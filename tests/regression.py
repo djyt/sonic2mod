@@ -24,13 +24,13 @@ Usage:
 A case whose ROM is not here (input/roms/, not in git) is left out.  A ROM case (`of:`) shares its
 asm case's baseline, which it must match byte for byte.
 
-Besides the cell-by-cell diff, every case runs tools/mod_lint.py on its output: a note a
+Besides the cell-by-cell diff, every case runs tools/mod/mod_lint.py on its output: a note a
 ProTracker player cannot sound (a tone portamento with no sample playing, a note on an empty
 instrument slot) fails the case unless the baseline has the same issue, so a change that
 silences a note is caught without anyone listening.  Generating a baseline prints its count.
 
 Each case's output stays in output/regression/<case>.mod, the last run's (a FAIL opens in FT2 or
-tools/mod_audit.py next to its baseline); a case's old output goes before it converts, so a failed
+tools/mod/mod_audit.py next to its baseline); a case's old output goes before it converts, so a failed
 conversion is never diffed against the last run's file.
 
 Every conversion reads tests/settings.yaml (convert.py --settings), never configs/settings.yaml,
@@ -69,8 +69,8 @@ import yaml
 
 from core.config import apply_variant, load_settings, load_yaml
 from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
-from tools.mod_compare import compare_mods
-from tools.mod_lint import lint_mod
+from tools.mod.mod_compare import compare_mods
+from tools.mod.mod_lint import lint_mod
 
 BASELINES_DIR = ROOT / "tests" / "baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
@@ -81,7 +81,7 @@ LIVE_SETTINGS_FILE = ROOT / "configs" / "settings.yaml"  # the keys SETTINGS_FIL
 AMIGA_CLOCK = load_settings(str(SETTINGS_FILE))[0].amiga_clock    # the rate a period plays at, for mod_lint
 
 # The runner's own code: a change to it runs every case
-_RUNNER_FILES = ("tests/regression.py", "tests/selection.py", "tools/mod_compare.py", "tools/mod_lint.py")
+_RUNNER_FILES = ("tests/regression.py", "tests/selection.py", "tools/mod/mod_compare.py", "tools/mod/mod_lint.py")
 
 _HASH_CHARS = 12
 _MANIFEST_HEADER = "# Written by tests/regression.py --generate-baselines: what each baseline was made with.\n"
@@ -284,7 +284,7 @@ def _convert_all(cases: list[dict], jobs: int, record: bool = False) -> dict[str
 
 
 def _new_lint_issues(baseline_path: Path, tmp_path: Path, ignore_channels: list[int]) -> list[dict]:
-    """Playback issues (tools/mod_lint.py) in the new MOD that the baseline does not have,
+    """Playback issues (tools/mod/mod_lint.py) in the new MOD that the baseline does not have,
     matched by kind and cell."""
     def key(i: dict):
         return (i["type"], i["pattern"], i["row"], i["channel"])
@@ -346,7 +346,7 @@ def generate_baselines(cases: list[dict], jobs: int) -> None:
         print(f"  Saved baseline: {baseline_path}")
         issues = lint_mod(str(baseline_path), AMIGA_CLOCK)
         if issues:
-            print(f"  NOTE: {len(issues)} note(s) a player cannot sound (tools/mod_lint.py) — accepted into the baseline")
+            print(f"  NOTE: {len(issues)} note(s) a player cannot sound (tools/mod/mod_lint.py) — accepted into the baseline")
     _write_manifest(manifest)
     save_record(COVERAGE_FILE, ran)
     print("\nBaselines generated.")

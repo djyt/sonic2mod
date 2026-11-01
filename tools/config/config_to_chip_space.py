@@ -20,8 +20,8 @@ The voice_map, psg_voice_map and channel_instrument_map sections are rewritten (
 are replaced by "# was low X" notes); everything else in the file is kept.  Run the pitch audit
 afterwards:
 
-    python tools/config_to_chip_space.py configs/sonic_1/12_ending_theme.yaml
-    python tools/vgm_pitch_audit.py configs/sonic_1/12_ending_theme.yaml "reference/vgz/sonic_1/12 - Ending Theme.vgz"
+    python tools/config/config_to_chip_space.py configs/sonic_1/12_ending_theme.yaml
+    python tools/vgm/vgm_pitch_audit.py configs/sonic_1/12_ending_theme.yaml "reference/vgz/sonic_1/12 - Ending Theme.vgz"
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from pathlib import Path
 import yaml
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.config import ChannelConfig, ConversionConfig
 from core.plan import load_config, walk_channel
@@ -235,7 +235,7 @@ def main() -> None:
         if m:
             tail = m.group(1)
         out = out[:start] + "\n".join(sections[name]) + "\n" + tail + out[nxt:]
-    out = out.replace("region: ntsc\n", "region: ntsc\nrange_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)\n", 1)
+    out = out.replace("region: ntsc\n", "region: ntsc\nrange_space: chip          # ranges are the pitches the chip plays (tools/config/config_to_chip_space.py)\n", 1)
     path.write_text(out, encoding="utf-8", newline="")
     print(f"{path}: converted to range_space: chip")
 

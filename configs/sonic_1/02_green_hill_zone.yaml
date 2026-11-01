@@ -11,7 +11,7 @@
 # lead mixes looped where they settle at 3 dB (loop_mix), spent on $A, the lead fills, 7 semitones up.
 # 193 KB before the 3 dB loops, the A2 hat and the 5-c cap (2026-10-07).  Each change sits in a
 # `variants: lofi:` block beside the keys it replaces.
-# Where the bytes go: python tools/mod_audit.py output/sonic_1/02_green_hill_zone_lofi_merged.mod --banks
+# Where the bytes go: python tools/mod/mod_audit.py output/sonic_1/02_green_hill_zone_lofi_merged.mod --banks
 # -------------------------------------------------------------------------------------------------
 name: "Green Hill Zone"
 input_file: "input/sonic_1/Mus81 - GHZ.asm"
@@ -70,7 +70,7 @@ channels:
 # Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 #
-# Volumes marked "VGZ" were set from tools/vgm_compare.py level measurements (L/R power) against
+# Volumes marked "VGZ" were set from tools/vgm/vgm_compare.py level measurements (L/R power) against
 # reference/vgz/sonic_1/02 - Green Hill Zone.vgz, relative to FM2 = inst 3/4 at 32; see docs/audits/02_ghz_audit.md.
 # With fm_volume_scaling: baked a volume here is the level of the instrument's MOST COMMON
 # (channel TL, pan) combination; the converter adds Cxx only for notes at any other level.

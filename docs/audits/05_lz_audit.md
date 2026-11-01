@@ -19,7 +19,7 @@
 new segment on every PSG register write, and `fTone_09` writes the volume every frame, so PSG1's
 120 ms notes became 17 ms slivers below the 60 ms cut and were reported as "shorter than 60 ms"
 (1084 of them) instead of as an octave error.  Segments now end only when the pitch or the
-audibility changes (`tools/vgm_pitch_audit.py`); the other audited songs read the same as before
+audibility changes (`tools/vgm/vgm_pitch_audit.py`); the other audited songs read the same as before
 (GHZ 928 / 928, Scrap Brain 10 wrong, Credits 7, Stage Clear 12 — the totals rose because notes
 that were slivers are now counted).
 

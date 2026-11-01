@@ -12,7 +12,7 @@ Then the converter's FM path through it (core/synth), each writing its own file:
 
 Usage::
 
-    python tools/validate_ym2612.py
+    python tools/chips/validate_ym2612.py
 
 Load the output in Audacity:
     File > Import > Raw Data
@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 import dataclasses
 
@@ -199,7 +199,7 @@ def check_c_helpers() -> None:
 
 def check_device() -> None:
     check_c_helpers()
-    out_path = _HERE.parent / "output" / "validate_test.raw"
+    out_path = _HERE.parents[1] / "output" / "validate_test.raw"
     out_path.parent.mkdir(exist_ok=True)
 
     print("Initialising OPN2 (YM2612 mode)...")
@@ -408,7 +408,7 @@ def check_render() -> None:
     # Write renderer_test.raw as true 16-bit mono (same method as validate_test.raw).
     # Scale the pre-normalized mono values directly to int16 — NOT upscaled 8-bit,
     # which would introduce staircase quantization distortion in Audacity.
-    out_path = _HERE.parent / "output" / "renderer_test.raw"
+    out_path = _HERE.parents[1] / "output" / "renderer_test.raw"
     out_path.parent.mkdir(exist_ok=True)
 
     scale16 = 32767.0 / pre_peak if pre_peak else 1.0
@@ -501,7 +501,7 @@ def check_samples() -> None:
     # Write instrument 5 as 16-bit raw for Audacity
     if 5 in samples:
         pcm, rate = samples[5]
-        out_path = _HERE.parent / "output" / "sample_gen_test.raw"
+        out_path = _HERE.parents[1] / "output" / "sample_gen_test.raw"
         n = int8_to_raw16(out_path, pcm)
 
         print()

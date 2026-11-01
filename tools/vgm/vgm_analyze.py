@@ -8,12 +8,12 @@ from a game recording, or to count PSG noise events.
 
 Usage::
 
-    python tools/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
-    python tools/vgm_analyze.py file.vgz --chip fm --channel FM3 FM4 FM5
-    python tools/vgm_analyze.py file.vgz --chip psg --channel NOISE
-    python tools/vgm_analyze.py file.vgz --chip all --max-rows 0
-    python tools/vgm_analyze.py file.vgz --max-rows 500 --clock 7670454
-    python tools/vgm_analyze.py file.vgz --frames --chip all --channel FM1 PSG1   # frame by frame
+    python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+    python tools/vgm/vgm_analyze.py file.vgz --chip fm --channel FM3 FM4 FM5
+    python tools/vgm/vgm_analyze.py file.vgz --chip psg --channel NOISE
+    python tools/vgm/vgm_analyze.py file.vgz --chip all --max-rows 0
+    python tools/vgm/vgm_analyze.py file.vgz --max-rows 500 --clock 7670454
+    python tools/vgm/vgm_analyze.py file.vgz --frames --chip all --channel FM1 PSG1   # frame by frame
 
 Output columns (FM):
     time_ms   — milliseconds from track start (VGM 44100 Hz sample clock)
@@ -67,7 +67,7 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))     # this checkout's core, not an installed one
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))     # this checkout's core, not an installed one
 
 from core.audio import hz_to_midi, midi_name, pitch_name
 from core.audit.dac_stall import dac_stall

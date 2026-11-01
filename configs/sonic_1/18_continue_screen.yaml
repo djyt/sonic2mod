@@ -12,7 +12,7 @@ target_speed: 5            # 214.29 BPM, written 214 (0.13 % slow, ~12 ms by the
 ticks_per_row: 3           # a beat ($0C) 4 rows, a bar 16, a pattern four bars.  6 ticks a row at speed 7 is exact
                            # (150 BPM, a MOD tick a frame) but a beat only 2 rows
 region: ntsc
-range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
+range_space: chip          # ranges are the pitches the chip plays (tools/config/config_to_chip_space.py)
 
 # Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/18_continue_screen_lofi_merged.mod): the merged
 # build 107 -> 33 KB.  The bass and the lead on sliding loops (both fall for as long as a note holds and
@@ -98,7 +98,7 @@ mod_pattern_breaks:
 
 # -------------------------------------------------------------------------------------------------
 # Merged 4-Channel Version (convert.py --merged)
-# DAC · lead (FM1) · bass (FM2) · chords (FM3+FM4): the one fold is clean (tools/merge_survey.py)
+# DAC · lead (FM1) · bass (FM2) · chords (FM3+FM4): the one fold is clean (tools/config/merge_survey.py)
 # -------------------------------------------------------------------------------------------------
 merge:
   # FM4 plays the chord's lower note in FM3's rhythm, voice $03 both

@@ -7,7 +7,7 @@ channel-isolated copies), then lines the two up and reports, per channel:
 
   * every note: reference pitch, pitch of both renders in cents from it (measured on the
     note's strongest partial), level in both renders and the level difference
-  * the pitch verdict: tools/vgm_pitch_audit.py's symbolic audit (chip frequency registers vs
+  * the pitch verdict: tools/vgm/vgm_pitch_audit.py's symbolic audit (chip frequency registers vs
     the pitch each MOD note sounds at) - the authority on "is every note right"
   * level balance of each channel relative to a reference channel
   * level error per MOD instrument (grouped by channel and Cxx), with the sample_list volume that
@@ -26,15 +26,15 @@ a VGMPlay build there on a fresh checkout; see docs/pipeline.md).
 
 Usage::
 
-    python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
-    python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml ref.vgz --mod output/x.mod --ref FM2
-    python tools/vgm_compare.py cfg.yaml ref.vgz --skip-render     # reuse WAVs in the workdir
-    python tools/vgm_compare.py cfg.yaml ref.vgz --merged          # the merged build: each MOD channel
+    python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
+    python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml ref.vgz --mod output/x.mod --ref FM2
+    python tools/vgm/vgm_compare.py cfg.yaml ref.vgz --skip-render     # reuse WAVs in the workdir
+    python tools/vgm/vgm_compare.py cfg.yaml ref.vgz --merged          # the merged build: each MOD channel
                                                                    # against the sum of its source channels
-    python tools/vgm_compare.py cfg.yaml ref.vgz --offset 0.25     # force MOD-minus-VGM offset (s)
+    python tools/vgm/vgm_compare.py cfg.yaml ref.vgz --offset 0.25     # force MOD-minus-VGM offset (s)
 
     # CI-style: machine-readable results + non-zero exit when a threshold is exceeded
-    python tools/vgm_compare.py cfg.yaml ref.vgz --json output/compare/title.json --fail-balance-db 2
+    python tools/vgm/vgm_compare.py cfg.yaml ref.vgz --json output/compare/title.json --fail-balance-db 2
 
 Renders land in --workdir (default: output/compare/<config-name>/).
 """
@@ -57,7 +57,7 @@ except ImportError:  # pragma: no cover
     sys.exit(1)
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.audio import pitch_name
 from core.audit import (
@@ -255,7 +255,7 @@ def _report_pitch_verdict(chip_tl: dict, chip_end: float, mod_tl: dict, mod_end:
     print(f"  {n_ok} of {n_ok + pa['bad']} notes right" + ("" if pa["bad"] else " - every note is at the hardware's pitch"))
     print_audit(pa, 60.0, indent="  ")
     if pa["bad"]:
-        print("  (times and every wrong note: python tools/vgm_pitch_audit.py <config> <vgz> --list)")
+        print("  (times and every wrong note: python tools/vgm/vgm_pitch_audit.py <config> <vgz> --list)")
     print()
 
 

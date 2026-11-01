@@ -35,7 +35,7 @@ The first render compiles the library into `build/` with gcc or MSVC; with neith
 Windows loads `prebuilt/sn76489.dll`.
 
 ```bash
-python tools/validate_sn76489.py   # in turn: the device (C3 tone + white noise → output/psg_{tone,noise}_test.raw);
+python tools/chips/validate_sn76489.py   # in turn: the device (C3 tone + white noise → output/psg_{tone,noise}_test.raw);
                                    # psg_render (the same → output/psg_render_{tone,noise}_test.raw);
                                    # generate_psg_samples (periodic noise + white noise with fTone_04
                                    # → output/psg_sample_gen_test_*.raw)
@@ -233,7 +233,7 @@ stated rate-3 `synth_root` or `tone2_n` replaces the divider the hardware uses.
 ### Noise too loud or too quiet against the tones
 
 Every sample is peak-normalised, so the balance is the `sample_list` volumes': measure them with
-`tools/vgm_compare.py --write-volumes`.
+`tools/vgm/vgm_compare.py --write-volumes`.
 
 ### One noise sample for several envelopes
 

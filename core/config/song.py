@@ -114,7 +114,7 @@ class ConversionConfig:
     merge: list = field(default_factory=list)              # list[MergeGroup]; a `merge_patterns:` group
                                                            # carries its patterns, a `merge:` one is song-wide
     merge_drop: list = field(default_factory=list)         # channels left out of the merged build altogether
-    # `merge_patterns:` (folds that differ per pattern, tools/fold_csv.py writes it from a fold table):
+    # `merge_patterns:` (folds that differ per pattern, tools/config/fold_csv.py writes it from a fold table):
     # every pattern number the blocks name, and {channel: patterns} its notes are dropped in
     merge_patterns_named: set = field(default_factory=set)
     merge_pattern_drop: dict = field(default_factory=dict)

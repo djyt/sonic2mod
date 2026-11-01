@@ -1,15 +1,15 @@
 """Measure every song's sample_list volumes against its VGZ, write them, verify.
 
 Usage:
-  python tools/measure_volumes.py
+  python tools/vgm/measure_volumes.py
       Every config in configs/sonic_1/ against the VGZ with the same number prefix in reference/vgz/sonic_1/,
       cores - 1 songs at a time.
-  python tools/measure_volumes.py --only green_hill special_stage
+  python tools/vgm/measure_volumes.py --only green_hill special_stage
       Restrict to configs whose stem contains any of the names.
-  python tools/measure_volumes.py --no-write
+  python tools/vgm/measure_volumes.py --no-write
       Measure and report only; the configs are not touched.
-  python tools/measure_volumes.py --jobs 2 --min-db 1.5
-  python tools/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker
+  python tools/vgm/measure_volumes.py --jobs 2 --min-db 1.5
+  python tools/vgm/measure_volumes.py --configs configs/moonwalker --vgz-dir reference/vgz/moonwalker
       Pairs from the rips.yaml beside the configs (or --rips FILE), {config stem: rip file}, instead
       of the number prefix; a config the map leaves out is skipped (Moonwalker's rips are in game
       order, its configs in sound-ID order).  core/audit/rips.py.
@@ -45,7 +45,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-_ROOT = _HERE.parent
+_ROOT = _HERE.parents[1]
 sys.path.insert(0, str(_ROOT))
 
 from core.audit import named

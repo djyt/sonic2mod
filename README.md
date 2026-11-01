@@ -93,11 +93,11 @@ explained per song in `docs/audits/`.
 
 ```bash
 # Symbolic, no rendering, exits 1 on a wrong or missing note. Run this first.
-python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 
 # Rendered audit: per-note pitch and level, channel balance, onset timing, vibrato rate and
 # depth, noise spectrum, DAC rate.  --write-volumes applies its volume suggestions to the config.
-python tools/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+python tools/vgm/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 ```
 
 The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPlay and an ffmpeg
@@ -190,8 +190,8 @@ psg_synthesis:
 Smoke tests (generate a basic sample):
 
 ```bash
-python tools/validate_ym2612.py
-python tools/validate_sn76489.py
+python tools/chips/validate_ym2612.py
+python tools/chips/validate_sn76489.py
 ```
 
 

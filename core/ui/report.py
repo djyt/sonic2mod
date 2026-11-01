@@ -211,7 +211,7 @@ def _w_synth_root_ambiguous(w: dict):
     votes = ", ".join(f"{synth_note_name(d)} ×{n}" for d, n in sorted(w['votes'].items(), key=lambda kv: -kv[1]))
     return ("pitch", f"[bold]inst {w['instrument']}[/bold] {escape(w['context'])}: its low note plays at "
                      f"{votes}; rendered at {synth_note_name(w['synth_root'])}, the others out of tune",
-            "[cyan]range_space: chip[/cyan] (tools/config_to_chip_space.py) or split the entry")
+            "[cyan]range_space: chip[/cyan] (tools/config/config_to_chip_space.py) or split the entry")
 
 
 def _w_detune_no_slot(w: dict):

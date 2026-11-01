@@ -31,8 +31,8 @@ special mode, software-mixed PCM.  The lifter should fail loudly on these, not g
 
 All 19 Sonic 1 songs exist both as asm (`reference/smps_drivers/sonic_1/music/`) and as VGZ (`reference/vgz/sonic_1/`).  Every
 phase below is accepted by lifting a VGZ and comparing against the asm parse of the same song —
-IR to IR first, then MOD to MOD (`tools/mod_compare.py`, `tools/mod_render_diff.py`), then MOD to
-VGZ (`tools/vgm_pitch_audit.py`, `tools/vgm_compare.py`).  No other format conversion in this
+IR to IR first, then MOD to MOD (`tools/mod/mod_compare.py`, `tools/mod/mod_render_diff.py`), then MOD to
+VGZ (`tools/vgm/vgm_pitch_audit.py`, `tools/vgm/vgm_compare.py`).  No other format conversion in this
 project has had a ground truth this complete; use it.
 
 ### What the VGZs look like (probed 2026-10-02)
@@ -94,7 +94,7 @@ Each item produces part of the `SmpsSong`.  Accept each by IR comparison against
 it - ticks, attack, the frequency word, the voice's registers, the carriers' TL, pan, modulation,
 fill, noise byte, DAC sample - with the asm's spelling gone (calls, flag order, transposition vs
 note byte, voice TL vs track volume), and `compare_songs` matches two songs by start tick per
-`Aspect`.  `python tools/vgm_lift.py --all [--aspects onset]` lifts every rip and compares it
+`Aspect`.  `python tools/vgm/vgm_lift.py --all [--aspects onset]` lifts every rip and compares it
 with its config's song (asm or ROM; `core/audit/rip_diff.py`) in about four seconds (frame logs
 cached by `core.vgm.load_frames`); one rip prints its differences, repeated ones grouped.  "Accept"
 below means its aspects come out same.  The lift takes the song's tempo; `--infer-tempo` judges
@@ -242,7 +242,7 @@ explained) against `input/sonic_1/samples/`.
   matching music pattern and warn; not handled.
 
 ### [ ] 1.10 Tooling
-- `tools/vgm_lift.py <file.vgz> [--asm OUT] [--input song]`: print the lifted song, write it
+- `tools/vgm/vgm_lift.py <file.vgz> [--asm OUT] [--input song]`: print the lifted song, write it
   as SMPS asm (readable, editable, and round-trippable through `SmpsParser` — a check on the lift in
   itself), or diff it against an asm or ROM song event by event.  The comparison and `--all` are done
   (the yardstick above; any config set with a `rips.yaml` since 2026-10-08); printing and `--asm OUT`

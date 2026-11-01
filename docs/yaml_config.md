@@ -129,7 +129,7 @@ The reference build keeps every SMPS channel on a MOD channel of its own.
 | `target_bpm` | `150` | BPM when `auto_bpm` is off; written as `Fxx` on row 0, not range-checked |
 | `target_speed` | `6` | MOD ticks per row.  Changes nothing in the row grid; choose it so the derived BPM is (nearly) whole — `convert.py` prints the better speed |
 | `region` | `ntsc` | the console, `ntsc` or `pal`: its V-int rate (60 / 50 Hz) or FM clock, whichever the driver's update runs on |
-| `dac_stall` | `0` | The share of the DAC's time its driver's update holds the play loop, measured from the song's rip (`tools/vgm_analyze.py RIP --dac-stall`): a minimal config's derived DAC notes play each sample's loop rate times 1 − it (OutRun's update runs inside the loop: 0.33–0.40) |
+| `dac_stall` | `0` | The share of the DAC's time its driver's update holds the play loop, measured from the song's rip (`tools/vgm/vgm_analyze.py RIP --dac-stall`): a minimal config's derived DAC notes play each sample's loop rate times 1 − it (OutRun's update runs inside the loop: 0.33–0.40) |
 
 Formulas, tempo changes and the speed choice: `docs/pipeline.md` § Timing.
 
@@ -198,7 +198,7 @@ Each synthesised slot's sample is rendered for the **first** entry that names it
 | `chip` | the pitch the chip plays: byte + pitch offset + `smpsChangeTransposition` (PSG through the driver table) |
 
 Use `chip` for a song that changes key with `$E9` while keeping a voice;
-`tools/config_to_chip_space.py` converts a source-space config.  `docs/pipeline.md` § `range_space: chip`.
+`tools/config/config_to_chip_space.py` converts a source-space config.  `docs/pipeline.md` § `range_space: chip`.
 
 ### `voice_map`
 
@@ -302,7 +302,7 @@ The rates and why the VGZ rips read 2–3 % fast: `docs/smps_driver.md` § DAC p
 
 - **Synthesised slot** (FM or PSG with synthesis on): only `volume` (0–64) and `finetune`
   (−8…7, 12.5 c a step, optional) are used.  Volumes are set by measurement:
-  `tools/vgm_compare.py --write-volumes` (`docs/pipeline.md` § Verifying against a VGZ).
+  `tools/vgm/vgm_compare.py --write-volumes` (`docs/pipeline.md` § Verifying against a VGZ).
 - **Disk sample** (DAC drums, or synthesis off): the file, signed 8-bit mono PCM, from
   `samples_dir`.
 - With baked levels (the default) the volume is the level of the instrument's most common
@@ -331,7 +331,7 @@ applied to its composites.
 | `merge_saturate_db` | `dac_samples` entry | The same, merged build only (replaces `saturate_db` there) |
 | `limit_db` | group | Limit a mix's peaks above full scale by up to this many dB instead of turning the whole mix down |
 
-Sustain loops and slides: `docs/pipeline.md` § Sample length, sustain loops and release slides.  `tools/mod_audit.py` shows each
+Sustain loops and slides: `docs/pipeline.md` § Sample length, sustain loops and release slides.  `tools/mod/mod_audit.py` shows each
 sample's loop and size.
 
 ---
@@ -370,7 +370,7 @@ merge_patterns:
 `patterns:` takes `"0"`, `"1-4"`, `"d-10"`, `"0, 5-c"` or a list; a bare YAML number is
 **decimal**.  Every group starts with `- `.  A channel stays in the output unless it is a
 follower or dropped in every pattern the blocks name.  `merge:` groups may sit beside
-`merge_patterns:`.  `tools/fold_csv.py` writes the section from a fold table.
+`merge_patterns:`.  `tools/config/fold_csv.py` writes the section from a fold table.
 
 ### Group keys
 
@@ -408,7 +408,7 @@ follower or dropped in every pattern the blocks name.  `merge:` groups may sit b
 | `merge_max_synth_shift` | `12` | Cap (semitones) on how far above its root a sample is rendered; `0` halves bytes |
 | `merge_loop_timbre` | `false` | Loops wait until the voice's timbre holds, as in the reference build |
 
-What folds cleanly is a property of the song: `python tools/merge_survey.py <config>` counts it
+What folds cleanly is a property of the song: `python tools/config/merge_survey.py <config>` counts it
 per channel pair and prints suggested groups.
 
 ---
@@ -440,7 +440,7 @@ merge_patterns:
 - `output_file` defaults to `<stem>_<NAME>.mod` (merged: `<stem>_<NAME>_merged.mod`).  A stated
   `merge_output_file` is not suffixed.
 - An unknown NAME is an error listing the known ones.
-- `--variant` is taken by `convert.py`, `analyze.py --config`, `tools/vgm_compare.py`,
+- `--variant` is taken by `convert.py`, `analyze.py --config`, `tools/vgm/vgm_compare.py`,
   `vgm_pitch_audit.py`, `merge_survey.py` and `fold_csv.py`.  `vgm_compare.py --write-volumes`
   and `fold_csv.py --write` refuse it (they edit the base config).
 - Regression cases for variants: `_VARIANTS` in `tests/regression.py`.

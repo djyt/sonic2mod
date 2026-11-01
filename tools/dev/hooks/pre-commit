@@ -1,9 +1,9 @@
 #!/bin/sh
-# Git pre-commit hook: lint, types, dead code and import layers (tools/check.py --fast).
-# Enabled per clone by: git config core.hooksPath tools/hooks.  Skip once: git commit --no-verify
+# Git pre-commit hook: lint, types, dead code and import layers (tools/dev/check.py --fast).
+# Enabled per clone by: git config core.hooksPath tools/dev/hooks.  Skip once: git commit --no-verify
 # It checks the working tree, not only what is staged.
 
 # Nothing Python staged (docs, configs, MODs): nothing these checks read changed
 git diff --cached --name-only --diff-filter=ACMR | grep -qE '\.(py|toml)$' || exit 0
 
-exec python tools/check.py --fast
+exec python tools/dev/check.py --fast

@@ -9,12 +9,12 @@ only, as the asm's FixMusicAndSFXDataBugs), or with --shipped neither: the game 
 
 Usage::
 
-    python tools/rom_import.py input/roms/sonic_rev01.bin                       # the indexes
-    python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1     # every sound vs its asm
-    python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1 --only 81 8A
-    python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm  # MusXX.asm / SndXX.asm
-    python tools/rom_import.py input/roms/sonic_rev01.bin --dac output/rom_dac  # DAC samples: .raw + manifest.yaml
-    python tools/rom_import.py "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"   # Type 1a, detected
+    python tools/rom/rom_import.py input/roms/sonic_rev01.bin                       # the indexes
+    python tools/rom/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1     # every sound vs its asm
+    python tools/rom/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1 --only 81 8A
+    python tools/rom/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm  # MusXX.asm / SndXX.asm
+    python tools/rom/rom_import.py input/roms/sonic_rev01.bin --dac output/rom_dac  # DAC samples: .raw + manifest.yaml
+    python tools/rom/rom_import.py "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"   # Type 1a, detected
 
 The driver is detected (core/drivers/detect.py); --driver states it.
 """
@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-ROOT = _HERE.parent
+ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 import yaml
@@ -120,7 +120,7 @@ def _write(rom: RomImage, index: SoundIndex, ids: list[int], out_dir: Path, fixe
     out_dir.mkdir(parents=True, exist_ok=True)
     for sound_id in ids:
         prefix = _prefix(index, sound_id)
-        comment = f"{prefix}: ${index.address(sound_id):05X} in {rom.title} ({rom.serial}), by tools/rom_import.py"
+        comment = f"{prefix}: ${index.address(sound_id):05X} in {rom.title} ({rom.serial}), by tools/rom/rom_import.py"
         fixes = data_fixes(rom) if fixed else ()
         if fixes:
             comment += (f"\nFixMusicAndSFXDataBugs: the {len(fixes)} data fixes known for this ROM applied "

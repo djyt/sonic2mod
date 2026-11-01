@@ -14,9 +14,9 @@ A ROM's section begins with its driver's rules (tables, envelopes, timing) and D
 
 Usage::
 
-    python tools/song_dump.py input/roms/sonic_rev01.bin
-    python tools/song_dump.py input/roms/sonic_rev01.bin --shipped --only 81 8A
-    python tools/song_dump.py reference/smps_drivers/sonic_1/music
+    python tools/rom/song_dump.py input/roms/sonic_rev01.bin
+    python tools/rom/song_dump.py input/roms/sonic_rev01.bin --shipped --only 81 8A
+    python tools/rom/song_dump.py reference/smps_drivers/sonic_1/music
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from dataclasses import fields, is_dataclass
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-ROOT = _HERE.parent
+ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.drivers import dac_samples, detect_variant, locate_sounds, read_rom_code

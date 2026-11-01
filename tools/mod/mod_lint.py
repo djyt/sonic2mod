@@ -22,8 +22,8 @@ rendered through libopenmpt, does not see these.  Speed and tempo follow the
 `Fxx` commands; `Bxx`/`Dxx` end the pass (one pass through the song is walked, plus the
 loop's first pattern once more with the end-of-song state, which is what a player does).
 
-    python tools/mod_lint.py output/sonic_1/02_green_hill_zone.mod
-    python tools/mod_lint.py a.mod b.mod        # every file; exit 1 if any issue
+    python tools/mod/mod_lint.py output/sonic_1/02_green_hill_zone.mod
+    python tools/mod/mod_lint.py a.mod b.mod        # every file; exit 1 if any issue
 
 As a library: `lint_mod(path, amiga_clock) -> list[dict]` (each with 'type', 'pattern', 'row', 'channel',
 'instrument', 'detail'), used by tests/regression.py: a case fails when the new MOD has
@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent))
+sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.config import find_settings, load_settings
 from core.mod import PAL_AMIGA_CLOCK, period_rate, read_mod

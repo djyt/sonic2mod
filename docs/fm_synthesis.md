@@ -31,7 +31,7 @@ catalogue entry → render_layers (chip, then resampled) → shelf, DC block →
 `build/` with gcc or MSVC; with neither on PATH, Windows loads `prebuilt/ym3438.dll`.
 
 ```bash
-python tools/validate_ym2612.py    # in turn: the device (A4 test tone → output/validate_test.raw, the C helpers);
+python tools/chips/validate_ym2612.py    # in turn: the device (A4 test tone → output/validate_test.raw, the C helpers);
                                    # program_voice (Title Screen voice 0, 100 ms → the peak); fm_render (voice 1
                                    # at A3 → output/renderer_test.raw); generate_fm_samples (the same voice as an
                                    # instrument → output/sample_gen_test.raw)
@@ -206,7 +206,7 @@ voice otherwise clicks at every note-on and cut.
 
 Every sample is then peak-normalised to its own full 8 bits (`full_scale_int8` → `to_int8`):
 balance between instruments is the `sample_list` volume's job, measured against the VGZ
-(`tools/vgm_compare.py --write-volumes`).  `dither` (`samples.dither`, or an entry's or merge
+(`tools/vgm/vgm_compare.py --write-volumes`).  `dither` (`samples.dither`, or an entry's or merge
 group's `dither:`; a composite takes its primary's):
 
 - `shaped` — TPDF dither with first-order error feedback: the noise rises toward Nyquist,
@@ -315,7 +315,7 @@ release rates and the cache hits.
 ### Silence or near-silence
 
 - No gcc / MSVC on PATH and no `prebuilt/` library for the platform, so `build/ym3438.dll` (`.so`)
-  cannot be built (`python tools/validate_ym2612.py` builds and tests it).
+  cannot be built (`python tools/chips/validate_ym2612.py` builds and tests it).
 - `fm_synthesis.enabled: false`, or `mode: ym3438` — either loads `sample_list` files instead.
 - A stated `synth_root` octaves away from the chip pitch: the sample is rendered there and
   stretched.  Delete it; the derived one is the chip's.
@@ -349,4 +349,4 @@ own sample its own slot.
 ### Instrument levels inconsistent
 
 Every sample is peak-normalised, so the balance is the `sample_list` volumes'.  Measure them:
-`python tools/vgm_compare.py <config> <vgz> --write-volumes`, re-convert, re-run.
+`python tools/vgm/vgm_compare.py <config> <vgz> --write-volumes`, re-convert, re-run.

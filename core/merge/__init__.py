@@ -47,7 +47,7 @@ target pitch), and per follower note-on while the primary is silent:
                                                              the follower's own note (`solo`);
                                                              a primary note-on before it ends
                                                              re-takes the channel (`solo_cut`)
-`tools/merge_survey.py` measures every channel pair of a song against these rules before a
+`tools/config/merge_survey.py` measures every channel pair of a song against these rules before a
 group is written; the converter reports the same counts for the groups it was given.
 
 Effects on the merged channel are the primary's: its vibrato, note fill, volume and delay

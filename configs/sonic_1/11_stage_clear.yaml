@@ -10,7 +10,7 @@ auto_bpm: true
 target_speed: 3
 ticks_per_row: 1
 region: ntsc
-range_space: chip          # ranges are the pitches the chip plays (tools/config_to_chip_space.py)
+range_space: chip          # ranges are the pitches the chip plays (tools/config/config_to_chip_space.py)
 
 # Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/11_stage_clear_lofi_merged.mod): the merged
 # build 70 -> 41 KB.  The lead and harmony mixes at F2 (11 kHz, their treble above 5.5 kHz gone); at F2 the
@@ -118,7 +118,7 @@ psg_voice_map:
 # -------------------------------------------------------------------------------------------------
 # Merged 4-Channel Version (convert.py --merged)
 # DAC · lead (FM1+PSG1) · bass + stabs (FM2+FM3+FM4) · harmony (FM5+PSG2): every fold clean
-# (tools/merge_survey.py), no note lost or cut.  The drums stay on their own channel.
+# (tools/config/merge_survey.py), no note lost or cut.  The drums stay on their own channel.
 # -------------------------------------------------------------------------------------------------
 merge:
   # Lead: PSG1 plays FM1's data an octave down

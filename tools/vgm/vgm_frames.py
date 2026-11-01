@@ -21,10 +21,10 @@ beside the configs.
 
 Usage::
 
-    python tools/vgm_frames.py configs/streets_of_rage/81_fighting_in_the_street.yaml   # its misses
-    python tools/vgm_frames.py --all --configs configs/streets_of_rage                  # a line per pair
-    python tools/vgm_frames.py --all --configs configs/golden_axe --channels FM
-    python tools/vgm_frames.py --all --glitches --configs configs/space_harrier_2       # glitch candidates
+    python tools/vgm/vgm_frames.py configs/streets_of_rage/81_fighting_in_the_street.yaml   # its misses
+    python tools/vgm/vgm_frames.py --all --configs configs/streets_of_rage                  # a line per pair
+    python tools/vgm/vgm_frames.py --all --configs configs/golden_axe --channels FM
+    python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_2       # glitch candidates
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-ROOT = _HERE.parent
+ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.audit import (

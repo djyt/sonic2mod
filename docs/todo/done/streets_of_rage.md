@@ -165,7 +165,7 @@ a song pass (the `run_out` precedent).
   - Against the rips' frame logs (scratch): FM voice registers exact at every key-on of the 15
     (1381 of `$85`'s differ without the patches).  `vgm_lift` FM onsets and lengths: every note
     but the logs' last frames (`$87`, `$89`).
-- [x] 2.3 Yardstick (2026-10-09): `python tools/vgm_lift.py --all --configs configs/streets_of_rage`
+- [x] 2.3 Yardstick (2026-10-09): `python tools/vgm/vgm_lift.py --all --configs configs/streets_of_rage`
   (pairs in `rips.yaml`, which names the rips' folder, `streets_of_rage_1`: not the configs'
   mirror; Phase 4.1's 16 minimal configs made for it).
   - **FM onsets and lengths** (`--aspects onset length`): equal on all 15 but the logs' last
@@ -176,7 +176,7 @@ a song pass (the `run_out` precedent).
     and a legato slide, which this driver writes as a frequency alone (Sonic 1's re-keys; `$86`
     FM1 E3 -> F3 at 105).  With `note` compared, the slide also splits a length.  Reading
     detune and a key-less slide is the lift's work (vgz_conversion 1.3), not this phase's.
-  - **Against the frame logs** (`tools/vgm_frames.py`, made from the scratch check): FM pitch,
+  - **Against the frame logs** (`tools/vgm/vgm_frames.py`, made from the scratch check): FM pitch,
     level and voice registers exact at every key-on; a tied note's pitch differs only by the
     vibrato running through it (FM 1-18 units; the PSG's sweeps); PSG pitch and level as 2.1.
 

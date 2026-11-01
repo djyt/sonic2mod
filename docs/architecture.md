@@ -69,7 +69,7 @@ adds composite instruments to the same catalogue.
 
 ```
  convert.py  analyze.py  sonic2wav.py            CLIs (thin)
- tools/                                          analysis and audit utilities
+ tools/                                          utilities: vgm/ mod/ config/ rom/ chips/ dev/
  sfx/                                            the offline SFX driver
  ─────────────────────────────────────────────── core/ imports none of the above
  core/  ui
@@ -127,9 +127,9 @@ adds composite instruments to the same catalogue.
 | `vgm/` | `reader.py` (`read_vgm` → `VgmLog`), `chipstate.py` (`ChipState.replay`: registers write by write), `frames.py` (`frame_log`: per frame, every channel's state; `FrameCut`: at V-ints, or after each Timer A reset), `realign.py` (`realigned`: the log with its driver's lost or gained V-ints undone), `notes.py` (`note_starts`, `pitch_segments`), `cache.py` (`load_frames`, cached) |
 | `vgm/lift/` | `lift_song(frames, LiftOptions)` → `SmpsSong`: `tracks.py` (hits by frame), `tempo.py` (`infer_tempo`; a given modifier is where the song starts), `song.py` (`LIFTED_ASPECTS`: what a lift states).  Work in progress: `docs/todo/vgz_conversion.md` |
 | `source/load.py` | `read_song(path, options, rom_song, driver, fix_data_bugs)`: picks the front end by suffix; `read_dac(path)` |
-| `audit/frame_check.py` | `check_frames`: a song against its rip's frame log on each note's frame, no lift - pitch (detune in), carriers' TL / attenuation with the envelope's step (a tie's as its driver plays it), voice registers (the chip's bits); the rip's offset (within 2 frames of the FM key-ons', the one that matches the most notes) and its hold phase (the song's, or a frame early); drum tracks and silent PSG pitches left out; the rip's faults (`RipFaults`) undone or set aside, and misses every rip shows excused (`Excuse`: the log's end, a loop re-entry a frame late).  `tools/vgm_frames.py` |
-| `audit/dac_stall.py` | `dac_stall`: the share of a rip's DAC playing time its driver holds the loop (gaps past 2.5 x the play's commonest), what a config's `dac_stall` states.  `tools/vgm_analyze.py --dac-stall` |
-| `audit/glitch_scan.py` | `scan_glitches`: each FM channel's key-ons followed from where the rip starts; moves of every channel at once (a lost or gained V-int: `GlitchCandidate.every_channel`) against one channel's (the song's).  `tools/vgm_frames.py --glitches` |
+| `audit/frame_check.py` | `check_frames`: a song against its rip's frame log on each note's frame, no lift - pitch (detune in), carriers' TL / attenuation with the envelope's step (a tie's as its driver plays it), voice registers (the chip's bits); the rip's offset (within 2 frames of the FM key-ons', the one that matches the most notes) and its hold phase (the song's, or a frame early); drum tracks and silent PSG pitches left out; the rip's faults (`RipFaults`) undone or set aside, and misses every rip shows excused (`Excuse`: the log's end, a loop re-entry a frame late).  `tools/vgm/vgm_frames.py` |
+| `audit/dac_stall.py` | `dac_stall`: the share of a rip's DAC playing time its driver holds the loop (gaps past 2.5 x the play's commonest), what a config's `dac_stall` states.  `tools/vgm/vgm_analyze.py --dac-stall` |
+| `audit/glitch_scan.py` | `scan_glitches`: each FM channel's key-ons followed from where the rip starts; moves of every channel at once (a lost or gained V-int: `GlitchCandidate.every_channel`) against one channel's (the song's).  `tools/vgm/vgm_frames.py --glitches` |
 | `smps/asm_writer.py` | `write_asm`: a `SongCode` back to SMPS2ASM text the parser reads into the same song |
 
 How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
@@ -282,7 +282,7 @@ renders.  Rules: `docs/pipeline.md` § The merged build.
 | `limits.py` | `MAX_MOD_SAMPLE_BYTES`, `sample_limit_bytes`, `max_sustain_secs` |
 | `reach.py` | `heard_bytes`: a written MOD played as ProTracker does, tick by tick: how far into each one-shot sample a note is heard (`ModFile.trim_tails` cuts there) |
 | `timing.py` | `timed_pass`, `edx_delay`: when each row plays — the MOD clock of the audits |
-| `sample_audit.py` | A written MOD's samples against the notes that play them (`tools/mod_audit.py`, the report's Samples table) |
+| `sample_audit.py` | A written MOD's samples against the notes that play them (`tools/mod/mod_audit.py`, the report's Samples table) |
 
 The cell layout lives only in `file.py` (`cell_index`, `effect_at`, `effect_slot_free`, …).
 
@@ -346,11 +346,16 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 
 | Where | What |
 |---|---|
-| `core/audit/pitch.py` | Symbolic pitch audit: each MOD note's pitch against the chip's frequency registers (`tools/vgm_pitch_audit.py`, and the verdict inside `vgm_compare`) |
+| `core/audit/pitch.py` | Symbolic pitch audit: each MOD note's pitch against the chip's frequency registers (`tools/vgm/vgm_pitch_audit.py`, and the verdict inside `vgm_compare`) |
 | `core/audit/render.py`, `signal.py`, `levels.py`, `onsets.py` | `vgm_compare`'s per-channel renders (VGMPlay, ffmpeg + libopenmpt), measures, per-instrument levels, onset matching |
-| `core/audit/rip_diff.py` | `compare_with_rip(song, frames, aspects, ChannelChoice, lift, faults)` → `RipDiff`: a song (`SongSource`: asm, or ROM + sound, as shipped) against its rip lifted at the song's tempo (`LiftTempo`), the rip's faults undone or set aside - `tools/vgm_lift.py` |
+| `core/audit/rip_diff.py` | `compare_with_rip(song, frames, aspects, ChannelChoice, lift, faults)` → `RipDiff`: a song (`SongSource`: asm, or ROM + sound, as shipped) against its rip lifted at the song's tempo (`LiftTempo`), the rip's faults undone or set aside - `tools/vgm/vgm_lift.py` |
 | `core/audit/rips.py` | `RipShelf`: a config's rip and a rip's config, by number or the `rips.yaml` beside the configs; one folder given, the other mirrors it (`around`); `named`, the tools' `--only` (`vgm_lift`, `measure_volumes`, `tool_regression`).  `RipFaults` (`faults_for`): what a rip records that its song does not play - `RipGlitch` (a V-int lost or gained), `ForeignSound` (another sound on some channels), `UnloggedWrites` (an aspect of some channels the ripper did not log) |
-| `tools/` | `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `vgm_frames`, `measure_volumes`, `rom_import`, `mod_compare`, `mod_lint`, `mod_audit`, `mod_render_diff`, `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config`, `release`; `validate_ym2612`, `validate_sn76489` (each device, then `core/synth` through it) |
+| `tools/vgm/` | Against a rip: `vgm_analyze`, `vgm_compare`, `vgm_pitch_audit`, `vgm_lift`, `vgm_frames`, `measure_volumes` |
+| `tools/mod/` | A written MOD: `mod_audit`, `mod_lint`, `mod_compare`, `mod_render_diff` |
+| `tools/config/` | Write or derive a song config: `merge_survey`, `fold_csv`, `config_to_chip_space`, `make_credits_config` |
+| `tools/rom/` | Read a ROM: `rom_import`, `song_dump` |
+| `tools/chips/` | `validate_ym2612`, `validate_sn76489`: each device, then `core/synth` through it |
+| `tools/dev/` | Repo upkeep: `check`, `release`, `hooks/` (git hooks, the Claude Code ruff hook) |
 | `tests/regression.py` | Every config (and its merged build, variants, ROM cases) converted and compared with a baseline MOD, cells and samples |
 | `tests/tool_regression.py` | The VGM tools' output, byte for byte |
 | `tests/core/` | Unit tests, mirroring the code: `tests/<package>/test_<module>.py` tests `<package>/<module>.py` (`python -m pytest tests -q`).  The folders are no packages: pytest imports by path (`--import-mode=importlib`, pyproject.toml), so `tests/core` never stands in for `core` |

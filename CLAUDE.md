@@ -60,7 +60,13 @@ sonic2mod/
     audit/ ui/   VGZ audits' library; reports and CLI chrome
   sfx/         offline SFX driver
   configs/     settings.yaml; sfx.yaml (sonic2wav); per-song YAML a folder per game: sonic_1/, moonwalker/ (minimal configs), ...
-  tools/       analysis and audit utilities (vgm_*, mod_*, merge_survey, fold_csv, rom_import, ...)
+  tools/       utilities, a folder by what they work on:
+    vgm/         against a rip: vgm_analyze, vgm_compare, vgm_pitch_audit, vgm_lift, vgm_frames, measure_volumes
+    mod/         a written MOD: mod_audit, mod_lint, mod_compare, mod_render_diff
+    config/      write or derive a song config: merge_survey, fold_csv, config_to_chip_space, make_credits_config
+    rom/         read a ROM: rom_import, song_dump
+    chips/       chip device smoke tests: validate_ym2612, validate_sn76489
+    dev/         repo upkeep: check, release, hooks/
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
   3rdparty/    vendored C emulators (nuked-opn2/, sn76489/);  build/: their compiled libraries (gitignored);
                prebuilt/: the Windows DLLs, used when no compiler is on PATH (tracked)
@@ -74,7 +80,7 @@ sonic2mod/
 ```bash
 pip install pyyaml rich   # external dependencies
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
-git config core.hooksPath tools/hooks   # the pre-commit hook (per clone): tools/check.py --fast
+git config core.hooksPath tools/dev/hooks   # the pre-commit hook (per clone): tools/dev/check.py --fast
 ```
 
 Synthesis compiles `3rdparty/`'s `ym3438.c` / `sn76489.c` into `build/` with gcc or MSVC on first use; with
@@ -83,14 +89,14 @@ rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 
 ## Linting
 
-Enforced: the git pre-commit hook (`tools/hooks/pre-commit`) runs `tools/check.py --fast` when a
-`.py` / `.toml` file is staged; `tools/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude
+Enforced: the git pre-commit hook (`tools/dev/hooks/pre-commit`) runs `tools/dev/check.py --fast` when a
+`.py` / `.toml` file is staged; `tools/dev/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude
 Code adds none: `attribution` in `.claude/settings.json`); a Claude Code hook there runs ruff on each
 Python file Claude edits and hands the findings back.  Every rule in `pyproject.toml` carries a
 plain-English line saying what it flags (an ignored one: and why it is off).
 
 ```bash
-python tools/check.py          # all of the below + unit tests; --fast: without the unit tests
+python tools/dev/check.py          # all of the below + unit tests; --fast: without the unit tests
 ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
@@ -117,28 +123,28 @@ python convert.py configs/sonic_1/01_title_screen.yaml --merged
 # smaller Amiga build; output output/sonic_1/02_green_hill_zone_lofi_merged.mod).  Every config tool takes --variant
 python convert.py configs/sonic_1/02_green_hill_zone.yaml --variant lofi --merged
 # Which channel pairs of a song can fold (paired / solo / orphans / held / shorter per pair) + the YAML
-python tools/merge_survey.py configs/sonic_1/01_title_screen.yaml            # --all: every pair
+python tools/config/merge_survey.py configs/sonic_1/01_title_screen.yaml            # --all: every pair
 # Folds that differ per pattern: a table (rows = reference MOD patterns in hex, columns = Ch 1..N, cells
 # fold N / fold N* (this one leads) / keep / drop / blank) → merge_patterns: in the config; --write puts it there between markers
-python tools/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv --write
+python tools/config/fold_csv.py configs/sonic_1/02_green_hill_zone.yaml input/sonic_1/02_ghz_fold.csv --write
 # Audit the merged build's samples: length vs longest note, loops, unused, banks (no config needed)
-python tools/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod
+python tools/mod/mod_audit.py output/sonic_1/02_green_hill_zone_merged.mod
 # Audit the merged build: each MOD channel against the sum of its chip channels (balance, onsets);
 # a merge_patterns: config gets a column x pattern-block table (block level, primary's key-ons)
-python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz" --merged
+python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz" --merged
 
 # A minimal config (name, input_file, rom_song; no channels:) - everything else derived from the song
 python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config
-python tools/vgm_compare.py configs/moonwalker/81_smooth_criminal.yaml "reference/vgz/moonwalker/03 - Smooth Criminal.vgz" --write-volumes
+python tools/vgm/vgm_compare.py configs/moonwalker/81_smooth_criminal.yaml "reference/vgz/moonwalker/03 - Smooth Criminal.vgz" --write-volumes
 # Golden Axe (SMPS Z80 Type 0 FM; docs/smps_variants.md): minimal configs, FM drums rendered from the ROM
 python convert.py configs/golden_axe/81_wilderness.yaml
 # Convert straight from the ROM's bytecode (input/roms/, not in git): config rom_song:, or override
 python convert.py configs/sonic_1/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
 # The ROM's songs and SFX: list them, compare each with its asm, write SMPS2ASM text, extract the DAC samples
-python tools/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1
-python tools/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
+python tools/rom/rom_import.py input/roms/sonic_rev01.bin --compare reference/smps_drivers/sonic_1
+python tools/rom/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
 # Every song of a ROM (or an asm folder) as read, walked and played, as text: what a reader change moved
-python tools/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
+python tools/rom/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
 
 # Render all 49 sound effects as configs/sfx.yaml says (format wav/raw, bits, rate, folder, level, dither):
 # shipped 16-bit stereo WAV → output/sonic_1/sfx/
@@ -163,40 +169,40 @@ python analyze.py "reference/smps_drivers/sonic_1/music/Mus8A - Title Screen.asm
 
 # Verify: open output .mod in Fast Tracker 2 Clone (https://16-bits.org/ft2.php)
 # Smoke-test each chip device, then core/synth through it (16-bit .raw files in output/ — load in Audacity):
-python tools/validate_ym2612.py       # A4 tone → validate_test.raw; voice, renderer_test.raw, sample_gen_test.raw
-python tools/validate_sn76489.py      # C3 tone + white noise → psg_{tone,noise}_test.raw; psg_render_*, psg_sample_gen_*
+python tools/chips/validate_ym2612.py       # A4 tone → validate_test.raw; voice, renderer_test.raw, sample_gen_test.raw
+python tools/chips/validate_sn76489.py      # C3 tone + white noise → psg_{tone,noise}_test.raw; psg_render_*, psg_sample_gen_*
 
 # Analyse FM channels from a VGM/VGZ game recording (verify synth_root values)
-python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
+python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip fm --channel FM1 FM2
 # Analyse SN76489 PSG noise channel (compare against title_screen.yaml output)
-python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip psg --channel NOISE
+python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip psg --channel NOISE
 # Show all chips / all channels (rate-3 noise rows show the tone-2 divider, DAC rows show PCM seeks)
-python tools/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
+python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
 # The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC sample starts (a seek, or bytes after a pause) per V-int
-python tools/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
+python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
-python tools/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
+python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
 
 # The song as read (asm or ROM) against its rip, lifted (docs/todo/vgz_conversion.md Phase 1): differences per
 # channel and aspect, repeated ones grouped.  The lift takes the song's tempo; aspects default to what it reads
 # (onset length note; --aspects all).  Pairs by number or the rips.yaml beside the configs
-python tools/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
-python tools/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
-python tools/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
-python tools/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
-python tools/vgm_lift.py --all --configs configs/moonwalker                  # every Moonwalker pair
-python tools/vgm_lift.py --all --configs configs/streets_of_rage   # its rips.yaml names their folder (folder:)
+python tools/vgm/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
+python tools/vgm/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
+python tools/vgm/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
+python tools/vgm/vgm_lift.py configs/moonwalker/88_round_clear.yaml --skip DAC   # a ROM song and its rip
+python tools/vgm/vgm_lift.py --all --configs configs/moonwalker                  # every Moonwalker pair
+python tools/vgm/vgm_lift.py --all --configs configs/streets_of_rage   # its rips.yaml names their folder (folder:)
 # No lift: every note's pitch (detune in), level and voice registers against the rip's frame log on
 # its frame - what the lift cannot read.  Any driver; tied notes counted apart (vibrato runs on)
-python tools/vgm_frames.py --all --configs configs/streets_of_rage
-python tools/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
+python tools/vgm/vgm_frames.py --all --configs configs/streets_of_rage
+python tools/vgm/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
 # A rip's own glitches (a V-int lost: every channel a frame late from there on): candidates, with evidence.
 # Confirmed ones go in rips.yaml by hand ({rip:, glitches:, foreign:}); every rip tool then undoes them
-python tools/vgm_frames.py --all --glitches --configs configs/space_harrier_2
+python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_2
 
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
@@ -204,21 +210,21 @@ python tools/vgm_frames.py --all --glitches --configs configs/space_harrier_2
 # ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
 # Renders go to output/compare/<config>/; --skip-render reuses them.  Reference renders run in parallel and are
 # kept in samples.render_cache (output/cache/vgmplay/), keyed on the VGZ + VGMPlay.ini: a song is rendered once
-python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
+python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
 # Its "Per-instrument level error" table is what sample_list volumes are set from; --write-volumes applies
 # the suggestions to the config (then re-convert and re-run to verify)
-python tools/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --write-volumes
+python tools/vgm/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --write-volumes
 # CI-style: JSON results + exit 1 when a threshold is exceeded (also --fail-unmatched N)
-python tools/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
+python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz" --json output/compare/title.json --fail-balance-db 2 --fail-pitch-cents 25
 
 # Every song at once (cores-1 in parallel): convert, one --write-volumes pass, re-convert, verify; prints the
 # volumes changed, what is still >= 1 dB off (ceiling / channels-disagree / 2-note ones marked) and the pitch
 # verdict per song.  Run after any change to how samples are rendered.  One write pass only: the errors are
 # relative to the song's median note, so a further pass drifts the whole song.  Reference renders are reused.
-python tools/measure_volumes.py
-python tools/measure_volumes.py --only green_hill special_stage --no-write
+python tools/vgm/measure_volumes.py
+python tools/vgm/measure_volumes.py --only green_hill special_stage --no-write
 # Other games: pairs from the rips.yaml beside the configs (config stem: rip; or --rips FILE)
-python tools/measure_volumes.py --configs configs/moonwalker      # the rips: its mirror, reference/vgz/moonwalker
+python tools/vgm/measure_volumes.py --configs configs/moonwalker      # the rips: its mirror, reference/vgz/moonwalker
 ```
 
 
@@ -258,7 +264,7 @@ python -m pytest tests/core/merge -q                   # one package's unit test
    more than it needs to).
 2. Make the change.
 3. Run without flags — PASS means no regressions on channels, and no note the player cannot
-   sound that the baseline sounds (`tools/mod_lint.py`: a `3xx` with no sample playing or a
+   sound that the baseline sounds (`tools/mod/mod_lint.py`: a `3xx` with no sample playing or a
    played-out one, a note on an empty instrument slot; run it on any MOD by hand too).
 4. A FAIL is not an acceptance: read each changed cell before regenerating that song's baseline —
    a `3FF` where the sounding sample cannot reach the pitch, or a note on a slot the merged build
@@ -267,7 +273,7 @@ python -m pytest tests/core/merge -q                   # one package's unit test
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD (against its own game's rips), `vgm_lift` (the Moonwalker
-pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's, Space Harrier II's and OutRun's pairs) and `read_<game>` — `tools/song_dump.py`: every song of each game (Sonic's asm and ROM,
+pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's, Space Harrier II's and OutRun's pairs) and `read_<game>` — `tools/rom/song_dump.py`: every song of each game (Sonic's asm and ROM,
 Moonwalker, Golden Axe, Streets of Rage, Space Harrier II, OutRun) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 
@@ -280,7 +286,7 @@ python tests/tool_regression.py --generate-baselines --only read_golden_axe   # 
 **Adding a case:** a line in `tests/cases.yaml` (`name`, `config`, `variant`, `why`); its
 `--generate-baselines --only <name>`.  To ignore a channel while deliberately changing it, add
 `"my_song": [8]` to `_CASE_OVERRIDES` in `tests/regression.py` (0-based MOD indices); it is normally
-empty.  `tools/mod_compare.py` diffs any two MODs (`compare_mods(a, b, ignore_channels=[8])`).
+empty.  `tools/mod/mod_compare.py` diffs any two MODs (`compare_mods(a, b, ignore_channels=[8])`).
 
 ## Rules that are easy to get wrong
 

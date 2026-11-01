@@ -140,7 +140,7 @@ def _vgzs() -> list[Path]:
 
 def _analyze_cases(vgz: Path) -> list[_Case]:
     n = vgz.name[_CASE_TAG]
-    tool = ["tools/vgm_analyze.py", str(vgz.relative_to(ROOT))]
+    tool = ["tools/vgm/vgm_analyze.py", str(vgz.relative_to(ROOT))]
     modes = {
         "rows": ["--chip", "all", "--max-rows", "0"],
         "psg0": ["--chip", "psg", "--psg-mod-cents", "0", "--max-rows", "0"],
@@ -157,16 +157,16 @@ def _song_cases(tc: dict, vgz: Path) -> list[_Case]:
     common = [tc["config"], str(vgz.relative_to(ROOT)), "--mod", tc["baseline"], "--settings",
               str(SETTINGS_FILE.relative_to(ROOT)), *variant_args(tc)]
     merged = "--merged" in tc["args"]
-    cases = [] if merged else [_Case(f"pitch_{tc['name']}", ["tools/vgm_pitch_audit.py", *common, "--list"], inputs)]
+    cases = [] if merged else [_Case(f"pitch_{tc['name']}", ["tools/vgm/vgm_pitch_audit.py", *common, "--list"], inputs)]
     workdir = str((RENDER_DIR / tc["name"]).relative_to(ROOT))
-    cases.append(_Case(f"compare_{tc['name']}", ["tools/vgm_compare.py", *common, *tc["args"], "--workdir", workdir],
+    cases.append(_Case(f"compare_{tc['name']}", ["tools/vgm/vgm_compare.py", *common, *tc["args"], "--workdir", workdir],
                        inputs, from_line=_COMPARE_START, renders=True))
     return cases
 
 
 def _lift_cases(vgzs: list[Path]) -> list[_Case]:
     """vgm_lift: the Sonic rips against their asm; the Moonwalker ROM's songs against their rips."""
-    tool = ["tools/vgm_lift.py"]
+    tool = ["tools/vgm/vgm_lift.py"]
     cases = [_Case("lift_all", [*tool, "--all"], [*vgzs, *RipShelf.load(_SONIC1_CONFIGS, VGZ_DIR).config_files()])]
     detail = next((v for v in vgzs if v.name.startswith(_LIFT_DETAIL)), None)
     if detail is not None:
@@ -194,8 +194,8 @@ def _frame_cases() -> list[_Case]:
         shelf = RipShelf.load(configs, rips)
         inputs = [rom, configs / RIPS_MAP, *sorted(rips.glob("*.vgz")), *shelf.config_files()]
         folder = configs.relative_to(ROOT).as_posix()
-        cases.append(_Case(f"frames_{name}", ["tools/vgm_frames.py", "--all", "--configs", folder], inputs))
-        cases.append(_Case(f"glitches_{name}", ["tools/vgm_frames.py", "--all", "--glitches", "--configs", folder], inputs))
+        cases.append(_Case(f"frames_{name}", ["tools/vgm/vgm_frames.py", "--all", "--configs", folder], inputs))
+        cases.append(_Case(f"glitches_{name}", ["tools/vgm/vgm_frames.py", "--all", "--glitches", "--configs", folder], inputs))
     return cases
 
 
@@ -206,7 +206,7 @@ def _read_cases() -> list[_Case]:
         if not source.exists():
             continue
         inputs = sorted(source.glob("*.asm")) if source.is_dir() else [source]
-        cases.append(_Case(f"read_{name}", ["tools/song_dump.py", source.relative_to(ROOT).as_posix(), *args], inputs))
+        cases.append(_Case(f"read_{name}", ["tools/rom/song_dump.py", source.relative_to(ROOT).as_posix(), *args], inputs))
     return cases
 
 

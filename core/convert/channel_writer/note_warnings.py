@@ -1,7 +1,7 @@
 """Warnings on how a note resolved: clamped to the MOD's three octaves, or outside every range of a
 mapped voice."""
 
-from ...config import ConversionConfig
+from ...config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
 from ...diagnostics import Diagnostics, WarningKind
 from ...mod import ModNote
 from ...plan import DriverState, ResolvedNote
@@ -31,11 +31,11 @@ def warn_resolution(diag: Diagnostics, config: ConversionConfig, source: str, st
     kind = WarningKind.CLAMP_HIGH if high else WarningKind.CLAMP_LOW
     w = {'channel': source, 'src_name': src_name, 'note_value': note.note_value, 'transpose': 0}
     if res.path == "fm_root":
-        assert entry is not None
+        assert isinstance(entry, InstrumentRange)
         w.update(voice_idx=st.voice,
                  boundary=_semitone_to_name(entry.high if high else entry.low))
     elif res.path == "psg_root":
-        assert entry is not None
+        assert isinstance(entry, PsgInstrumentEntry) and entry.low is not None
         edge = entry.low + ((_HIGHEST_NOTE if high else 0) - entry.root.value)
         w.update(voice_idx=None, extra_ctx=st.psg_label, boundary=_semitone_to_name(edge))
     else:

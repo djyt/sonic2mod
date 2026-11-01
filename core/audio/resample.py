@@ -11,10 +11,11 @@ once per pair and cached.
 from __future__ import annotations
 
 import math
+import sys
 
-try:                                    # Python 3.12+
+if sys.version_info >= (3, 12):
     from math import sumprod as _sumprod
-except ImportError:                     # pragma: no cover - 3.11 fallback
+else:                                   # pragma: no cover - 3.11 fallback
     def _sumprod(a, b):
         return sum(x * y for x, y in zip(a, b, strict=False))
 

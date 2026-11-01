@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..config import InstrumentRange, PsgInstrumentEntry
 from ..smps import (
     ChannelType,
     PsgForm,
@@ -172,7 +173,7 @@ class ResolvedNote:
     index: int               # MOD note index, 0 = C1 .. 35 = B3
     raw_index: int           # the same before clamping
     path: str
-    entry: object | None     # the InstrumentRange / PsgInstrumentEntry that routed it, or None
+    entry: InstrumentRange | PsgInstrumentEntry | None     # the entry that routed it, or None
     source: int              # source semitone (note byte - $81)
     key: int                 # what the ranges were matched against (DriverState.range_key)
     chip: int                # the real pitch the chip plays (chip_pitch)

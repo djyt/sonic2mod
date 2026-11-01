@@ -470,6 +470,7 @@ class ChannelWriter:
         """Whether a no-attack note may slide (settings.yaml `legato`): never under `retrigger`
         or into a banked sound; under `strict` only onto a sample of the same voice."""
         mode = self._ctx.legato_mode
+        assert n.event.note is not None                 # a note-on's event is a note
         if not n.event.note.is_no_attack or n.res.path == "merged" or mode == "retrigger":
             return False
         if n.region is not None:

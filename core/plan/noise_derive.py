@@ -3,7 +3,7 @@ with (the header voice or the last smpsPSGvoice) and, for rate-3 noise, the tone
 driver writes from PSG3's own notes.
 """
 
-from ..config import ConversionConfig
+from ..config import ConversionConfig, PsgInstrumentEntry
 from ..smps import ChannelType, SmpsSong, psg_tone2_divider
 from ..smps import semitone_to_note_name as _semitone_to_name
 from .driver_state import enabled_channels, walk_channel
@@ -67,7 +67,7 @@ def derive_rate3_dividers(song: SmpsSong, config: ConversionConfig) -> dict[int,
             if res is None:
                 continue
             e = res.entry
-            if e is not None and e.type != "tone" and e.noise_rate == 3:
+            if isinstance(e, PsgInstrumentEntry) and e.type != "tone" and e.noise_rate == 3:
                 # An envelope variant (psg_map entry's `envelopes:`) is its own instrument
                 rec = seen.setdefault(res.instrument, {'entry': e, 'notes': {}})
                 key = (event.note.note_value, st.transpose)

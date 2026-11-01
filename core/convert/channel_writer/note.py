@@ -4,13 +4,14 @@ from dataclasses import dataclass, field
 
 from ...mod import ModNote
 from ...plan import ResolvedNote
+from ...smps import SmpsEvent
 from .cells import Cells
 
 
 @dataclass
 class NoteOn:
     """One melodic note-on while it is being written (ChannelWriter._on_melodic)."""
-    event: object
+    event: SmpsEvent
     res: ResolvedNote
     tick: int
     duration: int

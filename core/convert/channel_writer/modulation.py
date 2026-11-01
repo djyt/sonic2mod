@@ -4,6 +4,7 @@ has the arithmetic)."""
 
 import math
 
+from ...config import InstrumentRange, PsgInstrumentEntry
 from ...mod import PERIOD_TABLE
 from ...plan import DriverState, detune_cents
 from ...smps import ChannelType, CoordFlag, ModSet, SmpsChannel, TrackRules
@@ -53,7 +54,7 @@ class Modulation:
         elif eff.flag == CoordFlag.MOD_OFF:
             self._active = False
 
-    def write(self, n: NoteOn, st: DriverState, entry: object | None, col: int,
+    def write(self, n: NoteOn, st: DriverState, entry: InstrumentRange | PsgInstrumentEntry | None, col: int,
               attack_free: bool, fill: FillCut, cxx_cell: tuple[int, int] | None) -> None:
         """What the note carries of the modulation: 4xy on the attack row (`attack_free`: its
         slot is free) and on the rows after it, or slides.  `entry`: the voice_map range the
@@ -68,12 +69,13 @@ class Modulation:
 
         if n.vib_on and speed > 0:
             self._continue(n, col, speed, depth, fill, cxx_cell)
+        assert n.event.note is not None                 # a note-on's event is a note
         if not n.event.note.is_no_attack:
             self._origin = n.tick
         if n.vib_on and self._slides and not n.legato:
             self._slide(n, st, col)
 
-    def _vibrato_of(self, n: NoteOn, st: DriverState, entry: object | None) -> tuple[int, int]:
+    def _vibrato_of(self, n: NoteOn, st: DriverState, entry: InstrumentRange | PsgInstrumentEntry | None) -> tuple[int, int]:
         """(4xy speed, depth) for this note: a per-entry override first, else the smpsModSet's
         speed and the depth of its swing at this note's frequency word."""
         override = getattr(entry, "vibrato", None)

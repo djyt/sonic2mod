@@ -30,9 +30,11 @@ from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
+from ..config import ConversionConfig, PsgSynthesisSettings, SynthesisSettings
+from ..convert import SmpsToModConverter
 from ..diagnostics import InfoKind, WarningKind
 from ..mod import MAX_MOD_SAMPLE_BYTES, PAL_AMIGA_CLOCK, audit
-from ..smps import NO_TEMPO_HOLDS, source_names, synth_note_name
+from ..smps import NO_TEMPO_HOLDS, ChannelType, SmpsSong, source_names, synth_note_name
 
 OK = "[green]✓[/green]"
 WARN = "[yellow]⚠[/yellow]"
@@ -57,15 +59,15 @@ _BAR_RED = 0.85
 @dataclass
 class Report:
     """Everything the report reads, gathered by convert.py once the file is written."""
-    config: object
-    song: object
-    converter: object
+    config: ConversionConfig
+    song: SmpsSong
+    converter: SmpsToModConverter
     output_path: str
     output_bytes: int
     merged: bool
     verbose: bool
-    synth: object
-    psg_synth: object
+    synth: SynthesisSettings
+    psg_synth: PsgSynthesisSettings
     bpm: dict = field(default_factory=dict)       # derived, exact, error_pct, better (option or None)
     mod_channels: int = 0
     patterns: int = 0
@@ -394,9 +396,9 @@ def print_header(console: Console, rep: Report) -> None:
     console.rule(f"[bold bright_white]{escape(cfg.name)}[/bold bright_white]  [dim]{build}[/dim]",
                  style="bright_black")
     kinds = [ch.header.channel_type for ch in song.channels]
-    parts = [p for p in ("DAC" if "DAC" in kinds else "",
-                         f"{kinds.count('FM')} FM" if "FM" in kinds else "",
-                         f"{kinds.count('PSG')} PSG" if "PSG" in kinds else "") if p]
+    parts = [p for p in ("DAC" if ChannelType.DAC in kinds else "",
+                         f"{kinds.count(ChannelType.FM)} FM" if ChannelType.FM in kinds else "",
+                         f"{kinds.count(ChannelType.PSG)} PSG" if ChannelType.PSG in kinds else "") if p]
     source = (f"[cyan]{escape(cfg.input_file)}[/cyan]  [dim]{escape(song.header.voice_label or '')} · "
               f"{' · '.join(parts)}[/dim]")
     b = rep.bpm
@@ -458,7 +460,7 @@ def _check_summaries(rep: Report, rows: list[dict], sources: dict[int, dict]) ->
                               f"{b['error_pct']:+.2f} %{hint}{extra}")
     else:
         out['tempo'] = (OK, f"{rep.config.target_bpm} BPM, the driver's tempo exactly{extra}")
-    notes = sum(1 for ch in rep.song.channels for e in ch.events if e.is_note and not e.note.is_rest)
+    notes = sum(1 for ch in rep.song.channels for e in ch.events if e.note is not None and not e.note.is_rest)
     out['pitch'] = (OK, f"{notes} notes, every one inside the MOD's three octaves and mapped")
     synth = [r for r in rows if sources.get(r['inst'], {}).get('kind') in ('FM', 'PSG', 'noise', 'chip', 'mix')]
     looped = sum(1 for r in synth if r['loop'])
@@ -535,7 +537,7 @@ def print_channels(console: Console, rep: Report, rows: list[dict]) -> None:
     t.add_column("Column", justify="right")
     t.add_column("Instruments", style="dim")
     for ch, name in zip(song.channels, source_names(song), strict=True):
-        notes = sum(1 for e in ch.events if e.is_note and not e.note.is_rest)
+        notes = sum(1 for e in ch.events if e.note is not None and not e.note.is_rest)
         c = by_source.get(name)
         cells = [name, str(notes)]
         if any(x.transpose for x in cfg.channels):

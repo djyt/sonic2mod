@@ -113,11 +113,8 @@ executionEnvironments = [
 ]
 include = ["core", "convert.py", "analyze.py", "sonic2wav.py", "sfx", "tools"]
 exclude = ["reference", "3rdparty", "build", "output", "**/__pycache__"]
-# Rules relaxed for intentionally dynamic code:
-# an import whose type stubs exist but whose source package is not installed
+# Off: an import whose type stubs exist but whose source package is not installed
 reportMissingModuleSource = false
-# an attribute pyright cannot find on the object's declared type (set at run time, getattr'd)
-reportAttributeAccessIssue = false
 
 # Import rules (agents.md layering), checked by tests/test_layers.py (or lint-imports).
 # Each package imports only the layers below it; the bottom ones (song IR, MOD, chips, audio)

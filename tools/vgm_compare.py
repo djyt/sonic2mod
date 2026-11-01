@@ -169,7 +169,7 @@ def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str,
     return offset
 
 
-def _note_result(ch: str, evs: list[tuple], i: int, rd: _Renders, offset: float) -> dict:
+def _note_result(ch: str, evs: list[NoteStart], i: int, rd: _Renders, offset: float) -> dict:
     """Key-on `evs[i]` measured in both renders: pitch on its strongest partial, level."""
     t, fref, note = evs[i].ms / 1000.0, evs[i].hz, pitch_name(evs[i].hz)
     t_end = evs[i + 1].ms / 1000.0 if i + 1 < len(evs) else t + 2.0
@@ -534,7 +534,7 @@ def report(cfg: ConversionConfig, song, recording: _Reference, mod_path: Path, w
     # Pitched notes (FM + PSG tone).  Notes the recording plays as the MOD's single pass ends or later
     # (its second time round the loop) have nothing to be compared with; 150 ms keeps the measuring
     # window inside the render.
-    per_ch: dict[str, list] = {}
+    per_ch: dict[str, list[NoteStart]] = {}
     for n in notes:
         if (n.channel in rd.vgm and n.channel not in (DAC_NAME, "NOISE") and n.hz > 0
                 and n.ms / 1000.0 + offset < mod_end - 0.15):
@@ -592,7 +592,7 @@ def report_merged(recording: _Reference, workdir: Path, offset: float | None, re
     mod_end = len(rd.mod["FULL"]) / SR
 
     # Per-note pitch and level at the primary's key-ons
-    per_ch: dict[str, list] = {}
+    per_ch: dict[str, list[NoteStart]] = {}
     for n in names:
         primary = labels[n][0]
         if primary in ("DAC", "NOISE"):

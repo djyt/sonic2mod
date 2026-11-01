@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..config import PsgInstrumentEntry
 from ..smps import ChannelType
 from .driver_state import enabled_channels, walk_channel
 
@@ -46,7 +47,7 @@ def resolve_synth_roots(song, config) -> list[dict]:
             entry = res.entry
             if entry is None or entry.root is None:
                 continue
-            if st.is_psg and (st.in_noise_mode or entry.type != "tone"):
+            if st.is_psg and (st.in_noise_mode or (isinstance(entry, PsgInstrumentEntry) and entry.type != "tone")):
                 continue
             m_rel = res.raw_index - entry.root.value      # m - root: anchored, or the transpose path
             per = votes.setdefault(id(entry), {})

@@ -11,6 +11,7 @@ from typing import NamedTuple
 
 from ..audio import db_to_gain, power_to_db
 from ..chips import TL_STEP_DB
+from ..config import MergeGroup
 from ..mod import MOD_NOTE_MAP
 from ..plan import FmLayer, walk_channel
 from ..smps import (
@@ -233,7 +234,7 @@ class PairStats:
                                                      # ones a fill pool can still place (fill_lost)
     cut_notes: dict = field(default_factory=dict)    # {tick: NoteOn} paired notes whose ring the fold
                                                      # cuts (held / truncated): fill_cut candidates
-    group: object = None      # the MergeGroup these stats were paired for (two groups may share a
+    group: MergeGroup | None = None      # the MergeGroup these stats were paired for (two groups may share a
                               # primary in different patterns); None from the survey
 
     @property

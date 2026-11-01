@@ -11,7 +11,7 @@ Public API::
         note_to_psg_n,
     )
 
-    pcm, rate = render_psg_tone(note_to_psg_n(mod_note_index, psg_frequencies))
+    pcm, rate = render_psg_tone(note_to_psg_n(mod_note_index, rules.psg_table))
     pcm, rate = render_psg_noise(white=True, noise_rate=0)
 """
 
@@ -25,7 +25,7 @@ from ..audio import to_mono as _to_mono
 from ..chips import MD_PSG_CLOCK
 from ..chips.sn76489 import SN76489
 from ..config import DEFAULT_PSG_OVERSAMPLE
-from ..smps import PsgDrumFrame
+from ..smps import C1_SEMITONE, PsgDrumFrame, PsgTable
 
 # ---------------------------------------------------------------------------
 # Public helper
@@ -38,18 +38,18 @@ from ..smps import PsgDrumFrame
 DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
 
 
-def note_to_psg_n(mod_note_index: int, psg_frequencies: tuple[int, ...], clock_rate: int = MD_PSG_CLOCK) -> int:
+def note_to_psg_n(mod_note_index: int, table: PsgTable, clock_rate: int = MD_PSG_CLOCK) -> int:
     """MOD note index → the SN76489 10-bit divider N the driver writes for that note.
 
-    The driver's PSG table (`psg_frequencies`, PlaybackRules.psg_frequencies; index 0 = nC0 = C3,
-    so MOD index i, C1 = 0, is table index i − 24) is what the hardware plays; Sonic 1's differs from
-    the rounded equal-temperament divider on 29 of its 70 entries, by up to 85 cents at the top.
-    Off the table, or at another clock, the formula N = clock / (32 × freq) stands in.
-    Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
+    The driver's PSG table (PlaybackRules.psg_table) is what the hardware plays: its chromatic run
+    starts at its own pitch (Sonic 1's at C3, Streets of Rage 2's and Space Harrier II's at A2).
+    Sonic 1's differs from the rounded equal-temperament divider on 29 of its 70 entries, by up to
+    85 cents at the top.  Off the run, or at another clock, the formula N = clock / (32 × freq)
+    stands in.  Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
-    i = mod_note_index - 24
-    if clock_rate == MD_PSG_CLOCK and 0 <= i < len(psg_frequencies) and psg_frequencies[i]:
-        return psg_frequencies[i]
+    i = mod_note_index + C1_SEMITONE - table.pitch
+    if clock_rate == MD_PSG_CLOCK and 0 <= i < table.notes and table.divider(i):
+        return table.divider(i)
     freq = 440.0 * (2.0 ** ((mod_note_index - 45) / 12.0))
     n = round(clock_rate / (2.0 * freq * 16.0))
     return max(1, min(1023, n))

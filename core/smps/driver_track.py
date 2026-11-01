@@ -9,7 +9,8 @@ bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answer
                          voice back, then the level
     note(value)          the note byte as it sounds: a drum track's selected sample, a noise note
                          on the tone it is clocked by
-    cut(note, tied_next) the note as the driver keys it off: itself, or the part it holds and a rest
+    cut(note, tied_next) the note as the driver keys it off, in time order: itself, or the part it
+                         holds and a rest; an effect between them plays where the note before it ends
     jump_clears_tie      a jump drops a pending tie
     legato               every read ties, as if smpsNoAttack came before it (Legato on)
     duration(ticks)      a duration (byte x divider) as the track counts it
@@ -20,6 +21,7 @@ A track whose driver states no TrackRules (Sonic 1's) passes everything through.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 
 from ..chips import CH3_CHANNEL
 from .driver_tables import signed_byte, signed_word
@@ -47,6 +49,9 @@ from .song import MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader
 from .voice_patch import NO_CHANGES, VoicePatcher
 
 _BYTE_VALUES = 0x100
+
+# What a key-off leaves, in time order: the notes it splits a note into, and the effects between them
+KeyedOff = SmpsNote | PlayedEffect
 _FM_PART = 3                    # channels per YM2612 part: a register's low bits name one of them
 _SPECIAL_MODE_CHANNEL = FM_CHANNEL_NAMES[CH3_CHANNEL]
 
@@ -203,10 +208,11 @@ class DriverTrack:
             return value
         return MAX_PSG if self._tone_note is None else self._tone_note
 
-    def cut(self, note: SmpsNote, tied_next: bool) -> list[SmpsNote]:
+    def cut(self, note: SmpsNote, tied_next: bool) -> Sequence[KeyedOff]:
         """`note` (its duration read; `tied_next`: the next byte is a tie) as the driver keys it
-        off: itself, or the part it holds and a rest after (both cut; no held part: the rest
-        alone).  A gated note at its gate; a rest after a tie where TrackRules.key_off.tied_rest_holds."""
+        off, a note first: itself, or the part it holds and a rest after (both cut; no held part:
+        the rest alone).  A gated note at its gate; a rest after a tie where
+        TrackRules.key_off.tied_rest_holds.  An effect in the list plays where the note before it ends."""
         if not note.is_rest:
             if self._gated(note, tied_next):
                 return _split(note, note.duration - self._gate)

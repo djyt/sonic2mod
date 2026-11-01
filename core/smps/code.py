@@ -16,7 +16,6 @@ the tie a jump drops) its track answers: driver_track.py, by the song's Playback
 
 from __future__ import annotations
 
-import itertools
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -419,11 +418,16 @@ class _Walker:
         event = cur.channel.events[-1]
         if event.note is None:
             return
-        played = self._driver.cut(event.note, self._next_op(i) is OpKind.NO_ATTACK)
-        event.note = played[0]
-        for before, note in itertools.pairwise(played):
-            tick = cur.channel.events[-1].tick_position + before.duration
-            cur.channel.events.append(SmpsEvent(note=note, tick_position=tick))
+        first, *rest = self._driver.cut(event.note, self._next_op(i) is OpKind.NO_ATTACK)
+        assert isinstance(first, SmpsNote), "a key-off leaves its note first"
+        event.note = first
+        tick = event.tick_position + first.duration
+        for played in rest:
+            if isinstance(played, SmpsNote):
+                cur.channel.events.append(SmpsEvent(note=played, tick_position=tick))
+                tick += played.duration
+            else:
+                cur.channel.events.append(SmpsEvent(effect=played, tick_position=tick))
 
     def _next_op(self, i: int) -> OpKind | None:
         """The kind of the first op from `i` that is not a label."""

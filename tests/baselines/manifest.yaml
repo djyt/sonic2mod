@@ -229,6 +229,36 @@ sh2_winners_flight:
   config: 38bbf08c007c
   date: '2026-11-01'
   settings: f08dfd2ff1bd
+sor2_game_over:
+  commit: de1923e-dirty
+  config: 573c4c1bf270
+  date: '2026-11-01'
+  settings: f08dfd2ff1bd
+sor2_go_straight:
+  commit: de1923e-dirty
+  config: 3cd8febd439a
+  date: '2026-11-01'
+  settings: f08dfd2ff1bd
+sor2_jungle_base:
+  commit: de1923e-dirty
+  config: 01b22f667c3c
+  date: '2026-11-01'
+  settings: f08dfd2ff1bd
+sor2_level_complete:
+  commit: de1923e-dirty
+  config: 313ed9b20249
+  date: '2026-11-01'
+  settings: f08dfd2ff1bd
+sor2_song_12:
+  commit: de1923e-dirty
+  config: f9cb3005d436
+  date: '2026-11-01'
+  settings: f08dfd2ff1bd
+sor2_too_deep:
+  commit: de1923e-dirty
+  config: 026e674b2f48
+  date: '2026-11-01'
+  settings: f08dfd2ff1bd
 special_stage:
   commit: d4522d7
   config: 2fdf36b4501f

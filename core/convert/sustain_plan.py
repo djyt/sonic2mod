@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from ..audio import SustainLoop
 from ..config import SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
-from ..merge import MergePlan
+from ..merge import merge_plan_of
 from ..mod import PERIOD_TABLE, clamp_note, finetune_ratio, max_sustain_secs, shift_ratio, shifted_rate
 from ..plan import ConversionPlan, Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import ChannelType, SmpsSong
@@ -47,14 +47,14 @@ def _cut_ring(rings: _Rings, tick: int) -> None:
 
 
 class SustainPlanner:
-    """One pass's sustains, on its final song and plan (`merge`: the merged build's, conv.merge)."""
+    """One pass's sustains, on its final song and plan."""
 
-    def __init__(self, song: SmpsSong, conv: ConversionPlan, merge: MergePlan | None,
-                 synth: SynthesisSettings | None, timeline: Timeline, diag: Diagnostics) -> None:
+    def __init__(self, song: SmpsSong, conv: ConversionPlan, synth: SynthesisSettings | None,
+                 timeline: Timeline, diag: Diagnostics) -> None:
         self._song = song
         self._conv = conv
         self._config = conv.config
-        self._merge = merge
+        self._merge = merge_plan_of(conv)
         self._synth = synth
         self._timeline = timeline
         self._diag = diag
@@ -77,14 +77,14 @@ class SustainPlanner:
         return {i.inst: (i.root_idx, i.synth_shift)
                 for i in psg_catalogue(self._conv).values()}
 
-    def _slides_after(self, chan_cfg, start: int, rest: int, merge: MergePlan | None) -> bool:
+    def _slides_after(self, chan_cfg, start: int, rest: int) -> bool:
         """Whether the rest at `rest` ending a note that started at `start` is written as a
         release slide, as core.convert.channel_writer writes it (ColumnRouter.borrowed): in the
         merged build, not on a column another channel's group routes notes onto there (a C00
         then; a slide would sit on their notes).  A group routing this channel's own notes there
         is no borrow: Green Hill lofi's FM3 chords (mod_channel: 3) end in slides, and their
         sample was cut where a C00 would have ended them, 0.13 s into the slide at full level."""
-        plan = merge
+        plan = self._merge
         if plan is None:
             return True
         col = plan.route_at(chan_cfg.source, self._timeline.pattern_of(start))
@@ -111,7 +111,7 @@ class SustainPlanner:
             hi = max(hi, (int(start // tpr) + 1) * tpr)
         return max(0.0, lo), hi
 
-    def _needs(self, kind: str, merge: MergePlan | None) -> dict[int, tuple[float, tuple[int, int] | None]]:
+    def _needs(self, kind: str) -> dict[int, tuple[float, tuple[int, int] | None]]:
         """{MOD instrument: (seconds of sample it must hold, synthesis root index or None)}
         over the enabled channels of `kind` ("FM" / "PSG").
 
@@ -130,6 +130,7 @@ class SustainPlanner:
         The MOD note and instrument are the ones core.convert.channel_writer will trigger: the same
         walk_channel / resolve_note.
         """
+        merge = self._merge
         finetunes = {slot: row.finetune for slot, row in self._conv.samples.rows().items()}
         roots = self._synthesis_roots(kind)
         # A note that plays a mixed composite (core.merge) plays its source samples inside it:
@@ -149,7 +150,7 @@ class SustainPlanner:
             if merge is not None and not chan_cfg.enabled:
                 continue            # a follower: its notes play as composites (credited above) or
                                     # spliced onto a live channel (counted there), or not at all
-            rings = self._rings(chan_cfg, channel, kind, merge)
+            rings = self._rings(chan_cfg, channel, kind)
 
             # A channel's last note, with no rest or note after it, rings out into its sample's
             # release (a jingle's final chord): that instrument keeps its release padding
@@ -189,9 +190,10 @@ class SustainPlanner:
                     refs[inst_i] = max(refs.get(inst_i, 0.0), wall_ref * scale)
         return needs
 
-    def _rings(self, chan_cfg, channel, kind: str, merge: MergePlan | None) -> _Rings:
+    def _rings(self, chan_cfg, channel, kind: str) -> _Rings:
         """One channel's rings, as core.convert.channel_writer plays its notes in the `kind` pass:
         a rest's C00 (or release slide) ends one, a smpsNoAttack rest or legato note carries it on."""
+        merge = self._merge
         foreign = channel.header.channel_type != kind
         rings: _Rings = []
         # A smpsNoAttack note is a 3FF (the sample rings on) unless `legato: retrigger`
@@ -222,7 +224,7 @@ class SustainPlanner:
                     sounding.ticks += note.duration         # continuation: no C00, keeps advancing
                     continue
                 if sounding is not None:
-                    sounding.slides = self._slides_after(chan_cfg, sounding.start, event.tick_position, merge)
+                    sounding.slides = self._slides_after(chan_cfg, sounding.start, event.tick_position)
                 rings.append(None)                          # C00 (or a slide) ends the ring
                 continue
 
@@ -245,7 +247,7 @@ class SustainPlanner:
         (max_sustain_secs).  In the merged build an instrument that is not rendered
         (MergePlan.unused) sets nothing."""
         merge = self._merge
-        needs = self._needs(kind, merge)
+        needs = self._needs(kind)
         if merge is not None:
             needs = {i: n for i, n in needs.items() if i not in merge.unused}
         auto = settings.sustain_duration == "auto"

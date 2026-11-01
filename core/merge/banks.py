@@ -37,8 +37,9 @@ import math
 from dataclasses import dataclass, field
 
 from ..audio import DEFAULT_DITHER, gain_to_db, to_int8
-from ..config import SampleRow, SampleTable
+from ..config import SampleRow
 from ..mod import ModSample, note_rate
+from ..plan import SampleTable
 from .mix import composite_dither
 from .model import Composite, MergePlan
 from .slots import drop_composite, stand_in

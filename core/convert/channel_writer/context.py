@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from ...config import ConversionConfig, SynthesisSettings
 from ...diagnostics import Diagnostics
-from ...merge import MergePlan
+from ...merge import MergePlan, merge_plan_of
 from ...mod import ModFile
 from ...plan import ConversionPlan, DetunePlan, Timeline, detune_cents, fm_catalogue
 from ...smps import C1_SEMITONE, SmpsSong
@@ -30,7 +30,6 @@ class WriterContext:
     timeline: Timeline
     diag: Diagnostics
     vibrato: VibratoSpeed
-    merge: MergePlan | None                 # conv.merge, all of it
     fm_volume_mode: str                     # "baked" | "absolute" | "off"
     psg_volume_mode: str                    # "baked" | "absolute"
     pan_law_db: float
@@ -55,6 +54,10 @@ class WriterContext:
     @property
     def detune(self) -> DetunePlan | None:
         return self.conv.detune
+
+    @property
+    def merge(self) -> MergePlan | None:
+        return merge_plan_of(self.conv)
 
     @property
     def amiga_clock(self) -> float:

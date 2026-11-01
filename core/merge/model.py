@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from ..config import ConversionConfig, MergeGroup, SampleRow
-from ..plan import FmInstrument
+from ..plan import ConversionPlan, FmInstrument
 from ..smps import ChannelType
 from .notes import CHIP, CompositeKey, NoteOn, PairStats
 
@@ -153,6 +153,8 @@ class MergePlan:
                                                     #   a vacated channel's adds 'vacate': True and 'kept'
     slots_free: int = 0                             # instrument slots the composites could take
     slots_wanted: int = 0                           # composites the groups asked for (after max_composites)
+    bank_slots: int = 0                             # slots held back for the sample banks (merge_bank_slots,
+                                                    #   or the reserve convert() retries with)
     spare_slots: list[int] = field(default_factory=list)   # slots the fit left free (the banks take them)
     banks: list = field(default_factory=list)       # core.merge.banks.Bank, once the mixes are packed
     regions: dict[tuple[str, int], tuple[int, int]] = field(default_factory=dict)   # (primary, tick) ->
@@ -247,6 +249,13 @@ class MergePlan:
     def stats_of(self, g: MergeGroup) -> list[PairStats]:
         """The pairings of one group's followers."""
         return [st for st in self.stats if st.group is g]
+
+
+def merge_plan_of(conv: ConversionPlan) -> MergePlan | None:
+    """The merged build's plan a conversion holds (ConversionPlan.merge), all of it."""
+    plan = conv.merge
+    assert plan is None or isinstance(plan, MergePlan)
+    return plan
 
 
 class GroupNotes(NamedTuple):

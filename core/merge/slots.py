@@ -3,8 +3,7 @@ their slot up first, stand-ins taking a dropped composite's notes."""
 
 from __future__ import annotations
 
-from ..config import SampleTable
-from ..plan import ConversionPlan, fm_catalogue, psg_catalogue, walk_channel
+from ..plan import ConversionPlan, SampleTable, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import source_map
 from .model import LAST_MOD_NOTE, NO_SLOT, Composite, MergePlan
 from .notes import CompositeKey

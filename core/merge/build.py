@@ -13,7 +13,7 @@ A unison chord's primary instrument moves too (bake_volumes).
 """
 
 from ..audio import DEFAULT_TAPS, FLAT_DB, db_to_gain
-from ..config import DEFAULT_SHELF_HZ, SampleRow, SampleTable, SynthesisSettings
+from ..config import DEFAULT_SHELF_HZ, SampleRow, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..mod import (
     MAX_MOD_SAMPLE_BYTES,
@@ -24,7 +24,7 @@ from ..mod import (
     db_to_mod_volume,
     headroom_db,
 )
-from ..plan import Timeline
+from ..plan import SampleTable, Timeline
 from ..smps import ChannelType
 from .banks import pack_banks
 from .mix import mix_pcm_composites
@@ -111,13 +111,12 @@ class MergedBuild:
     """The merged build's samples: the chip composites' volumes, the pcm mixes and their banks,
     and the volumes moved from the reference build's levels to the merged build's."""
 
-    def __init__(self, plan: MergePlan, mod: ModFile, table: SampleTable, bank_slots: int,
+    def __init__(self, plan: MergePlan, mod: ModFile, table: SampleTable,
                  settings: SynthesisSettings | None, timeline: Timeline, diag: Diagnostics,
                  baselines: dict[str, dict[int, float]], retry: dict | None) -> None:
         self._plan = plan
         self._mod = mod
         self._table = table             # the conversion's sample_list rows (the volumes set here)
-        self._bank_slots = bank_slots   # slots the plan held back for the banks
         self._settings = settings
         self._timeline = timeline
         self._diag = diag
@@ -197,7 +196,7 @@ class MergedBuild:
         self.idle_bank_slots = idle
         if self._retry is not None:            # the second pass left one idle too
             self._diag.warn(WarningKind.MERGE_BANK_IDLE, channel='merge', slots=idle,
-                            reserve=self._bank_slots, banks=len(plan.banks), dropped=dropped)
+                            reserve=plan.bank_slots, banks=len(plan.banks), dropped=dropped)
 
     # --- volumes --------------------------------------------------------------------------------
     def scale_chip_volumes(self, fm_peaks: dict[int, tuple[int, int, float]]) -> None:

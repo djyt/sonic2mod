@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import dataclasses
 import os
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from ..mod import MOD_MAX_VOLUME, ModFile
@@ -72,7 +70,7 @@ SAMPLE_SLOT, SAMPLE_FILE, SAMPLE_VOLUME, SAMPLE_FINETUNE = range(4)
 class SampleRow:
     """A sample_list row: the instrument `slot` is the sample `file` (in samples_dir, or the name a
     rendered sample carries), at `volume` (0-64) and `finetune` (-8..7).  The merged build and the
-    detune variants add rows, and set a row's volume or slot as they place it."""
+    detune variants add rows to a conversion's own table (core.plan.SampleTable)."""
     slot: int
     file: str
     volume: int = MOD_MAX_VOLUME
@@ -84,45 +82,6 @@ class SampleRow:
         if not isinstance(row, list) or not 2 <= len(row) <= 4:
             raise ValueError(f"{filepath}: sample_list row {row!r} is not [slot, file, volume, finetune]")
         return cls(*row)
-
-
-class SampleTable:
-    """The sample_list a conversion plays: the config's rows, copied (a conversion sets their
-    volumes), and the rows its plans add - a detune variant's, a composite's, a bank's.  A slot
-    plays its last row; its first is the sample it was named for.
-
-        config  [5 drum.raw]
-        plans   [5 drum.raw] [23 lead dt-20] [5 merge FM1]      slot 5 plays the composite
-    """
-
-    def __init__(self, rows: list[SampleRow] | None) -> None:
-        self._rows = [dataclasses.replace(r) for r in rows or []]
-
-    def __iter__(self) -> Iterator[SampleRow]:
-        return iter(self._rows)
-
-    def __len__(self) -> int:
-        return len(self._rows)
-
-    def add(self, row: SampleRow) -> None:
-        self._rows.append(row)
-
-    def discard(self, row: SampleRow) -> None:
-        """`row` out of the table, where it is in it."""
-        if row in self._rows:
-            self._rows.remove(row)
-
-    def row(self, slot: int, original: bool = False) -> SampleRow | None:
-        """The row `slot` plays: the last naming it, or the first when `original` (the sample the
-        slot was named for, kept aside for the mixer)."""
-        rows = [r for r in self._rows if r.slot == slot]
-        if not rows:
-            return None
-        return rows[0] if original else rows[-1]
-
-    def rows(self) -> dict[int, SampleRow]:
-        """{slot: the row it plays} for every slot named."""
-        return {r.slot: r for r in self._rows}
 
 
 def _channel_list(data: dict, key: str) -> list[str]:
@@ -200,7 +159,7 @@ class ConversionConfig:
     # Instrument slots the composite fit leaves free for the sample banks of the `bank: true`
     # groups (core/merge/banks.py); the banks take any other slot still free after the fit as well.
     # "auto" (the default): the converter chooses, rebuilding once the banks' sizes are known
-    # (SmpsToModConverter.convert); a number pins it.  `merge_bank_slots` is the count in use.
+    # (SmpsToModConverter.convert); a number pins it.  `merge_bank_slots`: the first build's reserve.
     merge_bank_slots: int = 2
     merge_bank_slots_auto: bool = True
     # When a composite whose shape a surviving one has gives up its slot (core.merge._twins):
@@ -297,10 +256,6 @@ class ConversionConfig:
         config._read_source(data)
         config._data = dict(data)
         return config
-
-    def sample_table(self) -> SampleTable:
-        """sample_list as a table of its own (a conversion's starts here: core.plan.ConversionPlan)."""
-        return SampleTable(self.sample_list)
 
     @property
     def is_minimal(self) -> bool:

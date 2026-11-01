@@ -231,7 +231,8 @@ def build_merge_plan(song, conv: ConversionPlan, *, pan_law_db: float, bank_slot
         planner.fold(gn)
         splice_solo_notes(planner.plan, song, gn.group, gn.p_notes)
 
-    planner.settle(bank_slots)
+    planner.plan.bank_slots = bank_slots
+    planner.settle()
     return planner.plan
 
 
@@ -494,8 +495,8 @@ class _Planner:
             speed = PERIOD_TABLE[own] / PERIOD_TABLE[plan.notes.get((src, tick), plan.bases.get((src, tick), c.base))]
             c.heard.append((end, nxt, speed))
 
-    def settle(self, bank_slots: int) -> None:
-        """Budgets, then slots (`bank_slots` held back for the banks), then stand-ins; which
+    def settle(self) -> None:
+        """Budgets, then slots (plan.bank_slots held back for the banks), then stand-ins; which
         instruments the build still renders."""
         plan, config, table = self.plan, self.config, self.conv.samples
 
@@ -522,7 +523,7 @@ class _Planner:
         # entry per slot and a chip composite there would displace the source before it rendered
         # A bank_drums group's drums play from banks only: the converter keeps them aside for the
         # mixer, so their slots are free - offered last, where the bank reserve takes them first
-        reserve = bank_slots if any(c.banked for c in plan.composites.values()) else 0
+        reserve = plan.bank_slots if any(c.banked for c in plan.composites.values()) else 0
         banked_drums = {c.primary for c in plan.composites.values() if c.group.bank_drums and not c.key.layers}
         unused = fit_composites(plan, self.song, self.conv.with_merge(plan), self.free,
                                  drums={d.mod_instrument for d in config.dac_samples} - banked_drums,

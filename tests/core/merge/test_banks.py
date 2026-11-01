@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.config import MergeGroup, SampleRow, SampleTable
+from core.config import MergeGroup, SampleRow
 from core.merge import (
     ALIGN,
     MIX,
@@ -18,15 +18,9 @@ from core.merge import (
     pack_banks,
 )
 from core.mod import PAL_AMIGA_CLOCK, ModFile, ModSample
+from core.plan import SampleTable
 
 CLOCK = float(PAL_AMIGA_CLOCK)
-
-def _table(rows: list[SampleRow]) -> SampleTable:
-    """The conversion's sample table holding these very rows (a composite's row is its own)."""
-    table = SampleTable(None)
-    for r in rows:
-        table.add(r)
-    return table
 
 
 
@@ -51,11 +45,11 @@ class Banks(unittest.TestCase):
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
         plan.bases = {("DAC", 0): 12, ("DAC", 8): 12}
 
-        Cfg = _table([c1.entry, c2.entry])
+        table = SampleTable([c1.entry, c2.entry])
         mod = ModFile(4)
         samples = {-1: _sample(bytes([50] * 1000)), -2: _sample(bytes([50] * 300), volume=32)}
         raw = {-1: [50.0] * 1000, -2: [50.0] * 300}
-        dropped = pack_banks(plan, Cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
+        dropped = pack_banks(plan, table, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         self.assertEqual(dropped, [])
         self.assertEqual(c1.inst, 7)
         self.assertEqual(c1.offset % ALIGN, 0)
@@ -69,8 +63,8 @@ class Banks(unittest.TestCase):
                        entry=SampleRow(-3, "c", 64, 0))
         plan.composites[c3.key] = c3
         plan.ticks[("DAC", 16)] = -3
-        Cfg.add(c3.entry)
-        dropped = pack_banks(plan, Cfg, mod, {-3: _sample(bytes([50] * 5000))}, [], max_bytes=4096,
+        table.add(c3.entry)
+        dropped = pack_banks(plan, table, mod, {-3: _sample(bytes([50] * 5000))}, [], max_bytes=4096,
                              pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(len(dropped), 1)
         self.assertNotIn(("DAC", 16), plan.ticks)
@@ -86,10 +80,10 @@ class Banks(unittest.TestCase):
         plan = MergePlan([g], composites={loud.key: loud, quiet.key: quiet})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
-        Cfg = _table([loud.entry, quiet.entry])
+        table = SampleTable([loud.entry, quiet.entry])
         samples = {-1: _sample(bytes([100] * 512)), -2: _sample(bytes([100] * 512), volume=32)}
         with self.assertRaises(ValueError):
-            pack_banks(plan, Cfg, ModFile(4), samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
+            pack_banks(plan, table, ModFile(4), samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
 
 
 class MelodicBanks(unittest.TestCase):
@@ -107,16 +101,16 @@ class MelodicBanks(unittest.TestCase):
             samples[-i] = _sample(bytes([40 + i] * size), volume=vol, loop=loop)   # a sound of its own
             entries.append(c.entry)
 
-        Cfg = _table(entries)
+        table = SampleTable(entries)
         plan = MergePlan([g], composites=comps)
         plan.ticks = ticks
-        return plan, Cfg, samples
+        return plan, table, samples
 
     def test_a_looped_member_goes_last_with_the_bank_loop(self):
         # the looped one is the most played, yet it is packed after the other
-        plan, cfg, samples = self._plan([(1024, 64, (512, 256), 9), (512, 64, None, 1)])
+        plan, table, samples = self._plan([(1024, 64, (512, 256), 9), (512, 64, None, 1)])
         mod = ModFile(4)
-        self.assertEqual(pack_banks(plan, cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0,
+        self.assertEqual(pack_banks(plan, table, mod, samples, [7], max_bytes=8192, pad_secs=0.0,
                                     amiga_clock=CLOCK, raw={}), [])
         looped = next(c for c in plan.composites.values() if c.looped)
         plain = next(c for c in plan.composites.values() if not c.looped)
@@ -130,29 +124,29 @@ class MelodicBanks(unittest.TestCase):
 
     def test_a_bank_plays_at_its_own_loudest_member(self):
         # two banks (each sound fills one); the second holds only the quiet sound
-        plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 32, None, 1)])
+        plan, table, samples = self._plan([(3000, 64, None, 5), (3000, 32, None, 1)])
         mod = ModFile(4)
-        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
+        pack_banks(plan, table, mod, samples, [7, 8], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(mod.samples[6].volume, 64)
         self.assertEqual(mod.samples[7].volume, 32)                    # not scaled down to the drums' 64
         self.assertEqual(mod.samples[7].data[0], 42)                    # its bytes as they were
 
     def test_sounds_share_a_bank_with_their_own_volume(self):
         # first fit would pair each loud sound with a quiet one: [64 32] [64 32]
-        plan, cfg, samples = self._plan([(1500, 64, None, 9), (1500, 32, None, 8), (1500, 64, None, 7),
+        plan, table, samples = self._plan([(1500, 64, None, 9), (1500, 32, None, 8), (1500, 64, None, 7),
                                          (1500, 32, None, 6)])
         mod = ModFile(4)
         raw = {i: [float(smp.data[0])] * len(smp.data) for i, smp in samples.items()}
-        pack_banks(plan, cfg, mod, samples, [7, 8], max_bytes=3200, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
+        pack_banks(plan, table, mod, samples, [7, 8], max_bytes=3200, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         by_slot = {}
         for c in plan.composites.values():
             by_slot.setdefault(c.inst, set()).add(c.member_volume)
         self.assertEqual(sorted(map(sorted, by_slot.values())), [[32], [64]])   # still two banks
 
     def test_banks_the_slots_cannot_hold_are_counted(self):
-        plan, cfg, samples = self._plan([(3000, 64, None, 5), (3000, 64, None, 2), (3000, 64, None, 1)])
+        plan, table, samples = self._plan([(3000, 64, None, 5), (3000, 64, None, 2), (3000, 64, None, 1)])
         mod = ModFile(4)
-        dropped = pack_banks(plan, cfg, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
+        dropped = pack_banks(plan, table, mod, samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(len(dropped), 2)
         self.assertEqual(plan.bank_overflow, [2, 1])                    # notes of each bank left out
 
@@ -170,11 +164,11 @@ class SameSounds(unittest.TestCase):
         plan = MergePlan([g], composites={a.key: a, b.key: b})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
-        Cfg = _table([a.entry, b.entry])
+        table = SampleTable([a.entry, b.entry])
         sound = [float((7 * k) % 200 - 100) for k in range(1000)]
         samples = {-1: _sample(bytes(1000)), -2: _sample(bytes(1000), volume=vol_b)}
         mod = ModFile(4)
-        pack_banks(plan, Cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK,
+        pack_banks(plan, table, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK,
                    raw={-1: sound, -2: [v + d for v, d in zip(sound, raw_b, strict=True)]})
         return plan, mod, a, b
 
@@ -207,9 +201,9 @@ class DrumBanks(unittest.TestCase):
         plan = MergePlan([g], composites={drum.key: drum, mix.key: mix})
         plan.ticks = {("FM3", 0): -1, ("FM3", 8): -2}
 
-        Cfg = _table([drum.entry, mix.entry])
+        table = SampleTable([drum.entry, mix.entry])
         samples = {-1: _sample(bytes([50] * 3000)), -2: _sample(bytes([60] * 3000))}
-        dropped = pack_banks(plan, Cfg, ModFile(4), samples, [4], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK,
+        dropped = pack_banks(plan, table, ModFile(4), samples, [4], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK,
                              raw={})
         self.assertEqual([d['notes'] for d in dropped], [9])
         self.assertEqual(drum.inst, 4)
@@ -226,11 +220,11 @@ class BankAlignment(unittest.TestCase):
         plan = MergePlan([g], composites={c1.key: c1, c2.key: c2})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
-        Cfg = _table([c1.entry, c2.entry])
+        table = SampleTable([c1.entry, c2.entry])
         mod = ModFile(4)
         # An odd sum is evened with a zero byte: its raw values are one short of the sample
         samples = {-1: _sample(bytes([40] * 1001)), -2: _sample(bytes([90] * 300))}
         raw = {-1: [40.0] * 1000, -2: [90.0] * 300}
-        pack_banks(plan, Cfg, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
+        pack_banks(plan, table, mod, samples, [7], max_bytes=8192, pad_secs=0.0, amiga_clock=CLOCK, raw=raw)
         self.assertEqual(c2.offset % ALIGN, 0)
         self.assertEqual(mod.samples[6].data[c2.offset], 90)           # 9xx lands on the sound, not silence

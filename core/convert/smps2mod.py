@@ -18,7 +18,7 @@ from ..config import (
     rate3_synth_root_issues,
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
-from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
+from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, merge_plan_of, report_plan
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..mod import ModFile, UnmodelledEffect, apply_pattern_breaks, heard_bytes, note_rate
 from ..plan import (
@@ -81,9 +81,8 @@ class SmpsToModConverter:
         self.infos = self._diag.infos
         self._follow(song)
         self._conv = ConversionPlan.of(config)   # this pass's decisions; plan_instruments() makes them
-        self._bank_slots = bank_slots
+        self._bank_slots = bank_slots             # held back for the sample banks (merge_bank_slots, a retry's)
         self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see ModLayout.leading_rests
-        self._merge: MergePlan | None = None   # the merged build's plan (self._conv.merge); set by _convert_once
         self._samples: SampleInstaller | None = None   # the pass's samples; set by convert()
         self._layout: ModLayout | None = None          # the pass's layout; set once its channels are written
         self._played: dict[int, set] = {}              # {instrument: sources whose notes play it}
@@ -91,6 +90,11 @@ class SmpsToModConverter:
         self._emission = EmissionStats()   # what the channel writers counted (bank cuts, tie retunes)
         self._merged: MergedBuild | None = None  # the merged build's samples; set with the plan
         self._bank_retry: dict | None = None     # set on that second pass: what it was run for
+
+    @property
+    def _merge(self) -> MergePlan | None:
+        """The merged build's plan, once this pass made it."""
+        return merge_plan_of(self._conv)
 
     @property
     def _fm_volume_mode(self) -> str:
@@ -187,12 +191,12 @@ class SmpsToModConverter:
     def level_baselines(self) -> dict[str, dict[int, float]]:
         """{"FM" | "PSG": {instrument: dB its sample_list volume stands for}}, for each kind
         whose volume mode is baked (LevelPlanner.levels), as the plan so far has them."""
-        levels = LevelPlanner(self.song, self._conv, self._merge, self.pan_law_db)
+        levels = LevelPlanner(self.song, self._conv, self.pan_law_db)
         baselines = {}
         if self._fm_volume_mode == "baked":
-            baselines[ChannelType.FM] = levels.levels(ChannelType.FM)
+            baselines[ChannelType.FM] = levels.levels(ChannelType.FM).by_instrument
         if self._psg_volume_mode == "baked":
-            baselines[ChannelType.PSG] = levels.levels(ChannelType.PSG)
+            baselines[ChannelType.PSG] = levels.levels(ChannelType.PSG).by_instrument
         return baselines
 
     def sample_sources(self) -> dict[int, dict]:
@@ -280,7 +284,7 @@ class SmpsToModConverter:
         settings = self.synth or self.psg_synth
         if settings is not None and settings.names == "source":
             envs = {i: d.envelope for i, d in self._noise_envelopes().items()}
-            for inst, name in sample_names(mod, self.song, self._conv, self._played, self._merge, envs).items():
+            for inst, name in sample_names(mod, self.song, self._conv, self._played, envs).items():
                 mod.samples[inst - 1].set_name(name)
 
         # The slots in use renumbered without gaps (the merged build empties the slots of
@@ -378,21 +382,21 @@ class SmpsToModConverter:
         # decided while the ticks are final and before anything renders (core/merge/).
         if self.config.merge_active:
             baselines = self.level_baselines()          # the reference build's: what the volumes mean
-            self._merge = self._build_merge_plan(baselines)
-            self._conv = self._conv.with_merge(self._merge)
-            self._merged = MergedBuild(self._merge, self.mod, self._conv.samples, self._bank_slots, self.synth,
-                                       self._timeline, self._diag, baselines, self._bank_retry)
+            merge = self._build_merge_plan(baselines)
+            self._conv = self._conv.with_merge(merge)
+            self._merged = MergedBuild(merge, self.mod, self._conv.samples, self.synth, self._timeline, self._diag,
+                                       baselines, self._bank_retry)
 
         # Resolve 'auto' sustain durations from the longest ring each instrument plays, in the
         # MOD's own time, and warn where a sample cannot hold a note.
-        sustain = SustainPlanner(self.song, self._conv, self._merge, self.synth, self._timeline, self._diag)
+        sustain = SustainPlanner(self.song, self._conv, self.synth, self._timeline, self._diag)
         synth = sustain.resolve(self.synth, 'FM') if self.synth else None
         psg_synth = sustain.resolve(self.psg_synth, 'PSG') if self.psg_synth else None
 
         # Load or synthesize samples (a merge composite is rendered or mixed, never loaded)
-        levels = LevelPlanner(self.song, self._conv, self._merge, self.pan_law_db)
+        levels = LevelPlanner(self.song, self._conv, self.pan_law_db)
         samples = self._samples = SampleInstaller(self.mod, self.song, self._conv, self.synth, self.psg_synth,
-                                                  self._timeline, self._diag, sustain, self._merge, self._merged)
+                                                  self._timeline, self._diag, sustain, self._merged)
         samples.install(synth, psg_synth, psg_insts, levels, self._fm_volume_mode == "baked", self._noise_envelopes())
         sustain.flush_pending()      # kinds that were not synthesised
 
@@ -468,11 +472,11 @@ class SmpsToModConverter:
         """Convert all SMPS channels to MOD channels."""
         # Source names follow header order: DAC (if present), then FM1..FMn, then PSG1..PSGn
         source_map = source_map_for(self.song)
-        gained: dict[str, set[int]] = {kind: levels.gained(kind) for kind in (ChannelType.FM, ChannelType.PSG)}
+        gained: dict[str, set[int]] = {}
 
         fm_baseline_db: dict[int, float] = {}
         if self._fm_volume_mode == "baked":
-            fm_baseline_db = levels.levels(ChannelType.FM)
+            fm_baseline_db, gained[ChannelType.FM] = levels.levels(ChannelType.FM)
             # The samples were rendered (before the loop bodies were extended) at what this
             # walk now says is each instrument's baseline; the two must agree or the Cxx law
             # would be measured from a level the sample does not carry.
@@ -488,7 +492,7 @@ class SmpsToModConverter:
                                     rendered_db=fm_level_db(tl, pan, pan_law), baked_db=base)
         psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
-            psg_baseline_db = levels.levels(ChannelType.PSG)
+            psg_baseline_db, gained[ChannelType.PSG] = levels.levels(ChannelType.PSG)
 
         # Merged build: volumes measured for the reference build, moved to the merged build's levels
         if self._merged is not None:
@@ -497,7 +501,7 @@ class SmpsToModConverter:
         # Convert each configured channel
         ctx = WriterContext(
             mod=self.mod, conv=self._conv, song=self.song, synth=self.synth, timeline=self._timeline,
-            diag=self._diag, vibrato=self._vibrato, merge=self._merge,
+            diag=self._diag, vibrato=self._vibrato,
             fm_volume_mode=self._fm_volume_mode, psg_volume_mode=self._psg_volume_mode, pan_law_db=self.pan_law_db,
             fm_baseline_db=fm_baseline_db, psg_baseline_db=psg_baseline_db, release=samples.release,
             release_slides=samples.release_slides, player=self._player, leading_rests=self._leading_rest_channels,

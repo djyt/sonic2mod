@@ -204,11 +204,11 @@ def _renumber_rows(text: str, slot_of: dict[str, int]) -> str:
 def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[int, SampleRow]:
     """A minimal config's sample_list as derived (by instrument); nothing for a full config."""
     from ..config import ConversionConfig
-    from ..plan import load_config
+    from ..plan import SampleTable, load_config
 
     if not ConversionConfig.from_yaml(str(config_path)).is_minimal:
         return {}
-    return load_config(config_path, settings_path).sample_table().rows()
+    return SampleTable(load_config(config_path, settings_path).sample_list).rows()
 
 
 def _add_rows(text: str, rows: list[str]) -> str:

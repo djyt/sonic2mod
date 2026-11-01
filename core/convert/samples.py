@@ -20,7 +20,7 @@ from ..config import (
     SynthesisSettings,
 )
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
-from ..merge import MergedBuild, MergePlan
+from ..merge import MergedBuild, merge_plan_of
 from ..mod import MAX_MOD_SAMPLE_BYTES, MOD_MAX_VOLUME, ModFile, ModSample, note_rate, read_sample
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..plan import (
@@ -57,7 +57,7 @@ class SampleInstaller:
 
     def __init__(self, mod: ModFile, song: SmpsSong, conv: ConversionPlan, synth: SynthesisSettings | None,
                  psg_synth: PsgSynthesisSettings | None, timeline: Timeline, diag: Diagnostics,
-                 sustain: SustainPlanner, merge: MergePlan | None, merged: MergedBuild | None) -> None:
+                 sustain: SustainPlanner, merged: MergedBuild | None) -> None:
         self._mod = mod
         self._song = song
         self._conv = conv
@@ -67,7 +67,7 @@ class SampleInstaller:
         self._timeline = timeline
         self._diag = diag
         self._sustain = sustain
-        self._merge = merge
+        self._merge = merge_plan_of(conv)
         self._merged = merged
 
         # Sustain loops (core.audio.loops, settings.yaml `sustain_loops`): the loop each synthesised

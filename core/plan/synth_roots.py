@@ -10,7 +10,7 @@ from ..smps import ChannelType
 from .conversion import ConversionPlan, RenderPitch
 from .driver_state import enabled_channels, walk_channel
 
-_OCTAVE = 12        # the most a sample is rendered above the pitch its root sounds
+_MAX_SHIFT = 12     # semitones a sample is rendered above the pitch its root sounds, at most
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,7 @@ class SynthRoot:
 
 
 class ResolvedRoots(NamedTuple):
+    """resolve_synth_roots' answer: what to report, and what the plan takes."""
     report: list[SynthRoot]               # one per rooted entry
     pitches: dict[int, RenderPitch]       # id(entry) -> where its sample is rendered (ConversionPlan.pitches)
 
@@ -106,9 +107,9 @@ def resolve_synth_roots(song, conv: ConversionPlan) -> ResolvedRoots:
     # pitch their notes play most often, at most an octave above the first entry's D.
     # The octave cap on the shift, or the merged build's own (merge_max_synth_shift: the Amiga
     # port trades envelope timing at the busiest note for half the bytes)
-    cap = _OCTAVE
+    cap = _MAX_SHIFT
     if config.merge_active:
-        cap = max(0, min(_OCTAVE, config.merge_max_synth_shift))
+        cap = max(0, min(_MAX_SHIFT, config.merge_max_synth_shift))
     groups: dict[int, list] = {}
     for item in items:
         groups.setdefault(item[1].mod_instrument, []).append(item)

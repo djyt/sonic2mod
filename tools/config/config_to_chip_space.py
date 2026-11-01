@@ -36,20 +36,21 @@ import yaml
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parents[1]))
 
-from core.config import ChannelConfig, ConversionConfig
+from core.config import ChannelConfig
 from core.plan import ConversionPlan, load_config, walk_channel
 from core.smps import parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
 
 mod_name = synth_note_name   # YAML config note name for a semitone
 
 
-def chip_notes(cfg: ConversionConfig, config_path: Path):
+def chip_notes(conv: ConversionPlan, config_path: Path):
     """{(kind, key, channel): [(source semitone, chip pitch), ...]} for FM voices and PSG labels.
 
     kind "fm": key = voice index; kind "psg": key = psg_voice_map label (as written).  The PSG
     label in force is the header voice ("$00" when the header says 0) until smpsPSGvoice; a
     channel in noise mode contributes nothing.
     """
+    cfg = conv.config
     # The converter's view of the song: loops extended (a smpsChangeTransposition inside the loop
     # body accumulates on every replay - Continue's later notes sit lower than the first pass).
     from core.config import find_settings, load_settings
@@ -60,7 +61,6 @@ def chip_notes(cfg: ConversionConfig, config_path: Path):
     converter = SmpsToModConverter(song, cfg, synth=fm_off, psg_synth=psg_off)
     converter.prepare_song()
     song = converter.song
-    conv = ConversionPlan.of(cfg)
     out: dict[tuple, list[tuple[int, int]]] = defaultdict(list)     # every (source, chip) pair
     labels = {str(k) for k in cfg.psg_voice_map}
     cfg_by_source = {c.source: c for c in cfg.channels}
@@ -170,11 +170,11 @@ def main() -> None:
         sys.exit(f"{path} is already in chip space")
     text = path.read_text(encoding="utf-8")
     data = yaml.safe_load(text)
-    notes = chip_notes(cfg, path)
     # The rendering pitch of every entry that does not state synth_root, from the song
     from core.plan import resolve_synth_roots
-    conv = ConversionPlan.of(cfg)
-    conv = conv.with_pitches(resolve_synth_roots(cfg.read_song(), conv).pitches)
+    bare = ConversionPlan.of(cfg)
+    conv = bare.with_pitches(resolve_synth_roots(cfg.read_song(), bare).pitches)
+    notes = chip_notes(conv, path)
 
     def defaults(entries) -> list:
         return [conv.pitch(e).synth_root for e in entries]

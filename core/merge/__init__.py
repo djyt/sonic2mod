@@ -86,7 +86,7 @@ Per-pattern folds, sample banks, unison chords and same-shape twins: docs/pipeli
 from .banks import ALIGN, pack_banks
 from .build import MergedBuild, bank_reserve_wanted, report_plan
 from .mix import composite_dither, mix_pcm_composites
-from .model import NO_SLOT, Composite, MergePlan
+from .model import NO_SLOT, Composite, MergePlan, merge_plan_of
 from .notes import (
     CHIP,
     MIX,
@@ -106,6 +106,7 @@ from .slots import drop_composite, stand_in, trigger_note
 __all__ = [
     "ALIGN", "CHIP", "MIX", "NO_SLOT", "Composite", "CompositeKey", "MergePlan", "MergedBuild", "MixLayerKey",
     "NoteOn", "PairStats", "bank_reserve_wanted", "build_merge_plan", "channel_notes", "column_sources",
-    "composite_dither", "composite_key", "drop_composite", "keyoff_secs", "mix_pcm_composites", "pack_banks",
+    "composite_dither", "composite_key", "drop_composite", "keyoff_secs", "merge_plan_of", "mix_pcm_composites",
+    "pack_banks",
     "pair_channels", "prepare_merged_config", "report_plan", "stand_in", "trigger_note", "unison_gain_db"
 ]

@@ -61,7 +61,7 @@ class Values(unittest.TestCase):
 
 
 class SampleRows(unittest.TestCase):
-    """sample_list rows: parsed once, volume and finetune defaulted; a slot plays its last row."""
+    """sample_list rows: parsed once, volume and finetune defaulted."""
 
     def test_a_short_row_takes_the_defaults(self):
         row = _config(sample_list=[[3, "kick.raw"]]).sample_list[0]
@@ -71,16 +71,6 @@ class SampleRows(unittest.TestCase):
         for bad in ([3], [3, "a.raw", 64, 0, 1], {"slot": 3}):
             with self.subTest(row=bad), self.assertRaisesRegex(ValueError, "sample_list row"):
                 _config(sample_list=[bad])
-
-    def test_a_slot_plays_its_last_row_and_keeps_its_first(self):
-        cfg = _config(sample_list=[[5, "drum.raw", 40, 0], [5, "merge FM1", 30, 0]])
-        table = cfg.sample_table()
-        self.assertEqual(table.row(5).file, "merge FM1")                         # a composite's, appended
-        self.assertEqual(table.row(5, original=True).file, "drum.raw")           # what the slot was named for
-        self.assertIsNone(table.row(6))
-        self.assertEqual(table.rows()[5].volume, 30)
-        table.rows()[5].volume = 10
-        self.assertEqual(cfg.sample_list[1].volume, 30)                          # the config's rows stay as read
 
 
 class Numbers(unittest.TestCase):

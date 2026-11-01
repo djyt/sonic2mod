@@ -13,7 +13,7 @@
     timeline.py      driver tick -> MOD pattern / row / seconds
 """
 
-from .conversion import ConversionPlan, MergeRouting, RenderPitch
+from .conversion import ConversionPlan, MergeRouting, RenderPitch, SampleTable
 from .derive import Derivation, complete_config, derive_config, load_config, starting_volume
 from .detune import DetunePlan, DetuneVariant, detune_cents, detune_variants_wanted, plan_detune_variants
 from .driver_state import DriverState, ResolvedNote, enabled_channels, walk_channel
@@ -52,6 +52,7 @@ __all__ = [
     "RenderPitch",
     "ResolvedNote",
     "ResolvedRoots",
+    "SampleTable",
     "SynthRoot",
     "Timeline",
     "complete_config",

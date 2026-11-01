@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 
-from ..merge import MergePlan
+from ..merge import merge_plan_of
 from ..mod import MOD_NOTE_MAP, PERIOD_TABLE, ModFile
 from ..mod.sample_audit import note_name
 from ..plan import ConversionPlan, fm_catalogue, psg_catalogue
@@ -80,8 +80,9 @@ def _played_notes(mod: ModFile) -> dict[int, str]:
 
 
 def sample_names(mod: ModFile, song: SmpsSong, conv: ConversionPlan, played: dict[int, set[str]],
-                 merge: MergePlan | None, noise_envelopes: dict | None = None) -> dict[int, str]:
+                 noise_envelopes: dict | None = None) -> dict[int, str]:
     """{slot: name} for every slot that holds a sample, as the module docstring describes."""
+    merge = merge_plan_of(conv)
     notes = _played_notes(mod)
     names: dict[int, str] = {}
 

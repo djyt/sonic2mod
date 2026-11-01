@@ -9,7 +9,7 @@ import unittest
 from types import SimpleNamespace
 from typing import Any, cast
 
-from core.config import MergeGroup, SampleRow, SampleTable
+from core.config import MergeGroup, SampleRow
 from core.merge import (
     MIX,
     Composite,
@@ -20,6 +20,7 @@ from core.merge import (
 )
 from core.merge.build import MergedBuild
 from core.mod import ModFile, ModSample
+from core.plan import SampleTable
 from core.smps import ChannelType
 
 
@@ -57,7 +58,7 @@ class MovedLevels(unittest.TestCase):
         g = MergeGroup("FM5", ["FM6"])
         plan = MergePlan([g])
         entry, other = SampleRow(19, "fm_v4b_B3.raw", 6, 0), SampleRow(6, "fm_v0b.raw", 10, 0)
-        table = SampleTable(None)
+        table = SampleTable()
         table.add(entry)
         table.add(other)
         mod = ModFile(4)
@@ -65,7 +66,7 @@ class MovedLevels(unittest.TestCase):
         infos = []
         diag = SimpleNamespace(info=lambda kind, **kw: infos.append(kw), warn=lambda *a, **kw: None)
         ref: dict[str, dict[int, float]] = {ChannelType.FM: {19: -10.0, 6: -8.0}}
-        build = MergedBuild(plan, mod, table, 0, None, cast(Any, None), cast(Any, diag), ref, None)
+        build = MergedBuild(plan, mod, table, None, cast(Any, None), cast(Any, diag), ref, None)
         build.bake_volumes({19: -5.5, 6: -8.0}, {}, {})          # FM4's louder notes set 19's level now
         self.assertEqual(entry.volume, 10)                           # 6 x 4.5 dB
         self.assertEqual(mod.samples[18].volume, 10)

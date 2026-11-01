@@ -1,9 +1,10 @@
-"""A driver's track grammar: the bytes at one address -> one instruction.  tracks.py follows the
-code; the grammar (SmpsVariant.grammar) says what each instruction is.  SMPS's is here: every
-variant so far reads it.
+"""Track grammars: the bytes at one address -> one instruction.  tracks.py follows the code with
+any of them; a grammar (SmpsVariant.grammar) says what each instruction is.
 
-    $00-$7F  duration        $80 rest   $81-$DF note / DAC sample
-    $E0-$FF  flag + operands; a pointer operand's target is the driver's (SoundMemory.code_pointer)
+    __init__.py   what every grammar yields: Instruction, track_label; flag_instruction, a flag
+                  read by its kind of track's flag table (flags.py)
+    smps.py       SMPS's: $00-$7F durations, $80 rest, $81-$DF notes, $E0-$FF flags
+    mucom.py      MUCOM's: `d n` notes, $80|d rests, $00 the end, $F0-$FF flags, a dialect per driver
 """
 
 from __future__ import annotations
@@ -11,13 +12,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ..smps import FIRST_FLAG, ChannelType, Op, OpKind, effect_from_bytes, track_byte
-from .flags import FlagKind, FlagSpec
-from .image import RomError
-from .memory import SoundMemory
+from ...smps import ChannelType, Op, OpKind, effect_from_bytes
+from ..flags import FlagKind, FlagSpec
+from ..image import RomError
+from ..memory import SoundMemory
 
 if TYPE_CHECKING:
-    from .variant import SmpsVariant
+    from ..variant import SmpsVariant
 
 _LOOP_INDEX = 0            # smpsLoop's operands: index, count, pointer
 _LOOP_COUNT = 1
@@ -41,19 +42,9 @@ class Instruction:
     dropped: str = ""               # a DROP flag's name
 
 
-def smps_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:
-    """The SMPS instruction at `address`, read by a `kind` track."""
-    byte = memory.byte(address)
-    if byte < FIRST_FLAG:
-        op = track_byte(byte)
-        assert op is not None
-        return Instruction((op,), 1, True)
-
-    return flag_instruction(memory, address, variant, kind)
-
-
 def flag_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:
-    """The coordination flag at `address`, as the `kind` track's flag table says."""
+    """The coordination flag at `address`, as the `kind` track's flag table says.  A flag's pointer
+    operand targets what the driver's memory says (SoundMemory.code_pointer)."""
     byte = memory.byte(address)
     spec = variant.flags[kind].get(byte)
     if spec is None:

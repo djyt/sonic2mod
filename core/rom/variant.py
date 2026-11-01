@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING
 from ..chips import OperatorReg
 from ..smps import ChannelType, FmDrum, PlaybackRules, SmpsSongHeader, SmpsVoice
 from .flags import EnvelopeCommand, FlagSpec
-from .grammar import Instruction, smps_instruction
+from .grammar import Instruction
+from .grammar.smps import smps_instruction
 from .image import RomError, RomImage
 from .memory import SoundMemory
 
@@ -160,7 +161,7 @@ class SmpsVariant:
     rules_from_rom: Callable[[RomImage, PlaybackRules], PlaybackRules] | None = None
     # The drum track's FM drum programs by DAC name, as a song's header and FM table play them
     fm_drums: Callable[[RomImage, SmpsSongHeader, tuple[int, ...]], dict[str, FmDrum]] | None = None
-    # The track grammar: the instruction at an address (grammar.py; SMPS's for every variant so far)
+    # The track grammar: the instruction at an address (grammar/: SMPS's by default, MUCOM's in a dialect)
     grammar: Callable[[SoundMemory, int, SmpsVariant, ChannelType], Instruction] = smps_instruction
     # Its own readers, where its data is not SMPS's; None: header.py's by `header`, voices.py's by
     # `voice_layout`.  A song's / an SFX's header at an address; `count` voices of the bank at one

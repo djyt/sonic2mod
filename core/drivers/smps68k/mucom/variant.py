@@ -16,7 +16,7 @@ its driver ($72914-$73C16) read with a disassembler (docs/smps_variants.md).
                 PSG entries ptr.w volume.b envelope.b (tone 3, tone 2, tone 1); no tempo: a tick a frame
     voice       25 bytes: DT/MUL TL KS/AR AM/D1R D2R D1L/RR (register order), FB/ALG last
     flags       one table per kind of track (the driver jumps through $73302 for FM and the drum
-                track, $73342 for the PSG); the grammar (grammar.py) reads the rest
+                track, $73342 for the PSG); MUCOM's grammar (core/rom/grammar/mucom.py) in its dialect reads the rest
     DAC         the Z80 player's samples $81-$84 (dac.py)
 """
 
@@ -27,6 +27,7 @@ from functools import lru_cache, partial
 
 from core.chips import OperatorReg
 from core.rom.flags import JUMP, NO_ATTACK, EnvelopeCommand, FlagSpec, drop, effect, read, refuse
+from core.rom.grammar.mucom import dac_sample, detune, loop_end, loop_exit, loop_start, register_write
 from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.variant import EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot, VoiceLayout
@@ -37,19 +38,7 @@ from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
 from ..locate import pointers_before_data
 from ..memory import Relative68kMemory
 from .dac import mucom_dac
-from .grammar import (
-    dac_sample,
-    detune,
-    loop_end,
-    loop_exit,
-    loop_start,
-    mucom_instruction,
-    noise,
-    pan,
-    psg_volume_down,
-    register_write,
-    vibrato,
-)
+from .grammar import DIALECT, noise, psg_volume_down
 
 _LONG, _WORD = 4, 2
 _LEA_A0 = bytes.fromhex("41F9")                  # lea (xxx).l,a0
@@ -94,10 +83,10 @@ _FM_FLAGS: dict[int, FlagSpec] = {
     0xF1: effect(CoordFlag.VOLUME_STEP),
     0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),
-    0xF4: read(vibrato),
+    0xF4: read(DIALECT.vibrato),
     **_LOOPS,
     0xF7: effect(CoordFlag.FM3_SPECIAL, 4),     # operands A6, AC, AE, AD's: a voice's operator order
-    0xF8: read(pan),
+    0xF8: read(DIALECT.pan),
     0xF9: refuse("pause toggle"),
     0xFA: read(register_write),
     0xFB: effect(CoordFlag.ALTER_VOLUME_STEP),
@@ -111,7 +100,7 @@ _PSG_FLAGS: dict[int, FlagSpec] = {
     0xF1: effect(CoordFlag.VOLUME_STEP),
     0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),
-    0xF4: read(vibrato),
+    0xF4: read(DIALECT.vibrato),
     **_LOOPS,
     0xF7: read(noise),
     0xF8: drop("$F8 (no PSG effect)", 1),
@@ -128,10 +117,10 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
     0xF1: drop("$F1 (no DAC effect)", 1),
     0xF2: read(detune),
     0xF3: effect(CoordFlag.GATE),                # cuts the sample (rest_cuts)
-    0xF4: read(vibrato),
+    0xF4: read(DIALECT.vibrato),
     **_LOOPS,
     0xF7: refuse("$F7 on the drum track"),
-    0xF8: read(pan),
+    0xF8: read(DIALECT.pan),
     0xF9: refuse("pause toggle"),
     0xFA: read(register_write),
     0xFB: drop("$FB (no DAC effect)", 1),
@@ -225,6 +214,6 @@ MUCOM = SmpsVariant(
                         dac_names={b: f"dac{b:02X}" for b in range(0x81, 0x92)},
                         tracks={ChannelType.FM: _FM_TRACK, ChannelType.PSG: _PSG_TRACK, ChannelType.DAC: _DAC_TRACK}),
     rules_from_rom=_rules_from_rom,
-    grammar=mucom_instruction,
+    grammar=DIALECT.instruction,
     dac=mucom_dac,
 )

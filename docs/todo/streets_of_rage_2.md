@@ -277,7 +277,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   Streets of Rage's derived configs (`--show-config`, 16 songs) dumped to scratch.
 
 ### Phase 1: refactors for reading (3.2)
-- [ ] 1.1 R1: `core/rom/grammar/` (`smps.py`, `mucom.py`), SoR1 a dialect.
+- [x] 1.1 R1: `core/rom/grammar/` (`smps.py`, `mucom.py`), SoR1 a dialect.
 - [ ] 1.2 R2: `RunDpcm`, `pcm_table` to `core/rom/pcm.py`.
 - [ ] 1.3 R7: sound IDs from 0 (messages, a test).
 

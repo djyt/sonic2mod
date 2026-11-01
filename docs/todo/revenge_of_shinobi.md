@@ -75,7 +75,7 @@ a 4th, the noise track (§ 2.4).
 
 ### 2.3 Track code
 
-The same language as Streets of Rage (`mucom/grammar.py`): `d n` a note (`d` `$01`-`$7F` frames,
+The same language as Streets of Rage (`core/rom/grammar/mucom.py`): `d n` a note (`d` `$01`-`$7F` frames,
 `n` octave << 4 | semitone), `$80|d` a rest, `$00` the end, `$F0`-`$FF` a flag.  Flags:
 
 | Byte | FM | PSG | Drum track |
@@ -141,9 +141,8 @@ the engine are shared; the header, about ten flag meanings, the PSG and the DAC 
 | DAC | Kosinski player, run-DPCM, 5-byte entries | raw two-block copy, Sonic 1's DPCM, 12-byte entries with loops, `$85` pitched |
 | notes, rests, loops, `$F1` FM, `$F3`, `$F4` FM, `$F5` `$F6` `$FE`, `$F7` FM, `$FA` FM, `$FB`, `$FC`, `$FD`, voices, FM tables | | **same** |
 
-Streets of Rage 2's plan (`docs/todo/streets_of_rage_2.md` § 3.1.1) proposes moving the shared
-MUCOM track language out of `smps68k/mucom/grammar.py`.  Shinobi is the third reader of that
-language, and an argument for doing it.
+Streets of Rage 2's R1 (`docs/todo/streets_of_rage_2.md` § 3.2) moved the shared MUCOM track
+language to `core/rom/grammar/mucom.py`, a `MucomDialect` per driver.  Shinobi is its third reader.
 
 ---
 
@@ -194,8 +193,9 @@ names it (CLAUDE.md, "Scalable structure").
 
 ### 5.1 Refactors (behaviour unchanged, every baseline byte-identical)
 
-1. **The MUCOM track language shared** (with Streets of Rage 2: its 3.1.1).  What differs per driver
-   is data: the pan mapping, the flag table per kind, `$F2`'s length, PSG note rows.
+1. **The MUCOM track language shared**: done by Streets of Rage 2's R1 (`core/rom/grammar/mucom.py`).
+   Shinobi's is a `MucomDialect` (pan mapping, PSG note rows, vibrato steps) and its flag tables
+   (`$F2`'s length).
 2. **Header entries past a tempo byte pair that is not a tempo.**  `HeaderLayout.tempo=False` puts
    the entries at +4; Shinobi's start at +6 with no tempo.  Either a `HeaderLayout` field (bytes
    before the entries) or Shinobi's own `music_header_reader` (D2).

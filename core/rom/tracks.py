@@ -1,5 +1,5 @@
 """Track bytes -> SmpsCode, as the ROM's driver reads them: its grammar (SmpsVariant.grammar,
-grammar.py) says what one instruction is; this follows the code.
+grammar/: SMPS's, MUCOM's) says what one instruction is; this follows the code, whichever it is.
 
 The code is decoded by following it from each track's start - fall-through, jump, loop and call
 targets - and laid out in address order, a label at every start and target: the order the asm

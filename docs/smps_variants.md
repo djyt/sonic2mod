@@ -175,7 +175,7 @@ volume step table, voices in register order.
 **Song header:** `voices.w fm.b psg.b`; FM entries `ptr.w volume.b` (FM1-FM5, then the drum track);
 PSG entries `ptr.w volume.b envelope.b` (tone 3, 2, 1).  No tempo, no pitch.
 
-**Track code** (`mucom/grammar.py`): `d n` a note (`d` $01-$7F frames, `n` octave | semitone),
+**Track code** (`core/rom/grammar/mucom.py`, its dialect `mucom/grammar.py`): `d n` a note (`d` $01-$7F frames, `n` octave | semitone),
 `$80|d` a rest, `$00` the end, `$F0`-`$FF` a flag.  Durations stop at 127: longer notes are tie
 chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read row 2, 6-9 row 6).
 

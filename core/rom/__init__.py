@@ -4,7 +4,7 @@ these readers are driven by.
 
     header.py  tracks.py     generic readers: headers, track bytes -> SmpsCode (the ops the asm
     voices.py  envelopes.py  parser makes from macros), voices, PSG envelopes; driven by the variant
-    grammar.py               a track grammar: the instruction at an address (SMPS's)
+    grammar/                 track grammars: the instruction at an address (smps.py, mucom.py)
     z80.py  kosinski.py      Z80 RAM as the 68k loads it
     pcm.py                   DAC samples as a Z80 player stores them: PcmTable, SampleFormat (Dpcm, Pcm)
     variant.py  flags.py     the vocabulary: SmpsVariant, VoiceLayout, SoundIndex, DacSample;

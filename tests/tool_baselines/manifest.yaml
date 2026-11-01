@@ -948,6 +948,59 @@ frames_streets_of_rage:
     reference/vgz/streets_of_rage_1/14 - Game Over.vgz: 69d88619531c
     reference/vgz/streets_of_rage_1/15 - You Became the Bad Guy!.vgz: 382aa0e8280f
     reference/vgz/streets_of_rage_1/16 - Good Ending.vgz: a8a2300985e6
+frames_streets_of_rage_2:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/00_go_straight.yaml: 6d3fce3c5ba5
+    configs/streets_of_rage_2/01_go_straight_beatmix.yaml: 1c62e07bec58
+    configs/streets_of_rage_2/02_never_return_alive.yaml: 2ac4b8848594
+    configs/streets_of_rage_2/03_in_the_bar.yaml: 5393c7562828
+    configs/streets_of_rage_2/05_jungle_base.yaml: eb781531ccc6
+    configs/streets_of_rage_2/06_slow_moon.yaml: a86e16299a37
+    configs/streets_of_rage_2/07_spin_on_the_bridge.yaml: bf1265a83f2c
+    configs/streets_of_rage_2/08_too_deep.yaml: 1f99ddeef36f
+    configs/streets_of_rage_2/09_little_money_avenue.yaml: a8dbca049990
+    configs/streets_of_rage_2/0a_sor_super_mix.yaml: 77203faf3961
+    configs/streets_of_rage_2/0b_level_complete.yaml: 8432316b6bfa
+    configs/streets_of_rage_2/0d_wave_131.yaml: 8a048cb2eaa4
+    configs/streets_of_rage_2/0e_max_man.yaml: f798bd09a490
+    configs/streets_of_rage_2/0f_dreamer.yaml: 56b2115c54ae
+    configs/streets_of_rage_2/11_under_logic.yaml: 9fd7266970f1
+    configs/streets_of_rage_2/13_revenge_of_mr_x.yaml: 428506e1a433
+    configs/streets_of_rage_2/14_alien_power.yaml: 44c790cec82c
+    configs/streets_of_rage_2/15_expander.yaml: 8e2e486e2a6b
+    configs/streets_of_rage_2/16_ready_funk.yaml: 9367054b5b4e
+    configs/streets_of_rage_2/18_player_select.yaml: 2d0c3e454cb2
+    configs/streets_of_rage_2/19_game_over.yaml: 0c8b6b4cbb2c
+    configs/streets_of_rage_2/1a_back_to_the_industry.yaml: 5e7e8f0faf0a
+    configs/streets_of_rage_2/1b_good_ending.yaml: 0b52c00168e8
+    configs/streets_of_rage_2/rips.yaml: e131159657c7
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+    reference/vgz/streets_of_rage_2/01 - Player Select V2.vgz: 825b5379f5a2
+    reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
+    reference/vgz/streets_of_rage_2/03 - In the Bar.vgz: 519d6c897387
+    reference/vgz/streets_of_rage_2/04 - Never Return Alive.vgz: e3855f9603bf
+    reference/vgz/streets_of_rage_2/05 - Spin on the Bridge.vgz: 8f76940b20ca
+    reference/vgz/streets_of_rage_2/06 - Ready Funk.vgz: 958a0bf213bc
+    reference/vgz/streets_of_rage_2/07 - Dreamer.vgz: eec9124aa6ec
+    reference/vgz/streets_of_rage_2/08 - Alien Power.vgz: 02cd5a3b5181
+    reference/vgz/streets_of_rage_2/09 - Under Logic.vgz: 2717bd27fbe6
+    reference/vgz/streets_of_rage_2/10 - Too Deep.vgz: 801f6afd911e
+    reference/vgz/streets_of_rage_2/11 - Slow Moon.vgz: 71f68d2cc13c
+    reference/vgz/streets_of_rage_2/12 - Wave 131.vgz: 7886dddd5283
+    reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
+    reference/vgz/streets_of_rage_2/14 - Back to the Industry.vgz: 8234eb89748f
+    reference/vgz/streets_of_rage_2/15 - Expander.vgz: 8edbf64cb499
+    reference/vgz/streets_of_rage_2/16 - SOR Super Mix.vgz: 8ad537d591ff
+    reference/vgz/streets_of_rage_2/17 - Max Man.vgz: ed890803c6ce
+    reference/vgz/streets_of_rage_2/18 - Revenge of Mr. X.vgz: 96fedb620261
+    reference/vgz/streets_of_rage_2/19 - Good Ending.vgz: 82cd83e39a4c
+    reference/vgz/streets_of_rage_2/20 - Level Complete.vgz: 92c9d6e5f8bc
+    reference/vgz/streets_of_rage_2/21 - Game Over.vgz: a8f3b23a0b41
+    reference/vgz/streets_of_rage_2/22 - Go Straight (Beatmix).vgz: fe6212d3074a
+    reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
+    reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
 glitches_golden_axe:
   commit: d4522d7-dirty
   date: '2026-11-01'
@@ -1079,6 +1132,59 @@ glitches_streets_of_rage:
     reference/vgz/streets_of_rage_1/14 - Game Over.vgz: 69d88619531c
     reference/vgz/streets_of_rage_1/15 - You Became the Bad Guy!.vgz: 382aa0e8280f
     reference/vgz/streets_of_rage_1/16 - Good Ending.vgz: a8a2300985e6
+glitches_streets_of_rage_2:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/00_go_straight.yaml: 6d3fce3c5ba5
+    configs/streets_of_rage_2/01_go_straight_beatmix.yaml: 1c62e07bec58
+    configs/streets_of_rage_2/02_never_return_alive.yaml: 2ac4b8848594
+    configs/streets_of_rage_2/03_in_the_bar.yaml: 5393c7562828
+    configs/streets_of_rage_2/05_jungle_base.yaml: eb781531ccc6
+    configs/streets_of_rage_2/06_slow_moon.yaml: a86e16299a37
+    configs/streets_of_rage_2/07_spin_on_the_bridge.yaml: bf1265a83f2c
+    configs/streets_of_rage_2/08_too_deep.yaml: 1f99ddeef36f
+    configs/streets_of_rage_2/09_little_money_avenue.yaml: a8dbca049990
+    configs/streets_of_rage_2/0a_sor_super_mix.yaml: 77203faf3961
+    configs/streets_of_rage_2/0b_level_complete.yaml: 8432316b6bfa
+    configs/streets_of_rage_2/0d_wave_131.yaml: 8a048cb2eaa4
+    configs/streets_of_rage_2/0e_max_man.yaml: f798bd09a490
+    configs/streets_of_rage_2/0f_dreamer.yaml: 56b2115c54ae
+    configs/streets_of_rage_2/11_under_logic.yaml: 9fd7266970f1
+    configs/streets_of_rage_2/13_revenge_of_mr_x.yaml: 428506e1a433
+    configs/streets_of_rage_2/14_alien_power.yaml: 44c790cec82c
+    configs/streets_of_rage_2/15_expander.yaml: 8e2e486e2a6b
+    configs/streets_of_rage_2/16_ready_funk.yaml: 9367054b5b4e
+    configs/streets_of_rage_2/18_player_select.yaml: 2d0c3e454cb2
+    configs/streets_of_rage_2/19_game_over.yaml: 0c8b6b4cbb2c
+    configs/streets_of_rage_2/1a_back_to_the_industry.yaml: 5e7e8f0faf0a
+    configs/streets_of_rage_2/1b_good_ending.yaml: 0b52c00168e8
+    configs/streets_of_rage_2/rips.yaml: e131159657c7
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+    reference/vgz/streets_of_rage_2/01 - Player Select V2.vgz: 825b5379f5a2
+    reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
+    reference/vgz/streets_of_rage_2/03 - In the Bar.vgz: 519d6c897387
+    reference/vgz/streets_of_rage_2/04 - Never Return Alive.vgz: e3855f9603bf
+    reference/vgz/streets_of_rage_2/05 - Spin on the Bridge.vgz: 8f76940b20ca
+    reference/vgz/streets_of_rage_2/06 - Ready Funk.vgz: 958a0bf213bc
+    reference/vgz/streets_of_rage_2/07 - Dreamer.vgz: eec9124aa6ec
+    reference/vgz/streets_of_rage_2/08 - Alien Power.vgz: 02cd5a3b5181
+    reference/vgz/streets_of_rage_2/09 - Under Logic.vgz: 2717bd27fbe6
+    reference/vgz/streets_of_rage_2/10 - Too Deep.vgz: 801f6afd911e
+    reference/vgz/streets_of_rage_2/11 - Slow Moon.vgz: 71f68d2cc13c
+    reference/vgz/streets_of_rage_2/12 - Wave 131.vgz: 7886dddd5283
+    reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
+    reference/vgz/streets_of_rage_2/14 - Back to the Industry.vgz: 8234eb89748f
+    reference/vgz/streets_of_rage_2/15 - Expander.vgz: 8edbf64cb499
+    reference/vgz/streets_of_rage_2/16 - SOR Super Mix.vgz: 8ad537d591ff
+    reference/vgz/streets_of_rage_2/17 - Max Man.vgz: ed890803c6ce
+    reference/vgz/streets_of_rage_2/18 - Revenge of Mr. X.vgz: 96fedb620261
+    reference/vgz/streets_of_rage_2/19 - Good Ending.vgz: 82cd83e39a4c
+    reference/vgz/streets_of_rage_2/20 - Level Complete.vgz: 92c9d6e5f8bc
+    reference/vgz/streets_of_rage_2/21 - Game Over.vgz: a8f3b23a0b41
+    reference/vgz/streets_of_rage_2/22 - Go Straight (Beatmix).vgz: fe6212d3074a
+    reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
+    reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
 lift_02:
   commit: ce3f15f
   date: '2026-11-01'
@@ -1515,6 +1621,46 @@ pitch_sh2_winners_flight:
     configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
     reference/vgz/space_harrier_2/17 - Winner's Flight (Bonus Stage).vgz: b8da6e9bcf5a
     tests/baselines/sh2_winners_flight_baseline.mod: 0be5da5f0701
+    tests/settings.yaml: 1be2c231bd5e
+pitch_sor2_game_over:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/19_game_over.yaml: 0c8b6b4cbb2c
+    reference/vgz/streets_of_rage_2/21 - Game Over.vgz: a8f3b23a0b41
+    tests/baselines/sor2_game_over_baseline.mod: 33767398ef02
+    tests/settings.yaml: 1be2c231bd5e
+pitch_sor2_go_straight:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/00_go_straight.yaml: 6d3fce3c5ba5
+    reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
+    tests/baselines/sor2_go_straight_baseline.mod: 32f1c1eee48f
+    tests/settings.yaml: 1be2c231bd5e
+pitch_sor2_jungle_base:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/05_jungle_base.yaml: eb781531ccc6
+    reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
+    tests/baselines/sor2_jungle_base_baseline.mod: eec207dfbc5e
+    tests/settings.yaml: 1be2c231bd5e
+pitch_sor2_level_complete:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/0b_level_complete.yaml: 8432316b6bfa
+    reference/vgz/streets_of_rage_2/20 - Level Complete.vgz: 92c9d6e5f8bc
+    tests/baselines/sor2_level_complete_baseline.mod: 077fbfebf6d9
+    tests/settings.yaml: 1be2c231bd5e
+pitch_sor2_too_deep:
+  commit: 2fb3544-dirty
+  date: '2026-11-01'
+  inputs:
+    configs/streets_of_rage_2/08_too_deep.yaml: 1f99ddeef36f
+    reference/vgz/streets_of_rage_2/10 - Too Deep.vgz: 801f6afd911e
+    tests/baselines/sor2_too_deep_baseline.mod: 0d08c1c8e880
     tests/settings.yaml: 1be2c231bd5e
 pitch_special_stage:
   commit: d4522d7-dirty

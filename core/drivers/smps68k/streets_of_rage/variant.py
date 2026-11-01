@@ -30,7 +30,17 @@ from core.rom.grammar.mucom import dac_sample, detune, loop_end, loop_exit, loop
 from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.variant import MUCOM_VOICE, EntryLayout, HeaderLayout, SmpsVariant, SoundIndex, TrackSlot
-from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules
+from core.smps import (
+    ChannelType,
+    CoordFlag,
+    KeyOffRules,
+    ModulationRules,
+    PitchRules,
+    PlaybackRules,
+    TieRules,
+    TrackRules,
+    VolumeRules,
+)
 
 from ...names import SmpsDriver
 from ...reference import PSG_FREQUENCIES, PSG_FREQUENCIES_EXTENDED
@@ -111,7 +121,7 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
     0xF0: read(dac_sample),
     0xF1: drop("$F1 (no DAC effect)", 1),
     0xF2: read(detune),
-    0xF3: effect(CoordFlag.GATE),                # cuts the sample (rest_cuts)
+    0xF3: effect(CoordFlag.GATE),                # cuts the sample (key_off.rest_cuts)
     0xF4: read(DIALECT.vibrato),
     **_LOOPS,
     0xF7: refuse("$F7 on the drum track"),
@@ -140,7 +150,8 @@ def _locate(rom: RomImage) -> SoundIndex:
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
     """Its FM octave and FM volume table, read from the ROM."""
-    fm = replace(rules.track(ChannelType.FM), volume_steps=_fm_volume_steps(rom))
+    track = rules.track(ChannelType.FM)
+    fm = replace(track, volume=replace(track.volume, steps=_fm_volume_steps(rom)))
     return replace(rules, fm_frequencies=_fm_frequencies(rom), tracks={**rules.tracks, ChannelType.FM: fm})
 
 
@@ -187,11 +198,13 @@ def _check_psg_rows(rom: RomImage) -> None:
 #   in noise mode no tone 3 frequency is written; the PSG adds the detune word and the vibrato's sum >> 4
 #   the vibrato's counter reloads on a step that moves (no pause at a turn)
 #   the drum track's rest and gate play sample $85, which is empty: they cut the sample
-_FM_TRACK = TrackRules(jump_clears_tie=True, gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1,
-                       modulation_turn_pause=False)
-_PSG_TRACK = TrackRules(volume_steps=_PSG_VOLUME_STEPS, word_shift=_PSG_WORD_SHIFT, noise_writes_tone3=False,
-                        gate_sees_tie=True, tied_rest_holds=0, modulation_turn_pause=False)
-_DAC_TRACK = TrackRules(jump_clears_tie=True, rest_cuts=True, modulation_turn_pause=False)
+_NO_TURN_PAUSE = ModulationRules(turn_pause=False)
+_FM_TRACK = TrackRules(ties=TieRules(jump_clears=True), modulation=_NO_TURN_PAUSE,
+                       key_off=KeyOffRules(gate_spares_tied=True, gate_sees_tie=True, tied_rest_holds=1))
+_PSG_TRACK = TrackRules(volume=VolumeRules(steps=_PSG_VOLUME_STEPS), modulation=_NO_TURN_PAUSE,
+                        pitch=PitchRules(word_shift=_PSG_WORD_SHIFT, noise_writes_tone3=False),
+                        key_off=KeyOffRules(gate_sees_tie=True, tied_rest_holds=0))
+_DAC_TRACK = TrackRules(ties=TieRules(jump_clears=True), key_off=KeyOffRules(rest_cuts=True), modulation=_NO_TURN_PAUSE)
 
 
 STREETS_OF_RAGE = SmpsVariant(

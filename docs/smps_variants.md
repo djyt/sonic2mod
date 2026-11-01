@@ -200,17 +200,17 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
 - **Volume:** FM carrier TL = table[step] + header volume (`add.b`), absolute: a voice's own carrier
   TLs never play (`VoiceLayout.carrier_tl`).  A `$FB` in a loop crescendos.  PSG: att + envelope
   step, clamped to 15.
-- **Detune:** added to the 14-bit block|fnum word, the PSG's sum >> 4 (`word_shift`); up to +195,
+- **Detune:** added to the 14-bit block|fnum word, the PSG's sum >> 4 (`pitch.word_shift`); up to +195,
   several semitones (detune variants per pitch class: `docs/pipeline.md`).  A word past the PSG's
   10 bits wraps (`$8F` PSG1).
 - **Ties and the gate:** every note keys off, then on; after `$FD` neither: a new pitch slides
   legato, written as a frequency alone.  The gate keys off n frames before the end, but not a
-  note the next byte ties (`gate_sees_tie`) nor, on FM, a tied note (`gate_spares_tied`); a note
+  note the next byte ties (`key_off.gate_sees_tie`) nor, on FM, a tied note (`key_off.gate_spares_tied`); a note
   no longer than n plays whole.  A rest after a tie keys FM off a frame in, the PSG at once
-  (`tied_rest_holds`).  A jump drops an FM or drum track's tie, not a PSG's (`replay_tie`).
+  (`key_off.tied_rest_holds`).  A jump drops an FM or drum track's tie, not a PSG's (`replay_tie`).
 - **Vibrato:** SMPS's shape, but the count is tested before it counts down and the turn's step
-  moves too: a half cycle is count + 1 moves, no pause (`modulation_turn_pause`; Sonic 1's turn
-  adds nothing).  The PSG adds the depth words' sum >> 4 (`word_shift`), not each step's.  Cycles
+  moves too: a half cycle is count + 1 moves, no pause (`modulation.turn_pause`; Sonic 1's turn
+  adds nothing).  The PSG adds the depth words' sum >> 4 (`pitch.word_shift`), not each step's.  Cycles
   too slow for `4x1` play as slides.
 - **Voices:** 25 bytes, DT/MUL TL KS/AR AM/D1R D2R D1L/RR in register order, FB/ALG last.  `$FA`
   writes (D1R, D2R, D1L/RR; 203 in the songs) last until the next voice: a patched copy

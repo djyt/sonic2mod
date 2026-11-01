@@ -3,7 +3,7 @@
     68k   Kosinski into 68k RAM, then copied to Z80 RAM (core/rom/z80.py: buffered)
     Z80   ld iy,$019B: 5 bytes a sample              start.w, size.w, pitch.b (little-endian)
           $81-$85 play from it; $85 is empty: what the drum track's rest and gate write
-          (TrackRules.rest_cuts); from $86 the voice clips (not read: music only)
+          (TrackRules.key_off.rest_cuts); from $86 the voice clips (not read: music only)
     data  core.rom.pcm.sor.RunDpcm: the sample's own delta table, nibble 0 a run
     loop  cycles per output: a nibble 190 (high) / 242 (low), a run's step 219, each + 13 a pitch
           step; a run's entry 23 (high) / 75 (low) more.  The rips play pitch 1 at the count

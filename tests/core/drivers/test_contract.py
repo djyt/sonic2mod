@@ -32,22 +32,23 @@ _REVIEWED: dict[SmpsDriver, dict] = {
     SmpsDriver.TYPE1A: {},
     SmpsDriver.TYPE0FM: {"tempo_phase": 1, "key_run_out": 256},
     SmpsDriver.STREETS_OF_RAGE: {
-        "DAC": {"modulation_turn_pause": False, "jump_clears_tie": True, "rest_cuts": True},
-        "FM": {"modulation_turn_pause": False, "jump_clears_tie": True, "gate_spares_tied": True,
-               "gate_sees_tie": True, "tied_rest_holds": 1},
-        "PSG": {"volume_steps": "256 steps", "word_shift": 4, "modulation_turn_pause": False,
-                "noise_writes_tone3": False, "gate_sees_tie": True, "tied_rest_holds": 0},
+        "DAC": {"modulation.turn_pause": False, "ties.jump_clears": True, "key_off.rest_cuts": True},
+        "FM": {"modulation.turn_pause": False, "ties.jump_clears": True, "key_off.gate_spares_tied": True,
+               "key_off.gate_sees_tie": True, "key_off.tied_rest_holds": 1},
+        "PSG": {"volume.steps": "256 steps", "pitch.word_shift": 4, "modulation.turn_pause": False,
+                "pitch.noise_writes_tone3": False, "key_off.gate_sees_tie": True, "key_off.tied_rest_holds": 0},
     },
     SmpsDriver.SH2: {"DAC": {"byte_durations": True}, "FM": {"byte_durations": True}, "PSG": {"byte_durations": True}},
     SmpsDriver.OUTRUN: {
         "tempo_phase": 1,
-        "FM": {"octave_wrap": OctaveWrap(low=0x283, high=0x508, drop=0x285, rise=0x284), "tie_restarts_envelope": False},
-        "PSG": {"tie_restarts_envelope": False},
+        "FM": {"pitch.octave_wrap": OctaveWrap(low=0x283, high=0x508, drop=0x285, rise=0x284),
+               "ties.restarts_envelope": False},
+        "PSG": {"ties.restarts_envelope": False},
     },
     # Phase 2 of docs/todo/streets_of_rage_2.md: what reading needs; Phase 3 reviews the rest
     SmpsDriver.MUCOM_MD: {
-        "FM": {"carrier_writes_hold": True},
-        "PSG": {"volume_steps": "256 steps"},
+        "FM": {"volume.carrier_writes_hold": True},
+        "PSG": {"volume.steps": "256 steps"},
     },
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")
@@ -100,12 +101,23 @@ def _departures(rules: PlaybackRules) -> dict:
     out: dict = {name: getattr(rules, name) for name in _PLAYBACK_SWITCHES if getattr(rules, name) != defaults[name]}
     for kind in ChannelType:
         track = rules.track(kind)
-        differ = {f.name: getattr(track, f.name) for f in dataclasses.fields(TrackRules)
-                  if getattr(track, f.name) != getattr(SONIC1_TRACK, f.name)}
-        if "volume_steps" in differ:
-            differ["volume_steps"] = f"{len(track.volume_steps)} steps"
+        differ = {name: value for name, value in _switches(track).items() if value != _switches(SONIC1_TRACK)[name]}
+        if "volume.steps" in differ:
+            differ["volume.steps"] = f"{len(track.volume.steps)} steps"
         if differ:
             out[kind.value] = differ
+    return out
+
+
+def _switches(track: TrackRules) -> dict:
+    """Every switch of `track`, a group's as "group.switch"."""
+    out = {}
+    for f in dataclasses.fields(track):
+        value = getattr(track, f.name)
+        if dataclasses.is_dataclass(value):
+            out |= {f"{f.name}.{g.name}": getattr(value, g.name) for g in dataclasses.fields(value)}
+        else:
+            out[f.name] = value
     return out
 
 

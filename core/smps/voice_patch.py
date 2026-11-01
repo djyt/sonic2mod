@@ -12,7 +12,7 @@ the walk sees voices only.
                                                        (10, 11, 12: voice 3 patched; 12 offset too)
 
 A write to a TL the volume sets (a carrier's) is refused (SmpsVoice.patched), unless the track's
-driver holds it until the next volume change (TrackRules.carrier_writes_hold: Streets of Rage 2's):
+driver holds it until the next volume change (TrackRules.volume.carrier_writes_hold: Streets of Rage 2's):
 then the copy's TL is the written one, out of the volume's reach (SmpsVoice.level_fixed), until
 the walk takes it back.
 """

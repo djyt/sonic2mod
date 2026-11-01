@@ -7,7 +7,16 @@ from __future__ import annotations
 
 import unittest
 
-from core.smps import ChannelType, PlaybackRules, SetVoice, SetVol, TrackRules, VoiceRegister, VolumeStep
+from core.smps import (
+    ChannelType,
+    PlaybackRules,
+    SetVoice,
+    SetVol,
+    TrackRules,
+    VoiceRegister,
+    VolumeRules,
+    VolumeStep,
+)
 from core.smps.driver_track import DriverTrack
 from core.smps.song import SmpsChannelHeader, SmpsVoice
 from core.smps.voice_patch import VoicePatcher
@@ -37,7 +46,7 @@ class CarrierWrites(unittest.TestCase):
     _OP1_TL = 0x40                          # a carrier in algorithm 7
 
     def _track(self, hold: bool) -> tuple[DriverTrack, VoicePatcher]:
-        rules = TrackRules(volume_steps={1: 0x10, 2: 0x20}, carrier_writes_hold=hold)
+        rules = TrackRules(volume=VolumeRules(steps={1: 0x10, 2: 0x20}, carrier_writes_hold=hold))
         playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
                                  dac_names={}, tracks={ChannelType.FM: rules})
         patcher = VoicePatcher([SmpsVoice(0, algorithm=7)])

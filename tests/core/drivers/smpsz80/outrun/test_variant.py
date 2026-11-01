@@ -47,7 +47,7 @@ class Flags(unittest.TestCase):
         self.assertEqual(_read(bytes([0xEC, 0x02]), ChannelType.PSG).ops[0].kind, OpKind.EFFECT)
 
     def test_an_fm_track_keeps_its_detuned_word_in_the_octave(self):
-        wrap = OUTRUN.rules.track(ChannelType.FM).octave_wrap
+        wrap = OUTRUN.rules.track(ChannelType.FM).pitch.octave_wrap
         assert wrap is not None
         self.assertEqual(wrap.wrapped(0x2A80), 0x2505)      # fnum $280: down a block, fnum + $285 ($85's FM4)
         self.assertEqual(wrap.wrapped(0x2509), 0x2A85)      # fnum $509: up a block, fnum - $284

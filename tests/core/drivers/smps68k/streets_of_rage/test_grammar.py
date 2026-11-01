@@ -25,6 +25,7 @@ from core.smps import (
     SmpsChannelHeader,
     SmpsSongHeader,
     SmpsVoice,
+    VolumeRules,
     song_from_code,
 )
 
@@ -35,7 +36,7 @@ _AT = 0x200                     # where a hand-built track starts
 
 
 # The ROM's first FM volume steps (the rest is read from it)
-_FM = replace(STREETS_OF_RAGE.rules.track(ChannelType.FM), volume_steps={-1: 0x2D, 0: 0x36, 1: 0x33, 2: 0x30})
+_FM = replace(STREETS_OF_RAGE.rules.track(ChannelType.FM), volume=VolumeRules(steps={-1: 0x2D, 0: 0x36, 1: 0x33, 2: 0x30}))
 
 
 _RULES = replace(STREETS_OF_RAGE.rules, tracks={**STREETS_OF_RAGE.rules.tracks, ChannelType.FM: _FM})

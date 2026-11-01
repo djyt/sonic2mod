@@ -149,8 +149,8 @@ language to `core/rom/grammar/mucom.py`, a `MucomDialect` per driver.  Shinobi i
 ## 4. The prototype (scratch, not kept)
 
 `mucom/variant.py`'s `MUCOM`, `dataclasses.replace`d with: § 2.2's header (a `music_header_reader`,
-the 4th PSG track on PSG3's name), § 2.3's flag tables, 1-based voices, `jump_clears_tie` False,
-`rest_cuts` False, no DAC.  Song code walked by the existing reader and compared with
+the 4th PSG track on PSG3's name), § 2.3's flag tables, 1-based voices, `ties.jump_clears` False,
+`key_off.rest_cuts` False, no DAC.  Song code walked by the existing reader and compared with
 `compare_with_rip` (`vgm_lift`'s comparison) on onsets.  Each rip was paired with the decoded song
 whose FM onsets it matches best.
 
@@ -215,12 +215,12 @@ names it (CLAUDE.md, "Scalable structure").
 | voices from 1 | `SetVoice(n - 1)`, 0 -> 0 | grammar | none |
 | pan 1 R / 2 L / 3 C / 0 none | `PAN` | grammar | 0 (both off): how the MOD plays a muted channel |
 | `$F8` FM / `$F9` PSG stop | `STOP` | flag tables | none |
-| PSG `$F2`: + 0 / 1 divider | `Detune(0 or 1)` with `word_shift` 0 | grammar, `TrackRules` | detune variants |
+| PSG `$F2`: + 0 / 1 divider | `Detune(0 or 1)` with `pitch.word_shift` 0 | grammar, `TrackRules` | detune variants |
 | no PSG vibrato | `$F4` dropped on PSG | flag table | none |
 | fixed-rate noise | `PsgForm($E4)` | grammar | psg render (rate 0 exists) |
 | noise track | a PSG track on `NOISE` (5.1.3) | header, walk | planner, render |
 | `$FA` carrier TL = v + song volume | a voice patch the next `$F1` / voice ends, or a level change (D4) | walk (`voice_patch.py`) | none |
-| jump keeps the tie, drum rests do not cut | `jump_clears_tie` / `rest_cuts` False (exist) | rules | none |
+| jump keeps the tie, drum rests do not cut | `ties.jump_clears` / `key_off.rest_cuts` False (exist) | rules | none |
 | DAC: Sonic 1's DPCM, looped, `$85` pitched by note | `DacSample`s; `$85` a pitched copy per note | `dac.py` | sample loops (exist) |
 
 ---
@@ -252,7 +252,7 @@ names it (CLAUDE.md, "Scalable structure").
 
 ### Phase 3: the walk
 - [ ] 3.1 FM: the song volume; `$FA` carrier TLs (`$8A` `$8B` `$8E`); the gate's tie rules
-  (`gate_sees_tie`, `gate_spares_tied`, `tied_rest_holds`: Streets of Rage's values to be checked
+  (`key_off.gate_sees_tie`, `key_off.gate_spares_tied`, `key_off.tied_rest_holds`: Streets of Rage's values to be checked
   against `$78BE2` / `$7921A`); ties across the jump; pan's direction from a rip.
 - [ ] 3.2 PSG: volume without header, envelopes, the `+1` detune, `$F7` fixed noise, the noise track.
   What is the PSG entry's `+A` byte (0 or 2)?

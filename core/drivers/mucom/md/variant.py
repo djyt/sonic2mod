@@ -22,7 +22,7 @@ from core.rom.flags import NO_ATTACK, FlagSpec, drop, effect, read, refuse
 from core.rom.grammar.mucom import dac_sample, detune, loop_end, loop_exit, loop_start, register_write
 from core.rom.image import RomImage
 from core.rom.variant import MUCOM_VOICE, HeaderLayout, SmpsVariant, TrackSlot
-from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules
+from core.smps import ChannelType, CoordFlag, PlaybackRules, TrackRules, VolumeRules
 
 from ...names import SmpsDriver
 from .dac import MUSIC_SAMPLES, mucom_md_dac
@@ -105,7 +105,8 @@ _DAC_FLAGS: dict[int, FlagSpec] = {
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
     """Its FM octave and volume table, and its PSG table, read from the ROM."""
     psg = _psg_dividers(psg_octave(rom))
-    fm = replace(rules.track(ChannelType.FM), volume_steps=_fm_volume_steps(fm_volumes(rom)))
+    track = rules.track(ChannelType.FM)
+    fm = replace(track, volume=replace(track.volume, steps=_fm_volume_steps(fm_volumes(rom))))
     return replace(rules, fm_frequencies=fm_frequencies(rom), psg_frequencies=psg[:PSG_NOTES], psg_read=psg,
                    tracks={**rules.tracks, ChannelType.FM: fm})
 
@@ -128,8 +129,8 @@ def _psg_dividers(octave: tuple[int, ...]) -> tuple[int, ...]:
 # How each kind of track reads; what Phase 3 checks against the driver is Sonic 1's until then:
 #   $FA's writes are queued and written after the volume ($41996): a carrier's TL holds until the
 #   next volume change or voice
-_FM_TRACK = TrackRules(carrier_writes_hold=True)
-_PSG_TRACK = TrackRules(volume_steps={v: max(v, 0) ^ _PSG_VOLUME for v in _SIGNED_STEPS})
+_FM_TRACK = TrackRules(volume=VolumeRules(carrier_writes_hold=True))
+_PSG_TRACK = TrackRules(volume=VolumeRules(steps={v: max(v, 0) ^ _PSG_VOLUME for v in _SIGNED_STEPS}))
 
 
 MUCOM_MD = SmpsVariant(

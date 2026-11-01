@@ -6,7 +6,7 @@
 
 The track's driver (TrackRules) says the rest: Sonic 1 spends a step at each turn (pause 1:
 its counter's reload adds nothing), Streets of Rage's reload moves too (pause 0); its PSG adds
-the sum >> 4 (`word_shift`).
+the sum >> 4 (`pitch.word_shift`).
 
 A cycle more than twice as slow as 4x1 (Streets of Rage's 251 steps: a sweep the note never
 sees turn) is played as slides instead: each row slides to where the chip's pitch is at its end
@@ -53,7 +53,7 @@ def vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: 
     Driver: the accumulator swings delta * steps / 2 either side of its centre (first
     half-swing steps/2 steps, every later one the full `steps`), and is added to the note's
     own frequency word: the YM2612 FNUM of its pitch class in the song's table (the block is
-    untouched) or the SN76489 divider of its PSG table entry (the sum >> `track.word_shift`).  An Amiga period and a PSG
+    untouched) or the SN76489 divider of its PSG table entry (the sum >> `track.pitch.word_shift`).  An Amiga period and a PSG
     divider are both 1/f and a small FNUM change is proportional to f, so in every case the
     swing in periods is
 
@@ -67,7 +67,7 @@ def vibrato_depth(delta: int, steps: int, period: int, chip_index: int, is_psg: 
     word = psg_read[chip_index & 0x7F] if is_psg else _fnum(chip_index, fm_frequencies)
     if word <= 0:
         return 0
-    swing = period * (abs(signed_delta(delta)) * steps / 2 / (1 << track.word_shift)) / word
+    swing = period * (abs(signed_delta(delta)) * steps / 2 / (1 << track.pitch.word_shift)) / word
     if swing < _MIN_SWING:
         return 0
 
@@ -84,7 +84,7 @@ def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK
     """What the modulation adds to the frequency word (FNUM or PSG divider units) `frame`
     frames after the note's attack: nothing for `wait` frames, then a step every `speed`, each
     adding `delta`: half its moves up first, then `steps` moves each way, a turn's step a pause
-    where `track` spends one there (Sonic 1), the sum >> `track.word_shift`.  Streets of Rage $90
+    where `track` spends one there (Sonic 1), the sum >> `track.pitch.word_shift`.  Streets of Rage $90
     FM4 (wait 8, +8 a step, speed 1): the rip's word moves 0 ... 0 +8 +16 ..., +8 at frame 9.
 
         offset ^       /^^\\
@@ -95,7 +95,7 @@ def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK
     if frame <= mod.wait:
         return 0
     taken = (frame - mod.wait) // (mod.speed or 256)
-    pause = int(track.modulation_turn_pause)
+    pause = int(track.modulation.turn_pause)
     half = (mod.steps - 1 + pause) // 2         # the counter starts at half its reload
     if taken <= half:
         units = taken
@@ -104,7 +104,7 @@ def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK
         leg, at = divmod(taken - half - 1, mod.steps + pause)
         moved = max(0, at + 1 - pause)
         units = half - moved if leg % 2 == 0 else half - mod.steps + moved
-    return (signed_delta(mod.delta) * units) >> track.word_shift
+    return (signed_delta(mod.delta) * units) >> track.pitch.word_shift
 
 
 def modulation_slides(mod: ModSet, period: int, rows: list[tuple[float, float]], frame_of: Callable[[float], float],
@@ -153,7 +153,7 @@ class VibratoSpeed:
 
         Driver (DoModulation, once per V-int frame): every `speed` frames the delta is added; when
         the step counter runs out it is reloaded from the ORIGINAL steps byte, the delta is negated
-        and, in Sonic 1, one more step is spent (`track.modulation_turn_pause`).  Only the first
+        and, in Sonic 1, one more step is spent (`track.modulation.turn_pause`).  Only the first
         half-swing uses the halved count, so the steady cycle is 2 * speed * (steps + pause)
         frames.  Not multiplied by the tempo divider.
 
@@ -196,4 +196,4 @@ class VibratoSpeed:
 def _cycle_frames(mod_speed: int, steps: int, track: TrackRules) -> int:
     """Frames a modulation's steady cycle lasts: two legs of `steps` moves, and a pause at each
     turn where the driver spends one."""
-    return 2 * (mod_speed or 256) * (steps + int(track.modulation_turn_pause))
+    return 2 * (mod_speed or 256) * (steps + int(track.modulation.turn_pause))

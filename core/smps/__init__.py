@@ -107,7 +107,16 @@ from .parser import SmpsParser
 from .percussion import ALL_OPERATORS, FmDrum, FmFrame, PsgDrumFrame
 from .pitch_envelope import PitchEnvelope
 from .playback import Aspect, PlayedNote, PlayedSong, played_song
-from .rules import OctaveWrap, PlaybackRules, TrackRules
+from .rules import (
+    KeyOffRules,
+    ModulationRules,
+    OctaveWrap,
+    PitchRules,
+    PlaybackRules,
+    TieRules,
+    TrackRules,
+    VolumeRules,
+)
 from .song import (
     FIRST_FLAG,
     FIRST_NOTE,
@@ -170,10 +179,12 @@ __all__ = [
     "FmDrum",
     "FmFrame",
     "Gate",
+    "KeyOffRules",
     "Lfo",
     "ModOff",
     "ModOn",
     "ModSet",
+    "ModulationRules",
     "Nop",
     "NoteDiff",
     "NoteFill",
@@ -183,6 +194,7 @@ __all__ = [
     "Pan",
     "PanStep",
     "PitchEnvelope",
+    "PitchRules",
     "PlaybackRules",
     "PlayedEffect",
     "PlayedNote",
@@ -212,6 +224,7 @@ __all__ = [
     "SongCode",
     "SongDiff",
     "TempoSegment",
+    "TieRules",
     "TimerA",
     "TrackRules",
     "TrackState",
@@ -219,6 +232,7 @@ __all__ = [
     "VInt",
     "VoiceField",
     "VoiceRegister",
+    "VolumeRules",
     "VolumeStep",
     "align_songs",
     "chip_pitch",

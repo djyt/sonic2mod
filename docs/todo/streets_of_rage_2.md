@@ -247,7 +247,7 @@ Order: R1, R2, R7 before Phase 2; R3 with 2.2; R4, R5, R6 before Phase 3.  One c
 | Fact | IR | Resolved in | Downstream |
 |---|---|---|---|
 | header loop pointers | R3: `JUMP` at the track's end | header reader, `decode_tracks` | none |
-| FM volume `v − 2`, clamped 0-19 | `volume_steps` over every byte + R4's clamp on `$FB` | walk | none |
+| FM volume `v − 2`, clamped 0-19 | `volume.steps` over every byte + R4's clamp on `$FB` | walk | none |
 | PSG volume 0-15, `$FB` clamped | `SET_VOL` / `ALTER_VOL` with a clamp per kind | walk | none |
 | soft release (`$FF F3 n`, `F5`) | R5: gate -> note, level change, tied tail through the rests | walk | `Cxx` on a tie (exists) |
 | FM gate d ≤ q -> 1 frame | R4's gate floor | walk | none |
@@ -257,9 +257,9 @@ Order: R1, R2, R7 before Phase 2; R3 with 2.2; R4, R5, R6 before Phase 3.  One c
 | PSG ADSR envelope with release | `PsgEnvelope` gains a release; resolved per (preset, volume) in the walk (D2) | walk | PSG render: attack / decay / sustain; PSG release slides beside FM's (B6) |
 | noise takeover, fixed rate | R6: `PsgForm($E4 \| rate)` and back | walk | psg render (rates 0-2 exist) |
 | pan 1 R / 2 L | `PAN` | dialect (R1) | none |
-| drum rests do not cut | `rest_cuts` False (exists) | rules | none |
+| drum rests do not cut | `key_off.rest_cuts` False (exists) | rules | none |
 | `$FA` carrier TL | a voice patch the next volume change undoes (D4; RoS's too) | walk (`voice_patch.py`) | none |
-| tie survives the loop | `jump_clears_tie` False (exists) | rules | none |
+| tie survives the loop | `ties.jump_clears` False (exists) | rules | none |
 
 ---
 
@@ -316,7 +316,8 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   name a pitch past B7 (`parse_smps_note`; SoR2's PSG reaches B8): it reads them now.
 
 ### Phase 3: the walk
-- [ ] 3.0 R4, R5, R6, a commit each.
+- [ ] 3.0 R4, R5, R6, a commit each.  R4 done: `TrackRules` holds `volume`, `key_off`, `ties`,
+  `modulation`, `pitch` (and `byte_durations`).
 - [ ] 3.1 FM: volume law (the clamp is on the stored step: `$FB` after an out-of-range `$F1`), the
   gate's 1-frame floor (D3, checked on a rip), soft release, ties across the loop, the vibrato's
   phase and restart; `$FA` carrier writes against a rip (D4, modelled in 2.3).  Pan's direction
@@ -338,7 +339,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   are now read on any registers, either lea first (The Revenge of Shinobi's two blocks found too).
 - [ ] 4.2 Rates: recount the loop's cycles (SoR1's counts as the start; this player's `$1FFD` writes
   and bank code moved), the 68k's stall from the rips (their hi-hats play 2× fast: pack notes).
-- [ ] 4.3 Rests and gates leave the sample playing (`rest_cuts` False); onsets against the rips.
+- [ ] 4.3 Rests and gates leave the sample playing (`key_off.rest_cuts` False); onsets against the rips.
 
 ### Phase 5: convert
 - [ ] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26).

@@ -58,7 +58,7 @@ class ChannelWriter:
         self._is_dac = kind == ChannelType.DAC     # by the song: Type 0 FM's drums are FM3
         self._is_psg = kind == ChannelType.PSG
         self._track = channel.rules.track(kind)    # how its driver plays this kind
-        self._rest_plays_out = self._is_dac and not self._track.rest_cuts
+        self._rest_plays_out = self._is_dac and not self._track.key_off.rest_cuts
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._cells = Cells(ctx)
         self._router = ColumnRouter(ctx, self._cells, chan_cfg.source, chan_cfg.mod_channel)

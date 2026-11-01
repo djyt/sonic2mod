@@ -167,7 +167,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         if not note.is_retrigger or base is None:
             base = _table_word(note, st, channel.rules.fm_frequencies)
         sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules),
-                        channel.rules.track(channel.header.channel_type).octave_wrap)
+                        channel.rules.track(channel.header.channel_type).pitch.octave_wrap)
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
         # read that way leaves it sounding (NoteTimeout is spent)

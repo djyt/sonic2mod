@@ -387,7 +387,7 @@ def generate_fm_samples(
     # render and are consumed in job order, so the MOD does not depend on scheduling.
     cache = _fm_cache(synth)
     renderer = _FmRenderer(synth, cache, loops, verbose, song.rules.fm_frequencies,
-                           song.rules.track(ChannelType.FM).octave_wrap)
+                           song.rules.track(ChannelType.FM).pitch.octave_wrap)
     rendered: list[_Rendered] = []
     if jobs:
         with ThreadPoolExecutor(max_workers=min(len(jobs), synth.worker_threads())) as pool:

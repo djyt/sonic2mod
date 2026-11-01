@@ -74,7 +74,7 @@ class DriverTrack:
 
     @property
     def jump_clears_tie(self) -> bool:
-        return self._rules.jump_clears_tie
+        return self._rules.ties.jump_clears
 
     @property
     def legato(self) -> bool:
@@ -130,7 +130,7 @@ class DriverTrack:
         if self._voice is None or self._header.channel_type != ChannelType.FM:
             raise ValueError(f"{self._header.label}: a register write with no FM voice set")
         register -= self._channel_number()
-        if self._rules.carrier_writes_hold and register in self._voices.voice(self._voice).volume_registers:
+        if self._rules.volume.carrier_writes_hold and register in self._voices.voice(self._voice).volume_registers:
             self._changes = self._changes.level_written(register, value)
             self._level_written = True
         else:
@@ -165,7 +165,7 @@ class DriverTrack:
 
     def _volume(self, step: int) -> SetVol:
         """Volume step `step`: its level in the driver's table, the header volume added (add.b)."""
-        level = self._rules.volume_steps.get(step)
+        level = self._rules.volume.steps.get(step)
         if level is None:
             raise ValueError(f"{self._header.channel_type} track '{self._header.label}': volume step "
                              f"{step}, which its driver has no level for")
@@ -176,7 +176,7 @@ class DriverTrack:
     def _detune(self, word: int) -> Detune:
         """The detune word `word` (add.w) as the track adds it (the PSG's shifted to a divider)."""
         self._detune_word = signed_word(word)
-        return Detune(self._detune_word >> self._rules.word_shift)
+        return Detune(self._detune_word >> self._rules.pitch.word_shift)
 
     def duration(self, ticks: int) -> int:
         """A duration (byte x divider; 0: none read yet) as the track counts it: its low byte,
@@ -199,19 +199,19 @@ class DriverTrack:
         if not self._noise:
             self._tone_note = value
             return value
-        if self._rules.noise_writes_tone3:
+        if self._rules.pitch.noise_writes_tone3:
             return value
         return MAX_PSG if self._tone_note is None else self._tone_note
 
     def cut(self, note: SmpsNote, tied_next: bool) -> list[SmpsNote]:
         """`note` (its duration read; `tied_next`: the next byte is a tie) as the driver keys it
         off: itself, or the part it holds and a rest after (both cut; no held part: the rest
-        alone).  A gated note at its gate; a rest after a tie where TrackRules.tied_rest_holds."""
+        alone).  A gated note at its gate; a rest after a tie where TrackRules.key_off.tied_rest_holds."""
         if not note.is_rest:
             if self._gated(note, tied_next):
                 return _split(note, note.duration - self._gate)
             return [note]
-        holds = self._rules.tied_rest_holds
+        holds = self._rules.key_off.tied_rest_holds
         if note.is_no_attack and holds is not None and holds < note.duration:
             return _split(note, holds)
         return [note]
@@ -222,9 +222,9 @@ class DriverTrack:
         looks (it checks each frame)."""
         if not self._gate or note.duration <= self._gate:
             return False
-        if note.is_no_attack and self._rules.gate_spares_tied:
+        if note.is_no_attack and self._rules.key_off.gate_spares_tied:
             return False
-        return not (self._rules.gate_sees_tie and tied_next)
+        return not (self._rules.key_off.gate_sees_tie and tied_next)
 
 
 def _split(note: SmpsNote, held: int) -> list[SmpsNote]:

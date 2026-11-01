@@ -36,7 +36,21 @@ sys.path.insert(0, str(ROOT))
 from core.drivers import dac_samples, detect_variant, locate_sounds, read_rom_code
 from core.drivers.reference import SONIC1_RULES
 from core.rom import RomError, RomImage, is_rom_path
-from core.smps import Op, OpKind, PlaybackRules, SmpsParser, SmpsSong, SmpsVoice, played_song, source_map
+from core.smps import (
+    KeyOffRules,
+    ModulationRules,
+    Op,
+    OpKind,
+    PitchRules,
+    PlaybackRules,
+    SmpsParser,
+    SmpsSong,
+    SmpsVoice,
+    TieRules,
+    VolumeRules,
+    played_song,
+    source_map,
+)
 from core.smps.playback import PlayedNote
 
 _HASH_CHARS = 12
@@ -88,6 +102,9 @@ def _rules(rules: PlaybackRules) -> Iterator[str]:
     yield from _fields(rules, "  ")
 
 
+_RULE_GROUPS = (VolumeRules, KeyOffRules, TieRules, ModulationRules, PitchRules)
+
+
 def _fields(rules, indent: str) -> Iterator[str]:
     for f in fields(rules):
         value = getattr(rules, f.name)
@@ -99,6 +116,9 @@ def _fields(rules, indent: str) -> Iterator[str]:
             for key in sorted(value):                   # a few rules by key (each kind of track's): nested
                 yield f"{indent}{f.name} {key}"
                 yield from _fields(value[key], indent + "  ")
+        elif isinstance(value, _RULE_GROUPS):                     # a group of a track's rules: its switches
+            yield f"{indent}{f.name}"
+            yield from _fields(value, indent + "  ")
         else:
             yield f"{indent}{f.name}: {value!r}"
 

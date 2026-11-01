@@ -180,7 +180,7 @@ def loop_exit(memory: SoundMemory, address: int) -> Instruction:
 
 def detune(memory: SoundMemory, address: int) -> Instruction:
     """`$F2 lo hi mode`: the detune word, set (mode 0) or added to; the PSG's shifted to a divider
-    as it plays (the PSG's TrackRules.word_shift)."""
+    as it plays (the PSG's TrackRules.pitch.word_shift)."""
     word = signed_le_word(memory, address + 1)
     if memory.byte(address + 3) != _DETUNE_SETS:
         return as_instruction(DetuneAdd(word), 4)

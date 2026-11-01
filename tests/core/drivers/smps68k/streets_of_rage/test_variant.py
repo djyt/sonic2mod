@@ -39,7 +39,7 @@ class StreetsOfRage(unittest.TestCase):
         rules = read_rom_song(self.rom, 0x81, self.index).rules
         self.assertEqual(len(rules.fm_frequencies), 97)
         self.assertEqual(rules.fm_frequencies[1 + 57], 4 << 11 | 0x43C)          # A4: block 4
-        steps = rules.track(ChannelType.FM).volume_steps
+        steps = rules.track(ChannelType.FM).volume.steps
         self.assertEqual([steps[s] for s in (-4, -1, 0, 1, 19, 20)], [0x36, 0x2D, 0x36, 0x33, 0x02, 0x00])
         self.assertEqual(PSG_FREQUENCIES[0], 0x356)
 

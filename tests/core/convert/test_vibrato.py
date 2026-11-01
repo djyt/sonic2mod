@@ -10,7 +10,7 @@ import unittest
 
 from core.convert import modulation_offset, modulation_slides, vibrato_depth
 from core.drivers.reference import SONIC1_RULES
-from core.smps import ModSet, TrackRules
+from core.smps import ModSet, ModulationRules, PitchRules, TrackRules
 
 _C = 644                        # Sonic 1's FNUM for C, the period the tests play it at
 
@@ -75,10 +75,10 @@ class Modulation(unittest.TestCase):
     def test_streets_of_rage_moves_on_the_turn_and_shifts_the_psg_sum(self):
         # Count 4 (5 moves a half cycle): +2 moves, then 5 down and 5 up, each turn moving too.
         # The PSG adds the sum >> 4: a word of -18 moves about 1.1 a step, not -18 >> 4 = -2
-        fm = TrackRules(modulation_turn_pause=False)
+        fm = TrackRules(modulation=ModulationRules(turn_pause=False))
         wobble = ModSet(wait=0, speed=1, delta=1, steps=5)
         self.assertEqual([modulation_offset(wobble, f, fm) for f in range(1, 10)], [1, 2, 1, 0, -1, -2, -3, -2, -1])
-        psg = TrackRules(modulation_turn_pause=False, word_shift=4)
+        psg = TrackRules(modulation=ModulationRules(turn_pause=False), pitch=PitchRules(word_shift=4))
         shallow = ModSet(wait=0, speed=1, delta=-18, steps=5)
         self.assertEqual([modulation_offset(shallow, f, psg) for f in (1, 2, 7)], [-2, -3, 3])
         # Divider 1000 at period 1000: 18 * 5 / 2 / 16 = 2.8 periods (FT2 y=2), not 45

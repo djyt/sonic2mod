@@ -14,7 +14,12 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                tempo_phase      frames the first TempoWait hold comes late (core/smps/tempo.py)
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
-               from Sonic 1's (track(kind); a kind left out reads as Sonic 1's)
+               from Sonic 1's (track(kind); a kind left out reads as Sonic 1's), by concern:
+                   volume      the level a volume step sets, a register write over it
+                   key_off     the gate and the rest: what they key off
+                   ties        what a jump and a tied read do to a tie
+                   modulation  the vibrato's turns
+                   pitch       the detune word's scale, the octave it is kept in, noise on tone 3
 """
 
 from __future__ import annotations
@@ -61,31 +66,66 @@ class OctaveWrap:
 
 
 @dataclass(frozen=True)
-class TrackRules:
-    """What one kind of track (FM, PSG, the drum track) does that the walk resolves a driver's
-    effects and ties by (core/smps/driver_track.py).  The defaults are Sonic 1's."""
+class VolumeRules:
+    """The level a track's volume sets."""
 
     # VolumeStep: the level (FM: TL offset, PSG: attenuation) by step, a signed byte; none: no steps
-    volume_steps: Mapping[int, int] = field(default_factory=dict)
-    word_shift: int = 0                     # the track adds its detune word, and its modulation's sum,
-                                            # >> this (the PSG's: a divider)
-    modulation_turn_pause: bool = True      # the modulation spends a step at each turn: its counter's
-                                            # reload adds nothing (Sonic 1); False: it moves too
-    jump_clears_tie: bool = False           # a jump drops a pending tie
-    noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
-                                            # keeps the last tone note's (none: divider 0, nMaxPSG)
+    steps: Mapping[int, int] = field(default_factory=dict)
+    carrier_writes_hold: bool = False       # a register write to a TL the volume sets holds until the next
+                                            # volume change or voice (Streets of Rage 2's, $41996); False: refused
+
+
+@dataclass(frozen=True)
+class KeyOffRules:
+    """What the gate and a rest key off."""
+
     gate_spares_tied: bool = False          # the gate leaves a tied note whole (its key-off waits on the tie)
     gate_sees_tie: bool = False             # the gate leaves a note the next byte ties
     tied_rest_holds: int | None = None      # frames a rest after a tie holds the note; None: the whole rest
     rest_cuts: bool = False                 # the drum track's rest (and gate) stops the sample; False: it plays out
+
+
+@dataclass(frozen=True)
+class TieRules:
+    """What a jump and a tied read do to a tie."""
+
+    jump_clears: bool = False               # a jump drops a pending tie
+    restarts_envelope: bool = True          # a tied read starts the PSG envelope again (Streets of Rage's
+                                            # rips); False: it plays on from the attack (OutRun's, $0391)
+
+
+@dataclass(frozen=True)
+class ModulationRules:
+    """How the modulation (vibrato) turns."""
+
+    turn_pause: bool = True                 # the modulation spends a step at each turn: its counter's
+                                            # reload adds nothing (Sonic 1); False: it moves too
+
+
+@dataclass(frozen=True)
+class PitchRules:
+    """How a note's frequency word is made from its table entry, detune and modulation."""
+
+    word_shift: int = 0                     # the track adds its detune word, and its modulation's sum,
+                                            # >> this (the PSG's: a divider)
+    octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
+    noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
+                                            # keeps the last tone note's (none: divider 0, nMaxPSG)
+
+
+@dataclass(frozen=True)
+class TrackRules:
+    """What one kind of track (FM, PSG, the drum track) does that the walk resolves a driver's
+    effects and ties by (core/smps/driver_track.py), by concern.  The defaults are Sonic 1's."""
+
+    volume: VolumeRules = VolumeRules()
+    key_off: KeyOffRules = KeyOffRules()
+    ties: TieRules = TieRules()
+    modulation: ModulationRules = ModulationRules()
+    pitch: PitchRules = PitchRules()
     byte_durations: bool = False            # a duration (byte x divider) is kept in a byte the track counts
                                             # up to: a product past 255 wraps, and 0 - a note before any
                                             # duration - lasts 256 ticks; False: the product as it is
-    octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
-    tie_restarts_envelope: bool = True      # a tied read starts the PSG envelope again (Streets of Rage's
-                                            # rips); False: it plays on from the attack (OutRun's, $0391)
-    carrier_writes_hold: bool = False       # a register write to a TL the volume sets holds until the next
-                                            # volume change or voice (Streets of Rage 2's, $41996); False: refused
 
 
 SONIC1_TRACK = TrackRules()

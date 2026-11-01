@@ -196,7 +196,7 @@ def _check_offset(song: SmpsSong, notes: NoteFrames, early: bool, offset: int, f
                   channels: ChannelChoice, excuses: _Excuses) -> FrameCheck:
     check = FrameCheck(offset, early)
     envelopes = song.rules.psg_envelopes
-    plays_on = not song.rules.track(ChannelType.PSG).tie_restarts_envelope
+    plays_on = not song.rules.track(ChannelType.PSG).ties.restarts_envelope
     for name, sounding in notes.items():
         if not channels.picks(name):
             continue

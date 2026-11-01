@@ -18028,9 +18028,15 @@ read_outrun:
   argv:
   - tools/rom/song_dump.py
   - input/roms/OutRun (USA, Europe).md
-  commit: 86831cf-dirty
+  commit: 4de87d5-dirty
   files:
   - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
   - core/chips/__init__.py
   - core/chips/fm.py
   - core/chips/psg.py
@@ -18054,7 +18060,8 @@ read_outrun:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
@@ -18461,9 +18468,15 @@ read_space_harrier_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 86831cf-dirty
+  commit: 4de87d5-dirty
   files:
   - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
   - core/chips/__init__.py
   - core/chips/fm.py
   - core/chips/psg.py
@@ -18490,7 +18503,8 @@ read_space_harrier_2:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
@@ -18528,9 +18542,15 @@ read_streets_of_rage:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 86831cf-dirty
+  commit: 4de87d5-dirty
   files:
   - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
   - core/chips/__init__.py
   - core/chips/fm.py
   - core/chips/psg.py
@@ -18543,7 +18563,6 @@ read_streets_of_rage:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
   - core/drivers/smps68k/mucom/__init__.py
@@ -18554,7 +18573,9 @@ read_streets_of_rage:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/mucom.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
@@ -18588,3 +18609,71 @@ read_streets_of_rage:
   - tools/rom/song_dump.py
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
+read_streets_of_rage_2:
+  argv:
+  - tools/rom/song_dump.py
+  - input/roms/Streets of Rage 2 (USA).md
+  commit: 4de87d5-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/chips/__init__.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/mucom/__init__.py
+  - core/drivers/mucom/md/__init__.py
+  - core/drivers/mucom/md/grammar.py
+  - core/drivers/mucom/md/header.py
+  - core/drivers/mucom/md/locate.py
+  - core/drivers/mucom/md/memory.py
+  - core/drivers/mucom/md/variant.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/reference.py
+  - core/drivers/registry.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/mucom.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/smps/__init__.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - tools/rom/song_dump.py
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9

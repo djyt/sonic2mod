@@ -53,6 +53,7 @@ import argparse
 import contextlib
 import datetime
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -357,18 +358,25 @@ def run_tests(cases: list[dict], jobs: int) -> bool:
     if not cases:
         print("\nNothing to run.")
         return True
-    all_passed = True
     results = _convert_all(cases, jobs)
     manifest = _load_manifest()
     settings = _content_hash(SETTINGS_FILE)
+    failed = []
     for tc in cases:
-        print(f"\n  [{tc['name']}] {tc['description']}")
-        all_passed &= _check(tc, results[tc["name"]], manifest, settings, _output_path(tc["name"]))
+        # A pass is counted; a failure prints its case and what _check found
+        log = io.StringIO()
+        with contextlib.redirect_stdout(log):
+            print(f"\n  [{tc['name']}] {tc['description']}")
+            passed = _check(tc, results[tc["name"]], manifest, settings, _output_path(tc["name"]))
+        if not passed:
+            failed.append(tc["name"])
+            print(log.getvalue(), end="")
 
-    print()
-    print("All tests PASSED." if all_passed else
-          f"Some tests FAILED.  Their outputs: {OUTPUT_DIR.relative_to(ROOT).as_posix()}/<case>.mod")
-    return all_passed
+    print(f"\n{len(cases) - len(failed)} of {len(cases)} passed")
+    print("All tests PASSED." if not failed else
+          f"Some tests FAILED.  Their outputs: {OUTPUT_DIR.relative_to(ROOT).as_posix()}/<case>.mod\n"
+          f"failed: {' '.join(failed)}")
+    return not failed
 
 
 def _check(tc: dict, result: tuple[bool, str, list[str]], manifest: dict, settings: str, tmp_path: Path) -> bool:

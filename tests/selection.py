@@ -190,14 +190,20 @@ def head_commit() -> str:
     return f"{head}-dirty" if (_git("status", "--porcelain", "--untracked-files=no") or "").strip() else head
 
 
+_REASONS_LISTED = 8          # cases a run says why it selects; the rest counted
+
+
 def report(selection: Selection, total: int) -> None:
     """One line: how many cases run and why the rest do not."""
     if selection.everything:
         print(f"  all {total} cases: {selection.everything}")
         return
     print(f"  {len(selection.names)} of {total} cases moved by changes since their baselines (--all runs every one)")
-    for name, why in sorted(selection.reasons.items()):
+    reasons = sorted(selection.reasons.items())
+    for name, why in reasons[:_REASONS_LISTED]:
         print(f"    {name}: {why}")
+    if len(reasons) > _REASONS_LISTED:
+        print(f"    ... {len(reasons) - _REASONS_LISTED} more")
 
 
 # --- helpers ---------------------------------------------------------------------------------

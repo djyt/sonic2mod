@@ -314,19 +314,19 @@ def generate(only: list[str] | None, with_renders: bool, jobs: int) -> None:
 
 def run(only: list[str] | None, with_renders: bool, jobs: int, every: bool) -> bool:
     manifest = _load_manifest()
-    failed = 0
+    failed: list[str] = []
     cases = _run_all(_select(only, with_renders, every), jobs)
     for case in cases:
         want = _read_baseline(case.name)
         if want is None:
             print(f"  {case.name}: no baseline (--generate-baselines --only {case.name})")
-            failed += 1
+            failed.append(case.name)
             continue
         if want == case.output:
             continue
 
         # A failure: which inputs moved since the baseline, then the diff
-        failed += 1
+        failed.append(case.name)
         print(f"  FAIL {case.name}")
         was = (manifest.get(case.name) or {}).get("inputs", {})
         moved = [k for k, v in _input_hashes(case).items() if was.get(k) != v]
@@ -342,8 +342,10 @@ def run(only: list[str] | None, with_renders: bool, jobs: int, every: bool) -> b
         if len(diff) > _DIFF_LINES:
             print(f"    ... {len(diff) - _DIFF_LINES} more diff lines")
 
-    print(f"{len(cases) - failed} of {len(cases)} passed" + ("" if with_renders else " (vgm_compare skipped: --with-renders)"))
-    return failed == 0
+    print(f"{len(cases) - len(failed)} of {len(cases)} passed" + ("" if with_renders else " (vgm_compare skipped: --with-renders)"))
+    if failed:
+        print(f"failed: {' '.join(failed)}")        # last, to rerun or accept: --only <these>
+    return not failed
 
 
 def _sections(text: str) -> dict[str, str]:

@@ -132,3 +132,27 @@ class Tracks(unittest.TestCase):
         for flag in (0xE4, 0xEE):
             code = decode_tracks(_memory(_music([bytes([0x80, 0x01, flag, 0xA0, 0x01])])), {_SONG + 10: ChannelType.FM}, SONIC1).code
             self.assertIs(code.ops[-1].kind, OpKind.STOP)
+
+
+class HeaderLoops(unittest.TestCase):
+    """A track its header loops (RomHeader.loops): its end a jump to the loop target."""
+
+    _AT = _SONG + 10                         # the first track, after a one-track header
+
+    def _code(self, track: bytes, loops: dict[int, int], starts: tuple[int, ...] = (_SONG + 10,)):
+        memory = _memory(_music([track]))
+        return decode_tracks(memory, dict.fromkeys(starts, ChannelType.FM), SONIC1, loops=loops).code
+
+    def test_the_end_jumps_to_the_loop_target(self):
+        code = self._code(bytes([0xA0, 0x06, 0xA2, 0x06, 0xF2]), {self._AT: self._AT + 2})
+        self.assertEqual((code.ops[-1].kind, code.ops[-1].name), (OpKind.JUMP, f"loc_{self._AT + 2:05X}"))
+        self.assertIn(f"loc_{self._AT + 2:05X}", [op.name for op in code.ops if op.kind is OpKind.LABEL])
+
+    def test_a_track_not_looped_stops(self):
+        self.assertIs(self._code(bytes([0xA0, 0x06, 0xF2]), {}).ops[-1].kind, OpKind.STOP)
+
+    def test_an_end_two_tracks_loop_differently_is_refused(self):
+        # the second track starts inside the first and falls into its end
+        with self.assertRaisesRegex(RomError, "loop to"):
+            self._code(bytes([0xA0, 0x06, 0xA2, 0x06, 0xF2]), {self._AT: self._AT, self._AT + 2: self._AT + 2},
+                       (self._AT, self._AT + 2))

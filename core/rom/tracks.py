@@ -3,12 +3,14 @@ grammar/: SMPS's, MUCOM's) says what one instruction is; this follows the code, 
 
 The code is decoded by following it from each track's start - fall-through, jump, loop and call
 targets - and laid out in address order, a label at every start and target: the order the asm
-writes it in, so the walk (core/smps/code.py) reads both the same way.
+writes it in, so the walk (core/smps/code.py) reads both the same way.  A track its header loops
+(RomHeader.loops) ends in a jump to its loop target where its code stops.
 """
 
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from ..smps import ChannelType, Op, OpKind, SmpsCode
@@ -27,15 +29,16 @@ class DecodedTracks:
 
 
 def decode_tracks(memory: SoundMemory, starts: dict[int, ChannelType], variant: SmpsVariant,
-                  splices: dict[int, RomFix] | None = None) -> DecodedTracks:
+                  splices: dict[int, RomFix] | None = None, loops: Mapping[int, int] | None = None) -> DecodedTracks:
     """The code reached from `starts` (address -> the kind of track starting there), each
     instruction read with its track's flag table.  `splices`: data fixes whose bytes read as their
-    (other-length) replacement."""
+    (other-length) replacement.  `loops`: where a track's end jumps, by its start (RomHeader.loops)."""
     splices = splices or {}
+    loops = loops or {}
     decoded: dict[int, Instruction] = {}
     kinds: dict[int, ChannelType] = {}
-    labels = set(starts)
-    todo = list(starts.items())
+    labels = set(starts) | set(loops.values())
+    todo = list(starts.items()) + [(target, starts[start]) for start, target in loops.items()]
     shared: list[tuple[int, ChannelType]] = []      # code another kind of track reached first
 
     while todo:
@@ -56,6 +59,7 @@ def decode_tracks(memory: SoundMemory, starts: dict[int, ChannelType], variant: 
     for address, kind in shared:
         _check_shared(memory, address, kind, decoded, kinds, variant, splices)
     _check_overlaps(decoded)
+    _loop_ends(decoded, loops)
     dropped = Counter(d.dropped for d in decoded.values() if d.dropped)
     return DecodedTracks(SmpsCode(_layout(decoded, labels)), {track_label(a): a for a in sorted(labels)}, dropped)
 
@@ -86,6 +90,38 @@ def _check_shared(memory: SoundMemory, address: int, kind: ChannelType, decoded:
             todo.append(at + one.length)
         if one.target is not None:
             todo.append(one.target)
+
+
+def _loop_ends(decoded: dict[int, Instruction], loops: Mapping[int, int]) -> None:
+    """Each looped track's end a jump to its loop target: every stop its code reaches.  An end two
+    tracks reach with different targets is an error."""
+    targets: dict[int, int] = {}
+    for start, target in loops.items():
+        for end in _stops_reached(decoded, start):
+            if targets.setdefault(end, target) != target:
+                raise RomError(f"${end:X}: the end of tracks that loop to ${targets[end]:X} and ${target:X}")
+    for end, target in targets.items():
+        jump = Op(OpKind.JUMP, name=track_label(target))
+        decoded[end] = Instruction((jump,), decoded[end].length, False, target)
+
+
+def _stops_reached(decoded: dict[int, Instruction], start: int) -> list[int]:
+    """The stops the code from `start` reaches."""
+    seen: set[int] = set()
+    stops, todo = [], [start]
+    while todo:
+        at = todo.pop()
+        if at in seen:
+            continue
+        seen.add(at)
+        one = decoded[at]
+        if one.ops and one.ops[-1].kind is OpKind.STOP:
+            stops.append(at)
+        if one.falls_through:
+            todo.append(at + one.length)
+        if one.target is not None:
+            todo.append(one.target)
+    return stops
 
 
 def _splice(memory: SoundMemory, fix: RomFix, variant: SmpsVariant, kind: ChannelType) -> Instruction:

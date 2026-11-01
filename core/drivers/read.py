@@ -43,7 +43,7 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     read_header = sfx_header if index.is_sfx(sound_id) else music_header
     head = read_header(memory, address, variant)
 
-    tracks = decode_tracks(memory, head.tracks, variant, splices)
+    tracks = decode_tracks(memory, head.tracks, variant, splices, head.loops)
     voices = []
     if head.voices is not None:
         voices = bank_voices(memory, head.voices, voices_used(tracks.code), variant)

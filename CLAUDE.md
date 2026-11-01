@@ -205,6 +205,8 @@ python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.v
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
+# --slides: glides too (a pitch a frame, each shorter than --min-ms), each step against the MOD's 1xx / 2xx
+python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml --slides --list
 # Every pair of a game, a line each, in parallel; --convert writes each MOD first (the audit reads the one on
 # disk: a stale MOD is the commonest false result).  A config alone finds its rip (rips.yaml)
 python tools/vgm/vgm_pitch_audit.py --all --configs configs/streets_of_rage_2 --convert

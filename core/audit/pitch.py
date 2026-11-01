@@ -18,6 +18,15 @@ The authority on "is every note right": an audio window's pitch is unreliable on
     note_start_offset   how far the MOD lags the recording, from note starts
     audit_pitches       per channel ok / wrong / missing, and per instrument the verdict; with
                         `trace`, each chip segment as it was judged (PairStep: vgm_pitch_audit --trace)
+
+A slide (Time Trax's glides) moves the chip's pitch every frame, each segment shorter than min_ms:
+none would be judged.  With `slide_tolerance`, a run of two or more short segments is a slide, each
+segment judged against the MOD's pitch at its midpoint (its 1xx / 2xx steps: mod_pitch_timeline)
+within that tolerance, counted apart (slide_ok, slide_off).  A lone short segment (a grace note)
+stays unjudged; a vibrato's steps run as a slide too, against the note's centre (4xy is not followed).
+
+    chip   C ------- C# D D# E ---------         segments: C (held), C# D D# (short: the slide), E
+    MOD    C ------- 1xx steps ... E -----       C# D D# each against the MOD's pitch at its midpoint
 """
 
 from __future__ import annotations
@@ -54,7 +63,7 @@ class PairStep:
     deviation: float            # s, MOD minus chip, as the segment was judged
     paired: float | None        # the MOD note start it paired with; None: looked up at its midpoint
     mod: tuple | None           # (s, Hz, instrument, attack) of the MOD note judged against
-    verdict: str                # ok, wrong, short, missing
+    verdict: str                # ok, wrong, short, missing; with slides judged: slide ok, slide off
 
 
 def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[int, list[tuple]], float]:
@@ -165,6 +174,25 @@ def _judge(st: dict, by_inst: dict[int, Counter], t0: float, t1: float, f: float
     return "wrong"
 
 
+def _judge_slide(st: dict, t0: float, f: float, hit: tuple | None, tolerance: float) -> str:
+    """A slide's chip segment against the MOD's pitch at its midpoint (`hit`), counted in `st`."""
+    cents = 1200 * math.log2(hit[1] / f) if hit is not None else math.inf
+    if abs(cents) <= tolerance:
+        st["slide_ok"] += 1
+        return "slide ok"
+    st["slide_off"] += 1
+    st["slide_notes"].append({"t_s": t0, "chip": pitch_name(f), "mod": pitch_name(hit[1]) if hit else "-",
+                              "cents": cents})
+    return "slide off"
+
+
+def _slide_segments(evs: list[Segment], min_ms: float) -> list[bool]:
+    """Which of `evs`' segments (each to the next's start) are a slide's: sounding and shorter than
+    `min_ms`, beside another such."""
+    short = [f is not None and (t1 - t0) * 1000 < min_ms for (t0, f), (t1, _) in itertools.pairwise(evs)]
+    return [s and ((i > 0 and short[i - 1]) or (i + 1 < len(short) and short[i + 1])) for i, s in enumerate(short)]
+
+
 def _settled(segments: list[Segment]) -> list[Segment]:
     """`segments` without a pitch the next replaces within the driver's burst: a PSG note's
     attenuation written before its tone holds the last note's pitch for a moment (Streets of Rage
@@ -255,11 +283,13 @@ def instrument_verdicts(by_inst: dict[int, Counter]) -> list[dict]:
 
 def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tuple]], mod_end: float,
           chan_map: dict[str, int], offset: float, min_ms: float = 60.0, tolerance: float = 35.0,
-          trace: Callable[[PairStep], None] | None = None) -> dict:
+          trace: Callable[[PairStep], None] | None = None, slide_tolerance: float | None = None) -> dict:
     """Compare every chip segment of at least `min_ms` with the MOD note sounding at its midpoint.
 
     Returns {"channels": {source: {ok, wrong, missing, short, wrong_notes, missing_notes}},
              "instruments": instrument_verdicts(...), "bad": wrong + missing over all channels}.
+    With `slide_tolerance` (cents), slides are judged too: each channel's slide_ok, slide_off and
+    slide_notes, and slide_off counted in "bad".
 
     `offset` is where the song starts; from there each channel follows its own drift: every chip
     segment start that has a MOD note within 40 ms of the running deviation is paired with it
@@ -277,6 +307,9 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
         segments = _settled(chip[src])
         evs = [*segments, (vgm_end, None)]
         st: dict = {"ok": 0, "wrong": 0, "missing": 0, "short": 0, "wrong_notes": [], "missing_notes": []}
+        if slide_tolerance is not None:
+            st |= {"slide_ok": 0, "slide_off": 0, "slide_notes": []}
+        slides = _slide_segments(evs, min_ms) if slide_tolerance is not None else [False] * len(segments)
         run, j = offset, 0          # running MOD-minus-chip deviation (s); next unpaired MOD note
         starts = _chip_starts(segments)
         starts_t = [t for (t, _), s in zip(segments, starts, strict=True) if s]   # for looking past a tempo step
@@ -317,9 +350,13 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
                     if n[0] > mid + 1e-6:
                         break
                     hit = n
-            verdict = _judge(st, by_inst, t0, t1, f, hit, min_ms, tolerance)
+            if slides[i]:
+                assert slide_tolerance is not None
+                verdict = _judge_slide(st, t0, f, hit, slide_tolerance)
+            else:
+                verdict = _judge(st, by_inst, t0, t1, f, hit, min_ms, tolerance)
             if trace is not None:
                 trace(PairStep(src, t0, t1, f, is_start, run, paired[0] if paired else None, hit, verdict))
         channels[src] = st
     return {"channels": channels, "instruments": instrument_verdicts(by_inst),
-            "bad": sum(c["wrong"] + c["missing"] for c in channels.values())}
+            "bad": sum(c["wrong"] + c["missing"] + c.get("slide_off", 0) for c in channels.values())}

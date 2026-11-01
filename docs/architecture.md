@@ -353,7 +353,7 @@ Rendering in detail: `docs/fm_synthesis.md`, `docs/psg_synthesis.md`.
 
 | Where | What |
 |---|---|
-| `core/audit/pitch.py` | Symbolic pitch audit: each MOD note's pitch against the chip's frequency registers (`tools/vgm/vgm_pitch_audit.py`, and the verdict inside `vgm_compare`) |
+| `core/audit/pitch.py` | Symbolic pitch audit: each MOD note's pitch against the chip's frequency registers (`tools/vgm/vgm_pitch_audit.py`, and the verdict inside `vgm_compare`); with a slide tolerance, slides too (runs of short segments against the MOD's `1xx` / `2xx`) |
 | `core/audit/render.py`, `signal.py`, `levels.py`, `onsets.py` | `vgm_compare`'s per-channel renders (VGMPlay, ffmpeg + libopenmpt), measures, per-instrument levels, onset matching |
 | `core/audit/rip_diff.py` | `compare_with_rip(song, frames, aspects, ChannelChoice, lift, faults)` → `RipDiff`: a song (`SongSource`: asm, or ROM + sound, as shipped) against its rip lifted at the song's tempo (`LiftTempo`), the rip's faults undone or set aside - `tools/vgm/vgm_lift.py` |
 | `core/audit/rips.py` | `RipShelf`: a config's rip and a rip's config, by number or the `rips.yaml` beside the configs; one folder given, the other mirrors it (`around`); `named`, the tools' `--only` (`vgm_lift`, `measure_volumes`, `tool_regression`).  `RipFaults` (`faults_for`): what a rip records that its song does not play - `RipGlitch` (a V-int lost or gained), `ForeignSound` (another sound on some channels), `UnloggedWrites` (an aspect of some channels the ripper did not log) |

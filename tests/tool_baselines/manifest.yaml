@@ -1455,17 +1455,17 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: 25257e55e372
     tests/settings.yaml: 1be2c231bd5e
 read_golden_axe:
-  commit: 6d688bf
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
 read_moonwalker:
-  commit: 86831cf-dirty
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_outrun:
-  commit: 78bcb9e
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -1569,27 +1569,27 @@ read_sonic1_asm_sfx:
     reference/smps_drivers/sonic_1/sfx/SndCF - Signpost.asm: 320b3c201a06
     reference/smps_drivers/sonic_1/sfx/SndD0 - Waterfall.asm: a4be70b95a7c
 read_sonic1_rom:
-  commit: 86831cf-dirty
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_sonic1_rom_shipped:
-  commit: 86831cf-dirty
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 6d688bf
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: 04b3e38
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
 read_streets_of_rage_2:
-  commit: 6d688bf
+  commit: 811671a
   date: '2026-11-01'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9

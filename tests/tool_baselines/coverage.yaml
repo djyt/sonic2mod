@@ -17902,7 +17902,7 @@ read_golden_axe:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Golden Axe (World) (Rev A).md
-  commit: 113d28d-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -17972,9 +17972,15 @@ read_moonwalker:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Michael Jackson's Moonwalker (World) (Rev A).md
-  commit: 86831cf-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
   - core/chips/__init__.py
   - core/chips/fm.py
   - core/chips/psg.py
@@ -17997,12 +18003,14 @@ read_moonwalker:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
@@ -18035,7 +18043,7 @@ read_outrun:
   argv:
   - tools/rom/song_dump.py
   - input/roms/OutRun (USA, Europe).md
-  commit: 4de87d5-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18074,7 +18082,8 @@ read_outrun:
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
@@ -18348,9 +18357,15 @@ read_sonic1_rom:
   argv:
   - tools/rom/song_dump.py
   - input/roms/sonic_rev01.bin
-  commit: 86831cf-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
   - core/chips/__init__.py
   - core/chips/fm.py
   - core/chips/psg.py
@@ -18373,12 +18388,14 @@ read_sonic1_rom:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
@@ -18412,9 +18429,15 @@ read_sonic1_rom_shipped:
   - tools/rom/song_dump.py
   - input/roms/sonic_rev01.bin
   - --shipped
-  commit: 86831cf-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
   - core/chips/__init__.py
   - core/chips/fm.py
   - core/chips/psg.py
@@ -18437,12 +18460,14 @@ read_sonic1_rom_shipped:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
@@ -18475,7 +18500,7 @@ read_space_harrier_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 113d28d-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18549,7 +18574,7 @@ read_streets_of_rage:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 9d41a42-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18621,7 +18646,7 @@ read_streets_of_rage_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Streets of Rage 2 (USA).md
-  commit: 113d28d-dirty
+  commit: 811671a-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py

@@ -1,5 +1,5 @@
 """The pitches an SMPS 68k driver writes into its Z80 player's PCM table.  The table (`pcm_table`)
-and the samples' formats are the framework's (core/rom/pcm.py); each driver's dac.py lays them out
+and the samples' formats are the framework's (core/rom/pcm/); each driver's dac.py lays them out
 (sonic1/, type1a/, mucom/).
 """
 

@@ -22,7 +22,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from core.rom.image import RomError, RomImage
-from core.rom.pcm import Dpcm, PcmEntry, PcmTable, delta_table, one_format, pcm_table
+from core.rom.pcm import PcmEntry, PcmTable, one_format, pcm_table
+from core.rom.pcm.smps import Dpcm, delta_table
 from core.rom.variant import DacSample
 from core.rom.z80 import Z80_RAM_BASE, z80_ram
 from core.smps import FIRST_NOTE

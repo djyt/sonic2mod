@@ -9,7 +9,9 @@ import unittest
 
 from core.chips import MD_PSG_CLOCK
 from core.rom import RomError
-from core.rom.pcm import Dpcm, Pcm, PcmEntry, PcmTable, RunDpcm, SampleFormat, one_format, pcm_table
+from core.rom.pcm import PcmEntry, PcmTable, SampleFormat, one_format, pcm_table
+from core.rom.pcm.smps import Dpcm, Pcm
+from core.rom.pcm.sor import RunDpcm
 
 _BANK = 0x8000               # the Z80's bank window: the table at its start, the samples after it
 _ENTRY = PcmEntry(6, size_at=2, pitch_at=4)

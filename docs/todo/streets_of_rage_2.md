@@ -220,7 +220,8 @@ regression (`tests/selection.py`), the driver's own PSG table (`PsgTable`, `b0dc
    vibrato, `$FA` writes, `$FD`.  What differs per driver is data, a `MucomDialect`: the pan table,
    PSG note decoding, the vibrato count's bias, `$FF` (jump or prefix).  SoR1's `grammar.py` keeps
    its departures.  RoS's 5.1.1 is this step.  `core/rom`'s layer contract names the package.
-2. **R2 Z80 PCM to the framework: `core/rom/pcm.py`** gains SoR1's `_RunDpcm` (as `RunDpcm`) and
+2. **R2 Z80 PCM to the framework: `core/rom/pcm/`** (a package: the table in `__init__`, the formats by
+   player, `smps.py` and `sor.py`) gains SoR1's `_RunDpcm` (as `sor.RunDpcm`) and
    `smps68k/dac.py`'s `pcm_table` (`ld iy,nn`); the 68k family keeps its pitch tables.
 3. **R3 Header loops.**  `RomHeader.loops`: each track's start -> its loop target (none: `STOP`
    stays).  `decode_tracks` carries each instruction's track start and turns a `STOP` reached from
@@ -278,7 +279,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 
 ### Phase 1: refactors for reading (3.2)
 - [x] 1.1 R1: `core/rom/grammar/` (`smps.py`, `mucom.py`), SoR1 a dialect.
-- [x] 1.2 R2: `RunDpcm`, `pcm_table` to `core/rom/pcm.py`.
+- [x] 1.2 R2: `RunDpcm`, `pcm_table` to `core/rom/pcm/` (a package by player: `smps.py`, `sor.py`).
 - [x] 1.3 R7: sound IDs from 0 (messages, a test).
 
 ### Phase 2: read the ROM

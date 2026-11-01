@@ -8,12 +8,13 @@ Each command takes a free effect slot; one that finds none is reported, not forc
 
 from ..config import ConversionConfig
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
-from ..mod import ModFile, row_to_bcd, shift_for_breaks
+from ..mod import ROWS_PER_PATTERN, ModFile, row_to_bcd, shift_for_breaks
 from ..plan import Timeline
 from ..smps import SmpsSong
 
 # ProTracker's default speed: no Fxx needed for it
 _DEFAULT_SPEED = 6
+_LAST_ROW = ROWS_PER_PATTERN - 1
 
 
 class ModLayout:
@@ -54,10 +55,8 @@ class ModLayout:
                     if loops_to_row0:
                         self._diag.warn(WarningKind.REST_NO_SLOT, channel=rests[ch], mod_channel=ch)
                     continue
-                self._mod.set_cursor(0, slot, 0)
-                self._mod.set_effect(eff, par)
-            self._mod.set_cursor(0, ch, 0)
-            self._mod.set_effect(0xC, 0)
+                self._mod.put_effect(0, 0, slot, eff, par)
+            self._mod.put_effect(0, 0, ch, 0xC, 0)
 
     def tempo_commands(self, rests: dict[int, str]) -> None:
         """The BPM and speed (Fxx) on pattern 0 row 0, in cells whose effect slot is free.
@@ -104,20 +103,11 @@ class ModLayout:
                 self._diag.warn(WarningKind.TEMPO_NO_SLOT, pattern=0, row=0,
                                 modifier=self._song.header.tempo_modifier, bpm=par)
                 continue
-            self._mod.set_cursor(0, slot, 0)
-            self._mod.set_effect(eff, par)
+            self._mod.put_effect(0, 0, slot, eff, par)
 
     def _sounding_columns(self) -> set[int]:
         """The MOD columns any pattern has a note on."""
-        cols: set[int] = set()
-        for pattern in self._mod.patterns:
-            data = pattern.get_bytes()
-            for row in range(64):
-                for ch in range(self._mod.CHANNELS):
-                    i = self._mod.cell_index(row, ch)
-                    if ((data[i] & 0x0F) << 8) | data[i + 1]:
-                        cols.add(ch)
-        return cols
+        return {ch for pattern in self._mod.patterns for _row, ch, cell in pattern.cells() if cell.period}
 
     def tempo_changes(self) -> None:
         """Fxx (set BPM) on the row of every smpsSetTempoMod, in a cell whose effect slot is free.
@@ -151,8 +141,7 @@ class ModLayout:
             if slot is None:
                 self._diag.warn(WarningKind.TEMPO_NO_SLOT, channel='all', **change)
                 continue
-            self._mod.set_cursor(pattern, slot, row)
-            self._mod.set_effect(0xF, bpm)
+            self._mod.put_effect(pattern, row, slot, 0xF, bpm)
             self._diag.info(InfoKind.TEMPO_CHANGE, **change)
             if not 32 <= exact <= 255:
                 self._diag.warn(WarningKind.TEMPO_BPM_RANGE, channel='all', **change)
@@ -173,17 +162,17 @@ class ModLayout:
         if self._song.loop_target_tick() is not None:
             return None
         tpr = self._timeline.ticks_per_row
-        pattern, row = divmod(shift_for_breaks(round(self._song.end_tick() / tpr), breaks), 64)
+        pattern, row = divmod(shift_for_breaks(round(self._song.end_tick() / tpr), breaks), ROWS_PER_PATTERN)
         if pattern >= len(self._mod.patterns):
             return None
         columns = range(max(1, self._mod.used_channels()))
-        wanted = [(0xD, 0)] if row != 63 else []
+        wanted = [(0xD, 0)] if row != _LAST_ROW else []
         if self._end_trigger is not None:
             wanted.append((0xE, 0x80 | self._end_trigger))
             free = [c for c in columns if self._mod.effect_slot_free(pattern, row, c)]
-            if len(free) < len(wanted) and row < 63:
+            if len(free) < len(wanted) and row < _LAST_ROW:
                 row += 1
-                wanted = [(0xD, 0)] if row != 63 else []
+                wanted = [(0xD, 0)] if row != _LAST_ROW else []
                 wanted.append((0xE, 0x80 | self._end_trigger))
         for eff, par in wanted:
             ch = self._mod.free_effect_channel(pattern, row, columns)
@@ -192,8 +181,7 @@ class ModLayout:
                     self._diag.warn(WarningKind.END_TRIGGER_NO_SLOT, channel='all', pattern=pattern, row=row)
                     continue
                 return None
-            self._mod.set_cursor(pattern, ch, row)
-            self._mod.set_effect(eff, par)
+            self._mod.put_effect(pattern, row, ch, eff, par)
         return pattern
 
     def loop_point(self, breaks=None) -> None:
@@ -216,11 +204,11 @@ class ModLayout:
         # a period-scan could not see because they have no note trigger).
         song_end_tick = self._song.end_tick()
         song_end_flat = shift_for_breaks(max(round(song_end_tick / tpr), 1) - 1, breaks)
-        last_pattern, last_row = divmod(song_end_flat, 64)
+        last_pattern, last_row = divmod(song_end_flat, ROWS_PER_PATTERN)
 
         # Target: map loop_target_tick to post-break (pattern, row)
         flat_row = shift_for_breaks(round(loop_target_tick / tpr), breaks)
-        target_pattern, target_row = divmod(flat_row, 64)
+        target_pattern, target_row = divmod(flat_row, ROWS_PER_PATTERN)
 
         # The Bxx takes a free effect slot on the last row (channel 0 held a note cut there -
         # Green Hill's EC1 - and the jump overwrote it), among the columns already in use so a
@@ -235,8 +223,7 @@ class ModLayout:
             eff = self._mod.effect_at(last_pattern, last_row, 0)
             self._diag.warn(WarningKind.LOOP_NO_SLOT, channel='all', pattern=last_pattern, row=last_row,
                             overwrote=eff)
-        self._mod.set_cursor(last_pattern, b_chan, last_row)
-        self._mod.set_position_jump(target_pattern)
+        self._mod.put_effect(last_pattern, last_row, b_chan, 0xB, target_pattern & 0x7F)
 
         # A song that loops back into a different tempo segment needs its BPM set again there
         # (the Fxx cells written by tempo_changes sit at the changes, not at the target).
@@ -245,8 +232,7 @@ class ModLayout:
             target_mod = self._timeline.segment_at(loop_target_tick)[1]
             ch = self._mod.free_effect_channel(target_pattern, target_row)
             if ch is not None:
-                self._mod.set_cursor(target_pattern, ch, target_row)
-                self._mod.set_effect(0xF, self._timeline.bpm_for(target_mod))
+                self._mod.put_effect(target_pattern, target_row, ch, 0xF, self._timeline.bpm_for(target_mod))
             else:
                 self._diag.warn(WarningKind.TEMPO_NO_SLOT, channel='all', tick=loop_target_tick,
                                 pattern=target_pattern, row=target_row, modifier=target_mod,
@@ -256,7 +242,6 @@ class ModLayout:
         if target_row != 0:
             ch = self._mod.free_effect_channel(last_pattern, last_row, range(b_chan + 1, self._mod.CHANNELS))
             if ch is not None:
-                self._mod.set_channel(ch)
-                self._mod.set_effect(0xD, row_to_bcd(target_row))
+                self._mod.put_effect(last_pattern, last_row, ch, 0xD, row_to_bcd(target_row))
 
         self._diag.info(InfoKind.LOOP_SET, pattern=last_pattern, row=last_row, target=target_pattern)

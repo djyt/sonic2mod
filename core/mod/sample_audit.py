@@ -11,8 +11,9 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 
 from ..audio import gain_to_db
-from .file import PAL_AMIGA_CLOCK, SampleInfo, read_mod
+from .file import PAL_AMIGA_CLOCK
 from .notes import PERIOD_TABLE, period_rate
+from .reader import SampleInfo, read_mod
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM
 
 LOW_RATE_HZ = 5000.0        # below this a sample has under 2.5 kHz of bandwidth

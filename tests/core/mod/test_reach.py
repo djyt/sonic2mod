@@ -35,11 +35,10 @@ def _mod(size: int = 8000, loop: tuple[int, int] | None = None) -> ModFile:
 
 
 def _put(mod: ModFile, row: int, col: int, note: bool = False, eff: tuple[int, int] = (0, 0)) -> None:
-    mod.set_cursor(0, col, row)
     if note:
-        mod.set_note(ModNote.C2, 1)
+        mod.put_note(0, row, col, ModNote.C2, 1)
     if eff != (0, 0):
-        mod.set_effect(*eff)
+        mod.put_effect(0, row, col, *eff)
 
 
 def _heard(mod: ModFile) -> dict[int, int | None]:
@@ -67,9 +66,8 @@ class Reach(unittest.TestCase):
     def test_a_note_about_to_be_replaced_runs_at_the_faster_period(self):
         mod = _mod()
         _put(mod, 0, 0, note=True)
-        mod.set_cursor(0, 0, 1)
-        mod.set_note(ModNote.C3, 1)                         # an octave up, 2 ticks late
-        mod.set_effect(0xE, 0xD2)
+        mod.put_note(0, 1, 0, ModNote.C3, 1)                # an octave up, 2 ticks late
+        mod.put_effect(0, 1, 0, 0xE, 0xD2)
         _put(mod, 2, 0, eff=(0xC, 0))
         # 6 ticks at C-2, then 2 at C-3's rate (twice C-2's); the C-3 note itself is 4 ticks in
         self.assertEqual(_heard(mod), {1: math.ceil((6 + 2 * 2) * TICK_BYTES)})

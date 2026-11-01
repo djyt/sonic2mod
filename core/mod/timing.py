@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from .file import Cell, ModImage
+from .cell import Cell
+from .reader import ModImage
 
 TICK_SECS_AT_1_BPM = 2.5        # a tick lasts this / BPM seconds
 DEFAULT_BPM = 125

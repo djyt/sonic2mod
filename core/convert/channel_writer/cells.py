@@ -1,5 +1,4 @@
-"""The song's rows on the MOD: every command written to a named cell, never through the ModFile
-cursor; cuts, EDx placement and E1x / E2x fine slides.
+"""The song's rows on the MOD: every command written to a named cell; cuts, EDx placement and E1x / E2x fine slides.
 
 A row is counted over the whole song (`row_total`) or as (pattern, row):
 
@@ -64,13 +63,11 @@ class Cells:
 
     # --- writing --------------------------------------------------------------------------------
     def put(self, pattern: int, row: int, col: int, effect: int, param: int) -> None:
-        self._mod.set_cursor(pattern, col, row)
-        self._mod.set_effect(effect, param)
+        self._mod.put_effect(pattern, row, col, effect, param)
 
     def put_note(self, pattern: int, row: int, col: int, note: ModNote, inst: int) -> None:
         """A note-on; the cell's effect stays."""
-        self._mod.set_cursor(pattern, col, row)
-        self._mod.set_note(note, inst)
+        self._mod.put_note(pattern, row, col, note, inst)
 
     def cut(self, col: int, row_total: int, sub: int) -> None:
         """C00 on the row, or ECx `sub` MOD ticks into it."""

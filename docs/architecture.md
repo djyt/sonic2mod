@@ -217,7 +217,7 @@ convert()
  │   ├─ (merged) MergedBuild.mix         pcm composites, then sample banks
  │   ├─ _convert_all_channels            LevelPlanner.levels → ChannelWriter per channel
  │   └─ ModLayout                        leading rests' C00, row-0 Fxx, mid-song tempo Fxx
- ├─ apply_pattern_breaks                 (mod/file.py)
+ ├─ apply_pattern_breaks                 (mod/breaks.py)
  ├─ ModLayout.loop_point                 Bxx (+ Dxx) in the post-break layout
  ├─ trim at the loop, or song_end        D00 where a song stops
  ├─ (merged) narrow_to                   empty columns go; ≤ 4 → M.K.
@@ -277,7 +277,10 @@ renders.  Rules: `docs/pipeline.md` § The merged build.
 
 | Module | Role |
 |---|---|
-| `file.py` | `ModFile` (writer: samples, patterns, positions, cell helpers, `narrow_to`, `compact_samples`, `trim_to_pattern`, `trim_tails`, `zero_idle_words`), `apply_pattern_breaks`, `row_to_bcd`, `read_sample` (a `sample_list` file as a sample, `ModSample.file` its name); the one reader `read_mod` → `ModImage` (`play_rows` / `play_order`: one pass in play order, and where it loops back to), `isolate_channel` |
+| `cell.py` | `Cell` (period, instrument, effect, parameter): the one place that knows a pattern cell's 4 bytes (`decode` / `encode`); `ROWS_PER_PATTERN` |
+| `file.py` | `ModFile` (writer: samples, patterns, positions; cells addressed (pattern, row, channel): `cell_at` / `note_at` / `effect_at`, `put_note` / `put_effect`, no cursor; `narrow_to`, `compact_samples`, `trim_to_pattern`, `trim_tails`, `zero_idle_words`; `image()`: the `ModImage` its bytes would read back as, unwritten), `ModPattern`, `read_sample` (a `sample_list` file as a sample, `ModSample.file` its name) |
+| `reader.py` | The one reader `read_mod` → `ModImage` (`play_rows` / `play_order`: one pass in play order, and where it loops back to), `isolate_channel` |
+| `breaks.py` | `apply_pattern_breaks` (collect the rows after a break, repack them, retarget the jumps past it), `shift_for_breaks`, `row_to_bcd` |
 | `notes.py` | `PERIOD_TABLE` (C1–B3), `note_rate` / `period_rate` (a note's playback rate), `ModNote`, `MOD_NOTE_MAP` (config spellings) |
 | `volume.py` | dB → MOD volume: `db_to_mod_volume`, `clamp_mod_volume`, `headroom_db` |
 | `limits.py` | `MAX_MOD_SAMPLE_BYTES`, `sample_limit_bytes`, `max_sustain_secs` |
@@ -285,7 +288,7 @@ renders.  Rules: `docs/pipeline.md` § The merged build.
 | `timing.py` | `timed_pass`, `edx_delay`: when each row plays — the MOD clock of the audits |
 | `sample_audit.py` | A written MOD's samples against the notes that play them (`tools/mod/mod_audit.py`, the report's Samples table) |
 
-The cell layout lives only in `file.py` (`cell_index`, `effect_at`, `effect_slot_free`, …).
+The cell layout lives only in `cell.py`; everything else reads and writes `Cell`s.
 
 ### Binary layout
 

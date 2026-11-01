@@ -25,8 +25,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from .file import ModImage, SampleInfo
 from .notes import finetune_ratio
+from .reader import ModImage, SampleInfo
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM
 
 SPEED_MARGIN = 1.03         # every sample assumed to play this much faster than nominal

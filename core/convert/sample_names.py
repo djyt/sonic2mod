@@ -74,12 +74,9 @@ def _played_notes(mod: ModFile) -> dict[int, str]:
     """{slot: the note it is played at most often, FT2's spelling}."""
     counts: dict[int, Counter] = defaultdict(Counter)
     for pat in mod.patterns:
-        data = pat.get_bytes()
-        for i in range(0, len(data), 4):
-            ins = (data[i] & 0xF0) | (data[i + 2] >> 4)
-            period = ((data[i] & 0x0F) << 8) | data[i + 1]
-            if ins and period:
-                counts[ins][period] += 1
+        for _row, _ch, cell in pat.cells():
+            if cell.instrument and cell.period:
+                counts[cell.instrument][cell.period] += 1
     return {ins: note_name(c.most_common(1)[0][0]) for ins, c in counts.items()}
 
 

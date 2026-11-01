@@ -26,9 +26,8 @@ def _mod() -> ModFile:
     _fill_slot(mod, 3, 16, 40)
     _fill_slot(mod, 17, 32, 20)
     for row, (col, slot) in enumerate([(0, 1), (1, 3), (2, 17), (3, 3)]):
-        mod.set_cursor(0, col, row)
-        mod.set_note(ModNote.C2, slot)
-        mod.set_effect(0xC, 0x20 + row)
+        mod.put_note(0, row, col, ModNote.C2, slot)
+        mod.put_effect(0, row, col, 0xC, 0x20 + row)
     return mod
 
 
@@ -63,8 +62,7 @@ class CompactTests(unittest.TestCase):
     def test_an_empty_slot_a_note_names_is_kept(self):
         mod = ModFile(4)
         _fill_slot(mod, 1, 8, 64)
-        mod.set_cursor(0, 0, 0)
-        mod.set_note(ModNote.C2, 5)            # an empty slot a note plays (mod_lint's empty_slot) stays visible
+        mod.put_note(0, 0, 0, ModNote.C2, 5)          # an empty slot a note plays (mod_lint's empty_slot) stays visible
         self.assertEqual(mod.compact_samples(), {1: 1, 5: 2})
 
 
@@ -98,17 +96,14 @@ class ModWriter(unittest.TestCase):
 class Narrowing(unittest.TestCase):
     def test_narrow_only_when_the_columns_beyond_are_empty(self):
         mod = ModFile(8)
-        mod.set_channel(1)
-        from core.mod import ModNote
-        mod.set_note(ModNote.C2, 1)
+        mod.put_note(0, 0, 1, ModNote.C2, 1)
         self.assertEqual(mod.used_channels(), 2)
         mod.narrow_to(4)
         self.assertEqual(mod.CHANNELS, 4)
         self.assertEqual(mod.MOD_FORMAT, b"M.K.")
         self.assertEqual(mod.note_at(0, 0, 1), PERIOD_TABLE[ModNote.C2.value])
         wide = ModFile(8)
-        wide.set_channel(5)
-        wide.set_note(ModNote.C2, 1)
+        wide.put_note(0, 0, 5, ModNote.C2, 1)
         with self.assertRaises(ValueError):
             wide.narrow_to(4)
 
@@ -120,3 +115,30 @@ class WriterTests(unittest.TestCase):
         s.set_name("F5+3+4+P1 F#3 #2 [1-4]")       # 22 characters
         s.data, s.length = bytes(4), 2
         self.assertEqual(read_mod(bytes(mod.get_bytes())).samples[0].name.rstrip("\x00"), "F5+3+4+P1 F#3 #2 [1-4]")
+
+
+class CellWrites(unittest.TestCase):
+    def test_a_note_and_an_effect_share_a_cell(self):
+        mod = ModFile(4)
+        mod.put_effect(1, 5, 2, 0xC, 0x20)             # pattern 1 made for it
+        mod.put_note(1, 5, 2, ModNote.C2, 17)
+        cell = mod.cell_at(1, 5, 2)
+        self.assertEqual(cell, (PERIOD_TABLE[ModNote.C2.value], 17, 0xC, 0x20))
+        self.assertEqual(len(mod.patterns), 2)
+        mod.put_effect(1, 5, 2, 0xF, 0x96)              # the note stays
+        self.assertEqual(mod.cell_at(1, 5, 2), (cell.period, 17, 0xF, 0x96))
+
+    def test_a_place_past_the_mod_is_refused(self):
+        mod = ModFile(4)
+        for pattern, row, channel in ((0, 64, 0), (0, 0, 4), (-1, 0, 0), (128, 0, 0)):
+            with self.assertRaises(IndexError):
+                mod.put_effect(pattern, row, channel, 0xC, 0)
+        with self.assertRaises(IndexError):
+            mod.put_note(0, 0, 0, ModNote.C2, 32)
+
+    def test_image_is_the_written_file_read_back(self):
+        mod = _mod()
+        mod.samples[2].set_finetune(-3)
+        mod.samples[0].set_name("kick")
+        mod.put_effect(2, 63, 3, 0xB, 1)
+        self.assertEqual(mod.image(), read_mod(bytes(mod.get_bytes())))

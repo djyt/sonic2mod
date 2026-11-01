@@ -19,7 +19,7 @@ from ..config import (
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_plan, report_plan
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
-from ..mod import ModFile, UnmodelledEffect, apply_pattern_breaks, heard_bytes, note_rate, read_mod
+from ..mod import ModFile, UnmodelledEffect, apply_pattern_breaks, heard_bytes, note_rate
 from ..plan import (
     DetunePlan,
     Timeline,
@@ -273,7 +273,7 @@ class SmpsToModConverter:
         (core.mod.reach.heard_bytes, ModFile.trim_tails); a MOD holding an effect the replay does
         not model is left whole."""
         try:
-            heard = heard_bytes(read_mod(bytes(mod.get_bytes())), amiga_clock)
+            heard = heard_bytes(mod.image(), amiga_clock)
         except UnmodelledEffect as e:
             self._diag.info(InfoKind.TAILS_KEPT, effect=str(e))
             return

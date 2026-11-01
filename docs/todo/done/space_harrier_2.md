@@ -91,18 +91,18 @@ Moved, with what the phases found, to `docs/smps_variants.md` § Early SMPS Z80:
 - [x] 2.2 Tempo holds: Sonic 1's TempoWait at phase 0 (the counter loaded as the song starts, the
   same frame's check after it): the tempo-3 songs' key-ons land 1.5 frames a tick, every one.
 - [x] 2.3 Pitch envelopes, baked (D1).
-  - [x] Read, walked, played (`2d56755`): `core/smps/pitch_envelope.py` (steps, played a frame at
+  - [x] Read, walked, played (`450e6ce`): `core/smps/pitch_envelope.py` (steps, played a frame at
     a time from each read), `SetPitchEnvelope`, `PlaybackRules.pitch_envelopes`, the header's
     starting envelope; the played pitch is the read frame's.  Every rip's FM pitch, frame by frame
     after each read, as the envelopes say.
-  - [x] Baked (`6da218a`): the detune plan keys a sample on (detune, envelope): each instrument's
+  - [x] Baked (`f663f3d`): the detune plan keys a sample on (detune, envelope): each instrument's
     own sample takes its commonest pair, any other a free slot (Handcuff: one own, three
     variants).  `render_layers` steps a layer's envelope a frame at a time through the release;
     an enveloped instrument is not looped; the render cache keys on the steps.
   - Approximations: a sample rendered at one pitch carries the envelope's depth and timing scaled
     to the notes it plays elsewhere (no pitch-class split for envelopes yet); a tie under legato
     does not restart the envelope.  Both to hear in Phase 4.
-- [x] 2.4 Pan animation (D2, `32383b7`): flag bit 6; every read steps the driver's first list
+- [x] 2.4 Pan animation (D2, `0ad37a5`): flag bit 6; every read steps the driver's first list
   (C L C R, again and again: the driver never sets another).  The walk emits `PanStep`, a Pan to
   everything that reads one but the level: the MOD pans it, so no hard-pan dip and no `Cxx` for
   it.  The writer puts each step as `8xx` last, where no other effect is, not where the pan
@@ -131,7 +131,7 @@ Moved, with what the phases found, to `docs/smps_variants.md` § Early SMPS Z80:
   opens with the chip so (its frame-0 state).  Which song plays with it depends on what stopped
   before: not converted (don't simulate bugs); to confirm with the user.
 
-### Phase 3: drums (done 2026-10-10, `276699a`)
+### Phase 3: drums (done 2026-10-10, `0399816`)
 - [x] 3.1 The drum model: an FmFrame's word per operator and key mask (special mode), an FmDrum's
   PSG part frame by frame; `render_frames` plays them, `render_psg_frames` the PSG part,
   `generate_fm_drums` mixes it in (`fm_synthesis.drum_psg_db`).  Golden Axe byte-identical but for

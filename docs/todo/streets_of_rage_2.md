@@ -1,6 +1,6 @@
 # Streets of Rage 2: Mucom-MD, MUCOM88 songs on the 68k
 
-Planned 2026-10-10; reviewed against the code (to `993f45e`) and the rips 2026-11-01.  Goal:
+Planned 2026-10-10; reviewed against the code (to `faf3913`) and the rips 2026-11-01.  Goal:
 `convert.py` reads Streets of Rage 2's songs from the ROM, as it reads Streets of Rage
 (`docs/todo/done/streets_of_rage.md`, `docs/smps_variants.md` § Streets of Rage).  Nothing
 implemented yet; this is the probe and the plan.
@@ -195,7 +195,7 @@ What in today's architecture Streets of Rage 2 runs into, and The Revenge of Shi
 
 Already scales, no change: the lazy registry and SHA-1 pinning (`registry.py`, `games.py`), trial
 detection held by the driver contract (`tests/core/drivers/test_contract.py`), coverage-selected
-regression (`tests/selection.py`), the driver's own PSG table (`PsgTable`, `b0dc7b0`: the old
+regression (`tests/selection.py`), the driver's own PSG table (`PsgTable`, `6117df7`: the old
 3.1.4), sound IDs below `$81` (R7: checked).
 
 ### 3.2 Refactors (behaviour unchanged, every baseline byte-identical)
@@ -272,7 +272,7 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 ### Phase 0: before code
 - [x] 0.1 The ROM in `input/roms/`; rips in `reference/vgz/streets_of_rage_2/` (2026-11-01).
 - [x] 0.2 Decisions § 5 (2026-11-01).
-- [x] 0.3 The branch, off `a704100`; both suites' baselines from `86831cf` (byte-identical commits
+- [x] 0.3 The branch, off `9823118`; both suites' baselines from `d4522d7` (byte-identical commits
   since), the tree passing them.
 - [x] 0.4 Snapshot (scratch, not kept): every game's songs are `tool_regression`'s `read_` cases;
   Streets of Rage's derived configs (`--show-config`, 16 songs) dumped to scratch.

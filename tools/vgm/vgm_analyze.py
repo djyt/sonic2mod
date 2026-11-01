@@ -14,6 +14,7 @@ Usage::
     python tools/vgm/vgm_analyze.py file.vgz --chip all --max-rows 0
     python tools/vgm/vgm_analyze.py file.vgz --max-rows 500 --clock 7670454
     python tools/vgm/vgm_analyze.py file.vgz --frames --chip all --channel FM1 PSG1   # frame by frame
+    python tools/vgm/vgm_analyze.py file.vgz --writes --chip all --channel FM3 --from 0 --to 8   # every write, in order
 
 Output columns (FM):
     time_ms   — milliseconds from track start (VGM 44100 Hz sample clock)
@@ -85,6 +86,7 @@ from core.vgm import (
     PsgFrame,
     VgmError,
     VgmLog,
+    decoded_writes,
     frame_log,
     noise_rate,
     noise_white,
@@ -312,6 +314,46 @@ def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
 # CLI
 # ---------------------------------------------------------------------------
 
+# --writes: the channels each --chip covers (YM: the YM2612's own registers)
+_WRITE_KINDS = {"fm": ("FM", "YM"), "psg": ("PSG", "NOISE"), "dac": ("DAC",), "all": ("FM", "YM", "PSG", "NOISE", "DAC")}
+
+
+def print_writes(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None,
+                 frames: range, max_rows: int) -> None:
+    """Each register write in `frames`, in order, decoded (core.vgm.decoded_writes): the order
+    within a frame the frame log folds away.  A run of one field on one channel is one row (a
+    voice's TL op1 .. op4); the DAC's data bytes are left out (--frames: its plays)."""
+    fl = frame_log(log, state)
+    kinds = _WRITE_KINDS[chip]
+    print(f"Frames : {frames.start}-{frames.stop - 1} of {len(fl.frames)}, {fl.frame_samples} samples each")
+    print()
+    print(f"{'frame':>6}  {'time_ms':>9}  {'chan':<5}  write (in order)")
+    print("-" * 60)
+    rows: list[list] = []                       # [frame, channel, text]
+    for w in decoded_writes(log):
+        frame = fl.frame_of(w.sample)
+        if frame not in frames or not w.channel.startswith(kinds) or not _shows(w.channel, channel_filter):
+            continue
+        field, _, operand = w.text.partition(" op")
+        last = rows[-1] if rows else None
+        operator = f"op{operand.split()[0]} " if operand else ""
+        if (operand and last is not None and last[:2] == [frame, w.channel] and last[2].startswith(f"{field} op")
+                and operator not in last[2]):
+            last[2] += f"  op{operand}"     # a run of one field; an operator written again starts a row
+            continue
+        rows.append([frame, w.channel, w.text])
+
+    shown = rows[:max_rows] if max_rows else rows
+    for frame, channel, text in shown:
+        print(f"{frame:>6}  {fl.seconds(frame) * 1000:>9.1f}  {channel:<5}  {text}")
+    if len(rows) > len(shown):
+        print(f"  ... {len(rows) - len(shown)} more rows (use --max-rows, --from / --to)")
+
+
+def _shows(channel: str, channel_filter: set[str] | None) -> bool:
+    return not channel_filter or channel in channel_filter
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description="Analyze YM2612 FM and SN76489 PSG channel pitches from a VGM/VGZ recording",
@@ -356,6 +398,13 @@ def main() -> None:
         "--frames", action="store_true",
         help="Print the log frame by frame (every channel written to in each V-int frame) instead of key-ons",
     )
+    ap.add_argument(
+        "--writes", action="store_true",
+        help="Print every register write in order, decoded (TL op1, key on, pan ...), with its frame; "
+             "a run of one field a row",
+    )
+    ap.add_argument("--from", type=int, default=0, dest="first", metavar="FRAME", help="--writes: the first frame (0)")
+    ap.add_argument("--to", type=int, default=None, dest="last", metavar="FRAME", help="--writes: the last frame (the end)")
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -378,6 +427,12 @@ def main() -> None:
         print(f"File   : {path}")
         print("DAC    : none" if stall is None else
               f"DAC    : held {stall.share:.3f} of its playing time ({stall.plays} plays, {stall.bytes} bytes): dac_stall: {stall.share:.3f}")
+        return
+    if args.writes:
+        print(f"File   : {path}")
+        state = ChipState.for_log(log, args.clock, args.psg_clock)
+        last = len(frame_log(log, state).frames) - 1 if args.last is None else args.last
+        print_writes(log, state, args.chip, channel_filter, range(args.first, last + 1), args.max_rows)
         return
     if args.frames:
         print(f"File   : {path}")

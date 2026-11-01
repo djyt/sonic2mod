@@ -187,6 +187,9 @@ python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --c
 python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
 # The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC sample starts (a seek, or bytes after a pause) per V-int
 python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
+# Every register write in order, decoded (TL op1, key on, pan, PSG tone / att), a run of one field a row:
+# what --frames folds away (a volume write rewriting every TL, a key-off before a key-on)
+python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.vgz" --writes --channel FM3 --from 0 --to 3
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.

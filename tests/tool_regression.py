@@ -125,6 +125,7 @@ def _analyze_cases(vgz: Path) -> list[_Case]:
         "psg0": ["--chip", "psg", "--psg-mod-cents", "0", "--max-rows", "0"],
         "volumes": ["--chip", "all", "--volumes"],
         "frames": ["--frames", "--chip", "all", "--max-rows", "0"],
+        "writes": ["--writes", "--chip", "all", "--to", "60", "--max-rows", "0"],
     }
     return [_Case(f"analyze_{n}_{mode}", tool + args, [vgz]) for mode, args in modes.items()]
 

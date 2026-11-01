@@ -34,6 +34,7 @@ from enum import Enum
 from ..chips import OPERATOR_SLOT_OFFSETS, split_operator_register
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
 from .reader import VGM_SAMPLE_RATE, VgmLog, VgmOp, VgmWrite
+from .writes import is_dac_byte
 
 NTSC_RATE = 60
 
@@ -48,7 +49,6 @@ _BURST_GAP = 200                # samples: writes closer than this belong to one
 _PHASE_WINDOW = 16              # samples either side of a phase that count towards it
 _FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before the phase
 _DAC_PAUSE_DIVISOR = 4          # DAC bytes resuming after a quarter frame's silence: a sample started
-_DAC_REG = 0x2A
 _VOICE_FIRST = 0x30             # DT/MUL .. SSG-EG: the operator registers
 _VOICE_LAST = 0x9F
 _REGISTER_STRIDE = 0x10         # from one operator register's base to the next
@@ -202,16 +202,12 @@ def _is_reset(w: VgmWrite) -> bool:
     return w.op is VgmOp.FM and w.port == 0 and w.reg == _REG_MODE and bool(w.value & _RESET_A)
 
 
-def _is_dac_byte(w: VgmWrite) -> bool:
-    return w.op is VgmOp.FM and w.port == 0 and w.reg == _DAC_REG
-
-
 def _burst_phase(writes: list[VgmWrite], frame_samples: int) -> int:
     """The commonest burst start within a frame, counting starts within _PHASE_WINDOW of it."""
     starts: list[int] = []
     last = None
     for w in writes:
-        if _is_dac_byte(w) or w.op is VgmOp.PCM_SEEK:
+        if is_dac_byte(w) or w.op is VgmOp.PCM_SEEK:
             continue
         if last is None or w.sample - last > _BURST_GAP:
             starts.append(w.sample % frame_samples)
@@ -279,7 +275,7 @@ class _FrameBuilder:
 
     def _apply(self, w: VgmWrite, after: VgmWrite | None) -> None:
         # The DAC's byte stream, most of a log's writes, is only counted: no state reads 0x2A
-        if w.reg == _DAC_REG and w.port == 0 and w.op is VgmOp.FM:
+        if is_dac_byte(w):
             self._dac_write(w.sample)
             return
         change = self._state.apply(w, after)

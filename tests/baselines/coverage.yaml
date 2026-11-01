@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/regression/chaos_emerald.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -179,7 +179,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/regression/continue_screen.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -353,7 +353,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/regression/continue_screen_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -528,7 +528,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/regression/continue_screen_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -701,7 +701,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/regression/continue_screen_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -873,7 +873,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/regression/credits.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1049,7 +1049,7 @@ credits_rom:
   - $91
   - --output
   - output/regression/credits_rom.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1221,7 +1221,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/regression/drowning.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1393,7 +1393,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/regression/ending_theme.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1565,7 +1565,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/regression/extra_life.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1739,7 +1739,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/regression/extra_life_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1914,7 +1914,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/regression/extra_life_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2087,7 +2087,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/regression/extra_life_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2259,7 +2259,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/regression/final_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2431,7 +2431,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/regression/ga_conclusion.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2601,7 +2601,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/regression/ga_the_battle.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2771,7 +2771,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/regression/ga_theme_of_thief.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2941,7 +2941,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/regression/game_over.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3115,7 +3115,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/regression/game_over_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3290,7 +3290,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/regression/game_over_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3463,7 +3463,7 @@ game_over_merged:
   - --merged
   - --output
   - output/regression/game_over_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3637,7 +3637,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/regression/ghz_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3812,7 +3812,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/regression/ghz_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3984,7 +3984,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/regression/green_hill_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4157,7 +4157,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/regression/green_hill_zone_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4333,7 +4333,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/regression/green_hill_zone_rom.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4505,7 +4505,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/regression/invincibility.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4679,7 +4679,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/regression/invincibility_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4854,7 +4854,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/regression/invincibility_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5027,7 +5027,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/regression/invincibility_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5199,7 +5199,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/regression/lab_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5371,7 +5371,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/regression/marble_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5547,7 +5547,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/regression/marble_zone_rom.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5719,7 +5719,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/regression/mw_beat_it.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5891,7 +5891,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/regression/mw_mr_big.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6063,7 +6063,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/regression/mw_title.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6235,7 +6235,7 @@ or_last_wave:
   - tests/settings.yaml
   - --output
   - output/regression/or_last_wave.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6408,7 +6408,7 @@ or_passing_breeze:
   - tests/settings.yaml
   - --output
   - output/regression/or_passing_breeze.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6581,7 +6581,7 @@ or_step_on_beat:
   - tests/settings.yaml
   - --output
   - output/regression/or_step_on_beat.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6754,7 +6754,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/regression/robotnik.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6928,7 +6928,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/regression/robotnik_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7103,7 +7103,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7276,7 +7276,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7448,7 +7448,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/regression/scrap_brain_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7620,7 +7620,7 @@ sh2_an_epitaph:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_an_epitaph.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7794,7 +7794,7 @@ sh2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_game_over.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7968,7 +7968,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_harrier_saga.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8142,7 +8142,7 @@ sh2_motion:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_motion.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8316,7 +8316,7 @@ sh2_winners_flight:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_winners_flight.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8490,7 +8490,7 @@ sor2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_game_over.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8663,7 +8663,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8836,7 +8836,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9009,7 +9009,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9182,7 +9182,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9355,7 +9355,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9528,7 +9528,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/regression/special_stage.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9700,7 +9700,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/regression/spring_yard_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9872,7 +9872,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/regression/stage_clear.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10046,7 +10046,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/regression/stage_clear_lofi.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10221,7 +10221,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/regression/stage_clear_lofi_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10394,7 +10394,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/regression/stage_clear_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10566,7 +10566,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/regression/star_light_zone.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10738,7 +10738,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/regression/title_screen.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10911,7 +10911,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/regression/title_screen_merged.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11087,7 +11087,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/regression/title_screen_rom.mod
-  commit: 6cedb58-dirty
+  commit: c6d0253-dirty
   files:
   - convert.py
   - core/__init__.py

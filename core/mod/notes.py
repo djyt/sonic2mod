@@ -15,6 +15,25 @@ PERIOD_TABLE = [
 ]
 
 
+MOD_NOTES = 36                 # C1..B3: a note index 0..35
+FINETUNE_STEPS = 96            # finetune steps an octave: one is 1/8 semitone
+
+
+def clamp_note(index: int) -> int:
+    """A note index kept to the MOD's three octaves (C1..B3)."""
+    return max(0, min(MOD_NOTES - 1, index))
+
+
+def shift_ratio(semitones: float) -> float:
+    """The rate ratio `semitones` up: 2^(semitones / 12)."""
+    return 2.0 ** (semitones / 12.0)
+
+
+def finetune_ratio(finetune: int) -> float:
+    """The rate ratio a MOD finetune plays a sample at: 2^(finetune / 96)."""
+    return 2.0 ** (finetune / FINETUNE_STEPS)
+
+
 def period_rate(period: int, clock: float) -> float:
     """The rate Paula plays a sample at on `period`: 428 (C-2) at the PAL clock -> 8287 Hz."""
     return clock / period
@@ -23,6 +42,12 @@ def period_rate(period: int, clock: float) -> float:
 def note_rate(note: int, clock: float) -> float:
     """The rate a sample plays at on MOD note `note` (0 = C1)."""
     return period_rate(PERIOD_TABLE[note], clock)
+
+
+def shifted_rate(note: int, clock: float, shift: int) -> int:
+    """A sample's rate (Hz, whole) when MOD note `note` plays it `shift` semitones above the pitch it
+    was rendered at (synth_shift): note's playback rate, raised by the shift's ratio."""
+    return round(note_rate(note, clock) * shift_ratio(shift))
 
 
 class ModNote(Enum):

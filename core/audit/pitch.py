@@ -29,7 +29,7 @@ import numpy as np
 
 from ..audio import pitch_name, semitone_to_hz
 from ..config import ConversionConfig
-from ..mod import PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
+from ..mod import FINETUNE_STEPS, PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
 from ..plan import sounding_pitches
 from ..vgm import Segment
 
@@ -49,7 +49,7 @@ def mod_pitch_timeline(mod: ModImage, cfg: ConversionConfig, song) -> tuple[dict
     def pitch(period: int, ins: int) -> float:
         root, synth, cents = inst[ins]
         return (semitone_to_hz(synth) * PERIOD_TABLE[root] / period
-                * 2 ** (finetune.get(ins, 0) / 96 + cents / 1200))
+                * 2 ** (finetune.get(ins, 0) / FINETUNE_STEPS + cents / 1200))
 
     rows, end = timed_pass(mod, cfg.target_speed)
     for r in rows:

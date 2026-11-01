@@ -454,8 +454,8 @@ def shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> int
     to the start of pattern P+1, i.e. forward by the 63-R rows it blanked out.
     """
     for P, break_row in sorted(breaks or []):
-        if flat_row >= P * 64 + break_row + 1:
-            flat_row += 63 - break_row
+        if flat_row >= P * ROWS_PER_PATTERN + break_row + 1:
+            flat_row += ROWS_PER_PATTERN - 1 - break_row
     return flat_row
 
 
@@ -489,19 +489,19 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
         P = orig_slot  # pattern indices don't shift (we append, not insert)
 
         # body_start_flat: the old flat-row index of the first body row
-        body_start_flat = P * 64 + row + 1
+        body_start_flat = P * ROWS_PER_PATTERN + row + 1
 
         # --- collect body as an immutable snapshot --------------------------
         body = bytearray()
         p_data = mod.patterns[P].get_bytes()
-        for r in range(row + 1, 64):
+        for r in range(row + 1, ROWS_PER_PATTERN):
             body += p_data[r * stride: r * stride + stride]
         N = len(mod.patterns) - 1
         for pi in range(P + 1, N + 1):
             body += bytes(mod.patterns[pi].get_bytes())
 
         body_rows      = len(body) // stride           # e.g. 1056 for GHZ
-        n_pats_needed  = (body_rows + 63) // 64        # ceil division
+        n_pats_needed  = -(-body_rows // ROWS_PER_PATTERN)   # ceil division
         n_pats_avail   = N - P                         # patterns P+1..N
         n_new          = max(0, n_pats_needed - n_pats_avail)
 
@@ -519,18 +519,18 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
             mod.position_list[i] = i
 
         # --- clear rows row+1..63 from pattern P ----------------------------
-        for r in range(row + 1, 64):
+        for r in range(row + 1, ROWS_PER_PATTERN):
             for b in range(stride):
                 mod.patterns[P].set_entry(r * stride + b, 0)
 
         # --- rewrite patterns P+1 .. P+n_pats_needed from body --------------
-        pat_size = 64 * stride
+        pat_size = ROWS_PER_PATTERN * stride
         for pi_new in range(n_pats_needed):
             pat = mod.patterns[P + 1 + pi_new]
             for i in range(pat_size):
                 pat.set_entry(i, 0)
-            for r in range(64):
-                br = pi_new * 64 + r
+            for r in range(ROWS_PER_PATTERN):
+                br = pi_new * ROWS_PER_PATTERN + r
                 if br < body_rows:
                     for b in range(stride):
                         pat.set_entry(r * stride + b, body[br * stride + b])
@@ -544,7 +544,7 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
         # player starts at the right row within the new pattern.
         for pat_i, pat in enumerate(mod.patterns):
             pat_data = pat.get_bytes()
-            for row_i in range(64):
+            for row_i in range(ROWS_PER_PATTERN):
                 for chan_i in range(mod.CHANNELS):
                     idx = mod.cell_index(row_i, chan_i)
                     if (pat_data[idx + 2] & 0xF) != 0xB:
@@ -552,12 +552,12 @@ def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
                     target = pat_data[idx + 3]
                     if target <= P:
                         continue
-                    old_flat = target * 64
+                    old_flat = target * ROWS_PER_PATTERN
                     if old_flat < body_start_flat:
                         continue
                     br          = old_flat - body_start_flat
-                    new_pat_num = P + 1 + br // 64
-                    new_row_num = br % 64
+                    new_pat_num = P + 1 + br // ROWS_PER_PATTERN
+                    new_row_num = br % ROWS_PER_PATTERN
                     pat.set_entry(idx + 3, new_pat_num & 0x7F)
                     if new_row_num != 0:
                         dxx_ch = mod.free_effect_channel(

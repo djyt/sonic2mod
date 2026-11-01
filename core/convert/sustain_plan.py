@@ -11,7 +11,7 @@ from ..audio import SustainLoop
 from ..config import ConversionConfig, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergePlan
-from ..mod import PERIOD_TABLE, max_sustain_secs, note_rate
+from ..mod import PERIOD_TABLE, clamp_note, finetune_ratio, max_sustain_secs, shift_ratio, shifted_rate
 from ..plan import Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import ChannelType, SmpsSong
 
@@ -169,14 +169,14 @@ class SustainPlanner:
                 for inst_i, raw_idx in plays:
                     if inst_i != inst and inst_i not in roots:
                         continue                # a source of the other chip: its own pass counts it
-                    idx_i = max(0, min(35, raw_idx))
+                    idx_i = clamp_note(raw_idx)
                     scale = 1.0
                     root = roots.get(inst_i)
                     if root is not None:
                         root_idx, shift = root
-                        scale *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[idx_i] / 2.0 ** (shift / 12.0)
+                        scale *= PERIOD_TABLE[root_idx] / PERIOD_TABLE[idx_i] / shift_ratio(shift)
                     if finetunes.get(inst_i, 0) > 0:
-                        scale *= 2.0 ** (finetunes[inst_i] / 96.0)
+                        scale *= finetune_ratio(finetunes[inst_i])
                     secs = wall * scale
                     prev = needs.get(inst_i)
                     if prev is None or secs > prev[0]:
@@ -269,7 +269,7 @@ class SustainPlanner:
             if root is None:
                 continue
             root_idx, shift = root
-            rate = round(note_rate(root_idx, settings.amiga_clock) * 2.0 ** (shift / 12.0))
+            rate = shifted_rate(root_idx, settings.amiga_clock, shift)
             fits = max_sustain_secs(rate, settings.release_padding, settings.max_sample_bytes)
             want = per_inst.get(inst, sustain)
             have = min(want, fits)

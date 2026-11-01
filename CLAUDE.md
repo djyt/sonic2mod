@@ -96,7 +96,8 @@ Python file Claude edits and hands the findings back.  Every rule in `pyproject.
 plain-English line saying what it flags (an ignored one: and why it is off).
 
 ```bash
-python tools/dev/check.py          # all of the below + unit tests; --fast: without the unit tests
+python tools/dev/check.py          # all of the below + unit tests, side by side; --fast: without the unit tests
+python tools/dev/check.py --regress   # then both regression suites (the cases the change can move)
 ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
@@ -263,7 +264,7 @@ python -m pytest tests/core/merge -q                   # one package's unit test
 1. Commit, then run `--generate-baselines` while code is known-good (a `-dirty` record selects
    more than it needs to).
 2. Make the change.
-3. Run without flags — PASS means no regressions on channels, and no note the player cannot
+3. Run without flags (or `tools/dev/check.py --regress`: every check, then both suites) — PASS means no regressions on channels, and no note the player cannot
    sound that the baseline sounds (`tools/mod/mod_lint.py`: a `3xx` with no sample playing or a
    played-out one, a note on an empty instrument slot; run it on any MOD by hand too).
 4. A FAIL is not an acceptance: read each changed cell before regenerating that song's baseline —

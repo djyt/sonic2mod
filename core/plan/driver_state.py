@@ -28,6 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..config import InstrumentRange, PsgInstrumentEntry
+from ..mod import clamp_note
 from ..smps import (
     ChannelType,
     PsgForm,
@@ -227,7 +228,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
                 raw, path = entry.root.value, "psg_fixed"
     if raw is None:
         raw = source_semitone + total
-    return ResolvedNote(inst, max(0, min(35, raw)), raw, path, entry,
+    return ResolvedNote(inst, clamp_note(raw), raw, path, entry,
                         source_semitone, key, chip, total, st.detune, st.pitch_envelope)
 
 

@@ -23,7 +23,19 @@ from .file import (
     shift_for_breaks,
 )
 from .limits import MAX_MOD_SAMPLE_BYTES, max_sustain_secs, sample_limit_bytes
-from .notes import MOD_NOTE_MAP, PERIOD_TABLE, ModNote, note_rate, period_rate
+from .notes import (
+    FINETUNE_STEPS,
+    MOD_NOTE_MAP,
+    MOD_NOTES,
+    PERIOD_TABLE,
+    ModNote,
+    clamp_note,
+    finetune_ratio,
+    note_rate,
+    period_rate,
+    shift_ratio,
+    shifted_rate,
+)
 from .reach import UnmodelledEffect, heard_bytes
 from .sample_audit import LOW_RATE_HZ, audit
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM, TimedRow, edx_delay, timed_pass
@@ -32,9 +44,11 @@ from .volume import MOD_MAX_VOLUME, clamp_mod_volume, db_to_mod_volume, headroom
 __all__ = [
     "DEFAULT_BPM",
     "DEFAULT_SPEED",
+    "FINETUNE_STEPS",
     "LOW_RATE_HZ",
     "MAX_MOD_SAMPLE_BYTES",
     "MOD_MAX_VOLUME",
+    "MOD_NOTES",
     "MOD_NOTE_MAP",
     "PAL_AMIGA_CLOCK",
     "PERIOD_TABLE",
@@ -49,8 +63,10 @@ __all__ = [
     "apply_pattern_breaks",
     "audit",
     "clamp_mod_volume",
+    "clamp_note",
     "db_to_mod_volume",
     "edx_delay",
+    "finetune_ratio",
     "headroom_db",
     "heard_bytes",
     "isolate_channel",
@@ -62,5 +78,7 @@ __all__ = [
     "row_to_bcd",
     "sample_limit_bytes",
     "shift_for_breaks",
+    "shift_ratio",
+    "shifted_rate",
     "timed_pass"
 ]

@@ -13,7 +13,7 @@ driver's update: `fps` of them a second (core.smps.update_hz).
 import bisect
 
 from ..config import ConversionConfig
-from ..mod import shift_for_breaks
+from ..mod import ROWS_PER_PATTERN, shift_for_breaks
 from ..smps import SetTempoMod, SmpsSong, TempoSegment, frame_of_tick, update_hz
 
 # A MOD BPM: ProTracker's Fxx reaches 32..255
@@ -131,16 +131,16 @@ class Timeline:
     def pattern_row(self, tick) -> tuple[int, int]:
         """(pattern, row) a tick rounds to, before any mod_pattern_breaks."""
         row_total = round(tick / self.ticks_per_row)
-        return row_total // 64, row_total % 64
+        return row_total // ROWS_PER_PATTERN, row_total % ROWS_PER_PATTERN
 
     def pattern_of(self, tick: int) -> int:
         """The pattern of the reference build (after its `mod_pattern_breaks`) a note-on at
         `tick` lands in — what a `merge_patterns:` group is matched on (core.merge)."""
-        return shift_for_breaks(int(tick // self.ticks_per_row), self._config.mod_pattern_breaks or []) // 64
+        return shift_for_breaks(int(tick // self.ticks_per_row), self._config.mod_pattern_breaks or []) // ROWS_PER_PATTERN
 
     def last_pattern(self) -> int:
         """The MOD's last pattern: the one the loop's `Bxx` row lands in; what convert.py trims
         the output to.  A loop extension may overshoot the song's end by a tick, and that note
         lands in a pattern nothing reaches."""
         row = max(round(self._song.end_tick() / self.ticks_per_row), 1) - 1
-        return shift_for_breaks(row, self._config.mod_pattern_breaks or []) // 64
+        return shift_for_breaks(row, self._config.mod_pattern_breaks or []) // ROWS_PER_PATTERN

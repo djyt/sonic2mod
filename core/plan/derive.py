@@ -51,7 +51,7 @@ from ..config import (
     variant_output_file,
 )
 from ..files import write_shared
-from ..mod import LOW_RATE_HZ, PERIOD_TABLE, ModNote, note_rate, period_rate
+from ..mod import FINETUNE_STEPS, LOW_RATE_HZ, PERIOD_TABLE, ROWS_PER_PATTERN, ModNote, note_rate, period_rate
 from ..smps import (
     ALL_OPERATORS,
     C1_SEMITONE,
@@ -73,13 +73,11 @@ _MOD_SPAN = 35               # C1 ... B3
 _MIN_WINDOW = 12             # narrowest window root_harmonics may cut
 _NO_ENVELOPE = psg_voice_name(0)     # "$00": a PSG note with no envelope
 _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of its hiss (Title Screen)
-_ROWS_PER_PATTERN = 64
 _MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
 _WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM within _BPM_CLOSE
 _BPM_CLOSE = 0.1               # % off the driver's tempo
 _FIRST_NOTE = 0x81           # the note byte of C0
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
-_FINETUNE_STEPS = 96         # finetune steps an octave
 
 # Derived sample files.  A stated row naming one follows that sample to its slot
 _FM_STEM = "fm_v{:02x}"                 # an FM voice's windows: fm_v04_C3.raw
@@ -314,7 +312,7 @@ class _Deriver:
         """`grid`'s ticks per row and speeds, if the song fits the pattern limit at it and some speed's
         BPM fits (a tempo without one: any); else None."""
         limit = int(self._stated.get("max_patterns", 127))
-        if self._song.end_tick() / grid / _ROWS_PER_PATTERN > limit:
+        if self._song.end_tick() / grid / ROWS_PER_PATTERN > limit:
             return None
         tpr, options = self._tpr_options(grid)
         return (tpr, options) if options or self._song.header.tempo_modifier <= 1 else None
@@ -436,7 +434,7 @@ class _Deriver:
     def _nearest(self, rate: float, finetunes: Sequence[int] = _FINETUNES) -> tuple[str, int]:
         """The MOD note (C1-B3) and finetune a sample plays at `rate` on: the nearest in pitch (a
         finetune step is an eighth of a semitone)."""
-        options = [(abs(math.log2(period_rate(period, self._clock) * 2 ** (ft / _FINETUNE_STEPS) / rate)), note, ft)
+        options = [(abs(math.log2(period_rate(period, self._clock) * 2 ** (ft / FINETUNE_STEPS) / rate)), note, ft)
                    for note, period in enumerate(PERIOD_TABLE[:_MOD_SPAN + 1]) for ft in finetunes]
         _, note, ft = min(options)
         return ModNote(note).name, ft

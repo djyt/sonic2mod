@@ -26,7 +26,7 @@ import dataclasses
 from dataclasses import dataclass, field
 
 from ..config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
-from ..mod import MOD_NOTE_MAP, ModNote, note_rate
+from ..mod import MOD_NOTE_MAP, ModNote, note_rate, shifted_rate
 from ..smps import FmDrum
 
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
@@ -140,8 +140,7 @@ class FmInstrument:
 
     def target_rate(self, amiga_clock: float) -> int:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
-        base = note_rate(self.rate_root_idx, amiga_clock)
-        return round(base * 2.0 ** (self.synth_shift / 12.0))
+        return shifted_rate(self.rate_root_idx, amiga_clock, self.synth_shift)
 
 
 @dataclass(frozen=True)
@@ -279,7 +278,7 @@ class PsgInstrument:
 
     def target_rate(self, amiga_clock: float) -> int:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
-        return round(note_rate(self.root_idx, amiga_clock) * 2.0 ** (self.entry.synth_shift / 12.0))
+        return shifted_rate(self.root_idx, amiga_clock, self.entry.synth_shift)
 
 
 def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None) -> dict[int, PsgInstrument]:

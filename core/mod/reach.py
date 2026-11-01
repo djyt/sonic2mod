@@ -26,6 +26,7 @@ import math
 from dataclasses import dataclass
 
 from .file import ModImage, SampleInfo
+from .notes import finetune_ratio
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM
 
 SPEED_MARGIN = 1.03         # every sample assumed to play this much faster than nominal
@@ -106,7 +107,7 @@ def _check(cell) -> None:
 
 
 def _tuned(period: int, sample: SampleInfo) -> float:
-    return period * 2.0 ** (-sample.finetune / 96.0)
+    return period * finetune_ratio(-sample.finetune)
 
 
 def _play_row(v: _Voice, cell, samples: list[SampleInfo], speed: int, step_secs: float,

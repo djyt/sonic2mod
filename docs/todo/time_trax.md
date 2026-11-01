@@ -6,8 +6,8 @@ this is the probe and the plan.
 **Verdict.**  Not SMPS: Tim Follin's own Z80 driver, a new family.  *Reading* it is small: a 100-line
 scratch walker decodes all six songs, and their key-ons land on the rips' frames with the rips'
 frequency words.  *Converting* it is the bulk: Follin's style lives in effects the IR lacks: fnum
-glides and semitone portamento (~1/3 of notes), a multiplicative volume law, FM volume envelopes,
-rests that hold.  Unused by the music: PSG, DAC, LFO, random branches.
+glides and semitone portamento (2,494 commands a pass, in every song), a multiplicative volume law,
+FM volume envelopes, rests that hold.  Unused by the music: PSG, DAC, LFO, random branches.
 
 Status key: `[ ]` open, `[x]` done.  Parts: the ROM and rips (1), the driver (2), what it plays (3),
 the prototype (4), what the code must change (5), the plan (6).  Decisions: § 7.
@@ -26,8 +26,8 @@ Header is a placeholder: `SEGA LOGO AND HARDWARE DEMONSTRATION`, `(C)SEGA 1993.0
 
 Rips: VGMRips 1.02 (RichterEX2), `reference/vgz/time_trax/`, **still zipped**: unzip beside it.
 - **Recorded at 50 Hz** (header rate 50, frames 882 samples apart), FM clock in the header NTSC's.
-- YM2612 only.  PSG: one write per latch (silenced at start).  DAC: `$2B` = 0 for the whole rip; the
-  Z80's idle loop streams `$80` to `$2A` (850k inaudible writes a rip, VGM data blocks of 24-536 bytes).
+- YM2612 only.  PSG: one write per register at the start, no notes.  DAC: `$2B` = 0 for the whole rip;
+  the Z80's idle loop streams `$80` to `$2A` (80k-1.3M inaudible writes a rip, data blocks of 24-536 bytes).
 
 ---
 
@@ -132,7 +132,8 @@ Carrier masks per algorithm at Z80 `$006A`: `01 01 01 01 03 07 07 0F`.
   songs use (1,1) (3,1) (4,1) (5,1) (1,2).  Glide runs on top of it.
 - **FM table:** A = fnum `$44B` (1099) vs 1083 at A440: **+25 cents** on the NTSC clock, +10 on PAL's.
   Played as heard.
-- **Sync:** song 0's FM3 signals FM5 (`$8D 4`); FM5 waits (`$8E`) at its loop's start.
+- **Sync:** song 0's FM3 signals FM5 (`$8D 5`, `$A01B`) just before its loop's jump; FM5 waits
+  (`$8E`, `$A2B8`) near the end of each pass: its 5508-frame pass stretched to FM3's 6144.
 - **Rate:** V-int.  The rips run at 50 Hz; a 60 Hz console plays everything 20 % faster.  MOD BPM 125
   (50 Hz) and 150 (60 Hz) both give one tick a frame.
 - **Not by the music:** PSG tracks, DAC, LFO, random jumps, release envelopes, `$8F` / `$90`.

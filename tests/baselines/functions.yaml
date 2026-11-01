@@ -122,12 +122,12 @@ functions:
   core/chips/fm.py::fm_frequency_hz: 1ffffffffffffffff
   core/chips/fm.py::fm_level_db: 1ffffffffffffffff
   core/chips/fm.py::freq_word: 1ffffffffffffffff
-  core/chips/fm.py::freq_word_hz: 7c018180000100
+  core/chips/fm.py::freq_word_hz: 7c078180000100
   core/chips/fm.py::keyed_carriers: 1d0000001c000
   core/chips/fm.py::split_freq_word: 1ffffffffffffffff
   core/chips/fm.py::split_operator_register: 7e000000000000
   core/chips/fm.py::timer_a_hz: '7000000000'
-  core/chips/psg.py::psg_frequency_hz: 7c018180000100
+  core/chips/psg.py::psg_frequency_hz: 7c078180000100
   core/chips/psg.py::psg_level_db: 1fffe0fe7ffe01f61
   core/chips/sn76489/build.py::get_lib_path: 1ffffdfe7ffe01f61
   core/chips/sn76489/wrapper.py::SN76489.__del__: 1ffffdfe7ffe01f61
@@ -362,7 +362,7 @@ functions:
   core/convert/sample_names.py::sample_names: 1ffffffffffffffff
   core/convert/sample_names.py::sample_names.chans: 1ffffffffffffffff
   core/convert/samples.py::SampleInstaller.__init__: 1ffffffffffffffff
-  core/convert/samples.py::SampleInstaller._check_render_pitches: 7c018180000100
+  core/convert/samples.py::SampleInstaller._check_render_pitches: 7c078180000100
   core/convert/samples.py::SampleInstaller._install_synthesized_samples: 1ffffffffffffffff
   core/convert/samples.py::SampleInstaller._load_aside_drums: 1ffffffffffffffff
   core/convert/samples.py::SampleInstaller._load_disk_samples: 1ffffffffffffffff
@@ -841,17 +841,17 @@ functions:
   core/plan/derive.py::complete_config: 1ffffffffffffffff
   core/plan/derive.py::derive_config: 7ff07e0001c000
   core/plan/derive.py::starting_volume: 7ff07e0001c000
-  core/plan/detune.py::DetunePlan.add: 2157f9f783e02101
+  core/plan/detune.py::DetunePlan.add: 2157fff783e02101
   core/plan/detune.py::DetunePlan.base_of: 1ffffffffffffffff
   core/plan/detune.py::DetunePlan.instrument_for: 1ffffffffffffffff
   core/plan/detune.py::DetunePlan.share_base: 1ffffffffffffffff
-  core/plan/detune.py::_Wanted.order: 217ff9f783e02161
+  core/plan/detune.py::_Wanted.order: 217ffff783e02161
   core/plan/detune.py::_apart: 1ffffffffffffffff
   core/plan/detune.py::_commonest: 217ff87783e02161
   core/plan/detune.py::_in_class: '50000000000060'
-  core/plan/detune.py::_psg_detunes: '74018180000100'
+  core/plan/detune.py::_psg_detunes: '74078180000100'
   core/plan/detune.py::_rendered: 217ff87783e02161
-  core/plan/detune.py::_stem: 2157f9f783e02101
+  core/plan/detune.py::_stem: 2157fff783e02101
   core/plan/detune.py::_word_hz: 1ffffffffffffffff
   core/plan/detune.py::detune_cents: 1ffffffffffffffff
   core/plan/detune.py::detune_variants_wanted: 1ffffffffffffffff
@@ -868,9 +868,9 @@ functions:
   core/plan/driver_state.py::psg_range_entry: 1fffe0fe7ffe01f61
   core/plan/driver_state.py::resolve_note: 1ffffffffffffffff
   core/plan/driver_state.py::walk_channel: 1ffffffffffffffff
-  core/plan/instrument_plan.py::_psg_render_hz: '74018180000100'
+  core/plan/instrument_plan.py::_psg_render_hz: '74078180000100'
   core/plan/instrument_plan.py::prepare_instruments: 1ffffffffffffffff
-  core/plan/instrument_plan.py::rendered_pitches: 7c018180000100
+  core/plan/instrument_plan.py::rendered_pitches: 7c078180000100
   core/plan/instruments.py::FmDrumInstrument.target_rate: 1d0000001c000
   core/plan/instruments.py::FmInstrument.decay_mode: 1ffffffffffffffff
   core/plan/instruments.py::FmInstrument.dither_mode: 1ffffffffffffffff
@@ -888,7 +888,7 @@ functions:
   core/plan/instruments.py::PsgInstrument.synth_shift: 1fffe0fe7ffe01f61
   core/plan/instruments.py::PsgInstrument.target_rate: 1fffe0fe7ffe01f61
   core/plan/instruments.py::_add_detune_variants: 1ffffffffffffffff
-  core/plan/instruments.py::_add_psg_detune_variants: '74018180000100'
+  core/plan/instruments.py::_add_psg_detune_variants: '74078180000100'
   core/plan/instruments.py::fm_catalogue: 1ffffffffffffffff
   core/plan/instruments.py::fm_catalogue.add: 1ffffffffffffffff
   core/plan/instruments.py::fm_catalogue.rooted: 1ffffffffffffffff
@@ -1087,11 +1087,11 @@ functions:
   core/smps/driver_tables.py::PsgEnvelope.loops: 1e1100867ffe00160
   core/smps/driver_tables.py::PsgTable.divider: 1e16c0867ffe00160
   core/smps/driver_tables.py::PsgTable.of: 1ffffffffffffffff
-  core/smps/driver_tables.py::PsgTable.render_divider: 7c018180000100
+  core/smps/driver_tables.py::PsgTable.render_divider: 7c078180000100
   core/smps/driver_tables.py::PsgTable.semitone: 1fffe0fe7ffe01f61
   core/smps/driver_tables.py::_divider_semitone: 1fffffffffffe3fff
   core/smps/driver_tables.py::chip_pitch: 1ffffffffffffffff
-  core/smps/driver_tables.py::fm_render_word: 7c018180000100
+  core/smps/driver_tables.py::fm_render_word: 7c078180000100
   core/smps/driver_tables.py::fm_table_index: 1ffffffffffffffff
   core/smps/driver_tables.py::noise_envelope_frames: 1e1320867ffe00160
   core/smps/driver_tables.py::psg_note_index: 1e1000867ffe00160
@@ -1167,7 +1167,7 @@ functions:
   core/smps/percussion.py::FmDrum.silent: 1d0000001c000
   core/smps/pitch_envelope.py::PitchEnvelope.offsets: 1f02000000000
   core/smps/pitch_envelope.py::_scaled: 1f00000000000
-  core/smps/playback.py::psg_render_divider: '74018180000100'
+  core/smps/playback.py::psg_render_divider: '74078180000100'
   core/smps/rules.py::OctaveWrap.wrapped: 700001c000
   core/smps/rules.py::PitchRules.shift: 1fffe0fe7ffe01f61
   core/smps/rules.py::PlaybackRules.psg_table: 1ffffffffffffffff

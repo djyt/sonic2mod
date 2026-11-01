@@ -7103,7 +7103,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: 2d09665-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7276,7 +7276,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: c6d0253-dirty
+  commit: 2d09665-dirty
   files:
   - convert.py
   - core/__init__.py

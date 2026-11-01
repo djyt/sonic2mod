@@ -190,12 +190,12 @@ robotnik_lofi:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik_lofi_merged:
-  commit: c6d0253-dirty
+  commit: 2d09665
   config: 88200e30cfae
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik_merged:
-  commit: c6d0253-dirty
+  commit: 2d09665
   config: d8d9d0b21a0d
   date: '2026-11-01'
   settings: f08dfd2ff1bd

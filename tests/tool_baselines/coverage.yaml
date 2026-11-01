@@ -8775,7 +8775,7 @@ frames_space_harrier_2:
   - --all
   - --configs
   - configs/space_harrier_2
-  commit: d4522d7-dirty
+  commit: 481c448-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -8824,6 +8824,7 @@ frames_space_harrier_2:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -8860,14 +8861,18 @@ frames_space_harrier_2:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
@@ -8881,7 +8886,8 @@ frames_space_harrier_2:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
@@ -8986,7 +8992,7 @@ frames_streets_of_rage:
   - --all
   - --configs
   - configs/streets_of_rage
-  commit: d4522d7-dirty
+  commit: 481c448-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -9035,6 +9041,7 @@ frames_streets_of_rage:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -9051,13 +9058,12 @@ frames_streets_of_rage:
   - core/drivers/registry.py
   - core/drivers/smps68k/__init__.py
   - core/drivers/smps68k/common.py
-  - core/drivers/smps68k/dac.py
   - core/drivers/smps68k/locate.py
   - core/drivers/smps68k/memory.py
-  - core/drivers/smps68k/mucom/__init__.py
-  - core/drivers/smps68k/mucom/dac.py
-  - core/drivers/smps68k/mucom/grammar.py
-  - core/drivers/smps68k/mucom/variant.py
+  - core/drivers/smps68k/streets_of_rage/__init__.py
+  - core/drivers/smps68k/streets_of_rage/dac.py
+  - core/drivers/smps68k/streets_of_rage/grammar.py
+  - core/drivers/smps68k/streets_of_rage/variant.py
   - core/files.py
   - core/merge/__init__.py
   - core/merge/banks.py
@@ -9069,14 +9075,18 @@ frames_streets_of_rage:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
@@ -9090,12 +9100,15 @@ frames_streets_of_rage:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/mucom.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/sor.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
@@ -18043,7 +18056,7 @@ read_outrun:
   argv:
   - tools/rom/song_dump.py
   - input/roms/OutRun (USA, Europe).md
-  commit: ba2f346-dirty
+  commit: 481c448-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18500,7 +18513,7 @@ read_space_harrier_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: ba2f346-dirty
+  commit: 481c448-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18574,7 +18587,7 @@ read_streets_of_rage:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: ba2f346-dirty
+  commit: 481c448-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -18646,7 +18659,7 @@ read_streets_of_rage_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Streets of Rage 2 (USA).md
-  commit: ba2f346-dirty
+  commit: 481c448-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py

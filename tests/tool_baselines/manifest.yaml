@@ -756,7 +756,7 @@ frames_outrun:
     reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
     reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
 frames_space_harrier_2:
-  commit: d4522d7-dirty
+  commit: 481c448
   date: '2026-11-01'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
@@ -802,7 +802,7 @@ frames_space_harrier_2:
     reference/vgz/space_harrier_2/19 - An Epitaph (Ending Theme).vgz: acdbae48986e
     reference/vgz/space_harrier_2/20 - A (Game Over).vgz: a0aece5a54c5
 frames_streets_of_rage:
-  commit: d4522d7-dirty
+  commit: 481c448
   date: '2026-11-01'
   inputs:
     configs/streets_of_rage/81_fighting_in_the_street.yaml: 22221271e2be
@@ -1465,7 +1465,7 @@ read_moonwalker:
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_outrun:
-  commit: ba2f346
+  commit: 481c448
   date: '2026-11-01'
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -1579,17 +1579,17 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: ba2f346
+  commit: 481c448
   date: '2026-11-01'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: ba2f346
+  commit: 481c448
   date: '2026-11-01'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
 read_streets_of_rage_2:
-  commit: ba2f346
+  commit: 481c448
   date: '2026-11-01'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9

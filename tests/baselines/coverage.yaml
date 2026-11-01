@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/regression/chaos_emerald.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -57,6 +57,7 @@ chaos_emerald:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -90,20 +91,25 @@ chaos_emerald:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -111,17 +117,20 @@ chaos_emerald:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -167,6 +176,7 @@ chaos_emerald:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/16_chaos_emerald.yaml: 702974097f19
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
@@ -179,7 +189,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/regression/continue_screen.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -229,6 +239,7 @@ continue_screen:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -262,20 +273,25 @@ continue_screen:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -283,17 +299,20 @@ continue_screen:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -339,6 +358,7 @@ continue_screen:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: be90696de24c
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -353,7 +373,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/regression/continue_screen_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -403,6 +423,7 @@ continue_screen_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -436,20 +457,25 @@ continue_screen_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -457,17 +483,20 @@ continue_screen_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -513,6 +542,7 @@ continue_screen_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: be90696de24c
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -528,7 +558,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/regression/continue_screen_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -578,6 +608,7 @@ continue_screen_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -611,20 +642,25 @@ continue_screen_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -632,17 +668,20 @@ continue_screen_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -688,6 +727,7 @@ continue_screen_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: be90696de24c
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -701,7 +741,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/regression/continue_screen_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -751,6 +791,7 @@ continue_screen_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -784,20 +825,25 @@ continue_screen_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -805,17 +851,20 @@ continue_screen_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -861,6 +910,7 @@ continue_screen_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: be90696de24c
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
@@ -873,7 +923,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/regression/credits.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -923,6 +973,7 @@ credits:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -956,20 +1007,25 @@ credits:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -977,17 +1033,20 @@ credits:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -1033,6 +1092,7 @@ credits:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
@@ -1049,7 +1109,7 @@ credits_rom:
   - $91
   - --output
   - output/regression/credits_rom.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1099,6 +1159,7 @@ credits_rom:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -1132,20 +1193,25 @@ credits_rom:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -1153,17 +1219,20 @@ credits_rom:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -1209,6 +1278,7 @@ credits_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/13_credits.yaml: a5a2c99af2b0
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -1221,7 +1291,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/regression/drowning.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1271,6 +1341,7 @@ drowning:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -1304,20 +1375,25 @@ drowning:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -1325,17 +1401,20 @@ drowning:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -1381,6 +1460,7 @@ drowning:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/17_drowning.yaml: 81b857245faf
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
@@ -1393,7 +1473,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/regression/ending_theme.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1443,6 +1523,7 @@ ending_theme:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -1476,20 +1557,25 @@ ending_theme:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -1497,17 +1583,20 @@ ending_theme:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -1553,6 +1642,7 @@ ending_theme:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/12_ending_theme.yaml: f4e9e818c57a
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
@@ -1565,7 +1655,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/regression/extra_life.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1615,6 +1705,7 @@ extra_life:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -1648,20 +1739,25 @@ extra_life:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -1669,17 +1765,20 @@ extra_life:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -1725,6 +1824,7 @@ extra_life:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -1739,7 +1839,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/regression/extra_life_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1789,6 +1889,7 @@ extra_life_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -1822,20 +1923,25 @@ extra_life_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -1843,17 +1949,20 @@ extra_life_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -1899,6 +2008,7 @@ extra_life_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -1914,7 +2024,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/regression/extra_life_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1964,6 +2074,7 @@ extra_life_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -1997,20 +2108,25 @@ extra_life_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -2018,17 +2134,20 @@ extra_life_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -2074,6 +2193,7 @@ extra_life_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -2087,7 +2207,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/regression/extra_life_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2137,6 +2257,7 @@ extra_life_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -2170,20 +2291,25 @@ extra_life_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -2191,17 +2317,20 @@ extra_life_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -2247,6 +2376,7 @@ extra_life_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
@@ -2259,7 +2389,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/regression/final_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2309,6 +2439,7 @@ final_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -2342,20 +2473,25 @@ final_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -2363,17 +2499,20 @@ final_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -2419,6 +2558,7 @@ final_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/10_final_zone.yaml: 1816d8c10975
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
@@ -2431,7 +2571,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/regression/ga_conclusion.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2481,6 +2621,7 @@ ga_conclusion:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -2513,20 +2654,25 @@ ga_conclusion:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -2534,17 +2680,20 @@ ga_conclusion:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -2590,6 +2739,7 @@ ga_conclusion:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -2602,7 +2752,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/regression/ga_the_battle.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2652,6 +2802,7 @@ ga_the_battle:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -2684,20 +2835,25 @@ ga_the_battle:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -2705,17 +2861,20 @@ ga_the_battle:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -2761,6 +2920,7 @@ ga_the_battle:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -2773,7 +2933,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/regression/ga_theme_of_thief.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2823,6 +2983,7 @@ ga_theme_of_thief:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -2855,20 +3016,25 @@ ga_theme_of_thief:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -2876,17 +3042,20 @@ ga_theme_of_thief:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -2932,6 +3101,7 @@ ga_theme_of_thief:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -2944,7 +3114,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/regression/game_over.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2994,6 +3164,7 @@ game_over:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -3027,20 +3198,25 @@ game_over:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -3048,17 +3224,20 @@ game_over:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -3104,6 +3283,7 @@ game_over:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3118,7 +3298,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/regression/game_over_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3168,6 +3348,7 @@ game_over_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -3201,20 +3382,25 @@ game_over_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -3222,17 +3408,20 @@ game_over_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -3278,6 +3467,7 @@ game_over_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3293,7 +3483,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/regression/game_over_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3343,6 +3533,7 @@ game_over_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -3376,20 +3567,25 @@ game_over_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -3397,17 +3593,20 @@ game_over_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -3453,6 +3652,7 @@ game_over_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3466,7 +3666,7 @@ game_over_merged:
   - --merged
   - --output
   - output/regression/game_over_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3516,6 +3716,7 @@ game_over_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -3549,20 +3750,25 @@ game_over_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -3570,17 +3776,20 @@ game_over_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -3626,6 +3835,7 @@ game_over_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
@@ -3640,7 +3850,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/regression/ghz_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3690,6 +3900,7 @@ ghz_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -3723,20 +3934,25 @@ ghz_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -3744,17 +3960,20 @@ ghz_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -3800,6 +4019,7 @@ ghz_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -3815,7 +4035,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/regression/ghz_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3865,6 +4085,7 @@ ghz_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -3898,20 +4119,25 @@ ghz_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -3919,17 +4145,20 @@ ghz_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -3975,6 +4204,7 @@ ghz_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -3987,7 +4217,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/regression/green_hill_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4037,6 +4267,7 @@ green_hill_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -4070,20 +4301,25 @@ green_hill_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -4091,17 +4327,20 @@ green_hill_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -4147,6 +4386,7 @@ green_hill_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -4160,7 +4400,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/regression/green_hill_zone_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4210,6 +4450,7 @@ green_hill_zone_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -4243,20 +4484,25 @@ green_hill_zone_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -4264,17 +4510,20 @@ green_hill_zone_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -4320,6 +4569,7 @@ green_hill_zone_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
@@ -4336,7 +4586,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/regression/green_hill_zone_rom.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4386,6 +4636,7 @@ green_hill_zone_rom:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -4419,20 +4670,25 @@ green_hill_zone_rom:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -4440,17 +4696,20 @@ green_hill_zone_rom:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -4496,6 +4755,7 @@ green_hill_zone_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -4508,7 +4768,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/regression/invincibility.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4558,6 +4818,7 @@ invincibility:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -4591,20 +4852,25 @@ invincibility:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -4612,17 +4878,20 @@ invincibility:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -4668,6 +4937,7 @@ invincibility:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -4682,7 +4952,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/regression/invincibility_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4732,6 +5002,7 @@ invincibility_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -4765,20 +5036,25 @@ invincibility_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -4786,17 +5062,20 @@ invincibility_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -4842,6 +5121,7 @@ invincibility_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -4857,7 +5137,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/regression/invincibility_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4907,6 +5187,7 @@ invincibility_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -4940,20 +5221,25 @@ invincibility_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -4961,17 +5247,20 @@ invincibility_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -5017,6 +5306,7 @@ invincibility_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -5030,7 +5320,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/regression/invincibility_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5080,6 +5370,7 @@ invincibility_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -5113,20 +5404,25 @@ invincibility_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -5134,17 +5430,20 @@ invincibility_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -5190,6 +5489,7 @@ invincibility_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
@@ -5202,7 +5502,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/regression/lab_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5252,6 +5552,7 @@ lab_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -5285,20 +5586,25 @@ lab_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -5306,17 +5612,20 @@ lab_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -5362,6 +5671,7 @@ lab_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/05_lab_zone.yaml: 28a70a07bc3d
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
@@ -5374,7 +5684,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/regression/marble_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5424,6 +5734,7 @@ marble_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -5457,20 +5768,25 @@ marble_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -5478,17 +5794,20 @@ marble_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -5534,6 +5853,7 @@ marble_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
@@ -5550,7 +5870,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/regression/marble_zone_rom.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5600,6 +5920,7 @@ marble_zone_rom:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -5633,20 +5954,25 @@ marble_zone_rom:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -5654,17 +5980,20 @@ marble_zone_rom:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -5710,6 +6039,7 @@ marble_zone_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
     input/roms/sonic_rev01.bin: c30832bccae0
@@ -5722,7 +6052,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/regression/mw_beat_it.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5772,6 +6102,7 @@ mw_beat_it:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -5805,20 +6136,25 @@ mw_beat_it:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -5826,17 +6162,20 @@ mw_beat_it:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -5882,6 +6221,7 @@ mw_beat_it:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -5894,7 +6234,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/regression/mw_mr_big.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5944,6 +6284,7 @@ mw_mr_big:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -5977,20 +6318,25 @@ mw_mr_big:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -5998,17 +6344,20 @@ mw_mr_big:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -6054,6 +6403,7 @@ mw_mr_big:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -6066,7 +6416,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/regression/mw_title.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6116,6 +6466,7 @@ mw_title:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -6149,20 +6500,25 @@ mw_title:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -6170,17 +6526,20 @@ mw_title:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -6226,6 +6585,7 @@ mw_title:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/moonwalker/86_title.yaml: a4e39f30e91d
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
@@ -6238,7 +6598,7 @@ or_last_wave:
   - tests/settings.yaml
   - --output
   - output/regression/or_last_wave.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6288,6 +6648,7 @@ or_last_wave:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -6321,20 +6682,25 @@ or_last_wave:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -6342,18 +6708,21 @@ or_last_wave:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -6399,6 +6768,7 @@ or_last_wave:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/outrun/84_last_wave.yaml: 009fc08f1a5d
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -6411,7 +6781,7 @@ or_passing_breeze:
   - tests/settings.yaml
   - --output
   - output/regression/or_passing_breeze.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6461,6 +6831,7 @@ or_passing_breeze:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -6494,20 +6865,25 @@ or_passing_breeze:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -6515,18 +6891,21 @@ or_passing_breeze:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -6572,6 +6951,7 @@ or_passing_breeze:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/outrun/83_passing_breeze.yaml: 3a74ffd6c500
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -6584,7 +6964,7 @@ or_step_on_beat:
   - tests/settings.yaml
   - --output
   - output/regression/or_step_on_beat.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6634,6 +7014,7 @@ or_step_on_beat:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -6667,20 +7048,25 @@ or_step_on_beat:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -6688,18 +7074,21 @@ or_step_on_beat:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -6745,6 +7134,7 @@ or_step_on_beat:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/outrun/85_step_on_beat.yaml: 7f6952bc0719
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -6757,7 +7147,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/regression/robotnik.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6807,6 +7197,7 @@ robotnik:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -6840,20 +7231,25 @@ robotnik:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -6861,17 +7257,20 @@ robotnik:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -6917,6 +7316,7 @@ robotnik:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: e345f5822382
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -6931,7 +7331,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/regression/robotnik_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6981,6 +7381,7 @@ robotnik_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -7014,20 +7415,25 @@ robotnik_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -7035,17 +7441,20 @@ robotnik_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -7091,6 +7500,7 @@ robotnik_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: e345f5822382
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -7106,7 +7516,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7156,6 +7566,7 @@ robotnik_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -7189,20 +7600,25 @@ robotnik_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -7210,17 +7626,20 @@ robotnik_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -7266,6 +7685,7 @@ robotnik_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: e345f5822382
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -7279,7 +7699,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7329,6 +7749,7 @@ robotnik_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -7362,20 +7783,25 @@ robotnik_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -7383,17 +7809,20 @@ robotnik_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -7439,6 +7868,7 @@ robotnik_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: e345f5822382
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
@@ -7451,7 +7881,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/regression/scrap_brain_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7501,6 +7931,7 @@ scrap_brain_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -7534,20 +7965,25 @@ scrap_brain_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -7555,17 +7991,20 @@ scrap_brain_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -7611,6 +8050,7 @@ scrap_brain_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/07_scrap_brain_zone.yaml: a5555800ac10
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
@@ -7623,7 +8063,7 @@ sh2_an_epitaph:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_an_epitaph.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7673,6 +8113,7 @@ sh2_an_epitaph:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -7709,20 +8150,25 @@ sh2_an_epitaph:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -7730,17 +8176,20 @@ sh2_an_epitaph:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -7786,6 +8235,7 @@ sh2_an_epitaph:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/95_an_epitaph.yaml: 3898a657da05
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -7798,7 +8248,7 @@ sh2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_game_over.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7848,6 +8298,7 @@ sh2_game_over:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -7884,20 +8335,25 @@ sh2_game_over:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -7905,17 +8361,20 @@ sh2_game_over:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -7961,6 +8420,7 @@ sh2_game_over:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -7973,7 +8433,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_harrier_saga.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8023,6 +8483,7 @@ sh2_harrier_saga:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -8059,20 +8520,25 @@ sh2_harrier_saga:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -8080,17 +8546,20 @@ sh2_harrier_saga:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -8136,6 +8605,7 @@ sh2_harrier_saga:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -8148,7 +8618,7 @@ sh2_motion:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_motion.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8198,6 +8668,7 @@ sh2_motion:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -8234,20 +8705,25 @@ sh2_motion:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -8255,17 +8731,20 @@ sh2_motion:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -8311,6 +8790,7 @@ sh2_motion:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/98_motion.yaml: 31261d44d549
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -8323,7 +8803,7 @@ sh2_winners_flight:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_winners_flight.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8373,6 +8853,7 @@ sh2_winners_flight:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -8409,20 +8890,25 @@ sh2_winners_flight:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -8430,17 +8916,20 @@ sh2_winners_flight:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
   - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -8486,6 +8975,7 @@ sh2_winners_flight:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -8498,7 +8988,7 @@ sor2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_game_over.mod
-  commit: de1923e-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8670,7 +9160,7 @@ sor2_game_over:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/19_game_over.yaml: 0c8b6b4cbb2c
+    configs/streets_of_rage_2/19_game_over.yaml: dd5aef6bc0f2
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_go_straight:
@@ -8681,7 +9171,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: de1923e-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8853,7 +9343,7 @@ sor2_go_straight:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: 6d3fce3c5ba5
+    configs/streets_of_rage_2/00_go_straight.yaml: c98be6eef40b
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_jungle_base:
@@ -8864,7 +9354,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: de1923e-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9036,7 +9526,7 @@ sor2_jungle_base:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: eb781531ccc6
+    configs/streets_of_rage_2/05_jungle_base.yaml: 5ecec7b7eab8
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_level_complete:
@@ -9047,7 +9537,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: de1923e-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9219,7 +9709,7 @@ sor2_level_complete:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/0b_level_complete.yaml: 8432316b6bfa
+    configs/streets_of_rage_2/0b_level_complete.yaml: c0c4015720eb
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_song_12:
@@ -9230,7 +9720,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: de1923e-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9402,7 +9892,7 @@ sor2_song_12:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/12_song_12.yaml: d0693e41978d
+    configs/streets_of_rage_2/12_song_12.yaml: 9f629af2cf2c
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_too_deep:
@@ -9413,7 +9903,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: de1923e-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9585,7 +10075,7 @@ sor2_too_deep:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/08_too_deep.yaml: 1f99ddeef36f
+    configs/streets_of_rage_2/08_too_deep.yaml: 24ca98eadd77
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 special_stage:
@@ -9596,7 +10086,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/regression/special_stage.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9646,6 +10136,7 @@ special_stage:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -9679,20 +10170,25 @@ special_stage:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -9700,17 +10196,20 @@ special_stage:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -9756,6 +10255,7 @@ special_stage:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
@@ -9768,7 +10268,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/regression/spring_yard_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9818,6 +10318,7 @@ spring_yard_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -9851,20 +10352,25 @@ spring_yard_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -9872,17 +10378,20 @@ spring_yard_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -9928,6 +10437,7 @@ spring_yard_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
@@ -9940,7 +10450,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/regression/stage_clear.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9990,6 +10500,7 @@ stage_clear:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10023,20 +10534,25 @@ stage_clear:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -10044,17 +10560,20 @@ stage_clear:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10100,6 +10619,7 @@ stage_clear:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -10114,7 +10634,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/regression/stage_clear_lofi.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10164,6 +10684,7 @@ stage_clear_lofi:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10197,20 +10718,25 @@ stage_clear_lofi:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -10218,17 +10744,20 @@ stage_clear_lofi:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10274,6 +10803,7 @@ stage_clear_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -10289,7 +10819,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/regression/stage_clear_lofi_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10339,6 +10869,7 @@ stage_clear_lofi_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10372,20 +10903,25 @@ stage_clear_lofi_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -10393,17 +10929,20 @@ stage_clear_lofi_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10449,6 +10988,7 @@ stage_clear_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -10462,7 +11002,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/regression/stage_clear_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10512,6 +11052,7 @@ stage_clear_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10545,20 +11086,25 @@ stage_clear_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -10566,17 +11112,20 @@ stage_clear_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10622,6 +11171,7 @@ stage_clear_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
@@ -10634,7 +11184,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/regression/star_light_zone.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10684,6 +11234,7 @@ star_light_zone:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10717,20 +11268,25 @@ star_light_zone:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -10738,17 +11294,20 @@ star_light_zone:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10794,6 +11353,7 @@ star_light_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/06_star_light_zone.yaml: 04ab4d7aca07
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
@@ -10806,7 +11366,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/regression/title_screen.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10856,6 +11416,7 @@ title_screen:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -10889,20 +11450,25 @@ title_screen:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -10910,17 +11476,20 @@ title_screen:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -10966,6 +11535,7 @@ title_screen:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
@@ -10979,7 +11549,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/regression/title_screen_merged.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11029,6 +11599,7 @@ title_screen_merged:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -11062,20 +11633,25 @@ title_screen_merged:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -11083,17 +11659,20 @@ title_screen_merged:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -11139,6 +11718,7 @@ title_screen_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
@@ -11155,7 +11735,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/regression/title_screen_rom.mod
-  commit: d4522d7-dirty
+  commit: 12250fd-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11205,6 +11785,7 @@ title_screen_rom:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
   - core/convert/smps2mod.py
@@ -11238,20 +11819,25 @@ title_screen_rom:
   - core/merge/pool.py
   - core/merge/slots.py
   - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
   - core/mod/file.py
   - core/mod/limits.py
   - core/mod/notes.py
   - core/mod/reach.py
+  - core/mod/reader.py
   - core/mod/sample_audit.py
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
   - core/plan/synth_roots.py
   - core/plan/timeline.py
   - core/render_cache.py
@@ -11259,17 +11845,20 @@ title_screen_rom:
   - core/rom/envelopes.py
   - core/rom/fixes.py
   - core/rom/flags.py
-  - core/rom/grammar.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
   - core/rom/header.py
   - core/rom/image.py
   - core/rom/kosinski.py
   - core/rom/memory.py
-  - core/rom/pcm.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/smps.py
   - core/rom/tracks.py
   - core/rom/variant.py
   - core/rom/voices.py
   - core/rom/z80.py
   - core/smps/__init__.py
+  - core/smps/adsr.py
   - core/smps/asm_writer.py
   - core/smps/clock.py
   - core/smps/code.py
@@ -11315,6 +11904,7 @@ title_screen_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/writes.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
     input/roms/sonic_rev01.bin: c30832bccae0

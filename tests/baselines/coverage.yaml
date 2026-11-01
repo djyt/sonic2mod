@@ -8836,7 +8836,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: d8e3bbd-dirty
+  commit: d172191-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8998,7 +8998,7 @@ sor2_jungle_base:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: 5ecec7b7eab8
+    configs/streets_of_rage_2/05_jungle_base.yaml: acfd7fe7f498
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_level_complete:
@@ -9182,7 +9182,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: d8e3bbd-dirty
+  commit: d172191-dirty
   files:
   - convert.py
   - core/__init__.py

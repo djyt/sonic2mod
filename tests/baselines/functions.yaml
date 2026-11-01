@@ -87,7 +87,7 @@ functions:
   core/audio/loops.py::find_sustain_loop: 1ffffffffffffffff
   core/audio/loops.py::flatten: c080c
   core/audio/loops.py::heard_padding: 1ffff5cf3fff9f97e
-  core/audio/loops.py::loop_error: 4c000000000000
+  core/audio/loops.py::loop_error: '44000000000000'
   core/audio/loops.py::probe_secs: 1ffffffffffffffff
   core/audio/loops.py::release_rate_db_s: 1ffffffffffffffff
   core/audio/loops.py::unroll_values: '1800060001401800'
@@ -115,17 +115,19 @@ functions:
   core/chips/cbuild.py::CLibrary.get_lib_path: 1ffffffffffffffff
   core/chips/cbuild.py::CLibrary.lib_name: 1ffffffffffffffff
   core/chips/cbuild.py::CLibrary.lib_path: 1ffffffffffffffff
-  core/chips/fm.py::FmLfo.cycle_samples: 4c000000000000
-  core/chips/fm.py::FmLfo.period_secs: 4c000000000000
-  core/chips/fm.py::FmLfo.register: 4c000000000000
-  core/chips/fm.py::FmLfo.sensitivity: 4c000000000000
+  core/chips/fm.py::FmLfo.cycle_samples: '44000000000000'
+  core/chips/fm.py::FmLfo.period_secs: '44000000000000'
+  core/chips/fm.py::FmLfo.register: '44000000000000'
+  core/chips/fm.py::FmLfo.sensitivity: '44000000000000'
   core/chips/fm.py::fm_frequency_hz: 1ffffffffffffffff
   core/chips/fm.py::fm_level_db: 1ffffffffffffffff
   core/chips/fm.py::freq_word: 1ffffffffffffffff
+  core/chips/fm.py::freq_word_hz: '28000000000000'
   core/chips/fm.py::keyed_carriers: 1d0000001c000
   core/chips/fm.py::split_freq_word: 1ffffffffffffffff
   core/chips/fm.py::split_operator_register: 7e000000000000
   core/chips/fm.py::timer_a_hz: '7000000000'
+  core/chips/psg.py::psg_frequency_hz: '28000000000000'
   core/chips/psg.py::psg_level_db: 1fffe0fe7ffe01f61
   core/chips/sn76489/build.py::get_lib_path: 1ffffdfe7ffe01f61
   core/chips/sn76489/wrapper.py::SN76489.__del__: 1ffffdfe7ffe01f61
@@ -360,6 +362,7 @@ functions:
   core/convert/sample_names.py::sample_names: 1ffffffffffffffff
   core/convert/sample_names.py::sample_names.chans: 1ffffffffffffffff
   core/convert/samples.py::SampleInstaller.__init__: 1ffffffffffffffff
+  core/convert/samples.py::SampleInstaller._check_render_pitches: '28000000000000'
   core/convert/samples.py::SampleInstaller._install_synthesized_samples: 1ffffffffffffffff
   core/convert/samples.py::SampleInstaller._load_aside_drums: 1ffffffffffffffff
   core/convert/samples.py::SampleInstaller._load_disk_samples: 1ffffffffffffffff
@@ -814,6 +817,7 @@ functions:
   core/plan/derive.py::_Deriver._items: 7ff07e0001c000
   core/plan/derive.py::_Deriver._lowest_root: 7ff07e0001c000
   core/plan/derive.py::_Deriver._max_span: 7ff07e0001c000
+  core/plan/derive.py::_Deriver._merged_fit: '28000000000000'
   core/plan/derive.py::_Deriver._nearest: 7e006e00000000
   core/plan/derive.py::_Deriver._noise: '32006600000000'
   core/plan/derive.py::_Deriver._notes: 7ff07e0001c000
@@ -844,7 +848,7 @@ functions:
   core/plan/detune.py::_Wanted.order: 217ff87783e02161
   core/plan/detune.py::_apart: 1ffffffffffffffff
   core/plan/detune.py::_commonest: 217ff87783e02161
-  core/plan/detune.py::_in_class: '70000000000060'
+  core/plan/detune.py::_in_class: '50000000000060'
   core/plan/detune.py::_rendered: 217ff87783e02161
   core/plan/detune.py::_stem: 2157f87783e02101
   core/plan/detune.py::_word_hz: 1ffffffffffffffff
@@ -864,6 +868,7 @@ functions:
   core/plan/driver_state.py::resolve_note: 1ffffffffffffffff
   core/plan/driver_state.py::walk_channel: 1ffffffffffffffff
   core/plan/instrument_plan.py::prepare_instruments: 1ffffffffffffffff
+  core/plan/instrument_plan.py::rendered_pitches: '28000000000000'
   core/plan/instruments.py::FmDrumInstrument.target_rate: 1d0000001c000
   core/plan/instruments.py::FmInstrument.decay_mode: 1ffffffffffffffff
   core/plan/instruments.py::FmInstrument.dither_mode: 1ffffffffffffffff
@@ -890,7 +895,11 @@ functions:
   core/plan/instruments.py::psg_catalogue.add: 1fffe0fe7ffe01f61
   core/plan/noise_derive.py::derive_noise_envelopes: 1ffffffffffffffff
   core/plan/noise_derive.py::derive_rate3_dividers: 1fffe0fe7ffe01f61
+  core/plan/slot_fit.py::_cheapest: '28000000000000'
+  core/plan/slot_fit.py::_merge_cost: '28000000000000'
   core/plan/slot_fit.py::_most_played: '28000000000000'
+  core/plan/slot_fit.py::_notes: '28000000000000'
+  core/plan/slot_fit.py::_pair_cost: '28000000000000'
   core/plan/slot_fit.py::fold_volumes: 7ff07e0001c000
   core/plan/slot_fit.py::merge_windows: 7ff07e0001c000
   core/plan/slot_fit.py::merge_windows.cut: 7ff07e0001c000
@@ -1075,9 +1084,11 @@ functions:
   core/smps/driver_tables.py::PsgEnvelope.loops: 1e1100867ffe00160
   core/smps/driver_tables.py::PsgTable.divider: 1e17c0867ffe00160
   core/smps/driver_tables.py::PsgTable.of: 1ffffffffffffffff
+  core/smps/driver_tables.py::PsgTable.render_divider: '28000000000000'
   core/smps/driver_tables.py::PsgTable.semitone: 1fffe0fe7ffe01f61
   core/smps/driver_tables.py::_divider_semitone: 1fffffffffffe3fff
   core/smps/driver_tables.py::chip_pitch: 1ffffffffffffffff
+  core/smps/driver_tables.py::fm_render_word: '28000000000000'
   core/smps/driver_tables.py::fm_table_index: 1ffffffffffffffff
   core/smps/driver_tables.py::noise_envelope_frames: 1e1320867ffe00160
   core/smps/driver_tables.py::psg_note_index: 1e1000867ffe00160
@@ -1283,6 +1294,7 @@ functions:
   core/ui/report.py::_w_sustain_short: '100000000000'
   core/ui/report.py::_w_synth_root_ambiguous: '100000000000000'
   core/ui/report.py::_w_volume_no_slot: '28000000000000'
+  core/ui/report.py::_w_window_no_slot: '28000000000000'
   core/ui/report.py::_where: '9800060031581818'
   core/ui/report.py::print_channels: 1ffffffffffffffff
   core/ui/report.py::print_checks: 1ffffffffffffffff

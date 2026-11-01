@@ -240,8 +240,8 @@ sor2_go_straight:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_jungle_base:
-  commit: d8e3bbd-dirty
-  config: 01b22f667c3c
+  commit: d172191
+  config: fc48b8b2b1be
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_level_complete:
@@ -250,7 +250,7 @@ sor2_level_complete:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 sor2_song_12:
-  commit: d8e3bbd-dirty
+  commit: d172191
   config: f9cb3005d436
   date: '2026-11-01'
   settings: f08dfd2ff1bd

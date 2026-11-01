@@ -168,7 +168,7 @@ names it.
 
 ### 5.1 Reading (small)
 
-1. **A new family folder** `core/drivers/timetrax/` (D1), its `variant.py`, `names.py` / `registry.py` / `games.py` lines,
+1. **A new family folder** (D1), its `variant.py`, `names.py` / `registry.py` / `games.py` lines,
    the layer contract.  Detection by code anchors (the mailbox, the bank write, the command table).
 2. **The Z80 load:** a raw copy (`core/rom/z80.py`'s uncompressed copy) and a banked window, as
    Golden Axe / OutRun; **big-endian words** in the bank (`SoundMemory.word` takes byte order).
@@ -191,10 +191,10 @@ names it.
 | transposition **set** | `SetTransposition` | walk | none | small |
 | pan `$FF` / 0 / 1 | `Pan` | grammar | `8xx` per note (check the writer emits `Pan`) | small |
 | detune | `Detune` (raw fnum) | grammar | detune variants | none |
-| volume law (TL scaled) | `PlaybackRules` level law; `SetVol` from the loudest carrier, a patched voice past a threshold (D3) | walk | levels; `voice_patch.py`; `measure_volumes` | medium |
-| volume mask (`$AA`) | in D3's patched voices | walk | samples | small |
+| volume law (TL scaled) | `PlaybackRules` level law; `SetVol` from the loudest carrier (D3) | walk | levels; `measure_volumes` | medium |
+| volume mask (`$AA`) | a patched voice per (voice, vol) | walk (`voice_patch.py`) | samples | small |
 | glide | `Glide(step, every)` | walk: the sounding word per frame | writer: `3xx` at a speed (the writer has only `3FF`) (D4) | **large** |
-| portamento | `Portamento(semitones, every)` | walk | `3xx` (D4) | **large** |
+| portamento | `Portamento(semitones, every)` | walk | `3xx`, or a note per step (D4) | **large** |
 | FM volume envelope | `FmEnvelope(attack)` + on / off | walk | baked per (voice, envelope), as SH2's pitch envelopes (D5) | **large** |
 | vibrato (2 uses) | `ModSet` approximation | grammar | `4xy` | small |
 
@@ -205,10 +205,9 @@ Glide, portamento and the volume law are the only parts touching most songs' sou
 ## 6. Plan
 
 ### Phase 0
-- [x] 0.1 Decisions § 7 (2026-11-01).
-- [ ] 0.2 Unzip the rips; branch `time_trax` in a worktree (other sessions share this
+- [ ] 0.1 Decisions § 7.  Unzip the rips; branch `time_trax` in a worktree (other sessions share this
   checkout).
-- [ ] 0.3 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
+- [ ] 0.2 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
 
 ### Phase 1: read
 - [ ] 1.1 5.1 items 1-4; `rom_import.py` lists six songs; `song_dump.py` reads, walks and plays each;
@@ -231,32 +230,23 @@ Glide, portamento and the volume law are the only parts touching most songs' sou
 - [ ] 3.4 Listen in the FT2 clone (the user).
 
 ### Phase 4: close
-- [ ] 4.1 A section in `docs/smps_variants.md` (or a new `docs/timetrax_driver.md`: it is no SMPS);
+- [ ] 4.1 A section in `docs/smps_variants.md` (or a new `docs/follin_driver.md`: it is no SMPS);
   `docs/architecture.md`; CLAUDE.md's index; this plan to `done/`.
 
 ---
 
-## 7. Decisions (2026-11-01)
+## 7. Decisions (open, for the user)
 
-1. **Place:** `core/drivers/timetrax/`, a family of its own (driver `timetrax`).  No claim about other
-   Follin games.
-2. **Region:** `pal` in the configs: the rips are 50 Hz.  An `ntsc` variant only if wanted later.
-3. **Volume law:** hybrid.  `SetVol` from the loudest carrier's TL change; a patched voice per
-   (voice, vol, mask) only where some operator misses by ≥ a threshold (settings.yaml; 3 TL steps =
-   2.25 dB).  Measured (FM notes, one pass, envelope notes apart):
-
-   | Song | Voices | Exact (voice, vol, mask) | Hybrid, ≥ 3 | Notes ≥ 3 off under `SetVol` |
-   |---|---|---|---|---|
-   | 0 | 17 | 17 | 17 | 0 |
-   | 1 | 19 | 29 | 23 | 114 / 2888 |
-   | 2 | 14 | 20 | 19 | 122 / 3796 |
-   | 3 | 16 | 17 | 16 | 0 |
-   | 4 | 19 | 33 | 27 | 366 / 4231 |
-   | 5 | 9 | 9 | 9 | 0 |
-
-   Song 4 then has 4 slots left for envelopes and detune variants: expect banks or a lower threshold
-   trade there.
-4. **Glides and portamento:** `3xx` at a speed per note; portamento's semitone steps as the same `3xx`.
-5. **Volume envelopes:** baked per (voice, envelope), as Space Harrier II's pitch envelopes.
-6. **Tuning:** as heard on PAL: +10 cents, the table's words carried.
-7. **SFX:** not converted.
+1. **Name and place.**  Proposed: a family `core/drivers/follin/` with `timetrax/` in it (driver
+   `follin_z80`).  The family's name says it is not SMPS; a second Follin game would sit beside it.
+2. **Region.**  The rips are 50 Hz; a US cartridge would play 20 % faster.  Recommended: `pal` in the
+   configs (matches the rips; every tool checks against them), a `ntsc` variant if wanted.
+3. **Volume law.**  `SetVol` from the loudest carrier's TL change (fits baked levels; exact for one
+   carrier, small timbre error for several), or a patched voice per (voice, vol) (exact, more samples).
+   Recommended: the first.
+4. **Glides and portamento in the MOD.**  `3xx` at a speed per note (FT2 slides periods, the chip
+   fnum: approximate), or bake each glide into a sample (exact, a sample per (voice, from, to)).
+   Recommended: `3xx`; portamento's 1-frame semitone steps as the same `3xx`.
+5. **Volume envelopes.**  Baked per (voice, envelope) (as Space Harrier II's pitch envelopes), or
+   `Axy` / `Cxx` per row.  Recommended: baked.
+6. **SFX** (33 entries, PSG and DAC ones among them): not converted, as for every other driver.

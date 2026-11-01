@@ -204,7 +204,8 @@ def check_samples() -> None:
     print()
 
     from core.drivers.reference import SONIC1_RULES
-    samples = generate_psg_samples(fake_config, psg_synth, SONIC1_RULES, verbose=True)
+    from core.plan import ConversionPlan
+    samples = generate_psg_samples(ConversionPlan.of(fake_config), psg_synth, SONIC1_RULES, verbose=True)
 
     if not samples:
         print("  ERROR: no samples generated")

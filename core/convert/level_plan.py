@@ -3,15 +3,15 @@
 Its sample_list volume stands for that level, so those notes need no Cxx; the rest get one by the
 chip's law (core/smps/levels.py).  FM samples are also rendered at it (fm_render_levels), so the chip
 clips a multi-carrier voice as the hardware does at that level.  Every count walks the channels
-with the same DriverState the conversion does.
+with the same DriverState the conversion does, on the plan it is given: the reference build's
+(no merge plan) or the merged build's.
 """
 
 from ..audio import db_to_gain
 from ..chips import FM_TL_SILENT, PSG_ATT_SILENT, fm_level_db, psg_level_db
-from ..config import ConversionConfig
 from ..merge import MergePlan
 from ..mod import MOD_MAX_VOLUME
-from ..plan import DetunePlan, enabled_channels, walk_channel
+from ..plan import ConversionPlan, enabled_channels, walk_channel
 from ..smps import (
     ChannelType,
     SmpsSong,
@@ -42,14 +42,15 @@ def modal_level(counts: dict[float, int]) -> float:
 
 
 class LevelPlanner:
-    def __init__(self, song: SmpsSong, config: ConversionConfig, plan: MergePlan | None,
-                 detune: DetunePlan | None, pan_law_db: float, gained: dict[str, set[int]]) -> None:
+    """The levels as `conv` plays them (`plan`: its merge plan, conv.merge, all of it).  Each count
+    walks anew: a merged build's banks re-point notes between the render and the channels."""
+
+    def __init__(self, song: SmpsSong, conv: ConversionPlan, plan: MergePlan | None, pan_law_db: float) -> None:
         self._song = song
-        self._config = config
+        self._conv = conv
         self._plan = plan
-        self._detune = detune
+        self._detune = conv.detune
         self._pan_law_db = pan_law_db
-        self._gained = gained          # {"FM"/"PSG": instruments unison chords play louder}, filled by the counts
 
     def levels(self, kind: str) -> dict[int, float]:
         """"baked" volume mode: the level (dB) each MOD instrument's sample_list volume stands for.
@@ -61,8 +62,15 @@ class LevelPlanner:
         PSG levels from the attenuation (smpsHeaderPSG volume + smpsPSGAlterVol).
         """
         pan_law = self._pan_law_db
-        counts = self._count(kind, lambda st, res: st.level_db(pan_law) + res.gain_db)
+        counts, _gained = self._count(kind, lambda st, res: st.level_db(pan_law) + res.gain_db)
         return self._with_variants({inst: modal_level(levels) for inst, levels in counts.items()})
+
+    def gained(self, kind: str) -> set[int]:
+        """The `kind` instruments a merged build's unison chords play louder (ResolvedNote.gain_db):
+        the chord's gain is in their baseline, not in their render."""
+        if self._plan is None:
+            return set()
+        return self._count(kind, lambda _st, _res: None)[1]
 
     def fm_render_levels(self) -> dict[int, tuple[int, bool]]:
         """{MOD instrument: (carrier TL offset, hard-panned)} its FM sample is rendered at.
@@ -75,15 +83,15 @@ class LevelPlanner:
         its samples where the hardware, at the channel's +18 TL, clips none.
         """
         pan_law = self._pan_law_db
-        counts = self._count(ChannelType.FM, lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
+        counts, _gained = self._count(ChannelType.FM, lambda st, _res: (st.tl, st.hard_panned), sources_keep_votes=True)
         return self._with_variants({inst: max(per, key=lambda k: (per[k], fm_level_db(k[0], k[1], pan_law)))
                                     for inst, per in counts.items()})
 
-    def _count(self, kind: str, level_of, sources_keep_votes: bool = False) -> dict[int, dict]:
-        """{MOD instrument: {level_of(state, resolved): notes}} over every enabled channel of
-        `kind` ("FM" or "PSG"), walked with the same DriverState the conversion uses.  A PSG
-        note at attenuation 15 is silent and does not vote.  The instruments a merged build's
-        unison chords play louder (ResolvedNote.gain_db) are noted in `gained`.
+    def _count(self, kind: str, level_of, sources_keep_votes: bool = False) -> tuple[dict[int, dict], set[int]]:
+        """({MOD instrument: {level_of(state, resolved): notes}}, the instruments a merged build's
+        unison chords play louder (ResolvedNote.gain_db)) over every enabled channel of `kind`
+        ("FM" or "PSG"), walked with the same DriverState the conversion uses.  A PSG note at
+        attenuation 15 is silent and does not vote.
 
         In a merged build a composite's slot counts only the notes that play the composite.
         `sources_keep_votes`: except where the slot's former instrument is a mix source kept
@@ -92,12 +100,13 @@ class LevelPlanner:
         votes as its base instrument: it is that sample a few cents off.
         """
         counts: dict[int, dict] = {}
+        gained: set[int] = set()
         plan = self._plan
         owned = set(plan.instruments) if plan is not None else set()
         if plan is not None and sources_keep_votes:
             owned -= plan.mix_only
-        for chan_cfg, channel in enabled_channels(self._song, self._config, (kind,)):
-            for event, st, res in walk_channel(channel, self._config, chan_cfg):
+        for chan_cfg, channel in enabled_channels(self._song, self._conv.config, (kind,)):
+            for event, st, res in walk_channel(channel, self._conv, chan_cfg):
                 if res is None or (st.is_psg and st.is_silent):
                     continue
                 # A composite owns its slot: a note that resolves to the slot's former instrument
@@ -116,8 +125,8 @@ class LevelPlanner:
                 k = level_of(st, res)
                 per[k] = per.get(k, 0) + 1
                 if res.gain_db:
-                    self._gained.setdefault(kind, set()).add(inst)
-        return counts
+                    gained.add(inst)
+        return counts, gained
 
     def _with_variants(self, per_inst: dict) -> dict:
         """A per-instrument plan with every detune variant given its base's value."""

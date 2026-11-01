@@ -96,7 +96,7 @@ from core.config import ConversionConfig
 from core.convert import prepare_conversion
 from core.merge import column_sources
 from core.mod import ModImage, read_mod, timed_pass
-from core.plan import prepare_instruments
+from core.plan import ConversionPlan, prepare_instruments
 from core.ui import add_variant_argument, print_audit
 from core.vgm import DAC_NAME, NoteStart, VgmLog, note_starts, pitch_segments, read_vgm
 
@@ -355,12 +355,12 @@ def _note_times(per_ch: dict[str, list], names: list[str], notes: list[NoteStart
     return note_times
 
 
-def _mod_events(cfg: ConversionConfig, mod: ModImage) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]]]:
+def _mod_events(conv: ConversionPlan, mod: ModImage) -> tuple[dict[int, list[tuple]], dict[int, tuple[str, int]]]:
     """mod_note_events, a detune variant (core.plan.detune) played as its base: its sample a few cents
     off, at its volume."""
-    events_by_chan, samples = mod_note_events(mod, cfg.target_speed)
-    if cfg.detune_plan is not None:
-        base_of = cfg.detune_plan.base_of
+    events_by_chan, samples = mod_note_events(mod, conv.config.target_speed)
+    if conv.detune is not None:
+        base_of = conv.detune.base_of
         events_by_chan = {c: [(t, base_of(ins), cxx) for t, ins, cxx in evs] for c, evs in events_by_chan.items()}
     return events_by_chan, samples
 
@@ -500,12 +500,14 @@ def _report_dac(rd: _Renders, offset: float, res: dict) -> None:
     print("  (lowpeak differing by more than ~3% means the DAC sample plays at the wrong rate)")
 
 
-def report(cfg: ConversionConfig, song, recording: _Reference, mod_path: Path, workdir: Path,
+def report(conv: ConversionPlan, song, recording: _Reference, mod_path: Path, workdir: Path,
            offset: float | None, ref_chan: str, max_rows: int, pitch_tol: float = 35.0) -> dict:
-    """Print the comparison and return the same numbers as a JSON-serialisable dict.
+    """Print the comparison and return the same numbers as a JSON-serialisable dict.  `conv`: the
+    config with the converter's rendering pitches and detune variants.
 
     `pitch_tol`: cents before the symbolic pitch audit counts a note as wrong.
     """
+    cfg = conv.config
     log, notes = recording.log, recording.notes
     noise_used = any(n.channel == "NOISE" for n in notes)
     chan_map = {c.source: c.mod_channel for c in cfg.channels if c.source in VGM_CHANNELS or c.source == "PSG3"}
@@ -522,7 +524,7 @@ def report(cfg: ConversionConfig, song, recording: _Reference, mod_path: Path, w
     offset_auto = offset is None
     chip_tl, chip_end = pitch_segments(log)
     mod = read_mod(mod_path)
-    mod_tl, mod_end = mod_pitch_timeline(mod, cfg, song)
+    mod_tl, mod_end = mod_pitch_timeline(mod, conv, song)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
     print()
     res: dict = {
@@ -551,7 +553,7 @@ def report(cfg: ConversionConfig, song, recording: _Reference, mod_path: Path, w
 
     # Per-instrument levels and onsets, against the MOD's notes as one pass plays them
     note_times = _note_times(per_ch, names, notes, rd)
-    events_by_chan, samples = _mod_events(cfg, mod)
+    events_by_chan, samples = _mod_events(conv, mod)
     lev = instrument_levels(note_times, {n: chan_of[n] for n in note_times}, events_by_chan, samples,
                             mod_end, rd.vgm_st, rd.mod_st, offset)
     res["instrument_levels"] = lev
@@ -874,7 +876,7 @@ def main() -> None:
     except ValueError as e:
         raise SystemExit(f"ERROR: {e}") from e
     cfg, song = prep.config, prep.song
-    prepare_instruments(song, cfg, prep.synth)
+    conv = prepare_instruments(song, cfg, prep.synth).conv
     mod_path = Path(args.mod or cfg.output_file)
     vgz = Path(args.vgz)
     for p in (mod_path, vgz):
@@ -949,7 +951,7 @@ def main() -> None:
     elif args.merged:
         res = report_merged(reference, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
-        res = report(cfg, song, reference, mod_path, workdir, args.offset, args.ref, args.max_rows,
+        res = report(conv, song, reference, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)
 
     if args.write_volumes and args.variant:

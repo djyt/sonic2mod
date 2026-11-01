@@ -1,5 +1,7 @@
 """What each note plays and what each sample is rendered for: the song read through its config.
 
+    conversion.py    ConversionPlan: a conversion's decisions (rendering pitches, detune, merge plan,
+                     its sample table), kept off the config
     driver_state.py  DriverState, resolve_note, walk_channel: the one answer every pass reads
     instruments.py   the instrument catalogue (first entry to name a slot wins)
     instrument_plan.py  prepare_instruments (synth roots + detune, as the converter and the tools make them),
@@ -11,6 +13,7 @@
     timeline.py      driver tick -> MOD pattern / row / seconds
 """
 
+from .conversion import ConversionPlan, MergeRouting, RenderPitch
 from .derive import Derivation, complete_config, derive_config, load_config, starting_volume
 from .detune import DetunePlan, DetuneVariant, detune_cents, detune_variants_wanted, plan_detune_variants
 from .driver_state import DriverState, ResolvedNote, enabled_channels, walk_channel
@@ -27,10 +30,11 @@ from .instruments import (
     psg_catalogue,
 )
 from .noise_derive import NoiseEnvelope, Rate3Divider, derive_noise_envelopes, derive_rate3_dividers
-from .synth_roots import SynthRoot, resolve_synth_roots
+from .synth_roots import ResolvedRoots, SynthRoot, resolve_synth_roots
 from .timeline import Timeline
 
 __all__ = [
+    "ConversionPlan",
     "Derivation",
     "DetunePlan",
     "DetuneVariant",
@@ -41,10 +45,13 @@ __all__ = [
     "FmLayer",
     "InstrumentPitch",
     "InstrumentPlan",
+    "MergeRouting",
     "NoiseEnvelope",
     "PsgInstrument",
     "Rate3Divider",
+    "RenderPitch",
     "ResolvedNote",
+    "ResolvedRoots",
     "SynthRoot",
     "Timeline",
     "complete_config",

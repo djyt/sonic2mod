@@ -22,12 +22,11 @@ class InstrumentRange:
                                     # a note plays at root + (source_semitone - low);
                                     # None: the channel's transpose places it
     synth_root: int | None = None  # SMPS semitone the sample is rendered at.  None in a config:
-                                      # core.plan.synth_roots.resolve_synth_roots fills in the chip
+                                      # core.plan.synth_roots.resolve_synth_roots derives the chip
                                       # pitch the entry's notes play most often (the song decides).
                                       # Stated: the rendering pitch, anywhere in the range.  Either
-                                      # way `root` is where the pitch of `low` sounds (synth_shift)
-    synth_shift: int = 0           # synth_root − the pitch `root` sounds, set by resolve_synth_roots;
-                                      # the sample's rate is 2^(shift/12) times root's playback rate
+                                      # way `root` is where the pitch of `low` sounds (the shift:
+                                      # core.plan.RenderPitch)
     vibrato: int | None = None     # per-entry 4xy override; None = use channel smpsModSet
                                       # stored as raw byte: high nibble=speed, low nibble=depth
                                       # 0x00 = suppress; e.g. 0x12 = speed=1, depth=2
@@ -406,11 +405,9 @@ class PsgInstrumentEntry:
     type: str                                # "tone" | "white_noise" | "periodic_noise"
     root: 'ModNote'                          # MOD note anchor; determines target_rate + WHERE sample triggers
     synth_root: int | None = None        # SMPS semitone the tone is rendered at.  None in a config:
-                                         # resolve_synth_roots fills in the pitch the chip plays
+                                         # resolve_synth_roots derives the pitch the chip plays
                                          # (see InstrumentRange.synth_root); a rate-3 noise entry
                                          # keeps None (the LFSR divider is derived separately)
-    synth_shift: int = 0                 # synth_root − the pitch `root` sounds, set by resolve_synth_roots;
-                                         # the sample's rate is 2^(shift/12) times root's playback rate
     low: int | None = None               # SMPS semitone lower bound for melodic root offset
     high: int | None = None              # SMPS semitone upper bound (inclusive); used for list-entry range dispatch
     noise_rate: int = 0                      # Only for noise types: 0, 1, 2 (preset dividers), 3 = follow tone ch2

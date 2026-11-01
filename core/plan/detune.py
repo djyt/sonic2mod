@@ -43,6 +43,7 @@ from dataclasses import dataclass, field
 from ..chips import FREQ_WORD_MAX, split_freq_word
 from ..config import SampleRow
 from ..smps import ChannelType, fm_table_index
+from .conversion import ConversionPlan
 from .driver_state import enabled_channels, walk_channel
 from .instruments import fm_catalogue, free_slots
 
@@ -66,8 +67,8 @@ class DetuneVariant:
 
 @dataclass
 class DetunePlan:
-    """Which sample each (instrument, detune) note plays.  Set on `config.detune_plan` by the
-    converter; read by core.plan.driver_state.resolve_note and core.plan.instruments.fm_catalogue."""
+    """Which sample each (instrument, detune) note plays: ConversionPlan.detune, read by
+    core.plan.driver_state.resolve_note and core.plan.instruments.fm_catalogue."""
     own: dict[int, int] = field(default_factory=dict)        # {instrument: its sample's detune}, nonzero only
     own_envelopes: dict[int, int] = field(default_factory=dict)   # {instrument: its sample's envelope}, nonzero only
     # (base, detune, envelope, class) ->
@@ -106,19 +107,20 @@ def detune_variants_wanted(synth) -> bool:
     return synth is not None and synth.enabled and synth.detune_variants
 
 
-def plan_detune_variants(song, config) -> DetunePlan:
+def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
     """Count every FM note's (instrument, detune) and give each detune but the instrument's own
     a free slot.  Run on the song as parsed (the converter plans before its loop extension, so a
-    tool that parses the song plans the same).  Only synthesised single-voice instruments (the FM catalogue) are planned: a
-    sample loaded from disk cannot be re-rendered.  Appends each variant's sample_list entry
-    (its base's, renamed) and sets `config.detune_plan`."""
-    config.detune_plan = None                      # walked undetuned: every note names its base
-    synthesised = fm_catalogue(song, config).instruments
+    tool that parses the song plans the same).  Only synthesised single-voice instruments (the FM
+    catalogue) are planned: a sample loaded from disk cannot be re-rendered.  Adds each variant's
+    sample_list row (its base's, renamed) to `conv.samples`; `conv` has no detune plan yet, so every
+    note names its base."""
+    assert conv.detune is None
+    synthesised = fm_catalogue(song, conv).instruments
 
     counts: dict[int, dict[tuple[int, int], int]] = {}         # instrument -> {(detune, envelope): notes}
     chips: dict[tuple[int, tuple[int, int]], dict[int, int]] = {}   # (instrument, its pair) -> {chip pitch: notes}
-    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM,)):
-        for _event, _st, res in walk_channel(channel, config, chan_cfg):
+    for chan_cfg, channel in enabled_channels(song, conv.config, (ChannelType.FM,)):
+        for _event, _st, res in walk_channel(channel, conv, chan_cfg):
             if res is None or res.instrument not in synthesised:
                 continue
             pair = (res.detune, res.pitch_envelope)
@@ -148,24 +150,20 @@ def plan_detune_variants(song, config) -> DetunePlan:
                 wanted.append(_Wanted(rest, inst, d, e, None, rendered))
             wanted += [_Wanted(sum(at.values()), inst, d, e, pc, _in_class(base, pc)) for pc, at in apart.items()]
 
-    slots = free_slots(config, song)
+    slots = free_slots(conv, song)
     for w in sorted(wanted, key=_Wanted.order):
         if not slots:
             plan.unplaced[(w.base, w.detune)] = plan.unplaced.get((w.base, w.detune), 0) + w.notes
             continue
         plan.add(DetuneVariant(slots.pop(0), w.base, w.detune, w.notes, w.rendered, w.pitch_class, w.envelope))
 
-    entries = config.sample_rows()
-    if plan.variants and config.sample_list is None:
-        config.sample_list = []
+    entries = conv.samples.rows()
     for v in plan.variants.values():
         base = entries.get(v.base)
         at = "" if v.pitch_class is None else f"@{v.pitch_class}"
         envelope = f" pe{v.envelope}" if v.envelope else ""
         name = f"{_stem(base.file) if base else f'fm_inst{v.base}'} dt{v.detune:+d}{envelope}{at}"[:_NAME_CHARS]
-        config.sample_list.append(SampleRow(v.inst, name, base.volume, base.finetune) if base else SampleRow(v.inst, name))
-
-    config.detune_plan = plan
+        conv.samples.add(SampleRow(v.inst, name, base.volume, base.finetune) if base else SampleRow(v.inst, name))
     return plan
 
 

@@ -8,7 +8,7 @@ Public API::
 
     from core.synth import generate_fm_samples
 
-    samples = generate_fm_samples(song, config, synth)
+    samples = generate_fm_samples(song, conv, synth)       # conv: core.plan.ConversionPlan
     # samples = {inst_num: (pcm_bytes, target_rate_hz), ...}
 """
 
@@ -40,9 +40,9 @@ from ..chips import MD_PSG_CLOCK, fm_frequency_hz
 from ..chips.sn76489.build import get_lib_path as get_psg_lib_path
 from ..chips.ym2612 import OPN2
 from ..chips.ym2612.build import get_lib_path
-from ..config import ConversionConfig, SynthesisSettings
+from ..config import SynthesisSettings
 from ..mod import max_sustain_secs
-from ..plan import FmDrumInstrument, FmInstrument, fm_catalogue
+from ..plan import ConversionPlan, FmDrumInstrument, FmInstrument, fm_catalogue
 from ..render_cache import RenderCache, code_salt
 from ..smps import ChannelType, FmDrum, OctaveWrap, PitchEnvelope, SmpsSong, SmpsVoice, update_hz
 from . import psg_render
@@ -115,19 +115,19 @@ def _thread_opn2(mode: str) -> OPN2:
     return opn2
 
 
-def _jobs(song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings, tl_offsets: dict[int, int],
+def _jobs(song: SmpsSong, conv: ConversionPlan, synth: SynthesisSettings, tl_offsets: dict[int, int],
           verbose: bool, extra: Sequence[FmInstrument] = ()) -> list[_RenderJob]:
     """One job per MOD instrument of the song's catalogue (core.plan.instruments), then one per
     `extra` render (a mix's FM layers, rendered for the mixer under an id that is no slot)."""
     voice_lookup = {v.index: v for v in song.voices}
-    cat = fm_catalogue(song, config)
+    cat = fm_catalogue(song, conv)
     if verbose:
         for context, voice_idx, _insts in cat.missing_voices:
             print(f"  Warning: voice {voice_idx} not found in song ({context}), skipping")
 
     jobs: list[_RenderJob] = []
     envelopes = song.rules.pitch_envelopes
-    frame_hz = update_hz(song.rules, config.region)
+    frame_hz = update_hz(song.rules, conv.config.region)
     for spec in [*cat.instruments.values(), *extra]:
         base_tl = tl_offsets.get(spec.inst, 0)
         layers = [(voice_lookup[lay.voice_idx], lay.semitones, lay.fnum_offset, base_tl + lay.tl_offset,
@@ -334,7 +334,7 @@ def _report(job: _RenderJob, done: _Rendered) -> None:
 
 def generate_fm_samples(
     song: SmpsSong,
-    config: ConversionConfig,
+    conv: ConversionPlan,
     synth: SynthesisSettings,
     verbose: bool = False,
     tl_offsets: dict[int, int] | None = None,
@@ -350,7 +350,7 @@ def generate_fm_samples(
 
     Args:
         song:       Parsed SmpsSong — provides song.voices (list[SmpsVoice]).
-        config:     ConversionConfig — provides voice_map / channel_instrument_map.
+        conv:       ConversionPlan — the config's maps and the conversion's decisions on them.
         synth:      SynthesisSettings — clock/amiga_clock/sustain/release.
         tl_offsets: {instrument: track volume} to render each instrument at (the converter's
                     _plan_fm_render_levels: the level most of its notes play at); 0 = bare voice.
@@ -378,7 +378,7 @@ def generate_fm_samples(
     Instruments render concurrently, one per thread, ``synth.worker_threads()`` at a time
     (the ``threads`` setting); the output does not depend on the thread count.
     """
-    jobs = _jobs(song, config, synth, tl_offsets or {}, verbose, extra)
+    jobs = _jobs(song, conv, synth, tl_offsets or {}, verbose, extra)
 
     # --- Render: every instrument on its own thread ---
     # Nuked-OPN2 keeps all chip state in the per-instance struct and ctypes releases the

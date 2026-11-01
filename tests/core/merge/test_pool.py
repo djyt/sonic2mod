@@ -35,7 +35,7 @@ def _pool(notes: dict[str, dict[int, NoteOn]], fill=(), cut_after=None,
     smap = {s: SimpleNamespace(events=list((events or {}).get(s, []))) for s in notes}
     with mock.patch.object(pool, "channel_notes", lambda _song, _cfg, src, *a, **k: (dict(notes[src]), [])), \
             mock.patch.object(pool, "source_map", lambda _song: smap):
-        pool.pool_notes(plan, None, config, 0.0, None, None, 0, 1, [])
+        pool.pool_notes(plan, None, SimpleNamespace(config=config), 0.0, None, None, 0, 1, [])
     return plan, smap
 
 

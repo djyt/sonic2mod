@@ -37,7 +37,7 @@ import math
 from dataclasses import dataclass, field
 
 from ..audio import DEFAULT_DITHER, gain_to_db, to_int8
-from ..config import SampleRow
+from ..config import SampleRow, SampleTable
 from ..mod import ModSample, note_rate
 from .mix import composite_dither
 from .model import Composite, MergePlan
@@ -177,14 +177,15 @@ def _member_bytes(inst: int, s: ModSample, volume: int, raw: dict[int, list[floa
     raise ValueError(f"bank member {inst}: no unquantised sum to bring volume {s.volume} to its bank's {volume}")
 
 
-def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slots: list[int],
+def pack_banks(plan: MergePlan, table: SampleTable, mod, samples: dict[int, ModSample], slots: list[int],
                max_bytes: int, pad_secs: float, amiga_clock: float,
                raw: dict[int, list[float]], dither: str = DEFAULT_DITHER,
                entry_dithers: dict[int, str] | None = None) -> list[dict]:
     """Lay the banked composites' samples (`samples`, by provisional id, from the mixer) into
     banks in `slots`, install the banks in `mod`, and point the plan at them: the members'
     ids become their bank's slot, `plan.regions` says where each note's sound starts and how
-    long it is and `plan.bank_members` which member it plays.  `pad_secs` (one MOD tick) of
+    long it is and `plan.bank_members` which member it plays; each bank's row replaces its
+    members' in the conversion's sample `table`.  `pad_secs` (one MOD tick) of
     silence follows every sound but a looped one, so the cut the converter places, up to half a
     tick off, never reaches the next sound.  Sounds share a bank with sounds of their own volume
     where that takes no more banks than first fit (_layout); the looped ones go last, each
@@ -199,7 +200,7 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
 
     def drop(c: Composite, why: str) -> None:
         dropped.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': why})
-        drop_composite(plan, config, c, why)
+        drop_composite(plan, table, c, why)
 
     # Each member's room in a bank; one too big for any sample is dropped
     sizes: dict[int, tuple[int, int, bool]] = {}
@@ -268,7 +269,6 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
             bank.data += data + bytes(region - len(data))
 
     stand_in(plan)                                       # a dropped member's notes, if a shape survives
-    sample_list = config.sample_list if config.sample_list is not None else []
     for i, bank in enumerate(kept, 1):
         sample = ModSample(f"bank {bank.members[0].group.primary} {i}")
         sample.data = bytes(bank.data) + (b"\0" if len(bank.data) % 2 else b"")
@@ -284,9 +284,9 @@ def pack_banks(plan: MergePlan, config, mod, samples: dict[int, ModSample], slot
                 plan.ticks[key] = bank.slot
                 plan.regions[key] = (c.offset, c.region)
                 plan.bank_members[key] = c
-            if c.entry in sample_list:
-                sample_list.remove(c.entry)
+            if c.entry is not None:
+                table.discard(c.entry)
             c.inst = bank.slot
-        sample_list.append(SampleRow(bank.slot, sample.name, bank.volume, bank.finetune))
+        table.add(SampleRow(bank.slot, sample.name, bank.volume, bank.finetune))
     plan.banks = kept
     return dropped

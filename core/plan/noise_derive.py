@@ -5,9 +5,10 @@ driver writes from PSG3's own notes.
 
 from dataclasses import dataclass
 
-from ..config import ConversionConfig, PsgInstrumentEntry
+from ..config import PsgInstrumentEntry
 from ..smps import ChannelType, SmpsSong, psg_tone2_divider
 from ..smps import semitone_to_note_name as _semitone_to_name
+from .conversion import ConversionPlan
 from .driver_state import enabled_channels, walk_channel
 
 
@@ -28,7 +29,7 @@ class Rate3Divider:
     used: bool              # False: the config states tone2_n or synth_root, which win
 
 
-def derive_noise_envelopes(song: SmpsSong, config: ConversionConfig) -> dict[int, NoiseEnvelope]:
+def derive_noise_envelopes(song: SmpsSong, conv: ConversionPlan) -> dict[int, NoiseEnvelope]:
     """The envelope each noise instrument plays with, read from the song.
 
     smpsPSGform only switches the channel to noise; the envelope is the driver's VoiceIndex
@@ -43,14 +44,14 @@ def derive_noise_envelopes(song: SmpsSong, config: ConversionConfig) -> dict[int
     sample stands in for several envelopes (Credits' PSG3, which has no free slot for variants).
     """
     counts: dict[int, dict[str | None, int]] = {}
-    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.PSG,)):
-        for _event, st, res in walk_channel(channel, config, chan_cfg):
+    for chan_cfg, channel in enabled_channels(song, conv.config, (ChannelType.PSG,)):
+        for _event, st, res in walk_channel(channel, conv, chan_cfg):
             if res is not None and st.in_noise_mode and st.psg_entry is not None:
                 per = counts.setdefault(st.instrument, {})
                 per[st.envelope] = per.get(st.envelope, 0) + 1
 
     out: dict[int, NoiseEnvelope] = {}
-    for entry in config.psg_map.values():
+    for entry in conv.config.psg_map.values():
         base_counts = counts.get(entry.mod_instrument, {})
         if entry.envelope is not None:
             envelope, derived = entry.envelope, False
@@ -64,7 +65,7 @@ def derive_noise_envelopes(song: SmpsSong, config: ConversionConfig) -> dict[int
     return out
 
 
-def derive_rate3_dividers(song: SmpsSong, config: ConversionConfig) -> dict[int, Rate3Divider]:
+def derive_rate3_dividers(song: SmpsSong, conv: ConversionPlan) -> dict[int, Rate3Divider]:
     """Tone-2 divider the driver writes for each rate-3 (`noise_rate: 3`) noise instrument.
 
     In rate-3 mode the LFSR is clocked by tone channel 2, and the Sonic 1 driver keeps writing
@@ -79,8 +80,8 @@ def derive_rate3_dividers(song: SmpsSong, config: ConversionConfig) -> dict[int,
     """
 
     seen: dict[int, dict] = {}        # instrument -> {'entry', 'notes': {(note_value, transpose): count}}
-    for chan_cfg, channel in enabled_channels(song, config, (ChannelType.PSG,)):
-        for event, st, res in walk_channel(channel, config, chan_cfg):
+    for chan_cfg, channel in enabled_channels(song, conv.config, (ChannelType.PSG,)):
+        for event, st, res in walk_channel(channel, conv, chan_cfg):
             if res is None:
                 continue
             e = res.entry

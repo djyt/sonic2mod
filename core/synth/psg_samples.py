@@ -7,7 +7,7 @@ Public API::
 
     from core.synth import generate_psg_samples
 
-    samples = generate_psg_samples(config, psg_synth, song.rules)
+    samples = generate_psg_samples(conv, psg_synth, song.rules)     # conv: core.plan.ConversionPlan
     # {inst_num: (pcm_bytes, sample_rate_hz), ...}
 """
 
@@ -30,9 +30,9 @@ from ..audio import (
 )
 from ..audio import trim_trailing_silence as _trim_trailing_silence
 from ..chips.sn76489.build import get_lib_path
-from ..config import ConversionConfig, PsgInstrumentEntry, PsgSynthesisSettings
+from ..config import PsgInstrumentEntry, PsgSynthesisSettings
 from ..mod import max_sustain_secs
-from ..plan import PsgInstrument, psg_catalogue
+from ..plan import ConversionPlan, PsgInstrument, psg_catalogue
 from ..render_cache import RenderCache, code_salt
 from ..smps import PlaybackRules, PsgEnvelope, noise_envelope_frames, update_hz
 from .psg_render import (
@@ -285,7 +285,7 @@ class _PsgRenderer:
 # ---------------------------------------------------------------------------
 
 def generate_psg_samples(
-    config: ConversionConfig,
+    conv: ConversionPlan,
     psg_synth: PsgSynthesisSettings,
     rules: PlaybackRules,
     verbose: bool = False,
@@ -299,7 +299,7 @@ def generate_psg_samples(
     """Render a PSG sample for every instrument in the config's catalogue.
 
     Args:
-        config:    ConversionConfig — provides psg_map and region.
+        conv:      ConversionPlan — the config's psg_map and region, the conversion's decisions.
         psg_synth: PsgSynthesisSettings — clock/amiga_clock/sustain/release.
         rate3_dividers:  {instrument: tone-2 divider} the converter derived for rate-3 noise.
         noise_envelopes: {instrument: envelope label} the converter derived for the noise
@@ -314,6 +314,7 @@ def generate_psg_samples(
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
     """
+    config = conv.config
     if not config.psg_map and not config.psg_voice_map:
         return {}
 
@@ -321,7 +322,7 @@ def generate_psg_samples(
 
     # One render per catalogue instrument: each psg_map entry's own instrument, then its
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
-    catalogue = psg_catalogue(config, noise_envelopes or {})
+    catalogue = psg_catalogue(conv, noise_envelopes or {})
     cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
     renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out, rules)
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)

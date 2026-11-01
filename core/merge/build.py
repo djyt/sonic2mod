@@ -13,7 +13,7 @@ A unison chord's primary instrument moves too (bake_volumes).
 """
 
 from ..audio import DEFAULT_TAPS, FLAT_DB, db_to_gain
-from ..config import DEFAULT_SHELF_HZ, ConversionConfig, SampleRow, SynthesisSettings
+from ..config import DEFAULT_SHELF_HZ, SampleRow, SampleTable, SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..mod import (
     MAX_MOD_SAMPLE_BYTES,
@@ -111,12 +111,13 @@ class MergedBuild:
     """The merged build's samples: the chip composites' volumes, the pcm mixes and their banks,
     and the volumes moved from the reference build's levels to the merged build's."""
 
-    def __init__(self, plan: MergePlan, mod: ModFile, config: ConversionConfig,
+    def __init__(self, plan: MergePlan, mod: ModFile, table: SampleTable, bank_slots: int,
                  settings: SynthesisSettings | None, timeline: Timeline, diag: Diagnostics,
                  baselines: dict[str, dict[int, float]], retry: dict | None) -> None:
         self._plan = plan
         self._mod = mod
-        self._config = config
+        self._table = table             # the conversion's sample_list rows (the volumes set here)
+        self._bank_slots = bank_slots   # slots the plan held back for the banks
         self._settings = settings
         self._timeline = timeline
         self._diag = diag
@@ -179,7 +180,7 @@ class MergedBuild:
         # The banks' silence after each sound covers the cut's rounding: one MOD tick, at the
         # slowest tempo the song plays
         tick_secs = max(2.5 / self._timeline.bpm_for(m) for _, m in self._timeline.segments)
-        for p in pack_banks(plan, self._config, self._mod, banked, plan.spare_slots, max_bytes, tick_secs, clock,
+        for p in pack_banks(plan, self._table, self._mod, banked, plan.spare_slots, max_bytes, tick_secs, clock,
                             raw=mix_raw, dither=dither, entry_dithers=entry_dithers):
             self._diag.warn(WarningKind.MERGE_BANK_DROPPED, channel=p['primary'], extra_ctx=p['detail'], **p)
         for b in plan.banks:
@@ -196,7 +197,7 @@ class MergedBuild:
         self.idle_bank_slots = idle
         if self._retry is not None:            # the second pass left one idle too
             self._diag.warn(WarningKind.MERGE_BANK_IDLE, channel='merge', slots=idle,
-                            reserve=self._config.merge_bank_slots, banks=len(plan.banks), dropped=dropped)
+                            reserve=self._bank_slots, banks=len(plan.banks), dropped=dropped)
 
     # --- volumes --------------------------------------------------------------------------------
     def scale_chip_volumes(self, fm_peaks: dict[int, tuple[int, int, float]]) -> None:
@@ -258,7 +259,7 @@ class MergedBuild:
                 db = baseline[inst] - ref[inst]
                 if abs(db) < 1e-9:
                     continue
-                for e in self._config.sample_list or []:
+                for e in self._table:
                     if e.slot != inst:
                         continue
                     was = e.volume

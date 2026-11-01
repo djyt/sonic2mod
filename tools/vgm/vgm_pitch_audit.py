@@ -68,13 +68,13 @@ def main() -> None:
     except ValueError as e:
         raise SystemExit(f"ERROR: {e}") from e
     cfg, song = prep.config, prep.song
-    prepare_instruments(song, cfg, prep.synth)       # synth roots and detune variants, as the converter
+    conv = prepare_instruments(song, cfg, prep.synth).conv     # synth roots and detune variants, as the converter
     mod_path = Path(args.mod or cfg.output_file)
     rip, scale = rip_on_song_clock(args.vgz, song, cfg.region)     # a rip whose timer ran off its driver's: retimed
     if scale != 1.0:
         print(f"VGM retimed x{scale:.5f} onto the driver's clock (its frames {scale - 1:+.2%} off)")
     chip, vgm_end = pitch_segments(decode_vgm(rip))
-    mod, mod_end = mod_pitch_timeline(read_mod(mod_path), cfg, song)
+    mod, mod_end = mod_pitch_timeline(read_mod(mod_path), conv, song)
     chan_map = {c.source: c.mod_channel for c in cfg.channels}
     if args.offset is None:
         args.offset = note_start_offset(chip, mod, chan_map)

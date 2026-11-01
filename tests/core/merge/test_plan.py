@@ -9,7 +9,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from core.config import MergeGroup
+from core.config import MergeGroup, SampleTable
 from core.merge import MIX, MergePlan, NoteOn
 from core.merge.model import GroupNotes
 from core.merge.plan import _Planner
@@ -20,7 +20,7 @@ def _planner(g: MergeGroup) -> _Planner:
     """A planner with only what fold() reads: no song is walked."""
     pl = _Planner.__new__(_Planner)
     pl.plan = MergePlan([g])
-    pl.config = SimpleNamespace(sample_list=[])
+    pl.conv = SimpleNamespace(samples=SampleTable(None))
     pl.cat = SimpleNamespace(instruments={})
     pl.vol_of = {1: (13, 0), 2: (35, 0)}
     pl.provisional = 0

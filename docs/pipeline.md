@@ -991,9 +991,9 @@ everything fits, for the bytes.
 ### When it runs
 
 The plan is built once the ticks are final (after `prepare_song`) and before any sample is rendered, so
-chip composites are catalogue entries like any instrument.  It lives on `config.merge_plan`, which
-`walk_channel` reads: the level pre-passes, the sustain scan and `ChannelWriter` see composites the same
-way.
+chip composites are catalogue entries like any instrument.  It lives on the conversion's
+`ConversionPlan` (core/plan/conversion.py), which `walk_channel` reads: the level pre-passes, the sustain
+scan and `ChannelWriter` see composites the same way.
 
 ### Verifying a merged build
 

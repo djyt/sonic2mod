@@ -14,7 +14,7 @@
 
 from .breaks import apply_pattern_breaks, row_to_bcd, shift_for_breaks
 from .cell import ROWS_PER_PATTERN
-from .file import PAL_AMIGA_CLOCK, ModFile, ModSample, read_sample
+from .file import MAX_INSTRUMENT, PAL_AMIGA_CLOCK, ModFile, ModSample, read_sample
 from .limits import MAX_MOD_SAMPLE_BYTES, max_sustain_secs, sample_limit_bytes
 from .notes import (
     FINETUNE_STEPS,
@@ -40,6 +40,7 @@ __all__ = [
     "DEFAULT_SPEED",
     "FINETUNE_STEPS",
     "LOW_RATE_HZ",
+    "MAX_INSTRUMENT",
     "MAX_MOD_SAMPLE_BYTES",
     "MOD_MAX_VOLUME",
     "MOD_NOTES",

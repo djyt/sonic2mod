@@ -6,7 +6,7 @@ from ...config import ConversionConfig, SynthesisSettings
 from ...diagnostics import Diagnostics
 from ...merge import MergePlan
 from ...mod import ModFile
-from ...plan import DetunePlan, Timeline, detune_cents, fm_catalogue
+from ...plan import ConversionPlan, DetunePlan, Timeline, detune_cents, fm_catalogue
 from ...smps import C1_SEMITONE, SmpsSong
 from ..vibrato import VibratoSpeed
 
@@ -24,14 +24,13 @@ class EmissionStats:
 class WriterContext:
     """What every channel's writer shares in one conversion."""
     mod: ModFile
-    config: ConversionConfig
+    conv: ConversionPlan                    # what the notes play: the walk, the catalogue, the sample table
     song: SmpsSong
     synth: SynthesisSettings | None
     timeline: Timeline
     diag: Diagnostics
     vibrato: VibratoSpeed
-    merge: MergePlan | None
-    detune: DetunePlan | None
+    merge: MergePlan | None                 # conv.merge, all of it
     fm_volume_mode: str                     # "baked" | "absolute" | "off"
     psg_volume_mode: str                    # "baked" | "absolute"
     pan_law_db: float
@@ -50,6 +49,14 @@ class WriterContext:
     _sample_detunes: dict[int, float] | None = field(default=None, init=False)
 
     @property
+    def config(self) -> ConversionConfig:
+        return self.conv.config
+
+    @property
+    def detune(self) -> DetunePlan | None:
+        return self.conv.detune
+
+    @property
     def amiga_clock(self) -> float:
         return self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
 
@@ -63,6 +70,6 @@ class WriterContext:
         if self._sample_detunes is None:
             self._sample_detunes = {i.inst: detune_cents(C1_SEMITONE + i.synth_idx, i.layers[0].fnum_offset,
                                                          self.song.rules.fm_frequencies)
-                                    for i in fm_catalogue(self.song, self.config).instruments.values()
+                                    for i in fm_catalogue(self.song, self.conv).instruments.values()
                                     if len(i.layers) == 1}
         return self._sample_detunes.get(inst, 0.0)

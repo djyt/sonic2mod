@@ -189,9 +189,10 @@ keeps its own loop on purpose: it describes a song with no config.
 
 | Module | Role |
 |---|---|
+| `conversion.py` | `ConversionPlan`: one conversion's decisions — rendering pitches (`RenderPitch`), detune variants, merge plan, its own `SampleTable` — kept off the config, which no pass writes.  Each step makes a new plan; `walk_channel`, the catalogues and every pass read it |
 | `driver_state.py` | `DriverState` (a `TrackState` plus the MOD routing), `resolve_note` → `ResolvedNote`, `walk_channel`, `enabled_channels`, `psg_range_entry` |
 | `instruments.py` | The instrument catalogue: `fm_catalogue` (`FmInstrument` = list of `FmLayer`s; plain, detune variant or composite), `psg_catalogue`, `free_slots`.  The first map entry naming a slot decides what it is rendered for; both generators read it |
-| `instrument_plan.py` | `prepare_instruments`: `resolve_synth_roots` then `plan_detune_variants` — the converter's first step and the audits' whole preparation; `sounding_pitches` |
+| `instrument_plan.py` | `prepare_instruments` → the `ConversionPlan` with `resolve_synth_roots`' pitches and `plan_detune_variants`' variants — the converter's first step and the audits' whole preparation; `sounding_pitches` |
 | `synth_roots.py` | `resolve_synth_roots`: each rooted entry's rendering pitch, from the song |
 | `detune.py` | `plan_detune_variants` → `DetunePlan`: each `smpsAlterNote` detune a sample of its own |
 | `noise_derive.py` | `derive_noise_envelopes`, `derive_rate3_dividers` |
@@ -208,9 +209,9 @@ is a module of its own and reports through one `Diagnostics`.
 ```
 convert()
  ├─ _convert_once()
- │   ├─ prepare_instruments              synthesis pitches, detune variants
+ │   ├─ plan_instruments                 ConversionPlan: synthesis pitches, detune variants
  │   ├─ prepare_song                     tempo-divider re-timing, short loops replayed
- │   ├─ (merged) build_merge_plan        → config.merge_plan, MergedBuild
+ │   ├─ (merged) build_merge_plan        → ConversionPlan.with_merge, MergedBuild
  │   ├─ SustainPlanner.resolve           how long each instrument's sample must ring
  │   ├─ install samples                  FM generator (at LevelPlanner.fm_render_levels),
  │   │                                   sample_list files, DAC saturation, PSG generator
@@ -253,8 +254,8 @@ What each step decides, and why: `docs/pipeline.md`.
 
 `convert.py --merged`: `prepare_merged_config` disables followers and packs columns; inside the
 conversion `build_merge_plan` pairs each follower's notes with its primary's and allocates
-composite instruments.  The plan sits on `config.merge_plan`, which `walk_channel` reads, so
-every pass sees composites and spliced notes the same way.
+composite instruments.  The plan sits on the conversion's `ConversionPlan`, which `walk_channel`
+reads, so every pass sees composites and spliced notes the same way.
 
 ```
  notes.py   NoteOn, channel_notes, pair_channels → PairStats       (also merge_survey, fold_csv)

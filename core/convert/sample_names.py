@@ -23,11 +23,10 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 
-from ..config import ConversionConfig
 from ..merge import MergePlan
 from ..mod import MOD_NOTE_MAP, PERIOD_TABLE, ModFile
 from ..mod.sample_audit import note_name
-from ..plan import fm_catalogue, psg_catalogue
+from ..plan import ConversionPlan, fm_catalogue, psg_catalogue
 from ..smps import SmpsSong
 from ..smps import semitone_to_note_name as _semitone_to_name
 
@@ -80,7 +79,7 @@ def _played_notes(mod: ModFile) -> dict[int, str]:
     return {ins: note_name(c.most_common(1)[0][0]) for ins, c in counts.items()}
 
 
-def sample_names(mod: ModFile, song: SmpsSong, config: ConversionConfig, played: dict[int, set[str]],
+def sample_names(mod: ModFile, song: SmpsSong, conv: ConversionPlan, played: dict[int, set[str]],
                  merge: MergePlan | None, noise_envelopes: dict | None = None) -> dict[int, str]:
     """{slot: name} for every slot that holds a sample, as the module docstring describes."""
     notes = _played_notes(mod)
@@ -92,7 +91,7 @@ def sample_names(mod: ModFile, song: SmpsSong, config: ConversionConfig, played:
 
     # The DAC samples off disk, at the note their slot plays them at
     dac: dict[int, list] = defaultdict(list)
-    for d in config.dac_samples:
+    for d in conv.config.dac_samples:
         dac[d.mod_instrument].append(d)
     for inst, ds in dac.items():
         first = ds[0]
@@ -100,7 +99,7 @@ def sample_names(mod: ModFile, song: SmpsSong, config: ConversionConfig, played:
         note = MOD_NOTE_MAP.get(first.mod_note)
         names[inst] = _fit(["D", label, note_name(PERIOD_TABLE[note.value]) if note is not None else ""])
 
-    for spec in fm_catalogue(song, config).instruments.values():
+    for spec in fm_catalogue(song, conv).instruments.values():
         e, lay = spec.entry, spec.layers[0]
         if getattr(e, "name", None):
             names[spec.inst] = _fit([e.name])
@@ -109,7 +108,7 @@ def sample_names(mod: ModFile, song: SmpsSong, config: ConversionConfig, played:
         dt = f"dt{lay.fnum_offset:+d}" if lay.fnum_offset else ""
         names[spec.inst] = _fit([chans(spec.inst, fallback), f"${lay.voice_idx:02X}", _range(e.low, e.high), dt])
 
-    for p in psg_catalogue(config, noise_envelopes).values():
+    for p in psg_catalogue(conv, noise_envelopes).values():
         e = p.entry
         if getattr(e, "name", None):
             names[p.inst] = _fit([e.name])
@@ -142,7 +141,7 @@ def sample_names(mod: ModFile, song: SmpsSong, config: ConversionConfig, played:
             names[b.slot] = _fit(["bank", channel_label(_sorted_sources(srcs), "+"), f"{len(b.members)} hits"])
 
     # Anything else off disk keeps its file name
-    for row in config.sample_list or []:
+    for row in conv.samples:
         if row.slot not in names:
             names[row.slot] = _fit([row.file.removesuffix(".raw")])
     return {i: n for i, n in names.items() if 0 < i <= len(mod.samples) and mod.samples[i - 1].length}

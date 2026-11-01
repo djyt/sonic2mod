@@ -17,7 +17,7 @@ from core.config.bpm import exact_bpm
 from core.drivers import dac_samples, read_rom_song
 from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
-from core.plan import complete_config, derive_config, starting_volume, walk_channel
+from core.plan import ConversionPlan, complete_config, derive_config, starting_volume, walk_channel
 from core.plan.derive import _output_path, _windows
 from core.rom import RomImage
 from core.smps import (
@@ -138,7 +138,7 @@ class Moonwalker(unittest.TestCase):
             if ch.header.channel_type == "DAC":
                 continue
             chan = ChannelConfig(source=source, mod_channel=0)
-            for event, st, res in walk_channel(ch, config, chan):
+            for event, st, res in walk_channel(ch, ConversionPlan.of(config), chan):
                 if res is None or st.noise_form is not None:
                     continue
                 entries = config.psg_voice_map[st.envelope or "$00"] if st.is_psg else config.voice_map[st.voice]

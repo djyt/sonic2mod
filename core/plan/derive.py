@@ -66,6 +66,7 @@ from ..smps import (
     synth_note_name,
     update_hz,
 )
+from .conversion import ConversionPlan
 from .driver_state import walk_channel
 
 MAX_INSTRUMENTS = 31
@@ -240,7 +241,7 @@ class _Deriver:
         noise: dict[int, Counter] = defaultdict(Counter)
         dac: Counter = Counter()
         levels = self._levels
-        bare = ConversionConfig()           # no maps: the walk tracks the driver's state only
+        bare = ConversionPlan.of(ConversionConfig())    # no maps: the walk tracks the driver's state only
         channels = source_map(self._song)
         for source in sources:
             ch = channels[source]

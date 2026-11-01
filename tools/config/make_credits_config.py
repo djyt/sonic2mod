@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from core.config import ChannelConfig, ConversionConfig
 from core.drivers.reference import SONIC1_RULES
-from core.plan import walk_channel
+from core.plan import ConversionPlan, walk_channel
 from core.smps import PsgVoice, SmpsParser, VoiceField, semitone_to_note_name, source_map, synth_note_name
 
 _SHIPPED = ROOT / "configs" / "sonic_1" / "13_credits.yaml"
@@ -90,7 +90,7 @@ def windows(pitches):
 # ---- chip pitches per FM voice and per PSG envelope label
 fm_notes: dict[int, Counter] = defaultdict(Counter)   # voice index -> chip pitch -> count
 psg_notes: dict[str, Counter] = defaultdict(Counter)
-_bare = ConversionConfig()                    # no maps: the walk only tracks the driver's state
+_bare = ConversionPlan.of(ConversionConfig())   # no maps: the walk only tracks the driver's state
 for source, ch in source_map(song).items():
     kind = ch.header.channel_type
     if kind == "DAC":

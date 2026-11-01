@@ -13,7 +13,7 @@ from ..audio import db_to_gain, power_to_db
 from ..chips import TL_STEP_DB
 from ..config import MergeGroup
 from ..mod import MOD_NOTE_MAP
-from ..plan import FmLayer, walk_channel
+from ..plan import ConversionPlan, FmLayer, walk_channel
 from ..smps import (
     ChannelType,
     CoordFlag,
@@ -61,7 +61,7 @@ class NoteOn:
         return self.ticks or [self.tick]
 
 
-def channel_notes(song, config, source: str, pan_law_db: float,
+def channel_notes(song, conv: ConversionPlan, source: str, pan_law_db: float,
                   sample_secs: dict[int, float] | None = None,
                   tick_secs=None, grace: int = 0) -> tuple[dict[int, NoteOn], list[int]]:
     """({tick: NoteOn}, [rest ticks]) for a channel, enabled or not, walked as the converter
@@ -74,14 +74,12 @@ def channel_notes(song, config, source: str, pan_law_db: float,
     note bending into it: the two are one NoteOn at the target pitch (`ticks` keeps both
     note-on ticks), which is what a chord is folded on.
     """
+    config = conv.config
     chan_cfg = next(c for c in config.channels if c.source == source)
-    fps = update_hz(song.rules, getattr(config, "region", "ntsc"))
-    walker = _NoteWalk(config, source_map(song)[source], fps, pan_law_db, sample_secs or {}, tick_secs, grace)
-    plan, config.merge_plan = config.merge_plan, None
-    try:
-        walker.walk(chan_cfg)
-    finally:
-        config.merge_plan = plan
+    fps = update_hz(song.rules, config.region)
+    walker = _NoteWalk(conv.with_merge(None), source_map(song)[source], fps, pan_law_db, sample_secs or {},
+                       tick_secs, grace)
+    walker.walk(chan_cfg)
     return walker.notes, walker.rests
 
 
@@ -89,16 +87,16 @@ class _NoteWalk:
     """channel_notes' walk: the modulation and note fill in force, and the note a continuation
     or a grace note's target extends."""
 
-    def __init__(self, config, channel, fps: float, pan_law_db: float, sample_secs: dict[int, float], tick_secs,
-                 grace: int) -> None:
-        self._config = config
+    def __init__(self, conv: ConversionPlan, channel, fps: float, pan_law_db: float, sample_secs: dict[int, float],
+                 tick_secs, grace: int) -> None:
+        self._conv = conv
         self._channel = channel
         self._kind = channel.header.channel_type
         self._pan_law_db = pan_law_db
         self._sample_secs = sample_secs
         self._tick_secs = tick_secs
         self._grace = grace
-        self._dac_map = {d.name: d for d in config.dac_samples}
+        self._dac_map = {d.name: d for d in conv.config.dac_samples}
         self._fps = fps                                   # the driver's frames a second
         self.notes: dict[int, NoteOn] = {}
         self.rests: list[int] = []
@@ -107,7 +105,7 @@ class _NoteWalk:
         self._last: NoteOn | None = None
 
     def walk(self, chan_cfg) -> None:
-        for event, st, res in walk_channel(self._channel, self._config, chan_cfg):
+        for event, st, res in walk_channel(self._channel, self._conv, chan_cfg):
             if event.spliced is not None:
                 continue                                    # a solo note spliced in from a follower
             if event.is_effect:

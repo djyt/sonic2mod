@@ -208,7 +208,7 @@ def _derived_rows(config_path: Path, settings_path: str | None = None) -> dict[i
 
     if not ConversionConfig.from_yaml(str(config_path)).is_minimal:
         return {}
-    return load_config(config_path, settings_path).sample_rows()
+    return load_config(config_path, settings_path).sample_table().rows()
 
 
 def _add_rows(text: str, rows: list[str]) -> str:

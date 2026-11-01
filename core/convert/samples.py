@@ -24,10 +24,10 @@ from ..merge import MergedBuild, MergePlan
 from ..mod import MAX_MOD_SAMPLE_BYTES, MOD_MAX_VOLUME, ModFile, ModSample, note_rate, read_sample
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..plan import (
+    ConversionPlan,
     NoiseEnvelope,
     Rate3Divider,
     Timeline,
-    derive_noise_envelopes,
     derive_rate3_dividers,
     fm_catalogue,
     fm_drum_catalogue,
@@ -55,12 +55,13 @@ class SampleInstaller:
     """One pass's samples into `mod`: `synth` / `psg_synth` the settings as given (dither, clocks),
     install's the ones with `auto` sustains resolved."""
 
-    def __init__(self, mod: ModFile, song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings | None,
+    def __init__(self, mod: ModFile, song: SmpsSong, conv: ConversionPlan, synth: SynthesisSettings | None,
                  psg_synth: PsgSynthesisSettings | None, timeline: Timeline, diag: Diagnostics,
                  sustain: SustainPlanner, merge: MergePlan | None, merged: MergedBuild | None) -> None:
         self._mod = mod
         self._song = song
-        self._config = config
+        self._conv = conv
+        self._config = conv.config
         self._synth = synth
         self._psg_synth = psg_synth
         self._timeline = timeline
@@ -86,9 +87,10 @@ class SampleInstaller:
         return self._synth.dither if self._synth else DEFAULT_DITHER
 
     def install(self, synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None,
-                psg_insts: set[int], levels: LevelPlanner, baked: bool) -> None:
+                psg_insts: set[int], levels: LevelPlanner, baked: bool, noise_env: dict[int, NoiseEnvelope]) -> None:
         """Every sample in: the FM ones rendered (at `levels`' render levels when `baked`) and the
-        rest loaded from disk, the DAC drums saturated, then the PSG ones rendered."""
+        rest loaded from disk, the DAC drums saturated, then the PSG ones rendered (the noise
+        instruments with `noise_env`, core.plan.derive_noise_envelopes)."""
         merge_insts = (self._merge.instruments | self._merge.unused) if self._merge is not None else set()
         if synth and synth.enabled:
             fm_samples, missing = self._synthesize_fm(synth, levels, baked)
@@ -96,20 +98,20 @@ class SampleInstaller:
             # Load remaining (DAC) samples from disk — skip FM-synthesized and PSG-synthesized instruments
             self._load_disk_samples(set(fm_samples) | set(drums) | psg_insts | missing | merge_insts)
             self._load_aside_drums(set(drums))
-        elif self._config.sample_list:
+        elif self._conv.samples:
             self._load_disk_samples(psg_insts | merge_insts)
             self._load_aside_drums(set())
         else:
             self._placeholders()
         self._saturate_dac_samples()
-        self._synthesize_psg(psg_synth)
+        self._synthesize_psg(psg_synth, noise_env)
 
     def entry_dithers(self) -> dict[int, str]:
         """{instrument: dither} for every synthesised instrument whose entry says `dither:` (the
         catalogues: what the generators render from); a mix falls back to its primary's."""
-        out = {i.inst: i.dither_mode for i in fm_catalogue(self._song, self._config).instruments.values()
+        out = {i.inst: i.dither_mode for i in fm_catalogue(self._song, self._conv).instruments.values()
                if i.dither_mode}
-        out.update({i.inst: i.entry.dither for i in psg_catalogue(self._config).values() if i.entry.dither})
+        out.update({i.inst: i.entry.dither for i in psg_catalogue(self._conv).values() if i.entry.dither})
         return out
 
     # --- installing -----------------------------------------------------------------------------
@@ -128,7 +130,7 @@ class SampleInstaller:
         sample_list volume and finetune for the instrument - the last entry naming the slot (a
         composite's, appended by the plan) unless `original` asks for the first (the source the
         slot was named for, kept aside for the mixer)."""
-        entry = self._config.sample_row(inst_num, original)
+        entry = self._conv.samples.row(inst_num, original)
         pcm_data = pcm_orig[:max_bytes]
         if len(pcm_orig) > max_bytes:
             # The generators cap the sustain to the limit; this is a last resort.
@@ -165,7 +167,7 @@ class SampleInstaller:
     def _load_disk_samples(self, skip: set[int]) -> None:
         """Each sample_list row's file into its slot (a later row naming the slot over an earlier);
         a file not on disk leaves the slot empty, with a warning."""
-        for row in self._config.sample_list or []:
+        for row in self._conv.samples:
             if row.slot in skip:
                 continue
             sample = self._read(row)
@@ -188,7 +190,7 @@ class SampleInstaller:
         prefers a source's render to its bytes, must take the drum's bytes."""
         aside = self._mix_only_aside({d.mod_instrument for d in self._config.dac_samples}) - rendered
         for inst in sorted(aside):
-            entry = self._config.sample_row(inst, original=True)
+            entry = self._conv.samples.row(inst, original=True)
             assert entry is not None, "a DAC drum's slot has its sample_list row"
             sample = self._read(entry)
             if sample is None:
@@ -220,7 +222,7 @@ class SampleInstaller:
         # Warn about map entries whose voice index doesn't exist in the song, and collect their
         # instruments to suppress spurious "file not found" warnings.
         missing: set[int] = set()
-        for ctx, vi, insts in fm_catalogue(self._song, self._config).missing_voices:
+        for ctx, vi, insts in fm_catalogue(self._song, self._conv).missing_voices:
             missing.update(insts)
             self._diag.warn(WarningKind.VOICE_MISSING, extra_ctx=ctx, voice_idx=vi, instruments=sorted(insts))
 
@@ -244,7 +246,7 @@ class SampleInstaller:
         for i, c in chip_bases.items():
             tl_offsets[i] = tl_offsets.get(c.inst, tl_offsets.get(c.primary, 0))
         fm_samples = generate_fm_samples(
-            self._song, self._config, synth, tl_offsets=tl_offsets,
+            self._song, self._conv, synth, tl_offsets=tl_offsets,
             peaks_out=fm_peaks, loops=fm_loops, loops_out=self.loops, release_out=self.release,
             raw_out=self.raw_renders, cache_out=fm_cache,
             extra=[c.chip_base for c in chip_bases.values() if c.chip_base is not None])
@@ -289,18 +291,17 @@ class SampleInstaller:
             self.raw_renders.pop(i, None)
         return samples
 
-    def _synthesize_psg(self, psg_synth: PsgSynthesisSettings | None) -> None:
+    def _synthesize_psg(self, psg_synth: PsgSynthesisSettings | None, noise_env: dict[int, NoiseEnvelope]) -> None:
         """Every PSG instrument rendered and installed, with the rate-3 dividers and noise
         envelopes the song implies."""
         if not (psg_synth and psg_synth.enabled and (self._config.psg_map or self._config.psg_voice_map)):
             return
-        rate3 = derive_rate3_dividers(self._song, self._config)
-        noise_env = derive_noise_envelopes(self._song, self._config)
+        rate3 = derive_rate3_dividers(self._song, self._conv)
         self._report_noise(rate3, noise_env)
         psg_loops: dict[int, SustainLoop] = {}
         psg_cache: dict[str, int] = {}
         psg_samples = generate_psg_samples(
-            self._config, psg_synth, self._song.rules, rate3_dividers={i: d.n for i, d in rate3.items()},
+            self._conv, psg_synth, self._song.rules, rate3_dividers={i: d.n for i, d in rate3.items()},
             noise_envelopes={i: d.envelope for i, d in noise_env.items()},
             loops=psg_synth.loops_for(self._config.merge_active), loops_out=psg_loops,
             raw_out=self.raw_renders, cache_out=psg_cache)

@@ -6,6 +6,7 @@ from __future__ import annotations
 import bisect
 
 from ..config import MergeGroup
+from ..plan import ConversionPlan
 from ..smps import SmpsEvent, SmpsNote, source_map
 from .model import GroupNotes, MergePlan
 from .notes import NoteOn, channel_notes
@@ -47,18 +48,18 @@ def _splice_note(plan: MergePlan, events: list, target: str, source: str, t: int
         _insert_event(events, rest)
 
 
-def _occupancy(plan: MergePlan, song, config, source: str, pan_law_db: float, sample_secs, tick_secs,
+def _occupancy(plan: MergePlan, song, conv: ConversionPlan, source: str, pan_law_db: float, sample_secs, tick_secs,
                grace: int, pattern_of=None, cut: bool = True) -> list[tuple[int, int]]:
     """[(start, end)] ticks a live channel sounds: its own notes and every note spliced onto it.
     Where a group's `cut_after` (or the song-wide `merge_fill_cut_after`) holds, a note counts
     for that many ticks only: the pool may cut its tail (`cut`: False counts every note whole)."""
     def span(t: int, n: NoteOn) -> tuple[int, int]:
         end = t + n.sounding
-        over = cut and plan.cut_after_at(config, source, pattern_of(t) if pattern_of is not None else None)
+        over = cut and plan.cut_after_at(conv.config, source, pattern_of(t) if pattern_of is not None else None)
         if over:
             end = min(end, t + over)
         return t, end
-    notes, _rests = channel_notes(song, config, source, pan_law_db, sample_secs, tick_secs, grace)
+    notes, _rests = channel_notes(song, conv, source, pan_law_db, sample_secs, tick_secs, grace)
     spans = [span(n.tick, n) for n in notes.values() if (source, n.tick) not in plan.folded]
     spans += [span(t, n) for (src, t), (_f, n) in plan.solo.items() if src == source]
     return sorted(spans)
@@ -72,7 +73,7 @@ def _free_span(spans: list[tuple[int, int]], t: int) -> int:
     return min((s - t for s, _e in spans if s > t), default=1 << 30)
 
 
-def pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, tick_secs,
+def pool_notes(plan: MergePlan, song, conv: ConversionPlan, pan_law_db: float, sample_secs, tick_secs,
                grace: int, min_ticks: int, groups: list[GroupNotes], pattern_of=None) -> bool:
     """The fill pool: every note of a `merge_fill` channel, every lost follower note of a
     `fill_lost` group, and every follower note of a `fill_cut` group whose ring the fold would
@@ -85,10 +86,11 @@ def pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, ti
     to a vacated one.  A pooled follower note leaves its group's notes (the caller re-pairs).
     Then `vacate_notes`.  Records per-source counts in plan.fill; returns True when any
     follower note was pooled."""
+    config = conv.config
     pool: list[tuple[int, int, str, NoteOn, bool]] = []      # (tick, order, source, note, whole note only)
     order = 0
     for src in config.merge_fill:
-        notes, _ = channel_notes(song, config, src, pan_law_db, sample_secs, tick_secs, grace)
+        notes, _ = channel_notes(song, conv, src, pan_law_db, sample_secs, tick_secs, grace)
         pool += [(t, order, src, n, False) for t, n in notes.items()]
         order += 1
     for g in plan.groups:
@@ -102,7 +104,7 @@ def pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, ti
     filled: set[tuple[str, int]] = set()          # (source, tick) of every fill-group note
     for g in plan.groups:
         if g.fill and pattern_of is not None:
-            notes, _ = channel_notes(song, config, g.primary, pan_law_db, sample_secs, tick_secs, grace)
+            notes, _ = channel_notes(song, conv, g.primary, pan_law_db, sample_secs, tick_secs, grace)
             for t, n in notes.items():
                 if g.covers(pattern_of(t)):
                     pool.append((t, order, g.primary, n, False))
@@ -114,11 +116,11 @@ def pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, ti
     vacated = set(config.merge_vacate)
     live = sorted((c for c in config.channels if c.enabled), key=lambda c: c.mod_channel)
     targets = [c for c in live if c.source not in vacated]
-    spans = {c.source: _occupancy(plan, song, config, c.source, pan_law_db, sample_secs, tick_secs, grace,
+    spans = {c.source: _occupancy(plan, song, conv, c.source, pan_law_db, sample_secs, tick_secs, grace,
                                   pattern_of)
              for c in targets}
     # Every note whole, cut_after or not: what a vacated note may not cut
-    whole_spans = {c.source: _occupancy(plan, song, config, c.source, pan_law_db, sample_secs, tick_secs,
+    whole_spans = {c.source: _occupancy(plan, song, conv, c.source, pan_law_db, sample_secs, tick_secs,
                                         grace, pattern_of, cut=False)
                    for c in targets}
     # The solo notes the groups will splice onto their primaries occupy those channels too
@@ -163,11 +165,11 @@ def pool_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, ti
             follower_notes[src].pop(t, None)     # no longer folded onto its primary
             pooled = True
     plan.fill = list(stats.values())
-    vacate_notes(plan, song, config, pan_law_db, sample_secs, tick_secs, grace, targets, whole_spans, pattern_of)
+    vacate_notes(plan, song, conv, pan_law_db, sample_secs, tick_secs, grace, targets, whole_spans, pattern_of)
     return pooled
 
 
-def vacate_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, tick_secs, grace: int,
+def vacate_notes(plan: MergePlan, song, conv: ConversionPlan, pan_law_db: float, sample_secs, tick_secs, grace: int,
                  targets: list, spans: dict[str, list[tuple[int, int]]], pattern_of=None) -> None:
     """Each note of a `merge_vacate` channel onto the first column silent for all of it, cutting
     nothing (`spans` count every note whole, cut_after or not); a note with none, or one of a
@@ -176,8 +178,8 @@ def vacate_notes(plan: MergePlan, song, config, pan_law_db: float, sample_secs, 
     so it takes no column a note would otherwise be lost without.  Appends per-source counts to
     plan.fill ('vacate': True, 'kept': the notes left home)."""
     smap = source_map(song)
-    for src in config.merge_vacate:
-        notes, _ = channel_notes(song, config, src, pan_law_db, sample_secs, tick_secs, grace)
+    for src in conv.config.merge_vacate:
+        notes, _ = channel_notes(song, conv, src, pan_law_db, sample_secs, tick_secs, grace)
         tied = _legato_ticks(smap[src].events, notes)
         st = {'source': src, 'vacate': True, 'notes': len(notes), 'placed': 0, 'cut': 0, 'lost': 0,
               'folded': 0, 'kept': 0, 'targets': {}}

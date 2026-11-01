@@ -3,13 +3,14 @@ their slot up first, stand-ins taking a dropped composite's notes."""
 
 from __future__ import annotations
 
-from ..plan import fm_catalogue, psg_catalogue, walk_channel
+from ..config import SampleTable
+from ..plan import ConversionPlan, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import source_map
 from .model import LAST_MOD_NOTE, NO_SLOT, Composite, MergePlan
 from .notes import CompositeKey
 
 
-def fit_composites(plan: MergePlan, song, config, free: list[int],
+def fit_composites(plan: MergePlan, song, conv: ConversionPlan, free: list[int],
                     drums: set[int] = frozenset(), fm_slots: set[int] = frozenset(),  # type: ignore[assignment]
                     reserve: int = 0, last: set[int] = frozenset()) -> set[int]:  # type: ignore[assignment]
     """Give every composite a MOD instrument slot - a never-named slot, or one of an instrument
@@ -23,9 +24,10 @@ def fit_composites(plan: MergePlan, song, config, free: list[int],
     no slot here (`core.merge.banks` packs them once mixed); `reserve` slots are held back for the
     banks, and whatever the fit leaves free is theirs too (`plan.spare_slots`).  The `last` slots
     are offered after the others, so the reserve (the list's tail) takes them first: a banked
-    drum's slot becomes a bank.  Returns the instruments left unused by the final plan."""
+    drum's slot becomes a bank.  `conv` walks with `plan` in force.  Returns the instruments left
+    unused by the final plan."""
     while True:
-        unused = _unused_instruments(plan, song, config)
+        unused = _unused_instruments(plan, song, conv)
         sources = plan.pcm_sources                          # of the composites still in the plan
         slots = free + sorted(unused - (sources & drums), key=lambda s: (s in last, s))
         pcm_only = (unused & sources & fm_slots) - drums
@@ -43,7 +45,7 @@ def fit_composites(plan: MergePlan, song, config, free: list[int],
         # where PSG1's layer was cut, while five chords with no twin lost their followers.
         twins = same_shape_twins(plan, comps)
         for c in sorted(comps, key=lambda c: (c.inst not in twins, c.primary not in cheap, c.notes, -c.inst))[:len(left)]:
-            drop_composite(plan, config, c, NO_SLOT, prefer=twins.get(c.inst))
+            drop_composite(plan, conv.samples, c, NO_SLOT, prefer=twins.get(c.inst))
         # Its notes move to a same-shape survivor now, not after the fit: counted as the
         # primary's own they kept its instrument's slot from the next fit (Green Hill's voice
         # $08 sample stayed installed with no note playing it)
@@ -118,16 +120,17 @@ def _takes_all(plan: MergePlan, keep: Composite, c: Composite) -> bool:
                for k, v in plan.ticks.items() if v == c.inst)
 
 
-def drop_composite(plan: MergePlan, config, c: Composite, reason: str, prefer: CompositeKey | None = None) -> None:
-    """Take a composite out of the plan: its notes play the primary alone (unless a composite
-    of the same shape stands in for it, `stand_in`; `prefer` is the key of the one to take
-    them when it survives), and it is reported."""
+def drop_composite(plan: MergePlan, table: SampleTable, c: Composite, reason: str,
+                   prefer: CompositeKey | None = None) -> None:
+    """Take a composite out of the plan, and its row out of the conversion's sample `table`: its
+    notes play the primary alone (unless a composite of the same shape stands in for it,
+    `stand_in`; `prefer` is the key of the one to take them when it survives), and it is reported."""
     plan.unsupported.append({'primary': c.group.primary, 'notes': c.notes, 'detail': c.detail, 'reason': reason,
                              'shape': _shape(c.key), 'group_label': c.group.label + c.group.where,
                              'longest': c.longest, 'prefer': prefer,
                              'ticks': [k for k, v in plan.ticks.items() if v == c.inst]})
-    if c.entry in config.sample_list:
-        config.sample_list.remove(c.entry)
+    if c.entry is not None:
+        table.discard(c.entry)
     del plan.composites[c.key]
     plan.ticks = {k: v for k, v in plan.ticks.items() if v != c.inst}
     plan.notes = {k: n for k, n in plan.notes.items() if k in plan.ticks}
@@ -169,13 +172,13 @@ def stand_in(plan: MergePlan) -> None:
             u['stand_in'] = c.inst
 
 
-def cap_composites(plan: MergePlan, config) -> None:
+def cap_composites(plan: MergePlan, table: SampleTable) -> None:
     """Apply each group's max_composites: the most-played composites stay."""
     kept: dict[str, int] = {}
     for c in sorted(plan.composites.values(), key=lambda c: (-c.notes, c.inst)):
         cap = c.group.max_composites
         if cap is not None and kept.get(c.group.primary, 0) >= cap:
-            drop_composite(plan, config, c, f"over the group's max_composites: {cap}")
+            drop_composite(plan, table, c, f"over the group's max_composites: {cap}")
         else:
             kept[c.group.primary] = kept.get(c.group.primary, 0) + 1
 
@@ -200,23 +203,23 @@ def _assign_slots(plan: MergePlan, chosen: dict[int, int]) -> None:
     plan.notes = {k: n for k, n in plan.notes.items() if k in plan.ticks}
 
 
-def _unused_instruments(plan: MergePlan, song, config) -> set[int]:
+def _unused_instruments(plan: MergePlan, song, conv: ConversionPlan) -> set[int]:
     """Instruments the merged build renders nothing for: named by the maps, the DAC mapping or
     the sample list, but played by no note of a channel that stays in the output."""
     used: set[int] = set(plan.instruments)
     smap = source_map(song)
-    dac_map = {d.name: d.mod_instrument for d in config.dac_samples}
-    for chan_cfg in config.channels:
+    dac_map = {d.name: d.mod_instrument for d in conv.config.dac_samples}
+    for chan_cfg in conv.config.channels:
         channel = smap.get(chan_cfg.source)
         if not chan_cfg.enabled or channel is None:
             continue
-        for event, _st, res in walk_channel(channel, config, chan_cfg):
+        for event, _st, res in walk_channel(channel, conv, chan_cfg):
             if event.is_note and event.spliced is None and plan.is_folded(chan_cfg.source, event.tick_position):
                 continue                     # played on another channel (or dropped) in this pattern
             if res is not None:
                 used.add(res.instrument)
             elif event.is_note and event.note.is_dac and event.note.dac_name in dac_map:
                 used.add(plan.instrument_at(chan_cfg.source, event.tick_position, dac_map[event.note.dac_name]))
-    named = set(fm_catalogue(song, config).instruments) | set(psg_catalogue(config))
-    named |= set(dac_map.values()) | set(config.sample_rows())
+    named = set(fm_catalogue(song, conv).instruments) | set(psg_catalogue(conv))
+    named |= set(dac_map.values()) | set(conv.samples.rows())
     return named - used

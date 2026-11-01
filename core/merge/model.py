@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from ..config import MergeGroup, SampleRow
+from ..config import ConversionConfig, MergeGroup, SampleRow
 from ..plan import FmInstrument
 from ..smps import ChannelType
 from .notes import CHIP, CompositeKey, NoteOn, PairStats
@@ -200,14 +200,14 @@ class MergePlan:
                 return g.primary
         return None
 
-    def cut_after_at(self, config, source: str, pattern: int | None) -> int:
+    def cut_after_at(self, config: ConversionConfig, source: str, pattern: int | None) -> int:
         """Ticks after which a pooled note may take `source`'s column at `pattern`: the group's
         `cut_after` holding there, else the song-wide `merge_fill_cut_after`; 0 = never."""
         if pattern is not None:
             for g in self.groups:
                 if g.primary == source and g.cut_after is not None and g.covers(pattern):
                     return g.cut_after
-        return int(getattr(config, "merge_fill_cut_after", {}).get(source, 0))
+        return config.merge_fill_cut_after.get(source, 0)
 
     def away_patterns(self, source: str) -> frozenset:
         """The patterns live channel `source` plays nothing of its own in: a follower's, or dropped."""

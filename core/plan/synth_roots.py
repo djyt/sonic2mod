@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from ..config import PsgInstrumentEntry
 from ..smps import ChannelType
+from .conversion import ConversionPlan, RenderPitch
 from .driver_state import enabled_channels, walk_channel
+
+_OCTAVE = 12        # the most a sample is rendered above the pitch its root sounds
 
 
 @dataclass(frozen=True)
@@ -21,8 +25,13 @@ class SynthRoot:
     pitches: dict[int, int]         # {chip pitch: notes}
 
 
-def resolve_synth_roots(song, config) -> list[SynthRoot]:
-    """Fill in every rooted map entry's `synth_root` from the song, and its `synth_shift`.
+class ResolvedRoots(NamedTuple):
+    report: list[SynthRoot]               # one per rooted entry
+    pitches: dict[int, RenderPitch]       # id(entry) -> where its sample is rendered (ConversionPlan.pitches)
+
+
+def resolve_synth_roots(song, conv: ConversionPlan) -> ResolvedRoots:
+    """Every rooted map entry's rendering pitch from the song: its `synth_root` and its shift.
 
     A sample is rendered at synth_root and played at root's rate, so MOD note m sounds at
     synth_root + (m − root).  A source note is placed at m = root + (key − low) (an anchored
@@ -33,12 +42,10 @@ def resolve_synth_roots(song, config) -> list[SynthRoot]:
     note an entry routes, and
 
     - where the config leaves synth_root out, renders at the chip pitch the entry's notes play
-      most often (ties to the lower one), at most an octave above D, and sets
-      `synth_shift` = that pitch − D.  Envelopes run in real time on the chip but stretch
+      most often (ties to the lower one), at most an octave above D, shifted by that pitch − D.  Envelopes run in real time on the chip but stretch
       with playback rate in a MOD, so rendering at the busiest note keeps the most notes'
       attack and decay at the hardware's speed.  A config never needs to state it.
-    - sets `synth_shift = synth_root − D` where it is stated (a rendering pitch anywhere in
-      the range).
+    - shifts by synth_root − D where it is stated (a rendering pitch anywhere in the range).
 
     The shift never moves a note: the sample generators give the sample a rate 2^(shift/12)
     higher than `root`'s playback rate, so MOD note `root` still sounds D and every note keeps
@@ -46,15 +53,16 @@ def resolve_synth_roots(song, config) -> list[SynthRoot]:
     Chaos Emerald lead's rate to 4 kHz).  The cost is the sample's size, 2^(shift/12) times —
     hence the octave cap.
 
-    Returns one SynthRoot per entry.  More than one D (`votes`) means the entry's
+    Reports one SynthRoot per entry.  More than one D (`votes`) means the entry's
     low is played at several chip pitches (several pitch offsets or an
     smpsChangeTransposition under one source range — what `range_space: chip` and a split
     entry are for); the caller warns.
     """
+    config = conv.config
     votes: dict[int, dict[int, int]] = {}       # id(entry) -> {D: notes}
     pitches: dict[int, dict[int, int]] = {}     # id(entry) -> {chip pitch: notes}
     for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM, ChannelType.PSG)):
-        for _event, st, res in walk_channel(channel, config, chan_cfg):
+        for _event, st, res in walk_channel(channel, conv, chan_cfg):
             if res is None:
                 continue
             entry = res.entry
@@ -98,12 +106,13 @@ def resolve_synth_roots(song, config) -> list[SynthRoot]:
     # pitch their notes play most often, at most an octave above the first entry's D.
     # The octave cap on the shift, or the merged build's own (merge_max_synth_shift: the Amiga
     # port trades envelope timing at the busiest note for half the bytes)
-    cap = 12
-    if getattr(config, "merge_active", False):
-        cap = max(0, min(12, int(getattr(config, "merge_max_synth_shift", 12))))
+    cap = _OCTAVE
+    if config.merge_active:
+        cap = max(0, min(_OCTAVE, config.merge_max_synth_shift))
     groups: dict[int, list] = {}
     for item in items:
         groups.setdefault(item[1].mod_instrument, []).append(item)
+    out: dict[int, RenderPitch] = {}
     for group in groups.values():
         _, first, _, d_first, first_stated = group[0]
         if d_first is None:
@@ -122,13 +131,11 @@ def resolve_synth_roots(song, config) -> list[SynthRoot]:
             pitch = d_first + shift
         for _, e, _, d, stated in group:
             if stated and e is not first:
-                e.synth_shift = (e.synth_root - d) if d is not None else 0   # its own say, as before
+                out[id(e)] = RenderPitch(e.synth_root, (e.synth_root - d) if d is not None else 0)   # its own say
             else:
-                e.synth_root = pitch
-                e.synth_shift = shift if d is not None else 0
+                out[id(e)] = RenderPitch(pitch, shift if d is not None else 0)
 
-    out = []
-    for context, e, per, _d, stated in items:
-        out.append(SynthRoot(context, e.mod_instrument, e.synth_root, not stated, e.synth_shift, per,
-                             pitches.get(id(e), {})))
-    return out
+    report = [SynthRoot(context, e.mod_instrument, out[id(e)].synth_root, not stated, out[id(e)].shift, per,
+                        pitches.get(id(e), {}))
+              for context, e, per, _d, stated in items]
+    return ResolvedRoots(report, out)

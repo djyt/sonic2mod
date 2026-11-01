@@ -30,7 +30,7 @@ class Levels:
         self._header_volume = channel.header.volume
 
         # {inst_num: sample volume} from sample_list, for Cxx scaling
-        self._sample_vols = {slot: row.volume for slot, row in ctx.config.sample_rows().items()}
+        self._sample_vols = {slot: row.volume for slot, row in ctx.conv.samples.rows().items()}
 
         # The modes; outside baked one, current_volume carries the level as a MOD volume
         self._fm_absolute = ctx.fm_volume_mode == "absolute"

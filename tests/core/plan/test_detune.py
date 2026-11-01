@@ -12,7 +12,7 @@ import unittest
 from core.config import InstrumentRange
 from core.drivers.reference import FM_FREQUENCIES
 from core.mod import ModNote
-from core.plan import DetunePlan, DetuneVariant, FmCatalogue, FmInstrument, FmLayer, detune_cents
+from core.plan import DetunePlan, DetuneVariant, FmCatalogue, FmInstrument, FmLayer, RenderPitch, detune_cents
 from core.plan.instruments import _add_detune_variants
 
 _NC5 = 60          # SMPS semitone of nC5 (C0 = 0): fnum 644
@@ -58,7 +58,7 @@ class DetunePlanTest(unittest.TestCase):
 
     def test_catalogue_renders_each_slot_at_its_offset(self):
         entry = InstrumentRange(low=60, high=72, mod_instrument=9)
-        cat = FmCatalogue({9: FmInstrument(9, entry, [FmLayer(5)], "voice_map[5][0]")})
+        cat = FmCatalogue({9: FmInstrument(9, entry, RenderPitch(None), [FmLayer(5)], "voice_map[5][0]")})
         _add_detune_variants(cat, self.plan)
         self.assertEqual(cat.instruments[9].layers[0].fnum_offset, 3)
         variant = cat.instruments[23]
@@ -67,10 +67,10 @@ class DetunePlanTest(unittest.TestCase):
 
     def test_a_variant_in_its_own_pitch_class_moves_its_render_not_its_notes(self):
         # Rendered at E (64) with root C2; its notes are F#s: rendered at F# (66), the shift 2 more
-        entry = InstrumentRange(low=60, high=72, mod_instrument=9, root=ModNote.C2, synth_root=64, synth_shift=4)
-        cat = FmCatalogue({9: FmInstrument(9, entry, [FmLayer(5)], "voice_map[5][0]")})
+        entry = InstrumentRange(low=60, high=72, mod_instrument=9, root=ModNote.C2)
+        cat = FmCatalogue({9: FmInstrument(9, entry, RenderPitch(64, 4), [FmLayer(5)], "voice_map[5][0]")})
         plan = DetunePlan()
         plan.add(DetuneVariant(inst=25, base=9, detune=195, notes=6, rendered=66))
         _add_detune_variants(cat, plan)
-        moved = cat.instruments[25].entry
-        self.assertEqual((moved.root, moved.synth_root, moved.synth_shift), (ModNote.C2, 66, 6))
+        moved = cat.instruments[25]
+        self.assertEqual((moved.entry.root, moved.pitch), (ModNote.C2, RenderPitch(66, 6)))

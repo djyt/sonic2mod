@@ -17,8 +17,10 @@ from core.config import ConversionConfig, InstrumentRange, PsgInstrumentEntry, l
 from core.drivers.reference import FM_FREQUENCIES, PSG_FREQUENCIES
 from core.mod import ModNote
 from core.plan import (
+    ConversionPlan,
     DetunePlan,
     DetuneVariant,
+    RenderPitch,
     detune_cents,
     prepare_instruments,
     sounding_pitches,
@@ -45,17 +47,19 @@ class Sounding(unittest.TestCase):
     def test_each_rooted_instrument_with_its_detune(self):
         song = _song(FM_FREQUENCIES)
         cfg = ConversionConfig()
+        shifted = InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2)
         cfg.voice_map = {
-            0: [InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2, synth_root=64, synth_shift=4)],
+            0: [shifted],
             1: [InstrumentRange(low=60, high=72, mod_instrument=4, root=ModNote.C2)],      # no such voice
         }
         cfg.psg_voice_map = {"fTone_01": [PsgInstrumentEntry(5, "tone", ModNote.C2)],
                              "fTone_02": [PsgInstrumentEntry(7, "tone", ModNote.B3, synth_root=95)]}   # B7
         cfg.psg_map = {0xE7: PsgInstrumentEntry(6, "white_noise", ModNote.C3)}             # noise: no pitch
-        cfg.detune_plan = DetunePlan(own={3: 3})
-        cfg.detune_plan.add(DetuneVariant(inst=23, base=3, detune=-20, notes=4))
+        detune = DetunePlan(own={3: 3})
+        detune.add(DetuneVariant(inst=23, base=3, detune=-20, notes=4))
+        conv = ConversionPlan.of(cfg).with_pitches({id(shifted): RenderPitch(64, 4)}).with_detune(detune)
 
-        got = sounding_pitches(song, cfg)
+        got = sounding_pitches(song, conv)
         self.assertEqual(sorted(got), [3, 5, 7, 23])
         self.assertEqual((got[3].root, got[3].root_semitone), (_C2, 60))
         word = _word_cents(64, FM_FREQUENCIES)                  # Sonic 1's E5: +4 c
@@ -69,7 +73,7 @@ class Sounding(unittest.TestCase):
         table = (*FM_FREQUENCIES[1:], FM_FREQUENCIES[-1])
         cfg = ConversionConfig()
         cfg.voice_map = {0: [InstrumentRange(low=60, high=72, mod_instrument=3, root=ModNote.C2, synth_root=64)]}
-        got = sounding_pitches(_song(table), cfg)
+        got = sounding_pitches(_song(table), ConversionPlan.of(cfg))
         self.assertAlmostEqual(got[3].cents, 100 + _word_cents(65, FM_FREQUENCIES))
 
 
@@ -78,8 +82,10 @@ class Prepare(unittest.TestCase):
         cfg = ConversionConfig.from_yaml(str(ROOT / "configs" / "sonic_1" / "01_title_screen.yaml"))
         synth, _psg = load_settings(str(ROOT / "tests" / "settings.yaml"))
         song = cfg.read_song()
+        stated = {id(e): e.synth_root for lst in cfg.voice_map.values() for e in lst}
         plan = prepare_instruments(song, cfg, synth)
         rooted = [e for lst in cfg.voice_map.values() for e in lst if e.root is not None]
-        self.assertTrue(rooted and all(e.synth_root is not None for e in rooted))
-        self.assertIs(plan.detune, cfg.detune_plan)
+        self.assertTrue(rooted and all(plan.conv.pitch(e).synth_root is not None for e in rooted))
+        self.assertEqual({id(e): e.synth_root for lst in cfg.voice_map.values() for e in lst}, stated)   # as read
+        self.assertIsNotNone(plan.conv.detune)
         self.assertTrue(plan.synth_roots)

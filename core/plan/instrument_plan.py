@@ -12,22 +12,22 @@ config, and what pitch each MOD instrument sounds once they are made.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from typing import NamedTuple
 
 from ..audio import semitone_to_hz
 from ..chips import freq_word_hz
 from ..config import ConversionConfig
 from ..smps import fm_table_index
-from .detune import DetunePlan, detune_cents, detune_variants_wanted, plan_detune_variants
+from .conversion import ConversionPlan
+from .detune import detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
 from .synth_roots import SynthRoot, resolve_synth_roots
 
 
-@dataclass
-class InstrumentPlan:
+class InstrumentPlan(NamedTuple):
+    conv: ConversionPlan            # the rendering pitches and the detune variants (None: FM is not
+                                    # synthesised, or the settings want no variants)
     synth_roots: list[SynthRoot]    # resolve_synth_roots' report, one per rooted entry
-    detune: DetunePlan | None       # None: FM is not synthesised or the settings want no variants
 
 
 class InstrumentPitch(NamedTuple):
@@ -38,17 +38,20 @@ class InstrumentPitch(NamedTuple):
 
 
 def prepare_instruments(song, config: ConversionConfig, synth) -> InstrumentPlan:
-    """Resolve the rendering pitches on `config`, then plan the detune variants (sets
-    `config.detune_plan`).  `synth`: the SynthesisSettings, None where FM is not synthesised."""
-    roots = resolve_synth_roots(song, config)
-    detune = plan_detune_variants(song, config) if detune_variants_wanted(synth) else None
-    return InstrumentPlan(roots, detune)
+    """The rendering pitches, then the detune variants, decided on `config` (which is left as
+    read).  `synth`: the SynthesisSettings, None where FM is not synthesised."""
+    conv = ConversionPlan.of(config)
+    roots = resolve_synth_roots(song, conv)
+    conv = conv.with_pitches(roots.pitches)
+    if detune_variants_wanted(synth):
+        conv = conv.with_detune(plan_detune_variants(song, conv))
+    return InstrumentPlan(conv, roots.report)
 
 
-def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitch]:
+def sounding_pitches(song, conv: ConversionPlan) -> dict[int, InstrumentPitch]:
     """Every rooted FM instrument and PSG tone instrument (noise has no pitch), first entry wins."""
     out: dict[int, InstrumentPitch] = {}
-    for inst, fm in fm_catalogue(song, config).instruments.items():
+    for inst, fm in fm_catalogue(song, conv).instruments.items():
         if fm.root_idx is None:
             continue
         offset = fm.layers[0].sounding_offset
@@ -56,7 +59,7 @@ def sounding_pitches(song, config: ConversionConfig) -> dict[int, InstrumentPitc
         cents = _fm_word_cents(fm.rendered_semitone, table)
         out[inst] = InstrumentPitch(fm.root_idx, fm.root_semitone,
                                     cents + (detune_cents(fm.rendered_semitone, offset, table) if offset else 0.0))
-    for inst, psg in psg_catalogue(config).items():
+    for inst, psg in psg_catalogue(conv).items():
         if psg.entry.type == TONE and inst not in out:
             out[inst] = InstrumentPitch(psg.root_idx, psg.root_semitone,
                                         song.rules.psg_table.divider_cents(psg.synth_idx + RENDER_INDEX_C1))

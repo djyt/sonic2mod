@@ -7,15 +7,16 @@ itself, plus the analyser and two config-generating tools.  They had already dri
 written three different ways), so it lives here once.
 
     for chan_cfg, channel in enabled_channels(song, config, (ChannelType.FM, ChannelType.PSG)):
-        for event, st, res in walk_channel(channel, config, chan_cfg):
+        for event, st, res in walk_channel(channel, conv, chan_cfg):
             if res is not None:                 # a pitched note: res.instrument, res.index ...
                 ...
 
 `walk_channel` advances a `DriverState` through the channel's events and hands every
 pitched note to `resolve_note`, the one place that says which MOD instrument a note is
-routed to and which MOD note it triggers (`ResolvedNote`).  The conversion, its level and
-sustain pre-passes, the noise / rate-3 derivations and `resolve_synth_roots` all read that
-one answer.
+routed to and which MOD note it triggers (`ResolvedNote`), as the conversion's decisions
+so far have it (`conv`, a core.plan.ConversionPlan: its detune variants, its merge plan).
+The conversion, its level and sustain pre-passes, the noise / rate-3 derivations and
+`resolve_synth_roots` all read that one answer.
 
 `DriverState` is the driver's track state (core.smps.TrackState: level, pan, transpose,
 detune, FM voice, envelope, noise form) plus the MOD routing it decides: the instrument and the
@@ -26,6 +27,7 @@ placement) stays in the converter.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ..config import InstrumentRange, PsgInstrumentEntry
 from ..mod import clamp_note
@@ -38,6 +40,10 @@ from ..smps import (
     chip_pitch,
     source_map,
 )
+
+if TYPE_CHECKING:
+    from .conversion import ConversionPlan
+    from .detune import DetunePlan
 
 
 def psg_range_entry(entries, key: int):
@@ -190,7 +196,8 @@ class ResolvedNote:
     def clamped(self) -> bool:
         return self.index != self.raw_index
 
-def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, source: str) -> ResolvedNote:
+def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, source: str,
+                 detune: DetunePlan | None = None) -> ResolvedNote:
     """Which MOD instrument and MOD note a pitched note plays, given the track state.
 
     FM: the current voice's range entry covering the note (channel_instrument_map first,
@@ -200,7 +207,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     `low` places a tone, `root` alone places noise, and a rooted tone without `low` falls
     to the transpose path.  Noise mode's instrument is the state's own (the envelope
     variant smpsPSGform / smpsPSGvoice chose).  An FM note at a detune its instrument's sample
-    is not rendered at plays that detune's variant (core.plan.detune).
+    is not rendered at plays that detune's variant (`detune`, core.plan.detune).
     """
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
@@ -212,7 +219,6 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
             inst = entry.mod_instrument
             if entry.root is not None:
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
-        detune = getattr(st.config, "detune_plan", None)     # core.plan.detune: the sample at this detune
         if detune is not None:
             inst = detune.instrument_for(inst, st.detune, chip, st.pitch_envelope)
     else:
@@ -232,18 +238,19 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
                         source_semitone, key, chip, total, st.detune, st.pitch_envelope)
 
 
-def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
+def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None = None):
     """Yield (event, state, resolved) for every event of a channel, in order.
 
     The state is advanced past each coordination flag before the flag is yielded, and every
     pitched note (not a rest, not a DAC hit) comes with its `ResolvedNote`; the other events
     come with None.  The same `DriverState` object is yielded every time - read it as you go.
-    Pass `st` to start from a state you set up yourself.  With a merge plan on the config
+    Pass `st` to start from a state you set up yourself.  A note at a detune its instrument's
+    sample is not rendered at plays the detune variant (`conv.detune`); with a merge plan
     (`convert.py --merged`), a note that plays a composite instrument is resolved to it.
     """
     if st is None:
-        st = DriverState.for_channel(channel, config, chan_cfg.instrument)
-    plan = getattr(config, "merge_plan", None)       # core.merge: composite instruments per tick
+        st = DriverState.for_channel(channel, conv.config, chan_cfg.instrument)
+    plan = conv.merge                                # core.merge: composite instruments per tick
     for event in channel.events:
         res = None
         solo = event.spliced
@@ -259,7 +266,7 @@ def walk_channel(channel, config, chan_cfg, st: DriverState | None = None):
         if event.is_effect:
             st.apply(event.effect)
         elif event.is_note and not event.note.is_rest and not event.note.is_dac:
-            res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source)
+            res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source, conv.detune)
             if plan is not None:
                 if (chan_cfg.source, event.tick_position) in plan.spliced:
                     res = None          # this note now plays on its primary's channel (a solo note)
@@ -278,9 +285,8 @@ def enabled_channels(song, config, kinds=(ChannelType.FM, ChannelType.PSG)):
     from, and the sample_list volumes were measured with those votes.
     """
     smap = source_map(song)
-    followers = ({f for g in config.merge for f in g.followers} | set(config.merge_drop)
-                 | set(getattr(config, "merge_fill", ()))
-                 if getattr(config, "merge_active", False) else set())
+    followers = ({f for g in config.merge for f in g.followers} | set(config.merge_drop) | set(config.merge_fill)
+                 if config.merge_active else set())
     for chan_cfg in config.channels:
         channel = smap.get(chan_cfg.source)
         live = chan_cfg.enabled or chan_cfg.source in followers

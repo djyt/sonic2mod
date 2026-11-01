@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from ..audio import db_to_gain
 from ..config import ConversionConfig
 from ..merge import NoteOn, PairStats, channel_notes, pair_channels
-from ..plan import prepare_instruments
 from .prepare import prepare_conversion
 from .smps2mod import SmpsToModConverter
 
@@ -21,7 +20,7 @@ from .smps2mod import SmpsToModConverter
 class SurveyContext:
     """A song walked as the merged build walks it, with every channel's notes in hand."""
     song: object
-    conv: SmpsToModConverter
+    converter: SmpsToModConverter
     sources: list[str]                               # the enabled channels, in config order
     notes: dict[str, tuple[dict[int, NoteOn], list[int]]]   # channel -> ({tick: NoteOn}, rests)
     level_scale: Callable[[NoteOn], float]
@@ -33,12 +32,12 @@ class SurveyContext:
 
     def pattern_of(self, tick: int) -> int:
         """The reference build's pattern a note-on at `tick` lands in (after its breaks)."""
-        return self.conv.pattern_of_tick(tick)
+        return self.converter.pattern_of_tick(tick)
 
     @property
     def last_pattern(self) -> int:
         """The reference MOD's last pattern (the loop's Bxx row; convert.py trims after it)."""
-        return self.conv.last_pattern()
+        return self.converter.last_pattern()
 
     def pair(self, primary: str, follower: str, patterns=None, cut_primary: bool = False) -> PairStats:
         """The follower lined up with the primary, over the whole song or in `patterns` only."""
@@ -61,11 +60,11 @@ def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
     followers stay on: the survey pairs every channel, before any fold."""
     prep = prepare_conversion(cfg, config_path)
     cfg, song, synth = prep.config, prep.song, prep.synth
-    conv = SmpsToModConverter(song, cfg, synth=synth, psg_synth=prep.psg_synth)
-    prepare_instruments(song, cfg, synth)     # synth roots and detune variants, as the converter
-    conv.prepare_song()                      # a replayed loop body is as many notes as it plays
-    song = conv.song
-    baselines = conv.level_baselines()
+    converter = SmpsToModConverter(song, cfg, synth=synth, psg_synth=prep.psg_synth)
+    conv = converter.plan_instruments()      # synth roots and detune variants, as the converter's
+    converter.prepare_song()                 # a replayed loop body is as many notes as it plays
+    song = converter.song
+    baselines = converter.level_baselines()
 
     def level_scale(n: NoteOn) -> float:
         base = baselines.get(n.kind, {}).get(n.instrument)
@@ -74,9 +73,9 @@ def survey_context(cfg: ConversionConfig, config_path: str) -> SurveyContext:
         return db_to_gain(n.level_db - base)
 
     sources = [c.source for c in cfg.channels if c.enabled]
-    sample_secs = conv.sample_secs()
-    tol = max(0, int(cfg.merge_tolerance))
-    notes = {src: channel_notes(song, cfg, src, conv.pan_law_db, sample_secs, lambda t: conv.tick_span_secs(t, t + 1),
-                                tol)
+    sample_secs = converter.sample_secs()
+    tol = max(0, cfg.merge_tolerance)
+    notes = {src: channel_notes(song, conv, src, converter.pan_law_db, sample_secs,
+                                lambda t: converter.tick_span_secs(t, t + 1), tol)
              for src in sources}
-    return SurveyContext(song, conv, sources, notes, level_scale, tol)
+    return SurveyContext(song, converter, sources, notes, level_scale, tol)

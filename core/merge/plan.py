@@ -10,7 +10,7 @@ import math
 from ..audio import db_to_gain, semitone_to_hz
 from ..config import MergeGroup, SampleRow, format_patterns
 from ..mod import MOD_MAX_VOLUME, PERIOD_TABLE
-from ..plan import FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
+from ..plan import ConversionPlan, FmInstrument, FmLayer, Timeline, fm_catalogue, free_slots
 from ..smps import ChannelType, prepare_song, source_map
 from .model import CHIP_BASE_IDS, LAST_MOD_NOTE, Composite, GroupNotes, MergePlan, patterns_away
 from .notes import (
@@ -193,11 +193,12 @@ def column_sources(config, patterns) -> dict[int, dict[int, list[str]]]:
     return out
 
 
-def build_merge_plan(song, config, *, pan_law_db: float,
+def build_merge_plan(song, conv: ConversionPlan, *, pan_law_db: float, bank_slots: int,
                      baselines: dict[str, dict[int, float]] | None = None,
                      sample_secs: dict[int, float] | None = None, tick_secs=None,
                      fill_min_ticks: int = 1, pattern_of=None, last_pattern: int | None = None) -> MergePlan:
-    """Decide the composite instruments the merge groups need and where they play.
+    """Decide the composite instruments the merge groups need and where they play, on the
+    conversion's decisions so far (`conv`: its rendering pitches and detune variants).
 
     `baselines` ({"FM": {inst: dB}, "PSG": {...}}, the converter's baked levels) turns a
     follower's level into the gain its sample is mixed with on the pcm path; `sample_secs` and
@@ -206,22 +207,23 @@ def build_merge_plan(song, config, *, pan_law_db: float,
     `pattern_of(tick)` is the MOD pattern (of the reference build, after its pattern breaks)
     a note-on at that tick lands in: a `merge_patterns:` group folds only the notes that start
     in its patterns, so any group with patterns needs it; `last_pattern` is the MOD's last (the
-    patterns up to it that no `merge_patterns:` block names are reported).
-    Sets `config.merge_plan` and appends the composites' sample_list entries.
+    patterns up to it that no `merge_patterns:` block names are reported).  `bank_slots`: the
+    slots held back for the sample banks (merge_bank_slots, or the reserve convert() retries with).
+    Adds the composites' sample_list rows to `conv.samples`.
 
         notes ──► pair ──► fill pool ──► fold ──► budgets ──► slots ──► stand-ins
                     ▲          │ (a pooled note leaves its group)
                     └──────────┘
     """
-    assert config.merge_plan is None
-    planner = _Planner(song, config, pan_law_db, baselines or {}, sample_secs, tick_secs, pattern_of)
+    assert conv.merge is None
+    planner = _Planner(song, conv, pan_law_db, baselines or {}, sample_secs, tick_secs, pattern_of)
 
     planner.collect_notes()
     planner.record_lost_notes(last_pattern)
     planner.pair_all()
 
     # The fill pool runs before anything folds: a pooled follower note leaves its group
-    if pool_notes(planner.plan, song, config, pan_law_db, sample_secs, tick_secs, planner.tol, fill_min_ticks,
+    if pool_notes(planner.plan, song, conv, pan_law_db, sample_secs, tick_secs, planner.tol, fill_min_ticks,
                    planner.groups, pattern_of=pattern_of):
         planner.pair_all()
 
@@ -229,17 +231,17 @@ def build_merge_plan(song, config, *, pan_law_db: float,
         planner.fold(gn)
         splice_solo_notes(planner.plan, song, gn.group, gn.p_notes)
 
-    config.merge_plan = planner.plan
-    planner.settle()
+    planner.settle(bank_slots)
     return planner.plan
 
 
 class _Planner:
     """build_merge_plan's state between its phases."""
 
-    def __init__(self, song, config, pan_law_db: float, baselines: dict[str, dict[int, float]],
+    def __init__(self, song, conv: ConversionPlan, pan_law_db: float, baselines: dict[str, dict[int, float]],
                  sample_secs, tick_secs, pattern_of):
-        self.song, self.config = song, config
+        config = conv.config
+        self.song, self.conv, self.config = song, conv, config
         self.pan_law_db, self.baselines = pan_law_db, baselines
         self.sample_secs, self.tick_secs, self.pattern_of = sample_secs, tick_secs, pattern_of
         self.plan = MergePlan(config.merge, pattern_drop={k: set(v) for k, v in config.merge_pattern_drop.items()})
@@ -247,17 +249,15 @@ class _Planner:
             raise ValueError("merge_patterns: groups need pattern_of(tick) to know which notes they fold")
 
         # Read before any composite is added: the catalogue, the volumes, the never-named slots
-        self.cat = fm_catalogue(song, config)
-        self.vol_of = {slot: (row.volume, row.finetune) for slot, row in config.sample_rows().items()}
-        self.free = free_slots(config, song)
-        if config.sample_list is None:
-            config.sample_list = []
+        self.cat = fm_catalogue(song, conv)
+        self.vol_of = {slot: (row.volume, row.finetune) for slot, row in conv.samples.rows().items()}
+        self.free = free_slots(conv, song)
 
         # Composites get provisional ids (-1, -2, ...) until the plan knows which instruments the
         # merged build no longer plays: those slots are reusable too (_assign_slots)
         self.provisional = 0
         self.chip_ids = CHIP_BASE_IDS         # the next mix's FM-layer render (fm_on_chip)
-        self.tol = max(0, int(getattr(config, "merge_tolerance", 0)))
+        self.tol = max(0, config.merge_tolerance)
         self.groups: list[GroupNotes] = []
         self._notes: dict[str, tuple[dict[int, NoteOn], list[int]]] = {}
 
@@ -269,7 +269,7 @@ class _Planner:
 
     def _notes_of(self, src: str) -> tuple[dict[int, NoteOn], list[int]]:
         if src not in self._notes:
-            self._notes[src] = channel_notes(self.song, self.config, src, self.pan_law_db,
+            self._notes[src] = channel_notes(self.song, self.conv, src, self.pan_law_db,
                                              self.sample_secs, self.tick_secs, self.tol)
         return self._notes[src]
 
@@ -386,7 +386,8 @@ class _Planner:
         self.provisional -= 1
         inst = self.provisional
         vol, ft = self.vol_of.get(p.instrument, (MOD_MAX_VOLUME, 0))
-        comp = Composite(inst, key, g, p.kind, entry=SampleRow(inst, f"merge {g.label}"[:21], vol, ft), banked=g.bank and not chip,
+        entry = SampleRow(inst, f"merge {g.label}"[:21], vol, ft)
+        comp = Composite(inst, key, g, p.kind, entry=entry, banked=g.bank and not chip,
                          pitch_hz=semitone_to_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None
@@ -394,7 +395,7 @@ class _Planner:
             # are what the driver writes (the primary's own detune is its sample's, core.plan.detune)
             layers = [FmLayer(p.voice, fnum_offset=p.detune, pan=p.pan)]
             layers += [dataclasses.replace(fm_layer(p, fn, self.tol), fnum_offset=fn.detune) for fn in present]
-            comp.fm = FmInstrument(inst, spec.entry, layers, f"merge[{g.label}]", source_label=g.label,
+            comp.fm = FmInstrument(inst, spec.entry, spec.pitch, layers, f"merge[{g.label}]", source_label=g.label,
                                    loop_drift_db=g.loop_drift_db, loop_min_ms=g.loop_min_ms, loop_decay=g.loop_decay,
                                    loop_start_ms=g.loop_start_ms,
                                    treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz,
@@ -406,7 +407,7 @@ class _Planner:
                 comp.note = best
             if g.fm_on_chip and spec is not None and p.voice is not None:
                 self._chip_base(comp, g, p, present, spec)
-        self.config.sample_list.append(comp.entry)
+        self.conv.samples.add(entry)
         plan.composites[key] = comp
         return comp
 
@@ -422,7 +423,7 @@ class _Planner:
         layers = [FmLayer(p.voice, fnum_offset=p.detune, pan=p.pan)]
         layers += [dataclasses.replace(fm_layer(p, present[i], self.tol), fnum_offset=present[i].detune) for i in fm]
         self.chip_ids += 1
-        comp.chip_base = FmInstrument(self.chip_ids, spec.entry, layers,
+        comp.chip_base = FmInstrument(self.chip_ids, spec.entry, spec.pitch, layers,
                                       f"merge[{g.label}] fm", source_label=g.label,
                                       treble_shelf_db=g.treble_shelf_db, treble_shelf_hz=g.treble_shelf_hz)
         comp.chip_layers = frozenset(fm)
@@ -466,7 +467,7 @@ class _Planner:
         if self.tick_secs is None:
             return
         plan, smap = self.plan, source_map(self.song)
-        row = (int(getattr(self.config, "ticks_per_row", 1)) or 1) * self.song.header.tempo_divider
+        row = (int(self.config.ticks_per_row) or 1) * self.song.header.tempo_divider
 
         def off_grid(t: int) -> float:
             return 0.0 if t % row == 0 else row / 2
@@ -493,24 +494,25 @@ class _Planner:
             speed = PERIOD_TABLE[own] / PERIOD_TABLE[plan.notes.get((src, tick), plan.bases.get((src, tick), c.base))]
             c.heard.append((end, nxt, speed))
 
-    def settle(self) -> None:
-        """Budgets, then slots, then stand-ins; which instruments the build still renders."""
-        plan, config = self.plan, self.config
+    def settle(self, bank_slots: int) -> None:
+        """Budgets, then slots (`bank_slots` held back for the banks), then stand-ins; which
+        instruments the build still renders."""
+        plan, config, table = self.plan, self.config, self.conv.samples
 
         # The group budgets first (max_composites): a composite over budget hands its notes back
         # to the primary's own instrument, which the unused scan must then count as played -
         # unless a same-shape survivor takes them now, before that scan (the Title Screen's kick
         # sample stayed installed with no note playing it once its one-note mix went)
-        cap_composites(plan, config)
+        cap_composites(plan, table)
         stand_in(plan)
 
         # merge_twins: always: every same-shape twin gives its notes to the one kept, slots or no
-        if getattr(config, "merge_twins", "short") == "always":
+        if config.merge_twins == "always":
             mixes = [c for c in plan.composites.values() if not c.banked]
             twins = same_shape_twins(plan, mixes)
             for c in mixes:
                 if c.inst in twins:
-                    drop_composite(plan, config, c, 'a same-shape twin (merge_twins: always)', prefer=twins[c.inst])
+                    drop_composite(plan, table, c, 'a same-shape twin (merge_twins: always)', prefer=twins[c.inst])
             stand_in(plan)
         plan.slots_wanted = len(plan.composites)
 
@@ -520,10 +522,9 @@ class _Planner:
         # entry per slot and a chip composite there would displace the source before it rendered
         # A bank_drums group's drums play from banks only: the converter keeps them aside for the
         # mixer, so their slots are free - offered last, where the bank reserve takes them first
-        reserve = (int(getattr(config, "merge_bank_slots", 0))
-                   if any(c.banked for c in plan.composites.values()) else 0)
+        reserve = bank_slots if any(c.banked for c in plan.composites.values()) else 0
         banked_drums = {c.primary for c in plan.composites.values() if c.group.bank_drums and not c.key.layers}
-        unused = fit_composites(plan, self.song, config, self.free,
+        unused = fit_composites(plan, self.song, self.conv.with_merge(plan), self.free,
                                  drums={d.mod_instrument for d in config.dac_samples} - banked_drums,
                                  fm_slots=set(self.cat.instruments), reserve=reserve, last=banked_drums)
         stand_in(plan)

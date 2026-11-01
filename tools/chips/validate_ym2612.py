@@ -487,7 +487,8 @@ def check_samples() -> None:
     print(f"  sustain     = {synth.sustain_duration}s, release = {synth.release_padding}s")
     print()
 
-    samples = generate_fm_samples(fake_song, fake_config, synth, verbose=True)
+    from core.plan import ConversionPlan
+    samples = generate_fm_samples(fake_song, ConversionPlan.of(fake_config), synth, verbose=True)
 
     if not samples:
         print("  ERROR: no samples generated")

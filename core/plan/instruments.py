@@ -26,8 +26,9 @@ import dataclasses
 from dataclasses import dataclass, field
 
 from ..config import ConversionConfig, InstrumentRange, PsgInstrumentEntry
-from ..mod import MOD_NOTE_MAP, ModNote, note_rate, shifted_rate
+from ..mod import MAX_INSTRUMENT, MOD_NOTE_MAP, ModNote, note_rate, shifted_rate
 from ..smps import FmDrum
+from .conversion import ConversionPlan, RenderPitch
 
 # Legacy / rootless fallback: C4 rendered (renderer index 36, 261.6 Hz) and played at C1's
 # rate, what an SMPS nC5 sounds like on a channel with the usual $F4 (-12) pitch offset.
@@ -64,7 +65,8 @@ class FmLayer:
 class FmInstrument:
     """How one MOD instrument's FM sample is rendered."""
     inst: int
-    entry: InstrumentRange   # the entry the sample is rendered for (root / synth_root / synth_shift)
+    entry: InstrumentRange   # the entry the sample is rendered for (its root and range)
+    pitch: RenderPitch       # where it is rendered (core.plan.synth_roots)
     layers: list[FmLayer]
     context: str             # "voice_map[0][1]", "channel_instrument_map[FM5][0][0]", ...
     source_label: str = ""   # the channel_instrument_map channel, "" for voice_map
@@ -117,15 +119,15 @@ class FmInstrument:
     @property
     def synth_shift(self) -> int:
         """Semitones the sample is rendered above the pitch `root` sounds (resolve_synth_roots)."""
-        return self.entry.synth_shift if self.root_idx is not None else 0
+        return self.pitch.shift if self.root_idx is not None else 0
 
     @property
     def synth_idx(self) -> int:
         """Renderer note index (C1 = 0) the sample is rendered at."""
         if self.root_idx is None:
             return STD_SYNTH_IDX
-        if self.entry.synth_root is not None:
-            return self.entry.synth_root - RENDER_INDEX_C1
+        if self.pitch.synth_root is not None:
+            return self.pitch.synth_root - RENDER_INDEX_C1
         return self.entry.low - RENDER_INDEX_C1
 
     @property
@@ -177,8 +179,11 @@ class FmCatalogue:
     missing_voices: list[tuple[str, int, list[int]]] = field(default_factory=list)
 
 
-def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
-    """Every FM instrument the config has synthesised, each with the entry it is rendered for."""
+def fm_catalogue(song, conv: ConversionPlan) -> FmCatalogue:
+    """Every FM instrument the config has synthesised, each with the entry it is rendered for, as
+    the conversion's decisions so far have it: its rendering pitch, its detune variants, the
+    merged build's composites."""
+    config = conv.config
     voices = {v.index: v for v in song.voices}
     cat = FmCatalogue()
 
@@ -186,7 +191,8 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
         if entry.mod_instrument in cat.instruments:
             return
         layer = FmLayer(voice_idx, special_offset=voices[voice_idx].channel_fnum_offset)
-        cat.instruments[entry.mod_instrument] = FmInstrument(entry.mod_instrument, entry, [layer], context, source_label)
+        cat.instruments[entry.mod_instrument] = FmInstrument(entry.mod_instrument, entry, conv.pitch(entry), [layer],
+                                                             context, source_label)
 
     def rooted(voice_idx: int, ranges, context: str, source_label: str = "") -> None:
         if voice_idx not in voices:
@@ -208,8 +214,8 @@ def fm_catalogue(song, config: ConversionConfig) -> FmCatalogue:
             for i, entry in enumerate(ranges):
                 if entry.root is None:
                     add(entry, voice_idx, f"channel_instrument_map[{src}][{voice_idx}][{i}]", src)
-    _add_detune_variants(cat, getattr(config, "detune_plan", None))
-    plan = getattr(config, "merge_plan", None)
+    _add_detune_variants(cat, conv.detune)
+    plan = conv.merge
     if plan is not None:                         # core.merge: the composites, rendered as layers
         for inst in plan.dropped:                # nothing the merged build plays or mixes ...
             cat.instruments.pop(inst, None)
@@ -227,14 +233,14 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
         base = cat.instruments.get(v.base)
         if base is None:
             continue
-        entry = base.entry
+        pitch = base.pitch
         if v.rendered is not None:          # its own pitch class: the same `root`, another shift
             moved = v.rendered - base.rendered_semitone
-            entry = dataclasses.replace(entry, synth_root=v.rendered, synth_shift=entry.synth_shift + moved)
+            pitch = RenderPitch(v.rendered, pitch.shift + moved)
         layer = dataclasses.replace(base.layers[0], fnum_offset=v.detune, pitch_envelope=v.envelope)
         envelope = f" envelope {v.envelope}" if v.envelope else ""
         cat.instruments[v.inst] = dataclasses.replace(
-            base, inst=v.inst, entry=entry, layers=[layer], context=f"{base.context} detune {v.detune:+d}{envelope}")
+            base, inst=v.inst, pitch=pitch, layers=[layer], context=f"{base.context} detune {v.detune:+d}{envelope}")
     for inst in {*plan.own, *plan.own_envelopes}:
         base = cat.instruments.get(inst)
         if base is not None:
@@ -242,13 +248,13 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
                                                pitch_envelope=plan.own_envelopes.get(inst, 0))]
 
 
-def free_slots(config, song) -> list[int]:
-    """Instrument slots nothing in the config names."""
-    used = set(config.sample_rows())
-    used |= set(fm_catalogue(song, config).instruments)
-    used |= set(psg_catalogue(config))
-    used |= {d.mod_instrument for d in config.dac_samples}
-    return [i for i in range(1, 32) if i not in used]
+def free_slots(conv: ConversionPlan, song) -> list[int]:
+    """Instrument slots nothing in the config, nor any row the conversion added, names."""
+    used = set(conv.samples.rows())
+    used |= set(fm_catalogue(song, conv).instruments)
+    used |= set(psg_catalogue(conv))
+    used |= {d.mod_instrument for d in conv.config.dac_samples}
+    return [i for i in range(1, MAX_INSTRUMENT + 1) if i not in used]
 
 
 @dataclass(slots=True)
@@ -257,6 +263,7 @@ class PsgInstrument:
     for a noise envelope variant, carries that variant's envelope."""
     inst: int
     entry: PsgInstrumentEntry
+    pitch: RenderPitch       # where it is rendered (core.plan.synth_roots; noise: as stated)
     context: str
     source: str = ""         # the smpsPSGvoice label (tone) or the smpsPSGform byte, "$E7" (noise)
 
@@ -265,47 +272,54 @@ class PsgInstrument:
         return self.entry.root.value
 
     @property
+    def synth_shift(self) -> int:
+        """Semitones the sample is rendered above the pitch `root` sounds (resolve_synth_roots)."""
+        return self.pitch.shift
+
+    @property
     def synth_idx(self) -> int:
         """Renderer note index (C1 = 0) a tone is rendered at: synth_root's, else root's."""
-        if self.entry.synth_root is not None:
-            return self.entry.synth_root - RENDER_INDEX_C1
+        if self.pitch.synth_root is not None:
+            return self.pitch.synth_root - RENDER_INDEX_C1
         return self.root_idx
 
     @property
     def root_semitone(self) -> int:
         """The pitch MOD note `root` sounds (SMPS semitone): the rendering pitch less the shift."""
-        return self.synth_idx + RENDER_INDEX_C1 - self.entry.synth_shift
+        return self.synth_idx + RENDER_INDEX_C1 - self.synth_shift
 
     def target_rate(self, amiga_clock: float) -> int:
         """The sample's rate: root's playback rate, raised by the synth_shift ratio."""
-        return shifted_rate(self.root_idx, amiga_clock, self.entry.synth_shift)
+        return shifted_rate(self.root_idx, amiga_clock, self.synth_shift)
 
 
-def psg_catalogue(config: ConversionConfig, noise_envelopes: dict | None = None) -> dict[int, PsgInstrument]:
-    """Every PSG instrument the config has synthesised, in render order.
+def psg_catalogue(conv: ConversionPlan, noise_envelopes: dict | None = None) -> dict[int, PsgInstrument]:
+    """Every PSG instrument the config has synthesised, in render order (the merged build's: none
+    it no longer plays).
 
     `noise_envelopes` ({instrument: label} from the converter's derive_noise_envelopes)
     supplies the envelope of each psg_map instrument and variant; without it the entry's own
     `envelope:` stands.
     """
+    config = conv.config
     noise_envelopes = noise_envelopes or {}
     out: dict[int, PsgInstrument] = {}
 
-    def add(entry: PsgInstrumentEntry, context: str, source: str) -> None:
+    def add(entry: PsgInstrumentEntry, pitch: RenderPitch, context: str, source: str) -> None:
         if entry.root is not None and entry.mod_instrument not in out:
-            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, context, source)
+            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, pitch, context, source)
 
     for form, entry in config.psg_map.items():
         variants = [(entry.mod_instrument, noise_envelopes.get(entry.mod_instrument, entry.envelope), "")]
         variants += [(inst, noise_envelopes.get(inst, label), f".envelopes[{label}]")
                      for label, inst in entry.envelopes.items()]
         for inst, envelope, suffix in variants:
-            add(dataclasses.replace(entry, mod_instrument=inst, envelope=envelope),
+            add(dataclasses.replace(entry, mod_instrument=inst, envelope=envelope), conv.pitch(entry),
                 f"psg_map[{form:#04x}]{suffix}", f"${form:02X}")
     for label, entries in config.psg_voice_map.items():
         for i, entry in enumerate(entries):
-            add(entry, f"psg_voice_map[{label}][{i}]", label)
-    plan = getattr(config, "merge_plan", None)
+            add(entry, conv.pitch(entry), f"psg_voice_map[{label}][{i}]", label)
+    plan = conv.merge
     if plan is not None:
         # core.merge: nothing the merged build plays or mixes, and no slot a composite took over -
         # except a mix source's, which is rendered for the mixer and kept out of the slot

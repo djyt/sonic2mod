@@ -7,9 +7,8 @@ twin that rings furthest; a chip composite never takes an FM source's slot.
 from __future__ import annotations
 
 import unittest
-from typing import ClassVar
 
-from core.config import MergeGroup, SampleRow
+from core.config import MergeGroup, SampleRow, SampleTable
 from core.merge import (
     CHIP,
     MIX,
@@ -21,6 +20,15 @@ from core.merge import (
     stand_in,
 )
 from core.merge.slots import _plan_slots, same_shape_twins
+
+
+def _table(rows: list[SampleRow]) -> SampleTable:
+    """The conversion's sample table holding these very rows (a composite's row is its own)."""
+    table = SampleTable(None)
+    for r in rows:
+        table.add(r)
+    return table
+
 
 
 class Twins(unittest.TestCase):
@@ -51,8 +59,7 @@ class Twins(unittest.TestCase):
     def test_a_dropped_twin_plays_the_preferred_survivor(self):
         plan, cut, held, other = self._plan()
 
-        class Cfg:
-            sample_list: ClassVar[list] = [cut.entry, held.entry, other.entry]
+        Cfg = _table([cut.entry, held.entry, other.entry])
         drop_composite(plan, Cfg, cut, "no free instrument slot", prefer=held.key)
         stand_in(plan)
         self.assertEqual(plan.ticks[("FM5", 0)], -2)

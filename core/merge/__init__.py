@@ -67,8 +67,8 @@ instrument, level and pitch.
 The plan is built once the song's ticks are final (after the global duration divider and the
 loop extension), before the samples are rendered — the FM composites are entries in the
 instrument catalogue (`core.plan.instruments`).
-`walk_channel` reads the plan from `config.merge_plan`, so every pass (levels, sustain,
-conversion) sees the composite instruments the same way.
+`walk_channel` reads the plan from the conversion's (core.plan.ConversionPlan.merge), so every
+pass (levels, sustain, conversion) sees the composite instruments the same way.
 
 Per-pattern folds, sample banks, unison chords and same-shape twins: docs/pipeline.md
 § Channel merging.  The parts, in the order a merged build runs them:

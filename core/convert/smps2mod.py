@@ -1,10 +1,11 @@
 """SMPS-to-MOD conversion engine.
 
 Converts parsed SMPS song data into a MOD file with correct note placement,
-timing, and effects.
+timing, and effects.  The config is never written: each pass's decisions on it (rendering pitches,
+detune variants, the merge plan, its sample table) are a core.plan.ConversionPlan, made anew by
+every pass.
 """
 
-import copy
 import dataclasses
 import math
 import os
@@ -21,7 +22,8 @@ from ..merge import MergedBuild, MergePlan, bank_reserve_wanted, build_merge_pla
 from ..mod import MOD_NOTE_MAP as _MOD_NOTE_MAP
 from ..mod import ModFile, UnmodelledEffect, apply_pattern_breaks, heard_bytes, note_rate
 from ..plan import (
-    DetunePlan,
+    ConversionPlan,
+    NoiseEnvelope,
     Timeline,
     derive_noise_envelopes,
     fm_catalogue,
@@ -54,11 +56,12 @@ class SmpsToModConverter:
     def __init__(self, song: SmpsSong, config: ConversionConfig,
                  synth: SynthesisSettings | None = None,
                  psg_synth: PsgSynthesisSettings | None = None):
-        self._start(song, config, synth, psg_synth)
+        self._start(song, config, synth, psg_synth, config.merge_bank_slots)
 
     def _start(self, song: SmpsSong, config: ConversionConfig,
-               synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None) -> None:
-        """A fresh conversion's state (convert() starts over with it)."""
+               synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None, bank_slots: int) -> None:
+        """A fresh conversion's state (convert() starts over with it, `bank_slots` held back for
+        the merged build's sample banks)."""
         self.config = config
         # A merged build keeps the level-only loop rule unless the song opts in (merge_loop_timbre):
         # the timbre check grows the samples (Green Hill +56 KB, Title +16 KB, lofi +124 B), and
@@ -77,14 +80,15 @@ class SmpsToModConverter:
         self.warnings = self._diag.warnings
         self.infos = self._diag.infos
         self._follow(song)
+        self._conv = ConversionPlan.of(config)   # this pass's decisions; plan_instruments() makes them
+        self._bank_slots = bank_slots
         self._leading_rest_channels: dict[int, str] = {}   # MOD channel -> source, see ModLayout.leading_rests
-        self._merge: MergePlan | None = None   # the merged build's plan; set by convert() (_build_merge_plan)
-        self._detune: DetunePlan | None = None   # the detune variants; set by convert() (_plan_detune)
+        self._merge: MergePlan | None = None   # the merged build's plan (self._conv.merge); set by _convert_once
         self._samples: SampleInstaller | None = None   # the pass's samples; set by convert()
+        self._layout: ModLayout | None = None          # the pass's layout; set once its channels are written
         self._played: dict[int, set] = {}              # {instrument: sources whose notes play it}
         self._slot_map: dict[int, int] = {}            # {old slot: new slot} of every slot ModFile.compact_samples kept
         self._emission = EmissionStats()   # what the channel writers counted (bank cuts, tie retunes)
-        self._gained: dict[str, set[int]] = {}   # {"FM"/"PSG": instruments unison chords play louder}
         self._merged: MergedBuild | None = None  # the merged build's samples; set with the plan
         self._bank_retry: dict | None = None     # set on that second pass: what it was run for
 
@@ -131,16 +135,39 @@ class SmpsToModConverter:
         self.song = song
         self._timeline = Timeline(song, self.config)
         self._vibrato = VibratoSpeed(self._timeline, self.config, self._diag)
-        self._sustain = SustainPlanner(song, self.config, self.synth, self._timeline, self._diag)
+        self._noise: dict[int, NoiseEnvelope] | None = None   # _noise_envelopes(), once per song
 
-    @property
-    def _layout(self) -> ModLayout:
-        return ModLayout(self.mod, self.config, self.song, self._timeline, self._diag,
-                         end_trigger=self.synth.end_trigger if self.synth else None)
+    def _noise_envelopes(self) -> dict[int, NoiseEnvelope]:
+        """The envelope each noise instrument plays with (core.plan.derive_noise_envelopes), read
+        once from the song as it is now."""
+        if self._noise is None:
+            self._noise = derive_noise_envelopes(self.song, self._conv)
+        return self._noise
 
-    @property
-    def _levels(self) -> LevelPlanner:
-        return LevelPlanner(self.song, self.config, self._merge, self._detune, self.pan_law_db, self._gained)
+    def plan_instruments(self) -> ConversionPlan:
+        """This pass's first decisions: every rooted entry's rendering pitch from the song and the
+        detune variants (core.plan.prepare_instruments), reported.  The chip pitch an entry's notes
+        play most often, or, when stated, wherever the config put it; the sample's rate carries the
+        difference from the pitch `root` sounds (synth_shift), so no note moves."""
+        for issue in rate3_synth_root_issues(self.config):
+            self._diag.warn(WarningKind.RATE3_SYNTH_ROOT, extra_ctx=issue['context'], **issue)
+
+        instruments = prepare_instruments(self.song, self.config, self.synth)
+        derived = stated = 0
+        for r in instruments.synth_roots:
+            derived += r.derived
+            stated += not r.derived
+            if r.shift and not r.derived:
+                self._diag.info(InfoKind.SYNTH_SHIFT, **dataclasses.asdict(r))
+            if len(r.votes) > 1:
+                self._diag.warn(WarningKind.SYNTH_ROOT_AMBIGUOUS, channel='map', extra_ctx=r.context,
+                                **dataclasses.asdict(r))
+        if derived or stated:
+            self._diag.info(InfoKind.SYNTH_ROOTS, derived=derived, stated=stated)
+
+        self._conv = instruments.conv
+        self._report_detune()
+        return self._conv
 
     def tick_span_secs(self, start: float, end: float) -> float:
         """Seconds the MOD takes to play from tick `start` to tick `end` (core.plan.timeline)."""
@@ -157,12 +184,13 @@ class SmpsToModConverter:
 
     def level_baselines(self) -> dict[str, dict[int, float]]:
         """{"FM" | "PSG": {instrument: dB its sample_list volume stands for}}, for each kind
-        whose volume mode is baked (LevelPlanner.levels)."""
+        whose volume mode is baked (LevelPlanner.levels), as the plan so far has them."""
+        levels = LevelPlanner(self.song, self._conv, self._merge, self.pan_law_db)
         baselines = {}
         if self._fm_volume_mode == "baked":
-            baselines[ChannelType.FM] = self._levels.levels(ChannelType.FM)
+            baselines[ChannelType.FM] = levels.levels(ChannelType.FM)
         if self._psg_volume_mode == "baked":
-            baselines[ChannelType.PSG] = self._levels.levels(ChannelType.PSG)
+            baselines[ChannelType.PSG] = levels.levels(ChannelType.PSG)
         return baselines
 
     def sample_sources(self) -> dict[int, dict]:
@@ -177,7 +205,7 @@ class SmpsToModConverter:
         for drum in fm_drum_catalogue(self.song, self.config).values():
             out[drum.inst] = {'kind': 'drum', 'source': f"{drum.name} FM"}
         if self.synth is not None and self.synth.enabled:
-            for inst in fm_catalogue(self.song, self.config).instruments.values():
+            for inst in fm_catalogue(self.song, self._conv).instruments.values():
                 e = inst.entry
                 src = f"${inst.layers[0].voice_idx:02X} {_semitone_to_name(e.low)}–{_semitone_to_name(e.high)}"
                 if inst.source_label:
@@ -186,8 +214,8 @@ class SmpsToModConverter:
                     src += f" detune {inst.layers[0].fnum_offset:+d}"
                 out[inst.inst] = {'kind': 'FM', 'source': src}
         if self.psg_synth is not None and self.psg_synth.enabled:
-            for inst in psg_catalogue(self.config, {i: d.envelope for i, d in
-                                                     derive_noise_envelopes(self.song, self.config).items()}).values():
+            envelopes = {i: d.envelope for i, d in self._noise_envelopes().items()}
+            for inst in psg_catalogue(self._conv, envelopes).values():
                 e = inst.entry
                 env = e.envelope if isinstance(e.envelope, str) else ("inline" if e.envelope else "")
                 if e.type == "tone":
@@ -223,17 +251,19 @@ class SmpsToModConverter:
 
         The loop's Bxx needs the post-break layout, so the order is fixed."""
         mod = self._convert_passes()
+        layout = self._layout
+        assert layout is not None
         breaks = self.config.mod_pattern_breaks or []
         if breaks:
             apply_pattern_breaks(mod, breaks)
-        self._layout.loop_point(breaks)
+        layout.loop_point(breaks)
 
         # A break may append a blank pattern nothing reaches once the Bxx is in
         loop = self._diag.first_info(InfoKind.LOOP_SET)
         if loop:
             mod.trim_to_pattern(loop['pattern'])
         else:
-            end = self._layout.song_end(breaks)         # a song that stops: a D00 where it does
+            end = layout.song_end(breaks)               # a song that stops: a D00 where it does
             if end is not None:
                 mod.trim_to_pattern(end)
 
@@ -247,8 +277,8 @@ class SmpsToModConverter:
         # Each sample named for what plays it and what it was made from (samples.names)
         settings = self.synth or self.psg_synth
         if settings is not None and settings.names == "source":
-            envs = {i: d.envelope for i, d in derive_noise_envelopes(self.song, self.config).items()}
-            for inst, name in sample_names(mod, self.song, self.config, self._played, self._merge, envs).items():
+            envs = {i: d.envelope for i, d in self._noise_envelopes().items()}
+            for inst, name in sample_names(mod, self.song, self._conv, self._played, self._merge, envs).items():
                 mod.samples[inst - 1].set_name(name)
 
         # The slots in use renumbered without gaps (the merged build empties the slots of
@@ -292,40 +322,36 @@ class SmpsToModConverter:
         they carry more notes than the least-played composites that would give theirs up.  A
         stated number is kept, except that a slot it holds back for nothing goes back to the
         composites the same way (Green Hill's slot 19 sat empty at merge_bank_slots: 3 with
-        five chords lost)."""
-        # Another pass starts from the song as given (the conversion prepares a copy of it and
-        # splices into that) and the config as it was (the merge plan adds composite entries)
-        snapshot = (self.song, copy.deepcopy(self.config)) if self.config.merge_active else None
+        five chords lost).
+
+        Another pass starts from the song as given (the conversion prepares a copy of it and
+        splices into that) and the config, which no pass writes."""
+        song = self.song
         mod = self._convert_once()
-        if snapshot is None or self._merge is None or self._merged is None:
+        if not self.config.merge_active or self._merge is None or self._merged is None:
             return mod
-        auto = getattr(snapshot[1], "merge_bank_slots_auto", False)
-        if not auto:
+        if not self.config.merge_bank_slots_auto:
             if not self._merged.idle_bank_slots:
                 return mod
             # Start over with the reserve the banks filled
-            song, config = snapshot[0], copy.deepcopy(snapshot[1])
-            retry = {'slots': list(self._merged.idle_bank_slots), 'reserve': config.merge_bank_slots,
+            retry = {'slots': list(self._merged.idle_bank_slots), 'reserve': self._bank_slots,
                      'banks': len(self._merge.banks)}
-            config.merge_bank_slots = retry['banks']
-            self._start(song, config, self.synth, self.psg_synth)
+            self._start(song, self.config, self.synth, self.psg_synth, retry['banks'])
             self._bank_retry = retry
             self._convert_once()
             self._diag.info(InfoKind.MERGE_BANK_RETRY, **retry)
             return self.mod
 
-        tried = [self.config.merge_bank_slots]
+        tried = [self._bank_slots]
         while True:
             want = bank_reserve_wanted(self._merge, self._merged.idle_bank_slots if self._merged else [])
             if want is None or want in tried or len(tried) >= _MAX_BANK_BUILDS:
                 break
-            song, config = snapshot[0], copy.deepcopy(snapshot[1])
-            config.merge_bank_slots = want
-            self._start(song, config, self.synth, self.psg_synth)
+            self._start(song, self.config, self.synth, self.psg_synth, want)
             self._convert_once()
             tried.append(want)
         if any(c.banked for c in self._merge.composites.values()) or self._merge.banks:
-            self._diag.info(InfoKind.MERGE_BANK_SLOTS, reserve=self.config.merge_bank_slots,
+            self._diag.info(InfoKind.MERGE_BANK_SLOTS, reserve=self._bank_slots,
                             banks=len(self._merge.banks), passes=len(tried))
         return self.mod
 
@@ -336,12 +362,11 @@ class SmpsToModConverter:
               -> samples (FM, disk, PSG) -> composites mixed -> channels written -> layout
         """
         self.mod.set_name(self.config.name)
-        self._plan_pitches()
 
-        # Detune variants (core.plan.detune): every smpsAlterNote detune an instrument plays gets its
-        # sample rendered at that offset.  Planned on the song as written, as the audit tools
-        # plan it, and before the merge plan takes the slots left free.
-        self._detune = self._plan_detune()
+        # Rendering pitches and detune variants (core.plan.prepare_instruments): every smpsAlterNote
+        # detune an instrument plays gets its sample rendered at that offset.  Planned on the song
+        # as written, as the audit tools plan it, and before the merge plan takes the slots left free.
+        self.plan_instruments()
         psg_insts = psg_synth_instruments(self.config, self.psg_synth)
 
         # The song's ticks as the MOD plays them: tempo dividers applied, loops replayed
@@ -349,56 +374,40 @@ class SmpsToModConverter:
 
         # The merged build: which composite instruments the groups need and where they play,
         # decided while the ticks are final and before anything renders (core/merge/).
-        self._merge = self._merged = None
         if self.config.merge_active:
-            self._merge = self._build_merge_plan()
-            self._merged = MergedBuild(self._merge, self.mod, self.config, self.synth, self._timeline, self._diag,
-                                       self._merge_baselines, self._bank_retry)
+            baselines = self.level_baselines()          # the reference build's: what the volumes mean
+            self._merge = self._build_merge_plan(baselines)
+            self._conv = self._conv.with_merge(self._merge)
+            self._merged = MergedBuild(self._merge, self.mod, self._conv.samples, self._bank_slots, self.synth,
+                                       self._timeline, self._diag, baselines, self._bank_retry)
 
         # Resolve 'auto' sustain durations from the longest ring each instrument plays, in the
         # MOD's own time, and warn where a sample cannot hold a note.
-        synth = self._sustain.resolve(self.synth, 'FM', self._merge) if self.synth else None
-        psg_synth = self._sustain.resolve(self.psg_synth, 'PSG', self._merge) if self.psg_synth else None
+        sustain = SustainPlanner(self.song, self._conv, self._merge, self.synth, self._timeline, self._diag)
+        synth = sustain.resolve(self.synth, 'FM') if self.synth else None
+        psg_synth = sustain.resolve(self.psg_synth, 'PSG') if self.psg_synth else None
 
         # Load or synthesize samples (a merge composite is rendered or mixed, never loaded)
-        samples = self._samples = SampleInstaller(self.mod, self.song, self.config, self.synth, self.psg_synth,
-                                                  self._timeline, self._diag, self._sustain, self._merge, self._merged)
-        samples.install(synth, psg_synth, psg_insts, self._levels, self._fm_volume_mode == "baked")
-        self._sustain.flush_pending()      # kinds that were not synthesised
+        levels = LevelPlanner(self.song, self._conv, self._merge, self.pan_law_db)
+        samples = self._samples = SampleInstaller(self.mod, self.song, self._conv, self.synth, self.psg_synth,
+                                                  self._timeline, self._diag, sustain, self._merge, self._merged)
+        samples.install(synth, psg_synth, psg_insts, levels, self._fm_volume_mode == "baked", self._noise_envelopes())
+        sustain.flush_pending()      # kinds that were not synthesised
 
         # The composites mixed from finished samples (DAC + hi-hat), now that every sample is in
         if self._merged is not None:
             self._merged.mix(synth, psg_synth, samples.mix_sources, samples.release, samples.raw_renders,
                              samples.dither, samples.entry_dithers())
 
-        self._convert_all_channels()
+        self._convert_all_channels(levels, samples)
         self._report_emission()
-        self._layout.leading_rests(self._leading_rest_channels)
-        self._layout.tempo_commands(self._leading_rest_channels)
+        layout = self._layout = ModLayout(self.mod, self.config, self.song, self._timeline, self._diag,
+                                          end_trigger=self.synth.end_trigger if self.synth else None)
+        layout.leading_rests(self._leading_rest_channels)
+        layout.tempo_commands(self._leading_rest_channels)
         if len(self._timeline.segments) > 1:
-            self._layout.tempo_changes()
+            layout.tempo_changes()
         return self.mod
-
-    def _plan_pitches(self) -> None:
-        """Every rooted entry's rendering pitch from the song, and the detune variants
-        (core.plan.prepare_instruments): the chip pitch an entry's notes play most often, or, when
-        stated, wherever the config put it; the sample's rate carries the difference from the pitch
-        `root` sounds (synth_shift), so no note moves.  Before anything reads synth_root / synth_shift."""
-        for issue in rate3_synth_root_issues(self.config):
-            self._diag.warn(WarningKind.RATE3_SYNTH_ROOT, extra_ctx=issue['context'], **issue)
-
-        self._instrument_plan = prepare_instruments(self.song, self.config, self.synth)
-        derived = stated = 0
-        for r in self._instrument_plan.synth_roots:
-            derived += r.derived
-            stated += not r.derived
-            if r.shift and not r.derived:
-                self._diag.info(InfoKind.SYNTH_SHIFT, **dataclasses.asdict(r))
-            if len(r.votes) > 1:
-                self._diag.warn(WarningKind.SYNTH_ROOT_AMBIGUOUS, channel='map', extra_ctx=r.context,
-                                **dataclasses.asdict(r))
-        if derived or stated:
-            self._diag.info(InfoKind.SYNTH_ROOTS, derived=derived, stated=stated)
 
     def _report_emission(self) -> None:
         """What the channel writers counted: banked notes, tie retunes."""
@@ -415,7 +424,7 @@ class SmpsToModConverter:
         at their mod_note) and the noise instruments (their envelope, then the ramp to
         silence).  What core.merge bounds a note's sounding span with."""
         clock = self.synth.amiga_clock if self.synth else SynthesisSettings().amiga_clock
-        files = {slot: row.file for slot, row in self.config.sample_rows().items()}
+        files = {slot: row.file for slot, row in self._conv.samples.rows().items()}
         out: dict[int, float] = {}
         for d in self.config.dac_samples:
             path = os.path.join(self.config.samples_dir, files.get(d.mod_instrument, ""))
@@ -423,7 +432,7 @@ class SmpsToModConverter:
             if d.mod_instrument in files and note is not None and os.path.exists(path):
                 out[d.mod_instrument] = os.path.getsize(path) / note_rate(note.value, clock)
         fps = self._timeline.fps
-        for inst, d in derive_noise_envelopes(self.song, self.config).items():
+        for inst, d in self._noise_envelopes().items():
             env = d.envelope
             env = self.song.rules.psg_envelopes.get(env) if isinstance(env, str) else PsgEnvelope(tuple(env)) if env else None
             frames = noise_envelope_frames(env)
@@ -431,68 +440,64 @@ class SmpsToModConverter:
                 out[inst] = frames / fps
         return out
 
-    def _build_merge_plan(self):
-        """core.merge.build_merge_plan with this conversion's pan law and baked levels, its
-        findings reported as infos / warnings."""
-        self._merge_baselines = self.level_baselines()
-        plan = build_merge_plan(self.song, self.config, pan_law_db=self.pan_law_db,
-                                baselines=self._merge_baselines, sample_secs=self.sample_secs(),
+    def _build_merge_plan(self, baselines: dict[str, dict[int, float]]) -> MergePlan:
+        """core.merge.build_merge_plan with this conversion's pan law and baked levels
+        (`baselines`), its findings reported as infos / warnings."""
+        plan = build_merge_plan(self.song, self._conv, pan_law_db=self.pan_law_db, bank_slots=self._bank_slots,
+                                baselines=baselines, sample_secs=self.sample_secs(),
                                 tick_secs=lambda t: self._timeline.span_secs(t, t + 1),
                                 fill_min_ticks=math.ceil(self._timeline.ticks_per_row),
                                 pattern_of=self._timeline.pattern_of, last_pattern=self._timeline.last_pattern())
         report_plan(plan, self._diag)
         return plan
 
-    def _plan_detune(self) -> DetunePlan | None:
-        """The detune variants (core.plan.detune) prepare_instruments planned, reported."""
-        plan = self._instrument_plan.detune
+    def _report_detune(self) -> None:
+        """The detune variants (core.plan.detune) prepare_instruments planned."""
+        plan = self._conv.detune
         if plan is None:
-            return None
+            return
         if plan.own or plan.own_envelopes or plan.variants:
             self._diag.info(InfoKind.DETUNE_VARIANTS, own=dict(plan.own), own_envelopes=dict(plan.own_envelopes),
                             variants=[(v.inst, v.base, v.detune, v.envelope, v.notes) for v in plan.variants.values()])
         if plan.unplaced:
             self._diag.warn(WarningKind.DETUNE_NO_SLOT, channel='FM', unplaced=dict(plan.unplaced))
-        return plan
 
-    def _convert_all_channels(self):
+    def _convert_all_channels(self, levels: LevelPlanner, samples: SampleInstaller) -> None:
         """Convert all SMPS channels to MOD channels."""
         # Source names follow header order: DAC (if present), then FM1..FMn, then PSG1..PSGn
         source_map = source_map_for(self.song)
+        gained: dict[str, set[int]] = {kind: levels.gained(kind) for kind in (ChannelType.FM, ChannelType.PSG)}
 
-        self._fm_baseline_db: dict[int, float] = {}
+        fm_baseline_db: dict[int, float] = {}
         if self._fm_volume_mode == "baked":
-            self._fm_baseline_db = self._levels.levels(ChannelType.FM)
+            fm_baseline_db = levels.levels(ChannelType.FM)
             # The samples were rendered (before the loop bodies were extended) at what this
             # walk now says is each instrument's baseline; the two must agree or the Cxx law
             # would be measured from a level the sample does not carry.
             pan_law = self.pan_law_db
-            render_levels = self._samples.fm_render_levels if self._samples else {}
-            for inst, (tl, pan) in render_levels.items():
-                base = self._fm_baseline_db.get(inst)
-                if inst in self._gained.get(ChannelType.FM, ()):
+            for inst, (tl, pan) in samples.fm_render_levels.items():
+                base = fm_baseline_db.get(inst)
+                if inst in gained[ChannelType.FM]:
                     continue            # a unison chord's gain is in the baseline, not in the render
                 if self._merge is not None and inst in self._merge.mix_only and inst in self._merge.instruments:
                     continue            # rendered for the mixer; the slot's baseline is its composite's
                 if base is not None and abs(fm_level_db(tl, pan, pan_law) - base) > 1e-9:
                     self._diag.warn(WarningKind.RENDER_LEVEL, instrument=inst, tl=tl, panned=bool(pan),
                                     rendered_db=fm_level_db(tl, pan, pan_law), baked_db=base)
-        self._psg_baseline_db: dict[int, float] = {}
+        psg_baseline_db: dict[int, float] = {}
         if self._psg_volume_mode == "baked":
-            self._psg_baseline_db = self._levels.levels(ChannelType.PSG)
+            psg_baseline_db = levels.levels(ChannelType.PSG)
 
         # Merged build: volumes measured for the reference build, moved to the merged build's levels
         if self._merged is not None:
-            self._merged.bake_volumes(self._fm_baseline_db, self._psg_baseline_db, self._gained)
+            self._merged.bake_volumes(fm_baseline_db, psg_baseline_db, gained)
 
         # Convert each configured channel
-        samples = self._samples
-        assert samples is not None
         ctx = WriterContext(
-            mod=self.mod, config=self.config, song=self.song, synth=self.synth, timeline=self._timeline,
-            diag=self._diag, vibrato=self._vibrato, merge=self._merge, detune=self._detune,
+            mod=self.mod, conv=self._conv, song=self.song, synth=self.synth, timeline=self._timeline,
+            diag=self._diag, vibrato=self._vibrato, merge=self._merge,
             fm_volume_mode=self._fm_volume_mode, psg_volume_mode=self._psg_volume_mode, pan_law_db=self.pan_law_db,
-            fm_baseline_db=self._fm_baseline_db, psg_baseline_db=self._psg_baseline_db, release=samples.release,
+            fm_baseline_db=fm_baseline_db, psg_baseline_db=psg_baseline_db, release=samples.release,
             release_slides=samples.release_slides, player=self._player, leading_rests=self._leading_rest_channels,
             stats=self._emission, played=self._played,
             decay={i: (lp.flat_at, lp.decay_db) for i, lp in samples.loops.items() if lp.decay_db})
@@ -506,4 +511,3 @@ class SmpsToModConverter:
                 continue
 
             ChannelWriter(ctx, source_map[source], chan_cfg).write()
-

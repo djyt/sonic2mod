@@ -8,11 +8,11 @@ import dataclasses
 from dataclasses import dataclass
 
 from ..audio import SustainLoop
-from ..config import ConversionConfig, SynthesisSettings
+from ..config import SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import MergePlan
 from ..mod import PERIOD_TABLE, clamp_note, finetune_ratio, max_sustain_secs, shift_ratio, shifted_rate
-from ..plan import Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
+from ..plan import ConversionPlan, Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import ChannelType, SmpsSong
 
 _AUTO_SUSTAIN_CAP_SECS = 10.0
@@ -47,10 +47,14 @@ def _cut_ring(rings: _Rings, tick: int) -> None:
 
 
 class SustainPlanner:
-    def __init__(self, song: SmpsSong, config: ConversionConfig, synth: SynthesisSettings | None,
-                 timeline: Timeline, diag: Diagnostics) -> None:
+    """One pass's sustains, on its final song and plan (`merge`: the merged build's, conv.merge)."""
+
+    def __init__(self, song: SmpsSong, conv: ConversionPlan, merge: MergePlan | None,
+                 synth: SynthesisSettings | None, timeline: Timeline, diag: Diagnostics) -> None:
         self._song = song
-        self._config = config
+        self._conv = conv
+        self._config = conv.config
+        self._merge = merge
         self._synth = synth
         self._timeline = timeline
         self._diag = diag
@@ -69,9 +73,9 @@ class SustainPlanner:
         """
         if kind == ChannelType.FM:
             return {i.inst: (i.rate_root_idx, i.synth_shift)
-                    for i in fm_catalogue(self._song, self._config).instruments.values()}
-        return {i.inst: (i.root_idx, i.entry.synth_shift)
-                for i in psg_catalogue(self._config).values()}
+                    for i in fm_catalogue(self._song, self._conv).instruments.values()}
+        return {i.inst: (i.root_idx, i.synth_shift)
+                for i in psg_catalogue(self._conv).values()}
 
     def _slides_after(self, chan_cfg, start: int, rest: int, merge: MergePlan | None) -> bool:
         """Whether the rest at `rest` ending a note that started at `start` is written as a
@@ -126,7 +130,7 @@ class SustainPlanner:
         The MOD note and instrument are the ones core.convert.channel_writer will trigger: the same
         walk_channel / resolve_note.
         """
-        finetunes = {slot: row.finetune for slot, row in self._config.sample_rows().items()}
+        finetunes = {slot: row.finetune for slot, row in self._conv.samples.rows().items()}
         roots = self._synthesis_roots(kind)
         # A note that plays a mixed composite (core.merge) plays its source samples inside it:
         # the primary's at the note, each follower's at its interval.  They need the ring as much
@@ -194,7 +198,7 @@ class SustainPlanner:
         # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
         # ring for notes of a second
         portamento = (self._synth.legato if self._synth else "strict") != "retrigger"
-        for event, _st, res in walk_channel(channel, self._config, chan_cfg):
+        for event, _st, res in walk_channel(channel, self._conv, chan_cfg):
             if not event.is_note:
                 continue
             note = event.note
@@ -231,7 +235,7 @@ class SustainPlanner:
             rings.append(_Ring(event.tick_position, note.duration, res.instrument, res.index))
         return rings
 
-    def resolve(self, settings, kind: str, merge: MergePlan | None):
+    def resolve(self, settings, kind: str):
         """Settings with `sustain_duration: auto` resolved per instrument: each synthesised
         instrument is rendered for its own longest ring (capped at 10 s;
         `sustain_by_instrument`), `sustain_duration` itself becoming the largest of them for
@@ -240,6 +244,7 @@ class SustainPlanner:
         shorter, the cap is, or the MOD sample limit at the instrument's rate is
         (max_sustain_secs).  In the merged build an instrument that is not rendered
         (MergePlan.unused) sets nothing."""
+        merge = self._merge
         needs = self._needs(kind, merge)
         if merge is not None:
             needs = {i: n for i, n in needs.items() if i not in merge.unused}

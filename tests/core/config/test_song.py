@@ -74,10 +74,13 @@ class SampleRows(unittest.TestCase):
 
     def test_a_slot_plays_its_last_row_and_keeps_its_first(self):
         cfg = _config(sample_list=[[5, "drum.raw", 40, 0], [5, "merge FM1", 30, 0]])
-        self.assertEqual(cfg.sample_row(5).file, "merge FM1")                    # a composite's, appended
-        self.assertEqual(cfg.sample_row(5, original=True).file, "drum.raw")      # what the slot was named for
-        self.assertIsNone(cfg.sample_row(6))
-        self.assertEqual(cfg.sample_rows()[5].volume, 30)
+        table = cfg.sample_table()
+        self.assertEqual(table.row(5).file, "merge FM1")                         # a composite's, appended
+        self.assertEqual(table.row(5, original=True).file, "drum.raw")           # what the slot was named for
+        self.assertIsNone(table.row(6))
+        self.assertEqual(table.rows()[5].volume, 30)
+        table.rows()[5].volume = 10
+        self.assertEqual(cfg.sample_list[1].volume, 30)                          # the config's rows stay as read
 
 
 class Numbers(unittest.TestCase):

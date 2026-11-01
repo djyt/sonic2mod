@@ -37,7 +37,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parents[1]))
 
 from core.config import ChannelConfig, ConversionConfig
-from core.plan import load_config, walk_channel
+from core.plan import ConversionPlan, load_config, walk_channel
 from core.smps import parse_smps_note, parse_synth_note, semitone_to_note_name, source_map, synth_note_name
 
 mod_name = synth_note_name   # YAML config note name for a semitone
@@ -57,9 +57,10 @@ def chip_notes(cfg: ConversionConfig, config_path: Path):
     song = cfg.read_song()
     fm_off, psg_off = load_settings(find_settings(str(config_path)))
     fm_off.enabled = psg_off.enabled = False
-    conv = SmpsToModConverter(song, cfg, synth=fm_off, psg_synth=psg_off)
-    conv.prepare_song()
-    song = conv.song
+    converter = SmpsToModConverter(song, cfg, synth=fm_off, psg_synth=psg_off)
+    converter.prepare_song()
+    song = converter.song
+    conv = ConversionPlan.of(cfg)
     out: dict[tuple, list[tuple[int, int]]] = defaultdict(list)     # every (source, chip) pair
     labels = {str(k) for k in cfg.psg_voice_map}
     cfg_by_source = {c.source: c for c in cfg.channels}
@@ -73,7 +74,7 @@ def chip_notes(cfg: ConversionConfig, config_path: Path):
         # The same DriverState walk as the converter: st.voice is the FM voice, st.psg_label the
         # psg_voice_map entry in force (an unknown smpsPSGvoice label leaves it), res.chip the
         # pitch the chip plays; a channel in noise mode contributes nothing.
-        for _event, st, res in walk_channel(ch, cfg, chan_cfg):
+        for _event, st, res in walk_channel(ch, conv, chan_cfg):
             if res is None or st.in_noise_mode:
                 continue
             if kind == "FM":
@@ -172,10 +173,11 @@ def main() -> None:
     notes = chip_notes(cfg, path)
     # The rendering pitch of every entry that does not state synth_root, from the song
     from core.plan import resolve_synth_roots
-    resolve_synth_roots(cfg.read_song(), cfg)
+    conv = ConversionPlan.of(cfg)
+    conv = conv.with_pitches(resolve_synth_roots(cfg.read_song(), conv).pitches)
 
     def defaults(entries) -> list:
-        return [e.synth_root for e in entries]
+        return [conv.pitch(e).synth_root for e in entries]
 
     sections: dict[str, list[str]] = {}
     if "voice_map" in data:

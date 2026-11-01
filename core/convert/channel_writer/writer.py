@@ -123,7 +123,7 @@ class ChannelWriter:
 
     # --- the walk -------------------------------------------------------------------------------
     def write(self) -> None:
-        for event, st, res in walk_channel(self._channel, self._config, self._cfg, self._st):
+        for event, st, res in walk_channel(self._channel, self._ctx.conv, self._cfg, self._st):
             # A follower's solo note on a merged channel arrives with the follower's state
             # (core.merge); every other event with this channel's own.
             self._st = st

@@ -6,9 +6,8 @@
 from __future__ import annotations
 
 import unittest
-from typing import ClassVar
 
-from core.config import MergeGroup, SampleRow
+from core.config import MergeGroup, SampleRow, SampleTable
 from core.merge import (
     ALIGN,
     MIX,
@@ -21,6 +20,14 @@ from core.merge import (
 from core.mod import PAL_AMIGA_CLOCK, ModFile, ModSample
 
 CLOCK = float(PAL_AMIGA_CLOCK)
+
+def _table(rows: list[SampleRow]) -> SampleTable:
+    """The conversion's sample table holding these very rows (a composite's row is its own)."""
+    table = SampleTable(None)
+    for r in rows:
+        table.add(r)
+    return table
+
 
 
 def _sample(data: bytes, volume=64, loop=None) -> ModSample:
@@ -44,8 +51,7 @@ class Banks(unittest.TestCase):
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
         plan.bases = {("DAC", 0): 12, ("DAC", 8): 12}
 
-        class Cfg:
-            sample_list: ClassVar[list] = [c1.entry, c2.entry]
+        Cfg = _table([c1.entry, c2.entry])
         mod = ModFile(4)
         samples = {-1: _sample(bytes([50] * 1000)), -2: _sample(bytes([50] * 300), volume=32)}
         raw = {-1: [50.0] * 1000, -2: [50.0] * 300}
@@ -63,7 +69,7 @@ class Banks(unittest.TestCase):
                        entry=SampleRow(-3, "c", 64, 0))
         plan.composites[c3.key] = c3
         plan.ticks[("DAC", 16)] = -3
-        Cfg.sample_list.append(c3.entry)
+        Cfg.add(c3.entry)
         dropped = pack_banks(plan, Cfg, mod, {-3: _sample(bytes([50] * 5000))}, [], max_bytes=4096,
                              pad_secs=0.0, amiga_clock=CLOCK, raw={})
         self.assertEqual(len(dropped), 1)
@@ -80,8 +86,7 @@ class Banks(unittest.TestCase):
         plan = MergePlan([g], composites={loud.key: loud, quiet.key: quiet})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
-        class Cfg:
-            sample_list: ClassVar[list] = [loud.entry, quiet.entry]
+        Cfg = _table([loud.entry, quiet.entry])
         samples = {-1: _sample(bytes([100] * 512)), -2: _sample(bytes([100] * 512), volume=32)}
         with self.assertRaises(ValueError):
             pack_banks(plan, Cfg, ModFile(4), samples, [7], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK, raw={})
@@ -102,8 +107,7 @@ class MelodicBanks(unittest.TestCase):
             samples[-i] = _sample(bytes([40 + i] * size), volume=vol, loop=loop)   # a sound of its own
             entries.append(c.entry)
 
-        class Cfg:
-            sample_list: ClassVar[list] = entries
+        Cfg = _table(entries)
         plan = MergePlan([g], composites=comps)
         plan.ticks = ticks
         return plan, Cfg, samples
@@ -166,8 +170,7 @@ class SameSounds(unittest.TestCase):
         plan = MergePlan([g], composites={a.key: a, b.key: b})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
-        class Cfg:
-            sample_list: ClassVar[list] = [a.entry, b.entry]
+        Cfg = _table([a.entry, b.entry])
         sound = [float((7 * k) % 200 - 100) for k in range(1000)]
         samples = {-1: _sample(bytes(1000)), -2: _sample(bytes(1000), volume=vol_b)}
         mod = ModFile(4)
@@ -204,8 +207,7 @@ class DrumBanks(unittest.TestCase):
         plan = MergePlan([g], composites={drum.key: drum, mix.key: mix})
         plan.ticks = {("FM3", 0): -1, ("FM3", 8): -2}
 
-        class Cfg:
-            sample_list: ClassVar[list] = [drum.entry, mix.entry]
+        Cfg = _table([drum.entry, mix.entry])
         samples = {-1: _sample(bytes([50] * 3000)), -2: _sample(bytes([60] * 3000))}
         dropped = pack_banks(plan, Cfg, ModFile(4), samples, [4], max_bytes=4096, pad_secs=0.0, amiga_clock=CLOCK,
                              raw={})
@@ -224,8 +226,7 @@ class BankAlignment(unittest.TestCase):
         plan = MergePlan([g], composites={c1.key: c1, c2.key: c2})
         plan.ticks = {("DAC", 0): -1, ("DAC", 8): -2}
 
-        class Cfg:
-            sample_list: ClassVar[list] = [c1.entry, c2.entry]
+        Cfg = _table([c1.entry, c2.entry])
         mod = ModFile(4)
         # An odd sum is evened with a zero byte: its raw values are one short of the sample
         samples = {-1: _sample(bytes([40] * 1001)), -2: _sample(bytes([90] * 300))}

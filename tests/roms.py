@@ -42,8 +42,7 @@ GAMES = (
               _RIPS / "streets_of_rage_1"),
     GameFiles("space_harrier_2", _ROMS / "Space Harrier II (World).md", _RIPS / "space_harrier_2"),
     GameFiles("outrun", _ROMS / "OutRun (USA, Europe).md", _RIPS / "outrun"),
-    # Its rips are checked once it has configs (docs/todo/streets_of_rage_2.md Phase 2.6)
-    GameFiles("streets_of_rage_2", _ROMS / "Streets of Rage 2 (USA).md", _RIPS / "streets_of_rage_2", frames=False),
+    GameFiles("streets_of_rage_2", _ROMS / "Streets of Rage 2 (USA).md", _RIPS / "streets_of_rage_2"),
 )
 _BY_NAME = {g.name: g for g in GAMES}
 
